@@ -218,7 +218,8 @@ export interface CodexServer {
    * thread's next turns —; its ID once the prompt is in the thread. `readOnly` (Scout, V35): the
    * `read-only` sandbox instead, nothing writable, approvals `never`: a command the sandbox refuses
    * fails, nobody is asked. `confined` (Scribe, V41): `workspace-write` with `cwd` its only writable
-   * folder, approvals `never`: a write elsewhere fails (decision 275). On `model` when given (V47):
+   * folder, and `writable` (the skill library, SK1), approvals `never`: a write elsewhere fails
+   * (decision 275). On `model` when given (V47):
    * the thread's own, kept for its turns and through a resume (V47's real run). Without `prompt`
    * (V50): no turn, its level in its configuration, the first message typed in Codex's terminal.
    */
@@ -549,7 +550,20 @@ export function codexServer(
           readOnly
             ? { cwd, sandbox: 'read-only', approvalPolicy: 'never', ...on, ...own }
             : confined
-              ? { cwd, sandbox: 'workspace-write', approvalPolicy: 'never', ...on, ...own }
+              ? {
+                  cwd,
+                  sandbox: 'workspace-write',
+                  approvalPolicy: 'never',
+                  ...on,
+                  ...(writable.length > 0
+                    ? {
+                        config: {
+                          ...configured,
+                          sandbox_workspace_write: { writable_roots: writable },
+                        },
+                      }
+                    : own),
+                }
               : {
                   cwd,
                   ...on,

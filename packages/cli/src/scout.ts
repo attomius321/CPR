@@ -71,8 +71,13 @@ export interface PageAgentSpec {
   /** Claude Code's tools and mode for it. */
   tools: readonly string[];
   permissionMode: 'dontAsk' | 'default';
-  /** What its gate is given after its script: Scribe's, the skills' folder. */
+  /** What its gate is given after its script: Scribe's, the skills' folder and `folders`. */
   gateArgs(root: string): string[];
+  /**
+   * Folders outside the checkout it works in too, read at each start (Scribe: the skill library,
+   * SK1): Claude Code's `--add-dir`, folders Codex's sandbox may also write.
+   */
+  folders?(root: string): string[];
   /** Claude Code's settings besides the gate (Scribe: its edits in the checkout). */
   claudeSettings?: Readonly<Record<string, unknown>>;
   /** Its first prompt: the person's words; in the project's text when it has no `instructions`. */
@@ -665,6 +670,7 @@ export function pageAgent(
     const settings = await settingsFile(where);
     const mcpConfig = await mcpFile(where);
     const instructions = spec.instructions?.(root);
+    const addDirs = spec.folders?.(root) ?? [];
     const result = await agent.startPageAgent({
       cwd: root,
       name,
@@ -672,6 +678,7 @@ export function pageAgent(
       ...(instructions ? { instructions } : {}),
       settings,
       ...(mcpConfig ? { mcpConfig } : {}),
+      ...(addDirs.length > 0 ? { addDirs } : {}),
       tools: spec.tools,
       permissionMode: spec.permissionMode,
     });
@@ -743,7 +750,7 @@ export function pageAgent(
     try {
       thread = await server.start({
         cwd: codexAt.cwd,
-        writable: [],
+        writable: codexAt.writes ? (spec.folders?.(root) ?? []) : [],
         name,
         ...first,
         ...(instructions ? { instructions } : {}),

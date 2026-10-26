@@ -14,6 +14,7 @@ import {
   writePrompt,
 } from '../src/prompts.js';
 import { agentsFile, AGENTS, verdictText } from '../src/reviews.js';
+import { scribePrompt } from '../src/scribe.js';
 import type { WorkspaceFile } from '../src/workspace-record.js';
 import { workspacePrompt } from '../src/workspace-start.js';
 
@@ -409,8 +410,8 @@ describe("Scout's prompt (V35)", () => {
       text: DEFAULT_PROMPTS.scout,
       placeholders: [],
     });
-    // Scribe's follows it since V41.
-    expect(prompts.at(-2)?.key).toBe('scout');
+    // Scribe's two follow it (V41, SK1).
+    expect(prompts.at(-3)?.key).toBe('scout');
   });
 });
 
@@ -446,6 +447,45 @@ describe("Scribe's prompt (V41)", () => {
     repo.write({ 'src/a.ts': 'export const a = 1;\n' });
     repo.commit('A');
     const { prompts } = await promptSettingsService(await openRepo(repo.root)).prompts();
-    expect(prompts.at(-1)).toMatchObject({ key: 'scribe', group: 'Scribe', title: 'Instructions' });
+    expect(prompts.at(-2)).toMatchObject({ key: 'scribe', group: 'Scribe', title: 'Instructions' });
+    expect(prompts.at(-1)).toMatchObject({ key: 'library', group: 'Scribe', title: 'Library' });
+  });
+});
+
+describe("Scribe's prompt with a skill library (SK1, decision 430)", () => {
+  const values = { request: 'A skill', skills: '/repo/.claude/skills', checkout: '/repo' };
+
+  it("is main's text without a library: the line holding {library} goes with its blank line", () => {
+    const scribe = DEFAULT_PROMPTS.scribe;
+    expect(scribe).toContain('\n\n{library}\n\n');
+    const without = scribePrompt(DEFAULT_PROMPTS, values);
+    expect(without).toBe(fillPrompt(scribe.replace('{library}\n\n', ''), values));
+    expect(without).not.toMatch(/library|\{\w+\}/);
+  });
+
+  it('says where the library is and what a skill there holds, with one', () => {
+    expect(DEFAULT_PROMPTS.library).toContain('{folder}');
+    const filled = scribePrompt(DEFAULT_PROMPTS, { ...values, library: '/home/a/skills' });
+    expect(filled).toContain('/home/a/skills/<name>/SKILL.md');
+    expect(filled).toContain(
+      fillPrompt(DEFAULT_PROMPTS.library, {
+        folder: '/home/a/skills',
+        skills: '/repo/.claude/skills',
+      }),
+    );
+    expect(filled).not.toMatch(/\{\w+\}/);
+  });
+
+  it('leaves a project prompt without {library} as it is', () => {
+    const prompts = { ...DEFAULT_PROMPTS, scribe: 'Write {request}.' };
+    expect(scribePrompt(prompts, { ...values, library: '/home/a/skills' })).toBe('Write A skill.');
+  });
+
+  it("refuses a project's library prompt without the folder", () => {
+    const { text, warnings } = readPrompts(
+      withConfig({ prompts: { library: 'Write in my library too.' } }),
+    );
+    expect(text.library).toBe(DEFAULT_PROMPTS.library);
+    expect(warnings.library).toContain('{folder}');
   });
 });

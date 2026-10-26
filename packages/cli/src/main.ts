@@ -699,6 +699,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   // One Codex for workspaces and usage: one connection to its app server.
   const codexOf = codexFinder(repo.root, ctx.env);
   const hermesOf = hermesFinder(repo.root, ctx.env);
+  // The skill library (SK1): the Skills page's and Scribe's.
+  const library = libraryOf(ctx);
   // One Claude Code for workspaces, Scout (V35) and Scribe (V41): one read of its sessions every 2 s.
   const claudeOf = agentFinder(repo.root, ctx.env, cacheDir);
   const server = await startViewServer({
@@ -753,7 +755,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       }),
       skills: skillsService(repo, {
         codexInstalled: async () => (await codexOf()) !== null,
-        library: libraryOf(ctx),
+        library,
       }),
       // The Monitor page (RM1): where the checked-out commit's code is.
       monitor: codeMaps(repo.root),
@@ -762,6 +764,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         codex: codexOf,
         env: ctx.env,
         terminals,
+        library,
       }),
       // Each subscription's windows (V29c): agents Symbiote can start, signed in to a plan.
       usage: usageService(

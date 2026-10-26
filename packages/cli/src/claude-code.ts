@@ -319,6 +319,8 @@ export interface ClaudeCode {
     permissionMode: 'dontAsk' | 'default';
     /** Its MCP servers' file (`--mcp-config`, MC1): Scout's, Symbiote's; none otherwise. */
     mcpConfig?: string;
+    /** Folders outside `cwd` it works in too (`--add-dir`; Scribe's skill library, SK1). */
+    addDirs?: readonly string[];
     /** Its effort level (`--effort`), kept as a workspace's is. */
     effort?: string;
     /** Its model (V47, `--model`), over the project's. */
@@ -470,6 +472,7 @@ export function claudeCode(
         request.permissionMode,
         '--strict-mcp-config',
         ...(request.mcpConfig ? ['--mcp-config', request.mcpConfig] : []),
+        ...(request.addDirs ?? []).flatMap((dir) => ['--add-dir', dir]),
         '--settings',
         request.settings,
         ...choose(request.model, model),
