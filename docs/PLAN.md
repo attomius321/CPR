@@ -208,6 +208,7 @@ hosted.
 | [N1](plan/n1-native-window.md) | A native window (Electron) | ✅ | 190–204 | [journal](journal/n1-native-window.md) |
 | [N1d](plan/n1d-rounded-window.md) | Rounded window corners | ✅ | 218–225 | [journal](journal/n1d-rounded-window.md) |
 | Fix | Symbiote's window opening maximized on WSLg took no clicks | ✅ | | [journal](journal/fix-wslg-open-maximized.md) |
+| Fix | The app shows a page as a browser does, under its title bar | ready for review | | [journal](journal/fix-title-bar-desktop.md) |
 
 ### Repository monitoring
 

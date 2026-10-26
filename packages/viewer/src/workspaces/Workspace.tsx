@@ -24,7 +24,6 @@ import { ChangesIcon, TerminalIcon } from '../ui/icons.js';
 import { cleanUp } from './cleanup.js';
 import { useRemoving, workspaceKey } from './removing.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
-import { InTitleBar } from '../shell/TitleBar.js';
 import { MergeControl } from './MergeControl.js';
 import { ThreadTab, useThread } from './ThreadTab.js';
 import { KindTag, StateDot, StateFor, WorkspaceBranch, WorkspaceState } from './WorkspaceFacts.js';
@@ -518,18 +517,16 @@ function WorkspacePanel({
             </button>
           )}
           {workspace.ahead > 0 && !workspace.merged && <MergeControl branch={branch} />}
-          <InTitleBar at="end">
-            <button
-              type="button"
-              className="icon-button changes-toggle"
-              aria-label="Changes"
-              aria-pressed={changesShown}
-              {...tip(`${changesShown ? 'Hide' : 'Show'} the branch's changes`, { keys: ']' })}
-              onClick={toggleChanges}
-            >
-              <ChangesIcon />
-            </button>
-          </InTitleBar>
+          <button
+            type="button"
+            className="icon-button changes-toggle"
+            aria-label="Changes"
+            aria-pressed={changesShown}
+            {...tip(`${changesShown ? 'Hide' : 'Show'} the branch's changes`, { keys: ']' })}
+            onClick={toggleChanges}
+          >
+            <ChangesIcon />
+          </button>
           <MoreActions actions={more} />
           {workspace.ahead > 0 && workspace.tip !== null && (
             <button

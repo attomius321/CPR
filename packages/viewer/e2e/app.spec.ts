@@ -372,13 +372,14 @@ test('symbiote view opens its window, and ends when the window closes', async ()
   }
 });
 
-// Symbiote's own title bar (N1c): no system frame, the OS's buttons over Symbiote's colour.
+// Symbiote's own title bar (N1c): no system frame, the OS's buttons over Symbiote's colour. Under
+// it, the page as a browser shows it (title-bar.spec.ts compares the two).
 test.describe('the title bar', () => {
-  test('Symbiote and the repository, fold, back and forward, the page’s tabs, the OS’s buttons', async () => {
+  test('back and forward, the page’s title, the OS’s buttons; the page’s own parts under it', async () => {
     const { page } = await launch();
     const bar = page.locator('.titlebar');
     await expect(bar).toBeVisible();
-    await expect(bar.locator('.titlebar-brand')).toHaveText(/^Symbiote · .+/);
+    await expect(bar.locator('.titlebar-title')).toHaveText(/^History · .+ — Symbiote$/);
     expect(
       await bar.evaluate((el) => getComputedStyle(el).getPropertyValue('-webkit-app-region')),
     ).toBe('drag');
@@ -393,20 +394,23 @@ test.describe('the title bar', () => {
     for (const name of ['Minimize', 'Maximize', 'Close']) {
       await expect(bar.getByRole('button', { name, exact: true })).toBeVisible();
     }
-    await expect(bar.getByRole('button', { name: 'All branches' })).toBeVisible();
+    // Symbiote and the repository, the fold and History's branches: the page's, as in a browser.
+    await expect(page.locator('.sidenav-brand')).toHaveText(/^Symbiote · .+/);
+    await expect(bar.getByRole('button', { name: 'All branches' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'All branches' })).toBeVisible();
 
     const back = bar.getByRole('button', { name: 'Back' });
     const forward = bar.getByRole('button', { name: 'Forward' });
     await expect(back).toBeDisabled();
     await page.keyboard.press('s');
     await expect(page).toHaveURL(/\/settings$/);
-    await expect(bar.locator('.titlebar-label')).toHaveText('Settings');
+    await expect(bar.locator('.titlebar-title')).toHaveText(/^Settings · .+ — Symbiote$/);
     await back.click();
     await expect(page).toHaveURL(/\/history$/);
     await forward.click();
     await expect(page).toHaveURL(/\/settings$/);
 
-    await bar.getByRole('button', { name: 'Fold the sidenav' }).click();
+    await page.getByRole('button', { name: 'Fold the sidenav' }).click();
     await expect(page.locator('.shell')).toHaveClass(/folded/);
   });
 
@@ -477,7 +481,7 @@ test.describe('the title bar', () => {
     await expect.poll(() => calls(app)).toEqual(['minimize', 'maximize', 'unmaximize', 'close']);
   });
 
-  test('a workspace: its tabs and its changes’ toggle in the bar', async () => {
+  test('a workspace: its tabs in their card, Changes in its head, as in a browser', async () => {
     const served = await serveWorkspaces();
     try {
       const { page } = await launch(served.url);
@@ -488,14 +492,17 @@ test.describe('the title bar', () => {
       await starting.getByRole('textbox', { name: 'Goal' }).fill('Add clamp');
       await starting.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
       await expect(starting).toBeHidden();
-      const bar = page.locator('.titlebar');
-      await expect(bar.getByRole('tab', { name: 'Thread' })).toBeVisible();
-      await expect(bar.getByRole('button', { name: 'Changes' })).toBeVisible();
-      await bar.getByRole('tab', { name: 'Brief' }).click();
+      await expect(page.locator('.titlebar').getByRole('tab')).toHaveCount(0);
+      const card = page.locator('.workspace-main');
+      await expect(card.getByRole('tab', { name: 'Thread' })).toBeVisible();
+      await expect(
+        page.locator('.workspace-top').getByRole('button', { name: 'Changes' }),
+      ).toBeVisible();
+      await card.getByRole('tab', { name: 'Brief' }).click();
       await expect(page.locator('.workspace-brief')).toBeVisible();
-      // Its shells too (V45): their tabs and + in the bar.
-      await bar.getByRole('button', { name: 'New shell' }).click();
-      await expect(bar.getByRole('tab', { name: 'Shell 1' })).toHaveAttribute(
+      // Its shells too (V45): their tabs and + in the card.
+      await card.getByRole('button', { name: 'New shell' }).click();
+      await expect(card.getByRole('tab', { name: 'Shell 1' })).toHaveAttribute(
         'aria-selected',
         'true',
       );

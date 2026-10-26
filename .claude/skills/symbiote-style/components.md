@@ -449,7 +449,12 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   warns, `--removed` at 100 % or a reached limit (V29c's tones: the person wants the colours, not
   grey).
 - Brand: the person's S (`SymbioteMark`, `ui/mark.png`, cut round by `scripts/desktop/icon.mjs`)
-  at 32 px before the name, a `--line` ring; 20 px in the title bar.
+  at 32 px before the name, a `--line` ring.
+- The app's title bar (N1c; fix/title-bar-desktop): 38 px of `--side`, `--line` under it, over
+  the page a browser shows — Back and Forward at its left, the window's title in the middle
+  (`--muted`, 14 px), the window's buttons at its end. Nothing of a page moves into it: the
+  brand row, a page's tabs and its buttons stay where a browser has them (`title-bar.spec.ts`
+  compares the two).
 - Terminal: `#050608` (a step under the canvas) to its card's edges, dark in both themes; its
   theme in `workspaces/terminal.ts`.
 - Composer under a thread ("To answer, open its terminal"): a field's frame (`--line`, 10 px,

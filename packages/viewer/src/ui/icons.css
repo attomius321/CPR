@@ -41,12 +41,6 @@
   user-select: none;
 }
 
-/* In the window's 38 px title bar, beside its name. */
-.titlebar .symbiote-mark {
-  width: 20px;
-  height: 20px;
-}
-
 .icon-button {
   flex: none;
   display: inline-flex;

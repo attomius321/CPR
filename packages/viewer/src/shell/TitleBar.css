@@ -1,8 +1,9 @@
 /* ---- Symbiote's window (N1c): its title bar; in the app only ----------------------
    `data-app` on <html> is set before the first paint where the app's preload says so: in a
-   browser none of this applies. 38 px, the sidenav's colour, cut along the window's columns.
-   The system's buttons lie over its right end (Windows, Linux: `env(titlebar-area-*)` says
-   where) or its left (macOS's). */
+   browser none of this applies. 38 px, the sidenav's colour, over the page a browser shows: what a
+   browser keeps in its own bar (Back, Forward, the page's title), the window's buttons at its end.
+   The system's buttons lie over its right end (Windows: `env(titlebar-area-*)` says where) or its
+   left (macOS's). */
 
 .titlebar {
   display: none;
@@ -17,12 +18,17 @@
     'status status';
 }
 
+/* The title in the middle of the window: the two sides as wide, unless one needs more. */
 :root[data-app] .titlebar {
   grid-area: title;
-  display: flex;
-  align-items: stretch;
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
+  align-items: center;
   min-width: 0;
   height: 38px;
+  box-sizing: border-box;
+  /* The system's buttons' width, kept clear. */
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
   border-bottom: 1px solid var(--line);
   background: var(--side);
   user-select: none;
@@ -30,62 +36,19 @@
 }
 
 /* What can be clicked does not move the window. */
-:root[data-app] .titlebar :is(a, button, [role='tab'], .scopes) {
+:root[data-app] .titlebar button {
   -webkit-app-region: no-drag;
 }
 
-.titlebar-side {
-  flex: none;
+.titlebar-moves {
   display: flex;
   align-items: center;
   gap: 2px;
-  box-sizing: border-box;
-  min-width: var(--sidenav-width, 240px);
-  padding: 0 8px 0 12px;
-  border-right: 1px solid var(--line);
+  padding: 0 8px;
 }
 
-:root[data-app='darwin'] .titlebar-side {
+:root[data-app='darwin'] .titlebar-moves {
   padding-left: 78px;
-}
-
-.titlebar-brand {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-right: 4px;
-  overflow: hidden;
-  color: var(--text);
-  font-weight: 600;
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.titlebar-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.titlebar-repo {
-  color: var(--muted);
-  font-weight: 450;
-}
-
-/* Folded to a rail, the side keeps its buttons; the name goes, and the line (no column to
-   follow). */
-.shell.folded .titlebar-name {
-  display: none;
-}
-
-.shell.folded .titlebar-side {
-  border-right: 0;
-}
-
-/* A diff in the shell: Symbiote's name is the title bar's. */
-:root[data-app] .shell .app > .bar > .brand {
-  display: none;
 }
 
 .titlebar .icon-button:disabled {
@@ -94,49 +57,16 @@
   cursor: default;
 }
 
-.titlebar-page {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px;
-}
-
-.titlebar-label {
+.titlebar-title {
+  overflow: hidden;
   color: var(--muted);
   font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.titlebar-slot {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-}
-
-.titlebar-end {
-  flex: none;
-  display: flex;
-  align-items: center;
-  /* The system's buttons' width, kept clear. */
-  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw) + 8px);
-}
-
-/* The page's tabs, moved up: the same buttons, without the strip. Its 4 px keep a focus ring
-   inside the strip, which scrolls (V45); the margin keeps the tabs where they were. */
-.titlebar .workspace-views {
-  margin: 0 -4px;
-  padding: 4px;
-  border: 0;
-  background: none;
-}
-
-:root[data-app] .shell-top {
-  display: none;
-}
-
-:root[data-app] .sidenav-top {
-  display: none;
+.titlebar .window-buttons {
+  justify-self: end;
 }
 
 /* A page with no shell (symbiote pr): its bar is the title bar. */
@@ -157,15 +87,17 @@
 @media (max-width: 899px) {
   :root[data-app] .shell {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 38px auto minmax(0, 1fr) auto;
+    grid-template-rows: 38px auto auto minmax(0, 1fr) auto;
     grid-template-areas:
       'title'
+      'top'
       'asks'
       'main'
       'status';
   }
 
-  :root[data-app] .titlebar-side {
-    min-width: 0;
+  /* The drawer opens under the title bar: its buttons, and the strip that moves the window, stay. */
+  :root[data-app] .shell.drawer-open :is(.sidenav, .shell-scrim) {
+    top: 38px;
   }
 }

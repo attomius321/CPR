@@ -9,9 +9,6 @@ import { TitleBar } from '../shell/TitleBar.js';
 
 const FOLD_KEY = 'symbiote.viewer.sidenav.diff';
 
-/** A diff's page puts nothing in the title bar: its own bar, under it, has its parts. */
-const noSlots = () => {};
-
 /** On a diff the sidenav starts as a rail (decision 182): the canvas keeps its width. */
 function loadFolded(): boolean {
   try {
@@ -97,16 +94,7 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
         className={`shell diff-shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}${sidenav.resizing ? ' resizing' : ''}`}
         style={sidenav.style}
       >
-        {desktop && (
-          <TitleBar
-            repo={repo}
-            folded={folded}
-            onFold={() =>
-              window.matchMedia('(max-width: 899px)').matches ? setDrawer((open) => !open) : fold()
-            }
-            onSlots={noSlots}
-          />
-        )}
+        {desktop && <TitleBar />}
         <DrawerStrip open={drawer} onToggle={() => setDrawer((open) => !open)} />
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={null} />
         {sidenav.handle}

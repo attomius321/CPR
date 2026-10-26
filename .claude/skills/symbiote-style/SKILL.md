@@ -133,9 +133,9 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
   is a step lighter (`#8a78fd`, 5.77:1). A ghost button resets the primary's lit edge
   (`box-shadow: none`), or a white line shows on its top.
 - **The mark is an image** (V61, `SymbioteMark`, `ui/mark.png`): the person's S cut round by
-  `scripts/desktop/icon.mjs` from `scripts/desktop/logo.png`, 64 px for 32 on screen, 20 in the
-  title bar, a `--line` ring; never 16 (V39: the koi S did not read there). Rerun the script after
-  changing the logo: it writes the app's icon and the favicon too.
+  `scripts/desktop/icon.mjs` from `scripts/desktop/logo.png`, 64 px for 32 on screen, a `--line`
+  ring; never 16 (V39: the koi S did not read there). Rerun the script after changing the logo:
+  it writes the app's icon and the favicon too.
 - **A border on React Flow's container moves its origin** a pixel from its box: the canvas's card
   edge is an `outline` with `outline-offset: -1px` (V61).
 - **A card's handle is its gutter**: a `Resizer` between two cards takes `margin: 0` (8 px wide,
