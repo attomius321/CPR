@@ -65,14 +65,21 @@ let display: { name: string; stop(): void };
 
 /**
  * The environment for the app: its settings in `config`, on the specs' own display (X11); the
- * servers it starts show no first-time intro (V39: its own test serves one that does).
+ * servers it starts show no first-time intro (V39: its own test serves one that does), and
+ * neither writes lines into your log folder (LG2: 55 a run did, 21 `app started` among them).
  */
 function appEnv(config: string): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined && key !== 'WAYLAND_DISPLAY') env[key] = value;
   }
-  return { ...env, DISPLAY: display.name, XDG_CONFIG_HOME: config, SYMBIOTE_INTRO: 'off' };
+  return {
+    ...env,
+    DISPLAY: display.name,
+    XDG_CONFIG_HOME: config,
+    SYMBIOTE_INTRO: 'off',
+    SYMBIOTE_LOG: 'off',
+  };
 }
 
 let symbiote: RunningCommits;
