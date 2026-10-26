@@ -289,6 +289,13 @@
   background: var(--selected);
 }
 
+/* Its severity at the top of its line, its own height: a grid item stretched to a rule that wraps
+   (a long rule beside a project) drew a tall amber blob (seen on Bitwarden, V61). */
+.finding-row > .badge {
+  align-self: start;
+  margin-top: 1px;
+}
+
 .finding-row-rule {
   font-weight: 500;
 }

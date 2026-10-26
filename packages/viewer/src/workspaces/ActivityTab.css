@@ -20,7 +20,8 @@
 
 .activity-row {
   display: grid;
-  grid-template-columns: 48px 7px minmax(0, 1fr);
+  /* The time's column in its own size's measure (V61): 48 px fit "11:02 PM" at 12 px, not at 13. */
+  grid-template-columns: calc(5 * var(--size-caption)) 7px minmax(0, 1fr);
   column-gap: 10px;
   align-items: baseline;
   padding: 3px 0;
