@@ -461,16 +461,20 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   `--side`), its icon in a 28 px `--raised` tile, the words in `--muted`.
 - Empty state: a 28 px icon in `--faint`, a 14 px weight 500 line, 12 px `--muted` text, and the
   action that fills it (a primary or outline button).
-- A page that makes something (Start a workspace, V49): its form centred in the main area, never
-  pinned to the left with the rest of a wide window bare; the head strip full width, its title and
-  actions laid out in the form's width (`--start-side`). The parts as cards (14 px, `--panel`,
-  `--line`, `--shadow-lift`, 16 px padding; 12 on a phone): what is written in one, up to 760 px;
-  the settings beside it (380 px) as rows: the name in `--muted` weight 500 at the left in a
-  104 px column, the control at the right, a hairline between rows, a note under its control; a
-  control that wants the width (a stepper, a file list) under its name. Files are added in a
-  dashed drop area (`--field-line`) with the button in it. A tall window gives its room to what
-  is written most, and lowers the cards; it does not centre them (they would move as the form
-  grows).
+- A page that makes something (Start a workspace, V49; the person's mockup since V63): its form
+  centred in the main area, never pinned to the left with the rest of a wide window bare; the head
+  on the ground — the S (48 px), the title and a `--muted` line under it, the buttons at the right
+  (36 px, Cancel and Clear `secondary`, the primary with its icon) — laid out in the form's width
+  (`--start-side`). What is written in one card (14 px, `--panel`, `--line`, `--shadow-lift`), the
+  kinds as tabs with icons on its hairline (the picked one `--selected`, its words `--accent`, a
+  3 px `--primary` line), each field's name with its "?" over it, a part's tools in its frame;
+  the settings beside it (821 : 470, 1,312 px at most) as one card each: an icon in `--accent`
+  and a heading, a choice's control on the heading's line in the rows' control column
+  (`--start-name`, 124 px), rows with the name in `--muted` at the left. Files are added in a
+  dashed drop area (`--field-line`) with the button in it. The mockup's arcs (`--ground-arc`)
+  stay right of the cards, never behind them: a card's gap would show bits of a ring. A tall
+  window gives its room to what is written most, and lowers the head and the cards; it does not
+  centre them (they would move as the form grows).
 - A page of settings (Settings and Skills, V51): the same head and centring, the list (240 px, a
   plain column: navigation, not a card) and the page (up to 760 px) one grid of 1,024 px; the
   list's group headings in line with the head's title. A page is its heading (with its chip and

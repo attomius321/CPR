@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v63-start-page-mockup.md)
 
-**Status:** in progress (2026-10-27), on branch `feature/start-workspace-revamp` (the workspace's);
+**Status:** ready for review (2026-10-27), on branch `feature/start-workspace-revamp` (the workspace's);
 the plan confirmed by the person, with four answers: the title's ✨ and the goal's link and page
 icons are left out, the primary keeps its dark words (decision 440), the title at Settings' size
 (V62), and the background's arcs are tried.
@@ -142,3 +142,55 @@ start from a History row, Codex's and Hermes's rows, the tokens' values.
 | 455 | The ground | **The mockup's arcs, faint, on this page** | the person's "try" |
 | 456 | The stepper's words | **Capitalised, xHigh; everywhere the stepper is** | the mockup; one stepper |
 | 457 | The ✨, link and page icons | **Left out** | the person's answer: no behaviour behind them |
+
+## As built (V63)
+
+- **The run fits 1440×900 by tighter cards than the mockup's**: drawn at the plan's 14 px padding
+  and 32 px heads the run was 836 px high, 64 more than the body's 772 (with More closed). The
+  cards have 12 px padding, a head without a control is 28 px high, the rows 10 px apart, the
+  stepper and the drop area 4 px closer: the run is 771 px, the body 776. The controls stay 32 px
+  (`look.spec.ts`), not the mockup's 40.
+- **The head's buttons 36 px**, a step taller than a row's 32, as the mockup's are taller.
+- **The right arcs are placed from the cards' edge** (24 px past it, as the mockup's), not from
+  the page's: placed from the page, at 1641 px they ran behind the cards and showed as bits of a
+  line in the 8 px gaps between them. Where the ground beside the cards is narrow (32 px at
+  1641) they are a sliver; at 1920 and wider, the mockup's arcs.
+- **The goal's tools are drawn over the field**, not in a frame of their own: the textarea keeps
+  its border, hover and focus ring (`look.spec.ts`), and is 44 px taller at the bottom for them.
+  Two traps: inside its frame the textarea was inline, and a line's descent under it put the
+  tools over its bottom border; and `--input-bg` is translucent, so the tools painted with it
+  were a lighter band — they paint the field's composite colour.
+- **The S at 48 px is a 96 px image**: `icon.mjs` cuts `ui/mark-96.png` beside the 64 px one; the
+  other icons it writes came out byte for byte the same.
+- **The icons on lucide's own grid**: `Icon` takes `lucide` (a 24-unit `viewBox`, the stroke 2.4
+  so it is as wide on screen as the 16-unit icons'), and the paths are lucide's as published.
+- **More's parts have no "(optional)" of their own**: the frame's chip says it once. Their fields
+  are named "Where to look", "Notes"; Done when is "Done when (optional)", as the mockup writes it.
+- **The preview** is the viewer's Markdown renderer (`ui/markdown.ts`), whose lexer loads only
+  when the preview is first shown; the field gives way to it, so nothing is typed while it shows.
+- **One agent stays a value**, its mark and name, not a select of one, as before.
+- **The crown only before a subscription** ("your Max subscription"), not before "your ChatGPT
+  account".
+- **Source's note takes two lines** in the run's 411–472 px with the commit in it.
+- **On a phone** the tabs drop their icons and their padding is 6 px (36 px high), their words
+  still 15 px: with 8 px padding the five and their "?" were 42 px too wide for 390 px.
+
+**Results.** Measured as the problem (Chromium, `serveWorkspaces`, the fake Claude Code, More
+closed):
+
+| Window | Main area | The brief | The run | Ground left and right | The body scrolls |
+|---|---|---|---|---|---|
+| 1280×720 | 1016×696 | 588 | 380 | 16 / 16 | 196 px |
+| 1440×900 | 1176×876 | 717 | 411 | 16 / 16 | no (771 of 776 px) |
+| 1641×959 (the mockup's) | 1377×935 | 824 | 472 | 33 / 32 | no |
+| 1920×1080 | 1656×1056 | 824 | 472 | 172 / 172 | no |
+| 2560×1440 | 2296×1416 | 824 | 472 | 492 / 492 | no |
+| 390×844 | 390×783 | 358 | 358, under it | 16 / 16 | the five kinds on one line |
+
+The mockup's cards are 821 and 470. `pnpm check` 1,882 of 1,882; `pnpm build`; `pnpm test:e2e`
+295 of 296, the one a harness race in `scout.spec.ts` (the fake agent's call log read while it
+was written: "Unterminated string in JSON"), 11 of 11 on its own run. The start spec's 5 new
+tests red first (the mark, the counter, Branch name, Start workspace not found), then 19 of 19.
+261 elements on the page, letter-spacing 0 on each, their sizes 17, 15, 14 and 13 px.
+Screenshots dark and light at the six sizes; More open with two documents, the preview, Codex,
+a taken branch, no agent, from a History row; Scout's and Settings' steppers.

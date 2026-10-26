@@ -483,8 +483,8 @@
   height: 16px;
 }
 
-/* The five and their info on one line on a phone (390 px: 334 for them): words only, a step
-   smaller. */
+/* The five and their info on one line on a phone (390 px: 334 for them): words only, closer;
+   never a smaller size (the person's eyes). */
 @media (max-width: 480px) {
   .kind-picker {
     gap: 2px;
@@ -493,7 +493,6 @@
   .kind {
     height: 36px;
     padding: 0 6px;
-    font-size: var(--size-small);
   }
 
   .kind .icon {

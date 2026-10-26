@@ -43,6 +43,8 @@ describe('one word for a workspace (V25)', () => {
         'packages/cli/src/workspaces.ts:feature',
         'packages/cli/src/workspace-brief.ts:feature',
         'packages/viewer/src/workspaces/brief.ts:feature',
+        // The kind of work's icon on the start page's tab (V63).
+        'packages/viewer/src/workspaces/StartKinds.tsx:feature',
       ].sort(),
     );
   });

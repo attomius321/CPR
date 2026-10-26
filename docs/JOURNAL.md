@@ -256,3 +256,5 @@ merge commit.
 - 2026-10-27 [Fix — the app shows a page as a browser does, under its title bar](journal/fix-title-bar-desktop.md)
 - 2026-10-26 [V62 spike — Settings beside the mockup](journal/v62-settings-layout.md)
 - 2026-10-27 [V62 — Settings as the person's mockup](journal/v62-settings-layout.md)
+- 2026-10-27 [V63 spike — the start page beside the mockup](journal/v63-start-page-mockup.md)
+- 2026-10-27 [V63 — Start a workspace as the person's mockup](journal/v63-start-page-mockup.md)

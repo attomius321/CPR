@@ -201,7 +201,7 @@ hosted.
 | [V59](plan/v59-scout-waiting-mark.md) | Scout's and Scribe's links, whole, in Waiting for you's amber band while they wait | ready for review | 422–425 | [journal](journal/v59-scout-waiting-mark.md) |
 | [V61](plan/v61-complete-revamp.md) | The mockup's black theme on every page, the new S as the icon, text a step bigger | ready for review | 437–440, 445 | [journal](journal/v61-complete-revamp.md) |
 | [V62](plan/v62-settings-layout.md) | Settings as the person's mockup: two cards to the bottom, the page one card | ready for review | 446–450 | [journal](journal/v62-settings-layout.md) |
-| [V63](plan/v63-start-page-mockup.md) | Start a workspace as the person's mockup: the S in the head, kinds as tabs, the run as seven cards | in progress | 451–457 | [journal](journal/v63-start-page-mockup.md) |
+| [V63](plan/v63-start-page-mockup.md) | Start a workspace as the person's mockup: the S in the head, kinds as tabs, the run as seven cards | ready for review | 451–457 | [journal](journal/v63-start-page-mockup.md) |
 
 ### Native window
 
