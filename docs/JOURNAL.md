@@ -234,3 +234,5 @@ merge commit.
 - 2026-10-25 [V56 — Skills' own rules over the whole main area; Scribe's terminal edge to edge; the Monitor's head](journal/v56-skills-page-layout.md)
 - 2026-10-25 [V54 spike — what the viewer's tooltips are](journal/v54-tooltips.md)
 - 2026-10-25 [V54 — tooltips drawn by Symbiote](journal/v54-tooltips.md)
+- 2026-10-25 [Fix — a merge that failed or waits for you holds the next one; Check again on a moved target](journal/fix-merger-queue-wrong-behaviour.md)
+- 2026-10-25 [Fix — the Skills page's Save: a title the merge of V54 brought back](journal/fix-merger-queue-wrong-behaviour.md)

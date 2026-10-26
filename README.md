@@ -357,8 +357,9 @@ worktree of its own in its cache. Your checkout and the agent's worktree are not
    tries again. A target checked out nowhere has its ref moved, only if it has not moved since.
 3. With `merge.push: true` it pushes the target. This is off by default.
 
-Merges go one at a time, each on the result of the last. The sidenav's Merging group, at the top
-of its list, shows each one (its dot spins while Symbiote works on it), and a click opens it
+Merges go one at a time, each on the result of the last: a merge that failed or waits for you
+holds the next one into its target until it lands or is removed. The sidenav's Merging group, at
+the top of its list, shows each one (its dot spins while Symbiote works on it), and a click opens it
 (`/?merge=<branch>`): queued, merging, checking, ready to land, landed or failed. Under that, its
 steps (the merge, the merger agent, each check command, the landing), each with its time, beside a
 log of everything they write as they write it, in a read-only terminal: what git did, the check's

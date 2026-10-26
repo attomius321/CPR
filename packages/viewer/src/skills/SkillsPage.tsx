@@ -580,7 +580,7 @@ function SkillEditor({
           type="button"
           className="button"
           disabled={!canSave}
-          title="Save it in this checkout (Ctrl+S)"
+          {...tip('Save it in this checkout', { keys: 'Ctrl+S' })}
           onClick={() => onSave(text)}
         >
           Save

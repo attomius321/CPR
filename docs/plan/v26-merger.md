@@ -215,7 +215,8 @@ What differs from the plan, and why:
 - **A conflict is `needs-you` with its paths**, and the merge is aborted. Until V26b/V26c resolve
   conflicts, Retry merges again once the branch is fixed and approved again.
 - **A merge waiting at `ready` holds later merges into the same branch.** They would be merged on
-  a tip that is about to move, then merged again. A conflict or a failure holds nothing.
+  a tip that is about to move, then merged again. A conflict or a failure holds nothing (since
+  fix/merger-queue-wrong-behaviour they hold it too: both may still land).
 - **The queue follows other processes**: listing it merges what is queued, so a `symbiote merge` in a
   terminal is merged by a `symbiote view` that is open, or by itself. While one process merges, the
   other's `symbiote merge` follows the entry through the queue file.
