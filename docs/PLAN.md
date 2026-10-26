@@ -221,6 +221,7 @@ hosted.
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
 | [LG1](plan/lg1-logs.md) | Symbiote's logs: lines from every Symbiote process, uncaught errors kept, read by another app (Grafana, Loki) | ready for review | 349–357, 366 | [journal](journal/lg1-logs.md) |
+| [LG2](plan/lg2-dashboard.md) | A readable logs dashboard: at a glance, problems by level and kind, what Symbiote did, the server; the e2e tests' lines out of the person's folder | ready for review | 441–444 | [journal](journal/lg2-dashboard.md) |
 
 ### Docs and the repository
 
