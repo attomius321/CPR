@@ -1,6 +1,6 @@
-/* The app's start page (N1b): the viewer's tokens (Symbiote's style, V31; the koi's colours, V42)
-   and type, on one column. Sizes on the viewer's scale (V32): 14 px body, nothing under 12 px; the
-   title as it was. */
+/* The app's start page (N1b): the viewer's tokens (Symbiote's style, V31; the mockup's colours,
+   V61) and type, on one column. Sizes on the viewer's scale (V32, V61): 15 px body, nothing
+   under 13 px; the title as it was. */
 
 @font-face {
   font-family: 'Geist Variable';
@@ -12,20 +12,20 @@
 
 :root,
 :root[data-theme='dark'] {
-  --bg: #05080f;
-  --side: #0f1626;
-  --panel: #0f1626;
-  --line: #232d43;
-  --text: #eaeef7;
-  --muted: #9aa5be;
-  --focus: #7a9ee8;
+  --bg: #090b0e;
+  --side: #0d1015;
+  --panel: #0d1015;
+  --line: #1f232c;
+  --text: #edf0f5;
+  --muted: #a2abbc;
+  --focus: #9886ff;
   --error: #ff6568;
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
-  --primary: #3c6fd6;
-  --primary-hover: #3466cc;
-  --primary-text: #ffffff;
-  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 16%);
-  --edge-line: rgb(170 195 240 / 14%);
+  --primary: #7c68fc;
+  --primary-hover: #8a78fd;
+  --primary-text: #0b0a1a;
+  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 22%);
+  --edge-line: rgb(220 226 238 / 12%);
   color-scheme: dark;
 }
 
@@ -36,11 +36,11 @@
   --line: #dce3ef;
   --text: #0b1220;
   --muted: #56627a;
-  --focus: #2f62cc;
+  --focus: #5b3fd9;
   --error: #e40014;
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
-  --primary: #2f62cc;
-  --primary-hover: #2856b8;
+  --primary: #5b3fd9;
+  --primary-hover: #4e33c6;
   --primary-text: #ffffff;
   --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
   --edge-line: rgb(11 18 32 / 13%);
@@ -61,7 +61,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font:
-    14px / 1.5 'Geist Variable',
+    15px / 1.5 'Geist Variable',
     monospace;
   -webkit-font-smoothing: antialiased;
 }
@@ -251,7 +251,7 @@ button {
 
 kbd {
   font:
-    12px 'Geist Variable',
+    13px 'Geist Variable',
     monospace;
   opacity: 0.7;
 }
@@ -264,7 +264,7 @@ kbd {
 h2 {
   margin: 0 0 4px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -307,7 +307,7 @@ ul {
   max-width: 100%;
   overflow: hidden;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

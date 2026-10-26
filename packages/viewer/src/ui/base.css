@@ -8,52 +8,54 @@
 :root {
   --sans: 'Geist Variable', monospace;
   --mono: 'Geist Mono Variable', monospace;
-  /* The type scale (V32): one step above V29b's dense 13 px, which was too small to read. Every
-     text is sized from it (test/tokens.test.ts); hierarchy is by weight and colour more than size.
-     Nothing under 12 px but uppercase labels and one-glyph marks. Titles stay at 16 px: larger, a
-     symbol's name wrapped in its panel and a frame's name outgrew its band (flow.ts estimates). */
-  --size-caps: 11px; /* uppercase labels (a symbol's kind), one-glyph marks */
-  --size-caption: 12px; /* captions, chips, badges, counts, key caps, category labels */
-  --size-small: 13px; /* secondary: buttons, menu items, paths, code, the status bar */
-  --size-body: 14px; /* rows, nav, tabs, body text, editors */
-  --size-title: 16px; /* titles: a page's, a dialog's, a symbol's in its panel, a frame's name */
+  /* The type scale (V32): one step above V29b's dense 13 px, which was too small to read; V61 a
+     pixel more each, still too small for the person's eyes. Every text is sized from it
+     (test/tokens.test.ts); hierarchy is by weight and colour more than size. Nothing under 13 px
+     but uppercase labels and one-glyph marks. The graph keeps V32's (below, `.react-flow`). */
+  --size-caps: 12px; /* uppercase labels (a symbol's kind), one-glyph marks */
+  --size-caption: 13px; /* captions, chips, badges, counts, key caps, category labels */
+  --size-small: 14px; /* secondary: buttons, menu items, paths, code, the status bar */
+  --size-body: 15px; /* rows, nav, tabs, body text, editors */
+  --size-title: 17px; /* titles: a page's, a dialog's, a symbol's in its panel */
   /* lucide's chevron-right (ISC) as a mask, drawn in the text's colour: a submenu's, a <summary>'s. */
   --chevron-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
 }
 
 /* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
    before the first paint). Symbiote's style since V31 (the symbiote-style skill's tokens.md): the content
-   darkest, the chrome lifted, colour for state and one accent. Since V42 in the koi's colours,
-   sampled from the intro (decision 279): the canvas its abyss, the chrome its deep water, the text
-   the white koi, the primary and the accent the koi's blue light. Text, muted and the accent at
-   least 4.5:1 on the four backgrounds, states, edges and the focus ring 3:1 (test/tokens.test.ts).
-   Lines only separate regions: hairlines. */
+   darkest, the chrome lifted, colour for state and one accent. Since V61 the person's mockup
+   (decisions 437–440): near-black neutrals, the chrome a step lighter, the primary and the accent
+   the new S's violet. Text, muted and the accent at least 4.5:1 on the four backgrounds, states,
+   edges and the focus ring 3:1 (test/tokens.test.ts). Lines only separate regions: hairlines. */
 :root,
 :root[data-theme='dark'] {
-  --bg: #05080f;
-  --side: #0f1626;
-  --panel: #0f1626;
-  --raised: #1c2539;
-  --line: #232d43;
-  --edge: #5f6c8c;
-  --text: #eaeef7;
-  --muted: #9aa5be;
-  --faint: #717d99;
-  /* The secondary colour (V42, decision 280): the white koi's halo. Focus, the current page, what
-     is selected or checked, a link under the pointer; never a state. */
-  --accent: #7a9ee8;
-  --focus: #7a9ee8;
+  --bg: #090b0e;
+  --side: #0d1015;
+  --panel: #0d1015;
+  --raised: #171a21;
+  --line: #1f232c;
+  --edge: #5c6373;
+  --text: #edf0f5;
+  --muted: #a2abbc;
+  --faint: #737a8a;
+  /* The secondary colour (V42, decision 280), violet since V61: a light step of the primary, for
+     text. Focus, the current page, what is selected or checked, a link under the pointer; never a
+     state. */
+  --accent: #9886ff;
+  --focus: #9886ff;
   --added: #81b88b;
   --removed: #c74e39;
   --modified: #e2c08d;
-  /* Cyan since V42 (decision 281): the koi's blue is the accent, 6° of hue from V31's #4493f8. */
+  /* Cyan since V42 (decision 281): the koi's blue was the accent, 6° of hue from V31's #4493f8. */
   --moved: #3fc5d6;
-  --context: #717d99;
+  --context: #737a8a;
   --error: #ff6568;
-  --warning: #eab308;
+  /* The mockup's amber (V61): Waiting for you, a plan ready. */
+  --warning: #f5b32a;
   --info: #3fc5d6;
-  /* Commit graph lanes after the current branch's (V10). */
-  --lane-1: #b66dff;
+  /* Commit graph lanes after the current branch's (V10). The first is blue since V61: its purple
+     was 1.09:1 from the violet accent, a branch read as selected. */
+  --lane-1: #6aa8ff;
   --lane-2: #40b0a6;
   --lane-3: #ffb000;
   --lane-4: #dc267f;
@@ -70,43 +72,44 @@
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
   --selected: color-mix(in srgb, var(--accent) 16%, transparent);
   --selected-line: color-mix(in srgb, var(--accent) 40%, var(--line));
-  /* The primary colour (V42): the koi's blue, white on it 4.73:1. */
-  --primary: #3c6fd6;
-  --primary-text: #ffffff;
-  /* Under the pointer, a step darker: a lighter blue takes white under 4.5:1. */
-  --primary-hover: #3466cc;
-  --input-bg: rgb(170 195 240 / 4.5%);
+  /* The primary colour (V61, decision 440): the mockup's violet with dark text on it, 4.89:1;
+     white would be 4.01. */
+  --primary: #7c68fc;
+  --primary-text: #0b0a1a;
+  /* Under the pointer, a step lighter: dark text gains on it (5.77:1). */
+  --primary-hover: #8a78fd;
+  --input-bg: rgb(220 226 238 / 4%);
   /* A text field's edge at rest, about 1.5:1 (decision 246): `--edge` (3:1) on hover, `--focus`
      and the ring on focus. */
   --field-line: color-mix(in srgb, var(--text) 15%, transparent);
   --ring: color-mix(in srgb, var(--focus) 30%, transparent);
   /* The one on, lifted out of a raised track (a segmented control's). */
-  --lifted: rgb(170 195 240 / 9%);
-  --shadow-lift: 0 1px 2px rgb(0 0 0 / 20%);
-  --shadow-floating: 0 12px 28px rgb(1 4 10 / 40%);
-  /* The primary's lit top edge (V42): light from above, as on the koi's tile. */
-  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 16%);
-  --menu-bg: rgb(8 12 22 / 78%);
-  --menu-line: rgb(170 195 240 / 14%);
-  --menu-hover: rgb(170 195 240 / 13%);
-  --menu-shadow: 0 16px 34px rgb(1 4 10 / 50%), inset 0 1px 0 rgb(170 195 240 / 6%);
-  --dialog-bg: rgb(15 22 38 / 96%);
-  --dialog-shadow: 0 24px 72px rgb(1 4 10 / 60%), inset 0 1px 0 rgb(170 195 240 / 8%);
-  --overlay: rgb(2 5 12 / 62%);
+  --lifted: rgb(220 226 238 / 9%);
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 24%);
+  --shadow-floating: 0 12px 28px rgb(0 0 0 / 45%);
+  /* The primary's lit top edge (V42): light from above. */
+  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 22%);
+  --menu-bg: rgb(13 16 21 / 82%);
+  --menu-line: rgb(220 226 238 / 12%);
+  --menu-hover: rgb(220 226 238 / 10%);
+  --menu-shadow: 0 16px 34px rgb(0 0 0 / 50%), inset 0 1px 0 rgb(220 226 238 / 6%);
+  --dialog-bg: rgb(13 16 21 / 96%);
+  --dialog-shadow: 0 24px 72px rgb(0 0 0 / 60%), inset 0 1px 0 rgb(220 226 238 / 8%);
+  --overlay: rgb(3 4 6 / 62%);
   /* A tooltip (V54, decision 398): the style's inverted tip, the terminal's link hint's light
      (V38). Its state dots in the light theme's colours: the dark theme's are 2:1 on it. */
-  --tip-bg: #e3e8f2;
-  --tip-text: #05080f;
-  --tip-muted: #4b5672;
-  --tip-key: #d1d6e0;
-  --tip-key-text: #3a4560;
+  --tip-bg: #e6e9ef;
+  --tip-text: #090b0e;
+  --tip-muted: #4d5566;
+  --tip-key: #d3d7df;
+  --tip-key-text: #3b4252;
   --tip-ok: #587c0c;
   --tip-bad: #ad0707;
   --tip-warn: #9a6700;
   --tip-info: #0a7d8c;
-  --tip-shadow: 0 8px 24px rgb(1 4 10 / 55%);
+  --tip-shadow: 0 8px 24px rgb(0 0 0 / 55%);
   /* A select's chevron (lucide's, ISC) in the muted colour: a data URI cannot read a token. */
-  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa5be' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a2abbc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   /* A diff's lines: a ground for the line, a stronger one for its numbers. */
   --added-ground: color-mix(in srgb, var(--added) 16%, transparent);
   --added-gutter: color-mix(in srgb, var(--added) 30%, transparent);
@@ -125,8 +128,8 @@
   --text: #0b1220;
   --muted: #56627a;
   --faint: #78839c;
-  --accent: #2f62cc;
-  --focus: #2f62cc;
+  --accent: #5b3fd9;
+  --focus: #5b3fd9;
   --added: #587c0c;
   --removed: #ad0707;
   --modified: #895503;
@@ -135,7 +138,7 @@
   --error: #e40014;
   --warning: #9a6700;
   --info: #0a7d8c;
-  --lane-1: #8250df;
+  --lane-1: #2f62cc;
   --lane-2: #0a7f6f;
   --lane-3: #bc4c00;
   --lane-4: #bf3989;
@@ -148,9 +151,9 @@
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
   --selected: color-mix(in srgb, var(--accent) 12%, transparent);
   --selected-line: color-mix(in srgb, var(--accent) 35%, var(--line));
-  --primary: #2f62cc;
+  --primary: #5b3fd9;
   --primary-text: #ffffff;
-  --primary-hover: #2856b8;
+  --primary-hover: #4e33c6;
   --input-bg: transparent;
   --field-line: color-mix(in srgb, var(--text) 16%, transparent);
   --ring: color-mix(in srgb, var(--focus) 25%, transparent);
@@ -194,8 +197,8 @@
     --text: #0b1220;
     --muted: #56627a;
     --faint: #78839c;
-    --accent: #2f62cc;
-    --focus: #2f62cc;
+    --accent: #5b3fd9;
+    --focus: #5b3fd9;
     --added: #587c0c;
     --removed: #ad0707;
     --modified: #895503;
@@ -204,7 +207,7 @@
     --error: #e40014;
     --warning: #9a6700;
     --info: #0a7d8c;
-    --lane-1: #8250df;
+    --lane-1: #2f62cc;
     --lane-2: #0a7f6f;
     --lane-3: #bc4c00;
     --lane-4: #bf3989;
@@ -217,9 +220,9 @@
     --hover: color-mix(in srgb, var(--text) 5%, transparent);
     --selected: color-mix(in srgb, var(--accent) 12%, transparent);
     --selected-line: color-mix(in srgb, var(--accent) 35%, var(--line));
-    --primary: #2f62cc;
+    --primary: #5b3fd9;
     --primary-text: #ffffff;
-    --primary-hover: #2856b8;
+    --primary-hover: #4e33c6;
     --input-bg: transparent;
     --field-line: color-mix(in srgb, var(--text) 16%, transparent);
     --ring: color-mix(in srgb, var(--focus) 25%, transparent);
@@ -275,8 +278,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Node widths are estimated from characters (nodeWidth): the chrome's spacing stays off the graph. */
+/* Node widths are estimated from characters (nodeWidth): the chrome's spacing stays off the graph,
+   and so does V61's bigger type (decision 438): the graph keeps V32's scale, and zooms. */
 .react-flow {
+  --size-caps: 11px;
+  --size-caption: 12px;
+  --size-small: 13px;
+  --size-body: 14px;
+  --size-title: 16px;
   letter-spacing: 0;
 }
 

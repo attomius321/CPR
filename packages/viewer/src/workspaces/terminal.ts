@@ -365,29 +365,29 @@ export function linkHint(target: LinkTarget, mac: boolean): { what: string; keys
 
 /** The bundled mono (V29b), as styles.css names it: every terminal's, the merge log's too (V46a). */
 export const TERMINAL_FONT = "'Geist Mono Variable', monospace";
-/** The body's size (`--size-body`, V32): xterm takes a number, not a token. */
-export const TERMINAL_FONT_SIZE = 14;
+/** The body's size (`--size-body`, V32, V61): xterm takes a number, not a token. */
+export const TERMINAL_FONT_SIZE = 15;
 
 /**
  * Dark in both of the page's themes: Claude Code keeps its own theme whatever the terminal's
  * background, and on white its marks vanished (V21 spike). Black, as the reference's (V29b); since
- * V42 the koi's deepest water, under the canvas (`#05080f`), its greys and blues the palette's.
+ * V61 a step under the mockup's canvas (`#090b0e`), its greys the palette's, its selection violet.
  */
 export const TERMINAL_THEME: ITheme = {
-  background: '#02040a',
-  foreground: '#e3e8f2',
-  cursor: '#e3e8f2',
-  cursorAccent: '#02040a',
-  selectionBackground: '#22355e',
-  black: '#1a2133',
+  background: '#050608',
+  foreground: '#e6e9ef',
+  cursor: '#e6e9ef',
+  cursorAccent: '#050608',
+  selectionBackground: '#2c2757',
+  black: '#1b1e25',
   red: '#f85149',
   green: '#3fb950',
   yellow: '#d29922',
   blue: '#6f9cf0',
   magenta: '#a371f7',
   cyan: '#39c5bb',
-  white: '#e3e8f2',
-  brightBlack: '#6c7894',
+  white: '#e6e9ef',
+  brightBlack: '#6d7383',
   brightRed: '#ff7b72',
   brightGreen: '#56d364',
   brightYellow: '#e3b341',

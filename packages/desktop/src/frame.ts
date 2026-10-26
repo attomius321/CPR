@@ -11,8 +11,8 @@ export function frameOf(platform: string): Frame {
   return platform === 'linux' ? 'own' : 'system';
 }
 
-/** The window's background before the page paints: the viewer's `--bg`, in its theme (V31, V42). */
-const BACKGROUND = { dark: '#05080f', light: '#ffffff' };
+/** The window's background before the page paints: the viewer's `--bg`, in its theme (V31, V61). */
+const BACKGROUND = { dark: '#090b0e', light: '#ffffff' };
 
 /**
  * The title bar (N1c): Symbiote draws it, 38 px, in the viewer's `--side`; on Windows the system's
@@ -20,7 +20,7 @@ const BACKGROUND = { dark: '#05080f', light: '#ffffff' };
  */
 export const TITLE_BAR = {
   height: 38,
-  dark: { color: '#0f1626', symbolColor: '#eaeef7' },
+  dark: { color: '#0d1015', symbolColor: '#edf0f5' },
   light: { color: '#f6f8fc', symbolColor: '#0b1220' },
 };
 

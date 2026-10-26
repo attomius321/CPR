@@ -6,17 +6,17 @@
 }
 
 /* Black in both themes, as the reference's: Claude Code draws for a dark terminal (V21 spike), and
-   so does Codex. Edge to edge, down to the status bar. The koi's deepest water since V42: the
+   so does Codex. Edge to edge, down to the status bar. A step under the canvas since V61: the
    theme's background (terminal.ts). */
 .agent-terminal-screen {
   flex: 1;
   min-height: 200px;
   padding: 8px 0 0 12px;
-  background: #02040a;
+  background: #050608;
 }
 
 .workspace-terminal {
-  background: #02040a;
+  background: #050608;
 }
 
 .workspace-terminal > .workspace-confirm,
@@ -41,10 +41,10 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: 1px dashed rgb(227 232 242 / 45%);
+  border: 1px dashed rgb(230 233 239 / 45%);
   border-radius: 10px;
-  background: rgb(2 4 10 / 72%);
-  color: #e3e8f2;
+  background: rgb(5 6 8 / 72%);
+  color: #e6e9ef;
   font-size: var(--size-body);
   font-weight: 500;
   pointer-events: none;
@@ -63,9 +63,9 @@
   margin: 0;
   padding: 6px 12px;
   border-radius: 8px;
-  background: #e3e8f2;
+  background: #e6e9ef;
   box-shadow: 0 8px 24px rgb(0 0 0 / 55%);
-  color: #05080f;
+  color: #090b0e;
   font-size: var(--size-small);
   font-weight: 500;
   line-height: 18px;
@@ -97,8 +97,8 @@
   padding: 0 5px;
   border: 0;
   border-radius: 4px;
-  background: #d1d6e0;
+  background: #d3d7df;
   box-shadow: none;
-  color: #3a4560;
+  color: #3b4252;
   line-height: 18px;
 }
