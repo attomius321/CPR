@@ -29,17 +29,20 @@
   height: 14px;
 }
 
-/* The koi S (V42): an image, its tile's corners transparent. */
-.koi-mark {
+/* Symbiote's S (V61): an image cut round, on black; a hairline rings it on the chrome, as in the
+   person's mockup. */
+.symbiote-mark {
   flex: none;
   display: block;
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--line);
   user-select: none;
 }
 
-/* In the window's 38 px title bar, beside its 13 px name. */
-.titlebar .koi-mark {
+/* In the window's 38 px title bar, beside its name. */
+.titlebar .symbiote-mark {
   width: 20px;
   height: 20px;
 }
