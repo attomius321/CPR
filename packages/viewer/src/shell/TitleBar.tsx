@@ -1,51 +1,15 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from 'react';
-import { createPortal } from 'react-dom';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { desktop, paintTitleBar } from './desktop.js';
 import {
   BackIcon,
   CloseIcon,
-  SymbioteMark,
   ForwardIcon,
   MaximizeIcon,
   MinimizeIcon,
   RestoreIcon,
-  SidenavIcon,
 } from '../ui/icons.js';
-import { HISTORY_PAGE } from './pages.js';
 import { useTheme } from './theme.js';
 import { tip } from '../ui/tip.js';
-
-/** Where a page puts its tabs (`page`) and its panel's toggle (`end`) in the title bar. */
-export interface TitleBarSlots {
-  page: HTMLElement | null;
-  end: HTMLElement | null;
-}
-
-const SlotsContext = createContext<TitleBarSlots | null>(null);
-export const TitleBarSlotsProvider = SlotsContext.Provider;
-
-/**
- * Shows `children` in the title bar of Symbiote's window (N1c), where the page's tabs are; in a
- * browser, where they are.
- */
-export function InTitleBar({
-  at = 'page',
-  children,
-}: {
-  at?: keyof TitleBarSlots;
-  children: ReactNode;
-}) {
-  const slot = useContext(SlotsContext)?.[at];
-  return slot ? createPortal(children, slot) : children;
-}
 
 /** Whether there is a page to go back or forward to (the Navigation API). */
 function useMoves(): { back: boolean; forward: boolean } {
@@ -126,53 +90,32 @@ export function WindowButtons() {
   );
 }
 
+/** The window's title as the page sets it (N1a): the one the taskbar and a browser's tab show. */
+function useWindowTitle(): string {
+  return useSyncExternalStore(subscribeTitle, () => document.title);
+}
+
+function subscribeTitle(listener: () => void): () => void {
+  // Setting `document.title` replaces the text of index.html's <title>.
+  const title = document.querySelector('title');
+  if (!title) return () => undefined;
+  const observer = new MutationObserver(listener);
+  observer.observe(title, { childList: true, characterData: true, subtree: true });
+  return () => observer.disconnect();
+}
+
 /**
- * Symbiote's window's title bar (N1c): over the sidenav, Symbiote and the repository, the
- * sidenav's fold and back and forward; then the page's tabs (or its name); its panel's toggle at
- * the end, before the system's buttons. Its free space moves the window.
+ * Symbiote's window's title bar (N1c): what a browser keeps in its own bar — Back, Forward, the
+ * page's title — and the window's buttons where Symbiote draws them. The page under it is the one a
+ * browser shows: nothing of it moves up here. Its free space moves the window.
  */
-export function TitleBar({
-  repo,
-  folded,
-  onFold,
-  label,
-  onSlots,
-}: {
-  repo?: string | undefined;
-  folded: boolean;
-  onFold: () => void;
-  /** The page's name, for a page without tabs. */
-  label?: string | undefined;
-  onSlots: (slots: TitleBarSlots) => void;
-}) {
+export function TitleBar() {
   usePaintedButtons();
   const moves = useMoves();
-  const [page, setPage] = useState<HTMLElement | null>(null);
-  const [end, setEnd] = useState<HTMLElement | null>(null);
-  useEffect(() => onSlots({ page, end }), [page, end, onSlots]);
+  const title = useWindowTitle();
   return (
     <header className="titlebar">
-      <div className="titlebar-side">
-        <a
-          className="titlebar-brand"
-          href={HISTORY_PAGE}
-          {...tip(repo ? `Symbiote · ${repo}` : 'Symbiote', { side: 'bottom' })}
-        >
-          <SymbioteMark />
-          <span className="titlebar-name">
-            Symbiote{repo && <span className="titlebar-repo"> · {repo}</span>}
-          </span>
-        </a>
-        <button
-          type="button"
-          className="icon-button"
-          aria-label={folded ? 'Open the sidenav' : 'Fold the sidenav'}
-          {...tip(folded ? 'Open the sidenav' : 'Fold the sidenav', { keys: '[', side: 'bottom' })}
-          aria-expanded={!folded}
-          onClick={onFold}
-        >
-          <SidenavIcon />
-        </button>
+      <div className="titlebar-moves">
         <button
           type="button"
           className="icon-button"
@@ -194,11 +137,7 @@ export function TitleBar({
           <ForwardIcon />
         </button>
       </div>
-      <div className="titlebar-page">
-        {label && <span className="titlebar-label">{label}</span>}
-        <div className="titlebar-slot" ref={setPage} />
-      </div>
-      <div className="titlebar-end" ref={setEnd} />
+      <span className="titlebar-title">{title}</span>
       <WindowButtons />
     </header>
   );

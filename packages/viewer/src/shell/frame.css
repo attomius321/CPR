@@ -38,9 +38,18 @@
   pointer-events: none;
 }
 
-/* What is fixed over the whole window takes the corners too. */
-:root[data-frame='own'][data-window='normal'] :is(.dialog-backdrop, .shell-scrim) {
+/* What is fixed over the whole window takes the corners too; the drawer, under the title bar,
+   those at the bottom. */
+:root[data-frame='own'][data-window='normal'] .dialog-backdrop {
   border-radius: 10px;
+}
+
+:root[data-frame='own'][data-window='normal'] .shell-scrim {
+  border-radius: 0 0 10px 10px;
+}
+
+:root[data-frame='own'][data-window='normal'] .shell.drawer-open .sidenav {
+  border-bottom-left-radius: 10px;
 }
 
 /* The window's buttons, in the text's colour as the system's are; Close warns on hover. */

@@ -31,7 +31,7 @@ import {
 import { CARD_NAMES, DrawerStrip, Sidenav, useSidenavWidth } from './Sidenav.js';
 import { StatusBar } from './StatusBar.js';
 import { AskBar } from './AskBar.js';
-import { TitleBar, TitleBarSlotsProvider, type TitleBarSlots } from './TitleBar.js';
+import { TitleBar } from './TitleBar.js';
 import { WorkspaceView } from '../workspaces/Workspace.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { transitionNotice } from '../workspaces/transitions.js';
@@ -97,7 +97,6 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   }, []);
   // The question asked now, in Symbiote's own dialog (N1c), and where leaving goes.
   const [asking, setAsking] = useState<{ guard: LeaveGuard; leave: () => void } | null>(null);
-  const [slots, setSlots] = useState<TitleBarSlots | null>(null);
 
   /** Shows the address `href` (one `routeOf` reads) in place, with a new history entry. */
   const go = useCallback((href: string, replace = false) => {
@@ -132,12 +131,6 @@ export function Shell({ repo }: { repo?: string | undefined }) {
       }),
     [],
   );
-
-  // The title bar's fold button (N1c): narrow, the sidenav is a drawer, which it opens.
-  const foldOrOpen = useCallback(() => {
-    if (window.matchMedia(NARROW).matches) setDrawer((open) => !open);
-    else fold();
-  }, [fold]);
 
   // A start takes the start page's place in the history: Back goes to the page before it (V30a).
   const started = useCallback(
@@ -246,48 +239,22 @@ export function Shell({ repo }: { repo?: string | undefined }) {
         className={`shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}${sidenav.resizing ? ' resizing' : ''}`}
         style={sidenav.style}
       >
-        {desktop && (
-          <TitleBar
-            repo={repo}
-            folded={folded}
-            onFold={foldOrOpen}
-            label={
-              route.page === 'settings'
-                ? 'Settings'
-                : route.page === 'scout'
-                  ? 'Scout'
-                  : route.page === 'skills'
-                    ? 'Skills'
-                    : route.page === 'monitor'
-                      ? 'Monitor'
-                      : route.page === 'merge'
-                        ? `Merge ${route.branch}`
-                        : route.page === 'start'
-                          ? 'Start a workspace'
-                          : undefined
-            }
-            onSlots={setSlots}
-          />
-        )}
+        {desktop && <TitleBar />}
         <DrawerStrip open={drawer} onToggle={() => setDrawer((open) => !open)} />
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={flashed} />
         {sidenav.handle}
-        <TitleBarSlotsProvider value={slots}>
-          <main className="shell-main">
-            {route.page === 'history' && <HistoryPage key={visit} />}
-            {route.page === 'scout' && <ScoutPage />}
-            {route.page === 'skills' && <SkillsPage />}
-            {route.page === 'monitor' && <MonitorPage path={route.path} />}
-            {route.page === 'settings' && <SettingsPage />}
-            {route.page === 'workspace' && (
-              <WorkspaceView key={route.branch} branch={route.branch} />
-            )}
-            {route.page === 'merge' && <MergeView key={route.branch} branch={route.branch} />}
-            {route.page === 'start' && (
-              <StartPage at={route.at} onStarted={started} onLeave={leaveStart} />
-            )}
-          </main>
-        </TitleBarSlotsProvider>
+        <main className="shell-main">
+          {route.page === 'history' && <HistoryPage key={visit} />}
+          {route.page === 'scout' && <ScoutPage />}
+          {route.page === 'skills' && <SkillsPage />}
+          {route.page === 'monitor' && <MonitorPage path={route.path} />}
+          {route.page === 'settings' && <SettingsPage />}
+          {route.page === 'workspace' && <WorkspaceView key={route.branch} branch={route.branch} />}
+          {route.page === 'merge' && <MergeView key={route.branch} branch={route.branch} />}
+          {route.page === 'start' && (
+            <StartPage at={route.at} onStarted={started} onLeave={leaveStart} />
+          )}
+        </main>
         <StatusBar notice={notice} />
         <AskBar />
         <WindowTitle route={route} repo={repo} />

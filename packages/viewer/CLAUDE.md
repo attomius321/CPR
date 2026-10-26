@@ -123,6 +123,12 @@ symbol glyph. Measure first paint (`/history`) and Bitwarden's graph after any f
 
 ## Rules
 
+- **In the app, the page is the browser's.** Symbiote's window (`shell/TitleBar.tsx`) adds a
+  38 px title bar over the page — Back, Forward, the window's title, the window's buttons — and
+  changes nothing under it: no part of a page moves into the bar or is hidden for it; only what
+  covers the whole window (the intro, the narrow drawer) starts under it (`e2e/title-bar.spec.ts`
+  compares the two page by page). The bar had taken a workspace's tabs and History's branches out
+  of their cards, and V61's restyle of those cards missed it (fix/title-bar-desktop).
 - **Layout never depends on selection or review state.** Only `decorate` does; the view to lay
   out depends on the graph and the view toggles. Clicking or marking must not move anything (V6:
   this took marking from 1.2 s to 72 ms on a 1,288-symbol graph).

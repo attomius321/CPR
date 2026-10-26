@@ -253,3 +253,4 @@ merge commit.
 - 2026-10-26 [LG2 — the tests' lines out, the dashboard in sections](journal/lg2-dashboard.md)
 - 2026-10-26 [V61 spike — the mockup's colours against today's](journal/v61-complete-revamp.md)
 - 2026-10-26 [V61 — the mockup's black theme on every page, the new S, bigger text](journal/v61-complete-revamp.md)
+- 2026-10-27 [Fix — the app shows a page as a browser does, under its title bar](journal/fix-title-bar-desktop.md)
