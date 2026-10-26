@@ -27,3 +27,35 @@ on the last 8 merges into `main` and on Bitwarden `737ee3f`.
 - **Forges take comments in their own hunks only**: GitHub's `line`/`side` and GitLab's
   `new_line` or `old_line` (`packages/forge`); an unchanged line on GitLab needs both. Under
   `symbiote pr` only added and removed lines take one.
+
+## V60 — a review opens on its files: a file's diff, comments on its lines (2026-10-26, branch `feature/simpler-reviewe`)
+
+A diff's page has two pages, **Files** (the default) and **Graph**, switched in its bar or with
+`g`. Files lists every changed file as a workspace's changes panel does, with git's lines
+(`GET ./api/files`), and shows the one picked: git's diff of it with the whole file as context
+(`GET ./api/file`, core's `fileDiff`), folded in the viewer to 3 lines around each change. A
+click on a line writes a comment there; it names the innermost symbol holding the line, none
+outside every symbol (`symbol` optional in a verdict's comments). Decisions 431–436.
+
+**Learned**:
+- **`test/files.test.ts` is taken**: the viewer's guard on file names that collide on macOS. A
+  `Write` of a new test by that name replaced it; it was restored from git before anything was
+  committed. The module is `diff/file-diff.ts`, its test `file-diff.test.ts`.
+- **Two tabs named Files**: the page switch's and the list's (`Files 2`). Tests scope them (the
+  `Files` navigation, `.page-switch`); a person reads them in two places, the bar and the list.
+- **59 of 279 e2e tests opened a diff and expected the graph**: 20 specs open a diff by its
+  address (19 through `graphPage(url)`, look.spec with `?view=graph`), 3 reach one from History
+  (`showGraph(page)`). The tests of the review tab alone passed unchanged: it is on both pages.
+- **A comment on a line in a fold would be hidden**: the rows with comments, the one being written
+  on and the one asked for from the review tab are drawn, folds or not (`foldRows`'s `pinned`).
+
+**Verification**: tests first, red for the right reason (core 6, CLI 7, viewer 6 and the new
+module's file); `pnpm check`
+1,829 tests; e2e 279 of 279 (`files.spec` new; 59 tests moved to the Graph page). Bitwarden
+`737ee3f`, served by this build: the first diff drawn 155–167 ms after navigation, a file's diff
+17 ms a click (median; at most 26 ms, 345 rows); its parent `0cb1967`, a 1.6 MB lockfile: drawn
+in 118–124 ms, 26 of its 46,216 lines shown. Screenshots of both pages, dark and light, read.
+
+Not verified: GitLab's comments from the Files page; a real agent's workspace; macOS and Windows;
+a diff over 5 MB in a browser; a moved head under a line comment without a symbol in a browser
+(unit-tested).

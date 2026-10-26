@@ -242,3 +242,4 @@ merge commit.
 - 2026-10-26 [V58 spike — Hermes in a pseudo-terminal, and what its store says](journal/v58-hermes-agent.md)
 - 2026-10-26 [V58 — Hermes as a workspace's agent, in its terminal](journal/v58-hermes-agent.md)
 - 2026-10-26 [V60 spike — what a review shows of a change, and whose diff a file page should draw](journal/v60-files-page.md)
+- 2026-10-26 [V60 — a review opens on its files: a file's diff, comments on its lines](journal/v60-files-page.md)

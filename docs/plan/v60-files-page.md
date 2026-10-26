@@ -2,10 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v60-files-page.md)
 
-**Status:** in progress (2026-10-26), on branch `feature/simpler-reviewe` (a workspace started in
-Symbiote, from `main` at `00d88e1`); the plan OK'd by the person ("Ok") with its three defaults:
-the pages named Files and Graph, unchanged lines commented on a branch review, every review
-opening on Files.
+**Status:** ready for review (2026-10-26), on branch `feature/simpler-reviewe` (a workspace
+started in Symbiote, from `main` at `00d88e1`); the plan OK'd by the person ("Ok") with its three
+defaults: the pages named Files and Graph, unchanged lines commented on a branch review, every
+review opening on Files. Built as planned; "As built" and results at the end.
 
 **Problem** (asked: "We need a second page in the review, a much simpler that the current graph.
 This would be the default page. Should display the file changes, like in workspaces on the left,
@@ -146,3 +146,51 @@ the page and its switch; e2e; real graphs; docs.
 **Not in V60 (later)**: the files shown while the analysis runs (the page waits for it, minutes
 on Bitwarden); findings on the Files page; a file marked viewed; search in the list; a
 side-by-side view; images drawn.
+
+## As built (V60)
+
+- **The pure module is `diff/file-diff.ts`**, its test `test/file-diff.test.ts`: `files.test.ts`
+  is taken (the guard on file names that collide on macOS), and was nearly overwritten.
+- **The switch sits right after the way back** (`← History`), before the review's name and
+  summary: it stays at one place while the summary's chips wrap. It is History's segmented
+  control (`.scopes`, `.scope`), with `role="tab"`.
+- **One width for both pages' lists**: the Files page's list is the graph page's sidebar
+  (`.sidebar`, `--sidebar-width`, `widths.sidebar`), so a width dragged on one page holds on the
+  other.
+- **Long lines wrap** in a file's diff (`.file-code .row`: `pre-wrap`, the text column
+  `minmax(0, 1fr)`), unlike a symbol's diff in its panel, which scrolls: a comment box under its
+  line stays in view, and a review reads the whole line.
+- **A commented line inside a fold is drawn** (`foldRows`'s `pinned`), as are the line being
+  written on and the one asked for from the review tab: a comment never hides in a fold.
+- **The review tab's rows open what a comment is on** (`ReviewTab`'s `onOpen`, was `onSelect`):
+  a line, in its file on the Files page; a symbol's comment on the Graph page, or one on no line,
+  in the symbol's panel. A comment no symbol holds is listed as `path:line`.
+- **`c` on the Files page** focuses the comment being written, else opens one on the file's first
+  changed line; `o` opens the file at its first change. `/`, `r`, `f`, `p` are the graph's only.
+- **The verdict's words for a comment without a symbol** are `path:line` alone, then its code.
+- **The look specs walk the Files page too** (`look.spec.ts`: no text under 12 px, fields and
+  buttons in the page's font and spacing).
+
+**Results.** Tests first, red for the right reason: core 6 (`fileDiff` missing), CLI 7 (the routes
+404 and capabilities without `files`, a line comment without a symbol 400, the verdict's text
+reading a missing symbol, `AGENTS.md`'s words), viewer 4 comments tests (`symbolAt`,
+`newLineDraft` missing), 2 of the address, and `file-diff.test.ts` (its module missing). Two
+were written with their code, not before it: the files of a diff under `symbiote view` (the
+route's tests were red) and the folds' `pinned` rows. `pnpm check` 1,829 tests. e2e 279 of 279, `files.spec` (3
+tests) new; 59 tests of 23 specs that expected the graph open it now (`graphPage`, `showGraph`).
+
+| What (this build, served by `symbiote view`) | Measured |
+|---|---|
+| Bitwarden `737ee3f` (31 files): the first file's diff drawn, from navigation | 155–167 ms (`/api/files` 37–53 ms, the diff 47–52 ms), 3 rounds |
+| A file of it, click to the frame that draws its diff | median 17 ms, at most 21–26 ms (345 rows); once 282 ms, the first click of a round |
+| Bitwarden `0cb1967` (only `package-lock.json`, 1.6 MB, 46,216 lines, +7 −7): its diff drawn, from navigation | 118–124 ms (1,661 KB in 31–34 ms), 26 rows drawn |
+| The Files page at 1440×900, dark and light; Bitwarden's change | Read: rows, folds, a comment under its line, the switch; no page errors |
+
+The graph JSON, the analysis and the Graph page are unchanged (core gains a git reader; goldens
+as they were), so no `regression-check`. `scripts/viewer/measure.mjs` opens `?graph=`, which
+stays on Graph.
+
+Not verified: GitLab's comments from the Files page (GitHub's fake only, as `pr.spec`); a real
+agent's workspace review (the e2e agent branch only); macOS and Windows; a diff over 5 MB in a
+browser (the 413 is unit-tested); a review whose head moved under a comment on a line no symbol
+holds, in a browser (unit-tested).

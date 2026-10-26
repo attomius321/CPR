@@ -83,7 +83,7 @@ once and accept its trust prompt. Codex needs no such step.
 5. Wait for the plan. The workspace moves to **Waiting for you** in the sidenav. Read the plan in
    the terminal, then type your answer there: "OK", or what to change.
 6. When the agent has finished, the workspace moves to **To review**. Click **Review** at the top
-   of the workspace. The branch's changes open as a graph. In the **Review** tab on the left,
+   of the workspace. The branch's changes open on their files. In the **Review** tab on the left,
    pick **Approve** and click **Finish review**.
 7. Click **Merge into**. Symbiote merges the commit you approved into the branch the workspace
    started from, and runs your project's check. If the check passes, Symbiote *lands* the merge:
@@ -189,19 +189,22 @@ The top of the page has these buttons:
 
 ### Review the branch and tell the agent
 
-**Review** shows the branch's changes as a graph. The graph draws a box for each changed file,
-and in it the *symbols* that changed: functions, classes, methods and types, coloured by what
-changed. Lines between symbols are calls and other uses. *Findings* mark the risky changes: a
-function removed while code still calls it, new code that nothing uses, or a signature changed
-under callers that were not updated. The [review guide](docs/guide/review-and-ci.md) explains
-the graph and the findings.
+**Review** opens on the branch's **Files**: every changed file, as the workspace lists them, and
+a file's diff when you click it. Click a line of the diff to comment on it. **Graph** (`g`) shows
+the same changes as a graph. The graph draws a box for each changed file, and in it the *symbols*
+that changed: functions, classes, methods and types, coloured by what changed. Lines between
+symbols are calls and other uses. *Findings* mark the risky changes: a function removed while
+code still calls it, new code that nothing uses, or a signature changed under callers that were
+not updated. The [review guide](docs/guide/review-and-ci.md) explains the files, the graph and
+the findings.
 
 ![Review of a workspace's branch: a comment on a symbol, the Review tab with Approve picked, and the symbol's diff beside the graph](docs/images/review.png)
 
 To review:
 
-1. Click a symbol to see its diff and who uses it. Press `r` to mark it reviewed.
-2. To comment on a symbol or one of its lines, select it and press `c`.
+1. On **Files**, read each file's diff, and click a line to comment on it.
+2. On **Graph**, click a symbol to see its diff and who uses it. Press `r` to mark it reviewed.
+   To comment on a symbol, select it and press `c`.
 3. In the **Review** tab, pick **Approve**, **Request changes** or **Comment**, then click
    **Finish review**.
 
@@ -330,9 +333,9 @@ All settings are in the [configuration reference](docs/reference/configuration.m
 
 - Workspaces start Claude Code, Codex or Hermes. Other agents are not supported yet, and Scout,
   Scribe and the merger run on Claude Code or Codex only.
-- The graph reads TypeScript, JavaScript, CSS and SCSS. If a branch changes only other files, its
-  review shows no symbols, but you can still approve and merge it. Workspaces work in any git
-  repository.
+- The graph reads TypeScript, JavaScript, CSS and SCSS. Other files have no symbols in the graph;
+  a review shows their diffs on its **Files** page, where you can comment on their lines.
+  Workspaces work in any git repository.
 - The analysis is static: it reads code and does not run it.
 - Symbiote is tested on Linux and WSL only, as [Requirements](#requirements) says.
 
