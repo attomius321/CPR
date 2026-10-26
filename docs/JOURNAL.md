@@ -241,3 +241,4 @@ merge commit.
 - 2026-10-26 [README remade around workspaces; commands, configuration and review pages](journal/remake-readme.md)
 - 2026-10-26 [V58 spike — Hermes in a pseudo-terminal, and what its store says](journal/v58-hermes-agent.md)
 - 2026-10-26 [V58 — Hermes as a workspace's agent, in its terminal](journal/v58-hermes-agent.md)
+- 2026-10-26 [SK1 spike — where skills from another repository live today, and what reads them](journal/sk1-skill-library.md)
