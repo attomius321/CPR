@@ -407,6 +407,10 @@ describe('scout (V35)', () => {
     // `agent.kind` names the default (decision 240).
     repo.write({ 'symbiote/config.json': '{ "agent": { "kind": "codex" } }\n' });
     expect((await s.state()).agents.map((a) => a.kind)).toEqual(['codex', 'claude']);
+    // A workspace's Hermes (V58) is not Scout's: Scout keeps Claude Code and Codex (decision 421).
+    repo.write({ 'symbiote/config.json': '{ "agent": { "kind": "hermes" } }\n' });
+    expect((await s.state()).agents.map((a) => a.kind)).toEqual(['claude', 'codex']);
+    await expect(s.ask({ text: 'Why?', agent: 'hermes' })).rejects.toMatchObject({ status: 400 });
     expect((await (await service(repo)).state()).agents).toEqual([]);
     // Nothing written until a question is asked.
     expect(existsSync(record(repo))).toBe(false);

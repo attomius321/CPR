@@ -85,7 +85,8 @@ export const lastTerminalSize = (): { cols: number; rows: number } => lastSize;
  * address and its own links (OSC 8) are links: Ctrl+click (⌘ on macOS) opens the file in VS Code
  * at the line printed, or the address in a new tab (V38). `id`: a terminal already open, read and
  * typed into as it is (a workspace's shell, V45): leaving does not close it, and the list is not
- * read more often for it.
+ * read more often for it. A terminal the server says it keeps (Hermes runs in it, V58) is not
+ * closed either when it is left: that would end the agent.
  */
 export function AgentTerminal({
   branch,
@@ -114,6 +115,8 @@ export function AgentTerminal({
     const release = kept === undefined ? holdReads() : () => {};
     let gone = false;
     let id: string | null = null;
+    // The server keeps it (Hermes, V58): left, not closed.
+    let serverKept = false;
     let events: EventSource | null = null;
     let term: Terminal | null = null;
     let observer: ResizeObserver | null = null;
@@ -157,8 +160,11 @@ export function AgentTerminal({
             })
           : { id: kept };
       setTrust(opened.trusted === false);
+      serverKept = opened.kept === true;
       if (gone) {
-        if (kept === undefined) void toTerminal(opened.id, 'close', {}).catch(() => {});
+        if (kept === undefined && !serverKept) {
+          void toTerminal(opened.id, 'close', {}).catch(() => {});
+        }
         return;
       }
       // An open terminal was sized by whoever read it last: this box's size, then what it prints.
@@ -418,7 +424,7 @@ export function AgentTerminal({
       observer?.disconnect();
       events?.close();
       term?.dispose();
-      if (id && kept === undefined) void toTerminal(id, 'close', {}).catch(() => {});
+      if (id && kept === undefined && !serverKept) void toTerminal(id, 'close', {}).catch(() => {});
       told.current.onOpened(null);
     };
   }, [branch, url, kept]);

@@ -6,6 +6,8 @@ import {
   mkdtempSync,
   readdirSync,
   readFileSync,
+  realpathSync,
+  renameSync,
   rmSync,
   writeFileSync,
 } from 'node:fs';
@@ -81,6 +83,7 @@ async function startSymbiote(
       ...env,
       SYMBIOTE_CLAUDE: '/nonexistent/claude',
       SYMBIOTE_CODEX: '/nonexistent/codex',
+      SYMBIOTE_HERMES: '/nonexistent/hermes',
       // Never your subscriptions' usage either: a spec that wants it fakes it (V29c).
       SYMBIOTE_USAGE: 'off',
       // No first-time intro over the page, and never your record of it (V39): intro.spec's own.
@@ -645,6 +648,14 @@ export interface RunningWorkspaces extends Running {
   /** Codex's TUI joined to it (V27b): each `resume … --remote` with its folder, and hang-ups. */
   codexResumes(): FakeClaudeCall[];
   codexHangups(): string[];
+  /** What the fake Hermes was run as (V58): `chat --query=…` or `--resume <id>`, with its folder. */
+  hermesCalls(): FakeClaudeCall[];
+  /** The fake Hermes's sessions whose Hermes was hung up, by ID. */
+  hermesHangups(): string[];
+  /** The newest fake Hermes session in a workspace's worktree: its ID. */
+  hermesSession(branch: string): string;
+  /** Hermes answers in a workspace's newest session: a final answer, its turn ended. */
+  hermesAnswer(branch: string, text: string): void;
   /** With `usage` (V29c): the requests the fake usage endpoint got, their Authorization. */
   usageRequests(): string[];
 }
@@ -1016,6 +1027,123 @@ const wait = setInterval(() => {
 }
 
 /**
+ * A fake Hermes (V58), as 0.21.3 answered in the V58 spike: `chat --help` lists its levels;
+ * `chat --query=<prompt>` on a terminal stores a new session in its folder with the prompt as its
+ * first message and draws a prompt; a line typed there is stored as the person's; `--resume <id>`
+ * opens a session again; a hang-up closes a turn it was in with a message of its own and ends it
+ * (`cli_close`). `sessions list --workspace` and
+ * `sessions export --session-id` read the sessions, kept one file each in `dir/hermes-sessions`.
+ */
+function fakeHermes(dir: string): string {
+  const script = join(dir, 'hermes');
+  writeFileSync(
+    script,
+    `#!/usr/bin/env node
+const { appendFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } = require('node:fs');
+const { join } = require('node:path');
+const dir = ${JSON.stringify(dir)};
+const store = join(dir, 'hermes-sessions');
+const args = process.argv.slice(2);
+const load = (id) => {
+  try {
+    return JSON.parse(readFileSync(join(store, id + '.json'), 'utf8'));
+  } catch {
+    return null;
+  }
+};
+const save = (session) => {
+  mkdirSync(store, { recursive: true });
+  const file = join(store, session.id + '.json');
+  writeFileSync(file + '.tmp', JSON.stringify(session));
+  renameSync(file + '.tmp', file);
+};
+const all = () =>
+  existsSync(store)
+    ? readdirSync(store).filter((n) => n.endsWith('.json')).map((n) => JSON.parse(readFileSync(join(store, n), 'utf8')))
+    : [];
+const now = () => Date.now() / 1000;
+if (args[0] === 'chat' && args[1] === '--help') {
+  process.stdout.write('usage: hermes chat [-h] [-q QUERY]\\n\\noptions:\\n  --reasoning LEVEL     Reasoning effort for this session: none, low, medium,\\n                        or high. Overrides agent.reasoning_effort.\\n  -s SKILLS, --skills SKILLS\\n');
+  process.exit(0);
+}
+if (args[0] === 'sessions' && args[1] === 'list') {
+  const folder = args[args.indexOf('--workspace') + 1];
+  const rows = all().filter((s) => s.cwd.includes(folder)).sort((a, b) => b.started_at - a.started_at);
+  if (rows.length === 0) process.stdout.write('No sessions found.\\n');
+  else {
+    process.stdout.write('Title                        Workspace          Last Active   ID\\n' + '\\u2500'.repeat(78) + '\\n');
+    for (const s of rows) process.stdout.write(s.title.slice(0, 26).padEnd(29) + 'worktree'.padEnd(19) + 'just now'.padEnd(14) + s.id + '\\n');
+  }
+  process.exit(0);
+}
+if (args[0] === 'sessions' && args[1] === 'export') {
+  const id = args[args.indexOf('--session-id') + 1];
+  const session = load(id);
+  process.stdout.write(session ? JSON.stringify(session) + '\\n' : "No session '" + id + "'. Run: hermes sessions list to find the id.\\n");
+  process.exit(0);
+}
+appendFileSync(join(dir, 'hermes-calls.jsonl'), JSON.stringify({ args, cwd: process.cwd() }) + '\\n');
+const out = (text) => process.stdout.write(text);
+const query = args.find((a) => a.startsWith('--query='))?.slice('--query='.length);
+let id;
+if (args[0] === '--resume') {
+  id = args[1];
+  const session = load(id);
+  if (!session) {
+    out("Session not found: " + id + '\\r\\n');
+    process.exit(1);
+  }
+  save({ ...session, ended_at: null, end_reason: null });
+  out('\\u21bb Resumed session ' + id + '\\r\\n\\u276f ');
+} else {
+  id = '20261026_1014' + String(all().length).padStart(2, '0') + '_6ffcdc';
+  const first = (query || '').split('\\n')[0];
+  save({ id, source: 'cli', cwd: process.cwd(), title: first, started_at: now(), ended_at: null, end_reason: null, messages: [] });
+  out('Fake Hermes \\u00b7 ' + id + '\\r\\n');
+}
+/** Stores a message, read again first: the test writes Hermes's answers into the same file. */
+const message = (role, content) => {
+  const session = load(id);
+  session.messages.push({ role, content, timestamp: now(), active: 1 });
+  save(session);
+};
+if (query !== undefined) {
+  message('user', query);
+  out('\\u25cf ' + query.split('\\n')[0] + '\\r\\n\\u276f ');
+}
+process.on('SIGHUP', () => {
+  // As 0.21.3 did in the V58 real run: a turn it was in is closed with a message of its own.
+  const last = load(id).messages.at(-1);
+  if (last && last.role === 'user') message('assistant', 'Your request was not processed. Send it again if you still want me to carry it out.');
+  save({ ...load(id), ended_at: now(), end_reason: 'cli_close' });
+  appendFileSync(join(dir, 'hermes-hangups.txt'), id + '\\n');
+  process.exit(0);
+});
+// The test is over (its folders removed): no Hermes is left.
+setInterval(() => existsSync(dir) || process.exit(1), 200);
+let line = '';
+process.stdin.setRawMode(true);
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', (keys) => {
+  for (const key of keys) {
+    if (key === '\\x03' && line === '') process.exit(0);
+    if (key === '\\r') {
+      message('user', line);
+      out('\\r\\nsent: ' + line + '\\r\\n\\u276f ');
+      line = '';
+    } else {
+      line += key;
+      out(key);
+    }
+  }
+});
+`,
+    { mode: 0o755 },
+  );
+  return script;
+}
+
+/**
  * Claude Code's config folder for a test (CLAUDE_CONFIG_DIR), never the person's: its profile with
  * the plan `organizationType` (the start page and the status bar name it).
  */
@@ -1081,6 +1209,7 @@ export async function serveWorkspaces({
   terminal = true,
   codex = false,
   appServer = false,
+  hermes = false,
   plan = 'claude_pro',
   usage,
   shell = '/bin/sh',
@@ -1089,6 +1218,8 @@ export async function serveWorkspaces({
   terminal?: boolean;
   codex?: boolean;
   appServer?: boolean;
+  /** V58: a fake Hermes as `SYMBIOTE_HERMES`, else none, whatever is installed. */
+  hermes?: boolean;
   /**
    * The plan of Claude Code's profile (`organizationType`), in a CLAUDE_CONFIG_DIR of the test's;
    * the fake's `auth status` says `pro` whatever it is, as a token kept from login does.
@@ -1138,6 +1269,7 @@ export async function serveWorkspaces({
     SYMBIOTE_CACHE_DIR: cache,
     SYMBIOTE_CLAUDE: claude,
     SYMBIOTE_CODEX: codex ? fakeCodex(fake) : join(fake, 'no-codex'),
+    SYMBIOTE_HERMES: hermes ? fakeHermes(fake) : join(fake, 'no-hermes'),
     SYMBIOTE_CODE: code,
     CLAUDE_CONFIG_DIR: claudeConfig,
     // V45: a workspace's shells are /bin/sh with a plain prompt, not the person's own shell.
@@ -1169,6 +1301,26 @@ export async function serveWorkspaces({
     change(mine);
     writeFileSync(file, JSON.stringify(sessions));
     return mine;
+  };
+  /** The newest fake Hermes session in a workspace's worktree (V58), read from its file. */
+  const newestHermes = (branch: string) => {
+    const store = join(fake, 'hermes-sessions');
+    const sessions = (existsSync(store) ? readdirSync(store) : [])
+      .filter((name) => name.endsWith('.json'))
+      .map(
+        (name) =>
+          JSON.parse(readFileSync(join(store, name), 'utf8')) as {
+            id: string;
+            cwd: string;
+            started_at: number;
+            messages: Record<string, unknown>[];
+          },
+      )
+      .filter((session) => session.cwd === realpathSync(folder(branch)))
+      .sort((a, b) => b.started_at - a.started_at);
+    const newest = sessions[0];
+    if (!newest) throw new Error(`no Hermes session in ${folder(branch)}`);
+    return newest;
   };
   /** A session's hooks for one event, run as the fake (and Claude Code) runs them. */
   const runHooks = (session: FakeSession, input: Record<string, unknown>) => {
@@ -1269,6 +1421,25 @@ export async function serveWorkspaces({
     codexResumes: () =>
       lines('codex-resumes.jsonl').map((line) => JSON.parse(line) as FakeClaudeCall),
     codexHangups: () => lines('codex-hangups.txt'),
+    hermesCalls: () =>
+      lines('hermes-calls.jsonl').map((line) => JSON.parse(line) as FakeClaudeCall),
+    hermesHangups: () => lines('hermes-hangups.txt'),
+    hermesSession(branch) {
+      return newestHermes(branch).id;
+    },
+    hermesAnswer(branch, text) {
+      const session = newestHermes(branch);
+      session.messages.push({
+        role: 'assistant',
+        content: text,
+        timestamp: Date.now() / 1000,
+        finish_reason: 'stop',
+        active: 1,
+      });
+      const file = join(fake, 'hermes-sessions', `${session.id}.json`);
+      writeFileSync(`${file}.tmp`, JSON.stringify(session));
+      renameSync(`${file}.tmp`, file);
+    },
     usageRequests: () => [...usageRequests],
     stop() {
       child.kill('SIGINT');

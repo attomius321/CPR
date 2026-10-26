@@ -12,7 +12,6 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
-  AGENT_KINDS,
   EFFORT_LEVEL,
   MODEL_ID,
   type AgentEfforts,
@@ -101,6 +100,12 @@ export interface PageAgentSpec {
 
 /** How long Codex waits on one of Symbiote's tools (MC1): longer than an ask or a `wait`. */
 const TOOL_TIMEOUT_SEC = 660;
+
+/**
+ * The agents a page agent runs (decision 421): Claude Code and Codex. A workspace's Hermes (V58) is
+ * not one: a page agent starts with no question and read-only tools, not measured for Hermes.
+ */
+const PAGE_AGENTS: readonly AgentKind[] = ['claude', 'codex'];
 
 /** Scout's: read-only in the checkout, `prompts.scout`, `scout.effort`. */
 const SCOUT: PageAgentSpec = {
@@ -424,7 +429,8 @@ export function pageAgent(
   /** The agents installed: `agent.kind` first, else Claude Code, else Codex (decision 240). */
   async function installed(): Promise<{ kind: AgentKind; claude?: ClaudeCode; codex?: Codex }[]> {
     const first = readWorkspaceConfig(root).agent;
-    const order = first ? [first, ...AGENT_KINDS.filter((k) => k !== first)] : AGENT_KINDS;
+    // `agent.kind` first when it is one of theirs (a stable sort keeps the others' order).
+    const order = [...PAGE_AGENTS].sort((a, b) => Number(b === first) - Number(a === first));
     const found: { kind: AgentKind; claude?: ClaudeCode; codex?: Codex }[] = [];
     for (const kind of order) {
       if (kind === 'claude') {
@@ -803,7 +809,7 @@ export function pageAgent(
           400,
         );
       }
-      if (agent !== undefined && !AGENT_KINDS.includes(agent)) {
+      if (agent !== undefined && !PAGE_AGENTS.includes(agent)) {
         throw new ScoutRefused(`unknown agent: ${String(agent)}`, 400);
       }
       if (effort !== undefined && effort !== null && !isLevel(effort)) {
@@ -839,7 +845,7 @@ export function pageAgent(
 
     async open({ agent, model, effort }) {
       if (!spec.instructions) throw new ScoutRefused(`${name} starts with what you ask it`, 409);
-      if (agent !== undefined && !AGENT_KINDS.includes(agent)) {
+      if (agent !== undefined && !PAGE_AGENTS.includes(agent)) {
         throw new ScoutRefused(`unknown agent: ${String(agent)}`, 400);
       }
       if (effort !== undefined && effort !== null && !isLevel(effort)) {

@@ -81,7 +81,9 @@ export function parseWorkspaceRequest(text: string): WorkspaceRequest {
   if (typeof planFirst !== 'boolean') throw new Error('planFirst: true or false');
   if (base !== undefined && typeof base !== 'string') throw new Error('base: a full SHA');
   if (from !== undefined && typeof from !== 'string') throw new Error("from: a branch's name");
-  if (agent !== undefined && typeof agent !== 'string') throw new Error('agent: claude or codex');
+  if (agent !== undefined && typeof agent !== 'string') {
+    throw new Error('agent: claude, codex or hermes');
+  }
   if (permissionMode !== undefined && typeof permissionMode !== 'string') {
     throw new Error('permissionMode: default, acceptEdits or auto');
   }

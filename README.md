@@ -1,10 +1,10 @@
 # Symbiote
 
 Symbiote runs coding agents on your machine and keeps you in charge of what they ship. Each task
-gets a *workspace*: a branch, a folder and an agent of its own, Claude Code or Codex. You read the
-agent's plan, answer its questions, review its branch and approve it. When you ask, Symbiote
-merges the commit you approved. Once your project's check (its tests, for example) passes on the
-merge, Symbiote moves your branch to it.
+gets a *workspace*: a branch, a folder and an agent of its own, Claude Code, Codex or Hermes. You
+read the agent's plan, answer its questions, review its branch and approve it. When you ask,
+Symbiote merges the commit you approved. Once your project's check (its tests, for example) passes
+on the merge, Symbiote moves your branch to it.
 
 ![A workspace in Symbiote: the sidenav lists five workspaces by what each one needs from you, and the open one shows its agent's plan, waiting for your answer](docs/images/workspace.png)
 
@@ -22,12 +22,13 @@ opens in a window of its own or in your browser.
 
 - Linux, or Windows through WSL. macOS runs the same code but is not tested yet.
 - git, Node 22.12 or newer, and pnpm 12 (`npm install -g pnpm@12`).
-- Claude Code or Codex, installed and logged in. Symbiote starts them with your own login, so
-  their work counts against your own subscription or API key. This includes Symbiote's own
-  helper agents: the merger, Scout and Scribe, described below.
+- Claude Code, Codex or Hermes Agent, installed and set up. Symbiote starts them with your own
+  login and configuration, so their work counts against your own subscription, API key or model
+  server. Symbiote's own helper agents, the merger, Scout and Scribe (described below), run on
+  Claude Code or Codex.
 - On Linux, python3, make and a C++ compiler. `pnpm install` uses them to build the terminal that
   shows each agent in the app. Without them, everything else works, and you answer the agent in a
-  text box instead.
+  text box instead; Hermes needs the terminal and is not offered.
 
 ## Install
 
@@ -128,6 +129,8 @@ The card beside the form holds the workspace's choices:
   (how long the model thinks before it answers). The lists come from the agent itself.
 - **Permission** (Claude Code): Claude Code's own permission mode, which decides what it may do
   without asking you. Symbiote never grants the agent more than the mode you pick.
+- **Approvals** (Hermes): Hermes asks in its terminal before a dangerous command. Its card says
+  Working while it waits there.
 - **Plan first and wait for my OK**: the agent writes a plan and stops before it changes
   anything. It is on by default.
 - **Documents**: files for the agent, such as screenshots, PDFs or samples. Up to 20 files, 20 MB
@@ -139,6 +142,10 @@ When you click **Start** (or press Ctrl+Enter), Symbiote:
 2. creates the branch and its worktree next to your checkout, in `../<repo>.worktrees/`;
 3. records the workspace in `symbiote/workspaces/<branch>.json`;
 4. starts the agent in the worktree, in the background, with the brief.
+
+Hermes has no background mode: it runs in a terminal of `symbiote view`, given the brief as its
+first message. It keeps running when you leave its tab or reload the page, and stops when
+Symbiote quits. Its Terminal tab then continues the session (`hermes --resume`).
 
 ### See what needs you
 
@@ -161,9 +168,9 @@ the workspaces waiting for you.
 
 Click a workspace to open it. Its page has four tabs:
 
-- **Terminal**: the agent's own terminal, as Claude Code or Codex draws it. Answer questions and
-  permission prompts here, as you would in your own terminal. Leaving the tab does not stop the
-  agent. To give the agent an image, paste it (Ctrl+V) or use **Attach images**.
+- **Terminal**: the agent's own terminal, as Claude Code, Codex or Hermes draws it. Answer
+  questions and permission prompts here, as you would in your own terminal. Leaving the tab does
+  not stop the agent. To give the agent an image, paste it (Ctrl+V) or use **Attach images**.
 - **Thread**: the agent's plans and reports, your messages, and what it waited for.
 - **Activity**: what happened, one line each: the commands the agent ran, the files it edited,
   its commits and your reviews.
@@ -321,7 +328,8 @@ All settings are in the [configuration reference](docs/reference/configuration.m
 
 ## Limits
 
-- Workspaces start Claude Code or Codex. Other agents are not supported yet.
+- Workspaces start Claude Code, Codex or Hermes. Other agents are not supported yet, and Scout,
+  Scribe and the merger run on Claude Code or Codex only.
 - The graph reads TypeScript, JavaScript, CSS and SCSS. If a branch changes only other files, its
   review shows no symbols, but you can still approve and merge it. Workspaces work in any git
   repository.

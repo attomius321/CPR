@@ -382,6 +382,13 @@ describe('talkCommand (V20a)', () => {
       talkCommand({ state: 'ready', kind: 'codex', id: 'T1', remote: 'unix:///my socket' }, '/w'),
     ).toBe("codex resume T1 --remote 'unix:///my socket' -C /w");
   });
+
+  it("continues Hermes's session: it goes back to the session's own folder (V58)", () => {
+    expect(
+      talkCommand({ state: 'stopped', kind: 'hermes', id: '20261026_101430_6ffcdc' }, '/w'),
+    ).toBe('hermes --resume 20261026_101430_6ffcdc');
+    expect(talkCommand({ state: 'working', kind: 'hermes' }, '/w')).toBeNull();
+  });
 });
 
 const TIP = 'b'.repeat(40);
@@ -925,6 +932,11 @@ describe("the agent's terminal in its panel (V21, V27b)", () => {
   const remote = 'unix:///home/someone/.codex/app-server-control/app-server-control.sock';
   const claude: WorkspaceAgentState = { state: 'ready', kind: 'claude', id: 's1' };
   const codex: WorkspaceAgentState = { state: 'ready', kind: 'codex', id: 'T1', remote };
+  const hermes: WorkspaceAgentState = {
+    state: 'ready',
+    kind: 'hermes',
+    id: '20261026_101430_6ffcdc',
+  };
   const here = { available: true } as const;
 
   it("opens on Claude Code's session, and on Codex's thread on its app server", () => {
@@ -939,15 +951,30 @@ describe("the agent's terminal in its panel (V21, V27b)", () => {
     expect(opensTerminal(claude, undefined)).toBe(false);
   });
 
+  it('opens on Hermes: the one it runs before its session is stored, or its session (V58)', () => {
+    expect(opensTerminal(hermes, here)).toBe(true);
+    expect(opensTerminal({ state: 'working', kind: 'hermes' }, here)).toBe(true);
+    // Nothing to open: it did not start, or ended before a word.
+    expect(opensTerminal({ state: 'not-started', kind: 'hermes', error: 'x' }, here)).toBe(false);
+    expect(opensTerminal({ state: 'failed', kind: 'hermes', error: 'x' }, here)).toBe(false);
+    expect(opensTerminal(hermes, { available: false, reason: 'node-pty is not installed' })).toBe(
+      false,
+    );
+  });
+
   it("asks first only where opening restarts Claude Code's stopped session", () => {
     expect(asksBeforeOpening({ ...claude, state: 'stopped' })).toBe(true);
     expect(asksBeforeOpening(claude)).toBe(false);
     // Joining a stopped Codex thread starts nothing.
     expect(asksBeforeOpening({ ...codex, state: 'stopped' })).toBe(false);
+    // Hermes's stopped session continues in a Hermes started again, with no turn (V58).
+    expect(asksBeforeOpening({ ...hermes, state: 'stopped' })).toBe(true);
+    expect(asksBeforeOpening(hermes)).toBe(false);
   });
 
   it("says each agent's own way around its terminal", () => {
     expect(terminalHint(claude)).toBe('← in an empty prompt lists all your agents');
     expect(terminalHint(codex)).toBe("? in an empty prompt lists Codex's keys");
+    expect(terminalHint(hermes)).toBe("/help in its prompt lists Hermes's commands");
   });
 });
