@@ -245,3 +245,4 @@ merge commit.
 - 2026-10-26 [V59 — Scout's and Scribe's links, whole, an amber band while they wait](journal/v59-scout-waiting-mark.md)
 - 2026-10-26 [V59 — the merge check's flake in changes.spec.ts](journal/v59-scout-waiting-mark.md)
 - 2026-10-26 [SK1 spike — where skills from another repository live today, and what reads them](journal/sk1-skill-library.md)
+- 2026-10-26 [SK1 — a skill library on the Skills page and for Scribe](journal/sk1-skill-library.md)

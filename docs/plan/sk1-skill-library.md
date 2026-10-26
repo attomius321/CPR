@@ -2,10 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/sk1-skill-library.md)
 
-**Status:** planned (2026-10-26), on branch `feature/skillbar-support` (the workspace's); the plan
-confirmed by the person with four answers: the place is "a git repository, or a file path to a
-folder on the disk"; committing and pushing "should be a setting"; using the skills from other
-projects "for later"; "One skill repository or folder!".
+**Status:** built, ready for review (2026-10-26), on branch `feature/skillbar-support` (the
+workspace's), `main` (V59) merged in; the plan confirmed by the person with four answers: the place
+is "a git repository, or a file path to a folder on the disk"; committing and pushing "should be a
+setting"; using the skills from other projects "for later"; "One skill repository or folder!".
 
 **Problem** (asked: "a way to create and maintain skills, but these will reside in another
 repository"). Measured on `00d88e1`, Claude Code 2.1.310, Codex 0.163:
@@ -150,3 +150,52 @@ the real runs.
 `~/.claude/skills` and `~/.agents/skills`, or a copy in a project's `.claude/skills`): the person,
 "For later". Several libraries. The desktop app's folder dialog for the path. A skill's other files
 edited on the page.
+
+## As built (SK1)
+
+- **Settings' first entry without prompts** (found by `settings.spec.ts`): with the Skill library
+  listed before Appearance, a Settings page whose prompts cannot be read opened the library. The
+  order of what opens first keeps Appearance first, as before; the list shows This machine, then
+  This browser.
+- **An address for a Settings entry**: the Skills page links to `/settings?prompt=skill-library`.
+  The settings route takes `prompt` to make that address only; the route read back is Settings,
+  and the page reads `?prompt=` as it did (`pages.ts`).
+- **Every e2e server has a config folder of its own** (`XDG_CONFIG_HOME`, `e2e/symbiote.ts`): until
+  now a spec's server read the person's own `~/.config/symbiote`; with a library set there, the
+  Skills specs would have listed it. `serveWorkspaces` gives the folder to the test (`config`).
+- **One line of actions in the library's pane** (seen in screenshots): Commit and Pull on one line,
+  Change in Settings on another, read as two forms. The commit button submits its form from the
+  pane's one line (`form="library-commit"`).
+- **Settings' rows stacked on a phone** (seen in screenshots): at 390 px the Commits choices
+  wrapped inside their buttons and ran over the note under them. Under 520 px each control goes
+  under its name, as the effort stepper's does; a choice keeps its words on one line.
+- **Scribe's gate follows the library at each wake**: its settings file is written at each start
+  and wake (V41), so the gate takes the library set then; Claude Code's `--add-dir` and Codex's
+  writable folder are the conversation's start's. The plan's "the next conversation" holds for
+  both agents' own access.
+- **Settings' back button** moved to its own module (`settings/BackToList.tsx`) for the new page.
+
+**Results.** Tests first, red for the right reason: the library's server 16 (`library.test.ts`), the
+skills service 8, the probe's route 1, Scribe's gate 2, Scribe's starts and `--add-dir` 4, the
+prompts 4, the viewer's library helpers 8 (`library.test.ts`), and expectations added to the groups,
+a new skill's place and the route; e2e `library.spec.ts` 7. Expected changes elsewhere: Settings
+lists one more entry and group, Scribe's page one more prompt (`settings.spec.ts`); the prompts list
+ends with `library` (`prompts.test.ts`). `pnpm check`: 1,842 tests in 131 files. e2e: 282 of 282
+before `main` was merged in; with it merged in, 283 of 284: V55's done-card test
+(`workspaces.spec.ts`) found its card 31 px lower between two reads once, then passed 5 of 5 alone
+and in its spec's rerun (48 of 48).
+
+| Run (throwaway checkout and library, real agents) | What happened |
+|---|---|
+| Codex's Scribe (0.163, its default model, low): "a short skill named reading-logs" in the library, then a line in the library repository's README | The skill written in the library's folder in 22 s (28 lines, its description 117 characters); the README write declined by Codex itself, from its instructions, without a try |
+| Codex's Scribe, asked to run the two writes as commands | `printf … >> <library repo>/README.md`: exit 1, "Read-only file system"; `printf … > <library>/reading-logs/probe.txt`: exit 0. Its sandbox writes the library's folder and nothing beside it |
+| Claude Code's Scribe | Not run: Claude Code refuses a folder it was never trusted in ("Workspace not trusted"), and its trust prompt is the person's to accept |
+| Scribe's gate, built, run with the command Symbiote wrote in the checkout's `scribe-settings.json` | A Write in `<library>/tailing-logs/SKILL.md` and in `.claude/skills/x/SKILL.md`: no answer (Claude Code's own rules ask the person); the library repository's README and the checkout's README: denied, naming both folders |
+
+`/history`, this branch's build and `main`'s alternated, 7 rounds each, medians: first paint 64
+and 60 ms, first rows 131 and 133 ms. The viewer's main chunk: 798,885 bytes against 785,680
+(+13.2 KB). Screenshots at 1440×900 and 390×844, dark and light: Settings' Skill library (empty,
+a repository), the Skills page with a library (its pane with changes, a library skill, New skill's
+place) and without one; no page error. Not verified: Claude Code's Scribe writing a library skill
+for real (above); Windows and macOS paths; a clone or a push over SSH or HTTPS (the tests use local
+bare repositories); a library on another file system than the checkout.

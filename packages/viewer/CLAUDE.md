@@ -59,6 +59,11 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   skills: no error. `SkillsPage.tsx` draws with its own rules (`SkillsPage.css`, V56): no
   `settings-*` class (an e2e test refuses one), the whole main area, the list at its left edge and
   the open pane (a skill, New skill, Scribe's terminal) to its right and bottom edges.
+- `src/skills/library.ts` — **pure**: the skill library (SK1) in words — its name, a library
+  skill's full path, its git, a commit's first message, what is at a folder before it is set
+  (`test/library.test.ts`). `LibraryPane.tsx` is its pane on the Skills page;
+  `settings/LibraryPage.tsx` its entry in Settings (This machine), which asks
+  `/api/skills/library?folder=` as the person types.
 - `src/monitor/` — the Monitor (RM1), at `/monitor` (absolute `/api/monitor`, the `CodeMap` of
   `@symbiote/monitor`, whose **types** only it imports). `codemap.ts` builds the folder tree of the
   kinds turned on, says the concentration in words and gives a file's heat step by its lines
