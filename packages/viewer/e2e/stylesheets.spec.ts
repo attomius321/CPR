@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { servePullRequest, type RunningPullRequest } from './symbiote.js';
+import { graphPage, servePullRequest, type RunningPullRequest } from './symbiote.js';
 
 // `symbiote pr 7` on core's markup fixture (L1–L2): a rule and a token are symbols with their own
 // diff, the components that render a class are its users, and a comment on a rule's line goes
@@ -16,7 +16,7 @@ test.afterAll(() => symbiote.stop());
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(symbiote.url);
+  await page.goto(graphPage(symbiote.url));
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
 });
 

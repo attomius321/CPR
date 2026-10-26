@@ -3,7 +3,7 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { serveAgentBranch, type RunningAgent } from './symbiote.js';
+import { showGraph, serveAgentBranch, type RunningAgent } from './symbiote.js';
 
 // Branch reviews (V15): review an agent's branch, then only what it changed since. Each test
 // gets its own repository: reviews write into it.
@@ -94,6 +94,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await expect(page).toHaveURL(/\/review\/agent\/$/);
   await expect(page.locator('.review-of')).toHaveText('Review of agent · first review');
   await expect(page.locator('.revisions')).toHaveText(`${short(base)} → ${short(cube)}`);
+  await showGraph(page);
   await changesTab(page).click();
   await expect(changesTab(page)).toContainText('0/2');
   for (let i = 0; i < 2; i++) {
@@ -149,6 +150,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
     'Review of agent · 1 commit since your last review',
   );
   await expect(page.locator('.revisions')).toHaveText(`${short(base)} → ${short(tip)}`);
+  await showGraph(page);
   await changesTab(page).click();
   await expect(changesTab(page)).toContainText('1/3');
   await expect(page.locator('.stale-note')).toContainText('1 symbol changed since you reviewed it');
@@ -156,6 +158,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   // A new `symbiote view` (another port) finds the review in the repository.
   const url = await symbiote.restart();
   await page.goto(`${url}review/agent/`);
+  await showGraph(page);
   await changesTab(page).click();
   await expect(changesTab(page)).toContainText('1/3');
 });
@@ -170,6 +173,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await expect(page).toHaveURL(/\/review\/agent\/$/);
 
   // A comment on square, then Request changes.
+  await showGraph(page);
   await changesTab(page).click();
   await page.locator('.list-link', { hasText: 'square' }).click();
   const panel = page.getByRole('complementary', { name: 'Symbol detail' });

@@ -45,17 +45,20 @@ export function linesOf(
   return { added: `+${file.added}`, removed: `−${file.removed}` };
 }
 
-/** A file row's hover: its path (both, for a rename), its status and lines, what a click does. */
-export function fileTitle(file: WorkspaceFileChange): string {
+/** A file's facts: its path (both, for a rename), its status and lines. */
+export function fileFacts(file: WorkspaceFileChange): string {
   const path = file.previousPath ? `${file.previousPath} → ${file.path}` : file.path;
   const lines = linesOf(file);
-  const facts = [
+  return [
     path,
     WORDS[file.status],
     ...(lines === null ? [] : [lines === 'binary' ? lines : `${lines.added} ${lines.removed}`]),
   ].join(' · ');
-  return `${facts}. Opens its changes in VS Code`;
 }
+
+/** A file row's hover: its facts, what a click does. */
+export const fileTitle = (file: WorkspaceFileChange): string =>
+  `${fileFacts(file)}. Opens its changes in VS Code`;
 
 /** Where the commits start: the default branch's fork point, else where the workspace started. */
 export const sinceText = (since: string | undefined): string =>

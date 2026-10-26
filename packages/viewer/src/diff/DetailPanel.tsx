@@ -340,7 +340,7 @@ function SymbolDiff({ state, anchor, onPick, onOpen }: SymbolDiffProps) {
 }
 
 /** A row's line number on one side; a button that opens that line when the server can. */
-function LineNumber({
+export function LineNumber({
   row,
   side,
   onOpen,

@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
 import { spinner } from './spinner.js';
-import { serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
+import { graphPage, serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // The shell (V29a): no Workspaces page; a sidenav with the pages and, under them, the workspaces;
 // the main area shows what is picked; a status bar along the bottom.
@@ -360,7 +360,7 @@ test('narrow: a diff opens its sidenav from the strip at the top (V29b)', async 
   const diff = await serveFixture('callers');
   running.push(diff);
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(diff.url);
+  await page.goto(graphPage(diff.url));
   await expect(page.locator('.react-flow__node').first()).toBeVisible({ timeout: 20_000 });
   await expect(sidenav(page)).toBeHidden();
   await page.getByRole('button', { name: 'Open the sidenav' }).click();
@@ -388,7 +388,7 @@ test('a diff of symbiote view: the sidenav as a rail beside its canvas, [ opens 
 }) => {
   const diff = await serveFixture('callers');
   running.push(diff);
-  await page.goto(diff.url);
+  await page.goto(graphPage(diff.url));
   await expect(page.locator('.react-flow__node').first()).toBeVisible({ timeout: 20_000 });
   await expect(sidenav(page)).toHaveClass(/rail/);
   expect((await sidenav(page).boundingBox())?.width ?? 0).toBeLessThanOrEqual(56);

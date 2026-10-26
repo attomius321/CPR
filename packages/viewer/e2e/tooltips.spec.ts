@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { serveFixture, serveWorkspaces, type Running } from './symbiote.js';
+import { graphPage, serveFixture, serveWorkspaces, type Running } from './symbiote.js';
 
 // V54: every tooltip is Symbiote's (decision 397). An element names its tip (`data-tip`), one
 // `Tooltips` on the page draws it after a rest, in the form of its context: beside a page of the
@@ -110,7 +110,7 @@ test('a cut path shows its whole text in its own font; a path that fits shows no
 }) => {
   const symbiote = await serveFixture('callers');
   running.push(symbiote);
-  await page.goto(symbiote.url);
+  await page.goto(graphPage(symbiote.url));
   // The page opens on its findings: the changes list the files.
   await page.getByRole('tab', { name: /^Changes/ }).click();
   const name = page.locator('.list-file-name').first();
@@ -138,7 +138,7 @@ test('a cut path shows its whole text in its own font; a path that fits shows no
 test('a symbol’s tip is its id, in mono; the canvas moving hides it', async ({ page }) => {
   const symbiote = await serveFixture('callers');
   running.push(symbiote);
-  await page.goto(symbiote.url);
+  await page.goto(graphPage(symbiote.url));
   const symbol = page.locator('.react-flow__node-symbol .symbol').first();
   await expect(symbol).toBeVisible();
   const id = (await symbol.getAttribute('data-tip'))!;
@@ -165,7 +165,7 @@ test('the canvas’s buttons and the whole diff page: tips of Symbiote’s, no t
 }) => {
   const symbiote = await serveFixture('callers');
   running.push(symbiote);
-  await page.goto(symbiote.url);
+  await page.goto(graphPage(symbiote.url));
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
   const zoomIn = page.locator('.react-flow__controls-zoomin');
   await expect(zoomIn).toHaveAccessibleName('Zoom in');

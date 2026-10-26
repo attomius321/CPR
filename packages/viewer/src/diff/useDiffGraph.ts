@@ -21,7 +21,8 @@ export type State =
    * `sources`: opened through `symbiote view`, so `/api/source` exists. `forge`: opened through
    * `symbiote pr`, which posts reviews there. `commits`: a diff of `symbiote view`, which lists
    * commits.
-   * `open`: the server opens files in VS Code (`/api/open`).
+   * `open`: the server opens files in VS Code (`/api/open`). `files`: it gives the change's files
+   * with their lines and each file's diff (`/api/files`, `/api/file`; V60).
    */
   | {
       status: 'ready';
@@ -31,6 +32,7 @@ export type State =
       store: Store;
       commits: boolean;
       open: boolean;
+      files: boolean;
       /** A branch's review (V15): what it covers, and what came since the last one. */
       branchReview?: BranchReviewInfo;
     };
@@ -48,6 +50,8 @@ interface Capabilities {
   commits?: boolean;
   /** `symbiote view`, `symbiote pr`: `/api/open` opens a file of the change in VS Code. */
   open?: boolean;
+  /** `symbiote view`, `symbiote pr`: the Files page's `/api/files` and `/api/file` (V60). */
+  files?: boolean;
   /** `symbiote view`: this page is a branch's review (V15). */
   branchReview?: BranchReviewInfo;
   /** `symbiote view`: the repository's folder name (V29a). */
@@ -108,6 +112,7 @@ export function useDiffGraph() {
             store: capabilities?.state ? serverStore() : browserStore(graph),
             commits: !!capabilities?.commits,
             open: !!capabilities?.open,
+            files: !!capabilities?.files,
             ...(capabilities?.branchReview ? { branchReview: capabilities.branchReview } : {}),
           });
         } else if (loaded.kind === 'progress' || loaded.kind === 'failed') {

@@ -3,12 +3,14 @@ import { describe, expect, it } from 'vitest';
 import {
   backLink,
   diffTitle,
+  diffView,
   hrefOf,
   inShell,
   pageTitle,
   revisionsLabel,
   routeOf,
   routeTitle,
+  withDiffView,
 } from '../src/shell/pages.js';
 
 describe('routeOf (V29a: no Workspaces page)', () => {
@@ -185,6 +187,23 @@ describe('Monitor (RM1)', () => {
     expect(routeTitle({ page: 'monitor' }, 'symbiote')).toBe('Monitor · symbiote — Symbiote');
     expect(routeTitle({ page: 'monitor', path: 'src' }, 'symbiote')).toBe(
       'src · Monitor · symbiote — Symbiote',
+    );
+  });
+});
+
+describe("a diff's page (V60)", () => {
+  it('reads Graph from the address; anything else is the default', () => {
+    expect(diffView('?view=graph')).toBe('graph');
+    expect(diffView('?graph=g.json&view=graph')).toBe('graph');
+    expect(diffView('')).toBeNull();
+    expect(diffView('?view=files')).toBeNull();
+  });
+
+  it('writes the page into the address, keeping the rest of it', () => {
+    expect(withDiffView('http://x/diff/a..b/', 'graph')).toBe('http://x/diff/a..b/?view=graph');
+    expect(withDiffView('http://x/diff/a..b/?view=graph', 'files')).toBe('http://x/diff/a..b/');
+    expect(withDiffView('http://x/?graph=g.json#top', 'graph')).toBe(
+      'http://x/?graph=g.json&view=graph#top',
     );
   });
 });

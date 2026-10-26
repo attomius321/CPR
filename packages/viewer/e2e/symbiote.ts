@@ -16,6 +16,7 @@ import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import type { Page } from '@playwright/test';
 import { mockApi, type Recorded } from '../../forge/test/mock-api.js';
 import {
   daemonStartOutput,
@@ -68,6 +69,21 @@ function fixtureRepo(name: string): { repo: string; base: string; head: string }
   git(repo, 'add', '-A');
   git(repo, 'commit', '-q', '-m', 'head');
   return { repo, base: git(repo, 'rev-parse', 'main'), head: git(repo, 'rev-parse', 'feature') };
+}
+
+/**
+ * A diff's Graph page (V60): `url` with `?view=graph`. A diff opens on its Files page; a spec of
+ * the graph opens this.
+ */
+export function graphPage(url: string): string {
+  const at = new URL(url);
+  at.searchParams.set('view', 'graph');
+  return at.toString();
+}
+
+/** On a diff's page (V60): its Graph page, by the switch at the top. */
+export async function showGraph(page: Page): Promise<void> {
+  await page.locator('.page-switch').getByRole('tab', { name: 'Graph' }).click();
 }
 
 /** Runs the built CLI until it prints the viewer's URL. */

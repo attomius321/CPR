@@ -13,12 +13,27 @@ import { BackLink, DiffProgress } from './DiffProgress.js';
 import { Canvas } from './Canvas.js';
 import { useDiffGraph } from './useDiffGraph.js';
 import { useReview } from './useReview.js';
-import { diffTitle, revisionsLabel } from '../shell/pages.js';
+import {
+  diffTitle,
+  diffView,
+  revisionsLabel,
+  withDiffView,
+  type DiffView,
+} from '../shell/pages.js';
 import { briefTip, workspaceHref, workspaceName } from '../workspaces/workspaces.js';
 import { DiffShell } from './DiffShell.js';
 import { Shell } from '../shell/Shell.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { DetailPanel } from './DetailPanel.js';
+import {
+  FilesKeys,
+  FilesPage,
+  useReviewFiles,
+  type FileFocus,
+  type FilesTab,
+} from './FilesPage.js';
+import { stepFile } from './file-diff.js';
+import type { Draft } from './comments.js';
 import { decorate } from '../graph/flow.js';
 import {
   changeList,
@@ -58,6 +73,12 @@ export function App() {
   const [project, setProject] = useState<string | null>(null);
   /** Projects (by folder) folded in the change list. */
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set());
+  /** The page asked for (V60): Graph by `?view=graph`; null, the default (Files, if it can be). */
+  const [asked, setAsked] = useState<DiffView | null>(() => diffView(window.location.search));
+  /** The file the Files page shows (null: the first), its tab, and a line to bring into view. */
+  const [openFile, setOpenFile] = useState<string | null>(null);
+  const [filesTab, setFilesTab] = useState<FilesTab>('files');
+  const [fileFocus, setFileFocus] = useState<FileFocus | null>(null);
   const [widths, setWidths] = useState<Widths>(loadWidths);
   /** A panel is being resized: the canvas waits for the drop to centre the selection again. */
   const [resizing, setResizing] = useState(false);
@@ -69,10 +90,17 @@ export function App() {
   const graph = state.status === 'ready' ? state.graph : undefined;
   const forge = state.status === 'ready' ? state.forge : null;
   const store = state.status === 'ready' ? state.store : undefined;
-  const { marks, draft, updateDraft, toggleReviewed, addDraft, removeDraft } = useReview(
-    graph,
-    store,
-  );
+  const { marks, draft, updateDraft, toggleReviewed, addDraft, addLineDraft, removeDraft } =
+    useReview(graph, store);
+  const served = state.status === 'ready' && state.files;
+  const files = useReviewFiles(graph, served);
+  // Files first (decision 431), unless the address asks for Graph or there is no diff to show:
+  // a graph opened from a file has no server.
+  const page: DiffView = asked ?? (state.status === 'ready' && !state.files ? 'graph' : 'files');
+  const showPage = useCallback((next: DiffView) => {
+    setAsked(next);
+    window.history.replaceState(window.history.state, '', withDiffView(window.location.href, next));
+  }, []);
   const onlySince = sinceOnly && !!graph?.since;
   const changes = useMemo(
     () => (graph ? changeList(graph, { sinceOnly: onlySince }) : []),
@@ -97,12 +125,42 @@ export function App() {
   useEffect(() => {
     if (graph) document.title = diffTitle(graph, reviewOf);
   }, [graph, reviewOf]);
-  // A new graph starts with every big neighbourhood collapsed, and every project shown.
+  // A new graph starts with every big neighbourhood collapsed, and every project shown; its
+  // Files page at its first file.
   useEffect(() => {
     setExpanded(new Set());
     setProject(null);
     setCollapsed(new Set());
+    setOpenFile(null);
+    setFileFocus(null);
   }, [graph]);
+  const openTheFile = useCallback((path: string) => {
+    setOpenFile(path);
+    setFileFocus(null);
+  }, []);
+  /**
+   * What a comment in the review tab is on: a line, in its file on the Files page; a symbol's
+   * comment on the Graph page, or one on no line, in the symbol's panel.
+   */
+  const openDraft = useCallback(
+    (d: Draft) => {
+      const at = d.anchor;
+      if (d.symbol !== undefined && (page === 'graph' || !at)) {
+        showPage('graph');
+        setSelected(d.symbol);
+        return;
+      }
+      const file =
+        at &&
+        files.find((f) => (at.side === 'head' ? f.path : (f.previousPath ?? f.path)) === at.path);
+      if (!at || !file) return;
+      showPage('files');
+      setFilesTab('files');
+      setOpenFile(file.path);
+      setFileFocus({ path: file.path, key: `${at.side}:${at.line}` });
+    },
+    [page, files, showPage],
+  );
   const toggleCollapsed = useCallback((folder: string) => {
     setCollapsed((current) => {
       const next = new Set(current);
@@ -112,7 +170,8 @@ export function App() {
   }, []);
 
   // Keyboard review: j/k walk the changes, r marks reviewed, f focuses, p (P) shows the next
-  // (previous) project only, c comments, o opens in VS Code, / searches, Esc closes.
+  // (previous) project only, c comments, o opens in VS Code, / searches, Esc closes, g switches
+  // between the pages. On the Files page, j/k walk the files and c comments on the first change.
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target;
@@ -126,7 +185,26 @@ export function App() {
         if (event.key === 'Escape') target.blur();
         return;
       }
-      if (event.key === 'c' && document.getElementById('comment-input')) {
+      if (event.key === 'g' && state.status === 'ready') {
+        showPage(page === 'files' ? 'graph' : 'files');
+      } else if (page === 'files') {
+        if (event.key === 'j' || event.key === 'k') {
+          setOpenFile((path) =>
+            stepFile(files, path ?? files[0]?.path ?? null, event.key === 'j' ? 1 : -1),
+          );
+          setFileFocus(null);
+        } else if (event.key === 'c') {
+          event.preventDefault();
+          const input = document.getElementById('comment-input');
+          if (input) input.focus();
+          else
+            document
+              .querySelector<HTMLElement>(
+                '.file-code .row-add.pickable, .file-code .row-del.pickable',
+              )
+              ?.click();
+        } else if (event.key === 'o') document.getElementById('open-in-editor')?.click();
+      } else if (event.key === 'c' && document.getElementById('comment-input')) {
         event.preventDefault();
         document.getElementById('comment-input')?.focus();
       } else if (event.key === 'o') {
@@ -145,7 +223,7 @@ export function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [changes, walked, selected, toggleReviewed]);
+  }, [changes, walked, selected, toggleReviewed, state.status, page, showPage, files]);
 
   const load = useCallback(async (file: File) => {
     try {
@@ -158,6 +236,7 @@ export function App() {
         store: browserStore(graph),
         commits: false,
         open: false,
+        files: false,
       });
       setSelected(null);
       setSearch('');
@@ -220,7 +299,40 @@ export function App() {
   );
 
   if (state.status === 'shell') return <Shell repo={state.repo} />;
-  const page = (
+  // The review to post or finish, in the sidebar's tab on either page.
+  const reviewProps =
+    forge && state.status === 'ready'
+      ? {
+          forge,
+          draft,
+          onBody: (body: string) => updateDraft((d) => ({ ...d, body }), 300),
+          onRemove: removeDraft,
+          onPosted: () => updateDraft(() => ({ drafts: [], body: '' })),
+          ...(state.branchReview
+            ? {
+                local: {
+                  branch: state.branchReview.branch,
+                  head: state.branchReview.head,
+                  ...(state.branchReview.into ? { into: state.branchReview.into } : {}),
+                },
+              }
+            : {}),
+        }
+      : undefined;
+  const widthStyle = {
+    '--sidebar-width': widths.sidebar ? `${widths.sidebar}px` : undefined,
+    '--panel-width': widths.panel ? `${widths.panel}px` : undefined,
+  } as CSSProperties;
+  const sidebarHandle = (
+    <Resizer
+      label="Resize review sidebar"
+      side="before"
+      variable="--sidebar-width"
+      onResize={(width) => resize('sidebar', width)}
+      onDrag={setResizing}
+    />
+  );
+  const content = (
     <div
       className={inView ? 'app' : 'app alone'}
       onDragOver={(e) => e.preventDefault()}
@@ -229,10 +341,20 @@ export function App() {
       <header className="bar">
         <strong className="brand">Symbiote</strong>
         {state.status === 'ready' && state.commits && <BackLink />}
+        {state.status === 'ready' && <PageSwitch page={page} onPage={showPage} />}
         {state.status === 'ready' && state.branchReview && <ReviewOf review={state.branchReview} />}
         {state.status === 'ready' && <Summary graph={state.graph} />}
         <div className="spacer" />
-        {state.status === 'ready' && (
+        {state.status === 'ready' && page === 'files' && (
+          <Help label="This page's keys">
+            <FilesKeys review={Boolean(forge)} canOpen={state.open} />
+            <p>
+              Click a file for its changes
+              {forge ? ', a line of them to comment on it' : ''}; folded lines open on a click.
+            </p>
+          </Help>
+        )}
+        {state.status === 'ready' && page === 'graph' && (
           <>
             {state.graph.since && (
               <label
@@ -275,6 +397,7 @@ export function App() {
                 grouped={changes.some((file) => file.project)}
                 review={Boolean(forge)}
                 canOpen={state.open}
+                files
               />
               <p>Click a symbol for its details, a group to show its symbols.</p>
             </Help>
@@ -283,133 +406,155 @@ export function App() {
         {/* A page with no shell (symbiote pr) is the window's title bar: its buttons, on Linux (N1d). */}
         {!inView && <WindowButtons />}
       </header>
-      <main
-        className={`canvas${resizing ? ' resizing' : ''}`}
-        style={
-          {
-            '--sidebar-width': widths.sidebar ? `${widths.sidebar}px` : undefined,
-            '--panel-width': widths.panel ? `${widths.panel}px` : undefined,
-          } as CSSProperties
-        }
-      >
-        {state.status === 'loading' && <p className="hint">Loading graph…</p>}
-        {state.status === 'empty' && (
-          <DropZone error={state.error} onFile={(file) => void load(file)} />
-        )}
-        {state.status === 'analyzing' && <DiffProgress loaded={state.loaded} onRetry={retry} />}
-        {state.status === 'ready' && (
-          <ReactFlowProvider>
-            <Sidebar
-              graph={state.graph}
-              changes={changes}
-              shown={shown}
-              search={search}
-              onSearch={setSearch}
-              tab={tab ?? (state.graph.findings.length > 0 ? 'findings' : 'changes')}
-              onTab={setTab}
-              reviewed={reviewed}
-              stale={stale}
-              selected={selected}
-              onSelect={setSelected}
-              onToggleReviewed={toggleReviewed}
-              project={project}
-              onProject={setProject}
-              collapsed={collapsed}
-              onCollapse={toggleCollapsed}
-              canOpen={state.open}
-              review={
-                forge
-                  ? {
-                      forge,
-                      draft,
-                      onBody: (body) => updateDraft((d) => ({ ...d, body }), 300),
-                      onRemove: removeDraft,
-                      onPosted: () => updateDraft(() => ({ drafts: [], body: '' })),
-                      ...(state.status === 'ready' && state.branchReview
-                        ? {
-                            local: {
-                              branch: state.branchReview.branch,
-                              head: state.branchReview.head,
-                              ...(state.branchReview.into ? { into: state.branchReview.into } : {}),
-                            },
-                          }
-                        : {}),
-                    }
-                  : undefined
-              }
-            />
-            <Resizer
-              label="Resize review sidebar"
-              side="before"
-              variable="--sidebar-width"
-              onResize={(width) => resize('sidebar', width)}
-              onDrag={setResizing}
-            />
-            {layout && flowNodes ? (
-              <Canvas
-                nodes={flowNodes}
-                edges={layout.edges}
-                fileEdges={layout.fileEdges}
-                layoutNodes={layout.nodes}
-                pending={pending}
-                selected={selected}
-                focus={focus}
-                scope={project}
-                resizing={resizing}
-                onSelect={setSelected}
-                onToggleSummary={toggleSummary}
-                reveal={reveal}
-              />
-            ) : (
-              // The first layout: the change list and findings are there meanwhile.
-              <p className="hint canvas-waiting layout-pending" role="status">
-                Laying out…
-              </p>
-            )}
-            {selected && (
-              <Resizer
-                label="Resize detail panel"
-                side="after"
-                variable="--panel-width"
-                onResize={(width) => resize('panel', width)}
-                onDrag={setResizing}
-              />
-            )}
-            {selected && (
-              <DetailPanel
-                key={selected}
+      {state.status === 'ready' && page === 'files' ? (
+        <main className={`files-main${resizing ? ' resizing' : ''}`} style={widthStyle}>
+          <FilesPage
+            graph={state.graph}
+            files={files}
+            open={openFile}
+            onOpenFile={openTheFile}
+            served={served}
+            canOpen={state.open}
+            tab={reviewProps ? filesTab : 'files'}
+            onTab={setFilesTab}
+            review={reviewProps}
+            comments={
+              reviewProps
+                ? {
+                    drafts: draft.drafts,
+                    unchanged: forge === 'local',
+                    onAdd: addLineDraft,
+                    onRemove: removeDraft,
+                  }
+                : undefined
+            }
+            onOpenDraft={openDraft}
+            focus={fileFocus}
+            handle={sidebarHandle}
+          />
+        </main>
+      ) : (
+        <main className={`canvas${resizing ? ' resizing' : ''}`} style={widthStyle}>
+          {state.status === 'loading' && <p className="hint">Loading graph…</p>}
+          {state.status === 'empty' && (
+            <DropZone error={state.error} onFile={(file) => void load(file)} />
+          )}
+          {state.status === 'analyzing' && <DiffProgress loaded={state.loaded} onRetry={retry} />}
+          {state.status === 'ready' && (
+            <ReactFlowProvider>
+              <Sidebar
                 graph={state.graph}
-                id={selected}
-                {...(changes.some((f) => f.project) && state.graph.projects
-                  ? { projects: state.graph.projects }
-                  : {})}
-                sources={state.sources}
-                canOpen={state.open}
-                reviewed={reviewed.has(selected)}
-                stale={stale.has(selected)}
-                onToggleReviewed={() => toggleReviewed(selected)}
+                changes={changes}
+                shown={shown}
+                search={search}
+                onSearch={setSearch}
+                tab={tab ?? (state.graph.findings.length > 0 ? 'findings' : 'changes')}
+                onTab={setTab}
+                reviewed={reviewed}
+                stale={stale}
+                selected={selected}
                 onSelect={setSelected}
-                onClose={() => setSelected(null)}
-                comments={
-                  forge
-                    ? {
-                        drafts: draft.drafts.filter((d) => d.symbol === selected),
-                        onAdd: (anchor, body) => addDraft(selected, anchor, body),
-                        onRemove: removeDraft,
-                      }
-                    : undefined
-                }
+                onToggleReviewed={toggleReviewed}
+                project={project}
+                onProject={setProject}
+                collapsed={collapsed}
+                onCollapse={toggleCollapsed}
+                canOpen={state.open}
+                review={reviewProps}
+                onOpenDraft={openDraft}
               />
-            )}
-          </ReactFlowProvider>
-        )}
-      </main>
-      {layout && <Legend frames={layout.nodes[0]?.type === 'project'} />}
+              {sidebarHandle}
+              {layout && flowNodes ? (
+                <Canvas
+                  nodes={flowNodes}
+                  edges={layout.edges}
+                  fileEdges={layout.fileEdges}
+                  layoutNodes={layout.nodes}
+                  pending={pending}
+                  selected={selected}
+                  focus={focus}
+                  scope={project}
+                  resizing={resizing}
+                  onSelect={setSelected}
+                  onToggleSummary={toggleSummary}
+                  reveal={reveal}
+                />
+              ) : (
+                // The first layout: the change list and findings are there meanwhile.
+                <p className="hint canvas-waiting layout-pending" role="status">
+                  Laying out…
+                </p>
+              )}
+              {selected && (
+                <Resizer
+                  label="Resize detail panel"
+                  side="after"
+                  variable="--panel-width"
+                  onResize={(width) => resize('panel', width)}
+                  onDrag={setResizing}
+                />
+              )}
+              {selected && (
+                <DetailPanel
+                  key={selected}
+                  graph={state.graph}
+                  id={selected}
+                  {...(changes.some((f) => f.project) && state.graph.projects
+                    ? { projects: state.graph.projects }
+                    : {})}
+                  sources={state.sources}
+                  canOpen={state.open}
+                  reviewed={reviewed.has(selected)}
+                  stale={stale.has(selected)}
+                  onToggleReviewed={() => toggleReviewed(selected)}
+                  onSelect={setSelected}
+                  onClose={() => setSelected(null)}
+                  comments={
+                    forge
+                      ? {
+                          drafts: draft.drafts.filter((d) => d.symbol === selected),
+                          onAdd: (anchor, body) => addDraft(selected, anchor, body),
+                          onRemove: removeDraft,
+                        }
+                      : undefined
+                  }
+                />
+              )}
+            </ReactFlowProvider>
+          )}
+        </main>
+      )}
+      {layout && page === 'graph' && <Legend frames={layout.nodes[0]?.type === 'project'} />}
     </div>
   );
   // Only a diff: the shell's own pages are drawn by Shell, and while loading it is not known yet.
   const diff = state.status === 'ready' || state.status === 'analyzing';
-  return inView && diff ? <DiffShell repo={inView.repo}>{page}</DiffShell> : page;
+  return inView && diff ? <DiffShell repo={inView.repo}>{content}</DiffShell> : content;
+}
+
+/** The diff's two pages (V60, decision 431): Files and Graph, `g` between them. */
+function PageSwitch({ page, onPage }: { page: DiffView; onPage: (page: DiffView) => void }) {
+  const views: [DiffView, string, string][] = [
+    ['files', 'Files', 'The changed files and their diffs'],
+    ['graph', 'Graph', 'The changed symbols and the calls between them'],
+  ];
+  return (
+    <div className="scopes page-switch" role="tablist" aria-label="Page">
+      {views.map(([view, name, words]) => (
+        <button
+          key={view}
+          type="button"
+          role="tab"
+          aria-selected={page === view}
+          className={`scope${page === view ? ' active' : ''}`}
+          {...tip(words, { keys: 'g' })}
+          onClick={() => onPage(view)}
+        >
+          {name}
+        </button>
+      ))}
+    </div>
+  );
 }
 
 /**

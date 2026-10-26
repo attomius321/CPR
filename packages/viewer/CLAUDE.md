@@ -1,11 +1,11 @@
 # @symbiote/viewer
 
-React 19 + `@xyflow/react` 12 + dagre, bundled by Vite into `dist/`. `symbiote view`/`symbiote pr` serve it
-with `/api/graph`, `/api/source`, `/api/state/<name>` and `/api/review` (`packages/cli/src/server.ts`);
-`?graph=<url>` loads any graph JSON instead (used by `scripts/viewer/measure.mjs`). Under
-`symbiote view` the pages live in a shell (V29a, `src/shell/Shell.tsx`): a sidenav with History
-(`/history`, `/api/history…`, `POST /api/diffs`), Settings and the workspaces
-(`/api/workspaces…`), each opened in place; `/` alone is History. Each diff is
+React 19 + `@xyflow/react` 12 + dagre, bundled by Vite into `dist/`. `symbiote view`/`symbiote pr`
+serve it with `/api/graph`, `/api/source`, `/api/files`, `/api/file` (V60), `/api/state/<name>`
+and `/api/review` (`packages/cli/src/server.ts`); `?graph=<url>` loads any graph JSON instead
+(used by `scripts/viewer/measure.mjs`). Under `symbiote view` the pages live in a shell (V29a,
+`src/shell/Shell.tsx`): a sidenav with History (`/history`, `/api/history…`, `POST /api/diffs`),
+Settings and the workspaces (`/api/workspaces…`), each opened in place; `/` alone is History. Each diff is
 served under `/diff/<base>..<head>/`: the viewer must keep calling its own API with **relative**
 URLs (`./api/…`) and loading files relative to the page (`base: './'`), so every call reaches that
 diff. Only the two pages' endpoints are absolute (`/api/history…`, `/api/workspaces…`, `/api/diffs`).
@@ -20,7 +20,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 | Folder | What |
 |---|---|
 | `graph/` | The layout (`flow.ts`, the worker), the four nodes, the canvas and the map |
-| `diff/` | A diff's page: `App.tsx`, its sidebar, detail panel and review tab, opening a line |
+| `diff/` | A diff's page: `App.tsx`, its two pages (Files, Graph), its sidebar, detail panel and review tab, opening a line |
 | `history/` | History: rows, lanes, branches, checkout, the row menu, branch reviews |
 | `workspaces/` | A workspace, its agent's terminal, its changes, merges, Start a workspace |
 | `shell/` | The shell: sidenav, title bar, status bar and usage, pages, theme, the desktop window |
@@ -38,8 +38,16 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 - `src/graph/layouts.ts`, `layout-worker.ts`, `useLayout.ts` — layouts made in a worker
   (V8e): view keys, the cache of recent layouts, numbered requests, the main-thread fallback.
   The worker is `new URL('./layout-worker.ts', import.meta.url)`: the two files move together.
-- `src/diff/App.tsx` — state, the view to lay out, toolbar; `Canvas.tsx` the canvas (map mode,
-  reveal/fit); `useDiffGraph.ts` the graph's loading and polling, `useReview.ts` marks and drafts.
+- `src/diff/App.tsx` — state, the page shown (Files first, Graph by `?view=graph`, `g` between
+  them; V60), the view to lay out, toolbar; `Canvas.tsx` the canvas (map mode, reveal/fit);
+  `useDiffGraph.ts` the graph's loading and polling, `useReview.ts` marks and drafts.
+- `src/diff/FilesPage.tsx` (V60) — the Files page: the change's files (`./api/files`, git's lines)
+  drawn with a workspace's `FileRow` (`workspaces/ChangesPanel.tsx`), the open file's diff
+  (`./api/file`: git's, the whole file as context) and comments under their lines. Its pure part
+  is `file-diff.ts` (reading git's diff, folding it to 3 lines of context as git's hunks, where a
+  line's comment goes); a line's comment names the innermost symbol holding it
+  (`comments.ts`'s `symbolAt`, `newLineDraft`), none outside every symbol. Never `files.ts`:
+  `test/files.test.ts` is the file names' guard.
 - `src/diff/Sidebar.tsx` (change list with search, findings, review tab), `DetailPanel.tsx`
   (diff, comments, users/uses), `ReviewTab.tsx`.
 - `src/ui/Resizer.tsx` — the one drag handle for panels (the diff's sidebar and detail panel, the
@@ -148,12 +156,14 @@ symbol glyph. Measure first paint (`/history`) and Bitwarden's graph after any f
 ## Tests
 
 - Unit: `test/flow.test.ts`, `layouts.test.ts`, `review.test.ts`, `detail.test.ts`,
-  `comments.test.ts`, `commits.test.ts` (vitest from the repo root). `test/` stays one folder;
-  a test imports its module from `../src/<folder>/`. The stylesheet's guards: `tokens.test.ts`
-  (contrast, radii, sizes, fonts) and `styles.test.ts` (every part in `styles.css`'s list).
+  `comments.test.ts`, `file-diff.test.ts`, `commits.test.ts` (vitest from the repo root). `test/`
+  stays one folder; a test imports its module from `../src/<folder>/`. The stylesheet's guards:
+  `tokens.test.ts` (contrast, radii, sizes, fonts) and `styles.test.ts` (every part in
+  `styles.css`'s list).
 - E2E: `e2e/*.spec.ts` (Playwright, after `pnpm build`). `e2e/symbiote.ts` turns a fixture's base/head
-  into a repo and serves `symbiote view` (`serveFixture`, which opens `/diff/<pair>/`), a fake forge
-  pull request (`servePullRequest`), five commits for History (`serveCommits`), or workspaces with a fake agent (`serveWorkspaces`). Every
-  spec checks there were no page errors.
+  into a repo and serves `symbiote view` (`serveFixture`, which opens `/diff/<pair>/`: its Files
+  page; a spec of the graph opens `?view=graph`), a fake forge pull request (`servePullRequest`),
+  five commits for History (`serveCommits`), or workspaces with a fake agent (`serveWorkspaces`).
+  Every spec checks there were no page errors.
 - Count minimap nodes, not DOM nodes: off-screen nodes are not in the DOM.
 - For layout or performance work, measure on real graphs with the `viewer-check` skill.

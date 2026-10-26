@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { servePullRequest, type RunningPullRequest } from './symbiote.js';
+import { graphPage, servePullRequest, type RunningPullRequest } from './symbiote.js';
 
 // `symbiote pr 7 --plugin qwik` on the plugin's MDX fixture: an `.mdx` route is a template with its
 // own diff and the components it renders, and a comment on one of its lines goes to the file.
@@ -18,7 +18,7 @@ test.afterAll(() => symbiote.stop());
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(symbiote.url);
+  await page.goto(graphPage(symbiote.url));
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
 });
 

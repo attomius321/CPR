@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { fixtureFile, servePullRequest, type RunningPullRequest } from './symbiote.js';
+import { graphPage, fixtureFile, servePullRequest, type RunningPullRequest } from './symbiote.js';
 
 // Review a pull request, then a new push arrives: what was reviewed and still the same stays
 // reviewed, what changed is flagged, and comments stay on their lines.
@@ -17,7 +17,7 @@ const saved = (page: Page, name: 'review' | 'drafts') =>
   );
 
 test('keeps the review across a new push and flags what changed', async ({ page }) => {
-  await page.goto(symbiote.url);
+  await page.goto(graphPage(symbiote.url));
   await page.getByRole('tab', { name: /Changes/ }).click();
   for (const name of ['perimeter', 'Canvas.clear']) {
     const write = saved(page, 'review');
@@ -39,7 +39,7 @@ test('keeps the review across a new push and flags what changed', async ({ page 
   });
 
   // A new run is a new origin: the state comes from the CLI's cache, not the browser.
-  await page.goto(symbiote.url);
+  await page.goto(graphPage(symbiote.url));
   await page.getByRole('tab', { name: /Changes/ }).click();
   await expect(page.locator('.stale-note')).toHaveText('↻ 1 symbol changed since you reviewed it');
   await expect(page.locator('.list-item', { hasText: 'perimeter' })).toHaveClass(/stale/);
@@ -58,7 +58,7 @@ test('opened with --since, walks only what changed since the previous push', asy
     .replace('shape.size ** 3', 'shape.size * shape.size * shape.size');
   await symbiote.push({ 'src/shapes.ts': `// Shapes and tools.\n${shapes}` }, { since: true });
 
-  await page.goto(symbiote.url);
+  await page.goto(graphPage(symbiote.url));
   const only = page.getByLabel(/Only changes since [0-9a-f]{7}/);
   await expect(only).toBeChecked();
   await expect(page.locator('.chip-since')).toHaveText(/since [0-9a-f]{7}: 1 updated · 7 same/);

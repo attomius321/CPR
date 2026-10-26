@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
+import { graphPage, serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // V34: the shell's sidenav and a workspace's changes are as wide as the person drags them, by mouse
 // or keyboard, within limits that leave the main area and the terminal room; the widths are kept
@@ -148,7 +148,7 @@ test('narrow: the sidenav is a drawer, without a handle', async ({ page }) => {
 test("a diff's sidenav, once opened, resizes too", async ({ page }) => {
   const diff = await serveFixture('callers');
   running.push(diff);
-  await page.goto(diff.url);
+  await page.goto(graphPage(diff.url));
   await expect(page.locator('.react-flow__node').first()).toBeVisible({ timeout: 20_000 });
   // A rail at first (decision 182): no handle.
   await expect(sidenavHandle(page)).toHaveCount(0);
