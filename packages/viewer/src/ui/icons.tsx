@@ -154,6 +154,13 @@ export const PlusIcon = () => (
   </Icon>
 );
 
+/** A terminal (V61): where one answers a workspace's agent; after lucide's (ISC). */
+export const TerminalIcon = () => (
+  <Icon>
+    <path d="M3 11.5 6.5 8 3 4.5M8 12h5" />
+  </Icon>
+);
+
 /** The sidenav's edge: folds it to a rail, or opens it. */
 export const SidenavIcon = () => (
   <Icon>

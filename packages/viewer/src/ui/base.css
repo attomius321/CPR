@@ -85,6 +85,8 @@
   --ring: color-mix(in srgb, var(--focus) 30%, transparent);
   /* The one on, lifted out of a raised track (a segmented control's). */
   --lifted: rgb(220 226 238 / 9%);
+  /* A picked line tab's ground (V61, the mockup's tabs): a breath above the strip. */
+  --tab-picked: color-mix(in srgb, var(--text) 4%, transparent);
   --shadow-lift: 0 1px 2px rgb(0 0 0 / 24%);
   --shadow-floating: 0 12px 28px rgb(0 0 0 / 45%);
   /* The primary's lit top edge (V42): light from above. */
@@ -158,6 +160,7 @@
   --field-line: color-mix(in srgb, var(--text) 16%, transparent);
   --ring: color-mix(in srgb, var(--focus) 25%, transparent);
   --lifted: #ffffff;
+  --tab-picked: #ffffff;
   --shadow-lift: 0 1px 2px rgb(11 18 32 / 6%);
   --shadow-floating: 0 10px 24px rgb(11 18 32 / 16%);
   --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
@@ -227,6 +230,7 @@
     --field-line: color-mix(in srgb, var(--text) 16%, transparent);
     --ring: color-mix(in srgb, var(--focus) 25%, transparent);
     --lifted: #ffffff;
+    --tab-picked: #ffffff;
     --shadow-lift: 0 1px 2px rgb(11 18 32 / 6%);
     --shadow-floating: 0 10px 24px rgb(11 18 32 / 16%);
     --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);

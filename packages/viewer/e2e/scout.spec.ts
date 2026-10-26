@@ -427,7 +427,8 @@ test("its head's choices, Effort, state and New conversation share one centre, o
     expect(Math.abs(state.centre - button.centre)).toBeLessThanOrEqual(1);
     if (width === 1920) {
       expect(Math.abs(button.centre - agent.centre)).toBeLessThanOrEqual(1);
-      expect((await head.boundingBox())?.height).toBe(44);
+      // 52 px since V61: every page's head as the mockup's (44 before, decision 213).
+      expect((await head.boundingBox())?.height).toBe(52);
     } else {
       expect(agent.top).toBeGreaterThan(button.bottom);
     }

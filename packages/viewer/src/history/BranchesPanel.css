@@ -6,14 +6,16 @@
   flex: none;
   width: 260px;
   min-height: 0;
-  border-right: 1px solid var(--line);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: var(--panel);
 }
 
-/* As tall as History's toolbar beside it (44 px with the list's line). */
+/* As tall as History's toolbar beside it (48 px with the list's line). */
 .branches-filter {
   flex: none;
-  height: 28px;
+  height: 32px;
   margin: 8px 8px 7px;
   padding: 0 10px;
   font-size: var(--size-small);
@@ -157,7 +159,7 @@
   .branches.open {
     display: flex;
     position: absolute;
-    inset: 0 auto 0 0;
+    inset: 8px auto 8px 8px;
     z-index: 5;
     max-width: calc(100% - 32px);
     box-shadow: 4px 0 16px var(--shadow);

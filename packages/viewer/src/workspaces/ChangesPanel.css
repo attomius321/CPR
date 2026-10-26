@@ -4,16 +4,19 @@
    1440 with the sidenav the terminal keeps 56 % of the window (decision 186). */
 .changes {
   flex: none;
-  /* As wide as the person dragged it (V34), the terminal keeping 480 px. */
-  width: min(var(--changes-width, 256px), calc(100cqi - 480px));
+  /* As wide as the person dragged it (V34), the terminal keeping 480 px; past the cards' gutters
+     since V61 (8 px each side and between them). */
+  width: min(var(--changes-width, 256px), calc(100cqi - 480px - 24px));
   min-height: 0;
   overflow: auto;
-  border-left: 1px solid var(--line);
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: var(--side);
   font-size: var(--size-small);
 }
 
-@container workspace (max-width: 1199px) {
+/* From 1,100 px since V61 (1,200 before): the sidenav's 264 px left 1,176 at 1440. */
+@container workspace (max-width: 1099px) {
   .changes,
   .changes-toggle,
   .workspace-split > .resizer {

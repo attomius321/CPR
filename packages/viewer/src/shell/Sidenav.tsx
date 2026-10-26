@@ -687,7 +687,7 @@ function WorkspaceCard({
           <div className="workspace-respond">
             <button
               type="button"
-              className="button secondary respond"
+              className="button respond"
               {...tip(`Answer ${name}\nIts terminal, focused`)}
               onClick={(event) => {
                 event.stopPropagation();

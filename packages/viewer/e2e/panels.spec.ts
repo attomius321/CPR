@@ -69,7 +69,7 @@ async function drag(page: Page, handle: Locator, dx: number): Promise<void> {
 test('drags the sidenav wider and narrower; kept across a reload and a fold', async ({ page }) => {
   const symbiote = await serve();
   await history(page, symbiote.url);
-  expect(await width(sidenav(page))).toBe(240);
+  expect(await width(sidenav(page))).toBe(264);
   const wide = await width(main(page));
 
   await drag(page, sidenavHandle(page), 100);
@@ -90,10 +90,10 @@ test('drags the sidenav wider and narrower; kept across a reload and a fold', as
 
   // A double-click restores the default, and that is kept too.
   await sidenavHandle(page).dblclick();
-  await expect.poll(() => width(sidenav(page))).toBe(240);
+  await expect.poll(() => width(sidenav(page))).toBe(264);
   await page.reload();
   await expect(page.locator('.commit').first()).toBeVisible();
-  expect(await width(sidenav(page))).toBe(240);
+  expect(await width(sidenav(page))).toBe(264);
 });
 
 test('the sidenav stops at 180 and 480 px, and leaves the main area 480 px', async ({ page }) => {
@@ -106,7 +106,7 @@ test('the sidenav stops at 180 and 480 px, and leaves the main area 480 px', asy
 
   await page.setViewportSize({ width: 920, height: 900 });
   await sidenavHandle(page).dblclick();
-  await expect.poll(() => width(sidenav(page))).toBe(240);
+  await expect.poll(() => width(sidenav(page))).toBe(264);
   await drag(page, sidenavHandle(page), 1000);
   await expect.poll(() => width(main(page))).toBe(480);
   expect(await width(sidenav(page))).toBe(440);

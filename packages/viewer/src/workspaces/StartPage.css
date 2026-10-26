@@ -26,11 +26,9 @@
   align-items: center;
   column-gap: 12px;
   row-gap: 2px;
-  min-height: 44px;
+  min-height: 52px;
   box-sizing: border-box;
-  padding: 7px var(--start-side);
-  border-bottom: 1px solid var(--line);
-  background: var(--side);
+  padding: 8px var(--start-side);
 }
 
 .start-top h1 {

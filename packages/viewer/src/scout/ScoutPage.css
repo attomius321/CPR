@@ -14,11 +14,9 @@
   grid-template-areas: 'title about actions';
   align-items: center;
   column-gap: 12px;
-  min-height: 44px;
+  min-height: 52px;
   box-sizing: border-box;
-  padding: 7px 12px 7px 16px;
-  border-bottom: 1px solid var(--line);
-  background: var(--side);
+  padding: 8px 12px 8px 16px;
 }
 
 .scout-top h1 {
@@ -172,12 +170,12 @@
 }
 
 /* In the head, on the line of the selects beside it (fix/scout-not-aligned): its label on their
-   centre, the stepper as high as they are (16 px of track and 12 of words). 300 px: narrower,
-   the first stop's word meets the second's. */
+   centre, the stepper as high as they are (16 px of track and 12 of words). 340 px since V61's
+   bigger type (300 before): narrower, the first stop's word meets the second's. */
 .scout-choices .scout-effort {
   align-items: center;
   gap: 8px;
-  width: 300px;
+  width: 340px;
 }
 
 .scout-choices .effort-stepper {
@@ -192,8 +190,8 @@
 /* Where the head's line is too short for them all, the choices go on a line of their own under
    the title, its state and New conversation. Measured with two agents, Codex's model and
    "Answered": 1,170 px of title, choices, actions, gaps and padding; 1,290 with 120 for the
-   checkout's name. */
-@container scout-head (max-width: 1290px) {
+   checkout's name. V61's bigger type and wider stepper: 1,410. */
+@container scout-head (max-width: 1410px) {
   .scout-choices {
     order: 1;
     flex-basis: 100%;
@@ -215,6 +213,15 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+/* On Scout's page, a card under its head (V61, the person's mockup); in Scribe's pane, the pane is
+   the card. */
+.scout-page .scout-terminal {
+  margin: 0 8px 8px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
 }
 
 .scout-terminal .agent-terminal {

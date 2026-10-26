@@ -20,7 +20,7 @@ import { ChangesPanel } from './ChangesPanel.js';
 import { useChangesPanel } from './useChangesPanel.js';
 import { ReplyForm } from './ReplyForm.js';
 import { WorkspaceTabs, type AgentView, type View } from './WorkspaceTabs.js';
-import { ChangesIcon } from '../ui/icons.js';
+import { ChangesIcon, TerminalIcon } from '../ui/icons.js';
 import { cleanUp } from './cleanup.js';
 import { useRemoving, workspaceKey } from './removing.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
@@ -685,11 +685,16 @@ function WorkspacePanel({
                 <ThreadTab thread={thread} worktree={workspace.worktree.path} />
                 {terminals && (
                   <p className="hint thread-readonly">
-                    To answer,{' '}
-                    <button type="button" className="link" onClick={() => show('terminal')}>
-                      open its terminal
-                    </button>
-                    .
+                    <span className="thread-readonly-icon">
+                      <TerminalIcon />
+                    </span>
+                    <span>
+                      To answer,{' '}
+                      <button type="button" className="link" onClick={() => show('terminal')}>
+                        open its terminal
+                      </button>
+                      .
+                    </span>
                   </p>
                 )}
               </div>

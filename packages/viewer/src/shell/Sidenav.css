@@ -10,14 +10,14 @@
 /* How many workspaces need the person: the waiting colour. */
 /* How many need you: a count in the warning's tint, round as the groups' counts (V37). */
 .page-count {
-  min-width: 18px;
-  padding: 0 5px;
+  min-width: 20px;
+  padding: 0 6px;
   border-radius: 9999px;
   background: color-mix(in srgb, var(--warning) 16%, transparent);
   color: var(--warning);
   font-size: var(--size-caption);
   font-weight: 600;
-  line-height: 16px;
+  line-height: 20px;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -114,11 +114,13 @@ button.workspace-about {
   background: var(--side);
 }
 
+/* The mark, Symbiote and the repository, the fold at the right (V61: the mockup's 52 px row). */
 .sidenav-top {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 8px 4px 14px;
+  gap: 8px;
+  min-height: 52px;
+  padding: 8px 10px 4px 12px;
 }
 
 .sidenav-brand {
@@ -126,12 +128,26 @@ button.workspace-about {
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   overflow: hidden;
   color: var(--text);
+  font-size: var(--size-title);
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
+}
+
+/* The fold and Start a workspace: raised squares on the chrome (V61, the mockup). */
+.sidenav-fold,
+.sidenav-heading .icon-button {
+  border: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--text);
+}
+
+.sidenav-fold {
+  width: 32px;
+  height: 32px;
 }
 
 .sidenav-brand .sidenav-label {
@@ -148,15 +164,15 @@ button.workspace-about {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 4px 8px;
+  padding: 6px 8px 4px;
 }
 
 .sidenav-pages a {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 8px;
+  gap: 12px;
+  height: 36px;
+  padding: 0 10px;
   border-radius: 8px;
   color: var(--muted);
   font-weight: 500;
@@ -167,7 +183,9 @@ button.workspace-about {
 }
 
 .sidenav-pages a .icon {
-  color: var(--faint);
+  width: 18px;
+  height: 18px;
+  color: var(--muted);
   stroke-width: 1.4;
 }
 
@@ -234,13 +252,13 @@ button.workspace-about {
 /* Its word, round in the warning's tint as the count by Workspaces; its dot is the rail's. */
 .sidenav-waits {
   margin-left: auto;
-  padding: 0 6px;
+  padding: 0 8px;
   border-radius: 9999px;
   background: color-mix(in srgb, var(--warning) 16%, transparent);
   color: var(--warning);
   font-size: var(--size-caption);
   font-weight: 600;
-  line-height: 16px;
+  line-height: 20px;
 }
 
 .sidenav-pages a .sidenav-waits + .state-dot {
@@ -277,7 +295,7 @@ button.workspace-about {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  margin-top: 12px;
+  margin-top: 16px;
 }
 
 .sidenav-heading {
@@ -285,9 +303,9 @@ button.workspace-about {
   align-items: center;
   gap: 6px;
   margin: 0;
-  padding: 0 8px 0 16px;
-  color: var(--muted);
-  font-size: var(--size-small);
+  padding: 0 10px 0 18px;
+  color: var(--text);
+  font-size: var(--size-body);
   font-weight: 600;
 }
 
@@ -368,16 +386,16 @@ button.workspace-about {
 .sidenav .workspace-group h3 {
   display: flex;
   align-items: center;
-  gap: 3px;
-  margin: 12px 8px 4px 6px;
+  gap: 6px;
+  margin: 14px 8px 4px 6px;
   color: var(--muted);
-  font-size: var(--size-small);
+  font-size: var(--size-body);
   font-weight: 500;
 }
 
 .sidenav .workspace-group h3 .icon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   color: var(--group-tone, var(--faint));
 }
 
@@ -387,36 +405,38 @@ button.workspace-about {
   --group-tone: var(--warning);
 }
 
-/* Waiting for you (V48): after the merges, in its own amber band; its cards say what they ask. */
+/* Waiting for you (V48): after the merges, in its own amber card; its cards say what they ask,
+   each a card inside it (V61, the mockup). */
 .sidenav .group-waiting {
-  margin: 8px 0 4px;
-  padding: 0 0 4px;
-  border: 1px solid color-mix(in srgb, var(--warning) 28%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--warning) 7%, transparent);
+  margin: 10px 0 4px;
+  padding: 0 0 6px;
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--warning) 5%, transparent);
 }
 
 .sidenav .group-waiting h3 {
-  margin: 7px 8px 2px 5px;
+  margin: 9px 8px 6px 9px;
   color: var(--text);
 }
 
 .sidenav .group-waiting .workspace-row {
-  margin: 0 3px;
+  margin: 0 6px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
 }
 
 .sidenav .group-waiting .workspace-row + .workspace-row {
-  margin-top: 2px;
+  margin-top: 4px;
 }
 
 /* What it asks: two lines at most, all of it in the title. */
 .sidenav .workspace-blocked {
   display: -webkit-box;
-  margin: 2px 0 0 14px;
+  margin: 2px 0 0 15px;
   overflow: hidden;
   color: var(--text);
   font-size: var(--size-small);
-  line-height: 17px;
+  line-height: 19px;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -428,12 +448,12 @@ button.workspace-about {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  margin: 6px 0 4px 14px;
+  margin: 8px 0 6px 15px;
 }
 
 .sidenav .button.respond {
-  min-height: 24px;
-  padding: 0 10px;
+  min-height: 28px;
+  padding: 0 14px;
 }
 
 /* Its own width, not History's column: it ends where the line does, under the kind (V53). */
@@ -458,22 +478,23 @@ button.workspace-about {
 }
 
 .sidenav .workspace-group .branches-count {
-  min-width: 18px;
-  margin: 0 0 0 3px;
-  padding: 0 5px;
+  min-width: 20px;
+  margin: 0 0 0 4px;
+  padding: 0 6px;
   border-radius: 9999px;
   background: var(--raised);
   color: var(--muted);
   font-size: var(--size-caption);
   font-weight: 500;
-  line-height: 16px;
+  line-height: 20px;
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
-/* A card, at most 64 px: the dot, the title and the kind; the state and its age; the branch. */
+/* A card, at most 72 px (64 before V61's bigger type): the dot, the title and the kind; the state
+   and its age; the branch. */
 .sidenav .workspace-row {
-  padding: 5px 8px;
+  padding: 6px 8px;
   border: 1px solid transparent;
   border-radius: 10px;
   cursor: pointer;
@@ -496,13 +517,13 @@ button.workspace-about {
 }
 
 .sidenav .workspace-head {
-  gap: 7px;
-  line-height: 18px;
+  gap: 8px;
+  line-height: 22px;
 }
 
 .sidenav .workspace-about {
   font-size: var(--size-body);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .sidenav .workspace-line,
@@ -511,9 +532,9 @@ button.workspace-about {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  margin: 1px 0 0 14px;
+  margin: 1px 0 0 15px;
   font-size: var(--size-small);
-  line-height: 16px;
+  line-height: 18px;
 }
 
 .sidenav .workspace-state {
@@ -552,7 +573,7 @@ button.workspace-about {
   border-radius: 0;
   background: none;
   color: var(--muted);
-  font: var(--size-small)/16px var(--sans);
+  font: var(--size-small)/18px var(--sans);
 }
 
 .sidenav .workspace-branch a.ref-branch:hover {
@@ -687,8 +708,8 @@ button.workspace-about {
   min-width: 0;
   overflow: hidden;
   font-size: var(--size-body);
-  font-weight: 500;
-  line-height: 18px;
+  font-weight: 600;
+  line-height: 22px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -705,7 +726,7 @@ button.workspace-about {
 
 .sidenav .card-remove {
   position: absolute;
-  top: 10px;
+  top: 8px;
   right: 4px;
   width: 24px;
   height: 24px;
