@@ -36,7 +36,7 @@ describe('readEvery', () => {
     ).toBe(5_000);
   });
 
-  it('also while Scout answers (V35)', () => {
+  it('also while Scout answers (V35) or waits on the person (V59)', () => {
     const done = state({ state: 'ready' });
     const scout = (state: ScoutStateName): WorkspacesState => ({
       ...done,
@@ -47,10 +47,12 @@ describe('readEvery', () => {
       },
     });
     expect(readEvery(scout('working'), 0)).toBe(5_000);
+    // Its link is an amber band while it waits: read on, so the band goes once it does not.
+    expect(readEvery(scout('needs-you'), 0)).toBe(5_000);
     expect(readEvery(scout('answered'), 0)).toBeNull();
   });
 
-  it('also while Scribe writes (V41)', () => {
+  it('also while Scribe writes (V41) or waits on the person (V59)', () => {
     const done = state({ state: 'ready' });
     const scribe = (state: ScoutStateName): WorkspacesState => ({
       ...done,
@@ -61,6 +63,7 @@ describe('readEvery', () => {
       },
     });
     expect(readEvery(scribe('working'), 0)).toBe(5_000);
+    expect(readEvery(scribe('needs-you'), 0)).toBe(5_000);
     expect(readEvery(scribe('answered'), 0)).toBeNull();
   });
 });
