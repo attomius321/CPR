@@ -1021,6 +1021,9 @@ export function workspaces(
           throw new WorkspaceRefused('its agent is not running', 409);
         }
         viaHermes.stop(branch);
+        // Hermes closes the turn it was in as it goes: this says it was stopped (decision 418).
+        workspace.agent = { ...workspace.agent, stopped: now().toISOString() };
+        await writeRecord(where, workspace);
         return started(where, workspace, await promptOf(where, workspace));
       }
       if (workspace.agent?.kind === 'codex') {
@@ -1223,7 +1226,17 @@ export function workspaces(
           409,
         );
       }
-      if (workspace.agent?.kind === 'hermes') return viaHermes.terminal(workspace, cols, rows);
+      if (workspace.agent?.kind === 'hermes') {
+        const opened = await viaHermes.terminal(workspace, cols, rows);
+        // Running again: no longer the Hermes Stop hung up.
+        if (workspace.agent.stopped) {
+          const agent = { ...workspace.agent };
+          delete agent.stopped;
+          workspace.agent = agent;
+          await writeRecord(where, workspace);
+        }
+        return opened;
+      }
       if (!terminals) throw new WorkspaceRefused('no terminals here', 409);
       const can = await terminals.available();
       if (!can.available) throw new WorkspaceRefused(can.reason, 409);

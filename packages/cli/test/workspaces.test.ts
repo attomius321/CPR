@@ -3410,7 +3410,8 @@ describe('workspaces', () => {
       kept: true,
     });
     expect(opening).toHaveLength(1);
-    const session = store(folder, 1, asked('Do it'));
+    // Its prompt given before Stop (at the tests' fixed NOW).
+    const session = store(folder, 1, asked('Do it', -1));
     const { workspace } = await s.stopAgent('feature/csv');
     expect(closed).toEqual(['t1']);
     expect(workspace.agent).toEqual({
@@ -3420,6 +3421,16 @@ describe('workspaces', () => {
       effort: 'low',
     });
     await expect(s.stopAgent('feature/csv')).rejects.toMatchObject({ status: 409 });
+    // Hung up, Hermes closes the turn it was in with a message of its own (real run, 0.3 s): still
+    // stopped, here and for a `symbiote view` started since.
+    session.messages.push({
+      role: 'assistant',
+      content: 'Your request was not processed.',
+      at: at(9),
+    });
+    expect((await s.list()).workspaces[0]?.agent.state).toBe('stopped');
+    const again = await service(repo, null, HOOK, terminals, null, hermes);
+    expect((await again.list()).workspaces[0]?.agent.state).toBe('stopped');
     // Not running: its terminal continues the session, at the level it was started at.
     expect(await s.terminal({ branch: 'feature/csv', cols: 100, rows: 30 })).toEqual({
       id: 't2',
@@ -3434,6 +3445,8 @@ describe('workspaces', () => {
       env: { PATH: '/usr/bin' },
       kept: true,
     });
+    // Continued: no longer stopped; Hermes waits at its prompt after the turn it closed.
+    expect((await s.list()).workspaces[0]?.agent.state).toBe('plan-ready');
     // A finished turn reads finished whether Hermes runs or not.
     session.messages.push(answered('Done.'));
     programs.delete('t2');

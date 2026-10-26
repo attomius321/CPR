@@ -22,7 +22,7 @@ export interface HermesToolCall {
   arguments: string;
 }
 
-/** A message of a Hermes session, as its export gives it (rewound ones left out). */
+/** A message of a Hermes session, as its export gives it (rewound and hidden ones left out). */
 export interface HermesMessage {
   /** `user`, `assistant`, `tool`. */
   role: string;
@@ -135,12 +135,15 @@ function toolCallsOf(value: unknown): HermesToolCall[] {
   });
 }
 
-/** One exported message, or null for one that is not a message or was rewound (`active: 0`). */
+/**
+ * One exported message, or null for one that is not a message, was rewound (`active: 0`) or is
+ * one Hermes's own interface hides (`display_kind: hidden`: an empty one it adds itself).
+ */
 function messageOf(item: unknown): HermesMessage | null {
   const v = (item ?? {}) as Record<string, unknown>;
   const role = words(v.role);
   const at = seconds(v.timestamp);
-  if (!role || at === undefined || v.active === 0) return null;
+  if (!role || at === undefined || v.active === 0 || v.display_kind === 'hidden') return null;
   const finish = words(v.finish_reason);
   const toolCalls = toolCallsOf(v.tool_calls);
   const toolCallId = words(v.tool_call_id);
@@ -251,7 +254,8 @@ function turnEnded(session: HermesSession): boolean {
  * What the page says of a Hermes workspace's agent (decision 417), from its session and whether
  * Symbiote's terminal runs it: a turn that ended is finished (plan ready, ready or done by the
  * branch's commits, as for the other agents), else it works while Hermes runs and is stopped
- * once it does not. No session yet: working while it runs, failed when its terminal ended
+ * once it does not; stopped too once Symbiote's Stop hung it up (`agent.stopped`), until it runs
+ * again. No session yet: working while it runs, failed when its terminal ended
  * (`ended`), else not running (a `symbiote view` started since). Never "needs you": Hermes's
  * approvals are drawn in its terminal only.
  */
@@ -266,6 +270,16 @@ export function hermesState(
   if (agent.error) return { state: 'not-started', kind, error: agent.error };
   if (read instanceof Error) {
     return { state: 'unknown', kind, error: `Hermes could not read its session: ${read.message}` };
+  }
+  // Hung up by Stop, Hermes closes its turn with a message of its own (V58 real run, 0.3 s):
+  // stopped until it runs again, or a message was given since (in another terminal).
+  const stopped = agent.stopped ? Date.parse(agent.stopped) / 1000 : undefined;
+  if (
+    !running &&
+    stopped !== undefined &&
+    !read?.messages.some((m) => m.role === 'user' && m.at > stopped)
+  ) {
+    return { state: 'stopped', kind, ...(read ? { id: read.id } : {}) };
   }
   if (!read) {
     if (running) return { state: 'working', kind };

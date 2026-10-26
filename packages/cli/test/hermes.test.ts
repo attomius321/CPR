@@ -154,7 +154,7 @@ describe('parseSessionIds (V58)', () => {
 });
 
 describe('parseHermesExport (V58)', () => {
-  it('reads a session and its active messages from `hermes sessions export --format jsonl`', () => {
+  it('reads a session and its messages from `hermes sessions export --format jsonl`, not rewound or hidden ones', () => {
     const line = JSON.stringify({
       id: '20261026_101430_6ffcdc',
       source: 'cli',
@@ -189,6 +189,14 @@ describe('parseHermesExport (V58)', () => {
           active: 1,
         },
         { role: 'assistant', content: 'rewound', timestamp: 1793002477, active: 0 },
+        // Hermes's own interface does not show it either.
+        {
+          role: 'assistant',
+          content: '',
+          timestamp: 1793002478,
+          active: 1,
+          display_kind: 'hidden',
+        },
         {
           role: 'assistant',
           content: 'Done.',
