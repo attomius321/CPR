@@ -7,10 +7,12 @@ import {
   type CheckoutTarget,
   type Graph,
   type HistoryScope,
+  type LineCount,
   type LocalReview,
   type McpAnswer,
   type MergeRequest,
   type PermissionMode,
+  type ReviewFile,
   type ScoutAsk,
   type ScoutOpen,
   type ScoutEffortChange,
@@ -437,7 +439,8 @@ export function count(text: string): number | null {
 
 /**
  * A branch review's verdict from the viewer (V16): the event, the summary, and comments on lines
- * of the change (checked as for a forge) or about one of its symbols.
+ * of the change (checked as for a forge) or about one of its symbols; a comment on a line no
+ * symbol holds names none (V60).
  */
 export function parseLocalReview(
   text: string,
@@ -459,11 +462,19 @@ export function parseLocalReview(
       const where = `comment ${i + 1}`;
       if (typeof c.id !== 'string' || c.id === '' || c.id.length > 100)
         throw new Error(`${where}: id`);
-      if (typeof c.symbol !== 'string' || !symbols.has(c.symbol)) {
-        throw new Error(`${where}: ${String(c.symbol)} is not part of this change`);
+      if (c.symbol === undefined && c.side === undefined) {
+        throw new Error(`${where}: a line or a symbol`);
+      }
+      if (c.symbol !== undefined && (typeof c.symbol !== 'string' || !symbols.has(c.symbol))) {
+        const named = typeof c.symbol === 'string' ? c.symbol : 'its symbol';
+        throw new Error(`${where}: ${named} is not part of this change`);
       }
       if (typeof c.body !== 'string' || c.body.trim() === '') throw new Error(`${where}: empty`);
-      const about = { id: c.id, symbol: c.symbol, body: c.body };
+      const about = {
+        id: c.id,
+        ...(typeof c.symbol === 'string' ? { symbol: c.symbol } : {}),
+        body: c.body,
+      };
       if (c.side === undefined) return about;
       // Checked as a forge's comment would be; its errors name this comment.
       let placed: ReviewComment | undefined;
@@ -540,6 +551,20 @@ export function parseReview(text: string, allowed: Record<Side, Set<string>>): R
       return { side: c.side, path: c.path, otherPath: c.otherPath, line: c.line, body: c.body };
     }),
   };
+}
+
+/**
+ * The graph's files with git's lines (V60), matched by path (where a file is, or was for a deleted
+ * one); a file git counts no lines of is binary.
+ */
+export function withLines(files: Graph['files'], counts: readonly LineCount[]): ReviewFile[] {
+  const byPath = new Map(counts.map((count) => [count.path, count]));
+  return files.map((file) => {
+    const count = byPath.get(file.path);
+    if (!count) return file;
+    if (count.added === null || count.removed === null) return { ...file, binary: true };
+    return { ...file, added: count.added, removed: count.removed };
+  });
 }
 
 /** Repo-relative files per side that the graph refers to. */

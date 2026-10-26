@@ -501,6 +501,36 @@ describe('finishing a branch review (V16, V17)', () => {
     });
   });
 
+  it('records a comment on a line no symbol holds, without a symbol (V60)', async () => {
+    const { repo } = pushedRepo();
+    const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
+    const { info } = await reviews.resolve('agent');
+    const line = {
+      id: 'c3',
+      side: 'head' as const,
+      path: 'src/W2.ts',
+      otherPath: 'src/W2.ts',
+      line: 1,
+      body: 'Say why.',
+    };
+    const result = await reviews.finish(
+      info,
+      { event: 'comment', body: '', comments: [line] },
+      reader(repo.root, info),
+    );
+    expect(result.verdict.comments).toEqual([
+      {
+        body: 'Say why.',
+        code: 'export const W2 = 1;',
+        id: 'c3',
+        line: 1,
+        path: 'src/W2.ts',
+        side: 'head',
+      },
+    ]);
+    expect(result.text).toContain('\n\nsrc/W2.ts:1\n    export const W2 = 1;\nSay why.\n');
+  });
+
   it("words a verdict for the agent with the project's sentences (V28)", async () => {
     const { repo, shas } = pushedRepo();
     repo.write({

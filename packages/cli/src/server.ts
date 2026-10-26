@@ -9,15 +9,18 @@ import {
   type BranchReviewInfo,
   type CheckoutResult,
   type BranchMerge,
+  type ChangedFile,
   type FinishResult,
   type LocalReview,
   type CheckoutTarget,
   type WorkspaceRequest,
   type Graph,
   type HistoryRefs,
+  type LineCount,
   type McpCaller,
   type RefList,
   type RepoStatus,
+  type ReviewFile,
 } from '@symbiote/core';
 import type { Review } from '@symbiote/forge';
 import { silentLog, type Log } from '@symbiote/log';
@@ -55,6 +58,7 @@ import {
   SHA,
   sourceFiles,
   terminalSize,
+  withLines,
   type Side,
 } from './server-requests.js';
 import type { OpenRequest, OpenResult } from './editor.js';
@@ -81,6 +85,14 @@ export interface ReviewTarget {
   submit(review: Review): Promise<{ url: string }>;
 }
 
+/** A change's files read from git (V60), for the Files page: their lines, and one file's diff. */
+export interface ChangeFiles {
+  /** Lines added and removed per file from `from` to `to`, renames detected. */
+  lines(from: string, to: string): Promise<LineCount[]>;
+  /** One file's diff from `from` to `to`, the whole file as context. */
+  diff(from: string, to: string, file: ChangedFile): Promise<string>;
+}
+
 /** `symbiote view`: the repository's commits, and the diffs between them picked in the viewer. */
 export interface RepositoryOptions {
   /** The repository's folder name, shown at the top of the viewer's sidenav (V29a). */
@@ -99,6 +111,8 @@ export interface RepositoryOptions {
   diffs: Diffs;
   /** A repo-relative file at a commit. */
   readFile(sha: string, path: string): Promise<string>;
+  /** Each diff's files with their lines, and one file's diff (V60): `./api/files`, `./api/file`. */
+  files?: ChangeFiles;
   /** Where a diff's review state is kept; without it the viewer keeps state in the browser. */
   state?: (graph: Graph) => StateStore;
   /** Branch reviews (V15): `/api/reviews`, and each review under `/review/<branch>/`. */
@@ -130,6 +144,8 @@ export interface ViewServerOptions {
   viewerDir: string;
   /** Reads a repo-relative file on one side of `graph`'s change. */
   readSource?: (side: Side, path: string) => Promise<string>;
+  /** The files of `graph`'s change, and one file's diff (V60): `/api/files`, `/api/file`. */
+  files?: ChangeFiles;
   /** Default: a free port. */
   port?: number;
   /** Enables `POST /api/review`. */
@@ -167,6 +183,14 @@ interface Site {
   merge?: () => Promise<BranchMerge | null>;
   /** The worktree the branch reviewed is checked out in, when not this one (V18b). */
   worktree?: () => Promise<string | undefined>;
+  /** The change's files with their lines, and one file's diff (V60). */
+  files?: SiteFiles | undefined;
+}
+
+/** A site's {@link ChangeFiles}, at its graph's two commits. */
+interface SiteFiles {
+  list(): Promise<ReviewFile[]>;
+  diff(file: ChangedFile): Promise<string>;
 }
 
 export interface ViewServer {
@@ -204,6 +228,9 @@ const TERMINAL_PATH = /^\/api\/terminals\/([0-9a-z]+)(?:\/(in|resize|close|image
 const MAX_TERMINAL_INPUT = 64 * 1024;
 /** How often an open merge log's stream looks for new lines (V46a). */
 const LOG_POLL_MS = 250;
+
+/** Most a file's diff may weigh on the Files page (V60, decision 436): more would stall it. */
+const MAX_FILE_DIFF_BYTES = 5 * 2 ** 20;
 
 /** Most a page's error may weigh (LG1), and how many the pages may send a minute. */
 const MAX_PAGE_ERROR = 32 * 1024;
@@ -244,6 +271,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           readSource: options.readSource,
           state: options.state,
           review: options.review,
+          files: siteFiles(options.graph, options.files),
         }
       : undefined;
   // One site per diff graph, made once: `allowed` walks the whole graph.
@@ -770,6 +798,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
             ? repository?.state !== undefined
             : site?.state !== undefined,
         ...(options.open && (site !== undefined || diff) ? { open: true } : {}),
+        ...(site?.files || (diff && repository?.files) ? { files: true } : {}),
         ...(repository ? { commits: true } : {}),
         ...(repository?.name ? { repo: repository.name } : {}),
         ...(branchReview ? { branchReview } : {}),
@@ -791,6 +820,20 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       } catch {
         return send(res, 404, 'unknown source');
       }
+    }
+    if (path === '/api/files') {
+      if (!site?.files) return send(res, 404, 'no files here');
+      return send(res, 200, JSON.stringify(await site.files.list()), TYPES['.json']);
+    }
+    if (path === '/api/file') {
+      const wanted = url.searchParams.get('path');
+      const file = site?.graph.files.find((f) => f.path === wanted);
+      if (!site?.files || !file) return send(res, 404, 'unknown file');
+      const diff = await site.files.diff(file);
+      if (Buffer.byteLength(diff) > MAX_FILE_DIFF_BYTES) {
+        return send(res, 413, `a diff of at most ${MAX_FILE_DIFF_BYTES / 2 ** 20} MB`);
+      }
+      return send(res, 200, diff, 'text/plain; charset=utf-8');
     }
     if (path.startsWith('/api/')) return send(res, 404, 'not found');
     return serveFile(res, path);
@@ -928,6 +971,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           return sha ? repo.readFile(sha, path) : Promise.reject(new Error(`no ${side}`));
         },
         state: repo.state?.(graph),
+        files: siteFiles(graph, repo.files),
       };
       sites.set(graph, site);
     }
@@ -1614,4 +1658,26 @@ function readBody(req: IncomingMessage, limit: number): Promise<string> {
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
   });
+}
+
+/**
+ * A graph's files from git (V60), at its two commits; none without a reader or a commit. Their
+ * lines are read once; a failed read is tried again at the next ask.
+ */
+function siteFiles(graph: Graph, files: ChangeFiles | undefined): SiteFiles | undefined {
+  const from = graph.revisions.from;
+  const to = graph.revisions.head.sha;
+  if (!files || !from || !to) return undefined;
+  let listed: Promise<ReviewFile[]> | undefined;
+  return {
+    list: () =>
+      (listed ??= files.lines(from, to).then(
+        (counts) => withLines(graph.files, counts),
+        (error: unknown) => {
+          listed = undefined;
+          throw error;
+        },
+      )),
+    diff: (file) => files.diff(from, to, file),
+  };
 }
