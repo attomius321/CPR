@@ -12,7 +12,7 @@
   background: var(--side);
 }
 
-/* Line tabs as a workspace's (V61, decision 441, the person's mockup; a segmented control from
+/* Line tabs as a workspace's (V61, decision 445, the person's mockup; a segmented control from
    V42): the picked one in the text's colour on a lifted ground, the primary's line under it. */
 .tabs {
   display: flex;

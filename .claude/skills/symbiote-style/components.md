@@ -325,7 +325,7 @@ kbd {
 
 ## Tabs
 
-Line tabs (V61, decision 441, the person's mockup): a workspace's views, the diff sidebar's Changes
+Line tabs (V61, decision 445, the person's mockup): a workspace's views, the diff sidebar's Changes
 / Findings. A strip on the card's chrome, its bottom hairline in `--line`; tabs 40 px, 15 px
 weight 500 in `--muted`, 8 px top corners; the picked one in `--text` on `--tab-picked` with a
 3 px `--primary` line along its bottom, inset 8–10 px; a hairline divider before "+".

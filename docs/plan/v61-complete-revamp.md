@@ -2,9 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v61-complete-revamp.md)
 
-**Status:** in progress (2026-10-26), on branch `feature/complete-revamp` (a workspace started in
-Symbiote, from `main` at `3365699`). The person OK'd the plan with "go ahead": the four proposed
-decisions below stand.
+**Status:** ready for review (2026-10-26), on branch `feature/complete-revamp` (a workspace started
+in Symbiote, from `main` at `3365699`). The person OK'd the plan with "go ahead": the four proposed
+decisions below stand, and a fifth (445) came in building. "As built" and results at the end.
 
 **Problem** (asked: "Make the black theme according to the following screenshots. Take elements
 that persist across the app, and preserve the displayed theme. Change the current icon with the
@@ -134,5 +134,40 @@ copy of the tokens (`packages/desktop/start/start.css`).
 | 438 | The graph's text | **Today's sizes** | The graph zooms; its layout is estimated from characters and stays `main`'s |
 | 439 | The first-time intro | **Kept as it is** | The person's animation; it ends on the koi S, theirs to change |
 | 440 | The primary's text | **Dark, its hover lighter** | White on the mockup's violet is 4.01:1, under 4.5 |
+| 445 | The diff sidebar's Changes / Findings | **The mockup's line tabs, as a workspace's** (a segmented control since V42, decision 284) | One tab style across the app, as the person asked; a segmented control stays for a mode (Files / Graph, a theme) |
 
 **Not in V61 (later)**: the intro's ending on the new S; a light theme of the mockup's own.
+
+## As built (V61)
+
+- **Tokens and type** as planned. One token more, `--tab-picked` (a picked line tab's ground: the
+  text at 4 % dark, white light). The graph keeps V32's scale by declaring it again on
+  `.react-flow` (`ui/base.css`), checked by `tokens.test.ts`.
+- **The sidenav is 264 px** at first, the mockup's width, not the plan's 256: at 256 the waiting
+  card's question wrapped. The changes panel shows from a 1,100 px workspace (1,200 before): the
+  wider sidenav left 1,176 at 1440 and it was gone.
+- **Every page's head is 52 px** on the page's ground (44 px in a lifted strip before, decision
+  213); History's toolbar is its rows card's strip, as a workspace's tabs.
+- **Buttons 32 px** (28), chips 20, the kind chip 22, the sidenav's rows 36 with 18 px icons, its
+  cards at most 72 px (64). Idle nav icons in `--muted` (the mockup), not `--faint`.
+- **The mark** is `SymbioteMark` (`ui/mark.png`), cut round from `scripts/desktop/logo.png` (the
+  person's image as given) by the rewritten `scripts/desktop/icon.mjs`, with the app's icon, the
+  favicon and the start page's mark. The intro still ends on the koi S (decision 439).
+- **Fixed on the way**, found by the e2e run and the screenshots: the Start page with More open
+  overflowed 1440 × 900 by 10 px (its body 8 px under the head now); Skills' checks dropped under
+  the text at 1440 (its threshold 860 px, 880 before); the workspace head's time ran under its
+  buttons at 900 px (the state keeps 160 px); Scout's stepper read "Defaultlow" (340 px, 300);
+  Activity's time ran into its mark (its column five captions wide); a finding's badge stretched
+  to a wrapped rule (on `main` too); the merge page's branch side takes lane 4's magenta, lane 1
+  having left purple for blue.
+- **Not done**: the README's screenshots. They were staged by hand on a `cart` repository with
+  real merges (`docs/journal/remake-readme.md`); retaking them is a job of its own, and they show
+  the koi's look until then.
+
+**Results.** `pnpm check` 1,873 of 1,873; `pnpm test:e2e` 288 of 288 (the first run's 16 failures
+each a measure of the old look: five fixed in the CSS, the rest updated with their reason). Every
+contrast rule passes (dark text 15.24, accent 5.96, edge 3.16; dark words on the primary 4.89).
+Bitwarden `737ee3f` against `main`, alternated, medians: first paint 312 / 311 ms, select 104 /
+104 ms, mark reviewed 33 / 33 ms, pan 63 / 63 fps, the same nodes, edges and page elements (the
+graph's layout unchanged). The terminal beside the changes panel at 1440 × 900: 97 columns, 49 %
+of the window (110 and 56 % before), the cost of its 15 px type and the cards' gutters.

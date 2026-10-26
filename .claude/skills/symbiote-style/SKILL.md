@@ -97,7 +97,7 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
 | A 2–4 px coloured left border on a row | A neutral row; the state as a dot, an icon or a tinted badge |
 | Bordered chips, mono text for names | Quiet chips: `--raised`, muted text, 4 px radius, no border; names in sans |
 | A filled saturated pill (HEAD's) | A success tint: a 12 % fill and a 30 % edge, the state colour as text |
-| Underlined tabs with a heavy full-width rule (the diff's sidebar until V42) | The mockup's line tabs (V61, decision 441): the picked one in `--text` on a lifted ground (`--tab-picked`), a 3 px `--primary` line under it; a segmented control for a mode (Files / Graph, a theme) |
+| Underlined tabs with a heavy full-width rule (the diff's sidebar until V42) | The mockup's line tabs (V61, decision 445): the picked one in `--text` on a lifted ground (`--tab-picked`), a 3 px `--primary` line under it; a segmented control for a mode (Files / Graph, a theme) |
 | Letters as buttons and hints | lucide-style icons; key caps on hover or in the tooltip |
 | A grey, disabled-looking main action | The primary: the S's violet `#7c68fc`, dark words (`--primary-text`), its top edge lit (`--primary-shine`) |
 | Radii of seven sizes | The scale: 4, 8, 10, 11, 14 px and round |

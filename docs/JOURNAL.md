@@ -250,3 +250,4 @@ merge commit.
 - 2026-10-26 [SK1 spike — where skills from another repository live today, and what reads them](journal/sk1-skill-library.md)
 - 2026-10-26 [SK1 — a skill library on the Skills page and for Scribe](journal/sk1-skill-library.md)
 - 2026-10-26 [V61 spike — the mockup's colours against today's](journal/v61-complete-revamp.md)
+- 2026-10-26 [V61 — the mockup's black theme on every page, the new S, bigger text](journal/v61-complete-revamp.md)

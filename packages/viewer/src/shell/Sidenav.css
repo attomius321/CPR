@@ -532,6 +532,9 @@ button.workspace-about {
   align-items: center;
   gap: 6px;
   min-width: 0;
+  /* Its line's height whatever sits on it: the agent's mark on its baseline made it 18.00003 px,
+     and the card a fraction over its 72 (V61). */
+  height: 18px;
   margin: 1px 0 0 15px;
   font-size: var(--size-small);
   line-height: 18px;

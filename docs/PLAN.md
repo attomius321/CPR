@@ -199,7 +199,7 @@ hosted.
 | [V56](plan/v56-skills-page-layout.md) | Skills: the page's own, the whole main area | ready for review | 407–410 | [journal](journal/v56-skills-page-layout.md) |
 | [V54](plan/v54-tooltips.md) | Tooltips drawn by Symbiote, one form per context | ready for review | 397–402 | [journal](journal/v54-tooltips.md) |
 | [V59](plan/v59-scout-waiting-mark.md) | Scout's and Scribe's links, whole, in Waiting for you's amber band while they wait | ready for review | 422–425 | [journal](journal/v59-scout-waiting-mark.md) |
-| [V61](plan/v61-complete-revamp.md) | The mockup's black theme on every page, the new S as the icon, text a step bigger | in progress | 437–440 | [journal](journal/v61-complete-revamp.md) |
+| [V61](plan/v61-complete-revamp.md) | The mockup's black theme on every page, the new S as the icon, text a step bigger | ready for review | 437–440, 445 | [journal](journal/v61-complete-revamp.md) |
 
 ### Native window
 
