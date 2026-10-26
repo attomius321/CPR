@@ -115,6 +115,9 @@ test("] and the head's button hide it, kept across a reload; shown only where th
   await expect(workspace(page)).toBeVisible();
   await expect(toggle(page)).toHaveAttribute('aria-pressed', 'false');
   await expect(panel(page)).toBeHidden();
+  // The terminal takes the focus once it is attached: wait for it, or on a loaded machine it
+  // lands between the click below and `]`, which then goes to the agent (a merge check, V59).
+  await expect(workspace(page).locator('.xterm-helper-textarea')).toBeFocused(POLL);
   // ] outside the terminal (in it, the key is the agent's).
   await workspace(page).getByRole('heading', { name: 'Add a half function' }).click();
   await page.keyboard.press(']');

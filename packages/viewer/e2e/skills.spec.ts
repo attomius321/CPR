@@ -326,6 +326,18 @@ test('Scribe: a request starts Claude Code writing skills only, and what it writ
     name: /Skills/,
   });
   await expect(skillsLink).toHaveAttribute('data-state', 'working', POLL);
+  // It asks the person (V59, decision 424): Skills is the amber band Scout's link is.
+  symbiote.setSession('fake0', {
+    state: 'waiting',
+    status: 'idle',
+    waitingFor: 'permission prompt',
+  });
+  await expect(skillsLink).toHaveAttribute('data-state', 'waiting', POLL);
+  await expect(skillsLink).toHaveAccessibleName('Skills, Scribe waits for you');
+  await expect(skillsLink).toHaveAttribute('data-tip', 'Skills\nScribe waits for you');
+  await expect(skillsLink).toHaveAttribute('data-tip-tone', 'warn');
+  await expect(skillsLink.locator('.sidenav-waits')).toHaveText('Waits');
+  await expect(skillsLink.locator('.state-dot')).toBeHidden();
   symbiote.setSession('fake0', { state: 'done', status: 'idle', answer: 'Wrote it.' });
   await expect(skillsLink).toHaveAttribute('data-state', 'answered', POLL);
   await skillsLink.click();
