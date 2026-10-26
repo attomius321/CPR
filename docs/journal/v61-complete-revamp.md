@@ -70,7 +70,9 @@ alternated with `main`'s build from `git archive`): first paint 312 / 311 ms (me
 edges and 3,151 page elements. Screenshots at 1440 × 900, 1×, dark and light, before and after:
 History (empty, with commits, its row menu), Start, Scout, Skills, Monitor, Settings, a
 workspace's four tabs, one to review, the folded rail, 900 px, a diff's Files and Graph with a
-symbol open; the desktop app's window and start page under Xvfb.
+symbol open; the desktop app's window and start page under Xvfb. After merging `main` (LG2,
+one conflict in `docs/JOURNAL.md`): `pnpm check` 1,881 of 1,881, `pnpm build`, `pnpm test:e2e`
+288 of 288.
 
 Not verified: the icon in Windows' taskbar through WSLg and an installed launcher (it keeps the
 old icon until `symbiote app install` runs again); macOS; the README's screenshots, which still

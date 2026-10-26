@@ -170,4 +170,6 @@ contrast rule passes (dark text 15.24, accent 5.96, edge 3.16; dark words on the
 Bitwarden `737ee3f` against `main`, alternated, medians: first paint 312 / 311 ms, select 104 /
 104 ms, mark reviewed 33 / 33 ms, pan 63 / 63 fps, the same nodes, edges and page elements (the
 graph's layout unchanged). The terminal beside the changes panel at 1440 × 900: 97 columns, 49 %
-of the window (110 and 56 % before), the cost of its 15 px type and the cards' gutters.
+of the window (110 and 56 % before), the cost of its 15 px type and the cards' gutters. After
+merging `main` (LG2) into the branch: `pnpm check` 1,881 of 1,881, `pnpm build`, `pnpm test:e2e`
+288 of 288.
