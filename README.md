@@ -140,8 +140,6 @@ When you click **Start** (or press Ctrl+Enter), Symbiote:
 3. records the workspace in `symbiote/workspaces/<branch>.json`;
 4. starts the agent in the worktree, in the background, with the brief.
 
-The agent keeps running when you close the page or Symbiote's window.
-
 ### See what needs you
 
 The sidenav lists your workspaces in groups, by what each one needs from you:
@@ -227,9 +225,8 @@ waits until you click **Land**.
 
 Symbiote does not push unless you set `merge.push` to `true` in `symbiote/config.json`. Merges
 run one at a time, in the order you asked for them. Click one under **Merging** to see its steps
-and their output as they run. If the check fails, nothing
-lands, and the merge page shows the check's output. If the project has no check, the merge waits
-for you to click **Land**.
+and their output as they run. If the check fails, nothing lands, and the merge page shows the
+check's output. If the project has no check, the merge waits for you to click **Land**.
 
 If the branch conflicts with the target, Symbiote gives the conflict to the *merger*, an agent
 that proposes a resolution for each conflicting part. Nothing lands until you review it. The
@@ -329,7 +326,7 @@ All settings are in the [configuration reference](docs/reference/configuration.m
   review shows no symbols, but you can still approve and merge it. Workspaces work in any git
   repository.
 - The analysis is static: it reads code and does not run it.
-- Symbiote is tested on Linux and WSL. macOS is not tested yet. On Windows, use WSL.
+- Symbiote is tested on Linux and WSL only, as [Requirements](#requirements) says.
 
 ## Development
 
