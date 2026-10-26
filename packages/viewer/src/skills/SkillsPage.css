@@ -365,6 +365,75 @@
   font-weight: normal;
 }
 
+/* The skill library (SK1): its entry's line when none is set, at the list's end; its pane, left
+   in the open pane as New skill's form is: where it is, its changes, the commit's message. */
+.skills-library-unset {
+  margin: 16px 0 0;
+  padding: 0;
+  font-size: var(--size-small);
+}
+
+.skills-library {
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.skills-library > :not(.skills-back) {
+  max-width: 760px;
+}
+
+.skills-library h3 {
+  margin: 8px 0 4px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+.library-changes {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.library-changes li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 2px 0;
+}
+
+.library-changes code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: var(--size-small) / 1.6 var(--mono);
+}
+
+.library-clean,
+.library-empty {
+  margin: 0;
+}
+
+.library-empty {
+  margin-bottom: 8px;
+}
+
+.library-git-note {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+.library-git-note code {
+  font-family: var(--mono);
+}
+
+.skills-where-choice {
+  justify-self: start;
+  font-weight: normal;
+}
+
 /* Scribe (V41b): Scout's conversation (`ScoutPage.css`'s parts) filling the pane (decision 410):
    its head strip, then its terminal to the right and bottom edges, as Scout's page and a
    workspace's terminal are. */
@@ -428,7 +497,8 @@
 
 @media (max-width: 480px) {
   .skills-editor,
-  .skills-new {
+  .skills-new,
+  .skills-library {
     padding: 12px 16px;
   }
 }

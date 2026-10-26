@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Skill, SkillChange, SkillsState } from '@symbiote/core';
+import type { LibraryState, Skill, SkillChange, SkillsState } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
 import { getJson, postJson } from '../ui/http.js';
 import { BackIcon, PlusIcon } from '../ui/icons.js';
 import { useShell } from '../shell/shell-context.js';
+import { hrefOf, type Route } from '../shell/pages.js';
 import { Conversation, type ConversationAgent } from '../scout/Conversation.js';
 import { scoutStateText } from '../scout/scout.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
@@ -17,11 +18,19 @@ import {
   skillSize,
 } from './skills.js';
 import { tip } from '../ui/tip.js';
+import { libraryGitText, libraryName, librarySync, skillPlace } from './library.js';
+import { LibraryPane } from './LibraryPane.js';
 
 const API = '/api/skills';
-/** The form for a new skill, and Scribe's conversation, in the list's place of a skill's path. */
+/**
+ * The form for a new skill, Scribe's conversation and the skill library's pane (SK1), in the list's
+ * place of a skill's path.
+ */
 const NEW = 'new';
 const SCRIBE = 'scribe';
+const LIBRARY = 'library';
+/** Settings' entry for the skill library (SK1, decision 427). */
+const LIBRARY_SETTINGS: Route = { page: 'settings', prompt: 'skill-library' };
 /** While Scribe works, how often the skills are read again: what it writes shows. */
 const SCRIBE_POLL_MS = 5_000;
 
@@ -38,9 +47,9 @@ interface Notice {
 const without = (drafts: Record<string, string>, path: string) =>
   Object.fromEntries(Object.entries(drafts).filter(([p]) => p !== path));
 
-/** The address of what is open: a skill by its path, the form, or Scribe. */
+/** The address of what is open: a skill by its path, the form, Scribe, or the library. */
 function addressOf(open: string): string {
-  if (open === NEW || open === SCRIBE) return `?${open}`;
+  if (open === NEW || open === SCRIBE || open === LIBRARY) return `?${open}`;
   return `?skill=${encodeURIComponent(open)}`;
 }
 
@@ -98,8 +107,9 @@ export function SkillsPage() {
   /** On a narrow screen, a skill picked takes the page. */
   const [picked, setPicked] = useState(() => {
     const params = new URLSearchParams(window.location.search);
-    return params.has('skill') || params.has(NEW) || params.has(SCRIBE);
+    return params.has('skill') || params.has(NEW) || params.has(SCRIBE) || params.has(LIBRARY);
   });
+  const shell = useShell();
   const { scribe } = useWorkspaces();
   /** What Improve with Scribe puts in Scribe's box. */
   const [asking, setAsking] = useState<{ text: string; at: number } | undefined>(undefined);
@@ -126,7 +136,13 @@ export function SkillsPage() {
       const params = new URLSearchParams(search);
       // No skill yet: the form for the first one.
       setOpen(
-        params.has(SCRIBE) ? SCRIBE : params.has(NEW) ? NEW : (skillOfUrl(search, paths) ?? NEW),
+        params.has(SCRIBE)
+          ? SCRIBE
+          : params.has(NEW)
+            ? NEW
+            : params.has(LIBRARY) && read.library
+              ? LIBRARY
+              : (skillOfUrl(search, paths) ?? NEW),
       );
     });
   }, [load]);
@@ -154,7 +170,7 @@ export function SkillsPage() {
     [state, drafts],
   );
   // Leaving with an unsaved change asks first, as Settings does (V28b).
-  const setLeaveGuard = useShell()?.setLeaveGuard;
+  const setLeaveGuard = shell?.setLeaveGuard;
   useEffect(() => {
     if (edited.length === 0) return;
     const onLeave = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -214,34 +230,47 @@ export function SkillsPage() {
     if (next) setDrafts((all) => without(all, skill.path));
   };
   const remove = async (skill: Skill) => {
+    const gone = `Deleted ${folderOf(skill, state?.library)}/${skill.name}.`;
     const next = await change(
       skill.path,
       { action: 'delete', path: skill.path, version: skill.version },
-      () => `Deleted ${skill.folder}/${skill.name}.`,
+      () => gone,
     );
     if (!next) return;
     setDrafts((all) => without(all, skill.path));
     const first = next.skills[0]?.path ?? NEW;
     setOpen(first);
-    setNotice({ at: first, text: `Deleted ${skill.folder}/${skill.name}.` });
+    setNotice({ at: first, text: gone });
     window.history.replaceState(null, '', addressOf(first));
   };
-  const create = async (name: string, description: string) => {
-    const next = await change(NEW, { action: 'new', name, description }, () => '');
-    const made = next?.skills.find((s) => s.folder === '.claude/skills' && s.name === name);
+  const create = async (name: string, description: string, where: 'checkout' | 'library') => {
+    const inLibrary = where === 'library';
+    const next = await change(
+      NEW,
+      { action: 'new', name, description, ...(inLibrary ? { where: 'library' as const } : {}) },
+      () => '',
+    );
+    const made = next?.skills.find(
+      (s) => s.folder === (inLibrary ? 'library' : '.claude/skills') && s.name === name,
+    );
     if (!made) return false;
     setOpen(made.path);
     setNotice({
       at: made.path,
-      text: `Made ${made.path}. Write its instructions under the frontmatter, then save.`,
+      text: `Made ${skillPlace(made, next?.library)}. Write its instructions under the frontmatter, then save.`,
     });
     window.history.replaceState(null, '', addressOf(made.path));
     return true;
   };
   const improve = (skill: Skill) => {
-    setAsking({ text: `Improve ${skill.path}: `, at: Date.now() });
+    setAsking({ text: `Improve ${skillPlace(skill, state?.library)}: `, at: Date.now() });
     show(SCRIBE);
   };
+  /** A change to the library's git (SK1); read again after a refusal, which may follow a commit. */
+  const libraryGit = async (request: SkillChange, done: string) => {
+    if (!(await change(LIBRARY, request, () => done))) void load();
+  };
+  const toSettings = () => shell?.navigate(LIBRARY_SETTINGS);
   const link = () =>
     void change('codex', { action: 'link' }, (next) =>
       `Linked: Codex reads .agents/skills, now .claude/skills. ${next.codex.git === 'new' ? 'The link is not committed: commit it to share it.' : ''}`.trim(),
@@ -250,6 +279,8 @@ export function SkillsPage() {
   const current = state?.skills.find((s) => s.path === open);
   const groups = state ? skillGroups(state) : [];
   const codex = state?.codex;
+  const library = state?.library;
+  const librarySkills = state?.skills.filter((s) => s.folder === 'library') ?? [];
   return (
     <div className="skills">
       <div className="commits-title skills-bar">
@@ -263,6 +294,10 @@ export function SkillsPage() {
           <p>
             Saved in this checkout as files: commit them to share them with everyone who uses this
             repository.
+          </p>
+          <p>
+            The skill library, set in Settings, keeps skills outside the repository, for every
+            repository on this machine.
           </p>
         </Help>
         <button
@@ -357,6 +392,59 @@ export function SkillsPage() {
                 </ul>
               </section>
             ))}
+            {library ? (
+              <section aria-label="Library">
+                <h2>Library</h2>
+                <ul>
+                  <li>
+                    <button
+                      type="button"
+                      aria-current={open === LIBRARY ? 'true' : undefined}
+                      {...tip(libraryTip(library))}
+                      onClick={() => show(LIBRARY)}
+                    >
+                      <span className="skills-name">{libraryName(library)}</span>
+                      {libraryMark(library)}
+                    </button>
+                  </li>
+                  {librarySkills.map((skill) => (
+                    <li key={skill.path}>
+                      <button
+                        type="button"
+                        aria-current={skill.path === open ? 'true' : undefined}
+                        onClick={() => show(skill.path)}
+                      >
+                        <span className="skills-name">{skill.name}</span>
+                        {edited.includes(skill.path) ? (
+                          <span className="skills-mark unsaved">not saved</span>
+                        ) : skill.git === 'new' ? (
+                          <span className="skills-mark added">new</span>
+                        ) : (
+                          skill.git === 'changed' && (
+                            <span className="skills-mark changed">changed</span>
+                          )
+                        )}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : (
+              <p className="hint skills-library-unset">
+                Skills for every repository:{' '}
+                <a
+                  href={hrefOf(LIBRARY_SETTINGS)}
+                  onClick={(event) => {
+                    if (!shell) return;
+                    event.preventDefault();
+                    toSettings();
+                  }}
+                >
+                  Set a skill library in Settings
+                </a>
+                .
+              </p>
+            )}
           </nav>
           {open === SCRIBE && (
             <div className="skills-pane skills-scribe">
@@ -372,12 +460,35 @@ export function SkillsPage() {
               <Conversation agent={scribeAgent(scribe, asking)} />
             </div>
           )}
+          {open === LIBRARY && library && (
+            <LibraryPane
+              library={library}
+              skills={librarySkills.length}
+              busy={busy}
+              notice={notice?.at === LIBRARY ? notice : null}
+              onCommit={(message) =>
+                void libraryGit(
+                  { action: 'commit', message },
+                  library.commits === 'push' ? 'Committed and pushed.' : 'Committed.',
+                )
+              }
+              onPush={() => void libraryGit({ action: 'push' }, 'Pushed.')}
+              onPull={() => void libraryGit({ action: 'pull' }, 'Pulled.')}
+              onSettings={toSettings}
+              onBack={back}
+            />
+          )}
           {open === NEW && (
             <NewSkill
               busy={busy}
               notice={notice?.at === NEW ? notice : null}
-              taken={(name) =>
-                state.skills.some((s) => s.folder === '.claude/skills' && s.name === name)
+              library={library?.exists && !library.checkout ? library.folder : undefined}
+              taken={(name, where) =>
+                state.skills.some(
+                  (s) =>
+                    s.folder === (where === 'library' ? 'library' : '.claude/skills') &&
+                    s.name === name,
+                )
               }
               onCreate={create}
               onScribe={() => show(SCRIBE)}
@@ -388,6 +499,7 @@ export function SkillsPage() {
             <SkillEditor
               key={current.path}
               skill={current}
+              library={library}
               draft={drafts[current.path]}
               busy={busy}
               notice={notice?.at === current.path ? notice : null}
@@ -410,12 +522,33 @@ export function SkillsPage() {
 const readers = (skill: Skill) =>
   skill.agents.map((a) => (a === 'claude' ? 'Claude Code' : 'Codex')).join(' and ');
 
+/** The folder a skill's folder is in, as shown: the checkout's, or the library's in full (SK1). */
+const folderOf = (skill: Skill, library: LibraryState | undefined) =>
+  skill.folder === 'library' && library ? library.folder : skill.folder;
+
+/** The library's entry's tip: its git, and how far it is from its upstream. */
+function libraryTip(library: LibraryState): string {
+  const sync = library.git ? librarySync(library.git) : '';
+  return `${libraryGitText(library)}${sync ? ` ${sync}.` : ''}`;
+}
+
+/** The library's entry's mark: its changes, else its commits to push, else that it is gone. */
+function libraryMark(library: LibraryState) {
+  if (!library.exists) return <span className="skills-mark changed">not there</span>;
+  const changes = library.git?.changes.length ?? 0;
+  if (changes > 0) return <span className="skills-mark changed">{changes} changed</span>;
+  const ahead = library.git?.ahead ?? 0;
+  if (ahead > 0) return <span className="skills-mark">{ahead} to push</span>;
+  return null;
+}
+
 /**
  * One skill: its name and where it is, its `SKILL.md` as tall as the pane, its checks and other
  * files beside it (under it in a narrow pane), then Save and Delete (V56).
  */
 function SkillEditor({
   skill,
+  library,
   draft,
   busy,
   notice,
@@ -428,6 +561,8 @@ function SkillEditor({
   onBack,
 }: {
   skill: Skill;
+  /** The skill library (SK1): where a skill of it is. */
+  library: LibraryState | undefined;
   draft: string | undefined;
   busy: boolean;
   notice: Notice | null;
@@ -444,6 +579,7 @@ function SkillEditor({
   const checks = useMemo(() => skillChecks(skill, text), [skill, text]);
   const [deleting, setDeleting] = useState(false);
   const canSave = edited && !busy && !skill.tooLarge;
+  const inLibrary = skill.folder === 'library';
 
   return (
     <section className="skills-pane skills-editor" aria-label={`Skill: ${skill.name}`}>
@@ -452,14 +588,19 @@ function SkillEditor({
       </button>
       <h2>
         {skill.name}
-        <span
-          className={`skills-state${skill.git === 'new' ? ' added' : skill.git === 'committed' ? '' : ' changed'}`}
-        >
-          {skill.git === 'new' ? 'New' : skill.git === 'changed' ? 'Changed' : 'Committed'}
-        </span>
+        {skill.git !== 'none' && (
+          <span
+            className={`skills-state${skill.git === 'new' ? ' added' : skill.git === 'committed' ? '' : ' changed'}`}
+          >
+            {skill.git === 'new' ? 'New' : skill.git === 'changed' ? 'Changed' : 'Committed'}
+          </span>
+        )}
       </h2>
       <p className="skills-where">
-        <code>{skill.path}</code> · read by {readers(skill)} · {skillGitNote(skill.git)}
+        <code>{skillPlace(skill, library)}</code> ·{' '}
+        {inLibrary
+          ? `in your skill library · ${library?.git ? skillGitNote(skill.git) : 'A plain folder: no git.'}`
+          : `read by ${readers(skill)} · ${skillGitNote(skill.git)}`}
       </p>
       {skill.tooLarge && (
         <p className="skills-warning" role="alert">
@@ -535,9 +676,11 @@ function SkillEditor({
         )}
         {deleting ? (
           <span className="workspace-confirm">
-            Deletes {skill.folder}/{skill.name}
+            Deletes {folderOf(skill, library)}/{skill.name}
             {skill.files.length > 0 ? ` and its ${skill.files.length} other files` : ''}
-            {skill.git === 'new' ? ', not committed: it is gone for good.' : ': git keeps it.'}{' '}
+            {skill.git === 'new' || skill.git === 'none'
+              ? ', not committed: it is gone for good.'
+              : ': git keeps it.'}{' '}
             <button
               type="button"
               className="button"
@@ -580,7 +723,9 @@ function SkillEditor({
           type="button"
           className="button"
           disabled={!canSave}
-          {...tip('Save it in this checkout', { keys: 'Ctrl+S' })}
+          {...tip(inLibrary ? 'Save it in your skill library' : 'Save it in this checkout', {
+            keys: 'Ctrl+S',
+          })}
           onClick={() => onSave(text)}
         >
           Save
@@ -590,10 +735,14 @@ function SkillEditor({
   );
 }
 
-/** A new skill: its name and description, written as its frontmatter in `.claude/skills/`. */
+/**
+ * A new skill: its name and description, written as its frontmatter in `.claude/skills/`, or in the
+ * skill library's folder (SK1) when one is set and the person picks it.
+ */
 function NewSkill({
   busy,
   notice,
+  library,
   taken,
   onCreate,
   onScribe,
@@ -601,14 +750,23 @@ function NewSkill({
 }: {
   busy: boolean;
   notice: Notice | null;
-  taken: (name: string) => boolean;
-  onCreate: (name: string, description: string) => Promise<boolean>;
+  /** The library's folder, when a skill can be made there. */
+  library: string | undefined;
+  taken: (name: string, where: 'checkout' | 'library') => boolean;
+  onCreate: (name: string, description: string, where: 'checkout' | 'library') => Promise<boolean>;
   onScribe: () => void;
   onBack: () => void;
 }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const problem = newSkillProblem(name, description, taken);
+  const [picked, setPicked] = useState<'checkout' | 'library'>('checkout');
+  const where = library ? picked : 'checkout';
+  const problem = newSkillProblem(
+    name,
+    description,
+    (n) => taken(n, where),
+    where === 'library' && library ? library : '.claude/skills',
+  );
   // Said once something is typed: an empty form is not wrong yet.
   const shown = name === '' && description === '' ? null : problem;
   return (
@@ -618,7 +776,7 @@ function NewSkill({
       onSubmit={(event) => {
         event.preventDefault();
         if (problem || busy) return;
-        void onCreate(name, description).then((made) => {
+        void onCreate(name, description, where).then((made) => {
           if (made) {
             setName('');
             setDescription('');
@@ -637,13 +795,34 @@ function NewSkill({
         </button>
         .
       </p>
+      {library && (
+        <div className="skills-field">
+          <span className="field-label" id="skill-where">
+            Where
+          </span>
+          <span className="scopes skills-where-choice" role="group" aria-labelledby="skill-where">
+            {(['checkout', 'library'] as const).map((place) => (
+              <button
+                key={place}
+                type="button"
+                className={where === place ? 'scope active' : 'scope'}
+                aria-pressed={where === place}
+                {...tip(place === 'library' ? library : 'This checkout, read by its agents')}
+                onClick={() => setPicked(place)}
+              >
+                {place === 'library' ? 'Library' : '.claude/skills'}
+              </button>
+            ))}
+          </span>
+        </div>
+      )}
       <div className="skills-field">
         <span className="field-label">
           <label htmlFor="skill-name">Name</label>
           <Help label="About the name">
             Lowercase letters, digits and hyphens, 64 at most: the folder&apos;s name in
-            .claude/skills, and the /command in Claude Code. Say the activity: release-notes,
-            reviewing-migrations.
+            .claude/skills or the library, and the /command in Claude Code. Say the activity:
+            release-notes, reviewing-migrations.
           </Help>
         </span>
         <input

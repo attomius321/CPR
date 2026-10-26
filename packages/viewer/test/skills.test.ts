@@ -197,6 +197,10 @@ describe('a new skill', () => {
       'a name holds only lowercase letters, digits and hyphens',
     );
     expect(newSkillProblem('review', 'D.', taken)).toBe('.claude/skills/review is there already');
+    // In the skill library (SK1): its folder named.
+    expect(newSkillProblem('review', 'D.', taken, '/home/a/skills')).toBe(
+      '/home/a/skills/review is there already',
+    );
     expect(newSkillProblem('synced', 'D.', taken)).toBe(
       'synced is a folder Claude Code keeps for itself',
     );
@@ -248,6 +252,15 @@ describe('the list and the editor', () => {
     expect(skillGroups(apart).map((g) => g.title)).toEqual([
       '.claude/skills · Claude Code',
       '.agents/skills · Codex',
+    ]);
+    // The library's skills are drawn in its own section (SK1), not as a folder of the checkout's.
+    const library: SkillsState = {
+      ...state,
+      skills: [make({ name: 'a' }), make({ folder: 'library', name: 'd', agents: [] })],
+      library: { folder: '/home/a/skills', exists: true, commits: 'none' },
+    };
+    expect(skillGroups(library).map((g) => g.title)).toEqual([
+      '.claude/skills · Claude Code and Codex',
     ]);
   });
 

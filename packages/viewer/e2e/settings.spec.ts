@@ -50,8 +50,9 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
     "No prompt changed: every agent is told Symbiote's text.",
   );
   // 13 prompts (Documents since V40) and the three prebuilt agents, each one page of its
-  // settings (fix/scout-merger-scribe-settings); this browser's Appearance last (V51).
-  await expect(list(page).getByRole('button')).toHaveCount(17);
+  // settings (fix/scout-merger-scribe-settings); this machine's Skill library (SK1); this
+  // browser's Appearance last (V51).
+  await expect(list(page).getByRole('button')).toHaveCount(18);
   await expect(entry(page, 'Documents')).toBeVisible();
   // The first is open; each group in its order.
   await expect(entry(page, 'Feature')).toHaveAttribute('aria-current', 'true');
@@ -59,6 +60,7 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
     'Workspaces',
     'Reviews',
     'Prebuilt agents',
+    'This machine',
     'This browser',
   ]);
   await expect(agents(page).getByRole('button')).toHaveText(['Merger', 'Scout', 'Scribe']);
@@ -523,6 +525,8 @@ test("Scribe's page: its Model, Effort and Instructions; saved as scribe.model a
     'Model',
     'Effort',
     "InstructionsSymbiote's",
+    // What its {library} becomes when a skill library is set (SK1).
+    "LibrarySymbiote's",
   ]);
   await modelSelect(page).selectOption({ label: 'Sonnet 5.5' });
   await expect.poll(scribe).toEqual({ model: 'sonnet' });

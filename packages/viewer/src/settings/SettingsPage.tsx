@@ -11,10 +11,11 @@ import type { PromptKey, PromptSetting, PromptSettings, ScoutEfforts } from '@sy
 import { EffortStepper } from '../workspaces/EffortStepper.js';
 import { Help } from '../ui/Help.js';
 import { getJson, postJson } from '../ui/http.js';
-import { BackIcon } from '../ui/icons.js';
 import { useShell } from '../shell/shell-context.js';
 import { setTheme, useTheme, type Theme } from '../shell/theme.js';
 import { startIntro } from '../intro/intro.js';
+import { BackToList } from './BackToList.js';
+import { LibraryPage } from './LibraryPage.js';
 import {
   draftProblem,
   gitNote,
@@ -146,8 +147,11 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
 
 /** This browser's settings (V51, decision 388): an entry of their own at the list's end. */
 const APPEARANCE = 'appearance';
+/** The skill library (SK1): this machine's, for every repository, not the project's. */
+const LIBRARY = 'skill-library';
+const MACHINE_GROUP = 'This machine';
 const BROWSER_GROUP = 'This browser';
-type EntryKey = PromptKey | typeof APPEARANCE;
+type EntryKey = PromptKey | typeof LIBRARY | typeof APPEARANCE;
 
 /** The list's mark for an entry, by `markOf`. */
 const MARKS = { unsaved: 'not saved', warning: 'not used', changed: 'changed' } as const;
@@ -169,8 +173,9 @@ interface Notice {
  * Settings (V28b): every agent's prompts, Symbiote's until the project changes them. A change is
  * saved in `symbiote/config.json` (`prompts`); unsaved drafts are kept while another prompt is
  * open, and leaving the page with one asks first. A prebuilt agent is one entry, whose page holds
- * its model, its effort and its prompt (fix/scout-merger-scribe-settings). This browser's
- * Appearance is the last entry (V51), listed even when the prompts cannot be read.
+ * its model, its effort and its prompt (fix/scout-merger-scribe-settings). This machine's Skill
+ * library (SK1) and this browser's Appearance (V51) are the last entries, listed even when the
+ * prompts cannot be read.
  */
 export function SettingsPage() {
   const [settings, setSettings] = useState<PromptSettings | null>(null);
@@ -200,7 +205,8 @@ export function SettingsPage() {
       const keys = read
         ? promptGroups(read.prompts).flatMap((g) => g.entries.map((e) => e.key))
         : [];
-      setOpen(promptOfUrl<EntryKey>(window.location.search, [...keys, APPEARANCE]));
+      // Without prompts, Appearance opens first, as before the Skill library (SK1).
+      setOpen(promptOfUrl<EntryKey>(window.location.search, [...keys, APPEARANCE, LIBRARY]));
     });
   }, [load]);
 
@@ -328,6 +334,20 @@ export function SettingsPage() {
                 </ul>
               </section>
             ))}
+            <section aria-label={MACHINE_GROUP}>
+              <h2>{MACHINE_GROUP}</h2>
+              <ul>
+                <li>
+                  <button
+                    type="button"
+                    aria-current={open === LIBRARY ? 'true' : undefined}
+                    onClick={() => show(LIBRARY)}
+                  >
+                    <span className="settings-name">Skill library</span>
+                  </button>
+                </li>
+              </ul>
+            </section>
             <section aria-label={BROWSER_GROUP}>
               <h2>{BROWSER_GROUP}</h2>
               <ul>
@@ -345,6 +365,8 @@ export function SettingsPage() {
           </nav>
           {open === APPEARANCE ? (
             <AppearancePage onBack={back} />
+          ) : open === LIBRARY ? (
+            <LibraryPage onBack={back} />
           ) : current?.agent ? (
             // A save changes the file: the prompts' version is read again, or their next save
             // would be refused as changed since.
@@ -363,15 +385,6 @@ export function SettingsPage() {
         </div>
       )}
     </div>
-  );
-}
-
-/** The way back to the list, when a page takes a narrow screen. */
-function BackToList({ onBack }: { onBack: () => void }) {
-  return (
-    <button type="button" className="button ghost settings-back" onClick={onBack}>
-      <BackIcon /> All settings
-    </button>
   );
 }
 

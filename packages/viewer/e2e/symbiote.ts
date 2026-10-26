@@ -90,6 +90,8 @@ async function startSymbiote(
       SYMBIOTE_INTRO: 'off',
       // Lines in the server's own cache folder (LG1), never yours: none without one.
       ...(extraEnv.SYMBIOTE_CACHE_DIR || extraEnv.SYMBIOTE_LOG_DIR ? {} : { SYMBIOTE_LOG: 'off' }),
+      // A config folder of its own: never your skill library (SK1); a spec may pass its own.
+      XDG_CONFIG_HOME: mkdtempSync(join(tmpdir(), 'symbiote-e2e-config-')),
       ...extraEnv,
     },
   });
@@ -588,6 +590,8 @@ export interface FakeClaudeCall {
 
 export interface RunningWorkspaces extends Running {
   repo: string;
+  /** Symbiote's config folder for it (`XDG_CONFIG_HOME/symbiote`): the skill library's record. */
+  config: string;
   /** Symbiote's cache for it (`SYMBIOTE_CACHE_DIR`): where its record for the MCP bridge is. */
   cache: string;
   /** `main`'s commits, oldest first: the fixture's base and head. */
@@ -1272,6 +1276,7 @@ export async function serveWorkspaces({
     SYMBIOTE_HERMES: hermes ? fakeHermes(fake) : join(fake, 'no-hermes'),
     SYMBIOTE_CODE: code,
     CLAUDE_CONFIG_DIR: claudeConfig,
+    XDG_CONFIG_HOME: join(fake, 'config'),
     // V45: a workspace's shells are /bin/sh with a plain prompt, not the person's own shell.
     SHELL: shell,
     ...(shell === '/bin/sh' ? { PS1: 'shell$ ' } : {}),
@@ -1342,6 +1347,7 @@ export async function serveWorkspaces({
   return {
     url,
     repo,
+    config: join(fake, 'config', 'symbiote'),
     cache,
     shas,
     folder,

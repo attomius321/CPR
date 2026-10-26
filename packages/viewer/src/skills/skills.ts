@@ -395,18 +395,22 @@ function missingLinks(body: string, files: readonly string[]): string[] {
   return missing;
 }
 
-/** What the server would refuse of a new skill (as `symbiote view` checks it); null when nothing. */
+/**
+ * What the server would refuse of a new skill (as `symbiote view` checks it) in `folder`, the
+ * checkout's `.claude/skills` or the skill library's (SK1); null when nothing.
+ */
 export function newSkillProblem(
   name: string,
   description: string,
   taken: (name: string) => boolean,
+  folder = '.claude/skills',
 ): string | null {
   const problem = skillNameProblem(name);
   if (problem) return problem;
   if (name === 'synced' || name === 'anthropic-skills') {
     return `${name} is a folder Claude Code keeps for itself`;
   }
-  if (taken(name)) return `.claude/skills/${name} is there already`;
+  if (taken(name)) return `${folder}/${name} is there already`;
   if (description.trim() === '') {
     return 'a description cannot be empty: it is how an agent finds the skill';
   }
@@ -434,12 +438,16 @@ export function skillGitNote(git: FileGitState): string {
   }
 }
 
-/** The skills by folder, in the server's order, each folder named with the agents that read it. */
+/**
+ * The checkout's skills by folder, in the server's order, each folder named with the agents that
+ * read it. The library's (SK1) are drawn in a section of their own.
+ */
 export function skillGroups(
   state: SkillsState,
 ): { folder: SkillFolder; title: string; skills: Skill[] }[] {
   const groups: { folder: SkillFolder; title: string; skills: Skill[] }[] = [];
   for (const skill of state.skills) {
+    if (skill.folder === 'library') continue;
     const group = groups.find((g) => g.folder === skill.folder);
     if (group) {
       group.skills.push(skill);

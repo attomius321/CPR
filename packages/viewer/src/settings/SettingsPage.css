@@ -367,6 +367,25 @@ p.settings-placeholders {
   margin-bottom: 8px;
 }
 
+/* The skill library (SK1): what it is under the heading; its folder and repository fields as wide
+   as their paths need, what is at the folder under them. */
+.library-about {
+  margin: -4px 0 12px;
+}
+
+.settings-rows > .settings-part > .library-field {
+  justify-self: stretch;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 560px;
+  height: 32px;
+  padding: 0 10px;
+}
+
+.library-probe.error {
+  color: var(--error);
+}
+
 @media (max-width: 899px) {
   .settings-body {
     display: block;
