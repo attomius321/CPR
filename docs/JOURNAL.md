@@ -256,3 +256,4 @@ merge commit.
 - 2026-10-27 [Fix — the app shows a page as a browser does, under its title bar](journal/fix-title-bar-desktop.md)
 - 2026-10-26 [V62 spike — Settings beside the mockup](journal/v62-settings-layout.md)
 - 2026-10-27 [V62 — Settings as the person's mockup](journal/v62-settings-layout.md)
+- 2026-10-27 [Fix — Codex's mark is OpenAI's blossom, in OpenAI's white or black](journal/fix-codex-icon.md)

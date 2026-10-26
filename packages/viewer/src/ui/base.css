@@ -53,6 +53,8 @@
   /* The mockup's amber (V61): Waiting for you, a plan ready. */
   --warning: #f5b32a;
   --info: #3fc5d6;
+  /* OpenAI's blossom, Codex's mark (fix/codex-icon): OpenAI's white on dark, black on light. */
+  --openai: #ffffff;
   /* Commit graph lanes after the current branch's (V10). The first is blue since V61: its purple
      was 1.09:1 from the violet accent, a branch read as selected. */
   --lane-1: #6aa8ff;
@@ -186,6 +188,7 @@
   --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
   --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
   --removed-gutter: color-mix(in srgb, var(--removed) 22%, transparent);
+  --openai: #000000;
   color-scheme: light;
 }
 
@@ -256,6 +259,7 @@
     --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
     --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
     --removed-gutter: color-mix(in srgb, var(--removed) 22%, transparent);
+    --openai: #000000;
     color-scheme: light;
   }
 }
