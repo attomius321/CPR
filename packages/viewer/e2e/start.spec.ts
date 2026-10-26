@@ -47,7 +47,9 @@ test('Start a workspace is a page right of the sidenav, at /start', async ({ pag
   await expect(title(page)).toBeFocused();
   await expect(startLink(page)).toHaveAttribute('aria-current', 'page');
   await expect(page).toHaveTitle(/^Start a workspace · /);
-  await expect(start(page)).toContainText(`From main at ${short(symbiote.shas.at(-1))}`);
+  await expect(start(page)).toContainText(
+    `Will be created from main at ${short(symbiote.shas.at(-1))}`,
+  );
   // The whole main area: from the sidenav's edge to the window's.
   const nav = await sidenav(page).boundingBox();
   const box = await start(page).boundingBox();
@@ -116,7 +118,7 @@ test('a start takes its place in the history: Back goes to the page before it', 
   await expect(page).toHaveURL(`${symbiote.url}history`);
 });
 
-test('the brief and the run side by side; More open without a scroll at 1440 × 900; one column on a phone', async ({
+test('the brief and the run side by side; More closed fits 1440 × 900, More open scrolls under the head; one column on a phone', async ({
   page,
 }) => {
   const symbiote = await serve();
@@ -124,19 +126,22 @@ test('the brief and the run side by side; More open without a scroll at 1440 × 
   await page.goto(`${symbiote.url}start`);
   const brief = page.locator('.start-brief');
   const run = page.locator('.start-run');
-  await start(page).getByRole('button', { name: /^More/ }).click();
-  await expect(start(page).getByRole('textbox', { name: 'Notes optional' })).toBeVisible();
+  const body = page.locator('.start-body');
+  const go = start(page).getByRole('button', { name: 'Start workspace' });
   let b = await brief.boundingBox();
   let r = await run.boundingBox();
   expect(r?.x ?? 0).toBeGreaterThanOrEqual((b?.x ?? 0) + (b?.width ?? 0));
   expect(Math.abs((r?.y ?? 0) - (b?.y ?? 0))).toBeLessThanOrEqual(1);
   // The text areas use the room: wider than the dialog's 598 px.
   expect((await goal(page).boundingBox())?.width ?? 0).toBeGreaterThan(640);
-  const scrolls = await page
-    .locator('.start-body')
-    .evaluate((body) => body.scrollHeight > body.clientHeight);
-  expect(scrolls).toBe(false);
-  await expect(start(page).getByRole('button', { name: 'Start', exact: true })).toBeInViewport();
+  // V63: the run as seven cards is the taller column; with More closed nothing scrolls.
+  expect(await body.evaluate((e) => e.scrollHeight > e.clientHeight)).toBe(false);
+  // More open: the body scrolls, the head and its Start stay in view.
+  await start(page).getByRole('button', { name: /^More/ }).click();
+  await expect(start(page).getByRole('textbox', { name: 'Notes' })).toBeVisible();
+  await body.evaluate((e) => e.scrollTo(0, e.scrollHeight));
+  await expect(start(page).getByRole('textbox', { name: 'Notes' })).toBeInViewport();
+  await expect(go).toBeInViewport();
 
   await page.setViewportSize({ width: 390, height: 844 });
   b = await brief.boundingBox();
@@ -144,7 +149,12 @@ test('the brief and the run side by side; More open without a scroll at 1440 × 
   expect(r?.y ?? 0).toBeGreaterThanOrEqual((b?.y ?? 0) + (b?.height ?? 0));
   // The head and its Start stay in view while the form scrolls.
   await run.scrollIntoViewIfNeeded();
-  await expect(start(page).getByRole('button', { name: 'Start', exact: true })).toBeInViewport();
+  await expect(go).toBeInViewport();
+  // The five kinds on one line: their icons hide.
+  const kinds = start(page).getByRole('radio');
+  const first = await kinds.first().boundingBox();
+  const last = await kinds.last().boundingBox();
+  expect(Math.abs((last?.y ?? 0) - (first?.y ?? 0))).toBeLessThanOrEqual(1);
 });
 
 // V49: centred in the main area at any width, the head's contents over the cards; the run's choices
@@ -168,12 +178,10 @@ test('centred in a wide main area, the head over the cards; the run as rows', as
     const right = area.x + area.width - (r.x + r.width);
     expect(left).toBeGreaterThan(100);
     expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
-    // The head's contents in the cards' width: its title over the brief, Start over the run.
-    const heading = await start(page)
-      .getByRole('heading', { name: 'Start a workspace' })
-      .boundingBox();
-    const go = await start(page).getByRole('button', { name: 'Start', exact: true }).boundingBox();
-    expect(Math.abs((heading?.x ?? 0) - b.x)).toBeLessThanOrEqual(1);
+    // The head's contents in the cards' width: the S over the brief, Start over the run.
+    const mark = await page.locator('.start-top .symbiote-mark').boundingBox();
+    const go = await start(page).getByRole('button', { name: 'Start workspace' }).boundingBox();
+    expect(Math.abs((mark?.x ?? 0) - b.x)).toBeLessThanOrEqual(1);
     expect(Math.abs((go?.x ?? 0) + (go?.width ?? 0) - (r.x + r.width))).toBeLessThanOrEqual(1);
   }
   // A row: the name at the left, its control beside it on the same line.
@@ -188,6 +196,120 @@ test('centred in a wide main area, the head over the cards; the run as rows', as
   const short = (await goal(page).boundingBox())?.height ?? 0;
   await page.setViewportSize({ width: 1440, height: 1200 });
   expect((await goal(page).boundingBox())?.height ?? 0).toBeGreaterThan(short + 80);
+});
+
+// V63: the person's mockup, at its own size (its main area: 1641 × 959 less the sidenav).
+test("as the person's mockup: the S and a line in the head, the kinds as tabs, the run as seven cards", async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  await page.setViewportSize({ width: 1641, height: 959 });
+  await page.goto(`${symbiote.url}start`);
+  const head = page.locator('.start-top');
+  await expect(head.locator('.symbiote-mark')).toBeVisible();
+  await expect(head.getByRole('heading', { name: 'Start a workspace' })).toBeVisible();
+  await expect(head).toContainText('Create a new workspace from a branch with an AI agent');
+  for (const name of ['Cancel', 'Clear']) {
+    await expect(head.getByRole('button', { name })).toHaveClass(/secondary/);
+  }
+  await expect(head.getByRole('button', { name: 'Start workspace' })).toHaveClass(/primary/);
+
+  // The kinds: tabs with an icon each, still a radio group.
+  const kinds = start(page).getByRole('radiogroup', { name: 'Kind of work' }).getByRole('radio');
+  await expect(kinds).toHaveText(['Feature', 'Fix', 'Refactor', 'Chore', 'Spike']);
+  for (const kind of await kinds.all()) await expect(kind.locator('svg.icon')).toHaveCount(1);
+  // A "?" beside each of the brief's fields; the mockup's advice; More a framed row, optional.
+  for (const name of ['About the title', 'About the goal', 'About Done when']) {
+    await expect(start(page).getByRole('button', { name })).toBeVisible();
+  }
+  await expect(start(page).getByText('Be specific for better results')).toBeVisible();
+  await expect(start(page).getByRole('button', { name: /^More/ })).toContainText('Optional');
+
+  // The run: seven cards, an icon and a heading each.
+  const cards = page.locator('.start-run > .start-card');
+  await expect(cards.locator('h2')).toHaveText([
+    'Source',
+    'Agent',
+    'Model',
+    'Effort',
+    'Permissions',
+    'Plan first and wait for my OK',
+    'Documents (optional)',
+  ]);
+  for (const card of await cards.all()) {
+    await expect(card.locator('.start-card-icon svg')).toHaveCount(1);
+  }
+  await expect(cards.first()).toContainText(
+    `Will be created from main at ${short(symbiote.shas.at(-1))} as feature/new`,
+  );
+  await expect(start(page)).toContainText('Let the agent propose a plan before making changes.');
+  await expect(start(page)).toContainText('Add context files, docs, mockups, or requirements.');
+
+  // The mockup's widths: 1,312 px at most, centred; the run ~470, 16 px from the brief.
+  const area = await page.locator('.start-body').boundingBox();
+  const b = await page.locator('.start-brief').boundingBox();
+  const r = await page.locator('.start-run').boundingBox();
+  if (!area || !b || !r) throw new Error('no box');
+  expect(r.x + r.width - b.x).toBeLessThanOrEqual(1312);
+  expect(r.x + r.width - b.x).toBeGreaterThan(1300);
+  expect(Math.abs(b.x - area.x - (area.x + area.width - r.x - r.width))).toBeLessThanOrEqual(1);
+  expect(r.width).toBeGreaterThan(460);
+  expect(r.width).toBeLessThan(480);
+  expect(Math.abs(r.x - (b.x + b.width) - 16)).toBeLessThanOrEqual(1);
+});
+
+test("the goal's tools: the brief's length against its limit, a Markdown preview, files for the documents", async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}start`);
+  const tools = start(page).getByRole('toolbar', { name: 'Goal tools' });
+  const count = tools.locator('.start-count');
+  await expect(count).toHaveText(/^[\d,]+\/20,000$/);
+  const before = Number((await count.textContent())?.split('/')[0]?.replaceAll(',', ''));
+  await goal(page).fill('Clamp a **value**.');
+  // The goal's section joins the brief: a blank line, "## Goal" and its text.
+  await expect(count).toHaveText(`${before + 2 + '## Goal\n'.length + 18}/20,000`);
+
+  // The preview: the goal as Markdown; again, back to writing it.
+  const preview = tools.getByRole('button', { name: 'Preview' });
+  await preview.click();
+  await expect(preview).toHaveAttribute('aria-pressed', 'true');
+  await expect(goal(page)).toHaveCount(0);
+  await expect(start(page).locator('.start-preview strong')).toHaveText('value');
+  await preview.click();
+  await expect(goal(page)).toHaveValue('Clamp a **value**.');
+
+  // 📎 picks files for the documents.
+  const chooser = page.waitForEvent('filechooser');
+  await tools.getByRole('button', { name: 'Attach files' }).click();
+  await (
+    await chooser
+  ).setFiles([{ name: 'spec.md', mimeType: 'text/markdown', buffer: Buffer.from('# Spec\n') }]);
+  const documents = start(page).getByRole('group', { name: /^Documents/ });
+  await expect(documents.getByRole('listitem')).toHaveCount(1);
+  await expect(documents.getByRole('listitem')).toContainText('spec.md7 B');
+});
+
+test('Branch name: ⤨ names it after the title again', async ({ page }) => {
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}start`);
+  const branch = start(page).getByRole('textbox', { name: 'Branch name' });
+  const again = start(page).getByRole('button', { name: 'Name it after the title' });
+  await title(page).fill('Add clamp');
+  await expect(branch).toHaveValue('feature/add-clamp');
+  await expect(again).toBeDisabled();
+  await branch.fill('feature/clamp-it');
+  await expect(start(page)).toContainText(
+    `Will be created from main at ${short(symbiote.shas.at(-1))} as feature/clamp-it`,
+  );
+  await expect(again).toBeEnabled();
+  await again.click();
+  await expect(branch).toHaveValue('feature/add-clamp');
+  await expect(again).toBeDisabled();
+  // It follows the title again.
+  await title(page).fill('Add clamp twice');
+  await expect(branch).toHaveValue('feature/add-clamp-twice');
 });
 
 test('Plan first is a switch: on at first, Space turns it off, the draft keeps it', async ({
@@ -236,18 +358,18 @@ test("Effort: the agent's default or a level it lists; a level reaches Claude Co
   await page.goto(`${symbiote.url}start`);
   await expect(stops(effort(page))).toHaveText([
     'Default',
-    'low',
-    'medium',
-    'high',
-    'xhigh',
-    'max',
+    'Low',
+    'Medium',
+    'High',
+    'xHigh',
+    'Max',
   ]);
   await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
   // A stop's word picks it.
   await stops(effort(page))
-    .filter({ hasText: /^high$/ })
+    .filter({ hasText: /^High$/ })
     .click();
   await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
   // Leaving keeps it, as the rest of the form.
@@ -289,11 +411,11 @@ test("Effort for Codex on its app server: its model's levels and its default; th
   await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
   await expect(stops(effort(page))).toHaveText([
     'Default',
-    'low',
-    'medium',
-    'high',
-    'xhigh',
-    'max',
+    'Low',
+    'Medium',
+    'High',
+    'xHigh',
+    'Max',
   ]);
   await expect(stops(effort(page)).first()).toHaveAttribute('data-tip', "Codex's default (medium)");
   await effort(page).press('Home');
@@ -328,11 +450,11 @@ test("Model: Claude Code's own list after its default; the levels follow the mod
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
   await stops(effort(page))
-    .filter({ hasText: /^xhigh$/ })
+    .filter({ hasText: /^xHigh$/ })
     .click();
   // Opus 4.6 takes no xhigh: its own levels, the level back to the default; its words under it.
   await model(page).selectOption({ label: 'Opus 4.6' });
-  await expect(stops(effort(page))).toHaveText(['Default', 'low', 'medium', 'high', 'max']);
+  await expect(stops(effort(page))).toHaveText(['Default', 'Low', 'Medium', 'High', 'Max']);
   await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
   await expect(start(page).locator('.start-model-note')).toHaveText(
     'Best for everyday, complex tasks',
@@ -342,7 +464,7 @@ test("Model: Claude Code's own list after its default; the levels follow the mod
   await expect(effort(page)).toHaveCount(0);
   await model(page).selectOption({ label: 'Sonnet 5.5' });
   await stops(effort(page))
-    .filter({ hasText: /^high$/ })
+    .filter({ hasText: /^High$/ })
     .click();
   // Leaving keeps both, as the rest of the form.
   await title(page).press('Escape');
@@ -394,7 +516,7 @@ test("Model for Codex on its app server: its list, its configured model named; a
   );
   // GPT-5.6-Terra has one more level.
   await model(page).selectOption({ label: 'GPT-5.6-Terra' });
-  await expect(stops(effort(page)).last()).toHaveText('ultra');
+  await expect(stops(effort(page)).last()).toHaveText('Ultra');
   await effort(page).press('End');
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
@@ -433,10 +555,10 @@ test("Start from: the branches listed; one picked is where it starts and its nam
   await expect(from(page).locator('option')).toHaveText(['main', 'topic', 'shared']);
   await expect(from(page).locator('optgroup')).toHaveAttribute('label', 'Only on a remote');
   await expect(from(page)).toHaveValue('main');
-  await expect(start(page)).toContainText(`From main at ${short(head)}`);
+  await expect(start(page)).toContainText(`Will be created from main at ${short(head)}`);
 
   await from(page).selectOption('topic');
-  await expect(start(page)).toContainText(`From topic at ${short(base)}`);
+  await expect(start(page)).toContainText(`Will be created from topic at ${short(base)}`);
   await title(page).fill('Stack on topic');
   await goal(page).fill('Build on it.');
   // Leaving keeps it, as the rest of the form.
@@ -471,11 +593,11 @@ test("Start from a History row: the row's commit first, a branch instead when pi
     .click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Start a workspace here' }).click();
   await expect(from(page).locator('option').first()).toHaveText(`The commit ${short(base)}`);
-  await expect(start(page)).toContainText(`From the commit ${short(base)}`);
+  await expect(start(page)).toContainText(`Will be created from the commit ${short(base)}`);
   await from(page).selectOption('main');
-  await expect(start(page)).toContainText(`From main at ${short(head)}`);
+  await expect(start(page)).toContainText(`Will be created from main at ${short(head)}`);
   await from(page).selectOption({ label: `The commit ${short(base)}` });
-  await expect(start(page)).toContainText(`From the commit ${short(base)}`);
+  await expect(start(page)).toContainText(`Will be created from the commit ${short(base)}`);
 });
 
 /** Files as the page gets them from a clipboard or a drop: name, type and their text. */
@@ -538,7 +660,7 @@ test('Documents: chosen, dropped and pasted files go beside the record, and the 
   await expect(rows).toHaveCount(4);
 
   // Too large: listed with why, Start waits until it is removed.
-  const startButton = start(page).getByRole('button', { name: 'Start', exact: true });
+  const startButton = start(page).getByRole('button', { name: 'Start workspace' });
   await documents
     .getByLabel('Add files')
     .setInputFiles([
