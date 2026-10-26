@@ -2,10 +2,11 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v59-scout-waiting-mark.md)
 
-**Status:** planned (2026-10-26), on branch `feature/scout-waiting-for-you` (a workspace started in
-Symbiote, from `main` at `00d88e1`). The person OK'd the plan with "1. b 2. a 3. a. Go": Skills
-takes the same band when Scribe waits, a 1.2 s flash when it starts to wait, the window's title
-as it is.
+**Status:** ready for review (2026-10-26), on branch `feature/scout-waiting-for-you` (a
+workspace started in Symbiote, from `main` at `00d88e1`). The person OK'd the plan with "1. b 2.
+a 3. a. Go": Skills takes the same band when Scribe waits, a 1.2 s flash when it starts to wait,
+the window's title as it is. Built as planned, with the reads kept on while one waits; "As built"
+and results at the end.
 
 **Problem** (asked: "Right now, the scout waiting for my response is not that visible..maybe
 change the style of the entire menu item."). On `main` at `00d88e1`, with the e2e fake agent
@@ -86,3 +87,35 @@ link's size (nothing moves), the other links, the window's title.
 | 423 | Motion | **One 1.2 s flash when it starts to wait, then still; none with reduced motion** | The person: "2. a"; waiting stays still as V48 decided, the flash only catches the eye |
 | 424 | Which links | **Scout's and Skills' (Scribe's `needs-you`)** | The person: "1. b"; Scribe asks for permissions the same way |
 | 425 | The window's title | **As it is: it counts waiting workspaces only** | The person: "3. a" |
+
+## As built (V59)
+
+- **The reads go on while Scout or Scribe waits** (`workspaces/useWorkspaces.ts`, `readEvery`):
+  every 5 s, as for a waiting workspace. Not in the plan; Skills' e2e found it. The workspaces,
+  Scout and Scribe were read every 5 s only while one of them *worked* or a terminal was open:
+  a wait that ended with neither — answered from another Claude Code window, say — left the band
+  up until the next read (the window focused, the page shown again). Answered in Scout's or
+  Scribe's own terminal it was already read (an open terminal keeps the reads on). A band that
+  stays is a wrong "your move"; the dot had the same flaw, too small to notice. MC1's asks are
+  read on their own, every 2 s, and were not affected.
+- **One mark for both links**: `AgentMark` (`shell/Sidenav.tsx`) draws the spinner, the answered
+  dot, or "Waits" and the rail's dot; Scout's and Skills' links each had their own copy of the dot.
+- **"Waits" and the dot side by side in the page**: the dot is hidden beside "Waits" and shown on
+  the rail only (`.sidenav-waits + .state-dot`), so the rail needs no other markup.
+- **The flash plays again** when reduced motion is turned off while it waits: the animation's name
+  comes back. Rare; the e2e checks reduced motion before waiting the flash out.
+- **README**: one sentence under "See what needs you".
+
+**Results.** Tests first, red for the right reasons: Scout's e2e (its name "Scout", no band),
+Skills' (`data-state` "answered" where "waiting" was expected), then `readEvery` 2 (no read while
+Scout or Scribe waits). Then green: `e2e/scout.spec.ts` (waiting: a 10 % tint of `--warning`, its
+1 px inset ring at 32 %, the icon `--warning`, the words `--text`, "Waits" and no dot, the name
+"Scout, waits for you", the box as before, `wait-flash` and none with reduced motion; folded: the
+band and the dot, no word; on its page: `--selected`, the ring, the accent icon, "Waits";
+answered: at rest), `e2e/skills.spec.ts` (Scribe waiting: the band, "Waits", the name and the
+warn tip), `test/useWorkspaces.test.ts`. `pnpm check`: format, lint and typecheck clean, 1,799 of
+1,799 unit tests. `pnpm build`. `pnpm test:e2e`: 277 of 277 (4.5 min; 276 on `main`). Screenshots
+at 1440×900, 1×, both themes, before and after: the sidenav with Scout, Scribe and a workspace
+waiting, hovered, folded, on Scout's page, at rest; the narrow drawer at 420 px. Not verified: the
+desktop app on WSLg, a touch screen, a real Claude Code dialog in Scout's terminal (the fake's
+`waitingFor` stands for it, read by the same `scoutState`).

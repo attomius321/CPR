@@ -162,7 +162,8 @@ The sidenav lists your workspaces in groups, by what each one needs from you:
 
 Each card shows the workspace's title, its kind, its state, and how long it has been in that
 state. A waiting card has **Respond**, which opens the agent's terminal. The window's title counts
-the workspaces waiting for you.
+the workspaces waiting for you. When Scout or Scribe waits for you, its page's link turns amber
+like this group and says **Waits**.
 
 ### Work with the agent
 
