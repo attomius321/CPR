@@ -6,11 +6,13 @@ import {
   readlinkSync,
   rmSync,
   symlinkSync,
+  writeFileSync,
 } from 'node:fs';
 import { join } from 'node:path';
 import { openRepo, type SkillChange } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
+import { libraryService, type LibraryService } from '../src/library.js';
 import {
   parseSkillChange,
   skillNameProblem,
@@ -53,13 +55,36 @@ function fresh(): TestRepo {
 
 async function service(
   repo: TestRepo,
-  options: { codex?: boolean; platform?: NodeJS.Platform } = {},
+  options: { codex?: boolean; platform?: NodeJS.Platform; library?: LibraryService } = {},
 ) {
   return skillsService(await openRepo(repo.root), {
     codexInstalled: () => Promise.resolve(options.codex ?? false),
     ...(options.platform ? { platform: options.platform } : {}),
+    ...(options.library ? { library: options.library } : {}),
   });
 }
+
+/** A library kept in a config folder of the test's own, set to `folder` when given. */
+async function library(folder?: string, commits: 'none' | 'commit' = 'none') {
+  const config = tempDir();
+  folders.push(config);
+  const made = libraryService(join(config, 'library.json'), { home: config });
+  if (folder) await made.set({ action: 'library', folder, commits });
+  return made;
+}
+
+/** A plain folder holding a skill, `deploy`, with a file of its own. */
+function plainLibrary(): string {
+  const dir = tempDir();
+  folders.push(dir);
+  mkdirSync(join(dir, 'deploy', 'scripts'), { recursive: true });
+  writeFileSync(join(dir, 'deploy', 'SKILL.md'), DEPLOY);
+  writeFileSync(join(dir, 'deploy', 'scripts', 'run.sh'), 'echo\n');
+  mkdirSync(join(dir, 'notes'));
+  return dir;
+}
+
+const DEPLOY = '---\nname: deploy\ndescription: Deploys a service.\n---\n\n# Deploy\n';
 
 /** The refusal `act` throws: its status and words. */
 async function refusal(act: () => Promise<unknown>): Promise<{ status: number; message: string }> {
@@ -340,6 +365,191 @@ describe('linking .agents/skills for Codex', () => {
   });
 });
 
+describe('the skill library (SK1)', () => {
+  it('answers as main does without a library: no library key', async () => {
+    const repo = fresh();
+    const without = await (await service(repo)).state();
+    const unset = await (await service(repo, { library: await library() })).state();
+    expect(unset).toEqual(without);
+    expect('library' in unset).toBe(false);
+  });
+
+  it('lists the library’s skills after the checkout’s, by library/<name>/SKILL.md', async () => {
+    const repo = fresh();
+    const dir = plainLibrary();
+    const state = await (await service(repo, { library: await library(dir) })).state();
+    expect(state.skills.map((s) => s.path)).toEqual([
+      '.claude/skills/review/SKILL.md',
+      '.claude/skills/style/SKILL.md',
+      'library/deploy/SKILL.md',
+    ]);
+    expect(state.skills[2]).toMatchObject({
+      folder: 'library',
+      name: 'deploy',
+      text: DEPLOY,
+      files: ['scripts/run.sh'],
+      git: 'none',
+      agents: [],
+    });
+    expect(state.library).toEqual({ folder: dir, exists: true, commits: 'none' });
+  });
+
+  it('gives each skill its state in the library’s repository', async () => {
+    const repo = fresh();
+    const held = createRepo();
+    repos.push(held);
+    held.write({ 'skills/deploy/SKILL.md': DEPLOY, 'skills/audit/SKILL.md': DEPLOY });
+    held.commit('Skills');
+    held.write({
+      'skills/audit/SKILL.md': `${DEPLOY}More.\n`,
+      'skills/fresh/SKILL.md': DEPLOY,
+    });
+    const state = await (
+      await service(repo, { library: await library(join(held.root, 'skills')) })
+    ).state();
+    expect(state.skills.filter((s) => s.folder === 'library').map((s) => [s.name, s.git])).toEqual([
+      ['audit', 'changed'],
+      ['deploy', 'committed'],
+      ['fresh', 'new'],
+    ]);
+    expect(state.library?.git?.changes).toEqual([
+      { path: 'audit/SKILL.md', state: 'changed' },
+      { path: 'fresh/SKILL.md', state: 'new' },
+    ]);
+  });
+
+  it('lists no skill of a library that is not there, and says so', async () => {
+    const repo = fresh();
+    const dir = plainLibrary();
+    const kept = await library(dir);
+    rmSync(dir, { recursive: true });
+    const state = await (await service(repo, { library: kept })).state();
+    expect(state.skills.map((s) => s.folder)).toEqual(['.claude/skills', '.claude/skills']);
+    expect(state.library).toEqual({ folder: dir, exists: false, commits: 'none' });
+  });
+
+  it('lists the checkout’s own folder once, as the checkout’s', async () => {
+    const repo = fresh();
+    const state = await (
+      await service(repo, { library: await library(join(repo.root, '.claude/skills')) })
+    ).state();
+    expect(state.skills.map((s) => s.path)).toEqual([
+      '.claude/skills/review/SKILL.md',
+      '.claude/skills/style/SKILL.md',
+    ]);
+    expect(state.library?.checkout).toBe('.claude/skills');
+  });
+
+  it('saves, adds and deletes a library skill, and refuses a save from an older read', async () => {
+    const repo = fresh();
+    const dir = plainLibrary();
+    const skills = await service(repo, { library: await library(dir) });
+    const deploy = (await skills.state()).skills.find((s) => s.folder === 'library')!;
+    await skills.change({
+      action: 'save',
+      path: 'library/deploy/SKILL.md',
+      text: `${DEPLOY}Step one.\n`,
+      version: deploy.version,
+    });
+    expect(readFileSync(join(dir, 'deploy/SKILL.md'), 'utf8')).toBe(`${DEPLOY}Step one.\n`);
+    expect(
+      await refusal(() =>
+        skills.change({
+          action: 'save',
+          path: 'library/deploy/SKILL.md',
+          text: 'x',
+          version: deploy.version,
+        }),
+      ),
+    ).toEqual({
+      status: 409,
+      message: 'library/deploy/SKILL.md changed since you opened it: open it again',
+    });
+
+    const added = await skills.change({
+      action: 'new',
+      name: 'audit',
+      description: 'Audits a release.',
+      where: 'library',
+    });
+    expect(readFileSync(join(dir, 'audit/SKILL.md'), 'utf8')).toBe(
+      '---\nname: audit\ndescription: Audits a release.\n---\n',
+    );
+    expect(existsSync(join(repo.root, '.claude/skills/audit'))).toBe(false);
+    expect(
+      await refusal(() =>
+        skills.change({ action: 'new', name: 'audit', description: 'Again.', where: 'library' }),
+      ),
+    ).toEqual({ status: 409, message: `${dir}/audit is there already` });
+
+    const audit = added.skills.find((s) => s.path === 'library/audit/SKILL.md')!;
+    await skills.change({ action: 'delete', path: audit.path, version: audit.version });
+    expect(existsSync(join(dir, 'audit'))).toBe(false);
+    expect(existsSync(join(dir, 'deploy/SKILL.md'))).toBe(true);
+  });
+
+  it('refuses a library skill without a library, outside it, or linking out of it', async () => {
+    const repo = fresh();
+    const none = await service(repo, { library: await library() });
+    expect(
+      await refusal(() =>
+        none.change({ action: 'new', name: 'audit', description: 'A.', where: 'library' }),
+      ),
+    ).toEqual({ status: 409, message: 'No skill library is set: set one in Settings' });
+    expect(
+      await refusal(() =>
+        none.change({ action: 'save', path: 'library/deploy/SKILL.md', text: 'x', version: 'v' }),
+      ),
+    ).toEqual({ status: 409, message: 'No skill library is set: set one in Settings' });
+
+    const dir = plainLibrary();
+    const skills = await service(repo, { library: await library(dir) });
+    for (const path of ['library/../x/SKILL.md', 'library/deploy/scripts/SKILL.md']) {
+      expect(
+        await refusal(() => skills.change({ action: 'save', path, text: 'x', version: 'v' })),
+      ).toMatchObject({ status: 400 });
+    }
+    const outside = tempDir();
+    folders.push(outside);
+    mkdirSync(join(outside, 'shared'));
+    symlinkSync(join(outside, 'shared'), join(dir, 'shared'));
+    expect(
+      await refusal(() =>
+        skills.change({ action: 'save', path: 'library/shared/SKILL.md', text: 'x', version: 'v' }),
+      ),
+    ).toEqual({
+      status: 400,
+      message: `${dir}/shared is a link out of ${dir}: change it where it is`,
+    });
+    expect(existsSync(join(outside, 'shared/SKILL.md'))).toBe(false);
+  });
+
+  it('sets, commits and forgets the library through a change', async () => {
+    vi.stubEnv('GIT_AUTHOR_NAME', 'Symbiote Test');
+    vi.stubEnv('GIT_AUTHOR_EMAIL', 'test@example.com');
+    vi.stubEnv('GIT_COMMITTER_NAME', 'Symbiote Test');
+    vi.stubEnv('GIT_COMMITTER_EMAIL', 'test@example.com');
+    const repo = fresh();
+    const held = createRepo();
+    repos.push(held);
+    held.write({ 'skills/deploy/SKILL.md': DEPLOY });
+    held.commit('Skills');
+    const skills = await service(repo, { library: await library() });
+    const set = await skills.change({
+      action: 'library',
+      folder: join(held.root, 'skills'),
+      commits: 'commit',
+    });
+    expect(set.library).toMatchObject({ folder: join(held.root, 'skills'), commits: 'commit' });
+    held.write({ 'skills/fresh/SKILL.md': DEPLOY });
+    const committed = await skills.change({ action: 'commit', message: 'Skills: fresh' });
+    expect(committed.library?.git?.changes).toEqual([]);
+    expect(held.git('log', '-1', '--format=%s')).toBe('Skills: fresh');
+    const forgotten = await skills.change({ action: 'forget' });
+    expect('library' in forgotten).toBe(false);
+  });
+});
+
 describe('a change as the page sends it', () => {
   it('reads each action, and says what is wrong with one it cannot', () => {
     const changes: SkillChange[] = [
@@ -347,11 +557,24 @@ describe('a change as the page sends it', () => {
       { action: 'new', name: 'a', description: 'd' },
       { action: 'delete', path: '.claude/skills/a/SKILL.md', version: 'v' },
       { action: 'link' },
+      { action: 'new', name: 'a', description: 'd', where: 'library' },
+      { action: 'library', folder: '/srv/skills', commits: 'none' },
+      { action: 'library', folder: '/srv/s', url: 'git@host:s.git', create: true, commits: 'push' },
+      { action: 'forget' },
+      { action: 'commit', message: 'Skills: a' },
+      { action: 'push' },
+      { action: 'pull' },
     ];
     for (const change of changes) expect(parseSkillChange(JSON.stringify(change))).toEqual(change);
     expect(() => parseSkillChange('{"action":"move"}')).toThrow(
-      'action: save, new, delete or link',
+      'action: save, new, delete, link, library, forget, commit, push or pull',
     );
+    expect(() => parseSkillChange('{"action":"library","folder":"/s","commits":"always"}')).toThrow(
+      'commits: none, commit or push',
+    );
+    expect(() =>
+      parseSkillChange('{"action":"new","name":"a","description":"d","where":"x"}'),
+    ).toThrow('where: library, or none for the checkout');
     expect(() => parseSkillChange('{"action":"save","path":"p","version":"v"}')).toThrow('text');
   });
 });

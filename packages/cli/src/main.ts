@@ -62,6 +62,7 @@ import { findingsReview, planFindings, postedMarkers } from './post-findings.js'
 import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ReviewTarget } from './server.js';
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
+import { libraryService, type LibraryService } from './library.js';
 import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
@@ -599,6 +600,12 @@ async function serve(
   return 0;
 }
 
+/** The skill library (SK1), kept in Symbiote's config folder for every repository here. */
+function libraryOf(ctx: CliContext): LibraryService {
+  const folder = symbioteConfigDir(ctx.env, process.platform, homedir());
+  return libraryService(join(folder, 'library.json'), { home: homedir() });
+}
+
 /** The first-time intro's record (V39), in Symbiote's config folder; `SYMBIOTE_INTRO=off`: none. */
 function introOf(ctx: CliContext): IntroRecord {
   const folder = symbioteConfigDir(ctx.env, process.platform, homedir());
@@ -744,7 +751,10 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         env: ctx.env,
         terminals,
       }),
-      skills: skillsService(repo, { codexInstalled: async () => (await codexOf()) !== null }),
+      skills: skillsService(repo, {
+        codexInstalled: async () => (await codexOf()) !== null,
+        library: libraryOf(ctx),
+      }),
       // The Monitor page (RM1): where the checked-out commit's code is.
       monitor: codeMaps(repo.root),
       scribe: scribe(repo, cacheDir, {
