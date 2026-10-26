@@ -70,8 +70,9 @@ configuration page; the four other old images are deleted. Real Claude Code sess
 plan, but Claude Code refused the repository ("Workspace not trusted") after the person ran
 `claude` there twice to accept its trust prompt: `~/.claude.json` held no entry for it, and
 shrank between two reads (138,520 to 135,890 bytes), so another running Claude Code may have
-written its older copy over it (not verified). The agent is the e2e suite's fake Claude Code, generated from
-`packages/viewer/e2e/symbiote.ts`, its hooks driven as the suite's `report` and `hook` do. The
+written its older copy over it (not verified). The agent is the e2e suite's fake Claude Code,
+generated from `packages/viewer/e2e/symbiote.ts`, its hooks driven as the suite's `report` and
+`hook` do. The
 plan in `workspace.png` is a real one from Claude Haiku (`claude -p`, read-only tools) for the
 workspace's real start prompt, minus two lines about print mode refusing `npm test`. The
 commits are written by hand. Both merges ran Symbiote's real merge and check (`npm install`,
