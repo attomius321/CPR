@@ -78,8 +78,8 @@ once and accept its trust prompt. Codex needs no such step.
    opens.
 3. Leave **Feature** picked. Type a **Title**, such as "Add a discount code", and describe the
    **Goal**: what it should do, and why. Leave **Plan first and wait for my OK** on.
-4. Click **Start**. Symbiote creates the branch and its own folder, starts the agent there, and
-   opens the workspace on the agent's terminal.
+4. Click **Start workspace**. Symbiote creates the branch and its own folder, starts the agent
+   there, and opens the workspace on the agent's terminal.
 5. Wait for the plan. The workspace moves to **Waiting for you** in the sidenav. Read the plan in
    the terminal, then type your answer there: "OK", or what to change.
 6. When the agent has finished, the workspace moves to **To review**. Click **Review** at the top
@@ -116,18 +116,21 @@ commits nothing unless you ask, so it usually has nothing to merge.
 
 Every kind also takes a title, an optional **Done when** (how you will know it works), and more
 notes under **More**. If Symbiote finds your project's check, such as `npm run test`, `cargo
-test` or `pytest`, it names it under **Done when**. The form is kept as a draft until you start,
-so leaving the page loses nothing.
+test` or `pytest`, it names it under **Done when**. Under the goal, the Markdown button shows it
+as the agent's brief will read, the paperclip adds documents, and a count shows the brief's
+length (at most 20,000 characters). The form is kept as a draft until you start, so leaving the
+page loses nothing.
 
 ![The Start a workspace page: a Feature with its title, goal and Done when, and the workspace's choices beside it](docs/images/start.png)
 
-The card beside the form holds the workspace's choices:
+The cards beside the form hold the workspace's choices:
 
 - **Start from**: the branch to start from. The default branch, unless you pick another.
-- **Branch**: the new branch's name, made from the title. You can edit it.
+- **Branch name**: the new branch's name, made from the title. You can edit it; the button
+  beside it names it after the title again.
 - **Agent**, **Model** and **Effort**: the agent, the model it starts with, and its effort level
   (how long the model thinks before it answers). The lists come from the agent itself.
-- **Permission** (Claude Code): Claude Code's own permission mode, which decides what it may do
+- **Permissions** (Claude Code): Claude Code's own permission mode, which decides what it may do
   without asking you. Symbiote never grants the agent more than the mode you pick.
 - **Approvals** (Hermes): Hermes asks in its terminal before a dangerous command. Its card says
   Working while it waits there.
@@ -136,7 +139,7 @@ The card beside the form holds the workspace's choices:
 - **Documents**: files for the agent, such as screenshots, PDFs or samples. Up to 20 files, 20 MB
   each.
 
-When you click **Start** (or press Ctrl+Enter), Symbiote:
+When you click **Start workspace** (or press Ctrl+Enter), Symbiote:
 
 1. writes the agent's *brief* (the task in words) from your answers;
 2. creates the branch and its worktree next to your checkout, in `../<repo>.worktrees/`;

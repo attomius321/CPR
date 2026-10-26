@@ -2,8 +2,9 @@
 // black, as given), in Chromium's canvas. Writes the app's icon, packages/desktop/icons/symbiote.png
 // (512 px: the window, the taskbar, `symbiote app install`'s launcher entry), and the viewer's
 // favicon, packages/viewer/src/shell/favicon.png (64 px), both a rounded tile; the mark in the
-// pages, packages/viewer/src/ui/mark.png (64 px, 32 on screen), and the start page's,
-// packages/desktop/start/mark.png (80 px, 40 on screen), both round.
+// pages, packages/viewer/src/ui/mark.png (64 px, 32 on screen), Start a workspace's,
+// packages/viewer/src/ui/mark-96.png (96 px, 48 on screen; V63), and the desktop start page's,
+// packages/desktop/start/mark.png (80 px, 40 on screen), all round.
 // `node scripts/desktop/icon.mjs` (after `pnpm install`).
 import { writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
@@ -13,6 +14,7 @@ const outputs = [
   { size: 512, shape: 'tile', file: at('packages/desktop/icons/symbiote.png') },
   { size: 64, shape: 'tile', file: at('packages/viewer/src/shell/favicon.png') },
   { size: 64, shape: 'round', file: at('packages/viewer/src/ui/mark.png') },
+  { size: 96, shape: 'round', file: at('packages/viewer/src/ui/mark-96.png') },
   { size: 80, shape: 'round', file: at('packages/desktop/start/mark.png') },
 ];
 

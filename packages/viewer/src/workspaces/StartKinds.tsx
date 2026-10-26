@@ -1,9 +1,19 @@
 // The kind of work on the start page (V24c): a radio group (keys 1–5 and the arrows), and what
-// each kind is for behind its "?".
-import type { WorkKindSpec } from '@symbiote/core';
+// each kind is for behind its "?". Drawn as the mockup's tabs since V63, an icon each.
+import type { ReactNode } from 'react';
+import type { WorkKind, WorkKindSpec } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
+import { BranchIcon, ChoreIcon, FixIcon, RefactorIcon, SpikeIcon } from '../ui/icons.js';
 import { KIND_ABOUT } from './brief.js';
 import { tip } from '../ui/tip.js';
+
+const KIND_ICONS: Record<WorkKind, ReactNode> = {
+  feature: <BranchIcon />,
+  fix: <FixIcon />,
+  refactor: <RefactorIcon />,
+  chore: <ChoreIcon />,
+  spike: <SpikeIcon />,
+};
 
 /** The kinds of work, `current` checked; `onPick` with the kind picked. */
 export function StartKinds({
@@ -46,10 +56,11 @@ export function StartKinds({
             role="radio"
             aria-checked={kind.kind === current.kind}
             tabIndex={kind.kind === current.kind ? 0 : -1}
-            className={kind.kind === current.kind ? 'kind active' : 'kind'}
+            className="kind"
             {...tip(kind.name, { keys: `${i + 1}` })}
             onClick={() => onPick(kind)}
           >
+            {KIND_ICONS[kind.kind]}
             {kind.name}
           </button>
         ))}

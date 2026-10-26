@@ -1872,7 +1872,7 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
   await expect(part(page, 'What happens')).toHaveValue('');
 });
 
-test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, start from, branch, model and effort with their help, permission, documents (V24c, V30, V33, V37, V40, V47)', async ({
+test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part and its tools, Done when, More, start from, branch, model and effort, permission, documents, each field after its help (V24c, V30, V33, V37, V40, V47, V63)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -1880,6 +1880,9 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(title(page)).toBeFocused();
+  // V63: the title's help, before it.
+  await page.keyboard.press('Shift+Tab');
+  await expect(startPage(page).getByRole('button', { name: 'About the title' })).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await expect(info(page)).toBeFocused();
   await page.keyboard.press('Shift+Tab');
@@ -1893,8 +1896,14 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
   await expect(kind(page, 'Spike')).toHaveAttribute('aria-checked', 'true');
   for (const next of [
     info(page),
+    startPage(page).getByRole('button', { name: 'About the title' }),
     title(page),
+    startPage(page).getByRole('button', { name: 'About the question' }),
     part(page, 'Question'),
+    // V63: the part's tools, in its frame.
+    startPage(page).getByRole('button', { name: 'Preview' }),
+    startPage(page).getByRole('button', { name: 'Attach files' }),
+    startPage(page).getByRole('button', { name: 'About Done when' }),
     doneWhen(page),
     startPage(page).getByRole('button', { name: /More:/ }),
     startPage(page).getByLabel('Start from'),

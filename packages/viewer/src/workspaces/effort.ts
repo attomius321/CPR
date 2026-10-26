@@ -17,9 +17,18 @@ export function stopOf(choices: readonly EffortChoice[], value: string | undefin
   );
 }
 
-/** A stop's word under the track: Default for the agent's own (its label says whose), else the level. */
+/**
+ * A stop's word under the track: Default for the agent's own (its label says whose), else the
+ * level, capitalised as the person's mockup writes them (V63): Low, Max, an x before one kept
+ * (xHigh).
+ */
 export const stopWord = (choice: EffortChoice): string =>
-  choice.value === '' ? 'Default' : choice.label;
+  choice.value === ''
+    ? 'Default'
+    : choice.label.replace(
+        /^(x?)(\p{Ll})/u,
+        (_, x: string, first: string) => x + first.toUpperCase(),
+      );
 
 /**
  * The level Scout's question box shows (`''`: the agent's own): the one picked for this

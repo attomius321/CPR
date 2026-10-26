@@ -1,16 +1,67 @@
-/* Start a workspace, a page of the shell's (V30a): a head strip, as a workspace's, then the brief
-   and the run side by side where the main area has the room, the run under the brief where not.
-   The body scrolls under the head, which keeps Start in view. Both centred in the main area, the
-   brief and the run as cards, the head's contents in the cards' width (V49). */
+/* Start a workspace, a page of the shell's (V30a), drawn as the person's mockup since V63: the
+   head — the S, the title and its line, the buttons — on the page's ground, the mockup's arcs
+   behind it; then the brief, one card, and the run, seven cards, side by side where the main area
+   has the room (821 : 470, as the mockup; 1,312 px at most), the run under the brief where not.
+   The body scrolls under the head, which keeps Start workspace in view. The head's contents are
+   laid out in the cards' width (V49). */
 .start-page {
   /* The cards' width, the head's contents laid out in it. */
   --start-width: 760px;
+  /* A run row's name, and the head of a card that is one choice: their controls line up. */
+  --start-name: 124px;
   position: relative;
+  isolation: isolate;
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   container: start / inline-size;
+}
+
+/* The mockup's arcs (decision 455): a ring at the top left, two at the right of the cards, in
+   the primary, faint; under everything on the page, still while the body scrolls. */
+.start-ground {
+  /* The ground beside the cards (`100%`: the page's width), as the head's padding. */
+  --ground-side: max(16px, calc((100% - 760px) / 2));
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.start-ground::before,
+.start-ground::after {
+  content: '';
+  position: absolute;
+  border: 1px solid var(--ground-arc);
+  border-radius: 50%;
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--ground-arc) 50%, transparent),
+    inset 0 0 28px color-mix(in srgb, var(--ground-arc) 35%, transparent);
+}
+
+.start-ground::before {
+  top: -795px;
+  left: -445px;
+  width: 990px;
+  height: 990px;
+  background: radial-gradient(
+    closest-side,
+    transparent 72%,
+    color-mix(in srgb, var(--ground-arc) 18%, transparent)
+  );
+}
+
+/* Two rings at the right, one inside the other (its outline), their leftmost 24 px past the
+   cards' edge, as the mockup's: never behind a card, where its gaps would show bits of them. */
+.start-ground::after {
+  top: 40px;
+  right: calc(var(--ground-side) - 1784px);
+  width: 1760px;
+  height: 1760px;
+  outline: 1px solid color-mix(in srgb, var(--ground-arc) 60%, transparent);
+  outline-offset: -40px;
 }
 
 /* The space each side of the cards: the head's and the error's padding. */
@@ -22,46 +73,66 @@
 .start-top {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: 'title from actions';
+  grid-template-areas: 'mark title actions';
   align-items: center;
-  column-gap: 12px;
-  row-gap: 2px;
-  min-height: 52px;
+  column-gap: 16px;
+  row-gap: 12px;
   box-sizing: border-box;
-  padding: 8px var(--start-side);
+  padding: 16px var(--start-side) 12px;
 }
 
-.start-top h1 {
+/* The S on its plate, lit as the mockup's. */
+.start-top .symbiote-mark {
+  grid-area: mark;
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 0 24px var(--ground-arc);
+}
+
+.start-heading {
   grid-area: title;
+  min-width: 0;
+}
+
+.start-heading h1 {
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;
 }
 
-.start-from {
-  grid-area: from;
-  margin: 0;
+.start-heading p {
+  margin: 2px 0 0;
   color: var(--muted);
   font-size: var(--size-small);
-  overflow-wrap: anywhere;
-}
-
-.start-from .ref {
-  display: inline;
 }
 
 .start-actions {
   grid-area: actions;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
-/* Narrow, where it starts goes under the title and the buttons. */
+/* The page's actions a step taller than a row's, as the mockup's. */
+.start-actions .button {
+  min-height: 36px;
+  padding: 0 16px;
+}
+
+.start-actions .button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Narrow, the buttons go under the S and the title. */
 @container start (max-width: 599px) {
   .start-top {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas: 'title actions' 'from from';
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: 'mark title' 'actions actions';
+  }
+
+  .start-actions {
+    justify-content: flex-end;
   }
 }
 
@@ -75,15 +146,14 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  /* The cards 8 px under the head, as every page's since V61 (16 before; 24 under them): More
-     open still fits 1440 × 900 with the bigger type. */
   padding: 8px 16px 16px;
 }
 
-/* A tall main area: the cards lower, 40 % of the height over 900 px (240 at most), and the goal
-   taller (below). Not centred: the cards would move as More opens or files are added. */
+/* A tall main area: the head and the cards lower, 40 % of the height over 900 px (240 at most),
+   and the goal taller (below). Not centred: the cards would move as More opens or files are
+   added. */
 @media (min-height: 940px) {
-  .start-body {
+  .start-page {
     padding-top: min(240px, calc((100vh - 900px) * 0.4));
   }
 }
@@ -92,86 +162,128 @@
   display: grid;
   grid-template-columns: minmax(0, 760px);
   justify-content: center;
-  gap: 16px 24px;
+  gap: 16px;
 }
 
+/* Wide, the mockup's two columns (decision 454): its proportion, the run at least 380 px. */
 @container start (min-width: 1000px) {
   .start-top,
   .start-error {
-    --start-width: 1164px;
+    --start-width: 1312px;
+  }
+
+  .start-ground {
+    --ground-side: max(16px, calc((100% - 1312px) / 2));
   }
 
   .start-columns {
-    grid-template-columns: minmax(0, 760px) 380px;
+    grid-template-columns: minmax(0, 821fr) minmax(380px, 470fr);
+    max-width: 1312px;
+    margin: 0 auto;
     align-items: start;
   }
 }
 
-/* The cards (V49): the brief, and the run beside it or under it. */
-.start-brief,
-.start-run {
+/* The brief: one card. */
+.start-brief {
   min-width: 0;
-  padding: 16px;
+  padding: 12px 24px 24px;
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--panel);
   box-shadow: var(--shadow-lift);
 }
 
-.start-brief > :first-child {
-  margin-top: 0;
+/* The run: seven cards, each an icon in the accent and a heading (decision 453). */
+.start-run {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
 }
 
-/* The run's choices as rows (V49): the name at the left in --muted, the control at the right, a
-   hairline between rows; a note under its control. Words (the warning about a key, what is made
-   without an agent) are a row of their own. Over `.workspace-field`'s and `.workspace-check`'s
-   margin. */
-.start-run > .workspace-field,
-.start-run > .workspace-check,
-.start-run > p {
+.start-card {
+  min-width: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-lift);
+}
+
+.start-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+}
+
+.start-card-icon {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.start-card-icon .icon {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.9;
+}
+
+.start-card-head h2 {
   margin: 0;
-  padding: 8px 0;
-  border-top: 1px solid var(--line);
+  color: var(--text);
+  font-size: var(--size-body);
+  font-weight: 600;
 }
 
-.start-run > :first-child {
-  padding-top: 0;
-  border-top: 0;
+/* A card that is one choice: its control on the head's line, where the rows' controls are. */
+.start-card-control {
+  flex: 0 1 calc(100% - var(--start-name) - 12px);
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  margin-left: auto;
 }
 
-.start-run > :last-child {
-  padding-bottom: 0;
+/* A switch keeps its own width, at the line's end. */
+.start-card-control:has(> [role='switch']) {
+  flex: none;
 }
 
-.start-run > .workspace-field,
-.start-run > .workspace-check {
-  min-height: 32px;
+/* Words under a card's heading, in line with it (past the icon). */
+.start-card-note {
+  margin: 2px 0 0 30px;
   color: var(--muted);
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
 }
 
-.start-run > .workspace-field {
-  grid-template-columns: 104px minmax(0, 1fr);
+/* Under a choice's control: the model's description. */
+.start-model-note {
+  margin-left: calc(var(--start-name) + 12px);
+}
+
+/* A row (V49): the name at the left in --muted, the control at the right; a note under its
+   control. Over `.workspace-field`'s margin and weight. */
+.start-card > .start-row {
+  grid-template-columns: var(--start-name) minmax(0, 1fr);
   align-items: center;
   column-gap: 12px;
   row-gap: 4px;
+  margin: 10px 0 0;
+  color: var(--muted);
 }
 
-/* The stepper wants the card's width (its six words overlap at a row's 220 px). */
-.start-run > .start-effort {
-  grid-template-columns: minmax(0, 1fr);
+.start-card > .start-row + .start-row {
+  margin-top: 8px;
 }
 
-.start-run select {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  text-overflow: ellipsis;
-  font-weight: normal;
-}
-
-.start-run .workspace-field > .dialog-note,
 .start-row-note {
-  grid-column: -2;
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 4px;
   margin: 0;
   font-size: var(--size-small);
   /* Inside a field, where the name's weight would carry. */
@@ -179,9 +291,87 @@
   overflow-wrap: anywhere;
 }
 
+.start-row-note.start-base {
+  display: block;
+}
+
+.start-base strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* A subscription's crown, in the warning's amber as the mockup's. */
+.start-account .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--warning);
+}
+
+.start-card select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+  font-weight: normal;
+}
+
+/* A select with an icon in its frame: a branch, an agent's mark. */
+.start-select {
+  position: relative;
+  min-width: 0;
+}
+
+.start-select > svg {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  width: 16px;
+  height: 16px;
+  translate: 0 -50%;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.start-select select {
+  padding-left: 34px;
+}
+
 .start-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
   color: var(--text);
   font-weight: normal;
+}
+
+.start-value .agent-mark {
+  width: 16px;
+  height: 16px;
+}
+
+/* Branch name: the field, and the button that names it after the title again. */
+.start-branch {
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+
+.start-branch input {
+  flex: 1;
+  min-width: 0;
+}
+
+.start-rename {
+  flex: none;
+  width: 32px;
+  padding: 0;
+}
+
+/* The stepper wants the card's width (its six words overlap at a row's 220 px). */
+.start-effort .effort-stepper {
+  max-width: none;
+  margin: 8px 0 0;
 }
 
 @media (max-width: 480px) {
@@ -189,18 +379,24 @@
     padding: 12px 16px 16px;
   }
 
-  .start-brief,
-  .start-run {
+  .start-brief {
+    padding: 8px 12px 12px;
+  }
+
+  .start-card {
     padding: 12px;
   }
 }
 
-/* The kinds and their info button; the info spans the brief's column below them (V24c). */
+/* The kinds as the mockup's tabs (decision 452), on the brief's hairline; the info at the row's
+   end (V24c). */
 .kind-row {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
 }
 
 /* The kinds, explained in their help (V24c; a tip of Help's since V37). */
@@ -233,45 +429,75 @@
   color: var(--text);
 }
 
-/* The kind of work (V24c), as History's scopes: one segmented control. */
 .kind-picker {
+  flex: 1;
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
-  width: fit-content;
-  max-width: 100%;
-  padding: 3px;
-  border-radius: 10px;
-  background: var(--raised);
+  gap: 8px;
+  min-width: 0;
 }
 
 .kind {
-  height: 24px;
-  padding: 0 12px;
-  border: 1px solid transparent;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
   border-radius: 8px;
-  background: none;
+  background: color-mix(in srgb, var(--raised) 60%, transparent);
   color: var(--muted);
-  font-size: var(--size-small);
+  font-size: var(--size-body);
   font-weight: 500;
   cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
 }
 
 .kind:hover {
+  background: var(--raised);
   color: var(--text);
 }
 
-.kind.active {
-  border-color: color-mix(in srgb, var(--text) 15%, transparent);
-  background: var(--lifted);
-  box-shadow: var(--shadow-lift);
-  color: var(--text);
+/* The picked kind: the accent's wash and words, the primary's line on the row's hairline. */
+.kind[aria-checked='true'] {
+  background: var(--selected);
+  color: var(--accent);
 }
 
-/* The five and their info on one line on a phone (390 px: 308 px for them). */
+.kind[aria-checked='true']::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -9px;
+  left: 0;
+  height: 3px;
+  border-radius: 9999px;
+  background: var(--primary);
+}
+
+.kind .icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* The five and their info on one line on a phone (390 px: 334 for them): words only, a step
+   smaller. */
 @media (max-width: 480px) {
+  .kind-picker {
+    gap: 2px;
+  }
+
   .kind {
+    height: 36px;
     padding: 0 6px;
+    font-size: var(--size-small);
+  }
+
+  .kind .icon {
+    display: none;
   }
 }
 
@@ -279,34 +505,12 @@
   outline-offset: -2px;
 }
 
-.workspace-check-guess {
-  margin: 4px 0 0;
-  font-size: var(--size-small);
-  overflow-wrap: anywhere;
-}
-
-.workspace-more {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin: 12px 0 0;
-  padding: 0;
-  font-family: inherit;
-  text-align: left;
-}
-
+/* The brief's fields: a name and its "?" over each. */
 .workspace-field {
   display: grid;
-  gap: 4px;
-  margin: 12px 0 0;
+  gap: 8px;
+  margin: 20px 0 0;
   font-weight: 500;
-}
-
-/* The goal: what is written most, taller where the main area is tall (V49). */
-@media (min-height: 1024px) {
-  .start-brief .start-goal {
-    min-height: calc(12lh + 18px);
-  }
 }
 
 .workspace-field textarea,
@@ -330,12 +534,168 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 30%, transparent);
 }
 
-/* Plan first: its words, and its switch at the row's end. */
-.workspace-check {
+.workspace-check-guess {
+  margin: 0;
+  font-size: var(--size-small);
+  font-weight: normal;
+  overflow-wrap: anywhere;
+}
+
+/* The goal and its tools (decision 452): the preview, 📎 and the brief's length in its frame,
+   over the text's last 44 px. */
+.start-goal-frame {
+  position: relative;
+  min-width: 0;
+}
+
+.start-brief .start-goal,
+.start-preview {
+  /* A block: inline, the frame would add a line's descent under it, and the tools cover its
+     bottom edge. */
+  display: block;
+  min-height: calc(7lh + 18px + 36px);
+  padding-bottom: 44px;
+}
+
+/* The frame's hover, the tools' too. */
+.start-goal-frame:hover .start-goal:not(:focus, :disabled) {
+  border-color: var(--edge);
+}
+
+.start-goal-tools {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  left: 1px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 2px;
+  padding: 4px 12px 6px 6px;
+  border-radius: 0 0 8px 8px;
+  /* The field's own colour, opaque: the input's wash is translucent, over the card. A long goal
+     scrolls under it. */
+  background: linear-gradient(var(--input-bg), var(--input-bg)) var(--panel);
+  font-weight: normal;
+}
+
+.start-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.start-count.error {
+  color: var(--error);
+}
+
+/* The goal as Markdown, in the field's frame. */
+.start-preview {
+  box-sizing: border-box;
+  max-height: 50vh;
+  overflow: auto;
+  padding-top: 8px;
+  padding-right: 10px;
+  padding-left: 10px;
+  border: 1px solid var(--field-line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  font-weight: normal;
+}
+
+.start-preview > :first-child {
+  margin-top: 0;
+}
+
+.start-preview-empty {
+  color: var(--muted);
+}
+
+/* The goal opens taller where the main area is tall (V49). */
+@media (min-height: 1024px) {
+  .start-brief .start-goal,
+  .start-preview {
+    min-height: calc(12lh + 18px + 36px);
+  }
+}
+
+/* The mockup's advice under the parts. */
+.start-advice {
+  display: flex;
+  align-items: flex-start;
   gap: 12px;
-  margin: 12px 0 0;
+  margin: 20px 0 0;
+  padding: 12px 16px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--raised) 55%, transparent);
+}
+
+.start-advice > .icon {
+  width: 20px;
+  height: 20px;
+  color: var(--warning);
+}
+
+.start-advice p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.start-advice strong {
+  display: block;
+  color: var(--text);
   font-weight: 500;
+}
+
+/* More: a framed row, its parts opening inside it. */
+.start-more {
+  margin: 16px 0 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--raised) 35%, transparent);
+}
+
+.start-more-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 12px 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.start-more-toggle:hover {
+  background: var(--hover);
+}
+
+.start-more-words {
+  flex: 1;
+  min-width: 0;
+}
+
+.start-chip {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+.start-more > .workspace-field {
+  margin: 4px 16px 16px;
+}
+
+.start-too-long {
+  margin: 12px 0 0;
 }
