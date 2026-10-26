@@ -49,6 +49,8 @@ export function LibraryPane({
   }, [suggested, typed]);
   const pushes = library.commits === 'push';
   const sync = git ? librarySync(git) : '';
+  /** Symbiote commits here: the message, and Commit, Push and Pull on the line of actions. */
+  const commits = git && library.commits !== 'none' ? git : null;
 
   return (
     <section className="skills-pane skills-library" aria-label="Skill library">
@@ -91,15 +93,9 @@ export function LibraryPane({
           ) : (
             <p className="hint library-clean">Nothing to commit.</p>
           )}
-          {library.commits === 'none' ? (
-            <p className="library-git-note">
-              Symbiote leaves this git to you: commit in <code>{git.root}</code>.{' '}
-              <button type="button" className="link" onClick={onSettings}>
-                Let Symbiote commit
-              </button>
-            </p>
-          ) : (
+          {commits ? (
             <form
+              id="library-commit"
               className="library-commit"
               aria-label="Commit"
               onSubmit={(event) => {
@@ -128,26 +124,14 @@ export function LibraryPane({
                   }}
                 />
               </div>
-              <div className="skills-actions">
-                {pushes && git.upstream && (
-                  <button type="button" className="button ghost" disabled={busy} onClick={onPull}>
-                    Pull
-                  </button>
-                )}
-                {pushes && git.ahead > 0 && (
-                  <button type="button" className="button ghost" disabled={busy} onClick={onPush}>
-                    Push
-                  </button>
-                )}
-                <button
-                  type="submit"
-                  className="button"
-                  disabled={busy || changes.length === 0 || message.trim() === '' || !git.branch}
-                >
-                  {pushes ? 'Commit and push' : 'Commit'}
-                </button>
-              </div>
             </form>
+          ) : (
+            <p className="library-git-note">
+              Symbiote leaves this git to you: commit in <code>{git.root}</code>.{' '}
+              <button type="button" className="link" onClick={onSettings}>
+                Let Symbiote commit
+              </button>
+            </p>
           )}
         </>
       )}
@@ -160,6 +144,26 @@ export function LibraryPane({
         <button type="button" className="button ghost" onClick={onSettings}>
           Change in Settings
         </button>
+        {commits && pushes && commits.upstream && (
+          <button type="button" className="button ghost" disabled={busy} onClick={onPull}>
+            Pull
+          </button>
+        )}
+        {commits && pushes && commits.ahead > 0 && (
+          <button type="button" className="button ghost" disabled={busy} onClick={onPush}>
+            Push
+          </button>
+        )}
+        {commits && (
+          <button
+            type="submit"
+            form="library-commit"
+            className="button"
+            disabled={busy || changes.length === 0 || message.trim() === '' || !commits.branch}
+          >
+            {pushes ? 'Commit and push' : 'Commit'}
+          </button>
+        )}
       </div>
     </section>
   );

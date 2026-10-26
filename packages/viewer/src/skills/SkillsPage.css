@@ -373,6 +373,11 @@
   font-size: var(--size-small);
 }
 
+/* A link in the text's colour, underlined under the pointer only (`.link`). */
+.skills-library-unset a:not(:hover) {
+  text-decoration: none;
+}
+
 .skills-library {
   display: flex;
   flex-direction: column;

@@ -433,6 +433,7 @@ export function SkillsPage() {
               <p className="hint skills-library-unset">
                 Skills for every repository:{' '}
                 <a
+                  className="link"
                   href={hrefOf(LIBRARY_SETTINGS)}
                   onClick={(event) => {
                     if (!shell) return;

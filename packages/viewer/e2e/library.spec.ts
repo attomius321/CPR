@@ -141,6 +141,31 @@ test('a missing folder is made only when Save says it will', async ({ page }) =>
   expect(existsSync(missing)).toBe(true);
 });
 
+test('Clone a repository: cloned into a new folder, its skills folder the library', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  const { bare } = remoteAndClone();
+  const into = join(mkdtempSync(join(tmpdir(), 'symbiote-e2e-library-')), 'skillbar');
+  await page.goto(`${symbiote.url}settings?prompt=skill-library`);
+  await settingsPage(page).getByRole('button', { name: 'Clone a repository' }).click();
+  await settingsPage(page).getByRole('textbox', { name: 'Repository' }).fill(bare);
+  await settingsPage(page).getByRole('textbox', { name: 'Clone into' }).fill(into);
+  await expect(settingsPage(page).locator('.library-probe')).toHaveText(
+    'Nothing there yet: the repository is cloned into it.',
+  );
+  await settingsPage(page).getByRole('button', { name: 'Clone and save' }).click();
+  await expect(settingsPage(page).getByRole('status')).toHaveText(
+    `Cloned and saved. The library is ${into}/skills.`,
+  );
+  expect(JSON.parse(readFileSync(join(symbiote.config, 'library.json'), 'utf8'))).toEqual({
+    folder: join(into, 'skills'),
+    commits: 'none',
+  });
+  await page.goto(`${symbiote.url}skills`);
+  await expect(librarySection(page).getByRole('button', { name: 'deploy' })).toBeVisible();
+});
+
 test('Commit and push: the library’s changes committed with a message, pushed, then pulled', async ({
   page,
 }) => {
