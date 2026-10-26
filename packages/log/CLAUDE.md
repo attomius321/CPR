@@ -13,6 +13,11 @@ the CLI and the desktop app (which reads no `@symbiote/core`) use it.
 - A line is pino's, with the time as ISO text and the level as a word:
   `{"level":"error","time":"…Z","pid":…,"process":"view",…,"msg":"…","err":{type,message,stack}}`.
   Changing that shape changes what `ops/logs/config.alloy` and the dashboard read.
+- The dashboard (`ops/logs/grafana/dashboards/symbiote.json`, LG2) reads lines by `msg` and the
+  fields above; its rows share one `line_format` template (the same string in every logs panel).
+  `test/dashboard.test.ts` checks its structure in `pnpm check`; `pnpm logs:check` writes a line
+  for every panel and runs each panel's queries through Grafana. A new message or field a panel
+  should show: add it to both.
 - `openLog` writes each line synchronously in one `write` (2.6–3.1 µs a line): on disk when the
   call returns, whole however many processes append. Logging never stops a program: `off`, a
   folder that cannot be made or a failed write writes nothing.

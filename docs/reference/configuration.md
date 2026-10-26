@@ -193,7 +193,20 @@ To read the logs in Grafana, run `pnpm logs:up` in Symbiote's folder and open
 http://localhost:3300. It needs Docker, and `pnpm logs:down` stops it. Without Docker, read the
 files with `jq` or `lnav`.
 
-![The Symbiote dashboard in Grafana: a crash, three errors, each error on one line with its stack](../images/logs-dashboard.png)
+The Symbiote dashboard opens first. From the top, it shows:
+
+- the counts for the time range: crashes, errors, warnings, analyses, merged branches and agents;
+- the problems over time and by kind, then each one with the start of its stack (open a row for
+  all its fields and the whole stack);
+- what Symbiote did: the slowest analysis, agents by program, and how each merge ended;
+- the server's requests, folded until you open them;
+- every other line.
+
+Each level has one colour everywhere: crashes are purple, errors red and warnings orange.
+**Process** filters every panel, **Text** filters every list of lines, and **Level** filters the
+last list. **Logs Drilldown** and **Explore** open the same lines.
+
+![The Symbiote dashboard in Grafana over two days: the counts, the problems over time by level and by kind, the newest warning with the start of its stack](../images/logs-dashboard.png)
 
 ## Older names
 
