@@ -90,6 +90,29 @@ const CARD = '.workspace-about';
 export const CARD_NAMES = `${CARD}:not(:disabled, [aria-disabled='true'])`;
 
 /**
+ * A page agent's mark after its link's name (V35): a spinner while it works, a dot when it
+ * answered. Waiting on the person (V59), "Waits": the link is an amber band then, and its dot
+ * shows only on the folded rail, where words do not.
+ */
+function AgentMark({ waits, mark }: { waits: boolean; mark: ScoutMark }) {
+  if (waits) {
+    return (
+      <>
+        <span className="sidenav-waits">Waits</span>
+        <span className="state-dot tone-waiting" aria-hidden="true" />
+      </>
+    );
+  }
+  if (!mark) return null;
+  return (
+    <span
+      className={`state-dot ${mark === 'working' ? 'tone-working' : 'tone-done'}`}
+      aria-hidden="true"
+    />
+  );
+}
+
+/**
  * The shell's sidenav (V29a): Symbiote and the repository, the pages, then the workspaces by what
  * each needs from the person and the merges in Symbiote's queue. A card opens its workspace (or
  * merge) in the main area. Folded, it is a rail of icons and marks.
@@ -135,6 +158,8 @@ export function Sidenav({
   useEffect(() => {
     setScribeMark((shown) => nextScoutMark(shown, scribeState, onSkills));
   }, [scribeState, onSkills]);
+  // A dialog in its terminal (V59): it waits as Scout does.
+  const scribeWaits = scribeState === 'needs-you';
 
   // A card whose workspace moves to another group (its agent moved on) is drawn anew there, and
   // the focus would fall to the page: it follows the card. Only the card the focus was on, and
@@ -222,7 +247,7 @@ export function Sidenav({
         </a>
         <a
           href={SCOUT_PAGE}
-          aria-label="Scout"
+          aria-label={scoutWaits ? 'Scout, waits for you' : 'Scout'}
           {...tip(
             scoutWaits
               ? 'Scout\nWaits for you'
@@ -248,43 +273,38 @@ export function Sidenav({
         >
           <ScoutIcon />
           <span className="sidenav-label">Scout</span>
-          {(scoutWaits || scoutMark) && (
-            <span
-              className={`state-dot ${
-                scoutWaits ? 'tone-waiting' : scoutMark === 'working' ? 'tone-working' : 'tone-done'
-              }`}
-              aria-hidden="true"
-            />
-          )}
+          <AgentMark waits={scoutWaits} mark={scoutMark} />
           <kbd aria-hidden="true">a</kbd>
         </a>
         <a
           href={SKILLS_PAGE}
-          aria-label="Skills"
+          aria-label={scribeWaits ? 'Skills, Scribe waits for you' : 'Skills'}
           {...tip(
-            scribeMark === 'working'
-              ? 'Skills\nScribe is writing'
-              : scribeMark === 'answered'
-                ? 'Skills\nScribe answered while you were away'
-                : 'Skills\nWhat agents load to work in this repository',
+            scribeWaits
+              ? 'Skills\nScribe waits for you'
+              : scribeMark === 'working'
+                ? 'Skills\nScribe is writing'
+                : scribeMark === 'answered'
+                  ? 'Skills\nScribe answered while you were away'
+                  : 'Skills\nWhat agents load to work in this repository',
             {
               keys: 'i',
               side: 'right',
-              tone:
-                scribeMark === 'working' ? 'info' : scribeMark === 'answered' ? 'ok' : undefined,
+              tone: scribeWaits
+                ? 'warn'
+                : scribeMark === 'working'
+                  ? 'info'
+                  : scribeMark === 'answered'
+                    ? 'ok'
+                    : undefined,
             },
           )}
           aria-current={route?.page === 'skills' ? 'page' : undefined}
-          data-state={scribeMark ?? undefined}
+          data-state={scribeWaits ? 'waiting' : (scribeMark ?? undefined)}
         >
           <SkillsIcon />
           <span className="sidenav-label">Skills</span>
-          {scribeMark && (
-            <span
-              className={`state-dot ${scribeMark === 'working' ? 'tone-working' : 'tone-done'}`}
-              aria-hidden="true"
-            />
-          )}
+          <AgentMark waits={scribeWaits} mark={scribeMark} />
           <kbd aria-hidden="true">i</kbd>
         </a>
         <a

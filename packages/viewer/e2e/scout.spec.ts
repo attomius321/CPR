@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { dragTo, stops } from './stepper.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 import { textAt } from './terminal.js';
@@ -172,6 +172,135 @@ test('the sidenav says Scout works, then that it answered while you were away', 
   await expect(scoutLink(page)).not.toHaveAttribute('data-state', /.+/);
 });
 
+/**
+ * A computed colour's channels (0–255) and alpha: `rgb()`, `rgba()` or `color(srgb …)`; none for a
+ * colour in a transition or an animation (Chromium gives those in `oklab()`).
+ */
+function channels(css: string): [number, number, number, number] | undefined {
+  const srgb = /color\(srgb ([\d.e-]+) ([\d.e-]+) ([\d.e-]+)(?: \/ ([\d.]+))?\)/.exec(css);
+  if (srgb) {
+    const [r, g, b] = [srgb[1], srgb[2], srgb[3]].map((value) => Number(value) * 255);
+    return [r ?? 0, g ?? 0, b ?? 0, srgb[4] === undefined ? 1 : Number(srgb[4])];
+  }
+  const rgb = /rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)/.exec(css);
+  if (!rgb) return undefined;
+  return [
+    Number(rgb[1]),
+    Number(rgb[2]),
+    Number(rgb[3]),
+    rgb[4] === undefined ? 1 : Number(rgb[4]),
+  ];
+}
+/** How strong a tint of `of` the colour is (its alpha); NaN for another colour or one moving. */
+const tintOf = (css: string, of: string) => {
+  const [r, g, b, a] = channels(css) ?? [];
+  const [or, og, ob] = channels(of) ?? [];
+  if (r === undefined || or === undefined) return Number.NaN;
+  return Math.abs(r - or) + Math.abs((g ?? 0) - (og ?? 0)) + Math.abs((b ?? 0) - (ob ?? 0)) < 6
+    ? (a ?? 1)
+    : Number.NaN;
+};
+/** What a sidenav link shows: its background, its ring, its words', icon's colours, its flash. */
+const looks = (link: Locator) =>
+  link.evaluate((a) => {
+    const style = getComputedStyle(a);
+    const icon = a.querySelector('.icon');
+    return {
+      background: style.backgroundColor,
+      ring: style.boxShadow,
+      color: style.color,
+      icon: icon ? getComputedStyle(icon).color : '',
+      flash: style.animationName,
+    };
+  });
+/** A token's colour as the page computes it. */
+const token = (page: Page, name: string) =>
+  page.evaluate((name) => {
+    const probe = document.createElement('i');
+    probe.style.color = `var(${name})`;
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  }, name);
+
+// V59 (decisions 422, 423): Scout waiting on the person is its whole link, in Waiting for you's
+// amber band, saying so; nothing moves.
+test('Scout waiting for you: its whole link an amber band saying "Waits", folded and on its page too', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}scout`);
+  await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
+  await historyLink(page).click();
+  const link = scoutLink(page);
+  const waits = link.locator('.sidenav-waits');
+  const atRest = await link.boundingBox();
+  const warning = await token(page, '--warning');
+  // As at rest, once the current page's wash has gone.
+  await expect.poll(async () => (await looks(link)).background, POLL).toBe('rgba(0, 0, 0, 0)');
+
+  symbiote.setSession('fake0', {
+    state: 'waiting',
+    status: 'idle',
+    waitingFor: 'permission prompt',
+  });
+  await expect(link).toHaveAttribute('data-state', 'waiting', POLL);
+  await expect(link).toHaveAccessibleName('Scout, waits for you');
+  await expect(link).toHaveAttribute('data-tip', 'Scout\nWaits for you');
+  await expect(waits).toBeVisible();
+  await expect(waits).toHaveText('Waits');
+  await expect(link.locator('.state-dot')).toBeHidden();
+  // A flash as it starts to wait, then still: a light tint of the warning, its ring, its icon.
+  expect((await looks(link)).flash).toBe('wait-flash');
+  // Without motion, no flash (with it again, it flashes again: the poll below waits it out).
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  expect((await looks(link)).flash).toBe('none');
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect
+    .poll(async () => tintOf((await looks(link)).background, warning), POLL)
+    .toBeLessThan(0.2);
+  let shown = await looks(link);
+  expect(tintOf(shown.background, warning)).toBeGreaterThan(0.05);
+  expect(shown.ring).toMatch(/ 0px 0px 0px 1px inset$/);
+  expect(tintOf(shown.ring.replace(/ 0px 0px 0px 1px inset$/, ''), warning)).toBeGreaterThan(0.2);
+  expect(shown.icon).toBe(warning);
+  expect(shown.color).toBe(await token(page, '--text'));
+  expect(await link.boundingBox()).toEqual(atRest);
+
+  // Folded: the band and its dot on the icon's corner; no words.
+  await page.keyboard.press('[');
+  await expect(page.locator('.sidenav')).toHaveClass(/rail/);
+  await expect(waits).toBeHidden();
+  await expect(link.locator('.state-dot')).toBeVisible();
+  await expect(link.locator('.state-dot')).toHaveClass(/tone-waiting/);
+  shown = await looks(link);
+  expect(tintOf(shown.background, warning)).toBeGreaterThan(0.05);
+  expect(shown.icon).toBe(warning);
+  await page.keyboard.press('[');
+  await expect(page.locator('.sidenav')).not.toHaveClass(/rail/);
+
+  // On its own page: the current page's wash and icon, the ring and "Waits" with them.
+  await link.click();
+  await expect(link).toHaveAttribute('aria-current', 'page');
+  const selected = await token(page, '--selected');
+  await expect.poll(async () => (await looks(link)).background, POLL).toBe(selected);
+  shown = await looks(link);
+  expect(shown.ring).toMatch(/ 0px 0px 0px 1px inset$/);
+  expect(shown.icon).toBe(await token(page, '--accent'));
+  await expect(waits).toBeVisible();
+
+  // It answers: the link as it was.
+  symbiote.setSession('fake0', { state: 'done', status: 'idle' });
+  await expect(link).not.toHaveAttribute('data-state', /.+/, POLL);
+  await expect(waits).toHaveCount(0);
+  await expect(link).toHaveAccessibleName('Scout');
+  await historyLink(page).click();
+  await expect.poll(async () => (await looks(link)).background, POLL).toBe('rgba(0, 0, 0, 0)');
+  expect((await looks(link)).ring).toBe('none');
+  expect((await looks(link)).icon).toBe(await token(page, '--faint'));
+});
+
 test("a path Scout prints opens in VS Code, in the checkout's window (V38)", async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}scout`);
@@ -262,6 +391,47 @@ test('a model and an effort picked in its head start nothing: New conversation s
   });
   // The project's settings are as they were: these are the head's.
   expect(existsSync(config())).toBe(false);
+});
+
+// fix/scout-not-aligned: "Effort" sat on its track's line, 10 px over the selects' centre, and the
+// stepper's 36 px of track and words stood out of the 28 px selects and grew the head to 50 px.
+test("its head's choices, Effort, state and New conversation share one centre, on one line or two", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces({ codex: true, appServer: true });
+  const head = scoutPage(page).locator('.scout-top');
+  const box = async (part: Locator) => {
+    const b = await part.boundingBox();
+    if (!b) throw new Error('not drawn');
+    return { top: b.y, bottom: b.y + b.height, centre: b.y + b.height / 2 };
+  };
+  // 1,920 px: the head on one line; 1,200: the choices on a line of their own.
+  for (const width of [1920, 1200]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto(`${symbiote.url}scout`);
+    await expect(screen(page)).toContainText('Fake Claude Code', POLL);
+    const agent = await box(scoutPage(page).getByRole('combobox', { name: 'Agent' }));
+    const choices = [
+      await box(model(page)),
+      await box(head.locator('.scout-effort-label')),
+      await box(head.locator('.effort-stepper')),
+    ];
+    for (const part of choices) {
+      expect(Math.abs(part.centre - agent.centre)).toBeLessThanOrEqual(1);
+    }
+    // The stepper no taller than the selects beside it.
+    expect(choices[2]?.top).toBeGreaterThanOrEqual(agent.top - 1);
+    expect(choices[2]?.bottom).toBeLessThanOrEqual(agent.bottom + 1);
+    const state = await box(scoutPage(page).getByRole('status'));
+    const button = await box(renew(page));
+    expect(Math.abs(state.centre - button.centre)).toBeLessThanOrEqual(1);
+    if (width === 1920) {
+      expect(Math.abs(button.centre - agent.centre)).toBeLessThanOrEqual(1);
+      expect((await head.boundingBox())?.height).toBe(44);
+    } else {
+      expect(agent.top).toBeGreaterThan(button.bottom);
+    }
+  }
 });
 
 test('New conversation: the old session stopped and removed, the next opened at once on what the head shows', async ({

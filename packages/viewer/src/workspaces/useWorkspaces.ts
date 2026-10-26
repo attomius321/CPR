@@ -39,13 +39,17 @@ const listeners = new Set<(state: WorkspacesState) => void>();
 let loading: Promise<void> | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
 
+/** Scout or Scribe answering, or waiting on the person (V59: its link a band until a read). */
+const busy = (page: ScoutState | null) =>
+  page?.conversation?.state === 'working' || page?.conversation?.state === 'needs-you';
+
 const live = (state: WorkspacesState) =>
   (state.list?.workspaces.some(
     (f) => f.agent.state === 'working' || f.agent.state === 'needs-you',
   ) ??
     false) ||
-  state.scout?.conversation?.state === 'working' ||
-  state.scribe?.conversation?.state === 'working';
+  busy(state.scout) ||
+  busy(state.scribe);
 
 const merging = (state: WorkspacesState) => mergeLive(state.merges?.merges ?? []);
 
@@ -60,8 +64,8 @@ let closedUntil = 0;
 
 /**
  * How long until the next read: 1.5 s while a merge runs; 5 s while an agent works or waits, Scout
- * answers, Scribe writes, a terminal is open (`open`), or the last read failed (V48: until one
- * answers); none otherwise.
+ * answers, Scribe writes, either waits on the person, a terminal is open (`open`), or the last
+ * read failed (V48: until one answers); none otherwise.
  */
 export function readEvery(state: WorkspacesState, open: number): number | null {
   if (merging(state)) return MERGE_POLL_MS;

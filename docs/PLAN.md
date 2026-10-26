@@ -163,6 +163,7 @@ hosted.
 | [V50](plan/v50-scout-terminal.md) | Scout is a terminal: opened with no question; the agent, model and effort in its head | ready for review | 383–385 | [journal](journal/v50-scout-terminal.md) |
 | [V52](plan/v52-scout-next-conversation.md) | Scout's head picks the next conversation: a choice starts nothing until New conversation | ready for review | 391–393 | [journal](journal/v52-scout-next-conversation.md) |
 | [V58](plan/v58-hermes-agent.md) | Hermes as a workspace's agent, in its terminal | ready for review | 415–421 | [journal](journal/v58-hermes-agent.md) |
+| Fix | Scout's head on one line: Effort and its stepper centred with the selects | ready for review | | [journal](journal/fix-scout-not-aligned.md) |
 
 ### The merger
 
@@ -196,6 +197,7 @@ hosted.
 | [V51](plan/v51-settings-look.md) | Settings and Skills: centred, in cards | ready for review | 386–390 | [journal](journal/v51-settings-look.md) |
 | [V56](plan/v56-skills-page-layout.md) | Skills: the page's own, the whole main area | ready for review | 407–410 | [journal](journal/v56-skills-page-layout.md) |
 | [V54](plan/v54-tooltips.md) | Tooltips drawn by Symbiote, one form per context | ready for review | 397–402 | [journal](journal/v54-tooltips.md) |
+| [V59](plan/v59-scout-waiting-mark.md) | Scout's and Scribe's links, whole, in Waiting for you's amber band while they wait | ready for review | 422–425 | [journal](journal/v59-scout-waiting-mark.md) |
 
 ### Native window
 
