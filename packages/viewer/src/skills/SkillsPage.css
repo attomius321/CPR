@@ -222,7 +222,8 @@
   gap: 16px;
 }
 
-@container skills-pane (min-width: 880px) {
+/* From 860 px (880 before V61): the cards' gutters left the pane 878 px at 1440. */
+@container skills-pane (min-width: 860px) {
   .skills-work {
     grid-template-columns: minmax(0, 1fr) 280px;
     grid-template-rows: minmax(0, 1fr);

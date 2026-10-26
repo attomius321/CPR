@@ -254,7 +254,7 @@ input[type='radio']:focus-visible {
 }
 
 /* A switch (V49): an on/off setting, the checkbox drawn as a track and its thumb; on, the
-   checkbox's blue. */
+   checkbox's primary. */
 input[type='checkbox'][role='switch'] {
   place-content: center start;
   width: 36px;

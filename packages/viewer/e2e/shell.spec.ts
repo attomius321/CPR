@@ -328,11 +328,12 @@ test('the terminal fills the main area, down to the status bar', async ({ page }
       .map(Number) ?? [0, 0];
   // Without the branch's changes beside it (V29d; changes.spec measures it with them).
   await workspace(page, branch).getByRole('button', { name: 'Changes' }).click();
-  await expect.poll(async () => (await size())[0], POLL).toBeGreaterThanOrEqual(140);
+  await expect.poll(async () => (await size())[0], POLL).toBeGreaterThanOrEqual(125);
   const [, rows = 0] = await size();
-  // At least 65 % of the window. In Geist Mono at 14 px (V32) a cell is 8 x 18 px: 148 x 44 here;
-  // 46 rows at 13 px (V29b), 58 in the fallback font's 13 px lines (V29a), 41 on `main` then.
-  expect(rows).toBeGreaterThanOrEqual(43);
+  // At least 65 % of the window. In Geist Mono at 15 px (V61) a cell is 9 x 19 px: 127 x 40 here,
+  // 67 % of the window; at 14 px (V32) 8 x 18, 148 x 44; 46 rows at 13 px (V29b), 58 in the
+  // fallback font's 13 px lines (V29a), 41 on `main` then.
+  expect(rows).toBeGreaterThanOrEqual(40);
   const box = await workspace(page, branch).locator('.xterm-screen').boundingBox();
   expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.65);
   const bar = await statusBar(page).boundingBox();
@@ -392,8 +393,9 @@ test('a diff of symbiote view: the sidenav as a rail beside its canvas, [ opens 
   await expect(page.locator('.react-flow__node').first()).toBeVisible({ timeout: 20_000 });
   await expect(sidenav(page)).toHaveClass(/rail/);
   expect((await sidenav(page).boundingBox())?.width ?? 0).toBeLessThanOrEqual(56);
-  // The canvas keeps nearly all of its width: 1,140 px at 1440 without the rail (V29 spike).
-  expect((await page.locator('.react-flow').boundingBox())?.width ?? 0).toBeGreaterThan(1080);
+  // The canvas keeps nearly all of its width: 1,140 px at 1440 without the rail (V29 spike); the
+  // cards' gutters take 24 (V61).
+  expect((await page.locator('.react-flow').boundingBox())?.width ?? 0).toBeGreaterThan(1060);
   await expect(statusBar(page)).toBeVisible();
 
   await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });

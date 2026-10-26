@@ -298,7 +298,8 @@ test('Scout waiting for you: its whole link an amber band saying "Waits", folded
   await historyLink(page).click();
   await expect.poll(async () => (await looks(link)).background, POLL).toBe('rgba(0, 0, 0, 0)');
   expect((await looks(link)).ring).toBe('none');
-  expect((await looks(link)).icon).toBe(await token(page, '--faint'));
+  // An idle page's icon in the muted words' colour since V61 (the mockup; `--faint` before).
+  expect((await looks(link)).icon).toBe(await token(page, '--muted'));
 });
 
 test("a path Scout prints opens in VS Code, in the checkout's window (V38)", async ({ page }) => {

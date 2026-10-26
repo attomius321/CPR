@@ -18,8 +18,7 @@
 /* The open workspace's kind (V61, the mockup): the current one's, in a wash of the accent. */
 .workspace-top .kind-tag,
 .workspace-about[aria-current] + .kind-tag {
-  border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
-  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   color: var(--accent);
 }
 
@@ -369,9 +368,11 @@
   color: var(--text);
 }
 
+/* The state keeps 160 px, its time whole (V61: at 900 px the bigger title took it all, and the
+   time ran under the actions); the title gives way first. */
 .workspace-top {
   display: grid;
-  grid-template-columns: minmax(0, max-content) minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, max-content) minmax(160px, 1fr) auto;
   grid-template-areas: 'title state actions';
   column-gap: 12px;
   align-items: center;

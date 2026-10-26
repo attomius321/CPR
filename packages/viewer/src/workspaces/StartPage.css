@@ -75,7 +75,9 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 16px 16px 24px;
+  /* The cards 8 px under the head, as every page's since V61 (16 before; 24 under them): More
+     open still fits 1440 × 900 with the bigger type. */
+  padding: 8px 16px 16px;
 }
 
 /* A tall main area: the cards lower, 40 % of the height over 900 px (240 at most), and the goal

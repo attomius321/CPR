@@ -215,8 +215,9 @@ test('on a phone, the list first; a skill takes the page, and goes back to the l
 });
 
 // V56 (decisions 407–409): Skills is drawn with rules of its own (not Settings') over the whole
-// main area: the list at its left edge, the skill to its right and bottom edges, no card; its
-// checks beside the text where the pane is 880 px wide, under it on a narrower one.
+// main area: the list at its left edge, the skill to its right and bottom edges (V61: as cards, 8 px
+// in from them); its
+// checks beside the text where the pane is 860 px wide (880 before V61), under it on a narrower one.
 test('uses the whole main area: the list at its left edge, the skill to its right and bottom', async ({
   page,
 }) => {
@@ -243,14 +244,15 @@ test('uses the whole main area: the list at its left edge, the skill to its righ
     const heading = await page.getByRole('heading', { name: 'Skills', exact: true }).boundingBox();
     const add = await page.getByRole('button', { name: 'New skill' }).boundingBox();
     if (!main || !l || !e || !area || !checks || !heading || !add) throw new Error('no box');
-    expect(Math.abs(l.x - main.x)).toBeLessThanOrEqual(1);
-    expect(Math.abs(e.x + e.width - (main.x + main.width))).toBeLessThanOrEqual(1);
-    expect(Math.abs(e.y + e.height - (main.y + main.height))).toBeLessThanOrEqual(1);
+    // Cards 8 px from the main area's edges since V61 (the person's mockup), flush before.
+    expect(Math.abs(l.x - main.x - 8)).toBeLessThanOrEqual(1);
+    expect(Math.abs(e.x + e.width - (main.x + main.width - 8))).toBeLessThanOrEqual(1);
+    expect(Math.abs(e.y + e.height - (main.y + main.height - 8))).toBeLessThanOrEqual(1);
     // The head as History's: its title 16 px in, New skill 12 px from the right.
     expect(Math.round(heading.x - main.x)).toBe(16);
     expect(Math.round(main.x + main.width - (add.x + add.width))).toBe(12);
     // The text as tall as the pane allows: only the line of actions under it and, in a pane under
-    // 880 px, the checks and files.
+    // 860 px, the checks and files.
     const side = await editor(page).locator('.skills-side').boundingBox();
     if (!side) throw new Error('no box');
     const under = width === 1280 ? side : area;
@@ -363,9 +365,10 @@ test("Scribe's terminal fills the pane: to the main area's right and bottom edge
     const l = await list(page).boundingBox();
     const box = await terminal.boundingBox();
     if (!main || !l || !box) throw new Error('no box');
-    expect(Math.abs(box.x + box.width - (main.x + main.width))).toBeLessThanOrEqual(1);
-    expect(Math.abs(box.y + box.height - (main.y + main.height))).toBeLessThanOrEqual(1);
-    expect(box.width).toBeGreaterThanOrEqual(main.width - l.width - 2);
+    // To the pane card's edges, 8 px in from the main area's (V61) and inside its 1 px border.
+    expect(Math.abs(box.x + box.width - (main.x + main.width - 9))).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.y + box.height - (main.y + main.height - 9))).toBeLessThanOrEqual(1);
+    expect(box.width).toBeGreaterThanOrEqual(main.width - l.width - 28);
   }
 });
 

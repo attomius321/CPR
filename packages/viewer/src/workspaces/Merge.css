@@ -70,7 +70,8 @@
   background: currentcolor;
 }
 
-/* A merge's sides keep a colour on its page: the target blue, the branch purple. */
+/* A merge's sides keep a colour on its page: the target cyan, the branch magenta (purple until
+   V61, whose first lane went blue: too near the target's cyan). */
 .merge-ref-ours,
 .merge-row .from-ours {
   --merge-side: var(--info);
@@ -78,7 +79,7 @@
 
 .merge-ref-theirs,
 .merge-row .from-theirs {
-  --merge-side: var(--lane-1);
+  --merge-side: var(--lane-4);
 }
 
 .merge-row .from-both,

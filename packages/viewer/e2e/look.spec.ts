@@ -385,7 +385,8 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
   await inside(tip);
 });
 
-test('a card in the sidenav is at most 64 px high', async ({ page }) => {
+// 72 px since V61's bigger type (64 before): its name at 15 px, its lines at 14.
+test('a card in the sidenav is at most 72 px high', async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
@@ -395,7 +396,7 @@ test('a card in the sidenav is at most 64 px high', async ({ page }) => {
   await form.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
   const card = page.locator('.sidenav .workspace-row').first();
   await expect(card).toContainText('feature/add-a-half-function', POLL);
-  expect((await card.boundingBox())?.height ?? 0).toBeLessThanOrEqual(64);
+  expect((await card.boundingBox())?.height ?? 0).toBeLessThanOrEqual(72);
 });
 
 // V37: Terminal, Thread and Brief are flat buttons on the chrome's strip, the picked one a wash of

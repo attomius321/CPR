@@ -494,7 +494,7 @@ button.workspace-about {
 /* A card, at most 72 px (64 before V61's bigger type): the dot, the title and the kind; the state
    and its age; the branch. */
 .sidenav .workspace-row {
-  padding: 6px 8px;
+  padding: 5px 8px;
   border: 1px solid transparent;
   border-radius: 10px;
   cursor: pointer;
