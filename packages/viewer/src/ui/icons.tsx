@@ -1,16 +1,27 @@
 import { useId, type ReactNode } from 'react';
 import mark from './mark.png';
+import markLarge from './mark-96.png';
 import { tip } from './tip.js';
 
 /**
  * Symbiote's icons (V29): 16 px line drawings in the text's colour. Inline SVG, so no icon library
- * is bundled; each is decorative (`aria-hidden`), named by the control that holds it.
+ * is bundled; each is decorative (`aria-hidden`), named by the control that holds it. `lucide`:
+ * drawn on lucide's own 24-unit grid, its paths as published (V63), the stroke made to match.
  */
-function Icon({ children, className }: { children: ReactNode; className?: string }) {
+function Icon({
+  children,
+  className,
+  lucide,
+}: {
+  children: ReactNode;
+  className?: string;
+  lucide?: boolean;
+}) {
+  const classes = ['icon', lucide && 'lucide', className].filter(Boolean).join(' ');
   return (
     <svg
-      className={className ? `icon ${className}` : 'icon'}
-      viewBox="0 0 16 16"
+      className={classes}
+      viewBox={lucide ? '0 0 24 24' : '0 0 16 16'}
       aria-hidden="true"
       focusable="false"
     >
@@ -207,11 +218,18 @@ export const ForwardIcon = () => (
 
 /**
  * Symbiote's mark (V61): the person's S, cut round from `scripts/desktop/logo.png` by
- * `scripts/desktop/icon.mjs`, at 64 px for 32 on screen (20 in the title bar). Never 16: V39's
- * koi S did not read there.
+ * `scripts/desktop/icon.mjs`, at 64 px for 32 on screen (20 in the title bar), 96 for the start
+ * page's 48 (V63). Never 16: V39's koi S did not read there.
  */
-export const SymbioteMark = () => (
-  <img className="symbiote-mark" src={mark} alt="" width={32} height={32} draggable={false} />
+export const SymbioteMark = ({ size = 32 }: { size?: 32 | 48 }) => (
+  <img
+    className={size === 32 ? 'symbiote-mark' : 'symbiote-mark large'}
+    src={size === 32 ? mark : markLarge}
+    alt=""
+    width={size}
+    height={size}
+    draggable={false}
+  />
 );
 
 /** Open or folded (a folder, a project, More): down when open, right when folded. */
@@ -350,3 +368,159 @@ export function HermesMark() {
     </svg>
   );
 }
+
+/*
+ * The start page's icons (V63, the person's mockup): lucide's paths (ISC) on its 24-unit grid. The
+ * kinds of work, the run's cards, and the controls the mockup draws.
+ */
+
+/** Feature, and Source: lucide's git-branch. */
+export const BranchIcon = () => (
+  <Icon lucide>
+    <path d="M6 3v12" />
+    <circle cx="18" cy="6" r="3" />
+    <circle cx="6" cy="18" r="3" />
+    <path d="M18 9a9 9 0 0 1-9 9" />
+  </Icon>
+);
+
+/** Fix: lucide's scissors. */
+export const FixIcon = () => (
+  <Icon lucide>
+    <circle cx="6" cy="6" r="3" />
+    <path d="M8.12 8.12 12 12" />
+    <path d="M20 4 8.12 15.88" />
+    <circle cx="6" cy="18" r="3" />
+    <path d="M14.8 14.8 20 20" />
+  </Icon>
+);
+
+/** Refactor: lucide's blocks. */
+export const RefactorIcon = () => (
+  <Icon lucide>
+    <rect width="7" height="7" x="14" y="3" rx="1" />
+    <path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3" />
+  </Icon>
+);
+
+/** Chore: lucide's power. */
+export const ChoreIcon = () => (
+  <Icon lucide>
+    <path d="M12 2v10" />
+    <path d="M18.4 6.6a9 9 0 1 1-12.77.04" />
+  </Icon>
+);
+
+/** Spike: lucide's route. */
+export const SpikeIcon = () => (
+  <Icon lucide>
+    <circle cx="6" cy="19" r="3" />
+    <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
+    <circle cx="18" cy="5" r="3" />
+  </Icon>
+);
+
+/** The agent's card: lucide's bot. */
+export const AgentIcon = () => (
+  <Icon lucide>
+    <path d="M12 8V4H8" />
+    <rect width="16" height="12" x="4" y="8" rx="2" />
+    <path d="M2 14h2" />
+    <path d="M20 14h2" />
+    <path d="M15 13v2" />
+    <path d="M9 13v2" />
+  </Icon>
+);
+
+/** The model's card: lucide's cpu. */
+export const ModelIcon = () => (
+  <Icon lucide>
+    <rect width="16" height="16" x="4" y="4" rx="2" />
+    <rect width="6" height="6" x="9" y="9" rx="1" />
+    <path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2" />
+  </Icon>
+);
+
+/** The effort's card: lucide's zap. */
+export const EffortIcon = () => (
+  <Icon lucide>
+    <path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" />
+  </Icon>
+);
+
+/** The permissions' card: lucide's shield-half. */
+export const PermissionIcon = () => (
+  <Icon lucide>
+    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+    <path d="M12 22V2" />
+  </Icon>
+);
+
+/** Plan first's card: lucide's clock. */
+export const PlanIcon = () => (
+  <Icon lucide>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 6v6l4 2" />
+  </Icon>
+);
+
+/** The documents' card: lucide's file-text. */
+export const DocumentsIcon = () => (
+  <Icon lucide>
+    <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+    <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+    <path d="M10 9H8M16 13H8M16 17H8" />
+  </Icon>
+);
+
+/** Start workspace: lucide's play. */
+export const PlayIcon = () => (
+  <Icon lucide>
+    <path d="M6 3l14 9-14 9z" />
+  </Icon>
+);
+
+/** Branch name back to the title's: lucide's shuffle. */
+export const ShuffleIcon = () => (
+  <Icon lucide>
+    <path d="m18 14 4 4-4 4" />
+    <path d="m18 2 4 4-4 4" />
+    <path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22" />
+    <path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2" />
+    <path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8" />
+  </Icon>
+);
+
+/** The brief's advice: lucide's lightbulb. */
+export const AdviceIcon = () => (
+  <Icon lucide>
+    <path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5" />
+    <path d="M9 18h6" />
+    <path d="M10 22h4" />
+  </Icon>
+);
+
+/** Before a subscription: lucide's crown. */
+export const SubscriptionIcon = () => (
+  <Icon lucide>
+    <path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.734H5.81a1 1 0 0 1-.957-.734L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z" />
+    <path d="M5 21h14" />
+  </Icon>
+);
+
+/** Files for the documents, from the goal's tools: lucide's paperclip. */
+export const AttachIcon = () => (
+  <Icon lucide>
+    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+  </Icon>
+);
+
+/** The goal as Markdown: an M and a down arrow in a frame, Markdown's own mark. */
+export const MarkdownIcon = () => (
+  <Icon lucide>
+    <rect width="20" height="16" x="2" y="4" rx="2" />
+    <path d="M6 15V9l3 3 3-3v6" />
+    <path d="M17 9v6" />
+    <path d="m14.5 12.5 2.5 2.5 2.5-2.5" />
+  </Icon>
+);

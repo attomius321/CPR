@@ -337,11 +337,11 @@ test('a model and an effort picked in its head start nothing: New conversation s
   await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
   await expect(stops(effort(page))).toHaveText([
     'Default',
-    'low',
-    'medium',
-    'high',
-    'xhigh',
-    'max',
+    'Low',
+    'Medium',
+    'High',
+    'xHigh',
+    'Max',
   ]);
   await expect(renew(page)).toHaveClass(/secondary/);
 

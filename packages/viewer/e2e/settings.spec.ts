@@ -119,7 +119,7 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   await form.getByRole('radio', { name: 'Fix' }).click();
   await form.getByRole('textbox', { name: 'Title' }).fill('Dates sort as text');
   await form.getByRole('textbox', { name: 'What happens' }).fill('They sort 1, 10, 2.');
-  await form.getByRole('button', { name: 'Start', exact: true }).click();
+  await form.getByRole('button', { name: 'Start workspace' }).click();
   await expect(page.getByRole('status')).toContainText('Started fix/dates-sort-as-text');
   const told = symbiote.calls().at(-1)?.args.at(-1) ?? '';
   expect(told).toMatch(/^Fix it on fix\/dates-sort-as-text\.\n\n# Fix: Dates sort as text\n/);
@@ -415,7 +415,7 @@ test("Scout's page: its Model, Effort and Instructions; the effort a stepper of 
   ]);
   const effort = part(page, 'Effort').getByRole('slider', { name: 'Effort' });
   await expect(effort).toHaveAttribute('aria-valuetext', "Claude Code's default");
-  await expect(stops(effort)).toHaveText(['Default', 'low', 'medium', 'high', 'xhigh', 'max']);
+  await expect(stops(effort)).toHaveText(['Default', 'Low', 'Medium', 'High', 'xHigh', 'Max']);
   await dragTo(page, effort, 3);
   await expect(effort).toHaveAttribute('aria-valuetext', 'high');
   await expect(part(page, 'Effort').getByRole('status')).toContainText('Saved.');
@@ -466,7 +466,7 @@ test("the merger's effort: a stepper of its agent's levels, saved as merge.effor
   await expect(page).toHaveURL(`${symbiote.url}settings?prompt=merger`);
   const effort = part(page, 'Effort').getByRole('slider', { name: 'Effort' });
   await expect(effort).toHaveAttribute('aria-valuetext', "Claude Code's default");
-  await expect(stops(effort)).toHaveText(['Default', 'low', 'medium', 'high', 'xhigh', 'max']);
+  await expect(stops(effort)).toHaveText(['Default', 'Low', 'Medium', 'High', 'xHigh', 'Max']);
   await dragTo(page, effort, 3);
   await expect(effort).toHaveAttribute('aria-valuetext', 'high');
   await expect(part(page, 'Effort').getByRole('status')).toHaveText(
@@ -544,7 +544,7 @@ test("Scout's model: Claude Code's own list, saved as scout.model when picked; t
     'Best for everyday, complex tasks',
   );
   // The Effort beside it follows at once: Opus 4.6 has no xhigh, so Scout starts at the default.
-  await expect(stops(effort)).toHaveText(['Default', 'low', 'medium', 'high', 'max']);
+  await expect(stops(effort)).toHaveText(['Default', 'Low', 'Medium', 'High', 'Max']);
   await expect(effort).toHaveAttribute('aria-valuetext', "Claude Code's default");
   await expect(part(page, 'Effort').getByRole('alert')).toHaveText(
     'scout.effort is xhigh, which Claude Code does not list: Scout starts it at its default.',
@@ -611,7 +611,7 @@ test("Scribe's page: its Model, Effort and Instructions; saved as scribe.model a
   await expect.poll(scribe).toEqual({ model: 'sonnet' });
   const effort = part(page, 'Effort').getByRole('slider', { name: 'Effort' });
   await expect(effort).toHaveAttribute('aria-valuetext', "Claude Code's default");
-  await expect(stops(effort)).toHaveText(['Default', 'low', 'medium', 'high', 'xhigh', 'max']);
+  await expect(stops(effort)).toHaveText(['Default', 'Low', 'Medium', 'High', 'xHigh', 'Max']);
   await dragTo(page, effort, 3);
   await expect(part(page, 'Effort').getByRole('status')).toHaveText(
     "Saved. Scribe's next conversation starts at high.",

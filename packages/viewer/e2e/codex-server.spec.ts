@@ -34,7 +34,7 @@ const start = async (page: Page) => {
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await startPage(page).getByRole('textbox', { name: 'Title' }).fill('Add a half function');
   await startPage(page).getByRole('textbox', { name: 'Goal' }).fill('Return a / 2, and test it.');
-  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
   await expect(startPage(page)).toBeHidden();
 };
 

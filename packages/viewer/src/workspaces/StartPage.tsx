@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent, type ReactNode } from 'react';
 import type {
   CheckGuess,
   PermissionMode,
@@ -36,8 +36,19 @@ import {
 } from './workspaces.js';
 import { fileBase64, getJson, postJson } from '../ui/http.js';
 import { shortSha } from '../history/commits.js';
-import { ChevronIcon } from '../ui/icons.js';
+import {
+  AdviceIcon,
+  AttachIcon,
+  BranchIcon,
+  ChevronIcon,
+  MarkdownIcon,
+  PlanIcon,
+  PlayIcon,
+  ShuffleIcon,
+  SymbioteMark,
+} from '../ui/icons.js';
 import { Help } from '../ui/Help.js';
+import { markdownNodes, useMarkdown } from '../ui/markdown.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
 import { beginStart, endStart } from './starting.js';
 import {
@@ -49,6 +60,7 @@ import {
   type DocumentEntry,
 } from './documents.js';
 import { StartAgent } from './StartAgent.js';
+import { StartCard } from './StartCard.js';
 import { StartDocuments } from './StartDocuments.js';
 import { StartKinds } from './StartKinds.js';
 import { tip } from '../ui/tip.js';
@@ -121,14 +133,11 @@ export function StartPage({
   }
   return (
     <section className="start-page" aria-labelledby="start-title">
-      <header className="start-top">
-        <h1 id="start-title">Start a workspace</h1>
-        <div className="start-actions">
-          <button type="button" className="button ghost" onClick={onLeave}>
-            Cancel
-          </button>
-        </div>
-      </header>
+      <StartHead>
+        <button type="button" className="button secondary" onClick={onLeave}>
+          Cancel
+        </button>
+      </StartHead>
       <div className="start-body">
         {failed ? (
           <p className="error">{failed}</p>
@@ -142,6 +151,42 @@ export function StartPage({
         )}
       </div>
     </section>
+  );
+}
+
+/**
+ * The page's head (V63, as Settings' since V62): the S, the title and the mockup's line under it,
+ * then `children`, the buttons, at the right; the mockup's arcs on the page's ground behind.
+ */
+function StartHead({ children }: { children: ReactNode }) {
+  return (
+    <>
+      <div className="start-ground" aria-hidden="true" />
+      <header className="start-top">
+        <SymbioteMark size={48} />
+        <div className="start-heading">
+          <h1 id="start-title">Start a workspace</h1>
+          <p>Create a new workspace from a branch with an AI agent</p>
+        </div>
+        <div className="start-actions">{children}</div>
+      </header>
+    </>
+  );
+}
+
+/** The goal (or a kind's main part) as Markdown, as the agent's brief will be drawn (V63). */
+function GoalPreview({ text }: { text: string }) {
+  const lexer = useMarkdown();
+  return (
+    <div className="start-preview markdown" tabIndex={0}>
+      {text.trim() === '' ? (
+        <p className="start-preview-empty">Nothing to preview yet.</p>
+      ) : lexer ? (
+        markdownNodes(lexer(text))
+      ) : (
+        <p>{text}</p>
+      )}
+    </div>
   );
 }
 
@@ -166,6 +211,10 @@ function StartForm({
   );
   const [guess, setGuess] = useState<CheckGuess | null>(null);
   const [moreShown, setMoreShown] = useState(false);
+  // The goal shown as Markdown (V63), until written again.
+  const [previewing, setPreviewing] = useState(false);
+  // The one file picker of the page: Documents' Add files, and the goal's 📎.
+  const picker = useRef<HTMLInputElement>(null);
   // The kinds' info: while hovered or focused, or once tapped.
   // The run's choices as the draft kept them (V30b); else the agents installed, the default first
   // (V20a), at its own effort, Claude Code in its configured mode, plan first.
@@ -351,6 +400,8 @@ function StartForm({
     if (kind.kind !== form.kind) edit(withKind(form, spec, kind, guess));
   };
   const folder = options.worktrees.replace('<branch>', branch.replaceAll('/', '-'));
+  const mainHeading = heading(main);
+  const startWords = running ? 'Starting…' : agent ? 'Start workspace' : 'Make the branch';
   return (
     <section
       className="start-page"
@@ -395,48 +446,36 @@ function StartForm({
       }}
     >
       {dropping && <p className="start-drop">Drop to add them to the documents</p>}
-      <header className="start-top">
-        <h1 id="start-title">Start a workspace</h1>
-        <p className="start-from">
-          From{' '}
-          {base.from ? (
-            <>
-              <span className="ref ref-branch">{base.from}</span> at{' '}
-            </>
-          ) : (
-            'the commit '
-          )}
-          <code>{shortSha(base.sha)}</code>
-        </p>
-        <div className="start-actions">
-          <button type="button" className="button ghost" disabled={running} onClick={onLeave}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="button ghost"
-            disabled={running}
-            {...tip('Empty the form\nThe kind stays')}
-            onClick={() => {
-              edit(newForm(spec, guess));
-              listDocuments([]);
-            }}
-          >
-            Clear
-          </button>
-          <button
-            type="button"
-            className="button primary"
-            disabled={!ready}
-            {...tip(waiting ?? (running ? undefined : agent ? 'Start' : 'Make the branch'), {
-              keys: waiting ? undefined : 'Ctrl+Enter',
-            })}
-            onClick={() => void start()}
-          >
-            {running ? 'Starting…' : agent ? 'Start' : 'Make the branch'}
-          </button>
-        </div>
-      </header>
+      <StartHead>
+        <button type="button" className="button secondary" disabled={running} onClick={onLeave}>
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="button secondary"
+          disabled={running}
+          {...tip('Empty the form\nThe kind stays')}
+          onClick={() => {
+            edit(newForm(spec, guess));
+            listDocuments([]);
+            setPreviewing(false);
+          }}
+        >
+          Clear
+        </button>
+        <button
+          type="button"
+          className="button primary"
+          disabled={!ready}
+          {...tip(waiting ?? (running ? undefined : startWords), {
+            keys: waiting ? undefined : 'Ctrl+Enter',
+          })}
+          onClick={() => void start()}
+        >
+          {agent && !running && <PlayIcon />}
+          {startWords}
+        </button>
+      </StartHead>
       {error && (
         <pre className="error start-error" role="alert">
           {error}
@@ -446,9 +485,16 @@ function StartForm({
         <div className="start-columns">
           <div className="start-brief">
             <StartKinds kinds={kinds} current={spec} onPick={pick} />
-            <label className="workspace-field">
-              Title
+            <div className="workspace-field">
+              <span className="field-label">
+                <label htmlFor="start-name">Title</label>
+                <Help label="About the title">
+                  The workspace&apos;s name in Symbiote; its branch is named after it (
+                  <code>{options.branchPrefixes[form.kind]}…</code>) until you type another.
+                </Help>
+              </span>
               <input
+                id="start-name"
                 type="text"
                 name="title"
                 autoFocus
@@ -457,116 +503,211 @@ function StartForm({
                 placeholder="A short name: the workspace's and its branch's"
                 onChange={(event) => edit({ ...form, title: event.target.value })}
               />
-            </label>
-            <label className="workspace-field">
-              {heading(main)}
-              <textarea
-                className="start-goal"
-                rows={7}
-                value={form.main}
-                placeholder={HINTS[main]}
-                onChange={(event) => edit({ ...form, main: event.target.value })}
-              />
-            </label>
-            <label className="workspace-field">
-              <span>
-                Done when <span className="field-optional">optional</span>
+            </div>
+            <div className="workspace-field">
+              <span className="field-label">
+                <label htmlFor="start-main">{mainHeading}</label>
+                <Help
+                  label={`About ${/^What /.test(mainHeading) ? mainHeading.toLowerCase() : `the ${mainHeading.toLowerCase()}`}`}
+                >
+                  What the agent reads first, and the one part a start needs. It is kept as you
+                  write it, Markdown and all: the preview shows it as the workspace&apos;s Brief
+                  will.
+                </Help>
+              </span>
+              <div className="start-goal-frame">
+                {previewing ? (
+                  <GoalPreview text={form.main} />
+                ) : (
+                  <textarea
+                    id="start-main"
+                    className="start-goal"
+                    rows={7}
+                    value={form.main}
+                    placeholder={HINTS[main]}
+                    onChange={(event) => edit({ ...form, main: event.target.value })}
+                  />
+                )}
+                <div
+                  className="start-goal-tools"
+                  role="toolbar"
+                  aria-label={`${mainHeading} tools`}
+                >
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label="Preview"
+                    aria-pressed={previewing}
+                    {...tip(previewing ? 'Write' : 'Preview as Markdown')}
+                    onClick={() => setPreviewing(!previewing)}
+                  >
+                    <MarkdownIcon />
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    aria-label="Attach files"
+                    {...tip('Add files to the documents')}
+                    onClick={() => picker.current?.click()}
+                  >
+                    <AttachIcon />
+                  </button>
+                  <span
+                    className={tooLong ? 'start-count error' : 'start-count'}
+                    {...tip("The brief's length: the title and every part")}
+                  >
+                    {length.toLocaleString('en')}/{options.maxBrief.toLocaleString('en')}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div className="workspace-field">
+              <span className="field-label">
+                <label htmlFor="start-done">
+                  Done when <span className="field-optional">(optional)</span>
+                </label>
+                <Help label="About Done when">
+                  How the agent knows it is done: a check it can run (a test, a command) is best. It
+                  runs it before it says the work is ready.
+                </Help>
               </span>
               <textarea
+                id="start-done"
                 rows={3}
                 value={form.doneWhen}
                 placeholder={`${HINTS.doneWhen} e.g. ${checkWords(guess)}, and …`}
                 onChange={(event) => edit({ ...form, doneWhen: event.target.value })}
               />
-            </label>
-            {guess && (
-              <p className="dialog-note workspace-check-guess">
-                Check: <code>{guess.command}</code>, from {guess.source}
+              {guess && (
+                <p className="dialog-note workspace-check-guess">
+                  Check: <code>{guess.command}</code>, from {guess.source}
+                </p>
+              )}
+            </div>
+            <div className="start-advice">
+              <AdviceIcon />
+              <p>
+                <strong>Be specific for better results</strong>
+                Include context, constraints and what success looks like. The agent will follow
+                these instructions.
               </p>
-            )}
-            <button
-              type="button"
-              className="link workspace-more"
-              aria-expanded={moreOpen}
-              onClick={() => setMoreShown(!moreOpen)}
-            >
-              <ChevronIcon open={moreOpen} />
-              More: {more.map(heading).join(', ')}
-            </button>
-            {moreOpen &&
-              more.map((part) => (
-                <label key={part} className="workspace-field">
-                  <span>
-                    {heading(part)} <span className="field-optional">optional</span>
-                  </span>
-                  <textarea
-                    rows={2}
-                    value={form.more[part] ?? ''}
-                    placeholder={HINTS[part]}
-                    onChange={(event) =>
-                      edit({ ...form, more: { ...form.more, [part]: event.target.value } })
-                    }
-                  />
-                </label>
-              ))}
-            {length > options.maxBrief * 0.9 && (
-              <p className={tooLong ? 'error' : 'dialog-note'}>
+            </div>
+            <div className={moreOpen ? 'start-more open' : 'start-more'}>
+              <button
+                type="button"
+                className="start-more-toggle"
+                aria-expanded={moreOpen}
+                onClick={() => setMoreShown(!moreOpen)}
+              >
+                <ChevronIcon open={moreOpen} />
+                <span className="start-more-words">More: {more.map(heading).join(', ')}</span>
+                <span className="start-chip">Optional</span>
+              </button>
+              {moreOpen &&
+                more.map((part) => (
+                  <label key={part} className="workspace-field">
+                    {heading(part)}
+                    <textarea
+                      rows={2}
+                      value={form.more[part] ?? ''}
+                      placeholder={HINTS[part]}
+                      onChange={(event) =>
+                        edit({ ...form, more: { ...form.more, [part]: event.target.value } })
+                      }
+                    />
+                  </label>
+                ))}
+            </div>
+            {tooLong && (
+              <p className="error start-too-long">
                 The brief is {length.toLocaleString('en')} characters; at most{' '}
                 {options.maxBrief.toLocaleString('en')}.
               </p>
             )}
           </div>
           <div className="start-run">
-            <div className="workspace-field">
-              <label htmlFor="start-from">Start from</label>
-              <select
-                id="start-from"
-                value={base.from ?? ''}
-                onChange={(event) => {
-                  const name = event.target.value;
-                  setOnCommit(name === '');
-                  if (name !== '') choose({ ...run, from: name });
-                }}
-              >
-                {at && <option value="">The commit {shortSha(at)}</option>}
-                {local.map((b) => (
-                  <option key={b.name} value={b.name}>
-                    {b.name}
-                  </option>
-                ))}
-                {remote.length > 0 && (
-                  <optgroup label="Only on a remote">
-                    {remote.map((b) => (
+            <StartCard icon={<BranchIcon />} title="Source">
+              <div className="workspace-field start-row">
+                <label htmlFor="start-from">Start from</label>
+                <div className="start-select">
+                  <BranchIcon />
+                  <select
+                    id="start-from"
+                    value={base.from ?? ''}
+                    onChange={(event) => {
+                      const name = event.target.value;
+                      setOnCommit(name === '');
+                      if (name !== '') choose({ ...run, from: name });
+                    }}
+                  >
+                    {at && <option value="">The commit {shortSha(at)}</option>}
+                    {local.map((b) => (
                       <option key={b.name} value={b.name}>
                         {b.name}
                       </option>
                     ))}
-                  </optgroup>
+                    {remote.length > 0 && (
+                      <optgroup label="Only on a remote">
+                        {remote.map((b) => (
+                          <option key={b.name} value={b.name}>
+                            {b.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+              </div>
+              <div className="workspace-field start-row">
+                <span className="field-label">
+                  <label htmlFor="start-branch">Branch name</label>
+                  <Help label="Where its worktree goes">
+                    <p>
+                      Its worktree: <code>{folder}</code>
+                    </p>
+                  </Help>
+                </span>
+                <div className="start-branch">
+                  <input
+                    id="start-branch"
+                    type="text"
+                    autoComplete="off"
+                    value={branch}
+                    spellCheck={false}
+                    aria-invalid={form.title.trim() !== '' && problem !== null}
+                    onChange={(event) => edit({ ...form, branch: event.target.value })}
+                  />
+                  <button
+                    type="button"
+                    className="button secondary start-rename"
+                    aria-label="Name it after the title"
+                    disabled={form.branch === null}
+                    {...tip(
+                      form.branch === null
+                        ? 'It is named after the title'
+                        : 'Name it after the title',
+                    )}
+                    onClick={() => edit({ ...form, branch: null })}
+                  >
+                    <ShuffleIcon />
+                  </button>
+                </div>
+                <p className="start-row-note start-base">
+                  Will be created from{' '}
+                  {base.from ? (
+                    <>
+                      <strong>{base.from}</strong> at
+                    </>
+                  ) : (
+                    'the commit'
+                  )}{' '}
+                  <code>{shortSha(base.sha)}</code> as <strong>{branch}</strong>
+                </p>
+                {form.title.trim() !== '' && problem && (
+                  <p className="error start-row-note">{problem}</p>
                 )}
-              </select>
-            </div>
-            <div className="workspace-field">
-              <span className="field-label">
-                <label htmlFor="start-branch">Branch</label>
-                <Help label="Where its worktree goes">
-                  <p>
-                    Its worktree: <code>{folder}</code>
-                  </p>
-                </Help>
-              </span>
-              <input
-                id="start-branch"
-                type="text"
-                autoComplete="off"
-                value={branch}
-                spellCheck={false}
-                aria-invalid={form.title.trim() !== '' && problem !== null}
-                onChange={(event) => edit({ ...form, branch: event.target.value })}
-              />
-              {form.title.trim() !== '' && problem && (
-                <p className="error start-row-note">{problem}</p>
-              )}
-            </div>
+              </div>
+            </StartCard>
             <StartAgent
               agents={options.agents}
               agent={agent}
@@ -578,30 +719,31 @@ function StartForm({
               efforts={efforts}
               onChoose={choose}
             />
-            <label className="workspace-check">
-              Plan first and wait for my OK
-              <input
-                type="checkbox"
-                role="switch"
-                checked={planFirst}
-                onChange={(event) => choose({ ...run, planFirst: event.target.checked })}
-              />
-            </label>
+            <StartCard
+              icon={<PlanIcon />}
+              title={<label htmlFor="start-plan">Plan first and wait for my OK</label>}
+              control={
+                <input
+                  id="start-plan"
+                  type="checkbox"
+                  role="switch"
+                  checked={planFirst}
+                  onChange={(event) => choose({ ...run, planFirst: event.target.checked })}
+                />
+              }
+            >
+              <p className="start-card-note">Let the agent propose a plan before making changes.</p>
+            </StartCard>
             <StartDocuments
               entries={documents}
               options={options.documents}
               folder={options.documents.folder.replace('<branch>', branch)}
+              input={picker}
               onAdd={addFiles}
               onRemove={(key) =>
                 listDocuments(latest.current.documents.filter((d) => d.key !== key))
               }
             />
-            {agent?.apiKey && (
-              <p className="error">
-                ANTHROPIC_API_KEY is set where symbiote view runs: the agent may use that key
-                instead of {agent.account ?? 'your account'}.
-              </p>
-            )}
           </div>
         </div>
       </div>

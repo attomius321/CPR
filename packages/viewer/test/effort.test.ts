@@ -20,7 +20,15 @@ describe('the effort stepper (fix/scout-effort-level)', () => {
 
   it("names the agent's own level Default under the track, a level by its word", () => {
     expect(stopWord({ value: '', label: "Codex's default (medium)" })).toBe('Default');
-    expect(stopWord({ value: 'xhigh', label: 'xhigh' })).toBe('xhigh');
+    expect(stopWord({ value: 'low', label: 'low' })).toBe('Low');
+    expect(stopWord({ value: 'max', label: 'max' })).toBe('Max');
+  });
+
+  // V63 (decision 456): the mockup's words, an x before a level kept as it is.
+  it('capitalises a level as the mockup does: xHigh', () => {
+    expect(stopWord({ value: 'xhigh', label: 'xhigh' })).toBe('xHigh');
+    expect(stopWord({ value: 'minimal', label: 'minimal' })).toBe('Minimal');
+    expect(stopWord({ value: 'ultra', label: 'ultra' })).toBe('Ultra');
   });
 });
 

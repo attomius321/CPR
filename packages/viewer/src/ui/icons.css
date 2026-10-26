@@ -11,6 +11,11 @@
   stroke-linejoin: round;
 }
 
+/* On lucide's 24-unit grid (V63): its stroke as wide on screen as the 16-unit icons'. */
+.icon.lucide {
+  stroke-width: 2.4;
+}
+
 /* Right when folded, down when open. */
 .icon.chevron {
   width: 12px;
@@ -39,6 +44,12 @@
   border-radius: 50%;
   box-shadow: 0 0 0 1px var(--line);
   user-select: none;
+}
+
+/* The start page's (V63): 48 px, from a 96 px image. */
+.symbiote-mark.large {
+  width: 48px;
+  height: 48px;
 }
 
 .icon-button {

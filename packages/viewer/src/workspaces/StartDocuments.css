@@ -1,22 +1,12 @@
-/* The start page's Documents (V40): the files as rows of a list (icon, name, size, ✕), Add files
-   under them, and the frame over the page while files are dragged over it. */
-
-/* One column the field's width: a long name is cut, not the column widened. */
-.start-documents-field {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-/* The last of the run's rows (V49), after StartPage.css: its name, the files, then where more
-   are added, a drop area with Add files in it. */
-.start-run > .start-documents-field {
-  grid-template-columns: minmax(0, 1fr);
-}
+/* The start page's Documents (V40), the run's last card since V63: the files as rows of a list
+   (icon, name, size, ✕), then a dashed drop area with Add files in it and the mockup's line, and
+   the frame over the page while files are dragged over it. */
 
 .start-documents {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: 2px;
-  margin: 0;
+  margin: 12px 0 0;
   padding: 4px;
   border: 1px solid var(--field-line);
   border-radius: 8px;
@@ -85,16 +75,26 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px;
+  gap: 8px 12px;
+  margin: 10px 0 0;
+  padding: 8px 12px;
   border: 1px dashed var(--field-line);
   border-radius: 8px;
+  background: color-mix(in srgb, var(--input-bg) 60%, transparent);
   font-weight: normal;
 }
 
 .start-documents-hint {
   color: var(--muted);
   font-size: var(--size-small);
+}
+
+.start-documents-about {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  text-align: center;
 }
 
 /* Files dragged over the page: dropped anywhere, they are added. */

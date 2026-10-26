@@ -39,7 +39,7 @@ const openStart = async (page: Page) => {
 const startWithCodex = async (page: Page) => {
   await openStart(page);
   await startPage(page).getByLabel('agent').selectOption({ label: 'Codex' });
-  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
   await expect(startPage(page)).toBeHidden();
 };
 /** What a commit on the branch writes, as Symbiote names it to Codex's sandbox. */
@@ -70,7 +70,7 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
     'Its worktree and branch',
   );
   await expect(startPage(page).getByLabel('permission')).toHaveCount(0);
-  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
   const folder = symbiote.folder(BRANCH);
   await expect(page.getByRole('status')).toHaveText(
     `Started ${BRANCH}: Codex is working in ${folder}.`,
@@ -233,7 +233,7 @@ test('Start a workspace offers the agents installed: Codex alone, or Claude Code
   await expect(startPage(page).locator('.start-value').first()).toHaveText('Codex');
   await expect(startPage(page)).toContainText('your ChatGPT account');
   await expect(startPage(page).getByLabel('agent')).toHaveCount(0);
-  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
   await expect(page.getByRole('status')).toContainText('Codex is working');
   // The page leaves first: the workspace it opened may still be loading a chunk of the viewer
   // (Markdown's), which a server stopped under it fails as a page error (1 run in 36).

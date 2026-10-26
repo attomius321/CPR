@@ -321,7 +321,7 @@ test('text fields: a quiet edge, a stronger one on hover, a ring on focus, one h
   await title.focus();
   expect(await style(title, 'outline-style')).toBe('none');
   await expect.poll(() => style(title, 'box-shadow')).toContain('0px 0px 0px 3px');
-  for (const field of [title, form.getByRole('textbox', { name: 'Branch' })]) {
+  for (const field of [title, form.getByRole('textbox', { name: 'Branch name' })]) {
     expect((await field.boundingBox())?.height).toBe(32);
   }
   for (const select of await form.getByRole('combobox').all()) {

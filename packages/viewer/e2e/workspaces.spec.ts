@@ -33,7 +33,7 @@ const fillWork = async (page: Page, what: string, why = what) => {
   await goal(page).fill(why);
 };
 const branch = (page: Page) =>
-  startPage(page).getByRole('textbox', { name: 'Branch', exact: true });
+  startPage(page).getByRole('textbox', { name: 'Branch name', exact: true });
 const row = (page: Page, subject: string) =>
   page.locator('.commit', {
     has: page.locator('.commit-subject').getByText(subject, { exact: true }),
@@ -52,7 +52,7 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
   // Named after the title; where it starts and where its worktree goes.
   await expect(branch(page)).toHaveValue('feature/add-a-half-function');
   const folder = `${symbiote.repo}.worktrees/feature-add-a-half-function`;
-  await expect(startPage(page)).toContainText(`From main at ${short(main)}`);
+  await expect(startPage(page)).toContainText(`Will be created from main at ${short(main)}`);
   // The worktree's path is in Branch's help (V37, decision 248).
   await startPage(page).getByRole('button', { name: 'Where its worktree goes' }).click();
   await expect(page.getByRole('tooltip')).toContainText(folder);
@@ -62,7 +62,7 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
   await expect(startPage(page).locator('.start-value')).toHaveText('Claude Code');
   await expect(startPage(page)).toContainText('your Pro subscription');
   await expect(startPage(page).getByLabel('Plan first and wait for my OK')).toBeChecked();
-  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
 
   // The new workspace opens (V29a), and the status bar says where the agent works.
   await expect(startPage(page)).toBeHidden();
@@ -123,7 +123,7 @@ test('n starts one too; a name in use is refused before Start; Escape cancels', 
   await fillWork(page, 'Something');
   await branch(page).fill('main');
   await expect(startPage(page)).toContainText('a branch main exists');
-  await expect(startPage(page).getByRole('button', { name: 'Start', exact: true })).toBeDisabled();
+  await expect(startPage(page).getByRole('button', { name: 'Start workspace' })).toBeDisabled();
   await branch(page).fill('feature/a..b');
   await expect(startPage(page)).toContainText('not a valid branch name: feature/a..b');
   // A permission mode other than Claude Code's default goes to the agent.
@@ -152,9 +152,9 @@ test("Start a workspace here: the row's commit is where it starts", async ({ pag
   await page.goto(`${symbiote.url}history`);
   await row(page, 'base').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Start a workspace here' }).click();
-  await expect(startPage(page)).toContainText(`From the commit ${short(base)}`);
+  await expect(startPage(page)).toContainText(`Will be created from the commit ${short(base)}`);
   await fillWork(page, 'Fix from the base');
-  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
   await expect(page.getByRole('status')).toContainText('Started feature/fix-from-the-base');
   expect(git('rev-parse', 'feature/fix-from-the-base')).toBe(base);
   await expect(panel(page, 'feature/fix-from-the-base')).toBeVisible();
@@ -169,7 +169,7 @@ test("an agent that does not start: the workspace stays, with Claude Code's word
   await page.goto(`${symbiote.url}history`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await fillWork(page, 'Add a half function');
-  await startPage(page).getByRole('button', { name: 'Start', exact: true }).click();
+  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
   const folder = `${symbiote.repo}.worktrees/feature-add-a-half-function`;
   const status = page.getByRole('status');
   await expect(status).toContainText(
@@ -1732,9 +1732,9 @@ test("the records' folder before V25 left beside today's: Workspaces says so (V2
 // agent's brief of; Done when with the check command guessed at the start commit; a draft.
 const kind = (page: Page, name: string) => startPage(page).getByRole('radio', { name });
 const part = (page: Page, name: string) => startPage(page).getByRole('textbox', { name });
-const doneWhen = (page: Page) => part(page, 'Done when optional');
+const doneWhen = (page: Page) => part(page, 'Done when (optional)');
 const startButton = (page: Page) =>
-  startPage(page).getByRole('button', { name: 'Start', exact: true });
+  startPage(page).getByRole('button', { name: 'Start workspace' });
 const info = (page: Page) =>
   startPage(page).getByRole('button', { name: 'About the kinds of work' });
 
@@ -1812,13 +1812,13 @@ test('Done when names the check guessed at the start commit; switching kinds kee
   const more = startPage(page).getByRole('button', { name: /^More: How to reproduce/ });
   await expect(more).toHaveAttribute('aria-expanded', 'false');
   await more.click();
-  await part(page, 'Where to look optional').fill('src/table.ts');
+  await part(page, 'Where to look').fill('src/table.ts');
 
   // Another kind: the same text under its own label; an untouched Done when becomes its own.
   await kind(page, 'Chore').click();
   await expect(part(page, 'What to change')).toHaveValue('They sort 1, 10, 2.');
   await expect(doneWhen(page)).toHaveValue('Nothing else changes, and `npm run check` passes.');
-  await expect(part(page, 'Where to look optional')).toHaveValue('src/table.ts');
+  await expect(part(page, 'Where to look')).toHaveValue('src/table.ts');
   await expect(branch(page)).toHaveValue('chore/dates-sort-as-text');
   // Edited, Done when stays.
   await doneWhen(page).fill('The table test passes.');
@@ -1872,7 +1872,7 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
   await expect(part(page, 'What happens')).toHaveValue('');
 });
 
-test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part, Done when, More, start from, branch, model and effort with their help, permission, documents (V24c, V30, V33, V37, V40, V47)', async ({
+test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part and its tools, Done when, More, start from, branch, model and effort, permission, documents, each field after its help (V24c, V30, V33, V37, V40, V47, V63)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -1880,6 +1880,9 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(title(page)).toBeFocused();
+  // V63: the title's help, before it.
+  await page.keyboard.press('Shift+Tab');
+  await expect(startPage(page).getByRole('button', { name: 'About the title' })).toBeFocused();
   await page.keyboard.press('Shift+Tab');
   await expect(info(page)).toBeFocused();
   await page.keyboard.press('Shift+Tab');
@@ -1893,8 +1896,14 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
   await expect(kind(page, 'Spike')).toHaveAttribute('aria-checked', 'true');
   for (const next of [
     info(page),
+    startPage(page).getByRole('button', { name: 'About the title' }),
     title(page),
+    startPage(page).getByRole('button', { name: 'About the question' }),
     part(page, 'Question'),
+    // V63: the part's tools, in its frame.
+    startPage(page).getByRole('button', { name: 'Preview' }),
+    startPage(page).getByRole('button', { name: 'Attach files' }),
+    startPage(page).getByRole('button', { name: 'About Done when' }),
     doneWhen(page),
     startPage(page).getByRole('button', { name: /More:/ }),
     startPage(page).getByLabel('Start from'),
