@@ -376,12 +376,11 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
   await page.keyboard.press('Escape');
   await expect(tip).toBeHidden();
 
-  // A prompt's description in Settings, by its title.
+  // Settings' description, by its title (a prompt's is on its page since V62, the mockup's).
   await page.goto(`${symbiote.url}settings`);
-  await page.getByRole('button', { name: 'Feature', exact: true }).click();
-  await expect(page.getByText("What a Feature workspace's agent is told")).toBeHidden();
-  await page.getByRole('button', { name: 'About Workspaces: Feature' }).click();
-  await expect(tip).toContainText("What a Feature workspace's agent is told");
+  await expect(page.getByText('What Symbiote tells each agent')).toBeHidden();
+  await page.getByRole('button', { name: 'About Settings' }).click();
+  await expect(tip).toContainText('What Symbiote tells each agent');
   await inside(tip);
 });
 

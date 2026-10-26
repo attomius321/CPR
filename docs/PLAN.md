@@ -200,6 +200,7 @@ hosted.
 | [V54](plan/v54-tooltips.md) | Tooltips drawn by Symbiote, one form per context | ready for review | 397–402 | [journal](journal/v54-tooltips.md) |
 | [V59](plan/v59-scout-waiting-mark.md) | Scout's and Scribe's links, whole, in Waiting for you's amber band while they wait | ready for review | 422–425 | [journal](journal/v59-scout-waiting-mark.md) |
 | [V61](plan/v61-complete-revamp.md) | The mockup's black theme on every page, the new S as the icon, text a step bigger | ready for review | 437–440, 445 | [journal](journal/v61-complete-revamp.md) |
+| [V62](plan/v62-settings-layout.md) | Settings as the person's mockup: two cards to the bottom, the page one card | ready for review | 446–450 | [journal](journal/v62-settings-layout.md) |
 
 ### Native window
 

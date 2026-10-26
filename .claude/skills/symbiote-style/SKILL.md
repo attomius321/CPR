@@ -32,7 +32,9 @@ the primary), every page's panels as cards on its ground, line tabs, and type a 
    and the cards' chrome (a tab strip, the changes panel) `#0d1015`; chips, counts and raised
    squares `#171a21`. A page's head sits on the ground; its panels are cards under it, 8 px from
    each other and from the edges, 10 px radius, a `--line` hairline. Never one black for
-   everything.
+   everything. Settings has a mockup of its own (V62): a head of two lines (the page's icon in
+   the accent, the title, a line under it), its two cards 24 px from the edges and 16 apart, the
+   open page one card with its head over a hairline.
 3. **The accent marks what a person acts with.** The primary action (`--primary`, `#7c68fc`,
    dark words on it: white is 4.01:1), focus, what is checked, the current page, the selection (a
    16 % wash of `--accent`), the open workspace's kind, the selected node, a link under the

@@ -23,11 +23,14 @@ const list = (page: Page) => page.getByRole('navigation', { name: 'Settings' });
 const entry = (page: Page, name: string) => list(page).getByRole('button', { name });
 const agents = (page: Page) => list(page).getByRole('region', { name: 'Prebuilt agents' });
 const editor = (page: Page) => page.locator('.settings-editor');
+/** The open page's name in its card's head (V62): a prompt's with its chip. */
+const title = (page: Page) => editor(page).getByRole('heading', { level: 2 });
 /** A part of a prebuilt agent's page: its Model, Effort or Instructions. */
 const part = (page: Page, name: string) => editor(page).getByRole('region', { name });
 const text = (page: Page, title: string) =>
   editor(page).getByRole('textbox', { name: `${title} prompt` });
-const save = (page: Page) => editor(page).getByRole('button', { name: 'Save', exact: true });
+const save = (page: Page) =>
+  editor(page).getByRole('button', { name: 'Save changes', exact: true });
 const config = () => join(symbiote.repo, 'symbiote', 'config.json');
 const prompts = () =>
   (JSON.parse(readFileSync(config(), 'utf8')) as { prompts?: Record<string, unknown> }).prompts;
@@ -46,6 +49,7 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
     'aria-current',
     'page',
   );
+  // Beside Save since V62 (the head has the mockup's line).
   await expect(page.locator('.settings-git')).toHaveText(
     "No prompt changed: every agent is told Symbiote's text.",
   );
@@ -64,14 +68,16 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
     'This browser',
   ]);
   await expect(agents(page).getByRole('button')).toHaveText(['Merger', 'Scout', 'Scribe']);
-  // A group's entries a little in from its heading.
+  // An entry's words in line with its group's heading (V62, the mockup), its wash further out.
   const heading = await list(page).getByRole('heading', { name: 'Workspaces' }).boundingBox();
+  const name = await entry(page, 'Feature').locator('.settings-name').boundingBox();
   const first = await entry(page, 'Feature').boundingBox();
-  expect(first?.x).toBeGreaterThan(heading?.x ?? Infinity);
+  expect(Math.abs((name?.x ?? 0) - (heading?.x ?? 0) - 12)).toBeLessThanOrEqual(1);
+  expect(first?.x).toBeLessThan(name?.x ?? 0);
 
   await entry(page, 'Fix').click();
   await expect(page).toHaveURL(`${symbiote.url}settings?prompt=start.fix`);
-  await expect(editor(page).getByRole('heading')).toHaveText("Workspaces: FixSymbiote's");
+  await expect(title(page)).toHaveText("Workspaces: FixSymbiote's");
   await expect(text(page, 'Fix')).toHaveValue(/Reproduce it first, with a failing test/);
 
   await text(page, 'Fix').fill(FIX);
@@ -98,7 +104,7 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
       'everyone who uses this repository.',
   );
   await expect(entry(page, 'Fix')).toContainText('changed');
-  await expect(editor(page).getByRole('heading')).toHaveText("Workspaces: FixThe project's");
+  await expect(title(page)).toHaveText("Workspaces: FixThe project's");
   // Kept as lines, without the blank end.
   expect(prompts()).toEqual({
     start: {
@@ -122,7 +128,7 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
 
   // Reset: Symbiote's text again, and nothing left in the file.
   await page.goto(`${symbiote.url}settings?prompt=start.fix`);
-  await editor(page).getByRole('button', { name: "Reset to Symbiote's" }).click();
+  await editor(page).getByRole('button', { name: 'Reset to default' }).click();
   await editor(page).getByRole('button', { name: 'Reset', exact: true }).click();
   await expect(editor(page).getByRole('status')).toContainText("Symbiote's text again.");
   await expect(text(page, 'Fix')).toHaveValue(/Reproduce it first/);
@@ -170,7 +176,7 @@ test('keeps drafts across prompts, asks before leaving with one, and refuses a s
 
   // Discard: the text in use again, nothing marked.
   await text(page, 'Spike').fill('Something else: {brief}');
-  await editor(page).getByRole('button', { name: 'Discard changes' }).click();
+  await editor(page).getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(text(page, 'Spike')).toHaveValue(/Commit it under spikes\/\.$/);
   await expect(entry(page, 'Spike')).toContainText('changed');
 });
@@ -230,52 +236,123 @@ test('on a phone, the list first; a prompt or an agent takes the page, and comes
   await expect(list(page)).toBeVisible();
 });
 
-// V51: Settings drawn as the start page (V49): centred, the head's contents in its width, a page's
-// parts as cards, a prebuilt agent's settings as rows.
-test('centred in a wide main area, the head over the list; a page in cards, its settings as rows', async ({
+// V62: the person's mockup. The list and the page are two cards filling the main area to its
+// bottom; the list has no icons (the brief); the page is one card, its head over sections that say
+// what they are.
+test("the mockup: two cards to the main area's bottom, the list without icons, the page a head over its sections", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
+  const near = (actual: number, expected: number) =>
+    expect(Math.abs(actual - expected)).toBeLessThanOrEqual(1);
+  const boxes = async () => {
+    const area = await page.locator('.shell-main').boundingBox();
+    const l = await list(page).boundingBox();
+    const e = await editor(page).boundingBox();
+    if (!area || !l || !e) throw new Error('no box');
+    return { area, l, e };
+  };
+  // The mockup's size, and a smaller window.
+  for (const [width, height] of [
+    [1700, 925],
+    [1440, 900],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto(`${symbiote.url}settings`);
+    await expect(text(page, 'Feature')).toBeVisible();
+    const { area, l, e } = await boxes();
+    near(l.width, 280);
+    near(l.x - area.x, 24);
+    near(e.x - (l.x + l.width), 16);
+    near(area.x + area.width - (e.x + e.width), 24);
+    near(l.y, e.y);
+    near(area.y + area.height - (l.y + l.height), 24);
+    near(area.y + area.height - (e.y + e.height), 24);
+  }
+  // The list scrolls on its own when taller than its card: the open entry is scrolled to.
+  await page.goto(`${symbiote.url}settings?prompt=appearance`);
+  await expect(entry(page, 'Appearance')).toHaveAttribute('aria-current', 'true');
+  await expect(entry(page, 'Appearance')).toBeInViewport({ ratio: 1 });
+  await page.goto(`${symbiote.url}settings`);
+  await expect(text(page, 'Feature')).toBeVisible();
+  // Cards, the style's 10 px; no icon by an entry.
+  await expect(list(page)).toHaveCSS('border-top-left-radius', '10px');
+  await expect(editor(page)).toHaveCSS('border-top-left-radius', '10px');
+  await expect(list(page).locator('svg')).toHaveCount(0);
+  // The open entry's words in the accent.
+  const accent = await page.evaluate(() => {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--accent)';
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  });
+  await expect(entry(page, 'Feature')).toHaveCSS('color', accent);
+  await expect(entry(page, 'Fix')).not.toHaveCSS('color', accent);
+
+  // The head: the page's icon, its title and the mockup's line.
+  const head = page.locator('.settings-bar');
+  await expect(head.locator('.page-icon svg')).toBeVisible();
+  await expect(head).toContainText('Configure Symbiote to match your workflow and preferences.');
+
+  // The page's head: its name and chip; its sections, each with a line of what it is.
+  await expect(title(page)).toHaveText("Workspaces: FeatureSymbiote's");
+  await expect(editor(page).getByRole('heading', { level: 3 })).toHaveText([
+    'Prompt',
+    'Placeholders',
+  ]);
+  await expect(
+    editor(page).getByText("What a Feature workspace's agent is told when it starts"),
+  ).toBeVisible();
+  await expect(editor(page).getByText('click one to insert it at the cursor')).toBeVisible();
+  // The placeholders in two columns.
+  const chips = await editor(page).locator('.settings-placeholders li .link').all();
+  const columns = new Set<number>();
+  for (const chip of chips) columns.add(Math.round((await chip.boundingBox())?.x ?? 0));
+  expect(columns.size).toBe(2);
+
+  // Cancel and Save changes at the card's bottom right, the git note at their left.
+  await expect(editor(page).locator('.settings-git')).toHaveText(
+    "No prompt changed: every agent is told Symbiote's text.",
+  );
+  await text(page, 'Feature').fill('A feature on {branch}.\n\n{brief}');
+  const cancel = await editor(page)
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .boundingBox();
+  const saving = await save(page).boundingBox();
+  const card = await editor(page).boundingBox();
+  const note = await editor(page).locator('.settings-git').boundingBox();
+  if (!cancel || !saving || !card || !note) throw new Error('no box');
+  expect(saving.x).toBeGreaterThan(cancel.x + cancel.width);
+  expect(cancel.x).toBeGreaterThan(note.x + note.width);
+  expect(card.x + card.width - (saving.x + saving.width)).toBeLessThanOrEqual(40);
+  await editor(page).getByRole('button', { name: 'Cancel', exact: true }).click();
+
+  // Wider windows: the cards centred, at most 1,400 px, the head over the list's edge.
   for (const [width, height] of [
     [1920, 1080],
     [2560, 1440],
   ] as const) {
     await page.setViewportSize({ width, height });
-    await page.goto(`${symbiote.url}settings`);
     await expect(text(page, 'Feature')).toBeVisible();
-    // The main area without a scrollbar, should the page scroll.
-    const area = await page.locator('.settings').evaluate((el) => {
-      const box = el.getBoundingClientRect();
-      return { x: box.x, width: el.clientWidth };
-    });
-    const l = await list(page).boundingBox();
-    const e = await editor(page).boundingBox();
-    if (!l || !e) throw new Error('no box');
+    const { area, l, e } = await boxes();
     const left = l.x - area.x;
-    const right = area.x + area.width - (e.x + e.width);
-    expect(left).toBeGreaterThan(100);
-    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
-    // A prompt's lines no longer than the start page's brief.
-    expect(e.width).toBeLessThanOrEqual(760);
-    const heading = await page
-      .getByRole('heading', { name: 'Settings', exact: true })
-      .boundingBox();
-    expect(Math.abs((heading?.x ?? 0) - l.x)).toBeLessThanOrEqual(1);
+    expect(Math.abs(left - (area.x + area.width - (e.x + e.width)))).toBeLessThanOrEqual(1);
+    expect(e.x + e.width - l.x).toBeLessThanOrEqual(1400);
+    const icon = await head.locator('.page-icon').boundingBox();
+    near(icon?.x ?? 0, l.x);
   }
-  // The prompt in a card: the style's 14 px.
-  const card = editor(page).locator('.settings-card');
-  await expect(card).toHaveCount(1);
-  await expect(card).toHaveCSS('border-top-left-radius', '14px');
-  await expect(card.getByRole('textbox', { name: 'Feature prompt' })).toBeVisible();
 
-  // An agent's page: its Model and Effort one card of rows, its Instructions another.
+  // An agent's page: one card, its name in the head; Model and Effort rows, then its Instructions.
   await agents(page).getByRole('button', { name: 'Scout' }).click();
-  await expect(editor(page).locator('.settings-card')).toHaveCount(2);
+  await expect(title(page)).toHaveText('Scout');
   const name = await part(page, 'Model').getByRole('heading', { name: 'Model' }).boundingBox();
   const field = await modelSelect(page).boundingBox();
   if (!name || !field) throw new Error('no box');
   expect(field.x).toBeGreaterThan(name.x + name.width);
   expect(Math.abs(field.y + field.height / 2 - (name.y + name.height / 2))).toBeLessThanOrEqual(4);
+  await expect(part(page, 'Instructions').getByText("Scout's system prompt")).toBeVisible();
 });
 
 // V51 (decision 388): the theme and the intro, a setting each, under an entry of their own; the
@@ -525,8 +602,10 @@ test("Scribe's page: its Model, Effort and Instructions; saved as scribe.model a
     'Model',
     'Effort',
     "InstructionsSymbiote's",
+    'Placeholders',
     // What its {library} becomes when a skill library is set (SK1).
     "LibrarySymbiote's",
+    'Placeholders',
   ]);
   await modelSelect(page).selectOption({ label: 'Sonnet 5.5' });
   await expect.poll(scribe).toEqual({ model: 'sonnet' });

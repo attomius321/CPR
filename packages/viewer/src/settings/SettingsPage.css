@@ -1,21 +1,51 @@
 /* ---- settings: every agent's prompts (V28b) ----------------------------------------- */
 
-/* Drawn as Start a workspace (V51, V49's recipe): the list and the page centred in the main area,
-   the head's contents and the notes under it in their width; the page's parts as cards, a
-   prebuilt agent's settings as rows. Skills has rules of its own since V56. */
+/* The person's mockup (V62, decision 446): the head on the page's ground, then two cards that
+   fill the main area to its bottom, 24 px from its edges and 16 px apart — the list and the open
+   page, each scrolling on its own. Past 1,400 px of cards they stay centred, so a prompt's lines
+   stay readable (V51 measured 318 characters at 2560 when the page took every pixel). Skills has
+   rules of its own since V56. */
 .settings {
-  /* The list (240 px), the gap and the page (760 px, the start page's brief). */
-  --settings-width: 1024px;
-  /* The space each side of them: the head's and the notes' (`100%` is the main area's width). */
-  --settings-side: max(16px, calc((100% - var(--settings-width)) / 2));
+  --settings-width: 1400px;
+  /* The space each side of the cards and the head's (`100%` is the main area's width). */
+  --settings-side: max(24px, calc((100% - var(--settings-width)) / 2));
   flex: 1;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
   overflow: auto;
 }
 
-.settings-bar {
-  padding-right: var(--settings-side);
-  padding-left: var(--settings-side);
+/* The page's icon, its title and the mockup's line under it (decision 447). */
+.settings > .settings-bar {
+  position: static;
+  flex: none;
+  flex-wrap: nowrap;
+  gap: 16px;
+  padding: 20px var(--settings-side);
+}
+
+/* The open page's icon, as the sidenav's current page draws its own. */
+.settings-bar .page-icon {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.settings-bar .page-icon .icon {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.4;
+}
+
+.settings-title {
+  min-width: 0;
+}
+
+.settings-name-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .settings-bar h1 {
@@ -24,11 +54,17 @@
   font-weight: 600;
 }
 
-.settings > .settings-git,
+.settings-title p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
 .settings > .settings-warning,
 .settings > .commits-error,
 .settings > .hint {
-  margin: 12px var(--settings-side) 0;
+  flex: none;
+  margin: 0 var(--settings-side) 12px;
   padding: 0;
 }
 
@@ -43,31 +79,54 @@
 }
 
 .settings-body {
+  flex: 1;
+  min-height: 0;
   display: grid;
-  grid-template-columns: 240px minmax(0, 760px);
-  justify-content: center;
-  gap: 24px;
-  align-items: start;
-  margin: 16px;
+  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 16px;
+  padding: 0 var(--settings-side) 24px;
 }
 
-/* The groups' headings in line with the head's title and the notes (V51). */
+/* The list (decision 448): a card, a hairline between its groups, the entries' words in line with
+   their group's heading, their wash 12 px out; no icons (the brief). */
+.settings-list {
+  min-height: 0;
+  overflow: auto;
+  /* An entry scrolled to stops clear of the card's edge. */
+  scroll-padding: 16px 0;
+  padding: 16px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--side);
+}
+
+.settings-list section + section {
+  position: relative;
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.settings-list section + section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 12px;
+  left: 12px;
+  border-top: 1px solid var(--line);
+}
+
 .settings-list section h2 {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
+  padding: 0 12px;
   color: var(--muted);
   font-size: var(--size-caption);
   font-weight: 500;
 }
 
-.settings-list section + section h2 {
-  margin-top: 16px;
-}
-
-/* A group's entries a little in from its heading (fix/scout-merger-scribe-settings): their words
-   12 px in, their wash 4. */
 .settings-list ul {
   margin: 0;
-  padding: 0 0 0 4px;
+  padding: 0;
   list-style: none;
 }
 
@@ -81,8 +140,8 @@
   justify-content: space-between;
   gap: 8px;
   width: 100%;
-  min-height: 28px;
-  padding: 0 8px;
+  min-height: 32px;
+  padding: 0 12px;
   border: 0;
   border-radius: 8px;
   background: none;
@@ -90,14 +149,20 @@
   font-size: var(--size-body);
   text-align: left;
   cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
 }
 
 .settings-list button:hover {
   background: var(--hover);
 }
 
+/* The open entry: the selection's wash, its words in the accent (the mockup). */
 .settings-list button[aria-current='true'] {
   background: var(--selected);
+  color: var(--accent);
+  font-weight: 500;
 }
 
 .settings-name {
@@ -110,6 +175,7 @@
 .settings-mark {
   flex: none;
   font-size: var(--size-caption);
+  font-weight: 400;
 }
 
 .settings-mark.changed {
@@ -124,27 +190,63 @@
   color: var(--warning);
 }
 
+/* The open page (decision 449): one card, its head over a hairline, its body scrolling under it. */
 .settings-editor {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--side);
 }
 
-.settings-editor h2 {
+.settings-head {
+  flex: none;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
-  margin: 0 0 12px;
+  gap: 8px 12px;
+  min-height: 64px;
+  padding: 12px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.settings-head h2,
+.settings-part-head h3 {
+  flex: 1 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  margin: 0;
+}
+
+.settings-head h2 {
   font-size: var(--size-title);
   font-weight: 600;
+}
+
+.settings-page {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 20px 24px 24px;
+}
+
+.settings-page > :first-child {
+  margin-top: 0;
 }
 
 /* Whose text it is: Symbiote's a quiet chip, the project's a badge of the change (V51). */
 .settings-state {
   display: inline-flex;
   align-items: center;
-  height: 18px;
-  padding: 0 6px;
-  border-radius: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 9999px;
   background: var(--raised);
   color: var(--muted);
   font-size: var(--size-caption);
@@ -153,45 +255,54 @@
 
 .settings-state.changed {
   --badge: var(--modified);
-}
-
-.settings-state.changed {
-  padding: 0 8px;
   border: 1px solid color-mix(in srgb, var(--badge) 25%, transparent);
-  border-radius: 9999px;
   background: color-mix(in srgb, var(--badge) 10%, transparent);
   color: var(--badge);
 }
 
 .settings-editor .settings-warning {
-  margin: 0 0 8px;
+  margin: 0 0 12px;
 }
 
-/* The style's card (V49): a page's parts, one under another. */
-.settings-card {
-  min-width: 0;
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--panel);
-  box-shadow: var(--shadow-lift);
+/* A page's sections, each its heading and a line of what it is (the mockup). */
+.settings-section + .settings-section {
+  margin-top: 20px;
 }
 
-.settings-card + .settings-card {
-  margin-top: 16px;
+.settings-section h3,
+.settings-section h4 {
+  margin: 0;
+  font-size: var(--size-body);
+  font-weight: 600;
 }
 
-.settings-card > :first-child {
-  margin-top: 0;
+.settings-about {
+  margin: 2px 0 10px;
+  color: var(--muted);
+  font-size: var(--size-small);
 }
 
-/* A part's title in its card: a prompt of a prebuilt agent's (fix/scout-merger-scribe-settings). */
-.settings-part h3 {
+p.settings-section.settings-about {
+  margin-bottom: 0;
+}
+
+/* A prebuilt agent's prompts (fix/scout-merger-scribe-settings): sections of its page under its
+   Model and Effort, a hairline between; the name, the chip and Reset on the first line. */
+.settings-rows + .settings-prompt,
+.settings-prompt + .settings-prompt {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.settings-part-head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
-  margin: 0 0 8px;
+  gap: 8px 12px;
+}
+
+.settings-part-head h3 {
   font-size: var(--size-body);
   font-weight: 600;
 }
@@ -210,7 +321,7 @@
   row-gap: 4px;
   min-height: 32px;
   margin: 0;
-  padding: 8px 0;
+  padding: 10px 0;
   border-top: 1px solid var(--line);
 }
 
@@ -224,8 +335,12 @@
 }
 
 .settings-rows > .settings-part > h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 0;
   color: var(--muted);
+  font-size: var(--size-body);
   font-weight: 500;
 }
 
@@ -266,13 +381,14 @@
 
 .settings-editor textarea {
   display: block;
+  box-sizing: border-box;
   width: 100%;
   max-height: 70vh;
   overflow-y: auto;
 }
 
 .settings-size {
-  margin: 4px 0 0;
+  margin: 6px 0 0;
   color: var(--muted);
   font-size: var(--size-small);
 }
@@ -281,9 +397,7 @@
   color: var(--error);
 }
 
-.settings-fixed p,
-.settings-placeholders p,
-p.settings-placeholders {
+.settings-fixed p {
   margin: 12px 0 4px;
   color: var(--muted);
   font-size: var(--size-small);
@@ -303,49 +417,60 @@ p.settings-placeholders {
   overflow-wrap: anywhere;
 }
 
+/* Two columns, filled down then across (the mockup's), one in a narrow card. */
 .settings-placeholders ul {
   margin: 0;
   padding: 0;
   list-style: none;
+  columns: 320px 2;
+  column-gap: 32px;
   font-size: var(--size-body);
 }
 
-/* A line that wraps goes on a little in from its chip (V51: the card's width wraps the longer). */
+/* The chip, then what it stands for; a wrapped line goes on under the words, not the chip. */
 .settings-placeholders li {
-  margin: 2px 0;
-  padding-left: 12px;
-  text-indent: -12px;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 3px 0;
+  break-inside: avoid;
 }
 
-/* Each a button that inserts it: a code chip (V31). */
+/* Each a button that inserts it (V31): a round chip in the accent's wash, as one acts with it. */
 .settings-placeholders .link {
-  padding: 0 5px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--raised);
+  flex: none;
+  padding: 1px 10px;
+  border: 1px solid transparent;
+  border-radius: 9999px;
+  background: var(--selected);
+  color: var(--accent);
   font-family: var(--mono);
-  font-size: var(--size-small);
+  font-size: var(--size-caption);
+  line-height: 20px;
   text-decoration: none;
 }
 
 .settings-placeholders .link:hover:not(:disabled) {
   border-color: var(--selected-line);
-  background: var(--hover);
 }
 
+/* The footer: where a save goes (or what the last one did) at the left, Cancel and Save changes at
+   the right. */
 .settings-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px 14px;
-  margin-top: 14px;
+  gap: 8px 12px;
+  margin-top: 20px;
   font-size: var(--size-body);
 }
 
+.settings-actions .settings-git,
 .settings-notice {
   flex: 1 1 240px;
   color: var(--muted);
+  font-size: var(--size-small);
 }
 
 .settings-notice.error {
@@ -353,7 +478,7 @@ p.settings-placeholders {
 }
 
 .settings-default {
-  margin-top: 12px;
+  margin-top: 16px;
   font-size: var(--size-body);
 }
 
@@ -364,13 +489,12 @@ p.settings-placeholders {
 
 .settings-back {
   display: none;
-  margin-bottom: 8px;
 }
 
-/* The skill library (SK1): what it is under the heading; its folder and repository fields as wide
-   as their paths need, what is at the folder under them. */
+/* The skill library (SK1): what it is under the head; its folder and repository fields as wide as
+   their paths need, what is at the folder under them. */
 .library-about {
-  margin: -4px 0 12px;
+  margin: 0 0 16px;
 }
 
 .settings-rows > .settings-part > .library-field {
@@ -406,10 +530,23 @@ p.settings-placeholders {
   }
 }
 
+/* A narrow screen: the list, or the page with All settings, one card at a time, the page
+   scrolling as a whole. */
 @media (max-width: 899px) {
+  .settings {
+    --settings-side: 16px;
+  }
+
   .settings-body {
     display: block;
-    margin: 12px 16px 16px;
+    flex: none;
+    padding-bottom: 16px;
+  }
+
+  .settings-list,
+  .settings-editor,
+  .settings-page {
+    overflow: visible;
   }
 
   .settings-body.picked .settings-list,
@@ -417,16 +554,21 @@ p.settings-placeholders {
     display: none;
   }
 
-  /* Its arrow in line with the page's heading (V51). */
   .settings-back {
     display: inline-flex;
-    justify-self: start;
-    margin-left: -12px;
+    align-self: flex-start;
+    margin: 8px 0 0 12px;
+  }
+
+  .settings-head {
+    min-height: 0;
   }
 }
 
 @media (max-width: 480px) {
-  .settings-card {
-    padding: 12px;
+  .settings-head,
+  .settings-page {
+    padding-right: 16px;
+    padding-left: 16px;
   }
 }
