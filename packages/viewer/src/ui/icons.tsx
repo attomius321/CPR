@@ -132,6 +132,13 @@ export const FileIcon = () => (
   </Icon>
 );
 
+/** A review's comments on a file (V60), after lucide's message-square (ISC). */
+export const CommentIcon = () => (
+  <Icon>
+    <path d="M14 10a1.3 1.3 0 0 1-1.3 1.3H4.7L2 14V3.3A1.3 1.3 0 0 1 3.3 2h9.4A1.3 1.3 0 0 1 14 3.3Z" />
+  </Icon>
+);
+
 /** Help (V37), after lucide's circle-help (ISC): the button a page's or a field's help is behind. */
 export const HelpIcon = () => (
   <Icon>

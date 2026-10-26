@@ -498,7 +498,7 @@ export function branchReviews(
             : undefined;
           return {
             id,
-            symbol,
+            ...(symbol ? { symbol } : {}),
             body: body.trim(),
             ...(placed ?? {}),
             ...(code === undefined ? {} : { code }),
@@ -599,9 +599,9 @@ export function verdictText(
     lines.push('');
     if (c.path && c.line) {
       const removed = c.side === 'base' ? ` (a removed line, at ${info.base.slice(0, 7)})` : '';
-      lines.push(`${c.path}:${c.line} · ${name(c.symbol)}${removed}`);
+      lines.push(`${c.path}:${c.line}${c.symbol ? ` · ${name(c.symbol)}` : ''}${removed}`);
       if (c.code !== undefined) lines.push(`    ${c.code}`);
-    } else lines.push(`About ${name(c.symbol)}:`);
+    } else lines.push(`About ${c.symbol ? name(c.symbol) : (c.path ?? 'the change')}:`);
     lines.push(c.body);
   }
   if (where) lines.push('', fillPrompt(prompts['verdict.where'], where));

@@ -4,6 +4,7 @@ import { groupOf, label, tone } from '../graph/flow.js';
 import { pathInProject, projectOf } from '../graph/projects.js';
 import { byProject, type FileChanges } from './review.js';
 import { ReviewTab, type ReviewProps } from './ReviewTab.js';
+import type { Draft } from './comments.js';
 import { ChevronIcon, CloseIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
 
@@ -36,6 +37,8 @@ interface Props {
   review?: ReviewProps | undefined;
   /** Whether the server opens files in VS Code (the `o` key). */
   canOpen: boolean;
+  /** Shows what a comment in the review tab is on (V60). */
+  onOpenDraft: (draft: Draft) => void;
 }
 
 /**
@@ -61,10 +64,11 @@ export function Sidebar({
   onCollapse,
   review,
   canOpen,
+  onOpenDraft,
 }: Props) {
   const commented = new Map<string, number>();
-  for (const d of review?.draft.drafts ?? []) {
-    commented.set(d.symbol, (commented.get(d.symbol) ?? 0) + 1);
+  for (const { symbol } of review?.draft.drafts ?? []) {
+    if (symbol !== undefined) commented.set(symbol, (commented.get(symbol) ?? 0) + 1);
   }
   const total = changes.reduce((n, f) => n + f.symbols.length, 0);
   const matches = shown.reduce((n, f) => n + f.symbols.length, 0);
@@ -247,7 +251,7 @@ export function Sidebar({
           </div>
         </>
       ) : tab === 'review' && review ? (
-        <ReviewTab graph={graph} review={review} onSelect={onSelect} canOpen={canOpen} />
+        <ReviewTab graph={graph} review={review} onOpen={onOpenDraft} canOpen={canOpen} />
       ) : (
         <div className="list">
           {findings.map((finding) => (
@@ -275,10 +279,13 @@ export function DiffKeys({
   grouped,
   review,
   canOpen,
+  files = false,
 }: {
   grouped: boolean;
   review: boolean;
   canOpen: boolean;
+  /** The Files page is a key away (V60). */
+  files?: boolean;
 }) {
   // Each key with its words, so a line never ends between them.
   const keys: [ReactNode, string][] = [
@@ -294,6 +301,7 @@ export function DiffKeys({
     [<kbd>/</kbd>, 'search'],
     ...(review ? [[<kbd>c</kbd>, 'comment'] as [ReactNode, string]] : []),
     ...(canOpen ? [[<kbd>o</kbd>, 'VS Code'] as [ReactNode, string]] : []),
+    ...(files ? [[<kbd>g</kbd>, 'files'] as [ReactNode, string]] : []),
     [<kbd>Esc</kbd>, 'close'],
   ];
   return (

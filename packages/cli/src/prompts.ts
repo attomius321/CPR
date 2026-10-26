@@ -129,11 +129,12 @@ A workspace started in Symbiote is a branch with a worktree of its own and a rec
 
 ## Comments
 
-Each has \`body\` (what to do) and \`symbol\` (\`<path>#<name>\`); on a line, also \`path\`,
-\`line\`, \`side\` and \`code\` (that line's text). Without \`line\` it is about the whole symbol.
+Each has \`body\` (what to do); on a line, also \`path\`, \`line\`, \`side\` and \`code\` (that
+line's text). \`symbol\` (\`<path>#<name>\`) is the symbol it is about: the one holding its
+line, absent when none does. Without \`line\` it is about the whole symbol.
 
 - \`side: "head"\`: \`line\` is in the reviewed commit \`head\`, not your working copy. If the
-  branch moved since, find the place by \`code\` and \`symbol\`.
+  branch moved since, find the place by \`code\` (and \`symbol\`, when there is one).
 - \`side: "base"\`: a line the branch removed, at the file's top-level \`base\` (where the review
   starts: \`git show <base>:<path>\`). Usually the question is whether removing it was right.
 

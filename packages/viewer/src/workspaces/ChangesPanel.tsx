@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { WorkspaceChanges, WorkspaceFileChange } from '@symbiote/core';
 import {
   commitTitle,
@@ -40,7 +40,7 @@ export function useChanges(branch: string, version: unknown): WorkspaceChanges |
 }
 
 /** Lines added and removed, in their colours; a count of none muted. */
-function Lines({ added, removed }: { added: number; removed: number }) {
+export function Lines({ added, removed }: { added: number; removed: number }) {
   return (
     <span className="changes-lines">
       <span className={added === 0 ? 'none' : 'changes-added'}>+{added}</span>{' '}
@@ -49,13 +49,25 @@ function Lines({ added, removed }: { added: number; removed: number }) {
   );
 }
 
-/** A file's row: its status letter, name, folder and lines; a click opens its diff in VS Code. */
-function FileRow({
+/**
+ * A file's row: its status letter, name, folder and lines, then `after` (a review's comments,
+ * V60); a click does what `label` says. A workspace's opens its diff in VS Code; a review's Files
+ * page shows it (`current` the one shown).
+ */
+export function FileRow<File extends WorkspaceFileChange>({
   file,
+  label,
+  hover,
+  current,
+  after,
   onOpen,
 }: {
-  file: WorkspaceFileChange;
-  onOpen: (file: WorkspaceFileChange) => void;
+  file: File;
+  label: string;
+  hover: string;
+  current?: boolean;
+  after?: ReactNode;
+  onOpen: (file: File) => void;
 }) {
   const { name, folder } = splitPath(file.path);
   const lines = linesOf(file);
@@ -63,8 +75,9 @@ function FileRow({
     <button
       type="button"
       className="changes-file"
-      aria-label={`Open the changes to ${file.path} in VS Code`}
-      {...tip(fileTitle(file))}
+      aria-label={label}
+      {...(current ? { 'aria-current': true } : {})}
+      {...tip(hover)}
       onClick={() => onOpen(file)}
     >
       <span className={`changes-status status-${file.status}`}>{statusLetter(file.status)}</span>
@@ -75,6 +88,7 @@ function FileRow({
       ) : (
         lines && <Lines added={file.added ?? 0} removed={file.removed ?? 0} />
       )}
+      {after}
     </button>
   );
 }
@@ -95,7 +109,12 @@ function Files({
       <ul className="changes-list">
         {files.listed.map((file) => (
           <li key={file.path}>
-            <FileRow file={file} onOpen={onOpen} />
+            <FileRow
+              file={file}
+              label={`Open the changes to ${file.path} in VS Code`}
+              hover={fileTitle(file)}
+              onOpen={onOpen}
+            />
           </li>
         ))}
       </ul>

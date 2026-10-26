@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { serveFixture, type Running } from './symbiote.js';
+import { graphPage, serveFixture, type Running } from './symbiote.js';
 
 // The layout is computed, not arranged by hand: dragging anywhere, a file box or a symbol
 // included, moves the view and never a box.
@@ -29,7 +29,7 @@ async function drag(page: Page, locator: Locator, dx: number, dy: number): Promi
 
 for (const kind of ['file', 'symbol']) {
   test(`dragging a ${kind} pans the canvas and leaves the ${kind} in place`, async ({ page }) => {
-    await page.goto(symbiote.url);
+    await page.goto(graphPage(symbiote.url));
     const node = page.locator(`.react-flow__node-${kind}`).first();
     await expect(node).toBeVisible();
     // Let the opening fit settle.

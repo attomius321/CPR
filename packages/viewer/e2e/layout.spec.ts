@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { serveFixture, type Running } from './symbiote.js';
+import { graphPage, serveFixture, type Running } from './symbiote.js';
 
 // Layouts are made in a worker (V8e): the page stays usable while one is made, the canvas keeps
 // the last layout until the next arrives, and a view laid out before comes back at once.
@@ -29,7 +29,7 @@ test('the change list shows while the first layout is made', async ({ page }) =>
     await held;
     await route.continue();
   });
-  await page.goto(symbiote.url);
+  await page.goto(graphPage(symbiote.url));
 
   await expect(page.locator('.layout-pending')).toHaveText('Laying out…');
   await page.getByRole('tab', { name: /Changes/ }).click();
@@ -42,7 +42,7 @@ test('the change list shows while the first layout is made', async ({ page }) =>
 });
 
 test('a view laid out before comes back at once', async ({ page }) => {
-  await page.goto(symbiote.url);
+  await page.goto(graphPage(symbiote.url));
   await expect(symbols(page).first()).toBeVisible();
   const all = await symbols(page).count();
   const context = page.getByLabel('Context', { exact: true });

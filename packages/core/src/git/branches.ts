@@ -17,7 +17,8 @@ export type VerdictEvent = 'comment' | 'approve' | 'request-changes';
 /** A comment of a finished review (V16): on a line of one side, or about a symbol. */
 export interface VerdictComment {
   id: string;
-  symbol: string;
+  /** The symbol it is about: on a line, the one holding it; absent when none does (V60). */
+  symbol?: string;
   body: string;
   side?: 'base' | 'head';
   path?: string;

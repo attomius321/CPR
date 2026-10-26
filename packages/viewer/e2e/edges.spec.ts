@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import type { Graph, GraphEdge, GraphNode } from '@symbiote/core';
-import { serveFixture, type Running } from './symbiote.js';
+import { graphPage, serveFixture, type Running } from './symbiote.js';
 
 // React Flow checks every edge it is given on every frame of a move (V8c). A generated change
 // with more edges than a moving view draws: 21 symbols of `a.ts` call each of 20 in `b.ts`, and
@@ -67,7 +67,7 @@ test.beforeEach(({ page }) => {
 test.afterEach(() => expect(errors).toEqual([]));
 
 async function open(page: Page, graph?: Graph) {
-  const url = new URL(symbiote.url);
+  const url = new URL(graphPage(symbiote.url));
   if (graph) {
     await page.route('**/many-edges.json', (route) => route.fulfill({ json: graph }));
     url.searchParams.set('graph', './many-edges.json');

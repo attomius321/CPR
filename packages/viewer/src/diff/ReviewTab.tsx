@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { BranchMerge, FinishResult, Graph } from '@symbiote/core';
+import type { BranchMerge, FinishResult, Graph, GraphNode } from '@symbiote/core';
 import {
   canFinish,
   canSubmit,
@@ -9,6 +9,7 @@ import {
   postReview,
   toLocalReview,
   toReview,
+  type Draft,
   type ReviewDraft,
   type ReviewEvent,
 } from './comments.js';
@@ -51,16 +52,30 @@ type Submission =
 
 const short = (sha: string) => sha.slice(0, 7);
 
-/** The pending review: comments written on symbols, a summary, the verdict, and submit. */
+/**
+ * What a comment is on, for its row: its symbol; a line no symbol holds by its path and line
+ * (V60).
+ */
+function draftName(draft: Draft, nodes: ReadonlyMap<string, GraphNode>): string {
+  if (draft.symbol !== undefined) {
+    const node = nodes.get(draft.symbol);
+    return node ? label(node) : draft.symbol;
+  }
+  const where = draft.anchor ?? draft.was;
+  return where ? `${where.path}:${where.line}` : 'the change';
+}
+
+/** The pending review: comments written on symbols and lines, a summary, the verdict, and submit. */
 export function ReviewTab({
   graph,
   review,
-  onSelect,
+  onOpen,
   canOpen = false,
 }: {
   graph: Graph;
   review: ReviewProps;
-  onSelect: (id: string) => void;
+  /** Shows what a comment is on: its symbol, or its line in its file (V60). */
+  onOpen: (draft: Draft) => void;
   /** The server opens files in VS Code (`/api/open`): a conflicting file too (V17). */
   canOpen?: boolean;
 }) {
@@ -96,20 +111,21 @@ export function ReviewTab({
     <div className="list review-tab">
       {draft.drafts.length === 0 && (
         <p className="muted pad">
-          No comments yet: select a symbol and write one in its panel (<kbd>c</kbd>).
+          No comments yet: click a line of a file, or select a symbol and write one in its panel (
+          <kbd>c</kbd>).
         </p>
       )}
       {draft.drafts.map((d) => {
-        const node = nodes.get(d.symbol);
+        const name = draftName(d, nodes);
         return (
           <div key={d.id} className="draft-row">
             <div className="draft-where">
-              <button className="list-link" onClick={() => onSelect(d.symbol)}>
-                {node ? label(node) : d.symbol}
+              <button className="list-link" onClick={() => onOpen(d)}>
+                {name}
               </button>
               <button
                 className="link"
-                aria-label={`Delete comment on ${node ? label(node) : d.symbol}`}
+                aria-label={`Delete comment on ${name}`}
                 onClick={() => review.onRemove(d.id)}
               >
                 Delete

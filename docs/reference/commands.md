@@ -81,17 +81,18 @@ and 2 when its arguments are wrong.
 Keys work when the focus is not in a text box. History also lists its keys under the **?** in its
 toolbar.
 
-| Key | On History | In a change (the graph) |
-|---|---|---|
-| j, k | Next or previous commit | Next or previous changed symbol |
-| / | Find a branch | Search the change list |
-| c | Check out the commit or one of its branches (asks first) | Comment on the selected symbol |
-| r | Review the branch | Mark the selected symbol reviewed |
-| x | Compare mode: pick two commits | |
-| f | | Show only the selected symbol and its neighbours |
-| p, P | | Next or previous project, in a monorepo |
-| o | | Open the selected symbol in VS Code |
-| Esc | Leave compare mode | Close the detail panel |
+| Key | On History | A change's Files page | A change's Graph page |
+|---|---|---|---|
+| j, k | Next or previous commit | Next or previous file | Next or previous changed symbol |
+| / | Find a branch | | Search the change list |
+| c | Check out the commit or one of its branches (asks first) | Comment on the file's first change | Comment on the selected symbol |
+| r | Review the branch | | Mark the selected symbol reviewed |
+| x | Compare mode: pick two commits | | |
+| f | | | Show only the selected symbol and its neighbours |
+| p, P | | | Next or previous project, in a monorepo |
+| o | | Open the file in VS Code at its first change | Open the selected symbol in VS Code |
+| g | | The Graph page | The Files page |
+| Esc | Leave compare mode | Close the comment box | Close the detail panel |
 
 These keys work on History, Scout, Skills, Monitor, Settings and a workspace's page. In a
 change, only n and [ work.

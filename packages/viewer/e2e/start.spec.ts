@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
 import { dragTo, stops } from './stepper.js';
-import { serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
+import { graphPage, serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Start a workspace as a page (V30a): /start in the main area, right of the sidenav; the brief and
 // the run side by side; back to where it was opened from; a start takes its place in the history.
@@ -212,7 +212,7 @@ test('Plan first is a switch: on at first, Space turns it off, the draft keeps i
 test("from a diff, the sidenav's Start and n load /start", async ({ page }) => {
   const diff = await serveFixture('callers');
   running.push(diff);
-  await page.goto(diff.url);
+  await page.goto(graphPage(diff.url));
   await expect(page.locator('.react-flow__node').first()).toBeVisible({ timeout: 20_000 });
   await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('[');

@@ -106,6 +106,7 @@ hosted.
 | [V16](plan/v16-finish-review.md) | Finish a review | ✅ | 76–81 | [journal](journal/v16-finish-review.md) |
 | Fix | a review's mark you can see on a badge | ✅ | | [journal](journal/fix-review-mark-visible.md) |
 | [V17](plan/v17-approve-means-merge.md) | Approve means "merge it" | ✅ | 82–87 | [journal](journal/v17-approve-means-merge.md) |
+| [V60](plan/v60-files-page.md) | A Files page in the review, the default: the changed files, a file's diff, comments on its lines | ready for review | 431–436 | [journal](journal/v60-files-page.md) |
 
 ### Workspaces
 

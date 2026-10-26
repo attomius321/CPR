@@ -1,0 +1,140 @@
+/* The Files page (V60, FilesPage.tsx): the files at the left in the graph page's sidebar, each a
+   workspace's changes row; the open file's diff beside them, its comments under their lines. */
+
+.files-main {
+  position: relative;
+  min-height: 0;
+  display: flex;
+}
+
+/* The page switch in the bar (V60): Files and Graph, a segmented control as History's scopes. */
+.page-switch {
+  flex: none;
+}
+
+.files-list {
+  font-size: var(--size-small);
+}
+
+.files-side .changes-file[aria-current='true'] {
+  background: var(--selected);
+  box-shadow: inset 0 0 0 1px var(--selected-line);
+}
+
+/* A file's comments: a small mark and their count, after its lines. */
+.files-commented {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.files-commented .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.files-none {
+  flex: 1 0 240px;
+  margin: 0;
+}
+
+/* What the list leaves, never under 240 px (MIN_CANVAS in Resizer.tsx); scrolls on its own. */
+.file-view {
+  flex: 1 0 240px;
+  min-width: 0;
+  overflow: auto;
+}
+
+/* The file's path and what changed in it, over its diff while it scrolls. */
+.file-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  font-size: var(--size-small);
+}
+
+.file-path {
+  margin: 0;
+  min-width: 0;
+  font: 600 var(--size-body) var(--mono);
+  overflow-wrap: anywhere;
+}
+
+.file-words {
+  color: var(--muted);
+}
+
+.file-head .open-note {
+  margin: 0;
+}
+
+.file-view > .hint {
+  margin: 0;
+}
+
+/* The diff: the rows of a symbol's (DetailPanel.css), as wide as the view, long lines wrapped so
+   a comment under its line stays in view. */
+.file-code {
+  margin: 12px 16px 24px;
+}
+
+.file-code .row {
+  grid-template-columns: 3.6em 3.6em 1.4em minmax(0, 1fr);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Unchanged lines folded away: the line between two runs of rows, opened on a click. */
+.fold {
+  display: block;
+  width: 100%;
+  padding: 2px 0 2px 8.6em;
+  border: 0;
+  border-block: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fold:first-child {
+  border-top: 0;
+}
+
+.fold:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* A line's comments and the one being written, under it, in the page's own type. */
+.file-comments {
+  padding: 8px 12px 8px 8.6em;
+  border-block: 1px solid var(--line);
+  background: var(--side);
+  font-family: var(--sans);
+}
+
+.file-comments .draft:last-child {
+  margin-bottom: 0;
+}
+
+.file-comment-form .comment-input {
+  font-family: var(--sans);
+}
+
+.file-comment-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}

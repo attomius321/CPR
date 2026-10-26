@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveCommits, type RunningCommits } from './symbiote.js';
+import { showGraph, serveCommits, type RunningCommits } from './symbiote.js';
 
 // `symbiote view` without revisions (V9): the commits page, the history of every branch as a graph
 // (V10); picked pairs are analyzed on demand, each at /diff/<base>..<head>/.
@@ -264,6 +264,10 @@ test('picks two commits, analyzes them, and goes back', async ({ page }) => {
 
   await expect(page).toHaveURL(`${symbiote.url}diff/${head}..${cube}/`);
   await expect(page.getByRole('status')).toContainText(`Analyzing ${short(head)} → ${short(cube)}`);
+  // It opens on its files (V60); the graph is a click away.
+  await expect(page.locator('.files-list .changes-file')).toHaveCount(1);
+  await expect(page.locator('.file-path')).toHaveText('src/math.ts');
+  await showGraph(page);
   await expect(symbol(page, 'square').locator('.symbol')).toHaveClass(/tone-added/);
   await expect(symbol(page, 'cube').locator('.symbol')).toHaveClass(/tone-added/);
   await expect(symbol(page, 'half')).toHaveCount(0);
@@ -293,6 +297,7 @@ test('compares one commit with its parent, from the keyboard too', async ({ page
   await row(page, 'Add half').click();
   await page.getByRole('button', { name: 'Compare', exact: true }).click();
   await expect(page).toHaveURL(`${symbiote.url}diff/${cube}..${half}/`);
+  await showGraph(page);
   await expect(symbol(page, 'half').locator('.symbol')).toHaveClass(/tone-added/);
   await expect(symbol(page, 'cube')).toHaveCount(0);
 
@@ -324,6 +329,7 @@ test('stops an analysis', async ({ page }) => {
 test('analyzes a diff URL opened anew', async ({ page }) => {
   const [base, head] = symbiote.shas;
   await page.goto(`${symbiote.url}diff/${base}..${head}/`);
+  await showGraph(page);
   await expect(symbol(page, 'triple')).toBeVisible();
   // A picked pair has no names: short SHAs, not the full ones twice.
   await expect(page.locator('.summary .revisions')).toHaveText(`${short(base)} → ${short(head)}`);

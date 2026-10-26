@@ -1,10 +1,10 @@
 # Review changes as a graph
 
 Symbiote shows a change as a graph of the code it touched, so you can review what changed in
-behaviour before you read lines. This guide covers reading the graph, the findings, reviewing a
-branch or a pull request, and running Symbiote in CI. A workspace's **Review** button opens the
-same graph. The [README](../../README.md) covers workspaces and explains the terms this guide
-uses.
+behaviour before you read lines. This guide covers a change's files, reading the graph, the
+findings, reviewing a branch or a pull request, and running Symbiote in CI. A workspace's
+**Review** button opens the same change. The [README](../../README.md) covers workspaces and
+explains the terms this guide uses.
 
 ## Open a change
 
@@ -22,6 +22,25 @@ Pick the way that matches what you want to review:
 
 Symbiote compares a branch from the commit where it left the other branch, as a pull request
 does. Each comparison has its own address in the app, so you can reload it or bookmark it.
+
+A change has two pages, **Files** and **Graph**, switched at the top left or with `g`. It opens on
+**Files**. A graph JSON file opened in the app without `symbiote view` opens on **Graph**: there
+are no diffs to show.
+
+## Read the files
+
+**Files** lists every file the change touches, as a workspace's **Changes** panel does: its
+status (`A` added, `M` modified, `D` deleted, `R` renamed), its name and folder, and the lines
+added and removed. Files the graph has no symbols for, such as Markdown, JSON or images, are
+listed too. Click a file, or press `j` and `k`, to see its diff. The diff is git's: its lines are
+the ones the list counts. Unchanged lines are folded to three around each change; click a fold to
+open it. To open the file in VS Code at its first change, press `o`. To open one line, Ctrl+click
+it.
+
+In a review, click a line to write a comment under it, and press Ctrl+Enter to add it. A comment
+on a line inside a function, a class or another symbol is about that symbol: the **Graph** page
+shows it in the symbol's detail panel. A comment on a line no symbol holds, such as a line of a
+Markdown file, is about that line only.
 
 ## Read the graph
 
@@ -94,12 +113,13 @@ under `test/`, `tests/`, `e2e/`, `__tests__/` or `__mocks__/`.
 
 To review a branch, open it with **Review** on its workspace, or with `r` on **History**. Then:
 
-1. Select each symbol and read it. Press `r` to mark it reviewed. A bar under the tabs shows how
-   much you have reviewed.
-2. To comment on a symbol, select it and press `c`. To put the comment on one line, click an
-   added or removed line in the symbol's diff.
-3. Open the **Review** tab. Pick **Approve**, **Request changes** or **Comment**, write a summary
-   if you like, and click **Finish review**.
+1. On **Files**, read each file's diff. Click a line to comment on it: any line shown, changed or
+   not.
+2. On **Graph**, select each symbol and read it. Press `r` to mark it reviewed. A bar under the
+   tabs shows how much you have reviewed. To comment on a symbol, select it and press `c`. To put
+   the comment on one line, click an added or removed line in the symbol's diff.
+3. Open the **Review** tab, on either page. Pick **Approve**, **Request changes** or
+   **Comment**, write a summary if you like, and click **Finish review**.
 
 Symbiote writes the review to `symbiote/reviews/<branch>/<your git email>.json`, in the
 repository. Symbiote's `symbiote/.gitignore` keeps reviews out of git. To commit and share them,
@@ -128,7 +148,9 @@ It needs a token:
 - GitHub: `GITHUB_TOKEN` or `GH_TOKEN`. If neither is set, Symbiote asks `gh auth token`.
 - GitLab: `GITLAB_TOKEN`.
 
-Comment on symbols and lines as in a branch review. In the **Review** tab, pick **Comment**,
+Comment on symbols and lines as in a branch review. On **Files**, only added and removed lines
+take a comment: GitHub and GitLab accept comments inside their own diff's hunks only. In the
+**Review** tab, pick **Comment**,
 **Approve** or **Request changes**, and click **Submit review to GitHub** (or GitLab). Your
 comments arrive on the pull request as one review, each on its line.
 

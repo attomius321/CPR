@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Graph } from '@symbiote/core';
-import { newDraft, refreshDrafts, type Anchor, type ReviewDraft } from './comments.js';
+import {
+  newDraft,
+  newLineDraft,
+  refreshDrafts,
+  type Anchor,
+  type ReviewDraft,
+} from './comments.js';
 import { toggleMark, type Marks } from './review.js';
 import { asMarks, asReviewDraft, type Store } from './store.js';
 
@@ -59,9 +65,18 @@ export function useReview(graph: Graph | undefined, store: Store | undefined) {
     },
     [graph, updateDraft],
   );
+  /** A comment on a line of a file (V60): about the symbol holding it, if one does. */
+  const addLineDraft = useCallback(
+    (anchor: Anchor, body: string) => {
+      if (graph) {
+        updateDraft((d) => ({ ...d, drafts: [...d.drafts, newLineDraft(graph, anchor, body)] }));
+      }
+    },
+    [graph, updateDraft],
+  );
   const removeDraft = useCallback(
     (id: string) => updateDraft((d) => ({ ...d, drafts: d.drafts.filter((x) => x.id !== id) })),
     [updateDraft],
   );
-  return { marks, draft, updateDraft, toggleReviewed, addDraft, removeDraft };
+  return { marks, draft, updateDraft, toggleReviewed, addDraft, addLineDraft, removeDraft };
 }

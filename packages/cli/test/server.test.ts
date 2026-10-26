@@ -147,6 +147,113 @@ describe('startViewServer', () => {
     expect((await get('/api/source?side=elsewhere&file=src/math.ts')).status).toBe(404);
     expect(reads).toEqual(['head:src/math.ts']);
   });
+
+  it('has no files without a reader of them (V60)', async () => {
+    expect((await get('/api/files')).status).toBe(404);
+    expect((await get('/api/file?path=src/math.ts')).status).toBe(404);
+  });
+});
+
+describe('GET /api/files and /api/file (V60)', () => {
+  const viewer = tempDir();
+  const asked: string[] = [];
+  let server: ViewServer;
+  let large = false;
+  const files: Graph['files'] = [
+    { status: 'modified', path: 'src/math.ts' },
+    { status: 'added', path: 'docs/notes.md', ignored: true },
+    { status: 'renamed', path: 'b.png', previousPath: 'a.png', similarity: 90 },
+  ];
+  const changed: Graph = {
+    ...graph,
+    files,
+    revisions: {
+      ...graph.revisions,
+      from: 'f'.repeat(40),
+      head: { ref: 'h', sha: 'h'.repeat(40) },
+    },
+  };
+
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      graph: changed,
+      viewerDir: viewer,
+      readSource: () => Promise.resolve(''),
+      files: {
+        lines: (from, to) => {
+          asked.push(`lines ${from[0] ?? ''}..${to[0] ?? ''}`);
+          return Promise.resolve([
+            { path: 'src/math.ts', added: 2, removed: 1 },
+            { path: 'docs/notes.md', added: 3, removed: 0 },
+            { path: 'b.png', previousPath: 'a.png', added: null, removed: null },
+          ]);
+        },
+        diff: (from, to, file) => {
+          asked.push(
+            `diff ${from[0] ?? ''}..${to[0] ?? ''} ${file.previousPath ?? ''}>${file.path}`,
+          );
+          return Promise.resolve(large ? 'x'.repeat(5 * 2 ** 20 + 1) : `diff of ${file.path}\n`);
+        },
+      },
+    });
+  });
+
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+
+  const get = async (path: string, init?: RequestInit) => {
+    const response = await fetch(new URL(path, server.url), init);
+    return {
+      status: response.status,
+      type: response.headers.get('content-type'),
+      body: await response.text(),
+    };
+  };
+
+  it('says it has them', async () => {
+    expect(JSON.parse((await get('/api/capabilities')).body)).toEqual({
+      sources: true,
+      review: null,
+      state: false,
+      files: true,
+    });
+  });
+
+  it("lists the graph's files with git's lines, read once", async () => {
+    const first = await get('/api/files');
+    expect(first.status).toBe(200);
+    expect(JSON.parse(first.body)).toEqual([
+      { status: 'modified', path: 'src/math.ts', added: 2, removed: 1 },
+      { status: 'added', path: 'docs/notes.md', ignored: true, added: 3, removed: 0 },
+      { status: 'renamed', path: 'b.png', previousPath: 'a.png', similarity: 90, binary: true },
+    ]);
+    expect(JSON.parse((await get('/api/files')).body)).toHaveLength(3);
+    expect(asked).toEqual(['lines f..h']);
+    expect((await get('/api/files', { method: 'POST' })).status).toBe(405);
+  });
+
+  it("gives one file's diff, by its path in the change", async () => {
+    expect(await get('/api/file?path=b.png')).toMatchObject({
+      status: 200,
+      type: 'text/plain; charset=utf-8',
+      body: 'diff of b.png\n',
+    });
+    expect(asked.at(-1)).toBe('diff f..h a.png>b.png');
+    // A renamed file's old path, a path outside the change, none.
+    expect((await get('/api/file?path=a.png')).status).toBe(404);
+    expect((await get('/api/file?path=../../etc/passwd')).status).toBe(404);
+    expect((await get('/api/file')).status).toBe(404);
+  });
+
+  it('refuses a diff too large to draw', async () => {
+    large = true;
+    const refused = await get('/api/file?path=src/math.ts');
+    large = false;
+    expect(refused).toMatchObject({ status: 413, body: 'a diff of at most 5 MB' });
+  });
 });
 
 describe('POST /api/review', () => {
@@ -489,6 +596,14 @@ describe('symbiote view: commits and diffs', () => {
           reads.push(`${sha[0] ?? ''}:${path}`);
           return Promise.resolve(`// ${path} at ${sha.slice(0, 7)}`);
         },
+        files: {
+          lines: (from, to) =>
+            Promise.resolve([
+              { path: `src/math.ts`, added: from === A && to === B ? 1 : 9, removed: 0 },
+            ]),
+          diff: (from, to, file) =>
+            Promise.resolve(`${file.path} ${from[0] ?? ''}..${to[0] ?? ''}`),
+        },
         state: (g) => fileStateStore(join(dir, g.revisions.head.sha ?? 'none')),
       },
       open: (request) => {
@@ -709,6 +824,7 @@ describe('symbiote view: commits and diffs', () => {
       review: null,
       state: true,
       open: true,
+      files: true,
       commits: true,
       repo: 'widgets',
     });
@@ -736,6 +852,12 @@ describe('symbiote view: commits and diffs', () => {
     });
     expect((await get(`/diff/${A}..${B}/api/source?side=head&file=../x`)).status).toBe(404);
     expect(reads).toEqual(['a:src/math.ts']);
+
+    // Its files and a file's diff at the pair's commits (V60).
+    expect(JSON.parse((await get(`/diff/${A}..${B}/api/files`)).body)).toEqual([
+      { status: 'modified', path: 'src/math.ts', added: 1, removed: 0 },
+    ]);
+    expect((await get(`/diff/${A}..${B}/api/file?path=src/math.ts`)).body).toBe('src/math.ts a..b');
 
     // Files open at the pair's commits.
     const opened = await post(`/diff/${A}..${B}/api/open`, {
@@ -1020,6 +1142,8 @@ describe('symbiote view: branch reviews', () => {
       { ...comment, symbol: 'src/nope.ts#x' },
       { ...comment, body: ' ' },
       { ...comment, line: 0 },
+      // Neither a symbol nor a line (V60).
+      { id: 'c3', body: 'Hm.' },
     ]) {
       const refused = await send('POST', '/review/wip/api/review', { ...review, comments: [bad] });
       expect(refused.status).toBe(400);
@@ -1044,6 +1168,19 @@ describe('symbiote view: branch reviews', () => {
         code: `// src/math.ts at ${C.slice(0, 7)}`,
       },
     ]);
+
+    // A line no symbol holds (V60): its place only.
+    const line = {
+      id: 'c3',
+      side: 'head',
+      path: 'src/math.ts',
+      otherPath: 'src/math.ts',
+      line: 1,
+      body: 'Say why.',
+    };
+    const placed = await send('POST', '/review/wip/api/review', { ...review, comments: [line] });
+    expect(placed.status).toBe(200);
+    expect(finished.at(-1)?.review).toEqual({ ...review, comments: [line] });
 
     // Approve pushes nothing (V17): there is no push to retry.
     expect((await send('POST', '/review/wip/api/review/push', {})).status).toBe(405);

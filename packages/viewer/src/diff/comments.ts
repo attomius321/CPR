@@ -18,16 +18,21 @@ export interface Anchor {
 /** A comment written in the viewer, kept until the review is submitted. */
 export interface Draft {
   id: string;
-  symbol: string;
+  /** The symbol it is about; absent on a line no symbol holds (V60). */
+  symbol?: string;
   /** Null: no changed line to attach to, so it goes into the review's summary. */
   anchor: Anchor | null;
   body: string;
-  /** The symbol's fingerprint when the comment was written. */
+  /** The symbol's fingerprint when the comment was written; '' without a symbol. */
   print: string;
   /** First line of the anchored side of the symbol then: the anchor moves with the symbol. */
   start: number | null;
   /** The symbol changed (or left the change) since: the comment goes into the summary. */
   outdated?: true;
+  /** Without a symbol (V60): the head it was written at, whose lines its anchor counts. */
+  at?: string;
+  /** Without a symbol, outdated (V60): the line it was on, for the summary. */
+  was?: Anchor;
 }
 
 export function newDraft(node: GraphNode, anchor: Anchor | null, body: string): Draft {
@@ -42,6 +47,47 @@ export function newDraft(node: GraphNode, anchor: Anchor | null, body: string): 
 }
 
 /**
+ * A comment on a line of a file (V60): about the innermost symbol holding that line, as one
+ * written on the symbol; on a line no symbol holds, about none, kept for the head it was written
+ * at.
+ */
+export function newLineDraft(graph: Graph, anchor: Anchor, body: string): Draft {
+  const node = symbolAt(graph, anchor.side, anchor.path, anchor.line);
+  if (node) return newDraft(node, anchor, body);
+  return { id: draftId(), anchor, body: body.trim(), print: '', start: null, at: headOf(graph) };
+}
+
+/** The innermost symbol whose code on `side` holds `line` of `path`. */
+export function symbolAt(
+  graph: Graph,
+  side: Side,
+  path: string,
+  line: number,
+): GraphNode | undefined {
+  let found: GraphNode | undefined;
+  let size = Infinity;
+  for (const node of graph.nodes) {
+    const decl = node[side];
+    if (!decl || decl.file !== path) continue;
+    const { start, end } = decl.range;
+    if (line < start.line || line > end.line) continue;
+    // The smallest range holding the line; of two alike, the one starting later.
+    const lines = end.line - start.line;
+    if (
+      lines < size ||
+      (lines === size && found && start.line >= (found[side]?.range.start.line ?? 0))
+    ) {
+      found = node;
+      size = lines;
+    }
+  }
+  return found;
+}
+
+/** What a comment without a symbol counts its lines in: the head's commit, else its name. */
+const headOf = (graph: Graph): string => graph.revisions.head.sha ?? graph.revisions.head.ref;
+
+/**
  * Brings drafts up to date with a newer version of the change: a symbol whose code is the same
  * keeps its comments on the same lines of it, wherever it now starts; a symbol that changed
  * makes its comments outdated, so they go into the summary instead of onto a wrong line.
@@ -50,6 +96,11 @@ export function refreshDrafts(graph: Graph, drafts: readonly Draft[]): Draft[] {
   const nodes = new Map(graph.nodes.map((n) => [n.id, n]));
   return drafts.map((draft) => {
     if (draft.outdated) return draft;
+    if (draft.symbol === undefined) {
+      // A line no symbol holds: right only at the head it was written at.
+      if (draft.at === headOf(graph) || !draft.anchor) return draft;
+      return { ...draft, anchor: null, outdated: true, was: draft.anchor };
+    }
     const node = nodes.get(draft.symbol);
     const decl = node && draft.anchor ? node[draft.anchor.side] : undefined;
     if (!node || fingerprint(node) !== draft.print || (draft.anchor && !decl)) {
@@ -104,9 +155,10 @@ function otherPath(graph: Graph, side: Side, path: string): string {
 }
 
 export function describeDraft(draft: Draft): string {
-  return draft.outdated
-    ? 'outdated: the symbol changed since; in the review summary'
-    : describeAnchor(draft.anchor);
+  if (!draft.outdated) return describeAnchor(draft.anchor);
+  return draft.symbol === undefined
+    ? 'outdated: new commits since; in the review summary'
+    : 'outdated: the symbol changed since; in the review summary';
 }
 
 export function describeAnchor(anchor: Anchor | null): string {
@@ -128,6 +180,7 @@ export function toReview(
   const general = drafts
     .filter((d) => d.anchor === null)
     .map((d) => {
+      if (d.symbol === undefined) return quoteLine(d);
       const node = nodes.get(d.symbol);
       const file = node && (node.head ?? node.base)?.file;
       const name = node ? label(node) : d.symbol;
@@ -148,24 +201,34 @@ export function canSubmit(drafts: readonly Draft[], event: ReviewEvent, body: st
 }
 
 /**
- * A branch review's verdict (V16): every draft a comment with its symbol and id, its line when
- * it has one; the summary as written.
+ * A branch review's verdict (V16): every draft a comment with its id, its symbol when it has one
+ * and its line when it has one; the summary as written, then the outdated comments no symbol
+ * holds (V60), which have neither.
  */
 export function toLocalReview(
   drafts: readonly Draft[],
   event: ReviewEvent,
   body: string,
 ): LocalReview {
+  const placed = (d: Draft) => d.symbol !== undefined || d.anchor !== null;
   return {
     event,
-    body: body.trim(),
-    comments: drafts.map((d) => ({
+    body: [body.trim(), ...drafts.filter((d) => !placed(d)).map(quoteLine)]
+      .filter(Boolean)
+      .join('\n\n'),
+    comments: drafts.filter(placed).map((d) => ({
       id: d.id,
-      symbol: d.symbol,
+      ...(d.symbol === undefined ? {} : { symbol: d.symbol }),
       body: d.body.trim(),
       ...(d.anchor ?? {}),
     })),
   };
+}
+
+/** A comment no symbol holds, for a summary: where it was, then what it says. */
+function quoteLine(draft: Draft): string {
+  const where = draft.was ?? draft.anchor;
+  return `${where ? `**\`${where.path}:${where.line}\`**\n` : ''}${draft.body.trim()}`;
 }
 
 /** Whether a branch review can be finished: a verdict alone, else something to say. */

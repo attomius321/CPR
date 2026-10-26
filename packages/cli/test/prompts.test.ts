@@ -109,6 +109,18 @@ describe('with no prompts set (V28)', () => {
         '  not part of the review.\n' +
           '- `via` on a verdict (`"scout"`, or `"mcp"`): an agent of the person\'s wrote it through\n' +
           '  Symbiote, and the person confirmed it there. It is their verdict as any other.\n',
+      )
+      // Since V60, a comment on a line no symbol holds names none.
+      .replace(
+        'Each has `body` (what to do) and `symbol` (`<path>#<name>`); on a line, also `path`,\n' +
+          "`line`, `side` and `code` (that line's text). Without `line` it is about the whole symbol.\n",
+        'Each has `body` (what to do); on a line, also `path`, `line`, `side` and `code` (that\n' +
+          "line's text). `symbol` (`<path>#<name>`) is the symbol it is about: the one holding its\n" +
+          'line, absent when none does. Without `line` it is about the whole symbol.\n',
+      )
+      .replace(
+        '  branch moved since, find the place by `code` and `symbol`.\n',
+        '  branch moved since, find the place by `code` (and `symbol`, when there is one).\n',
       );
     expect(agents).not.toBe(BEFORE.agents);
     expect(AGENTS).toBe(agents);

@@ -2,7 +2,7 @@ import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
-import { servePullRequest, type RunningPullRequest } from './symbiote.js';
+import { graphPage, servePullRequest, type RunningPullRequest } from './symbiote.js';
 
 // `symbiote pr 7` on the detectors fixture: a click on a row picks the comment line, Ctrl/⌘+click
 // opens it in VS Code, and `o` opens the picked line. `perimeter` is head's lines 11–13.
@@ -31,7 +31,7 @@ test.afterAll(() => {
 test.beforeEach(async ({ page }) => {
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(symbiote.url);
+  await page.goto(graphPage(symbiote.url));
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
 });
 

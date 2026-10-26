@@ -23,6 +23,7 @@ export {
   parseChangedLines,
   type ChangedLines,
 } from './git/changed-lines.js';
+export { fileDiff, type ReviewFile } from './git/file-diff.js';
 export { checkoutRevision, defaultCacheDir, type CheckoutOptions } from './git/worktree.js';
 export type {
   Dangling,

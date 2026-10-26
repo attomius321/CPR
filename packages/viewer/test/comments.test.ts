@@ -9,7 +9,9 @@ import {
   describeAnchor,
   describeDraft,
   newDraft,
+  newLineDraft,
   refreshDrafts,
+  symbolAt,
   toLocalReview,
   toReview,
   type Draft,
@@ -179,5 +181,94 @@ describe('refreshDrafts', () => {
     );
     const gone = { ...graph, nodes: graph.nodes.filter((n) => n.id !== slugify.id) };
     expect(refreshDrafts(gone, [draft])[0]?.outdated).toBe(true);
+  });
+});
+
+describe('comments on a line of a file (V60)', () => {
+  const head = (path: string, line: number) => ({
+    side: 'head' as const,
+    path,
+    otherPath: path,
+    line,
+  });
+
+  it('finds the innermost symbol holding a line on its side', () => {
+    expect(symbolAt(graph, 'head', 'src/user.ts', 8)?.id).toBe('src/user.ts#findUser');
+    expect(symbolAt(graph, 'head', 'src/user.ts', 6)).toBeUndefined();
+    expect(symbolAt(graph, 'base', 'src/old-utils.ts', 2)?.id).toBe('src/text/slug.ts#slugify');
+    expect(symbolAt(graph, 'head', 'README.md', 1)).toBeUndefined();
+    const user = node('src/user.ts#User');
+    const method: GraphNode = {
+      ...user,
+      id: 'src/user.ts#User.name',
+      head: user.head && {
+        ...user.head,
+        range: { start: { line: 2, col: 3 }, end: { line: 3, col: 4 } },
+      },
+    };
+    const nested = { ...graph, nodes: [...graph.nodes, method] };
+    expect(symbolAt(nested, 'head', 'src/user.ts', 3)?.id).toBe('src/user.ts#User.name');
+    expect(symbolAt(nested, 'head', 'src/user.ts', 4)?.id).toBe('src/user.ts#User');
+  });
+
+  it('names the symbol holding its line, as a comment written on the symbol does', () => {
+    const draft = newLineDraft(graph, head('src/user.ts', 8), ' Why? ');
+    const findUser = node('src/user.ts#findUser');
+    expect(draft).toMatchObject({
+      symbol: 'src/user.ts#findUser',
+      body: 'Why?',
+      start: findUser.head?.range.start.line,
+    });
+    expect(draft.print).toBe(newDraft(findUser, null, 'x').print);
+    expect(draft.at).toBeUndefined();
+  });
+
+  it('names none outside every symbol, and keeps the head it was written at', () => {
+    const draft = newLineDraft(graph, head('README.md', 1), 'Typo.');
+    expect(draft).toMatchObject({ anchor: head('README.md', 1), body: 'Typo.', at: 'head' });
+    expect(draft).not.toHaveProperty('symbol');
+    expect(refreshDrafts(graph, [draft])[0]).toBe(draft);
+    const later: Graph = {
+      ...graph,
+      revisions: { ...graph.revisions, head: { ref: 'h2', sha: 'c'.repeat(40) } },
+    };
+    const [moved] = refreshDrafts(later, [draft]);
+    expect(moved).toMatchObject({ anchor: null, outdated: true, was: head('README.md', 1) });
+    expect(describeDraft(moved as Draft)).toBe(
+      'outdated: new commits since; in the review summary',
+    );
+    expect(describeDraft(draft)).toBe('on line 1 of README.md');
+  });
+
+  it('posts a line comment inline, and quotes an outdated one in the summary', () => {
+    const line = newLineDraft(graph, head('README.md', 1), 'Typo.');
+    const outdated: Draft = {
+      ...line,
+      id: 'o',
+      anchor: null,
+      outdated: true,
+      was: head('README.md', 3),
+    };
+    expect(toReview(graph, [line, outdated], 'comment', '')).toEqual({
+      event: 'comment',
+      body: '**`README.md:3`**\nTypo.',
+      comments: [
+        { side: 'head', path: 'README.md', otherPath: 'README.md', line: 1, body: 'Typo.' },
+      ],
+    });
+    expect(toLocalReview([line, outdated], 'comment', 'Two notes.')).toEqual({
+      event: 'comment',
+      body: 'Two notes.\n\n**`README.md:3`**\nTypo.',
+      comments: [
+        {
+          id: line.id,
+          body: 'Typo.',
+          side: 'head',
+          path: 'README.md',
+          otherPath: 'README.md',
+          line: 1,
+        },
+      ],
+    });
   });
 });

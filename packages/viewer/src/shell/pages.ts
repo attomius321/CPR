@@ -76,6 +76,22 @@ export function diffTitle(graph: Graph, reviewOf?: string): string {
   return pageTitle(reviewOf ? `Review of ${reviewOf}` : revisionsLabel(graph));
 }
 
+/** A diff's two pages (V60): its files, the default, and the graph. */
+export type DiffView = 'files' | 'graph';
+
+/** The page a diff's address asks for (`?view=graph`); null: the default. */
+export function diffView(search: string): 'graph' | null {
+  return new URLSearchParams(search).get('view') === 'graph' ? 'graph' : null;
+}
+
+/** `href` showing `view`: Graph in `?view=graph`, Files without it; the rest of it kept. */
+export function withDiffView(href: string, view: DiffView): string {
+  const url = new URL(href);
+  if (view === 'graph') url.searchParams.set('view', 'graph');
+  else url.searchParams.delete('view');
+  return url.toString();
+}
+
 /** The old addresses of Workspaces (V18b's `/workspaces`, before it `/features`). */
 const OLD_WORKSPACES = new Set(['/workspaces', '/features']);
 

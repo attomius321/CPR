@@ -64,7 +64,7 @@ test('dark by default; Appearance in Settings makes it light, kept for this brow
 
   // A diff's page and its graph follow.
   const [base, head] = symbiote.shas;
-  await page.goto(`${symbiote.url}diff/${base}..${head}/`);
+  await page.goto(`${symbiote.url}diff/${base}..${head}/?view=graph`);
   await expect(page.locator('.react-flow')).toHaveClass(/\blight\b/, POLL);
   expect(await background(page)).toBe(LIGHT);
 });
@@ -220,13 +220,17 @@ test('no text under 12 px on any page; the body and the terminal at 14 px', asyn
   expect(await small()).toEqual([]);
 
   const [base, head] = symbiote.shas;
-  await page.goto(`${symbiote.url}diff/${base}..${head}/`);
+  await page.goto(`${symbiote.url}diff/${base}..${head}/?view=graph`);
   await expect(page.locator('.react-flow__node').first()).toBeVisible(POLL);
   expect(await small()).toEqual([]);
   await page.keyboard.press('j');
   await expect(page.locator('.panel-title')).toBeVisible();
   expect(await small()).toEqual([]);
   await page.getByRole('tab', { name: /Findings/ }).click();
+  expect(await small()).toEqual([]);
+  // The Files page (V60): the list and a file's diff, a fold.
+  await page.keyboard.press('g');
+  await expect(page.locator('.file-code .row').first()).toBeVisible(POLL);
   expect(await small()).toEqual([]);
 });
 
@@ -280,10 +284,14 @@ test("fields and buttons take the page's font and spacing on every page", async 
   expect(await unlike()).toEqual([]);
 
   const [base, head] = symbiote.shas;
-  await page.goto(`${symbiote.url}diff/${base}..${head}/`);
+  await page.goto(`${symbiote.url}diff/${base}..${head}/?view=graph`);
   await expect(page.locator('.react-flow__node').first()).toBeVisible(POLL);
   await page.keyboard.press('j');
   await expect(page.locator('.panel-title')).toBeVisible();
+  expect(await unlike()).toEqual([]);
+  // The Files page (V60): its switch, its rows, a fold.
+  await page.keyboard.press('g');
+  await expect(page.locator('.file-code .row').first()).toBeVisible(POLL);
   expect(await unlike()).toEqual([]);
 });
 
@@ -339,7 +347,7 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
 
   // A diff's keys and how to read its canvas: behind the bar's "?", at the window's right edge.
   const [base, head] = symbiote.shas;
-  await page.goto(`${symbiote.url}diff/${base}..${head}/`);
+  await page.goto(`${symbiote.url}diff/${base}..${head}/?view=graph`);
   await expect(page.locator('.react-flow__node').first()).toBeVisible(POLL);
   await expect(page.getByText('next/previous')).toBeHidden();
   await expect(page.getByText('a group to show its symbols')).toBeHidden();

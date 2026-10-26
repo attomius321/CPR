@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { serveDiverged, type RunningDiverged } from './symbiote.js';
+import { showGraph, serveDiverged, type RunningDiverged } from './symbiote.js';
 
 // V10c: two picks on lines that diverged are compared from their fork point, as a pull request
 // shows a branch: what head's side adds, never the other side's work as reverted.
@@ -50,6 +50,7 @@ test.describe('with main checked out', () => {
 
     await page.getByRole('button', { name: 'Compare', exact: true }).click();
     await expect(page).toHaveURL(`${symbiote.url}diff/${fork}..${topic}/`);
+    await showGraph(page);
     await expect(symbol(page, 'twice').locator('.symbol')).toHaveClass(/tone-added/);
     await expect(symbol(page, 'square').locator('.symbol')).toHaveClass(/tone-modified/);
     // main's work since the fork is not shown, as removed or otherwise.
@@ -66,6 +67,7 @@ test.describe('with main checked out', () => {
     );
     await page.getByRole('button', { name: 'Compare', exact: true }).click();
     await expect(page).toHaveURL(`${symbiote.url}diff/${fork}..${main}/`);
+    await showGraph(page);
     await expect(symbol(page, 'cube').locator('.symbol')).toHaveClass(/tone-added/);
     await expect(symbol(page, 'half').locator('.symbol')).toHaveClass(/tone-added/);
     await expect(symbol(page, 'twice')).toHaveCount(0);

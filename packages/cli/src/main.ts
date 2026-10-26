@@ -15,6 +15,7 @@ import {
   createAdapter,
   defaultCacheDir,
   fetchRefs,
+  fileDiff,
   commitDetails,
   defaultBranchTips,
   hasCommitGraph,
@@ -22,6 +23,7 @@ import {
   isCommit,
   listRefs,
   listChangedLines,
+  listLineCounts,
   NoMergeBaseError,
   openRepo,
   readFileAtRevision,
@@ -33,6 +35,7 @@ import {
   type Analysis,
   type AnalysisPhase,
   type ChangedLines,
+  type GitRepo,
   type Graph,
   type AgentEfforts,
   type AgentModels,
@@ -60,7 +63,7 @@ import { Histories, slowListingHint } from './history.js';
 import { frameworkHints, loadPlugins } from './plugins.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { childRunner, type PhaseMessage } from './runner.js';
-import { startViewServer, type ReviewTarget } from './server.js';
+import { startViewServer, type ChangeFiles, type ReviewTarget } from './server.js';
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
 import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
@@ -584,6 +587,7 @@ async function serve(
       if (!sha) return Promise.reject(new Error(`no ${side} revision`));
       return readFileAtRevision(repo, sha, path);
     },
+    files: changeFiles(repo),
     state: fileStateStore(stateDir(defaultCacheDir(ctx.env), repo.id, graph)),
     ...(review ? { review } : {}),
     open: vsCodeOpener(repo, ctx.env),
@@ -600,6 +604,14 @@ async function serve(
 }
 
 /** The first-time intro's record (V39), in Symbiote's config folder; `SYMBIOTE_INTRO=off`: none. */
+/** A change's files from the repository's git (V60): their lines and one file's diff. */
+function changeFiles(repo: GitRepo): ChangeFiles {
+  return {
+    lines: (from, to) => listLineCounts(repo, from, to),
+    diff: (from, to, file) => fileDiff(repo, from, to, file),
+  };
+}
+
 function introOf(ctx: CliContext): IntroRecord {
   const folder = symbioteConfigDir(ctx.env, process.platform, homedir());
   return introRecord(join(folder, 'intro.json'), { off: ctx.env.SYMBIOTE_INTRO === 'off' });
@@ -720,6 +732,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       isCommit: (sha) => isCommit(repo, sha),
       diffs,
       readFile: (sha, path) => readFileAtRevision(repo, sha, path),
+      files: changeFiles(repo),
       state: (graph) => fileStateStore(stateDir(cacheDir, repo.id, graph)),
       reviews: branchReviews(repo, cacheDir),
       workspaces: workspaces(repo, cacheDir, {
