@@ -25,7 +25,7 @@ does. Each comparison has its own address in the app, so you can reload it or bo
 
 ## Read the graph
 
-![A change in Symbiote: one box per file, the changed symbols coloured by what changed, and the Review tab](../images/review.png)
+![A change in Symbiote: the change list by file, the graph, and the detail panel of one symbol with its finding, signature, diff and users](../images/review-detail.png)
 
 The graph draws a box for each changed file. In each box are the *symbols* that changed:
 functions, classes, methods, types, and for stylesheets, rules and variables. Colours say what

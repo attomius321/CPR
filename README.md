@@ -6,7 +6,7 @@ agent's plan, answer its questions, review its branch and approve it. When you a
 merges the commit you approved. Once your project's check (its tests, for example) passes on the
 merge, Symbiote moves your branch to it.
 
-![A workspace in Symbiote: the sidenav lists the workspaces by what they need from you, and the open workspace shows its agent's plan in the agent's terminal](docs/images/workspace.png)
+![A workspace in Symbiote: the sidenav lists five workspaces by what each one needs from you, and the open one shows its agent's plan, waiting for your answer](docs/images/workspace.png)
 
 Several agents can work at once, each on its own branch, while you keep working in your own
 checkout. Everything runs locally: Symbiote is a command, `symbiote`, and an app that the command
@@ -118,6 +118,8 @@ notes under **More**. If Symbiote finds your project's check, such as `npm run t
 test` or `pytest`, it names it under **Done when**. The form is kept as a draft until you start,
 so leaving the page loses nothing.
 
+![The Start a workspace page: a Feature with its title, goal and Done when, and the workspace's choices beside it](docs/images/start.png)
+
 The card beside the form holds the workspace's choices:
 
 - **Start from**: the branch to start from. The default branch, unless you pick another.
@@ -189,7 +191,7 @@ function removed while code still calls it, new code that nothing uses, or a sig
 under callers that were not updated. The [review guide](docs/guide/review-and-ci.md) explains
 the graph and the findings.
 
-![Review of a workspace's branch: the changed symbols as a graph, with the Review tab open](docs/images/review.png)
+![Review of a workspace's branch: a comment on a symbol, the Review tab with Approve picked, and the symbol's diff beside the graph](docs/images/review.png)
 
 To review:
 
@@ -237,7 +239,7 @@ lost, and in amber the lines the merger wrote itself.
 **Approve** lands the resolution, and **Request changes** asks the merger again with your words.
 If the resolution's check failed, **Check again** runs the check again without asking the merger.
 
-![A merge in Symbiote: its steps, and the log of the merge and the check](docs/images/merge.png)
+![A landed merge: its steps (the merge, the install, the check and the landing) beside their output](docs/images/merge.png)
 
 ### Clean up
 
@@ -272,7 +274,7 @@ The sidenav also opens these pages. Each has a key.
 The status bar at the bottom shows how much of your Claude and Codex subscription limits you have
 used.
 
-![History: the branches panel, and the commits drawn as a graph with branch labels](docs/images/history.png)
+![History: the branches panel, and the commits drawn as a graph, each branch labelled with its review's state](docs/images/history.png)
 
 ## Review without an agent
 

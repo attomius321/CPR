@@ -163,6 +163,8 @@ To read the logs in Grafana, run `pnpm logs:up` in Symbiote's folder and open
 http://localhost:3300. It needs Docker, and `pnpm logs:down` stops it. Without Docker, read the
 files with `jq` or `lnav`.
 
+![The Symbiote dashboard in Grafana: a crash, three errors, each error on one line with its stack](../images/logs-dashboard.png)
+
 ## Older names
 
 Symbiote had another name until 2026-10-21. On first use, it moves what it kept under that name
