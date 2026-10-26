@@ -196,6 +196,63 @@ button.workspace-about {
   margin-left: 0;
 }
 
+/* Scout or Scribe waiting on the person (V59): the whole link is Waiting for you's band (V48) —
+   its amber wash, its edge a ring drawn as a shadow so nothing moves —, the icon amber, the words
+   at full strength, "Waits" for the dot. One flash as it starts to wait, then still: the link
+   stays across the shell's pages, so it flashes once a document. */
+.sidenav-pages a[data-state='waiting'] {
+  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 32%, transparent);
+  color: var(--text);
+  animation: wait-flash 1.2s ease-out;
+}
+
+.sidenav-pages a[data-state='waiting']:hover {
+  background: color-mix(in srgb, var(--warning) 15%, transparent);
+}
+
+.sidenav-pages a[data-state='waiting'] .icon {
+  color: var(--warning);
+  stroke-width: 1.8;
+}
+
+/* On its own page: the current page's wash and icon, the ring and "Waits" with them. */
+.sidenav-pages a[data-state='waiting'][aria-current='page'] {
+  background: var(--selected);
+}
+
+.sidenav-pages a[data-state='waiting'][aria-current='page'] .icon {
+  color: var(--accent);
+}
+
+@keyframes wait-flash {
+  from {
+    background: color-mix(in srgb, var(--warning) 32%, transparent);
+  }
+}
+
+/* Its word, round in the warning's tint as the count by Workspaces; its dot is the rail's. */
+.sidenav-waits {
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+  font-size: var(--size-caption);
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.sidenav-pages a .sidenav-waits + .state-dot {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidenav-pages a[data-state='waiting'] {
+    animation: none;
+  }
+}
+
 /* In the text's font: a monospace stack here made the first paint wait for font matching (850 ms
    on Linux before anything showed, V29a). */
 .sidenav-pages kbd {
@@ -703,6 +760,7 @@ button.workspace-about {
   .sidenav.rail .sidenav-label,
   .sidenav.rail kbd,
   .sidenav.rail .page-count,
+  .sidenav.rail .sidenav-waits,
   .sidenav.rail .branches-count,
   .sidenav.rail .workspace-line,
   .sidenav.rail .workspace-blocked,
@@ -741,6 +799,11 @@ button.workspace-about {
     position: absolute;
     top: 6px;
     right: 6px;
+  }
+
+  /* A waiting agent's dot: on the rail, where its word does not fit (V59). */
+  .sidenav.rail .sidenav-pages a .sidenav-waits + .state-dot {
+    display: block;
   }
 
   .sidenav.rail .sidenav-list {
