@@ -58,8 +58,8 @@ done                                                           # anyone using V4
          regression-check against main, real-repo before/after, cost in time
 - [ ] 6. Explain every difference the comparisons show; fix or record why it is right
 - [ ] 7. The plan file: Status, "As built" (what differs from the plan and why), Results; its
-         index row (status, decisions); README for user-visible behavior; graph-schema.md for
-         JSON changes
+         index row (status, decisions); user-visible behavior in the README or the page under
+         docs/reference/ or docs/guide/ it belongs to; graph-schema.md for JSON changes
 - [ ] 8. The journal file: an entry with Learned (surprises, traps), Verification (tests,
          comparisons, numbers); its line in docs/JOURNAL.md
 - [ ] 9. Report to the user with numbers and what was not verified; ask before merging

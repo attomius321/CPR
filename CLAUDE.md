@@ -120,7 +120,10 @@ unless the change says otherwise — prove it with the comparisons.
 - `docs/journal/<id>-<slug>.md` (a fix on its own branch: `fix-<slug>.md`): one entry per
   milestone part or fix — what was learned, how it was verified, and "Merged into main (date)";
   each entry a line in `docs/JOURNAL.md`. Templates: the `milestone` skill.
-- `README.md` for user-visible behavior (commands, flags, plugins).
+- User docs: `README.md` for what a user does (install, workspaces, the pages), short;
+  `docs/reference/commands.md` (commands, options, keys, MCP tools) and `configuration.md`
+  (`symbiote/config.json`, prompts, environment variables); `docs/guide/review-and-ci.md` (the
+  graph, findings, pull requests, CI, plugins). Edit the page a fact belongs to, never append.
 - Write like the existing docs: short sentences, measured numbers, no hype.
 
 ## Environment gotchas

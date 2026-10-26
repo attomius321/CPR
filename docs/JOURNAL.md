@@ -238,3 +238,4 @@ merge commit.
 - 2026-10-25 [Fix — the Skills page's Save: a title the merge of V54 brought back](journal/fix-merger-queue-wrong-behaviour.md)
 - 2026-10-25 [V57 spike — how long a card shows as before](journal/v57-cleaning-up-card.md)
 - 2026-10-25 [V57 — a card disabled while it is cleaned up or removed](journal/v57-cleaning-up-card.md)
+- 2026-10-26 [README remade around workspaces; commands, configuration and review pages](journal/remake-readme.md)
