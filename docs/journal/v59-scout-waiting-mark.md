@@ -53,3 +53,21 @@ rail, one 1.2 s flash as it starts.
 before and after: the sidenav with Scout, Scribe and a workspace waiting, hovered, folded, on
 Scout's page and at rest; the narrow drawer at 420 px. Not verified: the desktop app on WSLg, a
 touch screen, a real Claude Code dialog in Scout's terminal.
+
+## V59 — the merge check's flake in `changes.spec.ts` (2026-10-26)
+
+The person approved `1d2ab26`; Symbiote's merge check then failed 276 of 277: `changes.spec.ts:100`
+("] and the head's button hide it"), after the reload `]` did not show the changes. Nothing on its
+path changed in V59; the same test failed this way in V45, fix/merge-viewer-on-conflict and
+fix/merger-queue-wrong-behaviour (1 of 64 runs under 16 workers there, 0 of 10 alone).
+
+**Learned**:
+- **The terminal takes the focus when it is attached**, at the end of its setup
+  (`AgentTerminal.tsx`, `shown.focus()`), after a request to the server. On a loaded machine that
+  landed between the test's click on the heading and its `]`, so the key went to the terminal's
+  textarea and `keyIsTaken` left it to the agent. Shown on purpose by a spec outside the
+  repository that answers the terminal's open 1.5 s late: it fails as the merge check did, and
+  passes once the test waits for the terminal's focus first.
+- The test now waits for that focus after the reload. 32 of 32 under 8 workers, the spec 3 of 3.
+  The page is unchanged: a person who clicks before the terminal attaches meets the same race, as
+  before.
