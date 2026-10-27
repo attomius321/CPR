@@ -1,9 +1,12 @@
-/* A merge's log (MergeLog.tsx, V46a): its steps beside a read-only terminal of what they wrote. */
+/* A merge's log (MergeLog.tsx, V46a): its steps beside a read-only terminal of what they wrote,
+   taking what is left of its page's column (V69, the mockup; the window less 260 px before). Its
+   least is 320 px, never its rows': fitted to a taller window, they held it there. */
 .merge-log {
   display: grid;
+  flex: 1 0 320px;
   grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
   gap: 12px;
-  height: clamp(320px, calc(100vh - 260px), 900px);
+  min-height: 0;
   margin-top: 12px;
 }
 
@@ -99,29 +102,33 @@
   }
 }
 
+/* Symbiote's own steps (Merge, Merger agent, Land) weigh as labels (V69, the mockup). */
 .merge-step-name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* A check's command is literal: in mono. */
+/* A check's command is literal: in mono, regular. */
 .merge-step-command {
   font-family: var(--mono);
   font-size: var(--size-small);
+  font-weight: 400;
 }
 
 .merge-step-time {
   flex: none;
-  color: var(--faint);
-  font-size: var(--size-caption);
+  color: var(--muted);
+  font-size: var(--size-small);
   font-variant-numeric: tabular-nums;
 }
 
 /* Dark in both themes, as an agent's terminal (AgentTerminal.css): the theme's background is
-   kept by hand in terminal.ts (tokens.md, Outside the tokens). */
+   kept by hand in terminal.ts (tokens.md, Outside the tokens). A card (V69, the mockup): a
+   hairline, a panel's corners. */
 .merge-terminal {
   display: flex;
   flex-direction: column;
@@ -129,7 +136,8 @@
   min-height: 0;
   padding: 8px 0 8px 12px;
   overflow: hidden;
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
   background: #050608;
 }
 
@@ -144,9 +152,9 @@
 /* Narrow: the steps above the log. */
 @media (max-width: 699px) {
   .merge-log {
+    flex: none;
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(280px, 1fr);
-    height: auto;
   }
 
   .merge-steps {

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties, type ReactElement } from 'react';
 import type { MergeConflict, MergeEntry, MergeList, MergeRegion } from '@symbiote/core';
 import { useShell } from '../shell/shell-context.js';
 import { postJson } from '../ui/http.js';
@@ -19,10 +19,12 @@ import {
   reviewRegion,
   type LineFrom,
   type MergeAction,
+  type MergeTone,
   type ResolutionFile,
   type SideKept,
 } from './merges.js';
 import { MergeLog } from './MergeLog.js';
+import { AlertIcon, DoneIcon, ForwardIcon, WaitingIcon, WorkingIcon } from '../ui/icons.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 import { tip } from '../ui/tip.js';
@@ -39,6 +41,14 @@ const ACTION_NAMES: Record<MergeAction, string> = {
 
 /** The head's primary buttons; Remove is a button only once its merge landed (V55). */
 const PRIMARY: ReadonlySet<MergeAction> = new Set(['approve', 'land', 'merge-commit', 'remove']);
+
+/** The state's icon in the head (V69): its tone's, as the sidenav's groups draw it. */
+const TONE_ICONS: Record<MergeTone, () => ReactElement> = {
+  wait: WorkingIcon,
+  you: WaitingIcon,
+  done: DoneIcon,
+  bad: AlertIcon,
+};
 
 /** The queue's entry for a branch: the one still in progress, else its last. */
 export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | undefined {
@@ -89,6 +99,7 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
   // Files or Log (V46c): the person's pick, else Files once a resolution is there to read.
   const [picked, setPicked] = useState<Tab | null>(null);
   const { text, tone } = mergeState(entry);
+  const ToneIcon = TONE_ICONS[tone];
   const post = (path: string, body: Record<string, string>) => {
     setBusy(true);
     setError(null);
@@ -145,17 +156,18 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
   return (
     <section className={`merge-row merge-tone-${tone}`} aria-label={`Merge of ${entry.branch}`}>
       <div className="merge-row-head">
-        <span className="ref ref-branch merge-ref-theirs" {...tip(entry.branch)}>
-          {entry.branch}
+        <span className="merge-chip merge-ref-theirs" {...tip(entry.branch)}>
+          <span className="merge-chip-name">{entry.branch}</span>
         </span>
-        <span className="merge-arrow" aria-hidden="true">
-          →
-        </span>
-        <span className="ref ref-branch merge-ref-ours" {...tip(entry.into)}>
-          {entry.into}
+        <span className="merge-chip merge-ref-ours" {...tip(`Into ${entry.into}`)}>
+          <ForwardIcon />
+          <span className="merge-chip-name">{entry.into}</span>
         </span>
         {entry.strategy === 'fast-forward' && <span className="merge-how">by fast-forward</span>}
-        <span className="merge-label">{mergeLabel(entry)}</span>
+        <span className="merge-chip merge-label">
+          <ToneIcon />
+          {mergeLabel(entry)}
+        </span>
         <span className="merge-row-actions">
           {shownActions.map((action) => (
             <button
@@ -173,7 +185,7 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
         </span>
       </div>
       <p className="merge-row-state">{text}</p>
-      <p className="merge-title hint">{mergeTitle(entry)}</p>
+      <p className="merge-title">{mergeTitle(entry)}</p>
       {changing && (
         <form
           className="merge-change"
@@ -242,7 +254,6 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
               type="button"
               role="tab"
               aria-selected={tab === name}
-              className={tab === name ? 'selected' : ''}
               onClick={() => setPicked(name)}
             >
               {name === 'files' ? 'Files' : 'Log'}

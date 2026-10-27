@@ -203,7 +203,10 @@ export const MoreIcon = () => (
 );
 
 /** Symbiote's mark: two commits and the line between them. */
-/** Back and forward, in Symbiote's window's title bar (N1c). */
+/**
+ * Back and forward, in Symbiote's window's title bar (N1c); forward is also the arrow into a
+ * merge's target on its page (V69). After lucide's arrow-left and arrow-right (ISC).
+ */
 export const BackIcon = () => (
   <Icon>
     <path d="M13 8H3M7 4L3 8l4 4" />

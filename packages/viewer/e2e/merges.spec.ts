@@ -490,7 +490,7 @@ test("the log's last line whole at every height (fix/scribe-terminal-problem)", 
   await entry.getByRole('tab', { name: 'Log' }).click();
   const log = entry.locator('.merge-terminal');
   await expect(log.locator('.xterm-rows')).toContainText('line 120');
-  // The log is the window's height less 260 px: one cycle of a 19 px row.
+  // The log takes what is left of the page (V69), as the window: one cycle of a 19 px row.
   for (let height = 881; height < 900; height++) {
     await page.setViewportSize({ width: 1440, height });
     const past = await log.evaluate(async (box) => {
@@ -667,4 +667,73 @@ test('a resolution of two files: each listed with what it did, the one that lose
   await entry.getByRole('tab', { name: /^Files/ }).click();
   await expect(log).toBeHidden();
   await expect(files.nth(0)).toHaveAttribute('aria-current', 'true');
+});
+
+/** The space under the merge log's card, to the main area's end (V69: 16 px). */
+const underLog = (page: Page) =>
+  page.evaluate(() => {
+    const main = document.querySelector('.shell-main')?.getBoundingClientRect();
+    const log = document.querySelector('.merge-terminal')?.getBoundingClientRect();
+    if (!main || !log) throw new Error('no merge log');
+    return Math.round(main.bottom - log.bottom);
+  });
+
+/** The picked tab's line under it: `3px`, or `auto` when it has none. */
+const tabLine = (tab: ReturnType<Page['getByRole']>) =>
+  tab.evaluate((element) => getComputedStyle(element, '::after').height);
+
+test("the person's mockup: the head's chips with their icons, the log a card down to the page's end (V69)", async ({
+  page,
+}) => {
+  page.on('pageerror', (error) => errors.push(error.message));
+  symbiote = await serveAgentBranch();
+  mkdirSync(join(symbiote.repo, 'symbiote'), { recursive: true });
+  writeFileSync(
+    join(symbiote.repo, 'symbiote', 'config.json'),
+    JSON.stringify({ merge: { checks: ['echo checked'] } }),
+  );
+  await approve(page);
+  await page.getByRole('button', { name: 'Merge into', exact: true }).click();
+  await page.goto(`${symbiote.url}history`);
+  await page.locator('.sidenav [data-merge="agent"]').getByRole('link').click();
+  const entry = page.getByRole('region', { name: 'Merge of agent' });
+  await expect(entry.locator('.merge-label')).toHaveText('Landed');
+
+  // The branch, the target and the state are chips; the arrow an icon in the target's, the
+  // state's dot its tone's icon.
+  const head = entry.locator('.merge-row-head');
+  await expect(head).not.toContainText('→');
+  await expect(head.locator('.merge-chip')).toHaveText(['agent', 'main', 'Landed']);
+  await expect(head.locator('.merge-ref-ours svg')).toHaveCount(1);
+  await expect(head.locator('.merge-label svg')).toHaveCount(1);
+
+  // Symbiote's own steps weigh more than a check's command.
+  const names = entry.getByRole('list', { name: 'Its steps' }).locator('.merge-step-name');
+  await expect(names).toHaveText(['Merge', 'echo checked', 'Land']);
+  await expect(names.nth(0)).toHaveCSS('font-weight', '500');
+  await expect(names.nth(1)).toHaveCSS('font-weight', '400');
+
+  // The log is a card, its edge a hairline, down to 16 px above the page's end at any height.
+  await expect(entry.locator('.merge-terminal')).toHaveCSS('border-top-width', '1px');
+  for (const height of [900, 700]) {
+    await page.setViewportSize({ width: 1440, height });
+    await expect.poll(() => underLog(page), { message: `at 1440×${height}` }).toBe(16);
+  }
+});
+
+test("a resolution: its state's icon, Files and Log as line tabs, the log down to the page's end (V69)", async ({
+  page,
+}) => {
+  const { entry } = await resolvedConflict(page, ['echo checked']);
+  await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
+  await expect(entry.locator('.merge-label svg')).toHaveCount(1);
+  const files = entry.getByRole('tab', { name: /^Files/ });
+  const log = entry.getByRole('tab', { name: 'Log' });
+  await expect(files).toHaveAttribute('aria-selected', 'true');
+  expect(await tabLine(files)).toBe('3px');
+  expect(await tabLine(log)).toBe('auto');
+  await log.click();
+  expect(await tabLine(log)).toBe('3px');
+  expect(await tabLine(files)).toBe('auto');
+  await expect.poll(() => underLog(page)).toBe(16);
 });
