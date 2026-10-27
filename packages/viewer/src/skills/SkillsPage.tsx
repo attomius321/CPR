@@ -1,25 +1,41 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LibraryState, Skill, SkillChange, SkillsState } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
 import { getJson, postJson } from '../ui/http.js';
-import { BackIcon, PlusIcon } from '../ui/icons.js';
+import {
+  BackIcon,
+  ChecksIcon,
+  DocumentsIcon,
+  FolderIcon,
+  PlusIcon,
+  SaveIcon,
+  SearchIcon,
+  SkillsIcon,
+  SparklesIcon,
+  TrashIcon,
+} from '../ui/icons.js';
+import { OpenIcon } from '../diff/OpenIcon.js';
 import { useShell } from '../shell/shell-context.js';
 import { hrefOf, type Route } from '../shell/pages.js';
 import { Conversation, type ConversationAgent } from '../scout/Conversation.js';
 import { scoutStateText } from '../scout/scout.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
+  checkParts,
   isSkillEdited,
   newSkillProblem,
   skillChecks,
   skillGitNote,
   skillGroups,
+  skillMatches,
   skillOfUrl,
   skillSize,
 } from './skills.js';
 import { tip } from '../ui/tip.js';
 import { libraryGitText, libraryName, librarySync, skillPlace } from './library.js';
 import { LibraryPane } from './LibraryPane.js';
+import { PaneHead } from './PaneHead.js';
+import { SkillText } from './SkillText.js';
 
 const API = '/api/skills';
 /**
@@ -116,6 +132,10 @@ export function SkillsPage() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  /** The list's search (V64): the skills whose name or description holds it. */
+  const [query, setQuery] = useState('');
+  /** The open skill's card over the main area (V64), until Esc. */
+  const [expanded, setExpanded] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -185,8 +205,19 @@ export function SkillsPage() {
     };
   }, [edited.length, setLeaveGuard]);
 
+  // Esc gives the list and the checks back; an Esc a menu took (`defaultPrevented`) does not.
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && !event.defaultPrevented) setExpanded(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [expanded]);
+
   const show = (at: string) => {
     setOpen(at);
+    if (at === NEW || at === SCRIBE || at === LIBRARY) setExpanded(false);
     setPicked(true);
     setNotice((current) => (current?.at === at ? current : null));
     window.history.replaceState(null, '', addressOf(at));
@@ -270,6 +301,23 @@ export function SkillsPage() {
   const libraryGit = async (request: SkillChange, done: string) => {
     if (!(await change(LIBRARY, request, () => done))) void load();
   };
+  /** A skill in VS Code (V64): its window, at `line`; what it did under the skill. */
+  const openInCode = async (skill: Skill, line: number, unsaved: boolean) => {
+    const where = skillPlace(skill, state?.library);
+    try {
+      await postJson(`${API}/open`, { path: skill.path, line });
+      setNotice({
+        at: skill.path,
+        text: `Opened ${where} in VS Code at line ${line}.${unsaved ? ' It shows the file as saved.' : ''}`,
+      });
+    } catch (failed) {
+      setNotice({
+        at: skill.path,
+        text: `VS Code did not open ${where}: ${(failed as Error).message}`,
+        error: true,
+      });
+    }
+  };
   const toSettings = () => shell?.navigate(LIBRARY_SETTINGS);
   const link = () =>
     void change('codex', { action: 'link' }, (next) =>
@@ -281,28 +329,66 @@ export function SkillsPage() {
   const codex = state?.codex;
   const library = state?.library;
   const librarySkills = state?.skills.filter((s) => s.folder === 'library') ?? [];
+  const found = (skills: Skill[]) => skills.filter((skill) => skillMatches(skill, query));
+  const shownGroups = groups
+    .map((group) => ({ ...group, skills: found(group.skills) }))
+    .filter((group) => group.skills.length > 0);
+  const shownLibrary = found(librarySkills);
+  const searching = query.trim() !== '';
+  /** A skill's entry: its icon, its name, its mark. */
+  const skillEntry = (skill: Skill) => (
+    <li key={skill.path}>
+      <button
+        type="button"
+        aria-current={skill.path === open ? 'true' : undefined}
+        onClick={() => show(skill.path)}
+      >
+        <DocumentsIcon />
+        <span className="skills-name">{skill.name}</span>
+        {edited.includes(skill.path) ? (
+          <span className="skills-mark unsaved">not saved</span>
+        ) : skill.git === 'new' ? (
+          <span className="skills-mark added">new</span>
+        ) : (
+          skill.git === 'changed' && <span className="skills-mark changed">changed</span>
+        )}
+      </button>
+    </li>
+  );
   return (
-    <div className="skills">
+    <div className={`skills${expanded && current ? ' expanded' : ''}`}>
+      {/* Settings' head (V64, decision 458): the page's icon, its title and a line under it. */}
       <div className="commits-title skills-bar">
-        <h1>Skills</h1>
-        <Help label="About Skills">
+        <span className="page-icon" aria-hidden="true">
+          <SkillsIcon />
+        </span>
+        <div className="skills-title">
+          <div className="skills-name-line">
+            <h1>Skills</h1>
+            <Help label="About Skills">
+              <p>
+                A skill is a folder with a SKILL.md: its name and description tell an agent when to
+                load it, and the rest how to do the work. Claude Code reads .claude/skills, Codex
+                .agents/skills.
+              </p>
+              <p>
+                Saved in this checkout as files: commit them to share them with everyone who uses
+                this repository.
+              </p>
+              <p>
+                The skill library, set in Settings, keeps skills outside the repository, for every
+                repository on this machine.
+              </p>
+            </Help>
+          </div>
           <p>
-            A skill is a folder with a SKILL.md: its name and description tell an agent when to load
-            it, and the rest how to do the work. Claude Code reads .claude/skills, Codex
-            .agents/skills.
+            What your agents load for a kind of work: this checkout&apos;s skills and your
+            library&apos;s.
           </p>
-          <p>
-            Saved in this checkout as files: commit them to share them with everyone who uses this
-            repository.
-          </p>
-          <p>
-            The skill library, set in Settings, keeps skills outside the repository, for every
-            repository on this machine.
-          </p>
-        </Help>
+        </div>
         <button
           type="button"
-          className="button secondary skills-new-button"
+          className="button skills-new-button"
           aria-current={open === NEW ? 'true' : undefined}
           onClick={() => show(NEW)}
         >
@@ -340,6 +426,23 @@ export function SkillsPage() {
       ) : (
         <div className={`skills-body${picked ? ' picked' : ''}`}>
           <nav className="skills-list" aria-label="Skills">
+            <label className="skills-search">
+              <SearchIcon />
+              <input
+                type="search"
+                aria-label="Search skills"
+                placeholder="Search skills…"
+                value={query}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Escape' || query === '') return;
+                  event.preventDefault();
+                  setQuery('');
+                }}
+              />
+            </label>
             <section aria-label="Scribe">
               <h2>Agent</h2>
               <ul>
@@ -350,6 +453,7 @@ export function SkillsPage() {
                     {...tip(scribe?.conversation ? scoutStateText(scribe.conversation) : undefined)}
                     onClick={() => show(SCRIBE)}
                   >
+                    <SparklesIcon />
                     <span className="skills-name">Scribe</span>
                     {scribe?.conversation && (
                       // A flex item, as in the sidenav: an inline dot has no size.
@@ -365,31 +469,13 @@ export function SkillsPage() {
             {groups.length === 0 && (
               <p className="hint skills-none">No skills in this checkout yet.</p>
             )}
-            {groups.map((group) => (
+            {searching && shownGroups.length === 0 && shownLibrary.length === 0 && (
+              <p className="hint skills-none">No skill matches “{query.trim()}”.</p>
+            )}
+            {shownGroups.map((group) => (
               <section key={group.folder} aria-label={group.title}>
                 <h2>{group.title}</h2>
-                <ul>
-                  {group.skills.map((skill) => (
-                    <li key={skill.path}>
-                      <button
-                        type="button"
-                        aria-current={skill.path === open ? 'true' : undefined}
-                        onClick={() => show(skill.path)}
-                      >
-                        <span className="skills-name">{skill.name}</span>
-                        {edited.includes(skill.path) ? (
-                          <span className="skills-mark unsaved">not saved</span>
-                        ) : skill.git === 'new' ? (
-                          <span className="skills-mark added">new</span>
-                        ) : (
-                          skill.git === 'changed' && (
-                            <span className="skills-mark changed">changed</span>
-                          )
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
+                <ul>{group.skills.map(skillEntry)}</ul>
               </section>
             ))}
             {library ? (
@@ -403,30 +489,12 @@ export function SkillsPage() {
                       {...tip(libraryTip(library))}
                       onClick={() => show(LIBRARY)}
                     >
+                      <FolderIcon />
                       <span className="skills-name">{libraryName(library)}</span>
                       {libraryMark(library)}
                     </button>
                   </li>
-                  {librarySkills.map((skill) => (
-                    <li key={skill.path}>
-                      <button
-                        type="button"
-                        aria-current={skill.path === open ? 'true' : undefined}
-                        onClick={() => show(skill.path)}
-                      >
-                        <span className="skills-name">{skill.name}</span>
-                        {edited.includes(skill.path) ? (
-                          <span className="skills-mark unsaved">not saved</span>
-                        ) : skill.git === 'new' ? (
-                          <span className="skills-mark added">new</span>
-                        ) : (
-                          skill.git === 'changed' && (
-                            <span className="skills-mark changed">changed</span>
-                          )
-                        )}
-                      </button>
-                    </li>
-                  ))}
+                  {shownLibrary.map(skillEntry)}
                 </ul>
               </section>
             ) : (
@@ -504,11 +572,14 @@ export function SkillsPage() {
               draft={drafts[current.path]}
               busy={busy}
               notice={notice?.at === current.path ? notice : null}
+              expanded={expanded}
               onDraft={(text) => setDrafts((all) => ({ ...all, [current.path]: text }))}
               onDiscard={() => setDrafts((all) => without(all, current.path))}
               onSave={(text) => void save(current, text)}
               onDelete={() => void remove(current)}
               onImprove={() => improve(current)}
+              onOpen={(line, unsaved) => void openInCode(current, line, unsaved)}
+              onExpand={setExpanded}
               onLoad={() => void load().then(() => setNotice(null))}
               onBack={back}
             />
@@ -544,8 +615,9 @@ function libraryMark(library: LibraryState) {
 }
 
 /**
- * One skill: its name and where it is, its `SKILL.md` as tall as the pane, its checks and other
- * files beside it (under it in a narrow pane), then Save and Delete (V56).
+ * One skill (V64): a card — its icon, name and chip, Open in VS Code, where it is, its `SKILL.md`
+ * as tall as the card (`SkillText`), then its size and the actions — and its checks and other files
+ * in cards beside it (under it on a narrower area, decision 462).
  */
 function SkillEditor({
   skill,
@@ -553,11 +625,14 @@ function SkillEditor({
   draft,
   busy,
   notice,
+  expanded,
   onDraft,
   onDiscard,
   onSave,
   onDelete,
   onImprove,
+  onOpen,
+  onExpand,
   onLoad,
   onBack,
 }: {
@@ -567,11 +642,15 @@ function SkillEditor({
   draft: string | undefined;
   busy: boolean;
   notice: Notice | null;
+  expanded: boolean;
   onDraft: (text: string) => void;
   onDiscard: () => void;
   onSave: (text: string) => void;
   onDelete: () => void;
   onImprove: () => void;
+  /** Open in VS Code at `line`; `unsaved`: the text here differs from the file. */
+  onOpen: (line: number, unsaved: boolean) => void;
+  onExpand: (expanded: boolean) => void;
   onLoad: () => void;
   onBack: () => void;
 }) {
@@ -579,158 +658,194 @@ function SkillEditor({
   const edited = isSkillEdited(skill, draft);
   const checks = useMemo(() => skillChecks(skill, text), [skill, text]);
   const [deleting, setDeleting] = useState(false);
+  const area = useRef<HTMLTextAreaElement>(null);
   const canSave = edited && !busy && !skill.tooLarge;
   const inLibrary = skill.folder === 'library';
+  /** The caret's line, 1 when the text is not shown. */
+  const caretLine = () => {
+    const at = area.current?.selectionStart ?? 0;
+    return text.slice(0, at).split(/\r\n|\r|\n/).length;
+  };
 
   return (
-    <section className="skills-pane skills-editor" aria-label={`Skill: ${skill.name}`}>
-      <button type="button" className="button ghost skills-back" onClick={onBack}>
-        <BackIcon /> All skills
-      </button>
-      <h2>
-        {skill.name}
-        {skill.git !== 'none' && (
-          <span
-            className={`skills-state${skill.git === 'new' ? ' added' : skill.git === 'committed' ? '' : ' changed'}`}
+    <section className="skills-editor" aria-label={`Skill: ${skill.name}`}>
+      <div className="skills-skill">
+        <div className="skills-pane skills-card">
+          <button type="button" className="button ghost skills-back" onClick={onBack}>
+            <BackIcon /> All skills
+          </button>
+          <PaneHead
+            icon={<DocumentsIcon />}
+            title={
+              <>
+                {skill.name}
+                {skill.git !== 'none' && (
+                  <span
+                    className={`skills-state${skill.git === 'new' ? ' added' : skill.git === 'committed' ? '' : ' changed'}`}
+                  >
+                    {skill.git === 'new'
+                      ? 'New'
+                      : skill.git === 'changed'
+                        ? 'Changed'
+                        : 'Committed'}
+                  </span>
+                )}
+              </>
+            }
+            actions={
+              <button
+                type="button"
+                className="button secondary"
+                {...tip(
+                  inLibrary
+                    ? `Open it in VS Code, in a window on ${library?.folder ?? 'the library'}`
+                    : 'Open it in VS Code, at the caret’s line',
+                )}
+                onClick={() => onOpen(skill.tooLarge ? 1 : caretLine(), edited)}
+              >
+                <OpenIcon /> Open in VS Code
+              </button>
+            }
           >
-            {skill.git === 'new' ? 'New' : skill.git === 'changed' ? 'Changed' : 'Committed'}
-          </span>
-        )}
-      </h2>
-      <p className="skills-where">
-        <code>{skillPlace(skill, library)}</code> ·{' '}
-        {inLibrary
-          ? `in your skill library · ${library?.git ? skillGitNote(skill.git) : 'A plain folder: no git.'}`
-          : `read by ${readers(skill)} · ${skillGitNote(skill.git)}`}
-      </p>
-      {skill.tooLarge && (
-        <p className="skills-warning" role="alert">
-          Its SKILL.md is too large to edit here (over 256 KB): open it in an editor.
-        </p>
-      )}
-      <div className="skills-work">
-        {!skill.tooLarge && (
-          <textarea
-            aria-label={`${skill.name} SKILL.md`}
-            value={text}
-            spellCheck={false}
-            onChange={(event) => onDraft(event.target.value)}
-            onKeyDown={(event) => {
-              const saving = event.key === 's' && (event.ctrlKey || event.metaKey);
-              if (!saving) return;
-              event.preventDefault();
-              if (canSave) onSave(text);
-            }}
-          />
-        )}
+            <code>{skillPlace(skill, library)}</code> ·{' '}
+            {inLibrary
+              ? `in your skill library · ${library?.git ? skillGitNote(skill.git) : 'A plain folder: no git.'}`
+              : `read by ${readers(skill)} · ${skillGitNote(skill.git)}`}
+          </PaneHead>
+          {skill.tooLarge ? (
+            <p className="skills-warning" role="alert">
+              Its SKILL.md is too large to edit here (over 256 KB): open it in an editor.
+            </p>
+          ) : (
+            <SkillText
+              name={skill.name}
+              text={text}
+              area={area}
+              expanded={expanded}
+              onText={onDraft}
+              onSave={() => canSave && onSave(text)}
+              onExpand={onExpand}
+            />
+          )}
+          <div className="skills-actions">
+            {!skill.tooLarge && <span className="skills-size">{skillSize(text)}</span>}
+            {notice && (
+              <span className={`skills-notice${notice.error ? ' error' : ''}`} role="status">
+                {notice.text}
+                {notice.stale && (
+                  <>
+                    {' '}
+                    <button type="button" className="link" onClick={onLoad}>
+                      Read it again
+                    </button>
+                  </>
+                )}
+              </span>
+            )}
+            {deleting ? (
+              <span className="workspace-confirm">
+                Deletes {folderOf(skill, library)}/{skill.name}
+                {skill.files.length > 0 ? ` and its ${skill.files.length} other files` : ''}
+                {skill.git === 'new' || skill.git === 'none'
+                  ? ', not committed: it is gone for good.'
+                  : ': git keeps it.'}{' '}
+                <button
+                  type="button"
+                  className="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setDeleting(false);
+                    onDelete();
+                  }}
+                >
+                  Delete
+                </button>{' '}
+                <button type="button" className="button ghost" onClick={() => setDeleting(false)}>
+                  Keep it
+                </button>
+              </span>
+            ) : (
+              <button
+                type="button"
+                className="button secondary skills-delete"
+                disabled={busy}
+                onClick={() => setDeleting(true)}
+              >
+                <TrashIcon /> Delete…
+              </button>
+            )}
+            <button
+              type="button"
+              className="button secondary"
+              {...tip('Ask Scribe to change this skill')}
+              onClick={onImprove}
+            >
+              <SparklesIcon /> Improve with Scribe
+            </button>
+            {edited && (
+              <button type="button" className="button ghost" disabled={busy} onClick={onDiscard}>
+                Discard changes
+              </button>
+            )}
+            <button
+              type="button"
+              className="button"
+              disabled={!canSave}
+              {...tip(inLibrary ? 'Save it in your skill library' : 'Save it in this checkout', {
+                keys: 'Ctrl+S',
+              })}
+              onClick={() => onSave(text)}
+            >
+              <SaveIcon /> Save
+            </button>
+          </div>
+        </div>
         <div className="skills-side">
           {!skill.tooLarge && (
-            <>
-              <h3>Checks</h3>
+            <section className="skills-side-card skills-checks-card" aria-label="Checks">
+              <div className="skills-side-head">
+                <ChecksIcon />
+                <h3>Checks</h3>
+                <Help label="About the checks">
+                  The checks are the open standard&apos;s (agentskills.io) and what Claude Code,
+                  Codex and Anthropic&apos;s API refuse or cut. Whether it says the right thing is
+                  yours to read.
+                </Help>
+              </div>
               {checks.length > 0 ? (
-                <ul className="skills-checks" aria-label="Checks">
-                  {checks.map((check) => (
-                    <li key={check.text} className={check.level}>
-                      {check.text}
-                    </li>
-                  ))}
+                <ul className="skills-checks">
+                  {checks.map((check) => {
+                    const [lead, rest] = checkParts(check.text);
+                    return (
+                      <li key={check.text} className={check.level}>
+                        <strong>{lead}</strong>
+                        {rest && ` ${rest}`}
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <p className="skills-checks-none">
-                  Nothing the standard or the agents would refuse.{' '}
-                  <Help label="About the checks">
-                    The checks are the open standard&apos;s (agentskills.io) and what Claude Code,
-                    Codex and Anthropic&apos;s API refuse or cut. Whether it says the right thing is
-                    yours to read.
-                  </Help>
+                  Nothing the standard or the agents would refuse.
                 </p>
               )}
-            </>
+            </section>
           )}
           {skill.files.length > 0 && (
-            <>
-              <h3>Its other files</h3>
+            <section className="skills-side-card" aria-label="Its other files">
+              <div className="skills-side-head">
+                <FolderIcon />
+                <h3>Its other files</h3>
+              </div>
               <ul className="skills-files">
                 {skill.files.map((file) => (
                   <li key={file}>{file}</li>
                 ))}
                 {skill.moreFiles && <li className="hint">and more</li>}
               </ul>
-            </>
+            </section>
           )}
         </div>
-      </div>
-      <div className="skills-actions">
-        {!skill.tooLarge && <span className="skills-size">{skillSize(text)}</span>}
-        {notice && (
-          <span className={`skills-notice${notice.error ? ' error' : ''}`} role="status">
-            {notice.text}
-            {notice.stale && (
-              <>
-                {' '}
-                <button type="button" className="link" onClick={onLoad}>
-                  Read it again
-                </button>
-              </>
-            )}
-          </span>
-        )}
-        {deleting ? (
-          <span className="workspace-confirm">
-            Deletes {folderOf(skill, library)}/{skill.name}
-            {skill.files.length > 0 ? ` and its ${skill.files.length} other files` : ''}
-            {skill.git === 'new' || skill.git === 'none'
-              ? ', not committed: it is gone for good.'
-              : ': git keeps it.'}{' '}
-            <button
-              type="button"
-              className="button"
-              disabled={busy}
-              onClick={() => {
-                setDeleting(false);
-                onDelete();
-              }}
-            >
-              Delete
-            </button>{' '}
-            <button type="button" className="button ghost" onClick={() => setDeleting(false)}>
-              Keep it
-            </button>
-          </span>
-        ) : (
-          <button
-            type="button"
-            className="button ghost"
-            disabled={busy}
-            onClick={() => setDeleting(true)}
-          >
-            Delete…
-          </button>
-        )}
-        <button
-          type="button"
-          className="button ghost"
-          {...tip('Ask Scribe to change this skill')}
-          onClick={onImprove}
-        >
-          Improve with Scribe
-        </button>
-        {edited && (
-          <button type="button" className="button ghost" disabled={busy} onClick={onDiscard}>
-            Discard changes
-          </button>
-        )}
-        <button
-          type="button"
-          className="button"
-          disabled={!canSave}
-          {...tip(inLibrary ? 'Save it in your skill library' : 'Save it in this checkout', {
-            keys: 'Ctrl+S',
-          })}
-          onClick={() => onSave(text)}
-        >
-          Save
-        </button>
       </div>
     </section>
   );
@@ -788,14 +903,13 @@ function NewSkill({
       <button type="button" className="button ghost skills-back" onClick={onBack}>
         <BackIcon /> All skills
       </button>
-      <h2>New skill</h2>
-      <p className="skills-where">
+      <PaneHead icon={<PlusIcon />} title="New skill">
         Its name and description here, its instructions in the editor next; or{' '}
         <button type="button" className="link" onClick={onScribe}>
           ask Scribe to write it
         </button>
         .
-      </p>
+      </PaneHead>
       {library && (
         <div className="skills-field">
           <span className="field-label" id="skill-where">

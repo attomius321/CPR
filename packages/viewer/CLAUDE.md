@@ -65,8 +65,12 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   the page shows as one types (V41, decision 274): only what the open standard, Anthropic's API or
   an agent refuses, or a limit passed. `test/skills.test.ts` runs them on this repository's own
   skills: no error. `SkillsPage.tsx` draws with its own rules (`SkillsPage.css`, V56): no
-  `settings-*` class (an e2e test refuses one), the whole main area, the list at its left edge and
-  the open pane (a skill, New skill, Scribe's terminal) to its right and bottom edges.
+  `settings-*` class (an e2e test refuses one), the whole main area; since V64 Settings' head and
+  spacing (cards 24 px in, 16 apart), a skill's checks a card beside it from 960 px of area.
+  `SkillText.tsx` is a skill's text: the text area, its words transparent, over a drawn copy with
+  line numbers and Markdown's colours from `markdown-lines.ts` (**pure**, its pieces joining back
+  into each line). The two layers share one font, line height, padding and wrap: change one,
+  change both; `skills.spec.ts` compares their heights.
 - `src/skills/library.ts` — **pure**: the skill library (SK1) in words — its name, a library
   skill's full path, its git, a commit's first message, what is at a folder before it is set
   (`test/library.test.ts`). `LibraryPane.tsx` is its pane on the Skills page;

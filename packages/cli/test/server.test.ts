@@ -36,7 +36,7 @@ import type { Workspaces } from '../src/workspaces.js';
 import { WorkspaceRefused } from '../src/workspace-record.js';
 import { MergeRefused, type Merger } from '../src/merges.js';
 import { PromptRefused, type PromptSettingsService } from '../src/prompts.js';
-import { SkillRefused, type SkillsService } from '../src/skills.js';
+import { SkillRefused, type SkillOpen, type SkillsService } from '../src/skills.js';
 import { terminals as makeTerminals, type Pty, type SpawnPty } from '../src/terminal.js';
 
 const graph = JSON.parse(
@@ -2075,8 +2075,15 @@ describe('symbiote view: skills (V41)', () => {
   };
   const asked: SkillChange[] = [];
   const probed: string[] = [];
+  const opened: SkillOpen[] = [];
   const skills: SkillsService = {
     state: () => Promise.resolve(answer),
+    open: (request) => {
+      opened.push(request);
+      return request.path === 'library/gone/SKILL.md'
+        ? Promise.reject(new SkillRefused('VS Code was not found', 502))
+        : Promise.resolve({ opened: true });
+    },
     probe: (folder) => {
       probed.push(folder);
       return Promise.resolve({ folder: '/home/a/skills', kind: 'missing', skills: 0 });
@@ -2142,6 +2149,26 @@ describe('symbiote view: skills (V41)', () => {
     expect(asked).toEqual([
       { action: 'new', name: 'a', description: 'Does a.' },
       { action: 'delete', path: '.claude/skills/a/SKILL.md', version: 'v0' },
+    ]);
+  });
+
+  it('opens a skill in VS Code, and says why not (V64)', async () => {
+    const open = (body: unknown) =>
+      fetch(new URL('/api/skills/open', server.url), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+        body: JSON.stringify(body),
+      });
+    const done = await open({ path: '.claude/skills/a/SKILL.md', line: 3 });
+    expect(done.status).toBe(200);
+    expect(await done.json()).toEqual({ opened: true });
+    const failed = await open({ path: 'library/gone/SKILL.md' });
+    expect(failed.status).toBe(502);
+    expect(await failed.json()).toEqual({ error: 'VS Code was not found' });
+    expect((await open({ line: 1 })).status).toBe(400);
+    expect(opened).toEqual([
+      { path: '.claude/skills/a/SKILL.md', line: 3 },
+      { path: 'library/gone/SKILL.md' },
     ]);
   });
 

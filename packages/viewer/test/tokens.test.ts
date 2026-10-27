@@ -265,9 +265,10 @@ describe('colour is for state (V31, decision 214)', () => {
   // V42 (decision 280): one accent, the koi's blue, for what a person acts with: the current
   // page (its icon in its head too, V62), what is selected or checked (a picked kind's tab, V63),
   // focus, a link under the pointer, selected text; the start page's card icons (V63, the
-  // person's mockup). Never a state, a lane or a diff kind: those keep their colours.
+  // person's mockup); a Skills pane's icon and the headings in a skill's text (V64, its mockup).
+  // Never a state, a lane or a diff kind: those keep their colours.
   const ACCENT_ROLES =
-    /aria-current|aria-selected|aria-pressed|aria-checked|\.selected|\.current|\.page-icon|\.start-card-icon|:checked|focus|::selection|\.link|a:hover/;
+    /aria-current|aria-selected|aria-pressed|aria-checked|\.selected|\.current|\.page-icon|\.start-card-icon|\.skills-tile|\.md-heading|:checked|focus|::selection|\.link|a:hover/;
 
   it('uses --accent only for its roles', () => {
     const elsewhere = rules

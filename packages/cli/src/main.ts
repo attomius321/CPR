@@ -769,6 +769,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       skills: skillsService(repo, {
         codexInstalled: async () => (await codexOf()) !== null,
         library,
+        openFolder,
       }),
       // The Monitor page (RM1): where the checked-out commit's code is.
       monitor: codeMaps(repo.root),

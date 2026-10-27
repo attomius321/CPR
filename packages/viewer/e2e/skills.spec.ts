@@ -64,11 +64,8 @@ test('lists the skills, checks one as it is typed, saves it, and refuses a save 
   await page.keyboard.press('i');
   await expect(page).toHaveURL(`${symbiote.url}skills`);
   await expect(page.getByRole('link', { name: 'Skills' })).toHaveAttribute('aria-current', 'page');
-  // Scribe first, then the skills by folder.
-  await expect(list(page).getByRole('heading')).toHaveText([
-    'Agent',
-    '.claude/skills · Claude Code',
-  ]);
+  // Scribe first, in Agent; then the skills, in Skills (V64).
+  await expect(list(page).getByRole('heading')).toHaveText(['Agent', 'Skills']);
   await expect(list(page).getByRole('button')).toHaveText(['Scribe', 'review', 'style']);
   // The first is open, with nothing to say of it.
   await expect(entry(page, 'review')).toHaveAttribute('aria-current', 'true');
@@ -179,10 +176,7 @@ test('links .agents/skills to .claude/skills for Codex, which then reads them', 
     'Linked: Codex reads .agents/skills, now .claude/skills. The link is not committed: commit it to share it.',
   );
   await expect(page.locator('.skills-codex')).toHaveCount(0);
-  await expect(list(page).getByRole('heading')).toHaveText([
-    'Agent',
-    '.claude/skills · Claude Code and Codex',
-  ]);
+  await expect(list(page).getByRole('heading')).toHaveText(['Agent', 'Skills']);
   const link = join(symbiote.repo, '.agents/skills');
   expect(lstatSync(link).isSymbolicLink()).toBe(true);
   expect(readlinkSync(link)).toBe('../.claude/skills');
@@ -215,10 +209,10 @@ test('on a phone, the list first; a skill takes the page, and goes back to the l
 });
 
 // V56 (decisions 407–409): Skills is drawn with rules of its own (not Settings') over the whole
-// main area: the list at its left edge, the skill to its right and bottom edges (V61: as cards, 8 px
-// in from them); its
-// checks beside the text where the pane is 860 px wide (880 before V61), under it on a narrower one.
-test('uses the whole main area: the list at its left edge, the skill to its right and bottom', async ({
+// main area. V64 (decision 458): Settings' head and spacing, the cards 24 px from the main area's
+// edges and 16 apart, the list 280 px; the checks a card beside the skill where its area is 960 px
+// wide, under it on a narrower one (decision 462).
+test('uses the whole main area: the list at its left, the skill to its right and bottom', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -239,33 +233,198 @@ test('uses the whole main area: the list at its left edge, the skill to its righ
     const main = await page.locator('.shell-main').boundingBox();
     const l = await list(page).boundingBox();
     const e = await editor(page).boundingBox();
-    const area = await text(page, 'style').boundingBox();
-    const checks = await editor(page).getByText('Nothing the standard').boundingBox();
-    const heading = await page.getByRole('heading', { name: 'Skills', exact: true }).boundingBox();
+    const card = await editor(page).locator('.skills-card').boundingBox();
+    const checks = await editor(page).locator('.skills-checks-card').boundingBox();
+    const heading = await page.getByRole('heading', { name: 'Skills', level: 1 }).boundingBox();
+    const icon = await page.locator('.skills-bar .page-icon').boundingBox();
     const add = await page.getByRole('button', { name: 'New skill' }).boundingBox();
-    if (!main || !l || !e || !area || !checks || !heading || !add) throw new Error('no box');
-    // Cards 8 px from the main area's edges since V61 (the person's mockup), flush before.
-    expect(Math.abs(l.x - main.x - 8)).toBeLessThanOrEqual(1);
-    expect(Math.abs(e.x + e.width - (main.x + main.width - 8))).toBeLessThanOrEqual(1);
-    expect(Math.abs(e.y + e.height - (main.y + main.height - 8))).toBeLessThanOrEqual(1);
-    // The head as History's: its title 16 px in, New skill 12 px from the right.
-    expect(Math.round(heading.x - main.x)).toBe(16);
-    expect(Math.round(main.x + main.width - (add.x + add.width))).toBe(12);
-    // The text as tall as the pane allows: only the line of actions under it and, in a pane under
-    // 860 px, the checks and files.
-    const side = await editor(page).locator('.skills-side').boundingBox();
-    if (!side) throw new Error('no box');
-    const under = width === 1280 ? side : area;
-    expect(main.y + main.height - (under.y + under.height)).toBeLessThan(80);
-    if (width === 1280) expect(checks.y).toBeGreaterThanOrEqual(area.y + area.height);
-    else expect(checks.x).toBeGreaterThanOrEqual(area.x + area.width);
+    if (!main || !l || !e || !card || !checks || !heading || !icon || !add) {
+      throw new Error('no box');
+    }
+    expect(Math.abs(l.x - main.x - 24)).toBeLessThanOrEqual(1);
+    expect(Math.round(l.width)).toBe(280);
+    expect(Math.abs(card.x - (l.x + l.width) - 16)).toBeLessThanOrEqual(1);
+    expect(Math.abs(e.x + e.width - (main.x + main.width - 24))).toBeLessThanOrEqual(1);
+    expect(Math.abs(e.y + e.height - (main.y + main.height - 24))).toBeLessThanOrEqual(1);
+    // The head as Settings': its icon over the list's edge, New skill over the skill's.
+    expect(Math.abs(icon.x - l.x)).toBeLessThanOrEqual(1);
+    expect(heading.x).toBeGreaterThan(icon.x + icon.width);
+    expect(Math.abs(add.x + add.width - (e.x + e.width))).toBeLessThanOrEqual(1);
+    if (width >= 1920) {
+      expect(checks.x).toBeGreaterThanOrEqual(card.x + card.width + 15);
+      expect(Math.abs(checks.y - card.y)).toBeLessThanOrEqual(1);
+    } else {
+      expect(checks.y).toBeGreaterThanOrEqual(card.y + card.height + 15);
+    }
   }
-  // None of Settings' rules, no card.
+  // None of Settings' rules.
   await expect(page.locator('.skills[class*="settings"], .skills [class*="settings"]')).toHaveCount(
     0,
   );
-  await expect(editor(page)).toHaveCSS('box-shadow', 'none');
   await expect(editor(page).getByRole('textbox')).toHaveCount(1);
+});
+
+// V64 (decision 458): the head as Settings' (the brief: "its icon and title, no breadcrumbs").
+test('the head: the Skills icon, its title and line, and New skill as the primary', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  commit({ '.claude/skills/review/SKILL.md': REVIEW });
+  await page.goto(`${symbiote.url}skills`);
+  const head = page.locator('.skills-bar');
+  await expect(head.locator('.page-icon svg')).toBeVisible();
+  await expect(head.getByRole('heading', { level: 1 })).toHaveText('Skills');
+  await expect(head.locator('.skills-title p')).toHaveText(
+    "What your agents load for a kind of work: this checkout's skills and your library's.",
+  );
+  await expect(head).not.toContainText('Symbiote');
+  // The primary: the S's violet, dark words.
+  await expect(head.getByRole('button', { name: 'New skill' })).toHaveCSS(
+    'background-color',
+    'rgb(124, 104, 252)',
+  );
+  await expect(editor(page).getByRole('button', { name: 'Save', exact: true })).toHaveCSS(
+    'background-color',
+    'rgb(124, 104, 252)',
+  );
+});
+
+// V64 (decision 459): a search over the skills' names and descriptions.
+test('the search keeps the skills whose name or description holds it', async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  commit({ '.claude/skills/review/SKILL.md': REVIEW, '.claude/skills/style/SKILL.md': STYLE });
+  await page.goto(`${symbiote.url}skills`);
+  const search = list(page).getByRole('searchbox', { name: 'Search skills' });
+  await search.fill('sty');
+  await expect(list(page).getByRole('button')).toHaveText(['Scribe', 'style']);
+  // By its description: "Use when changing CSS."
+  await search.fill('css');
+  await expect(list(page).getByRole('button')).toHaveText(['Scribe', 'style']);
+  await search.fill('deploy');
+  await expect(list(page).getByRole('button')).toHaveText(['Scribe']);
+  await expect(list(page)).toContainText('No skill matches “deploy”.');
+  await search.press('Escape');
+  await expect(search).toHaveValue('');
+  await expect(list(page).getByRole('button')).toHaveText(['Scribe', 'review', 'style']);
+});
+
+const LONG =
+  '---\nname: long\ndescription: A skill with long lines. Use when testing the editor.\n---\n\n# Long\n\n' +
+  `${'A line long enough to wrap in any pane, with `code` in it and [a link](a.md). '.repeat(6)}\n` +
+  '\n```sh\npnpm check\n```\n\n- [ ] one\n- [x] two\n';
+
+/** The drawn copy's height, and the text area's text's own (its height at 0 shows it). */
+async function heights(page: Page) {
+  return page.evaluate(() => {
+    const area = document.querySelector<HTMLTextAreaElement>('.skills-code textarea');
+    const copy = document.querySelector<HTMLElement>('.skills-code-lines');
+    if (!area || !copy) return null;
+    const kept = area.style.height;
+    area.style.height = '0px';
+    const own = area.scrollHeight;
+    area.style.height = kept;
+    return { copy: copy.getBoundingClientRect().height, own };
+  });
+}
+
+// V64 (decision 460): the text area over a drawn copy holding its line numbers and colours.
+test('the editor: a number a line, Markdown in colour, the copy always as tall as the text', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  commit({ '.claude/skills/long/SKILL.md': LONG });
+  for (const [width, height] of [
+    [1440, 900],
+    [390, 844],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto(`${symbiote.url}skills?skill=.claude%2Fskills%2Flong%2FSKILL.md`);
+    await expect(text(page, 'long')).toHaveValue(LONG);
+    const numbers = editor(page).locator('.skills-code-number');
+    // The last newline makes an empty last line, as in the text area.
+    await expect(numbers).toHaveCount(LONG.split('\n').length);
+    await expect(numbers.first()).toHaveText('1');
+    await expect(editor(page).locator('.md-heading')).toHaveText('# Long');
+    await expect(editor(page).locator('.md-code').first()).toHaveText('`code`');
+    await expect(editor(page).locator('.md-key')).toHaveText(['name:', 'description:']);
+    const wrapped = await heights(page);
+    if (!wrapped) throw new Error('no editor');
+    expect(Math.abs(wrapped.copy - wrapped.own)).toBeLessThanOrEqual(1);
+    // As it is typed: a long line added, then the last line taken away.
+    await text(page, 'long').press('Control+End');
+    await text(page, 'long').pressSequentially('More words to wrap the line again. '.repeat(4));
+    await expect(numbers).toHaveCount(LONG.split('\n').length);
+    const typed = await heights(page);
+    if (!typed) throw new Error('no editor');
+    expect(Math.abs(typed.copy - typed.own)).toBeLessThanOrEqual(1);
+    expect(typed.copy).toBeGreaterThan(wrapped.copy);
+  }
+});
+
+// V64 (decision 461): Markdown ▾ shows the skill drawn; Expand gives it the main area.
+test('Preview draws the skill and keeps the draft; Expand takes the main area until Esc', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  commit({ '.claude/skills/review/SKILL.md': REVIEW });
+  await page.goto(`${symbiote.url}skills`);
+  await text(page, 'review').fill(`${REVIEW}\n## Drafted\n`);
+  await editor(page).getByRole('button', { name: 'Markdown' }).click();
+  await page.getByRole('menuitemradio', { name: 'Preview' }).click();
+  const preview = editor(page).locator('.skills-preview');
+  await expect(preview.getByRole('heading', { name: 'Drafted' })).toBeVisible();
+  await expect(preview).toContainText('Reviews a change. Use when asked to review a branch.');
+  await expect(text(page, 'review')).toBeHidden();
+  await editor(page).getByRole('button', { name: 'Preview' }).click();
+  await page.getByRole('menuitemradio', { name: 'Markdown' }).click();
+  await expect(text(page, 'review')).toHaveValue(`${REVIEW}\n## Drafted\n`);
+
+  const main = await page.locator('.shell-main').boundingBox();
+  await editor(page).getByRole('button', { name: 'Expand' }).click();
+  await expect(list(page)).toBeHidden();
+  const card = await editor(page).locator('.skills-card').boundingBox();
+  if (!main || !card) throw new Error('no box');
+  expect(card.width).toBeGreaterThan(main.width - 50);
+  await page.keyboard.press('Escape');
+  await expect(list(page)).toBeVisible();
+  await expect(editor(page).getByRole('button', { name: 'Expand' })).toBeVisible();
+});
+
+// V64 (decision 462): Checks a card; each check's lead in the text's colour.
+test('Checks: a card, each check its lead and the rest', async ({ page }) => {
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  symbiote = await serveWorkspaces();
+  commit({
+    '.claude/skills/review/SKILL.md': REVIEW.replace('Reviews a change.', 'Reviews a <change>.'),
+  });
+  await page.goto(`${symbiote.url}skills`);
+  const card = editor(page).getByRole('region', { name: 'Checks' });
+  await expect(card.getByRole('heading', { name: 'Checks' })).toBeVisible();
+  await expect(card.locator('li.warning')).toHaveText(
+    "The description holds < or >: Anthropic's API and claude.ai refuse it; Claude Code and Codex take it.",
+  );
+  await expect(card.locator('li.warning strong')).toHaveText('The description holds < or >:');
+});
+
+// V64 (decision 464): Open in VS Code, at the caret's line; a library's in the library's window.
+test('Open in VS Code opens the skill at the caret’s line', async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  commit({ '.claude/skills/review/SKILL.md': REVIEW });
+  await page.goto(`${symbiote.url}skills`);
+  await expect(text(page, 'review')).toHaveValue(REVIEW);
+  // The caret at the start of line 6, "# Review".
+  await text(page, 'review').evaluate((area: HTMLTextAreaElement) => {
+    const at = area.value.indexOf('# Review');
+    area.focus();
+    area.setSelectionRange(at, at);
+  });
+  await editor(page).getByRole('button', { name: 'Open in VS Code' }).click();
+  await expect(editor(page).locator('.skills-notice')).toHaveText(
+    'Opened .claude/skills/review/SKILL.md in VS Code at line 6.',
+  );
+  expect(symbiote.opened()).toEqual([
+    [symbiote.repo, '--goto', `${join(symbiote.repo, '.claude/skills/review/SKILL.md')}:6:1`],
+  ]);
 });
 
 /** Lists are read every 5 s while an agent works (V18b). */
@@ -365,10 +524,10 @@ test("Scribe's terminal fills the pane: to the main area's right and bottom edge
     const l = await list(page).boundingBox();
     const box = await terminal.boundingBox();
     if (!main || !l || !box) throw new Error('no box');
-    // To the pane card's edges, 8 px in from the main area's (V61) and inside its 1 px border.
-    expect(Math.abs(box.x + box.width - (main.x + main.width - 9))).toBeLessThanOrEqual(1);
-    expect(Math.abs(box.y + box.height - (main.y + main.height - 9))).toBeLessThanOrEqual(1);
-    expect(box.width).toBeGreaterThanOrEqual(main.width - l.width - 28);
+    // To the pane card's edges, 24 px in from the main area's (V64) and inside its 1 px border.
+    expect(Math.abs(box.x + box.width - (main.x + main.width - 25))).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.y + box.height - (main.y + main.height - 25))).toBeLessThanOrEqual(1);
+    expect(box.width).toBeGreaterThanOrEqual(main.width - l.width - 68);
   }
 });
 

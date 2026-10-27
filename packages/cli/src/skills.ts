@@ -22,6 +22,7 @@ import {
   type SkillFolder,
   type SkillsState,
 } from '@symbiote/core';
+import type { OpenFolder } from './editor.js';
 import type { LibraryService } from './library.js';
 
 export const CLAUDE_SKILLS = '.claude/skills';
@@ -39,12 +40,12 @@ const MAX_DESCRIPTION = 1024;
 /** Folders Claude Code keeps for itself among skills (synced from claude.ai, its own). */
 const RESERVED = new Set(['synced', 'anthropic-skills']);
 
-/** A change the skills cannot take: its status and why. */
+/** A change the skills cannot take, or VS Code not opening one (502): its status and why. */
 export class SkillRefused extends Error {
   override name = 'SkillRefused';
   constructor(
     message: string,
-    readonly status: 400 | 409,
+    readonly status: 400 | 409 | 502,
   ) {
     super(message);
   }
@@ -57,6 +58,14 @@ export interface SkillsService {
   change(change: SkillChange): Promise<SkillsState>;
   /** What is at a folder the library may be set to (SK1). */
   probe(folder: string): Promise<LibraryProbe>;
+  /** Opens a skill's `SKILL.md` in VS Code (V64); refused (502) with why when it does not. */
+  open(request: SkillOpen): Promise<{ opened: true }>;
+}
+
+/** `POST /api/skills/open` (V64): a skill by its path, at a line (1 when none). */
+export interface SkillOpen {
+  path: string;
+  line?: number;
 }
 
 /** What is wrong with a skill's name, as the standard has it; null when nothing is. */
@@ -179,10 +188,13 @@ export function skillsService(
     codexInstalled,
     platform = process.platform,
     library,
+    openFolder,
   }: {
     codexInstalled: () => Promise<boolean>;
     platform?: NodeJS.Platform;
     library?: LibraryService;
+    /** VS Code (V64): a checkout's skill opens in the checkout's window, a library's in its own. */
+    openFolder?: OpenFolder;
   },
 ): SkillsService {
   const root = repo.root;
@@ -408,11 +420,27 @@ export function skillsService(
     return library;
   }
 
+  /** A skill's `SKILL.md` in VS Code: the checkout's window, or the library's folder's (V64). */
+  async function open({ path, line = 1 }: SkillOpen): Promise<{ opened: true }> {
+    const { file } = skillAt(path);
+    if (!isFile(file)) throw new SkillRefused(`${path} is not there`, 400);
+    if (!openFolder) throw new SkillRefused('VS Code opens files from symbiote view', 502);
+    const inLibrary = path.startsWith(`${LIBRARY}/`);
+    const opened = await openFolder(inLibrary ? libraryFolder() : root, {
+      file: inLibrary ? path.slice(LIBRARY.length + 1) : path,
+      line,
+      column: 1,
+    });
+    if (!opened.opened) throw new SkillRefused(opened.message, 502);
+    return { opened: true };
+  }
+
   // One change at a time: each reads what it changes.
   let changing: Promise<unknown> = Promise.resolve();
   return {
     state,
     probe: (folder) => needLibrary().probe(folder),
+    open,
     async change(change) {
       const next = changing.then(() => apply(change));
       changing = next.catch(() => undefined);
@@ -422,6 +450,14 @@ export function skillsService(
   };
 }
 
+function isFile(path: string): boolean {
+  try {
+    return statSync(path).isFile();
+  } catch {
+    return false;
+  }
+}
+
 function existsAt(path: string): boolean {
   try {
     lstatSync(path);
@@ -429,6 +465,17 @@ function existsAt(path: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** `POST /api/skills/open`'s body (V64), checked: throws with what is wrong. */
+export function parseSkillOpen(body: string): SkillOpen {
+  const value = JSON.parse(body) as unknown;
+  const v = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
+  if (typeof v.path !== 'string') throw new Error("path: the skill's SKILL.md");
+  if (v.line !== undefined && !(Number.isInteger(v.line) && (v.line as number) >= 1)) {
+    throw new Error('line: a line from 1');
+  }
+  return { path: v.path, ...(typeof v.line === 'number' ? { line: v.line } : {}) };
 }
 
 const COMMITS = ['none', 'commit', 'push'] as const;
