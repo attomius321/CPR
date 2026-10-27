@@ -285,7 +285,9 @@ not clean up a workspace while its worktree has changes that are not committed.
 The sidenav also opens these pages. Each has a key.
 
 - **Git** (`g`): the repository's commits and branches, drawn as a graph. Select a commit to see
-  its message, author, parents and files in the details pane, and each file's diff. Right-click a
+  its message, author, parents and files in the details pane. Click a file to see its diff in the
+  commits' place, and **Open in VS Code** (`o`) to open that diff in VS Code; `j` and `k` step
+  through the files, `Esc` goes back to the commits. Right-click a
   commit to check it out, review its branch (`r`), start a workspace from it, or make a branch or
   a tag there. Right-click a branch in the branches panel to rename or delete it. Double-click
   the branch to check it out. Press `x` to compare two commits.

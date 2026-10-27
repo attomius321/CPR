@@ -1,59 +1,87 @@
 // A commit's details in Git's pane (V66b): its message, people, parents and refs, its files
-// against its first parent, and the open file's diff.
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { Commit, CommitInfo, LineCount } from '@symbiote/core';
-import { fetchCommit, fetchCommitFile, fetchCommitLines } from './git-api.js';
-import { withLines } from './details.js';
-import { GitDiff } from './GitDiff.js';
+// against its first parent; a file clicked shows in the rows' place (V70).
+import { useEffect, useMemo, useState } from 'react';
+import type { ChangedFile, Commit, CommitInfo, LineCount } from '@symbiote/core';
+import { fetchCommit, fetchCommitLines } from './git-api.js';
+import { withLines, type WithLines } from './details.js';
 import { longDate, relativeDate, shortSha } from './commits.js';
 import { FileRow, Lines } from '../workspaces/ChangesPanel.js';
 import { fileFacts } from '../workspaces/changes.js';
 import { tip } from '../ui/tip.js';
 
+/** A commit as read for the pane and the file shown (V70): its details, then its files' lines. */
+export interface CommitRead {
+  sha: string;
+  info: CommitInfo | null;
+  /** Its files with their lines, once counted. */
+  files: WithLines<ChangedFile>[];
+  lines: LineCount[];
+  error: string | null;
+}
+
+/** Reads the commit at `sha` (none when null): its details, then its lines. */
+export function useCommitRead(sha: string | null): CommitRead | null {
+  const [read, setRead] = useState<Omit<CommitRead, 'files'> | null>(null);
+  useEffect(() => {
+    if (!sha) {
+      setRead(null);
+      return;
+    }
+    let live = true;
+    setRead({ sha, info: null, lines: [], error: null });
+    fetchCommit(sha)
+      .then((info) => {
+        if (!live) return;
+        setRead({ sha, info, lines: [], error: null });
+        // Lines after the names: a blobless clone fetches blobs to count them (V66 spike).
+        return fetchCommitLines(sha).then(
+          (lines) => live && setRead({ sha, info, lines, error: null }),
+        );
+      })
+      .catch(
+        (e: unknown) =>
+          live && setRead({ sha, info: null, lines: [], error: (e as Error).message }),
+      );
+    return () => {
+      live = false;
+    };
+  }, [sha]);
+  return useMemo(
+    () =>
+      read && read.sha === sha
+        ? { ...read, files: read.info ? withLines(read.info.files, read.lines) : [] }
+        : null,
+    [read, sha],
+  );
+}
+
 export function CommitDetails({
-  sha,
+  read,
   commit,
   parentRows,
   starting,
+  open,
+  onOpen,
   onJump,
   onReview,
 }: {
-  sha: string;
+  read: CommitRead;
   /** The row's commit: its branches and tags. */
   commit: Commit | undefined;
   /** Each parent's row, when listed (-1 or absent when not). */
   parentRows: readonly number[];
   /** A comparison is being started. */
   starting: boolean;
+  /** The file shown in the rows' place (V70). */
+  open: string | null;
+  /** Shows a file, or none (the one shown clicked again). */
+  onOpen: (path: string | null) => void;
   onJump: (row: number) => void;
   /** Review this commit: against its first parent, on a diff's page. */
   onReview: (parent: string) => void;
 }) {
-  const [info, setInfo] = useState<CommitInfo | null>(null);
-  const [lines, setLines] = useState<LineCount[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
+  const { sha, info, files, lines, error } = read;
   const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    let live = true;
-    setInfo(null);
-    setLines([]);
-    setError(null);
-    setOpen(null);
-    setCopied(false);
-    fetchCommit(sha)
-      .then((read) => {
-        if (!live) return;
-        setInfo(read);
-        // Lines after the names: a blobless clone fetches blobs to count them (V66 spike).
-        return fetchCommitLines(sha).then((counted) => live && setLines(counted));
-      })
-      .catch((e: unknown) => live && setError((e as Error).message));
-    return () => {
-      live = false;
-    };
-  }, [sha]);
-  const files = useMemo(() => (info ? withLines(info.files, lines) : []), [info, lines]);
   const totals = useMemo(
     () =>
       lines.reduce(
@@ -65,8 +93,6 @@ export function CommitDetails({
       ),
     [lines],
   );
-  const load = useCallback(() => fetchCommitFile(sha, open ?? ''), [sha, open]);
-
   if (error)
     return <p className="hint error git-details-hint">Could not read the commit: {error}</p>;
   if (!info) return <p className="hint git-details-hint">Reading {shortSha(sha)}…</p>;
@@ -186,17 +212,11 @@ export function CommitDetails({
                   label={`Show the diff of ${file.path}`}
                   hover={`${fileFacts(file)}. Shows its diff`}
                   current={open === file.path}
-                  onOpen={(picked) => setOpen((now) => (now === picked.path ? null : picked.path))}
+                  onOpen={(picked) => onOpen(open === picked.path ? null : picked.path)}
                 />
               </li>
             ))}
           </ul>
-        )}
-        {open && (
-          <section className="git-details-diff" aria-label={`Changes to ${open}`}>
-            <h3 className="git-details-part">{open}</h3>
-            <GitDiff path={open} load={load} />
-          </section>
         )}
       </div>
     </>

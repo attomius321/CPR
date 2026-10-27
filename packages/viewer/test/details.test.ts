@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import type { WorkingChanges } from '@symbiote/core';
 import {
   changesSummary,
+  changesOrder,
   commitProblem,
+  followShown,
   nextMatch,
   placeOf,
+  stepShown,
   syncWords,
   withLines,
 } from '../src/history/details.js';
@@ -87,5 +91,70 @@ describe('nextMatch (V66f)', () => {
     expect(nextMatch([3, 10, 40], 3, false)).toBe(40);
     expect(nextMatch([3, 10, 40], -1, true)).toBe(3);
     expect(nextMatch([], 5, true)).toBeNull();
+  });
+});
+
+describe("the file shown in the rows' place (V70)", () => {
+  const changes: WorkingChanges = {
+    staged: [
+      { path: 'a.ts', status: 'modified' },
+      { path: 'b.ts', status: 'added' },
+    ],
+    unstaged: [
+      { path: 'a.ts', status: 'modified' },
+      { path: 'c.ts', status: 'untracked' },
+    ],
+    operation: null,
+  };
+
+  it('orders the uncommitted files as the pane lists them: staged, then the rest', () => {
+    expect(changesOrder(changes)).toEqual([
+      { path: 'a.ts', staged: true },
+      { path: 'b.ts', staged: true },
+      { path: 'a.ts', staged: false },
+      { path: 'c.ts', staged: false },
+    ]);
+  });
+
+  it('steps to the next or previous file, staying at the ends, a side apart from the other', () => {
+    const files = changesOrder(changes);
+    expect(stepShown(files, { path: 'b.ts', staged: true }, 1)).toEqual({
+      path: 'a.ts',
+      staged: false,
+    });
+    expect(stepShown(files, { path: 'a.ts', staged: false }, -1)).toEqual({
+      path: 'b.ts',
+      staged: true,
+    });
+    expect(stepShown(files, { path: 'c.ts', staged: false }, 1)).toEqual({
+      path: 'c.ts',
+      staged: false,
+    });
+    expect(stepShown(files, { path: 'a.ts', staged: true }, -1)).toEqual({
+      path: 'a.ts',
+      staged: true,
+    });
+    // A commit's files have no side.
+    const commit = [{ path: 'x.ts' }, { path: 'y.ts' }];
+    expect(stepShown(commit, { path: 'x.ts' }, 1)).toEqual({ path: 'y.ts' });
+    // Gone from the list: where it was is not known; it stays.
+    expect(stepShown(commit, { path: 'z.ts' }, 1)).toEqual({ path: 'z.ts' });
+  });
+
+  it('follows an uncommitted file to its other side when staged or unstaged, else closes it', () => {
+    expect(followShown(changes, { path: 'c.ts', staged: false })).toEqual({
+      path: 'c.ts',
+      staged: false,
+    });
+    const staged: WorkingChanges = {
+      ...changes,
+      staged: [...changes.staged, { path: 'c.ts', status: 'added' }],
+      unstaged: [{ path: 'a.ts', status: 'modified' }],
+    };
+    expect(followShown(staged, { path: 'c.ts', staged: false })).toEqual({
+      path: 'c.ts',
+      staged: true,
+    });
+    expect(followShown(staged, { path: 'gone.ts', staged: true })).toBeNull();
   });
 });

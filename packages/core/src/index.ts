@@ -120,7 +120,8 @@ export {
   type ProjectSide,
   type ProjectSource,
 } from './projects.js';
-export { fileForCheckout, listTreeAt, readFileAtRevision } from './git/show.js';
+export { fileForCheckout, fileInIndex, listTreeAt, readFileAtRevision } from './git/show.js';
+export type { IndexFile } from './git/show.js';
 export {
   commitFileDiff,
   commitInfo,

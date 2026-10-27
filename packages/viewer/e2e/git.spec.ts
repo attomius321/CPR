@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
@@ -39,6 +39,8 @@ const row = (page: Page, subject: string) =>
     has: page.locator('.commit-subject').getByText(new RegExp(`^${subject}(,|$)`)),
   });
 const pane = (page: Page) => page.locator('.git-details');
+/** The open file, shown in the rows' place (V70). */
+const fileView = (page: Page) => page.locator('.git-shown');
 const statusBar = (page: Page) => page.getByRole('contentinfo', { name: 'Status bar' });
 
 test("a commit's details: its message, people, parent and files, a file's diff (V66b)", async ({
@@ -55,7 +57,7 @@ test("a commit's details: its message, people, parent and files, a file's diff (
     pane(page).getByRole('button', { name: 'Show the diff of src/math.ts' }),
   ).toContainText('+4');
   await pane(page).getByRole('button', { name: 'Show the diff of src/math.ts' }).click();
-  const diff = pane(page).getByRole('table', { name: 'Diff of src/math.ts' });
+  const diff = fileView(page).getByRole('table', { name: 'Diff of src/math.ts' });
   await expect(diff.locator('.row-add', { hasText: 'export function cube' })).toBeVisible();
   // The parent's link goes to its row.
   await facts
@@ -124,7 +126,7 @@ test('uncommitted changes: a row above the commits, staged and committed from th
   await expect(working).toContainText('1 staged');
   // A staged file's diff: against HEAD.
   await pane(page).getByRole('button', { name: 'Show the diff of notes.txt, staged' }).click();
-  await expect(pane(page).getByRole('table', { name: 'Diff of notes.txt' })).toContainText(
+  await expect(fileView(page).getByRole('table', { name: 'Diff of notes.txt' })).toContainText(
     'a new file',
   );
   await pane(page)
@@ -138,6 +140,120 @@ test('uncommitted changes: a row above the commits, staged and committed from th
   // What was not staged is still there.
   await expect(working).toContainText('1 file');
   expect(git(symbiote.repo, 'status', '--porcelain')).toBe('M src/math.ts');
+});
+
+test("a commit's file shows in the rows' place, on screen; j/k step its files, Esc goes back (V70)", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  // Thirty files: the pane's list runs past the window, as half of real commits' do.
+  for (let i = 1; i <= 30; i++)
+    writeFileSync(join(symbiote.repo, `notes-${String(i).padStart(2, '0')}.md`), `note ${i}\n`);
+  git(symbiote.repo, 'add', '.');
+  git(symbiote.repo, 'commit', '-q', '-m', 'Add thirty notes');
+  await page.goto(`${symbiote.url}git`);
+  await row(page, 'Add thirty notes').click();
+  const last = pane(page).getByRole('button', { name: 'Show the diff of notes-30.md' });
+  await last.click();
+  await expect(fileView(page)).toHaveAttribute('aria-label', 'Changes to notes-30.md');
+  const firstLine = fileView(page).locator('.git-diff .row').first();
+  await expect(firstLine).toHaveText(/note 30/);
+  await expect(firstLine).toBeInViewport({ ratio: 1 });
+  await expect(last).toHaveAttribute('aria-current', 'true');
+  // Over the rows, in their card: the pane beside it keeps the files.
+  const [card, shown] = [
+    await page.locator('.commits-card').boundingBox(),
+    await fileView(page).boundingBox(),
+  ];
+  // Inside the card's 1 px edge.
+  for (const key of ['x', 'y', 'width', 'height'] as const) {
+    const inside = key === 'x' || key === 'y' ? card![key] + 1 : card![key] - 2;
+    expect(Math.abs(shown![key] - inside)).toBeLessThan(1);
+  }
+  // k the file before it; j at the last stays there.
+  await page.keyboard.press('k');
+  await expect(fileView(page)).toHaveAttribute('aria-label', 'Changes to notes-29.md');
+  await page.keyboard.press('j');
+  await page.keyboard.press('j');
+  await expect(fileView(page)).toHaveAttribute('aria-label', 'Changes to notes-30.md');
+  // The rows' keys wait: x does not start compare mode under the file.
+  await page.keyboard.press('x');
+  await expect(page.getByRole('button', { name: 'Compare mode' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  );
+  // Esc: the rows again, the cursor on its commit, in view.
+  await page.keyboard.press('Escape');
+  await expect(fileView(page)).toHaveCount(0);
+  await expect(row(page, 'Add thirty notes')).toHaveClass(/cursor/);
+  await expect(row(page, 'Add thirty notes')).toBeInViewport();
+  // A narrower window: the pane below the rows, the file still on screen.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await last.click();
+  await expect(firstLine).toBeInViewport({ ratio: 1 });
+  expect((await pane(page).boundingBox())!.y).toBeGreaterThan(
+    (await fileView(page).boundingBox())!.y,
+  );
+  // The same file clicked again closes it.
+  await last.click();
+  await expect(fileView(page)).toHaveCount(0);
+});
+
+test("Open in VS Code: the file's diff in VS Code's diff editor, a commit's or an uncommitted one (V70)", async ({
+  page,
+}) => {
+  // A stand-in for VS Code that writes down what it is asked.
+  const dir = mkdtempSync(join(tmpdir(), 'symbiote-e2e-code-'));
+  cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
+  const log = join(dir, 'opened.jsonl');
+  const fake = join(dir, 'code');
+  writeFileSync(
+    fake,
+    '#!/usr/bin/env node\n' +
+      `require('node:fs').appendFileSync(${JSON.stringify(log)}, ` +
+      "JSON.stringify(process.argv.slice(2)) + '\\n');\n",
+  );
+  chmodSync(fake, 0o755);
+  symbiote.stop();
+  symbiote = await serveCommits({ SYMBIOTE_CODE: fake });
+  const opened = () =>
+    readFileSync(log, 'utf8')
+      .trim()
+      .split('\n')
+      .map((line) => JSON.parse(line) as string[]);
+  const repo = realpathSync(symbiote.repo);
+  const [, , square = '', cube = ''] = symbiote.shas;
+  const status = fileView(page).getByRole('status');
+
+  // A commit's file: against its parent; its own copy, as src/math.ts changed after it.
+  await page.goto(`${symbiote.url}git`);
+  await row(page, 'Add cube').click();
+  await pane(page).getByRole('button', { name: 'Show the diff of src/math.ts' }).click();
+  await fileView(page).getByRole('button', { name: 'Open in VS Code' }).click();
+  await expect(status).toHaveText('Opened its diff in VS Code');
+  const [first = []] = opened();
+  expect(first.slice(0, 2)).toEqual([repo, '--diff']);
+  expect(first[2]).toMatch(new RegExp(`/revisions/${square}/src/math\\.ts$`));
+  expect(readFileSync(first[2]!, 'utf8')).toBe(git(repo, 'show', `${square}:src/math.ts`) + '\n');
+  expect(first[3]).toMatch(new RegExp(`/revisions/${cube}/src/math\\.ts$`));
+
+  // A change not staged, by its key: the index against the checkout's own file.
+  writeFileSync(join(repo, 'src/math.ts'), 'export const changed = true;\n');
+  await page.goto(`${symbiote.url}git`);
+  await page.locator('.commit.working').click();
+  await pane(page).getByRole('button', { name: 'Show the diff of src/math.ts' }).click();
+  // Its side stays in view, the card narrowed by the pane.
+  const side = fileView(page).locator('.git-shown-side');
+  await expect(side).toBeVisible();
+  await expect(side).toHaveText('not staged');
+  await page.keyboard.press('o');
+  await expect(status).toHaveText('Opened its diff in VS Code');
+  const second = opened()[1] ?? [];
+  expect(second[2]).toMatch(/\/revisions\/index\/[0-9a-f]{40}\/src\/math\.ts$/);
+  expect(second[3]).toBe(join(repo, 'src/math.ts'));
+  // Staged, the open file follows it to its new side.
+  await pane(page).getByRole('button', { name: 'Stage src/math.ts' }).click();
+  await expect(side).toHaveText('staged');
 });
 
 test('branches and tags: made at a row, renamed and deleted from the panel (V66d)', async ({

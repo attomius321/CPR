@@ -86,13 +86,8 @@ import { MAX_BRIEF, workKinds } from './workspace-brief.js';
 import { onServer, workspaceCodex } from './workspace-codex.js';
 import { hermesEntries, hermesTools, type Hermes, type HermesSession } from './hermes.js';
 import { workspaceHermes } from './workspace-hermes.js';
-import {
-  emptyFile,
-  isFile,
-  keptFile,
-  readBranchChanges,
-  worktreeChanges,
-} from './workspace-changes.js';
+import { readBranchChanges, worktreeChanges } from './workspace-changes.js';
+import { emptyFile, isFile, keptFile } from './revision-copies.js';
 import {
   documentsDir,
   MAX_DOCUMENT_BYTES,

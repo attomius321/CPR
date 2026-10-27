@@ -33,7 +33,7 @@ import { parseReview } from '../src/server-requests.js';
 import { fileStateStore, stateDir, type StateStore } from '../src/state.js';
 import { Diffs, type Pair, type RunDiff } from '../src/diffs.js';
 import { Histories } from '../src/history.js';
-import type { GitPage, GitWrite } from '../src/git-page.js';
+import { GitOpenRefused, type GitOpen, type GitPage, type GitWrite } from '../src/git-page.js';
 import type { OpenRequest, OpenResult } from '../src/editor.js';
 import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
 import type { Workspaces } from '../src/workspaces.js';
@@ -554,6 +554,7 @@ describe('symbiote view: commits and diffs', () => {
   });
   // Git's page (V66): what it reads, and the writes asked for.
   const gitWrites: GitWrite[] = [];
+  const gitOpens: GitOpen[] = [];
   const person = { name: 'Ada', email: 'ada@example.com', date: '2026-10-13T08:00:00Z' };
   const fakeGit: GitPage = {
     commit: (sha) =>
@@ -581,6 +582,13 @@ describe('symbiote view: commits and diffs', () => {
     changesLines: () => Promise.resolve({ staged: [], unstaged: [] }),
     changeFile: (path, staged) => Promise.resolve(path === 'a.ts' && !staged ? 'diff a.ts' : null),
     sync: () => Promise.resolve({ branch: 'main', ahead: 1, behind: 0, remotes: ['origin'] }),
+    open: (request) => {
+      gitOpens.push(request);
+      if (request.path === 'b.ts')
+        return Promise.reject(new GitOpenRefused('b.ts is not among its files', 400));
+      if (request.path === 'c.ts') return Promise.reject(new GitOpenRefused('code: gone', 502));
+      return Promise.resolve();
+    },
     write: (request) => {
       gitWrites.push(request);
       if (request.kind === 'push') return Promise.reject(new GitRefused('rejected: fetch first'));
@@ -740,6 +748,29 @@ describe('symbiote view: commits and diffs', () => {
       only: 2,
     });
     expect(gitWrites).toHaveLength(3);
+  });
+
+  it("opens a file's diff in VS Code from the page only, saying why not (V70)", async () => {
+    gitOpens.length = 0;
+    const opened = await post('/api/git/open', { sha: C, path: 'a.ts' });
+    expect(opened.status).toBe(200);
+    expect(await opened.json()).toEqual({});
+    expect((await post('/api/git/open', { path: 'a.ts', staged: true })).status).toBe(200);
+    expect(gitOpens).toEqual([
+      { sha: C, path: 'a.ts' },
+      { path: 'a.ts', staged: true },
+    ]);
+    const refused = await post('/api/git/open', { sha: C, path: 'b.ts' });
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({ error: 'b.ts is not among its files' });
+    const failed = await post('/api/git/open', { sha: C, path: 'c.ts' });
+    expect(failed.status).toBe(502);
+    expect(await failed.json()).toEqual({ error: 'code: gone' });
+    // Not from the page, not a file, not a read.
+    expect((await post('/api/git/open', { path: 'a.ts' }, { 'x-symbiote': '0' })).status).toBe(403);
+    expect((await post('/api/git/open', { sha: C })).status).toBe(400);
+    expect((await get('/api/git/open')).status).toBe(405);
+    expect(gitOpens).toHaveLength(4);
   });
 
   it("finds commits in a listing's rows (V66f)", async () => {

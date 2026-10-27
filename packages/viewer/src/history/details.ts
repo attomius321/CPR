@@ -111,3 +111,41 @@ export function nextMatch(rows: readonly number[], from: number, forward: boolea
   if (forward) return rows.find((row) => row > from) ?? (rows[0] as number);
   return [...rows].reverse().find((row) => row < from) ?? (rows[rows.length - 1] as number);
 }
+
+/**
+ * The file shown in the rows' place (V70): one of a commit's files, or an uncommitted one on its
+ * side (`staged`).
+ */
+export interface ShownFile {
+  path: string;
+  staged?: boolean;
+}
+
+const same = (a: ShownFile, b: ShownFile) => a.path === b.path && a.staged === b.staged;
+
+/** The uncommitted files as the pane lists them: the staged ones, then the rest. */
+export function changesOrder({ staged, unstaged }: WorkingChanges): ShownFile[] {
+  return [
+    ...staged.map(({ path }) => ({ path, staged: true })),
+    ...unstaged.map(({ path }) => ({ path, staged: false })),
+  ];
+}
+
+/** The file `step` from `shown` in `files` (j/k), staying at the ends as the Files page does. */
+export function stepShown(files: readonly ShownFile[], shown: ShownFile, step: 1 | -1): ShownFile {
+  const at = files.findIndex((file) => same(file, shown));
+  if (at < 0) return shown;
+  return files[Math.min(files.length - 1, Math.max(0, at + step))] ?? shown;
+}
+
+/**
+ * The uncommitted file shown, after the changes are read again: on its side while listed there,
+ * else on the other (staged or unstaged), else none.
+ */
+export function followShown(changes: WorkingChanges, shown: ShownFile): ShownFile | null {
+  const on = (staged: boolean) =>
+    (staged ? changes.staged : changes.unstaged).some((file) => file.path === shown.path);
+  const staged = shown.staged === true;
+  if (on(staged)) return shown;
+  return on(!staged) ? { path: shown.path, staged: !staged } : null;
+}

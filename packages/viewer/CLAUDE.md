@@ -22,7 +22,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 |---|---|
 | `graph/` | The layout (`flow.ts`, the worker), the four nodes, the canvas and the map |
 | `diff/` | A diff's page: `App.tsx`, its two pages (Files, Graph), its sidebar, detail panel and review tab, opening a line |
-| `history/` | Git (History until V66): rows, lanes, branches, checkout, the row menu, branch reviews; a commit's details, the uncommitted changes, branch and tag dialogs, fetch/pull/push, search (V66) |
+| `history/` | Git (History until V66): rows, lanes, branches, checkout, the row menu, branch reviews; a commit's details, the uncommitted changes, branch and tag dialogs, fetch/pull/push, search (V66); a file shown in the rows' place (V70) |
 | `workspaces/` | A workspace, its agent's terminal, its changes, merges, Start a workspace |
 | `shell/` | The shell: sidenav, title bar, status bar and usage, pages, theme, the desktop window |
 | `ui/` | Shared: the tokens and controls' CSS, `Help`, `Tooltips`, `Resizer`, icons, menus, Markdown, HTTP |
@@ -66,7 +66,11 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   search's next match; `test/details.test.ts`), `CommitDetails.tsx` and `ChangesDetails.tsx` (the
   pane), `GitDiff.tsx` (a file's diff with the Files page's `parseFileDiff`/`foldRows`),
   `RefDialog.tsx`, `SyncBar.tsx`, `FindBox.tsx`. The uncommitted row is row −1, above the list: the
-  rows' math (`list.offsetTop`) already places the list under whatever is above it.
+  rows' math (`list.offsetTop`) already places the list under whatever is above it. A file clicked
+  in the pane shows in the rows' place (V70, `GitFile.tsx`, `.git-shown`): a layer over the rows'
+  card, the rows mounted and `inert` under it, so their scroll and cursor are kept; the commit's
+  read and the uncommitted lines are the page's (`useCommitRead`, `useChangesRead`), shared by the
+  pane and the layer. Its Open in VS Code is `POST /api/git/open` (VS Code's diff editor).
 - `src/graph/ProjectNode.tsx`, `FileNode.tsx`, `SymbolNode.tsx`, `SummaryNode.tsx`.
 - `src/skills/skills.ts` — **pure**: a small reader of a `SKILL.md`'s frontmatter (plain, quoted
   and block text; a value YAML refuses is `invalid`, an anchor or a tag `unknown`) and the checks

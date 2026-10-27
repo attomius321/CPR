@@ -5,6 +5,7 @@ import {
   SymbioteError,
   fileChangedSince,
   fileForCheckout,
+  fileInIndex,
   listChangedFiles,
   listChangedLines,
   listLineCounts,
@@ -267,5 +268,41 @@ describe('fileForCheckout and fileChangedSince (V43)', () => {
     } finally {
       repo.git('reset', '--quiet', '--hard');
     }
+  });
+});
+
+describe('fileInIndex (V70)', () => {
+  const repo = createRepo();
+  afterAll(() => repo.cleanup());
+  repo.write({
+    '.gitattributes': 'crlf.txt text eol=crlf\n',
+    'src/a.ts': 'one\n',
+    'crlf.txt': 'a\n',
+  });
+  repo.commit('Files');
+  const pinned = repo.git('rev-parse', 'HEAD');
+  repo.git('update-index', '--add', '--cacheinfo', `160000,${pinned},vendor/lib`);
+  // Staged, then changed again on disk: the index's bytes, not the disk's.
+  repo.write({ 'src/a.ts': 'staged\n', 'crlf.txt': 'a\nb\n' });
+  repo.git('add', 'src/a.ts', 'crlf.txt');
+  repo.write({ 'src/a.ts': 'on disk\n' });
+
+  it("gives a staged file's blob and its bytes as a checkout writes them", async () => {
+    const git = await openRepo(repo.root);
+    const staged = await fileInIndex(git, 'src/a.ts');
+    expect(staged?.object).toBe(repo.git('rev-parse', ':src/a.ts'));
+    expect((await staged?.read())?.toString()).toBe('staged\n');
+    // The checkout's line endings, not the blob's.
+    expect((await (await fileInIndex(git, 'crlf.txt'))?.read())?.toString()).toBe('a\r\nb\r\n');
+    expect((await (await fileInIndex(git, 'vendor/lib'))?.read())?.toString()).toBe(
+      `Subproject commit ${pinned}\n`,
+    );
+  });
+
+  it('gives none for a path the index does not have', async () => {
+    const git = await openRepo(repo.root);
+    expect(await fileInIndex(git, 'src/gone.ts')).toBeNull();
+    expect(await fileInIndex(git, 'src')).toBeNull();
+    expect(await fileInIndex(git, 'src/*.ts')).toBeNull();
   });
 });

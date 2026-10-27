@@ -55,3 +55,31 @@ export async function fileForCheckout(
   if (type !== 'blob') return null;
   return gitBytes(repo.root, ['cat-file', '--filters', `${sha}:${path}`]);
 }
+
+/** A path's entry in the index (V70): its object, and its bytes as a checkout writes them. */
+export interface IndexFile {
+  object: string;
+  read(): Promise<Buffer>;
+}
+
+/**
+ * The index's file at `path` (a staged change's right side, a change not staged's left), or null
+ * when the index has none there, or only a conflict's stages. Its bytes as `fileForCheckout`'s.
+ */
+export async function fileInIndex(repo: GitRepo, path: string): Promise<IndexFile | null> {
+  // `<mode> <object> <stage>\t<path>\0`; a literal pathspec, so `*` is a name.
+  const listed = await git(repo.root, ['ls-files', '-s', '-z', '--', `:(top,literal)${path}`]);
+  const entry = listed
+    .split('\0')
+    .map((line) => /^(\d+) ([0-9a-f]+) 0\t(.*)$/s.exec(line))
+    .find((match) => match?.[3] === path);
+  if (!entry) return null;
+  const [, mode, object = ''] = entry;
+  if (mode === '160000') {
+    return { object, read: () => Promise.resolve(Buffer.from(`Subproject commit ${object}\n`)) };
+  }
+  return {
+    object,
+    read: () => gitBytes(repo.root, ['cat-file', '--filters', `--path=${path}`, object]),
+  };
+}

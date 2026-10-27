@@ -98,3 +98,7 @@ export const deleteTag = (name: string) => write<object>('tag', { action: 'delet
 export const fetchRemotes = () => write<object>('fetch');
 export const pull = (mode: PullMode) => write<{ stopped?: string }>('pull', { mode });
 export const push = () => write<{ upstream: string; set?: true }>('push');
+
+/** Opens a file's diff in VS Code (V70): one of a commit's files, or an uncommitted one on its side. */
+export const openDiff = (file: { path: string } & ({ sha: string } | { staged: boolean })) =>
+  write<object>('open', file);

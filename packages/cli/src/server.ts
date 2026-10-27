@@ -74,7 +74,15 @@ import { parsePromptChange, PromptRefused, type PromptSettingsService } from './
 import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';
 import type { Histories } from './history.js';
-import { GIT_WRITES, parseGitWrite, type GitPage, type GitWrite } from './git-page.js';
+import {
+  GIT_WRITES,
+  GitOpenRefused,
+  parseGitOpen,
+  parseGitWrite,
+  type GitOpen,
+  type GitPage,
+  type GitWrite,
+} from './git-page.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 import { imageKind, MAX_IMAGE_BYTES, type Terminals } from './terminal.js';
 import { ScoutRefused, type Scout } from './scout.js';
@@ -1088,7 +1096,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
    * Git's page (V66): `GET` a commit (`commit`, `commit/lines`, `commit/file`), the changes
    * (`changes`, `changes/lines`, `changes/file`), the branch's upstream (`sync`) and a search
    * (`find`); `POST` a write (`stage`, `unstage`, `commit`, `branch`, `tag`, `fetch`, `pull`,
-   * `push`), refused in git's words with 409.
+   * `push`), refused in git's words with 409; `POST open`, a file's diff in VS Code (V70).
    */
   async function gitApi(
     req: IncomingMessage,
@@ -1103,6 +1111,25 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     const path = param('path');
     const text = (diff: string | null) =>
       diff === null ? send(res, 404, 'no such change') : send(res, 200, diff);
+    // A file's diff opened in VS Code (V70): asked by the page, not one of git's writes.
+    if (name === 'open') {
+      if (req.method !== 'POST') return send(res, 405, 'method not allowed');
+      if (!writable(req)) return send(res, 403, 'forbidden');
+      let request: GitOpen;
+      try {
+        request = parseGitOpen(await readBody(req, MAX_BODY_BYTES));
+      } catch (error) {
+        return send(res, 400, (error as Error).message);
+      }
+      try {
+        await page.open(request);
+        return json(res, 200, {});
+      } catch (error) {
+        if (error instanceof GitOpenRefused)
+          return json(res, error.status, { error: error.message });
+        throw error;
+      }
+    }
     // `commit` is read with GET and written with POST.
     if (req.method === 'POST') {
       if (!GIT_WRITES.includes(name)) return send(res, 404, 'not found');
