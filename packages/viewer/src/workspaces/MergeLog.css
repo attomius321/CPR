@@ -123,6 +123,8 @@
 /* Dark in both themes, as an agent's terminal (AgentTerminal.css): the theme's background is
    kept by hand in terminal.ts (tokens.md, Outside the tokens). */
 .merge-terminal {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   padding: 8px 0 8px 12px;
@@ -131,8 +133,12 @@
   background: #050608;
 }
 
-.merge-terminal .xterm {
-  height: 100%;
+/* What xterm opens in, its padding outside: the fit add-on counts the box's padding as rows
+   (AgentTerminal.css). xterm is as tall as its rows, as in an agent's terminal: stretched to the
+   box, its viewport showed under the last row, its own black and a scrollbar's arrow. */
+.merge-terminal-fit {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Narrow: the steps above the log. */

@@ -262,3 +262,4 @@ merge commit.
 - 2026-10-27 [V64 spike — Skills beside the mockup](journal/v64-skills-page-mockup.md)
 - 2026-10-27 [V64 — Skills as the person's mockup, and Open in VS Code](journal/v64-skills-page-mockup.md)
 - 2026-10-27 [Feature — Settings at the sidenav's bottom](journal/sidenav-settings-at-the-bottom.md)
+- 2026-10-27 [Fix — an agent's terminal fits its box: no scrollbars coming and going on Scribe's pane](journal/fix-scribe-terminal-problem.md)
