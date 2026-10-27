@@ -267,3 +267,5 @@ merge commit.
 - 2026-10-27 [V65 — a workspace reviewed against where it started, or a branch picked in it](journal/v65-review-against.md)
 - 2026-10-27 [N2 spike — what reaches the Windows taskbar from WSLg](journal/n2-taskbar-waiting.md)
 - 2026-10-27 [N2 — an amber dot on the taskbar icon, a blink while you are elsewhere](journal/n2-taskbar-waiting.md)
+- 2026-10-27 [V68 spike — how many branches Start from lists](journal/v68-start-from-search.md)
+- 2026-10-27 [V68 — Start from with a search](journal/v68-start-from-search.md)

@@ -32,7 +32,15 @@ const start = (page: Page) => page.getByRole('region', { name: 'Start a workspac
 const title = (page: Page) => start(page).getByRole('textbox', { name: 'Title' });
 const goal = (page: Page) => start(page).getByRole('textbox', { name: 'Goal' });
 const effort = (page: Page) => start(page).getByRole('slider', { name: 'Effort' });
-const from = (page: Page) => start(page).getByLabel('Start from');
+// Start from (V68): a button that opens a search over the branches.
+const from = (page: Page) => start(page).getByRole('button', { name: /^Start from/ });
+const branchSearch = (page: Page) => start(page).getByRole('combobox', { name: 'Search branches' });
+const branchList = (page: Page) => start(page).getByRole('listbox', { name: 'Branches' });
+const pickFrom = async (page: Page, name: string) => {
+  await from(page).click();
+  await branchList(page).getByRole('option', { name, exact: true }).click();
+  await expect(branchList(page)).toHaveCount(0);
+};
 const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
 
 test('Start a workspace is a page right of the sidenav, at /start', async ({ page }) => {
@@ -552,19 +560,34 @@ test("Start from: the branches listed; one picked is where it starts and its nam
   git('branch', 'topic', base ?? '');
   git('update-ref', 'refs/remotes/origin/shared', base ?? '');
   await page.goto(`${symbiote.url}start`);
-  await expect(from(page).locator('option')).toHaveText(['main', 'topic', 'shared']);
-  await expect(from(page).locator('optgroup')).toHaveAttribute('label', 'Only on a remote');
-  await expect(from(page)).toHaveValue('main');
+  await expect(from(page)).toHaveText('main');
+  await expect(from(page)).toHaveAttribute('aria-expanded', 'false');
   await expect(start(page)).toContainText(`Will be created from main at ${short(head)}`);
+  await from(page).click();
+  await expect(from(page)).toHaveAttribute('aria-expanded', 'true');
+  await expect(branchSearch(page)).toBeFocused();
+  await expect(branchList(page).getByRole('option')).toHaveText(['main', 'topic', 'shared']);
+  // V68: the groups are the page's, the remote's under its heading.
+  await expect(branchList(page).getByRole('group')).toHaveCount(2);
+  await expect(
+    branchList(page).getByRole('group', { name: 'Local 2' }).getByRole('option'),
+  ).toHaveText(['main', 'topic']);
+  await expect(
+    branchList(page).getByRole('group', { name: 'Only on a remote 1' }).getByRole('option'),
+  ).toHaveText(['shared']);
+  await expect(branchList(page).getByRole('option', { selected: true })).toHaveText('main');
 
-  await from(page).selectOption('topic');
+  await branchList(page).getByRole('option', { name: 'topic' }).click();
+  await expect(branchList(page)).toHaveCount(0);
+  await expect(from(page)).toBeFocused();
+  await expect(from(page)).toHaveText('topic');
   await expect(start(page)).toContainText(`Will be created from topic at ${short(base)}`);
   await title(page).fill('Stack on topic');
   await goal(page).fill('Build on it.');
   // Leaving keeps it, as the rest of the form.
   await title(page).press('Escape');
   await startLink(page).click();
-  await expect(from(page)).toHaveValue('topic');
+  await expect(from(page)).toHaveText('topic');
   await goal(page).press('Control+Enter');
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fstack-on-topic`);
   expect(git('rev-parse', 'feature/stack-on-topic')).toBe(base);
@@ -572,9 +595,9 @@ test("Start from: the branches listed; one picked is where it starts and its nam
 
   // A start ends it: the next workspace starts from the default branch.
   await startLink(page).click();
-  await expect(from(page)).toHaveValue('main');
+  await expect(from(page)).toHaveText('main');
   // A remote's branch is started from as well.
-  await from(page).selectOption('shared');
+  await pickFrom(page, 'shared');
   await title(page).fill('From shared');
   await goal(page).fill('Build on it.');
   await goal(page).press('Control+Enter');
@@ -592,12 +615,111 @@ test("Start from a History row: the row's commit first, a branch instead when pi
     .locator('.commit', { has: page.locator('.commit-subject').getByText('base', { exact: true }) })
     .click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Start a workspace here' }).click();
-  await expect(from(page).locator('option').first()).toHaveText(`The commit ${short(base)}`);
+  await expect(from(page)).toHaveText(`The commit ${short(base)}`);
   await expect(start(page)).toContainText(`Will be created from the commit ${short(base)}`);
-  await from(page).selectOption('main');
+  await from(page).click();
+  await expect(branchList(page).getByRole('option')).toHaveText([
+    `The commit ${short(base)}`,
+    'main',
+  ]);
+  await expect(branchList(page).getByRole('option', { selected: true })).toHaveText(
+    `The commit ${short(base)}`,
+  );
+  await branchList(page).getByRole('option', { name: 'main' }).click();
   await expect(start(page)).toContainText(`Will be created from main at ${short(head)}`);
-  await from(page).selectOption({ label: `The commit ${short(base)}` });
+  await pickFrom(page, `The commit ${short(base)}`);
   await expect(start(page)).toContainText(`Will be created from the commit ${short(base)}`);
+});
+
+// V68: a search over the branches, and the keys.
+test('Start from: typing narrows the branches to those holding every word; the keys pick', async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  const [base] = symbiote.shas;
+  const git = (...args: string[]) =>
+    execFileSync('git', args, { cwd: symbiote.repo, encoding: 'utf8' }).trim();
+  for (const name of ['topic', 'fix/title-bar', 'milestone/v65-review-against'])
+    git('branch', name, base ?? '');
+  git('update-ref', 'refs/remotes/origin/feature/old-start', base ?? '');
+  await page.goto(`${symbiote.url}start`);
+  const options = branchList(page).getByRole('option');
+
+  // A letter on the closed field opens it with that letter (m is the shell's Monitor key, not
+  // taken here), then the words narrow it.
+  await from(page).focus();
+  await page.keyboard.press('m');
+  await expect(branchSearch(page)).toBeFocused();
+  await expect(branchSearch(page)).toHaveValue('m');
+  await expect(page).toHaveURL(`${symbiote.url}start`);
+  await expect(options).toHaveText(['main', 'milestone/v65-review-against']);
+  await page.keyboard.type('ilestone AGAINST v65');
+  await expect(options).toHaveText(['milestone/v65-review-against']);
+  // The words found are marked.
+  await expect(options.locator('mark')).toHaveText(['milestone', 'v65', 'against']);
+  await expect(branchList(page).getByRole('group')).toHaveAccessibleName('Local 1');
+  await page.keyboard.press('Enter');
+  await expect(branchList(page)).toHaveCount(0);
+  await expect(from(page)).toBeFocused();
+  await expect(from(page)).toHaveText('milestone/v65-review-against');
+  await expect(start(page)).toContainText(
+    `Will be created from milestone/v65-review-against at ${short(base)}`,
+  );
+
+  // Enter opens it with nothing typed, at the branch picked; ↑ and ↓ move, Enter picks.
+  await page.keyboard.press('Enter');
+  await expect(branchSearch(page)).toHaveValue('');
+  await expect(options).toHaveText([
+    'main',
+    'fix/title-bar',
+    'milestone/v65-review-against',
+    'topic',
+    'feature/old-start',
+  ]);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Enter');
+  await expect(from(page)).toHaveText('topic');
+
+  // A search picks its first match; one on a remote too.
+  await page.keyboard.press('ArrowDown');
+  await branchSearch(page).fill('old start');
+  await expect(
+    branchList(page).getByRole('group', { name: 'Only on a remote 1' }).getByRole('option'),
+  ).toHaveText(['feature/old-start']);
+  await page.keyboard.press('Enter');
+  await expect(from(page)).toHaveText('feature/old-start');
+
+  // Nothing matches: it says so, and Enter picks nothing.
+  await page.keyboard.press(' ');
+  await branchSearch(page).fill('nothing like it');
+  await expect(options).toHaveCount(0);
+  await expect(start(page).getByText('No branch matches')).toBeVisible();
+  await page.keyboard.press('Enter');
+  await expect(branchSearch(page)).toBeFocused();
+
+  // Escape closes the list, not the page.
+  await page.keyboard.press('Escape');
+  await expect(branchList(page)).toHaveCount(0);
+  await expect(page).toHaveURL(`${symbiote.url}start`);
+  await expect(from(page)).toBeFocused();
+  await expect(from(page)).toHaveText('feature/old-start');
+
+  // A click outside closes it, and Tab: nothing picked.
+  await from(page).click();
+  await branchSearch(page).fill('main');
+  await title(page).click();
+  await expect(branchList(page)).toHaveCount(0);
+  await from(page).click();
+  await expect(branchSearch(page)).toHaveValue('');
+  await page.keyboard.press('Tab');
+  await expect(branchList(page)).toHaveCount(0);
+  await expect(start(page).getByRole('button', { name: 'Where its worktree goes' })).toBeFocused();
+  await expect(from(page)).toHaveText('feature/old-start');
+  await expect(start(page)).toContainText(
+    `Will be created from feature/old-start at ${short(base)}`,
+  );
 });
 
 /** Files as the page gets them from a clipboard or a drop: name, type and their text. */
