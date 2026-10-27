@@ -46,3 +46,7 @@ the panel before and after a pick, dark theme.
 Not verified: the light theme by eye (the tokens' contrast test covers it); with a real agent's
 terminal (node-pty is not installed in this container); on a repository with many branches.
 
+Merged into main (2026-10-27), no conflicts. `main` verified after the merge: frozen install,
+format, lint, typecheck, 1,901 of 1,904 unit tests (the 3 others need node-pty, absent here),
+build, e2e 270 of 307 (the 37 failing all failed on `main` before the merge: real terminals,
+Scout, Scribe, the desktop window).

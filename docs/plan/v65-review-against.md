@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v65-review-against.md)
 
-**Status:** ready for review (2026-10-27), on branch `milestone/v65-review-against`. Its "As
+**Status:** merged into main (2026-10-27, from branch `milestone/v65-review-against`). Its "As
 built" and results below.
 
 **Problem** (asked: "The current review of a workspace force against main?" — "Yes, we need
