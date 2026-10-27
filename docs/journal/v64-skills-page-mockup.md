@@ -55,6 +55,5 @@ a search with no match, the view menu, Preview, Expand, an unsaved skill opened 
 skill, the library and Scribe, and at 390 and 2560.
 
 Not verified: the desktop app's window (its 38 px title bar over the page: the cards a little
-shorter); Firefox and Safari (`:has()` for the text's focus ring, the `lh`-free line height is
-plain CSS); an input method (IME) composing in the text area over its copy; Scribe with a real
+shorter); Firefox and Safari (`:has()` draws the text's focus ring); an input method (IME) composing in the text area over its copy; Scribe with a real
 agent (its pane's contents did not change); a real VS Code (the e2e fake records its arguments).
