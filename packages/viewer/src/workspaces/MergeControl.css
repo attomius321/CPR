@@ -14,3 +14,9 @@ p.merge-control {
   border-radius: 8px;
   background: color-mix(in srgb, var(--merge-tone, var(--muted)) 10%, transparent);
 }
+
+/* Why the target cannot fast-forward (V67): a line of its own under the controls. */
+.merge-control-why {
+  flex-basis: 100%;
+  font-size: var(--size-small);
+}

@@ -776,6 +776,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/merges/recheck') {
       return written(req, res, parseMergeId, (id) => answer(res, () => merges.recheck(id)));
     }
+    // A fast-forward its target can no longer take, merged with a merge commit (V67).
+    if (url.pathname === '/api/merges/merge-commit') {
+      return written(req, res, parseMergeId, (id) => answer(res, () => merges.mergeCommit(id)));
+    }
     if (url.pathname === '/api/merges/request-changes') {
       return written(req, res, parseMergeChanges, ({ id, comments }) =>
         answer(res, () => merges.requestChanges(id, comments)),

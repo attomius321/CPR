@@ -1,5 +1,12 @@
 // Symbiote's merger on the page (V26a): what a queued merge's row says and offers. Pure.
-import type { MergeCheckRun, MergeConflict, MergeEntry, MergeRegion } from '@symbiote/core';
+import type {
+  MergeCheckRun,
+  MergeConflict,
+  MergeEntry,
+  MergeRegion,
+  MergeStrategy,
+  MergeTargets,
+} from '@symbiote/core';
 
 /** How a row is marked: waiting, the person's turn, done, or something went wrong. */
 export type MergeTone = 'wait' | 'you' | 'done' | 'bad';
@@ -53,17 +60,20 @@ export function mergeState(entry: MergeEntry): { text: string; tone: MergeTone }
   const { check } = entry;
   const failed = checkFailed(check);
   const took = failed ?? (check?.ms === undefined ? null : `checked in ${duration(check.ms)}`);
+  const fastForward = entry.strategy === 'fast-forward';
   switch (entry.state) {
     case 'queued':
       if (entry.recheck && entry.merge) {
         return { text: `Queued: its check runs again on ${short(entry.merge)}`, tone: 'wait' };
       }
       return {
-        text: `Queued: ${short(entry.head)} into ${entry.into}${entry.message ? ` (${entry.message})` : ''}`,
+        text: `Queued: ${short(entry.head)} into ${entry.into}${fastForward ? ', by fast-forward' : ''}${entry.message ? ` (${entry.message})` : ''}`,
         tone: 'wait',
       };
     case 'merging':
-      return { text: `Merging into ${entry.into}`, tone: 'wait' };
+      return fastForward
+        ? { text: `Fast-forwarding ${entry.into}`, tone: 'wait' }
+        : { text: `Merging into ${entry.into}`, tone: 'wait' };
     case 'resolving':
       return {
         text: `Resolving ${plural(entry.conflicts?.length ?? 0, 'conflicting file')}: the merger agent answers each region`,
@@ -82,17 +92,32 @@ export function mergeState(entry: MergeEntry): { text: string; tone: MergeTone }
               text: `Approved, ${failed}: ready to land${entry.message ? ` · ${entry.message}` : ''}`,
               tone: 'you',
             }
-          : { text: `Merged, not checked: ${entry.message ?? 'Land when you have'}`, tone: 'you' };
+          : {
+              // A fast-forward merged nothing (V67).
+              text: `${fastForward ? 'Not checked' : 'Merged, not checked'}: ${entry.message ?? 'Land when you have'}`,
+              tone: 'you',
+            };
     case 'landed': {
       const pushed = entry.pushed
         ? entry.pushed.ok
           ? `pushed to ${entry.pushed.remote}`
           : `not pushed to ${entry.pushed.remote}: ${entry.pushed.error}`
         : null;
-      const at = entry.merge ? `${entry.into} is at ${short(entry.merge)}` : (entry.message ?? '');
+      const at = !entry.merge
+        ? (entry.message ?? '')
+        : fastForward
+          ? `${entry.into} fast-forwarded to ${short(entry.merge)}`
+          : `${entry.into} is at ${short(entry.merge)}`;
       return { text: [`Landed: ${at}`, took, pushed].filter(Boolean).join(' · '), tone: 'done' };
     }
     case 'needs-you': {
+      // A fast-forward its target can no longer take (V67): the person picks what next.
+      if (fastForward && entry.behind) {
+        return {
+          text: `Cannot fast-forward: ${entry.into} has ${plural(entry.behind, 'commit')} ${entry.branch} does not. ${OTHERWISE(entry.into)}`,
+          tone: 'you',
+        };
+      }
       const regions = entry.resolution?.regions ?? [];
       if (regions.length > 0 && entry.merge) {
         const usage = entry.resolution?.usage;
@@ -155,7 +180,37 @@ export function mergeLabel(entry: MergeEntry): string {
   }
 }
 
-export type MergeAction = 'land' | 'approve' | 'change' | 'recheck' | 'retry' | 'remove';
+export type MergeAction =
+  'land' | 'approve' | 'change' | 'recheck' | 'merge-commit' | 'retry' | 'remove';
+
+/** What else can be done when `into` cannot fast-forward (V67, decision 486). */
+const OTHERWISE = (into: string) =>
+  `Merge with a merge commit, or bring ${into} into the branch and review it again`;
+
+/** A merge commit's subject; a fast-forward makes none and says where the target moves (V67). */
+export function mergeTitle(entry: MergeEntry): string {
+  return entry.strategy === 'fast-forward'
+    ? `No merge commit: ${entry.into} moves to ${short(entry.head)}, the approved commit`
+    : entry.title;
+}
+
+/** Why Merge into ▾ cannot fast-forward `into` to the approved commit (V67); null when it can. */
+export function fastForwardBlocked(
+  targets: MergeTargets,
+  branch: string,
+  into: string,
+): string | null {
+  if (targets.fastForward?.includes(into)) return null;
+  return `${into} has commits ${branch} does not: it cannot fast-forward. ${OTHERWISE(into)}.`;
+}
+
+/** What Merge into ▾'s button does, as its tip says it. */
+export function mergeTip(targets: MergeTargets, into: string, strategy: MergeStrategy): string {
+  const head = short(targets.head ?? '');
+  return strategy === 'fast-forward'
+    ? `Fast-forward ${into} to ${head}\nNo merge commit: ${into} moves to the approved commit itself, once its check passes in Symbiote's own worktree`
+    : `Merge ${head} into ${into}\nThe approved commit, in Symbiote's own worktree: checked, then landed`;
+}
 
 /** Whether a merge waits for the person's review of the merger agent's resolution (V26c). */
 export const toReview = (entry: MergeEntry) =>
@@ -165,11 +220,14 @@ export const toReview = (entry: MergeEntry) =>
 
 /**
  * What a row offers: Land when ready; Approve and Request changes on a resolution, its check
- * passed or failed, and Check again when it failed; Retry when it stopped; Remove unless it runs.
+ * passed or failed, and Check again when it failed; Merge commit instead on a fast-forward its
+ * target can no longer take (V67); Retry when it stopped; Remove unless it runs.
  */
 export function mergeActions(entry: MergeEntry): MergeAction[] {
   if (['merging', 'resolving', 'checking'].includes(entry.state)) return [];
+  const cannot = entry.state === 'needs-you' && entry.strategy === 'fast-forward' && entry.behind;
   return [
+    ...(cannot ? (['merge-commit'] as const) : []),
     ...(toReview(entry) ? (['approve', 'change'] as const) : []),
     ...(toReview(entry) && entry.check?.ok === false ? (['recheck'] as const) : []),
     ...(entry.state === 'ready' ? (['land'] as const) : []),

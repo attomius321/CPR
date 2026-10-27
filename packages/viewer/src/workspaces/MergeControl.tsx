@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'react';
-import type { MergeEntry, MergeTargets } from '@symbiote/core';
+import type { MergeEntry, MergeStrategy, MergeTargets } from '@symbiote/core';
 import { getJson, postJson } from '../ui/http.js';
-import { mergeState } from './merges.js';
+import { fastForwardBlocked, mergeState, mergeTip } from './merges.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 import { tip } from '../ui/tip.js';
 
 /**
  * Merge into ▾ (V26a, decision 149): offered when the branch's last verdict approves and its tip
  * is the approved commit; the target preselected (the branch it is reviewed against, V65; its
- * `from`, the verdict's `into`, the default branch) and any other branch to pick. Once queued,
- * the entry's state instead.
+ * `from`, the verdict's `into`, the default branch) and any other branch to pick; how it lands,
+ * with a merge commit or by fast-forward (V67, `merge.strategy` preselected), a fast-forward the
+ * target cannot take said and not offered. Once queued, the entry's state instead.
  */
 export function MergeControl({ branch }: { branch: string }) {
   const { merges } = useWorkspaces();
   const [targets, setTargets] = useState<MergeTargets | null>(null);
   const [into, setInto] = useState<string | null>(null);
+  const [how, setHow] = useState<MergeStrategy | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const queued: MergeEntry | undefined = merges?.merges.find(
@@ -42,10 +44,12 @@ export function MergeControl({ branch }: { branch: string }) {
   }
   if (!targets || targets.blocked || !targets.head || targets.branches.length === 0) return null;
   const target = into ?? targets.into ?? targets.branches[0] ?? '';
+  const strategy = how ?? targets.strategy;
+  const cannot = strategy === 'fast-forward' ? fastForwardBlocked(targets, branch, target) : null;
   const merge = () => {
     setBusy(true);
     setError(null);
-    postJson<MergeEntry>('/api/merges', { branch, into: target })
+    postJson<MergeEntry>('/api/merges', { branch, into: target, strategy })
       .then(() => reloadWorkspaces())
       .catch((e: unknown) => setError((e as Error).message))
       .finally(() => setBusy(false));
@@ -55,10 +59,8 @@ export function MergeControl({ branch }: { branch: string }) {
       <button
         type="button"
         className="button"
-        disabled={busy}
-        {...tip(
-          `Merge ${targets.head.slice(0, 7)} into ${target}\nThe approved commit, in Symbiote's own worktree: checked, then landed`,
-        )}
+        disabled={busy || cannot !== null}
+        {...tip(mergeTip(targets, target, strategy))}
         onClick={merge}
       >
         Merge into
@@ -74,7 +76,21 @@ export function MergeControl({ branch }: { branch: string }) {
             {name}
           </option>
         ))}
+      </select>{' '}
+      <select
+        aria-label="How it lands"
+        value={strategy}
+        disabled={busy}
+        onChange={(event) => setHow(event.target.value as MergeStrategy)}
+      >
+        <option value="merge">with a merge commit</option>
+        <option value="fast-forward">by fast-forward</option>
       </select>
+      {cannot && (
+        <span className="merge-control-why hint" role="status">
+          {cannot}
+        </span>
+      )}
       {error && (
         <span className="error" role="alert">
           {' '}

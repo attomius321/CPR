@@ -262,11 +262,13 @@ export {
   abortMerge,
   commitResolution,
   conflictKinds,
+  tipsIn,
   type ConflictKind,
 } from './git/merging.js';
 export type { UsageReport, UsageSubscription, UsageWindow } from './usage.js';
 export {
   MERGE_STATES,
+  MERGE_STRATEGIES,
   type MergeAgentEvent,
   type MergeCheckRun,
   type MergeConflict,
@@ -279,6 +281,7 @@ export {
   type MergeResolution,
   type MergeState,
   type MergeStep,
+  type MergeStrategy,
   type MergeTargets,
 } from './merges.js';
 export {

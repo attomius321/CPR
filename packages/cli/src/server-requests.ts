@@ -2,6 +2,7 @@
 // that is not one throws with the words the server answers 400 with.
 import {
   HISTORY_SCOPES,
+  MERGE_STRATEGIES,
   type AgentKind,
   type BriefParts,
   type CheckoutTarget,
@@ -11,6 +12,7 @@ import {
   type LocalReview,
   type McpAnswer,
   type MergeRequest,
+  type MergeStrategy,
   type PermissionMode,
   type ReviewFile,
   type ScoutAsk,
@@ -365,7 +367,10 @@ export function parseWorkspaceDiff(text: string): {
   };
 }
 
-/** `{ branch, into }`: a branch to merge, and the branch to merge it into (V26). */
+/**
+ * `{ branch, into, strategy? }`: a branch to merge, the branch to merge it into (V26), and how
+ * it lands (V67).
+ */
 export function parseMergeRequest(text: string): MergeRequest {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (typeof value?.branch !== 'string' || value.branch === '') {
@@ -374,7 +379,15 @@ export function parseMergeRequest(text: string): MergeRequest {
   if (typeof value.into !== 'string' || value.into === '') {
     throw new Error('into: the branch to merge into');
   }
-  return { branch: value.branch, into: value.into };
+  const { strategy } = value;
+  if (strategy !== undefined && !(MERGE_STRATEGIES as readonly unknown[]).includes(strategy)) {
+    throw new Error(`strategy: ${MERGE_STRATEGIES.join(' or ')}`);
+  }
+  return {
+    branch: value.branch,
+    into: value.into,
+    ...(strategy ? { strategy: strategy as MergeStrategy } : {}),
+  };
 }
 
 /** `{ id, comments }`: what to change in a merge's resolution (V26c). */

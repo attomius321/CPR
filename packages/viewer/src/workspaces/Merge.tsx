@@ -13,6 +13,7 @@ import {
   mergeLabel,
   mergeLive,
   mergeState,
+  mergeTitle,
   regionFlags,
   resolutionFiles,
   reviewRegion,
@@ -31,12 +32,13 @@ const ACTION_NAMES: Record<MergeAction, string> = {
   approve: 'Approve',
   change: 'Request changes',
   recheck: 'Check again',
+  'merge-commit': 'Merge commit instead',
   retry: 'Retry',
   remove: 'Remove',
 };
 
 /** The head's primary buttons; Remove is a button only once its merge landed (V55). */
-const PRIMARY: ReadonlySet<MergeAction> = new Set(['approve', 'land', 'remove']);
+const PRIMARY: ReadonlySet<MergeAction> = new Set(['approve', 'land', 'merge-commit', 'remove']);
 
 /** The queue's entry for a branch: the one still in progress, else its last. */
 export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | undefined {
@@ -152,6 +154,7 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
         <span className="ref ref-branch merge-ref-ours" {...tip(entry.into)}>
           {entry.into}
         </span>
+        {entry.strategy === 'fast-forward' && <span className="merge-how">by fast-forward</span>}
         <span className="merge-label">{mergeLabel(entry)}</span>
         <span className="merge-row-actions">
           {shownActions.map((action) => (
@@ -170,7 +173,7 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
         </span>
       </div>
       <p className="merge-row-state">{text}</p>
-      <p className="merge-title hint">{entry.title}</p>
+      <p className="merge-title hint">{mergeTitle(entry)}</p>
       {changing && (
         <form
           className="merge-change"
