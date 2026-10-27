@@ -12,10 +12,10 @@ Pick the way that matches what you want to review:
 
 - **Your branch against another**: run `symbiote view main` in the repository. To print the same
   comparison in the terminal, run `symbiote diff main`.
-- **Any branch**: on **History**, select one of the branch's commits, press `r`, and pick the
+- **Any branch**: on **Git**, select one of the branch's commits, press `r`, and pick the
   branch (a commit can be on several). Symbiote compares the branch's newest commit with the
   commit where the branch left the default branch.
-- **Two commits**: on **History**, press `x`, click two commits, then click **Compare**. The older
+- **Two commits**: on **Git**, press `x`, click two commits, then click **Compare**. The older
   commit is the base.
 - **A pull request or a merge request**: run `symbiote pr <number>`. See
   [Review a pull or merge request](#review-a-pull-or-merge-request).
@@ -111,7 +111,7 @@ under `test/`, `tests/`, `e2e/`, `__tests__/` or `__mocks__/`.
 
 ## Review a branch
 
-To review a branch, open it with **Review** on its workspace, or with `r` on **History**. A
+To review a branch, open it with **Review** on its workspace, or with `r` on **Git**. A
 workspace's review starts where the workspace started, or at the branch picked in its **Changes**
 panel; any other branch's, where it leaves the default branch. Then:
 
@@ -130,7 +130,7 @@ give a review to an agent that has no workspace, click **Copy for the agent** an
 into its chat.
 `symbiote/AGENTS.md` tells any agent how to act on a review.
 
-On **History**, each branch you reviewed carries a badge: `✓` approved, `✗` changes requested,
+On **Git**, each branch you reviewed carries a badge: `✓` approved, `✗` changes requested,
 `+2` for two commits added since your review. If you review the branch again after new commits,
 only what is new or changed since is left to look at. Your marks stay on the symbols that did
 not change.

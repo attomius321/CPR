@@ -164,6 +164,37 @@ export async function streamHistory(
   if (rest !== '') take(`${rest}\0`);
 }
 
+/**
+ * The commits of a scope's history whose message or author holds `query`, its case ignored and
+ * its words taken as they are (V66f, Git's search). Message and author are two runs of git: given
+ * together, git would ask for both.
+ */
+export async function findCommits(
+  repo: GitRepo,
+  scope: HistoryScope,
+  query: string,
+): Promise<string[]> {
+  const words = query.trim();
+  if (words === '') return [];
+  const run = (by: string) =>
+    git(repo.root, [
+      'log',
+      '--format=%H',
+      '--regexp-ignore-case',
+      '--fixed-strings',
+      `${by}=${words}`,
+      ...TIPS[scope],
+      '--',
+    ]).catch(async (error: unknown) => {
+      if (error instanceof GitError && !(await hasHead(repo))) return '';
+      throw error;
+    });
+  const found = (await Promise.all([run('--grep'), run('--author')])).flatMap((out) =>
+    out.split('\n').filter((sha) => sha !== ''),
+  );
+  return [...new Set(found)];
+}
+
 function parseRow(record: string): HistoryRow {
   const [sha = '', parents = ''] = record.split('\x1f');
   return { sha, parents: parents === '' ? [] : parents.split(' ') };

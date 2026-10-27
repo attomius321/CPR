@@ -38,7 +38,7 @@ const git = (...args: string[]) =>
 
 /** Reviews `agent` from History and approves it, at its tip `subject`. */
 async function approve(page: Page, subject = 'Agent: add cube') {
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   const tip = page.locator('.commit', {
     has: page.locator('.commit-subject', { hasText: subject }),
   });
@@ -77,7 +77,7 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
 
   // Resolved by the agent, written by Symbiote, waiting for review: main has not moved.
   // In the sidenav's Merging group; opened in the main area (V29a).
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.locator('.sidenav [data-merge="agent"]').getByRole('link').click();
   await expect(page).toHaveURL(`${symbiote.url}?merge=agent`);
   const entry = page.getByRole('region', { name: 'Merge of agent' });
@@ -153,7 +153,7 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
   // Landed (V55): Remove, the head's primary button, takes it from the queue; History shows.
   await expect(entry.getByRole('button', { name: 'More actions' })).toHaveCount(0);
   await entry.getByRole('button', { name: 'Remove', exact: true }).click();
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   await expect(page.locator('.sidenav [data-merge="agent"]')).toHaveCount(0);
   await expect(page.getByRole('contentinfo', { name: 'Status bar' })).toContainText(
     'Removed the merge of agent from the queue.',
@@ -191,7 +191,7 @@ async function resolvedConflict(
   const main = git('rev-parse', 'main');
   await approve(page);
   await page.getByRole('button', { name: 'Merge into', exact: true }).click();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   const card = page.locator('.sidenav [data-merge="agent"]');
   await card.getByRole('link').click();
   return { main, math, card, entry: page.getByRole('region', { name: 'Merge of agent' }) };
@@ -390,7 +390,7 @@ test('the merger agent asks you: its regions numbered, their conflict shown, and
   await approve(page);
   await page.getByRole('button', { name: 'Merge into', exact: true }).click();
   // In the sidenav's Merging group; opened in the main area (V29a).
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.locator('.sidenav [data-merge="agent"]').getByRole('link').click();
   await expect(page).toHaveURL(`${symbiote.url}?merge=agent`);
   const entry = page.getByRole('region', { name: 'Merge of agent' });
@@ -633,7 +633,7 @@ test('a resolution of two files: each listed with what it did, the one that lose
   git('commit', '-q', '-am', 'Main: add double and a note');
   await approve(page, 'Agent: note in app');
   await page.getByRole('button', { name: 'Merge into', exact: true }).click();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.locator('.sidenav [data-merge="agent"]').getByRole('link').click();
   const entry = page.getByRole('region', { name: 'Merge of agent' });
   await expect(entry.locator('.merge-label')).toHaveText('Review resolution');

@@ -29,6 +29,7 @@
 @import './history/RowMenu.css';
 @import './history/CheckoutDialog.css';
 @import './history/BranchesPanel.css';
+@import './history/GitPage.css';
 @import './workspaces/StartPage.css';
 @import './workspaces/StartFrom.css';
 @import './workspaces/StartDocuments.css';

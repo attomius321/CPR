@@ -46,7 +46,7 @@ import {
   verdictToSend,
   type WorkspaceRow,
 } from './workspaces.js';
-import { HISTORY_PAGE } from '../shell/pages.js';
+import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
 import { verdictLine } from './terminal.js';
 import { closeQuestion, shellAfter, shellOfUrl, withShell } from './shells.js';
@@ -99,7 +99,7 @@ export function WorkspaceView({ branch }: { branch: string }) {
   const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
   const row = allRows(groups).find((r) => r.workspace.branch === branch);
   const notify = useCallback((notice: Notice | null) => shell?.notify(notice), [shell]);
-  const onGone = useCallback(() => shell?.navigate({ page: 'history' }), [shell]);
+  const onGone = useCallback(() => shell?.navigate({ page: 'git' }), [shell]);
   if (!list) return <p className="hint main-hint">Listing workspaces…</p>;
   if (!row) {
     return (
@@ -107,8 +107,8 @@ export function WorkspaceView({ branch }: { branch: string }) {
         <p>No workspace {branch}.</p>
         <p className="hint">
           It was cleaned up, or started elsewhere. The sidenav lists the workspaces there are;{' '}
-          <a href={`${HISTORY_PAGE}?branch=${encodeURIComponent(branch)}`}>History</a> shows its
-          branch, if it is still there.
+          <a href={`${GIT_PAGE}?branch=${encodeURIComponent(branch)}`}>Git</a> shows its branch, if
+          it is still there.
         </p>
       </div>
     );

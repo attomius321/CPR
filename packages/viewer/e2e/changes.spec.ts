@@ -50,7 +50,7 @@ test("lists the branch's commits and files and what is not committed; a file ope
   page,
 }) => {
   const symbiote = await serve();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await start(page);
   await expect(panel(page)).toBeVisible();
   const commits = panel(page).getByRole('region', { name: 'Commits' });
@@ -102,7 +102,7 @@ test("] and the head's button hide it, kept across a reload; shown only where th
   page,
 }) => {
   const symbiote = await serve();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await start(page);
   await expect(panel(page)).toBeVisible();
   await expect(toggle(page)).toHaveAttribute('aria-pressed', 'true');
@@ -136,7 +136,7 @@ test('a file opens as its diff: the fork point against the worktree, a deleted f
   page,
 }) => {
   const symbiote = await serve();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await start(page);
   const files = panel(page).getByRole('region', { name: 'Files' });
   const loose = panel(page).getByRole('region', { name: 'Not committed' });
@@ -199,7 +199,7 @@ test('reviews the workspace against a branch picked in its changes, or where it 
   const symbiote = await serve();
   const [first = ''] = symbiote.shas;
   execFileSync('git', ['-C', symbiote.repo, 'branch', '-q', 'older', first]);
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await start(page);
   const commits = panel(page).getByRole('region', { name: 'Commits' });
   symbiote.commit(BRANCH, 'half.ts', 'export const half = (n: number) => n / 2;\n', 'Add half');

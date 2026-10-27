@@ -271,3 +271,5 @@ merge commit.
 - 2026-10-27 [V68 — Start from with a search](journal/v68-start-from-search.md)
 - 2026-10-27 [V67 spike — how many merges could have been fast-forwards](journal/v67-merge-strategies.md)
 - 2026-10-27 [V67 — a merge by fast-forward, picked at Merge into](journal/v67-merge-strategies.md)
+- 2026-10-27 [V66 spike — what git costs for a commit's details, a search and the status](journal/v66-git-page.md)
+- 2026-10-27 [V66 — Git: History renamed, a commit's details, changes, branches, remotes, search](journal/v66-git-page.md)

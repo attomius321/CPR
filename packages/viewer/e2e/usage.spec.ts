@@ -56,7 +56,7 @@ test("the status bar shows each subscription's windows, what a hover says, and n
       () => undefined,
     );
   });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   const items = usage(page).getByRole('listitem');
   await expect(items).toHaveCount(2, POLL);
   const [claude, codex] = [items.nth(0), items.nth(1)];
@@ -101,7 +101,7 @@ test('a window at its limit is red, the bar and its number', async ({ page }) =>
       },
     },
   });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   const claude = usage(page).getByRole('listitem').first();
   await expect(claude).toHaveText('ClaudePro5h100%wk30%', POLL);
   const full = claude.locator('.usage-window.tone-full');
@@ -124,7 +124,7 @@ test('the start page names the plan the status bar names, not the one the token 
       },
     },
   });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(usage(page).getByRole('listitem')).toHaveText(['ClaudeMax5h12%'], POLL);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   const start = page.getByRole('region', { name: 'Start a workspace' });
@@ -139,7 +139,7 @@ test("Claude's endpoint failing before Symbiote read it: Claude left out, the re
     appServer: true,
     usage: { claude: { error: 'overloaded' }, status: 529 },
   });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   // No read of Symbiote's yet: Claude is left out, Codex is shown.
   await expect(usage(page).getByRole('listitem')).toHaveText(['CodexGo30d0%'], POLL);
 });
@@ -170,7 +170,7 @@ test("started while Claude's endpoint refuses: the last read Symbiote kept, its 
       },
     },
   });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   const claude = usage(page).getByRole('listitem').first();
   await expect(claude).toHaveText('ClaudePro5h40%wk19%12 minutes ago', POLL);
   await expect(claude).toHaveClass(/\bcached\b/);

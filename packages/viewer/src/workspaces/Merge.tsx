@@ -102,7 +102,7 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
       .finally(() => setBusy(false));
   };
   /**
-   * Removed, the merge's page gives way to History (V55), the status bar saying so; `removeMerge`
+   * Removed, the merge's page gives way to Git (V55), the status bar saying so; `removeMerge`
    * reads the list again (V57).
    */
   const remove = () => {
@@ -111,7 +111,7 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
     removeMerge(entry)
       .then((notice) => {
         shell?.notify(notice);
-        shell?.navigate({ page: 'history' });
+        shell?.navigate({ page: 'git' });
       })
       .catch((e: unknown) => setError((e as Error).message))
       .finally(() => setBusy(false));

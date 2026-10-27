@@ -43,7 +43,7 @@ export function whatWaits(read: Read, asks: readonly McpAsk[]): Waiting {
   };
 }
 
-/** How many things wait: "(3) History · repo — Symbiote", and the dot on the app's icon. */
+/** How many things wait: "(3) Git · repo — Symbiote", and the dot on the app's icon. */
 export const waitingCount = (waiting: Waiting): number =>
   waiting.workspaces +
   waiting.merges +

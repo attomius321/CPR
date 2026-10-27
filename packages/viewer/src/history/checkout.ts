@@ -111,6 +111,27 @@ export function checkoutChoices(commit: Commit, refs: RefList, head: Head): Chec
   return choices;
 }
 
+/**
+ * What checking out a branch from the branches panel does (V66d): a local branch, or a remote one
+ * as its local branch, by the row menu's rules; null for a name the refs do not hold.
+ */
+export function branchChoice(name: string, refs: RefList, head: Head): CheckoutChoice | null {
+  const local = refs.branches.find((b) => b.name === name);
+  const remote = local ? undefined : refs.remotes.find((r) => r.name === name);
+  const sha = local?.sha ?? remote?.sha;
+  if (!sha) return null;
+  const tip: Commit = {
+    sha,
+    parents: [],
+    author: '',
+    date: '',
+    subject: '',
+    refs: [{ kind: local ? 'branch' : 'remote', name }],
+  };
+  const [choice] = checkoutChoices(tip, refs, head);
+  return choice?.ref.kind === 'commit' ? null : (choice ?? null);
+}
+
 /** What happens to local changes, or why no checkout can run now; null with neither. */
 export function changesNote({ changed, operation }: WorkingState): string | null {
   if (operation) return `A ${operation} is in progress: finish or abort it first.`;

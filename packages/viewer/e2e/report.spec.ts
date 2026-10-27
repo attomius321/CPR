@@ -32,7 +32,7 @@ test("a page's uncaught error and unhandled rejection are written as viewer line
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit-subject').first()).toBeVisible();
 
   await page.evaluate(() => {
@@ -50,7 +50,7 @@ test("a page's uncaught error and unhandled rejection are written as viewer line
     )
     .toEqual(expect.arrayContaining(['e2e: thrown in a page', 'e2e: rejected in a page']));
   const thrown = written().find((line) => line.msg === 'e2e: thrown in a page');
-  expect(thrown).toMatchObject({ level: 'error', page: '/history', err: { type: 'Error' } });
+  expect(thrown).toMatchObject({ level: 'error', page: '/git', err: { type: 'Error' } });
   expect((thrown?.err as { stack: string }).stack).toContain('e2e: thrown in a page');
   // The server's own lines are in the same folder.
   expect(written()).toEqual(

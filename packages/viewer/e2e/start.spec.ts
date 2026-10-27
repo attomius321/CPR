@@ -46,7 +46,7 @@ const short = (sha: string | undefined) => (sha ?? '').slice(0, 7);
 test('Start a workspace is a page right of the sidenav, at /start', async ({ page }) => {
   const symbiote = await serve();
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await startLink(page).click();
   await expect(page).toHaveURL(`${symbiote.url}start`);
@@ -68,8 +68,8 @@ test('Start a workspace is a page right of the sidenav, at /start', async ({ pag
   await page.reload();
   await expect(title(page)).toBeVisible();
   // The sidenav stays usable: History opens in place.
-  await sidenav(page).getByRole('link', { name: 'History' }).click();
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await sidenav(page).getByRole('link', { name: 'Git' }).click();
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   await expect(start(page)).toHaveCount(0);
 });
 
@@ -98,16 +98,16 @@ test('Escape and Cancel go back to the page it was opened from; the draft stays'
   await startLink(page).click();
   await expect(title(page)).toHaveValue('Keep me');
 
-  await sidenav(page).getByRole('link', { name: 'History' }).click();
+  await sidenav(page).getByRole('link', { name: 'Git' }).click();
   await startLink(page).click();
   await start(page).getByRole('button', { name: 'Cancel' }).click();
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}git`);
 
   // Opened by its address, with no page of Symbiote's before it: Cancel goes to History.
   const fresh = await page.context().newPage();
   await fresh.goto(`${symbiote.url}start`);
   await start(fresh).getByRole('button', { name: 'Cancel' }).click();
-  await expect(fresh).toHaveURL(`${symbiote.url}history`);
+  await expect(fresh).toHaveURL(`${symbiote.url}git`);
   await expect(title(fresh)).toHaveCount(0);
 });
 
@@ -115,7 +115,7 @@ test('a start takes its place in the history: Back goes to the page before it', 
   page,
 }) => {
   const symbiote = await serve();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await startLink(page).click();
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
@@ -123,7 +123,7 @@ test('a start takes its place in the history: Back goes to the page before it', 
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-clamp`);
   await expect(page.getByRole('region', { name: 'Workspace feature/add-clamp' })).toBeVisible();
   await page.goBack();
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}git`);
 });
 
 test('the brief and the run side by side; More closed fits 1440 × 900, More open scrolls under the head; one column on a phone', async ({
@@ -610,7 +610,7 @@ test("Start from a History row: the row's commit first, a branch instead when pi
 }) => {
   const symbiote = await serve();
   const [base, head] = symbiote.shas;
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page
     .locator('.commit', { has: page.locator('.commit-subject').getByText('base', { exact: true }) })
     .click({ button: 'right' });

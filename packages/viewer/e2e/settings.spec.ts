@@ -149,7 +149,7 @@ test('keeps drafts across prompts, asks before leaving with one, and refuses a s
 
   // Leaving with it asks first; staying keeps it. In the shell (V29a) the page is not unloaded:
   // the shell asks, in a dialog of Symbiote's own (N1c), not the browser's.
-  await page.getByRole('link', { name: 'History' }).click();
+  await page.getByRole('link', { name: 'Git' }).click();
   const asking = page.getByRole('alertdialog', { name: 'Leave Settings?' });
   await expect(asking).toContainText('A prompt is changed and not saved.');
   await asking.getByRole('button', { name: 'Stay' }).click();

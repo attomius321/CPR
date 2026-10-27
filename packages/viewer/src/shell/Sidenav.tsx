@@ -15,7 +15,7 @@ import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import {
   DoneIcon,
   SymbioteMark,
-  HistoryIcon,
+  GitIcon,
   MenuIcon,
   MergingIcon,
   MonitorIcon,
@@ -35,7 +35,7 @@ import { mergeState, removableOnCard } from '../workspaces/merges.js';
 import { mergeKey, useRemoving, workspaceKey } from '../workspaces/removing.js';
 import { Help } from '../ui/Help.js';
 import {
-  HISTORY_PAGE,
+  GIT_PAGE,
   hrefOf,
   MONITOR_PAGE,
   SCOUT_PAGE,
@@ -214,7 +214,7 @@ export function Sidenav({
       <div className="sidenav-top">
         <a
           className="sidenav-brand"
-          href={HISTORY_PAGE}
+          href={GIT_PAGE}
           // Named in the rail too, where its words are hidden (a `title` named it before V54).
           aria-label={repo ? `Symbiote · ${repo}` : 'Symbiote'}
           {...tip(repo ? `Symbiote · ${repo}` : 'Symbiote', { side: 'right' })}
@@ -237,14 +237,17 @@ export function Sidenav({
       </div>
       <nav className="sidenav-pages" aria-label="Pages">
         <a
-          href={HISTORY_PAGE}
-          aria-label="History"
-          {...tip("History\nEvery branch's commits", { keys: 'h', side: 'right' })}
-          aria-current={route?.page === 'history' ? 'page' : undefined}
+          href={GIT_PAGE}
+          aria-label="Git"
+          {...tip("Git\nEvery branch's commits, your changes and the remotes", {
+            keys: 'g',
+            side: 'right',
+          })}
+          aria-current={route?.page === 'git' ? 'page' : undefined}
         >
-          <HistoryIcon />
-          <span className="sidenav-label">History</span>
-          <kbd aria-hidden="true">h</kbd>
+          <GitIcon />
+          <span className="sidenav-label">Git</span>
+          <kbd aria-hidden="true">g</kbd>
         </a>
         <a
           href={SCOUT_PAGE}
@@ -369,7 +372,7 @@ export function Sidenav({
             No workspaces yet.
             <Help label="About workspaces">
               Start one (<kbd>n</kbd>): describe the work, and Symbiote makes its branch and
-              worktree and starts an agent there. Or start one from a commit in History.
+              worktree and starts an agent there. Or start one from a commit in Git.
             </Help>
           </p>
         )}
@@ -807,7 +810,7 @@ function CardRemove({
         run().then(
           (notice) => {
             shell?.notify(notice);
-            if (shown) shell?.navigate({ page: 'history' });
+            if (shown) shell?.navigate({ page: 'git' });
           },
           (e: unknown) => shell?.notify({ text: (e as Error).message, error: true }),
         );

@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import {
   commitDetails,
+  findCommits,
   hasCommitGraph,
   historyState,
   isCommit,
@@ -295,5 +296,36 @@ describe('isCommit', () => {
     expect(await isCommit(git, tree)).toBe(false);
     expect(await isCommit(git, sha('0'))).toBe(false);
     expect(await isCommit(git, `--output=${commit}`)).toBe(false);
+  });
+});
+
+describe('findCommits (V66f)', () => {
+  it("finds commits by their message or author, ignoring case, in the scope's history", async () => {
+    const repo = createRepo();
+    try {
+      repo.write({ 'a.txt': 'a\n' });
+      const first = repo.commit('Add the parser\n\nIt reads Widgets.');
+      repo.git('switch', '--quiet', '--create', 'side');
+      repo.write({ 'b.txt': 'b\n' });
+      const side = repo.commit('Side work');
+      repo.git('switch', '--quiet', 'main');
+      repo.write({ 'c.txt': 'c\n' });
+      const fix = repo.commit('Fix [the] parser.*');
+      const opened = await openRepo(repo.root);
+      expect(new Set(await findCommits(opened, 'all', 'PARSER'))).toEqual(new Set([first, fix]));
+      // The body too; the words as they are, not a pattern.
+      expect(await findCommits(opened, 'all', 'widgets')).toEqual([first]);
+      expect(await findCommits(opened, 'all', '[the] parser.*')).toEqual([fix]);
+      // The author.
+      expect(new Set(await findCommits(opened, 'all', 'symbiote test'))).toEqual(
+        new Set([first, side, fix]),
+      );
+      // "This branch" does not list side's commits.
+      expect(await findCommits(opened, 'current', 'side')).toEqual([]);
+      expect(await findCommits(opened, 'all', 'side')).toEqual([side]);
+      expect(await findCommits(opened, 'all', '  ')).toEqual([]);
+    } finally {
+      repo.cleanup();
+    }
   });
 });

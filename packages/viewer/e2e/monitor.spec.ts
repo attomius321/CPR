@@ -77,7 +77,7 @@ const headline = (page: Page) => page.locator('.monitor-headline');
 test('m opens the Monitor: the concentration in words, the treemap and the ranked list', async ({
   page,
 }) => {
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit-subject').first()).toBeVisible();
   await page.keyboard.press('m');
   await expect(page).toHaveURL(/\/monitor$/);

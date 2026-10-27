@@ -197,7 +197,7 @@ test('narrow: the strip that opens the sidenav, as in a browser; the drawer unde
   const inBrowser = await open(browser, false, 800);
   const inApp = await open(browser, true, 800);
   for (const page of [inBrowser, inApp]) {
-    await page.goto(`${symbiote.url}history`);
+    await page.goto(`${symbiote.url}git`);
     await expect(page.locator('.commit').first()).toBeVisible();
   }
   await expectSamePage(inBrowser, inApp, ['.shell-top', '.shell-main', '.commits-title']);

@@ -75,7 +75,7 @@ const reviewFile = () =>
 
 test('reviews a branch, then only what the agent changed since', async ({ page }) => {
   const [base, , cube] = symbiote.shas;
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
 
   // The agent's tip offers "Review" beside "Check out"; main, the default branch, cannot be.
   await row(page, 'Agent: add cube').click({ button: 'right' });
@@ -83,6 +83,8 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
     'Check out',
     'Review',
     'Start a workspace here',
+    'New branch here…',
+    'New tag here…',
   ]);
   await page.getByRole('menuitem', { name: 'Review', exact: true }).hover();
   const targets = page.getByRole('menu', { name: 'Review' }).getByRole('menuitem');
@@ -119,7 +121,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   expect(git('status', '--porcelain', '--untracked-files=all')).toBe('');
 
   // Back on the commits page the branch is being reviewed (V16: "✓" is an approval).
-  await page.getByRole('link', { name: 'Back to History' }).click();
+  await page.getByRole('link', { name: 'Back to Git' }).click();
   await expect(row(page, 'Agent: add cube').locator('.ref-review')).toHaveText('…');
 
   // The agent changes square and adds half.
@@ -168,7 +170,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
 }) => {
   const [, , cube] = symbiote.shas;
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await review(page, 'Agent: add cube', 'agent not reviewed yet');
   await expect(page).toHaveURL(/\/review\/agent\/$/);
 
@@ -229,7 +231,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
     }),
   ]);
   expect(() => originGit('rev-parse', '--verify', '--quiet', 'agent')).toThrow();
-  await page.getByRole('link', { name: 'Back to History' }).click();
+  await page.getByRole('link', { name: 'Back to Git' }).click();
   await expect(row(page, 'Agent: add cube').locator('.ref-review')).toHaveText('✗');
   await expect(row(page, 'Agent: add cube').locator('.ref-review')).toHaveClass(
     /ref-review-changes/,
@@ -287,7 +289,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   expect(agents).not.toContain('git merge --no-ff');
   expect(agents).toContain('Do not merge it yourself');
   expect(git('status', '--porcelain', '--untracked-files=all')).toBe('');
-  await page.getByRole('link', { name: 'Back to History' }).click();
+  await page.getByRole('link', { name: 'Back to Git' }).click();
   const approved = row(page, 'Agent: square returns early').locator('.ref-review').first();
   await expect(approved).toHaveText('✓');
   await expect(approved).toHaveAttribute('data-tip', 'Approved');
@@ -322,7 +324,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   expect(git('rev-parse', 'main')).toBe(main);
 
   // In the sidenav's Merging group; open, in the main area (V29a).
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(
     page.getByRole('region', { name: 'Merging' }).locator('[data-merge="agent"]'),
   ).toBeVisible();
@@ -340,7 +342,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   expect(readFileSync(math, 'utf8')).toContain('if (a === 0) return 0;');
   await expect(entry.getByRole('button', { name: 'Land', exact: true })).toHaveCount(0);
 
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(
     row(page, 'Agent: square returns early').locator('.ref-review').first(),
   ).toHaveAttribute('data-tip', 'Approved · merged into main');
@@ -357,7 +359,7 @@ test('says a branch will conflict with main; resolved on the branch, only its co
     `${readFileSync(math, 'utf8')}\nexport const double = (a: number) => a * 2;\n`,
   );
   git('commit', '-q', '-am', 'Main: add double');
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await review(page, 'Agent: add cube', 'agent not reviewed yet');
   await reviewTab(page).click();
   // Each file on its line, its folder beside it, and a button that opens it in VS Code.
@@ -390,7 +392,7 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   await entry.getByRole('button', { name: 'More actions' }).click();
   await page.getByRole('menuitem', { name: 'Remove' }).click();
   await expect(page.getByRole('region', { name: 'Merging' })).toHaveCount(0);
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
 
   // The agent merges main into its branch and resolves the conflict there.
   git('checkout', '-q', 'agent');
@@ -422,7 +424,7 @@ test("reviews the agent's commits on main itself; an approval says they may be p
   writeFileSync(math, `${readFileSync(math, 'utf8')}\nexport const half = (a: number) => a / 2;\n`);
   git('commit', '-q', '-am', 'Agent: add half on main');
   const tip = git('rev-parse', 'HEAD');
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await review(page, 'Agent: add half on main', 'main 1 unpushed commit');
   await expect(page).toHaveURL(/\/review\/main\/$/);
   await expect(page.locator('.review-of')).toHaveText('Review of main · first review');

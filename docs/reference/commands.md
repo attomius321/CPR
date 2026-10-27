@@ -8,7 +8,7 @@ explains the terms this page uses: workspace, merger, verdict, Scout and the oth
 
 | Command | What it does |
 |---|---|
-| `symbiote view [<base> [head]]` | Opens the app. Without revisions, it opens on History, with your workspaces in the sidenav. With revisions, it opens on that comparison. It runs until you press Ctrl+C or close its window. |
+| `symbiote view [<base> [head]]` | Opens the app. Without revisions, it opens on Git, with your workspaces in the sidenav. With revisions, it opens on that comparison. It runs until you press Ctrl+C or close its window. |
 | `symbiote diff <base> [head]` | Compares `head` (default `HEAD`) with `base` and prints the changed symbols and the findings. |
 | `symbiote pr [<number>]` | Opens a GitHub pull request or a GitLab merge request for review. `symbiote mr` is the same command. |
 | `symbiote merge <branch>` | Merges the commit that your review of `branch` approved, as **Merge into** does in the app, and prints each step. |
@@ -79,29 +79,30 @@ and 2 when its arguments are wrong.
 
 ## Keys
 
-Keys work when the focus is not in a text box. History also lists its keys under the **?** in its
+Keys work when the focus is not in a text box. Git also lists its keys under the **?** in its
 toolbar.
 
-| Key | On History | A change's Files page | A change's Graph page |
+| Key | On Git | A change's Files page | A change's Graph page |
 |---|---|---|---|
-| j, k | Next or previous commit | Next or previous file | Next or previous changed symbol |
+| j, k | Next or previous commit (above the first: your uncommitted changes) | Next or previous file | Next or previous changed symbol |
 | / | Find a branch | | Search the change list |
 | c | Check out the commit or one of its branches (asks first) | Comment on the file's first change | Comment on the selected symbol |
 | r | Review the branch | | Mark the selected symbol reviewed |
 | x | Compare mode: pick two commits | | |
-| f | | | Show only the selected symbol and its neighbours |
+| f | Find a commit: Enter and Shift+Enter step through what it finds | | Show only the selected symbol and its neighbours |
+| d | Show or fold the commit's details | | |
 | p, P | | | Next or previous project, in a monorepo |
 | o | | Open the file in VS Code at its first change | Open the selected symbol in VS Code |
 | g | | The Graph page | The Files page |
 | Esc | Leave compare mode | Close the comment box | Close the detail panel |
 
-These keys work on History, Scout, Skills, Monitor, Settings and a workspace's page. In a
+These keys work on Git, Scout, Skills, Monitor, Settings and a workspace's page. In a
 change, only n and [ work.
 
 | Key | What it does |
 |---|---|
 | n | Open **Start a workspace** |
-| h, s | History, Settings |
+| g, s | Git, Settings |
 | a | Scout |
 | i | Skills |
 | m | Monitor |
@@ -109,8 +110,8 @@ change, only n and [ work.
 | [ | Fold the sidenav to a row of icons, or open it again |
 | ] | In a workspace: hide or show the **Changes** panel |
 
-In a text box where you write a comment, a brief, a reply or a prompt, Ctrl+Enter saves, starts or
-sends. On macOS, use Cmd instead of Ctrl.
+In a text box where you write a comment, a brief, a reply, a prompt or a commit's message,
+Ctrl+Enter saves, starts, sends or commits. On macOS, use Cmd instead of Ctrl.
 
 ## Symbiote's tools for your own agent
 

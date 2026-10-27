@@ -72,7 +72,7 @@ or Codex. Claude Code starts only in a repository you have trusted. Trusting the
 covers its workspaces' worktrees. If you have never run `claude` in this repository, run it there
 once and accept its trust prompt. Codex needs no such step.
 
-1. In the repository, run `symbiote view`. Symbiote opens on **History**, the repository's
+1. In the repository, run `symbiote view`. Symbiote opens on **Git**, the repository's
    commits and branches. The list on the left is the *sidenav*: its pages, then your workspaces,
    and **Settings** at the bottom.
 2. Press `n`, or click **+** beside **Workspaces** in the sidenav. The **Start a workspace** page
@@ -284,9 +284,15 @@ not clean up a workspace while its worktree has changes that are not committed.
 
 The sidenav also opens these pages. Each has a key.
 
-- **History** (`h`): the repository's commits and branches, drawn as a graph. Right-click a commit
-  to check it out, review its branch (`r`), or start a workspace from it. Press `x` to compare
-  two commits.
+- **Git** (`g`): the repository's commits and branches, drawn as a graph. Select a commit to see
+  its message, author, parents and files in the details pane, and each file's diff. Right-click a
+  commit to check it out, review its branch (`r`), start a workspace from it, or make a branch or
+  a tag there. Right-click a branch in the branches panel to rename or delete it. Double-click
+  the branch to check it out. Press `x` to compare two commits.
+  Your uncommitted changes are a row above the commits: stage files, write a message and commit
+  them in the details pane. **Fetch**, **Pull** (fast-forward only, merge or rebase) and **Push**
+  are at the top, with **Find a commit** (`f`) to search the messages, authors and SHAs.
+  Symbiote never forces a push and never discards your changes: when git refuses, it says why.
 - **Scout** (`a`): an agent you can ask about the repository: where something is decided, why it
   works this way, or what waits for you. Scout can also act on your workspaces for you: start one,
   answer an agent, review or merge a branch. Scout never edits files. It can send a message to an
@@ -307,12 +313,12 @@ The sidenav also opens these pages. Each has a key.
 - **Settings** (`s`): the prompts Symbiote gives its agents, such as a workspace agent's first
   prompt; the model and effort of the merger, Scout and Scribe; the **Skill library** (its folder,
   or a repository to clone, and who commits its changes); and **Appearance** (dark, light or your
-  system's).
+  system's, and whether Git's commit details show on the right or below the commits).
 
 The status bar at the bottom shows how much of your Claude and Codex subscription limits you have
 used.
 
-![History: the branches panel, and the commits drawn as a graph, each branch labelled with its review's state](docs/images/history.png)
+![Git: the branches panel, and the commits drawn as a graph, each branch labelled with its review's state](docs/images/history.png)
 
 ## Review without an agent
 

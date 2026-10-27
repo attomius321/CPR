@@ -211,6 +211,27 @@ describe('Histories', () => {
   });
 });
 
+describe('Histories.find (V66f)', () => {
+  it("gives the rows of the source's matches and of SHAs starting with the words, in order", async () => {
+    const fake = fakeSource();
+    const asked: [HistoryScope, string][] = [];
+    fake.source.find = (scope, query) => {
+      asked.push([scope, query]);
+      return Promise.resolve([sha('a'), sha('x'), sha('z')]);
+    };
+    const histories = new Histories(fake.source);
+    void histories.page('all', 0, 1);
+    await settle();
+    fake.streams[0]?.push(ROWS);
+    fake.streams[0]?.end();
+    // a and x match their messages (z is not listed); b's SHA starts with "bbbb".
+    expect(await histories.find('all', 'v1', 'bbbb')).toEqual({ rows: [1, 2, 3] });
+    expect(asked).toEqual([['all', 'bbbb']]);
+    expect(await histories.find('all', 'stale', 'bbbb')).toBeNull();
+    expect(await histories.find('all', 'v1', ' ')).toEqual({ rows: [] });
+  });
+});
+
 describe('slowListingHint', () => {
   it('names the commit-graph file when git took long and the repository has none', () => {
     expect(slowListingHint(150_182, 1185, false)).toBe(

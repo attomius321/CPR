@@ -44,7 +44,7 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
 }) => {
   symbiote = await serveWorkspaces();
   const main = symbiote.shas.at(-1);
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await expect(startPage(page)).toBeVisible();
   await expect(title(page)).toBeFocused();
@@ -116,7 +116,7 @@ test('n starts one too; a name in use is refused before Start; Escape cancels', 
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(startPage(page)).toBeVisible();
@@ -149,7 +149,7 @@ test('n starts one too; a name in use is refused before Start; Escape cancels', 
 test("Start a workspace here: the row's commit is where it starts", async ({ page }) => {
   symbiote = await serveWorkspaces();
   const [base] = symbiote.shas;
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await row(page, 'base').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Start a workspace here' }).click();
   await expect(startPage(page)).toContainText(`Will be created from the commit ${short(base)}`);
@@ -166,7 +166,7 @@ test("an agent that does not start: the workspace stays, with Claude Code's word
   symbiote = await serveWorkspaces();
   symbiote.distrust();
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await fillWork(page, 'Add a half function');
   await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
@@ -190,7 +190,7 @@ test('without an agent: the branch and worktree are made, and the prompt is give
   page,
 }) => {
   symbiote = await serveWorkspaces({ agent: false });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await expect(startPage(page)).toContainText('No agent found');
   await fillWork(page, 'Add a half function');
@@ -297,7 +297,7 @@ test('the agents that wait for you: first, what each asks, Respond, the count in
   expect(Math.abs(kind!.x + kind!.width - (age!.x + age!.width))).toBeLessThanOrEqual(1);
 
   // Respond: its workspace, on its terminal, focused.
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await waiting.locator(workspaceRow(page, tests)).getByRole('button', { name: 'Respond' }).click();
   await expect(panel(page, tests)).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
@@ -546,7 +546,7 @@ test('an agent that starts waiting while you are elsewhere: one line in the stat
   await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  await page.getByRole('link', { name: 'History' }).first().click();
+  await page.getByRole('link', { name: 'Git' }).first().click();
   const bar = page.getByRole('contentinfo', { name: 'Status bar' });
   symbiote.hook(branch, {
     hook_event_name: 'PermissionRequest',
@@ -630,12 +630,12 @@ test('Stop the agent says it stops until Symbiote answers (V48)', async ({ page 
 
 test('a workspace and its branch lead to each other', async ({ page }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
   symbiote.session(branch, { state: 'done' });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
 
   // The branch's mark on the commits page goes to its workspace, its card in view.
   const mark = page.locator('.commit .ref', { hasText: branch }).locator('.workspace-mark');
@@ -651,7 +651,7 @@ test('a workspace and its branch lead to each other', async ({ page }) => {
 
   // The branch on the workspace goes to its tip on the commits page.
   await workspaceRow(page, branch).getByRole('link', { name: branch }).click();
-  await expect(page).toHaveURL(`${symbiote.url}history?branch=feature%2Fadd-a-half-function`);
+  await expect(page).toHaveURL(`${symbiote.url}git?branch=feature%2Fadd-a-half-function`);
   await expect(page.locator('.commit.cursor')).toContainText('Add half');
 
   // The tip's menu: "Open its workspace"; the branches panel shows the mark too.
@@ -677,10 +677,10 @@ test("an agent's commit shows on the commits page as it comes, the cursor where 
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   // The cursor on the older commit, while the agent works.
   await row(page, 'base').click();
   await expect(row(page, 'base')).toHaveClass(/cursor/);
@@ -693,10 +693,10 @@ test("the branches panel: workspaces that need you first, their agent's last act
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await startFrom(page, 'Add a half function');
   await startFrom(page, 'Export the totals');
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   const half = 'feature/add-a-half-function';
   const totals = 'feature/export-the-totals';
   const branches = page.locator('.branches');
@@ -770,10 +770,10 @@ test("a workspace's branch: checked out in its worktree, so not here; gone, it s
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
-  await page.goto(`${symbiote.url}history?branch=${encodeURIComponent(branch)}`);
+  await page.goto(`${symbiote.url}git?branch=${encodeURIComponent(branch)}`);
   await page.locator('.commit.cursor').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Check out', exact: true }).hover();
   await expect(page.getByRole('menuitem', { name: `Check out branch ${branch}` })).toBeDisabled();
@@ -788,7 +788,7 @@ test("a workspace's branch: checked out in its worktree, so not here; gone, it s
   await page.goto(`${symbiote.url}`);
   await expect(workspaceRow(page, branch)).toContainText('Its branch is gone');
   await expect(workspaceRow(page, branch).getByRole('link', { name: branch })).toHaveCount(0);
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible();
   // On History's rows and branches; the sidenav's card keeps its own.
   await expect(page.locator('.commits .workspace-mark')).toHaveCount(0);
@@ -943,7 +943,7 @@ test('at 900 px the sidenav and the workspace share the window; its card picks i
 }) => {
   symbiote = await serveWorkspaces();
   await page.setViewportSize({ width: 900, height: 800 });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await startFrom(page, 'Add a half function');
   await startFrom(page, 'Add clamp');
   const half = 'feature/add-a-half-function';
@@ -984,7 +984,7 @@ test('Clean up: once merged, its sessions, worktree and branch go, and so does t
   expect(existsSync(symbiote.folder(branch))).toBe(false);
   expect(git('branch', '--list', branch)).toBe('');
   await expect(page.getByText('No workspaces yet')).toBeVisible();
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   await expect(page.getByRole('contentinfo', { name: 'Status bar' })).toContainText(
     `Cleaned up ${branch}: its worktree is removed.`,
   );
@@ -1070,7 +1070,7 @@ test("a done card's icon cleans it up from the sidenav: on hover or focus, witho
     .getByRole('button', { name: 'Clean up Add a double function' })
     .click();
   await expect(workspaceRow(page, other)).toHaveCount(0, POLL);
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   await expect(page.getByText('No workspaces yet')).toBeVisible();
 });
 
@@ -1246,7 +1246,7 @@ test("Clean up from a workspace's head: Cleaning up…, and its card disabled un
     'Cleaning up · its worktree and its branch',
   );
   go();
-  await expect(page).toHaveURL(`${symbiote.url}history`, POLL);
+  await expect(page).toHaveURL(`${symbiote.url}git`, POLL);
   await expect(card).toHaveCount(0, POLL);
   await expect(page.getByText('No workspaces yet')).toBeVisible();
 });
@@ -1785,7 +1785,7 @@ test('each kind starts a workspace: its brief, its line, its branch, its tag (V2
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   const kinds = [
     ['Fix', 'What happens', 'fix/', 'Reproduce it first, with a failing test'],
     ['Refactor', 'What to restructure', 'refactor/', 'Change structure, not behaviour'],
@@ -1832,7 +1832,7 @@ test('Done when names the check guessed at the start commit; switching kinds kee
   );
   git('add', 'package.json');
   git('commit', '-q', '-m', 'Add a check');
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   // A Feature has no Done when of its own; the check is offered as an example.
   await expect(doneWhen(page)).toHaveValue('');
@@ -1895,7 +1895,7 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
     (await (await page.request.get(`${symbiote.url}api/workspaces/draft`)).json()) as {
       title?: string;
     };
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await kind(page, 'Fix').click();
   await title(page).fill('Dates sort as text');
@@ -1919,7 +1919,7 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(title(page)).toBeFocused();
@@ -1971,7 +1971,7 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
 
 test('a workspace started before V24 is named by its brief, with no kind', async ({ page }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   // What a page from before V24 posts: one brief.
   const status = await page.evaluate(async () => {
     const response = await fetch('/api/workspaces', {
@@ -2006,7 +2006,7 @@ test('the Brief tab draws the brief as Markdown: its headings, lists and code', 
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await title(page).fill('Add clamp');
   await goal(page).fill(
@@ -2033,7 +2033,7 @@ test('the kinds explained: a tooltip after the picker, on hover, focus or a tap 
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await kind(page, 'Fix').click();
   // A help's tip is drawn on the page's body (V37), named by the button's aria-describedby.

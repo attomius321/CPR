@@ -5,7 +5,7 @@ import { shortSha, type Loaded, type Pair } from '../history/commits.js';
 import { backLink } from '../shell/pages.js';
 import { BackIcon } from '../ui/icons.js';
 
-/** "Back to History" or "Back to Workspaces", on a diff's page: where it was opened from (V25). */
+/** "Back to Git" or "Back to Workspaces", on a diff's page: where it was opened from (V25). */
 export function BackLink() {
   const { href, label } = backLink(document.referrer, window.location.origin);
   return (

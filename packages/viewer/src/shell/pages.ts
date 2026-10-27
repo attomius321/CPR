@@ -1,12 +1,14 @@
 import type { Graph } from '@symbiote/core';
 
 /**
- * `symbiote view`'s pages and what its sidenav opens (V29a): History, Scout (V35), Skills (V41),
- * Monitor (RM1), Settings, a workspace or a merge, and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces
- * page since V29a: the workspaces are in the sidenav, and `/` alone opens History.
+ * `symbiote view`'s pages and what its sidenav opens (V29a): Git (History until V66), Scout (V35),
+ * Skills (V41), Monitor (RM1), Settings, a workspace or a merge, and Start a workspace (V30a), each
+ * shown in the shell's main area. There is no Workspaces page since V29a: the workspaces are in the
+ * sidenav, and `/` alone opens Git.
  */
 export type Route =
-  | { page: 'history' }
+  /** The repository's history and git's work on it (V66), at `/git`. */
+  | { page: 'git' }
   /** Scout (V35), at `/scout`: a read-only agent to ask about the repository. */
   | { page: 'scout' }
   /** The checkout's skills, and Scribe, at `/skills` (V41); the skill open is in `?skill=`. */
@@ -25,7 +27,9 @@ export type Route =
   /** Start a workspace (V30a), at `/start`: at the default branch's tip, or at the commit `at`. */
   | { page: 'start'; at?: string };
 
-export const HISTORY_PAGE = '/history';
+export const GIT_PAGE = '/git';
+/** Git's address until V66, moved to `GIT_PAGE` with its query. */
+const HISTORY_PAGE = '/history';
 export const SETTINGS_PAGE = '/settings';
 export const SCOUT_PAGE = '/scout';
 export const SKILLS_PAGE = '/skills';
@@ -44,8 +48,8 @@ export function pageTitle(...parts: (string | undefined)[]): string {
 /** A shell page's title: a workspace by its title (`name`) when known, else its branch. */
 export function routeTitle(route: Route, repo: string | undefined, name?: string): string {
   switch (route.page) {
-    case 'history':
-      return pageTitle('History', repo);
+    case 'git':
+      return pageTitle('Git', repo);
     case 'scout':
       return pageTitle('Scout', repo);
     case 'skills':
@@ -102,8 +106,8 @@ const OLD_WORKSPACES = new Set(['/workspaces', '/features']);
 /** The address of a route, the one `routeOf` reads back. */
 export function hrefOf(route: Route): string {
   switch (route.page) {
-    case 'history':
-      return HISTORY_PAGE;
+    case 'git':
+      return GIT_PAGE;
     case 'scout':
       return SCOUT_PAGE;
     case 'skills':
@@ -125,10 +129,11 @@ export function hrefOf(route: Route): string {
 
 /**
  * What the shell shows at `pathname` and `search`; `moved` is the address to show instead: the root
- * alone is History, and an old address of Workspaces is today's.
+ * alone is Git, History's old address is Git's, and an old address of Workspaces is today's.
  */
 export function routeOf(pathname: string, search: string): { route: Route; moved?: string } {
-  if (pathname === HISTORY_PAGE) return { route: { page: 'history' } };
+  if (pathname === GIT_PAGE) return { route: { page: 'git' } };
+  if (pathname === HISTORY_PAGE) return { route: { page: 'git' }, moved: `${GIT_PAGE}${search}` };
   if (pathname === SETTINGS_PAGE) return { route: { page: 'settings' } };
   if (pathname === SCOUT_PAGE) return { route: { page: 'scout' } };
   if (pathname === SKILLS_PAGE) return { route: { page: 'skills' } };
@@ -149,12 +154,13 @@ export function routeOf(pathname: string, search: string): { route: Route; moved
     return old ? { route, moved: `/${search}` } : { route };
   }
   if (merge && !old) return { route: { page: 'merge', branch: merge } };
-  return { route: { page: 'history' }, moved: HISTORY_PAGE };
+  return { route: { page: 'git' }, moved: GIT_PAGE };
 }
 
 /** Whether a same-origin address is one the shell shows in place (without loading the page). */
 export function inShell(url: URL): boolean {
   return (
+    url.pathname === GIT_PAGE ||
     url.pathname === HISTORY_PAGE ||
     url.pathname === SETTINGS_PAGE ||
     url.pathname === SCOUT_PAGE ||
@@ -168,7 +174,7 @@ export function inShell(url: URL): boolean {
 
 /**
  * A diff's way back: to the page it was opened from (`referrer`, which outlives a reload), with
- * its address; else History, where comparisons are picked.
+ * its address; else Git, where comparisons are picked.
  */
 export function backLink(referrer: string, origin: string): { href: string; label: string } {
   let from: URL | null = null;
@@ -178,11 +184,11 @@ export function backLink(referrer: string, origin: string): { href: string; labe
     // No referrer: a bookmark, a typed address.
   }
   if (from && from.origin === origin) {
-    if (from.pathname === HISTORY_PAGE) {
-      return { href: `${HISTORY_PAGE}${from.search}`, label: 'History' };
+    if (from.pathname === GIT_PAGE || from.pathname === HISTORY_PAGE) {
+      return { href: `${GIT_PAGE}${from.search}`, label: 'Git' };
     }
     const { route } = routeOf(from.pathname, from.search);
     if (route.page === 'workspace') return { href: hrefOf(route), label: 'Workspace' };
   }
-  return { href: HISTORY_PAGE, label: 'History' };
+  return { href: GIT_PAGE, label: 'Git' };
 }
