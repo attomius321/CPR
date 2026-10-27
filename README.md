@@ -73,7 +73,8 @@ covers its workspaces' worktrees. If you have never run `claude` in this reposit
 once and accept its trust prompt. Codex needs no such step.
 
 1. In the repository, run `symbiote view`. Symbiote opens on **History**, the repository's
-   commits and branches. The list on the left is the *sidenav*: its pages, then your workspaces.
+   commits and branches. The list on the left is the *sidenav*: its pages, then your workspaces,
+   and **Settings** at the bottom.
 2. Press `n`, or click **+** beside **Workspaces** in the sidenav. The **Start a workspace** page
    opens.
 3. Leave **Feature** picked. Type a **Title**, such as "Add a discount code", and describe the
