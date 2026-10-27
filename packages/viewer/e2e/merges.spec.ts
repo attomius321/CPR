@@ -478,6 +478,32 @@ test('Ask again: the files stay listed, and the log goes to the new run (fix/mer
   await expect(log.locator('.xterm-rows')).not.toContainText('line 80');
 });
 
+// fix/scribe-terminal-problem: the fit add-on counted the rows from the height of the box xterm
+// opened in, its padding included (border-box), and the box cut the last line off.
+test("the log's last line whole at every height (fix/scribe-terminal-problem)", async ({
+  page,
+}) => {
+  const { entry } = await resolvedConflict(page, [
+    'for i in $(seq 1 120); do echo "line $i"; done',
+  ]);
+  await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
+  await entry.getByRole('tab', { name: 'Log' }).click();
+  const log = entry.locator('.merge-terminal');
+  await expect(log.locator('.xterm-rows')).toContainText('line 120');
+  // The log is the window's height less 260 px: one cycle of a 19 px row.
+  for (let height = 881; height < 900; height++) {
+    await page.setViewportSize({ width: 1440, height });
+    const past = await log.evaluate(async (box) => {
+      for (let i = 0; i < 5; i++) await new Promise((resolve) => requestAnimationFrame(resolve));
+      const rows = box.querySelector('.xterm-screen')?.getBoundingClientRect();
+      const outer = box.getBoundingClientRect();
+      if (!rows) throw new Error('no log');
+      return rows.bottom - (outer.bottom - parseFloat(getComputedStyle(box).paddingBottom));
+    });
+    expect.soft(past, `at 1440×${height}: its rows inside the padding`).toBeLessThanOrEqual(0.5);
+  }
+});
+
 test("a merge like the person's: the line copied from above it in red and shown first, a rewrite in amber, closing lines kept (fix/merge-viewer-on-conflict)", async ({
   page,
 }) => {
