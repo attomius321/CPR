@@ -5,10 +5,11 @@ serve it with `/api/graph`, `/api/source`, `/api/files`, `/api/file` (V60), `/ap
 and `/api/review` (`packages/cli/src/server.ts`); `?graph=<url>` loads any graph JSON instead
 (used by `scripts/viewer/measure.mjs`). Under `symbiote view` the pages live in a shell (V29a,
 `src/shell/Shell.tsx`): a sidenav with History (`/history`, `/api/history…`, `POST /api/diffs`),
-Settings and the workspaces (`/api/workspaces…`), each opened in place; `/` alone is History. Each diff is
-served under `/diff/<base>..<head>/`: the viewer must keep calling its own API with **relative**
-URLs (`./api/…`) and loading files relative to the page (`base: './'`), so every call reaches that
-diff. Only the two pages' endpoints are absolute (`/api/history…`, `/api/workspaces…`, `/api/diffs`).
+the workspaces (`/api/workspaces…`) and, at its bottom, Settings, each opened in place; `/` alone
+is History. Each diff is served under `/diff/<base>..<head>/`: the viewer must keep calling its
+own API with **relative** URLs (`./api/…`) and loading files relative to the page (`base: './'`),
+so every call reaches that diff. Only the two pages' endpoints are absolute (`/api/history…`,
+`/api/workspaces…`, `/api/diffs`).
 Pages and their addresses, and a diff's way back: `src/shell/pages.ts`. In code a workspace is a
 "workspace": "feature" is only the kind of work (a guard test, `packages/cli/test/naming.test.ts`).
 
