@@ -34,6 +34,8 @@ import { AskBar } from './AskBar.js';
 import { TitleBar } from './TitleBar.js';
 import { WorkspaceView } from '../workspaces/Workspace.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
+import { useTellApp, useWaiting } from './useWaiting.js';
+import { waitingCount } from './waiting.js';
 import { transitionNotice } from '../workspaces/transitions.js';
 import {
   allRows,
@@ -308,20 +310,21 @@ function TransitionNotices({
 
 /**
  * The window's title (N1a): the page, a workspace by its title, then the repository; first, how
- * many agents wait for the person (V48): "(2) History · repo — Symbiote", seen from the taskbar.
- * Its own component: a new read of the workspaces renders it alone, not the shell.
+ * many things wait for the person (V48, N2): "(2) History · repo — Symbiote", seen from the
+ * taskbar, where the app's icon has its dot. Its own component: a new read of the workspaces
+ * renders it alone, not the shell.
  */
 function WindowTitle({ route, repo }: { route: Route; repo: string | undefined }) {
-  const { list, reviews } = useWorkspaces();
+  const { list } = useWorkspaces();
   const picked =
     route.page === 'workspace'
       ? list?.workspaces.find((workspace) => workspace.branch === route.branch)
       : undefined;
   const name = picked ? workspaceName(picked) : undefined;
-  const waiting = useMemo(
-    () => workspaceGroups(list?.workspaces ?? [], reviews).waiting.length,
-    [list, reviews],
-  );
+  const what = useWaiting();
+  const count = what ? waitingCount(what) : null;
+  useTellApp(count);
+  const waiting = count ?? 0;
   useEffect(() => {
     const title = routeTitle(route, repo, name);
     document.title = waiting > 0 ? `(${waiting}) ${title}` : title;
