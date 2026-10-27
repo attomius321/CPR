@@ -499,6 +499,7 @@ export function workspaces(
       ...(workspace.title ? { title: workspace.title } : {}),
       base: workspace.base,
       ...(workspace.from ? { from: workspace.from } : {}),
+      ...(workspace.against ? { against: workspace.against } : {}),
       created: workspace.created,
       planFirst: workspace.planFirst,
       brief: workspace.brief,

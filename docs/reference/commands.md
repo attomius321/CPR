@@ -68,7 +68,7 @@ The [review guide](../guide/review-and-ci.md#findings) explains each finding.
 | `--post-findings <level>` | pr | Posts new findings at or above the level as comments on their lines, instead of opening the app. A finding posted by an earlier run is not posted again. |
 | `--forge <name>` | pr | `github` or `gitlab`, for a host whose name does not say which it is. |
 | `--remote <name>` | pr | The remote to read and fetch from. Default: `origin`. |
-| `--into <branch>` | merge | The branch to merge into. Default: the branch the workspace started from, else the target named in your approval, else the default branch. |
+| `--into <branch>` | merge | The branch to merge into. Default: the branch the workspace is reviewed against, else the branch it started from, else the target named in your approval, else the default branch. |
 | `--land` | merge | Lands a merge that waits for you: one with no check, or one that git refused to land. |
 | `--approve` | merge | Approves the merger's resolution of a conflict, which lands it. |
 | `--again <words>` | merge | Asks the merger again, with what to change or your answer to its question. |

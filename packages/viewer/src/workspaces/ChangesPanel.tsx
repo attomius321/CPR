@@ -1,6 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import type { WorkspaceChanges, WorkspaceFileChange } from '@symbiote/core';
+import type { WorkspaceAgainst, WorkspaceChanges, WorkspaceFileChange } from '@symbiote/core';
 import {
+  againstOptions,
+  baseTitle,
   commitTitle,
   fileTitle,
   linesOf,
@@ -9,7 +11,8 @@ import {
   splitPath,
   statusLetter,
 } from './changes.js';
-import { postJson, serverWords } from '../ui/http.js';
+import { getJson, postJson, serverWords } from '../ui/http.js';
+import { reloadWorkspaces } from './useWorkspaces.js';
 import { shortAge } from './workspaces.js';
 import { tip } from '../ui/tip.js';
 
@@ -17,7 +20,12 @@ import { tip } from '../ui/tip.js';
  * A workspace's changes (V29d), read when it is picked and with every read of the list (on focus,
  * every 5 s while an agent works or waits): the last answer stays drawn while the next is read.
  */
-export function useChanges(branch: string, version: unknown): WorkspaceChanges | string | null {
+export function useChanges(
+  branch: string,
+  version: unknown,
+  /** Changed to read them again now (V65: after a pick of what it is reviewed against). */
+  again = 0,
+): WorkspaceChanges | string | null {
   const [changes, setChanges] = useState<WorkspaceChanges | string | null>(null);
   useEffect(() => {
     let live = true;
@@ -35,8 +43,68 @@ export function useChanges(branch: string, version: unknown): WorkspaceChanges |
     return () => {
       live = false;
     };
-  }, [branch, version]);
+  }, [branch, version, again]);
   return changes;
+}
+
+/**
+ * The branch a workspace is reviewed against (V65): where it started, or a branch picked here;
+ * its Review, these changes, the head's count and the merge check follow. Read once per branch;
+ * the words alone until then, or when it cannot be read.
+ */
+function AgainstChoice({
+  branch,
+  changes,
+  onPicked,
+  onSaid,
+}: {
+  branch: string;
+  changes: WorkspaceChanges;
+  onPicked: () => void;
+  onSaid: (words: string) => void;
+}) {
+  const [against, setAgainst] = useState<WorkspaceAgainst | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    setAgainst(null);
+    getJson<WorkspaceAgainst>(`/api/workspaces/against?branch=${encodeURIComponent(branch)}`)
+      .then((read) => live && setAgainst(read))
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [branch]);
+  if (!against) return <span className="changes-since">{sinceText(changes.since)}</span>;
+  const pick = (value: string) => {
+    setBusy(true);
+    postJson<WorkspaceAgainst>('/api/workspaces/against', { branch, against: value || null })
+      .then((read) => {
+        setAgainst(read);
+        onPicked();
+        return reloadWorkspaces();
+      })
+      .catch((e: unknown) => onSaid((e as Error).message))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <label className="changes-since changes-against">
+      since{' '}
+      <select
+        aria-label="Review against"
+        value={against.against ?? ''}
+        disabled={busy}
+        onChange={(event) => pick(event.target.value)}
+        {...tip(baseTitle(changes.base, changes.since))}
+      >
+        {againstOptions(against).map(({ value, label }) => (
+          <option key={value} value={value}>
+            {label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
 }
 
 /** Lines added and removed, in their colours; a count of none muted. */
@@ -140,7 +208,8 @@ export function ChangesPanel({
   /** How opening a file went, in words, for the workspace's head. */
   onSaid: (words: string) => void;
 }) {
-  const changes = useChanges(branch, version);
+  const [picks, setPicks] = useState(0);
+  const changes = useChanges(branch, version, picks);
   const opener = (uncommitted: boolean) => (file: WorkspaceFileChange) =>
     void postJson('/api/workspaces/diff', {
       branch,
@@ -164,7 +233,12 @@ export function ChangesPanel({
           <section className="changes-section" aria-label="Commits">
             <h2>
               Commits <span className="changes-count">{changes.commits.count}</span>
-              <span className="changes-since">{sinceText(changes.since)}</span>
+              <AgainstChoice
+                branch={branch}
+                changes={changes}
+                onPicked={() => setPicks((n) => n + 1)}
+                onSaid={onSaid}
+              />
             </h2>
             {changes.tip === null ? (
               <p className="changes-empty">Its branch is gone</p>

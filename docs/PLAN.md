@@ -139,7 +139,7 @@ hosted.
 | [V55](plan/v55-done-workspace-cleanup.md) | A done workspace or a landed merge, removed from its card and its head | ready for review | 403–406 | [journal](journal/v55-done-workspace-cleanup.md) |
 | [V57](plan/v57-cleaning-up-card.md) | A card being cleaned up (or its merge removed): disabled, saying so, until it goes | ready for review | 411–414 | [journal](journal/v57-cleaning-up-card.md) |
 | Fix | Codex's mark is OpenAI's blossom, in OpenAI's white or black | ready for review | | [journal](journal/fix-codex-icon.md) |
-| [V65](plan/v65-review-against.md) | A workspace reviewed against where it started, or a branch picked in it | planned | 471–474 | [journal](journal/v65-review-against.md) |
+| [V65](plan/v65-review-against.md) | A workspace reviewed against where it started, or a branch picked in it | ready for review | 471–474 | [journal](journal/v65-review-against.md) |
 
 ### Agents
 

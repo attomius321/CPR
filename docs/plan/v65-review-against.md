@@ -2,7 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v65-review-against.md)
 
-**Status:** planned (2026-10-27), on branch `milestone/v65-review-against`.
+**Status:** ready for review (2026-10-27), on branch `milestone/v65-review-against`. Its "As
+built" and results below.
 
 **Problem** (asked: "The current review of a workspace force against main?" — "Yes, we need
 that, and also I need to have the capacity to change the review against branch in workspace. The
@@ -105,3 +106,26 @@ Review then opens against it. The select's tip says what the base resolved to.
 
 **Not in V65**: a pick for a branch reviewed from History without a workspace; the agent's prompt
 still names the default branch as where its work merges (`promptOf`).
+
+## As built (V65)
+
+- **Two helpers, not one** (`review-base.ts`): `reviewedAgainst` (the branch reviewed against and
+  merged into, no git run) and `reviewBase` (the base). The review list's "since your review"
+  counts need only the first, for each reviewed branch.
+- **The record is read by Review itself** (`reviews.ts` reads `symbiote/workspaces/<branch>.json`
+  beside the reviews, as `merges.ts` does), so `symbiote mcp` and every review path agree without
+  passing the workspaces in.
+- **`WorkspaceSummary.against`**: the head's merge check ("Merges cleanly into …") was read once
+  per tip; it is read again when the pick changes.
+- **The option's words**: "`<from>`, where it started" (or the start commit's short SHA), then
+  every branch; a picked branch since deleted stays listed as "(no longer a branch)" and reviews
+  from where it started.
+- **A workspace started from a History row** now counts from its commit; before, from the fork
+  point with `main`, which listed another branch's commit as its own (2 where 1 was, in the test).
+  The one change of behaviour for a workspace not stacked on a branch.
+
+**Results.** Tests first, red for the right reason: 3 in `workspaces.test.ts`, 1 in
+`reviews.test.ts`, 1 in `merges.test.ts`, 1 in `server.test.ts` (with the review cache kept, red),
+2 in the viewer's `changes.test.ts`, 1 e2e in `changes.spec.ts`. Every earlier test passes
+unchanged, the ones that count a workspace from `main` after a rebase, a merge of `main` and once
+merged among them.

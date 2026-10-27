@@ -185,3 +185,21 @@ button.changes-file:hover {
 .changes-status.status-conflicted {
   color: var(--removed);
 }
+
+/* What its review is against (V65): a compact select in the Commits heading. */
+.changes-against {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.changes-against select {
+  min-width: 0;
+  max-width: 220px;
+  height: 24px;
+  padding: 0 24px 0 8px;
+  background-position: right 6px center;
+  font-size: var(--size-caption);
+  text-overflow: ellipsis;
+}

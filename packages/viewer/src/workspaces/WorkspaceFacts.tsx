@@ -13,7 +13,10 @@ import { tip } from '../ui/tip.js';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-/** Whether a workspace with commits merges into the default branch (V17's check), read once. */
+/**
+ * Whether a workspace with commits merges into the branch it is reviewed against (V17's check,
+ * V65), read once per tip and pick.
+ */
 function useMergeCheck(workspace: WorkspaceSummary): BranchMerge | null {
   const [merge, setMerge] = useState<BranchMerge | null>(null);
   const wanted = workspace.ahead > 0 && !workspace.merged && workspace.tip !== null;
@@ -27,7 +30,7 @@ function useMergeCheck(workspace: WorkspaceSummary): BranchMerge | null {
     return () => {
       live = false;
     };
-  }, [wanted, workspace.branch, workspace.tip]);
+  }, [wanted, workspace.branch, workspace.tip, workspace.against]);
   return wanted ? merge : null;
 }
 

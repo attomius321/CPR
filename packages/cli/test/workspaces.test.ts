@@ -2174,7 +2174,10 @@ describe('workspaces', () => {
       since: 'main',
       commits: { count: 3 },
     });
-    expect((await s.list()).workspaces.find((w) => w.branch === 'feature/two')?.ahead).toBe(3);
+    expect((await s.list()).workspaces.find((w) => w.branch === 'feature/two')).toMatchObject({
+      against: 'main',
+      ahead: 3,
+    });
     expect((await s.merge('feature/two')).into).toBe('main');
 
     // A remote's branch by name; refused: no such branch, its own.

@@ -118,6 +118,8 @@ export interface WorkspaceSummary {
   /** The commit the branch started at, and the branch it was taken from (absent: a picked row). */
   base: string;
   from?: string;
+  /** The branch picked to review it against (V65); absent: where it started. */
+  against?: string;
   created: string;
   planFirst: boolean;
   brief: string;
