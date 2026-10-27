@@ -41,9 +41,13 @@ rebase), pushes and finds commits. Decisions 475–484.
   replays every local commit and drops the merge.
 - **A full e2e run during rebuilds fails at random**: the first full run overlapped two viewer
   builds; its results were thrown away and the suite run again on one build.
+- **A button name is a substring match**: `commits.spec.ts` checked there is no "This commit"
+  button; once the pane had loaded, "Review this commit" was one, so the test failed only when
+  the details came first. The check is exact now.
 
 **Verification**: tests first (red for the right reason) for each part, listed in the plan's
-results; `pnpm check` (1,951 tests); the full e2e suite (314 passed); the endpoints timed on
+results; `pnpm check` (1,965 tests after merging `main`); the full e2e suite (316 passed on the merged
+build); the endpoints timed on
 Bitwarden and zod (a commit 4–10 ms, Bitwarden's lines 626 ms on its blobless clone, a search
 366 ms there, 33 ms on zod); screenshots at 1,440 × 900 and 1,280 × 800, device
 scale 1, dark and light (the pane, the uncommitted changes, the row menu, the new-branch dialog,

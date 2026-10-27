@@ -73,8 +73,9 @@ test('lists every branch as a graph, the current branch on the left', async ({ p
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText('Add square');
   await page.getByRole('button', { name: 'HEAD → main' }).click();
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText(/^Add half/);
-  // One commit is compared with its parent by picking it alone: no button per row.
-  await expect(page.getByRole('button', { name: 'This commit' })).toHaveCount(0);
+  // One commit is compared with its parent by picking it alone: no button per row (the details
+  // pane's "Review this commit" is not one, V66b).
+  await expect(page.getByRole('button', { name: 'This commit', exact: true })).toHaveCount(0);
   // A long subject is cut, not the page: no sideways scroll, every row's end and Compare in view.
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,

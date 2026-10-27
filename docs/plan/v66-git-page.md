@@ -235,7 +235,7 @@ header's 57) and `git.spec.ts` (6: the pane and its place, staging and a commit,
 tags, fetch/pull/push against a local bare remote, search). Existing specs follow the rename, the
 row menu's two entries and the keys' help.
 
-`pnpm check`: 1,951 unit tests; the full e2e suite: 314 passed. The endpoints, timed with
+`pnpm check`: 1,965 unit tests, `main` merged in; the full e2e suite: 316 passed. The endpoints, timed with
 `curl` against `symbiote view` (a second ask in brackets):
 
 | Repository | `commit` | `commit/lines` | `changes` | `changes/lines` | `sync` | `find` ("fix") |
