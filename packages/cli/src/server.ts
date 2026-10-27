@@ -74,7 +74,13 @@ import type { Histories } from './history.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 import { imageKind, MAX_IMAGE_BYTES, type Terminals } from './terminal.js';
 import { ScoutRefused, type Scout } from './scout.js';
-import { MAX_SKILL, parseSkillChange, SkillRefused, type SkillsService } from './skills.js';
+import {
+  MAX_SKILL,
+  parseSkillChange,
+  parseSkillOpen,
+  SkillRefused,
+  type SkillsService,
+} from './skills.js';
 import { McpRefused, symbioteMcp, type SymbioteMcp } from './mcp.js';
 
 export { sourceFiles } from './server-requests.js';
@@ -459,6 +465,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           (change) => answer(res, () => skills.change(change)),
           // A skill's text, as JSON escapes it.
           MAX_SKILL * 6 + 4096,
+        );
+      }
+      // A skill's SKILL.md opened in VS Code (V64).
+      if (url.pathname === '/api/skills/open') {
+        return written(req, res, parseSkillOpen, (request) =>
+          answer(res, () => skills.open(request)),
         );
       }
       // What is at a folder the skill library may be set to (SK1), as Settings shows it.
