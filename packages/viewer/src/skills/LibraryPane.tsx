@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { LibraryState } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
-import { BackIcon } from '../ui/icons.js';
+import { BackIcon, FolderIcon } from '../ui/icons.js';
 import { commitMessage, libraryGitText, libraryName, librarySync } from './library.js';
+import { PaneHead } from './PaneHead.js';
 
 /** What the page says after a change, under the pane. */
 export interface LibraryNotice {
@@ -57,14 +58,20 @@ export function LibraryPane({
       <button type="button" className="button ghost skills-back" onClick={onBack}>
         <BackIcon /> All skills
       </button>
-      <h2>
-        {libraryName(library)}
-        <span className="skills-state">{git ? (git.branch ?? 'No branch') : 'Plain folder'}</span>
-      </h2>
-      <p className="skills-where">
+      <PaneHead
+        icon={<FolderIcon />}
+        title={
+          <>
+            {libraryName(library)}
+            <span className="skills-state">
+              {git ? (git.branch ?? 'No branch') : 'Plain folder'}
+            </span>
+          </>
+        }
+      >
         <code>{library.folder}</code> · {libraryGitText(library)}
         {sync && ` ${sync}.`}
-      </p>
+      </PaneHead>
       {library.checkout && (
         <p className="skills-warning">
           This is the checkout&apos;s own {library.checkout}: its skills are listed with the

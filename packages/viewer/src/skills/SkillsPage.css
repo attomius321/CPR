@@ -1,13 +1,46 @@
 /* ---- skills: the checkout's skills (V41) --------------------------------------------- */
 
-/* The page's own rules since V56 (decision 407), not Settings': the whole main area (decision
-   408), its head on the page's ground, then the list and the open pane, two cards 8 px apart and
-   from the main area's edges (V61, the person's mockup). */
+/* The page's own rules since V56 (decision 407), not Settings', over the whole main area (decision
+   408). V64, the person's mockup (decision 458): Settings' head (the page's icon, its title, a line
+   under it), then the list and the open pane, cards 24 px from the main area's edges and 16 apart,
+   as Settings' are. */
 .skills {
+  --skills-side: 24px;
   flex: 1;
   min-width: 0;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+}
+
+.skills > .skills-bar {
+  position: static;
+  flex: none;
+  flex-wrap: nowrap;
+  gap: 16px;
+  padding: 20px var(--skills-side);
+}
+
+/* The page's icon, as the sidenav's current page draws its own (Settings', V62). */
+.skills-bar .page-icon {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.skills-bar .page-icon .icon {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.4;
+}
+
+.skills-title {
+  min-width: 0;
+}
+
+.skills-name-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .skills-bar h1 {
@@ -16,9 +49,15 @@
   font-weight: 600;
 }
 
+.skills-title p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
 .skills-bar .skills-new-button {
+  flex: none;
   margin-left: auto;
-  gap: 6px;
 }
 
 /* Under the head, over the list and the pane: the Codex note, what Link did, an error. */
@@ -27,9 +66,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 6px;
-  margin: 0;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--line);
+  margin: 0 var(--skills-side) 12px;
   color: var(--muted);
   font-size: var(--size-small);
 }
@@ -39,43 +76,76 @@
 }
 
 .skills > .hint {
-  margin: 12px 16px 0;
+  margin: 0 var(--skills-side);
+  padding: 0;
 }
 
 .skills-body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 240px minmax(0, 1fr);
-  gap: 8px;
-  padding: 0 8px 8px;
+  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 16px;
+  padding: 0 var(--skills-side) var(--skills-side);
 }
 
-/* The list: a column with its own scroll, its groups' headings in line with the head's title. */
+/* The list (decision 459): a card with its own scroll; the search, then the groups, their entries'
+   words in line with their heading and their wash 12 px out, each with its icon. */
 .skills-list {
   min-height: 0;
   overflow: auto;
-  padding: 12px 12px 16px 16px;
+  padding: 16px 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--side);
 }
 
+.skills-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 0 16px;
+}
+
+.skills-search .icon {
+  position: absolute;
+  left: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.skills-search input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px 0 34px;
+  font-size: var(--size-body);
+}
+
+/* Esc clears it: no browser cross. */
+.skills-search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
 .skills-list section h2 {
-  margin: 0 0 4px;
+  margin: 0 0 6px;
+  padding: 0 12px;
   color: var(--muted);
   font-size: var(--size-caption);
   font-weight: 500;
 }
 
-.skills-list section + section h2 {
+.skills-list section + section,
+.skills-list section + .skills-none,
+.skills-list .skills-none + section,
+.skills-list section + .skills-library-unset {
   margin-top: 16px;
 }
 
-/* A group's entries a little in from its heading: their words 12 px in, their wash 4. */
 .skills-list ul {
   margin: 0;
-  padding: 0 0 0 4px;
+  padding: 0;
   list-style: none;
 }
 
@@ -86,11 +156,10 @@
 .skills-list button {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
-  min-height: 28px;
-  padding: 0 8px;
+  min-height: 32px;
+  padding: 0 12px;
   border: 0;
   border-radius: 8px;
   background: none;
@@ -98,17 +167,32 @@
   font-size: var(--size-body);
   text-align: left;
   cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.skills-list button .icon {
+  color: var(--muted);
 }
 
 .skills-list button:hover {
   background: var(--hover);
 }
 
+/* The open entry: the selection's wash, its words and icon in the accent (Settings'). */
 .skills-list button[aria-current='true'] {
   background: var(--selected);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.skills-list button[aria-current='true'] .icon {
+  color: inherit;
 }
 
 .skills-name {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -118,6 +202,7 @@
 .skills-mark {
   flex: none;
   font-size: var(--size-caption);
+  font-weight: 400;
 }
 
 .skills-mark.changed,
@@ -129,39 +214,73 @@
   color: var(--added);
 }
 
-/* In place of the skills' groups: where the next group's heading would be, not in from it as an
-   entry. */
+/* In place of a group: where its heading would be, not in from it as an entry. */
 .skills-none {
   margin: 16px 0 0;
-  padding: 0;
+  padding: 0 12px;
 }
 
-/* The open pane: a skill, New skill or Scribe, as tall and wide as the main area leaves it. */
+/* The open pane: a skill's card, New skill, the library or Scribe, as tall as the main area. */
 .skills-pane {
   min-width: 0;
   min-height: 0;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--side);
 }
 
-.skills-editor,
-.skills-new {
+.skills-card,
+.skills-new,
+.skills-library {
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  container: skills-pane / inline-size;
+  padding: 20px 24px;
 }
 
-.skills-pane h2 {
+/* A pane's head (`PaneHead`): the icon in a raised square, the title and its chip, where it is
+   under them, the pane's action at the right. */
+.skills-pane-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+}
+
+.skills-tile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--accent);
+}
+
+.skills-tile .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.skills-pane-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.skills-pane-head h2 {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 4px 8px;
-  margin: 0 0 4px;
+  gap: 4px 10px;
+  margin: 0;
   font-size: var(--size-title);
   font-weight: 600;
+}
+
+.skills-pane-head > .button {
+  flex: none;
 }
 
 /* A skill's git state: Committed a quiet chip, New and Changed a badge of the change (V51). */
@@ -195,7 +314,7 @@
 }
 
 .skills-where {
-  margin: 0 0 12px;
+  margin: 2px 0 0;
   color: var(--muted);
   font-size: var(--size-small);
   overflow-wrap: anywhere;
@@ -212,71 +331,308 @@
   font-size: var(--size-small);
 }
 
-/* The text and, beside it where the pane has room, its checks and other files (decision 409):
-   the checks stay in view as one types. The text takes what the pane's height leaves. */
-.skills-work {
+/* A skill (decision 462): its card, and its checks and other files in cards beside it where the
+   area is 960 px wide (the text keeps ~640 px), under it on a narrower one. */
+.skills-editor {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  container: skills-skill / inline-size;
+}
+
+.skills-skill {
   flex: 1;
-  min-height: 240px;
+  min-width: 0;
+  min-height: 0;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 16px;
 }
 
-/* From 860 px (880 before V61): the cards' gutters left the pane 878 px at 1440. */
-@container skills-pane (min-width: 860px) {
-  .skills-work {
-    grid-template-columns: minmax(0, 1fr) 280px;
+.skills-side {
+  min-width: 0;
+  min-height: 0;
+  max-height: 30vh;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  align-items: start;
+  gap: 16px;
+}
+
+@container skills-skill (min-width: 960px) {
+  .skills-skill {
+    grid-template-columns: minmax(0, 1fr) 300px;
     grid-template-rows: minmax(0, 1fr);
-    column-gap: 24px;
+  }
+
+  .skills-side {
+    max-height: none;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
   }
 }
 
-.skills-editor textarea {
-  box-sizing: border-box;
-  width: 100%;
-  height: 100%;
+/* The text's box (`SkillText`, decision 460): the content's ground, its focus the field's. The text
+   area lies over the drawn copy's text column, the two in one font, line height, padding and wrap:
+   change one, change both. */
+.skills-code {
+  --gutter: calc(var(--digits, 2) * 1ch + 28px);
+  /* One line of text: the numbers' line too, so each sits on its line, an empty one as well. */
+  --code-line: calc(var(--size-body) * 1.45);
+  position: relative;
+  flex: 1;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--field-line);
+  border-radius: 8px;
+  background: var(--bg);
+  font: var(--size-body) / var(--code-line) var(--sans);
+  letter-spacing: 0;
+  tab-size: 4;
+  transition:
+    border-color 150ms,
+    box-shadow 150ms;
+}
+
+.skills-code:hover:not(:focus-within) {
+  border-color: var(--edge);
+}
+
+.skills-code:has(textarea:focus-visible) {
+  border-color: var(--focus);
+  box-shadow: 0 0 0 3px var(--ring);
+}
+
+.skills-code-scroll {
+  flex: 1;
   min-height: 0;
-  padding: 8px 10px;
-  line-height: 1.45;
+  overflow: auto;
+}
+
+.skills-code-body {
+  position: relative;
+  min-height: 100%;
+}
+
+.skills-code-lines {
+  padding: 12px 0;
+}
+
+/* An empty line as tall as the text area's: its smaller number alone would make it shorter. */
+.skills-code-line {
+  display: grid;
+  grid-template-columns: var(--gutter) minmax(0, 1fr);
+  min-height: var(--code-line);
+}
+
+.skills-code-number {
+  padding-right: 12px;
+  color: var(--faint);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  line-height: var(--code-line);
+  text-align: right;
+  user-select: none;
+}
+
+.skills-code-text,
+.skills-code textarea {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.skills-code-text {
+  min-width: 0;
+  padding: 0 16px 0 8px;
+}
+
+.skills-code textarea {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--gutter);
+  right: 0;
+  box-sizing: border-box;
+  width: auto;
+  margin: 0;
+  padding: 12px 16px 12px 8px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: transparent;
+  caret-color: var(--text);
+  font: inherit;
+  letter-spacing: 0;
   resize: none;
 }
 
-.skills-side {
-  min-width: 0;
+.skills-code textarea::selection {
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  color: transparent;
 }
 
-.skills-side h3 {
-  margin: 0 0 4px;
+/* Markdown's colours (`markdown-lines.ts`): colour only, never a weight or a width. */
+.md-heading {
+  color: var(--accent);
+}
+
+.md-key,
+.md-meta,
+.md-mark {
   color: var(--muted);
-  font-size: var(--size-caption);
-  font-weight: 500;
 }
 
-.skills-side h3 ~ h3 {
-  margin-top: 16px;
+.md-code {
+  border-radius: 4px;
+  background: var(--raised);
 }
 
-/* Each check a line with its level's dot: colour for the state only. */
+.md-link {
+  text-decoration: underline;
+  text-decoration-color: var(--faint);
+  text-underline-offset: 3px;
+}
+
+/* Over the text at its top right (decision 461): the view and Expand, on the box's ground so the
+   text under them does not show through. */
+.skills-code-tools {
+  position: absolute;
+  top: 8px;
+  right: 20px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+
+.skills-view-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 8px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--side);
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--size-small);
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.skills-view-button:hover,
+.skills-view-button[aria-expanded='true'] {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.skills-code-tools .icon-button {
+  border: 1px solid var(--line);
+  background: var(--side);
+}
+
+.skills-code-tools .more-menu {
+  min-width: 140px;
+}
+
+.skills-code-tools .more-menu [aria-checked='true'] {
+  color: var(--accent);
+}
+
+/* Preview: the skill as an agent's Markdown is drawn, its name and description first. */
+.skills-preview {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 20px;
+}
+
+.skills-preview-front {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 16px;
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.skills-preview-front div {
+  display: grid;
+  grid-template-columns: 100px minmax(0, 1fr);
+  gap: 12px;
+}
+
+.skills-preview-front dt {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.skills-preview-front dd {
+  margin: 0;
+}
+
+/* The checks and other files (decision 462): cards on the main area's ground. */
+.skills-side-card {
+  min-width: 0;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--side);
+}
+
+.skills-side-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.skills-side-head .icon {
+  color: var(--muted);
+}
+
+.skills-side-head h3 {
+  flex: 1;
+  margin: 0;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+/* Each check a line with its level's dot, its lead in the text's colour, the rest muted. */
 .skills-checks {
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: var(--size-body);
+  color: var(--muted);
+  font-size: var(--size-small);
 }
 
 .skills-checks li {
   position: relative;
-  margin: 4px 0;
-  padding-left: 16px;
+  padding-left: 18px;
+}
+
+.skills-checks li + li {
+  margin-top: 10px;
 }
 
 .skills-checks li::before {
   content: '';
   position: absolute;
-  top: 0.55em;
+  top: 0.5em;
   left: 2px;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--faint);
 }
@@ -289,15 +645,15 @@
   background: var(--warning);
 }
 
-/* Its "?" after the last word, where the column wraps the line. */
+.skills-checks strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
 .skills-checks-none {
   margin: 0;
   color: var(--muted);
   font-size: var(--size-small);
-}
-
-.skills-checks-none .help-button {
-  margin: -4px 0;
 }
 
 .skills-files {
@@ -309,14 +665,15 @@
   overflow-wrap: anywhere;
 }
 
-/* Under the text: its size at the left, then what a change did and the actions at the right. */
+/* The card's foot (decision 463): its size at the left, then what a change did and the actions at
+   the right, as Settings' pages have theirs. */
 .skills-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 6px 14px;
-  margin-top: 12px;
+  gap: 8px 10px;
+  margin-top: 16px;
   font-size: var(--size-body);
 }
 
@@ -330,13 +687,44 @@
   color: var(--error);
 }
 
+/* What a change did, on a line of its own over the size and the actions. */
 .skills-notice {
-  flex: 1 1 240px;
+  order: -1;
+  flex: 1 1 100%;
   color: var(--muted);
+  font-size: var(--size-small);
 }
 
 .skills-notice.error {
   color: var(--error);
+}
+
+.button.secondary.skills-delete {
+  border-color: color-mix(in srgb, var(--error) 35%, transparent);
+  color: var(--error);
+}
+
+.button.secondary.skills-delete:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--error) 55%, transparent);
+  background: color-mix(in srgb, var(--error) 10%, transparent);
+}
+
+/* The skill over the main area (decision 461): no head, list or side cards until Esc. */
+.skills.expanded > .skills-bar,
+.skills.expanded > .skills-note,
+.skills.expanded .skills-list,
+.skills.expanded .skills-side {
+  display: none;
+}
+
+.skills.expanded .skills-body {
+  grid-template-columns: minmax(0, 1fr);
+  padding-top: var(--skills-side);
+}
+
+.skills.expanded .skills-skill {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
 }
 
 /* New skill: a form of two fields, left in the pane, the start page's brief width. */
@@ -352,7 +740,7 @@
   font-weight: 500;
 }
 
-.skills-new > .skills-where + .skills-field {
+.skills-new > .skills-pane-head + .skills-field {
   margin-top: 0;
 }
 
@@ -377,19 +765,13 @@
    in the open pane as New skill's form is: where it is, its changes, the commit's message. */
 .skills-library-unset {
   margin: 16px 0 0;
-  padding: 0;
+  padding: 0 12px;
   font-size: var(--size-small);
 }
 
 /* A link in the text's colour, underlined under the pointer only (`.link`). */
 .skills-library-unset a:not(:hover) {
   text-decoration: none;
-}
-
-.skills-library {
-  display: flex;
-  flex-direction: column;
-  padding: 16px;
 }
 
 .skills-library > :not(.skills-back) {
@@ -425,6 +807,7 @@
 .library-clean,
 .library-empty {
   margin: 0;
+  padding: 0;
 }
 
 .library-empty {
@@ -483,20 +866,21 @@
 }
 
 @media (max-width: 899px) {
+  .skills {
+    --skills-side: 16px;
+  }
+
   .skills-body {
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .skills-list {
-    border-right: 0;
-  }
-
   .skills-body.picked .skills-list,
-  .skills-body:not(.picked) .skills-pane {
+  .skills-body:not(.picked) .skills-pane,
+  .skills-body:not(.picked) .skills-editor {
     display: none;
   }
 
-  /* Its arrow in line with the page's heading (V51). */
+  /* Its arrow in line with the card's head (V51). */
   .skills-back {
     display: inline-flex;
     align-self: flex-start;
@@ -506,12 +890,25 @@
   .skills-scribe > .skills-back {
     margin: 8px 0 8px 4px;
   }
+
+  /* The head's action under the title, the title keeping its line beside the icon. */
+  .skills-pane-head {
+    flex-wrap: wrap;
+  }
+
+  .skills-pane-title {
+    flex-basis: calc(100% - 52px);
+  }
 }
 
 @media (max-width: 480px) {
-  .skills-editor,
+  .skills-card,
   .skills-new,
   .skills-library {
-    padding: 12px 16px;
+    padding: 16px;
+  }
+
+  .skills-code-tools {
+    right: 12px;
   }
 }

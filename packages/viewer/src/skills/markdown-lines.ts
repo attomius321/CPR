@@ -60,7 +60,12 @@ export function markdownLines(text: string): MarkdownLine[] {
     if (fence === null) {
       if (opening) fence = opening;
       out.push({ text: line, kind: opening ? 'delimiter' : 'text' });
-    } else if (opening?.[0] === fence[0] && opening.length >= fence.length && closes(line)) {
+    } else if (
+      opening !== undefined &&
+      opening[0] === fence[0] &&
+      opening.length >= fence.length &&
+      closes(line)
+    ) {
       fence = null;
       out.push({ text: line, kind: 'delimiter' });
     } else {
