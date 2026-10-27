@@ -36,6 +36,7 @@ import {
   documentName,
   workspacePath,
   WorkspaceRefused,
+  readRecord,
   readWorkspace,
   serializeWorkspace,
   type WorkspaceFile,
@@ -2088,6 +2089,110 @@ describe('workspaces', () => {
     const merged = await counts();
     expect(merged.merged).toBe(true);
     expect(merged.ahead).toBe(merged.changes);
+  });
+
+  /** feature/one: main's B ── O1 ── O2, a branch to stack a workspace on. */
+  const stackOn = async (repo: TestRepo) => {
+    repo.git('switch', '--quiet', '--create', 'feature/one');
+    await commitIn(repo.root, 'src/o1.ts', 'export const o1 = 1;\n');
+    await commitIn(repo.root, 'src/o2.ts', 'export const o2 = 1;\n');
+    repo.git('switch', '--quiet', 'main');
+    return { O1: repo.git('rev-parse', 'feature/one~1'), O2: repo.git('rev-parse', 'feature/one') };
+  };
+
+  it('starts a workspace stacked on a branch at that branch: its own commits, merged into it (V65)', async () => {
+    const { repo } = fresh();
+    const { O2 } = await stackOn(repo);
+    const s = await service(repo, fakeClaude().claude);
+    const { workspace } = await s.start({
+      brief: 'Two',
+      branch: 'feature/two',
+      from: 'feature/one',
+      planFirst: false,
+    });
+    const path = workspace.worktree.path;
+    await commitIn(path, 'src/t.ts', 'export const t = 1;\n');
+    const changes = await s.changes('feature/two');
+    expect(changes).toMatchObject({ base: O2, since: 'feature/one', commits: { count: 1 } });
+    expect(changes.files.listed.map((f) => f.path)).toEqual(['src/t.ts']);
+    expect((await s.list()).workspaces.find((w) => w.branch === 'feature/two')?.ahead).toBe(1);
+    expect((await s.merge('feature/two')).into).toBe('feature/one');
+
+    // feature/one moves on and the agent merges it in: its commit and the merge, not O3.
+    await gitIn(repo.root, 'switch', '--quiet', 'feature/one');
+    await commitIn(repo.root, 'src/o3.ts', 'export const o3 = 1;\n');
+    await gitIn(repo.root, 'switch', '--quiet', 'main');
+    await gitIn(path, 'merge', '--quiet', '--no-ff', '--no-edit', 'feature/one');
+    const merged = await s.changes('feature/two');
+    expect(merged).toMatchObject({ since: 'feature/one', commits: { count: 2 } });
+    expect(merged.files.listed.map((f) => f.path)).toEqual(['src/t.ts']);
+  });
+
+  it("starts a workspace from a History row at that commit, not at main's fork point (V65)", async () => {
+    const { repo } = fresh();
+    const { O1 } = await stackOn(repo);
+    const s = await service(repo, fakeClaude().claude);
+    const { workspace } = await s.start({
+      brief: 'Row',
+      branch: 'fix/row',
+      base: O1,
+      planFirst: false,
+    });
+    await commitIn(workspace.worktree.path, 'src/r.ts', 'export const r = 1;\n');
+    const changes = await s.changes('fix/row');
+    expect(changes.base).toBe(O1);
+    expect(changes.since).toBeUndefined();
+    expect(changes.commits.count).toBe(1);
+    expect((await s.merge('fix/row')).into).toBe('main');
+  });
+
+  it('reviews a workspace against a branch the person picks, or where it started again (V65)', async () => {
+    const { repo, shas } = fresh();
+    const { O2 } = await stackOn(repo);
+    const s = await service(repo, fakeClaude().claude);
+    const { workspace } = await s.start({
+      brief: 'Two',
+      branch: 'feature/two',
+      from: 'feature/one',
+      planFirst: false,
+    });
+    await commitIn(workspace.worktree.path, 'src/t.ts', 'export const t = 1;\n');
+    expect(await s.against('feature/two')).toEqual({
+      from: 'feature/one',
+      base: O2,
+      branches: ['feature/one', 'main', 'taken'],
+    });
+
+    // Against main: feature/one's commits are the change too, and it merges into main.
+    expect(await s.setAgainst('feature/two', 'main')).toMatchObject({ against: 'main' });
+    expect(
+      (await readRecord(await reviewPlace(await openRepo(repo.root), cache), 'feature/two'))
+        .against,
+    ).toBe('main');
+    expect(await s.changes('feature/two')).toMatchObject({
+      base: shas.B,
+      since: 'main',
+      commits: { count: 3 },
+    });
+    expect((await s.list()).workspaces.find((w) => w.branch === 'feature/two')).toMatchObject({
+      against: 'main',
+      ahead: 3,
+    });
+    expect((await s.merge('feature/two')).into).toBe('main');
+
+    // A remote's branch by name; refused: no such branch, its own.
+    expect(await s.setAgainst('feature/two', 'taken')).toMatchObject({ against: 'taken' });
+    expect((await s.changes('feature/two')).since).toBe('taken');
+    await expect(s.setAgainst('feature/two', 'nope')).rejects.toMatchObject({ status: 400 });
+    await expect(s.setAgainst('feature/two', 'feature/two')).rejects.toMatchObject({
+      status: 400,
+    });
+    await expect(s.setAgainst('feature/nope', 'main')).rejects.toMatchObject({ status: 404 });
+
+    // Where it started again.
+    const back = await s.setAgainst('feature/two', null);
+    expect(back.against).toBeUndefined();
+    expect(await s.changes('feature/two')).toMatchObject({ base: O2, since: 'feature/one' });
   });
 
   it('lists at most 300 files of a branch and of its worktree, its counts over all (V29d)', async () => {

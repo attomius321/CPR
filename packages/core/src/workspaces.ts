@@ -118,6 +118,8 @@ export interface WorkspaceSummary {
   /** The commit the branch started at, and the branch it was taken from (absent: a picked row). */
   base: string;
   from?: string;
+  /** The branch picked to review it against (V65); absent: where it started. */
+  against?: string;
   created: string;
   planFirst: boolean;
   brief: string;
@@ -238,11 +240,12 @@ export interface WorkspaceFileChange {
 export interface WorkspaceChanges {
   branch: string;
   /**
-   * Where its commits start: the fork point with the default branch, as Review computes it; the
-   * commit the workspace started at once merged, or without a default branch.
+   * Where its commits start, as Review computes it (V65): the fork point with the branch it is
+   * reviewed against, or with the branch it started from once it took that in; else the commit
+   * the workspace started at, and that commit once merged.
    */
   base: string;
-  /** The default branch, when `base` is the fork point with it. */
+  /** The branch `base` is the fork point with; absent when it is where the workspace started. */
   since?: string;
   /** The branch's tip; null once the branch is gone. */
   tip: string | null;
@@ -252,6 +255,20 @@ export interface WorkspaceChanges {
   files: { count: number; added: number; removed: number; listed: WorkspaceFileChange[] };
   /** The files its worktree has not committed, at most 300; null once the worktree is gone. */
   uncommitted: { count: number; listed: WorkspaceFileChange[] } | null;
+}
+
+/**
+ * `GET /api/workspaces/against?branch=` and `POST { branch, against }` (V65): the branch its review
+ * is against, where it started, and the branches it can be reviewed against.
+ */
+export interface WorkspaceAgainst {
+  /** The branch picked; absent: where it started. */
+  against?: string;
+  /** Where it started: the branch, absent for a commit picked in History, and its commit. */
+  from?: string;
+  base: string;
+  /** Every branch name, local and remotes' by name, but its own. */
+  branches: string[];
 }
 
 /** Whether `symbiote view` can run terminals (node-pty, optional), else why not (V21). */

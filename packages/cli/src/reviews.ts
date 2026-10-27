@@ -5,7 +5,6 @@ import {
   checkMerge,
   commitsBetween,
   defaultBranch,
-  forkPoint,
   isAncestor,
   isCommit,
   listRefs,
@@ -30,6 +29,8 @@ import {
 import type { Pair } from './diffs.js';
 import { FORMER_NAME, moveInto } from './former-name.js';
 import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
+import { reviewBase, reviewedAgainst } from './review-base.js';
+import { readWorkspace, workspacePath, workspacesDir } from './workspace-record.js';
 import type { StateName, StateStore } from './state.js';
 
 /** A branch review on disk: `symbiote/reviews/<branch>/<reviewer>.json` (V15). */
@@ -309,9 +310,16 @@ export function branchReviews(
     return null;
   }
 
-  /** The default branch's tips (local and remotes'), unless `branch` is the default branch. */
-  const otherThan = (refs: RefList, main: string | null, branch: string) =>
-    main && main !== branch ? refsOf(refs, main).map((r) => r.sha) : [];
+  /**
+   * The tips (local and remotes') of the branch `branch` merges into: the default branch, or the
+   * one its workspace is reviewed against (V65); none on that branch itself.
+   */
+  const otherThan = (refs: RefList, into: string | null | undefined, branch: string) =>
+    into && into !== branch ? refsOf(refs, into).map((r) => r.sha) : [];
+
+  /** The branch's workspace record (V65), beside the reviews; null for a branch with none. */
+  const workspaceOf = (where: ReviewPlace, branch: string) =>
+    readWorkspace(workspacePath(workspacesDir(where), branch));
 
   /** The review's file, created out of git (V15); one change at a time, read and written back. */
   async function update(
@@ -357,7 +365,8 @@ export function branchReviews(
         if (!review) continue;
         const summaryRefs: BranchReviewRef[] = [];
         const added = new Set<string>();
-        const not = otherThan(refs, main, branch);
+        const against = reviewedAgainst(refs, branch, main, await workspaceOf(where, branch));
+        const not = otherThan(refs, against.into, branch);
         for (const ref of refsOf(refs, branch)) {
           const after = await since(review, ref.sha, not);
           if (!after) continue;
@@ -415,7 +424,9 @@ export function branchReviews(
       if (!main) {
         throw new ReviewRefused('no default branch (origin/HEAD, main or master) to start from');
       }
+      const where = await place();
       let base: string | null;
+      let into: string | undefined;
       if (branch === main) {
         // The default branch: the agent's commits since it was last pushed (V16).
         if (!local) {
@@ -433,18 +444,25 @@ export function branchReviews(
         if (base === tip) throw new ReviewRefused(`${main} has no unpushed commits`);
         if (!base) throw new ReviewRefused(`${main} has no commit in common with its upstream`);
       } else {
-        base = await forkPoint(repo, tip, main, refs);
-        if (!base) throw new ReviewRefused(`${branch} has no commit in common with ${main}`);
+        // From where its workspace started, or the branch picked to review it against (V65).
+        const workspace = await workspaceOf(where, branch);
+        const found = await reviewBase(repo, refs, branch, tip, main, workspace);
+        const against = workspace?.against ?? main;
+        if (!found) throw new ReviewRefused(`${branch} has no commit in common with ${against}`);
+        ({ base, into } = found);
         if (base === tip) {
-          throw new ReviewRefused(`${branch} is merged into ${main}: nothing to review`);
+          throw new ReviewRefused(
+            found.since
+              ? `${branch} is merged into ${found.since}: nothing to review`
+              : `${branch} has no commits since it started at ${base.slice(0, 7)}`,
+          );
         }
       }
 
-      const where = await place();
       const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
       const reviewed = review?.head || null;
       const after =
-        review && reviewed ? await since(review, tip, otherThan(refs, main, branch)) : null;
+        review && reviewed ? await since(review, tip, otherThan(refs, into, branch)) : null;
       const refName = local ? local.name : (remote?.name ?? ref);
       const verdict = review?.verdicts.at(-1);
       return {
@@ -456,7 +474,7 @@ export function branchReviews(
           reviewed,
           since: after ? after.count : null,
           ...(where.note ? { note: where.note } : {}),
-          ...(branch === main ? {} : { into: main }),
+          ...(into ? { into } : {}),
           ...(verdict
             ? { verdict: { event: verdict.event, head: verdict.head, at: verdict.at } }
             : {}),

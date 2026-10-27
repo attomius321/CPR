@@ -192,3 +192,43 @@ test('a file opens as its diff: the fork point against the worktree, a deleted f
   expect(last().args[2]).toMatch(copy(fork, 'src/math.ts'));
   expect(last().args[3]).toMatch(copy(tip, 'src/math.ts'));
 });
+
+test('reviews the workspace against a branch picked in its changes, or where it started (V65)', async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  const [first = ''] = symbiote.shas;
+  execFileSync('git', ['-C', symbiote.repo, 'branch', '-q', 'older', first]);
+  await page.goto(`${symbiote.url}history`);
+  await start(page);
+  const commits = panel(page).getByRole('region', { name: 'Commits' });
+  symbiote.commit(BRANCH, 'half.ts', 'export const half = (n: number) => n / 2;\n', 'Add half');
+  await expect(commits.getByRole('listitem')).toHaveCount(1, POLL);
+
+  const against = commits.getByRole('combobox', { name: 'Review against' });
+  await expect(against).toHaveValue('');
+  await expect(against.getByRole('option')).toHaveText(['main, where it started', 'main', 'older']);
+  // Against older: main's last commit is the change too.
+  await against.selectOption('older');
+  await expect(commits.getByRole('listitem')).toHaveCount(2);
+  await expect(against).toHaveValue('older');
+  await expect(workspace(page).getByText('2 commits')).toBeVisible(POLL);
+
+  // Review opens from older's fork point.
+  await workspace(page).getByRole('button', { name: 'Review', exact: true }).click();
+  await page.waitForURL(/\/review\//);
+  await expect
+    .poll(async () => {
+      const answer = await page.request.get(new URL('api/graph', page.url()).href);
+      return answer.status() === 200
+        ? ((await answer.json()) as { revisions: { from: string } }).revisions.from
+        : null;
+    }, POLL)
+    .toBe(first);
+
+  // Where it started again: its own commit only.
+  await page.goBack();
+  await expect(against).toHaveValue('older');
+  await against.selectOption('');
+  await expect(commits.getByRole('listitem')).toHaveCount(1);
+});

@@ -32,7 +32,7 @@ back. The page counts what waits (`shell/waiting.ts`: workspaces in Waiting for 
 `needs-you`, Scout and Scribe waiting, each agent's ask through `symbiote mcp`) and says it through
 the preload's `symbioteApp.waiting`; the title's "(N)" is that count. The main process draws the
 dot once from `symbiote.png`'s pixels (`badge.ts`), sets it with `setIcon` and blinks with
-`flashFrame`. In the app the page reads on while hidden. Decisions 465–469.
+`flashFrame`. In the app the page reads on while hidden. Decisions 465–470.
 
 **Learned**:
 - **Electron's bitmap is BGRA here, and X11 gets it right**: the dot's centre reads `fff5b32a` in
@@ -60,10 +60,9 @@ dot once from `symbiote.png`'s pixels (`badge.ts`), sets it with `setIcon` and b
 app's, title bar's and intro's specs again with decision 470's switch: 34 passed, and 305 passed
 (4.7 min) after the second merge of `main`. The run before that one failed one test, a starting
 card 72.00003 px high against 72 (`workspaces.spec.ts`, V48), not N2's: 4 of 4 alone, and the
-next full run passed. The new e2e,
-each red first: the page's count said to a stand-in app (stays 1 without the hidden reads); the
-real app's icon and urgency hint read from X11 with xprop (stays `ff000000` without `setIcon`);
-the switch on (empty before it). The dot seen at 512, 48, 32 and 24 px (`nativeImage.resize`).
+next full run passed. The new e2e, each red first: the page's count said to a stand-in app (stays
+1 without the hidden reads); the real app's icon and urgency hint read from X11 with xprop (stays
+`ff000000` without `setIcon`); the switch on (empty before it). The dot seen at 512, 48, 32 and 24 px (`nativeImage.resize`).
 
 Not verified: the dot on the Windows taskbar through WSLg by eye; the blink on KDE, XFCE or
 GNOME; a Wayland session; Windows and macOS.

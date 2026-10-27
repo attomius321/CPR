@@ -190,6 +190,11 @@ The **+** after the tabs opens a shell in the workspace's worktree, for tests, a
 Where the window is wide enough, the **Changes** panel on the right lists the branch's commits and
 changed files. Click a file to open its diff in VS Code.
 
+The commits count from where the workspace started: for a workspace started from another branch,
+only its own commits, not that branch's. To review it against another branch, pick that branch in
+**since** above the commits. **Review**, the commit count, the merge check and the target of an
+approval follow the pick. Pick **where it started** to go back.
+
 The top of the page has these buttons:
 
 - **Review** opens the branch's changes for review.
@@ -230,7 +235,8 @@ last review is left to look at.
 ### Merge
 
 After you approve a branch, **Merge into** appears in the **Review** tab and on the workspace's
-page. The target is the branch the workspace started from, unless you pick another. Symbiote then:
+page. The target is the branch the workspace is reviewed against: the one it started from, unless
+you picked another in **since**, or pick another here. Symbiote then:
 
 1. merges the commit you approved (not any later one) in a worktree of its own, so neither your
    checkout nor the agent's worktree is used;

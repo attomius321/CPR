@@ -139,6 +139,7 @@ hosted.
 | [V55](plan/v55-done-workspace-cleanup.md) | A done workspace or a landed merge, removed from its card and its head | ready for review | 403–406 | [journal](journal/v55-done-workspace-cleanup.md) |
 | [V57](plan/v57-cleaning-up-card.md) | A card being cleaned up (or its merge removed): disabled, saying so, until it goes | ready for review | 411–414 | [journal](journal/v57-cleaning-up-card.md) |
 | Fix | Codex's mark is OpenAI's blossom, in OpenAI's white or black | ready for review | | [journal](journal/fix-codex-icon.md) |
+| [V65](plan/v65-review-against.md) | A workspace reviewed against where it started, or a branch picked in it | ✅ | 471–474 | [journal](journal/v65-review-against.md) |
 
 ### Agents
 
@@ -166,6 +167,7 @@ hosted.
 | [V58](plan/v58-hermes-agent.md) | Hermes as a workspace's agent, in its terminal | ready for review | 415–421 | [journal](journal/v58-hermes-agent.md) |
 | Fix | Scout's head on one line: Effort and its stepper centred with the selects | ready for review | | [journal](journal/fix-scout-not-aligned.md) |
 | [SK1](plan/sk1-skill-library.md) | A skill library: a folder or repository of skills outside the project, on the Skills page and for Scribe; commits as set | ready for review | 426–430 | [journal](journal/sk1-skill-library.md) |
+| Fix | An agent's terminal fits its box: no scrollbars coming and going on Scribe's pane, no last row cut off | merged | | [journal](journal/fix-scribe-terminal-problem.md) |
 
 ### The merger
 

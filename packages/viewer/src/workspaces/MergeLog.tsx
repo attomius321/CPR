@@ -209,7 +209,9 @@ export function MergeLog({
         ])}
         {runs.length === 0 && <li className="merge-steps-run">Waiting for its turn</li>}
       </ol>
-      <div className="merge-terminal" ref={box} role="log" aria-label="What it wrote" />
+      <div className="merge-terminal" role="log" aria-label="What it wrote">
+        <div ref={box} className="merge-terminal-fit" />
+      </div>
     </section>
   );
 }

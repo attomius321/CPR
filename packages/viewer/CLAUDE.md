@@ -77,6 +77,13 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   (`test/library.test.ts`). `LibraryPane.tsx` is its pane on the Skills page;
   `settings/LibraryPage.tsx` its entry in Settings (This machine), which asks
   `/api/skills/library?folder=` as the person types.
+- `src/workspaces/AgentTerminal.tsx` — an agent's terminal (xterm.js and its fit add-on): a
+  workspace's agent and shells, Scout, Scribe; `MergeLog.tsx` the merge log's. xterm opens in a
+  box with no padding (`.agent-terminal-fit`, `.merge-terminal-fit`), the padding on the box
+  around it: the fit add-on counts the rows from the height of the box xterm is in, padding
+  included (border-box), and drew up to 8 px more than the box held, which made the scrolling
+  Scribe pane's scrollbars come and go every frame. `e2e/terminal-fit.spec.ts` checks it with
+  real scrollbars: headless Chromium hides them, and the loop needs one that takes room.
 - `src/monitor/` — the Monitor (RM1), at `/monitor` (absolute `/api/monitor`, the `CodeMap` of
   `@symbiote/monitor`, whose **types** only it imports). `codemap.ts` builds the folder tree of the
   kinds turned on, says the concentration in words and gives a file's heat step by its lines

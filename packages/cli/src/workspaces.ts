@@ -11,7 +11,6 @@ import {
   defaultBranch,
   deleteMergedBranch,
   fileChangedSince,
-  forkPoint,
   isAncestor,
   isCommit,
   listRefs,
@@ -32,6 +31,7 @@ import {
   type CheckGuess,
   type ActivityEntry,
   type WorkspaceActivity,
+  type WorkspaceAgainst,
   type WorkspaceAgentState,
   type WorkspaceChanges,
   type WorkspaceDocument,
@@ -126,6 +126,7 @@ import {
 } from './workspace-start.js';
 import { shellOf, TerminalRefused, type Terminals } from './terminal.js';
 import { CONFIG_FILES } from './plugins.js';
+import { branchNames, hasBranch, reviewBase } from './review-base.js';
 import {
   prepareSymbioteFolder,
   readReview,
@@ -299,8 +300,19 @@ export interface Workspaces {
    * worktree's files not committed (V29d).
    */
   changes(branch: string): Promise<WorkspaceChanges>;
-  /** Whether its branch merges cleanly into the default branch (V17's check), once per pair. */
+  /**
+   * Whether its branch merges cleanly into the branch it is reviewed against (V17's check, V65),
+   * once per pair.
+   */
   merge(branch: string): Promise<BranchMerge>;
+  /** The branch its review is against, where it started, and the branches to pick (V65). */
+  against(branch: string): Promise<WorkspaceAgainst>;
+  /**
+   * Reviews it against `against` (V65): its Review, changes, count and merge check start at the
+   * fork point with that branch; null, where it started again. A name no branch has, or its own,
+   * is refused (400).
+   */
+  setAgainst(branch: string, against: string | null): Promise<WorkspaceAgainst>;
   /** Its thread (V18c): what its agent was given and reported, and its review's last verdict. */
   thread(branch: string): Promise<WorkspaceThread>;
   /** Sends a message to its agent: continues its session with the text (V18c). */
@@ -487,6 +499,7 @@ export function workspaces(
       ...(workspace.title ? { title: workspace.title } : {}),
       base: workspace.base,
       ...(workspace.from ? { from: workspace.from } : {}),
+      ...(workspace.against ? { against: workspace.against } : {}),
       created: workspace.created,
       planFirst: workspace.planFirst,
       brief: workspace.brief,
@@ -585,22 +598,36 @@ export function workspaces(
     { key: string; read: Promise<Pick<WorkspaceChanges, 'commits' | 'files'>> }
   >();
 
+  /** Where a workspace's review starts and what it merges into (V65), as Review computes it. */
+  async function baseOf(workspace: WorkspaceFile, refs: RefList, tip: string) {
+    return reviewBase(repo, refs, workspace.branch, tip, await mainOf(refs), workspace);
+  }
+
   /**
-   * Where a workspace's commits start (decision 187): the fork point with the default branch, as
-   * Review computes it; the commit it started at once merged (the fork point is then its tip,
-   * which a branch without commits yet also is) or without a default branch. `since` names the
-   * default branch when it is the fork point.
+   * Where a workspace's commits start (decision 187): where its review starts (V65); the commit
+   * it started at once merged (the fork point is then its tip, which a branch without commits yet
+   * also is). `since` names the branch the base is the fork point with.
    */
   async function changesBase(
     workspace: WorkspaceFile,
     refs: RefList,
     tip: string,
   ): Promise<{ base: string; since?: string }> {
-    const main = await mainOf(refs);
-    const fork = main && main !== workspace.branch ? await forkPoint(repo, tip, main, refs) : null;
-    if (fork && main && (fork !== tip || fork === workspace.base))
-      return { base: fork, since: main };
+    const found = await baseOf(workspace, refs, tip);
+    if (found?.since && (found.base !== tip || found.base === workspace.base)) {
+      return { base: found.base, since: found.since };
+    }
     return { base: workspace.base };
+  }
+
+  /** What the person can review a workspace against (V65), and what it is reviewed against. */
+  function againstOf(workspace: WorkspaceFile, refs: RefList): WorkspaceAgainst {
+    return {
+      ...(workspace.against ? { against: workspace.against } : {}),
+      ...(workspace.from ? { from: workspace.from } : {}),
+      base: workspace.base,
+      branches: branchNames(refs).filter((name) => name !== workspace.branch),
+    };
   }
 
   /** The agent of `kind`, when it is installed. */
@@ -1136,9 +1163,10 @@ export function workspaces(
       const refs = await listRefs(repo);
       const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha;
       if (!tip) throw new WorkspaceRefused(`its branch ${workspace.branch} is gone`, 409);
-      const into = await defaultBranch(repo, refs);
+      // The branch it is reviewed against (V65), as an approval names it.
+      const into = (await baseOf(workspace, refs, tip))?.into;
       if (!into) return { into: '', error: 'no default branch to merge into' };
-      // The local default branch, where the merge is made; else a remote's.
+      // The local branch, where the merge is made; else a remote's.
       const target =
         refs.branches.find((b) => b.name === into) ?? refs.remotes.find((r) => r.branch === into);
       if (!target) return { into, error: `no branch ${into}` };
@@ -1149,6 +1177,27 @@ export function workspaces(
         merges.set(key, check);
       }
       return check;
+    },
+
+    async against(branch) {
+      return againstOf(await readRecord(await place(), branch), await listRefs(repo));
+    },
+
+    async setAgainst(branch, against) {
+      const where = await place();
+      const workspace = await readRecord(where, branch);
+      const refs = await listRefs(repo);
+      if (against === workspace.branch) {
+        throw new WorkspaceRefused(`${against} is its own branch: pick another`, 400);
+      }
+      if (against !== null && !hasBranch(refs, against)) {
+        throw new WorkspaceRefused(`no branch ${against}`, 400);
+      }
+      const next: WorkspaceFile = { ...workspace };
+      if (against === null) delete next.against;
+      else next.against = against;
+      await writeRecord(where, next);
+      return againstOf(next, refs);
     },
 
     async thread(branch) {
