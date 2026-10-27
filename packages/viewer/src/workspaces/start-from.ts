@@ -1,7 +1,7 @@
 import type { StartBranch } from '@symbiote/core';
 import { shortSha } from '../history/commits.js';
 
-/** An entry of Start from (V66): a History row's commit, or a branch. */
+/** An entry of Start from (V68): a History row's commit, or a branch. */
 export interface StartChoice {
   /** A branch's name; empty for the row's commit. */
   value: string;
@@ -19,7 +19,7 @@ export interface StartGroup {
 }
 
 /**
- * Start from's entries for a search (V66, decision 476): those whose label holds every word of
+ * Start from's entries for a search (V68, decision 491): those whose label holds every word of
  * `query`, any case, in the order given (the server's: the default branch first); each word's
  * first place marked. A group with no entry is left out.
  */

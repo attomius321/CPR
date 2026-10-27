@@ -5,7 +5,7 @@ import { BranchIcon, CheckIcon, SearchIcon } from '../ui/icons.js';
 import { markedParts, startChoices, type StartChoice } from './start-from.js';
 
 /**
- * Start from (V66, decisions 475–478): the branch picked (or a History row's commit, `value`
+ * Start from (V68, decisions 490–493): the branch picked (or a History row's commit, `value`
  * empty) in a field that opens a search over the branches. A letter typed on the field opens it
  * with that letter; ↑ ↓ move, Enter picks, Escape closes it (and only it: the page leaves on
  * Escape), as do Tab and a click elsewhere.
@@ -40,17 +40,14 @@ export function StartFrom({
   const current = Math.min(active, choices.length - 1);
 
   const show = (typed: string) => {
-    const every = startChoices(branches, at, '').flatMap((group) => group.choices);
-    setQuery(typed);
     // Nothing typed: at the one picked, as a select opens.
-    setActive(
-      typed
-        ? 0
-        : Math.max(
-            0,
-            every.findIndex((choice) => choice.value === value),
-          ),
-    );
+    const picked = typed
+      ? 0
+      : startChoices(branches, at, '')
+          .flatMap((group) => group.choices)
+          .findIndex((choice) => choice.value === value);
+    setQuery(typed);
+    setActive(Math.max(0, picked));
     setOpen(true);
   };
   const hide = (refocus: boolean) => {

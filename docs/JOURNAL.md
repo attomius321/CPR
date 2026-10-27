@@ -265,4 +265,5 @@ merge commit.
 - 2026-10-27 [Fix — an agent's terminal fits its box: no scrollbars coming and going on Scribe's pane](journal/fix-scribe-terminal-problem.md)
 - 2026-10-27 [V65 spike — what a stacked workspace's review shows](journal/v65-review-against.md)
 - 2026-10-27 [V65 — a workspace reviewed against where it started, or a branch picked in it](journal/v65-review-against.md)
-- 2026-10-27 [V66 spike — how many branches Start from lists](journal/v66-start-from-search.md)
+- 2026-10-27 [V68 spike — how many branches Start from lists](journal/v68-start-from-search.md)
+- 2026-10-27 [V68 — Start from with a search](journal/v68-start-from-search.md)

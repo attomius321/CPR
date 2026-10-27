@@ -93,7 +93,7 @@ textarea[rows='7'] {
   min-height: calc(7lh + 18px);
 }
 
-/* Selects (V31c): a field with a drawn chevron; Start from's field (V66) as one. */
+/* Selects (V31c): a field with a drawn chevron; Start from's field (V68) as one. */
 select,
 .start-from-field {
   appearance: none;

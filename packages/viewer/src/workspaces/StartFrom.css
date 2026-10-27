@@ -1,4 +1,4 @@
-/* Start from (V66): a field drawn as a select (controls.css), opening a search over the branches
+/* Start from (V68): a field drawn as a select (controls.css), opening a search over the branches
    in a popover as wide as the card's row: its names are long (`feature/…-…`). */
 .start-from {
   position: relative;
@@ -35,11 +35,13 @@
   border-color: var(--focus);
 }
 
+/* Out by its padding and border: the search spans the row, from the name to the field's end, and
+   covers what the next card draws at its edge (Effort's handle). */
 .start-from-popover {
   position: absolute;
   top: calc(100% + 4px);
-  right: 0;
-  left: calc(-1 * (var(--start-name) + 12px));
+  right: -9px;
+  left: calc(-1 * (var(--start-name) + 12px) - 9px);
   z-index: 20;
   padding: 8px;
   border: 1px solid var(--line);

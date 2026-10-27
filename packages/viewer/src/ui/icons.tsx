@@ -512,7 +512,7 @@ export const MarkdownIcon = () => (
   </Icon>
 );
 
-/** The Skills page's search (V64), and Start from's (V66): lucide's search. */
+/** The Skills page's search (V64), and Start from's (V68): lucide's search. */
 export const SearchIcon = () => (
   <Icon lucide>
     <circle cx="11" cy="11" r="8" />
@@ -520,7 +520,7 @@ export const SearchIcon = () => (
   </Icon>
 );
 
-/** The entry picked in Start from's list (V66): lucide's check. */
+/** The entry picked in Start from's list (V68): lucide's check. */
 export const CheckIcon = () => (
   <Icon lucide>
     <path d="M20 6 9 17l-5-5" />

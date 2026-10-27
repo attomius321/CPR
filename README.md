@@ -126,7 +126,9 @@ page loses nothing.
 
 The cards beside the form hold the workspace's choices:
 
-- **Start from**: the branch to start from. The default branch, unless you pick another.
+- **Start from**: the branch to start from. The default branch, unless you pick another. Its
+  list has a search: type words from a branch's name, in any order, then pick it with ↑, ↓ and
+  Enter.
 - **Branch name**: the new branch's name, made from the title. You can edit it; the button
   beside it names it after the title again.
 - **Agent**, **Model** and **Effort**: the agent, the model it starts with, and its effort level

@@ -32,7 +32,7 @@ const start = (page: Page) => page.getByRole('region', { name: 'Start a workspac
 const title = (page: Page) => start(page).getByRole('textbox', { name: 'Title' });
 const goal = (page: Page) => start(page).getByRole('textbox', { name: 'Goal' });
 const effort = (page: Page) => start(page).getByRole('slider', { name: 'Effort' });
-// Start from (V66): a button that opens a search over the branches.
+// Start from (V68): a button that opens a search over the branches.
 const from = (page: Page) => start(page).getByRole('button', { name: /^Start from/ });
 const branchSearch = (page: Page) => start(page).getByRole('combobox', { name: 'Search branches' });
 const branchList = (page: Page) => start(page).getByRole('listbox', { name: 'Branches' });
@@ -567,7 +567,7 @@ test("Start from: the branches listed; one picked is where it starts and its nam
   await expect(from(page)).toHaveAttribute('aria-expanded', 'true');
   await expect(branchSearch(page)).toBeFocused();
   await expect(branchList(page).getByRole('option')).toHaveText(['main', 'topic', 'shared']);
-  // V66: the groups are the page's, the remote's under its heading.
+  // V68: the groups are the page's, the remote's under its heading.
   await expect(branchList(page).getByRole('group')).toHaveCount(2);
   await expect(
     branchList(page).getByRole('group', { name: 'Local 2' }).getByRole('option'),
@@ -631,7 +631,7 @@ test("Start from a History row: the row's commit first, a branch instead when pi
   await expect(start(page)).toContainText(`Will be created from the commit ${short(base)}`);
 });
 
-// V66: a search over the branches, and the keys.
+// V68: a search over the branches, and the keys.
 test('Start from: typing narrows the branches to those holding every word; the keys pick', async ({
   page,
 }) => {

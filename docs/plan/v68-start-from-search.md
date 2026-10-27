@@ -1,9 +1,11 @@
-# V66 — Search the branches to start from
+# V68 — Search the branches to start from
 
-[Index](../PLAN.md) · [Journal](../journal/v66-start-from-search.md)
+[Index](../PLAN.md) · [Journal](../journal/v68-start-from-search.md)
 
-**Status:** planned (2026-10-27), on branch `feature/start-workspace-source-start-from` (a
-workspace started in Symbiote, plan first; the person's OK given); not started.
+**Status:** ready for review (2026-10-27), on branch `feature/start-workspace-source-start-from`
+(a workspace started in Symbiote, plan first; the person's OK given). Planned as V66 (decisions
+475–478), renumbered: `feature/history-feature` took V66 and `feature/review-merging-strategies`
+V67 meanwhile. Its "As built" and results below.
 
 **Problem** (asked: "Need to be able to search for branches." — then: "the category of origin
 have a white color on black theme, and is not visible, the line that splits origin from local -
@@ -80,16 +82,45 @@ only on a remote), the draft keeping the pick, the server and its API.
 
 | # | Milestone | Output |
 |---|---|---|
-| V66 | Start from with a search | `start-from.ts`, `StartFrom.tsx`, its CSS, tests, docs |
+| V68 | Start from with a search | `start-from.ts`, `StartFrom.tsx`, its CSS, tests, docs |
 
 **Proposed decisions**:
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 475 | Which control | **A button that opens a popover: a search field over a listbox** | the field keeps showing the pick as the mockup's; a native select can be neither filtered nor styled; an editable field would lose the picked name while typing |
-| 476 | What a search matches | **Every word typed in the name, any case; the server's order; the matched letters marked** | History's filter is one substring; words find `milestone/v65-review-against` by "v65 against"; no ranking keeps the default branch first |
-| 477 | The keys | **Enter/Space/↑/↓ or a letter open it; ↑/↓ move, Enter picks, Escape closes it only, Tab or a click outside close** | the select's keys, plus typing; the page's Escape must not leave while the list is open |
-| 478 | The groups' headings | **Drawn by the page: Local and Only on a remote, in `--muted` with a count** | the native optgroup's label was unseen in the dark theme |
+| 490 | Which control | **A button that opens a popover: a search field over a listbox** | the field keeps showing the pick as the mockup's; a native select can be neither filtered nor styled; an editable field would lose the picked name while typing |
+| 491 | What a search matches | **Every word typed in the name, any case; the server's order; the matched letters marked** | History's filter is one substring; words find `milestone/v65-review-against` by "v65 against"; no ranking keeps the default branch first |
+| 492 | The keys | **Enter/Space/↑/↓ or a letter open it; ↑/↓ move, Enter picks, Escape closes it only, Tab or a click outside close** | the select's keys, plus typing; the page's Escape must not leave while the list is open |
+| 493 | The groups' headings | **Drawn by the page: Local and Only on a remote, in `--muted` with a count** | the native optgroup's label was unseen in the dark theme |
 
-**Not in V66 (later)**: the same picker for a workspace's "Review against" (V65) and Merge into
+**Not in V68 (later)**: the same picker for a workspace's "Review against" (V65) and Merge into
 ▾; History's branch filter by words.
+
+## As built (V68)
+
+- **The shell's letter keys**: on a focused `<select>` the shell leaves letters alone
+  (`keyIsTaken`); on a button it does not, so `m` on the closed field went to Monitor. The field
+  stops the letters it takes (and ↑ ↓) before the shell's window listener; the e2e test types `m`.
+- **The popover is 9 px wider than the row on each side** (its padding and border): its search
+  then spans the row exactly, from the name to the field's end, and it covers the Effort card's
+  handle, whose 1 px ring showed beside the popover's edge in the first screenshots.
+- **The commit's entry** matches on its label ("The commit abc1234"): its words and the short
+  SHA, not the full one.
+- **The field shares the selects' rules** (`ui/controls.css`: edge, hover, focus ring, chevron)
+  rather than copying them; `StartFrom.css` has the layout, the popover and the rows.
+- **The picked entry's check** is in `--accent` under `[aria-selected='true']`: `tokens.test.ts`
+  allows the accent only in a selector that names its role.
+
+**Results.** `test/start-from.test.ts` (7, red before the module: it did not exist); the three
+Start from e2e tests in `start.spec.ts` (V33's two on the new control, one for the search and
+keys) were written before the control but first run after it (they need a build). `pnpm check`:
+1,911 tests. `pnpm test:e2e`: 308 of 308; after the popover's last CSS change, `start.spec.ts`
+and `workspaces.spec.ts` again (68 of 68). Screenshots at 1440 × 900, scale 1, dark and light,
+with this repository's names (55 local, 123 only on `origin`; 186 entries with the fixture's):
+closed, open, the remote group, filtered, keys, no match, a long name picked, a History row's
+commit, and 390 px wide; the text at 3× has even letter gaps. A keystroke: 21 ms to narrow the
+186 entries and 33 ms to list them all again, each to the second animation frame.
+
+Not verified: the other selects' native lists (Agent, Model, Permissions, Review against, Merge
+into ▾) in the dark theme — none has a group heading, the part the person saw unseen; a headless
+browser does not draw a select's open list in a screenshot.
