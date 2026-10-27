@@ -439,8 +439,9 @@ export function skillGitNote(git: FileGitState): string {
 }
 
 /**
- * The checkout's skills by folder, in the server's order, each folder named with the agents that
- * read it. The library's (SK1) are drawn in a section of their own.
+ * The checkout's skills by folder, in the server's order (V64, decision 459): Claude Code's as
+ * "Skills", Codex's own folder as "Codex skills". Who reads a skill is on its path line; the
+ * library's (SK1) are drawn in a section of their own.
  */
 export function skillGroups(
   state: SkillsState,
@@ -453,15 +454,31 @@ export function skillGroups(
       group.skills.push(skill);
       continue;
     }
-    const agents =
-      skill.folder === '.agents/skills'
-        ? 'Codex'
-        : state.codex.link === 'linked'
-          ? 'Claude Code and Codex'
-          : 'Claude Code';
-    groups.push({ folder: skill.folder, title: `${skill.folder} · ${agents}`, skills: [skill] });
+    const title = skill.folder === '.agents/skills' ? 'Codex skills' : 'Skills';
+    groups.push({ folder: skill.folder, title, skills: [skill] });
   }
   return groups;
+}
+
+/**
+ * Whether the list's search finds a skill (V64): its name or its description holds `query`, case
+ * aside; an empty query finds every skill.
+ */
+export function skillMatches(skill: Skill, query: string): boolean {
+  const asked = query.trim().toLowerCase();
+  if (asked === '') return true;
+  if (skill.name.toLowerCase().includes(asked)) return true;
+  if (skill.text === undefined) return false;
+  const read = readSkill(skill.text);
+  if (read.frontmatter === 'none' || read.frontmatter === 'open') return false;
+  const description = read.frontmatter.fields.get('description');
+  return description?.kind === 'text' && description.value.toLowerCase().includes(asked);
+}
+
+/** A check's lead, drawn in the text's colour, and the rest, muted: split at its first ": ". */
+export function checkParts(text: string): [lead: string, rest: string] {
+  const at = text.indexOf(': ');
+  return at < 0 ? [text, ''] : [text.slice(0, at + 1), text.slice(at + 2)];
 }
 
 /** Whether the draft would change the skill's text. */
