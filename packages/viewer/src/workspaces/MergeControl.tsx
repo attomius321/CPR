@@ -7,8 +7,9 @@ import { tip } from '../ui/tip.js';
 
 /**
  * Merge into ▾ (V26a, decision 149): offered when the branch's last verdict approves and its tip
- * is the approved commit; the target preselected (the workspace's `from`, the verdict's `into`,
- * the default branch) and any other branch to pick. Once queued, the entry's state instead.
+ * is the approved commit; the target preselected (the branch it is reviewed against, V65; its
+ * `from`, the verdict's `into`, the default branch) and any other branch to pick. Once queued,
+ * the entry's state instead.
  */
 export function MergeControl({ branch }: { branch: string }) {
   const { merges } = useWorkspaces();

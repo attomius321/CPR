@@ -15,6 +15,7 @@ import {
   serializeReview,
   type BranchReviewFile,
 } from '../src/reviews.js';
+import { writeRecord, type WorkspaceFile } from '../src/workspace-record.js';
 
 /**
  * main: A ── B ── M; agent: B ── W1 ── W2 (a branch written by an agent), and origin/topic at W1
@@ -219,6 +220,55 @@ describe('branchReviews', () => {
     await expect(reviews.resolve('main')).rejects.toThrow(/default branch/);
     await expect(reviews.resolve('origin/main')).rejects.toThrow(/default branch/);
     await expect(reviews.resolve('done')).rejects.toThrow(/merged into main/);
+  });
+
+  it("reviews a workspace's branch from where it started, or against its picked branch (V65)", async () => {
+    const { repo, shas } = fresh();
+    // stacked: W1 ── S1, a workspace started from agent at W1 (agent has moved on to W2).
+    repo.git('switch', '--quiet', '--create', 'stacked', shas.W1);
+    repo.write({ 'src/S1.ts': 'export const S1 = 1;\n' });
+    const S1 = repo.commit('S1');
+    repo.git('switch', '--quiet', 'main');
+    const git = await openRepo(repo.root);
+    const where = await reviewPlace(git, cache);
+    const workspace = (over: Partial<WorkspaceFile>) =>
+      writeRecord(where, {
+        agent: null,
+        base: shas.W1,
+        branch: 'stacked',
+        brief: 'b',
+        created: NOW.toISOString(),
+        planFirst: false,
+        worktree: join(repo.root, '..', 'wt'),
+        ...over,
+      });
+    const reviews = branchReviews(git, cache, { now: () => NOW });
+    // Without a record: the fork point with main, as before.
+    expect((await reviews.resolve('stacked')).pair).toEqual({ base: shas.B, head: S1 });
+
+    await workspace({ from: 'agent' });
+    expect(await reviews.resolve('stacked')).toMatchObject({
+      info: { base: shas.W1, head: S1, into: 'agent' },
+      pair: { base: shas.W1, head: S1 },
+    });
+    // Started from a History row: at its commit, merged into main.
+    await workspace({});
+    expect((await reviews.resolve('stacked')).info).toMatchObject({ base: shas.W1, into: 'main' });
+    // Against a branch picked: its fork point, merged into it.
+    await workspace({ from: 'agent', against: 'main' });
+    expect((await reviews.resolve('stacked')).info).toMatchObject({ base: shas.B, into: 'main' });
+    expect(await reviews.merge((await reviews.resolve('stacked')).info)).toMatchObject({
+      into: 'main',
+    });
+    // A picked branch that is gone: where it started.
+    await workspace({ from: 'agent', against: 'gone' });
+    expect((await reviews.resolve('stacked')).info).toMatchObject({
+      base: shas.W1,
+      into: 'agent',
+    });
+    // Merged into the branch it is reviewed against: nothing to review.
+    repo.git('branch', '--quiet', '--force', 'agent', S1);
+    await expect(reviews.resolve('stacked')).rejects.toThrow(/merged into agent/);
   });
 
   it('keeps marks and drafts in symbiote/reviews/, out of git, and never stages them', async () => {

@@ -317,6 +317,16 @@ export function parseWorkspaceClean(text: string): { branch: string; unmerged?: 
   return { branch: value.branch, ...(value.unmerged ? { unmerged: true } : {}) };
 }
 
+/** `{ branch, against }` (V65): the branch to review a workspace against; null, where it started. */
+export function parseWorkspaceAgainst(text: string): { branch: string; against: string | null } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
+  if (value.against !== null && (typeof value.against !== 'string' || value.against === '')) {
+    throw new Error('against: a branch name, or null for where it started');
+  }
+  return { branch: value.branch, against: value.against };
+}
+
 /** `{ branch }`: a workspace's worktree to open. */
 export function parseWorkspaceOpen(text: string): { branch: string } {
   const value = JSON.parse(text) as Record<string, unknown> | null;

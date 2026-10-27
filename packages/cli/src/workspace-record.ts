@@ -22,6 +22,11 @@ import { BRIEF_PARTS } from './workspace-brief.js';
 export interface WorkspaceFile {
   /** The agent started for it; null when none was found. */
   agent: WorkspaceAgentRecord | null;
+  /**
+   * The branch picked to review it against (V65): its Review, changes and merge start at the fork
+   * point with it; absent: where it started.
+   */
+  against?: string;
   /** The commit the branch started at (full SHA). */
   base: string;
   branch: string;
@@ -149,6 +154,7 @@ export async function readWorkspace(path: string): Promise<WorkspaceFile | null>
   if (!text(v.branch) || !text(v.base) || !text(v.worktree)) return null;
   return {
     agent: asAgent(v.agent),
+    ...(text(v.against) ? { against: text(v.against) } : {}),
     base: text(v.base),
     branch: text(v.branch),
     brief: text(v.brief),

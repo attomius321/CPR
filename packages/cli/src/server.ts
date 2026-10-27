@@ -49,6 +49,7 @@ import {
   parseScoutTerminal,
   parseTerminalFile,
   parseTerminalPaths,
+  parseWorkspaceAgainst,
   parseWorkspaceClean,
   parseWorkspaceDiff,
   parseWorkspaceOpen,
@@ -643,6 +644,17 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
     if (url.pathname === '/api/workspaces/merge') {
       return ofBranch(req, res, url, (branch) => workspaces.merge(branch));
+    }
+    if (url.pathname === '/api/workspaces/against') {
+      if (req.method === 'GET') return ofBranch(req, res, url, (b) => workspaces.against(b));
+      return written(req, res, parseWorkspaceAgainst, ({ branch, against }) =>
+        answer(res, async () => {
+          const answered = await workspaces.setAgainst(branch, against);
+          // Its review starts elsewhere now: resolved again when next opened.
+          opened.delete(branch);
+          return answered;
+        }),
+      );
     }
     if (url.pathname === '/api/workspaces/thread') {
       return ofBranch(req, res, url, (branch) => workspaces.thread(branch));

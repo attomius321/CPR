@@ -133,7 +133,10 @@ export interface MergeList {
 export interface MergeTargets {
   /** Branches to merge into: local ones, and remote ones by their name; never the branch itself. */
   branches: string[];
-  /** Preselected: the workspace's `from`, the verdict's `into`, else the default branch. */
+  /**
+   * Preselected: the branch the workspace is reviewed against (V65), its `from`, the verdict's
+   * `into`, else the default branch.
+   */
   into: string | null;
   /** The approved commit, when the last verdict approves. */
   head?: string;
