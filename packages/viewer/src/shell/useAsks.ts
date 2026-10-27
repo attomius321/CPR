@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { McpAsk, McpAsks } from '@symbiote/core';
 import { postJson } from '../ui/http.js';
-import { reloadWorkspaces } from '../workspaces/useWorkspaces.js';
+import { readsHidden, reloadWorkspaces } from '../workspaces/useWorkspaces.js';
 
 /**
  * How often the asks of Symbiote's MCP are read while a page shows (MC1): an agent may ask at any
@@ -39,11 +39,15 @@ function schedule(): void {
   clearTimeout(timer);
   if (listeners.size === 0 || none) return;
   timer = setTimeout(() => {
-    void (document.visibilityState === 'hidden' ? Promise.resolve() : readAsks()).then(schedule);
+    const hidden = document.visibilityState === 'hidden' && !readsHidden();
+    void (hidden ? Promise.resolve() : readAsks()).then(schedule);
   }, ASKS_MS);
 }
 
-/** The asks waiting for the person, oldest first: read on mount and every 2 s while shown. */
+/**
+ * The asks waiting for the person, oldest first: read on mount and every 2 s while shown; in the
+ * app, hidden too (N2).
+ */
 export function useAsks(): McpAsk[] {
   const [asks, setAsks] = useState(current);
   useEffect(() => {
