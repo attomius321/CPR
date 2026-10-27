@@ -16,7 +16,8 @@
 .settings-editor textarea,
 .skills-field textarea,
 .merge-change textarea,
-select {
+select,
+.start-from-field {
   border: 1px solid var(--field-line);
   border-radius: 8px;
   background-color: var(--input-bg);
@@ -39,7 +40,8 @@ select {
 .settings-editor textarea:hover:not(:focus, :disabled),
 .skills-field textarea:hover:not(:focus, :disabled),
 .merge-change textarea:hover:not(:focus, :disabled),
-select:hover:not(:focus, :disabled) {
+select:hover:not(:focus, :disabled),
+.start-from-field:hover:not(:focus, [aria-expanded='true']) {
   border-color: var(--edge);
 }
 
@@ -55,7 +57,8 @@ select:hover:not(:focus, :disabled) {
 .settings-editor textarea:focus-visible,
 .skills-field textarea:focus-visible,
 .merge-change textarea:focus-visible,
-select:focus-visible {
+select:focus-visible,
+.start-from-field:focus-visible {
   outline: none;
   border-color: var(--focus);
   box-shadow: 0 0 0 3px var(--ring);
@@ -90,8 +93,9 @@ textarea[rows='7'] {
   min-height: calc(7lh + 18px);
 }
 
-/* Selects (V31c): a field with a drawn chevron. */
-select {
+/* Selects (V31c): a field with a drawn chevron; Start from's field (V66) as one. */
+select,
+.start-from-field {
   appearance: none;
   height: 32px;
   padding: 0 28px 0 10px;

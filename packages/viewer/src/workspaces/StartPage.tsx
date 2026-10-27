@@ -62,6 +62,7 @@ import {
 import { StartAgent } from './StartAgent.js';
 import { StartCard } from './StartCard.js';
 import { StartDocuments } from './StartDocuments.js';
+import { StartFrom } from './StartFrom.js';
 import { StartKinds } from './StartKinds.js';
 import { tip } from '../ui/tip.js';
 
@@ -234,8 +235,6 @@ function StartForm({
   // Without a branch there is a row's commit: the page shows no form otherwise.
   const base: { sha: string; from?: string } =
     picked && !(onCommit && at) ? { sha: picked.sha, from: picked.name } : { sha: at ?? '' };
-  const local = options.branches.filter((b) => !b.remote);
-  const remote = options.branches.filter((b) => b.remote);
   const agent =
     options.agents.find((a) => a.kind === (run.agent ?? options.agents[0]?.kind)) ?? null;
   const mode: PermissionMode =
@@ -628,35 +627,20 @@ function StartForm({
           <div className="start-run">
             <StartCard icon={<BranchIcon />} title="Source">
               <div className="workspace-field start-row">
-                <label htmlFor="start-from">Start from</label>
-                <div className="start-select">
-                  <BranchIcon />
-                  <select
-                    id="start-from"
-                    value={base.from ?? ''}
-                    onChange={(event) => {
-                      const name = event.target.value;
-                      setOnCommit(name === '');
-                      if (name !== '') choose({ ...run, from: name });
-                    }}
-                  >
-                    {at && <option value="">The commit {shortSha(at)}</option>}
-                    {local.map((b) => (
-                      <option key={b.name} value={b.name}>
-                        {b.name}
-                      </option>
-                    ))}
-                    {remote.length > 0 && (
-                      <optgroup label="Only on a remote">
-                        {remote.map((b) => (
-                          <option key={b.name} value={b.name}>
-                            {b.name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    )}
-                  </select>
-                </div>
+                <label id="start-from-label" htmlFor="start-from">
+                  Start from
+                </label>
+                <StartFrom
+                  id="start-from"
+                  labelId="start-from-label"
+                  branches={options.branches}
+                  at={at}
+                  value={base.from ?? ''}
+                  onPick={(name) => {
+                    setOnCommit(name === '');
+                    if (name !== '') choose({ ...run, from: name });
+                  }}
+                />
               </div>
               <div className="workspace-field start-row">
                 <span className="field-label">

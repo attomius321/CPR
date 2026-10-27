@@ -30,6 +30,7 @@
 @import './history/CheckoutDialog.css';
 @import './history/BranchesPanel.css';
 @import './workspaces/StartPage.css';
+@import './workspaces/StartFrom.css';
 @import './workspaces/StartDocuments.css';
 @import './workspaces/EffortStepper.css';
 @import './workspaces/WorkspaceMark.css';
