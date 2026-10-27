@@ -1,4 +1,5 @@
-/* The sidenav (Sidenav.tsx): the pages, the workspaces' cards, the rail it folds to. */
+/* The sidenav (Sidenav.tsx): the pages, the workspaces' cards, Settings at the bottom, the rail
+   it folds to. */
 
 /* What the list says of where workspaces are kept (V25), under the title. */
 .workspaces-note {
@@ -167,7 +168,16 @@ button.workspace-about {
   padding: 6px 8px 4px;
 }
 
-.sidenav-pages a {
+/* Settings, under the workspaces at the bottom: a page's row, over a hairline the list scrolls
+   under. */
+.sidenav-foot {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px;
+  border-top: 1px solid var(--line);
+}
+
+:is(.sidenav-pages, .sidenav-foot) a {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -182,25 +192,25 @@ button.workspace-about {
     color 150ms;
 }
 
-.sidenav-pages a .icon {
+:is(.sidenav-pages, .sidenav-foot) a .icon {
   width: 18px;
   height: 18px;
   color: var(--muted);
   stroke-width: 1.4;
 }
 
-.sidenav-pages a:hover {
+:is(.sidenav-pages, .sidenav-foot) a:hover {
   background: var(--hover);
   color: var(--text);
 }
 
-.sidenav-pages a[aria-current='page'] {
+:is(.sidenav-pages, .sidenav-foot) a[aria-current='page'] {
   background: var(--selected);
   color: var(--text);
 }
 
 /* The current page's icon in the accent (V42). */
-.sidenav-pages a[aria-current='page'] .icon {
+:is(.sidenav-pages, .sidenav-foot) a[aria-current='page'] .icon {
   color: var(--accent);
   stroke-width: 1.8;
 }
@@ -273,19 +283,19 @@ button.workspace-about {
 
 /* In the text's font: a monospace stack here made the first paint wait for font matching (850 ms
    on Linux before anything showed, V29a). */
-.sidenav-pages kbd {
+:is(.sidenav-pages, .sidenav-foot) kbd {
   margin-left: auto;
   opacity: 0;
   transition: opacity 150ms;
 }
 
-.sidenav-pages a:hover kbd,
-.sidenav-pages a:focus-visible kbd {
+:is(.sidenav-pages, .sidenav-foot) a:hover kbd,
+:is(.sidenav-pages, .sidenav-foot) a:focus-visible kbd {
   opacity: 1;
 }
 
 @media (hover: none) {
-  .sidenav-pages kbd {
+  :is(.sidenav-pages, .sidenav-foot) kbd {
     opacity: 1;
   }
 }
@@ -809,11 +819,11 @@ button.workspace-about {
     flex: none;
   }
 
-  .sidenav.rail .sidenav-pages {
+  .sidenav.rail :is(.sidenav-pages, .sidenav-foot) {
     padding: 4px 6px;
   }
 
-  .sidenav.rail .sidenav-pages a {
+  .sidenav.rail :is(.sidenav-pages, .sidenav-foot) a {
     position: relative;
     justify-content: center;
     padding: 0;

@@ -27,6 +27,9 @@ test.afterEach(() => {
 const POLL = { timeout: 12_000 };
 const sidenav = (page: Page) => page.getByRole('complementary', { name: 'Pages and workspaces' });
 const pages = (page: Page) => sidenav(page).getByRole('navigation', { name: 'Pages' });
+/** Settings: the sidenav's last row, under the workspaces. */
+const settingsLink = (page: Page) =>
+  sidenav(page).locator(':scope > :last-child').getByRole('link', { name: 'Settings' });
 const card = (page: Page, branch: string) =>
   sidenav(page).locator(`.workspace-row[data-branch="${branch}"]`);
 const group = (page: Page, name: string) => sidenav(page).getByRole('region', { name });
@@ -56,13 +59,14 @@ test('symbiote view opens History in the shell: the pages, then the workspaces, 
   await expect(page).toHaveURL(`${symbiote.url}history`);
   // A title bar is Symbiote's window's only (N1c): none in a browser.
   await expect(page.locator('.titlebar')).toHaveCount(0);
+  // The pages one works in; Settings is at the sidenav's bottom, after the workspaces.
   const links = pages(page).getByRole('link');
-  await expect(links).toHaveCount(5);
+  await expect(links).toHaveCount(4);
   await expect(links.nth(0)).toHaveAccessibleName('History');
   await expect(links.nth(1)).toHaveAccessibleName('Scout');
   await expect(links.nth(2)).toHaveAccessibleName('Skills');
   await expect(links.nth(3)).toHaveAccessibleName('Monitor');
-  await expect(links.nth(4)).toHaveAccessibleName('Settings');
+  await expect(settingsLink(page)).toBeVisible();
   await expect(pages(page).getByRole('link', { name: 'History' })).toHaveAttribute(
     'aria-current',
     'page',
@@ -99,7 +103,7 @@ test('a card opens its workspace from History and Settings, in place; Back retur
   const half = 'feature/add-a-half-function';
   const clamp = 'feature/add-clamp';
 
-  await pages(page).getByRole('link', { name: 'Settings' }).click();
+  await settingsLink(page).click();
   await expect(page).toHaveURL(`${symbiote.url}settings`);
   await expect(page.getByRole('navigation', { name: 'Settings' })).toBeVisible();
   await mark(page);
@@ -165,6 +169,43 @@ test('keys: h and s go to the pages, w to the workspaces and the arrows between 
   await sidenav(page).getByRole('button', { name: 'Open the sidenav' }).click();
   await expect(sidenav(page)).not.toHaveClass(/rail/);
   expect((await sidenav(page).boundingBox())?.width ?? 0).toBeGreaterThan(200);
+});
+
+test('Settings at the sidenav’s bottom, under the workspaces: open, folded, and when the list scrolls', async ({
+  page,
+}) => {
+  const symbiote = await serve();
+  // A short window: the workspaces' list scrolls, and Settings stays in view under it.
+  await page.setViewportSize({ width: 1440, height: 600 });
+  await page.goto(`${symbiote.url}history`);
+  for (const what of ['Add a half function', 'Add clamp', 'Add a sum', 'Add a max'])
+    await start(page, what);
+  const list = sidenav(page).locator('.sidenav-list');
+  await expect(list.locator('.workspace-row')).toHaveCount(4, POLL);
+  expect(await list.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+
+  /** Its bottom at the sidenav's (inside its padding), and under the list. */
+  const atTheBottom = async () => {
+    const side = await sidenav(page).boundingBox();
+    const link = await settingsLink(page).boundingBox();
+    const shown = await list.boundingBox();
+    if (!side || !link || !shown) throw new Error('Not drawn');
+    expect(side.y + side.height - (link.y + link.height)).toBeLessThanOrEqual(12);
+    expect(link.y).toBeGreaterThanOrEqual(shown.y + shown.height);
+    return link;
+  };
+  await atTheBottom();
+  // A page's link as before: it opens Settings and says it is the page shown.
+  await settingsLink(page).click();
+  await expect(page).toHaveURL(`${symbiote.url}settings`);
+  await expect(settingsLink(page)).toHaveAttribute('aria-current', 'page');
+
+  // Folded to the rail: its icon at the bottom, where the pages' icons are across.
+  await sidenav(page).getByRole('button', { name: 'Fold the sidenav' }).click();
+  await expect(sidenav(page)).toHaveClass(/rail/);
+  const link = await atTheBottom();
+  const history = await pages(page).getByRole('link', { name: 'History' }).boundingBox();
+  expect([link.x, link.width]).toEqual([history?.x, history?.width]);
 });
 
 test('a card keeps the focus when its workspace moves to another group', async ({ page }) => {

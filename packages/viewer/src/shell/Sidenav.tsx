@@ -317,16 +317,6 @@ export function Sidenav({
           <span className="sidenav-label">Monitor</span>
           <kbd aria-hidden="true">m</kbd>
         </a>
-        <a
-          href={SETTINGS_PAGE}
-          aria-label="Settings"
-          {...tip("Settings\nEvery agent's prompts", { keys: 's', side: 'right' })}
-          aria-current={route?.page === 'settings' ? 'page' : undefined}
-        >
-          <SettingsIcon />
-          <span className="sidenav-label">Settings</span>
-          <kbd aria-hidden="true">s</kbd>
-        </a>
       </nav>
       <section className="sidenav-workspaces" aria-label="Workspaces">
         <h2 className="sidenav-heading">
@@ -434,6 +424,20 @@ export function Sidenav({
           })}
         </div>
       </section>
+      {/* Settings at the bottom, under the workspaces: not a page one works in. No landmark of its
+          own: the Settings page has the navigation named "Settings". */}
+      <footer className="sidenav-foot">
+        <a
+          href={SETTINGS_PAGE}
+          aria-label="Settings"
+          {...tip("Settings\nEvery agent's prompts", { keys: 's', side: 'right' })}
+          aria-current={route?.page === 'settings' ? 'page' : undefined}
+        >
+          <SettingsIcon />
+          <span className="sidenav-label">Settings</span>
+          <kbd aria-hidden="true">s</kbd>
+        </a>
+      </footer>
     </aside>
   );
 }
