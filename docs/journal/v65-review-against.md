@@ -34,3 +34,15 @@ approval and Merge into ▾ target the branch reviewed against. Decisions 471–
 - **A start commit can be older than a fork point that does not descend from it** (a workspace
   from a History row inside another branch): the fork point with `main` is then before the start,
   and counting from it took the other branch's commits; descent decides (decision 471).
+- **The heading had no room**: in the 256 px panel the select got about 100 px and cut every
+  name; a row of its own under the heading fits `release/2026-10` (screenshot at 1440×900).
+
+**Verification**: tests first, red for the right reason (8 unit, 1 e2e); `pnpm check`: 1,900 of
+1,904 unit tests, the 4 others the 3 that need node-pty (absent here) and one merges test that
+fails under load on `main` too. e2e back to back: branch 266 of 307, `main` 267 of 306, the same
+failing specs (terminals, Scout, Scribe, the desktop window) but 3 that pass alone. Screenshots of
+the panel before and after a pick, dark theme.
+
+Not verified: the light theme by eye (the tokens' contrast test covers it); with a real agent's
+terminal (node-pty is not installed in this container); on a repository with many branches.
+

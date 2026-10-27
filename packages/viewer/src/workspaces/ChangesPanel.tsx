@@ -75,7 +75,7 @@ function AgainstChoice({
       live = false;
     };
   }, [branch]);
-  if (!against) return <span className="changes-since">{sinceText(changes.since)}</span>;
+  if (!against) return <p className="changes-against">{sinceText(changes.since)}</p>;
   const pick = (value: string) => {
     setBusy(true);
     postJson<WorkspaceAgainst>('/api/workspaces/against', { branch, against: value || null })
@@ -88,7 +88,7 @@ function AgainstChoice({
       .finally(() => setBusy(false));
   };
   return (
-    <label className="changes-since changes-against">
+    <label className="changes-against">
       since{' '}
       <select
         aria-label="Review against"
@@ -233,13 +233,13 @@ export function ChangesPanel({
           <section className="changes-section" aria-label="Commits">
             <h2>
               Commits <span className="changes-count">{changes.commits.count}</span>
-              <AgainstChoice
-                branch={branch}
-                changes={changes}
-                onPicked={() => setPicks((n) => n + 1)}
-                onSaid={onSaid}
-              />
             </h2>
+            <AgainstChoice
+              branch={branch}
+              changes={changes}
+              onPicked={() => setPicks((n) => n + 1)}
+              onSaid={onSaid}
+            />
             {changes.tip === null ? (
               <p className="changes-empty">Its branch is gone</p>
             ) : changes.commits.count === 0 ? (

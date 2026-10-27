@@ -59,12 +59,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.changes-since {
-  margin-left: auto;
-  font-size: var(--size-caption);
-  font-weight: 400;
-}
-
 .changes-section h2 .changes-lines {
   margin-left: auto;
 }
@@ -186,18 +180,23 @@ button.changes-file:hover {
   color: var(--removed);
 }
 
-/* What its review is against (V65): a compact select in the Commits heading. */
+/* What its review is against (V65): a row of its own under the Commits heading, the select as
+   wide as the panel lets it be (a branch's name cut at 100 px in the heading). */
 .changes-against {
   display: flex;
   align-items: center;
-  gap: 4px;
-  min-width: 0;
+  gap: 6px;
+  min-height: 26px;
+  margin: 0 0 6px;
+  padding: 0 12px;
+  color: var(--muted);
+  font-size: var(--size-caption);
 }
 
 .changes-against select {
+  flex: 1;
   min-width: 0;
-  max-width: 220px;
-  height: 24px;
+  height: 26px;
   padding: 0 24px 0 8px;
   background-position: right 6px center;
   font-size: var(--size-caption);

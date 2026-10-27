@@ -120,6 +120,8 @@ still names the default branch as where its work merges (`promptOf`).
 - **The option's words**: "`<from>`, where it started" (or the start commit's short SHA), then
   every branch; a picked branch since deleted stays listed as "(no longer a branch)" and reviews
   from where it started.
+- **The select is a row of its own** under the Commits heading, not in it: in the heading of the
+  256 px panel it had about 100 px and cut every name ("main, whe…", "release/2…").
 - **A workspace started from a History row** now counts from its commit; before, from the fork
   point with `main`, which listed another branch's commit as its own (2 where 1 was, in the test).
   The one change of behaviour for a workspace not stacked on a branch.
@@ -129,3 +131,9 @@ still names the default branch as where its work merges (`promptOf`).
 2 in the viewer's `changes.test.ts`, 1 e2e in `changes.spec.ts`. Every earlier test passes
 unchanged, the ones that count a workspace from `main` after a rebase, a merge of `main` and once
 merged among them.
+e2e: 266 of 307 passed on the branch, 267 of 306 on `main`, run back to back on this container;
+the failures are the same specs (no node-pty here: every real terminal, Scout, Scribe, the
+desktop window) but three, which pass alone (two desktop-window ones, one teardown `ENOTEMPTY`),
+and one of `main`'s. `merges.test.ts` fails a test now and then under that load on `main` too (1
+run of 3). No analysis code changed: no regression set run.
+
