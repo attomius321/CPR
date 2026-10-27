@@ -959,7 +959,7 @@ describe('the config a landing reads (V26a)', () => {
 });
 
 describe('into which branch (V26a)', () => {
-  it('preselects the workspace’s from, else the verdict’s into, else the default branch', async () => {
+  it('preselects the workspace’s against, else its from, else the verdict’s into, else the default branch', async () => {
     const { repo, shas } = setup();
     repo.git('branch', 'develop', shas.M);
     const m = await make(repo);
@@ -988,6 +988,23 @@ describe('into which branch (V26a)', () => {
       }),
     );
     expect((await m.targets('topic')).into).toBe('main');
+
+    // The branch it is reviewed against first (V65).
+    writeFileSync(
+      join(repo.root, 'symbiote', 'workspaces', 'topic.json'),
+      serializeWorkspace({
+        agent: null,
+        against: 'develop',
+        base: shas.A,
+        branch: 'topic',
+        brief: 'b',
+        created: NOW.toISOString(),
+        from: 'main',
+        planFirst: false,
+        worktree: join(repo.root, '..', 'wt'),
+      }),
+    );
+    expect((await m.targets('topic')).into).toBe('develop');
   });
 
   it('merges into master in an old project', async () => {

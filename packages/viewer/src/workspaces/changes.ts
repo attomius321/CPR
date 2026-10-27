@@ -1,5 +1,5 @@
 // A workspace's changes panel (V29d): the words of its rows, pure.
-import type { WorkspaceCommit, WorkspaceFileChange } from '@symbiote/core';
+import type { WorkspaceAgainst, WorkspaceCommit, WorkspaceFileChange } from '@symbiote/core';
 
 type Status = WorkspaceFileChange['status'];
 
@@ -60,9 +60,28 @@ export function fileFacts(file: WorkspaceFileChange): string {
 export const fileTitle = (file: WorkspaceFileChange): string =>
   `${fileFacts(file)}. Opens its changes in VS Code`;
 
-/** Where the commits start: the default branch's fork point, else where the workspace started. */
+/** Where the commits start: a branch's fork point, else where the workspace started. */
 export const sinceText = (since: string | undefined): string =>
   since ? `since ${since}` : 'since it started';
+
+/**
+ * What a workspace can be reviewed against (V65): where it started (`''`), then every branch; a
+ * picked branch that is gone last, said so (the server reviews it from where it started).
+ */
+export function againstOptions(against: WorkspaceAgainst): { value: string; label: string }[] {
+  const started = against.from ?? against.base.slice(0, 7);
+  return [
+    { value: '', label: `${started}, where it started` },
+    ...against.branches.map((name) => ({ value: name, label: name })),
+    ...(against.against && !against.branches.includes(against.against)
+      ? [{ value: against.against, label: `${against.against} (no longer a branch)` }]
+      : []),
+  ];
+}
+
+/** The against choice's hover: the commit Review starts at, and why there. */
+export const baseTitle = (base: string, since: string | undefined): string =>
+  `Review starts at ${base.slice(0, 7)}, ${since ? `its fork point with ${since}` : 'where it started'}`;
 
 /** What a list leaves out. */
 export const moreText = (count: number, listed: number): string | null =>

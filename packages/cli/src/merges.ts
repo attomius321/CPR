@@ -46,6 +46,7 @@ import { guessCheck, treeAt } from './check.js';
 import { CONFIG_FILES } from './plugins.js';
 import { readReview, reviewPath, reviewPlace } from './reviews.js';
 import { readWorkspace, workspacePath, type WorkspaceFile } from './workspace-record.js';
+import { branchNames } from './review-base.js';
 import {
   AGENT_NAMES,
   effortOnProblem,
@@ -351,13 +352,6 @@ export function merger(
     return remote ? { sha: remote.sha, local: false } : null;
   }
 
-  /** Branches to merge into: local ones, and remote ones by name. */
-  function branchesOf(refs: RefList): string[] {
-    return [...new Set([...refs.branches.map((b) => b.name), ...refs.remotes.map((r) => r.branch)])]
-      .filter((name) => name !== 'HEAD')
-      .sort();
-  }
-
   /** The branch's last verdict and its workspace's record, where Symbiote keeps them. */
   async function recordsOf(branch: string): Promise<{
     verdict?: Verdict;
@@ -374,9 +368,14 @@ export function merger(
 
   async function targets(branch: string): Promise<MergeTargets & { tip?: string }> {
     const refs = await listRefs(repo);
-    const branches = branchesOf(refs).filter((name) => name !== branch);
+    const branches = branchNames(refs).filter((name) => name !== branch);
     const { verdict, workspace } = await recordsOf(branch);
-    const preselected = [workspace?.from, verdict?.into, await defaultBranch(repo, refs)];
+    const preselected = [
+      workspace?.against,
+      workspace?.from,
+      verdict?.into,
+      await defaultBranch(repo, refs),
+    ];
     const into = preselected.find((name) => name && branches.includes(name)) ?? null;
     const entry = (await queue.read()).find((e) => e.branch === branch && e.state !== 'landed');
     const tip = refs.branches.find((b) => b.name === branch)?.sha;

@@ -1,6 +1,8 @@
 import type { WorkspaceFileChange } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
+  againstOptions,
+  baseTitle,
   commitTitle,
   fileTitle,
   linesOf,
@@ -100,5 +102,32 @@ describe('sinceText, moreText and commitTitle', () => {
         date: '2026-10-20T16:15:00+02:00',
       }),
     ).toMatch(/^aaaaaaa Add half\nAda, .*2026/);
+  });
+});
+
+describe('againstOptions and baseTitle (V65)', () => {
+  const B = 'b'.repeat(40);
+  it('offers where it started first, then every branch; a picked branch that is gone, said so', () => {
+    expect(
+      againstOptions({ from: 'feature/one', base: B, branches: ['feature/one', 'main'] }),
+    ).toEqual([
+      { value: '', label: 'feature/one, where it started' },
+      { value: 'feature/one', label: 'feature/one' },
+      { value: 'main', label: 'main' },
+    ]);
+    expect(againstOptions({ base: B, branches: ['main'] })[0]).toEqual({
+      value: '',
+      label: 'bbbbbbb, where it started',
+    });
+    expect(againstOptions({ against: 'gone', base: B, branches: ['main'] })).toEqual([
+      { value: '', label: 'bbbbbbb, where it started' },
+      { value: 'main', label: 'main' },
+      { value: 'gone', label: 'gone (no longer a branch)' },
+    ]);
+  });
+
+  it('says where the review starts and what it merges into', () => {
+    expect(baseTitle(B, 'main')).toBe('Review starts at bbbbbbb, its fork point with main');
+    expect(baseTitle(B, undefined)).toBe('Review starts at bbbbbbb, where it started');
   });
 });

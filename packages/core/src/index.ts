@@ -225,6 +225,7 @@ export {
   type AgentStateName,
   type ToolActivity,
   type WorkspaceActivity,
+  type WorkspaceAgainst,
   type WorkspaceAgentState,
   type WorkspaceChanges,
   type WorkspaceCommit,

@@ -7,6 +7,7 @@ import {
   type BranchReviewInfo,
   type CheckoutTarget,
   type WorkspaceOptions,
+  type WorkspaceAgainst,
   type WorkspaceChanges,
   type WorkspaceReply,
   type WorkspaceRequest,
@@ -1325,6 +1326,17 @@ describe('symbiote view: workspaces (V18)', () => {
         ? Promise.resolve(changes)
         : Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404)),
     merge: () => Promise.resolve({ into: 'main', conflicts: ['src/a.ts'] }),
+    against: (branch) =>
+      branch === 'feature/csv'
+        ? Promise.resolve({ ...against })
+        : Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404)),
+    setAgainst: (branch, picked) => {
+      if (picked === 'nope') return Promise.reject(new WorkspaceRefused('no branch nope', 400));
+      against = { ...against };
+      if (picked === null) delete against.against;
+      else against.against = picked;
+      return Promise.resolve({ ...against });
+    },
     thread: (branch) =>
       branch === 'feature/csv'
         ? Promise.resolve({
@@ -1358,6 +1370,27 @@ describe('symbiote view: workspaces (V18)', () => {
     files: { count: 0, added: 0, removed: 0, listed: [] },
     uncommitted: { count: 1, listed: [{ status: 'untracked', path: 'notes.md' }] },
   };
+  let against: WorkspaceAgainst = { from: 'main', base: C, branches: ['develop', 'main'] };
+  /** The branches the server resolved a review of (V65: again after a pick). */
+  const resolved: string[] = [];
+  const reviews: BranchReviews = {
+    list: () => Promise.reject(new Error('not listed here')),
+    resolve: (ref) => {
+      resolved.push(ref);
+      const info: BranchReviewInfo = {
+        branch: ref,
+        ref,
+        base: C,
+        head: C,
+        reviewed: null,
+        since: null,
+      };
+      return Promise.resolve({ info, pair: { base: C, head: C } });
+    },
+    state: () => ({ read: () => Promise.resolve(null), write: () => Promise.resolve() }),
+    finish: () => Promise.reject(new Error('not finished here')),
+    merge: () => Promise.resolve(null),
+  };
   const replies: WorkspaceReply[] = [];
   const cleaned: { branch: string; unmerged?: boolean }[] = [];
   const stopped: string[] = [];
@@ -1378,7 +1411,7 @@ describe('symbiote view: workspaces (V18)', () => {
     isCommit: () => Promise.resolve(true),
     diffs: new Diffs(() => Promise.reject(new Error('no'))),
     readFile: () => Promise.resolve(''),
-    ...(withWorkspaces ? { workspaces } : {}),
+    ...(withWorkspaces ? { workspaces, reviews } : {}),
   });
 
   beforeAll(async () => {
@@ -1607,6 +1640,42 @@ describe('symbiote view: workspaces (V18)', () => {
     }
     expect(stopped.length).toBe(2);
     expect(openedWorkspaces.length).toBe(1);
+  });
+
+  it('reviews a workspace against a branch picked, its review resolved again (V65)', async () => {
+    expect(await (await get('/api/workspaces/against?branch=feature%2Fcsv')).json()).toEqual(
+      against,
+    );
+    expect((await get('/api/workspaces/against?branch=nope')).status).toBe(404);
+    expect((await get('/api/workspaces/against')).status).toBe(400);
+
+    resolved.length = 0;
+    await get('/review/feature%2Fcsv/api/graph');
+    await get('/review/feature%2Fcsv/api/graph');
+    expect(resolved).toEqual(['feature/csv']);
+    const picked = await post('/api/workspaces/against', {
+      branch: 'feature/csv',
+      against: 'develop',
+    });
+    expect(await picked.json()).toEqual({ ...against, against: 'develop' });
+    await get('/review/feature%2Fcsv/api/graph');
+    expect(resolved).toEqual(['feature/csv', 'feature/csv']);
+
+    const back = await post('/api/workspaces/against', { branch: 'feature/csv', against: null });
+    expect(((await back.json()) as WorkspaceAgainst).against).toBeUndefined();
+    const refused = await post('/api/workspaces/against', {
+      branch: 'feature/csv',
+      against: 'nope',
+    });
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({ error: 'no branch nope' });
+    for (const body of [{ branch: 'feature/csv' }, { branch: 'feature/csv', against: '' }, {}]) {
+      expect((await post('/api/workspaces/against', body)).status, JSON.stringify(body)).toBe(400);
+    }
+    const forbidden = { branch: 'feature/csv', against: 'main' };
+    expect((await post('/api/workspaces/against', forbidden, { 'x-symbiote': '' })).status).toBe(
+      403,
+    );
   });
 
   it("gives a workspace's changes and opens one of its files as its diff (V29d, V43)", async () => {
