@@ -98,6 +98,7 @@ hosted.
 | [V23](plan/v23-branches-that-need-you.md) | Branches that need you, first | ✅ | 120–121 | [journal](journal/v23-branches-that-need-you.md) |
 | Fix | Compare mode's toggle stays put with wider fonts | ✅ | | [journal](journal/fix-compare-toggle-wrap.md) |
 | [V66](plan/v66-git-page.md) | Git: History renamed; a commit's details, changes staged and committed, branches and tags, fetch/pull/push, find a commit | ready for review | 475–484 | [journal](journal/v66-git-page.md) |
+| [V70](plan/v70-git-file-view.md) | Git: a commit's file shown in the rows' place; Open in VS Code (its diff) from the pane | planned | 498–501 | [journal](journal/v70-git-file-view.md) |
 
 ### Reviews
 
