@@ -9,13 +9,16 @@ import {
   dialog,
   ipcMain,
   Menu,
+  nativeImage,
   screen,
   shell,
   type IpcMainEvent,
   type MenuItemConstructorOptions,
+  type NativeImage,
   type WebContents,
 } from 'electron';
 import { openLog, watchUncaught } from '@symbiote/log';
+import { onWaiting, readWaiting, withDot } from './badge.js';
 import { moveFormerConfig } from './former-name.js';
 import { frameOf, frameOptions } from './frame.js';
 import { hardwareGlFails } from './gpu.js';
@@ -38,6 +41,7 @@ const config = join(symbioteConfig, 'app');
 const stateFile = join(config, 'state.json');
 const startPage = join(here, '..', 'start', 'index.html');
 const startUrl = pathToFileURL(startPage).href;
+const iconFile = join(here, '..', 'icons', 'symbiote.png');
 
 /**
  * Two ways in. From `symbiote view` (`--url`): one window on that command's server, and a profile
@@ -86,8 +90,8 @@ const workAreas: Area[] = [];
 const HEX = /^#[0-9a-f]{6}$/i;
 
 /**
- * What each window shows: its home (a server, or the start page), its repository and server; and
- * its maximize, where Symbiote holds it.
+ * What each window shows: its home (a server, or the start page), its repository and server; its
+ * maximize, where Symbiote holds it; and how many things wait for the person there (N2).
  */
 interface Shown {
   window: BrowserWindow;
@@ -95,6 +99,7 @@ interface Shown {
   repo?: string;
   server?: ChildProcess;
   hold?: Hold;
+  waiting?: number;
 }
 const windows = new Map<WebContents, Shown>();
 
@@ -209,7 +214,10 @@ function showStart(
   query: { opening?: string; error?: string; repo?: string },
 ) {
   const entry = windows.get(window.webContents);
-  if (entry) entry.home = startUrl;
+  if (entry) {
+    entry.home = startUrl;
+    tellWaiting(entry, 0);
+  }
   const theme = readState(stateFile).choices['symbiote.viewer.theme'] ?? 'dark';
   void window.loadFile(startPage, { query: { ...query, theme } });
 }
@@ -231,6 +239,34 @@ function focus(window: BrowserWindow): void {
   window.focus();
 }
 
+/** The icon with the dot (N2), drawn the first time something waits. */
+let dotted: NativeImage | undefined;
+
+/**
+ * Says on the window's icon that `count` things wait for the person (N2): the dot while any does,
+ * and a blink when more do while the person is in another window, until they come back. Where the
+ * desktop blinks a window's task: X11's urgency hint, Windows; WSLg reads none, its dot remains.
+ */
+function tellWaiting(entry: Shown, count: number): void {
+  const { window } = entry;
+  const before = entry.waiting ?? 0;
+  if (count === before || window.isDestroyed()) return;
+  entry.waiting = count;
+  const { icon, blink } = onWaiting(before, count, window.isFocused());
+  // No window icon on macOS: its Dock's is the app's.
+  if (icon && process.platform !== 'darwin') {
+    window.setIcon(icon === 'dot' ? (dotted ??= drawDot()) : iconFile);
+  }
+  if (blink) window.flashFrame(true);
+}
+
+function drawDot(): NativeImage {
+  const plain = nativeImage.createFromPath(iconFile);
+  const { width, height } = plain.getSize();
+  const pixels = withDot(plain.toBitmap(), width, height);
+  return nativeImage.createFromBitmap(Buffer.from(pixels.buffer), { width, height });
+}
+
 /** A window whose home's pages stay in it, nothing else does. */
 function createWindow(title: string): BrowserWindow {
   const state = readState(stateFile);
@@ -250,7 +286,7 @@ function createWindow(title: string): BrowserWindow {
     show: false,
     title,
     ...frameOptions(process.platform, light),
-    icon: join(here, '..', 'icons', 'symbiote.png'),
+    icon: iconFile,
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(here, 'preload.cjs'),
@@ -295,6 +331,8 @@ function createWindow(title: string): BrowserWindow {
     const maximized = !!hold?.maximized || window.isMaximized();
     writeState(stateFile, { ...readState(stateFile), window: { x, y, width, height, maximized } });
   });
+  // The person is back: the blink has done its work (N2).
+  window.on('focus', () => window.flashFrame(false));
   window.on('closed', () => {
     hold?.stop();
     windows.get(contents)?.server?.kill('SIGTERM');
@@ -430,6 +468,13 @@ function listen(): void {
     if (HEX.test(color) && HEX.test(symbol)) {
       window.setTitleBarOverlay({ color, symbolColor: symbol });
     }
+  });
+
+  // What waits for the person, as the page counts it (N2): the dot on the window's icon.
+  ipcMain.on('symbiote:waiting', (event, count: unknown) => {
+    const entry = shownFor(event);
+    const waiting = readWaiting(count);
+    if (entry && fromServer(event) && waiting !== undefined) tellWaiting(entry, waiting);
   });
 
   // The start page's: the recent repositories, choosing one, opening one, forgetting one.

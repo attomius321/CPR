@@ -12,6 +12,8 @@ export interface DesktopApp {
   window?: (action: 'minimize' | 'maximize' | 'restore' | 'close') => void;
   /** Called as the window fills the screen or leaves it; returns how to stop. */
   onWindowState?: (listener: (state: { maximized: boolean }) => void) => () => void;
+  /** How many things wait for the person (N2): the dot on the window's icon. Absent before N2. */
+  waiting?: (count: number) => void;
 }
 
 declare global {
