@@ -434,7 +434,8 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
 - Sidenav: `--side`, 264 px (V61), `--line` on its right. From the top: the brand row (52 px: the
   round mark at 32 px, "Symbiote" at 17 px 600, the repository in `--muted`, the fold a 32 px
   raised square), the pages as 36 px rows with 18 px icons, the section header, the groups and
-  their cards.
+  their cards; at the bottom, Settings alone, a page's row over a `--line` hairline (6 × 8 px
+  around it) that the list scrolls under, its icon at the rail's bottom when folded.
 - Page head (V61): 52 px on the page's ground (`--bg`), no line under it; the page's title in
   17 px weight 600; actions on the right as 32 px buttons or 28 px icon buttons. History's
   toolbar is the rows card's strip (`--side`, a hairline under it), as a workspace's tabs.
