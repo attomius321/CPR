@@ -14,6 +14,8 @@ export interface HistorySource {
   details(shas: readonly string[]): Promise<Commit[]>;
   /** The default branch and its tips (V10c), read once per listing; absent: none. */
   defaultBranch?(): Promise<{ name: string; tips: string[] } | null>;
+  /** The commits of a scope whose message or author holds `query` (V66f). */
+  find?(scope: HistoryScope, query: string): Promise<string[]>;
 }
 
 export interface HistoriesOptions {
@@ -75,6 +77,30 @@ export class Histories {
     if (!listing) return null;
     const rows = await listing.rows();
     return shas.map((sha) => rows.get(sha) ?? null);
+  }
+
+  /**
+   * The rows a search finds (V66f, `GET /api/git/find`), top first: commits whose message or
+   * author holds `query`, and those whose SHA starts with it; null when `version` is stale.
+   */
+  async find(
+    scope: HistoryScope,
+    version: string,
+    query: string,
+  ): Promise<{ rows: number[] } | null> {
+    const listing = this.of(scope, version);
+    if (!listing) return null;
+    const words = query.trim().toLowerCase();
+    if (words === '') return { rows: [] };
+    const [rowOf, found] = await Promise.all([
+      listing.rows(),
+      this.source.find?.(scope, words) ?? Promise.resolve([]),
+    ]);
+    const rows = new Set(found.flatMap((sha) => rowOf.get(sha) ?? []));
+    if (/^[0-9a-f]{4,64}$/.test(words)) {
+      listing.shas.forEach((sha, row) => sha.startsWith(words) && rows.add(row));
+    }
+    return { rows: [...rows].sort((a, b) => a - b) };
   }
 
   /** Every row's parents as row numbers, once listed; null when `version` is stale. */

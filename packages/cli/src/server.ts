@@ -3,7 +3,9 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { AddressInfo } from 'node:net';
 import { extname, join, normalize, sep } from 'node:path';
 import {
+  BranchNotMerged,
   CheckoutRefused,
+  GitRefused,
   SymbioteError,
   UnknownCheckoutTarget,
   type BranchReviewInfo,
@@ -72,6 +74,7 @@ import { parsePromptChange, PromptRefused, type PromptSettingsService } from './
 import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';
 import type { Histories } from './history.js';
+import { GIT_WRITES, parseGitWrite, type GitPage, type GitWrite } from './git-page.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 import { imageKind, MAX_IMAGE_BYTES, type Terminals } from './terminal.js';
 import { ScoutRefused, type Scout } from './scout.js';
@@ -120,6 +123,8 @@ export interface RepositoryOptions {
   readFile(sha: string, path: string): Promise<string>;
   /** Each diff's files with their lines, and one file's diff (V60): `./api/files`, `./api/file`. */
   files?: ChangeFiles;
+  /** Git's page (V66): a commit's details, the changes, git's writes (`/api/git/…`). */
+  git?: GitPage;
   /** Where a diff's review state is kept; without it the viewer keeps state in the browser. */
   state?: (graph: Graph) => StateStore;
   /** Branch reviews (V15): `/api/reviews`, and each review under `/review/<branch>/`. */
@@ -424,6 +429,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
     if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
     if (url.pathname === '/api/history/refs') return historyRefs(req, res, url, repository);
+    if (url.pathname.startsWith('/api/git/') && repository.git)
+      return gitApi(req, res, url, repository, repository.git);
     if (url.pathname === '/api/status') return read(req, res, () => repository.status());
     if (url.pathname === '/api/refs') return read(req, res, () => repository.refs());
     if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
@@ -1071,6 +1078,79 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       remotes: remotes.map((r, i) => ({ ...r, row: rows[branches.length + i] ?? null })),
     };
     return json(res, 200, answer);
+  }
+
+  /**
+   * Git's page (V66): `GET` a commit (`commit`, `commit/lines`, `commit/file`), the changes
+   * (`changes`, `changes/lines`, `changes/file`), the branch's upstream (`sync`) and a search
+   * (`find`); `POST` a write (`stage`, `unstage`, `commit`, `branch`, `tag`, `fetch`, `pull`,
+   * `push`), refused in git's words with 409.
+   */
+  async function gitApi(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    repo: RepositoryOptions,
+    page: GitPage,
+  ): Promise<void> {
+    const name = url.pathname.slice('/api/git/'.length);
+    const param = (key: string) => url.searchParams.get(key);
+    const sha = param('sha');
+    const path = param('path');
+    const text = (diff: string | null) =>
+      diff === null ? send(res, 404, 'no such change') : send(res, 200, diff);
+    // `commit` is read with GET and written with POST.
+    if (req.method === 'POST') {
+      if (!GIT_WRITES.includes(name)) return send(res, 404, 'not found');
+      if (!writable(req)) return send(res, 403, 'forbidden');
+      let request: GitWrite;
+      try {
+        request = parseGitWrite(name, await readBody(req, MAX_BODY_BYTES));
+      } catch (error) {
+        return send(res, 400, (error as Error).message);
+      }
+      try {
+        return json(res, 200, await page.write(request));
+      } catch (error) {
+        if (error instanceof BranchNotMerged)
+          return json(res, 409, { error: error.message, only: error.only });
+        if (error instanceof GitRefused) return json(res, 409, { error: error.message });
+        throw error;
+      }
+    }
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    switch (name) {
+      case 'commit': {
+        if (!sha) return send(res, 400, 'sha needed');
+        const info = await page.commit(sha);
+        return info ? json(res, 200, info) : send(res, 404, `no commit ${sha}`);
+      }
+      case 'commit/lines':
+        return sha ? json(res, 200, await page.commitLines(sha)) : send(res, 400, 'sha needed');
+      case 'commit/file':
+        return sha && path ? text(await page.commitFile(sha, path)) : send(res, 400, 'sha, path');
+      case 'changes':
+        return json(res, 200, await page.changes());
+      case 'changes/lines':
+        return json(res, 200, await page.changesLines());
+      case 'changes/file':
+        return path
+          ? text(await page.changeFile(path, param('staged') === '1'))
+          : send(res, 400, 'path');
+      case 'sync':
+        return json(res, 200, await page.sync());
+      case 'find': {
+        const scope = historyScope(url);
+        const version = param('version');
+        const query = param('q');
+        if (!scope || !version || query === null) return send(res, 400, 'scope, version and q');
+        const found = await repo.history.find(scope, version, query);
+        return found ? json(res, 200, found) : send(res, 409, 'the history changed: list it again');
+      }
+    }
+    return GIT_WRITES.includes(name)
+      ? send(res, 405, 'method not allowed')
+      : send(res, 404, 'not found');
   }
 
   /** `GET /api/intro`: `{ show }`; `POST`: the intro seen (V39). */

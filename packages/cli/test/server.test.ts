@@ -21,6 +21,8 @@ import {
   type SkillsState,
   type UsageReport,
   SymbioteError,
+  BranchNotMerged,
+  GitRefused,
 } from '@symbiote/core';
 import type { Review } from '@symbiote/forge';
 import type { CodeMap } from '@symbiote/monitor';
@@ -31,6 +33,7 @@ import { parseReview } from '../src/server-requests.js';
 import { fileStateStore, stateDir, type StateStore } from '../src/state.js';
 import { Diffs, type Pair, type RunDiff } from '../src/diffs.js';
 import { Histories } from '../src/history.js';
+import type { GitPage, GitWrite } from '../src/git-page.js';
 import type { OpenRequest, OpenResult } from '../src/editor.js';
 import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
 import type { Workspaces } from '../src/workspaces.js';
@@ -549,6 +552,43 @@ describe('symbiote view: commits and diffs', () => {
         })),
       ),
   });
+  // Git's page (V66): what it reads, and the writes asked for.
+  const gitWrites: GitWrite[] = [];
+  const person = { name: 'Ada', email: 'ada@example.com', date: '2026-10-13T08:00:00Z' };
+  const fakeGit: GitPage = {
+    commit: (sha) =>
+      Promise.resolve(
+        sha === C
+          ? {
+              sha,
+              parents: [B],
+              author: person,
+              committer: person,
+              subject: 'c',
+              body: '',
+              files: [],
+            }
+          : null,
+      ),
+    commitLines: () => Promise.resolve([{ path: 'a.ts', added: 1, removed: 0 }]),
+    commitFile: (sha, path) => Promise.resolve(path === 'a.ts' ? `diff ${path} ${sha[0]}` : null),
+    changes: () =>
+      Promise.resolve({
+        staged: [],
+        unstaged: [{ path: 'a.ts', status: 'modified' }],
+        operation: null,
+      }),
+    changesLines: () => Promise.resolve({ staged: [], unstaged: [] }),
+    changeFile: (path, staged) => Promise.resolve(path === 'a.ts' && !staged ? 'diff a.ts' : null),
+    sync: () => Promise.resolve({ branch: 'main', ahead: 1, behind: 0, remotes: ['origin'] }),
+    write: (request) => {
+      gitWrites.push(request);
+      if (request.kind === 'push') return Promise.reject(new GitRefused('rejected: fetch first'));
+      if (request.kind === 'branch' && request.action === 'delete')
+        return Promise.reject(new BranchNotMerged(request.name, 2));
+      return Promise.resolve({ done: request.kind });
+    },
+  };
   /** The graph of a pair: the fixture's, with that pair's SHAs. */
   const graphOf = ({ base, head }: Pair): Graph => ({
     ...graph,
@@ -606,6 +646,7 @@ describe('symbiote view: commits and diffs', () => {
             Promise.resolve(`${file.path} ${from[0] ?? ''}..${to[0] ?? ''}`),
         },
         state: (g) => fileStateStore(join(dir, g.revisions.head.sha ?? 'none')),
+        git: fakeGit,
       },
       open: (request) => {
         opens.push(request);
@@ -642,6 +683,74 @@ describe('symbiote view: commits and diffs', () => {
       expect(page.status).toBe(200);
       expect(page.body).toBe('<html>viewer</html>');
     }
+  });
+
+  it("reads a commit, its lines and a file's diff for Git's pane (V66b)", async () => {
+    const commit = await get(`/api/git/commit?sha=${C}`);
+    expect(commit.status).toBe(200);
+    expect(JSON.parse(commit.body)).toMatchObject({ sha: C, parents: [B], subject: 'c' });
+    expect((await get(`/api/git/commit?sha=${'f'.repeat(40)}`)).status).toBe(404);
+    expect((await get('/api/git/commit')).status).toBe(400);
+    expect(JSON.parse((await get(`/api/git/commit/lines?sha=${C}`)).body)).toEqual([
+      { path: 'a.ts', added: 1, removed: 0 },
+    ]);
+    expect(await get(`/api/git/commit/file?sha=${C}&path=a.ts`)).toMatchObject({
+      status: 200,
+      body: 'diff a.ts c',
+    });
+    expect((await get(`/api/git/commit/file?sha=${C}&path=b.ts`)).status).toBe(404);
+  });
+
+  it("reads the checkout's changes, a changed file's diff and the branch's upstream (V66c, e)", async () => {
+    expect(JSON.parse((await get('/api/git/changes')).body)).toMatchObject({
+      unstaged: [{ path: 'a.ts', status: 'modified' }],
+    });
+    expect(JSON.parse((await get('/api/git/changes/lines')).body)).toEqual({
+      staged: [],
+      unstaged: [],
+    });
+    expect(await get('/api/git/changes/file?path=a.ts')).toMatchObject({
+      status: 200,
+      body: 'diff a.ts',
+    });
+    expect((await get('/api/git/changes/file?path=a.ts&staged=1')).status).toBe(404);
+    expect(JSON.parse((await get('/api/git/sync')).body)).toMatchObject({ ahead: 1 });
+  });
+
+  it("runs git's writes from the page only, saying a refusal in git's words (V66)", async () => {
+    gitWrites.length = 0;
+    const staged = await post('/api/git/stage', { paths: ['a.ts'] });
+    expect(staged.status).toBe(200);
+    expect(await staged.json()).toEqual({ done: 'stage' });
+    expect(gitWrites).toEqual([{ kind: 'stage', paths: ['a.ts'] }]);
+    // Not from the page, not a write, not one of git's.
+    expect((await post('/api/git/stage', { paths: ['a.ts'] }, { 'x-symbiote': '0' })).status).toBe(
+      403,
+    );
+    expect((await post('/api/git/stage', { paths: 'a.ts' })).status).toBe(400);
+    expect((await post('/api/git/reset', {})).status).toBe(404);
+    expect((await get('/api/git/stage')).status).toBe(405);
+    const pushed = await post('/api/git/push', {});
+    expect(pushed.status).toBe(409);
+    expect(await pushed.json()).toEqual({ error: 'rejected: fetch first' });
+    const deleted = await post('/api/git/branch', { action: 'delete', name: 'topic' });
+    expect(deleted.status).toBe(409);
+    expect(await deleted.json()).toEqual({
+      error: 'topic is not merged: 2 commits only it holds would be lost',
+      only: 2,
+    });
+    expect(gitWrites).toHaveLength(3);
+  });
+
+  it("finds commits in a listing's rows (V66f)", async () => {
+    const listed = JSON.parse((await get('/api/history?scope=all&from=0&to=3')).body) as {
+      version: string;
+    };
+    expect(
+      JSON.parse((await get(`/api/git/find?scope=all&version=${listed.version}&q=bbbb`)).body),
+    ).toEqual({ rows: [1] });
+    expect((await get('/api/git/find?scope=all&version=old&q=bbbb')).status).toBe(409);
+    expect((await get(`/api/git/find?scope=all&version=${listed.version}`)).status).toBe(400);
   });
 
   it('lists rows of the history with their details, then its shape', async () => {

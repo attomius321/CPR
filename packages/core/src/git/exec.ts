@@ -36,14 +36,25 @@ const gitEnv = () => ({
   GIT_OPTIONAL_LOCKS: '0',
 });
 
+/** A run's limits: `timeout` in ms (then git is killed), `env` added to {@link gitEnv}'s. */
+export interface GitOptions {
+  timeout?: number;
+  env?: Record<string, string>;
+}
+
 /** Runs git in `cwd` and returns stdout, in {@link gitEnv}'s environment. */
-export async function git(cwd: string, args: readonly string[]): Promise<string> {
+export async function git(
+  cwd: string,
+  args: readonly string[],
+  { timeout, env }: GitOptions = {},
+): Promise<string> {
   try {
     const { stdout } = await execFileAsync('git', args, {
       cwd,
       encoding: 'utf8',
       maxBuffer: 256 * 1024 * 1024,
-      env: gitEnv(),
+      env: { ...gitEnv(), ...env },
+      ...(timeout ? { timeout } : {}),
     });
     return stdout;
   } catch (error) {
@@ -142,11 +153,13 @@ export function gitInput(cwd: string, args: readonly string[], input: string): P
       if (!existsSync(cwd)) reject(new Error(`directory does not exist: ${cwd}`, { cause: error }));
       else reject(new SymbioteError('git is not installed or not on PATH', { cause: error }));
     });
-    child.on('close', (code) =>
-      code === 0
-        ? resolve(Buffer.concat(chunks))
-        : reject(new GitError(args, code, stderr || 'git failed')),
-    );
+    child.on('close', (code) => {
+      if (code === 0) return resolve(Buffer.concat(chunks));
+      const failed = new GitError(args, code, stderr || 'git failed');
+      // A commit's hook may say why on stdout (V66c).
+      failed.stdout = Buffer.concat(chunks).toString('utf8');
+      reject(failed);
+    });
     child.stdin.end(input);
   });
 }

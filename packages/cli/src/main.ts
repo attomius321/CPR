@@ -18,6 +18,7 @@ import {
   fileDiff,
   commitDetails,
   defaultBranchTips,
+  findCommits,
   hasCommitGraph,
   historyState,
   isCommit,
@@ -60,6 +61,7 @@ import { codeQualityReport } from './codequality.js';
 import { Diffs, pairKey } from './diffs.js';
 import { formatAnalysis } from './format.js';
 import { Histories, slowListingHint } from './history.js';
+import { gitPage } from './git-page.js';
 import { frameworkHints, loadPlugins } from './plugins.js';
 import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
 import { childRunner, type PhaseMessage } from './runner.js';
@@ -715,6 +717,14 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   const library = libraryOf(ctx);
   // One Claude Code for workspaces, Scout (V35) and Scribe (V41): one read of its sessions every 2 s.
   const claudeOf = agentFinder(repo.root, ctx.env, cacheDir);
+  const repoWorkspaces = workspaces(repo, cacheDir, {
+    claude: claudeOf,
+    codex: codexOf,
+    hermes: hermesOf,
+    env: ctx.env,
+    openFolder,
+    terminals,
+  });
   const server = await startViewServer({
     port,
     viewerDir: viewerDir(ctx),
@@ -726,6 +736,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
           stream: (scope, onRows) => streamHistory(repo, scope, onRows),
           details: (shas) => commitDetails(repo, shas),
           defaultBranch: () => defaultBranchTips(repo),
+          find: (scope, query) => findCommits(repo, scope, query),
         },
         {
           onListed: (_scope, rows, ms) => {
@@ -744,13 +755,11 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       files: changeFiles(repo),
       state: (graph) => fileStateStore(stateDir(cacheDir, repo.id, graph)),
       reviews: branchReviews(repo, cacheDir),
-      workspaces: workspaces(repo, cacheDir, {
-        claude: claudeOf,
-        codex: codexOf,
-        hermes: hermesOf,
-        env: ctx.env,
-        openFolder,
-        terminals,
+      workspaces: repoWorkspaces,
+      // Git's page (V66): a workspace's branch is renamed or deleted with its workspace only.
+      git: gitPage(repo, {
+        workspaceBranches: async () =>
+          (await repoWorkspaces.list()).workspaces.map((w) => w.branch),
       }),
       terminals,
       merges: merger(repo, cacheDir, {

@@ -121,11 +121,50 @@ export {
   type ProjectSource,
 } from './projects.js';
 export { fileForCheckout, listTreeAt, readFileAtRevision } from './git/show.js';
+export {
+  commitFileDiff,
+  commitInfo,
+  commitLines,
+  type CommitInfo,
+  type CommitPerson,
+} from './git/commit-info.js';
+export { GitRefused } from './git/refused.js';
+export {
+  fetchAll,
+  pull,
+  PULL_MODES,
+  push,
+  syncState,
+  type PullMode,
+  type SyncState,
+} from './git/sync.js';
+export {
+  BranchNotMerged,
+  createBranch,
+  createTag,
+  deleteBranch,
+  deleteTag,
+  renameBranch,
+} from './git/ref-edits.js';
+export {
+  commitStaged,
+  parseWorkingStatus,
+  stageFiles,
+  unstageFiles,
+  workingChanges,
+  workingFileDiff,
+  workingLines,
+  type CommitRequest,
+  type WorkingChanges,
+  type WorkingFile,
+  type WorkingFileStatus,
+} from './git/working-changes.js';
 // git's runner, for the packages that read a repository their own way (`@symbiote/monitor`, RM1).
-export { git, gitInput, GitError } from './git/exec.js';
+export { git, gitInput, GitError, type GitOptions } from './git/exec.js';
 export { mapLine, workingLine, type LineHunk, type WorkingLine } from './git/working-line.js';
 export {
   commitDetails,
+  findCommits,
   hasCommitGraph,
   HISTORY_SCOPES,
   historyState,
