@@ -121,6 +121,10 @@ closed, open, the remote group, filtered, keys, no match, a long name picked, a 
 commit, and 390 px wide; the text at 3× has even letter gaps. A keystroke: 21 ms to narrow the
 186 entries and 33 ms to list them all again, each to the second animation frame.
 
+After merging `main` (N2): `pnpm check` 1,925 tests; `pnpm test:e2e` 309 of 310, the one
+failure `intro.spec.ts`'s first test over its 8 s limit (9.1 s) under the suite's load, 9 of 9
+alone.
+
 Not verified: the other selects' native lists (Agent, Model, Permissions, Review against, Merge
 into ▾) in the dark theme — none has a group heading, the part the person saw unseen; a headless
 browser does not draw a select's open list in a screenshot.

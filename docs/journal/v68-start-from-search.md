@@ -43,5 +43,9 @@ V66, 475–478; renumbered when two other workspaces took V66 and V67).
 change; screenshots in both themes at 1440 × 900 and 390 px with this repository's 178 names; a
 keystroke 21–33 ms over 186 entries.
 
+After merging `main` (N2, `docs/JOURNAL.md` conflicting where both appended): `pnpm check`
+1,925 tests; `pnpm test:e2e` 309 of 310, `intro.spec.ts`'s timing over its limit under load
+(9.1 s against 8 s), 9 of 9 alone.
+
 Not verified: the other selects' native lists in the dark theme (no group heading in any).
 
