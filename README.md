@@ -272,10 +272,11 @@ The sidenav also opens these pages. Each has a key.
   agent without asking you, but a start, a verdict, a merge and a clean-up each wait until you
   click **Confirm**.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
-  task (`.claude/skills/<name>/SKILL.md`). Read and edit them here. As you type, the page flags
-  what an agent would refuse, such as a missing name or description. *Scribe*, an agent on the
-  same page, writes a new skill or improves one. Scribe only writes in `.claude/skills/` and
-  never commits.
+  task (`.claude/skills/<name>/SKILL.md`). Search them by name or description, read and edit
+  them here (with line numbers, or as a Markdown preview), or open one in VS Code. As you type,
+  the page flags what an agent would refuse, such as a missing name or description. *Scribe*, an
+  agent on the same page, writes a new skill or improves one. Scribe only writes in
+  `.claude/skills/` and never commits.
   Your *skill library* is a folder of skills kept outside the repository, a plain folder or one
   in a git repository. Set it once in Settings, and every repository's Skills page lists its
   skills too: you edit and add them there, and Scribe writes them. If Settings says so, the page

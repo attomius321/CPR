@@ -259,3 +259,5 @@ merge commit.
 - 2026-10-27 [V63 spike — the start page beside the mockup](journal/v63-start-page-mockup.md)
 - 2026-10-27 [V63 — Start a workspace as the person's mockup](journal/v63-start-page-mockup.md)
 - 2026-10-27 [Fix — Codex's mark is OpenAI's blossom, in OpenAI's white or black](journal/fix-codex-icon.md)
+- 2026-10-27 [V64 spike — Skills beside the mockup](journal/v64-skills-page-mockup.md)
+- 2026-10-27 [V64 — Skills as the person's mockup, and Open in VS Code](journal/v64-skills-page-mockup.md)

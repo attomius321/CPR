@@ -451,7 +451,7 @@ export const PlanIcon = () => (
   </Icon>
 );
 
-/** The documents' card: lucide's file-text. */
+/** The documents' card, and a skill's SKILL.md on the Skills page (V64): lucide's file-text. */
 export const DocumentsIcon = () => (
   <Icon lucide>
     <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
@@ -509,5 +509,59 @@ export const MarkdownIcon = () => (
     <path d="M6 15V9l3 3 3-3v6" />
     <path d="M17 9v6" />
     <path d="m14.5 12.5 2.5 2.5 2.5-2.5" />
+  </Icon>
+);
+
+/** The Skills page's search (V64): lucide's search. */
+export const SearchIcon = () => (
+  <Icon lucide>
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
+  </Icon>
+);
+
+/** Scribe, and Improve with Scribe (V64): lucide's sparkles. */
+export const SparklesIcon = () => (
+  <Icon lucide>
+    <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+    <path d="M20 3v4M22 5h-4M4 17v2M5 18H3" />
+  </Icon>
+);
+
+/** Save a skill (V64): lucide's save. */
+export const SaveIcon = () => (
+  <Icon lucide>
+    <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" />
+    <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7" />
+    <path d="M7 3v4a1 1 0 0 0 1 1h7" />
+  </Icon>
+);
+
+/** The skill library's entry (V64): lucide's folder. */
+export const FolderIcon = () => (
+  <Icon lucide>
+    <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z" />
+  </Icon>
+);
+
+/** A skill's text over the main area (V64): lucide's maximize-2. */
+export const ExpandIcon = () => (
+  <Icon lucide>
+    <path d="M15 3h6v6M21 3l-7 7M3 21l7-7M9 21H3v-6" />
+  </Icon>
+);
+
+/** Back from over the main area (V64): lucide's minimize-2. */
+export const CollapseIcon = () => (
+  <Icon lucide>
+    <path d="m14 10 7-7M20 10h-6V4M3 21l7-7M4 14h6v6" />
+  </Icon>
+);
+
+/** A skill's checks (V64): lucide's shield-check. */
+export const ChecksIcon = () => (
+  <Icon lucide>
+    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+    <path d="m9 12 2 2 4-4" />
   </Icon>
 );

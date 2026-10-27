@@ -203,6 +203,7 @@ hosted.
 | [V61](plan/v61-complete-revamp.md) | The mockup's black theme on every page, the new S as the icon, text a step bigger | ready for review | 437–440, 445 | [journal](journal/v61-complete-revamp.md) |
 | [V62](plan/v62-settings-layout.md) | Settings as the person's mockup: two cards to the bottom, the page one card | ready for review | 446–450 | [journal](journal/v62-settings-layout.md) |
 | [V63](plan/v63-start-page-mockup.md) | Start a workspace as the person's mockup: the S in the head, kinds as tabs, the run as seven cards | ready for review | 451–457 | [journal](journal/v63-start-page-mockup.md) |
+| [V64](plan/v64-skills-page-mockup.md) | Skills as the person's mockup: Settings' head, a search, the text with line numbers and Markdown's colours, Checks a card, Open in VS Code | ready for review | 458–464 | [journal](journal/v64-skills-page-mockup.md) |
 
 ### Native window
 

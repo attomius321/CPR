@@ -3,12 +3,14 @@ import { join } from 'node:path';
 import type { Skill, SkillsState } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
+  checkParts,
   isSkillEdited,
   newSkillProblem,
   readSkill,
   skillChecks,
   skillGitNote,
   skillGroups,
+  skillMatches,
   skillOfUrl,
   type SkillCheck,
 } from '../src/skills/skills.js';
@@ -229,7 +231,7 @@ const make = (over: Partial<Skill>): Skill => ({
 });
 
 describe('the list and the editor', () => {
-  it('groups the skills by folder, naming the agents that read each', () => {
+  it('groups the skills by folder: Skills, then Codex’s own (V64)', () => {
     const state: SkillsState = {
       checkout: '/r',
       skills: [
@@ -239,7 +241,7 @@ describe('the list and the editor', () => {
       codex: { installed: true, link: 'linked', canLink: false, git: 'new' },
     };
     expect(skillGroups(state).map((g) => [g.title, g.skills.map((s) => s.name)])).toEqual([
-      ['.claude/skills · Claude Code and Codex', ['a', 'b']],
+      ['Skills', ['a', 'b']],
     ]);
     const apart: SkillsState = {
       ...state,
@@ -249,18 +251,45 @@ describe('the list and the editor', () => {
       ],
       codex: { installed: true, link: 'folder', canLink: false },
     };
-    expect(skillGroups(apart).map((g) => g.title)).toEqual([
-      '.claude/skills · Claude Code',
-      '.agents/skills · Codex',
-    ]);
+    expect(skillGroups(apart).map((g) => g.title)).toEqual(['Skills', 'Codex skills']);
     // The library's skills are drawn in its own section (SK1), not as a folder of the checkout's.
     const library: SkillsState = {
       ...state,
       skills: [make({ name: 'a' }), make({ folder: 'library', name: 'd', agents: [] })],
       library: { folder: '/home/a/skills', exists: true, commits: 'none' },
     };
-    expect(skillGroups(library).map((g) => g.title)).toEqual([
-      '.claude/skills · Claude Code and Codex',
+    expect(skillGroups(library).map((g) => g.title)).toEqual(['Skills']);
+  });
+
+  it('finds a skill by its name or its description, case aside (V64)', () => {
+    const skill = make({
+      name: 'release-notes',
+      text: '---\nname: release-notes\ndescription: Writes the CHANGELOG from merged branches.\n---\n',
+    });
+    expect(skillMatches(skill, '')).toBe(true);
+    expect(skillMatches(skill, '  ')).toBe(true);
+    expect(skillMatches(skill, 'Notes')).toBe(true);
+    expect(skillMatches(skill, 'changelog')).toBe(true);
+    expect(skillMatches(skill, 'deploy')).toBe(false);
+    // Its body is not searched; a skill too large to read is found by its name only.
+    expect(
+      skillMatches(make({ name: 'a', text: '---\nname: a\n---\nchangelog\n' }), 'changelog'),
+    ).toBe(false);
+    expect(skillMatches(make({ name: 'big', text: undefined, tooLarge: true }), 'big')).toBe(true);
+  });
+
+  it('splits a check into its lead, up to the first ": ", and the rest (V64)', () => {
+    expect(
+      checkParts(
+        "The description holds < or >: Anthropic's API and claude.ai refuse it; Claude Code and Codex take it.",
+      ),
+    ).toEqual([
+      'The description holds < or >:',
+      "Anthropic's API and claude.ai refuse it; Claude Code and Codex take it.",
+    ]);
+    expect(checkParts('Links to a.md, which is not in the skill’s folder.')).toEqual([
+      'Links to a.md, which is not in the skill’s folder.',
+      '',
     ]);
   });
 

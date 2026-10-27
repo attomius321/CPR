@@ -12,9 +12,11 @@ import { join } from 'node:path';
 import { openRepo, type SkillChange } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
+import type { FolderAt, OpenFolder } from '../src/editor.js';
 import { libraryService, type LibraryService } from '../src/library.js';
 import {
   parseSkillChange,
+  parseSkillOpen,
   skillNameProblem,
   SkillRefused,
   skillsService,
@@ -55,12 +57,18 @@ function fresh(): TestRepo {
 
 async function service(
   repo: TestRepo,
-  options: { codex?: boolean; platform?: NodeJS.Platform; library?: LibraryService } = {},
+  options: {
+    codex?: boolean;
+    platform?: NodeJS.Platform;
+    library?: LibraryService;
+    openFolder?: OpenFolder;
+  } = {},
 ) {
   return skillsService(await openRepo(repo.root), {
     codexInstalled: () => Promise.resolve(options.codex ?? false),
     ...(options.platform ? { platform: options.platform } : {}),
     ...(options.library ? { library: options.library } : {}),
+    ...(options.openFolder ? { openFolder: options.openFolder } : {}),
   });
 }
 
@@ -576,6 +584,67 @@ describe('a change as the page sends it', () => {
       parseSkillChange('{"action":"new","name":"a","description":"d","where":"x"}'),
     ).toThrow('where: library, or none for the checkout');
     expect(() => parseSkillChange('{"action":"save","path":"p","version":"v"}')).toThrow('text');
+  });
+});
+
+describe('opening a skill in VS Code (V64)', () => {
+  /** An editor that records where it was asked to open, and answers `answer`. */
+  function editor(answer: Awaited<ReturnType<OpenFolder>> = { opened: true }) {
+    const opened: [string, FolderAt | undefined][] = [];
+    const openFolder: OpenFolder = (folder, at) => {
+      opened.push([folder, at]);
+      return Promise.resolve(answer);
+    };
+    return { opened, openFolder };
+  }
+
+  it('opens a checkout’s skill in its window at the line, a library’s in the library’s', async () => {
+    const repo = fresh();
+    const dir = plainLibrary();
+    const code = editor();
+    const skills = await service(repo, {
+      library: await library(dir),
+      openFolder: code.openFolder,
+    });
+    await skills.open({ path: '.claude/skills/style/SKILL.md', line: 4 });
+    await skills.open({ path: 'library/deploy/SKILL.md' });
+    const root = (await openRepo(repo.root)).root;
+    expect(code.opened).toEqual([
+      [root, { file: '.claude/skills/style/SKILL.md', line: 4, column: 1 }],
+      [dir, { file: 'deploy/SKILL.md', line: 1, column: 1 }],
+    ]);
+  });
+
+  it('refuses a skill that is not there, and says why VS Code did not open', async () => {
+    const repo = fresh();
+    const code = editor({ opened: false, message: 'VS Code was not found' });
+    const skills = await service(repo, { openFolder: code.openFolder });
+    expect(await refusal(() => skills.open({ path: '.claude/skills/gone/SKILL.md' }))).toEqual({
+      status: 400,
+      message: '.claude/skills/gone/SKILL.md is not there',
+    });
+    expect(await refusal(() => skills.open({ path: 'src/a.ts' }))).toMatchObject({ status: 400 });
+    expect(await refusal(() => skills.open({ path: '.claude/skills/review/SKILL.md' }))).toEqual({
+      status: 502,
+      message: 'VS Code was not found',
+    });
+    expect(code.opened).toHaveLength(1);
+    const without = await service(repo);
+    expect(
+      await refusal(() => without.open({ path: '.claude/skills/review/SKILL.md' })),
+    ).toMatchObject({ status: 502 });
+  });
+
+  it('reads the request: a skill’s path, and a line from 1', () => {
+    expect(parseSkillOpen('{"path":".claude/skills/a/SKILL.md","line":3}')).toEqual({
+      path: '.claude/skills/a/SKILL.md',
+      line: 3,
+    });
+    expect(parseSkillOpen('{"path":"library/a/SKILL.md"}')).toEqual({
+      path: 'library/a/SKILL.md',
+    });
+    expect(() => parseSkillOpen('{}')).toThrow("path: the skill's SKILL.md");
+    expect(() => parseSkillOpen('{"path":"p","line":0}')).toThrow('line: a line from 1');
   });
 });
 
