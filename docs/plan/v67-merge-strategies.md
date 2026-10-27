@@ -159,7 +159,8 @@ commit" (git's `--ff`): a strategy that changes what lands by itself; a Settings
 commit, or the function missing): 14 in `merges.test.ts` and 2 of its CLI tests, 1 in
 `server.test.ts`, 2 in `mcp.test.ts`, 4 in the viewer's `merges.test.ts`; 2 e2e in
 `workspaces.spec.ts` (written after the viewer's code, so not seen red). Every earlier merger,
-server, CLI and MCP test passes unchanged.
+server, CLI and MCP test passes unchanged. With `main`'s N2 merged in: `pnpm check` 1,941 tests,
+`pnpm build`, `pnpm test:e2e` 311 of 311 (Chromium 153, without `WAYLAND_DISPLAY`).
 
 Real use, a throwaway clone of this repository at `main` (`8048a91`), a branch adding a journal
 line, approved, then `symbiote merge trial/ff --strategy fast-forward` from this branch's build:

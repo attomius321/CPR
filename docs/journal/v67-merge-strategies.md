@@ -47,7 +47,9 @@ a target that moved while it waited waits for the person, with Merge commit inst
   landed, which is the merger doing its job. Run 2, without e2e, landed.
 
 **Verification**: tests first, red for the right reason (16 in `merges.test.ts`, 1 server, 2
-MCP, 4 viewer); 2 e2e written after the viewer's code. Screenshots of Merge into ▾ (the head, the
+MCP, 4 viewer); 2 e2e written after the viewer's code. `pnpm check` 1,941 tests; `pnpm test:e2e`
+311 of 311. Under a load average of 20 from other sessions, 5 analysis tests timed out in a full
+run and passed alone (62 of 62); at load 4 the full run passed. Screenshots of Merge into ▾ (the head, the
 Review tab), its tip, and the merge page ready and waiting, dark and light, 1440 px. The real
 runs in the plan's results: landed in 84.7 s, the landing under 0.1 s; a target that moved
 refused at queue time.
