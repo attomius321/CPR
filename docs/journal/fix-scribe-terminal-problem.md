@@ -53,3 +53,7 @@ Not verified: a real agent in Scribe's terminal (a run from a worktree writes in
 checkout's `symbiote/`); the desktop app's window (the e2e run with real scrollbars stands in for
 its scrollbars); window widths other than 1440 (the sweeps change the height; a width moves only
 the columns, which the add-on keeps 14 px clear of the edge for xterm's scrollbar).
+
+Merged into main (2026-10-27), one conflict in `docs/JOURNAL.md` (both lines kept). `main` after
+the merge: build passes; unit tests pass except the 3 `loadPty` tests in `packages/cli/test/terminal.test.ts`,
+which need node-pty's native build, missing in the container; e2e not run.

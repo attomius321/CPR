@@ -166,7 +166,7 @@ hosted.
 | [V58](plan/v58-hermes-agent.md) | Hermes as a workspace's agent, in its terminal | ready for review | 415–421 | [journal](journal/v58-hermes-agent.md) |
 | Fix | Scout's head on one line: Effort and its stepper centred with the selects | ready for review | | [journal](journal/fix-scout-not-aligned.md) |
 | [SK1](plan/sk1-skill-library.md) | A skill library: a folder or repository of skills outside the project, on the Skills page and for Scribe; commits as set | ready for review | 426–430 | [journal](journal/sk1-skill-library.md) |
-| Fix | An agent's terminal fits its box: no scrollbars coming and going on Scribe's pane, no last row cut off | ready for review | | [journal](journal/fix-scribe-terminal-problem.md) |
+| Fix | An agent's terminal fits its box: no scrollbars coming and going on Scribe's pane, no last row cut off | merged | | [journal](journal/fix-scribe-terminal-problem.md) |
 
 ### The merger
 
