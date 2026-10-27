@@ -483,6 +483,13 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   (`.settings-rows`: the name an `h3` in `--muted` 500) then a card per prompt with its title
   inside. A setting of this browser's (the theme, the intro) is an entry of the list, not a
   control in the head. Not lowered on a tall window: a prompt's card is taller than the window.
+- A page that waits (a diff's analysis, V71): one card (560 px at most) in the middle of the main
+  area, its head the start page's (the S lit, the title with its verb in `--muted`, a line, a
+  state chip at the right); its steps as the merge log's rows with the sidenav's state dots
+  (done `--added`, running working's cyan comet, to come an empty ring); its buttons Start's head
+  actions (36 px, a 14 px icon). The arcs (`ui/ground.css`, `.ground` and `.ground-ring`, shared
+  with Start) centred on the card and clear of it, over the whole area; a comet turns on the
+  inner one while it runs — the ground's, not a state — still once it ended or without motion.
 
 ## The graph
 

@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v71-analyzing-page.md)
 
-**Status:** planned (2026-10-27), on branch `feature/review-analyzing-loading`; the person's OK
-given.
+**Status:** ready for review (2026-10-27), on branch `feature/review-analyzing-loading`. Its "As
+built" and results below.
 
 **Problem** (asked: "The review analyzing loading page is old...adhere to the current style, and
 make it prettier.. maybe use the start a workspace background"). A diff's or a review's page,
@@ -115,3 +115,35 @@ analyzed graph).
 
 **Not in V71 (later)**: each step's own time (the page polls every 500 ms; short phases are never
 seen); "Loading graph…" before the first answer.
+
+## As built (V71)
+
+- **The arcs** (decision 502): the plan kept Start's top-left ring on this page beside the centred
+  ones; screenshotted at 1440×900 it crossed the 1,120 px pair at the top left, lines over lines.
+  The page has three centred rings instead, none crossing another: the 800 px orbit lit inside as
+  Start's top-left ring is (its radial fill), Start's right pair at 1,120 px, and a 1,560 px ring
+  at 60 % that only a wide window shows (1920×1080: its sides). The layer is `.ground` with
+  `.ground-ring` inside it; Start's element is `ground start-ground`, its placements as they were.
+- **The comet** (decision 503): a turn in 7 s; its head's light 12 px at 45 % of the primary (22 px
+  at 55 % read as a blot at 1440×900). Two pseudo-elements of the orbit, the tail masked to its
+  2 px; only `transform` animates.
+- **Stop's icon**: lucide's circle-stop (`StopIcon`, new), not `StoppedIcon`, the sidenav's
+  Stopped group's pause circle, which the Stopped chip keeps.
+- **`reviewSince`**: the review page's words ("first review", "2 commits since your last review")
+  moved from `ReviewOf` into `DiffProgress.tsx`, used by both.
+- **The time chip** has no icon: the seconds alone, tabular figures. Failed and Stopped have theirs.
+
+**Results.** Tests first, red for the right reasons (`analysis-steps.test.ts`: no module;
+`analyzing.spec.ts` 6 of 6: no `.analysis-card`), then green. `pnpm check`: 2,013 of 2,013;
+`pnpm build`; `pnpm test:e2e`: 329 of 329. A real analysis of this repository's `88cb800~40..88cb800` on
+`symbiote view`: the page marked each phase in order — checkout 0.3 s, base 0.6, head 2.7,
+symbols 4.1, references 5.1, findings 13.7 — and opened the graph at 14.4 s, no page errors. Screenshots of the six states (and a review's
+two) at 1440×900, 1440×1080, 1920×1080, 900×800 and 390×844, dark and light; letter-spacing 0 on
+the page's 31 elements (21 when failed); both buttons 36 px on one centre line (the old link sat
+off the button's). Start's main area at 1440×900 against `main`'s: identical but for `main`'s
+SHA in its Source note (`main` moved to `a2a9151`) and the status bar's live usage numbers.
+
+Not verified: the desktop app's window (its title bar is over the page, nothing in it changed);
+Firefox and Safari (`mask`, `conic-gradient` and `@container` are in both); a queued analysis and
+a review in a real run (routed in the tests and the screenshots); the frame rate with the comet
+turning on a slow machine (one composited element; not measured).
