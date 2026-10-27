@@ -57,8 +57,9 @@ dot once from `symbiote.png`'s pixels (`badge.ts`), sets it with `setIcon` and b
 
 **Verification**: tests first (`badge.test.ts`, `waiting.test.ts`: red, their modules missing);
 `pnpm check` 1,911 tests; `pnpm test:e2e` 304 passed (4.9 min) after `main` was merged in, the
-app's, title bar's and intro's specs again with decision 470's switch: 34 passed, and 305 passed
-(4.7 min) after the second merge of `main`. The run before that one failed one test, a starting
+app's, title bar's and intro's specs again with decision 470's switch: 34 passed, 305 passed
+(4.7 min) after the second merge of `main`, and after the third (V65) `pnpm check` 1,918 tests
+and 309 passed (4.6 min). The run before that one failed one test, a starting
 card 72.00003 px high against 72 (`workspaces.spec.ts`, V48), not N2's: 4 of 4 alone, and the
 next full run passed. The new e2e, each red first: the page's count said to a stand-in app (stays
 1 without the hidden reads); the real app's icon and urgency hint read from X11 with xprop (stays
