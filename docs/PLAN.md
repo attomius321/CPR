@@ -183,6 +183,7 @@ hosted.
 | Fix | the merge page on a conflict: red for what is lost or doubled, amber for what the agent wrote; a question answered there | ready for review | | [journal](journal/fix-merge-viewer-on-conflict.md) |
 | Fix | a merge that failed or waits for you holds the next one into its target; Check again on a moved target merges again | ready for review | | [journal](journal/fix-merger-queue-wrong-behaviour.md) |
 | [V67](plan/v67-merge-strategies.md) | Merge strategies: a merge commit, or a fast-forward to the approved commit | ready for review | 485–489 | [journal](journal/v67-merge-strategies.md) |
+| [V69](plan/v69-merge-page-mockup.md) | The merge page as the person's mockup, in the theme: tinted chips with icons, the log a card filling the page, line tabs | in progress | 494–497 | [journal](journal/v69-merge-page-mockup.md) |
 
 ### Shell and look
 
