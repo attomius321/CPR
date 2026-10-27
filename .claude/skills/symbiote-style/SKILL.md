@@ -36,6 +36,8 @@ the primary), every page's panels as cards on its ground, line tabs, and type a 
    the accent, the title, a line under it), its two cards 24 px from the edges and 16 apart, the
    open page one card with its head over a hairline. Start a workspace has one too (V63): the S
    in its head, the kinds as tabs with icons, the settings as seven cards with accent icons.
+   Skills too (V64): Settings' head and spacing, an icon before each entry, a pane's icon in a
+   raised square, a skill's text with line numbers and Markdown's colours, Checks a card.
 3. **The accent marks what a person acts with.** The primary action (`--primary`, `#7c68fc`,
    dark words on it: white is 4.01:1), focus, what is checked, the current page, the selection (a
    16 % wash of `--accent`), the open workspace's kind, the selected node, a link under the
@@ -165,6 +167,10 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
 - **A tip shown by a hover must let the pointer through** (`pointer-events: none` until a click
   keeps it): it covers the field under its button, and a test (or a person) moving there is
   stopped by it.
+- **A text area over a drawn copy** (Skills' text, V64) must match it line for line: one font,
+  line height, padding and wrap, and no weight or width in the copy's colours. An empty line took
+  its height from its smaller line number (2.9 px short); compare the text area's own height (read
+  at height 0) with the copy's in a test, as screenshots do not show it.
 - **`field-sizing: content` ignores `rows`**: give the rows' height as a `min-height` (`lh` units).
 - **A help button inside a `<label>`** joins the field's accessible name: put the name in its own
   `<label htmlFor>` and the button beside it (`.field-label`).

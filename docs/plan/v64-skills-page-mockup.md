@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v64-skills-page-mockup.md)
 
-**Status:** planned (2026-10-27), on branch `feature/skills-page-revamp` (the workspace's); the
-plan confirmed by the person, with four answers: the skill's text in Geist as Settings' prompts
+**Status:** ready for review (2026-10-27), on branch `feature/skills-page-revamp` (the
+workspace's); the plan confirmed by the person, with four answers: the skill's text in Geist as Settings' prompts
 (not the mockup's mono), the actions in the skill's card as Settings' pages have theirs, the git
 chips as they are (Committed stays quiet), the icons as proposed. Asked after: Open in VS Code for
 a skill.
@@ -157,3 +157,42 @@ VS Code; the other panes; screenshots.
 
 **Not in V64 (later)**: the mockup's icon at the search field's right and the list icon in the
 Checks head (nothing behind them); syntax colours inside a fence by language; a minimap.
+
+## As built (V64)
+
+What differs from the plan, and why:
+
+- **The line numbers take the text's line height.** Baseline-aligned with their line, an empty
+  line took its height from its number (13 px type): 2.9 px short a line, 13.6 px over the e2e
+  skill's five empty lines. The e2e test of the copy's height caught it; the numbers now have the
+  text's line height (`--code-line`) and each line at least that.
+- **What a change did has a line of its own** over the size and the actions: in a 1440 window
+  "Opened … in VS Code" wrapped to four lines between the size and Delete…. The note for unsaved
+  text is short: "It shows the file as saved."
+- **The checks' "?"** moved from the "nothing to refuse" line to the Checks card's head, where the
+  mockup has its list icon.
+- **The open entry is Settings'**: the selection's wash, its words and icon in the accent (the
+  mockup's words are white), as the person's "keep the persistent layout across pages".
+- **`PaneHead`** (`skills/PaneHead.tsx`) is the head of a skill, New skill and the library alike.
+  Scribe's pane keeps its conversation's own head.
+- **On a phone** the head's action (Open in VS Code) goes under the title: beside it, the path
+  wrapped a few characters a line.
+- **The library's "Nothing to commit."** lost a 24 px indent it had from `.hint` (before V64 too).
+- **Markdown ▾** draws its menu with the "⋯" menu's glass (`.more-menu`); its Esc closes only the
+  menu, the next one leaves Expand.
+- **The accent's roles** (`tokens.test.ts`) gained the panes' icon square (`.skills-tile`) and the
+  headings in a skill's text (`.md-heading`).
+
+**Results.** Measured as the problem (Chromium, the same scratch repository, `framework-plugin`
+open):
+
+| Window | Main area | The list | The skill's card | Its text | Characters a line | Checks |
+|---|---|---|---|---|---|---|
+| 1440×900 | 1176×876 | 280, 24 px in | 832 | 732 (574 before) | 86 (67) | under it |
+| 1936×941 (the mockup's main area) | 1672×917 | 280 | 1,012 | 912 | 108 (128) | beside, 300 |
+| 1920×1080 | 1656×1056 | 280 | 996 | 896 | 106 (126) | beside |
+| 2560×1440 | 2296×1416 | 280 | 1,636 | 1,536 | 185 (204) | beside |
+
+A typed character reaches the screen in one frame: median 16.5 ms on the 67-line skill and on a
+3,154-line one (213 KB, under the 256 KB limit), the slowest of 25 keys 29 ms on the long one.
+Letter-spacing 0 on every element of the page in both themes; no page errors in 12 states.
