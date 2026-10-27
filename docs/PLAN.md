@@ -217,6 +217,7 @@ hosted.
 | [N1d](plan/n1d-rounded-window.md) | Rounded window corners | ✅ | 218–225 | [journal](journal/n1d-rounded-window.md) |
 | Fix | Symbiote's window opening maximized on WSLg took no clicks | ✅ | | [journal](journal/fix-wslg-open-maximized.md) |
 | Fix | The app shows a page as a browser does, under its title bar | ready for review | | [journal](journal/fix-title-bar-desktop.md) |
+| [N2](plan/n2-taskbar-waiting.md) | The taskbar's icon says something waits for you: an amber dot, a blink where the desktop has one | ready for review | 465–470 | [journal](journal/n2-taskbar-waiting.md) |
 
 ### Repository monitoring
 

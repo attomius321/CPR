@@ -6,6 +6,8 @@ import { desktop } from '../shell/desktop.js';
 import { StatusBar } from '../shell/StatusBar.js';
 import { AskBar } from '../shell/AskBar.js';
 import { TitleBar } from '../shell/TitleBar.js';
+import { useTellApp, useWaiting } from '../shell/useWaiting.js';
+import { waitingCount } from '../shell/waiting.js';
 
 const FOLD_KEY = 'symbiote.viewer.sidenav.diff';
 
@@ -101,7 +103,18 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
         <div className="shell-main">{children}</div>
         <StatusBar notice={notice} />
         <AskBar />
+        <TellApp />
       </div>
     </ShellContext.Provider>
   );
+}
+
+/**
+ * Tells the app what waits (N2) from a diff's page too: its window's icon keeps its dot here. Its
+ * own component: a new read of the workspaces renders it alone.
+ */
+function TellApp() {
+  const what = useWaiting();
+  useTellApp(what ? waitingCount(what) : null);
+  return null;
 }

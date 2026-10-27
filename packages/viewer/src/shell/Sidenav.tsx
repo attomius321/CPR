@@ -45,7 +45,7 @@ import {
 } from './pages.js';
 import { Resizer } from '../ui/Resizer.js';
 import { nextScoutMark, type ScoutMark } from '../scout/scout.js';
-import { asksBy } from './asks.js';
+import { mergesWaiting, scoutWaiting, scribeWaiting } from './waiting.js';
 import { useAsks } from './useAsks.js';
 import { useShell, type Notice } from './shell-context.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
@@ -139,7 +139,8 @@ export function Sidenav({
   const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
   const route = shell?.route;
   const queued = merges?.merges ?? [];
-  const needs = groups.waiting.length;
+  // What its section lists that waits for the person (N2): the workspaces, the merges.
+  const needs = groups.waiting.length + mergesWaiting(queued);
   const empty =
     list !== null && list.workspaces.length === 0 && queued.length === 0 && starts.length === 0;
   // Scout's mark (V35): working while it answers; answered when it did while you were elsewhere.
@@ -150,7 +151,7 @@ export function Sidenav({
     setScoutMark((shown) => nextScoutMark(shown, scoutState, onScout));
   }, [scoutState, onScout]);
   // It waits for the person (MC1): an ask of its own on the page, or a dialog in its terminal.
-  const scoutWaits = asksBy(useAsks(), 'scout') || scoutState === 'needs-you';
+  const scoutWaits = scoutWaiting(scout, useAsks());
   // Scribe's, on Skills (V41): as Scout's.
   const scribeState = scribe?.conversation?.state;
   const onSkills = route?.page === 'skills';
@@ -159,7 +160,7 @@ export function Sidenav({
     setScribeMark((shown) => nextScoutMark(shown, scribeState, onSkills));
   }, [scribeState, onSkills]);
   // A dialog in its terminal (V59): it waits as Scout does.
-  const scribeWaits = scribeState === 'needs-you';
+  const scribeWaits = scribeWaiting(scribe);
 
   // A card whose workspace moves to another group (its agent moved on) is drawn anew there, and
   // the focus would fall to the page: it follows the card. Only the card the focus was on, and

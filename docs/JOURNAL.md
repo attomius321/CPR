@@ -265,4 +265,6 @@ merge commit.
 - 2026-10-27 [Fix — an agent's terminal fits its box: no scrollbars coming and going on Scribe's pane](journal/fix-scribe-terminal-problem.md)
 - 2026-10-27 [V65 spike — what a stacked workspace's review shows](journal/v65-review-against.md)
 - 2026-10-27 [V65 — a workspace reviewed against where it started, or a branch picked in it](journal/v65-review-against.md)
+- 2026-10-27 [N2 spike — what reaches the Windows taskbar from WSLg](journal/n2-taskbar-waiting.md)
+- 2026-10-27 [N2 — an amber dot on the taskbar icon, a blink while you are elsewhere](journal/n2-taskbar-waiting.md)
 - 2026-10-27 [V67 spike — how many merges could have been fast-forwards](journal/v67-merge-strategies.md)
