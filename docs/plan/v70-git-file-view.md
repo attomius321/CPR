@@ -198,8 +198,11 @@ Open in VS Code and `o` with a stand-in VS Code, a commit's file and a change no
 after). The two V66 tests follow the diff out of the pane; `commits.spec.ts` the keys' help.
 
 `pnpm check`: 2,008 unit tests; the full e2e suite: 321 passed; after the last change (the side
-kept in view), the Git, commits, history, title-bar and look specs again: 39 passed. No analysis
-code changed (core gains a git reader only): no `regression-check`.
+kept in view), the Git, commits, history, title-bar and look specs again: 39 passed. After
+merging `main` (V69): `pnpm check` 2,008 again; the full e2e suite 322 passed and 1 failed, V48's
+"while a workspace is made" (`workspaces.spec.ts:612`), a starting card 72.00003 px high against
+at most 72: a sidenav card V70 does not touch, which passed 3 runs of 3 alone. No analysis code
+changed (core gains a git reader only): no `regression-check`.
 
 Not verified: the real VS Code (the plan's step 4): opening it here would open a window on the
 person's desktop, so only the stand-in was asked; macOS and Windows (`code --diff` is V43's

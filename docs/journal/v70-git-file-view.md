@@ -48,6 +48,8 @@ commits, history, title-bar and look specs after the last change (39 passed); sc
 1,440 × 900 and 1,280 × 800, device scale 1, dark and light: a commit's file beside the pane and
 above it, the note after Open in VS Code, an uncommitted file, the rows after Esc. On this
 repository's `7fa440d` (27 files), 27 diff lines in view where there were 0, 25 at 1,280 × 800.
+After merging `main` (V69): `pnpm check` (2,008), the full e2e suite 322 passed, 1 failed by
+3/100 000 of a pixel (V48's starting card, 72.00003 px against at most 72; 3 of 3 alone).
 
 Not verified: the real VS Code (a window on the person's desktop: only a stand-in that writes
 down its arguments was asked); macOS and Windows.
