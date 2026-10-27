@@ -1,39 +1,30 @@
 // The checkout's uncommitted changes in Git's pane (V66c): the commit box, the staged files and
-// the rest, each staged or unstaged whole, and the open file's diff.
-import { useCallback, useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+// the rest, each staged or unstaged whole; a file clicked shows in the rows' place (V70).
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import type { LineCount, WorkingChanges, WorkingFile } from '@symbiote/core';
-import { commit, fetchChangeFile, fetchChangesLines, stage, unstage } from './git-api.js';
-import { changesSummary, commitProblem, withLines } from './details.js';
-import { GitDiff } from './GitDiff.js';
+import { commit, fetchChangesLines, stage, unstage } from './git-api.js';
+import {
+  changesSummary,
+  commitProblem,
+  withLines,
+  type ShownFile,
+  type WithLines,
+} from './details.js';
 import { FileRow } from '../workspaces/ChangesPanel.js';
 import { fileFacts } from '../workspaces/changes.js';
 import { tip } from '../ui/tip.js';
 
-/** The file open in the pane, by its side: staged or not. */
-interface Open {
-  path: string;
-  staged: boolean;
+/** The uncommitted files with their lines, each side apart (V70: the pane's and the file shown). */
+export interface ChangesRead {
+  staged: WithLines<WorkingFile>[];
+  unstaged: WithLines<WorkingFile>[];
 }
 
-export function ChangesDetails({
-  changes,
-  onChanges,
-  onCommitted,
-}: {
-  changes: WorkingChanges;
-  /** The changes after a stage or an unstage. */
-  onChanges: (next: WorkingChanges) => void;
-  /** A commit was made: the page lists again. */
-  onCommitted: (sha: string, amend: boolean) => void;
-}) {
+/** The lines of `changes` (none when null), read again whenever the changes are. */
+export function useChangesRead(changes: WorkingChanges | null): ChangesRead | null {
   const [lines, setLines] = useState<{ staged: LineCount[]; unstaged: LineCount[] } | null>(null);
-  const [open, setOpen] = useState<Open | null>(null);
-  const [message, setMessage] = useState('');
-  const [amend, setAmend] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // Lines are read again whenever the changes are.
   useEffect(() => {
+    if (!changes) return;
     let live = true;
     fetchChangesLines()
       .then((read) => live && setLines(read))
@@ -42,22 +33,39 @@ export function ChangesDetails({
       live = false;
     };
   }, [changes]);
-  const staged = useMemo(() => withLines(changes.staged, lines?.staged ?? []), [changes, lines]);
-  const unstaged = useMemo(
-    () => withLines(changes.unstaged, lines?.unstaged ?? []),
+  return useMemo(
+    () =>
+      changes && {
+        staged: withLines(changes.staged, lines?.staged ?? []),
+        unstaged: withLines(changes.unstaged, lines?.unstaged ?? []),
+      },
     [changes, lines],
   );
-  // The open file, gone from its side: closed.
-  useEffect(() => {
-    if (!open) return;
-    const side = open.staged ? changes.staged : changes.unstaged;
-    if (!side.some((f) => f.path === open.path)) setOpen(null);
-  }, [changes, open]);
-  const load = useCallback(
-    () => (open ? fetchChangeFile(open.path, open.staged) : Promise.resolve(null)),
-    // `changes`: the diff is read again after a stage.
-    [open, changes],
-  );
+}
+
+export function ChangesDetails({
+  changes,
+  read: { staged, unstaged },
+  open,
+  onOpen,
+  onChanges,
+  onCommitted,
+}: {
+  changes: WorkingChanges;
+  read: ChangesRead;
+  /** The file shown in the rows' place (V70), on its side. */
+  open: ShownFile | null;
+  /** Shows a file, or none (the one shown clicked again). */
+  onOpen: (file: ShownFile | null) => void;
+  /** The changes after a stage or an unstage. */
+  onChanges: (next: WorkingChanges) => void;
+  /** A commit was made: the page lists again. */
+  onCommitted: (sha: string, amend: boolean) => void;
+}) {
+  const [message, setMessage] = useState('');
+  const [amend, setAmend] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const run = (write: () => Promise<WorkingChanges>) => {
     setBusy(true);
@@ -100,7 +108,7 @@ export function ChangesDetails({
               label={`Show the diff of ${file.path}${isStaged ? ', staged' : ''}`}
               hover={`${fileFacts(file)}. Shows its diff ${isStaged ? 'against HEAD' : 'not staged'}`}
               current={current}
-              onOpen={() => setOpen(current ? null : { path: file.path, staged: isStaged })}
+              onOpen={() => onOpen(current ? null : { path: file.path, staged: isStaged })}
             />
             <button
               type="button"
@@ -213,14 +221,6 @@ export function ChangesDetails({
           <p className="changes-empty">Nothing else changed.</p>
         ) : (
           list(unstaged, 'unstaged')
-        )}
-        {open && (
-          <section className="git-details-diff" aria-label={`Changes to ${open.path}`}>
-            <h3 className="git-details-part">
-              {open.path} <span className="muted">{open.staged ? 'staged' : 'not staged'}</span>
-            </h3>
-            <GitDiff path={open.path} load={load} />
-          </section>
         )}
       </div>
     </>

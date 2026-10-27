@@ -35,10 +35,30 @@ import { CommitRow } from './CommitRow.js';
 import { CompareBar } from './CompareBar.js';
 import { useBranchReviews } from './useBranchReviews.js';
 import { branchChoice, checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
-import { fetchChanges, fetchRemotes, fetchSync, findRows, pull, push } from './git-api.js';
-import { changesSummary, nextMatch, syncWords, useDetailsPlace } from './details.js';
-import { CommitDetails } from './CommitDetails.js';
-import { ChangesDetails } from './ChangesDetails.js';
+import {
+  fetchChangeFile,
+  fetchChanges,
+  fetchCommitFile,
+  fetchRemotes,
+  fetchSync,
+  findRows,
+  openDiff,
+  pull,
+  push,
+} from './git-api.js';
+import {
+  changesOrder,
+  changesSummary,
+  followShown,
+  nextMatch,
+  stepShown,
+  syncWords,
+  useDetailsPlace,
+  type ShownFile,
+} from './details.js';
+import { CommitDetails, useCommitRead } from './CommitDetails.js';
+import { ChangesDetails, useChangesRead } from './ChangesDetails.js';
+import { GitFile, OPEN_FILE_ID } from './GitFile.js';
 import { FindBox } from './FindBox.js';
 import { SyncBar, type SyncRun } from './SyncBar.js';
 import { RefDialog, type RefAction } from './RefDialog.js';
@@ -101,7 +121,7 @@ const FIND_MS = 250;
  * is compared with its parent. A row's menu (right-click, "⋯", c or r) checks out its branches,
  * tags or the commit (V11), reviews its branches (V15), and makes a branch or a tag there (V66d);
  * a branch's in the panel renames or deletes it. The head fetches, pulls and pushes (V66e) and
- * finds commits (V66f).
+ * finds commits (V66f). A file clicked in the pane shows in the rows' place (V70).
  */
 export function HistoryPage() {
   const [scope, setScope] = useState(scopeOfUrl);
@@ -285,6 +305,61 @@ function History({
   useEffect(readChanges, [readChanges]);
   const working =
     changes !== null && changes.staged.length + changes.unstaged.length > 0 ? changes : null;
+  // The file shown in the rows' place (V70), of the cursor's row: closed when the cursor moves.
+  const [openFile, setOpenFile] = useState<(ShownFile & { row: number }) | null>(null);
+  useEffect(() => {
+    setOpenFile(null);
+  }, [cursor]);
+  const shownHere = openFile?.row === cursor ? openFile : null;
+  const onWorking = cursor === WORKING;
+  const commitSha = onWorking ? null : (details.current.get(cursor)?.sha ?? null);
+  // Read for the pane and the file shown; not while the pane is folded and nothing is shown.
+  const commitRead = useCommitRead(pane.open || shownHere ? commitSha : null);
+  const workingHere = onWorking ? working : null;
+  const changesRead = useChangesRead(workingHere);
+  const fileShown = useMemo(() => {
+    if (!shownHere) return null;
+    if (onWorking) {
+      const side = shownHere.staged ? changesRead?.staged : changesRead?.unstaged;
+      return side?.find((f) => f.path === shownHere.path) ?? null;
+    }
+    return commitRead?.files.find((f) => f.path === shownHere.path) ?? null;
+  }, [shownHere, onWorking, changesRead, commitRead]);
+  // j/k's order: the pane's.
+  const fileOrder = useMemo<ShownFile[]>(
+    () =>
+      onWorking
+        ? workingHere
+          ? changesOrder(workingHere)
+          : []
+        : (commitRead?.files.map(({ path }) => ({ path })) ?? []),
+    [onWorking, workingHere, commitRead],
+  );
+  // Staged or unstaged, the uncommitted file shown follows it to its other side.
+  useEffect(() => {
+    if (openFile?.row !== WORKING) return;
+    const next = working ? followShown(working, openFile) : null;
+    if (next !== openFile) setOpenFile(next && { ...next, row: WORKING });
+  }, [working, openFile]);
+  const shownPath = shownHere?.path ?? null;
+  const shownStaged = shownHere?.staged === true;
+  const loadShown = useCallback(() => {
+    if (!shownPath) return Promise.resolve(null);
+    if (onWorking) return fetchChangeFile(shownPath, shownStaged);
+    return commitSha ? fetchCommitFile(commitSha, shownPath) : Promise.resolve(null);
+    // `workingHere`: an uncommitted file's diff is read again after a stage.
+  }, [shownPath, shownStaged, onWorking, commitSha, workingHere]);
+  const openShown = useCallback(
+    () =>
+      !shownPath
+        ? Promise.resolve()
+        : openDiff(
+            onWorking
+              ? { path: shownPath, staged: shownStaged }
+              : { path: shownPath, sha: commitSha ?? '' },
+          ),
+    [shownPath, shownStaged, onWorking, commitSha],
+  );
   // A branch or tag dialog (V66d), and a branch's menu in the panel.
   const [refAction, setRefAction] = useState<RefAction | null>(null);
   const [branchMenu, setBranchMenu] = useState<{
@@ -802,6 +877,24 @@ function History({
     const onKey = (event: KeyboardEvent) => {
       // Typing (the search, the commit's message), and the menus and dialogs: their own keys.
       if (keyIsTaken(event) || menu || confirm || refAction || branchMenu) return;
+      // A file shown in the rows' place (V70): j/k step the files, o opens its diff in VS Code,
+      // Esc goes back to the rows; the rows' own keys wait under it.
+      if (fileShown && shownHere) {
+        if (event.key === 'j' || event.key === 'k') {
+          const step = event.key === 'j' ? 1 : -1;
+          setOpenFile({ ...stepShown(fileOrder, shownHere, step), row: cursor });
+          return;
+        }
+        if (event.key === 'o') {
+          document.getElementById(OPEN_FILE_ID)?.click();
+          return;
+        }
+        if (event.key === 'Escape') {
+          setOpenFile(null);
+          return;
+        }
+        if (['x', 'c', 'r', 'Enter'].includes(event.key)) return;
+      }
       if (event.key === 'j' || event.key === 'k') {
         // Above the first commit, the uncommitted row when there is one (V66c).
         const top = working ? WORKING : 0;
@@ -845,6 +938,9 @@ function History({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [
+    fileShown,
+    shownHere,
+    fileOrder,
     rows,
     cursor,
     current,
@@ -945,7 +1041,7 @@ function History({
         >
           {/* The header above the box that scrolls (V66): the scrollbar runs beside the rows only. */}
           <div className="commits-card">
-            <div className="commits-title">
+            <div className="commits-title" inert={!!fileShown}>
               <button
                 type="button"
                 className="branches-toggle"
@@ -991,7 +1087,7 @@ function History({
                     <span className="commits-help">
                       {comparing
                         ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
-                        : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch · f finds a commit · d shows or folds the details · a branch: double-click checks it out, right-click for more'}
+                        : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch · f finds a commit · d shows or folds the details · a branch: double-click checks it out, right-click for more · a file shown: j/k its files, o its diff in VS Code, Esc back'}
                     </span>
                   </Help>
                   <button
@@ -1014,7 +1110,7 @@ function History({
                 {error}
               </p>
             )}
-            <div className="commits-scroll" ref={scroller} onScroll={measure}>
+            <div className="commits-scroll" ref={scroller} onScroll={measure} inert={!!fileShown}>
               {working && (
                 <WorkingRow
                   changes={working}
@@ -1081,6 +1177,16 @@ function History({
               )}
               {!shape && first.listed > 0 && <p className="hint listing">Listing the rest…</p>}
             </div>
+            {fileShown && (
+              <GitFile
+                key={`${cursor}:${shownStaged}:${fileShown.path}`}
+                file={fileShown}
+                {...(onWorking ? { side: shownStaged ? 'staged' : 'not staged' } : {})}
+                load={loadShown}
+                onEditor={openShown}
+                onClose={() => setOpenFile(null)}
+              />
+            )}
           </div>
           {pane.open && !below && (
             <Resizer
@@ -1098,21 +1204,26 @@ function History({
               className="git-details"
               aria-label={cursor === WORKING ? 'Uncommitted changes' : 'Commit details'}
             >
-              {cursor === WORKING && working ? (
+              {cursor === WORKING && working && changesRead ? (
                 <ChangesDetails
                   changes={working}
+                  read={changesRead}
+                  open={shownHere}
+                  onOpen={(file) => setOpenFile(file && { ...file, row: WORKING })}
                   onChanges={setChanges}
                   onCommitted={(sha, amend) =>
                     onRelist({ text: `${amend ? 'Amended' : 'Committed'} ${shortSha(sha)}` })
                   }
                 />
-              ) : selected ? (
+              ) : selected && commitRead ? (
                 <CommitDetails
                   key={selected.sha}
-                  sha={selected.sha}
+                  read={commitRead}
                   commit={selected}
                   parentRows={parents[cursor] ?? []}
                   starting={starting}
+                  open={shownHere?.path ?? null}
+                  onOpen={(path) => setOpenFile(path ? { row: cursor, path } : null)}
                   onJump={jump}
                   onReview={(parent) => void compare({ base: parent, head: selected.sha })}
                 />

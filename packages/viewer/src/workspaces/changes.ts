@@ -28,6 +28,9 @@ const WORDS: Record<Status, string> = {
 
 export const statusLetter = (status: Status): string => LETTERS[status];
 
+/** A status in words ("modified", "in conflict"). */
+export const statusWords = (status: Status): string => WORDS[status];
+
 /** A path's file name, and the folder it is in ('' at the root). */
 export function splitPath(path: string): { name: string; folder: string } {
   const at = path.lastIndexOf('/');
