@@ -1177,6 +1177,29 @@ describe('a fast-forward (V67)', () => {
     expect(repo.git('rev-parse', 'main')).toBe(landed?.merge);
   });
 
+  it('fast-forwards again when the target moved before Land: it says so, without "the merge"', async () => {
+    const { repo, shas } = fastForwardable();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main', strategy: 'fast-forward' });
+    await m.idle();
+    repo.write({ 'src/n.ts': 'export const n = 1;\n' });
+    const N = repo.commit('N');
+    const requeued = await m.land(id);
+    expect(requeued).toMatchObject({
+      state: 'queued',
+      message: 'main moved: fast-forwarding again from its tip',
+    });
+    await m.idle();
+    expect((await m.list()).merges[0]).toMatchObject({ state: 'needs-you', behind: 1 });
+    expect(shortLog(await logOf(m, id)).slice(5, 9)).toEqual([
+      'step land Land in main',
+      `out main moved (now ${N.slice(0, 7)})`,
+      'end failed',
+      "run Fast-forwarding again from main's tip",
+    ]);
+  });
+
   it('takes Merge commit instead only for a fast-forward waiting for the person', async () => {
     const { repo, shas } = fastForwardable();
     review(repo, 'topic', { head: shas.T, into: 'main' });

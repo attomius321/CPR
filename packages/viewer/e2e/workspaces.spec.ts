@@ -2246,7 +2246,9 @@ test('Merge into by fast-forward: main moves to the approved commit, no merge co
   await how.selectOption('fast-forward');
   await here.getByLabel('Branch to merge into').selectOption('release');
   await expect(button).toBeDisabled();
-  await expect(here.locator('.merge-control-why')).toHaveText(
+  const why = here.getByRole('img', { name: 'release cannot fast-forward' });
+  await expect(why).toHaveAttribute(
+    'data-tip',
     `release has commits ${branch} does not: it cannot fast-forward. Merge with a merge commit, or bring release into the branch and review it again.`,
   );
   await here.getByLabel('Branch to merge into').selectOption('main');
@@ -2261,7 +2263,7 @@ test('Merge into by fast-forward: main moves to the approved commit, no merge co
   const entry = page.getByRole('region', { name: `Merge of ${branch}` });
   await expect(entry.locator('.merge-how')).toHaveText('by fast-forward');
   await expect(entry.locator('.merge-title')).toHaveText(
-    `No merge commit: main moves to ${short(tip)}, the approved commit`,
+    `No merge commit: a fast-forward to ${short(tip)}, the approved commit`,
   );
   expect(git('rev-parse', 'main')).toBe(main);
   await entry.getByRole('button', { name: 'Land', exact: true }).click();

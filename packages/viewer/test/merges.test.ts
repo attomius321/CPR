@@ -390,7 +390,9 @@ describe('a fast-forward (V67)', () => {
 
   it('says no merge commit is made, where a merge says its subject', () => {
     expect(mergeTitle(entry({}))).toBe('Merge feature/csv: CSV');
-    expect(mergeTitle(ff({}))).toBe('No merge commit: main moves to ccccccc, the approved commit');
+    expect(mergeTitle(ff({}))).toBe(
+      'No merge commit: a fast-forward to ccccccc, the approved commit',
+    );
   });
 
   it('offers a fast-forward only to a target that can take it, and says why not', () => {

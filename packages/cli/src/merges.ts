@@ -836,16 +836,14 @@ export function merger(
     const refs = await listRefs(repo);
     const tip = tipOf(refs, into);
     if (!tip || tip.sha !== base || !(await isAncestor(repo, base, merge))) {
-      const again =
-        entry.strategy === 'fast-forward' ? 'fast-forwarding again from' : 'merging again on';
-      log.out(`${into} moved since the merge (now ${tip ? short(tip.sha) : 'gone'})\n`);
+      // A fast-forward merged nothing: its target just moved (V67).
+      const fastForward = entry.strategy === 'fast-forward';
+      const moved = fastForward ? `${into} moved` : `${into} moved since the merge`;
+      const again = fastForward ? 'fast-forwarding again from' : 'merging again on';
+      log.out(`${moved} (now ${tip ? short(tip.sha) : 'gone'})\n`);
       log.end(false);
       log.run(`${again.charAt(0).toUpperCase()}${again.slice(1)} ${into}'s tip`);
-      return set(id, {
-        ...fresh,
-        state: 'queued',
-        message: `${into} moved since the merge: ${again} its tip`,
-      });
+      return set(id, { ...fresh, state: 'queued', message: `${moved}: ${again} its tip` });
     }
     // Read before landing: the landing may bring another config file into `root`.
     const { push: pushing } = readMergeConfig(root);

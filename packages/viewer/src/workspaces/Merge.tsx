@@ -218,9 +218,11 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
           </button>
         </form>
       )}
-      {entry.state === 'needs-you' && entry.message && !entry.resolution?.needsYou && (
-        <p className="hint small">{entry.message}</p>
-      )}
+      {/* A fast-forward that cannot land says why in its state line (V67). */}
+      {entry.state === 'needs-you' &&
+        entry.message &&
+        !entry.resolution?.needsYou &&
+        !entry.behind && <p className="hint small">{entry.message}</p>}
       {(ran || shown) && (
         <p className="merge-run small">
           {ran}

@@ -190,7 +190,7 @@ const OTHERWISE = (into: string) =>
 /** A merge commit's subject; a fast-forward makes none and says where the target moves (V67). */
 export function mergeTitle(entry: MergeEntry): string {
   return entry.strategy === 'fast-forward'
-    ? `No merge commit: ${entry.into} moves to ${short(entry.head)}, the approved commit`
+    ? `No merge commit: a fast-forward to ${short(entry.head)}, the approved commit`
     : entry.title;
 }
 

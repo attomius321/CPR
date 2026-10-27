@@ -3,6 +3,7 @@ import type { MergeEntry, MergeStrategy, MergeTargets } from '@symbiote/core';
 import { getJson, postJson } from '../ui/http.js';
 import { fastForwardBlocked, mergeState, mergeTip } from './merges.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
+import { AlertIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
 
 /**
@@ -86,9 +87,16 @@ export function MergeControl({ branch }: { branch: string }) {
         <option value="merge">with a merge commit</option>
         <option value="fast-forward">by fast-forward</option>
       </select>
+      {/* An icon in the workspace's one-row head (words there wrapped it); why in its tip. */}
       {cannot && (
-        <span className="merge-control-why hint" role="status">
-          {cannot}
+        <span
+          className="merge-control-why"
+          role="img"
+          aria-label={`${target} cannot fast-forward`}
+          tabIndex={0}
+          {...tip(cannot, { tone: 'warn' })}
+        >
+          <AlertIcon />
         </span>
       )}
       {error && (

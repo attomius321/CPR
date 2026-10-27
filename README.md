@@ -245,6 +245,13 @@ you picked another in **since**, or pick another here. Symbiote then:
    project, such as a `test` script in `package.json`;
 3. lands the merge if the check passes: it moves the target branch forward to the merge commit.
 
+Beside the target, pick how it lands: **with a merge commit** (the default) or **by
+fast-forward**. A fast-forward makes no new commit: the target moves to the commit you approved,
+once the check has passed on that commit. It is offered only when the target has no commits the
+branch lacks; otherwise the control says so. If the target moves while a fast-forward waits its
+turn, the merge waits for you: click **Merge commit instead**, or bring the target into the branch
+and review it again. `merge.strategy` in `symbiote/config.json` sets which one is picked first.
+
 If the target branch is checked out in your own checkout, landing updates your files too. If that
 would overwrite changes you have not committed, git refuses and nothing changes. The merge then
 waits until you click **Land**.
