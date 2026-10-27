@@ -545,6 +545,97 @@ test.describe('the title bar', () => {
   });
 });
 
+// What waits for the person, on the window's icon (N2), as X11 has it for the taskbar (read with
+// xprop): an amber dot at its top-right while an agent waits; a blink, X11's urgency hint, from
+// when more waits while the person is in another window until they come back.
+test.describe('what waits for you, on the taskbar (N2)', () => {
+  const xprop = (() => {
+    try {
+      execFileSync('which', ['xprop'], { stdio: 'ignore' });
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+  test.skip(!xprop, "reads the window's icon from X11: xprop");
+
+  const AMBER = 'fff5b32a';
+  /** A property of the window, as numbers (xprop's `format`: `32c`, `32i`); none when unset. */
+  const property = (id: string, name: string, format: string) => {
+    const text = execFileSync(
+      'xprop',
+      ['-display', display.name, '-id', id, '-len', '4000000', '-notype'].concat([
+        '-f',
+        name,
+        format,
+        '=$0+',
+        name,
+      ]),
+      { encoding: 'utf8', maxBuffer: 1 << 26 },
+    );
+    if (!text.startsWith(`${name}=`)) return [];
+    return text
+      .slice(name.length + 1)
+      .split(',')
+      .map((value) => Number(value.trim()));
+  };
+  /** The icon's pixel at the dot's centre (ARGB), in its first and largest size. */
+  const dot = (id: string) => {
+    const [width = 0, height = 0, ...pixels] = property(id, '_NET_WM_ICON', '32c');
+    const at = Math.floor(0.23 * height) * width + Math.floor(0.77 * width);
+    return ((pixels[at] ?? 0) >>> 0).toString(16);
+  };
+  /** Whether the window asks for the person: WM_HINTS' urgency bit (256). */
+  const urgent = (id: string) => ((property(id, 'WM_HINTS', '32i')[0] ?? 0) & 256) > 0;
+
+  test('an amber dot while an agent waits; a blink until its window has the focus', async () => {
+    const served = await serveWorkspaces();
+    try {
+      const { app, page } = await launch(served.url);
+      const id = await app.evaluate(({ BrowserWindow }) => {
+        const handle = BrowserWindow.getAllWindows()[0]?.getNativeWindowHandle();
+        return `0x${(handle?.readUInt32LE(0) ?? 0).toString(16)}`;
+      });
+      // The S: opaque, not amber, where the dot goes.
+      expect(dot(id)).toMatch(/^ff/);
+      expect(dot(id)).not.toBe(AMBER);
+      await page.getByRole('link', { name: 'Start a workspace' }).click();
+      const starting = page.getByRole('region', { name: 'Start a workspace' });
+      await starting.getByRole('textbox', { name: 'Title' }).fill('Add clamp');
+      await starting.getByRole('textbox', { name: 'Goal' }).fill('Add clamp');
+      await starting.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
+      await expect(starting).toBeHidden();
+
+      // The person is in another window when its agent asks.
+      await app.evaluate(async ({ BrowserWindow }) => {
+        const elsewhere = new BrowserWindow({ width: 300, height: 200 });
+        Object.assign(globalThis, { elsewhere });
+        await elsewhere.loadURL('data:text/html,elsewhere');
+        elsewhere.focus();
+      });
+      served.session('feature/add-clamp', { state: 'blocked', waitingFor: 'permission prompt' });
+      await expect.poll(() => dot(id), { timeout: 15_000 }).toBe(AMBER);
+      expect(urgent(id)).toBe(true);
+
+      // Back in Symbiote's window: no more blink; the dot stays while it waits.
+      await app.evaluate(({ BrowserWindow }) => {
+        const { elsewhere } = globalThis as unknown as { elsewhere: unknown };
+        BrowserWindow.getAllWindows()
+          .find((window) => window !== elsewhere)
+          ?.focus();
+      });
+      await expect.poll(() => urgent(id)).toBe(false);
+      expect(dot(id)).toBe(AMBER);
+
+      // Answered: the plain S again.
+      served.session('feature/add-clamp', { state: 'working' });
+      await expect.poll(() => dot(id), { timeout: 15_000 }).not.toBe(AMBER);
+    } finally {
+      served.stop();
+    }
+  });
+});
+
 // From the desktop's launcher (N1b): the app starts the repository's server itself.
 test.describe('from the launcher', () => {
   const cli = join(root, 'packages/cli/dist/bin.js');
