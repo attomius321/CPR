@@ -41,6 +41,12 @@
   color: var(--muted);
 }
 
+/* How it lands, when not with a merge commit (V67). */
+.merge-how {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
 .merge-row-state {
   min-width: 0;
   margin: 6px 0 0;

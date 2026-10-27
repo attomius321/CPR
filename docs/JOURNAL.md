@@ -269,3 +269,5 @@ merge commit.
 - 2026-10-27 [N2 — an amber dot on the taskbar icon, a blink while you are elsewhere](journal/n2-taskbar-waiting.md)
 - 2026-10-27 [V68 spike — how many branches Start from lists](journal/v68-start-from-search.md)
 - 2026-10-27 [V68 — Start from with a search](journal/v68-start-from-search.md)
+- 2026-10-27 [V67 spike — how many merges could have been fast-forwards](journal/v67-merge-strategies.md)
+- 2026-10-27 [V67 — a merge by fast-forward, picked at Merge into](journal/v67-merge-strategies.md)

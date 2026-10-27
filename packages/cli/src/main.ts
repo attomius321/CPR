@@ -22,6 +22,7 @@ import {
   historyState,
   isCommit,
   listRefs,
+  MERGE_STRATEGIES,
   listChangedLines,
   listLineCounts,
   NoMergeBaseError,
@@ -41,6 +42,7 @@ import {
   type AgentModels,
   type AgentKind,
   type MergeEntry,
+  type MergeStrategy,
   type Severity,
   type TsPlugin,
 } from '@symbiote/core';
@@ -309,11 +311,15 @@ target's files) and moves the target by fast-forward: in the worktree that has i
 checked out, else its ref. merge.push: true pushes it after. Without a check, the
 merge waits for --land. A conflict goes to a merger agent (Claude Code or Codex,
 merge.agent, merge.model) that answers each region; Symbiote writes its answer, and the
-merge waits for your --approve.
+merge waits for your --approve. With --strategy fast-forward, nothing is merged: the target
+moves to the approved commit itself once its check passes, if the target's tip is in it.
 
 Options:
   --into <branch>      Branch to merge into (default: the branch its workspace started
                        from, else the one the approval names, else the default branch)
+  --strategy <how>     merge (a merge commit) or fast-forward (default: merge.strategy in
+                       symbiote/config.json, else merge). --strategy merge on a fast-forward
+                       its target can no longer take merges it with a merge commit instead
   --land               Land the branch's merge that waits for it
   --approve            Approve the merger agent's resolution of a conflict: it lands
   --again <words>      Ask the merger agent again, with what to change in its resolution
@@ -889,11 +895,14 @@ function mergeLine(entry: MergeEntry): string {
   const time = check?.ms === undefined ? '' : ` (${(check.ms / 1000).toFixed(1)} s)`;
   // An approved resolution lands whatever its check said; a failed one is still said.
   const failed = check?.ok === false ? `; its check failed: ${check.failed ?? ''}` : '';
+  const fastForward = entry.strategy === 'fast-forward';
   switch (entry.state) {
     case 'queued':
-      return `queued: ${entry.head.slice(0, 7)} into ${entry.into}${entry.message ? ` (${entry.message})` : ''}`;
+      return `queued: ${entry.head.slice(0, 7)} into ${entry.into}${fastForward ? ', by fast-forward' : ''}${entry.message ? ` (${entry.message})` : ''}`;
     case 'merging':
-      return `merging into ${entry.into} at ${entry.base?.slice(0, 7) ?? '?'}`;
+      return fastForward
+        ? `fast-forwarding ${entry.into} from ${entry.base?.slice(0, 7) ?? '?'}`
+        : `merging into ${entry.into} at ${entry.base?.slice(0, 7) ?? '?'}`;
     case 'resolving':
       return `resolving: ${entry.conflicts?.length ?? 0} conflicting file(s), asked of the merger agent`;
     case 'checking':
@@ -924,6 +933,9 @@ function mergeLine(entry: MergeEntry): string {
         );
         return `needs you: ${entry.message ?? ''}\n${sides.join('\n')}\n  then --again "<your answer>"`;
       }
+      // A fast-forward its target can no longer take (V67).
+      if (entry.behind)
+        return `needs you: ${entry.message ?? ''}\n  then --strategy merge for a merge commit`;
       return `needs you: ${entry.message ?? ''}${entry.conflicts ? `\n  ${entry.conflicts.join('\n  ')}` : ''}`;
     }
     case 'ready':
@@ -934,7 +946,9 @@ function mergeLine(entry: MergeEntry): string {
           ? `, pushed to ${entry.pushed.remote}`
           : `; not pushed: ${entry.pushed.error}`
         : '';
-      return `landed: ${entry.into} is at ${entry.merge?.slice(0, 7) ?? entry.head.slice(0, 7)}${time}${pushed}${failed}${entry.message ? ` (${entry.message})` : ''}`;
+      const at = entry.merge?.slice(0, 7) ?? entry.head.slice(0, 7);
+      const moved = fastForward && entry.merge ? `fast-forwarded to ${at}` : `is at ${at}`;
+      return `landed: ${entry.into} ${moved}${time}${pushed}${failed}${entry.message ? ` (${entry.message})` : ''}`;
     }
     case 'failed':
       return check?.ok === false
@@ -1008,6 +1022,7 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
       allowPositionals: true,
       options: {
         into: { type: 'string' },
+        strategy: { type: 'string' },
         land: { type: 'boolean', default: false },
         approve: { type: 'boolean', default: false },
         again: { type: 'string' },
@@ -1022,6 +1037,13 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
   }
   const [branch, ...extra] = positionals;
   if (!branch || extra.length > 0) throw new UsageError('one branch to merge', MERGE_HELP);
+  const strategy = values.strategy as MergeStrategy | undefined;
+  if (strategy !== undefined && !MERGE_STRATEGIES.includes(strategy)) {
+    throw new UsageError(
+      `--strategy: ${MERGE_STRATEGIES.join(' or ')}, got '${String(strategy)}'`,
+      MERGE_HELP,
+    );
+  }
   const repo = await openRepo(ctx.cwd);
   let last = '';
   const print = (entry: MergeEntry) => {
@@ -1066,9 +1088,18 @@ async function merge(argv: string[], ctx: CliContext): Promise<number> {
       await merges.idle();
       return done(entry);
     }
+    // A fast-forward its target could not take, asked again with a merge commit (V67).
+    if (targets.entry?.behind && strategy === 'merge') {
+      const entry = await merges.mergeCommit(targets.entry.id);
+      print(entry);
+      await merges.idle();
+      const now = (await merges.list()).merges.find((e) => e.id === entry.id);
+      if (now) print(now);
+      return done(now);
+    }
     const into = values.into ?? targets.into;
     if (!into) throw new UsageError('no default branch: name one with --into', MERGE_HELP);
-    const queued = await merges.enqueue({ branch, into });
+    const queued = await merges.enqueue({ branch, into, ...(strategy ? { strategy } : {}) });
     print(queued);
     await merges.idle();
     // Another Symbiote process (\`symbiote view\`) merges in this repository: its progress, from

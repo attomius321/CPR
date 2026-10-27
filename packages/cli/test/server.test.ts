@@ -1807,10 +1807,13 @@ describe('symbiote view: merges (V26a)', () => {
         branches: ['develop', 'main'],
         into: 'main',
         head: C,
+        strategy: 'merge',
         ...(branch === 'x' ? { blocked: 'x is not approved' } : {}),
       }),
     enqueue: (request) => {
-      asked.push(`enqueue ${request.branch} ${request.into}`);
+      asked.push(
+        `enqueue ${request.branch} ${request.into}${request.strategy ? ` ${request.strategy}` : ''}`,
+      );
       return request.branch === 'x'
         ? Promise.reject(new MergeRefused('x is not approved', 409))
         : Promise.resolve(entry);
@@ -1834,6 +1837,10 @@ describe('symbiote view: merges (V26a)', () => {
     recheck: (id) => {
       asked.push(`recheck ${id}`);
       return Promise.resolve({ ...entry, recheck: true });
+    },
+    mergeCommit: (id) => {
+      asked.push(`merge-commit ${id}`);
+      return Promise.resolve(entry);
     },
     remove: (id) => {
       asked.push(`remove ${id}`);
@@ -1910,6 +1917,7 @@ describe('symbiote view: merges (V26a)', () => {
       branches: ['develop', 'main'],
       into: 'main',
       head: C,
+      strategy: 'merge',
     });
     expect((await get('/api/merges/targets')).status).toBe(400);
 
@@ -1962,6 +1970,26 @@ describe('symbiote view: merges (V26a)', () => {
       'retry m1',
       'remove m1',
       'remove m2',
+    ]);
+  });
+
+  it('queues by fast-forward, refuses an unknown strategy, and takes Merge commit instead (V67)', async () => {
+    const from = asked.length;
+    const body = { branch: 'feature/csv', into: 'main' };
+    expect((await post('/api/merges', { ...body, strategy: 'fast-forward' })).status).toBe(200);
+    expect((await post('/api/merges', { ...body, strategy: 'merge' })).status).toBe(200);
+    const unknown = await post('/api/merges', { ...body, strategy: 'squash' });
+    expect(unknown.status).toBe(400);
+    expect(await unknown.text()).toMatch(/strategy: merge or fast-forward/);
+    expect((await post('/api/merges/merge-commit', { id: 'm1' })).status).toBe(200);
+    expect((await post('/api/merges/merge-commit', {})).status).toBe(400);
+    expect(
+      (await post('/api/merges/merge-commit', { id: 'm1' }, { 'x-symbiote': '' })).status,
+    ).toBe(403);
+    expect(asked.splice(from)).toEqual([
+      'enqueue feature/csv main fast-forward',
+      'enqueue feature/csv main merge',
+      'merge-commit m1',
     ]);
   });
 

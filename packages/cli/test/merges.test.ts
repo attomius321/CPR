@@ -51,6 +51,24 @@ function setup({ trunk = 'main' }: { trunk?: string } = {}) {
   return { repo, shas: { A, T, M } };
 }
 
+/**
+ * main: A; topic from A: T (adds src/t.ts). main's tip is in topic, so main can fast-forward to
+ * T (V67). `main` is checked out in the main checkout.
+ */
+function fastForwardable() {
+  const repo = createRepo();
+  repos.push(repo);
+  repo.git('config', 'user.email', EMAIL);
+  repo.git('config', 'user.name', 'Ada');
+  repo.write({ 'src/a.ts': 'export const a = 1;\n' });
+  const A = repo.commit('A');
+  repo.git('switch', '--quiet', '-c', 'topic');
+  repo.write({ 'src/t.ts': 'export const t = 1;\n' });
+  const T = repo.commit('T: add t');
+  repo.git('switch', '--quiet', 'main');
+  return { repo, shas: { A, T } };
+}
+
 /** The reviewer's last verdict on `branch`, as Symbiote records it (V16, V17). */
 function review(repo: TestRepo, branch: string, verdict: Partial<Verdict> & { head: string }) {
   const path = join(repo.root, 'symbiote', 'reviews', ...branch.split('/'), `${EMAIL}.json`);
@@ -1051,6 +1069,293 @@ describe('into which branch (V26a)', () => {
   });
 });
 
+describe('a fast-forward (V67)', () => {
+  it('reads merge.strategy: merge or fast-forward, anything else ignored', () => {
+    const { repo } = fastForwardable();
+    config(repo, { strategy: 'fast-forward' });
+    expect(readMergeConfig(repo.root)).toEqual({ push: false, strategy: 'fast-forward' });
+    config(repo, { strategy: 'merge' });
+    expect(readMergeConfig(repo.root)).toEqual({ push: false, strategy: 'merge' });
+    config(repo, { strategy: 'squash' });
+    expect(readMergeConfig(repo.root)).toEqual({ push: false });
+  });
+
+  it('moves main to the approved commit itself, checked first in the merge worktree: no merge commit', async () => {
+    const { repo, shas } = fastForwardable();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: ['pnpm install', 'pnpm check'] });
+    const checks = fakeChecks();
+    const m = await make(repo, checks.run);
+    const queued = await m.enqueue({ branch: 'topic', into: 'main', strategy: 'fast-forward' });
+    expect(queued).toMatchObject({ strategy: 'fast-forward', state: 'queued' });
+    await m.idle();
+
+    const [entry] = (await m.list()).merges;
+    expect(entry).toMatchObject({
+      state: 'landed',
+      strategy: 'fast-forward',
+      base: shas.A,
+      merge: shas.T,
+    });
+    expect(entry?.check).toMatchObject({ ok: true });
+    expect(repo.git('rev-parse', 'main')).toBe(shas.T);
+    // No commit was made: main's history is A, T.
+    expect(repo.git('rev-list', '--count', 'main')).toBe('2');
+    // The main checkout moved with its branch.
+    expect(repo.git('status', '--porcelain', '--untracked-files=no')).toBe('');
+    expect(existsSync(join(repo.root, 'src', 't.ts'))).toBe(true);
+    // The check ran in Symbiote's merge worktree, on the approved commit.
+    expect(checks.asked.map((a) => a.command)).toEqual(['pnpm install', 'pnpm check']);
+    const cwd = checks.asked[0]?.cwd ?? '';
+    expect(cwd.startsWith(cache)).toBe(true);
+    expect(repo.git('-C', cwd, 'rev-parse', 'HEAD')).toBe(shas.T);
+  });
+
+  it('takes merge.strategy when the request names none; a merge commit when neither does', async () => {
+    const { repo, shas } = fastForwardable();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const m = await make(repo);
+    let entry = await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
+    expect(entry.strategy).toBeUndefined();
+    await m.remove(entry.id);
+    config(repo, { strategy: 'fast-forward' });
+    entry = await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
+    expect(entry.strategy).toBe('fast-forward');
+    await m.remove(entry.id);
+    entry = await m.enqueue({ branch: 'topic', into: 'main', strategy: 'merge' }, { start: false });
+    expect(entry.strategy).toBeUndefined();
+  });
+
+  it('refuses to queue a fast-forward the target cannot take: it has commits the branch does not', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const m = await make(repo);
+    await expect(
+      m.enqueue({ branch: 'topic', into: 'main', strategy: 'fast-forward' }),
+    ).rejects.toThrow(/main has 1 commit topic does not: it cannot fast-forward/);
+    expect((await m.list()).merges).toEqual([]);
+    // With a merge commit it queues, as before.
+    await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
+    expect((await m.list()).merges).toHaveLength(1);
+  });
+
+  it('waits for the person when the target moved while it waited; Merge commit instead lands it with one', async () => {
+    const { repo, shas } = fastForwardable();
+    repo.git('switch', '--quiet', '-c', 'second', shas.A);
+    repo.write({ 'src/s.ts': 'export const s = 1;\n' });
+    const S = repo.commit('S');
+    repo.git('switch', '--quiet', 'main');
+    review(repo, 'second', { head: S, into: 'main' });
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'ok' });
+    const checks = fakeChecks();
+    const m = await make(repo, checks.run);
+    await m.enqueue({ branch: 'second', into: 'main' }, { start: false });
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main', strategy: 'fast-forward' });
+    await m.idle();
+
+    const [first, waiting] = (await m.list()).merges;
+    expect(first?.state).toBe('landed');
+    const moved = first?.merge ?? '';
+    expect(repo.git('rev-parse', 'main')).toBe(moved);
+    expect(waiting).toMatchObject({ state: 'needs-you', strategy: 'fast-forward', behind: 2 });
+    expect(waiting?.message).toBe(
+      'main has 2 commits topic does not: it cannot fast-forward. Merge with a merge commit, or bring main into the branch and review it again',
+    );
+    expect(waiting?.merge).toBeUndefined();
+    // Only the first merge's check ran.
+    expect(checks.asked).toHaveLength(1);
+
+    const again = await m.mergeCommit(id);
+    expect(again.state).toBe('queued');
+    expect(again.strategy).toBeUndefined();
+    expect(again.behind).toBeUndefined();
+    await m.idle();
+    const [, landed] = (await m.list()).merges;
+    expect(landed).toMatchObject({ state: 'landed', base: moved });
+    expect(parents(repo, landed?.merge ?? '')).toEqual([moved, shas.T]);
+    expect(repo.git('rev-parse', 'main')).toBe(landed?.merge);
+  });
+
+  it('fast-forwards again when the target moved before Land: it says so, without "the merge"', async () => {
+    const { repo, shas } = fastForwardable();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main', strategy: 'fast-forward' });
+    await m.idle();
+    repo.write({ 'src/n.ts': 'export const n = 1;\n' });
+    const N = repo.commit('N');
+    const requeued = await m.land(id);
+    expect(requeued).toMatchObject({
+      state: 'queued',
+      message: 'main moved: fast-forwarding again from its tip',
+    });
+    await m.idle();
+    expect((await m.list()).merges[0]).toMatchObject({ state: 'needs-you', behind: 1 });
+    expect(shortLog(await logOf(m, id)).slice(5, 9)).toEqual([
+      'step land Land in main',
+      `out main moved (now ${N.slice(0, 7)})`,
+      'end failed',
+      "run Fast-forwarding again from main's tip",
+    ]);
+  });
+
+  it('takes Merge commit instead only for a fast-forward waiting for the person', async () => {
+    const { repo, shas } = fastForwardable();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
+    await expect(m.mergeCommit(id)).rejects.toThrow(/no fast-forward waiting/);
+    await expect(m.mergeCommit('nope')).rejects.toThrow(MergeRefused);
+  });
+
+  it('fast-forwards a branch checked out nowhere with update-ref, and makes one only a remote has', async () => {
+    const { repo, shas } = fastForwardable();
+    repo.git('update-ref', 'refs/remotes/origin/release', shas.A);
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'ok' });
+    repo.git('switch', '--quiet', '-c', 'elsewhere');
+    const m = await make(repo);
+    await m.enqueue({ branch: 'topic', into: 'main', strategy: 'fast-forward' });
+    await m.idle();
+    expect((await m.list()).merges[0]?.state).toBe('landed');
+    expect(repo.git('rev-parse', 'main')).toBe(shas.T);
+    expect(repo.git('rev-parse', 'HEAD')).toBe(shas.A);
+
+    await m.remove((await m.list()).merges[0]?.id ?? '');
+    await m.enqueue({ branch: 'topic', into: 'release', strategy: 'fast-forward' });
+    await m.idle();
+    expect((await m.list()).merges[0]).toMatchObject({ state: 'landed', merge: shas.T });
+    expect(repo.git('rev-parse', 'release')).toBe(shas.T);
+  });
+
+  it('changes nothing when local changes in the checkout would be overwritten; Land tries again', async () => {
+    const { repo, shas } = fastForwardable();
+    repo.git('switch', '--quiet', 'topic');
+    repo.write({ 'src/a.ts': 'export const a = 2;\n' });
+    const T2 = repo.commit('T2: change a');
+    repo.git('switch', '--quiet', 'main');
+    review(repo, 'topic', { head: T2, into: 'main' });
+    repo.write({ 'src/a.ts': 'export const a = 3; // mine\n' });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main', strategy: 'fast-forward' });
+    await m.idle();
+    expect((await m.list()).merges[0]).toMatchObject({ state: 'ready', merge: T2 });
+
+    let entry = await m.land(id);
+    expect(entry.state).toBe('ready');
+    expect(entry.message).toMatch(/local changes/);
+    expect(repo.git('rev-parse', 'main')).toBe(shas.A);
+    expect(readFileSync(join(repo.root, 'src', 'a.ts'), 'utf8')).toBe(
+      'export const a = 3; // mine\n',
+    );
+
+    repo.git('checkout', '--', 'src/a.ts');
+    entry = await m.land(id);
+    expect(entry.state).toBe('landed');
+    expect(repo.git('rev-parse', 'main')).toBe(T2);
+  });
+
+  it('lands at once, saying so, when the approved commit is in the target already', async () => {
+    const { repo, shas } = fastForwardable();
+    repo.git('merge', '--quiet', '--ff-only', 'topic');
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const checks = fakeChecks();
+    const m = await make(repo, checks.run);
+    await m.enqueue({ branch: 'topic', into: 'main', strategy: 'fast-forward' });
+    await m.idle();
+    expect((await m.list()).merges[0]).toMatchObject({
+      state: 'landed',
+      message: 'already in main',
+    });
+    expect(checks.asked).toEqual([]);
+    expect(repo.git('rev-parse', 'main')).toBe(shas.T);
+  });
+
+  it('keeps main as it was when the check fails', async () => {
+    const { repo, shas } = fastForwardable();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'fail' });
+    const m = await make(repo);
+    await m.enqueue({ branch: 'topic', into: 'main', strategy: 'fast-forward' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry).toMatchObject({ state: 'failed', merge: shas.T });
+    expect(entry?.check).toMatchObject({ ok: false, failed: 'fail' });
+    expect(repo.git('rev-parse', 'main')).toBe(shas.A);
+  });
+
+  it('lists the targets that can fast-forward to the approved commit, and the strategy preselected', async () => {
+    const { repo, shas } = setup();
+    repo.git('branch', 'develop', shas.A);
+    repo.git('update-ref', 'refs/remotes/origin/release', shas.A);
+    repo.git('update-ref', 'refs/remotes/origin/main', shas.A);
+    const m = await make(repo);
+    let targets = await m.targets('topic');
+    // Not approved: nothing to fast-forward to.
+    expect(targets.fastForward).toBeUndefined();
+    expect(targets.strategy).toBe('merge');
+
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    targets = await m.targets('topic');
+    expect(targets.branches).toEqual(['develop', 'main', 'release']);
+    // main's local tip (M) is not in T, though origin/main's is.
+    expect(targets.fastForward).toEqual(['develop', 'release']);
+
+    config(repo, { strategy: 'fast-forward' });
+    expect((await m.targets('topic')).strategy).toBe('fast-forward');
+  });
+
+  it('logs its steps: the fast-forward, the check, the landing', async () => {
+    const { repo, shas } = fastForwardable();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'pnpm check' });
+    const m = await make(repo);
+    const { id } = await m.enqueue({ branch: 'topic', into: 'main', strategy: 'fast-forward' });
+    await m.idle();
+    const [t, a] = [shas.T.slice(0, 7), shas.A.slice(0, 7)];
+    expect(shortLog(await logOf(m, id))).toEqual([
+      `step merge Fast-forward main to ${t}`,
+      `out main (${a}) is in ${t}: no merge commit`,
+      `out Symbiote's merge worktree at ${t}`,
+      'end ok',
+      'step check pnpm check',
+      'out ok',
+      'end ok',
+      'step land Land in main',
+      `out main fast-forwarded to ${t} in ${repo.root}`,
+      'end ok',
+    ]);
+  });
+
+  it('logs why it cannot fast-forward, and the merge commit after', async () => {
+    const { repo, shas } = fastForwardable();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const m = await make(repo);
+    const { id } = await m.enqueue(
+      { branch: 'topic', into: 'main', strategy: 'fast-forward' },
+      { start: false },
+    );
+    repo.write({ 'src/n.ts': 'export const n = 1;\n' });
+    const N = repo.commit('N');
+    // Listing the queue merges what is queued.
+    await m.list();
+    await m.idle();
+    const lines = shortLog(await logOf(m, id));
+    expect(lines).toEqual([
+      `step merge Fast-forward main to ${shas.T.slice(0, 7)}`,
+      `out main has 1 commit topic does not (now ${N.slice(0, 7)}): it cannot fast-forward`,
+      'end failed',
+    ]);
+    await m.mergeCommit(id);
+    await m.idle();
+    expect(shortLog(await logOf(m, id)).slice(3, 5)).toEqual([
+      'run Merge commit instead',
+      'step merge Merge topic into main',
+    ]);
+  });
+});
+
 describe('symbiote merge (V26a)', () => {
   /** `env`: more of the environment, as `{ env }` before the arguments. */
   async function symbioteMerge(repo: TestRepo, ...args: (string | { env: NodeJS.ProcessEnv })[]) {
@@ -1123,6 +1428,55 @@ process.stdout.write(JSON.stringify({ type: 'result', result, is_error: false })
       'ready to land',
       `landed: main is at ${merge.slice(0, 7)}`,
       '',
+    ]);
+  });
+
+  it('fast-forwards with --strategy fast-forward, printing each state (V67)', async () => {
+    const { repo, shas } = fastForwardable();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'test -f src/t.ts' });
+    const { code, stdout } = await symbioteMerge(repo, 'topic', '--strategy', 'fast-forward');
+    expect(code).toBe(0);
+    const [t, a] = [shas.T.slice(0, 7), shas.A.slice(0, 7)];
+    expect(stdout.split('\n').map((line) => line.replace(/ \(\d+\.\d s\)/, ''))).toEqual([
+      `queued: ${t} into main, by fast-forward`,
+      `fast-forwarding main from ${a}`,
+      'checking: test -f src/t.ts (symbiote/config.json (merge.checks))',
+      'ready to land',
+      `landed: main fast-forwarded to ${t}`,
+      '',
+    ]);
+    expect(repo.git('rev-parse', 'main')).toBe(shas.T);
+  });
+
+  it('says why it cannot fast-forward; --strategy merge then merges it with a merge commit (V67)', async () => {
+    const { repo, shas } = fastForwardable();
+    repo.git('switch', '--quiet', '-c', 'second', shas.A);
+    repo.write({ 'src/s.ts': 'export const s = 1;\n' });
+    const S = repo.commit('S');
+    repo.git('switch', '--quiet', 'main');
+    review(repo, 'second', { head: S, into: 'main' });
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'true' });
+    let result = await symbioteMerge(repo, 'topic', '--strategy', 'squash');
+    expect(result.code).toBe(2);
+    expect(result.stderr).toMatch(/--strategy: merge or fast-forward/);
+
+    // second lands first, with a merge commit: main no longer is in topic.
+    const m = await make(repo);
+    await m.enqueue({ branch: 'second', into: 'main' }, { start: false });
+    result = await symbioteMerge(repo, 'topic', '--strategy', 'fast-forward');
+    expect(result.code).toBe(1);
+    expect(result.stdout).toMatch(
+      /^needs you: main has 2 commits topic does not: it cannot fast-forward\. .*\n {2}then --strategy merge for a merge commit$/m,
+    );
+
+    result = await symbioteMerge(repo, 'topic', '--strategy', 'merge');
+    expect(result.code).toBe(0);
+    expect(result.stdout).toMatch(/^landed: main is at [0-9a-f]{7}/m);
+    expect(parents(repo, repo.git('rev-parse', 'main'))).toEqual([
+      (await m.list()).merges[0]?.merge,
+      shas.T,
     ]);
   });
 

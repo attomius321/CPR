@@ -1,8 +1,9 @@
-import type { MergeEntry } from '@symbiote/core';
+import type { MergeEntry, MergeTargets } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   askedRegions,
   failedCheck,
+  fastForwardBlocked,
   firstFile,
   gutterChars,
   mergeActions,
@@ -10,6 +11,8 @@ import {
   mergeLabel,
   mergeLive,
   mergeState,
+  mergeTip,
+  mergeTitle,
   regionFlags,
   removableOnCard,
   resolutionFiles,
@@ -349,6 +352,67 @@ describe('a resolution, line by line (the merge page remake)', () => {
     expect(regionFlags(review, 'main', 'b')).toEqual([
       { tone: 'ok', text: 'Keeps every line of both sides, nothing new' },
     ]);
+  });
+});
+
+describe('a fast-forward (V67)', () => {
+  const ff = (fields: Partial<MergeEntry>) => entry({ strategy: 'fast-forward', ...fields });
+
+  it('says it is a fast-forward in each state, and where the target moved', () => {
+    expect(mergeState(ff({})).text).toBe('Queued: ccccccc into main, by fast-forward');
+    expect(mergeState(ff({ state: 'merging' })).text).toBe('Fast-forwarding main');
+    expect(mergeState(ff({ state: 'checking', check })).text).toBe('Checking: pnpm check');
+    expect(mergeState(ff({ state: 'ready', merge: C, message: 'no check to run' })).text).toBe(
+      'Not checked: no check to run',
+    );
+    expect(
+      mergeState(ff({ state: 'landed', merge: C, check: { ...check, ok: true, ms: 4200 } })),
+    ).toEqual({ text: 'Landed: main fast-forwarded to ccccccc · checked in 4.2 s', tone: 'done' });
+    expect(mergeState(ff({ state: 'landed', message: 'already in main' })).text).toBe(
+      'Landed: already in main',
+    );
+  });
+
+  it("is the person's turn when the target can no longer take it: Merge commit instead", () => {
+    const waiting = ff({ state: 'needs-you', behind: 2, message: 'main has 2 commits…' });
+    expect(mergeState(waiting)).toEqual({
+      text: 'Cannot fast-forward: main has 2 commits feature/csv does not. Merge with a merge commit, or bring main into the branch and review it again',
+      tone: 'you',
+    });
+    expect(mergeLabel(waiting)).toBe('Needs you');
+    expect(mergeButtons(waiting)).toEqual({
+      buttons: ['merge-commit'],
+      more: ['retry', 'remove'],
+    });
+    // A merge commit waiting for the person is offered no other way.
+    expect(mergeActions(entry({ state: 'needs-you' }))).not.toContain('merge-commit');
+  });
+
+  it('says no merge commit is made, where a merge says its subject', () => {
+    expect(mergeTitle(entry({}))).toBe('Merge feature/csv: CSV');
+    expect(mergeTitle(ff({}))).toBe(
+      'No merge commit: a fast-forward to ccccccc, the approved commit',
+    );
+  });
+
+  it('offers a fast-forward only to a target that can take it, and says why not', () => {
+    const targets: MergeTargets = {
+      branches: ['develop', 'main'],
+      into: 'main',
+      head: C,
+      strategy: 'merge',
+      fastForward: ['develop'],
+    };
+    expect(fastForwardBlocked(targets, 'feature/csv', 'develop')).toBeNull();
+    expect(fastForwardBlocked(targets, 'feature/csv', 'main')).toBe(
+      'main has commits feature/csv does not: it cannot fast-forward. Merge with a merge commit, or bring main into the branch and review it again.',
+    );
+    expect(mergeTip(targets, 'main', 'merge')).toBe(
+      "Merge ccccccc into main\nThe approved commit, in Symbiote's own worktree: checked, then landed",
+    );
+    expect(mergeTip(targets, 'develop', 'fast-forward')).toBe(
+      "Fast-forward develop to ccccccc\nNo merge commit: develop moves to the approved commit itself, once its check passes in Symbiote's own worktree",
+    );
   });
 });
 

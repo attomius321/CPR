@@ -227,8 +227,23 @@ function fakes(
       targets: (branch: string) =>
         Promise.resolve(
           branch === 'fix/a'
-            ? { branches: ['main'], into: 'main', head: HEAD }
-            : { branches: ['main'], into: 'main', blocked: `${branch} has no approval` },
+            ? {
+                // Its entry still in the queue, as the merger answers.
+                ...((e) => (e ? { entry: e } : {}))(
+                  queue.find((e) => e.branch === branch && e.state !== 'landed'),
+                ),
+                branches: ['main', 'release'],
+                into: 'main',
+                head: HEAD,
+                strategy: 'merge' as const,
+                fastForward: ['main'],
+              }
+            : {
+                branches: ['main'],
+                into: 'main',
+                strategy: 'merge' as const,
+                blocked: `${branch} has no approval`,
+              },
         ),
       enqueue: (request) => {
         calls.push(['enqueue', request]);
@@ -242,6 +257,10 @@ function fakes(
       },
       retry: (id: string) => Promise.resolve(entry({ id, state: 'queued' })),
       recheck: (id: string) => Promise.resolve(entry({ id, state: 'checking' })),
+      mergeCommit: (id: string) => {
+        calls.push(['mergeCommit', id]);
+        return Promise.resolve(entry({ id, state: 'queued' }));
+      },
       remove: (id: string) => {
         calls.push(['remove', id]);
         return id === 'busy'
@@ -675,6 +694,62 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     expect(done.value).toMatchObject({ branch: 'fix/a', into: 'main', state: 'queued' });
     expect(calls).toContainEqual(['enqueue', { branch: 'fix/a', into: 'main' }]);
     expect(mcp.asks().asks).toEqual([]);
+  });
+
+  it('queues by fast-forward where the target can take it; a waiting one with a merge commit instead (V67)', async () => {
+    const waiting = entry({
+      state: 'needs-you',
+      strategy: 'fast-forward',
+      behind: 2,
+      message: 'main has 2 commits fix/a does not: it cannot fast-forward.',
+    });
+    const { services, calls } = fakes({ merges: [waiting] });
+    const mcp = server(services);
+    const read = await call(mcp, 'merges', { branch: 'fix/a' });
+    expect(read.value).toMatchObject({
+      merges: [{ strategy: 'fast-forward', behind: 2, state: 'needs-you' }],
+      targets: { strategy: 'merge', fastForward: ['main'] },
+    });
+
+    expect(
+      await call(mcp, 'queue_merge', {
+        branch: 'fix/a',
+        into: 'release',
+        strategy: 'fast-forward',
+      }),
+    ).toMatchObject({
+      isError: true,
+      text: 'release has commits fix/a does not: it cannot fast-forward (strategy merge: a merge commit)',
+    });
+    expect(await call(mcp, 'queue_merge', { branch: 'fix/a', strategy: 'squash' })).toMatchObject({
+      isError: true,
+      text: 'strategy: merge or fast-forward',
+    });
+
+    const instead = call(mcp, 'queue_merge', { branch: 'fix/a', strategy: 'merge' });
+    const id = await askOf(mcp);
+    expect(mcp.asks().asks[0]?.words).toBe(
+      `Merge fix/a into main with a merge commit: it cannot fast-forward`,
+    );
+    await mcp.answer({ id, yes: true });
+    expect((await instead).isError).toBe(false);
+    expect(calls).toContainEqual(['mergeCommit', 'm1']);
+  });
+
+  it('asks to fast-forward by name (V67)', async () => {
+    const { services, calls } = fakes();
+    const mcp = server(services);
+    const pending = call(mcp, 'queue_merge', { branch: 'fix/a', strategy: 'fast-forward' });
+    const id = await askOf(mcp);
+    expect(mcp.asks().asks[0]?.words).toBe(
+      `Fast-forward main to fix/a at ${HEAD.slice(0, 7)}: no merge commit`,
+    );
+    await mcp.answer({ id, yes: true });
+    await pending;
+    expect(calls).toContainEqual([
+      'enqueue',
+      { branch: 'fix/a', into: 'main', strategy: 'fast-forward' },
+    ]);
   });
 
   it('does nothing when the person declines, or does not answer in time', async () => {

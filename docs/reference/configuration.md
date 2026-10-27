@@ -33,6 +33,7 @@ the merger, Scout and Scribe, and leaves the rest of the file as it is.
 | `scout.effort`, `scribe.effort` | the agent's own | The effort level each Scout or Scribe conversation starts at, if the agent offers it. |
 | `merge.checks` | a command Symbiote finds | The check a merge runs before it lands: one command, or a list run in order. Put an install first if the check needs dependencies. |
 | `merge.push` | `false` | If `true`, Symbiote pushes the target branch after a merge lands: to its upstream, else to `origin`. |
+| `merge.strategy` | `merge` | How a merge lands unless you pick otherwise: `merge` (a merge commit) or `fast-forward` (the target moves to the approved commit, no new commit, when the target has no commits the branch lacks). |
 | `merge.agent` | `agent.kind`, else Claude Code, else Codex | The agent that resolves conflicts: `claude` or `codex`. |
 | `merge.model` | `sonnet` for Claude Code, else the agent's own | The model the merger runs on. |
 | `merge.effort` | the agent's own | The effort level the merger runs at, if its model takes one. |

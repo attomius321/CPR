@@ -145,6 +145,21 @@ export async function fastForwardBranch(
   }
 }
 
+/**
+ * The tips of local and remote branches that are in `sha` (V67): the branches that can
+ * fast-forward to it. One `git for-each-ref --merged`, not one ancestry check per branch.
+ */
+export async function tipsIn(repo: GitRepo, sha: string): Promise<Set<string>> {
+  const output = await git(repo.root, [
+    'for-each-ref',
+    `--merged=${sha}`,
+    '--format=%(objectname)',
+    'refs/heads',
+    'refs/remotes',
+  ]);
+  return new Set(output.split('\n').filter((line) => line !== ''));
+}
+
 /** `git push <remote> <sha>:refs/heads/<branch>`; git's words when it fails. */
 export async function pushCommit(
   repo: GitRepo,

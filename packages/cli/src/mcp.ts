@@ -5,6 +5,7 @@
 // at most (an ask, decision 361); the others run at once.
 import {
   AGENT_KINDS,
+  MERGE_STRATEGIES,
   WORK_KINDS,
   type AgentKind,
   type BranchReviewInfo,
@@ -14,6 +15,7 @@ import {
   type McpAsks,
   type McpCaller,
   type MergeEntry,
+  type MergeStrategy,
   type RepoStatus,
   type WorkspaceRequest,
   type WorkspaceSummary,
@@ -70,6 +72,7 @@ export interface McpServices {
     | 'land'
     | 'retry'
     | 'recheck'
+    | 'mergeCommit'
     | 'remove'
     | 'approve'
     | 'requestChanges'
@@ -311,9 +314,12 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
   {
     name: 'queue_merge',
     description:
-      "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given)." +
+      "Queues a branch's approved commit to be merged, checked and landed into a branch (its default target unless given): with a merge commit, or by fast-forward (the target moved to the approved commit itself, where merges says it can). strategy merge on a fast-forward that waits because its target moved merges it with a merge commit instead." +
       ASKS,
-    inputSchema: object({ branch, into: { type: 'string' } }, ['branch']),
+    inputSchema: object(
+      { branch, into: { type: 'string' }, strategy: { type: 'string', enum: MERGE_STRATEGIES } },
+      ['branch'],
+    ),
     needs: ['merges'],
     asks: true,
   },
@@ -447,6 +453,8 @@ function mergeRow(e: MergeEntry) {
     state: e.state,
     title: e.title,
     updated: e.updated,
+    ...(e.strategy ? { strategy: e.strategy } : {}),
+    ...(e.behind ? { behind: e.behind } : {}),
     ...(e.merge ? { merge: e.merge } : {}),
     ...(e.message ? { message: e.message } : {}),
     ...(e.conflicts ? { conflicts: e.conflicts } : {}),
@@ -877,6 +885,8 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
                 branches: targets.branches,
                 into: targets.into,
                 ...(targets.head ? { head: targets.head } : {}),
+                strategy: targets.strategy,
+                ...(targets.fastForward ? { fastForward: targets.fastForward } : {}),
                 ...(targets.blocked ? { blocked: targets.blocked } : {}),
               },
             }
@@ -1079,17 +1089,47 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       const branch = branchOf(args);
       const into =
         args.into === undefined ? undefined : words(args, 'into', 'a branch to merge into', 255);
-      const targets = await service('merges').targets(branch);
+      const { strategy } = args;
+      if (strategy !== undefined && !MERGE_STRATEGIES.includes(strategy as MergeStrategy)) {
+        throw new ToolProblem(`strategy: ${MERGE_STRATEGIES.join(' or ')}`);
+      }
+      const merger = service('merges');
+      const targets = await merger.targets(branch);
+      // A fast-forward its target can no longer take, merged with a merge commit instead (V67).
+      const waiting = targets.entry?.behind ? targets.entry : undefined;
+      if (waiting && strategy === 'merge') {
+        return {
+          words: `Merge ${branch} into ${waiting.into} with a merge commit: it cannot fast-forward`,
+          act: () => merger.mergeCommit(waiting.id).then(mergeRow),
+        };
+      }
       if (targets.blocked) throw new ToolProblem(targets.blocked);
       const target = into ?? targets.into;
       if (!target) throw new ToolProblem('into: the branch to merge into');
       if (!targets.branches.includes(target)) {
         throw new ToolProblem(`into: one of ${targets.branches.join(', ')}`);
       }
-      if (!targets.head) throw new ToolProblem(`${branch} has no approval to merge`);
+      const head = targets.head;
+      if (!head) throw new ToolProblem(`${branch} has no approval to merge`);
+      const fastForward =
+        ((strategy as MergeStrategy | undefined) ?? targets.strategy) === 'fast-forward';
+      if (fastForward && !targets.fastForward?.includes(target)) {
+        throw new ToolProblem(
+          `${target} has commits ${branch} does not: it cannot fast-forward (strategy merge: a merge commit)`,
+        );
+      }
       return {
-        words: `Merge ${branch} at ${short(targets.head)} into ${target}`,
-        act: () => service('merges').enqueue({ branch, into: target }).then(mergeRow),
+        words: fastForward
+          ? `Fast-forward ${target} to ${branch} at ${short(head)}: no merge commit`
+          : `Merge ${branch} at ${short(head)} into ${target}`,
+        act: () =>
+          merger
+            .enqueue({
+              branch,
+              into: target,
+              ...(strategy ? { strategy: strategy as MergeStrategy } : {}),
+            })
+            .then(mergeRow),
       };
     },
 

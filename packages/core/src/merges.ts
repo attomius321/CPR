@@ -26,6 +26,13 @@ export const MERGE_STATES = [
 ] as const;
 export type MergeState = (typeof MERGE_STATES)[number];
 
+/**
+ * How a merge lands (V67): `merge`, a merge commit (`--no-ff`, V26a); `fast-forward`, the target
+ * moved to the approved commit itself, no new commit, when the target's tip is in it.
+ */
+export const MERGE_STRATEGIES = ['merge', 'fast-forward'] as const;
+export type MergeStrategy = (typeof MERGE_STRATEGIES)[number];
+
 /** The check of a merge: its commands, where they came from, and how they ended. */
 export interface MergeCheckRun {
   commands: string[];
@@ -92,14 +99,21 @@ export interface MergeEntry {
   into: string;
   /** The merge commit's subject: `Merge <branch>: <title>`. */
   title: string;
+  /** `fast-forward` (V67); absent: a merge commit. */
+  strategy?: 'fast-forward';
   state: MergeState;
   /** When it was queued, and when its state last changed. */
   queued: string;
   updated: string;
   /** `into`'s tip the merge was made on. */
   base?: string;
-  /** The merge commit. */
+  /** The merge commit; a fast-forward's, the approved commit (V67). */
   merge?: string;
+  /**
+   * A fast-forward `into` can no longer take (V67): its commits the approved commit lacks. It
+   * waits for the person (`needs-you`): a merge commit instead, or Remove.
+   */
+  behind?: number;
   /** Conflicting paths. */
   conflicts?: string[];
   /** Conflicting files the merger agent was not given, and why (V46c). */
@@ -140,6 +154,10 @@ export interface MergeTargets {
   into: string | null;
   /** The approved commit, when the last verdict approves. */
   head?: string;
+  /** The strategy preselected (V67): `merge.strategy`, else `merge`. */
+  strategy: MergeStrategy;
+  /** Of `branches`, those whose tip is in the approved commit: they can fast-forward (V67). */
+  fastForward?: string[];
   /** Why it cannot be merged now; absent when it can. */
   blocked?: string;
   /** Its entry in the queue, unless landed or removed. */
@@ -190,4 +208,6 @@ export interface MergeLogRead {
 export interface MergeRequest {
   branch: string;
   into: string;
+  /** Absent: `merge.strategy`, else a merge commit (V67). */
+  strategy?: MergeStrategy;
 }

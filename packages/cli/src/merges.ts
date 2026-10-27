@@ -1,6 +1,7 @@
 // Symbiote's merger (V26a, decisions 142–146, 149): an approved commit merged with `--no-ff` in a
-// worktree of Symbiote's own, the project's check run on the merge, and the target branch moved by
-// fast-forward. No agent and no tokens; one merge at a time per repository.
+// worktree of Symbiote's own, or the approved commit itself to fast-forward to (V67), the
+// project's check run on it, and the target branch moved by fast-forward. No agent and no tokens;
+// one merge at a time per repository.
 import { randomUUID } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
@@ -9,6 +10,7 @@ import {
   abortMerge,
   analyzeGit,
   commitResolution,
+  commitsBetween,
   commitSubject,
   conflictKinds,
   defaultBranch,
@@ -21,8 +23,10 @@ import {
   MergeStepRefused,
   pushCommit,
   resetMergeWorktree,
+  tipsIn,
   upstreamOf,
   EFFORT_LEVEL,
+  MERGE_STRATEGIES,
   MODEL_ID,
   type AgentEfforts,
   type AgentModels,
@@ -35,6 +39,7 @@ import {
   type MergeConflict,
   type MergeRegion,
   type MergeRequest,
+  type MergeStrategy,
   type MergeTargets,
   type RefList,
   type ScoutEffortChange,
@@ -74,12 +79,13 @@ import { PromptRefused, readPrompts, writeConfig } from './prompts.js';
 
 /**
  * What `symbiote/config.json` says of merges: `merge.checks` (one command or several),
- * `merge.push`, and the merger agent's `merge.agent` and `merge.model` (V26c) and `merge.effort`
- * (V46d).
+ * `merge.push`, `merge.strategy` (V67), and the merger agent's `merge.agent` and `merge.model`
+ * (V26c) and `merge.effort` (V46d).
  */
 export interface MergeConfig {
   checks?: string[];
   push: boolean;
+  strategy?: MergeStrategy;
   agent?: AgentKind;
   model?: string;
   effort?: string;
@@ -99,6 +105,7 @@ export function readMergeConfig(root: string): MergeConfig {
   const v = (merge && typeof merge === 'object' ? merge : {}) as {
     checks?: unknown;
     push?: unknown;
+    strategy?: unknown;
     agent?: unknown;
     model?: unknown;
     effort?: unknown;
@@ -109,6 +116,7 @@ export function readMergeConfig(root: string): MergeConfig {
   return {
     ...(checks.length > 0 ? { checks } : {}),
     push: v.push === true,
+    ...(isStrategy(v.strategy) ? { strategy: v.strategy } : {}),
     ...(v.agent === 'claude' || v.agent === 'codex' ? { agent: v.agent } : {}),
     ...(typeof v.model === 'string' && v.model !== '' ? { model: v.model } : {}),
     ...(typeof v.effort === 'string' && EFFORT_LEVEL.test(v.effort) ? { effort: v.effort } : {}),
@@ -116,6 +124,9 @@ export function readMergeConfig(root: string): MergeConfig {
 }
 
 const configFile = (root: string) => CONFIG_FILES.find((name) => existsSync(join(root, name)));
+
+const isStrategy = (value: unknown): value is MergeStrategy =>
+  (MERGE_STRATEGIES as readonly unknown[]).includes(value);
 
 /** The model the merger asks Claude Code on without `merge.model` (V26c). */
 const MERGER_CLAUDE_MODEL = 'sonnet';
@@ -154,6 +165,10 @@ const tokens = (n: number) => (n < 1000 ? String(n) : `${(n / 1000).toFixed(1)}K
 
 const lastLines = (text: string) =>
   text.replace(/\n+$/, '').split('\n').slice(-OUTPUT_LINES).join('\n');
+
+/** Why `into` cannot fast-forward to `branch`'s approved commit (V67, decision 486). */
+const cannotFastForward = (into: string, branch: string, behind: number) =>
+  `${into} has ${plural(behind, 'commit')} ${branch} does not: it cannot fast-forward. Merge with a merge commit, or bring ${into} into the branch and review it again`;
 
 /** A symbol a side changed, as Symbiote's analysis names it. */
 export interface ChangedSymbol {
@@ -261,6 +276,8 @@ export interface Merger {
   requestChanges(id: string, comments: string): Promise<MergeEntry>;
   /** Runs a resolution's failed check again on the same merge; the agent is not asked. */
   recheck(id: string): Promise<MergeEntry>;
+  /** Queues a fast-forward its target can no longer take as a merge commit instead (V67). */
+  mergeCommit(id: string): Promise<MergeEntry>;
   /** Takes an entry out of the queue (not while it merges or checks), with its log. */
   remove(id: string): Promise<void>;
   /** An entry's log from byte `from` (V46a); null when there is no such entry. */
@@ -340,6 +357,7 @@ export function merger(
     check: undefined,
     message: undefined,
     recheck: undefined,
+    behind: undefined,
   };
 
   /** A branch's tip: the local branch's, else a remote's (`origin` first); null when none. */
@@ -380,6 +398,13 @@ export function merger(
     const entry = (await queue.read()).find((e) => e.branch === branch && e.state !== 'landed');
     const tip = refs.branches.find((b) => b.name === branch)?.sha;
     const approved = verdict?.event === 'approve' ? verdict.head : undefined;
+    const strategy = readMergeConfig(root).strategy ?? 'merge';
+    // The targets whose tip is in the approved commit (V67): one git call for every branch.
+    let fastForward: string[] | undefined;
+    if (approved) {
+      const tips = await tipsIn(repo, approved);
+      fastForward = branches.filter((name) => tips.has(tipOf(refs, name)?.sha ?? ''));
+    }
     const blocked = !tip
       ? `no branch ${branch}`
       : !approved
@@ -391,6 +416,8 @@ export function merger(
       branches,
       into,
       ...(approved ? { head: approved } : {}),
+      strategy,
+      ...(fastForward ? { fastForward } : {}),
       ...(blocked ? { blocked } : {}),
       ...(entry ? { entry } : {}),
       ...(tip ? { tip } : {}),
@@ -433,7 +460,13 @@ export function merger(
       return;
     }
     const log = logs.of(id);
-    log.step('merge', `Merge ${entry.branch} into ${entry.into}`);
+    const fastForward = entry.strategy === 'fast-forward';
+    log.step(
+      'merge',
+      fastForward
+        ? `Fast-forward ${entry.into} to ${short(entry.head)}`
+        : `Merge ${entry.branch} into ${entry.into}`,
+    );
     if (recheck && tip) {
       log.out(
         `${entry.into} moved since the merge (now ${short(tip.sha)}): merging again on its tip\n`,
@@ -445,6 +478,7 @@ export function merger(
       await set(id, { ...fresh, state: 'failed', message: `no branch ${entry.into}` });
       return;
     }
+    if (fastForward) return fastForwardOne(entry, tip.sha);
     // Asked again, the files asked about stay listed until the merge says which conflict.
     await set(id, {
       ...fresh,
@@ -487,6 +521,49 @@ export function merger(
     log.end(true);
     await set(id, { conflicts: undefined, again: undefined });
     await checkMerge(id, tip.sha, outcome.merged, false);
+  }
+
+  /**
+   * A fast-forward (V67, decisions 485–487): nothing merged. The approved commit itself is
+   * checked in the merge worktree, then landed as a merge is. A target no longer in it waits for
+   * the person, saying how far it moved: never a merge commit unasked.
+   */
+  async function fastForwardOne(entry: MergeEntry, tip: string): Promise<void> {
+    const { id, into, branch, head } = entry;
+    const log = logs.of(id);
+    if (await isAncestor(repo, head, tip)) {
+      log.out(`Already in ${into}: nothing to fast-forward\n`);
+      log.end(true);
+      await set(id, {
+        ...fresh,
+        state: 'landed',
+        landed: now().toISOString(),
+        message: `already in ${into}`,
+        again: undefined,
+      });
+      return;
+    }
+    if (!(await isAncestor(repo, tip, head))) {
+      const { count: behind } = await commitsBetween(repo, head, tip, 1);
+      log.out(
+        `${into} has ${plural(behind, 'commit')} ${branch} does not (now ${short(tip)}): it cannot fast-forward\n`,
+      );
+      log.end(false);
+      await set(id, {
+        ...fresh,
+        state: 'needs-you',
+        base: tip,
+        behind,
+        message: cannotFastForward(into, branch, behind),
+      });
+      return;
+    }
+    await set(id, { ...fresh, state: 'merging', base: tip });
+    log.out(`${into} (${short(tip)}) is in ${short(head)}: no merge commit\n`);
+    await resetMergeWorktree(repo, worktree, head);
+    log.out(`Symbiote's merge worktree at ${short(head)}\n`);
+    log.end(true);
+    await checkMerge(id, tip, head, false);
   }
 
   /**
@@ -759,14 +836,14 @@ export function merger(
     const refs = await listRefs(repo);
     const tip = tipOf(refs, into);
     if (!tip || tip.sha !== base || !(await isAncestor(repo, base, merge))) {
-      log.out(`${into} moved since the merge (now ${tip ? short(tip.sha) : 'gone'})\n`);
+      // A fast-forward merged nothing: its target just moved (V67).
+      const fastForward = entry.strategy === 'fast-forward';
+      const moved = fastForward ? `${into} moved` : `${into} moved since the merge`;
+      const again = fastForward ? 'fast-forwarding again from' : 'merging again on';
+      log.out(`${moved} (now ${tip ? short(tip.sha) : 'gone'})\n`);
       log.end(false);
-      log.run(`Merging again on ${into}'s tip`);
-      return set(id, {
-        ...fresh,
-        state: 'queued',
-        message: `${into} moved since the merge: merging again on its tip`,
-      });
+      log.run(`${again.charAt(0).toUpperCase()}${again.slice(1)} ${into}'s tip`);
+      return set(id, { ...fresh, state: 'queued', message: `${moved}: ${again} its tip` });
     }
     // Read before landing: the landing may bring another config file into `root`.
     const { push: pushing } = readMergeConfig(root);
@@ -921,14 +998,27 @@ export function merger(
       return found;
     },
 
-    async enqueue({ branch, into }, { start = true } = {}) {
+    async enqueue({ branch, into, strategy }, { start = true } = {}) {
       if (typeof branch !== 'string' || branch === '') throw new MergeRefused('which branch?', 400);
       if (into === branch) throw new MergeRefused(`cannot merge ${branch} into itself`, 400);
+      if (strategy !== undefined && !isStrategy(strategy)) {
+        throw new MergeRefused(`strategy: ${MERGE_STRATEGIES.join(' or ')}`, 400);
+      }
       const found = await targets(branch);
       if (found.blocked || !found.head)
         throw new MergeRefused(found.blocked ?? 'not approved', 409);
       if (!found.branches.includes(into)) throw new MergeRefused(`no branch ${into}`, 400);
       if (found.entry) throw new MergeRefused(`${branch} is already queued`, 409);
+      // A request that names none takes merge.strategy (decision 488).
+      const fastForward = (strategy ?? found.strategy) === 'fast-forward';
+      if (fastForward && !found.fastForward?.includes(into)) {
+        const tip = tipOf(await listRefs(repo), into)?.sha ?? found.head;
+        // The approved commit already in it: it lands at its turn, saying so.
+        if (!(await isAncestor(repo, found.head, tip))) {
+          const { count } = await commitsBetween(repo, found.head, tip, 1);
+          throw new MergeRefused(cannotFastForward(into, branch, count), 409);
+        }
+      }
       const { workspace } = await recordsOf(branch);
       const title = workspace?.title ?? (await commitSubject(repo, found.head));
       const at = now().toISOString();
@@ -938,6 +1028,7 @@ export function merger(
         head: found.head,
         into,
         title: `Merge ${branch}: ${title}`,
+        ...(fastForward ? { strategy: 'fast-forward' as const } : {}),
         state: 'queued',
         queued: at,
         updated: at,
@@ -1011,6 +1102,20 @@ export function merger(
       }
       const after = await set(id, { state: 'queued', recheck: true, message: undefined });
       logs.of(id).run('Check again');
+      kick();
+      return after;
+    },
+
+    async mergeCommit(id) {
+      const entry = await entryOf(id);
+      if (entry.state !== 'needs-you' || entry.strategy !== 'fast-forward' || !entry.behind) {
+        throw new MergeRefused(
+          `${entry.branch} has no fast-forward waiting: nothing to merge`,
+          409,
+        );
+      }
+      const after = await set(id, { ...fresh, strategy: undefined, state: 'queued' });
+      logs.of(id).run('Merge commit instead');
       kick();
       return after;
     },

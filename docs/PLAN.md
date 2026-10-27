@@ -182,6 +182,7 @@ hosted.
 | [V46](plan/v46-merger-logs.md) | Merger logs: steps, the check's output and the agent's thinking live; a resolution's files; the merger's effort | ready for review | 313–319 | [journal](journal/v46-merger-logs.md) |
 | Fix | the merge page on a conflict: red for what is lost or doubled, amber for what the agent wrote; a question answered there | ready for review | | [journal](journal/fix-merge-viewer-on-conflict.md) |
 | Fix | a merge that failed or waits for you holds the next one into its target; Check again on a moved target merges again | ready for review | | [journal](journal/fix-merger-queue-wrong-behaviour.md) |
+| [V67](plan/v67-merge-strategies.md) | Merge strategies: a merge commit, or a fast-forward to the approved commit | ready for review | 485–489 | [journal](journal/v67-merge-strategies.md) |
 
 ### Shell and look
 

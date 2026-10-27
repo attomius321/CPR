@@ -69,6 +69,7 @@ The [review guide](../guide/review-and-ci.md#findings) explains each finding.
 | `--forge <name>` | pr | `github` or `gitlab`, for a host whose name does not say which it is. |
 | `--remote <name>` | pr | The remote to read and fetch from. Default: `origin`. |
 | `--into <branch>` | merge | The branch to merge into. Default: the branch the workspace is reviewed against, else the branch it started from, else the target named in your approval, else the default branch. |
+| `--strategy <how>` | merge | `merge` (a merge commit) or `fast-forward` (the target moves to the approved commit, with no new commit; refused when the target has commits the branch lacks). Default: `merge.strategy`, else `merge`. On a fast-forward that waits because its target moved, `--strategy merge` merges it with a merge commit instead. |
 | `--land` | merge | Lands a merge that waits for you: one with no check, or one that git refused to land. |
 | `--approve` | merge | Approves the merger's resolution of a conflict, which lands it. |
 | `--again <words>` | merge | Asks the merger again, with what to change or your answer to its question. |
@@ -144,7 +145,7 @@ instead: `node <Symbiote's folder>/packages/cli/dist/bin.js mcp`.
 | `clean_workspace` | Clean a workspace up | Yes |
 | `review`, `finish_review` | A branch's change as Symbiote's graph; a verdict on it | Yes, for a verdict |
 | `merges`, `merge_log` | The merge queue; a merge's log | |
-| `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` | The merge page's actions | Yes |
+| `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` | The merge page's actions; `queue_merge` takes a `strategy`, `merge` or `fast-forward`, as `--strategy` | Yes |
 | `usage`, `code_map` | Your subscriptions' usage; where the code is, by folder | |
 | `wait` | Waits until a workspace's agent or a merge changes state, 10 minutes at most | |
 

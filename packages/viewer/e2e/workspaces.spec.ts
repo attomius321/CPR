@@ -2207,3 +2207,107 @@ test('Merge into merges into the branch picked in its dropdown, not main', async
   expect(git('log', '-1', '--format=%P', 'release')).toBe(`${main} ${tip}`);
   expect(git('rev-parse', 'main')).toBe(main);
 });
+
+/** A workspace with one commit, reviewed and approved; its panel open. */
+async function approvedWorkspace(page: Page) {
+  symbiote = await serveWorkspaces({ terminal: false });
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const tip = symbiote.commit(
+    branch,
+    'src/half.ts',
+    'export const half = (a: number) => a / 2;\n',
+    'Add half',
+  );
+  symbiote.report(branch, 'Done: half() in src/half.ts.');
+  await expect(workspaceRow(page, branch)).toContainText('Ready for review', POLL);
+  await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
+  await page.getByRole('tab', { name: /Review/ }).click();
+  await page.getByLabel('Approve').check();
+  await page.getByRole('button', { name: 'Finish review' }).click();
+  await expect(page.locator('.finished')).toContainText(`Approved ${short(tip)}`);
+  return { branch, tip };
+}
+
+test('Merge into by fast-forward: main moves to the approved commit, no merge commit; a target that cannot take it says why (V67)', async ({
+  page,
+}) => {
+  const { branch, tip } = await approvedWorkspace(page);
+  const main = git('rev-parse', 'main');
+  // release has a commit the workspace does not: it cannot fast-forward.
+  git('branch', 'release', git('commit-tree', '-p', main, '-m', 'Release', `${main}^{tree}`));
+  await page.goto(`${symbiote.url}?branch=${encodeURIComponent(branch)}`);
+
+  const here = panel(page, branch);
+  const how = here.getByLabel('How it lands');
+  const button = here.getByRole('button', { name: 'Merge into', exact: true });
+  await expect(how).toHaveValue('merge');
+  await how.selectOption('fast-forward');
+  await here.getByLabel('Branch to merge into').selectOption('release');
+  await expect(button).toBeDisabled();
+  const why = here.getByRole('img', { name: 'release cannot fast-forward' });
+  await expect(why).toHaveAttribute(
+    'data-tip',
+    `release has commits ${branch} does not: it cannot fast-forward. Merge with a merge commit, or bring release into the branch and review it again.`,
+  );
+  await here.getByLabel('Branch to merge into').selectOption('main');
+  await expect(here.locator('.merge-control-why')).toHaveCount(0);
+  await expect(button).toBeEnabled();
+  await button.click();
+
+  // No check here: it waits for Land, nothing merged.
+  const card = page.getByRole('region', { name: 'Merging' }).locator(`[data-merge="${branch}"]`);
+  await expect(card).toContainText('Not checked', POLL);
+  await card.getByRole('link').click();
+  const entry = page.getByRole('region', { name: `Merge of ${branch}` });
+  await expect(entry.locator('.merge-how')).toHaveText('by fast-forward');
+  await expect(entry.locator('.merge-title')).toHaveText(
+    `No merge commit: a fast-forward to ${short(tip)}, the approved commit`,
+  );
+  expect(git('rev-parse', 'main')).toBe(main);
+  await entry.getByRole('button', { name: 'Land', exact: true }).click();
+  await expect(entry.locator('.merge-row-state')).toHaveText(
+    `Landed: main fast-forwarded to ${short(tip)}`,
+    POLL,
+  );
+  expect(git('rev-parse', 'main')).toBe(tip);
+  expect(git('rev-list', '--count', `${main}..main`)).toBe('1');
+  expect(existsSync(join(symbiote.repo, 'src', 'half.ts'))).toBe(true);
+  // Merged: the workspace offers Clean up, as after a merge commit.
+  await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
+});
+
+test('a fast-forward main can no longer take waits for you; Merge commit instead lands it with one (V67)', async ({
+  page,
+}) => {
+  const { branch, tip } = await approvedWorkspace(page);
+  await page.goto(`${symbiote.url}?branch=${encodeURIComponent(branch)}`);
+  const here = panel(page, branch);
+  await here.getByLabel('How it lands').selectOption('fast-forward');
+  await here.getByRole('button', { name: 'Merge into', exact: true }).click();
+  const card = page.getByRole('region', { name: 'Merging' }).locator(`[data-merge="${branch}"]`);
+  await expect(card).toContainText('Not checked', POLL);
+
+  // main moves while it waits to land: at Land it is fast-forwarded again, and cannot be.
+  git('commit', '--allow-empty', '-qm', 'Main: moved');
+  const moved = git('rev-parse', 'main');
+  await card.getByRole('link').click();
+  const entry = page.getByRole('region', { name: `Merge of ${branch}` });
+  await entry.getByRole('button', { name: 'Land', exact: true }).click();
+  await expect(entry.locator('.merge-row-state')).toHaveText(
+    `Cannot fast-forward: main has 1 commit ${branch} does not. Merge with a merge commit, or bring main into the branch and review it again`,
+    POLL,
+  );
+  await expect(entry.locator('.merge-label')).toHaveText('Needs you');
+  expect(git('rev-parse', 'main')).toBe(moved);
+
+  const instead = entry.getByRole('button', { name: 'Merge commit instead', exact: true });
+  await expect(instead).toHaveClass(/\bprimary\b/);
+  await instead.click();
+  await expect(entry.locator('.merge-row-state')).toHaveText(/^Merged, not checked/, POLL);
+  await expect(entry.locator('.merge-how')).toHaveCount(0);
+  await entry.getByRole('button', { name: 'Land', exact: true }).click();
+  await expect(entry.locator('.merge-row-state')).toHaveText(/^Landed: main is at/, POLL);
+  expect(git('log', '-1', '--format=%P', 'main')).toBe(`${moved} ${tip}`);
+});

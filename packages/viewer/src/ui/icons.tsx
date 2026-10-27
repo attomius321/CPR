@@ -572,3 +572,11 @@ export const ChecksIcon = () => (
     <path d="m9 12 2 2 4-4" />
   </Icon>
 );
+
+/** What cannot be done as picked (V67: a target that cannot fast-forward): lucide's circle-alert. */
+export const AlertIcon = () => (
+  <Icon lucide>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 8v4M12 16h.01" />
+  </Icon>
+);
