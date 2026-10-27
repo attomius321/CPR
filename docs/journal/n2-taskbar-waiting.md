@@ -56,8 +56,11 @@ dot once from `symbiote.png`'s pixels (`badge.ts`), sets it with `setIcon` and b
   another session's Xvfb (another workspace ran its e2e at the same time).
 
 **Verification**: tests first (`badge.test.ts`, `waiting.test.ts`: red, their modules missing);
-`pnpm check` 1,911 tests; `pnpm test:e2e` 304 passed (4.9 min) after `main` was merged in, and
-the app's, title bar's and intro's specs again with decision 470's switch: 34 passed. The new e2e,
+`pnpm check` 1,911 tests; `pnpm test:e2e` 304 passed (4.9 min) after `main` was merged in, the
+app's, title bar's and intro's specs again with decision 470's switch: 34 passed, and 305 passed
+(4.7 min) after the second merge of `main`. The run before that one failed one test, a starting
+card 72.00003 px high against 72 (`workspaces.spec.ts`, V48), not N2's: 4 of 4 alone, and the
+next full run passed. The new e2e,
 each red first: the page's count said to a stand-in app (stays 1 without the hidden reads); the
 real app's icon and urgency hint read from X11 with xprop (stays `ff000000` without `setIcon`);
 the switch on (empty before it). The dot seen at 512, 48, 32 and 24 px (`nativeImage.resize`).

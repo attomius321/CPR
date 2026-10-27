@@ -143,7 +143,9 @@ WSLg's window); the count in a diff page's title.
   the first time something waits, 512×512.
 
 **Results.** Unit: 8 tests for the dot, the page's number and what a change does; 6 for the count;
-`pnpm check` 1,911 tests. E2E, on the merged branch: 304 passed in 4.9 min. The new ones, each red
+`pnpm check` 1,911 tests. E2E, with `main` merged in (V64, then Settings at the sidenav's
+bottom): 305 passed in 4.7 min; the run before failed one, a starting card 72.00003 px high
+against 72, which passed 4 of 4 alone and in the next run. The new ones, each red
 first for the right reason: the page says 0, 1 when an agent asks, 1 again from a diff's page, 0
 when answered while hidden (red with the hidden reads off: it stayed 1); the real app's icon on X11
 is the S's black (`ff000000`) at the dot's place, `fff5b32a` while the agent waits, with `WM_HINTS`'
