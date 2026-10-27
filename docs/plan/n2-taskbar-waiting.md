@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/n2-taskbar-waiting.md)
 
-**Status:** planned (2026-10-27), on branch `feature/desktop-app-waiting-for-you`; plan agreed by
-the person ("1. Yes, everything. 2. Yes 3. Yes, blink is mandatory where it can do it. OK").
+**Status:** ready for review (2026-10-27), on branch `feature/desktop-app-waiting-for-you`; plan
+agreed by the person ("1. Yes, everything. 2. Yes 3. Yes, blink is mandatory where it can do it.
+OK"). Its "As built" and results below.
 
 **Problem** (asked: "Is there a way to make the icon from the desktop bar to warn you that
 something is waiting for you?"; then "Should at least work in linux", first). Today the only sign
@@ -116,8 +117,42 @@ wiring, the e2e, the measurements.
 | 467 | What the icon shows | **An amber dot, top-right, no number**, drawn at run time from `symbiote.png` | The person chose the dot; WSLg's mark takes the bottom-right; one source image |
 | 468 | When it blinks | **When the count rises while the window is not focused**, until it is | The person: "blink is mandatory where it can do it"; a blink for every read would never stop |
 | 469 | Reads while hidden | **In the app, on**; in a browser as before | A minimized window would otherwise never get its dot |
+| 470 | A page hidden for 5 minutes | **Chromium's intensive wake-up throttling off in the app** (`--disable-features=IntensiveWakeUpThrottling`) | Measured (As built): with it, a hidden page's 5 s reads came once a minute after 5 minutes |
 
 **Not in N2 (later)**: Windows' own overlay icon (`setOverlayIcon`) and the macOS Dock's badge
 (`app.dock.setBadge`), not testable here; Electron's `app.setBadgeCount`, which on Linux works
 under Unity only; a blink on WSLg (it would take a Windows process calling `FlashWindowEx` on
 WSLg's window); the count in a diff page's title.
+
+## As built (N2)
+
+- **A page hidden for 5 minutes** (decision 470): the plan's step 4 measured it. A 5 s timer chain
+  in a hidden Electron 44.9 window (Xvfb, transparent and opaque alike) woke every 6 s for 5
+  minutes, then once a minute: 3 wake-ups from 5 to 8 minutes. So a minimized Symbiote's dot came
+  up to 60 s late. The app turns that throttling off; a hidden page still wakes at most once a
+  second and draws nothing, unlike `backgroundThrottling: false`, which would keep it drawing (an
+  agent's terminal, the spinners) while minimized. With it off, a hidden page woke every 6 s from
+  5 to 8 minutes too: 30 wake-ups, 3 before.
+- **Measured outside Playwright**: under Playwright's control the app's page stayed `visible` after
+  `BrowserWindow.hide()`; a plain Electron script's page goes `hidden`. The hidden timings come from
+  such a script, the same timer chain as the viewer's readers.
+- **The sidenav's count** adds its section's merges that need you, as planned; nothing else in the
+  sidenav changed. Scout's and Scribe's waits are one rule now (`scoutWaiting`, `scribeWaiting`),
+  read by the sidenav and by the count.
+- **The dot** as planned: centre (0.77, 0.23), radius 0.19, ring 0.04 of the icon's side; drawn
+  the first time something waits, 512×512.
+
+**Results.** Unit: 8 tests for the dot, the page's number and what a change does; 6 for the count;
+`pnpm check` 1,911 tests. E2E, on the merged branch: 304 passed in 4.9 min. The new ones, each red
+first for the right reason: the page says 0, 1 when an agent asks, 1 again from a diff's page, 0
+when answered while hidden (red with the hidden reads off: it stayed 1); the real app's icon on X11
+is the S's black (`ff000000`) at the dot's place, `fff5b32a` while the agent waits, with `WM_HINTS`'
+urgency bit (256) while another window has the focus, cleared on focus, plain once answered (red
+with `setIcon` cut from the build); the switch of decision 470 is on (red before it). Timing, the
+window shown: the dot 2.1–5.3 s after the agent waits and gone 5.1 s after it is answered, the
+5 s reads.
+
+Not verified: the dot on the Windows taskbar through WSLg by eye (WSLg's source says it is sent;
+the person's check is pending); the blink on KDE, XFCE or GNOME (the hint is set on X11; the
+desktops were not run); a Wayland session (GNOME's default), not run: its docks usually take an
+app's icon from its desktop entry, so the dot may not show there; Windows and macOS.
