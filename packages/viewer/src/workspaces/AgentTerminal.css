@@ -11,8 +11,19 @@
 .agent-terminal-screen {
   flex: 1;
   min-height: 200px;
+  display: flex;
+  flex-direction: column;
   padding: 8px 0 0 12px;
   background: #050608;
+}
+
+/* What xterm opens in: the screen's content box, its padding outside (fix/scribe-terminal-problem).
+   The fit add-on counts the rows from the height of the box xterm is in, padding included
+   (border-box): in the screen itself, up to 8 px more than it holds. Scout's page cut the last row
+   off; Scribe's pane, which scrolls, had scrollbars that came and went every frame. */
+.agent-terminal-fit {
+  flex: 1;
+  min-height: 0;
 }
 
 .workspace-terminal {

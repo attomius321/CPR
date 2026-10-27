@@ -442,7 +442,9 @@ export function AgentTerminal({
           Your answer is saved in your Codex configuration; Symbiote does not answer for you.
         </p>
       )}
-      <div ref={box} className="agent-terminal-screen" />
+      <div className="agent-terminal-screen">
+        <div ref={box} className="agent-terminal-fit" />
+      </div>
       {dropping && (
         <p className="terminal-drop">
           <ImageIcon />
