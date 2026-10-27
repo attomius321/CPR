@@ -82,7 +82,7 @@ export function SyncBar({
         >
           {running === 'pull' ? 'Pulling…' : 'Pull'}
           {!!sync?.behind && <span className="git-count">↓{sync.behind}</span>}
-          <ChevronIcon open={open} />
+          <ChevronIcon open />
         </button>
         {open && (
           <span className="more-menu git-pull-menu" role="menu" aria-label="Pull">

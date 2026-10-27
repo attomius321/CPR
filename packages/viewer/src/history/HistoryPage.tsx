@@ -895,10 +895,7 @@ function History({
         </span>
         <div className="git-title">
           <h1>Git</h1>
-          <p>
-            {first.branch ?? 'HEAD detached'}
-            {sync && ` · ${syncWords(sync)}`}
-          </p>
+          <p>{headLine(first.branch, sync)}</p>
         </div>
         <span className="git-bar-tail">
           <FindBox
@@ -1183,6 +1180,14 @@ function History({
   );
 }
 
+/** The head's line: the branch, then where it is against its upstream, the name said once. */
+function headLine(branch: string | null, sync: SyncState | null): string {
+  const name = branch ?? 'HEAD detached';
+  if (!sync || !branch) return name;
+  const words = syncWords(sync);
+  return words.startsWith(`${branch} `) ? words : `${name} · ${words}`;
+}
+
 /**
  * The checkout's uncommitted changes as a row above the commits (V66c): its dot hollow on HEAD's
  * lane (lane 0), joined to HEAD's when HEAD is the first commit listed.
@@ -1218,7 +1223,7 @@ function WorkingRow({
         <circle className="working-dot" cx={x} cy={mid} r={4} />
       </svg>
       <span className="commit-subject">Uncommitted changes</span>
-      <span className="commit-author">{changesSummary(changes)}</span>
+      <span className="working-summary">{changesSummary(changes)}</span>
     </div>
   );
 }

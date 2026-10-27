@@ -266,3 +266,4 @@ merge commit.
 - 2026-10-27 [V65 spike — what a stacked workspace's review shows](journal/v65-review-against.md)
 - 2026-10-27 [V65 — a workspace reviewed against where it started, or a branch picked in it](journal/v65-review-against.md)
 - 2026-10-27 [V66 spike — what git costs for a commit's details, a search and the status](journal/v66-git-page.md)
+- 2026-10-27 [V66 — Git: History renamed, a commit's details, changes, branches, remotes, search](journal/v66-git-page.md)

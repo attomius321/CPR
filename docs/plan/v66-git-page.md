@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v66-git-page.md)
 
-**Status:** planned (2026-10-27), on branch `feature/history-feature` (a Symbiote workspace);
-not started.
+**Status:** ready for review (2026-10-27), on branch `feature/history-feature` (a Symbiote
+workspace). Its "As built" and results below.
 
 **Problem** (asked: "Need to extend the history features. Rename this page to Git." and "i also
 don't like the scroll that it goes next to the header"). History lists every branch's commits as a
@@ -181,8 +181,67 @@ workspaces; `symbiote diff`, `symbiote pr` and a diff's pages.
 | 481 | Deleting a branch | **`-d`, then "Delete anyway" (`-D`) after the commits it alone holds are counted** | Nothing lost without saying so |
 | 482 | Pull | **Fast-forward only by default; merging or rebasing chosen** | Asked: "All"; fast-forward never makes a commit the person did not ask for |
 | 483 | Push | **The current branch to its upstream, `-u origin` when none; never forced** | Force pushes lose others' work |
-| 484 | Writes | **One at a time per repository; refused during an operation but stage, unstage, commit** | Decision 57; a conflicted merge must still be finishable |
+| 484 | Writes | **One at a time per repository; a pull refused during an operation** (checkout already is) | Decision 57; a conflicted merge must still be finishable, and branch and tag edits leave the working tree alone |
 
 **Not in V66 (later)**: staging hunks or lines; stash; cherry-pick, revert, reset; merging or
 rebasing a branch picked on the page; a file's history and blame; deleting remote branches;
 hiding branches from the graph.
+
+## As built (V66)
+
+- **One API, `/api/git/…`** (`packages/cli/src/git-page.ts`, routed in `server.ts`), not
+  `/api/history/commit…`: reads `commit`, `commit/lines`, `commit/file`, `changes`,
+  `changes/lines`, `changes/file`, `sync`, `find`; writes `stage`, `unstage`, `commit`,
+  `branch`, `tag`, `fetch`, `pull`, `push`. `commit` is both a read (GET) and a write (POST):
+  the server routes by method. Core's parts: `git/commit-info.ts`, `git/working-changes.ts`,
+  `git/ref-edits.ts`, `git/sync.ts`, `findCommits` in `git/log.ts`, and `GitRefused` (git's
+  words, nothing changed). `git()` takes a timeout and extra environment; `gitInput` keeps git's
+  stdout on failure, where a hook may say why.
+- **A head of its own.** The search, Fetch, Pull and Push did not fit the rows' header: beside
+  the pane it is about 480 px wide at 1,440 px, and it wrapped onto three or four lines. The page
+  has a head like Settings', Skills' and the Monitor's: the icon, "Git", the branch against its
+  upstream ("main · 2 to push, against origin/main"), then Find a commit, Fetch, Pull ▾, Push and
+  Details (`d`). The rows' header keeps what it had before V66.
+- **Where the pane goes.** On the right by default, below from Settings → Appearance (kept in the
+  browser, `symbiote.viewer.details`). It goes below anyway when the page's body is under
+  1,040 px (a container query, so the sidenav's width counts, not the window's): at 1,280 px on
+  the right the rows had 320 px and their subjects none, which four existing specs caught. Rows
+  narrower than 640 px drop the author's column. On the right the pane is resizable (300 px at
+  least, the rows keeping 400) and gives way before the rows do; below it takes 42 % of the
+  height, the rows keeping 180 px, and is not resizable (the resizer is horizontal only).
+- **The uncommitted row is row −1**, a row above the list: the rows' math (`list.offsetTop`)
+  already placed the list under the header that was there before, so j/k, reveal and the kept
+  cursor work unchanged. Its dot is hollow and dashed on lane 0, HEAD's.
+- **Branches in the panel**: no "⋯" on an entry (its row is one button, the workspace mark a link
+  beside it); a right-click opens the menu (Check out…, Go to its tip, Review, Rename…, Delete…)
+  and a double-click checks out through the row menu's confirmation (`branchChoice`). The keys'
+  help says so: the entry's tooltip stays its name, shown only when cut (V54;
+  `branches.spec.ts`).
+- **A new branch's name** is checked against local branches only: `branchNameProblem` also
+  refuses a remote's name, right for a workspace's branch, wrong for "New branch here".
+- **Pull** opens its three ways each time (Fast-forward only, Merge, Rebase); none is
+  remembered. A pull that stops on conflicts is not a refusal: the status bar says so and the
+  conflicted files are in the uncommitted row.
+- **Search keys**: Enter and Shift+Enter in the field; `n` stays the shell's Start a workspace.
+  A match is underlined in amber (`--modified`): `--accent` is not for states (`tokens.test.ts`).
+- **Not built**: Open in VS Code from the pane (a commit's file, or an uncommitted one).
+
+**Results.** Tests first, red for the right reason, for each part: `pages.test.ts` and
+`server.test.ts` (the address); core's `commit-info` (6), `working-changes` (9), `ref-edits`
+(7), `sync` (7, a bare repository as `origin`), `findCommits`; the CLI's `Histories.find`,
+`git-page` (4) and the server's four route tests; the viewer's `details.test.ts` (6) and
+`branchChoice`. e2e: `history.spec.ts`'s header test (the scroll box started at y = 8, above the
+header's 57) and `git.spec.ts` (6: the pane and its place, staging and a commit, branches and
+tags, fetch/pull/push against a local bare remote, search). Existing specs follow the rename, the
+row menu's two entries and the keys' help.
+
+`pnpm check`: 1,951 unit tests; the full e2e suite: 314 passed. The endpoints, timed with
+`curl` against `symbiote view` (a second ask in brackets):
+
+| Repository | `commit` | `commit/lines` | `changes` | `changes/lines` | `sync` | `find` ("fix") |
+|---|---|---|---|---|---|---|
+| Bitwarden (blobless, 43,138 commits) | 10 ms (6) | 626 ms: blobs fetched | 31 ms | 7 ms | 24 ms | 366 ms (364) |
+| zod | 5 ms (4) | 8 ms | 25 ms | 25 ms | 8 ms | 33 ms (34) |
+
+The pane shows a commit's names within 10 ms; on a blobless clone its lines come after, as
+planned.

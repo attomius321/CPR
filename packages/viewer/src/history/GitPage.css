@@ -82,6 +82,15 @@
 
 .commits-main > .commits-card {
   min-width: 0;
+  container: git-rows / inline-size;
+}
+
+/* Rows narrowed by the pane beside them: the subject keeps the author's room (at 1,440 px the
+   subjects showed a letter or two). */
+@container git-rows (max-width: 640px) {
+  .commit-author {
+    display: none;
+  }
 }
 
 .commits-main.below {
@@ -341,6 +350,13 @@
 .commit.working .commit-subject {
   color: var(--text);
   font-style: italic;
+}
+
+.working-summary {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--size-small);
+  white-space: nowrap;
 }
 
 .graph .working-dot {
