@@ -110,7 +110,7 @@ describe('parseGitOpen (V70)', () => {
 
 describe("gitPage's open: a file's diff in VS Code (V70)", () => {
   /** A repository, the page on it with a fake editor, and what the editor was asked. */
-  async function setUp() {
+  function setUp() {
     const repo = createRepo();
     repos.push(repo);
     repo.git('config', 'user.name', 'Symbiote Test');
@@ -140,7 +140,7 @@ describe("gitPage's open: a file's diff in VS Code (V70)", () => {
   }
 
   it("opens a commit's file against its first parent, the checkout's own file on the right", async () => {
-    const { repo, revisions, page, last } = await setUp();
+    const { repo, revisions, page, last } = setUp();
     repo.write({ 'a.txt': 'one\n', 'b.txt': 'b\n' });
     const first = repo.commit('First');
     repo.write({ 'a.txt': 'two\n' });
@@ -159,7 +159,7 @@ describe("gitPage's open: a file's diff in VS Code (V70)", () => {
   });
 
   it('opens a renamed file against its old path, a new one alone, a deleted one against nothing', async () => {
-    const { repo, revisions, page, last } = await setUp();
+    const { repo, revisions, page, last } = setUp();
     const body = 'a body long enough\nfor git to find\nthe rename\n';
     repo.write({ 'old.txt': body, 'gone.txt': 'g\n' });
     const root = repo.commit('First');
@@ -185,7 +185,7 @@ describe("gitPage's open: a file's diff in VS Code (V70)", () => {
   });
 
   it('opens a staged file from HEAD to the index, a change not staged from the index to the disk', async () => {
-    const { repo, revisions, page, last } = await setUp();
+    const { repo, revisions, page, last } = setUp();
     repo.write({ 'a.txt': 'one\n', 'b.txt': 'b\n', 'c.txt': 'c\n' });
     const head = repo.commit('First');
     repo.write({ 'a.txt': 'staged\n', 'b.txt': 'b2\n' });
@@ -220,7 +220,7 @@ describe("gitPage's open: a file's diff in VS Code (V70)", () => {
   });
 
   it('opens a conflicted file from HEAD to the disk, its markers in it', async () => {
-    const { repo, revisions, page, last } = await setUp();
+    const { repo, revisions, page, last } = setUp();
     repo.write({ 'a.txt': 'one\n' });
     repo.commit('First');
     repo.git('checkout', '--quiet', '-b', 'other');
@@ -237,7 +237,7 @@ describe("gitPage's open: a file's diff in VS Code (V70)", () => {
   });
 
   it("refuses a file the commit or the status does not list, and says the editor's failure", async () => {
-    const { repo, page } = await setUp();
+    const { repo, page } = setUp();
     repo.write({ 'a.txt': 'one\n', 'b.txt': 'b\n' });
     repo.commit('First');
     repo.write({ 'a.txt': 'two\n' });
