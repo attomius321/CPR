@@ -242,7 +242,10 @@ test("Open in VS Code: the file's diff in VS Code's diff editor, a commit's or a
   await page.goto(`${symbiote.url}git`);
   await page.locator('.commit.working').click();
   await pane(page).getByRole('button', { name: 'Show the diff of src/math.ts' }).click();
-  await expect(fileView(page)).toContainText('not staged');
+  // Its side stays in view, the card narrowed by the pane.
+  const side = fileView(page).locator('.git-shown-side');
+  await expect(side).toBeVisible();
+  await expect(side).toHaveText('not staged');
   await page.keyboard.press('o');
   await expect(status).toHaveText('Opened its diff in VS Code');
   const second = opened()[1] ?? [];
@@ -250,8 +253,7 @@ test("Open in VS Code: the file's diff in VS Code's diff editor, a commit's or a
   expect(second[3]).toBe(join(repo, 'src/math.ts'));
   // Staged, the open file follows it to its new side.
   await pane(page).getByRole('button', { name: 'Stage src/math.ts' }).click();
-  await expect(fileView(page)).toContainText('staged');
-  await expect(fileView(page)).not.toContainText('not staged');
+  await expect(side).toHaveText('staged');
 });
 
 test('branches and tags: made at a row, renamed and deleted from the panel (V66d)', async ({

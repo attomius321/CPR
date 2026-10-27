@@ -57,7 +57,8 @@ export function GitFile({
           <span className="git-shown-name">{name}</span>
           {folder && <span className="git-shown-folder">{folder}</span>}
         </h2>
-        <span className="git-shown-words">{side ? `${status} · ${side}` : status}</span>
+        <span className="git-shown-words">{status}</span>
+        {side && <span className="git-shown-side">{side}</span>}
         {lines === 'binary' ? (
           <span className="changes-lines">binary</span>
         ) : (

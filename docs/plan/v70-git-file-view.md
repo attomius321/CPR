@@ -2,10 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v70-git-file-view.md)
 
-**Status:** planned (2026-10-27), on branch `feature/history-commit-details` (a Symbiote
-workspace, from `main` at `2ee21cd`). The plan OK'd by the person ("OK, do it"), with their two
-choices: Open in VS Code opens VS Code's diff editor ("Yes, the diff"), and the file shows in the
-rows' place ("Where you say would fit perfectly").
+**Status:** ready for review (2026-10-27), on branch `feature/history-commit-details` (a
+Symbiote workspace, from `main` at `2ee21cd`). The plan OK'd by the person ("OK, do it"), with
+their two choices: Open in VS Code opens VS Code's diff editor ("Yes, the diff"), and the file
+shows in the rows' place ("Where you say would fit perfectly"). Its "As built" and results below.
 
 **Problem** (asked: "Is inconvinient to open a file from commit details, and it is displayed at
 the bottom. Should be on the screen, i should not scroll to it. Also, Open in VS Code classic
@@ -146,3 +146,61 @@ its keys and its head (the person's first complaint), then the uncommitted chang
 **Not in V70 (later)**: the checkout's file at a line from a diff's line number (the Files
 page's, V12); stepping commits while a file is open; Stage and Unstage in the layer's head;
 remembering the open file across commits; pruning the cache's copies.
+
+## As built (V70)
+
+- **Where the view is drawn.** A layer over the rows' card (`GitFile.tsx`, `.git-shown`, absolute
+  over the card, above its sticky header); the header and the scroll box stay mounted and `inert`
+  under it, so their scroll, the cursor and the virtual rows' measures are kept, and Tab never
+  reaches a covered row. The class is `.git-shown`: `.git-file` was already the uncommitted pane's
+  rows.
+- **Its head.** One line, 48 px, on the card's chrome, as the pane's head beside it: the file's
+  name (mono), its folder muted and cut with an ellipsis (the full path in its tip), the status
+  in words, an uncommitted file's side ("staged", "not staged"), its lines, Open in VS Code (`o`)
+  and ✕ (Esc). The first try wrote the whole path, wrapping: at 514 px it broke mid-word over
+  three lines. Under 640 px of card (beside the pane at 1,440 px) the status's words go (the
+  pane's row has its letter); the side stays.
+- **What Open in VS Code says** is a line under the head ("Opened its diff in VS Code", or why
+  not): in the head, the path's room went to it.
+- **`j`/`k` stay at the ends**, as the Files page's do, not round them; `x`, `c`, `r` and Enter
+  wait while a file is shown; `d`, `f` and `/` work (a commit found moves the cursor, which closes
+  the file).
+- **The reads move up.** `useCommitRead` (in `CommitDetails.tsx`) and `useChangesRead` (in
+  `ChangesDetails.tsx`) are called by the page and passed to the pane, which keeps no diff of
+  its own; the file shown is the page's state, by row, closed when the cursor moves.
+- **Server.** V43's copy helpers moved from `workspace-changes.ts` to `revision-copies.ts`, with
+  `keptIndexFile` beside them; `gitPage` takes `openFolder` and `revisions` (the workspaces' own)
+  and refuses with 409 before reading anything when either is missing. The route is
+  `POST /api/git/open`, outside the writes' queue: it writes copies in the cache, never the
+  repository.
+- **Not built**: a diff line's number opening the checkout's file at that line (the Files page's
+  V12 way): the person chose the diff.
+
+**Results.** Measured as the spike did, on this repository at 1,440 × 900 and 1,280 × 800, device
+scale 1, the file clicked last in the pane:
+
+| Commit, file | Before: diff lines in view | After |
+|---|---|---|
+| `7fa440d` (27 files), `HistoryPage.tsx`, 1,440 × 900 | 0 (the diff at y = 1,170) | 27 |
+| the same, 1,280 × 800 (the pane below) | 0 | 25 |
+
+The view is 514 × 752 px at 1,440 × 900 beside the pane (the pane's code had about 230 px of
+width), 730 × 369 px at 1,280 × 800 above it. Open in VS Code on that file gave the stand-in VS
+Code `<repo> --diff <the parent's copy> <the commit's copy>`, the file having changed since.
+
+Tests first, red for the right reason: core's `fileInIndex` (2); the CLI's `parseGitOpen` (2),
+`gitPage`'s open (5: a commit's file and the checkout's own, a rename, a new and a deleted file,
+a root commit; staged, not staged, untracked, a staged deletion; a conflict; the refusals) and the
+route (`server.test.ts`: 200, 400, 502, 403, 405); the viewer's `details.test.ts` (3: the order,
+the steps, a stage followed); e2e `git.spec.ts` (2: the last of 30 files on screen in both
+places, `j`/`k`, the rows' keys waiting, Esc back to the cursor's row, the same file closing it;
+Open in VS Code and `o` with a stand-in VS Code, a commit's file and a change not staged, staged
+after). The two V66 tests follow the diff out of the pane; `commits.spec.ts` the keys' help.
+
+`pnpm check`: 2,008 unit tests; the full e2e suite: 321 passed; after the last change (the side
+kept in view), the Git, commits, history, title-bar and look specs again: 39 passed. No analysis
+code changed (core gains a git reader only): no `regression-check`.
+
+Not verified: the real VS Code (the plan's step 4): opening it here would open a window on the
+person's desktop, so only the stand-in was asked; macOS and Windows (`code --diff` is V43's
+command line there, unit-tested only).

@@ -84,7 +84,7 @@ toolbar.
 
 | Key | On Git | A change's Files page | A change's Graph page |
 |---|---|---|---|
-| j, k | Next or previous commit (above the first: your uncommitted changes) | Next or previous file | Next or previous changed symbol |
+| j, k | Next or previous commit (above the first: your uncommitted changes); with a file shown, its next or previous file | Next or previous file | Next or previous changed symbol |
 | / | Find a branch | | Search the change list |
 | c | Check out the commit or one of its branches (asks first) | Comment on the file's first change | Comment on the selected symbol |
 | r | Review the branch | | Mark the selected symbol reviewed |
@@ -92,9 +92,9 @@ toolbar.
 | f | Find a commit: Enter and Shift+Enter step through what it finds | | Show only the selected symbol and its neighbours |
 | d | Show or fold the commit's details | | |
 | p, P | | | Next or previous project, in a monorepo |
-| o | | Open the file in VS Code at its first change | Open the selected symbol in VS Code |
+| o | Open the file shown as a diff in VS Code | Open the file in VS Code at its first change | Open the selected symbol in VS Code |
 | g | | The Graph page | The Files page |
-| Esc | Leave compare mode | Close the comment box | Close the detail panel |
+| Esc | Back to the commits from a file shown; leave compare mode | Close the comment box | Close the detail panel |
 
 These keys work on Git, Scout, Skills, Monitor, Settings and a workspace's page. In a
 change, only n and [ work.
