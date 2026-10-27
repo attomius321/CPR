@@ -80,6 +80,10 @@ app.commandLine.appendSwitch('enable-unsafe-swiftshader');
 // On WSL it never finds GL: in software from the start, since falling back later loses the
 // intro's WebGL context (`gpu.ts`).
 if (hardwareGlFails(process.platform, process.env)) app.disableHardwareAcceleration();
+// A minimized window's page reads what waits for the person (N2): Chromium wakes a page hidden for
+// 5 minutes once a minute, and the taskbar's dot came up to 60 s late. Without it a hidden page's
+// timers still wake at most once a second, and it draws nothing.
+app.commandLine.appendSwitch('disable-features', 'IntensiveWakeUpThrottling');
 
 /** Who draws the window's frame and buttons here (N1d): Symbiote's pages on Linux. */
 const frame = frameOf(process.platform);

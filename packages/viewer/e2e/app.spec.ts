@@ -596,6 +596,10 @@ test.describe('what waits for you, on the taskbar (N2)', () => {
         const handle = BrowserWindow.getAllWindows()[0]?.getNativeWindowHandle();
         return `0x${(handle?.readUInt32LE(0) ?? 0).toString(16)}`;
       });
+      // A minimized window reads as often as a shown one: Chromium's minute-long wake-ups are off.
+      expect(
+        await app.evaluate(({ app }) => app.commandLine.getSwitchValue('disable-features')),
+      ).toContain('IntensiveWakeUpThrottling');
       // The S: opaque, not amber, where the dot goes.
       expect(dot(id)).toMatch(/^ff/);
       expect(dot(id)).not.toBe(AMBER);
