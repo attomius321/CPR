@@ -334,6 +334,49 @@ test('the agents that wait for you: first, what each asks, Respond, the count in
   await expect(page).toHaveTitle(/^\(1\) /);
 });
 
+// N2: in the app, the page says what waits; the app puts a dot on the window's icon. Here a
+// stand-in app records what the page says.
+test('what waits is said to the app: from a diff too, and while the window is hidden (N2)', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const said: number[] = [];
+    Object.assign(window, {
+      said,
+      symbioteApp: {
+        platform: 'linux',
+        titleBar: () => undefined,
+        waiting: (n: number) => said.push(n),
+      },
+    });
+  });
+  const said = () => page.evaluate(() => (window as unknown as { said: number[] }).said);
+  const last = async () => (await said()).at(-1);
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}history`);
+  await startFrom(page, 'Add a half function');
+  const tests = 'feature/add-a-half-function';
+  // Nothing waits: said once, after the first read, and not again while it stays so.
+  await expect.poll(said).toEqual([0]);
+
+  symbiote.session(tests, { state: 'blocked', waitingFor: 'permission prompt' });
+  await expect.poll(last, POLL).toBe(1);
+  await expect(page).toHaveTitle(/^\(1\) /);
+
+  // A diff's page is a document of its own: it says it too, once it has read.
+  const [base, head] = symbiote.shas;
+  await page.goto(`${symbiote.url}diff/${base}..${head}/`);
+  await expect.poll(said, POLL).toEqual([1]);
+
+  // Hidden, as a minimized window: the app's page still reads, and says it was answered.
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  symbiote.session(tests, { state: 'working' });
+  await expect.poll(last, POLL).toBe(0);
+});
+
 test('a working agent says what it runs, from its tools, and since when; thinking between them (V48f)', async ({
   page,
 }) => {

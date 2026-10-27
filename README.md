@@ -165,9 +165,14 @@ The sidenav lists your workspaces in groups, by what each one needs from you:
 | **Done** | Merged workspaces, ready to clean up |
 
 Each card shows the workspace's title, its kind, its state, and how long it has been in that
-state. A waiting card has **Respond**, which opens the agent's terminal. The window's title counts
-the workspaces waiting for you. When Scout or Scribe waits for you, its page's link turns amber
-like this group and says **Waits**.
+state. A waiting card has **Respond**, which opens the agent's terminal. When Scout or Scribe waits
+for you, its page's link turns amber like this group and says **Waits**.
+
+The window's title counts everything that waits for you: workspaces, merges, Scout, Scribe and
+agents' asks. In Symbiote's own window, the taskbar icon also gets an amber dot while anything
+waits. When something new waits while you are in another window, Symbiote asks the desktop to
+blink its taskbar button until you come back. Desktops that blink a window asking for attention do
+so, KDE and XFCE among them. On WSL the taskbar shows the dot but cannot blink.
 
 ### Work with the agent
 

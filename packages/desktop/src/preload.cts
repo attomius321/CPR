@@ -85,12 +85,15 @@ const ownFrame = {
 };
 
 // Symbiote's pages (N1c): that they are in the app, on which system (its window's buttons are at
-// the left on macOS), and the title bar's colours for those buttons, which follow the page's theme.
+// the left on macOS), the title bar's colours for those buttons, which follow the page's theme, and
+// what waits for the person (N2).
 if (window.location.protocol === 'http:') {
   contextBridge.exposeInMainWorld('symbioteApp', {
     platform: process.platform,
     titleBar: (colors: { color: string; symbol: string }) =>
       ipcRenderer.send('symbiote:title-bar', colors),
+    // How many things wait for the person (N2): the dot on the window's icon, a blink.
+    waiting: (count: number) => ipcRenderer.send('symbiote:waiting', count),
     ...ownFrame,
   });
 }

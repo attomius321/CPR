@@ -140,8 +140,14 @@ export async function readWorkspacesAgain(): Promise<WorkspacesState> {
 }
 
 /**
+ * Whether the page reads while hidden: in the app, whose window's icon says what waits (N2), a
+ * minimized window too; in a browser, only once it is back in view.
+ */
+export const readsHidden = (): boolean => window.symbioteApp?.waiting !== undefined;
+
+/**
  * The next read, while a page reads them and an agent works or waits, a terminal is open, or a
- * merge runs; none when hidden.
+ * merge runs; none when hidden, but in the app.
  */
 function schedule(): void {
   clearTimeout(timer);
@@ -149,7 +155,7 @@ function schedule(): void {
   const wait = readEvery(current, terminalsOpen + (Date.now() < closedUntil ? 1 : 0));
   if (wait === null) return;
   timer = setTimeout(() => {
-    if (document.visibilityState === 'hidden') schedule();
+    if (document.visibilityState === 'hidden' && !readsHidden()) schedule();
     else void refresh();
   }, wait);
 }
