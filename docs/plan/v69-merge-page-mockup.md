@@ -2,7 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v69-merge-page-mockup.md)
 
-**Status:** in progress (2026-10-27), on branch `feature/merger-page-revamp`.
+**Status:** ready for review (2026-10-27), on branch `feature/merger-page-revamp`. Its "As built"
+and results below.
 
 **Problem** (asked: "Make like in the screenproof… but keep the current theme of the app", with a
 mockup of a landed merge, `Dark Symbiote Merge Build Dashboard.png`, 1704×923). The page already
@@ -78,3 +79,30 @@ decision 445), which the mockup does not show.
 | 495 | The head's branches and state | **One chip for the three: HEAD's tint, 22 px, 8 px radius, 14 px words; the arrow an icon in the target's chip, the state's dot its tone's icon (the sidenav groups')** | The mockup; an icon over a symbol glyph (the style); one icon per state across the app |
 | 496 | The log's height | **What is left of the main area, 16 px above its end, at least 320 px** | The mockup fills the page; the window less 260 px left 115 px of empty ground at 923 px and stopped at 900 |
 | 497 | A conflict's Files / Log | **Line tabs (decision 445)** | Asked after the plan ("Yes switch to those"): the flat buttons were the style before V61 |
+
+## As built (V69)
+
+- **The target's arrow is the title bar's Forward** (`ForwardIcon`, lucide's arrow-right on the
+  16-unit grid), not a new `ArrowIcon`: the same drawing. Its tip says "Into main".
+- **The log's least height is 320 px, never its rows'** (`min-height: 0`): as a flex item it
+  otherwise kept the height xterm's rows were fitted to, 180 px past the page's end when the
+  window went from 900 to 700 px high, 33 px for a resolution's log fitted while its tab was
+  hidden.
+- **The title lost its `hint` class**: the state and the title share one rule, in the text's
+  colour.
+- **The tabs are picked by `aria-selected`**, as the diff sidebar's line tabs, not a `selected`
+  class.
+- Narrow (under 700 px) as before: the steps above a 360 px log, which does not fill the page.
+
+**Results.** Tests first: two e2e in `merges.spec.ts`, red for the right reason (the "→" in the
+head; no icon in the state's chip), green after; the earlier merge specs pass unchanged, "the
+log's last line whole at every height" with them. `pnpm check` 1,948 of 1,948; `pnpm build`;
+`pnpm test:e2e` 314 of 314 (without `WAYLAND_DISPLAY`). The log's card ends 16 px above the
+page's end at 1440×900 and 1440×700 (the e2e); 115 px of empty ground under it before, at
+1704×923.
+
+Screenshots, dark and light, from a spec outside the repository on e2e's harness: landed at
+1704×923 (the mockup's size), 1440×900 and 390 wide; a resolution's Files and Log; a merge that
+asks you, Files and Log; a check running. Compared zoomed 3× with the mockup's head and steps.
+**Not done**: the README's `docs/images/merge.png` still shows the page before V69 (staged by
+hand, V61's note); the desktop app's title bar and a real scrollbar on the log were not seen.
