@@ -273,5 +273,6 @@ merge commit.
 - 2026-10-27 [V67 — a merge by fast-forward, picked at Merge into](journal/v67-merge-strategies.md)
 - 2026-10-27 [V66 spike — what git costs for a commit's details, a search and the status](journal/v66-git-page.md)
 - 2026-10-27 [V66 — Git: History renamed, a commit's details, changes, branches, remotes, search](journal/v66-git-page.md)
+- 2026-10-27 [V69 — the merge page as the mockup: chips, a log that fills the page, line tabs](journal/v69-merge-page-mockup.md)
 - 2026-10-27 [V70 spike — where a commit's file opens, and how much of it shows](journal/v70-git-file-view.md)
 - 2026-10-27 [V70 — a commit's file in the rows' place; Open in VS Code from Git](journal/v70-git-file-view.md)
