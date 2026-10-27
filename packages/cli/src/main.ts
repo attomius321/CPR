@@ -762,10 +762,13 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       state: (graph) => fileStateStore(stateDir(cacheDir, repo.id, graph)),
       reviews: branchReviews(repo, cacheDir),
       workspaces: repoWorkspaces,
-      // Git's page (V66): a workspace's branch is renamed or deleted with its workspace only.
+      // Git's page (V66): a workspace's branch is renamed or deleted with its workspace only; a
+      // file's diff opens in VS Code with the workspaces' copies (V70).
       git: gitPage(repo, {
         workspaceBranches: async () =>
           (await repoWorkspaces.list()).workspaces.map((w) => w.branch),
+        openFolder,
+        revisions: join(cacheDir, 'state', repo.id, 'revisions'),
       }),
       terminals,
       merges: merger(repo, cacheDir, {

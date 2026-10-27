@@ -1,13 +1,8 @@
-// A workspace's changes (V29d): its branch's commits and files since the fork point, its
-// worktree's files not committed, and the two files one of them opens with as a diff (V43).
-import { randomBytes } from 'node:crypto';
-import { existsSync } from 'node:fs';
-import { mkdir, rename, rm, stat, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+// A workspace's changes (V29d): its branch's commits and files since the fork point, and its
+// worktree's files not committed.
 import {
   commitDetails,
   commitsBetween,
-  fileForCheckout,
   listChangedFiles,
   listLineCounts,
   worktreeStatus,
@@ -89,46 +84,3 @@ export async function worktreeChanges(
     })),
   };
 }
-
-/**
- * A commit's file kept for a diff (V43): written the first time, as a checkout in `checkout`
- * writes it, and read-only; null when the commit has no file there.
- */
-export async function keptFile(
-  revisions: string,
-  checkout: GitRepo,
-  sha: string,
-  path: string,
-): Promise<string | null> {
-  const file = join(revisions, sha, ...path.split('/'));
-  if (existsSync(file)) return file;
-  const bytes = await fileForCheckout(checkout, sha, path);
-  return bytes && keep(file, bytes);
-}
-
-/** An empty file by that name: the side of a diff with no file. */
-export const emptyFile = (revisions: string, path: string) =>
-  keep(join(revisions, 'empty', ...path.split('/')), new Uint8Array());
-
-/** Writes a read-only file once: to a name of its own, then renamed (two clicks at once). */
-async function keep(file: string, bytes: Uint8Array): Promise<string> {
-  if (existsSync(file)) return file;
-  await mkdir(dirname(file), { recursive: true });
-  const temporary = `${file}.${randomBytes(4).toString('hex')}`;
-  await writeFile(temporary, bytes, { mode: 0o444 });
-  try {
-    await rename(temporary, file);
-  } catch (error) {
-    // Windows does not rename onto a file: the other click's copy is the same.
-    await rm(temporary, { force: true });
-    if (!existsSync(file)) throw error;
-  }
-  return file;
-}
-
-/** Whether `path` is a file. */
-export const isFile = (path: string) =>
-  stat(path).then(
-    (s) => s.isFile(),
-    () => false,
-  );
