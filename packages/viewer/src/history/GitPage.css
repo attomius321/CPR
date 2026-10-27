@@ -1,0 +1,458 @@
+/* ---- Git (V66): the details pane, the uncommitted row, the header's remotes and search ---- */
+
+/* The page's head, as Settings' (V62): its icon, its name, a line under it; the search and the
+   remotes at its right, wrapping under them when the window is narrow. */
+.git-bar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  min-height: 52px;
+  padding: 12px 16px 4px;
+}
+
+.git-bar .page-icon {
+  display: inline-flex;
+  color: var(--accent);
+}
+
+.git-bar .page-icon .icon {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.4;
+}
+
+.git-title {
+  min-width: 0;
+}
+
+.git-title h1 {
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+.git-title p {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-bar-tail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-left: auto;
+}
+
+/* The details' toggle in the head, beside the remotes: a pane shown, not a mode. */
+.details-toggle[aria-pressed='true'] {
+  border-color: var(--line);
+  background: var(--selected);
+  color: var(--text);
+}
+
+/* While the pane's edge is dragged, nothing else takes the pointer. */
+.commits-main.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* The rows' card and the details pane: side by side, or the pane under the rows (Settings →
+   Appearance). Beside them only while the rows keep 400 px: the body is a container, so the
+   sidenav's and the branches panel's widths count (at 1,280 px the rows had 320 px, their
+   subjects none; at 1,440 px they keep about 510). */
+.commits-body {
+  container: git-body / inline-size;
+}
+
+.commits-main {
+  --details-width: 360px;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  gap: 8px;
+}
+
+.commits-main > .commits-card {
+  min-width: 0;
+}
+
+.commits-main.below {
+  flex-direction: column;
+}
+
+.git-details {
+  /* Narrowed before the rows are, down to 300 px. */
+  flex: 0 1 var(--details-width);
+  min-width: 300px;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+/* Under the rows, the rows keep 180 px (their header and four rows) in a short window. */
+.commits-main.below > .commits-card {
+  min-height: 180px;
+}
+
+.commits-main.below .git-details {
+  flex: 0 1 42%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.commits-main.below > .resizer {
+  display: none;
+}
+
+@container git-body (max-width: 1040px) {
+  .commits-main {
+    flex-direction: column;
+  }
+
+  .commits-main > .commits-card {
+    min-height: 180px;
+  }
+
+  .commits-main .git-details {
+    flex: 0 1 42%;
+    min-width: 0;
+    min-height: 0;
+  }
+
+  .commits-main > .resizer {
+    display: none;
+  }
+}
+
+/* The pane's head: as tall as the rows' header beside it, on the card's chrome. */
+.git-details-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 48px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
+}
+
+.git-details-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--size-body);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-details-summary {
+  font-size: var(--size-small);
+  white-space: nowrap;
+}
+
+.git-details-action {
+  flex: none;
+}
+
+.git-details-fold {
+  flex: none;
+}
+
+.git-details-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px 16px 24px;
+}
+
+.git-details-hint {
+  margin: 16px;
+}
+
+.git-details-message {
+  margin: 0 0 16px;
+  font: var(--size-body) / 1.5 var(--sans);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Commit, Author, Parents: names on the left, as a form's labels. */
+.git-details-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 0 0 16px;
+  font-size: var(--size-small);
+}
+
+.git-details-facts dt {
+  color: var(--muted);
+}
+
+.git-details-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.git-details-facts code {
+  font-size: var(--size-small);
+}
+
+.git-copy,
+.git-parent {
+  margin-left: 8px;
+  font-size: var(--size-small);
+}
+
+.git-parent:first-child {
+  margin-left: 0;
+}
+
+.git-details-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.git-details-part {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 6px;
+  font-size: var(--size-small);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.git-details-part .muted {
+  font-weight: normal;
+}
+
+.git-part-action {
+  margin-left: auto;
+  font-size: var(--size-small);
+  font-weight: normal;
+}
+
+.git-details-note {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--modified) 40%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--modified) 10%, transparent);
+  font-size: var(--size-small);
+}
+
+.git-details-error {
+  margin: 8px 0 0;
+  font-size: var(--size-small);
+  white-space: pre-wrap;
+}
+
+/* A file and its Stage or Unstage, on one line. */
+.git-file {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.git-file > .changes-file {
+  flex: 1;
+  min-width: 0;
+}
+
+.git-file-action {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  font-size: var(--size-body);
+  line-height: 1;
+}
+
+.git-diff {
+  margin-top: 4px;
+}
+
+.git-diff .row {
+  grid-template-columns: 3.2em 3.2em 1.4em minmax(0, 1fr);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.git-diff-note {
+  margin: 4px 0;
+  font-size: var(--size-small);
+}
+
+/* The commit box: the message, Amend, Commit. */
+.git-commit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.git-commit-message {
+  width: 100%;
+  min-height: 72px;
+  max-height: 40vh;
+  font: var(--size-body) / 1.45 var(--sans);
+}
+
+.git-commit-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.git-commit-amend,
+.git-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--size-small);
+  cursor: pointer;
+}
+
+.git-commit-button {
+  margin-left: auto;
+}
+
+/* ---- the uncommitted row (V66c), above the commits, its dot hollow on HEAD's lane ---- */
+
+.commit.working {
+  position: relative;
+  color: var(--muted);
+}
+
+.commit.working .commit-subject {
+  color: var(--text);
+  font-style: italic;
+}
+
+.graph .working-dot {
+  fill: var(--bg);
+  stroke: var(--muted);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 2;
+}
+
+.graph .working-line {
+  stroke: var(--muted);
+  stroke-dasharray: 2 3;
+}
+
+/* A row a search found. */
+.commit.matched .commit-subject {
+  text-decoration: underline;
+  text-decoration-color: var(--modified);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+
+/* ---- the header's remotes (V66e) and search (V66f) ---- */
+
+.git-sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.git-sync-button {
+  min-height: 32px;
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+.git-count {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.git-pull {
+  position: relative;
+}
+
+.git-pull-menu {
+  left: 0;
+  right: auto;
+}
+
+.git-find {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.git-find input {
+  width: 200px;
+  height: 32px;
+  padding: 0 10px;
+  font-size: var(--size-small);
+}
+
+.git-find-count {
+  font-size: var(--size-small);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* ---- the branch and tag dialogs (V66d) ---- */
+
+.git-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.git-field input,
+.git-field textarea {
+  height: 32px;
+  padding: 0 10px;
+  font-size: var(--size-body);
+}
+
+.git-field textarea {
+  height: auto;
+  padding: 8px 10px;
+}
+
+.git-check {
+  margin-top: 12px;
+}
+
+.dialog-sha {
+  color: var(--muted);
+  font-size: 0.9em;
+  font-weight: normal;
+}
+
+/* Losing data: the error's colour (the style's danger). */
+.button.danger {
+  background: color-mix(in srgb, var(--error) 60%, transparent);
+  box-shadow: none;
+  color: #fff;
+}
+
+.button.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error) 75%, transparent);
+}
+
+:root[data-theme='light'] .button.danger {
+  background: var(--error);
+}

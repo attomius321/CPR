@@ -52,6 +52,8 @@ test('offers what each row can check out, in a submenu', async ({ page }) => {
     'Check out',
     'Review',
     'Start a workspace here',
+    'New branch here…',
+    'New tag here…',
   ]);
   await expect(checkOut(page)).toHaveAttribute('aria-expanded', 'false');
   await checkOut(page).hover();
@@ -130,6 +132,9 @@ test('keeps the submenu in the window: on the left near the right edge, up near 
 }) => {
   await page.setViewportSize({ width: 900, height: 300 });
   await page.goto(`${symbiote.url}git`);
+  // The rows down to the window's bottom: the details folded (V66b, d).
+  await expect(row(page, 'Try a wobble')).toBeVisible();
+  await page.keyboard.press('d');
   const inWindow = async () => {
     const box = (await page.locator('.submenu').boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(8);

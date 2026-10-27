@@ -83,6 +83,8 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
     'Check out',
     'Review',
     'Start a workspace here',
+    'New branch here…',
+    'New tag here…',
   ]);
   await page.getByRole('menuitem', { name: 'Review', exact: true }).hover();
   const targets = page.getByRole('menu', { name: 'Review' }).getByRole('menuitem');

@@ -49,8 +49,9 @@ function Age({ at }: { at: string }) {
 
 /**
  * The branches panel (V10b): Local and Remotes by folder, a filter on top; a click goes to the
- * branch's tip row. Local lists the workspaces that need the person first (V23, `first`). Under
- * 900 px it is shown only while `open` (over the rows).
+ * branch's tip row, a double-click checks it out and a right-click opens its menu (V66d). Local
+ * lists the workspaces that need the person first (V23, `first`). Under 900 px it is shown only
+ * while `open` (over the rows).
  */
 export const BranchesPanel = memo(function BranchesPanel({
   refs,
@@ -66,6 +67,8 @@ export const BranchesPanel = memo(function BranchesPanel({
   onToggle,
   filterRef,
   onGo,
+  onCheckout,
+  onMenu,
 }: {
   /** Null until the branches are listed. */
   refs: HistoryRefs | null;
@@ -85,6 +88,10 @@ export const BranchesPanel = memo(function BranchesPanel({
   onToggle: (key: string) => void;
   filterRef: RefObject<HTMLInputElement | null>;
   onGo: (entry: BranchEntry) => void;
+  /** A double-click: checks the branch out (V66d). */
+  onCheckout: (entry: BranchEntry) => void;
+  /** A right-click: the branch's menu at a point of the window (V66d). */
+  onMenu: (entry: BranchEntry, x: number, y: number) => void;
 }) {
   const entries = useMemo(
     () =>
@@ -130,6 +137,8 @@ export const BranchesPanel = memo(function BranchesPanel({
                   age={entry.kind === 'branch' ? ages.get(entry.name) : undefined}
                   onToggle={onToggle}
                   onGo={onGo}
+                  onCheckout={onCheckout}
+                  onMenu={onMenu}
                 />
                 {agent && <WorkspaceMark chip={agent} />}
               </li>
@@ -148,6 +157,8 @@ function Entry({
   age,
   onToggle,
   onGo,
+  onCheckout,
+  onMenu,
 }: {
   entry: PanelEntry;
   scope: HistoryScope;
@@ -156,6 +167,8 @@ function Entry({
   age: string | undefined;
   onToggle: (key: string) => void;
   onGo: (entry: BranchEntry) => void;
+  onCheckout: (entry: BranchEntry) => void;
+  onMenu: (entry: BranchEntry, x: number, y: number) => void;
 }) {
   if (entry.kind === 'section') {
     return (
@@ -193,6 +206,11 @@ function Entry({
       {...tip(unlisted ? `${entry.name}\nIts commits are not in this clone's history` : entry.name)}
       aria-disabled={unlisted || undefined}
       onClick={() => !unlisted && onGo(entry)}
+      onDoubleClick={() => onCheckout(entry)}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onMenu(entry, event.clientX, event.clientY);
+      }}
     >
       {entry.current && (
         <span className="branches-current" aria-label="checked out">

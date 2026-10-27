@@ -17,6 +17,7 @@ export function CommitRow({
   picked,
   cursor,
   flash,
+  matched = false,
   onClick,
   onMenu,
   graph,
@@ -35,6 +36,8 @@ export function CommitRow({
   cursor: boolean;
   /** Just gone to from the branches panel. */
   flash: boolean;
+  /** Found by Git's search (V66f). */
+  matched?: boolean;
   onClick: () => void;
   /** Opens the row's checkout menu at a point of the window. */
   onMenu: (x: number, y: number) => void;
@@ -65,7 +68,7 @@ export function CommitRow({
   const head = commit.refs.some((ref) => ref.kind === 'head');
   return (
     <li
-      className={`commit${head ? ' head' : ''}${picked ? ' picked' : ''}${cursor ? ' cursor' : ''}${flash ? ' flash' : ''}`}
+      className={`commit${head ? ' head' : ''}${picked ? ' picked' : ''}${cursor ? ' cursor' : ''}${flash ? ' flash' : ''}${matched ? ' matched' : ''}`}
       style={style}
       onClick={onClick}
       onContextMenu={(event) => {

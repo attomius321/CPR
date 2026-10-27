@@ -13,6 +13,7 @@ import { Help } from '../ui/Help.js';
 import { getJson, postJson } from '../ui/http.js';
 import { useShell } from '../shell/shell-context.js';
 import { setTheme, useTheme, type Theme } from '../shell/theme.js';
+import { setDetailsPlace, useDetailsPlace, type DetailsPlace } from '../history/details.js';
 import { startIntro } from '../intro/intro.js';
 import { LibraryPage } from './LibraryPage.js';
 import {
@@ -659,12 +660,20 @@ const THEMES: { theme: Theme; label: string }[] = [
   { theme: 'system', label: 'System' },
 ];
 
+/** Where Git's details pane goes (V66b, decision 478). */
+const PLACES: { place: DetailsPlace; label: string }[] = [
+  { place: 'right', label: 'On the right' },
+  { place: 'below', label: 'Below the commits' },
+];
+
 /**
  * This browser's Appearance (V51, decision 388; in the head before): the page's theme (V29b,
- * decision 179), dark unless chosen, and the first-time intro again (V39), as often as one likes.
+ * decision 179), dark unless chosen, where Git's commit details go (V66b), and the first-time
+ * intro again (V39), as often as one likes.
  */
 function AppearancePage({ onBack }: { onBack: () => void }) {
   const theme = useTheme();
+  const place = useDetailsPlace();
   return (
     <SettingsCard label="Appearance" title="Appearance" onBack={onBack}>
       <div className="settings-rows">
@@ -684,6 +693,26 @@ function AppearancePage({ onBack }: { onBack: () => void }) {
             ))}
           </span>
           <p className="settings-row-note">Kept in this browser.</p>
+        </section>
+        <section className="settings-part" aria-label="Commit details">
+          <h3 id="settings-details">Commit details</h3>
+          <span className="scopes" role="group" aria-labelledby="settings-details">
+            {PLACES.map((choice) => (
+              <button
+                key={choice.place}
+                type="button"
+                className={place === choice.place ? 'scope active' : 'scope'}
+                aria-pressed={place === choice.place}
+                onClick={() => setDetailsPlace(choice.place)}
+              >
+                {choice.label}
+              </button>
+            ))}
+          </span>
+          <p className="settings-row-note">
+            Where Git shows the selected commit: beside its rows or under them. Kept in this
+            browser.
+          </p>
         </section>
         <section className="settings-part" aria-label="Intro">
           <h3>Intro</h3>

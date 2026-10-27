@@ -100,7 +100,7 @@ test('opens in browse mode: a click selects a row and picks nothing', async ({ p
   await keys.click();
   await expect(page.locator('.commits-help')).toBeVisible();
   await expect(page.locator('.commits-help')).toHaveText(
-    'j/k move · c checks out · r reviews · x picks to compare · / finds a branch',
+    'j/k move · c checks out · r reviews · x picks to compare · / finds a branch · f finds a commit · d shows or folds the details · a branch: double-click checks it out, right-click for more',
   );
   await page.keyboard.press('Escape');
   await expect(page.locator('.commits-help')).toBeHidden();

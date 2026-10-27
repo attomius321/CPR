@@ -1,12 +1,23 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import type {
   Commit,
   HistoryPage,
   HistoryRefs,
   HistoryScope,
   HistoryShape,
+  PullMode,
   RefList,
   RepoStatus,
+  SyncState,
+  WorkingChanges,
 } from '@symbiote/core';
 import {
   fetchBranches,
@@ -23,7 +34,15 @@ import { BranchesPanel } from './BranchesPanel.js';
 import { CommitRow } from './CommitRow.js';
 import { CompareBar } from './CompareBar.js';
 import { useBranchReviews } from './useBranchReviews.js';
-import { checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
+import { branchChoice, checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
+import { fetchChanges, fetchRemotes, fetchSync, findRows, pull, push } from './git-api.js';
+import { changesSummary, nextMatch, syncWords, useDetailsPlace } from './details.js';
+import { CommitDetails } from './CommitDetails.js';
+import { ChangesDetails } from './ChangesDetails.js';
+import { FindBox } from './FindBox.js';
+import { SyncBar, type SyncRun } from './SyncBar.js';
+import { RefDialog, type RefAction } from './RefDialog.js';
+import type { PanelEntry } from './branches.js';
 import { reviewChoices, type ReviewChoice } from './branchReviews.js';
 import { CheckoutDialog } from './CheckoutDialog.js';
 import { workspaceChips, workspaceHref, workspacesFirst } from '../workspaces/workspaces.js';
@@ -41,6 +60,10 @@ import {
 } from './commits.js';
 import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
 import { Help } from '../ui/Help.js';
+import { GitIcon } from '../ui/icons.js';
+import { keyIsTaken } from '../ui/keys.js';
+import { Resizer } from '../ui/Resizer.js';
+import { loadWidths, saveWidth } from '../ui/widths.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
 import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
@@ -61,12 +84,24 @@ interface Keep {
   offset: number;
 }
 
+type BranchEntry = Extract<PanelEntry, { kind: 'branch' }>;
+
+/** The uncommitted row's number (V66c): above the first commit's. */
+const WORKING = -1;
+
+/** How long the search waits for typing to stop. */
+const FIND_MS = 250;
+
 /**
- * The repository's history as a graph (V10): every branch, or the current one ("This branch",
- * `?scope=current`). A click selects a row. In compare mode (V13: its toggle, or x) a click (or
- * x) picks one end, another the other end; the older is the base. Compare (Enter) opens the
- * diff; one picked is compared with its parent. A row's menu (right-click, "⋯", c or r) checks
- * out its branches, tags or the commit (V11), and reviews its branches (V15).
+ * Git (V66; History before it): the repository's history as a graph (V10), every branch or the
+ * current one ("This branch", `?scope=current`). A click selects a row, whose details show in a
+ * pane (V66b); the checkout's uncommitted changes are a row above the commits, staged and
+ * committed in the pane (V66c). In compare mode (V13: its toggle, or x) a click (or x) picks one
+ * end, another the other end; the older is the base. Compare (Enter) opens the diff; one picked
+ * is compared with its parent. A row's menu (right-click, "⋯", c or r) checks out its branches,
+ * tags or the commit (V11), reviews its branches (V15), and makes a branch or a tag there (V66d);
+ * a branch's in the panel renames or deletes it. The head fetches, pulls and pushes (V66e) and
+ * finds commits (V66f).
  */
 export function HistoryPage() {
   const [scope, setScope] = useState(scopeOfUrl);
@@ -91,6 +126,10 @@ export function HistoryPage() {
   // A branch to go to once every branch is listed: "This branch" did not list its tip.
   const [goTo, setGoTo] = useState<string | null>(branchOfUrl);
   const [keep, setKeep] = useState<Keep | null>(null);
+  // The search's words and the details pane, kept across listings (V66).
+  const [query, setQuery] = useState('');
+  const [detailsOpen, setDetailsOpen] = useState(true);
+  const [detailsWidth, setDetailsWidth] = useState(() => loadWidths().details);
   const choose = useCallback((next: HistoryScope) => {
     window.history.replaceState(null, '', next === 'all' ? GIT_PAGE : '?scope=current');
     setScope(next);
@@ -127,6 +166,16 @@ export function HistoryPage() {
       keep={keep}
       onGoElsewhere={goElsewhere}
       onArrived={arrived}
+      find={{ query, onQuery: setQuery }}
+      details={{
+        open: detailsOpen,
+        onOpen: setDetailsOpen,
+        width: detailsWidth,
+        onWidth: (width) => {
+          setDetailsWidth(width ?? undefined);
+          saveWidth('details', width);
+        },
+      }}
     />
   );
 }
@@ -142,6 +191,8 @@ function History({
   keep,
   onGoElsewhere,
   onArrived,
+  find,
+  details: pane,
 }: {
   scope: HistoryScope;
   onScope: (scope: HistoryScope) => void;
@@ -163,6 +214,15 @@ function History({
   /** A branch this scope does not list: list every branch, then go to it. */
   onGoElsewhere: (name: string) => void;
   onArrived: () => void;
+  /** The search's words (V66f), kept by the page across listings. */
+  find: { query: string; onQuery: (query: string) => void };
+  /** The details pane (V66b): shown or folded (`d`), and its width on the right. */
+  details: {
+    open: boolean;
+    onOpen: (open: boolean) => void;
+    width: number | undefined;
+    onWidth: (width: number | null) => void;
+  };
 }) {
   const [first, setFirst] = useState<HistoryPage | null>(null);
   const [shape, setShape] = useState<HistoryShape | null>(null);
@@ -209,6 +269,34 @@ function History({
   // Branch reviews (V15): marks on badges, dots on commits added since.
   const { marks, setReviews } = useBranchReviews();
 
+  // The checkout's uncommitted changes (V66c) and the branch's upstream (V66e), read as the page
+  // lists and again when it is back in view.
+  const [changes, setChanges] = useState<WorkingChanges | null>(null);
+  const [sync, setSync] = useState<SyncState | null>(null);
+  const [syncing, setSyncing] = useState<SyncRun | null>(null);
+  const readChanges = useCallback(() => {
+    fetchChanges()
+      .then(setChanges)
+      .catch(() => {});
+    fetchSync()
+      .then(setSync)
+      .catch(() => {});
+  }, []);
+  useEffect(readChanges, [readChanges]);
+  const working =
+    changes !== null && changes.staged.length + changes.unstaged.length > 0 ? changes : null;
+  // A branch or tag dialog (V66d), and a branch's menu in the panel.
+  const [refAction, setRefAction] = useState<RefAction | null>(null);
+  const [branchMenu, setBranchMenu] = useState<{
+    at: { x: number; y: number };
+    entry: BranchEntry;
+  } | null>(null);
+  const [resizing, setResizing] = useState(false);
+  const place = useDetailsPlace();
+  // The search (V66f): the rows found in this listing, the field.
+  const [matches, setMatches] = useState<number[] | null>(null);
+  const findRef = useRef<HTMLInputElement>(null);
+
   const failed = useCallback((e: unknown) => {
     if (e instanceof StaleHistory) setStale(true);
     else setError(`Could not list commits: ${(e as Error).message}`);
@@ -243,7 +331,7 @@ function History({
     const check = () => {
       if (document.visibilityState === 'hidden') return;
       fetchJson<RepoStatus>('api/status')
-        .then((status) => status.version !== first.version && onRelist(null))
+        .then((status) => (status.version !== first.version ? onRelist(null) : readChanges()))
         .catch(() => {});
     };
     window.addEventListener('focus', check);
@@ -252,7 +340,7 @@ function History({
       window.removeEventListener('focus', check);
       document.removeEventListener('visibilitychange', check);
     };
-  }, [first, onRelist]);
+  }, [first, onRelist, readChanges]);
 
   const parents = useMemo(
     () => shape?.parents ?? (first ? parentRows(first.commits) : []),
@@ -500,7 +588,109 @@ function History({
         openWorkspace(sha);
       },
     },
+    {
+      label: 'New branch here…',
+      onSelect: () => {
+        setMenu(null);
+        setRefAction({ kind: 'new-branch', at: sha });
+      },
+    },
+    {
+      label: 'New tag here…',
+      onSelect: () => {
+        setMenu(null);
+        setRefAction({ kind: 'new-tag', at: sha });
+      },
+    },
+    ...(details.current.get(cursor)?.sha === sha ? (details.current.get(cursor)?.refs ?? []) : [])
+      .filter((ref) => ref.kind === 'tag')
+      .map((ref) => ({
+        label: `Delete the tag ${ref.name}…`,
+        onSelect: () => {
+          setMenu(null);
+          setRefAction({ kind: 'delete-tag', name: ref.name });
+        },
+      })),
   ];
+
+  /** A branch's menu in the panel (V66d): check out, go to its tip, review, rename, delete. */
+  const branchMenuItems = (entry: BranchEntry): RowMenuItem[] => {
+    const local = refs?.branches.some((b) => b.name === entry.name) ?? false;
+    const close = (then: () => void) => () => {
+      setBranchMenu(null);
+      then();
+    };
+    return [
+      { label: 'Check out…', onSelect: close(() => checkoutBranch(entry)) },
+      ...(entry.row === null
+        ? []
+        : [{ label: 'Go to its tip', onSelect: close(() => goToBranch(entry)) }]),
+      ...(local
+        ? [
+            {
+              label: 'Review',
+              onSelect: close(() => {
+                startReview(entry.name)
+                  .then((url) => window.location.assign(url))
+                  .catch((e: unknown) =>
+                    setError(`Could not review ${entry.name}: ${(e as Error).message}`),
+                  );
+              }),
+            },
+            {
+              label: 'Rename…',
+              onSelect: close(() => setRefAction({ kind: 'rename-branch', name: entry.name })),
+            },
+            {
+              label: 'Delete…',
+              onSelect: close(() => setRefAction({ kind: 'delete-branch', name: entry.name })),
+            },
+          ]
+        : []),
+    ];
+  };
+
+  /** A branch checked out from the panel: the row menu's confirmation (V11), its rules (V66d). */
+  const checkoutBranch = useCallback(
+    (entry: BranchEntry) => {
+      Promise.all([fetchJson<RefList>('api/refs'), fetchJson<RepoStatus>('api/status')])
+        .then(([listed, status]) => {
+          const choice = branchChoice(entry.name, listed, status);
+          if (!choice) return setError(`No branch ${entry.name} to check out`);
+          if (choice.disabled) return shell?.notify({ text: `${entry.name}: ${choice.disabled}` });
+          setRefused(null);
+          setConfirm({ choice, status });
+        })
+        .catch((e: unknown) => setError(`Could not read the branches: ${(e as Error).message}`));
+    },
+    [shell],
+  );
+
+  /** Fetch, pull or push (V66e): the status bar says how it ended; the page lists again. */
+  const runSync = useCallback(
+    (run: SyncRun, mode: PullMode = 'ff-only') => {
+      setSyncing(run);
+      const said =
+        run === 'fetch'
+          ? fetchRemotes().then(() => ({ text: 'Fetched every remote' }))
+          : run === 'pull'
+            ? pull(mode).then(({ stopped }) =>
+                stopped ? { text: 'Pulled, with conflicts', warning: stopped } : { text: 'Pulled' },
+              )
+            : push().then(({ upstream, set }) => ({
+                text: set ? `Pushed to ${upstream}, now its upstream` : `Pushed to ${upstream}`,
+              }));
+      said.then(
+        (notice) => onRelist(notice),
+        (e: unknown) => {
+          setSyncing(null);
+          shell?.notify({ text: `Could not ${run}`, warning: (e as Error).message, error: true });
+          readChanges();
+        },
+      );
+    },
+    [onRelist, shell, readChanges],
+  );
 
   const runCheckout = useCallback(
     async ({ target }: CheckoutChoice) => {
@@ -567,19 +757,61 @@ function History({
     onComparing(false);
   }, [onComparing]);
 
+  // The search (V66f): asked once typing stops, the cursor on the first row found from it.
+  const query = find.query.trim();
+  const version = first?.version;
+  const cursorAt = useRef(cursor);
+  cursorAt.current = cursor;
+  useEffect(() => {
+    setMatches(null);
+    if (!query || !version) return;
+    let live = true;
+    const timer = setTimeout(() => {
+      findRows(scope, version, query)
+        .then((found) => {
+          if (!live) return;
+          if (found === null) return setStale(true);
+          setMatches(found);
+          const row = nextMatch(found, cursorAt.current - 1, true);
+          if (row !== null) jump(row);
+        })
+        .catch((e: unknown) => live && setError(`Could not find commits: ${(e as Error).message}`));
+    }, FIND_MS);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [query, version, scope, jump]);
+  const matched = useMemo(() => new Set(matches ?? []), [matches]);
+  const step = useCallback(
+    (forward: boolean) => {
+      const row = matches ? nextMatch(matches, cursor, forward) : null;
+      if (row !== null) jump(row);
+    },
+    [matches, cursor, jump],
+  );
+  // The uncommitted row gone (committed, or changed elsewhere): the cursor back on HEAD.
+  useEffect(() => {
+    if (cursor === WORKING && !working) setCursor(headRow ?? 0);
+  }, [cursor, working, headRow]);
+
   // j/k move, x picks (turning compare mode on), Enter compares, Escape leaves compare mode.
   // Attached as the rows are drawn (a layout effect), not after the paint: a key pressed as soon
   // as they show is not lost.
   useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (event.target instanceof HTMLInputElement) return;
-      // The menu and the dialogs take their own keys.
-      if (menu || confirm) return;
+      // Typing (the search, the commit's message), and the menus and dialogs: their own keys.
+      if (keyIsTaken(event) || menu || confirm || refAction || branchMenu) return;
       if (event.key === 'j' || event.key === 'k') {
-        const next = Math.max(0, Math.min(rows - 1, cursor + (event.key === 'j' ? 1 : -1)));
+        // Above the first commit, the uncommitted row when there is one (V66c).
+        const top = working ? WORKING : 0;
+        const next = Math.max(top, Math.min(rows - 1, cursor + (event.key === 'j' ? 1 : -1)));
         setCursor(next);
         reveal(next);
+      } else if (event.key === 'd') pane.onOpen(!pane.open);
+      else if (event.key === 'f') {
+        event.preventDefault();
+        findRef.current?.focus();
       } else if (event.key === 'x') {
         onComparing(true);
         pickRow(cursor);
@@ -628,6 +860,10 @@ function History({
     onComparing,
     stopComparing,
     panelOpen,
+    refAction,
+    branchMenu,
+    working,
+    pane,
   ]);
 
   if (stale) {
@@ -647,8 +883,45 @@ function History({
   const picked = new Set(picks.map((p) => p.sha));
   const shown: number[] = [];
   for (let row = firstShown; row <= lastShown; row++) shown.push(row);
+  const selected = cursor === WORKING ? undefined : details.current.get(cursor);
+  const below = place === 'below';
   return (
     <div className={comparing ? 'commits comparing' : 'commits'}>
+      {/* The page's head (V66), as Settings' and the Monitor's: its icon, its name and where the
+          branch is against its upstream; the search and the remotes at its right. */}
+      <div className="git-bar">
+        <span className="page-icon" aria-hidden="true">
+          <GitIcon />
+        </span>
+        <div className="git-title">
+          <h1>Git</h1>
+          <p>
+            {first.branch ?? 'HEAD detached'}
+            {sync && ` · ${syncWords(sync)}`}
+          </p>
+        </div>
+        <span className="git-bar-tail">
+          <FindBox
+            inputRef={findRef}
+            query={find.query}
+            matches={query ? matches : null}
+            at={matches ? matches.indexOf(cursor) : -1}
+            onQuery={find.onQuery}
+            onStep={step}
+          />
+          <SyncBar sync={sync} running={syncing} onRun={runSync} />
+          <button
+            type="button"
+            className="compare-mode details-toggle"
+            aria-pressed={pane.open}
+            {...tip(pane.open ? 'Fold the details' : 'Show the details', { keys: 'd' })}
+            onClick={() => pane.onOpen(!pane.open)}
+          >
+            Details
+            <kbd aria-hidden="true">d</kbd>
+          </button>
+        </span>
+      </div>
       <div className="commits-body">
         <BranchesPanel
           refs={branches}
@@ -664,136 +937,212 @@ function History({
           onToggle={panel.onToggle}
           filterRef={filterRef}
           onGo={goToBranch}
+          onCheckout={checkoutBranch}
+          onMenu={(entry, x, y) => setBranchMenu({ at: { x, y }, entry })}
         />
-        {/* The header above the box that scrolls (V66): the scrollbar runs beside the rows only. */}
-        <div className="commits-card">
-          <h1 className="commits-title">
-            <button
-              type="button"
-              className="branches-toggle"
-              aria-expanded={panelOpen}
-              {...tip('Branches', { keys: '/' })}
-              onClick={() => setPanelOpen((o) => !o)}
-            >
-              Branches
-            </button>
-            <span className="scopes" role="group" aria-label="Branches">
+        <div
+          className={`commits-main${below ? ' below' : ''}${resizing ? ' resizing' : ''}`}
+          style={
+            pane.width ? ({ '--details-width': `${pane.width}px` } as CSSProperties) : undefined
+          }
+        >
+          {/* The header above the box that scrolls (V66): the scrollbar runs beside the rows only. */}
+          <div className="commits-card">
+            <div className="commits-title">
               <button
                 type="button"
-                className={scope === 'all' ? 'scope active' : 'scope'}
-                aria-pressed={scope === 'all'}
-                onClick={() => onScope('all')}
+                className="branches-toggle"
+                aria-expanded={panelOpen}
+                {...tip('Branches', { keys: '/' })}
+                onClick={() => setPanelOpen((o) => !o)}
               >
-                All branches
+                Branches
               </button>
-              <button
-                type="button"
-                className={scope === 'current' ? 'scope active' : 'scope'}
-                aria-pressed={scope === 'current'}
-                onClick={() => onScope('current')}
-              >
-                This branch{first.branch ? ` (${first.branch})` : ''}
-              </button>
-            </span>
-            {first.head && headRow !== null && (
-              <button
-                type="button"
-                className="head-chip"
-                {...tip('Go to HEAD')}
-                onClick={() => jump(headRow)}
-              >
-                HEAD → {first.branch ?? `${shortSha(first.head)} (detached)`}
-              </button>
-            )}
-            <span className="commits-tail">
-              <span className="commits-actions">
-                {/* The keys behind the "?" (V29b), and what compare mode asks (V37: beside the
-                    toggle it wrapped the head onto two lines). */}
-                <Help label="Git's keys">
-                  <span className="commits-help">
-                    {comparing
-                      ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
-                      : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch'}
-                  </span>
-                </Help>
+              <span className="scopes" role="group" aria-label="Branches">
                 <button
                   type="button"
-                  className="compare-mode"
-                  aria-pressed={comparing}
-                  {...tip(comparing ? 'Leave compare mode' : 'Pick commits to compare', {
-                    keys: comparing ? 'Esc' : 'x',
-                  })}
-                  onClick={() => (comparing ? stopComparing() : onComparing(true))}
+                  className={scope === 'all' ? 'scope active' : 'scope'}
+                  aria-pressed={scope === 'all'}
+                  onClick={() => onScope('all')}
                 >
-                  Compare mode
-                  <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
+                  All branches
+                </button>
+                <button
+                  type="button"
+                  className={scope === 'current' ? 'scope active' : 'scope'}
+                  aria-pressed={scope === 'current'}
+                  onClick={() => onScope('current')}
+                >
+                  This branch{first.branch ? ` (${first.branch})` : ''}
                 </button>
               </span>
-            </span>
-          </h1>
-          {error && (
-            <p className="commits-error error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="commits-scroll" ref={scroller} onScroll={measure}>
-            {rows === 0 ? (
-              <p className="hint">No commits yet.</p>
-            ) : (
-              <ol
-                className="commit-list"
-                ref={list}
-                aria-label="Commits"
-                style={{ height: rows * ROW_HEIGHT }}
-              >
-                {shown.map((row) => {
-                  const lane = lanes[row];
-                  const commit = details.current.get(row);
-                  return (
-                    <CommitRow
-                      key={row}
-                      row={row}
-                      commit={commit}
-                      now={now}
-                      comparing={comparing}
-                      picked={!!commit && picked.has(commit.sha)}
-                      cursor={row === cursor}
-                      flash={row === flash}
-                      onClick={() => {
-                        setCursor(row);
-                        if (comparing) pickRow(row);
-                      }}
-                      onMenu={(x, y) => openMenu(row, x, y)}
-                      branch={first.branch}
-                      reviewed={marks.marks}
-                      agents={chips}
-                      {...(commit && marks.added.has(commit.sha)
-                        ? { added: marks.added.get(commit.sha) }
-                        : {})}
-                      graph={
-                        lane && (
-                          <GraphCell
-                            row={lane}
-                            index={row}
-                            spacing={spacing}
-                            width={graphWidth}
-                            merge={(parents[row]?.length ?? 0) > 1}
-                            head={row === headRow}
-                            picked={!!commit && picked.has(commit.sha)}
-                            fork={row === forkRow}
-                            onJump={jump}
-                          />
-                        )
-                      }
-                    />
-                  );
-                })}
-              </ol>
+              {first.head && headRow !== null && (
+                <button
+                  type="button"
+                  className="head-chip"
+                  {...tip('Go to HEAD')}
+                  onClick={() => jump(headRow)}
+                >
+                  HEAD → {first.branch ?? `${shortSha(first.head)} (detached)`}
+                </button>
+              )}
+              <span className="commits-tail">
+                <span className="commits-actions">
+                  {/* The keys behind the "?" (V29b), and what compare mode asks (V37: beside the
+                    toggle it wrapped the head onto two lines). */}
+                  <Help label="Git's keys">
+                    <span className="commits-help">
+                      {comparing
+                        ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
+                        : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch · f finds a commit · d shows or folds the details · a branch: double-click checks it out, right-click for more'}
+                    </span>
+                  </Help>
+                  <button
+                    type="button"
+                    className="compare-mode"
+                    aria-pressed={comparing}
+                    {...tip(comparing ? 'Leave compare mode' : 'Pick commits to compare', {
+                      keys: comparing ? 'Esc' : 'x',
+                    })}
+                    onClick={() => (comparing ? stopComparing() : onComparing(true))}
+                  >
+                    Compare mode
+                    <kbd aria-hidden="true">{comparing ? 'Esc' : 'x'}</kbd>
+                  </button>
+                </span>
+              </span>
+            </div>
+            {error && (
+              <p className="commits-error error" role="alert">
+                {error}
+              </p>
             )}
-            {!shape && first.listed > 0 && <p className="hint listing">Listing the rest…</p>}
+            <div className="commits-scroll" ref={scroller} onScroll={measure}>
+              {working && (
+                <WorkingRow
+                  changes={working}
+                  spacing={spacing}
+                  width={graphWidth}
+                  joined={headRow === 0}
+                  cursor={cursor === WORKING}
+                  onClick={() => setCursor(WORKING)}
+                />
+              )}
+              {rows === 0 ? (
+                <p className="hint">No commits yet.</p>
+              ) : (
+                <ol
+                  className="commit-list"
+                  ref={list}
+                  aria-label="Commits"
+                  style={{ height: rows * ROW_HEIGHT }}
+                >
+                  {shown.map((row) => {
+                    const lane = lanes[row];
+                    const commit = details.current.get(row);
+                    return (
+                      <CommitRow
+                        key={row}
+                        row={row}
+                        commit={commit}
+                        now={now}
+                        comparing={comparing}
+                        picked={!!commit && picked.has(commit.sha)}
+                        cursor={row === cursor}
+                        flash={row === flash}
+                        matched={matched.has(row)}
+                        onClick={() => {
+                          setCursor(row);
+                          if (comparing) pickRow(row);
+                        }}
+                        onMenu={(x, y) => openMenu(row, x, y)}
+                        branch={first.branch}
+                        reviewed={marks.marks}
+                        agents={chips}
+                        {...(commit && marks.added.has(commit.sha)
+                          ? { added: marks.added.get(commit.sha) }
+                          : {})}
+                        graph={
+                          lane && (
+                            <GraphCell
+                              row={lane}
+                              index={row}
+                              spacing={spacing}
+                              width={graphWidth}
+                              merge={(parents[row]?.length ?? 0) > 1}
+                              head={row === headRow}
+                              picked={!!commit && picked.has(commit.sha)}
+                              fork={row === forkRow}
+                              onJump={jump}
+                            />
+                          )
+                        }
+                      />
+                    );
+                  })}
+                </ol>
+              )}
+              {!shape && first.listed > 0 && <p className="hint listing">Listing the rest…</p>}
+            </div>
           </div>
+          {pane.open && !below && (
+            <Resizer
+              label="Resize the details"
+              side="after"
+              variable="--details-width"
+              min={300}
+              room={400}
+              onResize={pane.onWidth}
+              onDrag={setResizing}
+            />
+          )}
+          {pane.open && (
+            <aside
+              className="git-details"
+              aria-label={cursor === WORKING ? 'Uncommitted changes' : 'Commit details'}
+            >
+              {cursor === WORKING && working ? (
+                <ChangesDetails
+                  changes={working}
+                  onChanges={setChanges}
+                  onCommitted={(sha, amend) =>
+                    onRelist({ text: `${amend ? 'Amended' : 'Committed'} ${shortSha(sha)}` })
+                  }
+                />
+              ) : selected ? (
+                <CommitDetails
+                  key={selected.sha}
+                  sha={selected.sha}
+                  commit={selected}
+                  parentRows={parents[cursor] ?? []}
+                  starting={starting}
+                  onJump={jump}
+                  onReview={(parent) => void compare({ base: parent, head: selected.sha })}
+                />
+              ) : (
+                <p className="hint git-details-hint">Select a commit to see its details.</p>
+              )}
+            </aside>
+          )}
         </div>
       </div>
+      {branchMenu && (
+        <RowMenu
+          at={branchMenu.at}
+          items={branchMenuItems(branchMenu.entry)}
+          onClose={() => setBranchMenu(null)}
+        />
+      )}
+      {refAction && (
+        <RefDialog
+          action={refAction}
+          onDone={(notice) => {
+            setRefAction(null);
+            onRelist(notice);
+          }}
+          onCancel={() => setRefAction(null)}
+        />
+      )}
       {menu && (
         <RowMenu
           at={menu.at}
@@ -830,6 +1179,46 @@ function History({
           onCompare={(pair) => void compare(pair)}
         />
       )}
+    </div>
+  );
+}
+
+/**
+ * The checkout's uncommitted changes as a row above the commits (V66c): its dot hollow on HEAD's
+ * lane (lane 0), joined to HEAD's when HEAD is the first commit listed.
+ */
+function WorkingRow({
+  changes,
+  spacing,
+  width,
+  joined,
+  cursor,
+  onClick,
+}: {
+  changes: WorkingChanges;
+  spacing: number;
+  width: number;
+  joined: boolean;
+  cursor: boolean;
+  onClick: () => void;
+}) {
+  const x = spacing / 2;
+  const mid = ROW_HEIGHT / 2;
+  return (
+    <div
+      className={`commit working${cursor ? ' cursor' : ''}`}
+      style={{ height: ROW_HEIGHT }}
+      role="button"
+      tabIndex={-1}
+      aria-label={`Uncommitted changes: ${changesSummary(changes)}`}
+      onClick={onClick}
+    >
+      <svg className="graph" width={width} height={ROW_HEIGHT} aria-hidden="true">
+        {joined && <path className="working-line" d={`M${x} ${mid + 4}V${ROW_HEIGHT}`} />}
+        <circle className="working-dot" cx={x} cy={mid} r={4} />
+      </svg>
+      <span className="commit-subject">Uncommitted changes</span>
+      <span className="commit-author">{changesSummary(changes)}</span>
     </div>
   );
 }

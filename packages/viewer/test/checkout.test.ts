@@ -1,6 +1,12 @@
 import type { Commit, CommitRef, RefList } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { checkedOut, checkoutChoices, changesNote, type Head } from '../src/history/checkout.js';
+import {
+  branchChoice,
+  checkedOut,
+  checkoutChoices,
+  changesNote,
+  type Head,
+} from '../src/history/checkout.js';
 
 const sha = (c: string) => c.repeat(40);
 const commit = (c: string, refs: CommitRef[]): Commit => ({
@@ -165,6 +171,27 @@ describe('checkoutChoices', () => {
     expect(labels(commit('d', []), { branch: null, head: sha('d') })).toEqual([
       'Check out this commit (detached HEAD) [checked out]',
     ]);
+  });
+});
+
+describe('branchChoice (V66d: a double-click in the branches panel)', () => {
+  it('checks out a local branch, or a remote one as its local branch, as the row menu does', () => {
+    expect(branchChoice('topic', REFS, ON_MAIN)).toMatchObject({
+      target: { kind: 'branch', name: 'topic' },
+      what: 'Checks out the branch topic, at ccccccc.',
+    });
+    expect(branchChoice('main', REFS, ON_MAIN)?.disabled).toBe('checked out');
+    expect(branchChoice('origin/new', REFS, ON_MAIN)).toMatchObject({
+      target: { kind: 'remote', name: 'origin/new' },
+      note: 'remote · creates branch new',
+    });
+    expect(branchChoice('origin/wip', REFS, ON_MAIN)?.label).toBe(
+      'Check out branch wip (tracks origin/wip)',
+    );
+    expect(branchChoice('origin/topic', REFS, ON_MAIN)?.disabled).toBe(
+      'a local branch topic exists and does not track origin/topic',
+    );
+    expect(branchChoice('nope', REFS, ON_MAIN)).toBeNull();
   });
 });
 
