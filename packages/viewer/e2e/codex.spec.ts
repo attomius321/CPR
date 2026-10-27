@@ -145,7 +145,7 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   await expect(workspaceRow(page)).toContainText('Ready for review', POLL);
 });
 
-test('a working Codex card shows Codex’s mark in its gradient, each drawn with a gradient of its own (V53)', async ({
+test('a working Codex card shows Codex’s mark: OpenAI’s blossom, in OpenAI’s white on the dark theme (V53)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces({ codex: true });
@@ -158,28 +158,14 @@ test('a working Codex card shows Codex’s mark in its gradient, each drawn with
   await expect(mark).toBeVisible();
   await expect(state.getByRole('img', { name: 'Claude Code' })).toHaveCount(0);
   await expect(state.locator('> :first-child')).toHaveClass(/agent-mark/);
-  // The card's and the heading's: two marks, each filled by a gradient it holds, of Codex's colours.
+  // The card's and the heading's: two marks, OpenAI's blossom in OpenAI's white on the dark theme.
   await expect(
     panel(page).locator('.workspace-state').getByRole('img', { name: 'Codex' }),
   ).toBeVisible();
-  const fills = await page.locator('.agent-mark.codex').evaluateAll((marks) =>
-    marks.map((svg) => {
-      const fill = getComputedStyle(svg.querySelector('path')!).fill;
-      const id = /url\("#(.+)"\)/.exec(fill)?.[1] ?? '';
-      const gradient = svg.querySelector(`linearGradient[id="${id}"]`);
-      return {
-        id,
-        stops: [...(gradient?.querySelectorAll('stop') ?? [])].map(
-          (stop) => getComputedStyle(stop).stopColor,
-        ),
-      };
-    }),
-  );
-  expect(fills).toHaveLength(2);
-  expect(new Set(fills.map((fill) => fill.id)).size).toBe(2);
-  for (const { stops } of fills) {
-    expect(stops).toEqual(['rgb(177, 167, 255)', 'rgb(122, 157, 255)', 'rgb(57, 65, 255)']);
-  }
+  const fills = await page
+    .locator('.agent-mark.codex')
+    .evaluateAll((marks) => marks.map((svg) => getComputedStyle(svg.querySelector('path')!).fill));
+  expect(fills).toEqual(['rgb(255, 255, 255)', 'rgb(255, 255, 255)']);
 
   // It reports with a commit: ready for review, no mark.
   symbiote.commit(BRANCH, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');

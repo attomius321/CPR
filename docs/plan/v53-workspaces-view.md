@@ -52,6 +52,8 @@ card's height (64 px at most), the status bar's vendor names (decision 181), wha
   `@lobehub/icons-static-svg` 1.100.0) in its own gradient, `#b1a7ff` to `#7a9dff` to `#3941ff`,
   top to bottom. A credit line for each. The gradient's id comes from `useId`: several cards draw
   the mark, and an `id` repeated on a page may resolve to one inside a folded group.
+  Since fix/codex-icon Codex's mark is OpenAI's blossom (Simple Icons, CC0) in OpenAI's own
+  colours, `--openai`: white on the dark theme, black on the light; no gradient.
 - `WorkspaceState` draws the agent's mark, 14 px, before its words while the agent works (the
   `working` group): the line is then the agent's action. "Ready for review", "Stopped" and the
   rest are Symbiote's words about the workspace: no mark. Named for screen readers and on hover
