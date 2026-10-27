@@ -55,15 +55,15 @@ dot once from `symbiote.png`'s pixels (`badge.ts`), sets it with `setIcon` and b
   is safe; stopping it is done by its PID, never `pkill` on a display's name, which can match
   another session's Xvfb (another workspace ran its e2e at the same time).
 
-**Verification**: tests first (`badge.test.ts`, `waiting.test.ts`: red, their modules missing);
-`pnpm check` 1,911 tests; `pnpm test:e2e` 304 passed (4.9 min) after `main` was merged in, the
-app's, title bar's and intro's specs again with decision 470's switch: 34 passed, 305 passed
-(4.7 min) after the second merge of `main`, and after the third (V65) `pnpm check` 1,918 tests
-and 309 passed (4.6 min). The run before that one failed one test, a starting
-card 72.00003 px high against 72 (`workspaces.spec.ts`, V48), not N2's: 4 of 4 alone, and the
-next full run passed. The new e2e, each red first: the page's count said to a stand-in app (stays
-1 without the hidden reads); the real app's icon and urgency hint read from X11 with xprop (stays
-`ff000000` without `setIcon`); the switch on (empty before it). The dot seen at 512, 48, 32 and 24 px (`nativeImage.resize`).
+**Verification**: tests first (`badge.test.ts`, `waiting.test.ts`: red, their modules missing).
+The new e2e, each red first: the page's count said to a stand-in app (stays 1 without the hidden
+reads); the real app's icon and urgency hint read from X11 with xprop (stays `ff000000` without
+`setIcon`); the switch on (empty before it). The dot seen at 512, 48, 32 and 24 px
+(`nativeImage.resize`). `pnpm test:e2e` after each merge of `main`: 304 passed (4.9 min) with
+V64; with Settings at the sidenav's bottom, one run failed one test of V48's (a starting card
+72.00003 px high against 72; 4 of 4 alone) and the next passed 305 (4.7 min); with V65, `pnpm
+check` 1,918 tests and 309 passed (4.6 min). The app's, title bar's and intro's specs with
+decision 470's switch: 34 passed.
 
 Not verified: the dot on the Windows taskbar through WSLg by eye; the blink on KDE, XFCE or
 GNOME; a Wayland session; Windows and macOS.
