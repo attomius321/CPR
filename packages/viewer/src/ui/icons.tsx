@@ -30,10 +30,15 @@ function Icon({
   );
 }
 
-export const HistoryIcon = () => (
-  <Icon>
-    <circle cx="8" cy="8" r="6" />
-    <path d="M8 4.5V8l2.5 1.5" />
+/** Git (V66, History before): lucide's git-graph. */
+export const GitIcon = () => (
+  <Icon lucide>
+    <circle cx="5" cy="6" r="3" />
+    <path d="M5 9v6" />
+    <circle cx="5" cy="18" r="3" />
+    <path d="M12 3v18" />
+    <circle cx="19" cy="6" r="3" />
+    <path d="M16 15.7A9 9 0 0 0 19 9" />
   </Icon>
 );
 

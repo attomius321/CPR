@@ -143,7 +143,7 @@ export function StartPage({
           <p className="error">{failed}</p>
         ) : loaded ? (
           <p className="error">
-            No branch to start from: start the workspace from a commit (its menu in History: Start a
+            No branch to start from: start the workspace from a commit (its menu in Git: Start a
             workspace here).
           </p>
         ) : (

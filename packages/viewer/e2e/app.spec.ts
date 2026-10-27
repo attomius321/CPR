@@ -187,7 +187,7 @@ const style = (page: Page, selector: string, property: string) =>
 
 test('opens the server in a window of its own: no menu bar, the page’s title', async () => {
   const { app, page } = await launch();
-  expect(page.url()).toBe(`${symbiote.url}history`);
+  expect(page.url()).toBe(`${symbiote.url}git`);
   const window = await app.evaluate(({ BrowserWindow, Menu }) => {
     const windows = BrowserWindow.getAllWindows();
     return {
@@ -198,7 +198,7 @@ test('opens the server in a window of its own: no menu bar, the page’s title',
     };
   });
   expect(window).toEqual({ count: 1, title: await page.title(), visible: true, menu: null });
-  expect(window.title).toMatch(/^History · .+ — Symbiote$/);
+  expect(window.title).toMatch(/^Git · .+ — Symbiote$/);
 });
 
 test("keeps Symbiote's pages in the window and hands other links to the browser", async () => {
@@ -235,7 +235,7 @@ test('back and forward with Alt+arrows, zoom with Ctrl+= and Ctrl+0', async () =
   await page.keyboard.press('s');
   await expect(page).toHaveURL(/\/settings$/);
   await page.keyboard.press('Alt+ArrowLeft');
-  await expect(page).toHaveURL(/\/history$/);
+  await expect(page).toHaveURL(/\/git$/);
   await page.keyboard.press('Alt+ArrowRight');
   await expect(page).toHaveURL(/\/settings$/);
 
@@ -379,7 +379,7 @@ test.describe('the title bar', () => {
     const { page } = await launch();
     const bar = page.locator('.titlebar');
     await expect(bar).toBeVisible();
-    await expect(bar.locator('.titlebar-title')).toHaveText(/^History · .+ — Symbiote$/);
+    await expect(bar.locator('.titlebar-title')).toHaveText(/^Git · .+ — Symbiote$/);
     expect(
       await bar.evaluate((el) => getComputedStyle(el).getPropertyValue('-webkit-app-region')),
     ).toBe('drag');
@@ -406,7 +406,7 @@ test.describe('the title bar', () => {
     await expect(page).toHaveURL(/\/settings$/);
     await expect(bar.locator('.titlebar-title')).toHaveText(/^Settings · .+ — Symbiote$/);
     await back.click();
-    await expect(page).toHaveURL(/\/history$/);
+    await expect(page).toHaveURL(/\/git$/);
     await forward.click();
     await expect(page).toHaveURL(/\/settings$/);
 
@@ -609,7 +609,7 @@ test.describe('from the launcher', () => {
     installed([symbiote.repo]);
     const { app, page } = await fromLauncher();
     await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
-    expect(page.url()).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/history$/);
+    expect(page.url()).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/git$/);
     await expect.poll(() => server(app)).toMatch(/^\d+$/);
     const pid = Number(server(app));
 

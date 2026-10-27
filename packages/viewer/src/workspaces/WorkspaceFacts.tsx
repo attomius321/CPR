@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import type { BranchMerge, WorkspaceSummary } from '@symbiote/core';
 import { reviewTip, type ReviewMark } from '../history/branchReviews.js';
 import { relativeDate } from '../history/commits.js';
-import { HISTORY_PAGE } from '../shell/pages.js';
+import { GIT_PAGE } from '../shell/pages.js';
 import { ClaudeMark, CodexMark, HermesMark } from '../ui/icons.js';
 import { longAge, useNow } from './clock.js';
 import { AGENT_NAMES, shortAge, type WorkspaceRow } from './workspaces.js';
@@ -143,8 +143,8 @@ export function WorkspaceBranch({
       ) : (
         <a
           className="ref ref-branch"
-          href={`${HISTORY_PAGE}?branch=${encodeURIComponent(branch)}`}
-          {...tip(`${branch}\nIts commits in History`)}
+          href={`${GIT_PAGE}?branch=${encodeURIComponent(branch)}`}
+          {...tip(`${branch}\nIts commits in Git`)}
           onClick={(event) => event.stopPropagation()}
         >
           {branch}

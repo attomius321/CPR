@@ -25,7 +25,7 @@ const subject = (text: string) =>
   `.commit:has(.commit-subject:text-is("${text.replace(/"/g, '\\"')}"))`;
 
 test('spans the whole history, drawing only the rows near the view', async ({ page }) => {
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   // "Old idea" is newest; HEAD (main, "commit 450") right under it, where the cursor starts.
   await expect(page.locator('.commit-subject').first()).toHaveText('Old idea');
   await expect(page.locator('.commit.cursor .commit-subject')).toHaveText(`commit ${ROWS}`);
@@ -45,7 +45,7 @@ test('spans the whole history, drawing only the rows near the view', async ({ pa
 test('cuts a line longer than 100 rows into arrows; a click goes to the other end', async ({
   page,
 }) => {
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   const old = page.locator(subject('Old idea'));
   await expect(old.locator('.arrow')).toHaveCount(1);
   await expect(old.locator('.arrow')).toHaveAttribute(
@@ -62,4 +62,29 @@ test('cuts a line longer than 100 rows into arrows; a click goes to the other en
   await parent.locator('.arrow').click();
   await expect(old).toBeInViewport();
   await expect(old).toHaveClass(/cursor/);
+});
+
+test('the header stays above the rows: only the rows scroll, their scrollbar under it (V66)', async ({
+  page,
+}) => {
+  await page.goto(`${symbiote.url}git`);
+  await expect(page.locator('.commit-subject').first()).toHaveText('Old idea');
+  const header = page.locator('.commits-title');
+  const scroll = page.locator('.commits-scroll');
+  const [head, box] = [await header.boundingBox(), await scroll.boundingBox()];
+  // The box that scrolls starts where the header ends: its scrollbar never runs beside it.
+  expect(box!.y).toBeGreaterThanOrEqual(head!.y + head!.height - 1);
+  expect(await scroll.evaluate((el) => el.contains(document.querySelector('.commits-title')))).toBe(
+    false,
+  );
+  await scroll.evaluate((el) => (el.scrollTop = 4000));
+  expect(await header.boundingBox()).toEqual(head);
+  // j/k still bring the cursor into view under the header.
+  await page.getByRole('button', { name: 'HEAD → main' }).click();
+  await expect(page.locator(subject(`commit ${ROWS}`))).toBeInViewport();
+  for (let i = 0; i < 30; i++) await page.keyboard.press('j');
+  const cursor = await page.locator('.commit.cursor').boundingBox();
+  const shown = await scroll.boundingBox();
+  expect(cursor!.y).toBeGreaterThanOrEqual(shown!.y);
+  expect(cursor!.y + cursor!.height).toBeLessThanOrEqual(shown!.y + shown!.height + 1);
 });

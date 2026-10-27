@@ -34,7 +34,7 @@ const renew = (page: Page) => scoutPage(page).getByRole('button', { name: 'New c
 const scoutLink = (page: Page) =>
   page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: /Scout/ });
 const historyLink = (page: Page) =>
-  page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: /History/ });
+  page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: /Git/ });
 const record = () => join(symbiote.repo, 'symbiote', 'scout.json');
 const config = () => join(symbiote.repo, 'symbiote', 'config.json');
 /** The fake's starts and copies in the checkout, as Claude Code was asked for them. */
@@ -48,7 +48,7 @@ test("opens as Scout's terminal, from the sidenav and by its key: started in the
   symbiote = await serveWorkspaces();
   // The person's own session in the checkout, started before (V35: never taken for Scout's).
   symbiote.addSession({ cwd: symbiote.repo, kind: 'interactive', name: 'mine', status: 'idle' });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(scoutLink(page)).toHaveAttribute('data-tip-keys', 'a');
   // Nothing is started before Scout is opened.
   expect(scoutCalls()).toEqual([]);
@@ -114,7 +114,7 @@ test("opens as Scout's terminal, from the sidenav and by its key: started in the
 
   // `a` from another page opens it again: the same conversation, its terminal focused.
   await historyLink(page).click();
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   await page.keyboard.press('a');
   await expect(page).toHaveURL(`${symbiote.url}scout`);
   await expect(screen(page)).toContainText('Fake Claude Code · fake1', POLL);

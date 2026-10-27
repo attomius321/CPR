@@ -4,7 +4,7 @@ import { HistoryPage } from '../history/HistoryPage.js';
 import { keyIsTaken } from '../ui/keys.js';
 import { MergeView } from '../workspaces/Merge.js';
 import {
-  HISTORY_PAGE,
+  GIT_PAGE,
   MONITOR_PAGE,
   SCOUT_PAGE,
   SETTINGS_PAGE,
@@ -145,12 +145,12 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     (sha?: string) => navigate({ page: 'start', ...(sha ? { at: sha } : {}) }),
     [navigate],
   );
-  // Leaving the start page: back to the page of Symbiote's it was opened from, else History.
+  // Leaving the start page: back to the page of Symbiote's it was opened from, else Git.
   const leaveStart = useCallback(() => {
     const here = window.navigation?.currentEntry;
     const before = here ? window.navigation?.entries()[here.index - 1] : undefined;
     if (before?.url && new URL(before.url).origin === window.location.origin) window.history.back();
-    else navigate({ page: 'history' }, { replace: true });
+    else navigate({ page: 'git' }, { replace: true });
   }, [navigate]);
 
   // Back and Forward: the route at the address.
@@ -195,7 +195,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     return () => document.removeEventListener('click', onClick, true);
   }, [go]);
 
-  // h and s go to the pages, a to Scout (V35; on its page, to its question or its terminal), i to
+  // g (Git; h until V66) and s go to the pages, a to Scout (V35; on its page, to its question or its terminal), i to
   // Skills (V41), m to the Monitor (RM1), w to
   // the workspaces (the arrows between them), n starts one (on its page, back to its title), [
   // folds the sidenav. Attached before the first paint, as History's keys are: a key pressed as
@@ -203,7 +203,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (keyIsTaken(event)) return;
-      if (event.key === 'h') go(HISTORY_PAGE);
+      if (event.key === 'g') go(GIT_PAGE);
       else if (event.key === 's') go(SETTINGS_PAGE);
       else if (event.key === 'i') go(SKILLS_PAGE);
       else if (event.key === 'm') go(MONITOR_PAGE);
@@ -244,7 +244,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={flashed} />
         {sidenav.handle}
         <main className="shell-main">
-          {route.page === 'history' && <HistoryPage key={visit} />}
+          {route.page === 'git' && <HistoryPage key={visit} />}
           {route.page === 'scout' && <ScoutPage />}
           {route.page === 'skills' && <SkillsPage />}
           {route.page === 'monitor' && <MonitorPage path={route.path} />}
@@ -308,7 +308,7 @@ function TransitionNotices({
 
 /**
  * The window's title (N1a): the page, a workspace by its title, then the repository; first, how
- * many agents wait for the person (V48): "(2) History · repo — Symbiote", seen from the taskbar.
+ * many agents wait for the person (V48): "(2) Git · repo — Symbiote", seen from the taskbar.
  * Its own component: a new read of the workspaces renders it alone, not the shell.
  */
 function WindowTitle({ route, repo }: { route: Route; repo: string | undefined }) {

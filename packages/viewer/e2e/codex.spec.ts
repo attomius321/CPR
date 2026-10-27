@@ -58,7 +58,7 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
 }) => {
   symbiote = await serveWorkspaces({ codex: true });
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await openStart(page);
   // Both installed: Claude Code first (no `agent.kind`), with its permission mode.
   const agent = startPage(page).getByLabel('agent');
@@ -149,7 +149,7 @@ test('a working Codex card shows Codex’s mark: OpenAI’s blossom, in OpenAI�
   page,
 }) => {
   symbiote = await serveWorkspaces({ codex: true });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await startWithCodex(page);
   await page.goto(`${symbiote.url}?branch=${encodeURIComponent(BRANCH)}`);
   await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
@@ -214,7 +214,7 @@ test('Start a workspace offers the agents installed: Codex alone, or Claude Code
   page,
 }) => {
   symbiote = await serveWorkspaces({ agent: false, codex: true });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await openStart(page);
   await expect(startPage(page).locator('.start-value').first()).toHaveText('Codex');
   await expect(startPage(page)).toContainText('your ChatGPT account');
@@ -227,7 +227,7 @@ test('Start a workspace offers the agents installed: Codex alone, or Claude Code
   symbiote.stop();
 
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await openStart(page);
   await expect(startPage(page).locator('.start-value')).toHaveText('Claude Code');
   await expect(startPage(page)).toContainText('your Pro subscription');

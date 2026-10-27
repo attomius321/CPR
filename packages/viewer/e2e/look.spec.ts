@@ -34,7 +34,7 @@ test('dark by default; Appearance in Settings makes it light, kept for this brow
 }) => {
   symbiote = await serveWorkspaces();
   await page.emulateMedia({ colorScheme: 'light' });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   // Dark even where the system is light: the reference's (decision 179).
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   expect(await background(page)).toBe(DARK);
@@ -90,7 +90,7 @@ test("the fonts are Symbiote's: every request goes to its server, and History fe
   page.on('response', (response) => {
     if (response.url().endsWith('.woff2')) fonts.push(response.body().then((b) => b.length));
   });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   const loaded = await page.evaluate(() =>
@@ -114,7 +114,7 @@ test("the fonts are Symbiote's: every request goes to its server, and History fe
 
 test('the chrome is lifted above the content: the sidenav and the status bar', async ({ page }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible();
   const colour = (selector: string) =>
     page
@@ -125,7 +125,7 @@ test('the chrome is lifted above the content: the sidenav and the status bar', a
   expect(await colour('.sidenav')).toBe('rgb(13, 16, 21)');
   expect(await colour('.statusbar')).toBe('rgb(13, 16, 21)');
   // The current page is a wash of the accent, the new S's violet (V61).
-  const current = page.getByRole('link', { name: 'History' });
+  const current = page.getByRole('link', { name: 'Git' });
   expect(await current.evaluate((e) => getComputedStyle(e).backgroundColor)).toMatch(
     /^(rgba?\(152, 134, 255|color\(srgb 0\.596)/,
   );
@@ -135,7 +135,7 @@ test("History in Symbiote's style: names in the text's font, HEAD a tint, menus 
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   const head = page.locator('.commit.head');
   await expect(head).toBeVisible();
   const style = (selector: string, property: string) =>
@@ -194,7 +194,7 @@ test('no text under 13 px on any page but the graph; the body and the terminal a
       return under;
     });
 
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible(POLL);
   expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('15px');
   expect(await small()).toEqual([]);
@@ -264,7 +264,7 @@ test("fields and buttons take the page's font and spacing on every page", async 
       return off;
     });
 
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible(POLL);
   expect(await unlike()).toEqual([]);
 
@@ -305,7 +305,7 @@ test('text fields: a quiet edge, a stronger one on hover, a ring on focus, one h
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   const form = page.getByRole('region', { name: 'Start a workspace' });
   const title = form.getByRole('textbox', { name: 'Title' });
@@ -387,7 +387,7 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
 // 72 px since V61's bigger type (64 before): its name at 15 px, its lines at 14.
 test('a card in the sidenav is at most 72 px high', async ({ page }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   const form = page.getByRole('region', { name: 'Start a workspace' });
   await form.getByRole('textbox', { name: 'Title' }).fill('Add a half function, with a test');
@@ -405,7 +405,7 @@ test("a workspace's views: the picked one a wash on the chrome, readable in ligh
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await page.evaluate(() => localStorage.setItem('symbiote.viewer.theme', 'light'));
   await page.reload();
   await page.getByRole('link', { name: 'Start a workspace' }).click();

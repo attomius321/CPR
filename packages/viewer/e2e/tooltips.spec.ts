@@ -43,16 +43,16 @@ test('a page in the sidenav: its tip beside it after a rest, with its key; the n
   const symbiote = await serveWorkspaces();
   running.push(symbiote);
   await page.goto(symbiote.url);
-  const history = pages(page).getByRole('link', { name: 'History' });
+  const history = pages(page).getByRole('link', { name: 'Git' });
   await history.hover();
   // Not at once: a pointer crossing the sidenav shows nothing.
   await page.waitForTimeout(150);
   await expect(tooltip(page)).toHaveCount(0);
   await expect(tooltip(page)).toBeVisible();
   await expect(tooltip(page)).toHaveAttribute('role', 'tooltip');
-  await expect(tooltip(page)).toContainText('History');
+  await expect(tooltip(page)).toContainText('Git');
   await expect(tooltip(page)).toContainText("Every branch's commits");
-  await expect(tooltip(page).locator('kbd')).toHaveText(['h']);
+  await expect(tooltip(page).locator('kbd')).toHaveText(['g']);
   // To the right of the item, its middle at the item's; its description for screen readers.
   const [link, tip] = [await box(history), await box(tooltip(page))];
   expect(tip.x).toBeGreaterThanOrEqual(link.x + link.width);
@@ -85,14 +85,14 @@ test('a tip shows for the keyboard’s focus, not for a click’s', async ({ pag
   const symbiote = await serveWorkspaces();
   running.push(symbiote);
   await page.goto(symbiote.url);
-  const history = pages(page).getByRole('link', { name: 'History' });
+  const history = pages(page).getByRole('link', { name: 'Git' });
   await expect(history).toBeVisible();
   for (let i = 0; i < 6; i++) {
     await page.keyboard.press('Tab');
     if (await history.evaluate((link) => link === document.activeElement)) break;
   }
   await expect(history).toBeFocused();
-  await expect(tooltip(page)).toContainText('History');
+  await expect(tooltip(page)).toContainText('Git');
   await page.keyboard.press('Escape');
   await expect(tooltip(page)).toHaveCount(0);
   await expect(history).toBeFocused();
@@ -178,7 +178,7 @@ test('no page leaves a tooltip to the window system', async ({ page }) => {
   const symbiote = await serveWorkspaces();
   running.push(symbiote);
   const heading = (name: string) => page.getByRole('heading', { level: 1, name });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit-subject').first()).toBeVisible();
   await expect(native(page)).toHaveCount(0);
   for (const [path, name] of [

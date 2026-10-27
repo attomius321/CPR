@@ -33,23 +33,35 @@
   position: relative;
 }
 
-.commits-scroll {
+/* The rows' card: the header, then the box that scrolls (V66: the header had been sticky inside
+   it, and the scrollbar ran beside the header). */
+.commits-card {
   flex: 1;
   min-width: 0;
-  overflow: auto;
-  /* Rows are placed from the list's offset in this box. */
-  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--bg);
 }
 
-/* History's toolbar (V29b): a strip at the top of the rows, the card's chrome as a workspace's
-   tabs (V61). Settings, Skills and the Monitor take it as their head, on the page's ground. */
+.commits-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  /* Rows are placed from the list's offset in this box. */
+  position: relative;
+}
+
+/* Git's toolbar (V29b): a strip at the top of the rows, the card's chrome as a workspace's tabs
+   (V61). Settings, Skills and the Monitor take it as their head, on the page's ground. */
 .commits-title {
+  /* Settings' page scrolls under its head; Git's card does not scroll (V66). */
   position: sticky;
   top: 0;
   z-index: 3;
+  flex: none;
   display: flex;
   flex-wrap: wrap;
   align-items: center;

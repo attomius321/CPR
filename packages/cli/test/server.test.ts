@@ -636,10 +636,12 @@ describe('symbiote view: commits and diffs', () => {
     });
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-  it('serves the history page at /history, the viewer as at / (V25)', async () => {
-    const page = await get('/history');
-    expect(page.status).toBe(200);
-    expect(page.body).toBe('<html>viewer</html>');
+  it('serves Git at /git, and its old address /history, the viewer as at / (V25, V66)', async () => {
+    for (const path of ['/git', '/git?scope=current', '/history']) {
+      const page = await get(path);
+      expect(page.status).toBe(200);
+      expect(page.body).toBe('<html>viewer</html>');
+    }
   });
 
   it('lists rows of the history with their details, then its shape', async () => {

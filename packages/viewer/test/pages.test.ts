@@ -14,10 +14,24 @@ import {
 } from '../src/shell/pages.js';
 
 describe('routeOf (V29a: no Workspaces page)', () => {
-  it('opens History and Settings at their addresses', () => {
-    expect(routeOf('/history', '')).toEqual({ route: { page: 'history' } });
-    expect(routeOf('/history', '?branch=wip')).toEqual({ route: { page: 'history' } });
+  it('opens Git and Settings at their addresses', () => {
+    expect(routeOf('/git', '')).toEqual({ route: { page: 'git' } });
+    expect(routeOf('/git', '?branch=wip')).toEqual({ route: { page: 'git' } });
     expect(routeOf('/settings', '')).toEqual({ route: { page: 'settings' } });
+    expect(inShell(new URL('http://symbiote/git?scope=current'))).toBe(true);
+  });
+
+  it("moves History's old address to Git (V66), its scope or branch kept", () => {
+    expect(routeOf('/history', '')).toEqual({ route: { page: 'git' }, moved: '/git' });
+    expect(routeOf('/history', '?scope=current')).toEqual({
+      route: { page: 'git' },
+      moved: '/git?scope=current',
+    });
+    expect(routeOf('/history', '?branch=feature%2Fx')).toEqual({
+      route: { page: 'git' },
+      moved: '/git?branch=feature%2Fx',
+    });
+    expect(inShell(new URL('http://symbiote/history'))).toBe(true);
   });
 
   it('opens a workspace at /?branch=, the address Symbiote has given out since V25', () => {
@@ -44,25 +58,25 @@ describe('routeOf (V29a: no Workspaces page)', () => {
     expect(routeOf('/', '?merge=fix%2Fy')).toEqual({ route: { page: 'merge', branch: 'fix/y' } });
   });
 
-  it('opens History at the root alone, shown at its own address', () => {
-    expect(routeOf('/', '')).toEqual({ route: { page: 'history' }, moved: '/history' });
-    expect(routeOf('/', '?branch=')).toEqual({ route: { page: 'history' }, moved: '/history' });
+  it('opens Git at the root alone, shown at its own address', () => {
+    expect(routeOf('/', '')).toEqual({ route: { page: 'git' }, moved: '/git' });
+    expect(routeOf('/', '?branch=')).toEqual({ route: { page: 'git' }, moved: '/git' });
   });
 
-  it("moves the old addresses of Workspaces: a workspace to today's, the rest to History", () => {
+  it("moves the old addresses of Workspaces: a workspace to today's, the rest to Git", () => {
     for (const old of ['/workspaces', '/features']) {
       expect(routeOf(old, '?branch=feature%2Fx&thread')).toEqual({
         route: { page: 'workspace', branch: 'feature/x' },
         moved: '/?branch=feature%2Fx&thread',
       });
-      expect(routeOf(old, '')).toEqual({ route: { page: 'history' }, moved: '/history' });
+      expect(routeOf(old, '')).toEqual({ route: { page: 'git' }, moved: '/git' });
     }
   });
 });
 
 describe('hrefOf', () => {
   it('gives each route its address, the one routeOf reads', () => {
-    expect(hrefOf({ page: 'history' })).toBe('/history');
+    expect(hrefOf({ page: 'git' })).toBe('/git');
     expect(hrefOf({ page: 'settings' })).toBe('/settings');
     // An entry of Settings (SK1's Skill library): the page reads it from the address, as Skills
     // reads ?skill=; the shell's route is Settings.
@@ -89,9 +103,14 @@ describe('backLink (V25)', () => {
   const origin = 'http://127.0.0.1:4000';
 
   it('goes back to the page a diff was opened from, with its address', () => {
+    expect(backLink(`${origin}/git?scope=current`, origin)).toEqual({
+      href: '/git?scope=current',
+      label: 'Git',
+    });
+    // Opened from History's old address, before V66: back to Git.
     expect(backLink(`${origin}/history?scope=current`, origin)).toEqual({
-      href: '/history?scope=current',
-      label: 'History',
+      href: '/git?scope=current',
+      label: 'Git',
     });
     expect(backLink(`${origin}/?branch=feature%2Fx`, origin)).toEqual({
       href: '/?branch=feature%2Fx',
@@ -103,8 +122,8 @@ describe('backLink (V25)', () => {
     });
   });
 
-  it('goes to History when it does not know: a bookmark, another site, another diff', () => {
-    const history = { href: '/history', label: 'History' };
+  it('goes to Git when it does not know: a bookmark, another site, another diff', () => {
+    const history = { href: '/git', label: 'Git' };
     expect(backLink('', origin)).toEqual(history);
     expect(backLink(`${origin}/`, origin)).toEqual(history);
     expect(backLink('https://github.com/acme/widgets/pull/7', origin)).toEqual(history);
@@ -115,7 +134,7 @@ describe('backLink (V25)', () => {
 
 describe('pageTitle and routeTitle (N1a: the window names its page)', () => {
   it('names the page, then the repository, then Symbiote', () => {
-    expect(routeTitle({ page: 'history' }, 'ky')).toBe('History · ky — Symbiote');
+    expect(routeTitle({ page: 'git' }, 'ky')).toBe('Git · ky — Symbiote');
     expect(routeTitle({ page: 'settings' }, 'ky')).toBe('Settings · ky — Symbiote');
     expect(routeTitle({ page: 'workspace', branch: 'feature/add-clamp' }, 'ky', 'Add clamp')).toBe(
       'Add clamp · ky — Symbiote',

@@ -50,24 +50,24 @@ const mark = (page: Page) =>
 const marked = (page: Page) =>
   page.evaluate(() => (window as { symbioteMark?: number }).symbioteMark === 1);
 
-test('symbiote view opens History in the shell: the pages, then the workspaces, and a status bar', async ({
+test('symbiote view opens Git in the shell: the pages, then the workspaces, and a status bar', async ({
   page,
 }) => {
   const symbiote = await serve();
   await page.goto(symbiote.url);
-  // The root alone is History, shown at its own address.
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  // The root alone is Git, shown at its own address.
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   // A title bar is Symbiote's window's only (N1c): none in a browser.
   await expect(page.locator('.titlebar')).toHaveCount(0);
   // The pages one works in; Settings is at the sidenav's bottom, after the workspaces.
   const links = pages(page).getByRole('link');
   await expect(links).toHaveCount(4);
-  await expect(links.nth(0)).toHaveAccessibleName('History');
+  await expect(links.nth(0)).toHaveAccessibleName('Git');
   await expect(links.nth(1)).toHaveAccessibleName('Scout');
   await expect(links.nth(2)).toHaveAccessibleName('Skills');
   await expect(links.nth(3)).toHaveAccessibleName('Monitor');
   await expect(settingsLink(page)).toBeVisible();
-  await expect(pages(page).getByRole('link', { name: 'History' })).toHaveAttribute(
+  await expect(pages(page).getByRole('link', { name: 'Git' })).toHaveAttribute(
     'aria-current',
     'page',
   );
@@ -86,14 +86,14 @@ test('symbiote view opens History in the shell: the pages, then the workspaces, 
   await expect(statusBar(page).getByRole('status')).toHaveText(
     /^Started feature\/add-a-half-function: Claude Code is working in /,
   );
-  await expect(pages(page).getByRole('link', { name: 'History' })).not.toHaveAttribute(
+  await expect(pages(page).getByRole('link', { name: 'Git' })).not.toHaveAttribute(
     'aria-current',
     'page',
   );
   expect(await marked(page)).toBe(true);
 });
 
-test('a card opens its workspace from History and Settings, in place; Back returns', async ({
+test('a card opens its workspace from Git and Settings, in place; Back returns', async ({
   page,
 }) => {
   const symbiote = await serve();
@@ -110,8 +110,8 @@ test('a card opens its workspace from History and Settings, in place; Back retur
   await card(page, half).getByRole('button', { name: 'Add a half function' }).click();
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
   await expect(workspace(page, half)).toBeVisible();
-  await pages(page).getByRole('link', { name: 'History' }).click();
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await pages(page).getByRole('link', { name: 'Git' }).click();
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await card(page, clamp).getByRole('button', { name: 'Add clamp' }).click();
   await expect(workspace(page, clamp)).toBeVisible();
@@ -119,7 +119,7 @@ test('a card opens its workspace from History and Settings, in place; Back retur
   expect(await marked(page)).toBe(true);
 
   await page.goBack();
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.goBack();
   await expect(workspace(page, half)).toBeVisible();
@@ -129,17 +129,17 @@ test('keys: h and s go to the pages, w to the workspaces and the arrows between 
   page,
 }) => {
   const symbiote = await serve();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await start(page, 'Add a half function');
   await start(page, 'Add clamp');
   await page.locator('body').click({ position: { x: 1, y: 1 } });
 
-  await page.keyboard.press('h');
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await page.keyboard.press('g');
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   await page.keyboard.press('s');
   await expect(page).toHaveURL(`${symbiote.url}settings`);
-  await page.keyboard.press('h');
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await page.keyboard.press('g');
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   // Both cards listed before the keys, as in the card-focus test below: ArrowDown on the only
   // card stays there (on 8 workers, 2 of 32 runs failed on main; 0 of 64 once it waits).
   const buttons = sidenav(page).locator('.workspace-row .workspace-about');
@@ -157,11 +157,11 @@ test('keys: h and s go to the pages, w to the workspaces and the arrows between 
 
   // [ folds the sidenav to a rail of icons and dots, kept across a reload.
   await page.locator('body').click({ position: { x: 600, y: 1 } });
-  await page.keyboard.press('h');
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await page.keyboard.press('g');
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   await page.keyboard.press('[');
   await expect(sidenav(page)).toHaveClass(/rail/);
-  await expect(pages(page).getByRole('link', { name: 'History' })).toBeVisible();
+  await expect(pages(page).getByRole('link', { name: 'Git' })).toBeVisible();
   const before = (await sidenav(page).boundingBox())?.width ?? 0;
   expect(before).toBeLessThanOrEqual(56);
   await page.reload();
@@ -177,7 +177,7 @@ test('Settings at the sidenav’s bottom, under the workspaces: open, folded, an
   const symbiote = await serve();
   // A short window: the workspaces' list scrolls, and Settings stays in view under it.
   await page.setViewportSize({ width: 1440, height: 600 });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   for (const what of ['Add a half function', 'Add clamp', 'Add a sum', 'Add a max'])
     await start(page, what);
   const list = sidenav(page).locator('.sidenav-list');
@@ -204,18 +204,18 @@ test('Settings at the sidenav’s bottom, under the workspaces: open, folded, an
   await sidenav(page).getByRole('button', { name: 'Fold the sidenav' }).click();
   await expect(sidenav(page)).toHaveClass(/rail/);
   const link = await atTheBottom();
-  const history = await pages(page).getByRole('link', { name: 'History' }).boundingBox();
+  const history = await pages(page).getByRole('link', { name: 'Git' }).boundingBox();
   expect([link.x, link.width]).toEqual([history?.x, history?.width]);
 });
 
 test('a card keeps the focus when its workspace moves to another group', async ({ page }) => {
   const symbiote = await serve();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await start(page, 'Add a half function');
   await start(page, 'Add clamp');
   await page.locator('body').click({ position: { x: 1, y: 1 } });
-  await page.keyboard.press('h');
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await page.keyboard.press('g');
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   // Both cards listed before the keys: under load the sidenav lists the second workspace a moment
   // after its start page closes, and ArrowDown on the only card stays there (on 8 workers, 4 of 64
   // runs failed with 1 card listed at the key; 0 of 64 once it waits).
@@ -278,7 +278,7 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
       },
     }),
   );
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await start(page, 'Add a half function');
   await start(page, 'Add clamp');
   await start(page, 'Add a double function');
@@ -334,8 +334,8 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
   await expect
     .poll(() => spinner(merging))
     .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
-  // Six drawings, none of them History's clock.
-  drawings.add(await pages(page).getByRole('link', { name: 'History' }).locator('svg').innerHTML());
+  // Six drawings, each its own.
+  drawings.add(await pages(page).getByRole('link', { name: 'Git' }).locator('svg').innerHTML());
   expect(drawings.size).toBe(7);
 
   // Folded to the rail: each icon stands for its group, named in its tooltip; the merge shows
@@ -356,7 +356,7 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
 
 test('the terminal fills the main area, down to the status bar', async ({ page }) => {
   const symbiote = await serve();
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await start(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   const screen = workspace(page, branch).locator('.xterm-rows');
@@ -384,7 +384,7 @@ test('the terminal fills the main area, down to the status bar', async ({ page }
 test('narrow: the sidenav is a drawer, closed once a workspace is picked', async ({ page }) => {
   const symbiote = await serve();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(sidenav(page)).toBeHidden();
   await page.getByRole('button', { name: 'Open the sidenav' }).click();
   await expect(sidenav(page)).toBeVisible();
@@ -393,8 +393,8 @@ test('narrow: the sidenav is a drawer, closed once a workspace is picked', async
   await expect(workspace(page, branch)).toBeVisible();
   await expect(sidenav(page)).toBeHidden();
   await page.getByRole('button', { name: 'Open the sidenav' }).click();
-  await pages(page).getByRole('link', { name: 'History' }).click();
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await pages(page).getByRole('link', { name: 'Git' }).click();
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   await expect(sidenav(page)).toBeHidden();
 });
 
@@ -407,22 +407,29 @@ test('narrow: a diff opens its sidenav from the strip at the top (V29b)', async 
   await expect(sidenav(page)).toBeHidden();
   await page.getByRole('button', { name: 'Open the sidenav' }).click();
   await expect(sidenav(page)).toBeVisible();
-  await expect(pages(page).getByRole('link', { name: 'History' })).toBeVisible();
+  await expect(pages(page).getByRole('link', { name: 'Git' })).toBeVisible();
   // A click beside the drawer closes it.
   await page.locator('.shell-scrim').click({ position: { x: 370, y: 400 } });
   await expect(sidenav(page)).toBeHidden();
 });
 
-test('old addresses: a workspace to its address today, the rest to History', async ({ page }) => {
+test('old addresses: a workspace to its address today, the rest to Git', async ({ page }) => {
   const symbiote = await serve();
   await page.goto(`${symbiote.url}workspaces?branch=feature%2Fx`);
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fx`);
   // A workspace that is not there: said in the main area.
   await expect(page.getByRole('main')).toContainText('No workspace feature/x');
   await page.goto(`${symbiote.url}features`);
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}git`);
   await page.goto(`${symbiote.url}workspaces`);
-  await expect(page).toHaveURL(`${symbiote.url}history`);
+  await expect(page).toHaveURL(`${symbiote.url}git`);
+  // History's address before V66: Git, its scope kept.
+  await page.goto(`${symbiote.url}history?scope=current`);
+  await expect(page).toHaveURL(`${symbiote.url}git?scope=current`);
+  await expect(page.getByRole('button', { name: /^This branch/ })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
 });
 
 test('a diff of symbiote view: the sidenav as a rail beside its canvas, [ opens it', async ({
@@ -445,7 +452,7 @@ test('a diff of symbiote view: the sidenav as a rail beside its canvas, [ opens 
   await page.reload();
   await expect(sidenav(page)).not.toHaveClass(/rail/);
   // A page picked here loads the shell.
-  await pages(page).getByRole('link', { name: 'History' }).click();
-  await expect(page).toHaveURL(new URL('/history', diff.url).href);
+  await pages(page).getByRole('link', { name: 'Git' }).click();
+  await expect(page).toHaveURL(new URL('/git', diff.url).href);
   await expect(page.locator('.commit').first()).toBeVisible();
 });

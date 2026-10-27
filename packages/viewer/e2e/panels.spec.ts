@@ -138,7 +138,7 @@ test('resizes the sidenav from the keyboard', async ({ page }) => {
 test('narrow: the sidenav is a drawer, without a handle', async ({ page }) => {
   const symbiote = await serve();
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto(`${symbiote.url}history`);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible();
   await expect(sidenavHandle(page)).toBeHidden();
   await page.getByRole('button', { name: 'Open the sidenav' }).click();

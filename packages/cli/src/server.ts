@@ -418,7 +418,9 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       return reviewsApi(req, res, repository, repository.reviews);
     }
     // The history page (V25; at `/` before, which is now the workspaces view).
-    if (url.pathname === '/history') return serveSite(req, res, url, '/', undefined);
+    // Git (V66); History's old address too, which the page moves to /git.
+    if (url.pathname === '/git' || url.pathname === '/history')
+      return serveSite(req, res, url, '/', undefined);
     if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
     if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
     if (url.pathname === '/api/history/refs') return historyRefs(req, res, url, repository);

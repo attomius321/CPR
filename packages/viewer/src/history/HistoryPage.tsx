@@ -42,7 +42,7 @@ import {
 import { GraphCell, ROW_HEIGHT } from './GraphCell.js';
 import { Help } from '../ui/Help.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
-import { HISTORY_PAGE } from '../shell/pages.js';
+import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
 import { tip } from '../ui/tip.js';
 
@@ -92,7 +92,7 @@ export function HistoryPage() {
   const [goTo, setGoTo] = useState<string | null>(branchOfUrl);
   const [keep, setKeep] = useState<Keep | null>(null);
   const choose = useCallback((next: HistoryScope) => {
-    window.history.replaceState(null, '', next === 'all' ? HISTORY_PAGE : '?scope=current');
+    window.history.replaceState(null, '', next === 'all' ? GIT_PAGE : '?scope=current');
     setScope(next);
   }, []);
   const goElsewhere = useCallback(
@@ -665,7 +665,8 @@ function History({
           filterRef={filterRef}
           onGo={goToBranch}
         />
-        <div className="commits-scroll" ref={scroller} onScroll={measure}>
+        {/* The header above the box that scrolls (V66): the scrollbar runs beside the rows only. */}
+        <div className="commits-card">
           <h1 className="commits-title">
             <button
               type="button"
@@ -708,7 +709,7 @@ function History({
               <span className="commits-actions">
                 {/* The keys behind the "?" (V29b), and what compare mode asks (V37: beside the
                     toggle it wrapped the head onto two lines). */}
-                <Help label="History's keys">
+                <Help label="Git's keys">
                   <span className="commits-help">
                     {comparing
                       ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
@@ -735,60 +736,62 @@ function History({
               {error}
             </p>
           )}
-          {rows === 0 ? (
-            <p className="hint">No commits yet.</p>
-          ) : (
-            <ol
-              className="commit-list"
-              ref={list}
-              aria-label="Commits"
-              style={{ height: rows * ROW_HEIGHT }}
-            >
-              {shown.map((row) => {
-                const lane = lanes[row];
-                const commit = details.current.get(row);
-                return (
-                  <CommitRow
-                    key={row}
-                    row={row}
-                    commit={commit}
-                    now={now}
-                    comparing={comparing}
-                    picked={!!commit && picked.has(commit.sha)}
-                    cursor={row === cursor}
-                    flash={row === flash}
-                    onClick={() => {
-                      setCursor(row);
-                      if (comparing) pickRow(row);
-                    }}
-                    onMenu={(x, y) => openMenu(row, x, y)}
-                    branch={first.branch}
-                    reviewed={marks.marks}
-                    agents={chips}
-                    {...(commit && marks.added.has(commit.sha)
-                      ? { added: marks.added.get(commit.sha) }
-                      : {})}
-                    graph={
-                      lane && (
-                        <GraphCell
-                          row={lane}
-                          index={row}
-                          spacing={spacing}
-                          width={graphWidth}
-                          merge={(parents[row]?.length ?? 0) > 1}
-                          head={row === headRow}
-                          picked={!!commit && picked.has(commit.sha)}
-                          fork={row === forkRow}
-                          onJump={jump}
-                        />
-                      )
-                    }
-                  />
-                );
-              })}
-            </ol>
-          )}
-          {!shape && first.listed > 0 && <p className="hint listing">Listing the rest…</p>}
+          <div className="commits-scroll" ref={scroller} onScroll={measure}>
+            {rows === 0 ? (
+              <p className="hint">No commits yet.</p>
+            ) : (
+              <ol
+                className="commit-list"
+                ref={list}
+                aria-label="Commits"
+                style={{ height: rows * ROW_HEIGHT }}
+              >
+                {shown.map((row) => {
+                  const lane = lanes[row];
+                  const commit = details.current.get(row);
+                  return (
+                    <CommitRow
+                      key={row}
+                      row={row}
+                      commit={commit}
+                      now={now}
+                      comparing={comparing}
+                      picked={!!commit && picked.has(commit.sha)}
+                      cursor={row === cursor}
+                      flash={row === flash}
+                      onClick={() => {
+                        setCursor(row);
+                        if (comparing) pickRow(row);
+                      }}
+                      onMenu={(x, y) => openMenu(row, x, y)}
+                      branch={first.branch}
+                      reviewed={marks.marks}
+                      agents={chips}
+                      {...(commit && marks.added.has(commit.sha)
+                        ? { added: marks.added.get(commit.sha) }
+                        : {})}
+                      graph={
+                        lane && (
+                          <GraphCell
+                            row={lane}
+                            index={row}
+                            spacing={spacing}
+                            width={graphWidth}
+                            merge={(parents[row]?.length ?? 0) > 1}
+                            head={row === headRow}
+                            picked={!!commit && picked.has(commit.sha)}
+                            fork={row === forkRow}
+                            onJump={jump}
+                          />
+                        )
+                      }
+                    />
+                  );
+                })}
+              </ol>
+            )}
+            {!shape && first.listed > 0 && <p className="hint listing">Listing the rest…</p>}
+          </div>
         </div>
       </div>
       {menu && (

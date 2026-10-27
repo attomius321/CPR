@@ -113,7 +113,7 @@ test('lists the skills, checks one as it is typed, saves it, and refuses a save 
 
   // Leaving with a draft asks first.
   await text(page, 'style').fill('draft');
-  await page.getByRole('link', { name: 'History' }).click();
+  await page.getByRole('link', { name: 'Git' }).click();
   const asking = page.getByRole('alertdialog', { name: 'Leave Skills?' });
   await expect(asking).toBeVisible();
   await asking.getByRole('button', { name: 'Stay' }).click();
@@ -482,7 +482,7 @@ test('Scribe: a request starts Claude Code writing skills only, and what it writ
   );
   await expect(entry(page, 'adding-prompts')).toBeVisible(POLL);
   await expect(entry(page, 'adding-prompts')).toContainText('new');
-  await page.getByRole('link', { name: 'History' }).click();
+  await page.getByRole('link', { name: 'Git' }).click();
   const skillsLink = page.getByRole('navigation', { name: 'Pages' }).getByRole('link', {
     name: /Skills/,
   });
