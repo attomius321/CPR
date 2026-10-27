@@ -268,3 +268,4 @@ merge commit.
 - 2026-10-27 [N2 spike — what reaches the Windows taskbar from WSLg](journal/n2-taskbar-waiting.md)
 - 2026-10-27 [N2 — an amber dot on the taskbar icon, a blink while you are elsewhere](journal/n2-taskbar-waiting.md)
 - 2026-10-27 [V67 spike — how many merges could have been fast-forwards](journal/v67-merge-strategies.md)
+- 2026-10-27 [V67 — a merge by fast-forward, picked at Merge into](journal/v67-merge-strategies.md)

@@ -2,7 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v67-merge-strategies.md)
 
-**Status:** planned (2026-10-27), on branch `feature/review-merging-strategies`; not started.
+**Status:** ready for review (2026-10-27), on branch `feature/review-merging-strategies`. Its
+"As built" and results below.
 
 **Problem** (asked: "I need more merging strategies… sometimes I would like that branch that I
 would normally merge into, to just fast forward to my commit from the workspace branch"). The
@@ -123,3 +124,48 @@ the preselected strategy.
 **Not in V67**: squash and rebase (decision 489); "fast-forward when possible, else a merge
 commit" (git's `--ff`): a strategy that changes what lands by itself; a Settings row for
 `merge.strategy`.
+
+## As built (V67)
+
+- **The git step is one function in core** (`git/merging.ts` `tipsIn`): the tips of local and
+  remote branches in the approved commit, from one `for-each-ref --merged`. The rest is the CLI's
+  (`merges.ts` `fastForwardOne`), beside `mergeOne`; the landing (`landEntry`,
+  `fastForwardBranch`) is unchanged but for its words.
+- **A target that cannot fast-forward is an icon in Merge into ▾**, not a line under it.
+  Screenshots at 1440 px: the control sits in the workspace's one-row head, and a line of text
+  there wrapped the head's actions to a second row, so the head changed height with the picked
+  target. It is a warning icon now, named "release cannot fast-forward", whose tip says why and
+  what to do; the button is disabled. In the Review tab's column the control wraps as before:
+  "Merge into main", then the strategy.
+- **The strategy select costs the head about 180 px**: at 1440 px with the changes panel open,
+  "Approved: ask your agent to me…" reads "Appro…" and the title and branch lose a word each
+  (screenshots of the head with and without it). Kept as planned: the labels were agreed; the
+  title and state already give way first.
+- **Words where nothing is merged**: an unchecked fast-forward says "Not checked", not "Merged,
+  not checked"; its title line "No merge commit: a fast-forward to 1a2b3c4, the approved commit"
+  (true in every state, unlike "main moves to"); a ready one whose target moved, "main moved:
+  fast-forwarding again from its tip"; its log's step "Fast-forward main to 1a2b3c4". The merge
+  page said a waiting fast-forward's reason twice (its state and the needs-you message): the
+  state alone says it.
+- **Merge commit instead from a terminal or an agent**: `symbiote merge <branch> --strategy merge`
+  on a fast-forward that waits, and MCP's `queue_merge { strategy: 'merge' }` on one, ask for it
+  (no new flag or tool). MCP's `merges` lists each entry's `strategy` and `behind`, and with a
+  branch, `targets.strategy` and `targets.fastForward`.
+- **A request naming no strategy takes `merge.strategy`** (`enqueue`), so `symbiote merge` and MCP
+  follow the project's default as Merge into ▾ preselects it; an entry records `strategy` only
+  for a fast-forward, as the codebase leaves absent fields absent.
+
+**Results.** Tests first, red for the right reason (no strategy yet: each merged with a merge
+commit, or the function missing): 14 in `merges.test.ts` and 2 of its CLI tests, 1 in
+`server.test.ts`, 2 in `mcp.test.ts`, 4 in the viewer's `merges.test.ts`; 2 e2e in
+`workspaces.spec.ts` (written after the viewer's code, so not seen red). Every earlier merger,
+server, CLI and MCP test passes unchanged.
+
+Real use, a throwaway clone of this repository at `main` (`8048a91`), a branch adding a journal
+line, approved, then `symbiote merge trial/ff --strategy fast-forward` from this branch's build:
+
+| Run | Checks | Result |
+|---|---|---|
+| 1 | install, check, build, e2e (this repository's `merge.checks`) | install 0.3 s, `pnpm check` 84.5 s, build 4.1 s passed; `pnpm test:e2e` failed 3 of 309 after 306 s (intro, a merge spec, a review spec: `main`'s own, under load from this session's other runs). `failed`, `main` still `8048a91`: right |
+| 2 | install, check, build | passed in 84.3 s; `main` fast-forwarded to `7c297d3` in the checkout in under 0.1 s: 1 commit on `main`, no merge commit; the checkout's uncommitted `symbiote/config.json` kept |
+| 3 | another branch from `8048a91`, after run 2 moved `main` | refused at queue time: "main has 1 commit trial/moved does not: it cannot fast-forward. Merge with a merge commit, or bring main into the branch and review it again", exit 1 |
