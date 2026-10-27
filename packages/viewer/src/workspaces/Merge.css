@@ -37,43 +37,60 @@
   min-width: 0;
 }
 
-.merge-arrow {
-  color: var(--muted);
-}
-
 /* How it lands, when not with a merge commit (V67). */
 .merge-how {
   color: var(--muted);
   font-size: var(--size-small);
 }
 
-.merge-row-state {
+/* Where it is and what it merges (V69, the mockup): in the text's colour, 20 px apart. */
+.merge-row-state,
+.merge-title {
   min-width: 0;
-  margin: 6px 0 0;
-  color: var(--muted);
+  margin: 0;
+  color: var(--text);
   font-size: var(--size-small);
+  line-height: 20px;
   overflow-wrap: anywhere;
 }
 
-/* Where a merge is, in a tinted label with its tone's dot. */
-.merge-label {
+/* The head's branch, target and state (V69, the person's mockup): one chip, tinted by its colour
+   as History's HEAD is (a 12 % fill, a 30 % edge as a shadow, the colour as its words); the
+   target's an arrow before its name, the state's its tone's icon. A long name is cut. */
+.merge-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 1px 8px;
-  border-radius: 9999px;
-  background: color-mix(in srgb, var(--merge-tone, var(--faint)) 12%, transparent);
-  color: var(--merge-tone, var(--muted));
-  font-size: var(--size-caption);
+  min-width: 0;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--merge-chip) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--merge-chip) 30%, transparent);
+  color: var(--merge-chip);
+  font-size: var(--size-small);
   font-weight: 500;
+  white-space: nowrap;
 }
 
-.merge-label::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentcolor;
+.merge-chip .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.merge-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.merge-ref-ours,
+.merge-ref-theirs {
+  --merge-chip: var(--merge-side);
+}
+
+.merge-label {
+  --merge-chip: var(--merge-tone, var(--faint));
 }
 
 /* A merge's sides keep a colour on its page: the target cyan, the branch magenta (purple until
@@ -100,11 +117,6 @@
 /* The lines just above and below a region, which stay in the file: dim, untinted. */
 .merge-row .from-around {
   --merge-side: var(--faint);
-}
-
-.merge-ref-ours,
-.merge-ref-theirs {
-  color: var(--merge-side);
 }
 
 .merge-row-actions {
@@ -407,9 +419,11 @@
 }
 
 /* A merge in the main area (V29a), under a 44 px head as every page has (V37: its sides and actions
-   sat loose at the top). */
+   sat loose at the top). A column (V69): its log takes what is left, down to 16 px above the end. */
 .merge-view {
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-width: 0;
   overflow: auto;
   padding: 0 0 16px;
@@ -424,6 +438,9 @@
 }
 
 .merge-view .merge-row {
+  display: flex;
+  flex: 1 0 auto;
+  flex-direction: column;
   padding: 0 16px;
   border: 0;
 }
@@ -440,29 +457,27 @@
   background: var(--bg);
 }
 
-.merge-title {
-  margin: 4px 0 0;
-}
-
-/* A conflicted merge's two views (V46c): flat buttons, the picked one a wash of the text, as a
-   workspace's Terminal, Thread and Brief. */
+/* A conflicted merge's two views (V46c): line tabs since V69, as a workspace's Terminal, Thread
+   and Brief (V61, decision 445): the picked one in the text's colour on a lifted ground, the
+   primary's line under it; the strip's hairline on the page's ground. */
 .merge-tabs {
   display: flex;
   gap: 2px;
   margin-top: 12px;
+  border-bottom: 1px solid var(--line);
 }
 
 .merge-tabs button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 28px;
+  height: 40px;
   padding: 0 12px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 8px 8px 0 0;
   background: none;
   color: var(--muted);
-  font-size: var(--size-small);
+  font-size: var(--size-body);
   font-weight: 500;
   cursor: pointer;
   transition:
@@ -475,9 +490,21 @@
   color: var(--text);
 }
 
-.merge-tabs button.selected {
-  background: var(--selected);
+.merge-tabs button[aria-selected='true'] {
+  position: relative;
+  background: var(--tab-picked);
   color: var(--text);
+}
+
+.merge-tabs button[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  bottom: 0;
+  left: 8px;
+  height: 3px;
+  border-radius: 4px 4px 0 0;
+  background: var(--primary);
 }
 
 .merge-tabs button:focus-visible {
