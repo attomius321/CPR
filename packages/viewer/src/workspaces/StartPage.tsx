@@ -162,7 +162,7 @@ export function StartPage({
 function StartHead({ children }: { children: ReactNode }) {
   return (
     <>
-      <div className="start-ground" aria-hidden="true" />
+      <div className="ground start-ground" aria-hidden="true" />
       <header className="start-top">
         <SymbioteMark size={48} />
         <div className="start-heading">

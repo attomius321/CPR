@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 import type { BranchReviewInfo, Graph } from '@symbiote/core';
-import { BackLink, DiffProgress } from './DiffProgress.js';
+import { BackLink, DiffProgress, reviewSince } from './DiffProgress.js';
 import { Canvas } from './Canvas.js';
 import { useDiffGraph } from './useDiffGraph.js';
 import { useReview } from './useReview.js';
@@ -439,7 +439,9 @@ export function App() {
           {state.status === 'empty' && (
             <DropZone error={state.error} onFile={(file) => void load(file)} />
           )}
-          {state.status === 'analyzing' && <DiffProgress loaded={state.loaded} onRetry={retry} />}
+          {state.status === 'analyzing' && (
+            <DiffProgress loaded={state.loaded} review={state.branchReview} onRetry={retry} />
+          )}
           {state.status === 'ready' && (
             <ReactFlowProvider>
               <Sidebar
@@ -565,15 +567,9 @@ function ReviewOf({ review }: { review: BranchReviewInfo }) {
   const { branch, since, note } = review;
   // The workspace this branch is (V18b): a link to it.
   const workspace = useWorkspaces().list?.workspaces.find((f) => f.branch === branch);
-  const after =
-    since === null
-      ? 'first review'
-      : since === 0
-        ? 'no commits since your last review'
-        : `${since} commit${since === 1 ? '' : 's'} since your last review`;
   return (
     <span className="review-of" {...tip(note)}>
-      Review of <strong>{branch}</strong> · {after}
+      Review of <strong>{branch}</strong> · {reviewSince(since)}
       {workspace && (
         <>
           {' · '}
