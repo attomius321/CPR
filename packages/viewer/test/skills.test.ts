@@ -186,6 +186,7 @@ describe('checking a skill', () => {
       'symbiote-review': ['warning'],
       'symbiote-style': [],
       'viewer-check': [],
+      'writing-docs': [],
     });
   });
 });

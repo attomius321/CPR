@@ -128,8 +128,8 @@ list or a definition that cannot be split.
   what each is the first time.
 - **Formatting has one meaning each.** `Code` for commands, flags, paths, keys, variables and
   output; **bold** for an on-screen label, as the screen writes it (**Merge into**); keys as
-  written on the keyboard (Ctrl+Enter, Esc). Link text names its target ("the
-  [graph schema](docs/graph-schema.md)"), never "here".
+  written on the keyboard (Ctrl+Enter, Esc). Link text names its target
+  (`the [graph schema](docs/graph-schema.md)`), never "here".
 
 ## Check every fact against the code
 

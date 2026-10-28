@@ -57,3 +57,18 @@ SHA in its Source note and the live usage numbers.
 
 Not verified: the desktop app's window; Firefox and Safari; a queued analysis and a review in a
 real run (routed); the comet's cost in frames on a slow machine (one composited element).
+
+## V71 — `main` merged in: the writing-docs skill's check (2026-10-28, branch `feature/review-analyzing-loading`)
+
+`main` gained the writing-docs skill (`a2a9151`) while V71 was built; merged in, `pnpm check`
+failed one test, `skills.test.ts`'s list of this repository's skills and their checks.
+
+**Learned**:
+- **An example link in a skill is a link**: the skill's "the [graph schema](docs/graph-schema.md)"
+  showed how to word link text, but outside code it is a link from the skill's folder, where
+  `docs/graph-schema.md` is not: Skills' check warned "Links to docs/graph-schema.md, which is not
+  in the skill's folder", and rendered it showed no Markdown. Written as code, the example shows its
+  Markdown and the check passes; the test's list names the new skill with no warning.
+
+**Verification**: `pnpm check` 2,013 of 2,013 after the merge; `pnpm build`; `skills.spec.ts` and
+`analyzing.spec.ts` 21 of 21.
