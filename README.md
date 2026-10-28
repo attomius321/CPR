@@ -65,6 +65,24 @@ Two limits apply to the window:
 - On WSL, files dragged from Windows never reach the window. Use the **Add files** and **Attach
   images** buttons instead. Windows' files are under `/mnt/c`.
 
+### Several Symbiotes in one window
+
+Each `symbiote view` serves one repository. Symbiote nexus shows every one running on this
+machine as a tab of one window. Run it from Symbiote's folder, wherever your repositories are:
+
+```sh
+node packages/nexus/dist/bin.js
+```
+
+The first tab, **Symbiotes**, lists them, each with its folder, branch and changed files. Each other
+tab shows one Symbiote as its own window would. A Symbiote you opened stays loaded while you look
+at another, so switching back is instant. A new `symbiote view` gets its tab within 2 seconds. One
+that stops keeps its tab, marked stopped, until it runs again or you close the tab. Closing the
+nexus stops none of them.
+
+The nexus opens like `symbiote view`: in Symbiote's window when it is set up, else in your browser.
+It takes `--browser`, `--no-open` and `--port` too.
+
 ## Quick start: your first workspace
 
 This walks one task from start to merge. You need a git repository of your own, and Claude Code
@@ -359,7 +377,8 @@ Outside the repository, Symbiote writes:
 
 - the workspaces' worktrees, next to your checkout, in `../<repo>.worktrees/`;
 - its cache, `~/.cache/symbiote` on Linux, with the worktrees it compares and merges in, the
-  list of merges, drafts, pasted images and its logs;
+  list of merges, drafts, pasted images, its logs, and the address of each running
+  `symbiote view` (Symbiote nexus reads them);
 - its settings for this machine, `~/.config/symbiote` on Linux: the skill library's folder, and
   whether the intro was seen;
 - the skill library's skills, when you save, add or delete one, or Scribe writes one. Symbiote

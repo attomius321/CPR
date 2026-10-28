@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nx1-nexus.md)
 
-**Status:** planned (2026-10-28) and OK'd by the person the same day, on branch
-`feature/extend-view-with-wrapper` (a workspace started in Symbiote); not started.
+**Status:** built (2026-10-28), ready for review, on branch `feature/extend-view-with-wrapper` (a
+workspace started in Symbiote). Planned and OK'd by the person the same day, with their answers
+(decisions 519–523); NX1a–c built. "As built" and results at the end.
 
 **Problem** (asked: "I need an app, that opens an interface from where i can select current
 running symbiotes. Should be desktop and browser, like symbiote view"; then "Should be done in
@@ -161,3 +162,55 @@ NX1c the window, the look, the numbers and the docs.
 in each (the viewer's `whatWaits` reads five of its APIs) and the taskbar's dot; the nexus's own
 keys and Back/Forward (a page cannot reach a cross-origin frame's history); `symbiote nexus` as a
 command of the CLI; `symbiote pr`'s servers; Symbiotes on other machines.
+
+## As built (NX1)
+
+- **Discovery** (NX1a, decision 520): as planned. `symbiote view` writes its record right after
+  MC1's, with the same `started`, and removes it in the same `finally`; MC1's record is unchanged.
+  The CLI reaches the registry as `@symbiote/nexus/registry` (the package's one export; a vitest
+  alias and a `paths` entry, as for the other packages). A status counts only with `version` text
+  and a numeric `changed`, so another server on a recorded port is not taken for a Symbiote.
+- **The row has no S of its own** (NX1b): the screenshots showed it doubled, by the list's head
+  right under it and by each framed viewer's sidenav. The tabs start where the page's words do,
+  16 px in.
+- **A stopped Symbiote keeps its tab only if it was opened**: one never opened just leaves (the
+  plan kept every one). An opened one keeps its tab, marked stopped, with a **Close tab**; its
+  frame is unloaded; served again on another port, the same tab loads it there.
+- **The clipboard in a frame** needs the frame's `allow="clipboard-read; clipboard-write"`: Copy
+  SHA (and an image pasted in a terminal) would otherwise be refused by the permissions policy.
+  An e2e spec copies a SHA from a frame.
+- **The page's guard** (`test/page.test.ts`): every viewer class the page uses is checked against
+  the viewer's CSS sources, so a renamed class fails a test instead of a look; `nexus.css`'s text
+  sizes are `--size-*` tokens; the page's scripts import only their siblings at run time.
+- **The keys**: ←, →, Home and End on the tabs (a tab list's). No keys of the nexus's own reach it
+  from inside a frame: a cross-origin frame keeps its key events.
+- **The window's title** follows the open tab (`ky · main — Symbiote nexus`), and the desktop app
+  shows the page's title, so the taskbar and Alt+Tab say which Symbiote is open.
+- **The rounded window's bottom corners** (Linux, decision 524's frame): the frames' box clips to
+  them. Its cost was the plan's risk; measured, none (`j` below).
+- **macOS's traffic lights**: the row keeps 76 px clear, a guess from the viewer's 78 px; not
+  verified (no Mac).
+
+**Results (NX1).** Tests first, red for the right reasons (no modules; `symbiote view` wrote no
+`running/` record): 46 nexus unit tests (registry, discovery, server, command, the app's start, the
+tabs, the page's guards) and 1 CLI test; `pnpm check` passes (2,114 tests, 2,100 before NX1b). e2e:
+8 nexus specs (6 in a browser, 2 in Symbiote's window under Xvfb), and the whole suite passes (`pnpm
+test:e2e`: the viewer's 335 specs in 5.0 min, then the nexus's 8 in 20.1 s). Playwright's
+`pageerror` reports a frame's uncaught errors too (checked), so every spec's "no page errors" covers
+the frames. Measured on a shallow clone of this repository (300 commits, `2e30fa9`) and a throwaway,
+headless Chromium at 1440×900 unless said:
+
+| What | Result |
+|---|---|
+| The list's first row, from opening the nexus | 56, 57, 72 ms |
+| The clone's Git page, first row: in the nexus (from the tab's click) / in a tab of its own (from the address) | 237–249 ms / 149–238 ms |
+| Showing a kept Symbiote again, from the click to two frames after it | 26–32 ms (the next paint) |
+| Memory, the browser's processes | 409–411 MB blank; 663–704 MB with the nexus and two framed Symbiotes (the clone and the throwaway); 586 MB with the clone alone in a tab |
+| `j` on the clone's 12-commit diff (103 symbols on the graph), median of 10, in Symbiote's window (Xvfb, the frame's rounded clip on) | framed 48 ms, the app on the diff itself 49 ms |
+| … in Chromium | framed 49 ms, in a tab 35 ms (both 32–34 ms once warm; the first four presses 57–108 ms in either) |
+| A real run here | the person's running Symbiote (built before NX1, found through MC1's record) listed in 24 ms |
+
+Not verified: macOS and Windows (the traffic lights' room, Windows' overlay colours); the
+person's own window on WSLg (Xvfb only); more than two Symbiotes at once (memory grows by about
+a tab's worth each); a framed graph of Bitwarden's size; an agent's terminal in a frame hidden and
+shown again (the e2e specs run no agent).

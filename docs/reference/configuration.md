@@ -170,7 +170,7 @@ the same files aside.
 | `SYMBIOTE_USAGE` | `off`: Symbiote does not read your subscriptions' usage, and the status bar shows none. |
 | `SYMBIOTE_INTRO` | `off`: no intro the first time Symbiote opens. |
 | `SYMBIOTE_APP` | `off`: always open the browser, never Symbiote's window. |
-| `SYMBIOTE_CACHE_DIR` | Where Symbiote keeps its cache. Default: `$XDG_CACHE_HOME/symbiote`, else `~/.cache/symbiote` (`~/Library/Caches/symbiote` on macOS). |
+| `SYMBIOTE_CACHE_DIR` | Where Symbiote keeps its cache. Default: `$XDG_CACHE_HOME/symbiote`, else `~/.cache/symbiote` (`~/Library/Caches/symbiote` on macOS). Symbiote nexus lists the `symbiote view` servers that use the same cache. |
 | `SYMBIOTE_LOG` | `off`: Symbiote writes no logs. |
 | `SYMBIOTE_LOG_LEVEL` | The lowest level a log line must have to be written: `debug`, `info` (default), `warn` or `error`. |
 | `SYMBIOTE_LOG_DIR` | Where the logs go. Default: `logs` in the cache folder. |

@@ -230,7 +230,7 @@ hosted.
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
-| [NX1](plan/nx1-nexus.md) | Symbiote nexus: every running `symbiote view` found, as tabs in one window or browser tab | planned | 519–527 | [journal](journal/nx1-nexus.md) |
+| [NX1](plan/nx1-nexus.md) | Symbiote nexus: every running `symbiote view` found, as tabs in one window or browser tab | ready for review | 519–527 | [journal](journal/nx1-nexus.md) |
 
 ### Repository monitoring
 
