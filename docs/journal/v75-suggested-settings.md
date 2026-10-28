@@ -48,3 +48,32 @@ Not verified:
 - What Claude Code's JSON holds when Haiku 5.5 declines a request.
 - The advisor on more than two briefs. That is the plan's eval.
 - Times while an agent is already busy.
+
+## V75a — the advisor and its prompt, built (2026-10-28, branch `milestone/v75-suggested-settings`)
+
+Built `packages/cli/src/workspace-advice.ts`, the `advisor` prompt key, the schema, the checks and
+`POST /api/workspaces/suggest`, with `advisor.model` and `advisor.effort` read from the config;
+decisions 544, 546, 547 and 550. The eval script writes a labels sheet and runs the advisor on it.
+
+**Learned**:
+- **A successful Claude Code answer ends on `stop_reason: "tool_use"`.** Its schema's answer is a
+  tool call, so only `structured_output` says it answered. A refusal is read from
+  `stop_reason: "refusal"`, which was not seen for real.
+- **`runProgram` already closes stdin.** It starts every program with stdin ignored, so the spike's
+  240 s wait cannot happen through it. Only a hand-run `codex exec` needs `< /dev/null`.
+- **Codex names its models its own way.** `model/list` calls Luna "GPT-6-Luna", where OpenAI's
+  docs say "GPT-6 Luna". The proposal uses the list's name.
+- **Two tests pin Scout's and Scribe's prompts to the end of Settings' list.** The advisor's prompt
+  went with the workspace prompts instead, where a start's prompts already are.
+
+**Verification**: tests first, red because `workspace-advice.js` did not exist: 17 unit tests (the
+commit message says 15) and a server test. `pnpm check`: 2,183 tests pass. `pnpm build`, then the
+route asked through a real `symbiote view`: Claude Code (Haiku 5.5) answered in 2.9 s, Codex
+(GPT-6-Luna) in 3.3 s, each with a size that fits the brief; no run folder left in the cache.
+
+Not verified:
+- What Claude Code writes when Haiku 5.5 declines. The test uses a hand-made result.
+- `model_instructions_file` with a Windows path.
+- Two presses at once.
+- The eval: it waits for the person's labels.
+

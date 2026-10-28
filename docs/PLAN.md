@@ -146,7 +146,7 @@ hosted.
 | [V68](plan/v68-start-from-search.md) | Start from with a search: the branches narrowed as you type, picked with the keys | ready for review | 490–493 | [journal](journal/v68-start-from-search.md) |
 | [V73](plan/v73-activity-timeline.md) | The Activity tab as a timeline of phases: a live strip, groups that open to every event, the raw stream | ready for review | 513–518 | [journal](journal/v73-activity-timeline.md) |
 | [V74](plan/v74-activity-colours.md) | The Activity tab in colour: a phase's kind on a coloured tile on the rail, the conversation in bubbles | ready for review | 528–531 | [journal](journal/v74-activity-colours.md) |
-| [V75](plan/v75-suggested-settings.md) | Suggested settings: a small model sizes the work and fills the Start page's model, effort and plan first | planned | 544–550 | [journal](journal/v75-suggested-settings.md) |
+| [V75](plan/v75-suggested-settings.md) | Suggested settings: a small model sizes the work and fills the Start page's model, effort and plan first | V75a built | 544–550 | [journal](journal/v75-suggested-settings.md) |
 
 ### Agents
 

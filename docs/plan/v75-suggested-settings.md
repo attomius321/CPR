@@ -2,7 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v75-suggested-settings.md)
 
-**Status:** planned (2026-10-28), on branch `milestone/v75-suggested-settings`; not started.
+**Status:** V75a built (2026-10-28), on branch `milestone/v75-suggested-settings`; V75b and
+V75c not started. The eval waits for the person's labels. "As built" and results are at the end.
 The person answered the plan's three questions: "1. Keep the agent i picked 2. No 3. Show a
 proposal i accept first. This feature should be called on click a button, not everythime i write
 in the prompt, it is the user decision." The answers are under
@@ -312,3 +313,28 @@ the prompt, it is the user decision" (decision 549).
 
 **Not in V75 (later)**: switching the agent; suggestions for Scout, Scribe or the merger; a
 suggestion while you type; learning from the person's past picks; Hermes.
+
+## As built (V75a)
+
+- **The prompt sits with the workspace prompts**, as **Suggest settings** in the Workspaces group
+  of Settings, not in a group of its own. The advisor is part of a start, and two tests pin
+  Scout's and Scribe's prompts to the end of the list.
+- **Claude Code reads the brief on stdin**, measured before the build: 3.1 s and the same answer
+  as with the brief as an argument. A brief that starts with `-` cannot be read as an option.
+- **Codex's stdin is closed by `runProgram`**, which starts every program with stdin ignored. The
+  240 s wait of the spike cannot happen through it.
+- **The model's name comes from the agent's list.** Codex's `model/list` calls Luna "GPT-6-Luna";
+  the proposal will say it so.
+- **Settings for the advisor's model and level wait for V75c.** `advisor.model` and
+  `advisor.effort` are read now and documented in `docs/reference/configuration.md`.
+- **The eval** is `scripts/advisor-eval.mjs`. Its `sheet` command wrote 24 of the person's briefs
+  to `~/.cache/symbiote/advisor-eval/labels.json`, outside git: 3 chores, 3 refactors, and 6 each
+  of fixes, spikes and features. The person labels them before seeing any suggestion; `run` then
+  asks the advisor for each.
+
+**Results (V75a).** 17 unit tests and a server test, red first because the module did not exist
+(the commit message says 15: a miscount). `pnpm check`: 2,183 tests pass. `pnpm build`, then the
+route asked for real through `symbiote view`: Claude Code on Haiku 5.5 suggested `opus` at `high`
+with a plan for a storage migration in 2.9 s; Codex on GPT-6-Luna suggested `gpt-6-luna` at `low`
+for a README typo in 3.3 s. No run folder was left in the cache. The eval's agreement is not
+measured yet.
