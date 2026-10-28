@@ -185,8 +185,9 @@ Click a workspace to open it. Its page has four tabs:
   not stop the agent. To give the agent an image, paste it (Ctrl+V) or use **Attach images**.
 - **Thread**: the agent's plans and reports, your messages, and what it waited for.
 - **Activity**: the agent's work as phases, such as exploring the code, implementing, testing,
-  debugging and committing. Your messages, the agent's questions and its reports sit between the
-  phases. Each phase shows when it started, how long it took and its status. Click a phase to see
+  debugging and committing. Each kind of phase has its own colour on the timeline. Your messages
+  (in bubbles), the agent's questions and its reports sit between the phases. Each phase shows when
+  it started, how long it took and its status. Click a phase to see
   its events, and click an event to see its whole command, output and exit code. While the agent
   works, a line at the top says what it is running. **Raw events** lists every line Symbiote
   recorded.

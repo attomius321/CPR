@@ -1,6 +1,7 @@
-// One phase or milestone of the Activity tab (V73): its time and how long, its node on the rail,
-// its line (icon, title, status, count) and its summary; open, every event in it, each opening to
-// what was recorded of it — the whole command, its output or error, exit code, times.
+// One phase or milestone of the Activity tab (V73): its time and how long, its tile on the rail
+// in its kind of work's colour (V74), its line (title, status, count) and its summary; open, every
+// event in it, each opening to what was recorded of it — the whole command, its output or error,
+// exit code, times.
 import { memo, useState, type MouseEvent, type ReactNode } from 'react';
 import {
   AgentIcon,
@@ -9,6 +10,7 @@ import {
   BugIcon,
   CheckIcon,
   ChevronIcon,
+  CloseIcon,
   CodeIcon,
   CommentIcon,
   CommitIcon,
@@ -22,7 +24,10 @@ import {
   ReviewIcon,
   SearchIcon,
   StopIcon,
+  StoppedIcon,
   TerminalIcon,
+  WaitingIcon,
+  WorkingIcon,
   WrenchIcon,
 } from '../../ui/icons.js';
 import { markdownNodes, type Lexer } from '../../ui/markdown.js';
@@ -32,7 +37,15 @@ import { askedFor } from '../workspaces.js';
 import { callKind, COMMAND_TOOLS, IMAGE } from './classify.js';
 import type { ActivityEvent, ToolCall } from './events.js';
 import type { ActivityGroup, GroupKind } from './groups.js';
-import { durationText, eventWords, statusWords, summaryParts } from './words.js';
+import {
+  durationText,
+  eventWords,
+  groupPhase,
+  phaseOf,
+  statusWords,
+  summaryParts,
+  type Phase,
+} from './words.js';
 
 /** How many events an open group draws before "Show all". */
 const SHOWN = 50;
@@ -65,6 +78,29 @@ const ICONS: Record<GroupKind, () => ReactNode> = {
   notice: BellIcon,
   unknown: WrenchIcon,
 };
+
+/** A status's mark in its badge (V74): passed a check, failed a cross, running, waiting, stopped. */
+const STATUS_ICONS: Partial<Record<ActivityGroup['status'], () => ReactNode>> = {
+  running: WorkingIcon,
+  failed: CloseIcon,
+  recovered: CheckIcon,
+  done: CheckIcon,
+  waiting: WaitingIcon,
+  cancelled: StoppedIcon,
+};
+
+/** The class that colours an element in a kind of work's colour (`--phase`), when it has one. */
+export const phaseClass = (phase: Phase | null) => (phase ? ` phase-${phase}` : '');
+
+/** A group's kind on a tile, in its kind of work's colour (V74): on the rail and in the live strip. */
+export function PhaseTile({ kind }: { kind: GroupKind }) {
+  const Icon = ICONS[kind];
+  return (
+    <span className={`activity-tile${phaseClass(groupPhase(kind))}`}>
+      <Icon />
+    </span>
+  );
+}
 
 /** An event's icon: by what its call is. */
 function EventIcon({ event }: { event: ActivityEvent }) {
@@ -223,7 +259,7 @@ function EventRow({
             : ' open';
   const at = call ? call.startedAt : event.at;
   return (
-    <li className={`activity-event${state}`}>
+    <li className={`activity-event${state}${phaseClass(phaseOf(event))}`}>
       <details open={open}>
         <summary
           onClick={(e: MouseEvent) => {
@@ -337,13 +373,15 @@ function GroupRowView({
   const parts = summaryParts(group);
   const events = group.events.filter((e) => e.kind === 'call' || e.kind === 'commit');
   const shown = all ? events : events.slice(0, SHOWN);
-  const Icon = ICONS[group.kind];
+  const StatusIcon = status ? STATUS_ICONS[group.status] : undefined;
+  const phase = groupPhase(group.kind);
   const expandable = opens(group);
   const classes = [
     'activity-group',
     `kind-${group.kind}`,
     `status-${group.status}`,
     group.milestone ? 'milestone' : 'phase',
+    phase ? `phase-${phase}` : '',
     group.failures > 0 ? 'has-failures' : '',
     fresh ? 'fresh' : '',
   ]
@@ -352,14 +390,14 @@ function GroupRowView({
   const line = (
     <>
       <span className="activity-head">
-        <span className="activity-icon">
-          <Icon />
-        </span>
         <span className="activity-title">{group.title}</span>
         {group.sha && <code className="chip activity-sha">{group.sha.slice(0, 7)}</code>}
         <span className="activity-fill" />
         {status && (
-          <span className={`badge activity-status tone-${status.tone}`}>{status.text}</span>
+          <span className={`badge activity-status tone-${status.tone}`}>
+            {StatusIcon && <StatusIcon />}
+            {status.text}
+          </span>
         )}
         {events.length > 1 && (
           <span className="activity-count" {...tip(`${events.length} events`)}>
@@ -418,7 +456,7 @@ function GroupRowView({
         )}
       </span>
       <span className="activity-rail" aria-hidden="true">
-        <span className="activity-node" />
+        <PhaseTile kind={group.kind} />
       </span>
       {expandable ? (
         <details className="activity-body" open={open}>

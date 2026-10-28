@@ -285,3 +285,5 @@ merge commit.
 - 2026-10-28 [V73 spike — what the Activity tab draws, and what agents' records hold](journal/v73-activity-timeline.md)
 - 2026-10-28 [V73 — the Activity tab as a timeline of phases](journal/v73-activity-timeline.md)
 - 2026-10-28 [V73 — main merged in: V72's page frame](journal/v73-activity-timeline.md)
+- 2026-10-28 [V74 spike — what makes the Activity tab hard to read](journal/v74-activity-colours.md)
+- 2026-10-28 [V74 — the Activity tab in colour](journal/v74-activity-colours.md)

@@ -1,8 +1,51 @@
 /* A workspace's Activity tab (V48c; V73, ActivityTab.tsx and activity/): a bar with the counts and
    Timeline / Raw events, the live strip while the agent works or waits, then the timeline — a time
-   column, a 1 px rail with a node per group in its status's tone, each group's line and summary;
-   open, its events on one hairline surface, each opening to what was recorded of it. Its insets are
-   the page frame's (V72): `--card-pad` from the card's edges. */
+   column, a rail with a tile per group in its kind of work's colour (V74), each group's line and
+   summary; open, its events on one hairline surface, each opening to what was recorded of it. Its
+   insets are the page frame's (V72): `--card-pad` from the card's edges. */
+
+/* A kind of work's colour (V74, decision 528): a group's tile and count, an event's icon, a raw
+   line's chip take `--phase`; what has none falls back to the muted text's. */
+.phase-explore {
+  --phase: var(--phase-explore);
+}
+
+.phase-implement {
+  --phase: var(--phase-implement);
+}
+
+.phase-docs {
+  --phase: var(--phase-docs);
+}
+
+.phase-test {
+  --phase: var(--phase-test);
+}
+
+.phase-visual {
+  --phase: var(--phase-visual);
+}
+
+.phase-debug {
+  --phase: var(--phase-debug);
+}
+
+.phase-git {
+  --phase: var(--phase-git);
+}
+
+/* A group's tile (and the live strip's): its icon in the colour, on a wash of it over the ground. */
+.activity-tile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--phase, var(--muted)) var(--phase-wash), var(--bg));
+  color: var(--phase, var(--muted));
+}
 
 .workspace-activity {
   flex: 1;
@@ -53,6 +96,11 @@
 
 .activity-live .state-dot {
   margin: 0 2px;
+}
+
+.activity-live .activity-tile {
+  width: 24px;
+  height: 24px;
 }
 
 .activity-live-words {
@@ -107,7 +155,7 @@
   interpolate-size: allow-keywords;
 }
 
-/* Three columns: the time, the rail (19 px: its 1 px line and 9 px nodes on whole pixels), the
+/* Three columns: the time, the rail (28 px: its tiles, the 2 px line through their middles), the
    group. The time's column fits "11:02 PM" over "12m 34s" in the caption's size. */
 .activity-group,
 .activity-day,
@@ -115,13 +163,13 @@
   --activity-when: calc(5.5 * var(--size-caption));
 
   display: grid;
-  grid-template-columns: var(--activity-when) 19px minmax(0, 1fr);
-  column-gap: 8px;
+  grid-template-columns: var(--activity-when) 28px minmax(0, 1fr);
+  column-gap: 10px;
 }
 
 .activity-group {
   content-visibility: auto;
-  contain-intrinsic-size: auto 52px;
+  contain-intrinsic-size: auto 60px;
 }
 
 /* Added by a read after the tab opened: it fades in, the groups above stay where they are. */
@@ -139,7 +187,7 @@
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  padding-top: 4px;
+  padding-top: 10px;
   overflow: hidden;
   color: var(--muted);
   font-size: var(--size-caption);
@@ -149,7 +197,7 @@
 }
 
 .activity-took {
-  color: var(--faint);
+  color: var(--muted);
 }
 
 .activity-rail {
@@ -161,75 +209,91 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: 9px;
-  width: 1px;
-  background: var(--line);
+  left: 13px;
+  width: 2px;
+  background: color-mix(in srgb, var(--muted) 22%, transparent);
 }
 
 .activity > li:first-child .activity-rail::before {
-  top: 12px;
+  top: 18px;
 }
 
 .activity > li:last-child .activity-rail::before {
   bottom: auto;
-  height: 12px;
+  height: 18px;
 }
 
-/* A group's node: a phase a hollow ring, a milestone filled; its status's tone when it has one. */
-.activity-node {
+/* On the rail, a ring of the ground cuts the line round it. */
+.activity-rail .activity-tile {
   position: absolute;
-  top: 8px;
-  left: 5px;
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--bg);
-  box-shadow: inset 0 0 0 1.5px var(--node, var(--faint));
-  transition:
-    background-color 150ms,
-    box-shadow 150ms;
+  top: 4px;
+  left: 0;
+  box-shadow: 0 0 0 3px var(--bg);
+  transition: box-shadow 150ms;
 }
 
-.activity-group.milestone .activity-node {
-  background: var(--node, var(--muted));
-  box-shadow: 0 0 0 3px var(--bg);
+/* A milestone: a stronger tile, its edge drawn; the person's words and the agent's in the text's
+   colour, a question in the waiting amber. */
+.activity-group.milestone {
+  --phase: var(--text);
+}
+
+.activity-group.kind-asks {
+  --phase: var(--warning);
 }
 
 .activity-group.kind-commit {
-  --node: var(--added);
+  --phase: var(--phase-git);
 }
 
+.activity-group.milestone .activity-rail .activity-tile {
+  box-shadow:
+    0 0 0 3px var(--bg),
+    inset 0 0 0 1px color-mix(in srgb, var(--phase) 45%, transparent);
+}
+
+/* What only marks the way — the workspace made, a session's start and end, a notice — hollow. */
+.activity-group.kind-made .activity-tile,
+.activity-group.kind-session .activity-tile,
+.activity-group.kind-notice .activity-tile,
+.activity-group.kind-end .activity-tile,
+.activity-group.kind-unknown .activity-tile {
+  background: var(--bg);
+  color: var(--faint);
+  box-shadow:
+    0 0 0 3px var(--bg),
+    inset 0 0 0 1px var(--line);
+}
+
+/* The status, when there is news, on the tile's ring; the badge says it in words. */
 .activity-group.status-failed {
-  --node: var(--error);
-}
-
-.activity-group.status-recovered,
-.activity-group.kind-test.status-done {
-  --node: var(--added);
+  --status-ring: var(--error);
 }
 
 .activity-group.status-running {
-  --node: var(--info);
+  --status-ring: var(--info);
 }
 
 .activity-group.status-waiting {
-  --node: var(--warning);
+  --status-ring: var(--warning);
 }
 
-.activity-group.status-failed .activity-node,
-.activity-group.status-waiting .activity-node {
-  background: var(--node);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--node) 25%, var(--bg));
+.activity-group.status-failed .activity-rail .activity-tile,
+.activity-group.status-running .activity-rail .activity-tile,
+.activity-group.status-waiting .activity-rail .activity-tile {
+  box-shadow:
+    0 0 0 3px var(--bg),
+    inset 0 0 0 1.5px var(--status-ring);
 }
 
-.activity-group.status-open .activity-node {
-  box-shadow: none;
-  border: 1.5px dashed var(--faint);
+.activity-group.status-open .activity-rail .activity-tile {
+  outline: 1.5px dashed var(--faint);
+  outline-offset: -1.5px;
 }
 
 .activity-body {
   min-width: 0;
-  padding: 2px 0 10px;
+  padding: 4px 0 12px;
 }
 
 .activity-body > summary {
@@ -259,18 +323,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 24px;
-}
-
-.activity-icon {
-  flex: none;
-  display: inline-flex;
-  color: var(--muted);
-}
-
-.activity-icon .icon {
-  width: 16px;
-  height: 16px;
+  min-height: 28px;
 }
 
 .activity-title {
@@ -309,6 +362,14 @@
 
 .activity-status {
   flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.activity-status .icon {
+  width: 12px;
+  height: 12px;
 }
 
 .activity-status.tone-info {
@@ -337,8 +398,8 @@
   height: 18px;
   padding: 0 6px;
   border-radius: 9999px;
-  background: var(--raised);
-  color: var(--muted);
+  background: color-mix(in srgb, var(--phase, var(--muted)) var(--phase-wash), transparent);
+  color: var(--phase, var(--muted));
   font-size: var(--size-caption);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
@@ -356,7 +417,6 @@
 /* The summary: facts in one line under the title, each part in its tone. */
 .activity-summary {
   display: block;
-  margin-left: 24px;
   overflow: hidden;
   color: var(--muted);
   font-size: var(--size-small);
@@ -397,6 +457,61 @@
   font-size: var(--size-caption);
 }
 
+/* The conversation (V74, decision 531): the person's words and Symbiote's prompt in a bubble as
+   the Thread tab draws them, as wide as their words; theirs and the agent's reports two lines
+   before the cut. Opened, the bubble is the words' surface. */
+.activity-group.kind-message .activity-body,
+.activity-group.kind-prompt .activity-body {
+  justify-self: start;
+  max-width: 100%;
+  margin: 2px 0 12px;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--text) 7%, var(--panel));
+}
+
+.activity-group.kind-message .activity-body > summary,
+.activity-group.kind-prompt .activity-body > summary {
+  margin: 0;
+  padding: 2px 12px 4px;
+  border-radius: 0;
+}
+
+.activity-group.kind-message div.activity-body {
+  padding: 2px 12px 4px;
+}
+
+.activity-group.kind-message .activity-open,
+.activity-group.kind-prompt .activity-open {
+  padding: 0 12px 8px;
+}
+
+.activity-group.kind-message .activity-detail,
+.activity-group.kind-prompt .activity-detail {
+  margin: 0;
+  padding: 4px 0 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+  border-radius: 0;
+  background: none;
+}
+
+.activity-group.kind-message .activity-title,
+.activity-group.kind-prompt .activity-summary,
+.activity-group.kind-report .activity-summary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  white-space: normal;
+}
+
+.activity-group.kind-prompt .activity-summary,
+.activity-group.kind-report .activity-summary {
+  color: var(--text);
+}
+
 /* Open: a milestone's words, or the events on one surface, rows between hairlines. */
 .activity-open {
   padding: 6px 0 2px;
@@ -404,7 +519,7 @@
 
 .activity-detail,
 .activity-events {
-  margin: 0 0 6px 24px;
+  margin: 0 0 6px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel);
@@ -476,10 +591,15 @@
   background: var(--hover);
 }
 
+/* An event without a kind of work does not take its group's colour. */
+.activity-event:not([class*='phase-']) {
+  --phase: initial;
+}
+
 .activity-event-icon {
   flex: none;
   display: inline-flex;
-  color: var(--muted);
+  color: var(--phase, var(--muted));
 }
 
 .activity-event-icon .icon {
@@ -546,7 +666,7 @@
 .activity-event-took,
 .activity-event-time {
   flex: none;
-  color: var(--faint);
+  color: var(--muted);
   font-size: var(--size-caption);
   font-variant-numeric: tabular-nums;
 }
@@ -618,7 +738,7 @@
 }
 
 .activity-all {
-  margin: 0 0 6px 24px;
+  margin: 0 0 6px;
   font-size: var(--size-small);
 }
 
@@ -675,12 +795,19 @@
 
 .activity-raw-line .chip {
   flex: none;
+  background: color-mix(in srgb, var(--phase, var(--muted)) var(--phase-wash), transparent);
+  color: var(--phase, var(--muted));
 }
 
 .activity-raw-what {
   flex: none;
   color: var(--text);
   font-weight: 500;
+}
+
+.activity-raw-phase {
+  color: var(--muted);
+  font-weight: 400;
 }
 
 .activity-raw-gist {
@@ -730,13 +857,6 @@
     --activity-when: 0px;
 
     column-gap: 4px;
-  }
-
-  .activity-summary,
-  .activity-detail,
-  .activity-events,
-  .activity-all {
-    margin-left: 0;
   }
 
   .activity-event-took {
