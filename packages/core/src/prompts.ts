@@ -22,7 +22,9 @@ export type PromptKey =
   /** Scribe's instructions, its first prompt with the person's request (V41). */
   | 'scribe'
   /** What Scribe's `{library}` becomes when a skill library is set (SK1). */
-  | 'library';
+  | 'library'
+  /** The advisor's instructions (V75): how it sizes a brief and suggests the start's settings. */
+  | 'advisor';
 
 /** Every prompt, in the Settings page's order. */
 export const PROMPT_KEYS: readonly PromptKey[] = [
@@ -34,6 +36,7 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'plan.first',
   'plan.direct',
   'documents',
+  'advisor',
   'verdict.approve',
   'verdict.push',
   'verdict.address',

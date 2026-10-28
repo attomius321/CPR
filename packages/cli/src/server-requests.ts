@@ -3,6 +3,7 @@
 import {
   HISTORY_SCOPES,
   MERGE_STRATEGIES,
+  WORK_KINDS,
   type AgentKind,
   type BriefParts,
   type CheckoutTarget,
@@ -20,6 +21,7 @@ import {
   type ScoutEffortChange,
   type ScoutModelChange,
   type ScoutTerminalRequest,
+  type SuggestRequest,
   type WorkKind,
   type WorkspaceReply,
   type WorkspaceRequest,
@@ -118,6 +120,50 @@ export function parseWorkspaceRequest(text: string): WorkspaceRequest {
     ...(documents === undefined
       ? {}
       : { documents: documents.map(({ id, name }) => ({ id, name })) }),
+  };
+}
+
+/**
+ * `{ kind, title?, parts?, agent?, documents? }` (V75): the Start page's brief for the advisor,
+ * its documents by name. Anything else the page sends (the branch, the run's choices) is left out:
+ * a suggestion starts nothing.
+ */
+export function parseSuggestRequest(text: string): SuggestRequest {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('expected { kind, title, parts }');
+  }
+  const { kind, title, parts, agent, documents } = value;
+  if (!WORK_KINDS.some((k) => k === kind)) {
+    throw new Error('kind: feature, fix, refactor, chore or spike');
+  }
+  if (title !== undefined && typeof title !== 'string') throw new Error("title: the work's name");
+  if (
+    parts !== undefined &&
+    !(
+      parts !== null &&
+      typeof parts === 'object' &&
+      !Array.isArray(parts) &&
+      Object.values(parts).every((x) => typeof x === 'string')
+    )
+  ) {
+    throw new Error('parts: each a text');
+  }
+  if (agent !== undefined && typeof agent !== 'string') {
+    throw new Error('agent: claude, codex or hermes');
+  }
+  if (
+    documents !== undefined &&
+    !(Array.isArray(documents) && documents.every((d) => typeof d === 'string'))
+  ) {
+    throw new Error("documents: each a file's name");
+  }
+  return {
+    kind: kind as WorkKind,
+    title: title ?? '',
+    parts: parts ?? {},
+    ...(agent === undefined ? {} : { agent: agent as AgentKind }),
+    ...(documents === undefined ? {} : { documents }),
   };
 }
 

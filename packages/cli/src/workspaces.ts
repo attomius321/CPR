@@ -39,6 +39,8 @@ import {
   type WorkspaceReplied,
   type WorkspaceReply,
   type WorkspaceRequest,
+  type SuggestRequest,
+  type WorkspaceSuggestion,
   type WorkspaceShell,
   type WorkspaceShells,
   type WorkspaceStart,
@@ -55,6 +57,8 @@ import {
 } from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
 import { readPrompts } from './prompts.js';
+import { advise } from './workspace-advice.js';
+import type { Run, RunWithInput } from './programs.js';
 import {
   codexState,
   serverEntries,
@@ -157,6 +161,9 @@ export interface WorkspaceConfig {
   /** Scout's and Scribe's models (`scout.model`, `scribe.model`, V47): IDs; absent, the default. */
   scoutModel?: string;
   scribeModel?: string;
+  /** The advisor's model and level (`advisor.model`, `advisor.effort`, V75); absent, its own. */
+  advisorModel?: string;
+  advisorEffort?: string;
 }
 
 /**
@@ -164,7 +171,8 @@ export interface WorkspaceConfig {
  * `features.branchPrefix`, from before V24, sets the Feature's unless `branchPrefixes` does.
  * `agent.kind` names the agent offered first (V20a); `agent.permissionMode` and `agent.model`
  * are Claude Code's. `scout.effort` and `scribe.effort` are the levels Scout's and Scribe's
- * conversations start at; `scout.model` and `scribe.model` the models they start on (V47).
+ * conversations start at; `scout.model` and `scribe.model` the models they start on (V47);
+ * `advisor.model` and `advisor.effort` what the advisor runs on (V75).
  */
 export function readWorkspaceConfig(root: string): WorkspaceConfig {
   const branchPrefixes = Object.fromEntries(WORK_KINDS.map((k) => [k, `${k}/`])) as Record<
@@ -188,6 +196,7 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
     agent?: unknown;
     scout?: { effort?: unknown; model?: unknown } | null;
     scribe?: { effort?: unknown; model?: unknown } | null;
+    advisor?: { effort?: unknown; model?: unknown } | null;
   };
   const section = v.workspaces ?? v.features;
   if (typeof section?.branchPrefix === 'string') {
@@ -225,6 +234,10 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
   if (scoutModel) config.scoutModel = scoutModel;
   const scribeModel = id(v.scribe?.model);
   if (scribeModel) config.scribeModel = scribeModel;
+  const advisorModel = id(v.advisor?.model);
+  if (advisorModel) config.advisorModel = advisorModel;
+  const advisorEffort = level(v.advisor?.effort);
+  if (advisorEffort) config.advisorEffort = advisorEffort;
   return config;
 }
 
@@ -257,6 +270,11 @@ export interface Workspaces {
   /** Makes the branch, its worktree and record, then starts the agent. Rejects with
    * `FeatureRefused`. */
   start(request: WorkspaceRequest): Promise<WorkspaceStart>;
+  /**
+   * What the advisor suggests for a start of `request`'s brief (V75): the model, the level and
+   * plan first, from the picked agent's small model. Nothing is started.
+   */
+  suggest(request: SuggestRequest): Promise<WorkspaceSuggestion>;
   /** Starts a workspace's agent again (after a failed start, or once it ended). */
   startAgent(branch: string): Promise<WorkspaceStart>;
   /** The prompt its agent was given, to copy. */
@@ -367,6 +385,7 @@ export function workspaces(
     hook = fileURLToPath(new URL('./agent-hook.js', import.meta.url)),
     node = process.execPath,
     terminals,
+    advisor,
   }: {
     /** Finds Claude Code (once a start or a list needs it); null when it is not installed. */
     claude: () => Promise<ClaudeCode | null>;
@@ -384,6 +403,8 @@ export function workspaces(
     node?: string;
     /** Terminals on agents' sessions (V21); without them, none. */
     terminals?: Terminals;
+    /** How the advisor's agent is run (V75): the programs' own, unless a test gives others. */
+    advisor?: { run?: Run; runInput?: RunWithInput };
   },
 ): Workspaces {
   /** Where reviews and workspaces are kept; `symbiote/features/` moved first (V25), or noted when
@@ -890,6 +911,44 @@ export function workspaces(
       return { workspaces: summaries, ...head, ...(terminal ? { terminal } : {}) };
     },
 
+    async suggest(request) {
+      const agent = request.agent ? await found(request.agent) : await defaultAgent();
+      if (!agent) {
+        throw new WorkspaceRefused(
+          request.agent
+            ? `${AGENT_NAMES[request.agent]} is not installed`
+            : 'no agent is installed',
+          409,
+        );
+      }
+      if (agent.kind === 'hermes') {
+        throw new WorkspaceRefused(
+          'Hermes lists no models: Symbiote suggests settings for Claude Code and Codex',
+          400,
+        );
+      }
+      const listed = await modelsOf(agent);
+      if (!listed?.models.length) {
+        throw new WorkspaceRefused(
+          `${AGENT_NAMES[agent.kind]} lists no models Symbiote can read`,
+          409,
+        );
+      }
+      const { advisorModel, advisorEffort } = config();
+      return advise({
+        agent: {
+          kind: agent.kind,
+          command: agent.kind === 'claude' ? agent.claude.command : agent.codex.command,
+          name: AGENT_NAMES[agent.kind],
+        },
+        models: listed.models,
+        prompt: readPrompts(root).text.advisor,
+        request,
+        config: { model: advisorModel, effort: advisorEffort },
+        cacheDir,
+        ...advisor,
+      });
+    },
     async start(request) {
       const work = workOf(request);
       if (request.agent !== undefined && !AGENT_KINDS.includes(request.agent)) {

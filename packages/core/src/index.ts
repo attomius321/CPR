@@ -291,6 +291,8 @@ export {
   type ThreadQuestion,
   type WorkKind,
   type WorkKindSpec,
+  type SuggestRequest,
+  type WorkspaceSuggestion,
 } from './workspaces.js';
 export {
   commitSubject,
