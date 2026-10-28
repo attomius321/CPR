@@ -6,8 +6,9 @@
 
 The person's `pnpm test:e2e` failed once in `packages/viewer/e2e/open-pr.spec.ts` ("a click
 picks the comment line, Ctrl/⌘+click opens it, o opens the picked one"), with no viewer change on
-the branch. Run alone it failed 1 time in 15 here, then passed 170 times (80 alone, 60 on 6
-workers, 30). Made on the NX2 workspace's branch, which the person asked to be the only one.
+the branch. Before the fix it failed here 1 time in 155 runs (15 alone, then 80 alone and 60 on
+6 workers, all passing). Made on the NX2 workspace's branch, which the person asked to be the only
+one.
 
 **Learned**:
 - **The product is right; the spec raced itself.** The spec clicks line 11's number (an open)
