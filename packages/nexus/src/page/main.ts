@@ -1,8 +1,24 @@
-// Symbiote nexus's page (NX1b): a row of tabs, Symbiotes then one per running Symbiote, and the
-// open one in a frame under it (decisions 521–523). A frame opened once stays loaded, hidden while
-// another tab is shown. Drawn in the viewer's own stylesheet and its classes; the nexus's own
-// layout is `page/nexus.css`.
+// Symbiote nexus's page (NX1b): a row of tabs, Symbiotes, Folders (NX2b), then one per running
+// Symbiote, and the open one in a frame under it (decisions 521–523, 539). A frame opened once
+// stays loaded, hidden while another tab is shown. Drawn in the viewer's own stylesheet and its
+// classes; the nexus's own layout is `page/nexus.css`.
+import type { Running } from '../registry.js';
 import type { Symbiote } from '../symbiotes.js';
+import {
+  BRANCH,
+  CLOSE,
+  el,
+  FOLDER,
+  icon,
+  MAXIMIZE,
+  MINIMIZE,
+  RESTORE,
+  STOP,
+  STOPPED,
+  type Child,
+} from './dom.js';
+import { folderFromHash, FOLDERS, foldersHash } from './folders-tab.js';
+import { foldersView } from './folders-view.js';
 import {
   changesText,
   checkoutText,
@@ -36,52 +52,20 @@ const READ_EVERY = 2000;
 const desktop = window.symbioteApp;
 
 let tabs: Tab[] = [];
-/** The open tab's folder; null: Symbiotes, the list. */
+/** The open tab: a Symbiote's folder, Folders (`FOLDERS`), or null: Symbiotes, the list. */
 let selected = selectedFrom(window.location.hash);
 /** The folders whose tab was opened: their frames are kept, their tabs too once they stop. */
 const opened = new Set<string>();
 const frames = new Map<string, HTMLIFrameElement>();
 let failure: string | null = null;
 let readOnce = false;
+/** Why a Symbiote did not stop, on the list. */
+let stopFailure: string | null = null;
+/** The stopped tabs whose Symbiote is starting again, and why one did not. */
+const restarting = new Set<string>();
+let restartFailure: { root: string; why: string } | null = null;
 
 // ---- drawing ----------------------------------------------------------------------------------
-
-type Child = Node | string | null | undefined | false;
-
-function el<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  attrs: Record<string, string | boolean> = {},
-  ...children: Child[]
-): HTMLElementTagNameMap[K] {
-  const node = document.createElement(tag);
-  for (const [name, value] of Object.entries(attrs)) {
-    if (value === false) continue;
-    node.setAttribute(name, value === true ? '' : value);
-  }
-  for (const child of children) if (child) node.append(child);
-  return node;
-}
-
-/** An icon as the viewer draws it (`ui/icons.tsx`): its paths on its grid. */
-function icon(paths: string, lucide = false): SVGSVGElement {
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-  svg.setAttribute('class', lucide ? 'icon lucide' : 'icon');
-  svg.setAttribute('viewBox', lucide ? '0 0 24 24' : '0 0 16 16');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.setAttribute('focusable', 'false');
-  svg.innerHTML = paths;
-  return svg;
-}
-
-// The viewer's own (`ui/icons.tsx`): lucide's git-branch, circle-pause, and the window's buttons.
-const BRANCH =
-  '<path d="M6 3v12" /><circle cx="18" cy="6" r="3" /><circle cx="6" cy="18" r="3" /><path d="M18 9a9 9 0 0 1-9 9" />';
-const STOPPED = '<circle cx="8" cy="8" r="6" /><path d="M6.67 10V6M9.33 10V6" />';
-const MINIMIZE = '<path d="M4 8h8" />';
-const MAXIMIZE = '<rect x="4" y="4" width="8" height="8" rx="1.5" />';
-const RESTORE =
-  '<rect x="3.5" y="5.5" width="7" height="7" rx="1.5" /><path d="M6 5.5V5A1.5 1.5 0 0 1 7.5 3.5H11A1.5 1.5 0 0 1 12.5 5v3.5A1.5 1.5 0 0 1 11 10h-.5" />';
-const CLOSE = '<path d="M4 4l8 8M12 4l-8 8" />';
 
 /** Symbiote's S, as the viewer's `SymbioteMark`: the list's head has it, as Start's does. */
 const mark = () =>
@@ -105,6 +89,13 @@ const home = el('section', {
   role: 'tabpanel',
   'aria-label': 'Symbiotes',
 });
+const folders = foldersView({
+  start: startSymbiote,
+  show: (root) => select(root, { focusFrame: true }),
+  moved: () => {
+    if (selected === FOLDERS) select(FOLDERS);
+  },
+});
 const stopped = el('section', { class: 'nexus-stopped', role: 'tabpanel', hidden: true });
 const framesBox = el('div', { class: 'nexus-frames' });
 // No S of the row's own: the list's head and each viewer's sidenav show it right under the row.
@@ -117,7 +108,7 @@ document
       'div',
       { class: 'nexus' },
       bar,
-      el('main', { class: 'nexus-main' }, home, stopped, framesBox),
+      el('main', { class: 'nexus-main' }, home, folders.element, stopped, framesBox),
     ),
   );
 
@@ -165,7 +156,7 @@ function drawStrip(): void {
     el('span', {}, 'Symbiotes'),
     el('span', { class: 'count' }, String(running)),
   );
-  const children: HTMLElement[] = [list];
+  const children: HTMLElement[] = [list, tabButton(FOLDERS, icon(FOLDER, true), 'Folders')];
   for (const tab of tabs) {
     const button = tabButton(
       tab.root,
@@ -215,6 +206,7 @@ function drawHome(): void {
   const key = JSON.stringify([
     readOnce,
     failure,
+    stopFailure,
     running,
     now.toDateString(),
     now.getHours(),
@@ -238,9 +230,9 @@ function drawHome(): void {
     ),
   );
   const rows = running.map((tab) => {
-    const row = el(
+    const open = el(
       'button',
-      { type: 'button', class: 'nexus-row', 'data-root': tab.root },
+      { type: 'button', class: 'nexus-row-open', 'data-root': tab.root },
       el(
         'span',
         { class: 'nexus-row-main' },
@@ -251,9 +243,17 @@ function drawHome(): void {
       el('span', { class: 'nexus-row-changes' }, changesText(tab.changed)),
       el('span', { class: 'nexus-row-since' }, sinceText(tab.started, now)),
     );
-    row.addEventListener('click', () => select(tab.root, { focusFrame: true }));
-    return row;
+    open.addEventListener('click', () => select(tab.root, { focusFrame: true }));
+    const stop = el(
+      'button',
+      { type: 'button', class: 'icon-button nexus-row-stop', 'aria-label': `Stop ${tab.name}` },
+      icon(STOP, true),
+    );
+    stop.addEventListener('click', () => void stopSymbiote(tab, stop));
+    return el('div', { class: 'nexus-row' }, open, stop);
   });
+  const toFolders = el('button', { type: 'button', class: 'button' }, 'Open a folder');
+  toFolders.addEventListener('click', () => select(FOLDERS));
   const empty = el(
     'div',
     { class: 'nexus-empty' },
@@ -262,15 +262,17 @@ function drawHome(): void {
     el(
       'p',
       { class: 'nexus-empty-text' },
-      'Start one with ',
+      'Open one on a repository in Folders, or start one with ',
       el('code', {}, 'symbiote view'),
       ' in a repository: it shows here within 2 seconds.',
     ),
+    toFolders,
   );
+  const problem = failure ?? stopFailure;
   home.replaceChildren(
     ...[
       head,
-      failure ? el('p', { class: 'nexus-failure error', role: 'alert' }, failure) : null,
+      problem ? el('p', { class: 'nexus-failure error', role: 'alert' }, problem) : null,
       readOnce
         ? el(
             'div',
@@ -283,9 +285,17 @@ function drawHome(): void {
 }
 
 function drawStopped(tab: Tab): void {
-  const key = JSON.stringify([tab.root, tab.name]);
+  const busy = restarting.has(tab.root);
+  const why = restartFailure?.root === tab.root ? restartFailure.why : null;
+  const key = JSON.stringify([tab.root, tab.name, busy, why]);
   if (key === drawn.stopped) return;
   drawn.stopped = key;
+  const again = el(
+    'button',
+    { type: 'button', class: 'button', disabled: busy },
+    busy ? 'Starting…' : 'Start again',
+  );
+  again.addEventListener('click', () => void startAgain(tab.root));
   const close = el('button', { type: 'button', class: 'button secondary' }, 'Close tab');
   close.addEventListener('click', () => closeStopped(tab.root));
   stopped.replaceChildren(
@@ -299,17 +309,19 @@ function drawStopped(tab: Tab): void {
         { class: 'nexus-empty-text' },
         'Its ',
         el('code', {}, 'symbiote view'),
-        ' ended: run it again in its folder, and this tab takes it back.',
+        ' ended: start it again here, or run it again in its folder, and this tab takes it back.',
       ),
       el('p', { class: 'nexus-empty-text' }, el('code', {}, tab.root)),
-      close,
+      why ? el('p', { class: 'nexus-empty-text error', role: 'alert' }, why) : null,
+      el('div', { class: 'nexus-empty-actions' }, again, close),
     ),
   );
 }
 
-/** Shows the open tab: its frame (made once, kept), the list, or a stopped one's panel. */
+/** Shows the open tab: its frame (made once, kept), the list, Folders, or a stopped one's panel. */
 function show(): void {
   const tab = tabs.find((t) => t.root === selected);
+  const onFolders = selected === FOLDERS;
   // Frames of Symbiotes that stopped, or whose tab closed, are unloaded; a restarted one's moves.
   for (const [root, frame] of frames) {
     const its = tabs.find((t) => t.root === root);
@@ -337,14 +349,17 @@ function show(): void {
     }
   }
   for (const [root, frame] of frames) frame.hidden = root !== selected;
-  home.hidden = tab !== undefined;
+  home.hidden = tab !== undefined || onFolders;
+  folders.element.hidden = !onFolders;
+  if (onFolders) folders.open(folders.path ?? folderFromHash(window.location.hash));
+  folders.draw(new Set(tabs.filter((t) => t.url !== null).map((t) => t.root)));
   stopped.hidden = !(tab && tab.url === null);
   if (tab && tab.url === null) drawStopped(tab);
   else if (drawn.stopped !== '') {
     drawn.stopped = '';
     stopped.replaceChildren();
   }
-  document.title = titleOf(tab);
+  document.title = onFolders ? 'Folders — Symbiote nexus' : titleOf(tab);
 }
 
 function render(): void {
@@ -358,8 +373,12 @@ function render(): void {
 function select(root: string | null, { focusFrame = false } = {}): void {
   selected = root;
   // The open tab in the address, with no entry of the nexus's own in the history (decision 521).
-  const url = `${window.location.pathname}${window.location.search}${hashOf(root)}`;
-  window.history.replaceState(null, '', url);
+  const hash = root === FOLDERS ? foldersHash(folders.path) : hashOf(root);
+  window.history.replaceState(
+    null,
+    '',
+    `${window.location.pathname}${window.location.search}${hash}`,
+  );
   render();
   if (focusFrame && root !== null) frames.get(root)?.focus();
 }
@@ -369,6 +388,103 @@ function closeStopped(root: string): void {
   tabs = closeTab(tabs, root);
   if (selected === root) select(null);
   else render();
+}
+
+/** A write to the nexus's server, as the viewer's are sent (decision 543). */
+function post(path: string, value: unknown): Promise<Response> {
+  return fetch(path, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+    body: JSON.stringify(value),
+  });
+}
+
+/**
+ * Starts `symbiote view` in `folder` (decision 541), or finds the one serving it, and opens its
+ * tab: null once it is open, else why not.
+ */
+async function startSymbiote(folder: string): Promise<string | null> {
+  let answer: { symbiote: Running } | { error: string };
+  try {
+    const res = await post('/api/symbiotes', { folder });
+    answer = res.headers.get('content-type')?.includes('json')
+      ? ((await res.json()) as typeof answer)
+      : { error: `${res.status}: ${await res.text()}` };
+  } catch (error) {
+    answer = { error: (error as Error).message };
+  }
+  if ('error' in answer) return answer.error;
+  await refresh();
+  select(answer.symbiote.root, { focusFrame: true });
+  return null;
+}
+
+async function startAgain(root: string): Promise<void> {
+  restarting.add(root);
+  restartFailure = null;
+  render();
+  const why = await startSymbiote(root);
+  restarting.delete(root);
+  if (why !== null) restartFailure = { root, why };
+  render();
+}
+
+/** Stops a Symbiote, after a question (decision 542): its tab, if opened, is then stopped. */
+async function stopSymbiote(tab: Tab, from: HTMLElement): Promise<void> {
+  const stop = await confirmStop(tab.name);
+  from.focus();
+  if (!stop) return;
+  stopFailure = null;
+  try {
+    const res = await post('/api/symbiotes/stop', { root: tab.root });
+    if (!res.ok && res.status !== 404)
+      stopFailure = `${tab.name} did not stop: ${await res.text()}`;
+  } catch (error) {
+    stopFailure = `${tab.name} did not stop: ${(error as Error).message}`;
+  }
+  await refresh();
+}
+
+/**
+ * The question before a Symbiote stops, in the viewer's dialog (its `ConfirmDialog`): staying is
+ * the default, Escape stays.
+ */
+function confirmStop(name: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const keep = el('button', { type: 'button', class: 'button' }, 'Keep it running');
+    const stop = el('button', { type: 'button', class: 'button ghost' }, 'Stop');
+    const box = el(
+      'div',
+      {
+        class: 'dialog',
+        role: 'alertdialog',
+        'aria-modal': 'true',
+        'aria-labelledby': 'nexus-stop-question',
+        'aria-describedby': 'nexus-stop-detail',
+      },
+      el('h2', { id: 'nexus-stop-question' }, `Stop ${name}?`),
+      el(
+        'p',
+        { id: 'nexus-stop-detail' },
+        'Its symbiote view ends, with its terminals and any agent working in them. Open it again from Folders.',
+      ),
+      el('div', { class: 'dialog-buttons' }, stop, keep),
+    );
+    const backdrop = el('div', { class: 'dialog-backdrop' }, box);
+    const answer = (value: boolean) => {
+      backdrop.remove();
+      resolve(value);
+    };
+    keep.addEventListener('click', () => answer(false));
+    stop.addEventListener('click', () => answer(true));
+    box.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      answer(false);
+    });
+    document.body.append(backdrop);
+    keep.focus();
+  });
 }
 
 // The tabs by the keys, as a tab list has them: the arrows, Home and End.
@@ -394,11 +510,19 @@ strip.addEventListener('keydown', (event) => {
   strip.querySelector<HTMLElement>(`[data-tab="${CSS.escape(root ?? '')}"]`)?.focus();
 });
 
-window.addEventListener('hashchange', () => select(selectedFrom(window.location.hash)));
+window.addEventListener('hashchange', () => {
+  const next = selectedFrom(window.location.hash);
+  if (next === FOLDERS) {
+    const path = folderFromHash(window.location.hash);
+    if (path !== null && path !== folders.path) folders.open(path);
+  }
+  select(next);
+});
 
 // ---- reading ------------------------------------------------------------------------------------
 
-async function read(): Promise<void> {
+/** Reads the running Symbiotes once and draws what changed. */
+async function refresh(): Promise<void> {
   try {
     const res = await fetch('/api/symbiotes', { cache: 'no-store' });
     if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
@@ -408,13 +532,19 @@ async function read(): Promise<void> {
     const first = !readOnce;
     readOnce = true;
     // A tab asked for by the address that is not there (any more): the list.
-    if (selected !== null && !tabs.some((tab) => tab.root === selected)) select(null);
+    const gone =
+      selected !== null && selected !== FOLDERS && !tabs.some((t) => t.root === selected);
+    if (gone) select(null);
     else render();
     if (first && selected !== null) frames.get(selected)?.focus();
   } catch (error) {
     failure = `The running Symbiotes could not be read: ${(error as Error).message}`;
     render();
   }
+}
+
+async function read(): Promise<void> {
+  await refresh();
   setTimeout(() => void read(), READ_EVERY);
 }
 

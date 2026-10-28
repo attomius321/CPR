@@ -6,7 +6,15 @@ import type { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { _electron, expect, test, type ElectronApplication } from '@playwright/test';
 import { electronBinary } from '../src/app-window.js';
-import { cacheFolder, repository, startNexus, startView, type Served } from './nexus.js';
+import {
+  cacheFolder,
+  homeFolder,
+  repository,
+  startNexus,
+  startView,
+  stopRecorded,
+  type Served,
+} from './nexus.js';
 
 // Symbiote nexus in Symbiote's window (NX1c, decision 524): the desktop app's `--url` mode, as
 // `symbiote view` opens it, untouched. As the viewer's `e2e/app.spec.ts`: Electron's binary
@@ -126,6 +134,38 @@ test('shows the nexus in Symbiote’s window: its buttons, and a Symbiote framed
     .poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getTitle()))
     .toBe('alpha · main — Symbiote nexus');
   expect(errors).toEqual([]);
+});
+
+test('opens a Symbiote from Folders in Symbiote’s window (NX2)', async () => {
+  const home = homeFolder(['beta']);
+  const own = cacheFolder();
+  const served = await startNexus(own.dir, home.dir);
+  try {
+    const app = await _electron.launch({
+      executablePath: electron as string,
+      args: [desktop, '--url', served.url, '--title', 'Symbiote nexus'],
+      env: appEnv(),
+    });
+    running.push(app);
+    const page = await app.firstWindow();
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.locator('.nexus-tabs').getByRole('tab', { name: 'Folders' }).click();
+    await page.locator('.nexus-folder-open', { hasText: 'projects' }).click();
+    await page.getByRole('button', { name: 'Open Symbiote in beta' }).click();
+    await expect(
+      page.frameLocator('iframe[title="beta"]').locator('.commit').first(),
+    ).toBeVisible();
+    await expect
+      .poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getTitle()))
+      .toBe('beta · main — Symbiote nexus');
+    expect(errors).toEqual([]);
+  } finally {
+    await served.stop();
+    await stopRecorded(own.dir);
+    own.remove();
+    home.remove();
+  }
 });
 
 test('symbiote-nexus opens the window itself, and ends when it closes', async () => {

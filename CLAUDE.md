@@ -31,9 +31,9 @@ finding costs more trust than a missing one), explainable beats clever, local an
 - `packages/log` — Symbiote's logs (LG1): every process's lines, one JSON object a line, in
   `<cache>/logs/<day>.jsonl`; uncaught errors written before a process ends. See its `CLAUDE.md`.
 - `packages/viewer` — React + React Flow app that `symbiote view` serves. See its `CLAUDE.md`.
-- `packages/nexus` — Symbiote nexus (NX1): every running `symbiote view` as tabs in one window or
-  browser tab, `symbiote-nexus`. Its registry (`<cache>/running/<pid>.json`) is what `symbiote view`
-  writes to be found. See its `CLAUDE.md`.
+- `packages/nexus` — Symbiote nexus (NX1, NX2): every running `symbiote view` as tabs in one window
+  or browser tab, and this PC's folders to start one in, `symbiote-nexus`. Its registry
+  (`<cache>/running/<pid>.json`) is what `symbiote view` writes to be found. See its `CLAUDE.md`.
 - `packages/plugin-angular`, `packages/plugin-qwik` — framework plugins (`--plugin angular|qwik`).
   Each has a `CLAUDE.md`.
 - `action.yml`, `action/` — the GitHub Action; `ci/gitlab/symbiote.yml` — the GitLab CI template.

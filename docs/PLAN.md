@@ -81,6 +81,7 @@ hosted.
 | [V7](plan/v7-app-boundaries.md) | Apps in the graph | ✅ | 33–36 | [journal](journal/v7-app-boundaries.md) |
 | [V8](plan/v8-smooth-viewer.md) | A smooth viewer | ✅ | 37–41 | [journal](journal/v8-smooth-viewer.md) |
 | [V12](plan/v12-open-in-vscode.md) | Open in VS Code | ✅ | 60–64 | [journal](journal/v12-open-in-vscode.md) |
+| Fix | `open-pr.spec.ts`: two opens raced to VS Code's log; the spec waits for each | ready for review | | [journal](journal/fix-open-pr-spec-race.md) |
 
 ### History
 
@@ -232,6 +233,7 @@ hosted.
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
 | [NX1](plan/nx1-nexus.md) | Symbiote nexus: every running `symbiote view` found, as tabs in one window or browser tab | ready for review | 519–527 | [journal](journal/nx1-nexus.md) |
+| [NX2](plan/nx2-open-from-folders.md) | Open a Symbiote from the nexus: this PC's folders, Open Symbiote, Stop and Start again | ready for review | 539–543 | [journal](journal/nx2-open-from-folders.md) |
 
 ### Repository monitoring
 

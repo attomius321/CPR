@@ -1,6 +1,7 @@
 // The nexus page's pure part (NX1b): its tabs from each read of the running Symbiotes, the open
 // one in the address, and the words. The page's DOM is `main.ts`'s.
 import type { Symbiote } from '../symbiotes.js';
+import { FOLDERS } from './folders-tab.js';
 
 /** A tab of the row: a Symbiote, running or stopped. A folder is one tab. */
 export interface Tab {
@@ -52,10 +53,11 @@ export function hashOf(root: string | null): string {
   return root === null ? '' : `#${encodeURIComponent(root)}`;
 }
 
-/** The open tab's folder from the address's hash; null for the list. */
+/** The open tab from the address's hash: a Symbiote's folder, Folders, or null for the list. */
 export function selectedFrom(hash: string): string | null {
   const text = hash.replace(/^#/, '');
   if (text === '') return null;
+  if (text === FOLDERS || text.startsWith(`${FOLDERS}:`)) return FOLDERS;
   try {
     return decodeURIComponent(text);
   } catch {

@@ -131,6 +131,35 @@ describe('symbiote-nexus', () => {
     expect(result.asked).toEqual([]);
   });
 
+  it("lists this PC's folders, and starts a Symbiote only in one (NX2)", async () => {
+    mkdirSync(join(dir, 'projects', 'ky', '.git'), { recursive: true });
+    let listed: { path: string; folders: unknown[]; places: { name: string }[] } | undefined;
+    let started: { status: number; body: unknown } | undefined;
+    await nexus(['--no-open'], {
+      during: async (url) => {
+        const path = encodeURIComponent(join(dir, 'projects'));
+        listed = (await (await fetch(new URL(`api/folders?path=${path}`, url))).json()) as never;
+        const res = await fetch(new URL('api/symbiotes', url), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+          body: JSON.stringify({ folder: join(dir, 'missing') }),
+        });
+        started = { status: res.status, body: await res.json() };
+      },
+    });
+    expect(listed?.path).toBe(join(dir, 'projects'));
+    expect(listed?.folders).toEqual([
+      { name: 'ky', path: join(dir, 'projects', 'ky'), repository: true },
+    ]);
+    expect(listed?.places.map((place) => place.name)).toEqual(
+      expect.arrayContaining(['Home', '/']),
+    );
+    expect(started).toEqual({
+      status: 422,
+      body: { error: `No such folder: ${join(dir, 'missing')}` },
+    });
+  });
+
   it("opens Symbiote's window when the app is set up, and ends when it closes", async () => {
     let close = () => undefined as void;
     const closed = new Promise<void>((resolve) => (close = resolve));
