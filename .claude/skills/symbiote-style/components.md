@@ -436,14 +436,24 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   raised square), the pages as 36 px rows with 18 px icons, the section header, the groups and
   their cards; at the bottom, Settings alone, a page's row over a `--line` hairline (6 × 8 px
   around it) that the list scrolls under, its icon at the rail's bottom when folded.
-- Page head (V61): 52 px on the page's ground (`--bg`), no line under it; the page's title in
-  17 px weight 600; actions on the right as 32 px buttons or 28 px icon buttons. History's
-  toolbar is the rows card's strip (`--side`, a hairline under it), as a workspace's tabs.
-- Panels as cards (V61): under the head, each panel a card (`--line` hairline, 10 px radius,
-  `overflow: hidden`), 8 px from each other and from the main area's edges; the content's card on
-  `--bg`, a side panel's on `--side`. A `Resizer` between two cards is the gutter (`margin: 0`).
-  A strip that asks something of the person (a workspace waiting, failed) is a card of its own in
-  its tone: a 30 % edge, an 8 % wash, the primary at its right.
+- Page head (V72, `ui/PageHead.tsx` and `ui/page.css`): every page's, on the page's ground
+  (`--bg`), no line under it. The page's icon (28 px, `--accent`) in a 32 px square 16 px in,
+  then the title (17 px, weight 600) with what goes beside it (its "?", a kind's chip, a merge's
+  state), a `--muted` 14 px line under it, cut to one line. The actions sit at the right as
+  32 px buttons; they go under the title when the title would keep less than 200 px. The head is
+  76 px high, so the title stands at x 60 and the cards start at y 76 on every page. A
+  workspace's icon is its kind's; a review's the eye; Start's the S; a merge's the merge icon.
+- Panels as cards (V61; the frame since V72): under the head, each panel a card (`--line`
+  hairline, 10 px radius, `overflow: hidden`), 16 px from each other and from the main area's
+  sides and bottom (`--page-pad`, `--page-gap`); the content's card on `--bg`, a side panel's on
+  `--side`. A `Resizer` between two cards takes `gutter`: it is the 16 px gap itself, its line in
+  the middle. A strip that asks something of the person (a workspace waiting, failed) is a card
+  of its own in its tone: a 30 % edge, an 8 % wash, the primary at its right.
+- Inside a card (V72): the words start 16 px in (`--card-pad`), a list's row wash 8 px in with
+  its words at 16. A card's head is 48 px with its hairline (`.card-head`): tabs stand on the
+  hairline with the first tab's words 16 px in; a head of controls (Scout's model and effort,
+  the Monitor's place) has its first control 16 px in. Git's rows card keeps its toolbar head,
+  which wraps on a narrow card.
 - Status bar: 24 px, `--side`, `--line` above, 13 px; each segment a button (2 × 4 px padding, 4 px
   radius, hover `color-mix(in srgb, var(--raised) 70%, transparent)`). Usage bars: 4 px high,
   round, track `--raised`, fill `--added` under 80 %, `--warning` from 80 % or when the vendor
@@ -462,27 +472,24 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   `--side`), its icon in a 28 px `--raised` tile, the words in `--muted`.
 - Empty state: a 28 px icon in `--faint`, a 14 px weight 500 line, 12 px `--muted` text, and the
   action that fills it (a primary or outline button).
-- A page that makes something (Start a workspace, V49; the person's mockup since V63): its form
-  centred in the main area, never pinned to the left with the rest of a wide window bare; the head
-  on the ground — the S (48 px), the title and a `--muted` line under it, the buttons at the right
-  (36 px, Cancel and Clear `secondary`, the primary with its icon) — laid out in the form's width
-  (`--start-side`). What is written in one card (14 px, `--panel`, `--line`, `--shadow-lift`), the
-  kinds as tabs with icons on its hairline (the picked one `--selected`, its words `--accent`, a
-  3 px `--primary` line), each field's name with its "?" over it, a part's tools in its frame;
-  the settings beside it (821 : 470, 1,312 px at most) as one card each: an icon in `--accent`
-  and a heading, a choice's control on the heading's line in the rows' control column
-  (`--start-name`, 124 px), rows with the name in `--muted` at the left. Files are added in a
-  dashed drop area (`--field-line`) with the button in it. The mockup's arcs (`--ground-arc`)
-  stay right of the cards, never behind them: a card's gap would show bits of a ring. A tall
-  window gives its room to what is written most, and lowers the head and the cards; it does not
-  centre them (they would move as the form grows).
-- A page of settings (Settings and Skills, V51): the same head and centring, the list (240 px, a
-  plain column: navigation, not a card) and the page (up to 760 px) one grid of 1,024 px; the
-  list's group headings in line with the head's title. A page is its heading (with its chip and
-  "?") over its cards; a prompt or a skill one card, a prebuilt agent's settings a card of rows
-  (`.settings-rows`: the name an `h3` in `--muted` 500) then a card per prompt with its title
-  inside. A setting of this browser's (the theme, the intro) is an entry of the list, not a
-  control in the head. Not lowered on a tall window: a prompt's card is taller than the window.
+- A page that makes something (Start a workspace; the person's mockup since V63): the whole main
+  area, as every page (V72: it was centred at 1,312 px). The head is the frame's, the S its icon,
+  the buttons at the right (36 px, Cancel and Clear `secondary`, the primary with its icon).
+  What is written is one card (14 px, `--panel`, `--line`, `--shadow-lift`) with the kinds as
+  its 48 px head of tabs with icons (the picked one `--selected`, its words `--accent`, a 3 px
+  `--primary` line on the hairline), each field's name with its "?" over it, a part's tools in
+  its frame. The settings sit beside it (821 : 470 of the area, the run at least 380 px) as one
+  card each, 16 px apart: an icon in `--accent` and a heading, a choice's control on the
+  heading's line in the rows' control column (`--start-name`, 124 px), rows with the name in
+  `--muted` at the left. Files are added in a dashed drop area (`--field-line`) with the button
+  in it. The mockup's arc (`--ground-arc`) rings the head's S. A tall window makes the goal
+  taller; the cards stay under the head.
+- A page of settings (Settings and Skills): the frame's head, then the list (280 px, a card) and
+  the open page (a card) to the area's bottom, each scrolling on its own, over the whole width
+  (V72: Settings was centred at 1,400 px). A page is its heading (with its chip and "?") over
+  its sections; a prebuilt agent's settings rows (`.settings-rows`: the name an `h3` in
+  `--muted` 500) then a section per prompt. A setting of this browser's (the theme, the intro)
+  is an entry of the list, not a control in the head.
 
 ## The graph
 

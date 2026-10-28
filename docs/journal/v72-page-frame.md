@@ -61,7 +61,7 @@ head, before each was fixed; it now passes, 3 tests over every page at 1440 × 9
 Angular, reviews, pull request, interdiff, title-bar and frame specs: 35 passed. Screenshots of
 every page and state (Git with a commit and its new-branch dialog; a workspace's four tabs,
 working, ready and approved; a review's Files, Graph and Review tab; a merge; Scout with its
-terminal; Skills; the Monitor; Settings and its 13 entries) in both themes at 1440 × 900 and
+terminal; Skills; the Monitor; Settings and 12 of its entries) in both themes at 1440 × 900 and
 1920 × 1080, device scale 1. Start and Settings also at 2560 × 1440, and the pages at 1,024, 800
 and 480 px wide. A head's words zoomed 3×: even gaps between letters. The plan's results table
 lists every page's measures before and after.
