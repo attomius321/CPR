@@ -24,9 +24,9 @@ the primary), every page's panels as cards on its ground, line tabs, and type a 
 ## The style in six rules
 
 1. **Quiet, near black (V61).** Neutral near-blacks with a breath of blue, not V42's navy.
-   Colour is for state — diff kinds, findings' severity, an agent's status, git lanes — and for
-   one accent, the S's violet, in named roles (rule 3). Reach for muted/raised/line before a
-   colour.
+   Colour is for state — diff kinds, findings' severity, an agent's status, git lanes, the
+   Activity tab's kinds of work (V74: a tile each, never a word's colour) — and for one accent,
+   the S's violet, in named roles (rule 3). Reach for muted/raised/line before a colour.
 2. **The content is darkest; the chrome is lifted; panels are cards.** Canvas and page ground
    `#090b0e` (the graph, History's rows, a thread; the terminal `#050608`); sidenav, status bar
    and the cards' chrome (a tab strip, the changes panel) `#0d1015`; chips, counts and raised

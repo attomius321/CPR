@@ -63,6 +63,25 @@ History's lanes, ≥ 3:1 on `--bg` and `--raised`. Dark: `--lane-1 #6aa8ff`, `--
 `--lane-4` on `--raised`). Light: `#2f62cc #0a7f6f #bc4c00 #bf3989 #4d7a00 #9a6700`. The first
 lane left purple for the blue the accent left (V61): `#b66dff` was 1.09:1 from the violet accent.
 
+The Activity tab's kinds of work (V74, decisions 528–530), ≥ 3:1 on the four backgrounds and on
+their own tile (a `--phase-wash` share of the colour over `--bg`: 16 % dark, 12 % light). One hue
+in both themes, unlike lanes 5 and 6 (tan and olive, lime and brown), so the lanes could not be
+reused. A phase's tile, its count, an event's icon, a raw line's chip take them; titles and
+summaries keep the text's colours, and a status stays on its badge and the tile's ring.
+
+| Token | Kind | Dark | Light | Lowest dark / light |
+|---|---|---|---|---|
+| `--phase-explore` | Exploration | `#40b0a6` | `#0a7f6f` | 6.05 / 4.19 |
+| `--phase-implement` | Implementation | `#6aa8ff` | `#2f62cc` | 6.44 / 4.74 |
+| `--phase-docs` | Documentation | `#e0a548` | `#9a5b00` | 7.05 / 4.59 |
+| `--phase-test` | Testing | `#8ccf3e` | `#4d7a00` | 7.95 / 4.37 |
+| `--phase-visual` | Visual inspection | `#ec6fae` | `#bf3989` | 5.74 / 4.24 |
+| `--phase-debug` | Debugging | `#f2815a` | `#c2410c` | 6.12 / 4.35 |
+| `--phase-git` | Git, a commit | `#c08cff` | `#8a3fd1` | 6.29 / 4.75 |
+
+Purple git is 22° of hue from the violet accent: the person's choice (their V73 mockup); the
+accent keeps its roles.
+
 ## Other tokens (not in the contrast test; may be translucent)
 
 Each is in the dark block, the light block and the system-light block (the test checks that light
