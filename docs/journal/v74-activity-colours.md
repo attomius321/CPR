@@ -22,3 +22,31 @@ page by Playwright, nothing in the repository changed.
 - **The preview**: tiles on the rail, the person's messages in bubbles and two-line reports read
   apart from the work in both themes; neutral titles read better than titles in the kind's colour
   (tried first); about 11 rows fit on a 900 px window against 12.
+
+## V74 — the Activity tab in colour (2026-10-28, branch `feature/workspace-activity-improvements`)
+
+Built as planned: seven `--phase-*` tokens (V74a); each group's icon on a 28 px tile on the rail in
+its kind of work's colour, the status on the tile's ring and in the badge with an icon, the person's
+messages in bubbles, reports two lines, events', the live strip's and raw lines' colours (V74b).
+Decisions 528–531.
+
+**Learned**:
+- **`--ring` is taken**: it is the focused field's ring token. A status ring named `--ring` on a
+  failed group would have recoloured the focus of any control inside it: `--status-ring`.
+- **A custom property inherits into the events**: an event of no kind (a task's update) would take
+  its group's colour; `--phase` is reset on events without a `phase-*` class.
+- **The e2e spec caught what the screenshots had not yet**: the rule giving a message's bubble its
+  padding also reset its radius to 0 (it matched the summary's rule).
+- **The real records have no failures, commits or questions to show**: written before V73 kept exit
+  codes, and the scratch branches have no commits. Those states were drawn with the e2e suite's fake
+  agent, from a spec kept outside the repository.
+
+**Verification**: tests first, red for the right reason (the tokens undefined, the words'
+functions missing, the live strip without `kind`, the e2e tile absent). `pnpm check`: 2,073 tests.
+e2e: 335 of 336 (5.0 min), the new Activity spec among them; the one failure, Scout's
+`scout.spec.ts:475` (its record read before it was written), passed alone on the final build with
+the five Activity specs. Screenshots before and after on three real records and the fake agent's states, 1440 and
+760 px, dark and light, 1×.
+
+Not verified: the desktop app (Electron) drawing the tab; a colour-blind reading of the seven
+hues (each tile's title names its kind).

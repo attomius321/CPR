@@ -2,9 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v74-activity-colours.md)
 
-**Status:** planned (2026-10-28), on branch `feature/workspace-activity-improvements` (a
+**Status:** ready for review (2026-10-28), on branch `feature/workspace-activity-improvements` (a
 workspace's branch). Plan agreed by the person ("1. Yes. 2 Yes. Ok": the palette, purple for git
-included, and bubbles for their messages).
+included, and bubbles for their messages). Its "As built" and results below.
 
 **Problem** (asked: "It is hard to read the activity UI. Make some styling changes to it, so the
 UI is more friendly. Add some colors."). V73's timeline, screenshot on copies of three of the
@@ -108,3 +108,31 @@ A tile is a wash of its colour: 16 % over the ground (12 % light), as a selectio
 
 **Not in V74 (later)**: a legend of the colours (each tile's title names its kind); colour in the
 Thread tab.
+
+## As built (V74)
+
+- **Built as planned**, in `ui/base.css` (the tokens and `--phase-wash`), `ActivityTab.css`,
+  `activity/GroupRow.tsx` (`PhaseTile`, `phaseClass`, the badges' icons), `LiveStrip.tsx`,
+  `RawStream.tsx`, and pure `phaseOf`, `groupPhase`, `rawPhase` in `words.ts`.
+- **The bubble is the Thread tab's**: the person's messages there are a 7 % mix of the text over
+  `--panel`, 10 px radius; the Activity tab's bubble takes the same, not `--raised` (the preview's).
+- **A status ring has its own variable** (`--status-ring`): `--ring` is the focused field's token,
+  and a failed group would have recoloured the focus ring of a control inside it.
+- **Inherited colour stops at an event**: `--phase` is inherited, so an event of no kind of work (a
+  task's update) would take its group's colour; `.activity-event:not([class*='phase-'])` resets it.
+- **The badge's icons**: Passed a check, Failed a cross, Running the sidenav's hourglass, Waiting
+  its bell, Stopped its pause; "No end recorded" has none.
+
+**Results.** `pnpm check`: 2,073 unit tests (2,067 before: 3 for the tokens, 3 for the colours'
+words; the live strip's `kind` in two of V73's). e2e: 335 of 336 (5.0 min), the new Activity
+spec among them; Scout's `scout.spec.ts:475` failed under the full run's load and passed alone on
+the final build. The e2e spec found the bubble's radius reset by
+its own padding rule before any screenshot did. Screenshots, before and after, on copies of three of
+the person's recorded workspaces (299, 355 and 60 calls), 1440 and 760 px, dark and light, 1×:
+every phase's kind on its tile, 11 rows on the first screen of the 299-call record against 12. The
+states the records lack (a failed test, debugging, a commit, a running call, a question waiting)
+were drawn with the e2e suite's fake agent in both themes: the failed tile ringed red, the running
+one cyan with the live strip's tile, the waiting question amber.
+
+**Not verified**: the desktop app (Electron) drawing the tab; how the seven hues read to a
+colour-blind eye (each tile's title names its kind, so nothing is said by colour alone).
