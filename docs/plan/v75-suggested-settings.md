@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v75-suggested-settings.md)
 
-**Status:** V75a and V75b built (2026-10-28), on branch `milestone/v75-suggested-settings`;
-V75c not started. The eval waits for the person's labels. "As built" and results are at the end.
+**Status:** V75a and V75b merged into main (2026-10-28, from branch
+`milestone/v75-suggested-settings`); V75c not started. The eval waits for the person's labels.
+"As built" and results are at the end.
 The person answered the plan's three questions: "1. Keep the agent i picked 2. No 3. Show a
 proposal i accept first. This feature should be called on click a button, not everythime i write
 in the prompt, it is the user decision." The answers are under

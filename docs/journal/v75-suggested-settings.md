@@ -77,6 +77,8 @@ Not verified:
 - Two presses at once.
 - The eval: it waits for the person's labels.
 
+Merged into main (2026-10-28).
+
 ## V75b — the button and the proposal on the Start page (2026-10-28, branch `milestone/v75-suggested-settings`)
 
 Built **Suggest settings** in the Start page's head and the proposal's card in the run's column,
@@ -103,6 +105,8 @@ Not verified:
 - The whole viewer suite again after the Settings change: only `settings.spec.ts` ran again.
 - A proposal on a phone's width.
 - The light theme on screen.
+
+Merged into main (2026-10-28).
 
 ## V75 test — the advisor on 18 written briefs, four ways (2026-10-28, branch `milestone/v75-suggested-settings`)
 
@@ -140,3 +144,4 @@ the models a real `symbiote view` listed (Claude Code 2.1.312, Codex 0.163):
 Not verified: the person's own labels on their 24 briefs (the sheet waits); a Codex that lists the
 GPT-6 models; the prompt change for a list without a model of the size.
 
+Merged into main (2026-10-28).
