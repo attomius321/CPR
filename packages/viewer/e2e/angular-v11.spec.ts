@@ -147,7 +147,8 @@ test.afterEach(() => expect(errors).toEqual([]));
 
 test('the header counts the change and its findings', async ({ page }) => {
   const summary = page.locator('.summary');
-  await expect(summary.locator('.revisions')).toHaveText(
+  // The commits compared are the head's title when no branch or request names the diff (V72).
+  await expect(page.locator('.bar .revisions')).toHaveText(
     /^HEAD~1 \([0-9a-f]{7}\) → HEAD \([0-9a-f]{7}\)$/,
   );
   await expect(summary.locator('.chip')).toHaveText(['3 files', '+2', '−1', '~4']);

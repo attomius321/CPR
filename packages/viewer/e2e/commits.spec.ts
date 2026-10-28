@@ -332,6 +332,6 @@ test('analyzes a diff URL opened anew', async ({ page }) => {
   await page.goto(`${symbiote.url}diff/${base}..${head}/`);
   await showGraph(page);
   await expect(symbol(page, 'triple')).toBeVisible();
-  // A picked pair has no names: short SHAs, not the full ones twice.
-  await expect(page.locator('.summary .revisions')).toHaveText(`${short(base)} → ${short(head)}`);
+  // A picked pair has no names: short SHAs, not the full ones twice; the head's title (V72).
+  await expect(page.locator('.bar .revisions')).toHaveText(`${short(base)} → ${short(head)}`);
 });

@@ -35,6 +35,8 @@ interface Props {
    * handle lies over it in the shell's grid.
    */
   find?: (handle: HTMLElement) => { panel: Element | null; rest: Element | null };
+  /** Between two cards (V72): the gutter itself, `--page-gap` wide, where it straddles an edge. */
+  gutter?: boolean;
 }
 
 /**
@@ -52,6 +54,7 @@ export function Resizer({
   max: widest = Infinity,
   room: keep = MIN_CANVAS,
   find,
+  gutter = false,
 }: Props) {
   const handle = useRef<HTMLDivElement>(null);
   const drag = useRef<(Range & { x: number; next: number; moved: boolean }) | null>(null);
@@ -137,7 +140,7 @@ export function Resizer({
   return (
     <div
       ref={handle}
-      className={`resizer${dragging ? ' dragging' : ''}`}
+      className={`resizer${gutter ? ' gutter' : ''}${dragging ? ' dragging' : ''}`}
       role="separator"
       aria-orientation="vertical"
       aria-label={label}

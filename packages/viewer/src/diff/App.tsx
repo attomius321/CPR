@@ -14,6 +14,7 @@ import { Canvas } from './Canvas.js';
 import { useDiffGraph } from './useDiffGraph.js';
 import { useReview } from './useReview.js';
 import {
+  diffName,
   diffTitle,
   diffView,
   revisionsLabel,
@@ -49,6 +50,8 @@ import {
 import { Resizer } from '../ui/Resizer.js';
 import { DiffKeys, Sidebar, type SidebarTab } from './Sidebar.js';
 import { Help } from '../ui/Help.js';
+import { PageHead } from '../ui/PageHead.js';
+import { ReviewIcon, SymbioteMark } from '../ui/icons.js';
 import { browserStore } from './store.js';
 import { WindowButtons } from '../shell/TitleBar.js';
 import { useLayout } from '../graph/useLayout.js';
@@ -325,6 +328,7 @@ export function App() {
   } as CSSProperties;
   const sidebarHandle = (
     <Resizer
+      gutter
       label="Resize review sidebar"
       side="before"
       variable="--sidebar-width"
@@ -332,80 +336,111 @@ export function App() {
       onDrag={setResizing}
     />
   );
+  // The head's title; before its graph a review's in the shell (being analyzed: V71's card under
+  // it), else Symbiote's window with its name, as the bar had it.
+  const title =
+    state.status === 'ready' ? (
+      <DiffName graph={state.graph} review={state.branchReview} />
+    ) : inView ? (
+      'Review'
+    ) : (
+      'Symbiote'
+    );
   const content = (
     <div
       className={inView ? 'app' : 'app alone'}
       onDragOver={(e) => e.preventDefault()}
       onDrop={onDrop}
     >
-      <header className="bar">
-        <strong className="brand">Symbiote</strong>
-        {state.status === 'ready' && state.commits && <BackLink />}
-        {state.status === 'ready' && <PageSwitch page={page} onPage={showPage} />}
-        {state.status === 'ready' && state.branchReview && <ReviewOf review={state.branchReview} />}
-        {state.status === 'ready' && <Summary graph={state.graph} />}
-        <div className="spacer" />
-        {state.status === 'ready' && page === 'files' && (
-          <Help label="This page's keys">
-            <FilesKeys review={Boolean(forge)} canOpen={state.open} />
-            <p>
-              Click a file for its changes
-              {forge ? ', a line of them to comment on it' : ''}; folded lines open on a click.
-            </p>
-          </Help>
-        )}
-        {state.status === 'ready' && page === 'graph' && (
+      {/* The page frame's head (V72, decision 511): what is reviewed the title, its facts the
+          line, the way back, Files and Graph and the page's toggles its actions. With no shell
+          (symbiote pr) it is the window's title bar, Symbiote's S its icon (N1d). */}
+      <PageHead
+        className="bar"
+        icon={inView ? <ReviewIcon /> : <SymbioteMark />}
+        title={title}
+        line={
+          state.status === 'ready' ? (
+            <span className="diff-facts">
+              {state.branchReview && <ReviewAfter review={state.branchReview} />}
+              {/* The commits compared, unless they are the title. */}
+              <Summary
+                graph={state.graph}
+                revisions={Boolean(state.branchReview ?? state.graph.changeRequest)}
+              />
+            </span>
+          ) : undefined
+        }
+        actions={
           <>
-            {state.graph.since && (
-              <label
-                className="toggle"
-                {...tip('Leave out symbols changed the same way as in the earlier version')}
-              >
-                <input
-                  type="checkbox"
-                  checked={sinceOnly}
-                  onChange={(e) => setSinceOnly(e.target.checked)}
-                />
-                Only changes since {state.graph.since.sha.slice(0, 7)}
-              </label>
+            {state.status === 'ready' && state.commits && <BackLink />}
+            {state.status === 'ready' && <PageSwitch page={page} onPage={showPage} />}
+            {state.status === 'ready' && page === 'files' && (
+              <Help label="This page's keys">
+                <FilesKeys review={Boolean(forge)} canOpen={state.open} />
+                <p>
+                  Click a file for its changes
+                  {forge ? ', a line of them to comment on it' : ''}; folded lines open on a click.
+                </p>
+              </Help>
             )}
-            <label
-              className="toggle"
-              {...tip('Show only the selected symbol and its neighbours', { keys: 'f' })}
-            >
-              <input type="checkbox" checked={focus} onChange={(e) => setFocus(e.target.checked)} />
-              Focus
-            </label>
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={context}
-                onChange={(e) => setContext(e.target.checked)}
-              />
-              Context
-            </label>
-            <label className="toggle">
-              <input
-                type="checkbox"
-                checked={typeReferences}
-                onChange={(e) => setTypeReferences(e.target.checked)}
-              />
-              Type references
-            </label>
-            <Help label="This page's keys">
-              <DiffKeys
-                grouped={changes.some((file) => file.project)}
-                review={Boolean(forge)}
-                canOpen={state.open}
-                files
-              />
-              <p>Click a symbol for its details, a group to show its symbols.</p>
-            </Help>
+            {state.status === 'ready' && page === 'graph' && (
+              <>
+                {state.graph.since && (
+                  <label
+                    className="toggle"
+                    {...tip('Leave out symbols changed the same way as in the earlier version')}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={sinceOnly}
+                      onChange={(e) => setSinceOnly(e.target.checked)}
+                    />
+                    Only changes since {state.graph.since.sha.slice(0, 7)}
+                  </label>
+                )}
+                <label
+                  className="toggle"
+                  {...tip('Show only the selected symbol and its neighbours', { keys: 'f' })}
+                >
+                  <input
+                    type="checkbox"
+                    checked={focus}
+                    onChange={(e) => setFocus(e.target.checked)}
+                  />
+                  Focus
+                </label>
+                <label className="toggle">
+                  <input
+                    type="checkbox"
+                    checked={context}
+                    onChange={(e) => setContext(e.target.checked)}
+                  />
+                  Context
+                </label>
+                <label className="toggle">
+                  <input
+                    type="checkbox"
+                    checked={typeReferences}
+                    onChange={(e) => setTypeReferences(e.target.checked)}
+                  />
+                  Type references
+                </label>
+                <Help label="This page's keys">
+                  <DiffKeys
+                    grouped={changes.some((file) => file.project)}
+                    review={Boolean(forge)}
+                    canOpen={state.open}
+                    files
+                  />
+                  <p>Click a symbol for its details, a group to show its symbols.</p>
+                </Help>
+              </>
+            )}
+            {!inView && <WindowButtons />}
           </>
-        )}
-        {/* A page with no shell (symbiote pr) is the window's title bar: its buttons, on Linux (N1d). */}
-        {!inView && <WindowButtons />}
-      </header>
+        }
+      />
       {state.status === 'ready' && page === 'files' ? (
         <main className={`files-main${resizing ? ' resizing' : ''}`} style={widthStyle}>
           <FilesPage
@@ -466,29 +501,35 @@ export function App() {
                 onOpenDraft={openDraft}
               />
               {sidebarHandle}
-              {layout && flowNodes ? (
-                <Canvas
-                  nodes={flowNodes}
-                  edges={layout.edges}
-                  fileEdges={layout.fileEdges}
-                  layoutNodes={layout.nodes}
-                  pending={pending}
-                  selected={selected}
-                  focus={focus}
-                  scope={project}
-                  resizing={resizing}
-                  onSelect={setSelected}
-                  onToggleSummary={toggleSummary}
-                  reveal={reveal}
-                />
-              ) : (
-                // The first layout: the change list and findings are there meanwhile.
-                <p className="hint canvas-waiting layout-pending" role="status">
-                  Laying out…
-                </p>
-              )}
+              {/* The canvas a card (V61), its legend at its foot since V72: the cards of the two
+                  pages start and end at the same places. */}
+              <div className="canvas-card">
+                {layout && flowNodes ? (
+                  <Canvas
+                    nodes={flowNodes}
+                    edges={layout.edges}
+                    fileEdges={layout.fileEdges}
+                    layoutNodes={layout.nodes}
+                    pending={pending}
+                    selected={selected}
+                    focus={focus}
+                    scope={project}
+                    resizing={resizing}
+                    onSelect={setSelected}
+                    onToggleSummary={toggleSummary}
+                    reveal={reveal}
+                  />
+                ) : (
+                  // The first layout: the change list and findings are there meanwhile.
+                  <p className="hint canvas-waiting layout-pending" role="status">
+                    Laying out…
+                  </p>
+                )}
+                {layout && <Legend frames={layout.nodes[0]?.type === 'project'} />}
+              </div>
               {selected && (
                 <Resizer
+                  gutter
                   label="Resize detail panel"
                   side="after"
                   variable="--panel-width"
@@ -526,7 +567,6 @@ export function App() {
           )}
         </main>
       )}
-      {layout && page === 'graph' && <Legend frames={layout.nodes[0]?.type === 'project'} />}
     </div>
   );
   // Only a diff: the shell's own pages are drawn by Shell, and while loading it is not known yet.
@@ -560,16 +600,40 @@ function PageSwitch({ page, onPage }: { page: DiffView; onPage: (page: DiffView)
 }
 
 /**
- * "Review of wip · 2 commits since your last review" (V15); the commits compared follow, in the
- * summary.
+ * What a diff's page reviews, its head's title (V72): "Review of wip" (V15), else its pull or merge
+ * request, else its revisions — the window's title without "Symbiote" (`diffName`).
  */
-function ReviewOf({ review }: { review: BranchReviewInfo }) {
-  const { branch, since, note } = review;
-  // The workspace this branch is (V18b): a link to it.
+function DiffName({ graph, review }: { graph: Graph; review: BranchReviewInfo | undefined }) {
+  const request = graph.changeRequest;
+  if (request) {
+    return (
+      <a className="request" href={request.url} target="_blank" rel="noreferrer">
+        {diffName(graph)}
+        {request.draft && <span className="chip">draft</span>}
+        {request.state !== 'open' && <span className="chip">{request.state}</span>}
+      </a>
+    );
+  }
+  if (review) {
+    return (
+      <span className="review-of" {...tip(review.note)}>
+        Review of <strong>{review.branch}</strong>
+      </span>
+    );
+  }
+  return <span className="revisions">{diffName(graph)}</span>;
+}
+
+/**
+ * "2 commits since your last review" (V15), and the workspace this branch is, a link to it (V18b):
+ * the head's line, before the commits compared.
+ */
+function ReviewAfter({ review }: { review: BranchReviewInfo }) {
+  const { branch, since } = review;
   const workspace = useWorkspaces().list?.workspaces.find((f) => f.branch === branch);
   return (
-    <span className="review-of" {...tip(note)}>
-      Review of <strong>{branch}</strong> · {reviewSince(since)}
+    <span className="review-after">
+      {reviewSince(since)}
       {workspace && (
         <>
           {' · '}
@@ -586,21 +650,12 @@ function ReviewOf({ review }: { review: BranchReviewInfo }) {
   );
 }
 
-function Summary({ graph }: { graph: Graph }) {
+function Summary({ graph, revisions }: { graph: Graph; revisions: boolean }) {
   const { added, removed, modified } = graph.stats.symbols;
   const severity = (s: string) => graph.findings.filter((f) => f.severity === s).length;
-  const request = graph.changeRequest;
   return (
     <div className="summary">
-      {request && (
-        <a className="request" href={request.url} target="_blank" rel="noreferrer">
-          {request.forge === 'gitlab' ? '!' : '#'}
-          {request.number} {request.title}
-          {request.draft && <span className="chip">draft</span>}
-          {request.state !== 'open' && <span className="chip">{request.state}</span>}
-        </a>
-      )}
-      <span className="revisions">{revisionsLabel(graph)}</span>
+      {revisions && <span className="revisions">{revisionsLabel(graph)}</span>}
       <span className="chip">{graph.stats.filesChanged} files</span>
       <span className="chip chip-added">+{added}</span>
       <span className="chip chip-removed">−{removed}</span>

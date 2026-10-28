@@ -2,41 +2,48 @@
 
 .app {
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: auto minmax(0, 1fr);
   height: 100%;
 }
 
-/* A diff's toolbar: one strip, as a workspace's head; on the page's ground since V61, its panels
-   cards under it (the person's mockup). */
+/* A diff's head: the page frame's since V72 (`PageHead`), on the page's ground, its panels cards
+   under it (V61, the person's mockup). Its actions in the small size, as the toolbar's were. */
 .bar {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 52px;
-  padding: 8px 16px;
   background: var(--bg);
-  flex-wrap: wrap;
+}
+
+.bar .page-actions {
   font-size: var(--size-small);
 }
 
-.brand {
-  font-weight: 600;
+/* The head's line: how it stands against the last review, then the commits compared and what
+   changed. */
+.diff-facts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
 }
 
-.spacer {
-  flex: 1;
+.diff-facts > .review-after::after {
+  content: ' ·';
 }
 
 .summary {
   display: flex;
   gap: 8px;
   align-items: center;
-  flex-wrap: wrap;
+  min-width: 0;
 }
 
 .revisions {
   font-family: var(--mono);
   color: var(--muted);
+}
+
+/* The commits compared as the head's title (V72): the title's colour. */
+.page-name-line .revisions {
+  color: var(--text);
 }
 
 .toggle {
@@ -56,29 +63,34 @@
   position: relative;
   min-height: 0;
   display: flex;
-  padding: 0 8px;
+  padding: 0 var(--page-pad) var(--page-pad);
 }
 
-/* A handle is the gutter between two cards (V61). */
-.canvas > .resizer,
-.files-main > .resizer {
-  margin: 0;
-}
-
-.canvas > .react-flow {
-  /* What the panels leave, never under 240px (MIN_CANVAS in Resizer.tsx). */
+/* The canvas, a card (V61) with its legend at its foot (V72): what the panels leave, never under
+   240px (MIN_CANVAS in Resizer.tsx). The edge is the card's, not React Flow's: a border on React
+   Flow's container would move its origin a pixel from its box. */
+.canvas-card {
   flex: 1 0 240px;
-  /* A card (V61): its edge an outline inside it, not a border, which would move React Flow's
-     origin a pixel from its box. */
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
   border-radius: 10px;
-  outline: 1px solid var(--line);
-  outline-offset: -1px;
+  background: var(--bg);
+}
+
+.canvas-card > .react-flow {
+  flex: 1;
+  min-height: 0;
 }
 
 /* Before the first layout arrives (V8e): where the canvas will be. */
-.canvas > .canvas-waiting {
-  flex: 1 0 240px;
+.canvas-card > .canvas-waiting {
+  flex: 1;
   margin: 0;
+  padding: var(--card-pad);
 }
 
 /* A newer layout is being made off the main thread; the one drawn stays usable. */
@@ -111,9 +123,11 @@
 /* ---- legend ------------------------------------------------------------------------- */
 
 .legend {
+  flex: none;
   display: flex;
   gap: 14px;
-  padding: 6px 16px;
+  padding: 6px var(--card-pad);
+  border-top: 1px solid var(--line);
   background: var(--bg);
   color: var(--muted);
   font-size: var(--size-caption);
@@ -177,18 +191,17 @@
   text-decoration: underline;
 }
 
-/* The diff page's header on a branch review. */
+/* The head's title on a branch review: "Review of", the branch in the title's weight. */
 .review-of {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: var(--size-body);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  font-weight: 400;
 }
 
 .review-of strong {
-  color: var(--text);
+  font-weight: 600;
+}
+
+.review-after {
+  flex: none;
 }
 
 .review-workspace {

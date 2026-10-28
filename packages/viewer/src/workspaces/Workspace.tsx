@@ -20,7 +20,9 @@ import { ChangesPanel } from './ChangesPanel.js';
 import { useChangesPanel } from './useChangesPanel.js';
 import { ReplyForm } from './ReplyForm.js';
 import { WorkspaceTabs, type AgentView, type View } from './WorkspaceTabs.js';
-import { ChangesIcon, TerminalIcon } from '../ui/icons.js';
+import { BranchIcon, ChangesIcon, TerminalIcon } from '../ui/icons.js';
+import { PageHead } from '../ui/PageHead.js';
+import { KIND_ICONS } from './StartKinds.js';
 import { cleanUp } from './cleanup.js';
 import { useRemoving, workspaceKey } from './removing.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
@@ -453,114 +455,122 @@ function WorkspacePanel({
 
   return (
     <section className="workspace" aria-label={`Workspace ${branch}`}>
-      <header className={`workspace-top tone-${row.next.chip.tone}`}>
-        <div className="workspace-title">
-          <StateDot row={row} />
-          <h1 className="workspace-about" {...tip(briefTip(workspace.brief))}>
-            <KindTag workspace={workspace} />
-            {workspaceName(workspace)}
-          </h1>
-          <span className="workspace-ref">
-            <WorkspaceBranch row={row} mark={mark} />
-          </span>
-        </div>
-        <div className="workspace-actions">
-          {said && (
-            <span className="workspace-said" role="status">
-              {said}
+      {/* The page frame's head (V72, decision 511): the kind's icon, the name and its kind, then
+          the branch, the state and how long; the actions at the right. */}
+      <PageHead
+        className={`workspace-top tone-${row.next.chip.tone}`}
+        icon={(workspace.kind && KIND_ICONS[workspace.kind]) ?? <BranchIcon />}
+        title={<span {...tip(briefTip(workspace.brief))}>{workspaceName(workspace)}</span>}
+        beside={<KindTag workspace={workspace} />}
+        line={
+          <span className="workspace-state-line">
+            <span className="workspace-ref">
+              <WorkspaceBranch row={row} mark={mark} />
             </span>
-          )}
-          {opened && showTerminal && <AttachImages into={opened} />}
-          {verdict && opened && showTerminal && (
+            <StateDot row={row} />
+            <span className="workspace-now">
+              <WorkspaceState row={row} />
+              <StateFor workspace={workspace} />
+            </span>
+          </span>
+        }
+        actions={
+          <>
+            {said && (
+              <span className="workspace-said" role="status">
+                {said}
+              </span>
+            )}
+            {opened && showTerminal && <AttachImages into={opened} />}
+            {verdict && opened && showTerminal && (
+              <button
+                type="button"
+                className="link"
+                {...tip('Types its first line and where the review is\nEnter sends it')}
+                onClick={() => void typeVerdict(opened, verdict.text)}
+              >
+                Send the verdict
+              </button>
+            )}
+            {live && (
+              <button
+                type="button"
+                className="button"
+                disabled={busy}
+                onClick={() => {
+                  setStopping(true);
+                  // The head's state says Stopped: no word of its own beside the buttons (V37).
+                  act(() =>
+                    postJson('/api/workspaces/stop', { branch })
+                      .then(() => null)
+                      .finally(() => setStopping(false)),
+                  );
+                }}
+              >
+                {stopping ? 'Stopping…' : 'Stop the agent'}
+              </button>
+            )}
+            {restartable && workspace.worktree.exists && (
+              <button
+                type="button"
+                className="button"
+                disabled={busy}
+                onClick={() =>
+                  act(() =>
+                    postJson<WorkspaceStart>('/api/workspaces/start', { branch }).then((start) => {
+                      onNotice(startedNotice(start));
+                      return null;
+                    }),
+                  )
+                }
+              >
+                Start the agent
+              </button>
+            )}
+            {workspace.ahead > 0 && !workspace.merged && <MergeControl branch={branch} />}
             <button
               type="button"
-              className="link"
-              {...tip('Types its first line and where the review is\nEnter sends it')}
-              onClick={() => void typeVerdict(opened, verdict.text)}
+              className="icon-button changes-toggle"
+              aria-label="Changes"
+              aria-pressed={changesShown}
+              {...tip(`${changesShown ? 'Hide' : 'Show'} the branch's changes`, { keys: ']' })}
+              onClick={toggleChanges}
             >
-              Send the verdict
+              <ChangesIcon />
             </button>
-          )}
-          {live && (
-            <button
-              type="button"
-              className="button"
-              disabled={busy}
-              onClick={() => {
-                setStopping(true);
-                // The head's state says Stopped: no word of its own beside the buttons (V37).
-                act(() =>
-                  postJson('/api/workspaces/stop', { branch })
-                    .then(() => null)
-                    .finally(() => setStopping(false)),
-                );
-              }}
-            >
-              {stopping ? 'Stopping…' : 'Stop the agent'}
-            </button>
-          )}
-          {restartable && workspace.worktree.exists && (
-            <button
-              type="button"
-              className="button"
-              disabled={busy}
-              onClick={() =>
-                act(() =>
-                  postJson<WorkspaceStart>('/api/workspaces/start', { branch }).then((start) => {
-                    onNotice(startedNotice(start));
+            <MoreActions actions={more} />
+            {workspace.ahead > 0 && workspace.tip !== null && (
+              <button
+                type="button"
+                className={workspace.merged ? 'button' : 'button primary'}
+                disabled={busy}
+                onClick={() =>
+                  act(async () => {
+                    const { url } = await postJson<{ url: string }>('/api/reviews', {
+                      ref: branch,
+                    });
+                    window.location.assign(url);
                     return null;
-                  }),
-                )
-              }
-            >
-              Start the agent
-            </button>
-          )}
-          {workspace.ahead > 0 && !workspace.merged && <MergeControl branch={branch} />}
-          <button
-            type="button"
-            className="icon-button changes-toggle"
-            aria-label="Changes"
-            aria-pressed={changesShown}
-            {...tip(`${changesShown ? 'Hide' : 'Show'} the branch's changes`, { keys: ']' })}
-            onClick={toggleChanges}
-          >
-            <ChangesIcon />
-          </button>
-          <MoreActions actions={more} />
-          {workspace.ahead > 0 && workspace.tip !== null && (
-            <button
-              type="button"
-              className={workspace.merged ? 'button' : 'button primary'}
-              disabled={busy}
-              onClick={() =>
-                act(async () => {
-                  const { url } = await postJson<{ url: string }>('/api/reviews', { ref: branch });
-                  window.location.assign(url);
-                  return null;
-                })
-              }
-            >
-              Review
-            </button>
-          )}
-          {workspace.merged && (
-            <button
-              type="button"
-              className="button primary"
-              disabled={busy}
-              {...tip('Remove its sessions, its worktree and its merged branch')}
-              onClick={() => clean(false)}
-            >
-              {cleaning ? 'Cleaning up…' : 'Clean up'}
-            </button>
-          )}
-        </div>
-        <div className="workspace-state-line">
-          <WorkspaceState row={row} />
-          <StateFor workspace={workspace} />
-        </div>
-      </header>
+                  })
+                }
+              >
+                Review
+              </button>
+            )}
+            {workspace.merged && (
+              <button
+                type="button"
+                className="button primary"
+                disabled={busy}
+                {...tip('Remove its sessions, its worktree and its merged branch')}
+                onClick={() => clean(false)}
+              >
+                {cleaning ? 'Cleaning up…' : 'Clean up'}
+              </button>
+            )}
+          </>
+        }
+      />
       <WorkspaceStrip
         row={row}
         waiting={waiting}
@@ -712,6 +722,7 @@ function WorkspacePanel({
         </div>
         {changesShown && (
           <Resizer
+            gutter
             label="Resize changes panel"
             side="after"
             variable="--changes-width"

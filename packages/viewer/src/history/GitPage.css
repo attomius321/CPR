@@ -1,55 +1,5 @@
 /* ---- Git (V66): the details pane, the uncommitted row, the header's remotes and search ---- */
 
-/* The page's head, as Settings' (V62): its icon, its name, a line under it; the search and the
-   remotes at its right, wrapping under them when the window is narrow. */
-.git-bar {
-  flex: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  min-height: 52px;
-  padding: 12px 16px 4px;
-}
-
-.git-bar .page-icon {
-  display: inline-flex;
-  color: var(--accent);
-}
-
-.git-bar .page-icon .icon {
-  width: 28px;
-  height: 28px;
-  stroke-width: 1.4;
-}
-
-.git-title {
-  min-width: 0;
-}
-
-.git-title h1 {
-  margin: 0;
-  font-size: var(--size-title);
-  font-weight: 600;
-}
-
-.git-title p {
-  margin: 2px 0 0;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: var(--size-small);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.git-bar-tail {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 16px;
-  margin-left: auto;
-}
-
 /* The details' toggle in the head, beside the remotes: a pane shown, not a mode. */
 .details-toggle[aria-pressed='true'] {
   border-color: var(--line);
@@ -77,7 +27,6 @@
   min-width: 0;
   min-height: 0;
   display: flex;
-  gap: 8px;
 }
 
 .commits-main > .commits-card {
@@ -97,6 +46,7 @@
 
 .commits-main.below {
   flex-direction: column;
+  gap: var(--page-gap);
 }
 
 .git-details {
@@ -130,6 +80,7 @@
 @container git-body (max-width: 1040px) {
   .commits-main {
     flex-direction: column;
+    gap: var(--page-gap);
   }
 
   .commits-main > .commits-card {
@@ -523,11 +474,13 @@
 
 /* ---- the branch and tag dialogs (V66d) ---- */
 
+/* A dialog's field (V66d), in the form's rhythm (V72): its label `--field-label-gap` over it,
+   `--field-gap` from the one before. */
 .git-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 12px;
+  gap: var(--field-label-gap);
+  margin-top: var(--field-gap);
 }
 
 .git-field input,

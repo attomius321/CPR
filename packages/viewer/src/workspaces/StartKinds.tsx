@@ -7,7 +7,8 @@ import { BranchIcon, ChoreIcon, FixIcon, RefactorIcon, SpikeIcon } from '../ui/i
 import { KIND_ABOUT } from './brief.js';
 import { tip } from '../ui/tip.js';
 
-const KIND_ICONS: Record<WorkKind, ReactNode> = {
+/** Each kind's icon: its tab here, a workspace's head (V72). */
+export const KIND_ICONS: Record<WorkKind, ReactNode> = {
   feature: <BranchIcon />,
   fix: <FixIcon />,
   refactor: <RefactorIcon />,

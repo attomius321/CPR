@@ -126,11 +126,13 @@ test('a start takes its place in the history: Back goes to the page before it', 
   await expect(page).toHaveURL(`${symbiote.url}git`);
 });
 
-test('the brief and the run side by side; More closed fits 1440 × 900, More open scrolls under the head; one column on a phone', async ({
+// V72 (decision 508): the run's seven cards 16 px apart and 16 in make it 875 px high, 90 more than
+// a 1440 × 900 window's main area has under the head: More closed fits from a 1,000 px window.
+test('the brief and the run side by side; More closed fits 1440 × 1000, More open scrolls under the head; one column on a phone', async ({
   page,
 }) => {
   const symbiote = await serve();
-  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto(`${symbiote.url}start`);
   const brief = page.locator('.start-brief');
   const run = page.locator('.start-run');
@@ -165,9 +167,11 @@ test('the brief and the run side by side; More closed fits 1440 × 900, More ope
   expect(Math.abs((last?.y ?? 0) - (first?.y ?? 0))).toBeLessThanOrEqual(1);
 });
 
-// V49: centred in the main area at any width, the head's contents over the cards; the run's choices
-// as rows, their names beside them; a tall window's room to the goal.
-test('centred in a wide main area, the head over the cards; the run as rows', async ({ page }) => {
+// The whole main area at any width (V72, decision 507: V49 centred it), the head's contents over the
+// cards; the run's choices as rows, their names beside them; a tall window's room to the goal.
+test('the whole main area at any width, the head over the cards; the run as rows', async ({
+  page,
+}) => {
   const symbiote = await serve();
   const brief = page.locator('.start-brief');
   const run = page.locator('.start-run');
@@ -184,8 +188,10 @@ test('centred in a wide main area, the head over the cards; the run as rows', as
     if (!area || !b || !r) throw new Error('no box');
     const left = b.x - area.x;
     const right = area.x + area.width - (r.x + r.width);
-    expect(left).toBeGreaterThan(100);
-    expect(Math.abs(left - right)).toBeLessThanOrEqual(1);
+    expect(Math.abs(left - 16)).toBeLessThanOrEqual(1);
+    expect(Math.abs(right - 16)).toBeLessThanOrEqual(1);
+    // Right under the head, on a tall window too (V49 lowered the cards by up to 240 px).
+    expect(Math.abs(b.y - area.y)).toBeLessThanOrEqual(1);
     // The head's contents in the cards' width: the S over the brief, Start over the run.
     const mark = await page.locator('.start-top .symbiote-mark').boundingBox();
     const go = await start(page).getByRole('button', { name: 'Start workspace' }).boundingBox();
@@ -253,16 +259,14 @@ test("as the person's mockup: the S and a line in the head, the kinds as tabs, t
   await expect(start(page)).toContainText('Let the agent propose a plan before making changes.');
   await expect(start(page)).toContainText('Add context files, docs, mockups, or requirements.');
 
-  // The mockup's widths: 1,312 px at most, centred; the run ~470, 16 px from the brief.
+  // The mockup's proportion, 821 : 470, over the whole area (V72); the run 16 px from the brief.
   const area = await page.locator('.start-body').boundingBox();
   const b = await page.locator('.start-brief').boundingBox();
   const r = await page.locator('.start-run').boundingBox();
   if (!area || !b || !r) throw new Error('no box');
-  expect(r.x + r.width - b.x).toBeLessThanOrEqual(1312);
-  expect(r.x + r.width - b.x).toBeGreaterThan(1300);
-  expect(Math.abs(b.x - area.x - (area.x + area.width - r.x - r.width))).toBeLessThanOrEqual(1);
-  expect(r.width).toBeGreaterThan(460);
-  expect(r.width).toBeLessThan(480);
+  expect(Math.abs(b.x - area.x - 16)).toBeLessThanOrEqual(1);
+  expect(Math.abs(area.x + area.width - r.x - r.width - 16)).toBeLessThanOrEqual(1);
+  expect(Math.abs(r.width / b.width - 470 / 821)).toBeLessThan(0.01);
   expect(Math.abs(r.x - (b.x + b.width) - 16)).toBeLessThanOrEqual(1);
 });
 

@@ -94,7 +94,9 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
 
   // From where the branch left main to its tip.
   await expect(page).toHaveURL(/\/review\/agent\/$/);
-  await expect(page.locator('.review-of')).toHaveText('Review of agent · first review');
+  // The head's title and its line (V72).
+  await expect(page.locator('.review-of')).toHaveText('Review of agent');
+  await expect(page.locator('.review-after')).toHaveText('first review');
   await expect(page.locator('.revisions')).toHaveText(`${short(base)} → ${short(cube)}`);
   await showGraph(page);
   await changesTab(page).click();
@@ -148,9 +150,8 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
     'agent 2 reviewed · 1 commit since',
   );
   await page.keyboard.press('Enter');
-  await expect(page.locator('.review-of')).toHaveText(
-    'Review of agent · 1 commit since your last review',
-  );
+  await expect(page.locator('.review-of')).toHaveText('Review of agent');
+  await expect(page.locator('.review-after')).toHaveText('1 commit since your last review');
   await expect(page.locator('.revisions')).toHaveText(`${short(base)} → ${short(tip)}`);
   await showGraph(page);
   await changesTab(page).click();
@@ -255,9 +256,8 @@ test('finishes a review: changes requested for the agent, then approved to merge
 
   // Reviewed again and approved (V17): metadata for the agent, the merge into main; no push.
   await review(page, 'Agent: square returns early', 'agent changes requested · 1 commit since');
-  await expect(page.locator('.review-of')).toHaveText(
-    'Review of agent · 1 commit since your last review',
-  );
+  await expect(page.locator('.review-of')).toHaveText('Review of agent');
+  await expect(page.locator('.review-after')).toHaveText('1 commit since your last review');
   await reviewTab(page).click();
   await expect(page.locator('.merge-check')).toHaveText('Merges cleanly into main.');
   await page.getByLabel('Approve').check();
@@ -427,7 +427,8 @@ test("reviews the agent's commits on main itself; an approval says they may be p
   await page.goto(`${symbiote.url}git`);
   await review(page, 'Agent: add half on main', 'main 1 unpushed commit');
   await expect(page).toHaveURL(/\/review\/main\/$/);
-  await expect(page.locator('.review-of')).toHaveText('Review of main · first review');
+  await expect(page.locator('.review-of')).toHaveText('Review of main');
+  await expect(page.locator('.review-after')).toHaveText('first review');
   await reviewTab(page).click();
   // Nothing to merge into: no merge check.
   await expect(page.locator('.merge-check')).toHaveCount(0);

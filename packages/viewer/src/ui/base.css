@@ -17,6 +17,16 @@
   --size-small: 14px; /* secondary: buttons, menu items, paths, code, the status bar */
   --size-body: 15px; /* rows, nav, tabs, body text, editors */
   --size-title: 17px; /* titles: a page's, a dialog's, a symbol's in its panel */
+  /* The page frame (V72, decisions 507–509): every page the whole main area, its head
+     (`ui/page.css`) and its cards the same distance from the area's edges, from each other and
+     from their contents on every page; one form rhythm. One value for both themes. */
+  --page-pad: 16px; /* the main area's edges to its cards and the head's contents */
+  --page-gap: 16px; /* between two cards; a resizer lies in it */
+  --page-head: 44px; /* the head's two lines: the title and the line under it */
+  --card-pad: 16px; /* a card's edge to its contents, its head's and its body's */
+  --card-head: 48px; /* a card's head: its tabs, or a title and actions */
+  --field-label-gap: 8px; /* a label to its field */
+  --field-gap: 20px; /* a field to the next label */
   /* lucide's chevron-right (ISC) as a mask, drawn in the text's colour: a submenu's, a <summary>'s. */
   --chevron-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
 }

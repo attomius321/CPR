@@ -83,6 +83,7 @@ import { Help } from '../ui/Help.js';
 import { GitIcon } from '../ui/icons.js';
 import { keyIsTaken } from '../ui/keys.js';
 import { Resizer } from '../ui/Resizer.js';
+import { PageHead } from '../ui/PageHead.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 import { laneSpacing, layoutLanes } from './lanes.js';
 import { GIT_PAGE } from '../shell/pages.js';
@@ -983,38 +984,37 @@ function History({
   const below = place === 'below';
   return (
     <div className={comparing ? 'commits comparing' : 'commits'}>
-      {/* The page's head (V66), as Settings' and the Monitor's: its icon, its name and where the
+      {/* The page's head (V66; the page frame's since V72): its icon, its name and where the
           branch is against its upstream; the search and the remotes at its right. */}
-      <div className="git-bar">
-        <span className="page-icon" aria-hidden="true">
-          <GitIcon />
-        </span>
-        <div className="git-title">
-          <h1>Git</h1>
-          <p>{headLine(first.branch, sync)}</p>
-        </div>
-        <span className="git-bar-tail">
-          <FindBox
-            inputRef={findRef}
-            query={find.query}
-            matches={query ? matches : null}
-            at={matches ? matches.indexOf(cursor) : -1}
-            onQuery={find.onQuery}
-            onStep={step}
-          />
-          <SyncBar sync={sync} running={syncing} onRun={runSync} />
-          <button
-            type="button"
-            className="compare-mode details-toggle"
-            aria-pressed={pane.open}
-            {...tip(pane.open ? 'Fold the details' : 'Show the details', { keys: 'd' })}
-            onClick={() => pane.onOpen(!pane.open)}
-          >
-            Details
-            <kbd aria-hidden="true">d</kbd>
-          </button>
-        </span>
-      </div>
+      <PageHead
+        className="git-bar"
+        icon={<GitIcon />}
+        title="Git"
+        line={headLine(first.branch, sync)}
+        actions={
+          <>
+            <FindBox
+              inputRef={findRef}
+              query={find.query}
+              matches={query ? matches : null}
+              at={matches ? matches.indexOf(cursor) : -1}
+              onQuery={find.onQuery}
+              onStep={step}
+            />
+            <SyncBar sync={sync} running={syncing} onRun={runSync} />
+            <button
+              type="button"
+              className="compare-mode details-toggle"
+              aria-pressed={pane.open}
+              {...tip(pane.open ? 'Fold the details' : 'Show the details', { keys: 'd' })}
+              onClick={() => pane.onOpen(!pane.open)}
+            >
+              Details
+              <kbd aria-hidden="true">d</kbd>
+            </button>
+          </>
+        }
+      />
       <div className="commits-body">
         <BranchesPanel
           refs={branches}
@@ -1190,6 +1190,7 @@ function History({
           </div>
           {pane.open && !below && (
             <Resizer
+              gutter
               label="Resize the details"
               side="after"
               variable="--details-width"

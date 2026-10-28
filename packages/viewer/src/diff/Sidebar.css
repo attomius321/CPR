@@ -13,11 +13,16 @@
 }
 
 /* Line tabs as a workspace's (V61, decision 445, the person's mockup; a segmented control from
-   V42): the picked one in the text's colour on a lifted ground, the primary's line under it. */
+   V42): the picked one in the text's colour on a lifted ground, the primary's line under it. A
+   card's head since V72: `--card-head` high with its hairline, the tabs on it, the first tab's
+   words `--card-pad` in (a tab is 12 px wider than its words each side). */
 .tabs {
+  flex: none;
   display: flex;
+  align-items: flex-end;
   gap: 2px;
-  padding: 0 8px;
+  min-height: var(--card-head);
+  padding: 0 calc(var(--card-pad) - 12px);
   border-bottom: 1px solid var(--line);
 }
 
