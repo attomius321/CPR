@@ -85,6 +85,11 @@ export function readRecords(cache: string): Running[] {
   return [...own, ...views];
 }
 
+/** The record of the server `pid`, if it says it runs. */
+export function readRecord(cache: string, pid: number): Running | null {
+  return parseRecord(readJson(join(runningDir(cache), `${pid}.json`)));
+}
+
 function readFolder(dir: string): Running[] {
   let names: string[];
   try {

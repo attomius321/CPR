@@ -5,9 +5,11 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import type { Log } from '@symbiote/log';
 import { findApp, openAppWindow, openUrl, type AppWindow } from './app-window.js';
+import { folders, repositoryRoot, windowsDrives } from './folders.js';
 import { cacheDir, isRunning, readRecords } from './registry.js';
 import { startNexusServer } from './server.js';
-import { liveSymbiotes, readStatus } from './symbiotes.js';
+import { starter } from './start.js';
+import { liveSymbiotes, readStatus, type Probe } from './symbiotes.js';
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -33,7 +35,9 @@ const HELP = `Usage: symbiote-nexus [options]
 
 Every symbiote view running on this machine, as tabs in one window: Symbiote's
 window when the desktop app is set up, else the browser. Pick a tab to work in
-that Symbiote; the ones opened stay loaded.
+that Symbiote; the ones opened stay loaded. Folders shows this PC's folders:
+open a Symbiote in any repository there. Symbiotes started so run on after the
+nexus ends; stop one from its row.
 
 Options:
   --browser      Open a browser tab, not Symbiote's window
@@ -56,6 +60,8 @@ const TITLE = 'Symbiote nexus';
 const PAGE_DIR = fileURLToPath(new URL('../page/', import.meta.url));
 /** The page's scripts, compiled beside this module. */
 const SCRIPTS_DIR = fileURLToPath(new URL('./page/', import.meta.url));
+/** This checkout's CLI, beside the nexus's own build: what Open Symbiote runs (decision 541). */
+const CLI_SCRIPT = fileURLToPath(new URL('../../cli/dist/bin.js', import.meta.url));
 
 /** `symbiote-nexus`: serves the page until Ctrl+C, or until its window closes. */
 export async function run(argv: string[], ctx: NexusContext): Promise<number> {
@@ -74,13 +80,29 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
     return usage(ctx, `--port must be a port number, got '${values.port}'`);
   }
   const log = ctx.log?.log;
-  const cache = cacheDir(ctx.env, process.platform, homedir());
+  const home = homedir();
+  const cache = cacheDir(ctx.env, process.platform, home);
+  const probe: Probe = { alive: isRunning, status: (url) => readStatus(url) };
+  const live = () => liveSymbiotes(readRecords(cache), probe);
+  const drives = windowsDrives();
   let server;
   try {
     server = await startNexusServer({
       port,
-      symbiotes: () =>
-        liveSymbiotes(readRecords(cache), { alive: isRunning, status: (url) => readStatus(url) }),
+      symbiotes: live,
+      folders: async (path) => {
+        const newest = (await live()).sort((a, b) => b.started.localeCompare(a.started));
+        return folders(path, { home, roots: newest.map((symbiote) => symbiote.root), drives });
+      },
+      starter: starter({
+        cache,
+        node: process.execPath,
+        script: CLI_SCRIPT,
+        env: ctx.env,
+        probe,
+        repositoryOf: repositoryRoot,
+        ...(log ? { log } : {}),
+      }),
       pageDir: PAGE_DIR,
       scriptsDir: SCRIPTS_DIR,
       viewerDir: viewerDir(ctx.env),
