@@ -7,6 +7,7 @@ import { markdownNodes, useMarkdown, type Lexer } from '../ui/markdown.js';
 import { useChanges } from './ChangesPanel.js';
 import { timelineItems, type TimelineItem } from './timeline.js';
 import { tip } from '../ui/tip.js';
+import { useTools } from './activity/api.js';
 import { longDate } from '../history/commits.js';
 
 const timeOf = (at: string) =>
@@ -27,9 +28,10 @@ export function ActivityTab({
 }) {
   const changes = useChanges(workspace.branch, version);
   const commits = changes && typeof changes === 'object' ? changes.commits.listed : null;
+  const read = useTools(workspace.branch, version);
   const items = useMemo(
-    () => timelineItems(workspace, thread, commits),
-    [workspace, thread, commits],
+    () => timelineItems(workspace, thread, commits, read?.tools),
+    [workspace, thread, commits, read],
   );
   const lexer = useMarkdown();
   const list = useRef<HTMLOListElement>(null);
@@ -56,7 +58,7 @@ export function ActivityTab({
           fresh={!first.current?.has(item.key)}
         />
       ))}
-      {!thread.tools && thread.recorded && (
+      {read && !read.tools && thread.recorded && (
         <li className="activity-note hint">
           Its commands and edits are not recorded: its agent started before Symbiote kept them.
         </li>

@@ -159,6 +159,8 @@ describe('codexServer', () => {
         kind: 'command',
         subject: 'pnpm test -- --run',
         status: 'inProgress',
+        // Whole, since V73.
+        command: 'pnpm test -- --run\nsecond line',
       },
     ]);
     const [summary] = (await codex.read(thread, { turns: 1, items: 'summary' })).turns;

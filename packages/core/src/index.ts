@@ -284,6 +284,7 @@ export {
   type WorkspaceTerminalOpened,
   type WorkspaceTerminalRequest,
   type WorkspaceThread,
+  type WorkspaceTools,
   type PermissionMode,
   type TerminalAvailability,
   type ThreadEntry,

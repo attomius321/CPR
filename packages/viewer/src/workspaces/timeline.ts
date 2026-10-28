@@ -114,6 +114,7 @@ export function timelineItems(
   workspace: WorkspaceSummary,
   thread: WorkspaceThread | null,
   commits: readonly WorkspaceCommit[] | null,
+  recorded: readonly ActivityEntry[] | undefined = undefined,
 ): TimelineItem[] {
   const rows: Row[] = [];
   const seen = new Map<string, number>();
@@ -196,7 +197,7 @@ export function timelineItems(
   }
 
   // Each call once: its start (its end when the start was not kept), failed by its end.
-  const tools = thread?.tools ?? [];
+  const tools = recorded ?? [];
   const failed = new Set(tools.filter((t) => t.phase === 'end' && t.failed).map((t) => t.id));
   const shownCalls = new Set<string>();
   const calls: ActivityEntry[] = [];

@@ -40,12 +40,18 @@ const thread = (
   entries: ThreadEntry[],
   tools?: ActivityEntry[],
   verdict?: WorkspaceThread['verdict'],
-): WorkspaceThread => ({
+): WorkspaceThread & { tools?: ActivityEntry[] } => ({
   entries,
   recorded: true,
   ...(tools ? { tools } : {}),
   ...(verdict ? { verdict } : {}),
 });
+/** The rows, the tools read beside the thread (V73) as the tab reads them. */
+const rowsOf = (
+  w: WorkspaceSummary,
+  t: (WorkspaceThread & { tools?: ActivityEntry[] }) | null,
+  c: Parameters<typeof timelineItems>[2],
+) => timelineItems(w, t, c, t?.tools);
 const shown = (items: ReturnType<typeof timelineItems>) =>
   items.map(({ kind, text, at: when }) => [kind, text, when ?? null]);
 
@@ -80,7 +86,7 @@ describe('timelineItems (V48c)', () => {
       head: 'c'.repeat(40),
       text: '',
     };
-    expect(shown(timelineItems(workspace(), thread(entries, tools, verdict), commits))).toEqual([
+    expect(shown(rowsOf(workspace(), thread(entries, tools, verdict), commits))).toEqual([
       ['made', 'Workspace made from main at 94e1feb', at(0)],
       ['start', 'Claude Code started', at(0)],
       ['prompt', "Symbiote's prompt", at(0)],
@@ -97,7 +103,7 @@ describe('timelineItems (V48c)', () => {
   });
 
   it('keeps what a row opens to: a prompt, a message, a report; marks a failed command', () => {
-    const items = timelineItems(
+    const items = rowsOf(
       workspace(),
       thread(
         [
@@ -122,7 +128,7 @@ describe('timelineItems (V48c)', () => {
   });
 
   it("says each start, question and end in the agent's words", () => {
-    const items = timelineItems(
+    const items = rowsOf(
       workspace({ agent: { state: 'failed', kind: 'codex' }, from: undefined }),
       thread([
         entry(0, { kind: 'start', source: 'startup' }),
@@ -155,7 +161,7 @@ describe('timelineItems (V48c)', () => {
 
   it("Codex's items on its app server have no time: in their turn's order, shown without one", () => {
     const untimed = { untimed: true as const };
-    const items = timelineItems(
+    const items = rowsOf(
       workspace({ agent: { state: 'working', kind: 'codex' } }),
       thread(
         [entry(0, { kind: 'prompt', text: 'P' })],
@@ -178,8 +184,8 @@ describe('timelineItems (V48c)', () => {
   it('keeps each row its key as new events arrive, a folded row its first', () => {
     const entries = [entry(0, { kind: 'prompt', text: 'P' })];
     const first = [tool(1, 0, 'e1', 'Edit', 'start', { subject: 'a.ts' })];
-    const before = timelineItems(workspace(), thread(entries, first), null);
-    const after = timelineItems(
+    const before = rowsOf(workspace(), thread(entries, first), null);
+    const after = rowsOf(
       workspace(),
       thread(
         [...entries, entry(3, { kind: 'report', text: 'R' })],
@@ -201,12 +207,12 @@ describe('timelineItems (V48c)', () => {
     const tools = ['a', 'b', 'c', 'd', 'e'].map((name, i) =>
       tool(1, i, name, 'Edit', 'start', { subject: `${name}.ts` }),
     );
-    const [, edits] = timelineItems(workspace(), thread([], tools), null);
+    const [, edits] = rowsOf(workspace(), thread([], tools), null);
     expect(edits?.text).toBe('Edited a.ts, b.ts, c.ts and 2 more');
   });
 
   it('nothing read yet: only the workspace made', () => {
-    expect(shown(timelineItems(workspace(), null, null))).toEqual([
+    expect(shown(rowsOf(workspace(), null, null))).toEqual([
       ['made', 'Workspace made from main at 94e1feb', at(0)],
     ]);
   });

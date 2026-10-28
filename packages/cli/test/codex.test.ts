@@ -143,7 +143,13 @@ describe('runCodex (V20a)', () => {
         },
         {
           type: 'item.completed',
-          item: { id: 'c1', type: 'command_execution', command: 'cargo test', exit_code: 101 },
+          item: {
+            id: 'c1',
+            type: 'command_execution',
+            command: 'cargo test',
+            aggregated_output: 'running 4 tests\ntest result: FAILED. 3 passed; 1 failed\n',
+            exit_code: 101,
+          },
         },
         {
           type: 'item.completed',
@@ -168,8 +174,15 @@ describe('runCodex (V20a)', () => {
     const command = { ...head, id: 'c1', tool: 'command', subject: 'cargo test' };
     const change = { ...head, id: 'f1', tool: 'fileChange', subject: 'src/lib.rs' };
     expect(lines).toEqual([
-      { ...command, phase: 'start' },
-      { ...command, phase: 'end', failed: true },
+      // Since V73 a command's whole text, its exit code and its output's end.
+      { ...command, phase: 'start', input: 'cargo test\n--all' },
+      {
+        ...command,
+        phase: 'end',
+        failed: true,
+        exit: 101,
+        output: 'running 4 tests\ntest result: FAILED. 3 passed; 1 failed',
+      },
       { ...change, phase: 'start' },
       { ...change, phase: 'end' },
     ]);

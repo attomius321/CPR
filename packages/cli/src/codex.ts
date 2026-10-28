@@ -494,9 +494,23 @@ export function serverTools(turn: CodexTurn, session: string, worktree: string):
       item.status === undefined
         ? turn.status === 'inProgress' && index === items.length - 1
         : item.status === 'inProgress';
-    const start: ActivityEntry = { ...line, phase: 'start' };
+    const start: ActivityEntry = {
+      ...line,
+      phase: 'start',
+      ...(item.command ? { input: item.command } : {}),
+    };
     if (running) return [start];
-    return [start, { ...line, phase: 'end', ...(item.failed ? { failed: true as const } : {}) }];
+    const end: ActivityEntry = {
+      ...line,
+      phase: 'end',
+      ...(item.failed ? { failed: true as const } : {}),
+      // A command's end (V73): as the app server gives it.
+      ...(item.ms !== undefined ? { ms: item.ms } : {}),
+      ...(item.exit !== undefined ? { exit: item.exit } : {}),
+      ...(item.output !== undefined ? { output: item.output } : {}),
+      ...(item.clipped ? { clipped: true as const } : {}),
+    };
+    return [start, end];
   });
 }
 

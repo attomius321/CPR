@@ -66,6 +66,25 @@ function subjectOf(item: Record<string, unknown>, worktree: string): string | un
   return line === '' ? undefined : line.slice(0, SUBJECT);
 }
 
+/** Longest command kept whole (V73), as Claude Code's hooks keep theirs (`thread.ts`). */
+const MAX_COMMAND = 8192;
+
+/** How much of a command's output is kept (V73): its end, as `thread.ts` keeps Claude Code's. */
+const MAX_OUTPUT = 2048;
+
+/**
+ * A command's output as its activity line keeps it (V73), as `outputOf` in `thread.ts` does: this
+ * runner is run as its own program, from its source in tests, and imports nothing of its own.
+ */
+function outputOf(value: string): Pick<ActivityEntry, 'output' | 'clipped'> {
+  const whole = value.trimEnd();
+  if (whole === '') return {};
+  if (whole.length <= MAX_OUTPUT) return { output: whole };
+  const end = whole.slice(-MAX_OUTPUT);
+  const from = end.indexOf('\n') + 1;
+  return { output: from > 0 ? end.slice(from) : end, clipped: true };
+}
+
 /** How much of Codex's error output is kept for its last words. */
 const STDERR_KEPT = 4096;
 
@@ -111,6 +130,18 @@ export function runCodex(
     const code = item.exit_code;
     const failed =
       phase === 'end' && (item.status === 'failed' || (typeof code === 'number' && code !== 0));
+    // Since V73 a command's whole text on its start, its exit code and output's end on its end.
+    const command = kind === 'command' && typeof item.command === 'string' ? item.command : '';
+    const output = typeof item.aggregated_output === 'string' ? item.aggregated_output : '';
+    const details: Partial<ActivityEntry> =
+      phase === 'start'
+        ? command !== ''
+          ? { input: command.slice(0, MAX_COMMAND) }
+          : {}
+        : {
+            ...(typeof code === 'number' ? { exit: code } : {}),
+            ...(kind === 'command' ? outputOf(output) : {}),
+          };
     const entry: ActivityEntry = {
       at: now(),
       session,
@@ -120,6 +151,7 @@ export function runCodex(
       ...(subject ? { subject } : {}),
       phase,
       ...(failed ? { failed: true } : {}),
+      ...details,
     };
     const file = run.activity;
     const line = `${JSON.stringify(entry)}\n`;

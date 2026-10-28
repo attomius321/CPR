@@ -29,7 +29,6 @@ import {
   type AgentOption,
   type BranchMerge,
   type CheckGuess,
-  type ActivityEntry,
   type WorkspaceActivity,
   type WorkspaceAgainst,
   type WorkspaceAgentState,
@@ -47,6 +46,7 @@ import {
   type WorkspaceTerminalOpened,
   type WorkspaceTerminalRequest,
   type WorkspaceThread,
+  type WorkspaceTools,
   type ThreadEntry,
   type GitRepo,
   type PermissionMode,
@@ -133,6 +133,7 @@ import {
 import {
   lastAction,
   readActivityEnd,
+  readActivityWindow,
   readThread,
   readThreadEnd,
   THREAD_LIMIT,
@@ -310,6 +311,8 @@ export interface Workspaces {
   setAgainst(branch: string, against: string | null): Promise<WorkspaceAgainst>;
   /** Its thread (V18c): what its agent was given and reported, and its review's last verdict. */
   thread(branch: string): Promise<WorkspaceThread>;
+  /** Its agent's tools for its Activity tab (V48f, V73): the newest megabyte of them. */
+  tools(branch: string): Promise<WorkspaceTools>;
   /** Sends a message to its agent: continues its session with the text (V18c). */
   reply(request: WorkspaceReply): Promise<WorkspaceReplied>;
   /**
@@ -340,8 +343,11 @@ export const MAX_SHELLS = 8;
 /** Turns a thread panel reads from the server: about 200 entries' worth. */
 const PANEL_TURNS = 50;
 
-/** How much of the recorded tools the Activity tab reads (V48c): ~1,000 lines. */
-const TIMELINE_TOOLS = 256 * 1024;
+/**
+ * How much of the recorded tools the Activity tab reads (V73): about 700 calls with their
+ * commands and outputs' ends; the person's longest workspace had 350.
+ */
+const TIMELINE_TOOLS = 1024 * 1024;
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
@@ -1199,13 +1205,11 @@ export function workspaces(
       const where = await place();
       const workspace = await readRecord(where, branch);
       let entries: ThreadEntry[];
-      let tools: ActivityEntry[] | null = null;
       if (workspace.agent?.kind === 'hermes') {
         // From its session (decision 416); none when it cannot be read: the state says why.
         const read = await viaHermes.read(workspace);
         const session = read instanceof Error ? null : read;
         entries = session ? hermesEntries(session).slice(-THREAD_LIMIT) : [];
-        tools = session ? hermesTools(session, workspace.worktree) : null;
       } else if (onServer(workspace)) {
         // From the server (decision 155); none when it cannot be read: the state says why.
         const { read } = await viaCodex.readServer(workspace, {
@@ -1216,15 +1220,8 @@ export function workspaces(
           read instanceof Error
             ? []
             : serverEntries(read, { first: read.turns.length < PANEL_TURNS }).slice(-THREAD_LIMIT);
-        // Its turns' items, read in full already (V48c).
-        if (!(read instanceof Error)) {
-          tools = read.turns.flatMap((turn) => serverTools(turn, read.id, workspace.worktree));
-        }
       } else {
         entries = await readThread(symbioteFolder(where), branch);
-        if (workspace.agent?.activity) {
-          tools = await readActivityEnd(symbioteFolder(where), branch, TIMELINE_TOOLS);
-        }
       }
       const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
       const verdict = review?.verdicts.at(-1);
@@ -1238,7 +1235,6 @@ export function workspaces(
           workspace.agent?.hooks === true ||
           workspace.agent?.kind === 'codex' ||
           workspace.agent?.kind === 'hermes',
-        ...(tools ? { tools } : {}),
         ...(review && verdict
           ? {
               verdict: {
@@ -1259,6 +1255,34 @@ export function workspaces(
             }
           : {}),
       };
+    },
+
+    async tools(branch) {
+      const where = await place();
+      const workspace = await readRecord(where, branch);
+      if (workspace.agent?.kind === 'hermes') {
+        const read = await viaHermes.read(workspace);
+        const session = read instanceof Error ? null : read;
+        return session ? { tools: hermesTools(session, workspace.worktree) } : {};
+      }
+      if (onServer(workspace)) {
+        // Its turns read in full, as the thread's read reads them (V48c).
+        const { read } = await viaCodex.readServer(workspace, {
+          turns: PANEL_TURNS,
+          items: 'full',
+        });
+        if (read instanceof Error) return {};
+        return {
+          tools: read.turns.flatMap((turn) => serverTools(turn, read.id, workspace.worktree)),
+        };
+      }
+      if (!workspace.agent?.activity) return {};
+      const { tools, cut } = await readActivityWindow(
+        symbioteFolder(where),
+        branch,
+        TIMELINE_TOOLS,
+      );
+      return { tools, ...(cut ? { cut: true as const } : {}) };
     },
 
     async terminal({ branch, cols, rows }) {

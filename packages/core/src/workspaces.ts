@@ -179,6 +179,30 @@ export interface ActivityEntry extends ToolActivity {
   failed?: true;
   /** Codex's app server: no time of its own, only its place in its turn. */
   untimed?: true;
+  /** A command's start (V73): its whole text, cut at 8 KB. */
+  input?: string;
+  /** A command's start (V73): the agent's own words for it (Bash's `description`), one line. */
+  about?: string;
+  /**
+   * A task call (V73): `TaskCreate`'s subject on its start, the ID it was given on its end;
+   * `TaskUpdate`'s ID and status on its start.
+   */
+  task?: { id?: string; subject?: string; status?: string };
+  /** An end (V73): how long it ran, in milliseconds, as the agent measured it. */
+  ms?: number;
+  /** An end (V73): a command's exit code, when the agent gave it. */
+  exit?: number;
+  /** An end (V73): a command's output (stdout, then stderr) or a failure's error, its last 2 KB. */
+  output?: string;
+  /** `output` is the end of a longer one: from its first whole line in the last 2 KB. */
+  clipped?: true;
+  /** An end (V73): stopped by the person. */
+  interrupted?: true;
+  /** An end (V73): a command sent to the background; its end is not the command's. */
+  background?: true;
+  /** An edit's end (V73): the lines it added and removed. */
+  added?: number;
+  removed?: number;
 }
 
 /**
@@ -493,13 +517,19 @@ export interface WorkspaceThread {
   /** The agent was started with Symbiote's hooks: its messages are recorded (workspaces since
    * V18c). */
   recorded: boolean;
-  /**
-   * Its tools' starts and ends (V48f), the newest, oldest first, for the Activity tab's timeline;
-   * absent when they are not recorded.
-   */
-  tools?: ActivityEntry[];
   /** The branch review's last verdict and its text for the agent (V16's "Copy for the agent"). */
   verdict?: { at: string; event: VerdictEvent; head: string; text: string };
+}
+
+/** `GET /api/workspaces/activity?branch=` (V73): what the Activity tab reads beside the thread. */
+export interface WorkspaceTools {
+  /**
+   * Its tools' starts and ends (V48f), the newest, oldest first; absent when they are not
+   * recorded.
+   */
+  tools?: ActivityEntry[];
+  /** Older lines were left out: only the newest megabyte is read. */
+  cut?: true;
 }
 
 /** `POST /api/workspaces/reply`. */

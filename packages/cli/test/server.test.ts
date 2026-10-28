@@ -1486,6 +1486,13 @@ describe('symbiote view: workspaces (V18)', () => {
             recorded: true,
           })
         : Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404)),
+    tools: (branch) =>
+      branch === 'feature/csv'
+        ? Promise.resolve({
+            tools: [{ at: C, session: 'x', id: 't', tool: 'Bash', phase: 'start', input: 'ls' }],
+            cut: true,
+          })
+        : Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404)),
     reply: (request) => {
       replies.push(request);
       if (request.text === 'busy') {
@@ -1888,6 +1895,12 @@ describe('symbiote view: workspaces (V18)', () => {
     });
     expect((await get('/api/workspaces/thread?branch=nope')).status).toBe(404);
     expect((await get('/api/workspaces/thread')).status).toBe(400);
+    // Its tools, for its Activity tab (V73).
+    expect(await (await get('/api/workspaces/activity?branch=feature%2Fcsv')).json()).toEqual({
+      tools: [{ at: C, session: 'x', id: 't', tool: 'Bash', phase: 'start', input: 'ls' }],
+      cut: true,
+    });
+    expect((await get('/api/workspaces/activity?branch=nope')).status).toBe(404);
 
     const sent = await post('/api/workspaces/reply', { branch: 'feature/csv', text: 'OK' });
     expect(sent.status).toBe(200);
