@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nx3-nexus-look.md)
 
-**Status:** planned (2026-10-28), on branch `feature/nexus-improvements-v2` (a workspace started
-in Symbiote); OK'd by the person the same day, with their answers (decisions 544–548).
+**Status:** built (2026-10-28), ready for review, on branch `feature/nexus-improvements-v2` (a
+workspace started in Symbiote). Planned and OK'd by the person the same day, with their answers
+(decisions 551–555, planned as 544–548); NX3a–d built. "As built" and results at the end.
 
 **Problem** (asked: "Current interface of nexus is pretty blank..and the top navigation i don't
 like it, mark it clear which are symbiotes, view tabs, and which are nexus tabs. separate by a
@@ -37,7 +38,7 @@ the nexus's routes but `GET /api/folders`'s answer, starting and stopping (decis
 kept frames (521), the address (`#<root>`, `#folders:<path>`), `symbiote view`, the viewer, the
 engine, the desktop app.
 
-## The row (decision 544)
+## The row (decision 551)
 
 ```
  ▦ Symbiotes 2   ▭ Folders  │  ● ky  main   ● zod  main   ○ alpha  stopped ×
@@ -53,7 +54,7 @@ engine, the desktop app.
   `.workspace-views` does) under them, sticky on `--side`.
 - One tab list, as today: ←, →, Home and End cross the line.
 
-## Symbiotes (decision 545)
+## Symbiotes (decision 552)
 
 - **Running Symbiotes as cards** in a grid (at least 320 px each): the dot, the name (600) and
   Stop on the first line; the folder; the branch, the uncommitted changes, since when. The card
@@ -67,7 +68,7 @@ engine, the desktop app.
 - The person left this to the plan ("Idk, make a decision"): taken for one click to the next
   Symbiote, with nothing new on the server.
 
-## Folders (decisions 546, 548)
+## Folders (decisions 553, 555)
 
 ```
  ▭ Folders                                    [ Go to folder: /path or ~/path ]
@@ -87,17 +88,17 @@ engine, the desktop app.
 - **Go to folder** in the page's head, as its action.
 - **The folder's card**: its head the crumbs and Up, the counts at the right ("16 repositories ·
   30 folders"). Then the **repositories** as cards in a grid (at least 220 px): the repository
-  icon, the name, the branch (decision 548), a green dot and **Show** when a Symbiote serves it,
+  icon, the name, the branch (decision 555), a green dot and **Show** when a Symbiote serves it,
   else **Open Symbiote** in the accent. Then the **folders** as rows in columns, a `›` at each
   end: the way in. A group's head only when both are there.
-- **The branch** (decision 548): read from the repository's `HEAD` (a `.git` folder's, or the
+- **The branch** (decision 555): read from the repository's `HEAD` (a `.git` folder's, or the
   folder a worktree's `.git` file names), no git process: `ref: refs/heads/<name>` is the
   branch, a commit is "detached at <7>", anything else (reftable's `.invalid`, an unreadable
   file) nothing. 3–4 ms for `~/projects` with the listing (the spike).
 - **Keys**: the arrows move on the grid by place (↓ the card or row under), Enter acts, Backspace
   goes up; the field keeps its keys.
 
-## A repository is the end (decision 547)
+## A repository is the end (decision 554)
 
 - **No way into a repository**: its card's click, or Enter, opens its Symbiote, or shows the one
   running (the person: "Yes").
@@ -158,12 +159,79 @@ the look, the numbers and the docs.
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 544 | How the row tells the nexus's pages from the Symbiotes | **Two groups, a line between; the pages with icons, the Symbiotes with a state dot; the pages stay at the left** | "separate by a line or something"; a second cue beyond the line, and none of them hidden by a scroll |
-| 545 | What fills Symbiotes | **The running ones as cards; "Repositories in <folder>" under them, the near repositories that run no Symbiote** (the person: "make a decision") | One click to the next Symbiote; the listing exists (5–6 ms) |
-| 546 | Folders' look | **Places at the left, repositories as cards, folders as rows in columns, the counts in the card's head** (the person: "Yes") | A repository is what the tab is for; 16 of 46 in `~/projects` |
-| 547 | A repository's depth | **The end: its click opens its Symbiote; the server never lists inside one but in a home kept in git** (the person: "Yes") | "it should stop there, i should not be able to go deeper" |
-| 548 | What a repository's card says | **Its branch from its `HEAD`, no git process** | 3–4 ms for 16 repositories; tells worktrees apart |
+| 551 | How the row tells the nexus's pages from the Symbiotes | **Two groups, a line between; the pages with icons, the Symbiotes with a state dot; the pages stay at the left** | "separate by a line or something"; a second cue beyond the line, and none of them hidden by a scroll |
+| 552 | What fills Symbiotes | **The running ones as cards; "Repositories in <folder>" under them, the near repositories that run no Symbiote** (the person: "make a decision") | One click to the next Symbiote; the listing exists (5–6 ms) |
+| 553 | Folders' look | **Places at the left, repositories as cards, folders as rows in columns, the counts in the card's head** (the person: "Yes") | A repository is what the tab is for; 16 of 46 in `~/projects` |
+| 554 | A repository's depth | **The end: its click opens its Symbiote; the server never lists inside one but in a home kept in git** (the person: "Yes") | "it should stop there, i should not be able to go deeper" |
+| 555 | What a repository's card says | **Its branch from its `HEAD`, no git process** | 3–4 ms for 16 repositories; tells worktrees apart |
 
 **Not in NX3 (later)**: what waits in each Symbiote (its workspaces, an agent that needs the
 person); the repositories inside each plain folder (125–400 ms on WSL's drives); a repository's
 last commit (a git process each).
+
+## As built (NX3)
+
+- **The decisions' numbers**: planned as 544–548; `milestone/v75-suggested-settings` had taken
+  544–550 nine minutes before NX3's plan was committed (neither on `main`), so NX3's are 551–555.
+  The commits of NX3a–c still say 544–548.
+
+- **The row** (NX3b, decision 551): as planned. The line is the viewer's `.views-divider`, 24 px
+  high, in `--edge` (the field's 3:1 edge), as `--line` read faintly on `--side`. The nexus's own
+  pages hold the strip's first 2 px too, so no scrolled tab shows past them, and the strip's
+  scroll padding is their width, so a tab reached by the keys scrolls clear of them. The line is
+  drawn only when a Symbiote has a tab.
+- **Symbiotes** (NX3b, decision 552): **Open a folder** is the page head's action while
+  Symbiotes run and the empty state's primary when none does, never both. "Repositories in
+  <folder>" has **Show in Folders** in its head. A near folder that is itself inside a
+  repository answers its holder (decision 554), drawn once.
+- **The end of the way down** (NX3a, decision 554): the listing and git's top level are asked
+  together, so a folder outside any repository costs what it did; a path inside a `.git` folder
+  is asked from the repository holding it (git names no top level there). The answer's
+  `repository` became `picked`, and the card head's "In <repository> · Open Symbiote" went with
+  it. The address keeps the folder listed, the holder: a reload shows it without the pick.
+- **Folders** (NX3c, decision 553): a picked repository's card is focused whenever an answer
+  names one, not only when the keys asked. → and ← move in reading order, ↑ and ↓ to the nearest
+  card or row under or over (`nextOnGrid`, by their boxes), Home and End to the ends. NX2's
+  chips and `actionOf` went with the rows they drew.
+- **The branch** (NX3a, decision 555): as planned; a worktree whose folder is gone, an empty
+  `.git` folder and reftable's stub are repositories with no branch shown.
+- **The counts** say "1,000 folders", as the rest of Symbiote writes numbers (the cap's
+  screenshot said "1000").
+
+**Results (NX3).** Tests first for the server and the page's pure part, red for the right
+reasons (no branch, no `picked`, a repository's inside listed; the new functions missing): the
+nexus's unit tests went from 80 to 89 (the branch 1, the end of the way down 3, the near folders
+1, the cards, counts and arrows 6; NX2's tests of `actionOf` and of a listing's `repository`
+gone with them). `pnpm check` passes
+(2,174 tests). e2e: the whole suite passes (`pnpm test:e2e`: the viewer's 336 specs in 5.1 min,
+then the nexus's 15 in 17.5 s, 14 before): NX1's and NX2's specs moved to the cards, the row's
+groups and dots checked, a new spec opening a near repository, Folders' specs for the end of the
+way down (typed, and an address loaded inside a repository) and the arrows on the grid; the 3
+specs in Symbiote's window under Xvfb pass unchanged. `git diff --stat main` touches
+`packages/nexus`, the docs and the README only: no analysis change, no regression-check.
+
+`GET /api/folders`' work (`folders()`), main's against NX3's in one process, alternated, five
+runs each after a warm-up, on this machine (WSL2):
+
+| Folder | main | NX3 |
+|---|---|---|
+| `~/projects` (46 folders, 16 repositories) | 2.9–3.9 ms | 3.6–4.6 ms (16 `HEAD`s read) |
+| home (10 folders) | 1.6–2.3 ms | 1.3–1.7 ms |
+| `/mnt/c` (18 folders) | 7.8–8.2 ms | 5.4–6.0 ms |
+| `System32` (180 folders of 4,950 entries) | 39.9–47.0 ms | 42.6–48.4 ms |
+| `~/projects/Symbiote/packages/nexus` | 1.6–2.5 ms (its inside listed) | 3.9–5.8 ms (`~/projects` listed, Symbiote picked) |
+
+Symbiotes, from the nexus's navigation to its first card and to its first near repository (two
+Symbiotes running, ten repositories near them, Chromium at 1440×900, five loads): 34–37 ms and
+46–50 ms.
+
+Screenshots at 1×, dark and light, 1440 and 800 px wide: Symbiotes with two running and their
+near repositories, with none running, Stop's question; Folders in a `~/projects`-like folder
+(10 repositories, a detached one, a worktrees folder, 9 folders), at home, at `/`, a repository
+picked from a path inside it, an error, the cap (1,005 folders); a Symbiote's tab; the row with
+seven Symbiotes, one stopped, scrolled.
+
+Not verified: macOS and Windows outside WSL; the person's own window on WSLg (Xvfb only); a home
+kept in git on a real machine (a unit test with a stand-in only); the page on the person's real
+`~/projects` (the listing was timed there, the screenshots used a stand-in home); a reader test
+of the README's section by a fresh reader.

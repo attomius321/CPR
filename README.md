@@ -69,22 +69,26 @@ machine as a tab of one window, and starts new ones in any repository on your PC
 symbiote-nexus
 ```
 
-The first tab, **Symbiotes**, lists the running Symbiotes, each with its folder, branch and changed
-files. After **Folders**, each tab shows one Symbiote as its own window would. A Symbiote you
-opened stays loaded while you look at another, so switching back is instant. A `symbiote view`
-started in a terminal gets its tab within 2 seconds.
+The row at the top has two groups, with a line between them. On the left are the nexus's own
+pages, **Symbiotes** and **Folders**, each with an icon. After the line, each tab is one Symbiote,
+with a dot for its state: green while it runs, an empty ring once it stopped. A Symbiote's tab shows
+it as its own window would. A Symbiote you opened stays loaded while you look at another, so
+switching back is instant. A `symbiote view` started in a terminal gets its tab within 2 seconds.
 
-The second tab, **Folders**, shows your PC's folders, one folder at a time. A repository is marked
-*repository*. Click a folder to go into it, or use the places above the list: your home folder,
-the folder your Symbiotes are in, `/`, and on WSL the Windows drives (`C:`). To go to any folder,
-hidden ones included, type its path in **Go to folder** and press Enter.
+**Symbiotes** shows each running Symbiote as a card, with its folder, branch and changed files.
+Under them, **Repositories in** lists the other repositories in the folders your Symbiotes are in:
+click one to open a Symbiote there.
 
-To open a Symbiote in a repository, click **Open Symbiote** on its row. The nexus starts
-`symbiote view` there and opens its tab. If a Symbiote already runs there, the row says **Show**
-instead, and opens its tab.
+**Folders** shows your PC's folders, one folder at a time. Its repositories come first, as cards
+that show the checked-out branch. The other folders follow as rows; click one to go into it. A
+repository is as far as you go: clicking it opens a Symbiote there, or shows the one already
+running. A path inside a repository shows the folder that holds it, with the repository picked.
+The places are on the left: your home folder, the folders your Symbiotes are in, `/`, and on WSL
+the Windows drives (`C:`). To go to any folder, hidden ones included, type its path in **Go to
+folder** and press Enter.
 
 Closing the nexus stops no Symbiote, not even the ones it started, so their agents keep working.
-To stop a Symbiote, click the stop button at the end of its row in **Symbiotes**, then **Stop**.
+To stop a Symbiote, click the stop button on its card in **Symbiotes**, then **Stop**.
 Its terminals, and the agents working in them, stop with it. If you had opened its tab, the tab
 stays, marked stopped, with **Start again** and **Close tab**.
 

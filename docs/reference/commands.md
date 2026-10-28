@@ -112,8 +112,9 @@ change, only n and [ work.
 | ] | In a workspace: hide or show the **Changes** panel |
 
 In Symbiote nexus, with the focus on its tabs, ← and → move to the previous or next tab, and Home
-and End to the first or the last. In **Folders**, ↑ and ↓ move between the folders, Enter opens
-one, and Backspace goes up a folder. In a Symbiote's tab, that Symbiote's keys work.
+and End to the first or the last. In **Folders**, the arrows move between the repositories and
+the folders by their place on the page. Enter opens a folder, or a Symbiote in a repository, and
+Backspace goes up a folder. In a Symbiote's tab, that Symbiote's keys work.
 
 In a text box where you write a comment, a brief, a reply, a prompt or a commit's message,
 Ctrl+Enter saves, starts, sends or commits. On macOS, use Cmd instead of Ctrl.
