@@ -33,7 +33,7 @@ const projects: FoldersAnswer = {
   repository: null,
   folders: [{ name: 'ky', path: '/home/me/projects/ky', repository: true }],
   more: 0,
-  places: [{ name: 'Home', path: '/home/me' }],
+  places: [{ kind: 'home', name: 'Home', path: '/home/me' }],
 };
 /** What the server asked of the folders and the starter. */
 const asked: string[] = [];

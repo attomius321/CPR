@@ -63,7 +63,12 @@ test.describe('Symbiote nexus', () => {
     await expect(rows.nth(0)).toContainText('no changes');
     await expect(rows.nth(1)).toContainText('beta');
     await expect(tab(page, /^Symbiotes/)).toHaveAttribute('aria-selected', 'true');
-    await expect(tabs(page).getByRole('tab')).toHaveText(['Symbiotes2', 'alphamain', 'betamain']);
+    await expect(tabs(page).getByRole('tab')).toHaveText([
+      'Symbiotes2',
+      'Folders',
+      'alphamain',
+      'betamain',
+    ]);
     await expect(page).toHaveTitle('Symbiote nexus');
 
     // A Symbiote's tab: its Git page, in a frame of its own.
@@ -164,9 +169,12 @@ test.describe('Symbiote nexus', () => {
     await page.goto(served.url);
     await expect(page.locator('.nexus-home .page-line')).toHaveText('None running on this machine');
     await expect(page.locator('.nexus-empty')).toContainText(
-      'Start one with symbiote view in a repository: it shows here within 2 seconds.',
+      'Open one on a repository in Folders, or start one with symbiote view in a repository: ' +
+        'it shows here within 2 seconds.',
     );
-    await expect(tabs(page).getByRole('tab')).toHaveText(['Symbiotes0']);
+    await expect(tabs(page).getByRole('tab')).toHaveText(['Symbiotes0', 'Folders']);
+    await page.getByRole('button', { name: 'Open a folder' }).click();
+    await expect(tab(page, 'Folders')).toHaveAttribute('aria-selected', 'true');
   });
 
   test('a framed Symbiote writes, and uses the clipboard, as in a tab of its own', async ({
@@ -200,8 +208,10 @@ test.describe('Symbiote nexus', () => {
     await symbiote('beta', cache);
     const served = await nexus(cache);
     await page.goto(served.url);
-    await expect(tabs(page).getByRole('tab')).toHaveCount(3);
+    await expect(tabs(page).getByRole('tab')).toHaveCount(4);
     await tab(page, /^Symbiotes/).focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(tab(page, 'Folders')).toHaveAttribute('aria-selected', 'true');
     await page.keyboard.press('ArrowRight');
     await expect(tab(page, /^alpha/)).toHaveAttribute('aria-selected', 'true');
     await expect(tab(page, /^alpha/)).toBeFocused();

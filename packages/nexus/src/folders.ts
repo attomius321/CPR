@@ -3,7 +3,7 @@
 import { execFile } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { readdir, stat } from 'node:fs/promises';
-import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 
 /** A folder of a listing. */
 export interface Folder {
@@ -16,6 +16,7 @@ export interface Folder {
 
 /** A folder to start from: home, the running Symbiotes' folders, the top, a drive. */
 export interface Place {
+  kind: 'home' | 'symbiotes' | 'top' | 'drive';
   name: string;
   path: string;
 }
@@ -159,10 +160,15 @@ export function places({
     if (parent === home || parent === root || theirs.some((place) => place.path === parent)) {
       continue;
     }
-    theirs.push({ name: basename(parent), path: parent });
+    theirs.push({ kind: 'symbiotes', name: basename(parent), path: parent });
     if (theirs.length === 3) break;
   }
-  return [{ name: 'Home', path: home }, ...theirs, { name: '/', path: '/' }, ...drives];
+  return [
+    { kind: 'home', name: 'Home', path: home },
+    ...theirs,
+    { kind: 'top', name: '/', path: '/' },
+    ...drives,
+  ];
 }
 
 /** What `windowsDrives` reads: the kernel's version, `/mnt`'s names, whether a path is a folder. */
@@ -192,15 +198,8 @@ export function windowsDrives(probe: DriveProbe = systemDrives): Place[] {
       .mnt()
       .filter((name) => /^[a-z]$/.test(name) && probe.isFolder(`/mnt/${name}`))
       .sort()
-      .map((name) => ({ name: `${name.toUpperCase()}:`, path: `/mnt/${name}` }));
+      .map((name) => ({ kind: 'drive', name: `${name.toUpperCase()}:`, path: `/mnt/${name}` }));
   } catch {
     return [];
   }
-}
-
-/** A typed or pasted folder as an absolute path, resolved (`~` is home); null when it is none. */
-export function folderPath(input: string, home: string): string | null {
-  const text = input.trim();
-  const path = text === '~' ? home : text.startsWith('~/') ? join(home, text.slice(2)) : text;
-  return isAbsolute(path) ? resolve(path) : null;
 }

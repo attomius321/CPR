@@ -2,14 +2,7 @@ import { chmodSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:f
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { createRepo, tempDir } from '../../core/test/helpers/git-repo.js';
-import {
-  folderPath,
-  folders,
-  listFolder,
-  places,
-  repositoryRoot,
-  windowsDrives,
-} from '../src/folders.js';
+import { folders, listFolder, places, repositoryRoot, windowsDrives } from '../src/folders.js';
 
 const dir = tempDir();
 const repo = createRepo();
@@ -131,14 +124,18 @@ describe('folders', () => {
     const atHome = await folders(null, { ...options, roots: [] });
     expect(atHome.path).toBe(root);
     expect(atHome.places).toEqual([
-      { name: 'Home', path: root },
-      { name: '/', path: '/' },
+      { kind: 'home', name: 'Home', path: root },
+      { kind: 'top', name: '/', path: '/' },
     ]);
     const roots = [join(root, 'projects', 'zod'), join(root, 'projects', 'ky')];
     const theirs = await folders(null, { ...options, roots });
     expect(theirs.path).toBe(join(root, 'projects'));
     expect(theirs.folders.map((folder) => folder.name)).toEqual(['ky', 'zod']);
-    expect(theirs.places[1]).toEqual({ name: 'projects', path: join(root, 'projects') });
+    expect(theirs.places[1]).toEqual({
+      kind: 'symbiotes',
+      name: 'projects',
+      path: join(root, 'projects'),
+    });
     expect((await folders(join(root, 'work'), { ...options, roots })).path).toBe(
       join(root, 'work'),
     );
@@ -169,19 +166,19 @@ describe('places', () => {
           '/srv/two/b',
           '/x',
         ],
-        drives: [{ name: 'C:', path: '/mnt/c' }],
+        drives: [{ kind: 'drive', name: 'C:', path: '/mnt/c' }],
       }),
     ).toEqual([
-      { name: 'Home', path: '/home/me' },
-      { name: 'projects', path: '/home/me/projects' },
-      { name: 'work', path: '/home/me/work' },
-      { name: 'one', path: '/srv/one' },
-      { name: '/', path: '/' },
-      { name: 'C:', path: '/mnt/c' },
+      { kind: 'home', name: 'Home', path: '/home/me' },
+      { kind: 'symbiotes', name: 'projects', path: '/home/me/projects' },
+      { kind: 'symbiotes', name: 'work', path: '/home/me/work' },
+      { kind: 'symbiotes', name: 'one', path: '/srv/one' },
+      { kind: 'top', name: '/', path: '/' },
+      { kind: 'drive', name: 'C:', path: '/mnt/c' },
     ]);
     expect(places({ home: '/home/me', roots: [], drives: [] })).toEqual([
-      { name: 'Home', path: '/home/me' },
-      { name: '/', path: '/' },
+      { kind: 'home', name: 'Home', path: '/home/me' },
+      { kind: 'top', name: '/', path: '/' },
     ]);
   });
 });
@@ -197,8 +194,8 @@ describe('windowsDrives', () => {
         isFolder: (path) => folder(path.slice('/mnt/'.length)),
       }),
     ).toEqual([
-      { name: 'C:', path: '/mnt/c' },
-      { name: 'D:', path: '/mnt/d' },
+      { kind: 'drive', name: 'C:', path: '/mnt/c' },
+      { kind: 'drive', name: 'D:', path: '/mnt/d' },
     ]);
     expect(
       windowsDrives({
@@ -216,17 +213,5 @@ describe('windowsDrives', () => {
         isFolder: () => true,
       }),
     ).toEqual([]);
-  });
-});
-
-describe('folderPath', () => {
-  it('is an absolute path, resolved; ~ is home; anything else is none', () => {
-    expect(folderPath('/home/me/projects', '/home/me')).toBe('/home/me/projects');
-    expect(folderPath('/home/me/projects/../work/', '/home/me')).toBe('/home/me/work');
-    expect(folderPath('  ~/projects  ', '/home/me')).toBe('/home/me/projects');
-    expect(folderPath('~', '/home/me')).toBe('/home/me');
-    expect(folderPath('projects', '/home/me')).toBeNull();
-    expect(folderPath('~other/x', '/home/me')).toBeNull();
-    expect(folderPath('', '/home/me')).toBeNull();
   });
 });

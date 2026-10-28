@@ -35,11 +35,22 @@ const VIEWER_CLASSES = [
   'window-close',
   'button',
   'secondary',
+  'ghost',
   'error',
+  // Folders (NX2b): its field, its card's head, the crumbs' links, the chips; Stop's question.
+  'search-input',
+  'card-head',
+  'link',
+  'chip',
+  'dialog',
+  'dialog-backdrop',
+  'dialog-buttons',
 ];
 
 describe("the nexus page's look", () => {
-  const page = readFileSync(join(nexus, 'src/page/main.ts'), 'utf8');
+  const page = readdirSync(join(nexus, 'src/page'))
+    .map((name) => readFileSync(join(nexus, 'src/page', name), 'utf8'))
+    .join('\n');
   const viewer = cssUnder(viewerSrc);
 
   it("uses classes the viewer's stylesheet still has", () => {
