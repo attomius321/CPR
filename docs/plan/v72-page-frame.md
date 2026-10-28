@@ -206,6 +206,7 @@ the review's file 1,044 px wide (1,068); the graph's canvas 1,042 px wide with t
 rail (1,068). Settings and Skills gained 8 px each side. Start's run needs a 1,000 px window to
 fit with More closed (900 before).
 
-Verification: `pnpm check` (2,008 unit tests); the full e2e suite, 326 passed, without
-`WAYLAND_DISPLAY`; screenshots of every page and state in both themes at 1440 × 900 and
+Verification: `pnpm check` (2,008 unit tests; 2,013 after merging `main`'s V71); the full e2e
+suite, 326 passed, without `WAYLAND_DISPLAY`; after merging V71, 331 passed and 1 failed, a test
+still reading a plain diff's commits under the title (fixed: 5 of 5); screenshots of every page and state in both themes at 1440 × 900 and
 1920 × 1080, Start and Settings at 2560 × 1440, and the pages at 1,024, 800 and 480 px wide.
