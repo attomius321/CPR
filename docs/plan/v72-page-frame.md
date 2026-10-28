@@ -2,10 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v72-page-frame.md)
 
-**Status:** planned (2026-10-28), on branch `feature/layout-fixing` (a Symbiote workspace, from
-`main` at `88cb800`). The plan OK'd by the person ("Ok"), with the three recommended choices: 16 px
-from the edges and 16 between cards; the workspace's, merge's and review's heads two lines as every
-page's; long text fills its card.
+**Status:** ready for review (2026-10-28), on branch `feature/layout-fixing` (a Symbiote
+workspace, from `main` at `88cb800`). The person OK'd the plan ("Ok") with the three recommended
+choices: 16 px from the edges and 16 between cards; the workspace's, merge's and review's heads
+in two lines, as every page's; long text fills its card. Its "As built" and results are below.
 
 **Problem** (asked: "Pages differ in margin and spacing between elements. Also, i don't like the
 fact that some pages are not on full page, and in the middle...like start a workspace. Please check
@@ -133,3 +133,79 @@ Layout tokens on `:root` in `ui/base.css` (not colours: one value for both theme
 | 510 | Scout's model and effort | **The terminal card's head**, not the page's | the page head wrapped at 1440 (80 px); they act on the conversation in the card |
 | 511 | A workspace's, a merge's and a review's head | **Two lines, as every page's** | the person's choice: one line kept the titles and cards out of line, for ~1 row of terminal |
 | 512 | Long text on a wide window | **It fills its card** | the person's choice; a cap would leave ground beside it |
+
+## As built (V72)
+
+- **One head component.** `ui/PageHead.tsx` draws every page's head, and `ui/page.css` holds its
+  rules and a card's head (`.card-head`). Each page passes its own class (`git-bar`,
+  `settings-bar`, `workspace-top`, `merge-row-head`, `bar` for a review), so its own rules and its
+  tests still find it. The icon sits in a 32 px square, so the S (32 px) and the 28 px icons put
+  the title at the same x. The plan said the S would be 44 px: at that size Start's title stood
+  16 px right of every other page's.
+- **A resizer between two cards is the gap.** `Resizer` takes `gutter`: it is `--page-gap` wide,
+  with its line in the middle, and the cards' container has no gap beside it. Before, a handle
+  straddled the edge with `margin: -4px`, so a 16 px flex gap around it would have made 32 px.
+- **Scout's choices (decision 510).** The model, the effort and (with two agents) the agent
+  form the terminal card's head. The page's head keeps what Scout reads, its state and New
+  conversation. Scribe's pane keeps its own `.scout-top` strip, now 48 px and 16 px in.
+- **The Monitor.** The commit is the head's line, and the kinds and Colour are its actions. The
+  map became a card like the list beside it: its head holds Back, the place and the legend, and
+  the sentence sits under that head, in line with the folder's name.
+- **A workspace.** Its head's icon is its kind's (the start page's tabs' icons), in the accent:
+  the accent's role "the open workspace's kind". The state's dot moved to the line, before what
+  is next.
+- **A merge.** The branch and target chips are the title, and the state's chip sits beside them.
+  The state's sentence and the merge commit's title share the line, which cuts them at the
+  window's width; its tip has both whole. The steps became a card beside the log.
+- **A review.** "Review of <branch>" (or the pull request, or the revisions) is the title. The
+  line holds the rest: how the branch stands against the last review, the workspace, the commits
+  compared and the counts. The graph's toggles stay in the head's actions: once the head had two
+  lines they fit at 1,440 px, and a card head in the canvas would have cost it 48 px. The legend
+  moved into the canvas card's foot. Without a shell (`symbiote pr`) the S is the head's icon,
+  as the window's title bar. The window title is unchanged (`diffName` gives the head and
+  `diffTitle` the same words).
+- **Line tabs (`.tabs`, a workspace's tabs, Start's kinds) are a 48 px card head** with the first
+  tab's words 16 px in. Before, their strips were 40 or 41 px and the words 21 to 23 px in.
+- **Terminals and dialogs** follow the card's inset: the words 16 px in (terminals 12 before,
+  dialogs 24). A dialog's fields follow the form's rhythm.
+- **Start's right-hand rings are gone.** They stood in the ground beside the centred cards; the
+  cards now reach the area's edge, where a ring would show through their gaps. The ring around
+  the head's S stays.
+- **Start's run no longer fits 1,440 × 900.** Its seven cards, 16 px apart and 16 px in, make the
+  run 875 px high, 90 px more than that window's main area has under the head. With More closed
+  it fits from a 1,000 px window. At 1,920 × 1,080 (the person's app is maximized) it fits.
+- **Not built**: a check that every page's CSS uses the tokens. The e2e spec measures the result
+  on every page instead.
+
+**Results.** Measured as the spike was, with the e2e harness's fake workspaces (terminals on),
+device scale 1, the main area 1,176 × 876 at 1440 × 900 and 1,656 × 1,056 at 1920 × 1080. Each
+cell is the cards' distance from the area's left / right / bottom edges, the gap between cards,
+the title's x and the cards' top y.
+
+| Page | Before, 1440 | After, 1440 | Before, 1920 | After, 1920 |
+|---|---|---|---|---|
+| Git | 8/8/8, 8 and 16, x 60, y 71 | 16/16/16, 16, x 60, y 76 | as at 1440 | as at 1440 |
+| Start a workspace | 16/16/21, 16, x 80, y 84 | 16/16, 16, x 60, y 76 (the body scrolls 91 px) | 172/172, 16, x 236, y 156 | 16/16, 16, x 60, y 76 |
+| Scout | 8/8/8, x 16, y 80 | 16/16/16, x 60, y 76 | 8/8/8, x 16, y 52 | 16/16/16, x 60, y 76 |
+| Skills | 24/24/24, 16, x 68, y 87 | 16/16/16, 16, x 60, y 76 | as at 1440 | as at 1440 |
+| Monitor | the map not a card, the list 8 from the right, x 16, y 170 | 16/16/16, 16, x 60, y 76 | as at 1440 | as at 1440 |
+| Settings | 24/24/24, 16, x 68, y 87 | 16/16/16, 16, x 60, y 76 | 128/128/24, 16, x 172, y 87 | 16/16/16, 16, x 60, y 76 |
+| A workspace | 8/8/8, 8, x 31, y 52 | 16/16/16, 16, x 60, y 76 | as at 1440 | as at 1440 |
+| A review: Files | 8/8/8, 8, its bar, y 52 | 16/16/16, 16, x 60, y 76 | as at 1440 | as at 1440 |
+| A review: Graph | 8/8/31, 8, its bar, y 84 | 16/16/16, 16, x 60, y 76 | 8/8/31, 8, y 52 | 16/16/16, 16, x 60, y 76 |
+| A merge | the steps on the ground, the log 16/16, y 116 | 16/16/16, 16, x 60, y 76 | as at 1440 | as at 1440 |
+
+Inside the cards, after: every card head is 48 px with its first word or control 16 px in; a
+label stands 8 px over its field and 20 px after the field before it (Start, a new skill,
+Scout's question, the new-branch dialog). `e2e/page-frame.spec.ts` checks all of this, 3 tests,
+red first on each part.
+
+What it cost at 1440 × 900, as planned: Git's rows card 492 px wide (516); a workspace's
+terminal 124 × 38 cells without the changes panel (127 × 40) and 93 × 38 beside it (97 columns);
+the review's file 1,044 px wide (1,068); the graph's canvas 1,042 px wide with the sidenav as a
+rail (1,068). Settings and Skills gained 8 px each side. Start's run needs a 1,000 px window to
+fit with More closed (900 before).
+
+Verification: `pnpm check` (2,008 unit tests); the full e2e suite, 326 passed, without
+`WAYLAND_DISPLAY`; screenshots of every page and state in both themes at 1440 × 900 and
+1920 × 1080, Start and Settings at 2560 × 1440, and the pages at 1,024, 800 and 480 px wide.
