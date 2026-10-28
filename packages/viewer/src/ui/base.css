@@ -78,6 +78,17 @@
   --heat-1: #453806;
   --heat-2: #5c3616;
   --heat-3: #7c2b2b;
+  /* The Activity tab's kinds of work (V74, decisions 528, 530): explore, implement, docs, test,
+     visual, debug, git; one hue in both themes (lanes 5 and 6 change theirs). A phase's tile is a
+     wash of its colour over the ground, as strong as a selection. */
+  --phase-explore: #40b0a6;
+  --phase-implement: #6aa8ff;
+  --phase-docs: #e0a548;
+  --phase-test: #8ccf3e;
+  --phase-visual: #ec6fae;
+  --phase-debug: #f2815a;
+  --phase-git: #c08cff;
+  --phase-wash: 16%;
   --shadow: rgb(0 0 0 / 50%);
   /* States every control shares (V31): the hover a wash of the text, the selection one of the
      accent (V42), further from its ground than the hover (V37, decision 250). */
@@ -163,6 +174,14 @@
   --heat-1: #fde68a;
   --heat-2: #fdbe8a;
   --heat-3: #fa9999;
+  --phase-explore: #0a7f6f;
+  --phase-implement: #2f62cc;
+  --phase-docs: #9a5b00;
+  --phase-test: #4d7a00;
+  --phase-visual: #bf3989;
+  --phase-debug: #c2410c;
+  --phase-git: #8a3fd1;
+  --phase-wash: 12%;
   --shadow: rgb(11 18 32 / 14%);
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
   --selected: color-mix(in srgb, var(--accent) 12%, transparent);
@@ -235,6 +254,14 @@
     --heat-1: #fde68a;
     --heat-2: #fdbe8a;
     --heat-3: #fa9999;
+    --phase-explore: #0a7f6f;
+    --phase-implement: #2f62cc;
+    --phase-docs: #9a5b00;
+    --phase-test: #4d7a00;
+    --phase-visual: #bf3989;
+    --phase-debug: #c2410c;
+    --phase-git: #8a3fd1;
+    --phase-wash: 12%;
     --shadow: rgb(11 18 32 / 14%);
     --hover: color-mix(in srgb, var(--text) 5%, transparent);
     --selected: color-mix(in srgb, var(--accent) 12%, transparent);

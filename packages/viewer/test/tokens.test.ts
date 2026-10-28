@@ -63,6 +63,16 @@ const STATES = [
   '--info',
 ];
 const LANES = ['--lane-1', '--lane-2', '--lane-3', '--lane-4', '--lane-5', '--lane-6'];
+/** V74: the Activity tab's kinds of work, a colour each (decisions 528, 530). */
+const PHASES = [
+  '--phase-explore',
+  '--phase-implement',
+  '--phase-docs',
+  '--phase-test',
+  '--phase-visual',
+  '--phase-debug',
+  '--phase-git',
+];
 
 /** Each pair of `fronts` on `backs` under `min`, as "front on back: ratio". */
 function under(theme: Map<string, string>, fronts: string[], backs: string[], min: number) {
@@ -89,6 +99,14 @@ function washed(theme: Map<string, string>, token: string, back: string): string
   const share = Number(match[2]) / 100;
   const channel = (shift: number) =>
     Math.round(((front >> shift) & 255) * share + ((under >> shift) & 255) * (1 - share));
+  return `#${[16, 8, 0].map((shift) => channel(shift).toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** `front` laid over `back` at `share` (0–1), as `#rrggbb`: `color-mix(in srgb, …)`. */
+function mixed(front: string, share: number, back: string): string {
+  const [f, b] = [front, back].map((hex) => Number.parseInt(hex.slice(1), 16)) as [number, number];
+  const channel = (shift: number) =>
+    Math.round(((f >> shift) & 255) * share + ((b >> shift) & 255) * (1 - share));
   return `#${[16, 8, 0].map((shift) => channel(shift).toString(16).padStart(2, '0')).join('')}`;
 }
 
@@ -157,6 +175,33 @@ describe('the tokens (V29b)', () => {
     });
   });
 
+  // V74 (decisions 528, 530): a kind of work's colour keeps its hue in both themes, which
+  // History's lanes 5 and 6 do not (tan and olive, lime and brown).
+  it('give each kind of work on the Activity tab its colour, one hue in both themes', () => {
+    const pick = (theme: Map<string, string>) =>
+      Object.fromEntries([...PHASES, '--phase-wash'].map((t) => [t, theme.get(t)]));
+    expect(pick(dark)).toEqual({
+      '--phase-explore': '#40b0a6',
+      '--phase-implement': '#6aa8ff',
+      '--phase-docs': '#e0a548',
+      '--phase-test': '#8ccf3e',
+      '--phase-visual': '#ec6fae',
+      '--phase-debug': '#f2815a',
+      '--phase-git': '#c08cff',
+      '--phase-wash': '16%',
+    });
+    expect(pick(light)).toEqual({
+      '--phase-explore': '#0a7f6f',
+      '--phase-implement': '#2f62cc',
+      '--phase-docs': '#9a5b00',
+      '--phase-test': '#4d7a00',
+      '--phase-visual': '#bf3989',
+      '--phase-debug': '#c2410c',
+      '--phase-git': '#8a3fd1',
+      '--phase-wash': '12%',
+    });
+  });
+
   it('name the neutral states every control shares, in both themes', () => {
     for (const name of [
       '--hover',
@@ -214,6 +259,18 @@ describe('the tokens (V29b)', () => {
 
       it("draws History's lanes at least 3:1 on its rows", () => {
         expect(under(theme, LANES, ['--bg', '--raised'], 3)).toEqual([]);
+      });
+
+      // V74: a phase's icon on its tile, a wash of its colour over the timeline's ground.
+      it('draws a kind of work at least 3:1 on every background and on its own tile', () => {
+        expect(under(theme, PHASES, BACKGROUNDS, 3)).toEqual([]);
+        const share = Number.parseFloat(theme.get('--phase-wash')!) / 100;
+        const low = PHASES.flatMap((phase) => {
+          const tile = mixed(theme.get(phase)!, share, theme.get('--bg')!);
+          const ratio = contrast(theme.get(phase)!, tile);
+          return ratio < 3 ? [`${phase} on its tile: ${ratio.toFixed(2)}`] : [];
+        });
+        expect(low).toEqual([]);
       });
 
       // RM2 (decision 332): the Monitor's long files, yellow, orange, red; their lines are
