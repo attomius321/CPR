@@ -27,7 +27,8 @@ const symbol = (page: Page, name: string) =>
   });
 
 test('shows the change summary and every changed symbol', async ({ page }) => {
-  await expect(page.locator('.summary')).toContainText('HEAD~1');
+  // The commits compared are the head's title on a plain diff (V72); the counts its line.
+  await expect(page.locator('.bar .revisions')).toContainText('HEAD~1');
   await expect(page.locator('.summary .badge-error')).toHaveText('1 error');
   await expect(page.locator('.summary .badge-warning')).toHaveText('2 warnings');
   await expect(symbol(page, 'Canvas.clear').locator('.symbol')).toHaveClass(/tone-removed/);

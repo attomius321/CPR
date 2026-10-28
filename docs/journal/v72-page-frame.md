@@ -94,4 +94,7 @@ merge conflicted in the plan's index, the journal's, the style skill's recipes, 
 
 **Verification**: `pnpm check` (2,013 unit tests, V71's among them); V71's analyzing spec with
 the frame, Start, reviews, commits, pull request, title-bar and shell specs: 50, then 27 passed
-after the head's title; a screenshot of the analyzing page.
+after the head's title; a screenshot of the analyzing page. The full e2e suite after the merge:
+331 passed, 1 failed. `review.spec.ts` still read the revisions in `.summary`, where `78ee234`
+had moved them out on a plain diff (the suite before it had not run that test since); it reads
+them in the head's title now, 5 of 5.
