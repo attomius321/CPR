@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { LibraryState, Skill, SkillChange, SkillsState } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
+import { PageHead } from '../ui/PageHead.js';
 import { getJson, postJson } from '../ui/http.js';
 import {
   BackIcon,
@@ -358,43 +359,39 @@ export function SkillsPage() {
   return (
     <div className={`skills${expanded && current ? ' expanded' : ''}`}>
       {/* Settings' head (V64, decision 458): the page's icon, its title and a line under it. */}
-      <div className="commits-title skills-bar">
-        <span className="page-icon" aria-hidden="true">
-          <SkillsIcon />
-        </span>
-        <div className="skills-title">
-          <div className="skills-name-line">
-            <h1>Skills</h1>
-            <Help label="About Skills">
-              <p>
-                A skill is a folder with a SKILL.md: its name and description tell an agent when to
-                load it, and the rest how to do the work. Claude Code reads .claude/skills, Codex
-                .agents/skills.
-              </p>
-              <p>
-                Saved in this checkout as files: commit them to share them with everyone who uses
-                this repository.
-              </p>
-              <p>
-                The skill library, set in Settings, keeps skills outside the repository, for every
-                repository on this machine.
-              </p>
-            </Help>
-          </div>
-          <p>
-            What your agents load for a kind of work: this checkout&apos;s skills and your
-            library&apos;s.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="button skills-new-button"
-          aria-current={open === NEW ? 'true' : undefined}
-          onClick={() => show(NEW)}
-        >
-          <PlusIcon /> New skill
-        </button>
-      </div>
+      <PageHead
+        className="skills-bar"
+        icon={<SkillsIcon />}
+        title="Skills"
+        beside={
+          <Help label="About Skills">
+            <p>
+              A skill is a folder with a SKILL.md: its name and description tell an agent when to
+              load it, and the rest how to do the work. Claude Code reads .claude/skills, Codex
+              .agents/skills.
+            </p>
+            <p>
+              Saved in this checkout as files: commit them to share them with everyone who uses this
+              repository.
+            </p>
+            <p>
+              The skill library, set in Settings, keeps skills outside the repository, for every
+              repository on this machine.
+            </p>
+          </Help>
+        }
+        line="What your agents load for a kind of work: this checkout's skills and your library's."
+        actions={
+          <button
+            type="button"
+            className="button skills-new-button"
+            aria-current={open === NEW ? 'true' : undefined}
+            onClick={() => show(NEW)}
+          >
+            <PlusIcon /> New skill
+          </button>
+        }
+      />
       {error && (
         <p className="skills-note error" role="alert">
           {error}

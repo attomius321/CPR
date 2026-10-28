@@ -246,14 +246,21 @@ test('goes back up: the Back button, Escape once nothing is picked, and Backspac
 });
 
 // V56: the head is History's strip, its title 16 px in and its commit 12 px from the right (it
-// borrowed `.settings-bar`, whose padding is defined only on Settings' page: 0 px).
-test("the head's title and commit inside the strip's padding, as History's", async ({ page }) => {
+// borrowed `.settings-bar`, whose padding is defined only on Settings' page: 0 px). V72 (decision
+// 509): the page frame's head — its icon, the title at x 60, the commit its line under the title;
+// what counts and the colour its actions, 16 px from the right.
+test("the head: the frame's, the commit under the title, what counts at the right", async ({
+  page,
+}) => {
   await page.goto(`${symbiote.url}monitor`);
   await expect(headline(page)).toContainText('lines of code in');
   const main = await page.locator('.shell-main').boundingBox();
   const title = await page.getByRole('heading', { name: 'Monitor', exact: true }).boundingBox();
   const commit = await page.locator('.monitor-commit').boundingBox();
-  if (!main || !title || !commit) throw new Error('no box');
-  expect(Math.round(title.x - main.x)).toBe(16);
-  expect(Math.round(main.x + main.width - (commit.x + commit.width))).toBe(12);
+  const colour = await page.locator('.monitor-colour').boundingBox();
+  if (!main || !title || !commit || !colour) throw new Error('no box');
+  expect(Math.round(title.x - main.x)).toBe(60);
+  expect(Math.round(commit.x - main.x)).toBe(60);
+  expect(commit.y).toBeGreaterThanOrEqual(title.y + title.height);
+  expect(Math.round(main.x + main.width - (colour.x + colour.width))).toBe(16);
 });

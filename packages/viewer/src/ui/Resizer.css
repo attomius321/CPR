@@ -25,6 +25,17 @@
   background: var(--muted);
 }
 
+/* Between two cards (V61, V72): the gutter itself, `--page-gap` wide, its line in the middle; the
+   cards' container keeps no gap beside it. */
+.resizer.gutter {
+  width: var(--page-gap);
+  margin: 0;
+}
+
+.resizer.gutter::after {
+  inset: 0 calc(var(--page-gap) / 2 - 1px);
+}
+
 .resizer:focus-visible {
   outline: none;
 }

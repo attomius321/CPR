@@ -9,8 +9,9 @@ import {
 } from 'react';
 import type { CodeFile, CodeMap, FileKind } from '@symbiote/monitor';
 import { Help } from '../ui/Help.js';
+import { PageHead } from '../ui/PageHead.js';
 import { getJson, postJson, serverWords } from '../ui/http.js';
-import { BackIcon } from '../ui/icons.js';
+import { BackIcon, MonitorIcon } from '../ui/icons.js';
 import { keyIsTaken } from '../ui/keys.js';
 import { Resizer } from '../ui/Resizer.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
@@ -210,39 +211,39 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
       className={`monitor${resizing ? ' resizing' : ''}`}
       style={width ? ({ '--monitor-width': `${width}px` } as CSSProperties) : undefined}
     >
-      <div className="commits-title monitor-bar">
-        <h1>Monitor</h1>
-        <Help label="About the Monitor">
-          <p>
-            Where this checkout&apos;s code is: every file of the commit checked out, its area in
-            the picture its lines of code — lines that are not blank and not only a comment.
-          </p>
-          <p>
-            Click a folder to go in; Back, Backspace or Escape goes up a folder, the path to any
-            folder above. The list ranks the same numbers; the line in it is where half of the code
-            is reached.
-          </p>
-          <p>
-            A file&apos;s colour is its length: yellow from 250 lines of code, orange from 500, red
-            from 1,000. Colour: Kind gives each kind of file its own colour instead.
-          </p>
-        </Help>
-        {map && (
-          <span className="chip monitor-commit" {...tip(map.commit, { code: true })}>
-            {map.branch ? `${map.branch} · ` : ''}
-            {map.commit.slice(0, 7)}
-          </span>
-        )}
-      </div>
-      {error && (
-        <p className="commits-error error" role="alert">
-          {error}
-        </p>
-      )}
-      {!map && !error && <p className="main-hint">Reading the commit&apos;s files…</p>}
-      {map && tree && node && (
-        <>
-          <div className="monitor-head">
+      {/* The page frame's head (V72): the commit its line, what counts and the colour its
+          actions. */}
+      <PageHead
+        className="monitor-bar"
+        icon={<MonitorIcon />}
+        title="Monitor"
+        beside={
+          <Help label="About the Monitor">
+            <p>
+              Where this checkout&apos;s code is: every file of the commit checked out, its area in
+              the picture its lines of code — lines that are not blank and not only a comment.
+            </p>
+            <p>
+              Click a folder to go in; Back, Backspace or Escape goes up a folder, the path to any
+              folder above. The list ranks the same numbers; the line in it is where half of the
+              code is reached.
+            </p>
+            <p>
+              A file&apos;s colour is its length: yellow from 250 lines of code, orange from 500,
+              red from 1,000. Colour: Kind gives each kind of file its own colour instead.
+            </p>
+          </Help>
+        }
+        line={
+          map ? (
+            <span className="monitor-commit" {...tip(map.commit, { code: true })}>
+              {map.branch ? `${map.branch} · ` : ''}
+              {map.commit.slice(0, 7)}
+            </span>
+          ) : undefined
+        }
+        actions={
+          map && tree && node ? (
             <div className="monitor-tools">
               <div className="monitor-kinds" role="group" aria-label="What counts">
                 {KINDS.map(({ kind, label }) => (
@@ -283,68 +284,83 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
                 </span>
               </div>
             </div>
-            <div className="monitor-place">
-              <button
-                type="button"
-                className="icon-button monitor-back"
-                aria-label={up ? `Back to ${up.name || 'All files'}` : 'Back'}
-                {...tip(up ? `Back to ${up.name || 'All files'}` : 'Back', { keys: 'Backspace' })}
-                disabled={!up}
-                onClick={() => up && go(up.path)}
-              >
-                <BackIcon />
-              </button>
-              <nav className="monitor-crumbs" aria-label="Folder in view">
-                {trail.map((folder, i) =>
-                  i === trail.length - 1 ? (
-                    <span key={folder.path} aria-current="page">
-                      {folder.name || 'All files'}
-                    </span>
-                  ) : (
-                    <span key={folder.path}>
-                      <button type="button" className="link" onClick={() => go(folder.path)}>
-                        {folder.name || 'All files'}
-                      </button>
-                      <span className="monitor-crumb-sep" aria-hidden="true">
-                        /
-                      </span>
-                    </span>
-                  ),
-                )}
-              </nav>
-              {colour === 'lines' && (
-                <div className="monitor-legend" role="group" aria-label="Lines in a file">
-                  <span className="monitor-tools-label">Lines in a file</span>
-                  <span className="monitor-legend-step">
-                    <span className="monitor-swatch kind-source" aria-hidden="true" />
-                    under {count(HEAT[0])}
-                  </span>
-                  {HEAT.map((bound, i) => (
-                    <span key={bound} className="monitor-legend-step">
-                      <span className={`monitor-swatch heat-${i + 1}`} aria-hidden="true" />
-                      {count(bound)}
-                      {i === HEAT.length - 1 ? '+' : ''}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
-            <p className="monitor-headline">
-              {words.length > 0
-                ? figures(words.join(' '))
-                : 'No lines of the kinds turned on here.'}
-            </p>
-          </div>
+          ) : undefined
+        }
+      />
+      {error && (
+        <p className="commits-error error" role="alert">
+          {error}
+        </p>
+      )}
+      {!map && !error && <p className="main-hint">Reading the commit&apos;s files…</p>}
+      {map && tree && node && (
+        <>
           <div className="monitor-body">
-            <TreemapView
-              node={node}
-              colour={colour}
-              hovered={hovered?.id ?? null}
-              selected={selected}
-              onHover={hoverTile}
-              onPick={pickTile}
-            />
+            {/* The map, a card as the list beside it (V72): where one is its head, then the
+                sentence, then the tiles. */}
+            <section className="monitor-map-card" aria-label="The map">
+              <div className="card-head monitor-place">
+                <button
+                  type="button"
+                  className="icon-button monitor-back"
+                  aria-label={up ? `Back to ${up.name || 'All files'}` : 'Back'}
+                  {...tip(up ? `Back to ${up.name || 'All files'}` : 'Back', { keys: 'Backspace' })}
+                  disabled={!up}
+                  onClick={() => up && go(up.path)}
+                >
+                  <BackIcon />
+                </button>
+                <nav className="monitor-crumbs" aria-label="Folder in view">
+                  {trail.map((folder, i) =>
+                    i === trail.length - 1 ? (
+                      <span key={folder.path} aria-current="page">
+                        {folder.name || 'All files'}
+                      </span>
+                    ) : (
+                      <span key={folder.path}>
+                        <button type="button" className="link" onClick={() => go(folder.path)}>
+                          {folder.name || 'All files'}
+                        </button>
+                        <span className="monitor-crumb-sep" aria-hidden="true">
+                          /
+                        </span>
+                      </span>
+                    ),
+                  )}
+                </nav>
+                {colour === 'lines' && (
+                  <div className="monitor-legend" role="group" aria-label="Lines in a file">
+                    <span className="monitor-tools-label">Lines in a file</span>
+                    <span className="monitor-legend-step">
+                      <span className="monitor-swatch kind-source" aria-hidden="true" />
+                      under {count(HEAT[0])}
+                    </span>
+                    {HEAT.map((bound, i) => (
+                      <span key={bound} className="monitor-legend-step">
+                        <span className={`monitor-swatch heat-${i + 1}`} aria-hidden="true" />
+                        {count(bound)}
+                        {i === HEAT.length - 1 ? '+' : ''}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="monitor-headline">
+                {words.length > 0
+                  ? figures(words.join(' '))
+                  : 'No lines of the kinds turned on here.'}
+              </p>
+              <TreemapView
+                node={node}
+                colour={colour}
+                hovered={hovered?.id ?? null}
+                selected={selected}
+                onHover={hoverTile}
+                onPick={pickTile}
+              />
+            </section>
             <Resizer
+              gutter
               label="Resize the ranked list"
               side="after"
               variable="--monitor-width"

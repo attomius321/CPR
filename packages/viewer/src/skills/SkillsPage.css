@@ -2,62 +2,14 @@
 
 /* The page's own rules since V56 (decision 407), not Settings', over the whole main area (decision
    408). V64, the person's mockup (decision 458): Settings' head (the page's icon, its title, a line
-   under it), then the list and the open pane, cards 24 px from the main area's edges and 16 apart,
-   as Settings' are. */
+   under it), then the list and the open pane; in the page frame since V72 (decision 508), cards
+   16 px from the main area's edges and 16 apart, as every page's. */
 .skills {
-  --skills-side: 24px;
   flex: 1;
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-.skills > .skills-bar {
-  position: static;
-  flex: none;
-  flex-wrap: nowrap;
-  gap: 16px;
-  padding: 20px var(--skills-side);
-}
-
-/* The page's icon, as the sidenav's current page draws its own (Settings', V62). */
-.skills-bar .page-icon {
-  display: inline-flex;
-  color: var(--accent);
-}
-
-.skills-bar .page-icon .icon {
-  width: 28px;
-  height: 28px;
-  stroke-width: 1.4;
-}
-
-.skills-title {
-  min-width: 0;
-}
-
-.skills-name-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.skills-bar h1 {
-  margin: 0;
-  font-size: var(--size-title);
-  font-weight: 600;
-}
-
-.skills-title p {
-  margin: 2px 0 0;
-  color: var(--muted);
-  font-size: var(--size-small);
-}
-
-.skills-bar .skills-new-button {
-  flex: none;
-  margin-left: auto;
 }
 
 /* Under the head, over the list and the pane: the Codex note, what Link did, an error. */
@@ -66,7 +18,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 6px;
-  margin: 0 var(--skills-side) 12px;
+  margin: 0 var(--page-pad) 12px;
   color: var(--muted);
   font-size: var(--size-small);
 }
@@ -76,7 +28,7 @@
 }
 
 .skills > .hint {
-  margin: 0 var(--skills-side);
+  margin: 0 var(--page-pad);
   padding: 0;
 }
 
@@ -86,16 +38,16 @@
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  gap: 16px;
-  padding: 0 var(--skills-side) var(--skills-side);
+  gap: var(--page-gap);
+  padding: 0 var(--page-pad) var(--page-pad);
 }
 
 /* The list (decision 459): a card with its own scroll; the search, then the groups, their entries'
-   words in line with their heading and their wash 12 px out, each with its icon. */
+   words in line with their heading, 16 px in (V72), their wash 8 px out, each with its icon. */
 .skills-list {
   min-height: 0;
   overflow: auto;
-  padding: 16px 12px;
+  padding: var(--card-pad) 8px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--side);
@@ -130,7 +82,7 @@
 
 .skills-list section h2 {
   margin: 0 0 6px;
-  padding: 0 12px;
+  padding: 0 8px;
   color: var(--muted);
   font-size: var(--size-caption);
   font-weight: 500;
@@ -159,7 +111,7 @@
   gap: 10px;
   width: 100%;
   min-height: 32px;
-  padding: 0 12px;
+  padding: 0 8px;
   border: 0;
   border-radius: 8px;
   background: none;
@@ -217,7 +169,7 @@
 /* In place of a group: where its heading would be, not in from it as an entry. */
 .skills-none {
   margin: 16px 0 0;
-  padding: 0 12px;
+  padding: 0 8px;
 }
 
 /* The open pane: a skill's card, New skill, the library or Scribe, as tall as the main area. */
@@ -235,7 +187,7 @@
 .skills-library {
   display: flex;
   flex-direction: column;
-  padding: 20px 24px;
+  padding: var(--card-pad);
 }
 
 /* A pane's head (`PaneHead`): the icon in a raised square, the title and its chip, where it is
@@ -347,7 +299,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr) auto;
-  gap: 16px;
+  gap: var(--page-gap);
 }
 
 .skills-side {
@@ -358,7 +310,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   align-items: start;
-  gap: 16px;
+  gap: var(--page-gap);
 }
 
 @container skills-skill (min-width: 960px) {
@@ -584,7 +536,7 @@
 /* The checks and other files (decision 462): cards on the main area's ground. */
 .skills-side-card {
   min-width: 0;
-  padding: 16px 20px;
+  padding: var(--card-pad);
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--side);
@@ -719,7 +671,7 @@
 
 .skills.expanded .skills-body {
   grid-template-columns: minmax(0, 1fr);
-  padding-top: var(--skills-side);
+  padding-top: var(--page-pad);
 }
 
 .skills.expanded .skills-skill {
@@ -727,16 +679,11 @@
   grid-template-rows: minmax(0, 1fr);
 }
 
-/* New skill: a form of two fields, left in the pane, the start page's brief width. */
-.skills-new > .skills-field,
-.skills-new > .skills-actions {
-  max-width: 760px;
-}
-
+/* The form's rhythm (V72): a label `--field-label-gap` over its field, `--field-gap` to the next. */
 .skills-field {
   display: grid;
-  gap: 4px;
-  margin: 12px 0 0;
+  gap: var(--field-label-gap);
+  margin: var(--field-gap) 0 0;
   font-weight: 500;
 }
 
@@ -765,17 +712,13 @@
    in the open pane as New skill's form is: where it is, its changes, the commit's message. */
 .skills-library-unset {
   margin: 16px 0 0;
-  padding: 0 12px;
+  padding: 0 8px;
   font-size: var(--size-small);
 }
 
 /* A link in the text's colour, underlined under the pointer only (`.link`). */
 .skills-library-unset a:not(:hover) {
   text-decoration: none;
-}
-
-.skills-library > :not(.skills-back) {
-  max-width: 760px;
 }
 
 .skills-library h3 {
@@ -866,10 +809,6 @@
 }
 
 @media (max-width: 899px) {
-  .skills {
-    --skills-side: 16px;
-  }
-
   .skills-body {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -902,12 +841,6 @@
 }
 
 @media (max-width: 480px) {
-  .skills-card,
-  .skills-new,
-  .skills-library {
-    padding: 16px;
-  }
-
   .skills-code-tools {
     right: 12px;
   }

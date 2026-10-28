@@ -78,27 +78,8 @@
   margin-left: auto;
 }
 
-/* A page's cards under its head: `--page-pad` from the main area's sides and bottom,
-   `--page-gap` apart. */
-.page-body {
-  flex: 1;
-  min-width: 0;
-  min-height: 0;
-  display: flex;
-  gap: var(--page-gap);
-  padding: 0 var(--page-pad) var(--page-pad);
-}
-
-/* The style's card (V61): a hairline, 10 px corners, the page's darkest ground. */
-.page-card {
-  min-width: 0;
-  min-height: 0;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--bg);
-}
-
-/* A card's head: its tabs, or its title and actions, `--card-head` high, a hairline under it. */
+/* A card's head: its tabs, or its title and actions, `--card-head` high with the hairline under
+   it. */
 .card-head {
   flex: none;
   display: flex;

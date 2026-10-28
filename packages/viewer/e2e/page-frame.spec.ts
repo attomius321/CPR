@@ -138,7 +138,7 @@ test("the shell's pages: the whole main area, one head, cards 16 px from its edg
     ],
     { bottom: false },
   );
-  await expectPage(page, 'Scout', 'scout', ['.scout-terminal']);
+  await expectPage(page, 'Scout', 'scout', ['.scout-card']);
   await expectPage(page, 'Skills', 'skills', ['.skills-list', '.skills-pane']);
   await expectPage(page, 'the Monitor', 'monitor', ['.monitor-map-card', '.monitor-side']);
   await expectPage(page, 'Settings', 'settings', ['.settings-list', '.settings-editor']);
