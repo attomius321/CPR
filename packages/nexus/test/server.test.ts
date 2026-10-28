@@ -30,8 +30,8 @@ let server: NexusServer;
 const projects: FoldersAnswer = {
   path: '/home/me/projects',
   parent: '/home/me',
-  repository: null,
-  folders: [{ name: 'ky', path: '/home/me/projects/ky', repository: true }],
+  picked: null,
+  folders: [{ name: 'ky', path: '/home/me/projects/ky', repository: true, branch: 'main' }],
   more: 0,
   places: [{ kind: 'home', name: 'Home', path: '/home/me' }],
 };

@@ -218,9 +218,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
   function draw(next: ReadonlySet<string>): void {
     running = next;
     const marks = answer
-      ? [answer.repository, ...answer.folders.map((folder) => folder.path)].filter(
-          (path): path is string => path !== null && running.has(path),
-        )
+      ? answer.folders.map((folder) => folder.path).filter((path) => running.has(path))
       : [];
     const key = JSON.stringify([answer, marks, error, [...starting]]);
     if (key === drawn) return;
@@ -242,7 +240,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
       );
       return;
     }
-    const { parent, repository } = answer;
+    const { parent } = answer;
     const up = el(
       'button',
       { type: 'button', class: 'icon-button', 'aria-label': 'Up a folder', disabled: !parent },
@@ -264,24 +262,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
       link.addEventListener('click', () => void list(crumb.path, { focus: true }));
       trail.append(link);
     });
-    const inside =
-      repository !== null && repository !== answer.path
-        ? el('span', { class: 'nexus-folders-in' }, `In ${lastName(repository)}`)
-        : null;
-    cardHead.replaceChildren(
-      up,
-      trail,
-      ...(repository === null
-        ? []
-        : [
-            el(
-              'div',
-              { class: 'nexus-folders-actions' },
-              inside,
-              action(repository, running.has(repository) ? 'show' : 'open', true),
-            ),
-          ]),
-    );
+    cardHead.replaceChildren(up, trail);
     body.replaceChildren(
       ...[
         error ? el('p', { class: 'nexus-folders-error error', role: 'alert' }, error) : null,
