@@ -14,7 +14,7 @@ explains the terms this page uses: workspace, merger, verdict, Scout and the oth
 | `symbiote merge <branch>` | Merges the commit that your review of `branch` approved, as **Merge into** does in the app, and prints each step. |
 | `symbiote mcp` | Gives an agent of yours Symbiote's tools. See [Symbiote's tools for your own agent](#symbiotes-tools-for-your-own-agent). |
 | `symbiote app install` | Adds Symbiote's window to your desktop's apps, on Linux and WSL. `symbiote app uninstall` removes it. |
-| `symbiote-nexus` | Opens Symbiote nexus: every `symbiote view` running on this machine, as tabs in one window. It runs until you press Ctrl+C or close its window, and stops none of them. Run it as `node packages/nexus/dist/bin.js` in Symbiote's folder. |
+| `symbiote-nexus` | Opens Symbiote nexus: every `symbiote view` running on this machine, as tabs in one window. It runs until you press Ctrl+C or close its window, and stops none of them. `./install.sh` adds it to `~/.local/bin`. |
 
 `symbiote diff` and `symbiote view` compare `head` with the *merge base*: the last commit that
 `head` and `base` share. A pull request is compared the same way. To compare with `base` itself,
@@ -138,8 +138,9 @@ command = "symbiote"
 args = ["mcp"]
 ```
 
-An agent does not read your shell's aliases. If `symbiote` is an alias, write the full command
-instead: `node <Symbiote's folder>/packages/cli/dist/bin.js mcp`.
+An agent does not read your shell's aliases. `./install.sh` adds `symbiote` as a command, which an
+agent finds on your `PATH`. If `symbiote` is only an alias, write the full command instead:
+`node <Symbiote's folder>/packages/cli/dist/bin.js mcp`.
 
 | Tools | What they do | Asks you |
 |---|---|---|

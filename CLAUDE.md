@@ -47,6 +47,7 @@ finding costs more trust than a missing one), explainable beats clever, local an
 Node ≥ 22.12 (`.nvmrc`: 24), pnpm 12 (`packageManager`). Run from the repo root.
 
 ```sh
+./install.sh [--no-app]                         # a user's install: dependencies, build, window, commands in ~/.local/bin
 pnpm install --frozen-lockfile                  # add --offline in a container with the store
 pnpm check                                      # format:check + lint + typecheck + unit tests
 pnpm build                                      # tsc -b + viewer bundle; needed by the CLI, e2e, scripts

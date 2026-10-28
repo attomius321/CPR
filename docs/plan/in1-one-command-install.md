@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/in1-one-command-install.md)
 
-**Status:** planned (2026-10-28) and OK'd by the person the same day, on branch
-`feature/extend-view-with-wrapper` (a workspace started in Symbiote, after NX1); not started.
+**Status:** built (2026-10-28), ready for review, on branch `feature/extend-view-with-wrapper` (a
+workspace started in Symbiote, after NX1). Planned and OK'd by the person the same day, with their
+answers (decisions 534, 537, 538). "As built" and results at the end.
 
 **Problem** (asked: "i would also like a way to make the install faster, one command only...also,
 i had problems with node-gyp", "on linux", "i had to install it manually"). Measured on this
@@ -111,3 +112,49 @@ needs git and Node 22.12 or newer, no compiler and no pnpm of the person's. Run 
 
 **Not in IN1 (later)**: a release users install without cloning (`npm`, a package); macOS and
 Windows (the script runs, untested there: Linux and WSL are what Symbiote is tested on).
+
+## As built (IN1)
+
+- **As planned**: `@lydell/node-pty` 1.1.0 in node-pty's place (IN1a); `install.sh` and
+  `scripts/install.mjs` with the plan's steps, `pnpm cli:install` and `pnpm app:install` (IN1b).
+- **Found while running it: asking Electron downloaded it.** Electron 44's package downloads its
+  binary (118 MB) when it is required without one, and `findApp` asked by requiring it, under a
+  comment that said it throws. On `main`'s build with an empty home, `findApp` took 22.1 s and
+  returned the app: a `symbiote view` without `pnpm app:setup` fetched Electron unasked and opened
+  the window where the README says the browser opens. The installer's own check did the same, so
+  in the first fresh run the download ran before the build, not beside it. `electronBinary` reads
+  the package's `path.txt` and looks for the binary under `dist/`. It finds the package as Node
+  does, without `NODE_PATH`, which pnpm's shims set and which found another checkout's Electron in
+  a test. The CLI's `findApp`, the nexus's copy, the installer and the nexus's app spec use it.
+- **Not changed**: the viewer's `e2e/app.spec.ts` still requires `electron` to decide whether to
+  skip, so on a machine without `pnpm app:setup` it downloads Electron rather than skipping. CI runs
+  `pnpm app:setup` first. Left for the viewer's package, which this branch does not touch.
+- **The README's install** is one line. Its compiler requirement is gone, the window is no step of
+  its own, `symbiote-nexus` is a command, and an old alias is said to be unneeded.
+- **`chore/install-command`** is not merged (decision 538). Its `~/.local/bin/symbiote` is
+  recognized as Symbiote's and replaced on the next install (a test writes one like it). The branch
+  can be deleted.
+
+**Results (IN1).** Tests first, red for the right reasons: `loadPty`'s missing case by the new name;
+10 installer tests (no `install.sh`, then the installer requiring Electron's code); 2
+`electronBinary` tests (missing). `pnpm check` passes (2,126 tests). `pnpm test:e2e` passes: the
+viewer's 335 specs in 5.1 min (the agents' terminals there in real pseudo-terminals, on the prebuilt
+binary), then the nexus's 8 in 20.3 s. Measured on this machine (WSL2, Node 26.8.2, a fast
+connection), each fresh clone in a home of its own with every cache empty and the compiler refused
+(`CC`/`CXX=/bin/false`):
+
+| What | Before (`main`) | After |
+|---|---|---|
+| Commands to install | 5 to 7, after pnpm, and a compiler on Linux | 1: `git clone … && cd Symbiote && ./install.sh` |
+| `pnpm install` | 7.7 s, 5.9 s of it node-pty's build (67 MB of Node's headers) | 1.6–1.7 s (3.4 s in the spike's prototype) |
+| … without a compiler | Exits 0; no terminal for the agents, said nowhere | The terminal loads ("Agents' terminals: ready") |
+| `./install.sh`, the window included | — | 31.8 s: install 1.7 s, then the build (3.9 s) beside Electron's download (25.6 s) |
+| `./install.sh --no-app` | — | 10.0 s (install 1.7 s, build 3.8 s); nothing of Electron fetched |
+| Run again (an update) | — | 1.3 s; Electron kept |
+| `symbiote view` without `pnpm app:setup` | Downloads Electron (118 MB, 22.1 s), opens the window | Opens the browser, as the README says |
+
+The installed `symbiote --version` and `symbiote-nexus --no-open` ran from the fresh home.
+
+Not verified: a slow connection; Alpine or 32-bit ARM, where no binary is published (the terminal
+is then off, said at the end of the install); macOS; the person's own home: their
+`~/.local/bin/symbiote` from the chore is replaced on the next run, as a test shows with a copy.
