@@ -31,3 +31,43 @@ file, exiting once the record appeared.
 
 Not verified in the spike: macOS's places (`/Volumes`), a repository on `/mnt/c` served (git over
 9p is slower), a start on a large repository.
+
+## NX2 — Folders, Open Symbiote, Stop and Start again (2026-10-28, branch `feature/symbiote-nexus-upgrades`)
+
+Built after the person's OK, with their answers: a Folders tab, Symbiotes started from the nexus
+outliving it, Stop for every Symbiote, folders only (decisions 539–543). NX2a: the listing, the
+places, starting and stopping, the server's three routes. NX2b: the Folders tab, Open Symbiote,
+Stop's question, Start again. NX2c: the spec in Symbiote's window, screenshots, numbers, docs.
+
+**Learned**:
+- **The CLI's own error is the best message**: outside a repository, or in a folder whose `.git`
+  git does not take, `symbiote view` prints `symbiote: not inside a git working tree: <path>`
+  and exits in about 220 ms. The nexus shows its last `symbiote:` line instead of checking
+  anything itself.
+- **A start is done when its record appears**: the record (NX1's contract) is written as the
+  address is printed, so the nexus waits on one file and never parses the CLI's output.
+- **A page's newest request must win**: the screenshot script typed a folder while Up was on its
+  way; the typed one failed and Up's answer, older, was dropped. Kept: the person's last action
+  decides what is shown.
+- **Focus can fall out of the tab**: Enter on the last folder of a branch opened an empty folder,
+  its rows went, and focus went to the page's body, where Backspace reaches no listener. Up now
+  takes the focus when a folder has no folders.
+- **A button cannot hold a button**: Stop at the end of a row of Symbiotes made the row a
+  wrapper of two buttons; NX1's specs, which count `.nexus-row`, did not change.
+
+**Verification**: tests first (red: no modules; the routes 404 and 405), the nexus's unit tests
+46 → 80; `pnpm check` passes (2,165 tests); e2e: the whole suite passes (`pnpm test:e2e`: the
+viewer's 336 specs in 5.1 min, then the nexus's 14 in 16.1 s: 5 new Folders specs, 1 new in
+Symbiote's window under Xvfb). A real run with curl on the built nexus: a start answered in
+262 ms, a plain folder gave the CLI's error, a request from another origin 403, the started
+Symbiote served on after the nexus's Ctrl+C, and a new nexus stopped it in 66 ms. On a 300-deep
+clone of this repository, Open Symbiote showed the Git page's first row 487–608 ms after the
+click; a listing of `~/projects` took 5–6 ms, of `System32` 44–47 ms. Screenshots at 1×, dark and
+light, 1440 and 800 px: every state of Symbiotes, Folders, Stop's question and a stopped tab.
+`git diff --stat` touches `packages/nexus`, the docs, the README and `CLAUDE.md` only. No analysis
+change: no regression-check.
+
+Not verified: macOS and Windows outside WSL; the person's WSLg window (Xvfb only); a repository on
+`/mnt/c` opened (git over 9p); a Symbiote stopped while an agent works in its terminal; a reader
+test of the README's section by a fresh reader.
+

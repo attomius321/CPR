@@ -63,17 +63,30 @@ Two limits apply to the window:
 ### Several Symbiotes in one window
 
 Each `symbiote view` serves one repository. Symbiote nexus shows every one running on this
-machine as a tab of one window. Run it anywhere:
+machine as a tab of one window, and starts new ones in any repository on your PC. Run it anywhere:
 
 ```sh
 symbiote-nexus
 ```
 
-The first tab, **Symbiotes**, lists them, each with its folder, branch and changed files. Each other
-tab shows one Symbiote as its own window would. A Symbiote you opened stays loaded while you look
-at another, so switching back is instant. A new `symbiote view` gets its tab within 2 seconds. One
-that stops keeps its tab, marked stopped, until it runs again or you close the tab. Closing the
-nexus stops none of them.
+The first tab, **Symbiotes**, lists the running Symbiotes, each with its folder, branch and changed
+files. After **Folders**, each tab shows one Symbiote as its own window would. A Symbiote you
+opened stays loaded while you look at another, so switching back is instant. A `symbiote view`
+started in a terminal gets its tab within 2 seconds.
+
+The second tab, **Folders**, shows your PC's folders, one folder at a time. A repository is marked
+*repository*. Click a folder to go into it, or use the places above the list: your home folder,
+the folder your Symbiotes are in, `/`, and on WSL the Windows drives (`C:`). To go to any folder,
+hidden ones included, type its path in **Go to folder** and press Enter.
+
+To open a Symbiote in a repository, click **Open Symbiote** on its row. The nexus starts
+`symbiote view` there and opens its tab. If a Symbiote already runs there, the row says **Show**
+instead, and opens its tab.
+
+Closing the nexus stops no Symbiote, not even the ones it started, so their agents keep working.
+To stop a Symbiote, click the stop button at the end of its row in **Symbiotes**, then **Stop**.
+Its terminals, and the agents working in them, stop with it. If you had opened its tab, the tab
+stays, marked stopped, with **Start again** and **Close tab**.
 
 The nexus opens like `symbiote view`: in Symbiote's window when it is set up, else in your browser.
 It takes `--browser`, `--no-open` and `--port` too.
@@ -373,8 +386,8 @@ Outside the repository, Symbiote writes:
 
 - the workspaces' worktrees, next to your checkout, in `../<repo>.worktrees/`;
 - its cache, `~/.cache/symbiote` on Linux, with the worktrees it compares and merges in, the
-  list of merges, drafts, pasted images, its logs, and the address of each running
-  `symbiote view` (Symbiote nexus reads them);
+  list of merges, drafts, pasted images, its logs, the address of each running
+  `symbiote view` (Symbiote nexus reads them), and the output of each Symbiote the nexus started;
 - its settings for this machine, `~/.config/symbiote` on Linux: the skill library's folder, and
   whether the intro was seen;
 - the skill library's skills, when you save, add or delete one, or Scribe writes one. Symbiote

@@ -2,8 +2,10 @@
 
 Symbiote nexus (NX1, `docs/plan/nx1-nexus.md`): `symbiote-nexus` lists every `symbiote view`
 running on this machine and shows each as a tab of one page, in Symbiote's window or a browser
-tab. It connects Symbiotes and changes none of them: it reads their records and their
-`/api/status`, nothing else (decision 526).
+tab. It reads their records and their `/api/status`. Since NX2
+(`docs/plan/nx2-open-from-folders.md`) its Folders tab lists this PC's folders, and the nexus
+starts `symbiote view` in one and stops a running one (decision 543); it never writes inside a
+folder, nor into a Symbiote.
 
 ## Where things are
 
@@ -11,10 +13,12 @@ tab. It connects Symbiotes and changes none of them: it reads their records and 
 |---|---|
 | `src/registry.ts` | The running servers' records, `<cache>/running/<pid>.json`: `announce`, `withdraw`, `readRecords` (MC1's `<cache>/views/*.json` too), the cache folder's rule. **`symbiote view` imports it** (`@symbiote/nexus/registry`): Node's modules only, nothing else of the nexus |
 | `src/symbiotes.ts` | Which records are live (their process, `/api/status` within 1 s), one per folder |
-| `src/server.ts` | The page, its scripts, the viewer's built assets, `GET /api/symbiotes`; its own hosts only; reads only |
+| `src/folders.ts` | A folder's folders (no files, no hidden ones, 1,000 at most), repositories marked by their `.git`, the places (home, the Symbiotes' folders, `/`, WSL's drives), a folder's repository root (`git rev-parse`) |
+| `src/start.ts` | Starting this checkout's `symbiote view --no-open` in a folder, detached (output in `<cache>/nexus/<pid>.log`), started once its record appears; stopping a live record's process by SIGTERM |
+| `src/server.ts` | The page, its scripts, the viewer's built assets, `GET /api/symbiotes`, `GET /api/folders`, `POST /api/symbiotes` (start) and `/api/symbiotes/stop`; its own hosts only |
 | `src/main.ts`, `src/bin.ts` | The command: options, the app's window or the browser, as `symbiote view` opens them |
 | `src/app-window.ts` | Starting the desktop app in its `--url` mode: a copy of `packages/cli/src/app.ts`'s (the CLI's modules load the engine), tested on the same cases |
-| `src/page/` | The page's scripts, compiled by `tsc` to `dist/page/` and served as they are: `tabs.ts` (pure: the tabs from each read, the address, the words), `main.ts` (the DOM) |
+| `src/page/` | The page's scripts, compiled by `tsc` to `dist/page/` and served as they are: `tabs.ts` and `folders-tab.ts` (pure: the tabs from each read, the address, the crumbs, the words), `main.ts` (the DOM: tabs, frames, Symbiotes, Stop's question), `folders-view.ts` (the Folders tab's DOM), `dom.ts` (elements and icons) |
 | `page/` | `index.html` (the server fills in the viewer's stylesheet and font), `nexus.css` (layout only), `mark.png` (the viewer's `ui/mark-96.png`) |
 
 ## Rules
@@ -32,11 +36,20 @@ tab. It connects Symbiotes and changes none of them: it reads their records and 
   the hash by `replaceState`: no history entry.
 - **Symbiote's window is the desktop app's `--url` mode, untouched** (decision 524). Its preload
   is the top page's only: a framed viewer draws as in a browser.
+- **Writes as the viewer's server takes them** (decision 543): JSON, `x-symbiote: 1`, its own
+  origin if one is sent. A stop signals only the process of a live record (its pid alive, its
+  `/api/status` answering), never a pid the page sends.
+- **A Symbiote the nexus starts outlives it** (decision 541): detached, its output in a file, not
+  a pipe (a pipe breaks when the nexus ends). Specs stop such Symbiotes themselves
+  (`stopRecorded` in `e2e/nexus.ts`).
 
 ## Tests
 
 - Unit (vitest from the repo root): `test/*.test.ts`. The registry's test writes MC1's records with
   the CLI's own `writeViewRecord` and checks the cache rule against core's `defaultCacheDir`.
+- `test/start.test.ts` starts a stand-in for `symbiote view` (a script that writes its record),
+  never the CLI; the real CLI is the e2e's.
 - e2e: `e2e/*.spec.ts` (`pnpm build` first; `pnpm test:e2e` runs them after the viewer's).
   `e2e/nexus.ts` serves real `symbiote view`s in throwaway repositories and the nexus on one cache
-  folder of the spec's own. `app.spec.ts` needs `pnpm app:setup` and Xvfb, as the viewer's.
+  folder of the spec's own, with a home of its own for Folders (`homeFolder`, `HOME`).
+  `app.spec.ts` needs `pnpm app:setup` and Xvfb, as the viewer's.

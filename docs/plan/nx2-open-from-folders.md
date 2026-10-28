@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nx2-open-from-folders.md)
 
-**Status:** planned and OK'd by the person (2026-10-28), with their answers (decisions 539–543), on
-branch `feature/symbiote-nexus-upgrades` (a workspace started in Symbiote); being built.
+**Status:** built (2026-10-28), ready for review, on branch `feature/symbiote-nexus-upgrades` (a
+workspace started in Symbiote). Planned and OK'd by the person the same day, with their answers
+(decisions 539–543); NX2a–c built. "As built" and results at the end.
 
 **Problem** (asked: "Would be nice if i can control where symbiotes view can spawn. I need to see
 the file structures of my PC, and open a symbiote there."; then "choose the folder where symbiote
@@ -147,3 +148,53 @@ Start again); NX2c the e2e in the window, the look, the numbers, the docs.
 **Not in NX2 (later)**: files in the listing; a `symbiote view` run in a terminal opening as a
 nexus tab instead of its own window; `git init` on a plain folder; `symbiote pr` from the nexus;
 Symbiotes on other machines.
+
+## As built (NX2)
+
+- **The server and the start** (NX2a, decisions 540–543): as planned. The CLI is found at
+  `../../cli/dist/bin.js` from the nexus's own module; when it is missing, a start answers
+  "symbiote is not built (<path>): run pnpm build". The registry gained `readRecord(cache, pid)`:
+  a start waits on that one record. A folder whose repository a live Symbiote serves answers with
+  that Symbiote, from any folder inside it; nothing starts.
+- **`~` is the page's**: the server takes absolute paths only (400 otherwise); the page, which
+  has home among the places, expands `~` in **Go to folder**. Each place has a `kind` (home, the
+  Symbiotes' folder, the top, a drive) for its icon and for the crumbs, which start at Home or a
+  drive (`C:`) when the folder is in one.
+- **A row of Symbiotes is two buttons**: the row (its tab) and Stop at its end, since a button
+  cannot hold a button. Stop's question is the viewer's `ConfirmDialog`, drawn in its classes:
+  **Keep it running** is the default (primary, focused), **Stop** a ghost, Escape keeps it.
+- **Rows of Folders**: lucide's folder-git-2 and a neutral *repository* chip mark a repository; a
+  running one has a *running* chip and **Show**. The empty list of Symbiotes gained **Open a
+  folder**.
+- **The keys stay in the tab**: in a folder with no folders, focus goes to Up, so Backspace still
+  goes up (found writing the e2e: focus fell to the page's body).
+- **The newest listing wins**: an answer to an older request is dropped (a folder typed while Up
+  is on its way); the first listing is asked once, not again at each 2 s read while on its way.
+
+**Results (NX2).** Tests first, red for the right reasons (no modules; the routes answering 404
+and 405): the nexus's unit tests went from 46 to 80 (the listing and places 10, starting and
+stopping 9, the server's routes 8 new and 1 changed, the page's pure part 6, the command 1). `pnpm
+check` passes (2,165 tests; 2,114 before). e2e: the whole suite passes (`pnpm test:e2e`: the
+viewer's 336 specs in 5.1 min, then the nexus's 14 in 16.1 s, 8 before): 5 new Folders specs in a
+browser, 1 in Symbiote's window under Xvfb, NX1's updated for the new tab. `git diff --stat` against
+`e980dde` touches `packages/nexus`, the docs, the README and `CLAUDE.md`, nothing else: no
+analysis change, no regression-check. Measured with the built nexus on a cache of its own, headless
+Chromium at 1440×900:
+
+| What | Result |
+|---|---|
+| A listing through `GET /api/folders`, five times | `~/projects` (46 folders, 16 repositories) 5–6 ms, 18 ms the first; home 3–4 ms; `/mnt/c` 9–10 ms; `System32` (180 folders of 4,950 entries) 44–47 ms |
+| Open Symbiote on a 300-deep clone of this repository (962 commits, 1,538 files), three runs | the start answered in 288–290 ms; its Git page's first row 487–608 ms after the click |
+| … on throwaway repositories (one commit), screenshot runs | 837–846 ms after the click |
+| Stop (curl, a throwaway) | 66 ms, its record gone |
+| A Symbiote started from the nexus, the nexus stopped by Ctrl+C | still answering `/api/status`; a new nexus lists it and stops it |
+
+Screenshots at 1×, dark and light, 1440 and 800 px wide: Symbiotes with Stop, Folders at the
+Symbiotes' folder, in a repository, a typed folder that is missing, a Symbiote opened, Stop's
+question, a stopped tab with Start again.
+
+Not verified: macOS (its places: `/Volumes` is reached through `/`, not a place of its own) and
+Windows outside WSL; the person's own window on WSLg (Xvfb only); a start on a repository on
+`/mnt/c` (git over WSL's 9p); a Symbiote stopped while an agent works in one of its terminals
+(the specs run no agent); a reader test of the README's section by a fresh reader.
+
