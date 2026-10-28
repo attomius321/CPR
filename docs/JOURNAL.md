@@ -294,3 +294,4 @@ merge commit.
 - 2026-10-28 [NX2 spike — this PC's folders, and a `symbiote view` started by another process](journal/nx2-open-from-folders.md)
 - 2026-10-28 [NX2 — Folders, Open Symbiote, Stop and Start again](journal/nx2-open-from-folders.md)
 - 2026-10-28 [Fix — the spec waits for each open before the next](journal/fix-open-pr-spec-race.md)
+- 2026-10-28 [NX3 spike — the nexus's screens today, and what a listing can say cheaply](journal/nx3-nexus-look.md)
