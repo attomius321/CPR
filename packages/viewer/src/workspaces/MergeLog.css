@@ -5,9 +5,8 @@
   display: grid;
   flex: 1 0 320px;
   grid-template-columns: minmax(180px, 240px) minmax(0, 1fr);
-  gap: 12px;
+  gap: var(--page-gap);
   min-height: 0;
-  margin-top: 12px;
 }
 
 /* A merge made before V46 has no log: nothing is drawn once it no longer runs. */
@@ -15,15 +14,19 @@
   display: none;
 }
 
+/* The steps, a card beside the log's since V72: their words `--card-pad` in, a row's wash 8. */
 .merge-steps {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-height: 0;
   margin: 0;
-  padding: 0;
+  padding: 8px;
   overflow: auto;
   list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--side);
 }
 
 .merge-steps-run {

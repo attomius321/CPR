@@ -38,7 +38,7 @@ export function PageHead({
           <h1 id={titleId}>{title}</h1>
           {beside}
         </div>
-        {line !== undefined && <p className="page-line">{line}</p>}
+        {line !== undefined && <div className="page-line">{line}</div>}
       </div>
       {actions && <div className="page-actions">{actions}</div>}
     </header>

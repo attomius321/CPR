@@ -81,9 +81,11 @@ test('zoomed out, project names read first, and a click inside a frame zooms int
   const file = node(page, 'group:file:libs/ui/src/index.ts').locator('.file-name');
   await expect(name).toBeVisible();
   await expect(file).toBeVisible();
-  // As drawn on screen: names are scaled, not only sized.
+  // As drawn on screen: names are scaled, not only sized. 1.496 times since V72: the canvas card
+  // is 26 px narrower and holds its legend, so the fitted zoom draws libs/ui's frame narrower and
+  // its name is scaled to fit it.
   const height = async (locator: typeof name) => (await locator.boundingBox())?.height ?? 0;
-  expect(await height(name)).toBeGreaterThanOrEqual(1.5 * (await height(file)));
+  expect(await height(name)).toBeGreaterThanOrEqual(1.45 * (await height(file)));
 
   // Every spot of every file box is the file's: frames and their names never take the click.
   const reach = await page.evaluate(() =>

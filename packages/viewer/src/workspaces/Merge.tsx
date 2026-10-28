@@ -24,7 +24,15 @@ import {
   type SideKept,
 } from './merges.js';
 import { MergeLog } from './MergeLog.js';
-import { AlertIcon, DoneIcon, ForwardIcon, WaitingIcon, WorkingIcon } from '../ui/icons.js';
+import {
+  AlertIcon,
+  DoneIcon,
+  ForwardIcon,
+  MergingIcon,
+  WaitingIcon,
+  WorkingIcon,
+} from '../ui/icons.js';
+import { PageHead } from '../ui/PageHead.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 import { tip } from '../ui/tip.js';
@@ -155,37 +163,59 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
       : undefined;
   return (
     <section className={`merge-row merge-tone-${tone}`} aria-label={`Merge of ${entry.branch}`}>
-      <div className="merge-row-head">
-        <span className="merge-chip merge-ref-theirs" {...tip(entry.branch)}>
-          <span className="merge-chip-name">{entry.branch}</span>
-        </span>
-        <span className="merge-chip merge-ref-ours" {...tip(`Into ${entry.into}`)}>
-          <ForwardIcon />
-          <span className="merge-chip-name">{entry.into}</span>
-        </span>
-        {entry.strategy === 'fast-forward' && <span className="merge-how">by fast-forward</span>}
-        <span className="merge-chip merge-label">
-          <ToneIcon />
-          {mergeLabel(entry)}
-        </span>
-        <span className="merge-row-actions">
-          {shownActions.map((action) => (
-            <button
-              key={action}
-              type="button"
-              className={PRIMARY.has(action) ? 'button primary' : 'button'}
-              {...tip(action === 'approve' ? approveTitle : undefined, { tone: 'warn' })}
-              disabled={busy}
-              onClick={() => act(action)}
-            >
-              {ACTION_NAMES[action]}
-            </button>
-          ))}
-          {more.length > 0 && <MoreActions actions={more} />}
-        </span>
-      </div>
-      <p className="merge-row-state">{text}</p>
-      <p className="merge-title">{mergeTitle(entry)}</p>
+      {/* The page frame's head (V72, decision 511): the branch and its target the title, the
+          state's chip beside them, where it is and what it merges the line, its actions at the
+          right (the person's mockup, V69). */}
+      <PageHead
+        className="merge-row-head"
+        icon={<MergingIcon />}
+        title={
+          <>
+            <span className="merge-chip merge-ref-theirs" {...tip(entry.branch)}>
+              <span className="merge-chip-name">{entry.branch}</span>
+            </span>
+            <span className="merge-chip merge-ref-ours" {...tip(`Into ${entry.into}`)}>
+              <ForwardIcon />
+              <span className="merge-chip-name">{entry.into}</span>
+            </span>
+          </>
+        }
+        beside={
+          <>
+            {entry.strategy === 'fast-forward' && (
+              <span className="merge-how">by fast-forward</span>
+            )}
+            <span className="merge-chip merge-label">
+              <ToneIcon />
+              {mergeLabel(entry)}
+            </span>
+          </>
+        }
+        line={
+          <span {...tip(`${text}\n${mergeTitle(entry)}`)}>
+            <span className="merge-row-state">{text}</span>
+            {' · '}
+            <span className="merge-title">{mergeTitle(entry)}</span>
+          </span>
+        }
+        actions={
+          <>
+            {shownActions.map((action) => (
+              <button
+                key={action}
+                type="button"
+                className={PRIMARY.has(action) ? 'button primary' : 'button'}
+                {...tip(action === 'approve' ? approveTitle : undefined, { tone: 'warn' })}
+                disabled={busy}
+                onClick={() => act(action)}
+              >
+                {ACTION_NAMES[action]}
+              </button>
+            ))}
+            {more.length > 0 && <MoreActions actions={more} />}
+          </>
+        }
+      />
       {changing && (
         <form
           className="merge-change"

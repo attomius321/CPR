@@ -5,7 +5,7 @@
   position: relative;
   min-height: 0;
   display: flex;
-  padding: 0 8px 8px;
+  padding: 0 var(--page-pad) var(--page-pad);
 }
 
 /* The page switch in the bar (V60): Files and Graph, a segmented control as History's scopes. */

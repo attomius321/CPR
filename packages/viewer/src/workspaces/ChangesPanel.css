@@ -4,9 +4,12 @@
    1440 with the sidenav the terminal keeps 56 % of the window (decision 186). */
 .changes {
   flex: none;
-  /* As wide as the person dragged it (V34), the terminal keeping 480 px; past the cards' gutters
-     since V61 (8 px each side and between them). */
-  width: min(var(--changes-width, 256px), calc(100cqi - 480px - 24px));
+  /* As wide as the person dragged it (V34), the terminal keeping 480 px; past the cards' margins
+     and the gutter between them (V61; 16 px each since V72). */
+  width: min(
+    var(--changes-width, 256px),
+    calc(100cqi - 480px - 2 * var(--page-pad) - var(--page-gap))
+  );
   min-height: 0;
   overflow: auto;
   border: 1px solid var(--line);
@@ -40,7 +43,7 @@
   align-items: center;
   gap: 6px;
   margin: 0 0 4px;
-  padding: 0 12px;
+  padding: 0 var(--card-pad);
   color: var(--muted);
   font-size: var(--size-small);
   font-weight: 600;
@@ -71,7 +74,7 @@
 
 .changes-empty {
   margin: 2px 0;
-  padding: 0 12px;
+  padding: 0 var(--card-pad);
   color: var(--muted);
 }
 
@@ -83,7 +86,7 @@
   box-sizing: border-box;
   width: 100%;
   min-height: 24px;
-  padding: 4px 12px;
+  padding: 4px var(--card-pad);
   line-height: 16px;
 }
 
@@ -188,7 +191,7 @@ button.changes-file:hover {
   gap: 6px;
   min-height: 26px;
   margin: 0 0 6px;
-  padding: 0 12px;
+  padding: 0 var(--card-pad);
   color: var(--muted);
   font-size: var(--size-caption);
 }

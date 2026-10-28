@@ -129,7 +129,7 @@ test('a workspace: under the title bar, the browser’s page — its tabs in the
   await expectSamePage(inBrowser, inApp, [
     ...SHELL,
     '.workspace-top',
-    '.workspace-title',
+    '.workspace-top h1',
     '.changes-toggle',
     '.workspace-main',
     '.workspace-views',
@@ -224,7 +224,7 @@ test('a diff of symbiote view: under the title bar, the browser’s page, its ba
     '.sidenav-pages',
     '.sidenav-foot',
     '.app > .bar',
-    '.app > .bar > .brand',
+    '.app > .bar .page-icon',
     '.files-side',
   ]);
 });
