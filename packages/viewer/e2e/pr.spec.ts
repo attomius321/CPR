@@ -22,7 +22,7 @@ test.beforeEach(async ({ page }) => {
 test.afterEach(() => expect(errors).toEqual([]));
 
 test('comments on symbols and submits the review to GitHub', async ({ page }) => {
-  await expect(page.locator('.summary .request')).toContainText('#7 Add perimeter and volume');
+  await expect(page.locator('.bar .request')).toContainText('#7 Add perimeter and volume');
   const panel = page.getByRole('complementary', { name: 'Symbol detail' });
 
   // An added function: the comment goes on its first line.

@@ -30,14 +30,16 @@ the primary), every page's panels as cards on its ground, line tabs, and type a 
 2. **The content is darkest; the chrome is lifted; panels are cards.** Canvas and page ground
    `#090b0e` (the graph, History's rows, a thread; the terminal `#050608`); sidenav, status bar
    and the cards' chrome (a tab strip, the changes panel) `#0d1015`; chips, counts and raised
-   squares `#171a21`. A page's head sits on the ground; its panels are cards under it, 8 px from
-   each other and from the edges, 10 px radius, a `--line` hairline. Never one black for
-   everything. Settings has a mockup of its own (V62): a head of two lines (the page's icon in
-   the accent, the title, a line under it), its two cards 24 px from the edges and 16 apart, the
-   open page one card with its head over a hairline. Start a workspace has one too (V63): the S
-   in its head, the kinds as tabs with icons, the settings as seven cards with accent icons.
-   Skills too (V64): Settings' head and spacing, an icon before each entry, a pane's icon in a
-   raised square, a skill's text with line numbers and Markdown's colours, Checks a card.
+   squares `#171a21`. Never one black for everything. Every page has one frame (V72, decisions
+   507–511, the layout tokens in [tokens.md](tokens.md)). The page fills the main area at any
+   width: nothing is centred. Its head (`PageHead`) sits on the ground: the page's icon in the
+   accent, the title, a muted line under it, the actions at the right. The title stands at x 60
+   on every page. The panels are cards under the head, from y 76, 16 px from the area's edges
+   and 16 px apart, 10 px radius, a `--line` hairline. Inside a card the words start 16 px in,
+   and a card's head (tabs, or a title and actions) is 48 px with a hairline under it. The
+   person's mockups (Settings V62, Start a workspace V63, Skills V64, the merge page V69) keep
+   their own parts inside this frame: the S in Start's head, the kinds as tabs with icons,
+   seven cards with accent icons, a skill's text with line numbers, the merge's chips.
 3. **The accent marks what a person acts with.** The primary action (`--primary`, `#7c68fc`,
    dark words on it: white is 4.01:1), focus, what is checked, the current page, the selection (a
    16 % wash of `--accent`), the open workspace's kind, the selected node, a link under the
@@ -98,7 +100,8 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
 | One black for every surface (page and sidenav 1.04:1 apart) | Canvas `#05080f`, chrome `#0f1626` (1.11:1) |
 | Blue for everything: picks, links, selected nodes, checkboxes, states (before V31) | One accent in named roles (V42), states in their own colours; links in the text colour, the accent and an underline on hover |
 | Neutral greys with no colour of Symbiote's own (V31–V41) | V42 the koi's palette; V61 the mockup's near blacks and the S's violet |
-| Panels flush against each other, a hairline between, heads in a lifted strip (V31–V60) | Cards on the page's ground, 8 px gutters, the head on the ground (V61) |
+| Panels flush against each other, a hairline between, heads in a lifted strip (V31–V60) | Cards on the page's ground, the head on the ground (V61) |
+| Three page frames: 8, 16 or 24 px gutters, a form centred at 1,312 or 1,400 px, titles anywhere from x 16 to 80 (V61–V71) | One frame (V72): the whole main area, `PageHead`, 16 px margins and gutters, 16 px insets, 48 px card heads |
 | Native checkboxes and selects | Drawn controls; the `<input>` and `<select>` stay |
 | A 2–4 px coloured left border on a row | A neutral row; the state as a dot, an icon or a tinted badge |
 | Bordered chips, mono text for names | Quiet chips: `--raised`, muted text, 4 px radius, no border; names in sans |

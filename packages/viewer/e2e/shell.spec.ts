@@ -369,14 +369,15 @@ test('the terminal fills the main area, down to the status bar', async ({ page }
       .map(Number) ?? [0, 0];
   // Without the branch's changes beside it (V29d; changes.spec measures it with them).
   await workspace(page, branch).getByRole('button', { name: 'Changes' }).click();
-  await expect.poll(async () => (await size())[0], POLL).toBeGreaterThanOrEqual(125);
+  await expect.poll(async () => (await size())[0], POLL).toBeGreaterThanOrEqual(122);
   const [, rows = 0] = await size();
-  // At least 65 % of the window. In Geist Mono at 15 px (V61) a cell is 9 x 19 px: 127 x 40 here,
-  // 67 % of the window; at 14 px (V32) 8 x 18, 148 x 44; 46 rows at 13 px (V29b), 58 in the
-  // fallback font's 13 px lines (V29a), 41 on `main` then.
-  expect(rows).toBeGreaterThanOrEqual(40);
+  // At least 60 % of the window. In Geist Mono at 15 px (V61) a cell is 9 x 19 px: 124 x 38 here
+  // since V72 (the page frame's 16 px margins, its two-line head, the tabs' 48 px head), 62 % of
+  // the window; 127 x 40 and 67 % before; at 14 px (V32) 8 x 18, 148 x 44; 46 rows at 13 px
+  // (V29b), 58 in the fallback font's 13 px lines (V29a), 41 on `main` then.
+  expect(rows).toBeGreaterThanOrEqual(38);
   const box = await workspace(page, branch).locator('.xterm-screen').boundingBox();
-  expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.65);
+  expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.6);
   const bar = await statusBar(page).boundingBox();
   expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan((bar?.y ?? 0) - 40);
 });
@@ -442,8 +443,8 @@ test('a diff of symbiote view: the sidenav as a rail beside its canvas, [ opens 
   await expect(sidenav(page)).toHaveClass(/rail/);
   expect((await sidenav(page).boundingBox())?.width ?? 0).toBeLessThanOrEqual(56);
   // The canvas keeps nearly all of its width: 1,140 px at 1440 without the rail (V29 spike); the
-  // cards' gutters take 24 (V61).
-  expect((await page.locator('.react-flow').boundingBox())?.width ?? 0).toBeGreaterThan(1060);
+  // cards' gutters take 24 (V61), 48 and the card's edge 2 since V72's 16 px margins (1,042).
+  expect((await page.locator('.react-flow').boundingBox())?.width ?? 0).toBeGreaterThan(1030);
   await expect(statusBar(page)).toBeVisible();
 
   await page.locator('.react-flow__pane').click({ position: { x: 5, y: 5 } });

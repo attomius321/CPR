@@ -22,14 +22,15 @@
   contain: inline-size;
 }
 
-/* The branches panel beside the rows (V10b); over them under 900 px. Two cards on the page's
-   ground since V61 (the person's mockup), 8 px apart and from its edges. */
+/* The branches panel beside the rows (V10b); over them under 900 px. Cards on the page's ground
+   since V61 (the person's mockup), in the page frame since V72: `--page-pad` from its edges,
+   `--page-gap` apart. */
 .commits-body {
   flex: 1;
   display: flex;
-  gap: 8px;
+  gap: var(--page-gap);
   min-height: 0;
-  padding: 8px;
+  padding: 0 var(--page-pad) var(--page-pad);
   position: relative;
 }
 
@@ -75,8 +76,6 @@
   font-weight: normal;
 }
 
-.settings-bar,
-.skills-bar,
 .monitor-bar {
   min-height: 52px;
   border-bottom: 0;

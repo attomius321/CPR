@@ -1,6 +1,6 @@
-/* Scout (V35): a head strip, as a workspace's; then its agent's terminal edge to edge, as a
-   workspace's terminal is (or its question where no terminal runs). Scribe's pane (V41) shares
-   the head and the box. */
+/* Scout (V35): its head, then its agent's terminal (or its question where no terminal runs) in a
+   card, the page frame's since V72 (`PageHead`, `.scout-head`). Scribe's pane (V41) shares the
+   box, and its own head is `.scout-top`, a strip on the pane's card. */
 .scout-page {
   flex: 1;
   min-width: 0;
@@ -14,9 +14,9 @@
   grid-template-areas: 'title about actions';
   align-items: center;
   column-gap: 12px;
-  min-height: 52px;
+  min-height: var(--card-head);
   box-sizing: border-box;
-  padding: 8px 12px 8px 16px;
+  padding: 8px var(--card-pad);
 }
 
 .scout-top h1 {
@@ -64,44 +64,19 @@
   }
 }
 
-/* Scout's head (V50): its title, what it reads, its choices, its state and New conversation on
-   one line; where they do not fit, the choices and the actions wrap under the title. */
-.scout-page > .scout-top {
-  display: flex;
-  flex-wrap: wrap;
-  column-gap: 16px;
-  row-gap: 4px;
-  /* Its width decides the lines (below): the sidenav's, folded or not, is not the viewport's. */
-  container: scout-head / inline-size;
-}
-
-.scout-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-/* What it reads gives way first: it shrinks to its ellipsis before anything wraps. */
-.scout-page .scout-about {
-  flex: 1 1 0;
-}
-
+/* The choices (V50), the terminal card's head since V72 (decision 510): the agent, the model and
+   the effort New conversation starts on, 32 px as every control; they wrap in a narrow card. */
 .scout-choices {
-  display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
+  gap: 8px 12px;
+  /* 32 px controls in the head's 48, its hairline included. */
+  padding-block: 7px;
 }
 
-/* Beside the head's 28 px button. */
 .scout-choices select {
-  height: 28px;
+  height: 32px;
   max-width: 220px;
   font-size: var(--size-small);
-}
-
-.scout-page .scout-actions {
-  margin-left: auto;
 }
 
 .scout-starting {
@@ -111,21 +86,35 @@
 }
 
 .scout-error {
-  margin: 12px 16px 0;
+  margin: 0 var(--page-pad) 12px;
   white-space: pre-wrap;
+}
+
+/* The page's card: the choices, then the terminal or the question, to the main area's bottom. */
+.scout-card {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 var(--page-pad) var(--page-pad);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
 }
 
 .scout-body {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 16px 16px 24px;
+  padding: var(--card-pad);
 }
 
+/* The question as a form (V72's rhythm): its label `--field-label-gap` over the box, which fills
+   the card's width (decision 512). */
 .scout-ask {
   display: grid;
-  gap: 8px;
-  max-width: 760px;
+  gap: var(--field-label-gap);
 }
 
 .scout-ask label {
@@ -145,7 +134,6 @@
 .scout-ask textarea {
   box-sizing: border-box;
   width: 100%;
-  margin-top: 4px;
   font-size: var(--size-body);
 }
 
@@ -187,17 +175,6 @@
   line-height: 12px;
 }
 
-/* Where the head's line is too short for them all, the choices go on a line of their own under
-   the title, its state and New conversation. Measured with two agents, Codex's model and
-   "Answered": 1,170 px of title, choices, actions, gaps and padding; 1,290 with 120 for the
-   checkout's name. V61's bigger type and wider stepper: 1,410. */
-@container scout-head (max-width: 1410px) {
-  .scout-choices {
-    order: 1;
-    flex-basis: 100%;
-  }
-}
-
 .scout-effort-label {
   font-size: var(--size-small);
   font-weight: 500;
@@ -215,24 +192,9 @@
   flex-direction: column;
 }
 
-/* On Scout's page, a card under its head (V61, the person's mockup); in Scribe's pane, the pane is
-   the card. */
-.scout-page .scout-terminal {
-  margin: 0 8px 8px;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-}
-
 .scout-terminal .agent-terminal {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-@media (max-width: 480px) {
-  .scout-body {
-    padding: 16px;
-  }
 }

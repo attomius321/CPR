@@ -75,13 +75,19 @@ export function revisionsLabel(graph: Graph): string {
   return `${side(base.ref, base.sha)} → ${side(head.ref, head.sha)}`;
 }
 
+/** What a diff is, without Symbiote's name (V72, its page's head): its pull or merge request, or
+ * its revisions. */
+export function diffName(graph: Graph): string {
+  const request = graph.changeRequest;
+  return request
+    ? `${request.forge === 'gitlab' ? '!' : '#'}${request.number} ${request.title}`
+    : revisionsLabel(graph);
+}
+
 /** A diff page's title: its pull or merge request, the branch it reviews, or its revisions. */
 export function diffTitle(graph: Graph, reviewOf?: string): string {
-  const request = graph.changeRequest;
-  if (request) {
-    return pageTitle(`${request.forge === 'gitlab' ? '!' : '#'}${request.number} ${request.title}`);
-  }
-  return pageTitle(reviewOf ? `Review of ${reviewOf}` : revisionsLabel(graph));
+  if (graph.changeRequest || !reviewOf) return pageTitle(diffName(graph));
+  return pageTitle(`Review of ${reviewOf}`);
 }
 
 /** A diff's two pages (V60): its files, the default, and the graph. */

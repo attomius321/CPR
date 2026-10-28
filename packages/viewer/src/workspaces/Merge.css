@@ -29,14 +29,6 @@
   --merge-tone: var(--modified);
 }
 
-.merge-row-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-}
-
 /* How it lands, when not with a merge commit (V67). */
 .merge-how {
   color: var(--muted);
@@ -434,27 +426,31 @@
 }
 
 .merge-view > .hint {
-  margin: 12px 16px 0;
+  margin: 12px var(--page-pad) 0;
 }
 
 .merge-view .merge-row {
   display: flex;
   flex: 1 0 auto;
   flex-direction: column;
-  padding: 0 16px;
+  padding: 0 var(--page-pad);
   border: 0;
 }
 
+/* The page frame's head (V72), across the row's padding; it stays while the page scrolls. */
 .merge-view .merge-row-head {
   position: sticky;
   top: 0;
   z-index: 2;
-  min-height: 52px;
-  box-sizing: border-box;
-  margin: 0 -16px 12px;
-  padding: 8px 12px 8px 16px;
-  border-bottom: 1px solid var(--line);
+  margin: 0 calc(-1 * var(--page-pad));
   background: var(--bg);
+}
+
+/* The branch and its target as the title: chips, not the title's size. */
+.merge-row-head h1 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 /* A conflicted merge's two views (V46c): line tabs since V69, as a workspace's Terminal, Thread

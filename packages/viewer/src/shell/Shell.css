@@ -38,6 +38,10 @@
   display: none;
 }
 
+.shell-top .brand {
+  font-weight: 600;
+}
+
 .shell-main {
   grid-area: main;
   position: relative;

@@ -124,6 +124,12 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   `styles.css` say why). Class names are global: check a new one is not taken
   (`grep -rn '^\.name' src --include='*.css'`; the sidebar's review bar is `.progress`). Shared
   controls are in `src/ui/controls.css`.
+- The page frame (V72): `src/ui/PageHead.tsx` is every page's head (its icon, title, the line
+  under it, its actions) and `src/ui/page.css` its rules and a card's head (`.card-head`, 48 px).
+  A page's margins, gutters, card insets and form rhythm come from the layout tokens on `:root`
+  (`--page-pad`, `--page-gap`, `--card-pad`, `--card-head`, `--field-label-gap`, `--field-gap`),
+  not from px values of its own; a `Resizer` between two cards takes `gutter`. `e2e/page-frame.spec.ts` measures every page: a new
+  page uses `PageHead` and the tokens, and joins that spec.
 - Tooltips (V54): never a `title` (the window system draws it: square, its own font, no theme);
   an element gets `{...tip(text, { keys, side, tone, code })}` (`src/ui/tip.ts`) and the one
   `Tooltips` (`src/ui/Tooltip.tsx`, mounted in `main.tsx`) draws it: one listener on the window,
@@ -152,6 +158,8 @@ symbol glyph. Measure first paint (`/git`) and Bitwarden's graph after any font 
   covers the whole window (the intro, the narrow drawer) starts under it (`e2e/title-bar.spec.ts`
   compares the two page by page). The bar had taken a workspace's tabs and History's branches out
   of their cards, and V61's restyle of those cards missed it (fix/title-bar-desktop).
+- **Every page fills the main area** (V72, decision 507): no `max-width` or centring of a page,
+  nothing added above it on a tall window. A text that would read too wide fills its card.
 - **Layout never depends on selection or review state.** Only `decorate` does; the view to lay
   out depends on the graph and the view toggles. Clicking or marking must not move anything (V6:
   this took marking from 1.2 s to 72 ms on a 1,288-symbol graph).

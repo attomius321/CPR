@@ -141,10 +141,13 @@
 /* V21: the workspace's agent session in a terminal, beside its thread. */
 /* Terminal, Thread, Brief: views of one thing, line tabs on the card's chrome (V61, the person's
    mockup): the picked one in the text's colour on a lifted ground, the primary's line under it. */
+/* The tabs, the main card's head (V72): `--card-head` high with its hairline, the tabs on it, the
+   first tab's words `--card-pad` in (a tab is 14 px wider than its words each side). */
 .workspace-views {
   display: flex;
   gap: 2px;
-  padding: 0 8px;
+  min-height: var(--card-head);
+  padding: 7px calc(var(--card-pad) - 14px) 0;
   border-bottom: 1px solid var(--line);
   background: var(--side);
 }
@@ -282,7 +285,7 @@
 
 .workspace-body > .workspace-brief,
 .workspace-body > .workspace-thread {
-  margin: 16px 20px 12px;
+  margin: var(--card-pad);
 }
 
 .workspace-terminal,
@@ -345,12 +348,7 @@
   flex: 1;
   min-height: 0;
   display: flex;
-  padding: 0 8px 8px;
-}
-
-/* The changes' handle is the gutter between the two cards. */
-.workspace-split > .resizer {
-  margin: 0;
+  padding: 0 var(--page-pad) var(--page-pad);
 }
 
 .workspace-main {
@@ -368,37 +366,8 @@
   color: var(--text);
 }
 
-/* The state keeps 160 px, its time whole (V61: at 900 px the bigger title took it all, and the
-   time ran under the actions); the title gives way first. */
-.workspace-top {
-  display: grid;
-  grid-template-columns: minmax(0, max-content) minmax(160px, 1fr) auto;
-  grid-template-areas: 'title state actions';
-  column-gap: 12px;
-  align-items: center;
-  min-height: 52px;
-  padding: 8px 12px 8px 16px;
-}
-
-.workspace-title {
-  grid-area: title;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-width: 0;
-}
-
-.workspace-title h1 {
-  flex: 0 1 auto;
-  margin: 0;
-  font-size: var(--size-title);
-  font-weight: 600;
-}
-
-.workspace-title h1 .kind-tag {
-  vertical-align: 1px;
-}
-
+/* The head (V72, decision 511): the page frame's, in two lines as every page's — its kind's icon
+   and its name, then its branch, its state and how long. */
 .workspace-ref {
   display: flex;
   align-items: center;
@@ -407,7 +376,7 @@
   overflow: hidden;
 }
 
-/* The branch as git names it, beside the title. */
+/* The branch as git names it, first on the line. */
 .workspace-ref .ref-branch {
   min-width: 0;
   overflow: hidden;
@@ -426,13 +395,29 @@
   color: var(--text);
 }
 
-/* What is next and its facts, then how long the state has lasted (V48), kept whole. */
+/* The branch, then what is next and its facts, then how long the state has lasted (V48), kept
+   whole; the branch gives way first. */
 .workspace-state-line {
-  grid-area: state;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--size-small);
+}
+
+.workspace-state-line > .workspace-ref {
+  flex: 0 3 auto;
+}
+
+.workspace-state-line > .state-dot {
+  flex: none;
+}
+
+/* What is next and its facts, then how long the state has lasted (V48), kept whole. */
+.workspace-now {
   display: flex;
   align-items: baseline;
   min-width: 0;
-  font-size: var(--size-small);
 }
 
 .workspace-top .workspace-state {
@@ -474,21 +459,12 @@
   --state-tone: var(--removed);
 }
 
-.workspace-actions {
-  grid-area: actions;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-}
-
 .workspace-said {
   color: var(--muted);
   font-size: var(--size-small);
 }
 
-.workspace-actions .merge-control {
+.workspace-top .merge-control {
   margin: 0;
   font-size: var(--size-small);
 }
@@ -500,8 +476,8 @@
   align-items: center;
   gap: 12px;
   min-height: 48px;
-  margin: 0 8px 8px;
-  padding: 7px 8px 7px 16px;
+  margin: 0 var(--page-pad) var(--page-gap);
+  padding: 7px 8px 7px var(--card-pad);
   border: 1px solid color-mix(in srgb, var(--strip-tone) 30%, transparent);
   border-radius: 10px;
   background: color-mix(in srgb, var(--strip-tone) 8%, var(--bg));
@@ -537,8 +513,8 @@
 }
 
 .workspace > .workspace-confirm {
-  margin: 0 8px 8px;
-  padding: 8px 16px;
+  margin: 0 var(--page-pad) var(--page-gap);
+  padding: 8px var(--card-pad);
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--side);
@@ -546,23 +522,7 @@
 
 .workspace .reply {
   flex: none;
-  padding: 0 16px 12px;
-}
-
-@media (max-width: 899px) {
-  .workspace-top {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      'title'
-      'state'
-      'actions';
-    row-gap: 4px;
-    padding: 8px 12px;
-  }
-
-  .workspace-actions {
-    justify-content: flex-start;
-  }
+  padding: 0 var(--card-pad) var(--card-pad);
 }
 
 /* The files given with the brief (V40), under it: where they are, then their names. */

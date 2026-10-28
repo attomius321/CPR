@@ -475,7 +475,7 @@ test('every card says its kind in a chip at the end of its name’s line, Featur
   ).toEqual(['0px', '22px']);
   // The heading: its kind before its name, as before.
   await expect(
-    panel(page, 'feature/add-a-half-function').locator('.workspace-title h1 .kind-tag'),
+    panel(page, 'feature/add-a-half-function').locator('.workspace-top .page-name-line .kind-tag'),
   ).toHaveText('feature');
   // Folded to the rail: the card is its dot alone.
   await page.getByRole('button', { name: 'Fold the sidenav' }).click();

@@ -68,11 +68,14 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
     'This browser',
   ]);
   await expect(agents(page).getByRole('button')).toHaveText(['Merger', 'Scout', 'Scribe']);
-  // An entry's words in line with its group's heading (V62, the mockup), its wash further out.
+  // An entry's words in line with its group's heading (V62, the mockup), 16 px in (V72, the
+  // card's inset), its wash further out.
   const heading = await list(page).getByRole('heading', { name: 'Workspaces' }).boundingBox();
   const name = await entry(page, 'Feature').locator('.settings-name').boundingBox();
   const first = await entry(page, 'Feature').boundingBox();
-  expect(Math.abs((name?.x ?? 0) - (heading?.x ?? 0) - 12)).toBeLessThanOrEqual(1);
+  const card = await list(page).boundingBox();
+  expect(Math.abs((name?.x ?? 0) - (heading?.x ?? 0) - 8)).toBeLessThanOrEqual(1);
+  expect(Math.abs((name?.x ?? 0) - (card?.x ?? 0) - 17)).toBeLessThanOrEqual(1);
   expect(first?.x).toBeLessThan(name?.x ?? 0);
 
   await entry(page, 'Fix').click();
@@ -261,13 +264,14 @@ test("the mockup: two cards to the main area's bottom, the list without icons, t
     await page.goto(`${symbiote.url}settings`);
     await expect(text(page, 'Feature')).toBeVisible();
     const { area, l, e } = await boxes();
+    // The page frame since V72 (decision 508): 16 px from the area's edges, 16 apart.
     near(l.width, 280);
-    near(l.x - area.x, 24);
+    near(l.x - area.x, 16);
     near(e.x - (l.x + l.width), 16);
-    near(area.x + area.width - (e.x + e.width), 24);
+    near(area.x + area.width - (e.x + e.width), 16);
     near(l.y, e.y);
-    near(area.y + area.height - (l.y + l.height), 24);
-    near(area.y + area.height - (e.y + e.height), 24);
+    near(area.y + area.height - (l.y + l.height), 16);
+    near(area.y + area.height - (e.y + e.height), 16);
   }
   // The list scrolls on its own when taller than its card: the open entry is scrolled to.
   await page.goto(`${symbiote.url}settings?prompt=appearance`);
@@ -329,7 +333,8 @@ test("the mockup: two cards to the main area's bottom, the list without icons, t
   expect(card.x + card.width - (saving.x + saving.width)).toBeLessThanOrEqual(40);
   await editor(page).getByRole('button', { name: 'Cancel', exact: true }).click();
 
-  // Wider windows: the cards centred, at most 1,400 px, the head over the list's edge.
+  // Wider windows: the whole main area (V72, decision 507: centred at 1,400 px before), the head
+  // over the list's edge.
   for (const [width, height] of [
     [1920, 1080],
     [2560, 1440],
@@ -337,9 +342,8 @@ test("the mockup: two cards to the main area's bottom, the list without icons, t
     await page.setViewportSize({ width, height });
     await expect(text(page, 'Feature')).toBeVisible();
     const { area, l, e } = await boxes();
-    const left = l.x - area.x;
-    expect(Math.abs(left - (area.x + area.width - (e.x + e.width)))).toBeLessThanOrEqual(1);
-    expect(e.x + e.width - l.x).toBeLessThanOrEqual(1400);
+    near(l.x - area.x, 16);
+    near(area.x + area.width - (e.x + e.width), 16);
     const icon = await head.locator('.page-icon').boundingBox();
     near(icon?.x ?? 0, l.x);
   }

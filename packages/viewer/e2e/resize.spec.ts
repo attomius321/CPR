@@ -23,7 +23,8 @@ test.afterEach(() => expect(errors).toEqual([]));
 
 const sidebar = (page: Page) => page.getByRole('navigation', { name: 'Review' });
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Symbol detail' });
-const canvas = (page: Page) => page.locator('.canvas > .react-flow');
+// The canvas's card (V72: its legend at its foot), the flex item that keeps its 240 px.
+const canvas = (page: Page) => page.locator('.canvas-card');
 const sidebarHandle = (page: Page) =>
   page.getByRole('separator', { name: 'Resize review sidebar' });
 const panelHandle = (page: Page) => page.getByRole('separator', { name: 'Resize detail panel' });

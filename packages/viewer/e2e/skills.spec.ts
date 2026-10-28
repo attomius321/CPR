@@ -209,9 +209,10 @@ test('on a phone, the list first; a skill takes the page, and goes back to the l
 });
 
 // V56 (decisions 407–409): Skills is drawn with rules of its own (not Settings') over the whole
-// main area. V64 (decision 458): Settings' head and spacing, the cards 24 px from the main area's
-// edges and 16 apart, the list 280 px; the checks a card beside the skill where its area is 960 px
-// wide, under it on a narrower one (decision 462).
+// main area. V64 (decision 458): Settings' head and spacing, the list 280 px; the page frame's
+// since V72 (decision 508), the cards 16 px from the main area's edges (24 before) and 16 apart;
+// the checks a card beside the skill where its area is 960 px wide, under it on a narrower one
+// (decision 462).
 test('uses the whole main area: the list at its left, the skill to its right and bottom', async ({
   page,
 }) => {
@@ -241,11 +242,11 @@ test('uses the whole main area: the list at its left, the skill to its right and
     if (!main || !l || !e || !card || !checks || !heading || !icon || !add) {
       throw new Error('no box');
     }
-    expect(Math.abs(l.x - main.x - 24)).toBeLessThanOrEqual(1);
+    expect(Math.abs(l.x - main.x - 16)).toBeLessThanOrEqual(1);
     expect(Math.round(l.width)).toBe(280);
     expect(Math.abs(card.x - (l.x + l.width) - 16)).toBeLessThanOrEqual(1);
-    expect(Math.abs(e.x + e.width - (main.x + main.width - 24))).toBeLessThanOrEqual(1);
-    expect(Math.abs(e.y + e.height - (main.y + main.height - 24))).toBeLessThanOrEqual(1);
+    expect(Math.abs(e.x + e.width - (main.x + main.width - 16))).toBeLessThanOrEqual(1);
+    expect(Math.abs(e.y + e.height - (main.y + main.height - 16))).toBeLessThanOrEqual(1);
     // The head as Settings': its icon over the list's edge, New skill over the skill's.
     expect(Math.abs(icon.x - l.x)).toBeLessThanOrEqual(1);
     expect(heading.x).toBeGreaterThan(icon.x + icon.width);
@@ -274,7 +275,7 @@ test('the head: the Skills icon, its title and line, and New skill as the primar
   const head = page.locator('.skills-bar');
   await expect(head.locator('.page-icon svg')).toBeVisible();
   await expect(head.getByRole('heading', { level: 1 })).toHaveText('Skills');
-  await expect(head.locator('.skills-title p')).toHaveText(
+  await expect(head.locator('.page-line')).toHaveText(
     "What your agents load for a kind of work: this checkout's skills and your library's.",
   );
   await expect(head).not.toContainText('Symbiote');
@@ -524,9 +525,10 @@ test("Scribe's terminal fills the pane: to the main area's right and bottom edge
     const l = await list(page).boundingBox();
     const box = await terminal.boundingBox();
     if (!main || !l || !box) throw new Error('no box');
-    // To the pane card's edges, 24 px in from the main area's (V64) and inside its 1 px border.
-    expect(Math.abs(box.x + box.width - (main.x + main.width - 25))).toBeLessThanOrEqual(1);
-    expect(Math.abs(box.y + box.height - (main.y + main.height - 25))).toBeLessThanOrEqual(1);
+    // To the pane card's edges, 16 px in from the main area's (V72; 24 since V64) and inside its
+    // 1 px border.
+    expect(Math.abs(box.x + box.width - (main.x + main.width - 17))).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.y + box.height - (main.y + main.height - 17))).toBeLessThanOrEqual(1);
     expect(box.width).toBeGreaterThanOrEqual(main.width - l.width - 68);
   }
 });

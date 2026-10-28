@@ -10,6 +10,7 @@ import {
 import type { PromptKey, PromptSetting, PromptSettings, ScoutEfforts } from '@symbiote/core';
 import { EffortStepper } from '../workspaces/EffortStepper.js';
 import { Help } from '../ui/Help.js';
+import { PageHead } from '../ui/PageHead.js';
 import { getJson, postJson } from '../ui/http.js';
 import { useShell } from '../shell/shell-context.js';
 import { setTheme, useTheme, type Theme } from '../shell/theme.js';
@@ -299,21 +300,18 @@ export function SettingsPage() {
   return (
     <div className="settings">
       {/* The person's mockup (V62): the page's icon, its title and a line under it. */}
-      <div className="commits-title settings-bar">
-        <span className="page-icon" aria-hidden="true">
-          <SettingsIcon />
-        </span>
-        <div className="settings-title">
-          <div className="settings-name-line">
-            <h1>Settings</h1>
-            <Help label="About Settings">
-              What Symbiote tells each agent · Symbiote&apos;s text until you change it · saved in{' '}
-              {settings?.file ?? 'symbiote/config.json'}, for everyone once committed
-            </Help>
-          </div>
-          <p>Configure Symbiote to match your workflow and preferences.</p>
-        </div>
-      </div>
+      <PageHead
+        className="settings-bar"
+        icon={<SettingsIcon />}
+        title="Settings"
+        beside={
+          <Help label="About Settings">
+            What Symbiote tells each agent · Symbiote&apos;s text until you change it · saved in{' '}
+            {settings?.file ?? 'symbiote/config.json'}, for everyone once committed
+          </Help>
+        }
+        line="Configure Symbiote to match your workflow and preferences."
+      />
       {error && (
         <p className="commits-error error" role="alert">
           {error}

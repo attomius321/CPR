@@ -311,12 +311,12 @@ test('fetch, pull and push against a remote; never forced (V66e)', async ({ page
   git(symbiote.repo, 'remote', 'set-url', 'origin', bare);
   await page.goto(`${symbiote.url}git`);
   const remotes = page.getByRole('group', { name: 'Remotes' });
-  await expect(page.locator('.git-title p')).toContainText(
+  await expect(page.locator('.git-bar .page-line')).toContainText(
     'main has no upstream: Push sets origin/main',
   );
   await remotes.getByRole('button', { name: 'Push' }).click();
   await expect(statusBar(page)).toContainText('Pushed to origin/main, now its upstream');
-  await expect(page.locator('.git-title p')).toContainText('Up to date with origin/main');
+  await expect(page.locator('.git-bar .page-line')).toContainText('Up to date with origin/main');
 
   // Another clone pushes a commit: Fetch shows it to pull, Pull fast-forwards to it.
   git(other, 'clone', '-q', bare, '.');

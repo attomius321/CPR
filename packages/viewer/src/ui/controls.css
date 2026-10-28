@@ -524,10 +524,11 @@ details[open] > summary::before {
   backdrop-filter: blur(2px);
 }
 
-/* A dialog (V31c): glass, an edge and a shadow, faded in. */
+/* A dialog (V31c): glass, an edge and a shadow, faded in; its words `--card-pad` in, as a card's
+   (V72). */
 .dialog {
   width: min(520px, 100%);
-  padding: 20px 24px;
+  padding: var(--card-pad);
   background: var(--dialog-bg);
   border: 1px solid var(--menu-line);
   border-radius: 10px;
@@ -558,7 +559,7 @@ details[open] > summary::before {
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
-  margin-top: 20px;
+  margin-top: var(--field-gap);
   font-size: var(--size-body);
 }
 

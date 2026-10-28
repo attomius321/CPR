@@ -159,7 +159,7 @@
   .branches.open {
     display: flex;
     position: absolute;
-    inset: 8px auto 8px 8px;
+    inset: 0 auto var(--page-pad) var(--page-pad);
     z-index: 5;
     max-width: calc(100% - 32px);
     box-shadow: 4px 0 16px var(--shadow);

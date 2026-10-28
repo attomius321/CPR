@@ -9,16 +9,8 @@
   overflow: hidden;
 }
 
-/* The head strip is History's (V56: it borrowed Settings' `.settings-bar`, whose padding is
-   defined only on Settings' page). */
-.monitor-bar h1 {
-  margin: 0;
-  font-size: var(--size-title);
-  font-weight: 600;
-}
-
+/* The head is the page frame's (V72): the commit checked out its line. */
 .monitor-commit {
-  margin-left: auto;
   font-family: var(--mono);
 }
 
@@ -59,13 +51,7 @@
   --kind-fill: var(--heat-3);
 }
 
-.monitor-head {
-  display: grid;
-  gap: 8px;
-  padding: 4px 16px 12px;
-}
-
-/* The kinds and the colour, in one row; the colour at its end. */
+/* The kinds and the colour, the head's actions (V72); the colour at their end. */
 .monitor-tools {
   display: flex;
   flex-wrap: wrap;
@@ -84,7 +70,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 28px;
+  min-height: 32px;
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -156,13 +142,11 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Where one is (RM2, decision 334): Back, the folders above as links, the folder's name. */
+/* Where one is (RM2, decision 334): Back, the folders above as links, the folder's name; the map
+   card's head since V72, the legend at its end. */
 .monitor-place {
-  display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin-top: 4px;
+  padding-block: 8px;
 }
 
 .monitor-back:disabled {
@@ -197,8 +181,8 @@
 
 .monitor-headline {
   margin: 0;
-  /* Under the folder's name, past Back. */
-  padding-left: 36px;
+  /* Under the folder's name, past Back (28 px and the head's 8 px gap). */
+  padding: 12px var(--card-pad) 0 calc(var(--card-pad) + 36px);
   color: var(--muted);
 }
 
@@ -211,21 +195,29 @@
   flex: 1;
   display: flex;
   min-height: 0;
-  padding: 0 8px 8px;
+  padding: 0 var(--page-pad) var(--page-pad);
 }
 
-/* The list's handle is the gutter before its card (V61). */
-.monitor-body > .resizer {
-  margin: 0;
+/* The map's card (V72), as the list's beside it; the list's handle is the gutter between them. */
+.monitor-map-card {
+  flex: 1 1 320px;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
 }
 
 /* The treemap: tiles placed by `layoutTreemap`, a 1 px gap of the canvas between them. */
 .monitor-map {
   position: relative;
-  flex: 1 1 320px;
+  flex: 1;
   min-width: 0;
   min-height: 0;
-  margin: 12px;
+  margin: 12px var(--card-pad) var(--card-pad);
   overflow: hidden;
 }
 
@@ -529,7 +521,12 @@
 @media (max-width: 900px) {
   .monitor-body {
     flex-direction: column;
+    gap: var(--page-gap);
     overflow: auto;
+  }
+
+  .monitor-map-card {
+    flex: none;
   }
 
   .monitor-map {
@@ -539,8 +536,6 @@
   .monitor-side {
     width: auto;
     min-height: auto;
-    border-left: 0;
-    border-top: 1px solid var(--line);
   }
 
   .monitor-list {

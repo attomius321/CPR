@@ -395,44 +395,41 @@ test('a model and an effort picked in its head start nothing: New conversation s
 });
 
 // fix/scout-not-aligned: "Effort" sat on its track's line, 10 px over the selects' centre, and the
-// stepper's 36 px of track and words stood out of the 28 px selects and grew the head to 50 px.
-test("its head's choices, Effort, state and New conversation share one centre, on one line or two", async ({
+// stepper's 36 px of track and words stood out of the selects. V72 (decision 510): the choices are
+// the terminal card's 48 px head, on one line at 1,920 and 1,200 px (the page's head wrapped them
+// under its title at 1,440 before); the state and New conversation the page head's actions.
+test("the card head's choices and Effort share one centre on one line; the state and New conversation another", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces({ codex: true, appServer: true });
-  const head = scoutPage(page).locator('.scout-top');
+  const choices = scoutPage(page).locator('.scout-choices');
   const box = async (part: Locator) => {
     const b = await part.boundingBox();
     if (!b) throw new Error('not drawn');
     return { top: b.y, bottom: b.y + b.height, centre: b.y + b.height / 2 };
   };
-  // 1,920 px: the head on one line; 1,200: the choices on a line of their own.
   for (const width of [1920, 1200]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${symbiote.url}scout`);
     await expect(screen(page)).toContainText('Fake Claude Code', POLL);
-    const agent = await box(scoutPage(page).getByRole('combobox', { name: 'Agent' }));
-    const choices = [
+    const agent = await box(choices.getByRole('combobox', { name: 'Agent' }));
+    const parts = [
       await box(model(page)),
-      await box(head.locator('.scout-effort-label')),
-      await box(head.locator('.effort-stepper')),
+      await box(choices.locator('.scout-effort-label')),
+      await box(choices.locator('.effort-stepper')),
     ];
-    for (const part of choices) {
+    for (const part of parts) {
       expect(Math.abs(part.centre - agent.centre)).toBeLessThanOrEqual(1);
     }
-    // The stepper no taller than the selects beside it.
-    expect(choices[2]?.top).toBeGreaterThanOrEqual(agent.top - 1);
-    expect(choices[2]?.bottom).toBeLessThanOrEqual(agent.bottom + 1);
+    // The stepper no taller than the selects beside it, the head the card's 48 px.
+    expect(parts[2]?.top).toBeGreaterThanOrEqual(agent.top - 1);
+    expect(parts[2]?.bottom).toBeLessThanOrEqual(agent.bottom + 1);
+    expect(agent.bottom - agent.top).toBe(32);
+    expect((await choices.boundingBox())?.height).toBe(48);
     const state = await box(scoutPage(page).getByRole('status'));
     const button = await box(renew(page));
     expect(Math.abs(state.centre - button.centre)).toBeLessThanOrEqual(1);
-    if (width === 1920) {
-      expect(Math.abs(button.centre - agent.centre)).toBeLessThanOrEqual(1);
-      // 52 px since V61: every page's head as the mockup's (44 before, decision 213).
-      expect((await head.boundingBox())?.height).toBe(52);
-    } else {
-      expect(agent.top).toBeGreaterThan(button.bottom);
-    }
+    expect(button.bottom).toBeLessThan(agent.top);
   }
 });
 

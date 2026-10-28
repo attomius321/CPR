@@ -160,6 +160,21 @@ name band (10 px a character) and every layout stay as they were; the graph zoom
 takes a number (`terminal.ts`'s `TERMINAL_FONT_SIZE`, 15). The map's project names are
 `calc(2 * var(--size-body))`, on the graph's scale.
 
+## The page frame (V72; on `:root`, both themes)
+
+One value for both themes, in `ui/base.css` beside the type scale. Every page's CSS takes its
+spacing from these; `e2e/page-frame.spec.ts` measures the result on every page.
+
+| Token | Value | What it sets |
+|---|---|---|
+| `--page-pad` | 16 px | The main area's left, right and bottom edges to the cards, and the head's padding |
+| `--page-gap` | 16 px | Between two cards; a `Resizer` with `gutter` is this gap |
+| `--page-head` | 44 px | The head's two lines: the title (22 px) and the line under it (20 px) |
+| `--card-pad` | 16 px | A card's edge to its words, in its head and its body; a dialog's and a terminal's too |
+| `--card-head` | 48 px | A card's head, its hairline included |
+| `--field-label-gap` | 8 px | A label to its field |
+| `--field-gap` | 20 px | A field to the next label; a form's last field to its buttons |
+
 ## Shape, type, size (both themes)
 
 | | Value |
@@ -179,14 +194,14 @@ takes a number (`terminal.ts`'s `TERMINAL_FONT_SIZE`, 15). The map's project nam
 | Section header (sidenav "Workspaces") | 15 px, weight 600, `--text` |
 | Page, dialog or panel title | 17 px, weight 600 |
 | Terminal | Geist Mono 15 px |
-| Page head | 52 px high, on the page's ground (V61; 44 px, decision 213, before) |
-| Line tabs | 40 px, the picked one's line 3 px |
+| Page head | 76 px: 16 px, two lines (44 px), 16 px, on the page's ground (V72; 52 px since V61, 44 before) |
+| Line tabs | 40 px in a 48 px card head, the picked one's line 3 px on the hairline |
 | Status bar | 24 px, 14 px text |
 | Rows | 28 px dense, 36 px nav |
 | Buttons | 32 px in toolbars and forms, 28 in a sidenav card, 24 px in rows |
 | Icons | 16 px; 18 px in the sidenav's pages; 14 px in menus and dense rows; 12 px in chips |
 | Sidenav | 264 px (240 before V61); the mark 32 px in a 52 px brand row |
-| Cards' gutter | 8 px, between cards and from the main area's edges |
+| Cards' margins and gutter | 16 px from the main area's edges and between cards (V72; 8, 16 or 24 px before) |
 | Motion | colours 150 ms; menus fade in 150 ms, dialogs 200 ms, by opacity only |
 
 Letter-spacing is 0 everywhere but uppercase labels (V37). At 1× on Linux Chromium puts glyphs on

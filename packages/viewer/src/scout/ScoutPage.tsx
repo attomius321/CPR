@@ -2,6 +2,8 @@ import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
 import type { AgentKind, ScoutEfforts, ScoutState } from '@symbiote/core';
 import { EffortStepper } from '../workspaces/EffortStepper.js';
 import { Help } from '../ui/Help.js';
+import { PageHead } from '../ui/PageHead.js';
+import { ScoutIcon } from '../ui/icons.js';
 import { getJson, postJson } from '../ui/http.js';
 import {
   readWorkspacesAgain,
@@ -150,9 +152,14 @@ export function ScoutPage() {
 
   return (
     <section className="scout-page" aria-labelledby="scout-title">
-      <header className="scout-top">
-        <span className="scout-title">
-          <h1 id="scout-title">Scout</h1>
+      {/* The page frame's head (V72): what it reads its line; its state and New conversation at
+          the right. The agent, model and effort are the terminal card's head (decision 510). */}
+      <PageHead
+        className="scout-head"
+        icon={<ScoutIcon />}
+        title="Scout"
+        titleId="scout-title"
+        beside={
           <Help label="About Scout">
             <p>
               Where something is decided, why it works this way, what touches it; and your
@@ -167,16 +174,69 @@ export function ScoutPage() {
               sets the ones Scout opens on when no conversation runs.
             </p>
           </Help>
-        </span>
-        {read && (
-          <p className="scout-about" {...tip(read.checkout, { code: true })}>
-            In {folderName(read.checkout)}
-            {/* With two agents, the Agent beside it names it. */}
-            {kind && agents.length < 2 ? `, with ${AGENT_NAMES[kind]}` : ''}
-          </p>
-        )}
+        }
+        line={
+          read ? (
+            <span className="scout-about" {...tip(read.checkout, { code: true })}>
+              In {folderName(read.checkout)}
+              {/* With two agents, the Agent beside it names it. */}
+              {kind && agents.length < 2 ? `, with ${AGENT_NAMES[kind]}` : ''}
+            </span>
+          ) : undefined
+        }
+        actions={
+          conversation ? (
+            <>
+              <span className="scout-state" role="status">
+                <span className={`state-dot ${toneOf(conversation)}`} aria-hidden="true" />
+                {scoutStateText(conversation)}
+              </span>
+              <button
+                type="button"
+                className={renewal?.differs ? 'button' : 'button secondary'}
+                disabled={busy}
+                {...tip(
+                  renewal?.title ??
+                    "Ends this conversation and starts another on the head's agent, model and effort",
+                )}
+                onClick={() => {
+                  // The next on what the head shows (decision 392), kept until it runs.
+                  setPicked({
+                    ...(kind ? { agent: kind } : {}),
+                    ...(head.models.length > 0 ? { model: head.model } : {}),
+                    ...(head.efforts.length > 0 ? { effort: head.effort } : {}),
+                  });
+                  void act(() => postJson<ScoutState>(`${API}/new`, {}));
+                }}
+              >
+                New conversation
+              </button>
+            </>
+          ) : undefined
+        }
+      />
+      {error && (
+        <p className="error scout-error" role="alert">
+          {error}{' '}
+          {terminals && !live && (
+            <button
+              type="button"
+              className="button ghost"
+              onClick={() => {
+                setError(null);
+                setOpening(false);
+              }}
+            >
+              Try again
+            </button>
+          )}
+        </p>
+      )}
+      {/* The page's card (V61), in the page frame since V72: the choices its head, then the
+          terminal, or the question where no terminal runs. */}
+      <div className="scout-card">
         {!none && read && (
-          <div className="scout-choices">
+          <div className="card-head scout-choices">
             {agents.length > 1 && (
               <select
                 aria-label="Agent"
@@ -230,105 +290,62 @@ export function ScoutPage() {
             )}
           </div>
         )}
-        <div className="scout-actions">
-          {conversation && (
-            <span className="scout-state" role="status">
-              <span className={`state-dot ${toneOf(conversation)}`} aria-hidden="true" />
-              {scoutStateText(conversation)}
-            </span>
-          )}
-          {conversation && (
-            <button
-              type="button"
-              className={renewal?.differs ? 'button' : 'button secondary'}
-              disabled={busy}
-              {...tip(
-                renewal?.title ??
-                  "Ends this conversation and starts another on the head's agent, model and effort",
+        {none ? (
+          <div className="scout-body">
+            <p className="scout-note">
+              Scout needs Claude Code or Codex: neither is installed here.
+            </p>
+          </div>
+        ) : live && terminals ? (
+          <ConversationTerminal key={conversation.id} api={API} />
+        ) : terminals || read === null ? (
+          <div className="scout-body">
+            {!error && read !== null && <p className="scout-starting">Starting Scout…</p>}
+          </div>
+        ) : (
+          <div className="scout-body">
+            <form className="scout-ask" onSubmit={ask}>
+              <span className="field-label">
+                <label htmlFor="scout-question">Ask Scout</label>
+                <Help label="About the question">
+                  No terminal runs here: a question starts Scout on the head&apos;s model and
+                  effort. <kbd>Enter</kbd> asks; <kbd>Shift</kbd>+<kbd>Enter</kbd> starts a new
+                  line.
+                </Help>
+              </span>
+              {conversation?.state === 'gone' && (
+                <p className="scout-note">
+                  Its last session is gone (removed outside Symbiote): a question starts a new
+                  conversation.
+                </p>
               )}
-              onClick={() => {
-                // The next on what the head shows (decision 392), kept until it runs.
-                setPicked({
-                  ...(kind ? { agent: kind } : {}),
-                  ...(head.models.length > 0 ? { model: head.model } : {}),
-                  ...(head.efforts.length > 0 ? { effort: head.effort } : {}),
-                });
-                void act(() => postJson<ScoutState>(`${API}/new`, {}));
-              }}
-            >
-              New conversation
-            </button>
-          )}
-        </div>
-      </header>
-      {error && (
-        <p className="error scout-error" role="alert">
-          {error}{' '}
-          {terminals && !live && (
-            <button
-              type="button"
-              className="button ghost"
-              onClick={() => {
-                setError(null);
-                setOpening(false);
-              }}
-            >
-              Try again
-            </button>
-          )}
-        </p>
-      )}
-      {none ? (
-        <div className="scout-body">
-          <p className="scout-note">Scout needs Claude Code or Codex: neither is installed here.</p>
-        </div>
-      ) : live && terminals ? (
-        <ConversationTerminal key={conversation.id} api={API} />
-      ) : terminals || read === null ? (
-        <div className="scout-body">
-          {!error && read !== null && <p className="scout-starting">Starting Scout…</p>}
-        </div>
-      ) : (
-        <div className="scout-body">
-          <form className="scout-ask" onSubmit={ask}>
-            <span className="field-label">
-              <label htmlFor="scout-question">Ask Scout</label>
-              <Help label="About the question">
-                No terminal runs here: a question starts Scout on the head&apos;s model and effort.{' '}
-                <kbd>Enter</kbd> asks; <kbd>Shift</kbd>+<kbd>Enter</kbd> starts a new line.
-              </Help>
-            </span>
-            {conversation?.state === 'gone' && (
-              <p className="scout-note">
-                Its last session is gone (removed outside Symbiote): a question starts a new
-                conversation.
-              </p>
-            )}
-            {live && (
-              <p className="scout-note">
-                No terminal here
-                {read?.terminal && !read.terminal.available ? ` (${read.terminal.reason})` : ''}:
-                Scout&apos;s answers are in its session, <code>{attachCommand(conversation)}</code>{' '}
-                in a terminal of yours. A question here continues it.
-              </p>
-            )}
-            <textarea
-              id="scout-question"
-              rows={4}
-              value={text}
-              placeholder="What waits for me? Start a fix for the discount, plan first."
-              autoFocus
-              onChange={(event) => setText(event.target.value)}
-              onKeyDown={onKeyDown}
-            />
-            <div className="scout-ask-row">
-              <button type="submit" className="button" disabled={busy || text.trim() === ''}>
-                Ask
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+              {live && (
+                <p className="scout-note">
+                  No terminal here
+                  {read?.terminal && !read.terminal.available ? ` (${read.terminal.reason})` : ''}:
+                  Scout&apos;s answers are in its session,{' '}
+                  <code>{attachCommand(conversation)}</code> in a terminal of yours. A question here
+                  continues it.
+                </p>
+              )}
+              <textarea
+                id="scout-question"
+                rows={4}
+                value={text}
+                placeholder="What waits for me? Start a fix for the discount, plan first."
+                autoFocus
+                onChange={(event) => setText(event.target.value)}
+                onKeyDown={onKeyDown}
+              />
+              <div className="scout-ask-row">
+                <button type="submit" className="button" disabled={busy || text.trim() === ''}>
+                  Ask
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
     </section>
   );
 }
