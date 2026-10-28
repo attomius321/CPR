@@ -1,11 +1,11 @@
 import { execFileSync, spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import type { Readable } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { _electron, expect, test, type ElectronApplication } from '@playwright/test';
+import { electronBinary } from '../src/app-window.js';
 import { cacheFolder, repository, startNexus, startView, type Served } from './nexus.js';
 
 // Symbiote nexus in Symbiote's window (NX1c, decision 524): the desktop app's `--url` mode, as
@@ -14,14 +14,8 @@ import { cacheFolder, repository, startNexus, startView, type Served } from './n
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const desktop = join(root, 'packages/desktop');
 const nexusBin = join(root, 'packages/nexus/dist/bin.js');
-const electron = ((): string | null => {
-  try {
-    const path: unknown = createRequire(join(desktop, 'package.json'))('electron');
-    return typeof path === 'string' && existsSync(path) ? path : null;
-  } catch {
-    return null;
-  }
-})();
+// Never by requiring Electron's package: it downloads its binary when it has none (IN1).
+const electron = electronBinary(desktop);
 
 const xvfb = (() => {
   try {

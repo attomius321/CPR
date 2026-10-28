@@ -4,7 +4,6 @@
 // updates. Node's modules only: nothing is installed when it starts.
 import { spawn, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -182,14 +181,22 @@ function findPnpm() {
   return ['npx', '--yes', `pnpm@${wanted}`];
 }
 
-/** Whether Electron is downloaded: its package answers its binary's path, or throws. */
+/**
+ * Whether `pnpm app:setup` fetched Electron's binary: read from its package's `path.txt`, never by
+ * requiring the package, which downloads the binary (about 100 MB) when it is missing.
+ */
 function hasElectron() {
-  try {
-    const desktop = join(root, 'packages', 'desktop', 'package.json');
-    const electron = createRequire(desktop)('electron');
-    return typeof electron === 'string' && existsSync(electron);
-  } catch {
-    return false;
+  for (let folder = join(root, 'packages', 'desktop'); ; folder = dirname(folder)) {
+    const electron = join(folder, 'node_modules', 'electron');
+    if (existsSync(join(electron, 'package.json'))) {
+      try {
+        const name = readFileSync(join(electron, 'path.txt'), 'utf8').trim();
+        return name !== '' && existsSync(join(electron, 'dist', name));
+      } catch {
+        return false;
+      }
+    }
+    if (dirname(folder) === folder) return false;
   }
 }
 

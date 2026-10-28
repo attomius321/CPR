@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -33,13 +33,33 @@ export function findApp(env: Env): AppCommand | null {
   try {
     const require = createRequire(import.meta.url);
     const desktop = dirname(require.resolve('@symbiote/desktop/package.json'));
-    // Electron's package answers its binary's path, and throws while it is not downloaded.
-    const electron: unknown = createRequire(join(desktop, 'package.json'))('electron');
-    if (typeof electron !== 'string' || !existsSync(electron)) return null;
-    if (!existsSync(join(desktop, 'dist', 'main.js'))) return null;
+    const electron = electronBinary(desktop);
+    if (electron === null || !existsSync(join(desktop, 'dist', 'main.js'))) return null;
     return { command: electron, args: [desktop] };
   } catch {
     return null;
+  }
+}
+
+/**
+ * Electron's binary for the desktop package in `desktop`, once `pnpm app:setup` fetched it; else
+ * null. Read from the package's `path.txt`, never by requiring it: Electron 44's package downloads
+ * its binary, about 100 MB, when it is required without one (IN1).
+ */
+export function electronBinary(desktop: string): string | null {
+  // Where Node finds the package from `desktop`, up its folders (no NODE_PATH: pnpm's shims set one).
+  for (let folder = desktop; ; folder = dirname(folder)) {
+    const electron = join(folder, 'node_modules', 'electron');
+    if (existsSync(join(electron, 'package.json'))) {
+      try {
+        const name = readFileSync(join(electron, 'path.txt'), 'utf8').trim();
+        const binary = join(electron, 'dist', name);
+        return name !== '' && existsSync(binary) ? binary : null;
+      } catch {
+        return null;
+      }
+    }
+    if (dirname(folder) === folder) return null;
   }
 }
 

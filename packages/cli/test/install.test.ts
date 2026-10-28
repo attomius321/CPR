@@ -130,6 +130,27 @@ describe('./install.sh', () => {
     expect(existsSync(command('symbiote'))).toBe(true);
   });
 
+  it("fetches Electron only when it is not there, and never by running Electron's code", () => {
+    pnpm();
+    // Electron 44's package downloads its binary when it is required without one.
+    const electron = join(root, 'packages/desktop/node_modules/electron');
+    mkdirSync(join(electron, 'dist'), { recursive: true });
+    writeFileSync(join(electron, 'package.json'), '{ "name": "electron", "main": "index.js" }');
+    writeFileSync(
+      join(electron, 'index.js'),
+      `require('fs').appendFileSync(${JSON.stringify(log)}, 'electron required\\n');`,
+    );
+    const steps = (ran: string[]) => ran.filter((line) => !line.endsWith('--version'));
+    expect(steps(install().ran)).toContain('pnpm app:setup');
+    writeFileSync(join(electron, 'path.txt'), 'electron');
+    writeFileSync(join(electron, 'dist', 'electron'), '');
+    rmSync(log);
+    const again = steps(install().ran);
+    expect(again).not.toContain('pnpm app:setup');
+    expect(again).toContain('symbiote app install');
+    expect(readFileSync(log, 'utf8')).not.toContain('electron required');
+  });
+
   it('runs again as it ran: the same commands, the old ones taken back, nothing doubled', () => {
     pnpm();
     mkdirSync(join(home, '.local/bin'), { recursive: true });

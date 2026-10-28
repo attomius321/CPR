@@ -1,10 +1,11 @@
-import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import { FORMER_NAME } from '../src/former-name.js';
 import {
   desktopEntry,
+  electronBinary,
   findApp,
   installApp,
   openAppWindow,
@@ -38,6 +39,44 @@ const ran = (app: string) =>
   JSON.parse(readFileSync(`${app}.ran`, 'utf8')) as { argv: string[]; runAsNode: string | null };
 
 const isWindow = (opened: AppWindow | { error: string }): opened is AppWindow => 'closed' in opened;
+
+/**
+ * A desktop package with an `electron` whose code writes a mark when it runs: Electron 44 downloads
+ * its binary when it is required without one (IN1). `binary`: its `path.txt` and that file.
+ */
+function fakeDesktop(name: string, binary: boolean): { desktop: string; ran: string } {
+  const desktop = join(dir, name);
+  const electron = join(desktop, 'node_modules', 'electron');
+  mkdirSync(join(electron, 'dist'), { recursive: true });
+  writeFileSync(join(desktop, 'package.json'), '{ "name": "@symbiote/desktop" }');
+  writeFileSync(join(electron, 'package.json'), '{ "name": "electron", "main": "index.js" }');
+  const ran = join(desktop, 'electron-ran');
+  writeFileSync(
+    join(electron, 'index.js'),
+    `require('fs').writeFileSync(${JSON.stringify(ran)}, 'downloading');`,
+  );
+  if (binary) {
+    writeFileSync(join(electron, 'path.txt'), 'electron');
+    writeFileSync(join(electron, 'dist', 'electron'), '');
+  }
+  return { desktop, ran };
+}
+
+describe('electronBinary', () => {
+  it("finds Electron's binary without running Electron's code, which would download it", () => {
+    const set = fakeDesktop('set-up', true);
+    expect(electronBinary(set.desktop)).toBe(
+      join(set.desktop, 'node_modules', 'electron', 'dist', 'electron'),
+    );
+    const none = fakeDesktop('not-set-up', false);
+    expect(electronBinary(none.desktop)).toBeNull();
+    // Named but gone (a cleaned folder): none either.
+    writeFileSync(join(none.desktop, 'node_modules', 'electron', 'path.txt'), 'electron');
+    expect(electronBinary(none.desktop)).toBeNull();
+    expect(electronBinary(join(dir, 'no-desktop'))).toBeNull();
+    expect(existsSync(set.ran) || existsSync(none.ran)).toBe(false);
+  });
+});
 
 describe('findApp', () => {
   it('is off with SYMBIOTE_APP=off, and runs SYMBIOTE_APP when it names a command', () => {
