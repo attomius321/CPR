@@ -4,6 +4,7 @@ import {
   checkoutText,
   closeTab,
   hashOf,
+  nearFolders,
   nextTabs,
   selectedFrom,
   sinceText,
@@ -119,5 +120,24 @@ describe('words', () => {
     expect(sinceText(new Date(2026, 9, 27, 23, 59).toISOString(), now)).toBe('since Oct 27');
     expect(sinceText(new Date(2025, 11, 31, 8, 0).toISOString(), now)).toBe('since Dec 31, 2025');
     expect(sinceText('', now)).toBe('');
+  });
+});
+
+describe('nearFolders', () => {
+  it('is the folders the running Symbiotes are in, newest first, each once, three at most (NX3)', () => {
+    const at = (root: string, started: string, url: string | null = 'http://127.0.0.1:1/') =>
+      tab(listed(root.split('/').at(-1) ?? root, { root, started }), url);
+    expect(
+      nearFolders([
+        at('/home/me/projects/ky', '2026-10-28T10:00:00.000Z'),
+        at('/home/me/projects/zod', '2026-10-28T12:00:00.000Z'),
+        at('/home/me/work/api', '2026-10-28T11:00:00.000Z'),
+        at('/srv/old/gone', '2026-10-28T13:00:00.000Z', null),
+        at('/home/me/repo', '2026-10-28T09:00:00.000Z'),
+        at('/x', '2026-10-28T08:00:00.000Z'),
+      ]),
+    ).toEqual(['/home/me/projects', '/home/me/work', '/home/me']);
+    expect(nearFolders([at('/x', '2026-10-28T08:00:00.000Z')])).toEqual(['/']);
+    expect(nearFolders([])).toEqual([]);
   });
 });

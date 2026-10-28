@@ -53,6 +53,37 @@
   color: var(--muted);
 }
 
+/* The nexus's own pages, then a line, then the Symbiotes (NX3, decision 544). The own pages stay
+   at the strip's left while many Symbiotes scroll it sideways under them. */
+.nexus-own {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--side);
+}
+
+.nexus-own .icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* The line between the two groups: the viewer's (a workspace's agent tab and its shells), a
+   tab's height less its rounding, in the field's edge so it reads at a glance. */
+.nexus-tabs .nexus-divider {
+  height: 24px;
+  margin: 0 10px;
+  background: var(--edge);
+}
+
+/* A running Symbiote's dot (`.state-dot`, V48): the live green; a stopped one is the viewer's
+   empty ring (`.tone-idle`). */
+.state-dot.nexus-live {
+  --dot: var(--added);
+}
+
 /* In Symbiote's window (N1c): the row moves the window; what can be clicked does not. The system's
    buttons lie over its right end (Windows) or its left (macOS), as over the viewer's title bar. */
 :root[data-app] .nexus-bar {
@@ -136,52 +167,63 @@
   padding: 8px;
 }
 
-/* A Symbiote's row: the row opens its tab, Stop at its end (NX2b). */
-.nexus-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 8px;
-  transition: background-color 150ms;
+/* Symbiotes (NX3, decision 545): a card per running Symbiote, the card its tab's button, Stop at
+   its top right (a button cannot hold a button, NX2b). */
+.nexus-symbiotes {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--page-gap);
+  margin: 0 var(--page-pad) var(--page-gap);
 }
 
-.nexus-row:hover {
+.nexus-symbiote {
+  position: relative;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+}
+
+.nexus-symbiote:hover {
+  border-color: var(--selected-line);
   background: var(--hover);
 }
 
-.nexus-row-open {
-  flex: 1 1 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) max-content max-content;
-  align-items: center;
-  gap: 4px 24px;
+.nexus-symbiote-open {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
   min-width: 0;
-  min-height: 56px;
-  padding: 8px;
+  padding: 14px var(--card-pad) 16px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: none;
   color: var(--text);
   text-align: left;
 }
 
-.nexus-row-stop {
-  margin-right: 8px;
-}
-
-.nexus-row-main {
+.nexus-symbiote-name {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 10px;
   min-width: 0;
-}
-
-.nexus-row-name {
+  padding-right: 32px;
+  font-size: var(--size-title);
   font-weight: 600;
 }
 
-.nexus-row-folder,
-.nexus-row-checkout {
+.nexus-symbiote-name > span:last-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexus-symbiote-folder {
   overflow: hidden;
   color: var(--muted);
   font-size: var(--size-small);
@@ -189,29 +231,161 @@
   white-space: nowrap;
 }
 
-.nexus-row-checkout {
+.nexus-symbiote-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.nexus-symbiote-checkout {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
+  color: var(--text);
 }
 
-.nexus-row-checkout .icon {
+.nexus-symbiote-checkout .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--muted);
+}
+
+.nexus-symbiote-stop {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+/* A card's head of a title and actions (V72), and its count. */
+.nexus-card-title {
+  margin: 0;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.nexus-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  font-size: var(--size-small);
+}
+
+.nexus-card .card-head .count {
+  margin-left: -4px;
+}
+
+.nexus-near {
+  margin-bottom: var(--page-gap);
+}
+
+/* A repository's card (NX3, decisions 546–548), on Folders and under Symbiotes: its icon on a
+   raised square in the accent (it is acted on), its name, its branch, what a click does. */
+.nexus-repos {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+  padding: var(--card-pad);
+}
+
+.nexus-repo {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  grid-template-rows: auto auto auto;
+  align-items: center;
+  gap: 2px 12px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  transition:
+    background-color 150ms,
+    border-color 150ms;
+}
+
+.nexus-repo:hover:not(:disabled) {
+  border-color: var(--selected-line);
+  background: var(--hover);
+}
+
+.nexus-repo:disabled {
+  cursor: default;
+}
+
+.nexus-repo.picked {
+  border-color: var(--selected-line);
+  background: var(--selected);
+}
+
+.nexus-repo-icon {
+  grid-row: 1 / span 3;
+  align-self: start;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--accent);
+}
+
+.nexus-repo-icon .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.nexus-repo-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexus-repo-checkout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  min-height: 20px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.nexus-repo-checkout > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexus-repo-checkout .icon {
+  flex: none;
   width: 14px;
   height: 14px;
 }
 
-.nexus-row-changes,
-.nexus-row-since {
-  color: var(--muted);
+.nexus-repo-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  color: var(--accent);
   font-size: var(--size-small);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
+  font-weight: 500;
 }
 
-.nexus-row-since {
-  min-width: 96px;
-  text-align: right;
+.nexus-repo.running .nexus-repo-action,
+.nexus-repo:disabled .nexus-repo-action {
+  color: var(--muted);
 }
 
 /* An empty state (the style's recipe): a 28 px icon in --faint, a line, the text, the action. */
@@ -438,14 +612,4 @@
 .nexus-folders-error {
   margin: 12px var(--card-pad) 0;
   font-size: var(--size-small);
-}
-
-@media (max-width: 720px) {
-  .nexus-row-open {
-    grid-template-columns: minmax(0, 1fr) max-content;
-  }
-
-  .nexus-row-changes {
-    display: none;
-  }
 }

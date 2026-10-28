@@ -45,6 +45,11 @@ const VIEWER_CLASSES = [
   'dialog',
   'dialog-backdrop',
   'dialog-buttons',
+  // NX3: the line between the row's groups, a Symbiote's state, a page head's actions.
+  'views-divider',
+  'state-dot',
+  'tone-idle',
+  'page-actions',
 ];
 
 describe("the nexus page's look", () => {

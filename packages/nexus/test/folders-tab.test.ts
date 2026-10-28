@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import type { Place } from '../src/folders.js';
+import type { Folder, Place } from '../src/folders.js';
 import {
   actionOf,
+  checkoutWords,
+  countsText,
   crumbsOf,
   folderFromHash,
   FOLDERS,
   foldersHash,
+  idleRepositories,
   moreText,
+  nextOnGrid,
   typedFolder,
 } from '../src/page/folders-tab.js';
 import { selectedFrom } from '../src/page/tabs.js';
@@ -87,5 +91,100 @@ describe('moreText', () => {
   it('counts the folders not listed', () => {
     expect(moreText(1)).toBe('and 1 more folder');
     expect(moreText(3950)).toBe('and 3,950 more folders');
+  });
+});
+
+const folder = (name: string, over: Partial<Folder> = {}): Folder => ({
+  name,
+  path: `/home/me/projects/${name}`,
+  repository: false,
+  ...over,
+});
+
+describe("a repository's card (NX3)", () => {
+  it('says what it has checked out: its branch, or the commit it is detached at', () => {
+    expect(checkoutWords(folder('ky', { repository: true, branch: 'feature/x' }))).toBe(
+      'feature/x',
+    );
+    expect(
+      checkoutWords(
+        folder('redis', {
+          repository: true,
+          detached: 'c5031f43a7eaa0d96311746acf759ee6d6acb053',
+        }),
+      ),
+    ).toBe('detached at c5031f4');
+    expect(checkoutWords(folder('odd', { repository: true }))).toBeNull();
+  });
+
+  it('is offered under the running Symbiotes when none serves it', () => {
+    const listed = [
+      folder('ky', { repository: true }),
+      folder('notes'),
+      folder('zod', { repository: true }),
+    ];
+    expect(idleRepositories(listed, new Set(['/home/me/projects/zod']))).toEqual([listed[0]]);
+  });
+});
+
+describe("a folder's counts", () => {
+  it('names its repositories and its other folders', () => {
+    const repo = folder('ky', { repository: true });
+    expect(countsText([repo, repo, folder('a'), folder('b'), folder('c')])).toBe(
+      '2 repositories · 3 folders',
+    );
+    expect(countsText([repo, folder('a')])).toBe('1 repository · 1 folder');
+    expect(countsText([folder('a'), folder('b')])).toBe('2 folders');
+    expect(countsText([repo])).toBe('1 repository');
+    expect(countsText([])).toBe('');
+  });
+});
+
+describe('the arrows on a grid of cards and rows', () => {
+  const box = (left: number, top: number, width: number, height: number) => ({
+    left,
+    top,
+    width,
+    height,
+  });
+  // Five cards in three columns, then four rows in two columns under them.
+  const boxes = [
+    box(0, 0, 220, 72),
+    box(240, 0, 220, 72),
+    box(480, 0, 220, 72),
+    box(0, 90, 220, 72),
+    box(240, 90, 220, 72),
+    box(0, 200, 280, 40),
+    box(300, 200, 280, 40),
+    box(0, 244, 280, 40),
+    box(300, 244, 280, 40),
+  ];
+
+  it('moves to the next or the previous in reading order by → and ←', () => {
+    expect(nextOnGrid(boxes, 2, 'ArrowRight')).toBe(3);
+    expect(nextOnGrid(boxes, 4, 'ArrowRight')).toBe(5);
+    expect(nextOnGrid(boxes, 3, 'ArrowLeft')).toBe(2);
+    expect(nextOnGrid(boxes, 0, 'ArrowLeft')).toBeNull();
+    expect(nextOnGrid(boxes, 8, 'ArrowRight')).toBeNull();
+  });
+
+  it('moves to the nearest under or over by ↓ and ↑, cards to rows and back', () => {
+    expect(nextOnGrid(boxes, 1, 'ArrowDown')).toBe(4);
+    expect(nextOnGrid(boxes, 2, 'ArrowDown')).toBe(4);
+    expect(nextOnGrid(boxes, 4, 'ArrowDown')).toBe(6);
+    expect(nextOnGrid(boxes, 3, 'ArrowDown')).toBe(5);
+    expect(nextOnGrid(boxes, 6, 'ArrowDown')).toBe(8);
+    expect(nextOnGrid(boxes, 8, 'ArrowDown')).toBeNull();
+    expect(nextOnGrid(boxes, 7, 'ArrowUp')).toBe(5);
+    expect(nextOnGrid(boxes, 6, 'ArrowUp')).toBe(4);
+    expect(nextOnGrid(boxes, 4, 'ArrowUp')).toBe(1);
+    expect(nextOnGrid(boxes, 0, 'ArrowUp')).toBeNull();
+  });
+
+  it('goes to the first by Home and the last by End; other keys do nothing', () => {
+    expect(nextOnGrid(boxes, 4, 'Home')).toBe(0);
+    expect(nextOnGrid(boxes, 4, 'End')).toBe(8);
+    expect(nextOnGrid(boxes, 4, 'Enter')).toBeNull();
+    expect(nextOnGrid([], 0, 'ArrowDown')).toBeNull();
   });
 });

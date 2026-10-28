@@ -98,3 +98,20 @@ export function sinceText(started: string, now: Date): string {
   }
   return `since ${two(date.getHours())}:${two(date.getMinutes())}`;
 }
+
+/**
+ * The folders the running Symbiotes are in, newest first, each once, three at most: where
+ * Symbiotes' "Repositories in" looks for the next one to open (NX3, decision 545).
+ */
+export function nearFolders(tabs: readonly Tab[]): string[] {
+  const near: string[] = [];
+  const newest = tabs
+    .filter((tab) => tab.url !== null)
+    .sort((a, b) => b.started.localeCompare(a.started));
+  for (const { root } of newest) {
+    const parent = root.slice(0, root.lastIndexOf('/')) || '/';
+    if (!near.includes(parent)) near.push(parent);
+    if (near.length === 3) break;
+  }
+  return near;
+}
