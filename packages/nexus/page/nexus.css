@@ -441,46 +441,80 @@
   justify-content: center;
 }
 
-/* Folders (NX2b): the places and the field under the head, then a card: the folder's crumbs in its
-   head, its folders as rows. */
-.nexus-folders-bar {
+/* Folders (NX2b; NX3, decision 546): the field in the head; the places a card at the left, the
+   folder's card beside it: its crumbs and counts in its head, its repositories as cards, its other
+   folders as rows in columns. Under 960 px the places are a row over the folder's card. */
+.nexus-folders-main {
   flex: none;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 16px;
-  margin: 0 var(--page-pad) var(--page-gap);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--page-gap);
+  margin: 0 var(--page-pad) var(--page-pad);
+}
+
+.nexus-folders-main > .nexus-card {
+  margin: 0;
+}
+
+.nexus-places-card > .card-head {
+  display: none;
 }
 
 .nexus-places {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 2px 4px;
   min-width: 0;
+  padding: 8px;
 }
 
+@media (min-width: 960px) {
+  .nexus-folders-main {
+    grid-template-columns: 220px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .nexus-places-card > .card-head {
+    display: flex;
+  }
+
+  .nexus-places {
+    flex-direction: column;
+    flex-wrap: nowrap;
+  }
+}
+
+/* A place: the sidenav's row (V61): an 18 px icon in --muted, the current one --selected with its
+   icon in the accent. */
 .nexus-place {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 10px;
+  gap: 10px;
+  min-width: 0;
+  height: 36px;
+  padding: 0 8px;
   border: 0;
   border-radius: 8px;
   background: none;
   color: var(--muted);
-  font-size: var(--size-small);
   font-weight: 500;
-  white-space: nowrap;
+  text-align: left;
   transition:
     background-color 150ms,
     color 150ms;
 }
 
+.nexus-place > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .nexus-place .icon {
-  width: 16px;
-  height: 16px;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  stroke-width: 1.75;
 }
 
 .nexus-place:hover {
@@ -495,12 +529,13 @@
 
 .nexus-place[aria-current='true'] .icon {
   color: var(--accent);
+  stroke-width: 2.25;
 }
 
 .nexus-go {
   display: flex;
-  flex: 0 1 380px;
-  min-width: 220px;
+  width: 340px;
+  max-width: 100%;
 }
 
 .nexus-go .search-input {
@@ -512,6 +547,7 @@
 }
 
 .nexus-folders-head {
+  gap: 8px;
   padding-left: 10px;
 }
 
@@ -542,44 +578,61 @@
   color: var(--faint);
 }
 
-.nexus-folders-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+.nexus-folders-counts {
   margin-left: auto;
-}
-
-.nexus-folders-in {
+  padding-left: 8px;
   color: var(--muted);
   font-size: var(--size-small);
   white-space: nowrap;
 }
 
-.nexus-folder {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-radius: 8px;
-  transition: background-color 150ms;
+/* A group of the folder's card, when it has both kinds: its head, sentence case and a count. */
+.nexus-group + .nexus-group {
+  border-top: 1px solid var(--line);
 }
 
-.nexus-folder:hover {
-  background: var(--hover);
+.nexus-group-head {
+  margin: 0;
+  padding: 14px var(--card-pad) 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.nexus-group-head + .nexus-repos {
+  padding-top: 10px;
+}
+
+.nexus-group-head + .nexus-folder-rows {
+  padding-top: 6px;
+}
+
+/* A folder that is no repository: a row (its wash 8 px in, its words at 16), the way in at its
+   end. */
+.nexus-folder-rows {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 2px 8px;
+  padding: 8px;
 }
 
 .nexus-folder-open {
-  flex: 1 1 auto;
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
-  min-height: 40px;
+  height: 40px;
   padding: 0 8px;
   border: 0;
   border-radius: 8px;
   background: none;
   color: var(--text);
   text-align: left;
+  transition: background-color 150ms;
+}
+
+.nexus-folder-open:hover {
+  background: var(--hover);
 }
 
 .nexus-folder-open .icon {
@@ -590,16 +643,26 @@
 }
 
 .nexus-folder-name {
+  flex: 1 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.nexus-folder .button {
-  flex: none;
-  min-height: 28px;
-  margin-right: 6px;
-  padding: 0 10px;
+.nexus-folder-in {
+  display: inline-flex;
+}
+
+.nexus-folder-in .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--faint);
+}
+
+.nexus-folder-open:hover .nexus-folder-in .icon,
+.nexus-folder-open:focus-visible .nexus-folder-in .icon {
+  color: var(--text);
 }
 
 .nexus-folders-none {

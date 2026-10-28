@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Folder, Place } from '../src/folders.js';
 import {
-  actionOf,
   checkoutWords,
   countsText,
   crumbsOf,
@@ -70,20 +69,6 @@ describe('typedFolder', () => {
     expect(typedFolder('projects', '/home/me')).toBeNull();
     expect(typedFolder('~other/x', '/home/me')).toBeNull();
     expect(typedFolder('   ', '/home/me')).toBeNull();
-  });
-});
-
-describe('actionOf', () => {
-  it('opens a repository, shows one that runs, and has nothing for a plain folder', () => {
-    const running = new Set(['/home/me/projects/ky']);
-    const folder = (name: string, repository: boolean) => ({
-      name,
-      path: `/home/me/projects/${name}`,
-      repository,
-    });
-    expect(actionOf(folder('ky', true), running)).toBe('show');
-    expect(actionOf(folder('zod', true), running)).toBe('open');
-    expect(actionOf(folder('notes', false), running)).toBeNull();
   });
 });
 

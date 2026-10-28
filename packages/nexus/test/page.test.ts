@@ -37,11 +37,10 @@ const VIEWER_CLASSES = [
   'secondary',
   'ghost',
   'error',
-  // Folders (NX2b): its field, its card's head, the crumbs' links, the chips; Stop's question.
+  // Folders (NX2b): its field, its card's head, the crumbs' links; Stop's question.
   'search-input',
   'card-head',
   'link',
-  'chip',
   'dialog',
   'dialog-backdrop',
   'dialog-buttons',

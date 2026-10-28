@@ -1,5 +1,6 @@
 // The Folders tab's pure part (NX2b, decisions 539, 540): its place in the address, the crumbs of a
-// folder, what a typed folder is, a row's action and the words. Its DOM is `folders-view.ts`'s.
+// folder, what a typed folder is and the words; since NX3 a repository's card, the counts and the
+// arrows on a grid. Its DOM is `folders-view.ts`'s.
 import type { Folder, Place } from '../folders.js';
 
 /** The Folders tab's key in the page's selection: a Symbiote's tab is its root, always absolute. */
@@ -49,12 +50,6 @@ export function typedFolder(input: string, home: string): string | null {
   if (text === '~') return home;
   if (text.startsWith('~/')) return `${home}/${text.slice(2)}`;
   return text.startsWith('/') ? text : null;
-}
-
-/** What a row offers: a repository opens its Symbiote, or shows the one that runs; a folder, none. */
-export function actionOf(folder: Folder, running: ReadonlySet<string>): 'open' | 'show' | null {
-  if (!folder.repository) return null;
-  return running.has(folder.path) ? 'show' : 'open';
 }
 
 /** What a repository has checked out (decision 548): its branch, the commit it is detached at, or null. */
