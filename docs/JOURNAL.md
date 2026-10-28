@@ -291,3 +291,4 @@ merge commit.
 - 2026-10-28 [NX1 — Symbiote nexus, built: the records, the command, the page, the window](journal/nx1-nexus.md)
 - 2026-10-28 [IN1 spike — where the install's time and its compiler go](journal/in1-one-command-install.md)
 - 2026-10-28 [IN1 — one command, a prebuilt terminal, and Electron no longer fetched by asking](journal/in1-one-command-install.md)
+- 2026-10-28 [NX2 spike — this PC's folders, and a `symbiote view` started by another process](journal/nx2-open-from-folders.md)
