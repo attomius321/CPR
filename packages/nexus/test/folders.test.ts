@@ -80,7 +80,7 @@ describe('listFolder', () => {
     expect(listing.more).toBe(2);
   });
 
-  it('says what each repository has checked out, from its HEAD (NX3, decision 548)', async () => {
+  it('says what each repository has checked out, from its HEAD (NX3, decision 555)', async () => {
     const root = tree('heads', ['on-main+', 'detached+', 'reftable+', 'no-head+', 'plain']);
     const head = (name: string, text: string) =>
       writeFileSync(join(root, name, '.git', 'HEAD'), text);
@@ -171,7 +171,7 @@ describe('folders', () => {
   });
 });
 
-describe('folders: a repository is the end of the way down (NX3, decision 547)', () => {
+describe('folders: a repository is the end of the way down (NX3, decision 554)', () => {
   it('answers the folder holding the repository, picked, for the repository or any folder inside', async () => {
     const held = tree('held', ['other', 'app/src/deep']);
     const app = join(held, 'app');

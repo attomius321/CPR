@@ -101,7 +101,7 @@ export function sinceText(started: string, now: Date): string {
 
 /**
  * The folders the running Symbiotes are in, newest first, each once, three at most: where
- * Symbiotes' "Repositories in" looks for the next one to open (NX3, decision 545).
+ * Symbiotes' "Repositories in" looks for the next one to open (NX3, decision 552).
  */
 export function nearFolders(tabs: readonly Tab[]): string[] {
   const near: string[] = [];

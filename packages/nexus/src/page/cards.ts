@@ -1,4 +1,4 @@
-// A repository as a card (NX3, decisions 546–548), on Folders and under Symbiotes' running ones:
+// A repository as a card (NX3, decisions 553–555), on Folders and under Symbiotes' running ones:
 // its icon, its name, what it has checked out, and what a click does. A repository is the end of
 // the way down: the whole card opens its Symbiote, or shows the one running; it never goes in.
 import type { Folder } from '../folders.js';

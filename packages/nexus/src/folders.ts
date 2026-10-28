@@ -1,6 +1,6 @@
 // This PC's folders, for the nexus's Folders tab (NX2, decision 540): a folder's folders, its
 // repositories marked with what they have checked out (NX3), and the places to start from. Folders
-// only, no files; hidden ones left out. A repository is the end of the way down (decision 547).
+// only, no files; hidden ones left out. A repository is the end of the way down (decision 554).
 import { execFile } from 'node:child_process';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { readdir, readFile, stat } from 'node:fs/promises';
@@ -13,7 +13,7 @@ export interface Folder {
   path: string;
   /** It holds a `.git` folder or file: a repository's root, or a worktree's. */
   repository: boolean;
-  /** A repository's checked-out branch, from its `HEAD` (decision 548). */
+  /** A repository's checked-out branch, from its `HEAD` (decision 555). */
   branch?: string;
   /** A repository's commit, when its `HEAD` is detached. */
   detached?: string;
@@ -42,7 +42,7 @@ export interface FoldersAnswer extends Listing {
   places: Place[];
   /**
    * The repository the folder asked for is, or is in: the listing is then the folder holding it
-   * (decision 547). Null when the folder asked for is the one listed.
+   * (decision 554). Null when the folder asked for is the one listed.
    */
   picked: string | null;
 }
@@ -129,7 +129,7 @@ async function checkoutOf(folder: string): Promise<Pick<Folder, 'branch' | 'deta
 
 /**
  * The Folders tab's answer: `path`'s folders (null: the folder the newest running Symbiote is in,
- * else home) and the places. A repository is the end of the way down (decision 547): for a
+ * else home) and the places. A repository is the end of the way down (decision 554): for a
  * folder in one (git's top level, the root and its `.git` included) the answer is the folder
  * holding it, the repository `picked`; for one in another's folders, the outermost. A repository
  * holding home (a home kept in git) is no end: else every folder would be in it.

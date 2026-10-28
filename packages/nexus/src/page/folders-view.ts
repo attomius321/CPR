@@ -1,5 +1,5 @@
 // The Folders tab (NX2b, decisions 539, 540): this PC's folders, the repositories marked, and Open
-// Symbiote on each. Since NX3 (decisions 546–548) the places are a card at its left, a folder's
+// Symbiote on each. Since NX3 (decisions 553–555) the places are a card at its left, a folder's
 // repositories cards (`cards.ts`) and its other folders rows in columns; a repository is the end of
 // the way down: its card opens its Symbiote, never its folders. Drawn in the viewer's classes (the
 // page head, a card and its head, its field); `nexus.css` lays out the rest.
@@ -155,7 +155,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
     field.value = '';
     deps.moved(next.path);
     draw(running);
-    // A repository asked for (decision 547): its card, in the folder holding it. Else the first
+    // A repository asked for (decision 554): its card, in the folder holding it. Else the first
     // card or row, or Up in a folder without any: the keys stay in the tab.
     const picked =
       next.picked === null

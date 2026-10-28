@@ -52,7 +52,7 @@ export function typedFolder(input: string, home: string): string | null {
   return text.startsWith('/') ? text : null;
 }
 
-/** What a repository has checked out (decision 548): its branch, the commit it is detached at, or null. */
+/** What a repository has checked out (decision 555): its branch, the commit it is detached at, or null. */
 export function checkoutWords(folder: Folder): string | null {
   if (folder.branch !== undefined) return folder.branch;
   return folder.detached === undefined ? null : `detached at ${folder.detached.slice(0, 7)}`;
@@ -70,10 +70,9 @@ export function idleRepositories(
 export function countsText(folders: readonly Folder[]): string {
   const repositories = folders.filter((folder) => folder.repository).length;
   const others = folders.length - repositories;
-  return [
-    repositories > 0 ? `${repositories} ${repositories === 1 ? 'repository' : 'repositories'}` : '',
-    others > 0 ? `${others} ${others === 1 ? 'folder' : 'folders'}` : '',
-  ]
+  const count = (n: number, one: string, many: string) =>
+    n > 0 ? `${n.toLocaleString('en')} ${n === 1 ? one : many}` : '';
+  return [count(repositories, 'repository', 'repositories'), count(others, 'folder', 'folders')]
     .filter(Boolean)
     .join(' · ');
 }

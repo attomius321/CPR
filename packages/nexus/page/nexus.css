@@ -23,7 +23,7 @@
 
 .nexus-bar .workspace-views {
   flex: 1 1 auto;
-  padding-left: 2px;
+  padding-left: 0;
   border-bottom: 0;
   background: none;
 }
@@ -53,8 +53,9 @@
   color: var(--muted);
 }
 
-/* The nexus's own pages, then a line, then the Symbiotes (NX3, decision 544). The own pages stay
-   at the strip's left while many Symbiotes scroll it sideways under them. */
+/* The nexus's own pages, then a line, then the Symbiotes (NX3, decision 551). The own pages stay
+   at the strip's left while many Symbiotes scroll it sideways under them; the strip's 2 px before
+   the first tab are theirs, so no scrolled tab shows past them. */
 .nexus-own {
   position: sticky;
   left: 0;
@@ -62,6 +63,7 @@
   display: flex;
   align-items: center;
   gap: 2px;
+  padding-left: 2px;
   background: var(--side);
 }
 
@@ -167,7 +169,7 @@
   padding: 8px;
 }
 
-/* Symbiotes (NX3, decision 545): a card per running Symbiote, the card its tab's button, Stop at
+/* Symbiotes (NX3, decision 552): a card per running Symbiote, the card its tab's button, Stop at
    its top right (a button cannot hold a button, NX2b). */
 .nexus-symbiotes {
   flex: none;
@@ -285,7 +287,7 @@
   margin-bottom: var(--page-gap);
 }
 
-/* A repository's card (NX3, decisions 546–548), on Folders and under Symbiotes: its icon on a
+/* A repository's card (NX3, decisions 553–555), on Folders and under Symbiotes: its icon on a
    raised square in the accent (it is acted on), its name, its branch, what a click does. */
 .nexus-repos {
   display: grid;
@@ -441,7 +443,7 @@
   justify-content: center;
 }
 
-/* Folders (NX2b; NX3, decision 546): the field in the head; the places a card at the left, the
+/* Folders (NX2b; NX3, decision 553): the field in the head; the places a card at the left, the
    folder's card beside it: its crumbs and counts in its head, its repositories as cards, its other
    folders as rows in columns. Under 960 px the places are a row over the folder's card. */
 .nexus-folders-main {

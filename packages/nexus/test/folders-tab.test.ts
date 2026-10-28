@@ -122,6 +122,9 @@ describe("a folder's counts", () => {
     expect(countsText([folder('a'), folder('b')])).toBe('2 folders');
     expect(countsText([repo])).toBe('1 repository');
     expect(countsText([])).toBe('');
+    expect(countsText(Array.from({ length: 1000 }, (_, i) => folder(`f${i}`)))).toBe(
+      '1,000 folders',
+    );
   });
 });
 

@@ -2,7 +2,7 @@
 // Symbiote, and the open one in a frame under it (decisions 521–523, 539). A frame opened once
 // stays loaded, hidden while another tab is shown. Drawn in the viewer's own stylesheet and its
 // classes; the nexus's own layout is `page/nexus.css`. Since NX3 the row has two groups, a line
-// between (decision 544), and Symbiotes shows cards and the repositories near them (545).
+// between (decision 551), and Symbiotes shows cards and the repositories near them (552).
 import type { FoldersAnswer } from '../folders.js';
 import type { Running } from '../registry.js';
 import type { Symbiote } from '../symbiotes.js';
@@ -66,7 +66,7 @@ let failure: string | null = null;
 let readOnce = false;
 /** Why a Symbiote did not stop, or one of the near repositories did not open, on the list. */
 let actionFailure: string | null = null;
-/** The repositories near the running Symbiotes (decision 545): each folder's listing. */
+/** The repositories near the running Symbiotes (decision 552): each folder's listing. */
 let near: FoldersAnswer[] = [];
 /** The running Symbiotes `near` was read for; it is read again when they change. */
 let nearFor = '';
@@ -171,7 +171,7 @@ function drawStrip(): void {
     el('span', { class: 'count' }, String(running)),
   );
   // The nexus's own pages, with icons, stay at the left; a line, then the Symbiotes, each with
-  // its state's dot (decision 544).
+  // its state's dot (decision 551).
   const own = el(
     'div',
     { class: 'nexus-own' },
@@ -205,6 +205,8 @@ function drawStrip(): void {
     children.push(el('div', { class: 'shell-tab' }, button, close));
   }
   strip.replaceChildren(...children);
+  // A Symbiote's tab focused by the keys scrolls clear of the own pages over the strip's start.
+  strip.style.scrollPaddingInlineStart = `${own.offsetWidth}px`;
   if (focused !== undefined)
     strip.querySelector<HTMLElement>(`[data-tab="${CSS.escape(focused)}"]`)?.focus();
 }
@@ -248,7 +250,12 @@ function drawHome(): void {
   const line = !readOnce
     ? 'Looking for running Symbiotes…'
     : `${count === 0 ? 'None' : count} running on this machine`;
-  const toFolders = el('button', { type: 'button', class: 'button secondary' }, 'Open a folder');
+  // Open a folder: the empty state's action with none running, else the head's.
+  const toFolders = el(
+    'button',
+    { type: 'button', class: count > 0 ? 'button secondary' : 'button' },
+    'Open a folder',
+  );
   toFolders.addEventListener('click', () => select(FOLDERS));
   const head = el(
     'header',
@@ -260,7 +267,7 @@ function drawHome(): void {
       el('div', { class: 'page-name-line' }, el('h1', {}, 'Symbiotes')),
       el('div', { class: 'page-line' }, line),
     ),
-    el('div', { class: 'page-actions' }, toFolders),
+    count > 0 && el('div', { class: 'page-actions' }, toFolders),
   );
   // A running Symbiote's card opens its tab; Stop stands beside it, a button cannot hold one.
   const cards = running.map((tab) => {
@@ -310,6 +317,7 @@ function drawHome(): void {
         el('code', {}, 'symbiote view'),
         ' in a repository: it shows here within 2 seconds.',
       ),
+      toFolders,
     ),
   );
   const problem = failure ?? actionFailure;
@@ -325,7 +333,7 @@ function drawHome(): void {
 
 /**
  * The repositories of a folder the running Symbiotes are in that no Symbiote serves, as Folders
- * draws them (decision 545): one click opens the next Symbiote. Null when there is none.
+ * draws them (decision 552): one click opens the next Symbiote. Null when there is none.
  */
 function nearCard(answer: FoldersAnswer, running: ReadonlySet<string>): HTMLElement | null {
   const idle = idleRepositories(answer.folders, running);
@@ -525,7 +533,7 @@ async function stopSymbiote(tab: Tab, from: HTMLElement): Promise<void> {
   await refresh();
 }
 
-/** Opens a Symbiote in one of the repositories near the running ones (decision 545). */
+/** Opens a Symbiote in one of the repositories near the running ones (decision 552). */
 async function openNear(folder: string, name: string): Promise<void> {
   startingNear.add(folder);
   actionFailure = null;
@@ -636,7 +644,7 @@ async function refresh(): Promise<void> {
 }
 
 /**
- * Reads the repositories near the running Symbiotes again when they changed (decision 545): one
+ * Reads the repositories near the running Symbiotes again when they changed (decision 552): one
  * listing of each folder they are in, three at most, 5–6 ms each (NX2), not at each 2 s read.
  */
 async function readNear(): Promise<void> {

@@ -140,7 +140,7 @@ test.describe('Symbiote nexus: Folders', () => {
     await page.keyboard.press('Backspace');
     await expect(shown(page)).toHaveText('projects');
 
-    // A repository is the end (decision 547): a folder inside one, typed, shows the folder
+    // A repository is the end (decision 554): a folder inside one, typed, shows the folder
     // holding it, the repository picked; so does an address inside one, loaded.
     const field = page.getByRole('textbox', { name: 'Go to folder' });
     await field.fill('~/projects/beta/src');
