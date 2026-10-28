@@ -19,10 +19,11 @@
     "@symbiote/forge": "workspace:*",
     "@symbiote/log": "workspace:*",
     "@symbiote/monitor": "workspace:*",
+    "@symbiote/nexus": "workspace:*",
     "@symbiote/viewer": "workspace:*",
     "jsonc-parser": "3.3.1"
   },
   "optionalDependencies": {
-    "node-pty": "1.1.0"
+    "@lydell/node-pty": "1.1.0"
   }
 }

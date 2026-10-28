@@ -21,42 +21,37 @@ opens in a window of its own or in your browser.
 ## Requirements
 
 - Linux, or Windows through WSL. macOS runs the same code but is not tested yet.
-- git, Node 22.12 or newer, and pnpm 12 (`npm install -g pnpm@12`).
+- git, and Node 22.12 or newer. The install gets pnpm itself; no compiler is needed.
 - Claude Code, Codex or Hermes Agent, installed and set up. Symbiote starts them with your own
   login and configuration, so their work counts against your own subscription, API key or model
   server. Symbiote's own helper agents, the merger, Scout and Scribe (described below), run on
   Claude Code or Codex.
-- On Linux, python3, make and a C++ compiler. `pnpm install` uses them to build the terminal that
-  shows each agent in the app. Without them, everything else works, and you answer the agent in a
-  text box instead; Hermes needs the terminal and is not offered.
 
 ## Install
 
-Run these commands once. The last line adds a `symbiote` alias to your shell's profile, with the
-path of the folder you are in. Use `~/.zshrc` instead of `~/.bashrc` if your shell is zsh.
+Run this once:
 
 ```sh
-git clone https://github.com/attomius321/Symbiote.git
-cd Symbiote
-pnpm install
-pnpm build
-echo "alias symbiote='node $PWD/packages/cli/dist/bin.js'" >> ~/.bashrc
+git clone https://github.com/attomius321/Symbiote.git && cd Symbiote && ./install.sh
 ```
 
-Open a new terminal, then run `symbiote --help` to check the install. It lists the commands.
+It installs Symbiote's dependencies and builds it, and adds two commands to `~/.local/bin`:
+`symbiote`, and `symbiote-nexus` (see [below](#several-symbiotes-in-one-window)). It also sets up
+Symbiote's window, which downloads Electron (about 100 MB), and adds the window to your desktop's
+app list. With `--no-app` it skips the window, and Symbiote opens in your browser. It takes about
+30 seconds with the window, 10 without, on a fast connection. If `~/.local/bin` is not on your
+`PATH`, it prints the line to add to your shell's profile. Then run `symbiote --help` to check
+the install.
+
+To update Symbiote, run `git pull && ./install.sh` in its folder. An alias for `symbiote` from an
+older install is no longer needed: the install says so if it finds one in `~/.bashrc` or
+`~/.zshrc`.
 
 ### Symbiote's window
 
-If you skip this step, Symbiote opens in your browser. To give it a window of its own, run this
-in Symbiote's folder. It downloads Electron, about 100 MB:
-
-```sh
-pnpm app:setup
-```
-
-After that, `symbiote view` opens Symbiote's window. Closing the window stops `symbiote view`,
-but agents keep running. To use a browser tab anyway, add `--browser`. To start Symbiote from
-your desktop's app list instead of a terminal, run `symbiote app install` once (Linux and WSL).
+`symbiote view` opens Symbiote's window. Closing the window stops `symbiote view`, but agents keep
+running. To use a browser tab anyway, add `--browser`. To start Symbiote from your desktop's app
+list instead of a terminal, pick **Symbiote** there.
 
 Two limits apply to the window:
 
@@ -64,6 +59,24 @@ Two limits apply to the window:
   says so and opens your browser instead.
 - On WSL, files dragged from Windows never reach the window. Use the **Add files** and **Attach
   images** buttons instead. Windows' files are under `/mnt/c`.
+
+### Several Symbiotes in one window
+
+Each `symbiote view` serves one repository. Symbiote nexus shows every one running on this
+machine as a tab of one window. Run it anywhere:
+
+```sh
+symbiote-nexus
+```
+
+The first tab, **Symbiotes**, lists them, each with its folder, branch and changed files. Each other
+tab shows one Symbiote as its own window would. A Symbiote you opened stays loaded while you look
+at another, so switching back is instant. A new `symbiote view` gets its tab within 2 seconds. One
+that stops keeps its tab, marked stopped, until it runs again or you close the tab. Closing the
+nexus stops none of them.
+
+The nexus opens like `symbiote view`: in Symbiote's window when it is set up, else in your browser.
+It takes `--browser`, `--no-open` and `--port` too.
 
 ## Quick start: your first workspace
 
@@ -360,7 +373,8 @@ Outside the repository, Symbiote writes:
 
 - the workspaces' worktrees, next to your checkout, in `../<repo>.worktrees/`;
 - its cache, `~/.cache/symbiote` on Linux, with the worktrees it compares and merges in, the
-  list of merges, drafts, pasted images and its logs;
+  list of merges, drafts, pasted images, its logs, and the address of each running
+  `symbiote view` (Symbiote nexus reads them);
 - its settings for this machine, `~/.config/symbiote` on Linux: the skill library's folder, and
   whether the intro was seen;
 - the skill library's skills, when you save, add or delete one, or Scribe writes one. Symbiote
@@ -389,6 +403,8 @@ All settings are in the [configuration reference](docs/reference/configuration.m
 - Symbiote is tested on Linux and WSL only, as [Requirements](#requirements) says.
 
 ## Development
+
+`./install.sh` is all a checkout needs. To work on Symbiote itself:
 
 ```sh
 pnpm install

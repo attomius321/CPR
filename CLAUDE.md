@@ -31,6 +31,9 @@ finding costs more trust than a missing one), explainable beats clever, local an
 - `packages/log` — Symbiote's logs (LG1): every process's lines, one JSON object a line, in
   `<cache>/logs/<day>.jsonl`; uncaught errors written before a process ends. See its `CLAUDE.md`.
 - `packages/viewer` — React + React Flow app that `symbiote view` serves. See its `CLAUDE.md`.
+- `packages/nexus` — Symbiote nexus (NX1): every running `symbiote view` as tabs in one window or
+  browser tab, `symbiote-nexus`. Its registry (`<cache>/running/<pid>.json`) is what `symbiote view`
+  writes to be found. See its `CLAUDE.md`.
 - `packages/plugin-angular`, `packages/plugin-qwik` — framework plugins (`--plugin angular|qwik`).
   Each has a `CLAUDE.md`.
 - `action.yml`, `action/` — the GitHub Action; `ci/gitlab/symbiote.yml` — the GitLab CI template.
@@ -44,15 +47,17 @@ finding costs more trust than a missing one), explainable beats clever, local an
 Node ≥ 22.12 (`.nvmrc`: 24), pnpm 12 (`packageManager`). Run from the repo root.
 
 ```sh
+./install.sh [--no-app]                         # a user's install: dependencies, build, window, commands in ~/.local/bin
 pnpm install --frozen-lockfile                  # add --offline in a container with the store
 pnpm check                                      # format:check + lint + typecheck + unit tests
 pnpm build                                      # tsc -b + viewer bundle; needed by the CLI, e2e, scripts
 npx vitest run packages/core/test/compat.test.ts -t "interfaces"   # one file / one test
-pnpm test:e2e                                   # viewer Playwright tests (after pnpm build)
+pnpm test:e2e                                   # viewer, then nexus Playwright tests (after pnpm build)
 (cd packages/viewer && npx playwright test e2e/qwik.spec.ts)       # one e2e spec
 pnpm format                                     # prettier --write
 node packages/cli/dist/bin.js diff <base> [head] [--plugin angular] [--out graph.json]   # in any git repo
 node packages/cli/dist/bin.js view [<base> [head]]    # opens the viewer (no revisions: Workspaces)
+node packages/nexus/dist/bin.js [--browser|--no-open]  # every running symbiote view, as tabs
 ```
 
 ## Code

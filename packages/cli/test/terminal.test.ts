@@ -558,9 +558,11 @@ describe('loadPty', () => {
   });
 
   it('says whether it is missing or did not load', async () => {
-    const missing = Object.assign(new Error("Cannot find package 'node-pty' imported from x"), {
-      code: 'ERR_MODULE_NOT_FOUND',
-    });
+    // IN1: node-pty prebuilt, by the name it is published under.
+    const missing = Object.assign(
+      new Error("Cannot find package '@lydell/node-pty' imported from x"),
+      { code: 'ERR_MODULE_NOT_FOUND' },
+    );
     expect(await loadPty(() => Promise.reject(missing))).toEqual({
       error: 'node-pty is not installed',
     });
@@ -573,7 +575,7 @@ describe('loadPty', () => {
     });
   });
 
-  it('loads the real one here (an optional dependency, built on install)', async () => {
+  it('loads the real one here (an optional dependency, prebuilt: nothing built on install)', async () => {
     const result = await loadPty();
     expect('spawn' in result ? 'loaded' : result.error).toBe('loaded');
   });

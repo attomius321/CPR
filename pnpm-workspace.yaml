@@ -1,6 +1,6 @@
 packages:
   - packages/*
 allowBuilds:
-  # Its ~100 MB binary only with `pnpm app:setup` (decision 196).
+  # Its ~100 MB binary only with `pnpm app:setup` (decision 196). Nothing else builds on install:
+  # the agents' terminal is node-pty prebuilt, `@lydell/node-pty` (IN1, decision 532).
   electron: false
-  node-pty: true

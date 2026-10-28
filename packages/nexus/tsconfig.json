@@ -1,0 +1,12 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "paths": {
+      "@symbiote/core": ["../core/src/index.ts"],
+      "@symbiote/log": ["../log/src/index.ts"]
+    }
+  },
+  "include": ["src", "test", "e2e", "playwright.config.ts"]
+}

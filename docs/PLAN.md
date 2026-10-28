@@ -227,6 +227,12 @@ hosted.
 | Fix | The app shows a page as a browser does, under its title bar | ready for review | | [journal](journal/fix-title-bar-desktop.md) |
 | [N2](plan/n2-taskbar-waiting.md) | The taskbar's icon says something waits for you: an amber dot, a blink where the desktop has one | ready for review | 465–470 | [journal](journal/n2-taskbar-waiting.md) |
 
+### The nexus
+
+| ID | What | Status | Decisions | Journal |
+|---|---|---|---|---|
+| [NX1](plan/nx1-nexus.md) | Symbiote nexus: every running `symbiote view` found, as tabs in one window or browser tab | ready for review | 519–527 | [journal](journal/nx1-nexus.md) |
+
 ### Repository monitoring
 
 | ID | What | Status | Decisions | Journal |
@@ -252,3 +258,4 @@ hosted.
 | Rename | Rename to Symbiote | ✅ | | [journal](journal/rename-to-symbiote.md) |
 | [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | ready for review | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
 | [Refactor](plan/refactor-readability.md) | The CLI's services and the viewer's pages in modules one can read | ready for review | 344–348 | [journal](journal/refactor-readability.md) |
+| [IN1](plan/in1-one-command-install.md) | Install in one command (`./install.sh`), with no native build: the agents' terminal prebuilt | ready for review | 532–538 | [journal](journal/in1-one-command-install.md) |

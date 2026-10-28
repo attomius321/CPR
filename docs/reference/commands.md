@@ -14,6 +14,7 @@ explains the terms this page uses: workspace, merger, verdict, Scout and the oth
 | `symbiote merge <branch>` | Merges the commit that your review of `branch` approved, as **Merge into** does in the app, and prints each step. |
 | `symbiote mcp` | Gives an agent of yours Symbiote's tools. See [Symbiote's tools for your own agent](#symbiotes-tools-for-your-own-agent). |
 | `symbiote app install` | Adds Symbiote's window to your desktop's apps, on Linux and WSL. `symbiote app uninstall` removes it. |
+| `symbiote-nexus` | Opens Symbiote nexus: every `symbiote view` running on this machine, as tabs in one window. It runs until you press Ctrl+C or close its window, and stops none of them. `./install.sh` adds it to `~/.local/bin`. |
 
 `symbiote diff` and `symbiote view` compare `head` with the *merge base*: the last commit that
 `head` and `base` share. A pull request is compared the same way. To compare with `base` itself,
@@ -61,9 +62,9 @@ The [review guide](../guide/review-and-ci.md#findings) explains each finding.
 | `--depth <n>` | diff, view, pr | How many steps of unchanged callers and callees to include. Default: 1. |
 | `--plugin <name\|path>` | diff, view, pr | Analyzes with a framework plugin, such as `angular` or `qwik`. You can repeat it. |
 | `--no-merge-base` | diff, view | Compares with `base` itself. |
-| `--port <n>` | view, pr | The app's port. Default: any free port. |
-| `--browser` | view, pr | Opens your browser instead of Symbiote's window. |
-| `--no-open` | view, pr | Opens neither. Open the address it prints yourself. |
+| `--port <n>` | view, pr, symbiote-nexus | The app's port. Default: any free port. |
+| `--browser` | view, pr, symbiote-nexus | Opens your browser instead of Symbiote's window. |
+| `--no-open` | view, pr, symbiote-nexus | Opens neither. Open the address it prints yourself. |
 | `--summary` | pr | Prints the summary instead of opening the app. |
 | `--post-findings <level>` | pr | Posts new findings at or above the level as comments on their lines, instead of opening the app. A finding posted by an earlier run is not posted again. |
 | `--forge <name>` | pr | `github` or `gitlab`, for a host whose name does not say which it is. |
@@ -110,6 +111,9 @@ change, only n and [ work.
 | [ | Fold the sidenav to a row of icons, or open it again |
 | ] | In a workspace: hide or show the **Changes** panel |
 
+In Symbiote nexus, with the focus on its tabs, ← and → move to the previous or next tab, and Home
+and End to the first or the last. In a Symbiote's tab, that Symbiote's keys work.
+
 In a text box where you write a comment, a brief, a reply, a prompt or a commit's message,
 Ctrl+Enter saves, starts, sends or commits. On macOS, use Cmd instead of Ctrl.
 
@@ -134,8 +138,9 @@ command = "symbiote"
 args = ["mcp"]
 ```
 
-An agent does not read your shell's aliases. If `symbiote` is an alias, write the full command
-instead: `node <Symbiote's folder>/packages/cli/dist/bin.js mcp`.
+An agent does not read your shell's aliases. `./install.sh` adds `symbiote` as a command, which an
+agent finds on your `PATH`. If `symbiote` is only an alias, write the full command instead:
+`node <Symbiote's folder>/packages/cli/dist/bin.js mcp`.
 
 | Tools | What they do | Asks you |
 |---|---|---|

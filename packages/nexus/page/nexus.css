@@ -1,0 +1,253 @@
+/* Symbiote nexus (NX1): its own layout, after the viewer's built stylesheet (decision 523), whose
+   tokens, type and controls it uses. Its tabs are the viewer's line tabs (`.workspace-views`), its
+   list's head the viewer's page head (`.page-head`), a stopped tab's × a shell tab's
+   (`.shell-tab`, `.shell-close`). Text sizes are the viewer's `--size-*` tokens, never a px value. */
+
+.nexus {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* The row: the tabs, the window's buttons where Symbiote draws them. The line tabs stand on its
+   hairline as on a card's head (48 px), the first tab's words 16 px in, as the page's under it. */
+.nexus-bar {
+  flex: none;
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
+  user-select: none;
+}
+
+.nexus-bar .workspace-views {
+  flex: 1 1 auto;
+  padding-left: 2px;
+  border-bottom: 0;
+  background: none;
+}
+
+.nexus-bar .window-buttons {
+  align-self: center;
+}
+
+.nexus-tabs [role='tab'] {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.nexus-tabs .count {
+  margin-left: 0;
+}
+
+.nexus-tab-where {
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 400;
+}
+
+.nexus-tab-stopped .nexus-tab-name {
+  color: var(--muted);
+}
+
+/* In Symbiote's window (N1c): the row moves the window; what can be clicked does not. The system's
+   buttons lie over its right end (Windows) or its left (macOS), as over the viewer's title bar. */
+:root[data-app] .nexus-bar {
+  padding-right: calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw));
+  -webkit-app-region: drag;
+}
+
+:root[data-app] .nexus-bar :is(button, a) {
+  -webkit-app-region: no-drag;
+}
+
+:root[data-app='darwin'] .nexus-bar {
+  padding-left: 76px;
+}
+
+/* Symbiote's frame on Linux (N1d): the row takes the window's top corners, the frames' box its
+   bottom ones. */
+:root[data-frame='own'][data-window='normal'] .nexus-bar {
+  border-radius: 10px 10px 0 0;
+}
+
+:root[data-frame='own'][data-window='normal'] .nexus-main {
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+}
+
+.nexus-main {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--bg);
+}
+
+/* Each opened Symbiote in a frame of its own, the hidden ones kept loaded (decision 521). */
+.nexus-frame {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--bg);
+}
+
+.nexus-frame[hidden],
+.nexus-home[hidden],
+.nexus-stopped[hidden] {
+  display: none;
+}
+
+/* Symbiotes: the page's head and a card of rows, as the viewer's pages (V72's frame). */
+.nexus-home {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.nexus-card {
+  flex: none;
+  margin: 0 var(--page-pad) var(--page-pad);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.nexus-failure {
+  margin: 0 var(--page-pad) var(--page-gap);
+  font-size: var(--size-small);
+}
+
+/* A list's row: its wash 8 px in, its words at 16 (V72). */
+.nexus-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+}
+
+.nexus-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) max-content max-content;
+  align-items: center;
+  gap: 4px 24px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  transition: background-color 150ms;
+}
+
+.nexus-row:hover {
+  background: var(--hover);
+}
+
+.nexus-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.nexus-row-name {
+  font-weight: 600;
+}
+
+.nexus-row-folder,
+.nexus-row-checkout {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexus-row-checkout {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.nexus-row-checkout .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.nexus-row-changes,
+.nexus-row-since {
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nexus-row-since {
+  min-width: 96px;
+  text-align: right;
+}
+
+/* An empty state (the style's recipe): a 28 px icon in --faint, a line, the text, the action. */
+.nexus-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 48px var(--card-pad);
+  text-align: center;
+}
+
+.nexus-empty > .icon {
+  width: 28px;
+  height: 28px;
+  margin-bottom: 8px;
+  color: var(--faint);
+}
+
+.nexus-empty-title {
+  margin: 0;
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.nexus-empty-text {
+  max-width: 560px;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.nexus-empty .button {
+  margin-top: 12px;
+}
+
+/* A stopped Symbiote's tab: what happened, in the middle of the frames' place. */
+.nexus-stopped {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 720px) {
+  .nexus-row {
+    grid-template-columns: minmax(0, 1fr) max-content;
+  }
+
+  .nexus-row-changes {
+    display: none;
+  }
+}
