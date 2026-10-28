@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v73-activity-timeline.md)
 
-**Status:** in progress (2026-10-28), on branch `feature/workspace-activity` (a workspace's
-branch). Plan agreed by the person ("OK as you say").
+**Status:** ready for review (2026-10-28), on branch `feature/workspace-activity` (a workspace's
+branch). Plan agreed by the person ("OK as you say"). Its "As built" and results below.
 
 **Problem** (asked: "The Activity tab currently renders a dense, flat list of events containing
 raw shell commands, absolute filesystem paths, file edits, commits, tool counts, and agent
@@ -167,3 +167,49 @@ not cards in cards; summaries of facts, not prose.
 
 **Not in V73 (later)**: Hermes's commands and outputs; a running command's output while it runs
 (Claude Code's hooks give it only at the end); prose summaries of a phase.
+
+## As built (V73)
+
+- **Phases need more than runs of one kind.** Runs alone gave a median of 48 phases for 147 calls
+  on the person's records; letting reads between edits join the edits, 39. The rules that hold
+  (`groups.ts`): between two runs of one kind, a phase takes what little lies between them — an
+  implementation its passing test runs and a few looks (4 calls besides reads), a visual
+  inspection a few tweaks, any phase its reads only when they are few; a read or two join the edit
+  right after them, else the phase before. A failed test is never taken in: it stays visible and
+  starts Debugging (decision 518). Median now 27 phases and 37 rows for 147 calls.
+- **"File editing" is Implementation and Documentation**: edits to code, and edits to Markdown
+  and text, apart. An edit outside the worktree (a scratch script) joins its neighbours' phase.
+- **A test run piped to `tail` exits 0.** The first real run printed `ℹ fail 1` and exited 0
+  (`npm test 2>&1 | tail -60`). A test call counts as failed when its runner printed failures,
+  whatever its exit; node's spec reporter (`ℹ pass 1`) is read beside its TAP lines.
+- **Milestones**: Claude Code's `<task-notification>` prompts are a quiet notice titled by their
+  own `<summary>`, not "You: …"; pasted text is said by its first line, not its tag. An ask waits
+  only while no prompt or report came after it (the agent can still read as waiting). A
+  question's call and Codex's reasoning stay out of the phases, as in V48c: the raw stream has
+  them. A milestone recorded twice within 5 s is one group with both events.
+- **Commits**: a commit is paired with the `git commit` (or merge) call whose run holds its time,
+  a second's leeway each side (git keeps whole seconds); the group is titled by the commit's
+  subject with its short SHA, the push after it in it.
+- **The panel head's "Running …"** and the raw stream's one-line gists drop a command's leading
+  `cd` to an absolute folder too: the same data, shown just above the tab.
+- **Codex's runner** keeps its own copy of the output helper: it runs as its own program, from its
+  source in tests, and imports nothing of its own.
+- **e2e**: V48c's Activity spec in `workspaces.spec.ts` is replaced by `e2e/activity.spec.ts`,
+  four specs.
+
+**Results.** `pnpm check`: format, lint, typecheck, 2,067 unit tests (2,013 before V73: 61 new —
+54 for the viewer's grouping, words and head, 7 for the hook, the read and Codex — and V48c's 7
+timeline tests removed). e2e: 332 of 332 (5.0 min), the four new Activity specs among them. On the person's 33 recorded workspaces (5,675 calls), the median one (147
+calls) draws 37 rows, 27 of them phases, against 143 rows on `main`; the longest (355 calls) 66
+against 326. Grouping takes 19 ms at most (Node, the 355-call workspace). The 1 MB activity
+window reads in 1.6 ms (647 lines of ~2 KB, a median of 21 reads). A real Claude Code 2.1.312
+(`claude -p --model haiku`, a scratch repository, this branch's hook) recorded the whole command,
+its description, `duration_ms`, `exit: 1` from "Exit code 1", the output's end and an edit's
++1 −1; the tab drew it as Testing (failed), Debugging (passed after 1 run, 1 edit), the commit
+and the report. Screenshots, before and after, dark and light, at 1440 px and 760 px: the job's
+folder (not committed).
+
+**Not verified**: Codex's and Hermes's agents in a real run (their recording is unit-tested; Hermes
+keeps a subject only); a session long enough to fill the 1 MB window (the person's longest file is
+160 KB in the old format); the desktop app (Electron) rendering the tab; the person's workspaces
+record the new fields only once `main` is built with them (their hook runs `main`'s build).

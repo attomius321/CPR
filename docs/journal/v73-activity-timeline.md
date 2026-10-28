@@ -33,3 +33,37 @@ results), Claude Code 2.1.312's hook schema (in its binary).
 - **The hooks run `main`'s build**: `symbiote/claude-settings.json` runs
   `/home/anton/projects/Symbiote/packages/cli/dist/agent-hook.js`; the new fields reach the
   person's workspaces once merged and built. A real agent's check needs settings of its own.
+
+## V73 — the Activity tab as a timeline of phases (2026-10-28, branch `feature/workspace-activity`)
+
+Built as planned in four parts: the hook and Codex record each call's whole command, its
+description, duration, exit code, output's end and an edit's lines (V73a); the viewer groups the
+events into phases between milestones, pure and tested (V73b); the tab draws them on a timeline
+with a live strip, groups that open to their events and events to what was recorded, and the raw
+stream (V73c); e2e specs, real records and a real agent (V73d). Decisions 513–518.
+
+**Learned**:
+- **Runs of one kind are not phases.** Agents read between edits, run a test as they implement and
+  look at a screenshot between tweaks: runs gave 48 phases for 147 calls. "Sandwich" rules (a phase
+  takes what little lies between two of its runs) brought it to 27; a failed test is never taken
+  in, so failures stay visible.
+- **Piped test runs exit 0.** Agents pipe checks to `tail` (`pnpm check 2>&1 | tail -20`): the
+  exit is the pipe's. The real run's first `npm test` failed with exit 0; the runner's printed
+  counts decide instead.
+- **Claude Code refuses edits under `~/.claude`** ("a sensitive file") in `-p` mode with
+  `acceptEdits`: the first real run, in the job's folder, recorded two Edit starts with no end.
+  The tab says "No end recorded" for them. The second run used a folder under `/tmp`.
+- **`--allowedTools` takes the rest of the line**: `claude -p --allowedTools "Bash Edit" "the
+  prompt"` read the prompt as a tool. The prompt goes on stdin.
+- **A CSS `::before` separator is not text**: Playwright's `toHaveText` and screen readers missed
+  the "·" between a summary's parts. They are spans now.
+- **The fake agent reads `ready` once its thread ends in a report**: a screenshot of a live strip
+  needs a new prompt (the `UserPromptSubmit` hook) and calls timed after it.
+
+**Verification**: tests first, red for the right reason (the hook's fields, Codex's, the read
+window, classification, grouping, statuses, test summaries, words, the live state). `pnpm check`:
+2,067 tests. e2e: 332 of 332 (5.0 min), the four new Activity specs among them. Real records: 33 workspaces, 5,675 calls, median rows 37 against 143
+on `main`. A real Claude Code 2.1.312 run (haiku) through this branch's hook, drawn in the tab.
+Screenshots before and after (dark, light; 1440 and 760 px).
+
+Not verified: real Codex and Hermes runs; a session filling the 1 MB window; the desktop app.

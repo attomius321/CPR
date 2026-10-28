@@ -21,6 +21,18 @@ const END_PX = 24;
 
 type Mode = 'timeline' | 'raw';
 
+/** The groups the bar counts as phases: work, not the milestones between. */
+const PHASES = new Set<ActivityGroup['kind']>([
+  'explore',
+  'implement',
+  'docs',
+  'test',
+  'visual',
+  'debug',
+  'git',
+  'other',
+]);
+
 const dayOf = (at: string) => new Date(at).toDateString();
 const dayText = (at: string) =>
   new Date(at).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
@@ -84,7 +96,7 @@ export function ActivityTab({
   if (!thread) return <p className="hint">Reading what happened…</p>;
 
   const calls = events.filter((e) => e.kind === 'call').length;
-  const phases = groups.filter((g) => !g.milestone && g.kind !== 'made' && g.kind !== 'session');
+  const phases = groups.filter((g) => PHASES.has(g.kind));
   const days = new Set(groups.flatMap((g) => (g.start ? [dayOf(g.start)] : [])));
   const lines = mode === 'raw' ? rawLines(workspace, thread, tools, commits) : [];
   const rows: { key: string; day?: string; group?: ActivityGroup }[] = [];

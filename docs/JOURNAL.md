@@ -280,3 +280,4 @@ merge commit.
 - 2026-10-27 [V71 — the analyzing page as a card on the start page's arcs](journal/v71-analyzing-page.md)
 - 2026-10-28 [V71 — main merged in: the writing-docs skill's check](journal/v71-analyzing-page.md)
 - 2026-10-28 [V73 spike — what the Activity tab draws, and what agents' records hold](journal/v73-activity-timeline.md)
+- 2026-10-28 [V73 — the Activity tab as a timeline of phases](journal/v73-activity-timeline.md)

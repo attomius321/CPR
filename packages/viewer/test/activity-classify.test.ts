@@ -210,6 +210,12 @@ describe('testCounts (V73): what a test run printed, read from its end', () => {
       testCounts('test result: FAILED. 3 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out'),
     ).toEqual({ passed: 3, failed: 1, skipped: 0 });
     expect(testCounts('# tests 12\n# pass 11\n# fail 1')).toEqual({ passed: 11, failed: 1 });
+    // node's spec reporter, as a real run printed it (V73).
+    expect(
+      testCounts(
+        '✖ half of 10 is 5 (0.96ms)\n✔ half of 0 is 0 (0.10ms)\nℹ tests 2\nℹ suites 0\nℹ pass 1\nℹ fail 1\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0',
+      ),
+    ).toEqual({ passed: 1, failed: 1, skipped: 0 });
   });
 
   it("ESLint's and TypeScript's problems", () => {

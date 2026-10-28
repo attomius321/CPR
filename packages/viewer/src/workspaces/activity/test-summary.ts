@@ -56,9 +56,12 @@ const RUNNERS: { pattern: RegExp; read: (match: RegExpMatchArray) => TestCounts 
   { pattern: /^Found (\d+) errors?\b/gm, read: (m) => ({ errors: Number(m[1]) }) },
 ];
 
-/** Playwright's and node's runner's lines of their own: "  1 failed", "  253 passed (4.1m)", "# pass 11". */
+/**
+ * Playwright's and node's runner's lines of their own: "  1 failed", "  253 passed (4.1m)", and
+ * node's "# pass 11" (TAP) or "ℹ pass 11" (its spec reporter, the default on a terminal).
+ */
 const LINES =
-  /^(?:\s+(\d+) (passed|failed|flaky|skipped)\b(?: \([\d.]+m?s\))?|# (pass|fail) (\d+))\s*$/gm;
+  /^(?:\s+(\d+) (passed|failed|flaky|skipped)\b(?: \([\d.]+m?s\))?|[#ℹ] (pass|fail|skipped) (\d+))\s*$/gm;
 
 /**
  * The counts a test run printed (V73), from its output's end: its runner's last summary (a check

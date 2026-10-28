@@ -400,7 +400,14 @@ function GroupRowView({
     <li className={classes} data-key={group.key}>
       <span className="activity-when">
         {group.start ? (
-          <time dateTime={group.start} {...tip(longDate(group.start))}>
+          <time
+            dateTime={group.start}
+            {...tip(
+              group.end && group.end !== group.start
+                ? `${longDate(group.start)}, to ${timeOf(group.end, true)}`
+                : longDate(group.start),
+            )}
+          >
             {timeOf(group.start)}
           </time>
         ) : (

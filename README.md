@@ -184,8 +184,12 @@ Click a workspace to open it. Its page has four tabs:
   questions and permission prompts here, as you would in your own terminal. Leaving the tab does
   not stop the agent. To give the agent an image, paste it (Ctrl+V) or use **Attach images**.
 - **Thread**: the agent's plans and reports, your messages, and what it waited for.
-- **Activity**: what happened, one line each: the commands the agent ran, the files it edited,
-  its commits and your reviews.
+- **Activity**: the agent's work as phases, such as exploring the code, implementing, testing,
+  debugging and committing. Your messages, the agent's questions and its reports sit between the
+  phases. Each phase shows when it started, how long it took and its status. Click a phase to see
+  its events, and click an event to see its whole command, output and exit code. While the agent
+  works, a line at the top says what it is running. **Raw events** lists every line Symbiote
+  recorded.
 - **Brief**: what the agent was asked, with the documents you gave it.
 
 The **+** after the tabs opens a shell in the workspace's worktree, for tests, a dev server or git.
@@ -342,7 +346,8 @@ plugins for Angular and Qwik, and CSS and SCSS. Every command and option is in t
 
 In your repository, Symbiote keeps its files in the `symbiote/` folder: workspace records,
 reviews, the agents' threads and activity, documents, and the settings of the agents it starts.
-It also writes `symbiote/AGENTS.md`, which tells any agent how to act on a review. Symbiote's own
+An agent's activity holds each command it ran, whole up to 8 KB, and the last 2 KB of its output
+or error. It also writes `symbiote/AGENTS.md`, which tells any agent how to act on a review. Symbiote's own
 `symbiote/.gitignore` keeps everything there out of git, itself included, except two files. They
 are yours to commit and share: `config.json` holds your settings, and `merge.md` your rules for
 the merger.

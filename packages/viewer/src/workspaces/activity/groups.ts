@@ -119,12 +119,17 @@ const isEdit = (call: ToolCall) => {
 
 const isTest = (call: ToolCall) => kindOf(call) === 'test';
 
-/** A test call's outcome: passed, failed, stopped, running or never ended. */
+/**
+ * A test call's outcome: passed, failed, stopped, running or never ended. Failed also when its
+ * runner printed failures though it exited 0: piped to `tail`, a command's exit is the pipe's.
+ */
 function outcome(call: ToolCall, context: Context): GroupStatus {
   if (running(call, context)) return 'running';
   if (call.interrupted) return 'cancelled';
   if (call.failed) return 'failed';
-  return call.end ? 'done' : 'open';
+  if (!call.end) return 'open';
+  const counts = call.output ? testCounts(call.output) : null;
+  return counts && ((counts.failed ?? 0) > 0 || (counts.errors ?? 0) > 0) ? 'failed' : 'done';
 }
 
 /**

@@ -289,6 +289,18 @@ describe('activityGroups (V73)', () => {
     });
   });
 
+  it('a test run piped to tail exits 0: failed all the same when its runner printed failures', () => {
+    const tools = bash('t1', 5, 'npm test 2>&1 | tail -60', {
+      end: { output: 'ℹ tests 2\nℹ pass 1\nℹ fail 1' },
+    });
+    const groups = groupsOf(tools, [entry(2, { kind: 'prompt', text: 'Go' })]);
+    expect(groups.at(-1)).toMatchObject({
+      kind: 'test',
+      status: 'failed',
+      summary: 'npm test · 1 failed · 1 passed',
+    });
+  });
+
   it('a failed test with edits after and no run again: still failing, said so', () => {
     const tools = [
       ...bash('t1', 5, 'pnpm test', { end: { failed: true, exit: 1 } }),
