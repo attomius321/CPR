@@ -61,6 +61,9 @@ test('a click picks the comment line, Ctrl/⌘+click opens it, o opens the picke
   await body.click();
   await expect(panel.locator('.comment-actions')).toContainText('on line 12 of src/shapes.ts');
   await panel.locator('.row-add').first().getByRole('button', { name: '11' }).click();
+  // Each open is a request of its own: let this one land before `o` sends the next, or the two
+  // `code` runs can write the log in either order.
+  await expect.poll(() => opened().length).toBe(2);
   await expect(panel.locator('.comment-actions')).toContainText('on line 12 of src/shapes.ts');
   await page.keyboard.press('o');
   await expect.poll(() => opened().length).toBe(3);

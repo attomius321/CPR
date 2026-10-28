@@ -81,6 +81,7 @@ hosted.
 | [V7](plan/v7-app-boundaries.md) | Apps in the graph | ✅ | 33–36 | [journal](journal/v7-app-boundaries.md) |
 | [V8](plan/v8-smooth-viewer.md) | A smooth viewer | ✅ | 37–41 | [journal](journal/v8-smooth-viewer.md) |
 | [V12](plan/v12-open-in-vscode.md) | Open in VS Code | ✅ | 60–64 | [journal](journal/v12-open-in-vscode.md) |
+| Fix | `open-pr.spec.ts`: two opens raced to VS Code's log; the spec waits for each | ready for review | | [journal](journal/fix-open-pr-spec-race.md) |
 
 ### History
 
