@@ -1,8 +1,10 @@
 // The Activity tab's words (V73): how long, what an event did in a line, a group's status and the
-// parts of its summary, each in its tone. Pure: the components draw what these say.
-import { COMMAND_TOOLS, shortPath, shownCommand } from './classify.js';
-import type { ActivityEvent } from './events.js';
-import type { ActivityGroup } from './groups.js';
+// parts of its summary, each in its tone; the colour of each kind of work (V74). Pure: the
+// components draw what these say.
+import type { ActivityEntry } from '@symbiote/core';
+import { callKind, COMMAND_TOOLS, shortPath, shownCommand, type WorkKind } from './classify.js';
+import type { ActivityEvent, RawLine } from './events.js';
+import type { ActivityGroup, GroupKind } from './groups.js';
 
 const firstLine = (text: string) =>
   (text.split('\n').find((line) => line.trim() !== '') ?? '').trim();
@@ -150,5 +152,45 @@ export function summaryParts(group: ActivityGroup): SummaryPart[] {
     if (/^[\d,]+ passed\b/.test(text) || text === 'passed') return { text, tone: 'added' };
     if (/^[\d,]+ (flaky|warnings?)\b/.test(text)) return { text, tone: 'warning' };
     return { text };
+  });
+}
+
+/** A kind of work with a colour of its own (V74, decision 528): a `--phase-*` token. */
+export type Phase = WorkKind | 'debug';
+
+const PHASES: ReadonlySet<string> = new Set<Phase>([
+  'explore',
+  'implement',
+  'docs',
+  'test',
+  'visual',
+  'debug',
+  'git',
+]);
+const isPhase = (kind: string): kind is Phase => PHASES.has(kind);
+
+/** A group's colour: its kind of work's, a commit git's; none for the milestones between. */
+export function groupPhase(kind: GroupKind): Phase | null {
+  if (kind === 'commit') return 'git';
+  return isPhase(kind) ? kind : null;
+}
+
+/** An event's colour: its own call's kind of work (a read in an implementation explores), a commit git's. */
+export function phaseOf(event: ActivityEvent): Phase | null {
+  if (event.kind === 'commit') return 'git';
+  return event.kind === 'call' ? callKind(event.call) : null;
+}
+
+/** A raw line's colour: a tool line's by its call, a commit's git's; the thread's none. */
+export function rawPhase(line: RawLine): Phase | null {
+  if (line.source === 'commit') return 'git';
+  if (line.source !== 'tool' || typeof line.value !== 'object' || line.value === null) return null;
+  const { tool, subject, input, about } = line.value as Partial<ActivityEntry>;
+  if (typeof tool !== 'string') return null;
+  return callKind({
+    tool,
+    ...(subject ? { subject } : {}),
+    ...(input ? { input } : {}),
+    ...(about ? { about } : {}),
   });
 }

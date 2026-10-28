@@ -1,10 +1,12 @@
-// The Activity tab's live strip (V73, decision 516): what the agent does now — the phase, its
-// words for the call running, the command — and for how long, from the call's recorded start. A
-// spinner while it works; still while it waits. No progress: none is recorded.
+// The Activity tab's live strip (V73, decision 516): what the agent does now — the phase on its
+// tile in its colour (V74), its words for the call running, the command — and for how long, from
+// the call's recorded start. A spinner while it works; still while it waits. No progress: none is
+// recorded.
 import { useSeconds } from '../clock.js';
 import type { LiveActivity } from './live.js';
 import { elapsedText } from './words.js';
 import { tip } from '../../ui/tip.js';
+import { PhaseTile } from './GroupRow.js';
 
 /** How long since `since`, as a clock; its own component, so a tick renders it alone. */
 function Elapsed({ since }: { since: string }) {
@@ -25,6 +27,7 @@ export function LiveStrip({ live }: { live: LiveActivity }) {
         className={`state-dot ${waiting ? 'tone-waiting' : 'tone-working'}`}
         aria-hidden="true"
       />
+      {live.kind && <PhaseTile kind={live.kind} />}
       <span className="activity-live-words">
         {head && <span className="activity-live-phase">{head}</span>}
         <span className="activity-live-text" {...tip(live.text)}>

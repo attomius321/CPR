@@ -592,6 +592,7 @@ describe('activityGroups (V73)', () => {
   });
 });
 
+// V74: `kind`, the running phase's, colours the strip as its group.
 describe('liveActivity (V73)', () => {
   const prompt = [entry(2, { kind: 'prompt', text: 'Go' })];
   const live = (tools: ActivityEntry[], agent: WorkspaceAgentState, entries = prompt) => {
@@ -611,6 +612,7 @@ describe('liveActivity (V73)', () => {
     expect(live(tools, { state: 'working' })).toEqual({
       state: 'working',
       phase: 'Testing',
+      kind: 'test',
       text: 'Run the full check',
       command: 'pnpm check',
       since: at(5),
@@ -640,6 +642,7 @@ describe('liveActivity (V73)', () => {
     expect(live([untimed], { state: 'working' })).toEqual({
       state: 'working',
       phase: 'Testing',
+      kind: 'test',
       text: 'Running cargo test',
       command: 'cargo test',
     });

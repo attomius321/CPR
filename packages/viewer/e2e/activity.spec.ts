@@ -284,3 +284,93 @@ test('what went wrong: a command stopped, a question waiting on you, a report as
   await expect(reported.locator('.activity-detail.markdown strong')).toHaveText('half');
   await expect(activity.locator('.activity-group.status-waiting')).toHaveCount(0);
 });
+
+/** A token's colour as the page computes it (`rgb(…)`), for comparing with an element's. */
+const colourOf = (page: Page, token: string) =>
+  page.evaluate((name) => {
+    const probe = document.createElement('span');
+    probe.style.color = `var(${name})`;
+    document.body.append(probe);
+    const colour = getComputedStyle(probe).color;
+    probe.remove();
+    return colour;
+  }, token);
+
+test('each phase in its colour, on a tile on the rail; your words in a bubble (V74)', async ({
+  page,
+}) => {
+  await startHalf(page);
+  const folder = symbiote.folder(BRANCH);
+  const check = `cd ${folder} && pnpm test`;
+  tool('PreToolUse', 'r1', 'Read', { file_path: `${folder}/src/a.ts` });
+  tool('PostToolUse', 'r1', 'Read', { file_path: `${folder}/src/a.ts` }, { tool_response: {} });
+  tool('PreToolUse', 't1', 'Bash', { command: check, description: 'Run the tests' });
+  tool(
+    'PostToolUseFailure',
+    't1',
+    'Bash',
+    { command: check },
+    { error: 'Exit code 1\n      Tests  1 failed | 2 passed (3)', duration_ms: 2100 },
+  );
+  tool('PreToolUse', 'e1', 'Edit', { file_path: `${folder}/src/half.ts` });
+  tool('PostToolUse', 'e1', 'Edit', { file_path: `${folder}/src/half.ts` }, { tool_response: {} });
+  tool('PreToolUse', 't2', 'Bash', { command: check, description: 'Run the tests again' });
+  tool(
+    'PostToolUse',
+    't2',
+    'Bash',
+    { command: check },
+    { tool_response: { stdout: '      Tests  3 passed (3)\n', stderr: '' }, duration_ms: 1900 },
+  );
+  symbiote.hook(BRANCH, { hook_event_name: 'UserPromptSubmit', prompt: 'Round it down too' });
+
+  const activity = await openActivity(page);
+  await expect(activity.locator('.activity-title')).toHaveText(
+    [
+      /^Workspace made from main at [0-9a-f]{7}$/,
+      'Claude Code started',
+      "Symbiote's prompt",
+      'Exploration',
+      'Testing',
+      'Debugging',
+      'You: Round it down too',
+    ],
+    POLL,
+  );
+  // Each phase's tile, on the rail, in its kind's colour; a milestone's has none of a phase.
+  const tile = (title: string) => groupOf(page, title).locator('.activity-rail .activity-tile');
+  for (const [title, token] of [
+    ['Exploration', '--phase-explore'],
+    ['Testing', '--phase-test'],
+    ['Debugging', '--phase-debug'],
+  ] as const) {
+    await expect(tile(title)).toHaveCSS('color', await colourOf(page, token));
+  }
+  // The kind's icon left the group's line for the rail; the chevron stays.
+  await expect(
+    groupOf(page, 'Exploration').locator('.activity-head .icon:not(.chevron)'),
+  ).toHaveCount(0);
+  // The status on the tile's ring and in the badge, with its icon.
+  const error = await colourOf(page, '--error');
+  expect(await tile('Testing').evaluate((el) => getComputedStyle(el).boxShadow)).toContain(error);
+  await expect(groupOf(page, 'Testing').locator('.activity-status .icon')).toHaveCount(1);
+  // Your words: a bubble, apart from the phases.
+  const bubble = groupOf(page, 'You: Round it down too').locator('.activity-body');
+  await expect(bubble).toHaveCSS('border-radius', '10px');
+  await expect(bubble).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  // Opened, each event's icon in its own call's colour: the edit an implementation's.
+  const debugging = groupOf(page, 'Debugging');
+  await debugging.locator('summary').first().click();
+  const events = debugging.getByRole('list', { name: 'Events of Debugging' });
+  await expect(events.locator('.activity-event-icon')).toHaveCount(2);
+  await expect(events.locator('.activity-event-icon').first()).toHaveCSS(
+    'color',
+    await colourOf(page, '--phase-implement'),
+  );
+  // The raw stream: a tool's chip in its call's colour.
+  await page.getByRole('button', { name: 'Raw events' }).click();
+  const read = page
+    .getByRole('list', { name: 'Raw events' })
+    .locator('.activity-raw-line', { hasText: 'Read start' });
+  await expect(read.locator('.chip')).toHaveCSS('color', await colourOf(page, '--phase-explore'));
+});

@@ -5,13 +5,15 @@ import type { WorkspaceSummary } from '@symbiote/core';
 import { activityText, askedFor } from '../workspaces.js';
 import { COMMAND_TOOLS, shownCommand } from './classify.js';
 import type { ActivityEvent, ToolCall } from './events.js';
-import { questionsOf, waitingAsk, type ActivityGroup } from './groups.js';
+import { questionsOf, waitingAsk, type ActivityGroup, type GroupKind } from './groups.js';
 
 export interface LiveActivity {
   /** `working`: a call runs; `thinking`: none does; `waiting`: on the person. */
   state: 'working' | 'thinking' | 'waiting';
   /** The phase the running call is in: "Testing". */
   phase?: string;
+  /** That phase's kind (V74): the strip takes its colour. */
+  kind?: GroupKind;
   /** The agent's words for it, else what it is: "Run the full check", "Reading src/a.ts". */
   text: string;
   /** A command, written short. */
@@ -66,7 +68,7 @@ export function liveActivity(
         : activityText({ tool: open.tool, ...(open.subject ? { subject: open.subject } : {}) }));
     return {
       state: 'working',
-      ...(phase && !phase.milestone ? { phase: phase.title } : {}),
+      ...(phase && !phase.milestone ? { phase: phase.title, kind: phase.kind } : {}),
       text,
       ...(command ? { command } : {}),
       ...(open.startedAt ? { since: open.startedAt } : {}),

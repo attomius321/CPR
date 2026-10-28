@@ -1,11 +1,15 @@
-// The Activity tab's words (V73): durations, an event's line, a group's status and summary parts.
+// The Activity tab's words (V73): durations, an event's line, a group's status and summary parts;
+// the colours of the kinds of work (V74).
 import { describe, expect, it } from 'vitest';
-import type { ActivityEvent, ToolCall } from '../src/workspaces/activity/events.js';
+import type { ActivityEvent, RawLine, ToolCall } from '../src/workspaces/activity/events.js';
 import type { ActivityGroup } from '../src/workspaces/activity/groups.js';
 import {
   durationText,
   elapsedText,
   eventWords,
+  groupPhase,
+  phaseOf,
+  rawPhase,
   statusWords,
   summaryParts,
 } from '../src/workspaces/activity/words.js';
@@ -129,5 +133,71 @@ describe('statusWords and summaryParts (V73)', () => {
       { text: '', lines: { added: '+40', removed: '−2' } },
     ]);
     expect(summaryParts(group({ kind: 'implement' }))).toEqual([]);
+  });
+});
+
+describe('phaseOf, groupPhase and rawPhase (V74)', () => {
+  const commit: ActivityEvent = {
+    key: 'commit:abc',
+    kind: 'commit',
+    commit: { sha: 'abc1234', subject: 'Add half', author: 'Ada', date: '2026-10-28T09:00:00Z' },
+  };
+
+  it("an event takes its call's kind of work, a commit git's; a call of no kind none", () => {
+    expect(phaseOf(call({ tool: 'Read', subject: 'src/a.ts' }))).toBe('explore');
+    expect(phaseOf(call({ tool: 'Grep', subject: 'half' }))).toBe('explore');
+    expect(phaseOf(call({ tool: 'Edit', subject: 'src/a.ts' }))).toBe('implement');
+    expect(phaseOf(call({ tool: 'Write', subject: 'docs/plan.md' }))).toBe('docs');
+    expect(phaseOf(call({ input: `cd ${W} && pnpm check` }))).toBe('test');
+    expect(phaseOf(call({ tool: 'Read', subject: '/tmp/shots/dark.png' }))).toBe('visual');
+    expect(phaseOf(call({ input: 'git commit -m "Add half"' }))).toBe('git');
+    expect(phaseOf(commit)).toBe('git');
+    // An edit outside the worktree (a scratch script), a task: no kind of work, no colour.
+    expect(phaseOf(call({ tool: 'Write', subject: '/tmp/x.mjs' }))).toBeNull();
+    expect(phaseOf(call({ tool: 'TaskUpdate' }))).toBeNull();
+  });
+
+  it('a group takes its kind of work, a commit git’s; the milestones between have none', () => {
+    for (const kind of [
+      'explore',
+      'implement',
+      'docs',
+      'test',
+      'visual',
+      'debug',
+      'git',
+    ] as const) {
+      expect(groupPhase(kind)).toBe(kind);
+    }
+    expect(groupPhase('commit')).toBe('git');
+    for (const kind of [
+      'other',
+      'prompt',
+      'message',
+      'report',
+      'asks',
+      'verdict',
+      'notice',
+    ] as const) {
+      expect(groupPhase(kind)).toBeNull();
+    }
+  });
+
+  it("a raw line: a tool's by its call, a commit git's, the thread's none", () => {
+    const line = (source: RawLine['source'], value: unknown): RawLine => ({
+      key: 'k',
+      source,
+      what: 'x',
+      value,
+    });
+    expect(rawPhase(line('tool', { tool: 'Read', subject: 'src/a.ts', phase: 'end' }))).toBe(
+      'explore',
+    );
+    expect(rawPhase(line('tool', { tool: 'Bash', subject: 'pnpm test', phase: 'start' }))).toBe(
+      'test',
+    );
+    expect(rawPhase(line('commit', { sha: 'abc', subject: 'Add half' }))).toBe('git');
+    expect(rawPhase(line('thread', { kind: 'prompt', text: 'Go' }))).toBeNull();
+    expect(rawPhase(line('tool', null))).toBeNull();
   });
 });
