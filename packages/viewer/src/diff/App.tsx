@@ -359,7 +359,11 @@ export function App() {
           state.status === 'ready' ? (
             <span className="diff-facts">
               {state.branchReview && <ReviewAfter review={state.branchReview} />}
-              <Summary graph={state.graph} />
+              {/* The commits compared, unless they are the title. */}
+              <Summary
+                graph={state.graph}
+                revisions={Boolean(state.branchReview ?? state.graph.changeRequest)}
+              />
             </span>
           ) : undefined
         }
@@ -611,7 +615,7 @@ function DiffName({ graph, review }: { graph: Graph; review: BranchReviewInfo | 
       </span>
     );
   }
-  return <>{diffName(graph)}</>;
+  return <span className="revisions">{diffName(graph)}</span>;
 }
 
 /**
@@ -646,12 +650,12 @@ function ReviewAfter({ review }: { review: BranchReviewInfo }) {
   );
 }
 
-function Summary({ graph }: { graph: Graph }) {
+function Summary({ graph, revisions }: { graph: Graph; revisions: boolean }) {
   const { added, removed, modified } = graph.stats.symbols;
   const severity = (s: string) => graph.findings.filter((f) => f.severity === s).length;
   return (
     <div className="summary">
-      <span className="revisions">{revisionsLabel(graph)}</span>
+      {revisions && <span className="revisions">{revisionsLabel(graph)}</span>}
       <span className="chip">{graph.stats.filesChanged} files</span>
       <span className="chip chip-added">+{added}</span>
       <span className="chip chip-removed">−{removed}</span>

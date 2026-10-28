@@ -41,6 +41,11 @@
   color: var(--muted);
 }
 
+/* The commits compared as the head's title (V72): the title's colour. */
+.page-name-line .revisions {
+  color: var(--text);
+}
+
 .toggle {
   display: flex;
   gap: 6px;
