@@ -474,11 +474,13 @@
 
 /* ---- the branch and tag dialogs (V66d) ---- */
 
+/* A dialog's field (V66d), in the form's rhythm (V72): its label `--field-label-gap` over it,
+   `--field-gap` from the one before. */
 .git-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-top: 12px;
+  gap: var(--field-label-gap);
+  margin-top: var(--field-gap);
 }
 
 .git-field input,

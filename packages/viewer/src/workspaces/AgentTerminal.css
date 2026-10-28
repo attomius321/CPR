@@ -13,7 +13,8 @@
   min-height: 200px;
   display: flex;
   flex-direction: column;
-  padding: 8px 0 0 12px;
+  /* Its words `--card-pad` in, as a card's (V72; 12 px before). */
+  padding: 8px 0 0 var(--card-pad);
   background: #050608;
 }
 
