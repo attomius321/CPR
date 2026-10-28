@@ -19,6 +19,9 @@
     },
     {
       "path": "../log/tsconfig.build.json"
+    },
+    {
+      "path": "../nexus/tsconfig.build.json"
     }
   ]
 }

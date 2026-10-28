@@ -11,6 +11,9 @@ export default defineConfig({
         new URL('./packages/monitor/src/index.ts', import.meta.url),
       ),
       '@symbiote/log': fileURLToPath(new URL('./packages/log/src/index.ts', import.meta.url)),
+      '@symbiote/nexus/registry': fileURLToPath(
+        new URL('./packages/nexus/src/registry.ts', import.meta.url),
+      ),
     },
   },
   test: {

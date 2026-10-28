@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Symbiote nexus</title>
+    <link rel="icon" type="image/png" href="/mark.png" />
+    <!-- The viewer's own stylesheet and font (NX1, decision 523): the server puts their names here. -->
+    <link rel="preload" href="%GEIST%" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="%VIEWER_CSS%" />
+    <link rel="stylesheet" href="/nexus.css" />
+    <script>
+      // As the viewer's index.html: the theme before the first paint (what the app kept, else
+      // dark), and in Symbiote's window the marks its stylesheet draws the frame by (N1c, N1d).
+      (function () {
+        var theme = null;
+        try {
+          theme = localStorage.getItem('symbiote.viewer.theme');
+        } catch (e) {}
+        document.documentElement.dataset.theme =
+          theme === 'light' || theme === 'system' ? theme : 'dark';
+        var app = window.symbioteApp;
+        if (app) document.documentElement.dataset.app = app.platform;
+        if (app && app.frame === 'own') {
+          document.documentElement.dataset.frame = 'own';
+          document.documentElement.dataset.window = app.maximized ? 'maximized' : 'normal';
+        }
+      })();
+    </script>
+    <script type="module" src="/page/main.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

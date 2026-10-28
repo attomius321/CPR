@@ -49,6 +49,7 @@ import {
 } from '@symbiote/core';
 import { detectForge, type ChangeRequest, type Forge } from '@symbiote/forge';
 import { pruneLogs, silentLog, type Log, type Logger } from '@symbiote/log';
+import { announce, withdraw } from '@symbiote/nexus/registry';
 import { codeMaps } from '@symbiote/monitor';
 import {
   findApp,
@@ -821,11 +822,20 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   });
   // Where Symbiote's MCP bridge finds this server (MC1): Scout's, and `symbiote mcp`'s.
   const viewRecord = viewFile(cacheDir, repo.commonDir);
+  const started = new Date().toISOString();
   await writeViewRecord(viewRecord, {
     url: server.url,
     pid: process.pid,
     root: repo.root,
-    started: new Date().toISOString(),
+    started,
+  });
+  // Where Symbiote nexus finds this server (NX1): a record of its own, beside the others'.
+  await announce(cacheDir, {
+    url: server.url,
+    pid: process.pid,
+    root: repo.root,
+    name: basename(repo.root),
+    started,
   });
 
   let url = server.url;
@@ -856,6 +866,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     await showUntilExit(url, basename(repo.root), values, ctx);
   } finally {
     await removeViewRecord(viewRecord, process.pid);
+    await withdraw(cacheDir, process.pid);
   }
   diffs.close();
   await server.close();

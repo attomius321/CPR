@@ -6,7 +6,8 @@
       "@symbiote/core": ["../core/src/index.ts"],
       "@symbiote/forge": ["../forge/src/index.ts"],
       "@symbiote/log": ["../log/src/index.ts"],
-      "@symbiote/monitor": ["../monitor/src/index.ts"]
+      "@symbiote/monitor": ["../monitor/src/index.ts"],
+      "@symbiote/nexus/registry": ["../nexus/src/registry.ts"]
     }
   },
   "include": ["src", "test"],

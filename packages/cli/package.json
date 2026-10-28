@@ -19,6 +19,7 @@
     "@symbiote/forge": "workspace:*",
     "@symbiote/log": "workspace:*",
     "@symbiote/monitor": "workspace:*",
+    "@symbiote/nexus": "workspace:*",
     "@symbiote/viewer": "workspace:*",
     "jsonc-parser": "3.3.1"
   },

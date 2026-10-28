@@ -250,6 +250,37 @@ describe('symbiote diff', () => {
     }
   });
 
+  it('says it runs while it runs, for Symbiote nexus: a record of its own server (NX1)', async () => {
+    const viewer = tempDir();
+    writeFileSync(join(viewer, 'index.html'), '');
+    process.env.SYMBIOTE_VIEWER_DIR = viewer;
+    try {
+      let url = '';
+      let files: string[] = [];
+      let record: unknown;
+      const result = await symbiote(['view', '--no-open'], repo.root, (stdout) => {
+        url = /Symbiote viewer: (\S+)/.exec(stdout())?.[1] ?? '';
+        files = readdirSync(join(cacheDir, 'running'));
+        record = JSON.parse(readFileSync(join(cacheDir, 'running', `${process.pid}.json`), 'utf8'));
+        return Promise.resolve();
+      });
+      expect(result.code).toBe(0);
+      expect(files).toEqual([`${process.pid}.json`]);
+      expect(record).toEqual({
+        url,
+        pid: process.pid,
+        root: repo.root,
+        name: basename(repo.root),
+        started: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) as unknown,
+      });
+      // Gone once it stopped: the nexus marks its tab stopped.
+      expect(readdirSync(join(cacheDir, 'running'))).toEqual([]);
+    } finally {
+      delete process.env.SYMBIOTE_VIEWER_DIR;
+      rmSync(viewer, { recursive: true, force: true });
+    }
+  });
+
   it('needs <base> for --since in symbiote view', async () => {
     const { code, stderr } = await symbiote(['view', '--since', 'main'], repo.root);
     expect(code).toBe(2);
