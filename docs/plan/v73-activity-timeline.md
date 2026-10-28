@@ -196,10 +196,14 @@ not cards in cards; summaries of facts, not prose.
   source in tests, and imports nothing of its own.
 - **e2e**: V48c's Activity spec in `workspaces.spec.ts` is replaced by `e2e/activity.spec.ts`,
   four specs.
+- **V72's page frame** reached `main` while V73 was built: `main` merged in (only
+  `docs/JOURNAL.md` conflicted), and the tab's bar, live strip and timeline take `--card-pad` for
+  their insets.
 
 **Results.** `pnpm check`: format, lint, typecheck, 2,067 unit tests (2,013 before V73: 61 new —
 54 for the viewer's grouping, words and head, 7 for the hook, the read and Codex — and V48c's 7
-timeline tests removed). e2e: 332 of 332 (5.0 min), the four new Activity specs among them. On the person's 33 recorded workspaces (5,675 calls), the median one (147
+timeline tests removed). e2e: 332 of 332 (5.0 min), the four new Activity specs among them; with `main` (V72) merged in,
+335 of 335. On the person's 33 recorded workspaces (5,675 calls), the median one (147
 calls) draws 37 rows, 27 of them phases, against 143 rows on `main`; the longest (355 calls) 66
 against 326. Grouping takes 19 ms at most (Node, the 355-call workspace). The 1 MB activity
 window reads in 1.6 ms (647 lines of ~2 KB, a median of 21 reads). A real Claude Code 2.1.312

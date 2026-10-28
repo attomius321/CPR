@@ -67,3 +67,14 @@ on `main`. A real Claude Code 2.1.312 run (haiku) through this branch's hook, dr
 Screenshots before and after (dark, light; 1440 and 760 px).
 
 Not verified: real Codex and Hermes runs; a session filling the 1 MB window; the desktop app.
+
+## V73 — main merged in: V72's page frame (2026-10-28, branch `feature/workspace-activity`)
+
+`main` took V72 (one page frame: 16 px margins and insets, 48 px card heads) while V73 was built.
+Merged into the branch: only `docs/JOURNAL.md` conflicted, both sides having appended to it (V72's
+lines first, then V73's). The Activity tab's bar, live strip and timeline take V72's
+`--card-pad` for their insets instead of a 16 px of their own.
+
+**Verification**: `pnpm check` (2,067 tests), `pnpm build`, e2e 335 of 335 (V72 added three).
+Screenshots again on the merged build, dark and light, 1440 and 760 px: the tab in V72's card, the
+panel head's "Running pnpm check 2>&1 | tail -20" without the worktree's `cd`.
