@@ -82,17 +82,21 @@ function sheet(dir, out) {
   console.log(`${labels.length} briefs written to ${out}: fill in each "label", then run.`);
 }
 
-/** The value at the `p`th percentile of `values` (nearest rank). */
-const percentile = (values, p) => {
+/**
+ * The value at the `p`th percentile of `values` (nearest rank). A declaration, not a const: the
+ * commands above run before a const below them would be set.
+ */
+function percentile(values, p) {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted[Math.max(0, Math.ceil((p / 100) * sorted.length) - 1)] ?? NaN;
-};
+}
 
 async function run(file, view, given) {
   const briefs = JSON.parse(readFileSync(file, 'utf8'));
   const options = await (await fetch(new URL('/api/workspaces/options', view))).json();
   const cacheDir = process.env.SYMBIOTE_CACHE_DIR ?? join(homedir(), '.cache', 'symbiote');
   const results = [];
+  const out = file.replace(/\.json$/, '') + '.results.json';
   console.log('| Run | Size agrees | Plan first agrees | Errors | p50 | p90 |');
   console.log('|---|---|---|---|---|---|');
   for (const spec of given.length > 0 ? given : DEFAULT_RUNS) {
@@ -138,8 +142,8 @@ async function run(file, view, given) {
     console.log(
       `| ${spec} | ${size} of ${labelled} | ${plan} of ${labelled} | ${errors} | ${seconds(percentile(times, 50))} | ${seconds(percentile(times, 90))} |`,
     );
+    // After each run: a later failure keeps the answers already paid for.
+    writeFileSync(out, `${JSON.stringify(results, null, 2)}\n`);
   }
-  const out = file.replace(/\.json$/, '') + '.results.json';
-  writeFileSync(out, `${JSON.stringify(results, null, 2)}\n`);
   console.log(`\nEvery answer: ${out}`);
 }

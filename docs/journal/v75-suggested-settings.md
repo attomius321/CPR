@@ -104,3 +104,39 @@ Not verified:
 - A proposal on a phone's width.
 - The light theme on screen.
 
+## V75 test — the advisor on 18 written briefs, four ways (2026-10-28, branch `milestone/v75-suggested-settings`)
+
+Asked: "Please test with multiple prompts." Eighteen briefs written for the test, not the person's,
+so the person's own labels stay blind: five small chores and features, six bugs, features and
+refactors of a few files, two spikes, four large ones (a cause nobody found, SAML, Stripe billing,
+splitting `server.ts`) and a rewrite that failed before. Each has the size, level and plan first
+the author expected. `scripts/advisor-eval.mjs run` asked the advisor for each, four ways, with
+the models a real `symbiote view` listed (Claude Code 2.1.312, Codex 0.163):
+
+| Run | Size | Level | Plan first | Errors | p50 | p90 | Slowest |
+|---|---|---|---|---|---|---|---|
+| Haiku 5.5 at `low` | 18 of 18 | 18 of 18 | 17 of 18 | 0 | 3.3 s | 4.4 s | 4.5 s |
+| Haiku 5.5 at `medium` | 17 of 18 | 18 of 18 | 17 of 18 | 0 | 3.5 s | 4.2 s | 4.7 s |
+| GPT-6 Luna at `low` | 5 of 18 | 11 of 18 | 18 of 18 | 0 | 3.0 s | 3.7 s | 4.0 s |
+| GPT-6 Luna at `none` | 5 of 18 | 12 of 18 | 18 of 18 | 0 | 3.0 s | 4.3 s | 5.1 s |
+
+**Learned**:
+- **Haiku 5.5 at `low` is the right default for Claude Code.** It sized every brief as expected,
+  and `medium` did no better. Its one plan-first difference, a refactor of three files, is a fair
+  call.
+- **The person's Codex lists no mid or large model.** Its `model/list` gives `gpt-6-luna`,
+  `gpt-5.6-terra` and `gpt-5.6-luna`, likely its ChatGPT Go plan. The guide names GPT-6 Astra and
+  6.1 Sol, which this Codex does not offer, so the schema kept every answer to the three listed.
+  On the large briefs Luna answered "default" or `gpt-6-luna` with a higher level; on two spikes
+  it picked `gpt-5.6-terra`, which the guide calls older. Size cannot agree here, and the level
+  agreed on 11 of 18. The prompt could say what to do when no model of the size is listed: take
+  the largest listed and raise the level. That was not tried.
+- **At `medium`, Haiku named a dated ID once.** For the rewrite it chose `claude-fable-5` where
+  `low` chose the alias `fable`. Both are listed, so the schema allows it.
+- **A script's `const` below its top-level `await` is not set yet.** The first run's 18 answers
+  were lost when `percentile` was read before its definition. It is a function declaration now,
+  and the results are written after each run.
+
+Not verified: the person's own labels on their 24 briefs (the sheet waits); a Codex that lists the
+GPT-6 models; the prompt change for a list without a model of the size.
+
