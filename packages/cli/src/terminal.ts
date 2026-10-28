@@ -30,13 +30,14 @@ export type SpawnPty = (
 ) => Pty;
 
 /**
- * node-pty's `spawn`, or why it cannot run here. It is an optional dependency: not installed, or
- * its native part not built (Linux compiles it), the page keeps Talk.
+ * node-pty's `spawn`, or why it cannot run here. It is an optional dependency, prebuilt for each
+ * platform (`@lydell/node-pty`, IN1): not installed, or no binary for this one, the page keeps
+ * Talk.
  */
 export async function loadPty(
   load: () => Promise<unknown> = () => {
     // A name TypeScript does not resolve: the types must not need the optional package.
-    const name = 'node-pty';
+    const name = '@lydell/node-pty';
     return import(name);
   },
 ): Promise<{ spawn: SpawnPty } | { error: string }> {
@@ -47,7 +48,7 @@ export async function loadPty(
     return { spawn: spawn as SpawnPty };
   } catch (error) {
     const { code, message } = error as { code?: string; message?: string };
-    if (code === 'ERR_MODULE_NOT_FOUND' && /'node-pty'/.test(message ?? '')) {
+    if (code === 'ERR_MODULE_NOT_FOUND' && /'@lydell\/node-pty'/.test(message ?? '')) {
       return { error: 'node-pty is not installed' };
     }
     return { error: `node-pty did not load: ${(message ?? String(error)).split('\n')[0]}` };
