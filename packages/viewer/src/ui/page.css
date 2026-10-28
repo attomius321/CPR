@@ -1,0 +1,110 @@
+/* ---- the page frame (V72, decisions 507–509) -------------------------------------------- */
+
+/* A page's head (`PageHead`): its icon in a 32 px square, its title and the line under it (two
+   lines, `--page-head` high), its actions at the right. `--page-pad` around it, so on every page
+   the title stands at x 60 and the cards start at y 76. The actions go under the title when the
+   title would have less than 200 px. */
+.page-head {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: calc(var(--page-head) + 2 * var(--page-pad));
+  margin: 0;
+  padding: var(--page-pad);
+}
+
+.page-head > .page-icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  color: var(--accent);
+}
+
+.page-head > .page-icon .icon {
+  width: 28px;
+  height: 28px;
+  stroke-width: 1.4;
+}
+
+.page-title {
+  flex: 1 1 200px;
+  min-width: 0;
+  min-height: var(--page-head);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.page-name-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 22px;
+}
+
+.page-name-line h1 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--size-title);
+  font-weight: 600;
+  line-height: 22px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-line {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-small);
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px 12px;
+  margin-left: auto;
+}
+
+/* A page's cards under its head: `--page-pad` from the main area's sides and bottom,
+   `--page-gap` apart. */
+.page-body {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  gap: var(--page-gap);
+  padding: 0 var(--page-pad) var(--page-pad);
+}
+
+/* The style's card (V61): a hairline, 10 px corners, the page's darkest ground. */
+.page-card {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+/* A card's head: its tabs, or its title and actions, `--card-head` high, a hairline under it. */
+.card-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: var(--card-head);
+  padding: 0 var(--card-pad);
+  border-bottom: 1px solid var(--line);
+}

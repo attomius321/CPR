@@ -7,6 +7,8 @@
 
 @import './ui/base.css';
 @import './ui/controls.css';
+/* The page frame (V72): before the pages' parts, which add to it. */
+@import './ui/page.css';
 @import './ui/Resizer.css';
 @import './ui/icons.css';
 @import './ui/Help.css';
