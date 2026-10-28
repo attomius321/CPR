@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v75-suggested-settings.md)
 
-**Status:** V75a built (2026-10-28), on branch `milestone/v75-suggested-settings`; V75b and
+**Status:** V75a and V75b built (2026-10-28), on branch `milestone/v75-suggested-settings`;
 V75c not started. The eval waits for the person's labels. "As built" and results are at the end.
 The person answered the plan's three questions: "1. Keep the agent i picked 2. No 3. Show a
 proposal i accept first. This feature should be called on click a button, not everythime i write
@@ -338,3 +338,30 @@ route asked for real through `symbiote view`: Claude Code on Haiku 5.5 suggested
 with a plan for a storage migration in 2.9 s; Codex on GPT-6-Luna suggested `gpt-6-luna` at `low`
 for a README typo in 3.3 s. No run folder was left in the cache. The eval's agreement is not
 measured yet.
+
+## As built (V75b)
+
+- **The button is in the page's head, not on a card above the Agent card.** At 1440 × 1000 the
+  run's seven cards and their gaps took 891 of the 900 px the page's body has: 9 px to spare. A
+  card for the button, 129 px with its note, made the body scroll, and V63's fit test failed. In
+  the head, beside **Cancel**, **Clear** and **Start workspace**, the button costs no height.
+- **The proposal is a card of the run's only while it is open**: from the press until it is
+  accepted, dismissed, or closed by another agent. It sits between Source and Agent, above the
+  cards it changes. At rest the page is the mockup's seven cards, as before.
+- **Use these settings is secondary, not primary.** The style allows one primary a view, and
+  the page's is **Start workspace**. **Dismiss** is a ghost button, as Cancel is.
+- **A failure has Dismiss too**, so the card can be closed without another press.
+- **A Fix's tip reads "Write what happens first"**: a main part's heading that starts with "What"
+  takes no "the", as the page's own help labels do.
+
+**Results (V75b).** 5 viewer unit tests (`test/suggest.test.ts`), red first because the module did
+not exist. An e2e test (`start.spec.ts`): the button waits for the brief, typing asks nothing, a
+press shows the proposal with the cards unchanged, **Use these settings** changes Model, Effort and
+Plan first, **Dismiss** keeps them, another agent closes the card, and a failing agent's words are
+shown. Two tests changed on purpose: the head's buttons include **Suggest settings**, and Settings
+lists 19 entries (14 prompts). `pnpm check`: 2,188 tests pass. `pnpm build`; the whole e2e suite:
+336 of 337 viewer tests passed, the one failure Settings' count of entries, then passed after the
+change (12 of 12 in `settings.spec.ts`); the nexus' 14 passed. In the built app on a scratch
+repository, the real Claude Code (Haiku 5.5) proposed Opus 5.5 at high effort, plan first, for a
+storage migration, in 3.9 s.
+

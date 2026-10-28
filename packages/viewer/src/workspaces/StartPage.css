@@ -159,6 +159,36 @@
   margin-left: calc(var(--start-name) + 12px);
 }
 
+/* Suggested settings (V75): the proposal, a card while it is open, in line with the notes past
+   the icon; its button is the head's. */
+.start-proposal {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0 0 30px;
+  overflow-wrap: anywhere;
+}
+
+.start-proposal p {
+  margin: 0;
+}
+
+.start-proposal-words {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.start-proposal-why {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.start-proposal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 /* A row (V49): the name at the left in --muted, the control at the right; a note under its
    control. Over `.workspace-field`'s margin and weight. */
 .start-card > .start-row {

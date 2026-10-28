@@ -296,3 +296,4 @@ merge commit.
 - 2026-10-28 [Fix — the spec waits for each open before the next](journal/fix-open-pr-spec-race.md)
 - 2026-10-28 [V75 spike — how the workspaces were started, and a small model sizing two briefs](journal/v75-suggested-settings.md)
 - 2026-10-28 [V75a — the advisor and its prompt, built](journal/v75-suggested-settings.md)
+- 2026-10-28 [V75b — the button and the proposal on the Start page](journal/v75-suggested-settings.md)

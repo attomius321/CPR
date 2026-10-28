@@ -77,3 +77,30 @@ Not verified:
 - Two presses at once.
 - The eval: it waits for the person's labels.
 
+## V75b — the button and the proposal on the Start page (2026-10-28, branch `milestone/v75-suggested-settings`)
+
+Built **Suggest settings** in the Start page's head and the proposal's card in the run's column,
+shown only while it is open (`StartSuggest.tsx`, the pure `suggest.ts`); decisions 548 and 549.
+
+**Learned**:
+- **The run's column had 9 px to spare at 1440 × 1000.** Measured with a throwaway spec: the seven
+  cards and their gaps took 891 of the body's 900 px. A 129 px card for the button made the page
+  scroll, so the button moved to the head and the proposal shows only while it is open.
+- **`git checkout <file>` to drop a measuring line takes every edit in the file with it.** It
+  reverted this part's new e2e test, which was rewritten from the session. Measure in a spec file
+  of its own, deleted after, as the `symbiote-style` skill's traps advise for screenshots.
+- **The theme is Symbiote's, not the browser's.** A screenshot with Playwright's light
+  `colorScheme` was dark: the page keeps its own theme setting.
+
+**Verification**: tests first, red because `suggest.js` did not exist: 5 viewer unit tests and an
+e2e test of the whole flow against the fake Claude Code, which now answers `--json-schema`.
+`pnpm check`: 2,188 tests pass. `pnpm build`; the e2e suite: 336 of 337 viewer tests passed, the
+one failure Settings' count of entries (19 with the new prompt), which passed after the change; the
+nexus' 14 passed. In the built app, the real Claude Code (Haiku 5.5) proposed Opus 5.5 at high
+effort, plan first, for a storage migration, in 3.9 s.
+
+Not verified:
+- The whole viewer suite again after the Settings change: only `settings.spec.ts` ran again.
+- A proposal on a phone's width.
+- The light theme on screen.
+

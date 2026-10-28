@@ -168,6 +168,13 @@ The cards beside the form hold the workspace's choices:
 - **Documents**: files for the agent, such as screenshots, PDFs or samples. Up to 20 files, 20 MB
   each.
 
+To have the model, effort and **Plan first** picked for you, write the brief and click **Suggest
+settings**. Your agent's small model (Haiku 5.5 for Claude Code, GPT-6 Luna for Codex) reads the
+brief, and a card proposes the settings with one sentence on why, in 3 to 5 seconds. Your cards
+change only if you click **Use these settings**; **Dismiss** keeps them. It never changes the
+agent or its permissions, and it runs only when you click. Its instructions, including which
+models it counts as small, mid and large, are the **Suggest settings** prompt in **Settings**.
+
 When you click **Start workspace** (or press Ctrl+Enter), Symbiote:
 
 1. writes the agent's *brief* (the task in words) from your answers;
