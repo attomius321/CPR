@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 import type { BranchReviewInfo, Graph } from '@symbiote/core';
-import { BackLink, DiffProgress } from './DiffProgress.js';
+import { BackLink, DiffProgress, reviewSince } from './DiffProgress.js';
 import { Canvas } from './Canvas.js';
 import { useDiffGraph } from './useDiffGraph.js';
 import { useReview } from './useReview.js';
@@ -336,6 +336,16 @@ export function App() {
       onDrag={setResizing}
     />
   );
+  // The head's title; before its graph a review's in the shell (being analyzed: V71's card under
+  // it), else Symbiote's window with its name, as the bar had it.
+  const title =
+    state.status === 'ready' ? (
+      <DiffName graph={state.graph} review={state.branchReview} />
+    ) : inView ? (
+      'Review'
+    ) : (
+      'Symbiote'
+    );
   const content = (
     <div
       className={inView ? 'app' : 'app alone'}
@@ -348,13 +358,7 @@ export function App() {
       <PageHead
         className="bar"
         icon={inView ? <ReviewIcon /> : <SymbioteMark />}
-        title={
-          state.status === 'ready' ? (
-            <DiffName graph={state.graph} review={state.branchReview} />
-          ) : (
-            'Symbiote'
-          )
-        }
+        title={title}
         line={
           state.status === 'ready' ? (
             <span className="diff-facts">
@@ -470,7 +474,9 @@ export function App() {
           {state.status === 'empty' && (
             <DropZone error={state.error} onFile={(file) => void load(file)} />
           )}
-          {state.status === 'analyzing' && <DiffProgress loaded={state.loaded} onRetry={retry} />}
+          {state.status === 'analyzing' && (
+            <DiffProgress loaded={state.loaded} review={state.branchReview} onRetry={retry} />
+          )}
           {state.status === 'ready' && (
             <ReactFlowProvider>
               <Sidebar
@@ -625,15 +631,9 @@ function DiffName({ graph, review }: { graph: Graph; review: BranchReviewInfo | 
 function ReviewAfter({ review }: { review: BranchReviewInfo }) {
   const { branch, since } = review;
   const workspace = useWorkspaces().list?.workspaces.find((f) => f.branch === branch);
-  const after =
-    since === null
-      ? 'first review'
-      : since === 0
-        ? 'no commits since your last review'
-        : `${since} commit${since === 1 ? '' : 's'} since your last review`;
   return (
     <span className="review-after">
-      {after}
+      {reviewSince(since)}
       {workspace && (
         <>
           {' · '}

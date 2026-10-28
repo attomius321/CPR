@@ -14,6 +14,7 @@
 @import './ui/Help.css';
 @import './ui/Tooltip.css';
 @import './ui/MoreActions.css';
+@import './ui/ground.css';
 @import './graph/SymbolNode.css';
 @import './graph/SummaryNode.css';
 @import './graph/FileNode.css';
@@ -26,6 +27,7 @@
 @import './diff/ReviewTab.css';
 @import './diff/since.css';
 @import './diff/FilesPage.css';
+@import './diff/DiffProgress.css';
 @import './history/HistoryPage.css';
 @import './history/GraphCell.css';
 @import './history/RowMenu.css';

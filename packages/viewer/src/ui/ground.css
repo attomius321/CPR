@@ -1,0 +1,27 @@
+/* The start page's arcs (V63, decision 455), shared with an analysis's page since V71 (decision
+   502): rings of the primary, faint, lit inside and out, on a layer under the page's content,
+   clipped to it, still while the page scrolls. Each page places its own: the layer's `::before`
+   and `::after`, and any `.ground-ring` inside it. */
+.ground {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.ground::before,
+.ground::after {
+  content: '';
+}
+
+.ground::before,
+.ground::after,
+.ground-ring {
+  position: absolute;
+  border: 1px solid var(--ground-arc);
+  border-radius: 50%;
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--ground-arc) 50%, transparent),
+    inset 0 0 28px color-mix(in srgb, var(--ground-arc) 35%, transparent);
+}

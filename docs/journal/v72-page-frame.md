@@ -75,3 +75,23 @@ Not verified: `/git`'s first paint (no font changed); the desktop app's window (
 `title-bar.spec.ts`'s stand-in for it); macOS and Windows; Scout's question form with a real
 agent (the fake's terminal-off form was measured); a merge with conflicts (its Files view kept
 its own spacing, under the frame's head); the README's images, which still show the old frame.
+
+## V72 — main merged in: V71's analyzing page (2026-10-28, branch `feature/layout-fixing`)
+
+`main` gained V71 (a diff's analysis as a card on the start page's arcs) while V72 was built. The
+merge conflicted in the plan's index, the journal's, the style skill's recipes, the review's
+`App.tsx` and the start page.
+
+**Learned**:
+- **V71 moved Start's rings into `ui/ground.css`** (`.ground`, its `::before` and `::after`).
+  Start keeps only its top-left ring's place, and hides the layer's `::after`: ground.css gives
+  every `::after` a ring, which would draw a 2 px dot with no size of its own.
+- **V71 keeps its card centred**, by its own design: it is a state, not a page to work in. V72
+  left it so, and the style skill's recipe says why.
+- **The review's head had a placeholder before its graph.** It said "Symbiote" beside the
+  review's eye, over V71's card. In the shell it now says "Review"; without a shell it keeps
+  Symbiote's name, as the old bar did.
+
+**Verification**: `pnpm check` (2,013 unit tests, V71's among them); V71's analyzing spec with
+the frame, Start, reviews, commits, pull request, title-bar and shell specs: 50, then 27 passed
+after the head's title; a screenshot of the analyzing page.

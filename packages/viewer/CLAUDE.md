@@ -59,7 +59,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   `comments.ts` (draft comments and anchors), `store.ts` (server or browser state).
 - `src/history/commits.ts` (**pure**: picking, which end is the base, diverged picks' fork point found from
   the shape (V10c; checked against git by `scripts/viewer/compare-check.mjs`), the label, reading `api/graph`'s
-  202/502/404 while a diff is analyzed), `HistoryPage.tsx` (the Git page; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case), its calls in `api.ts` (the diff's page imports `startDiff` and `fetchGraph` from there), `CommitRow.tsx`, `CompareBar.tsx`. A diff's progress is `diff/DiffProgress.tsx`.
+  202/502/404 while a diff is analyzed), `HistoryPage.tsx` (the Git page; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case), its calls in `api.ts` (the diff's page imports `startDiff` and `fetchGraph` from there), `CommitRow.tsx`, `CompareBar.tsx`. A diff's progress is `diff/DiffProgress.tsx` (V71: a card on the arcs; its steps `analysis-steps.ts`, pure).
 - `src/history/` since V66 (the Git page): `git-api.ts` (`/api/git/…`: a commit, the changes, the
   upstream, a search, git's writes), `details.ts` (**pure** but for the pane's place, kept in the
   browser as the theme is: lines, the changes' words, why Commit is off, the upstream in words, a

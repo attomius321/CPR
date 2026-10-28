@@ -16,34 +16,23 @@
   container: start / inline-size;
 }
 
-/* The mockup's arc (decision 455): a ring around the head's S, in the primary, faint; under
-   everything on the page, still while the body scrolls. Its two rings at the right of the cards
-   stood in the ground beside a centred page: the cards reach the area's edge since V72. */
-.start-ground {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
+/* The mockup's arc (decision 455; the rings are `ui/ground.css`'s): a ring around the head's S.
+   Its two rings at the right of the cards stood in the ground beside a centred page: the cards
+   reach the area's edge since V72, so the layer draws no `::after`. */
+.start-ground::after {
+  display: none;
 }
 
 .start-ground::before {
-  content: '';
-  position: absolute;
   top: -795px;
   left: -445px;
   width: 990px;
   height: 990px;
-  border: 1px solid var(--ground-arc);
-  border-radius: 50%;
   background: radial-gradient(
     closest-side,
     transparent 72%,
     color-mix(in srgb, var(--ground-arc) 18%, transparent)
   );
-  box-shadow:
-    0 0 28px color-mix(in srgb, var(--ground-arc) 50%, transparent),
-    inset 0 0 28px color-mix(in srgb, var(--ground-arc) 35%, transparent);
 }
 
 /* The S on its plate, lit as the mockup's. */

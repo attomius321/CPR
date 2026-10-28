@@ -368,22 +368,6 @@
   color: var(--muted);
 }
 
-.diff-progress {
-  max-width: 720px;
-  margin: 12vh auto;
-  padding: 0 24px;
-}
-
-.diff-progress p {
-  font-size: var(--size-title);
-}
-
-.diff-progress pre {
-  max-height: 40vh;
-  overflow: auto;
-  white-space: pre-wrap;
-}
-
 /* ---- branch reviews (V15) -------------------------------------------------------------- */
 
 /* On a reviewed branch's badge, a filled chip: "+2" commits since the review (the blue of their

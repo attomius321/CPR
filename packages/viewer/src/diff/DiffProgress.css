@@ -1,0 +1,267 @@
+/* A diff's page while its pair is analyzed, failed or was stopped (DiffProgress.tsx, V71): one
+   card in the middle of the main area, the start page's arcs over all of it (decision 502). */
+.analysis {
+  position: absolute;
+  inset: 0;
+  isolation: isolate;
+  display: flex;
+  overflow: auto;
+  padding: 24px 16px;
+  container: analysis / inline-size;
+}
+
+/* The arcs centred on the card (its half-diagonal is ~340 px), so none crosses another: an orbit
+   800 px across clear of it, lit inside as Start's top-left ring; Start's right pair 1,120 px
+   across (its outline 40 px inside); a ring 1,560 px across, fainter, that a wide window shows. */
+.analysis-ground::before,
+.analysis-ground::after {
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.analysis-ground::before {
+  width: 1120px;
+  height: 1120px;
+  outline: 1px solid color-mix(in srgb, var(--ground-arc) 60%, transparent);
+  outline-offset: -40px;
+}
+
+.analysis-ground::after {
+  width: 1560px;
+  height: 1560px;
+  opacity: 0.6;
+}
+
+.analysis-orbit {
+  top: calc(50% - 400px);
+  left: calc(50% - 400px);
+  width: 800px;
+  height: 800px;
+  background: radial-gradient(
+    closest-side,
+    transparent 72%,
+    color-mix(in srgb, var(--ground-arc) 18%, transparent)
+  );
+}
+
+/* While it runs, a comet on the orbit (decision 503): its tail the ring's 2 px, from nothing
+   half a turn behind to the primary at its head, and the head's light. A turn in 7 s; only the
+   transform moves, so the compositor turns it. */
+.analysis-orbit::before,
+.analysis-orbit::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  animation: analysis-orbit 7s linear infinite;
+}
+
+.analysis-orbit::before {
+  background: radial-gradient(
+    circle at 50% 1px,
+    color-mix(in srgb, var(--primary) 45%, transparent),
+    transparent 12px
+  );
+}
+
+.analysis-orbit::after {
+  background: conic-gradient(
+    transparent 180deg,
+    color-mix(in srgb, var(--primary) 70%, transparent) 350deg,
+    var(--primary)
+  );
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2.25px), #000 calc(100% - 1.75px));
+}
+
+@keyframes analysis-orbit {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Ended, the arcs stay and the comet goes; without motion it holds still at the top. */
+.analysis.ended .analysis-orbit::before,
+.analysis.ended .analysis-orbit::after {
+  animation: none;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analysis-orbit::before,
+  .analysis-orbit::after {
+    animation: none;
+  }
+}
+
+/* The card: Start's (V63), centred; `margin: auto` keeps its top in view when it is taller than
+   the area. */
+.analysis-card {
+  width: 100%;
+  max-width: 560px;
+  margin: auto;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: var(--shadow-lift);
+}
+
+/* Its head as Start's: the S lit, the title and its line, and the state's chip at the right. */
+.analysis-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 8px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.analysis-head .symbiote-mark {
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 0 24px var(--ground-arc);
+}
+
+.analysis-title {
+  position: relative;
+  min-width: 0;
+}
+
+.analysis-title h1 {
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+/* "Analyzing", "Reviewing": the verb a step under what it is about. */
+.analysis-verb {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.analysis-title p {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+/* The running step, for a screen reader: the live region's, drawn in the steps. */
+.analysis-now {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The merge page's state chip (V69): a 12 % fill, a 30 % edge, the tone as its words. */
+.analysis-chip {
+  --chip-tone: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--chip-tone) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--chip-tone) 30%, transparent);
+  color: var(--chip-tone);
+  font-size: var(--size-small);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.analysis-chip.failed {
+  --chip-tone: var(--removed);
+}
+
+.analysis-chip .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* The steps (decision 504), the merge log's rows (V69): the dot under the S's edge. */
+.analysis-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 12px 16px 0;
+  list-style: none;
+}
+
+.analysis-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  padding: 0 8px;
+  color: var(--muted);
+}
+
+.analysis-step.mark-done {
+  color: var(--text);
+}
+
+.analysis-step.mark-running {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* A failure's words as they came, in a well: the text's colour, not the error's red. */
+.analysis-error {
+  max-height: 40vh;
+  margin: 16px 24px 0;
+  padding: 12px 14px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: var(--size-small);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.analysis-note {
+  margin: 16px 24px 0;
+  color: var(--muted);
+}
+
+/* The ways out (decision 505), as Start's head actions: 36 px, a 14 px icon. */
+.analysis-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 24px;
+}
+
+.analysis-actions .button {
+  min-height: 36px;
+  padding: 0 16px;
+}
+
+.analysis-actions .button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Narrow, the chip goes under the title. */
+@container analysis (max-width: 479px) {
+  .analysis-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .analysis-chip {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

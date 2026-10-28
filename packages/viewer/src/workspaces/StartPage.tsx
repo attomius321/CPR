@@ -163,7 +163,7 @@ export function StartPage({
 function StartHead({ children }: { children: ReactNode }) {
   return (
     <>
-      <div className="start-ground" aria-hidden="true" />
+      <div className="ground start-ground" aria-hidden="true" />
       <PageHead
         className="start-top"
         icon={<SymbioteMark />}
