@@ -19,7 +19,9 @@
     "logs:up": "node ops/logs/logs.mjs up",
     "logs:down": "node ops/logs/logs.mjs down",
     "logs:check": "node ops/logs/logs.mjs check",
-    "app:setup": "node packages/desktop/node_modules/electron/install.js"
+    "app:setup": "node packages/desktop/node_modules/electron/install.js",
+    "cli:install": "sh install.sh --no-app",
+    "app:install": "sh install.sh"
   },
   "devDependencies": {
     "@symbiote/plugin-angular": "workspace:*",
