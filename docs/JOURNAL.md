@@ -276,3 +276,4 @@ merge commit.
 - 2026-10-27 [V69 — the merge page as the mockup: chips, a log that fills the page, line tabs](journal/v69-merge-page-mockup.md)
 - 2026-10-27 [V70 spike — where a commit's file opens, and how much of it shows](journal/v70-git-file-view.md)
 - 2026-10-27 [V70 — a commit's file in the rows' place; Open in VS Code from Git](journal/v70-git-file-view.md)
+- 2026-10-28 [V72 spike — every page's margins, gutters, head and insets](journal/v72-page-frame.md)

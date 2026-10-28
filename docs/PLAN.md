@@ -212,6 +212,7 @@ hosted.
 | [V63](plan/v63-start-page-mockup.md) | Start a workspace as the person's mockup: the S in the head, kinds as tabs, the run as seven cards | ready for review | 451–457 | [journal](journal/v63-start-page-mockup.md) |
 | [V64](plan/v64-skills-page-mockup.md) | Skills as the person's mockup: Settings' head, a search, the text with line numbers and Markdown's colours, Checks a card, Open in VS Code | ready for review | 458–464 | [journal](journal/v64-skills-page-mockup.md) |
 | Feature | Settings at the sidenav's bottom, under the workspaces | ready for review | | [journal](journal/sidenav-settings-at-the-bottom.md) |
+| [V72](plan/v72-page-frame.md) | One page frame: every page the whole main area, one head, 16 px margins and gutters, the same insets inside cards | planned | 507–512 | [journal](journal/v72-page-frame.md) |
 
 ### Native window
 
