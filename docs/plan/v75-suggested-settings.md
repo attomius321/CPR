@@ -3,8 +3,10 @@
 [Index](../PLAN.md) · [Journal](../journal/v75-suggested-settings.md)
 
 **Status:** planned (2026-10-28), on branch `milestone/v75-suggested-settings`; not started.
-Three questions for the person are under [Open questions](#open-questions); the plan takes the
-first answer of each until they are answered.
+The person answered the plan's three questions: "1. Keep the agent i picked 2. No 3. Show a
+proposal i accept first. This feature should be called on click a button, not everythime i write
+in the prompt, it is the user decision." The answers are under
+[The person's answers](#the-persons-answers) and in decisions 545, 548 and 549.
 
 **Problem** (asked: "a feature in create a workspace, where i can press a button, a Haiku, or
 OpenAi analog model spawns, and choose which settings to be set on, model, effort ...etc"; and
@@ -49,16 +51,17 @@ them (`model_instructions_file`). Five runs show the mechanism works. They do no
 the suggestion is right: that is the eval in [Verification](#verification).
 
 **Goal**: a **Suggest settings** button on the Start page. You write the brief, then press the
-button. Within about 5 s the Model, Effort and Plan first cards change to the suggestion, and a
-line under the button says why: "Suggested by Haiku 5.5: Bumps one dependency and reformats:
-small and mechanical." **Undo** puts the cards back. You still press **Start workspace**.
+button. Within about 5 s a proposal appears under it, for example: "Haiku 5.5 suggests Opus 5.5 at
+high effort, plan first. Moves storage to SQLite with a migration: large, with a risk to data."
+The cards change only when you press **Use these settings**. **Dismiss** closes the proposal and
+leaves the cards as they were. You still press **Start workspace**.
 
 What must not change:
 
 - Without a press, the page and the start request are what they are on `main`.
 - A suggestion never changes the agent, the permission mode, the branch, the brief or the
-  documents.
-- Nothing is sent to a model until the press.
+  documents. It changes the cards only when you accept it.
+- Nothing is sent to a model until the press. Typing in the brief never starts the advisor.
 - Scout, Scribe, the merger, `symbiote diff` and `symbiote pr` are untouched. No graph or analysis
   change.
 
@@ -202,18 +205,25 @@ models (sources in the journal):
 
 - **The button**, **Suggest settings**, sits at the top of the run's column, above the Agent card.
   It is disabled until the brief's main part has text, while a start runs, and when no agent is
-  installed. While the advisor runs, the button says "Suggesting…" with V53's spinner.
-- **Applying**: the suggestion goes through `choose()` as the run's choices (`RunChoices.model`,
-  `effort`, `planFirst`), so `keptModel` and `keptEffort` hold it to the agent's list as they hold
-  a draft (decision 548).
-- **The note**: a muted line under the button, "Suggested by <model name>: <why>", with **Undo**,
-  which restores the choices from before the suggestion. The note goes away when the person
-  changes a card by hand.
-- **Failure**: the cards stay as they were, and the note says why. For example: "No suggestion:
+  installed. While the advisor runs, the button says "Suggesting…" with V53's spinner. The
+  advisor runs only on a press, never as the person types (decision 549).
+- **The proposal** (decision 548): a box under the button that says what the advisor suggests
+  and why. "Haiku 5.5 suggests Opus 5.5 at high effort, plan first", then the `why` on its own
+  line. The model and level are named as the agent will take them: a level the model does not
+  take is shown as "its default level". If the proposal matches the cards, it says so and offers
+  only **Dismiss**.
+- **Accepting**: **Use these settings** gives the proposal to `choose()` as the run's choices
+  (`RunChoices.model`, `effort`, `planFirst`), so `keptModel` and `keptEffort` hold it to the
+  agent's list as they hold a draft. The proposal then closes. **Dismiss** closes it with the
+  cards unchanged.
+- **A proposal that no longer fits**: changing the agent closes it, because its models are the
+  other agent's. Editing the brief leaves it open: the person decides whether it still fits, or
+  presses **Suggest settings** again.
+- **Failure**: the cards stay as they were, and the box says why. For example: "No suggestion:
   Claude Code declined the request", "No suggestion: no answer within 20 s", or "No suggestion:
   the answer was not one Symbiote can use".
-- **Styles** follow the `symbiote-style` skill: a secondary button and the run column's
-  `dialog-note`, with no new tokens.
+- **Styles** follow the `symbiote-style` skill: a secondary button, the proposal as a card of the
+  run's column with a primary and a secondary button, and no new tokens.
 
 ## Settings (V47c's pattern)
 
@@ -234,12 +244,15 @@ models (sources in the journal):
    - CLI unit, the checks: an unlisted model is refused, and a level the model does not take is
      dropped. `advisor.model` and `advisor.effort` are read and written. A prompt over 8,000
      characters is not used.
-   - Viewer unit: a suggestion applied through the run's choices (kept, dropped), Undo, the
-     note's words for each failure.
+   - Viewer unit: the proposal's words (a level the model does not take, a proposal that matches
+     the cards, each failure); an accepted proposal applied through the run's choices (kept,
+     dropped).
 2. **e2e** (`start.spec.ts`): the fake Claude Code answers `-p … --json-schema` with fixed JSON,
-   and a fake `codex` writes the `-o` file. Press **Suggest settings**: the Model and Effort cards
-   show the suggestion and the note shows the why. **Undo** restores the cards. A fake that exits
-   with code 1 leaves the cards as they were and says so.
+   and a fake `codex` writes the `-o` file. Typing a brief starts nothing. Press **Suggest
+   settings**: the proposal shows the model, the level and the why, and the cards are unchanged.
+   **Use these settings** changes the Model, Effort and Plan first cards. **Dismiss** leaves them.
+   Changing the agent closes an open proposal. A fake that exits with code 1 leaves the cards as
+   they were and says so.
 3. **Nothing else changes**: the start tests pass unchanged, so a start without a press sends
    what it sends on `main`. The other Settings groups are unchanged.
 4. **The eval, on real briefs**: 24 briefs from this repository's records, every chore and
@@ -257,7 +270,7 @@ models (sources in the journal):
 | Risk | Mitigation |
 |---|---|
 | The guide goes stale when the agents list new models | It is prompt text, edited in Settings. The schema allows only listed IDs, so a stale guide cannot start a missing model |
-| A model too small for the task wastes a run | The person sees the suggestion and the why before **Start workspace**. The eval measures how often it happens |
+| A model too small for the task wastes a run | The person reads the proposal and its why, and accepts it or not. The eval measures how often it happens |
 | Haiku 5.5 declines a brief about security work, and it has no server-side fallback | The cards stay as they were, and the note says the request was declined |
 | Codex reads about 12,400 tokens a suggestion, even with its instructions replaced | Measured, and paid only on a press. If it matters, try Codex's app server with an output schema (not measured) |
 | Claude Code moves `structured_output` in a later version | A unit test reads a recorded answer. A missing field gives no suggestion, never a wrong one |
@@ -271,7 +284,7 @@ is built.
 | # | Milestone | Output |
 |---|---|---|
 | V75a | The advisor and its prompt | `workspace-advice.ts`, the `advisor` prompt key, the schema, `POST /api/workspaces/suggest`, the eval script and its results |
-| V75b | The button on the Start page | **Suggest settings**, applying, the note, Undo, failures; e2e |
+| V75b | The button on the Start page | **Suggest settings**, the proposal, **Use these settings** and **Dismiss**, failures; e2e |
 | V75c | Settings | The Advisor group (Model, Effort) and the prompt in Prompts |
 
 **Proposed decisions**:
@@ -279,19 +292,23 @@ is built.
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 544 | Which model suggests? | **The picked agent's small model**: Claude Code `haiku`, Codex `gpt-6-luna`, at `low`; Settings can change both | 3.1–5.0 s and the right size on 4 of 4 spike runs; the person's own login, no API key |
-| 545 | What may a suggestion change? | **The model, the effort level and plan first**; never the agent, the permission mode, the branch or the brief | Open questions 1 and 2; the account and the permissions stay the person's choice |
+| 545 | What may a suggestion change? | **The model, the effort level and plan first**; never the agent, the permission mode, the branch or the brief | The person: "Keep the agent i picked", and no to the permission mode |
 | 546 | Where does the model guide live? | **In the `advisor` prompt's default text**, edited in Settings | Every current model is newer than the advisor's knowledge cutoff; the lists changed eight times in eight weeks |
 | 547 | How is the answer held to the agent's list? | **The CLI's schema flag, with enums built from the list, then V47's checks** | Both flags measured; a level per model cannot be said in one schema, and `keptEffort` already handles it |
-| 548 | How does a suggestion apply? | **It fills the cards, with a why and Undo** | Open question 3; the person still presses Start |
-| 549 | When does the advisor run? | **Only when the button is pressed** | It spends the person's quota and 3–5 s |
+| 548 | How does a suggestion apply? | **As a proposal the person accepts**: the cards change only on **Use these settings** | The person: "Show a proposal i accept first" |
+| 549 | When does the advisor run? | **Only when the button is pressed**, never as the person types | The person: "should be called on click a button, not everythime i write in the prompt, it is the user decision"; it spends their quota and 3–5 s |
 | 550 | Where does the person's text go? | **Between `<task>` tags, as the message, with the prompt as the agent's instructions (`--system-prompt`, `model_instructions_file`); documents by name only; no tools** | Keeps the person's text apart from the instructions, as Anthropic's guide advises; Codex reads 3,460 fewer tokens (measured) |
 
-## Open questions
+## The person's answers
 
-1. Should a suggestion also switch the agent, from Claude Code to Codex or back? The plan says
-   no: it stays on the agent you picked.
-2. Should a suggestion set Claude Code's permission mode? The plan says no.
-3. Should a suggestion fill the cards with Undo, as planned, or show a proposal that you accept?
+1. Should a suggestion also switch the agent, from Claude Code to Codex or back? **No**: "Keep the
+   agent i picked."
+2. Should a suggestion set Claude Code's permission mode? **No.**
+3. Should a suggestion fill the cards with Undo, or show a proposal that you accept? **A proposal**:
+   "Show a proposal i accept first."
+
+The person added that the advisor runs only when the button is pressed: "not everythime i write in
+the prompt, it is the user decision" (decision 549).
 
 **Not in V75 (later)**: switching the agent; suggestions for Scout, Scribe or the merger; a
 suggestion while you type; learning from the person's past picks; Hermes.
