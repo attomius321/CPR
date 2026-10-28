@@ -588,3 +588,11 @@ export const AlertIcon = () => (
     <path d="M12 8v4M12 16h.01" />
   </Icon>
 );
+
+/** Stop, on an analysis's page (V71): lucide's circle-stop. */
+export const StopIcon = () => (
+  <Icon lucide>
+    <circle cx="12" cy="12" r="10" />
+    <rect x="9" y="9" width="6" height="6" rx="1" />
+  </Icon>
+);

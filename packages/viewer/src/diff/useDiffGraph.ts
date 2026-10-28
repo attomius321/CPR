@@ -15,8 +15,13 @@ export type State =
    * workspaces, and History, Settings, a workspace or a merge beside it.
    */
   | { status: 'shell'; repo?: string }
-  /** A diff's page while it is analyzed, or once it failed or was stopped. */
-  | { status: 'analyzing'; loaded: Exclude<Loaded, { kind: 'graph' }> }
+  /** A diff's page while it is analyzed, or once it failed or was stopped; a review's, named
+   * (V71). */
+  | {
+      status: 'analyzing';
+      loaded: Exclude<Loaded, { kind: 'graph' }>;
+      branchReview?: BranchReviewInfo;
+    }
   /**
    * `sources`: opened through `symbiote view`, so `/api/source` exists. `forge`: opened through
    * `symbiote pr`, which posts reviews there. `commits`: a diff of `symbiote view`, which lists
@@ -99,6 +104,7 @@ export function useDiffGraph() {
         setInView(capabilities.repo ? { repo: capabilities.repo } : {});
       }
       let opened = attempt === 0;
+      const review = capabilities?.branchReview ? { branchReview: capabilities.branchReview } : {};
       const poll = async (): Promise<void> => {
         const loaded = await fetchGraph(url);
         if (!live) return;
@@ -113,14 +119,14 @@ export function useDiffGraph() {
             commits: !!capabilities?.commits,
             open: !!capabilities?.open,
             files: !!capabilities?.files,
-            ...(capabilities?.branchReview ? { branchReview: capabilities.branchReview } : {}),
+            ...review,
           });
         } else if (loaded.kind === 'progress' || loaded.kind === 'failed') {
-          setState({ status: 'analyzing', loaded });
+          setState({ status: 'analyzing', loaded, ...review });
           if (loaded.kind === 'progress') timer = setTimeout(() => void poll(), POLL_MS);
         } else if (loaded.pair && capabilities?.commits) {
           // A diff's page opened anew (a bookmark, a restarted server): analyze it.
-          if (!opened) return setState({ status: 'analyzing', loaded });
+          if (!opened) return setState({ status: 'analyzing', loaded, ...review });
           opened = false;
           await startDiff(loaded.pair).catch(() => undefined);
           if (live) await poll();

@@ -83,7 +83,7 @@ text's `rgb(11 18 32)` in light, not pure white or black.
 --shadow-lift: 0 1px 2px rgb(0 0 0 / 24%);
 --shadow-floating: 0 12px 28px rgb(0 0 0 / 45%);
 --primary-shine: inset 0 1px 0 rgb(255 255 255 / 22%);           /* the primary's lit top edge */
---ground-arc: rgb(124 104 252 / 30%);                            /* the start page's arcs (V63) */
+--ground-arc: rgb(124 104 252 / 30%);                            /* the arcs: Start (V63), an analysis (V71) */
 --menu-bg: rgb(13 16 21 / 82%);
 --menu-line: rgb(220 226 238 / 12%);
 --menu-hover: rgb(220 226 238 / 10%);

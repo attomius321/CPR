@@ -18,27 +18,11 @@
   container: start / inline-size;
 }
 
-/* The mockup's arcs (decision 455): a ring at the top left, two at the right of the cards, in
-   the primary, faint; under everything on the page, still while the body scrolls. */
+/* The mockup's arcs (decision 455; their rings `ui/ground.css`): a ring at the top left, two at
+   the right of the cards. */
 .start-ground {
   /* The ground beside the cards (`100%`: the page's width), as the head's padding. */
   --ground-side: max(16px, calc((100% - 760px) / 2));
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.start-ground::before,
-.start-ground::after {
-  content: '';
-  position: absolute;
-  border: 1px solid var(--ground-arc);
-  border-radius: 50%;
-  box-shadow:
-    0 0 28px color-mix(in srgb, var(--ground-arc) 50%, transparent),
-    inset 0 0 28px color-mix(in srgb, var(--ground-arc) 35%, transparent);
 }
 
 .start-ground::before {
