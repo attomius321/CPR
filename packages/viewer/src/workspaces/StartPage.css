@@ -1,12 +1,10 @@
-/* Start a workspace, a page of the shell's (V30a), drawn as the person's mockup since V63: the
-   head — the S, the title and its line, the buttons — on the page's ground, the mockup's arcs
-   behind it; then the brief, one card, and the run, seven cards, side by side where the main area
-   has the room (821 : 470, as the mockup; 1,312 px at most), the run under the brief where not.
-   The body scrolls under the head, which keeps Start workspace in view. The head's contents are
-   laid out in the cards' width (V49). */
+/* Start a workspace, a page of the shell's (V30a), drawn as the person's mockup since V63, in the
+   page frame since V72 (decision 507): the head — the S, the title and its line, the buttons —
+   then the brief, one card, and the run, seven cards, side by side where the main area has the
+   room (821 : 470, as the mockup), the run under the brief where not; the whole main area at any
+   width, the cards right under the head on any window. The body scrolls under the head, which
+   keeps Start workspace in view. */
 .start-page {
-  /* The cards' width, the head's contents laid out in it. */
-  --start-width: 760px;
   /* A run row's name, and the head of a card that is one choice: their controls line up. */
   --start-name: 124px;
   position: relative;
@@ -18,11 +16,10 @@
   container: start / inline-size;
 }
 
-/* The mockup's arcs (decision 455): a ring at the top left, two at the right of the cards, in
-   the primary, faint; under everything on the page, still while the body scrolls. */
+/* The mockup's arc (decision 455): a ring around the head's S, in the primary, faint; under
+   everything on the page, still while the body scrolls. Its two rings at the right of the cards
+   stood in the ground beside a centred page: the cards reach the area's edge since V72. */
 .start-ground {
-  /* The ground beside the cards (`100%`: the page's width), as the head's padding. */
-  --ground-side: max(16px, calc((100% - 760px) / 2));
   position: absolute;
   inset: 0;
   z-index: -1;
@@ -30,115 +27,46 @@
   pointer-events: none;
 }
 
-.start-ground::before,
-.start-ground::after {
+.start-ground::before {
   content: '';
   position: absolute;
-  border: 1px solid var(--ground-arc);
-  border-radius: 50%;
-  box-shadow:
-    0 0 28px color-mix(in srgb, var(--ground-arc) 50%, transparent),
-    inset 0 0 28px color-mix(in srgb, var(--ground-arc) 35%, transparent);
-}
-
-.start-ground::before {
   top: -795px;
   left: -445px;
   width: 990px;
   height: 990px;
+  border: 1px solid var(--ground-arc);
+  border-radius: 50%;
   background: radial-gradient(
     closest-side,
     transparent 72%,
     color-mix(in srgb, var(--ground-arc) 18%, transparent)
   );
-}
-
-/* Two rings at the right, one inside the other (its outline), their leftmost 24 px past the
-   cards' edge, as the mockup's: never behind a card, where its gaps would show bits of them. */
-.start-ground::after {
-  top: 40px;
-  right: calc(var(--ground-side) - 1784px);
-  width: 1760px;
-  height: 1760px;
-  outline: 1px solid color-mix(in srgb, var(--ground-arc) 60%, transparent);
-  outline-offset: -40px;
-}
-
-/* The space each side of the cards: the head's and the error's padding. */
-.start-top,
-.start-error {
-  --start-side: max(16px, calc((100% - var(--start-width)) / 2));
-}
-
-.start-top {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: 'mark title actions';
-  align-items: center;
-  column-gap: 16px;
-  row-gap: 12px;
-  box-sizing: border-box;
-  padding: 16px var(--start-side) 12px;
+  box-shadow:
+    0 0 28px color-mix(in srgb, var(--ground-arc) 50%, transparent),
+    inset 0 0 28px color-mix(in srgb, var(--ground-arc) 35%, transparent);
 }
 
 /* The S on its plate, lit as the mockup's. */
 .start-top .symbiote-mark {
-  grid-area: mark;
   box-shadow:
     0 0 0 1px var(--line),
     0 0 24px var(--ground-arc);
 }
 
-.start-heading {
-  grid-area: title;
-  min-width: 0;
-}
-
-.start-heading h1 {
-  margin: 0;
-  font-size: var(--size-title);
-  font-weight: 600;
-}
-
-.start-heading p {
-  margin: 2px 0 0;
-  color: var(--muted);
-  font-size: var(--size-small);
-}
-
-.start-actions {
-  grid-area: actions;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 /* The page's actions a step taller than a row's, as the mockup's. */
-.start-actions .button {
+.start-top .button {
   min-height: 36px;
   padding: 0 16px;
 }
 
-.start-actions .button .icon {
+.start-top .button .icon {
   width: 14px;
   height: 14px;
 }
 
-/* Narrow, the buttons go under the S and the title. */
-@container start (max-width: 599px) {
-  .start-top {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas: 'mark title' 'actions actions';
-  }
-
-  .start-actions {
-    justify-content: flex-end;
-  }
-}
-
 .start-error {
-  margin: 12px 0 0;
-  padding: 0 var(--start-side);
+  margin: 0 0 12px;
+  padding: 0 var(--page-pad);
   white-space: pre-wrap;
 }
 
@@ -146,40 +74,19 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 8px 16px 16px;
-}
-
-/* A tall main area: the head and the cards lower, 40 % of the height over 900 px (240 at most),
-   and the goal taller (below). Not centred: the cards would move as More opens or files are
-   added. */
-@media (min-height: 940px) {
-  .start-page {
-    padding-top: min(240px, calc((100vh - 900px) * 0.4));
-  }
+  padding: 0 var(--page-pad) var(--page-pad);
 }
 
 .start-columns {
   display: grid;
-  grid-template-columns: minmax(0, 760px);
-  justify-content: center;
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--page-gap);
 }
 
 /* Wide, the mockup's two columns (decision 454): its proportion, the run at least 380 px. */
 @container start (min-width: 1000px) {
-  .start-top,
-  .start-error {
-    --start-width: 1312px;
-  }
-
-  .start-ground {
-    --ground-side: max(16px, calc((100% - 1312px) / 2));
-  }
-
   .start-columns {
     grid-template-columns: minmax(0, 821fr) minmax(380px, 470fr);
-    max-width: 1312px;
-    margin: 0 auto;
     align-items: start;
   }
 }
@@ -187,7 +94,7 @@
 /* The brief: one card. */
 .start-brief {
   min-width: 0;
-  padding: 12px 24px 24px;
+  padding: 0 var(--card-pad) var(--card-pad);
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--panel);
@@ -198,13 +105,13 @@
 .start-run {
   display: grid;
   align-content: start;
-  gap: 8px;
+  gap: var(--page-gap);
   min-width: 0;
 }
 
 .start-card {
   min-width: 0;
-  padding: 12px 16px;
+  padding: var(--card-pad);
   border: 1px solid var(--line);
   border-radius: 14px;
   background: var(--panel);
@@ -374,28 +281,16 @@
   margin: 8px 0 0;
 }
 
-@media (max-width: 480px) {
-  .start-body {
-    padding: 12px 16px 16px;
-  }
-
-  .start-brief {
-    padding: 8px 12px 12px;
-  }
-
-  .start-card {
-    padding: 12px;
-  }
-}
-
-/* The kinds as the mockup's tabs (decision 452), on the brief's hairline; the info at the row's
-   end (V24c). */
+/* The kinds as the mockup's tabs (decision 452): the brief card's head (V72), its hairline across
+   the card; the info at the row's end (V24c). */
 .kind-row {
   position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-bottom: 8px;
+  min-height: var(--card-head);
+  margin: 0 calc(-1 * var(--card-pad));
+  padding: 0 var(--card-pad);
   border-bottom: 1px solid var(--line);
 }
 
@@ -467,11 +362,12 @@
   color: var(--accent);
 }
 
+/* On the head's hairline: the tab is 40 px in the head's 48. */
 .kind[aria-checked='true']::after {
   content: '';
   position: absolute;
   right: 0;
-  bottom: -9px;
+  bottom: calc((40px - var(--card-head)) / 2 - 1px);
   left: 0;
   height: 3px;
   border-radius: 9999px;
@@ -495,6 +391,10 @@
     padding: 0 6px;
   }
 
+  .kind[aria-checked='true']::after {
+    bottom: calc((36px - var(--card-head)) / 2 - 1px);
+  }
+
   .kind .icon {
     display: none;
   }
@@ -505,11 +405,17 @@
 }
 
 /* The brief's fields: a name and its "?" over each. */
+/* The form's rhythm (V72): a label `--field-label-gap` over its field, `--field-gap` from a field
+   to the next label; the first field `--card-pad` under the kinds. */
 .workspace-field {
   display: grid;
-  gap: 8px;
-  margin: 20px 0 0;
+  gap: var(--field-label-gap);
+  margin: var(--field-gap) 0 0;
   font-weight: 500;
+}
+
+.kind-row + .workspace-field {
+  margin-top: var(--card-pad);
 }
 
 .workspace-field textarea,

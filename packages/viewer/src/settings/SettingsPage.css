@@ -1,14 +1,10 @@
 /* ---- settings: every agent's prompts (V28b) ----------------------------------------- */
 
-/* The person's mockup (V62, decision 446): the head on the page's ground, then two cards that
-   fill the main area to its bottom, 24 px from its edges and 16 px apart — the list and the open
-   page, each scrolling on its own. Past 1,400 px of cards they stay centred, so a prompt's lines
-   stay readable (V51 measured 318 characters at 2560 when the page took every pixel). Skills has
+/* The person's mockup (V62, decision 446), in the page frame since V72 (decision 507): the head,
+   then two cards that fill the main area to its bottom, the list and the open page, each
+   scrolling on its own; the whole area at any width (it stood centred past 1,400 px). Skills has
    rules of its own since V56. */
 .settings {
-  --settings-width: 1400px;
-  /* The space each side of the cards and the head's (`100%` is the main area's width). */
-  --settings-side: max(24px, calc((100% - var(--settings-width)) / 2));
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -17,54 +13,11 @@
   overflow: auto;
 }
 
-/* The page's icon, its title and the mockup's line under it (decision 447). */
-.settings > .settings-bar {
-  position: static;
-  flex: none;
-  flex-wrap: nowrap;
-  gap: 16px;
-  padding: 20px var(--settings-side);
-}
-
-/* The open page's icon, as the sidenav's current page draws its own. */
-.settings-bar .page-icon {
-  display: inline-flex;
-  color: var(--accent);
-}
-
-.settings-bar .page-icon .icon {
-  width: 28px;
-  height: 28px;
-  stroke-width: 1.4;
-}
-
-.settings-title {
-  min-width: 0;
-}
-
-.settings-name-line {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.settings-bar h1 {
-  margin: 0;
-  font-size: var(--size-title);
-  font-weight: 600;
-}
-
-.settings-title p {
-  margin: 2px 0 0;
-  color: var(--muted);
-  font-size: var(--size-small);
-}
-
 .settings > .settings-warning,
 .settings > .commits-error,
 .settings > .hint {
   flex: none;
-  margin: 0 var(--settings-side) 12px;
+  margin: 0 var(--page-pad) 12px;
   padding: 0;
 }
 
@@ -84,18 +37,18 @@
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  gap: 16px;
-  padding: 0 var(--settings-side) 24px;
+  gap: var(--page-gap);
+  padding: 0 var(--page-pad) var(--page-pad);
 }
 
 /* The list (decision 448): a card, a hairline between its groups, the entries' words in line with
-   their group's heading, their wash 12 px out; no icons (the brief). */
+   their group's heading, `--card-pad` in, their wash 8 px out; no icons (the brief). */
 .settings-list {
   min-height: 0;
   overflow: auto;
   /* An entry scrolled to stops clear of the card's edge. */
   scroll-padding: 16px 0;
-  padding: 16px 12px;
+  padding: var(--card-pad) 8px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--side);
@@ -111,14 +64,14 @@
   content: '';
   position: absolute;
   top: 0;
-  right: 12px;
-  left: 12px;
+  right: 8px;
+  left: 8px;
   border-top: 1px solid var(--line);
 }
 
 .settings-list section h2 {
   margin: 0 0 6px;
-  padding: 0 12px;
+  padding: 0 8px;
   color: var(--muted);
   font-size: var(--size-caption);
   font-weight: 500;
@@ -141,7 +94,7 @@
   gap: 8px;
   width: 100%;
   min-height: 32px;
-  padding: 0 12px;
+  padding: 0 8px;
   border: 0;
   border-radius: 8px;
   background: none;
@@ -208,8 +161,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  min-height: 64px;
-  padding: 12px 24px;
+  min-height: var(--card-head);
+  padding: 8px var(--card-pad);
   border-bottom: 1px solid var(--line);
 }
 
@@ -233,7 +186,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 20px 24px 24px;
+  padding: var(--card-pad);
 }
 
 .settings-page > :first-child {
@@ -533,14 +486,9 @@ p.settings-section.settings-about {
 /* A narrow screen: the list, or the page with All settings, one card at a time, the page
    scrolling as a whole. */
 @media (max-width: 899px) {
-  .settings {
-    --settings-side: 16px;
-  }
-
   .settings-body {
     display: block;
     flex: none;
-    padding-bottom: 16px;
   }
 
   .settings-list,
@@ -557,7 +505,7 @@ p.settings-section.settings-about {
   .settings-back {
     display: inline-flex;
     align-self: flex-start;
-    margin: 8px 0 0 12px;
+    margin: 8px 0 0 var(--card-pad);
   }
 
   .settings-head {
@@ -565,10 +513,3 @@ p.settings-section.settings-about {
   }
 }
 
-@media (max-width: 480px) {
-  .settings-head,
-  .settings-page {
-    padding-right: 16px;
-    padding-left: 16px;
-  }
-}

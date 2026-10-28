@@ -48,6 +48,7 @@ import {
   SymbioteMark,
 } from '../ui/icons.js';
 import { Help } from '../ui/Help.js';
+import { PageHead } from '../ui/PageHead.js';
 import { markdownNodes, useMarkdown } from '../ui/markdown.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
 import { beginStart, endStart } from './starting.js';
@@ -156,21 +157,21 @@ export function StartPage({
 }
 
 /**
- * The page's head (V63, as Settings' since V62): the S, the title and the mockup's line under it,
- * then `children`, the buttons, at the right; the mockup's arcs on the page's ground behind.
+ * The page's head (V63; the page frame's since V72): the S, the title and the mockup's line under
+ * it, then `children`, the buttons, at the right; the mockup's arcs on the page's ground behind.
  */
 function StartHead({ children }: { children: ReactNode }) {
   return (
     <>
       <div className="start-ground" aria-hidden="true" />
-      <header className="start-top">
-        <SymbioteMark size={48} />
-        <div className="start-heading">
-          <h1 id="start-title">Start a workspace</h1>
-          <p>Create a new workspace from a branch with an AI agent</p>
-        </div>
-        <div className="start-actions">{children}</div>
-      </header>
+      <PageHead
+        className="start-top"
+        icon={<SymbioteMark />}
+        title="Start a workspace"
+        titleId="start-title"
+        line="Create a new workspace from a branch with an AI agent"
+        actions={children}
+      />
     </>
   );
 }

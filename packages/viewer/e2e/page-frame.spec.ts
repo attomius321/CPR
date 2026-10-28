@@ -64,13 +64,15 @@ function frame(page: Page, cards: readonly string[]): Promise<Frame> {
 const rows = (a: Box, b: Box) => a.y < b.y + b.height - 1 && b.y < a.y + a.height - 1;
 const columns = (a: Box, b: Box) => a.x < b.x + b.width - 1 && b.x < a.x + a.width - 1;
 
-/** The frame's rules, said per page so a failure names the page and the measure. */
+/**
+ * The frame's rules, said per page so a failure names the page and the measure; every page's
+ * failures in one run (`expect.soft`).
+ */
 function expectFrame(f: Frame, page: string, { bottom = true } = {}) {
   const near = (what: string, value: number, expected: number) =>
-    expect(
-      Math.abs(value - expected),
-      `${page}: ${what} is ${Math.round(value)}`,
-    ).toBeLessThanOrEqual(1);
+    expect
+      .soft(Math.abs(value - expected), `${page}: ${what} is ${Math.round(value)}`)
+      .toBeLessThanOrEqual(1);
   for (const card of f.cards) expect(card.width, `${page}: ${card.name} shown`).toBeGreaterThan(0);
   const { main, cards } = f;
   near('the cards from the left', Math.min(...cards.map((c) => c.x)) - main.x, PAD);
@@ -98,7 +100,7 @@ function expectFrame(f: Frame, page: string, { bottom = true } = {}) {
       .sort((p, q) => p.y - q.y)[0];
     if (under) near(`${a.name} over ${under.name}`, under.y - (a.y + a.height), GAP);
   }
-  expect(f.title, `${page}: its head's title`).not.toBeNull();
+  expect.soft(f.title, `${page}: its head's title`).not.toBeNull();
   near("the head's title", (f.title?.x ?? 0) - main.x, TITLE_AT);
 }
 

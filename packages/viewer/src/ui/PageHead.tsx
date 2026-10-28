@@ -8,6 +8,7 @@ import type { ReactNode } from 'react';
 export function PageHead({
   icon,
   title,
+  titleId,
   beside,
   line,
   actions,
@@ -16,6 +17,8 @@ export function PageHead({
   /** 28 px, drawn in the accent; Symbiote's S on Start a workspace. */
   icon: ReactNode;
   title: ReactNode;
+  /** The title's id, for the region it names. */
+  titleId?: string;
   /** On the title's line, after it. */
   beside?: ReactNode;
   /** Under the title, muted, cut to one line. */
@@ -32,7 +35,7 @@ export function PageHead({
       </span>
       <div className="page-title">
         <div className="page-name-line">
-          <h1>{title}</h1>
+          <h1 id={titleId}>{title}</h1>
           {beside}
         </div>
         {line !== undefined && <p className="page-line">{line}</p>}
