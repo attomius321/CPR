@@ -21,6 +21,6 @@ one.
 
 **Verification**: a throwaway copy of the spec whose fake `code` waits 400 ms for line 11 failed
 3 of 3, with the log [12, 12, 11]; the same copy waiting for the second open to be logged before
-`o` passed 3 of 3 (both copies removed). The fixed spec passes 30 of 30.
-
-Not verified: the person's own run of the whole suite after the fix.
+`o` passed 3 of 3 (both copies removed). The fixed spec passes 30 of 30, and the whole suite after it
+(`pnpm build && pnpm test:e2e`, asked for by the person): the viewer's 336 specs in 5.0 min, then
+the nexus's 14 in 16.3 s.
