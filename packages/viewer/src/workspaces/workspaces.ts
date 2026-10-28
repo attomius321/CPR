@@ -1,5 +1,6 @@
 // Workspaces started from the commits page (V18): pure helpers for the start page and the
 // line the page shows after Start.
+import { COMMAND_TOOLS, shownCommand } from './activity/classify.js';
 import type {
   AgentEfforts,
   AgentKind,
@@ -359,7 +360,12 @@ export function workspaceNext(
   switch (agent.state) {
     case 'working': {
       const doing = activity?.doing;
-      const words = !doing ? undefined : 'thinking' in doing ? 'Thinking' : activityText(doing);
+      // A command's leading `cd` to the worktree left out, its paths short (V73).
+      const shown =
+        doing && 'tool' in doing && doing.subject && COMMAND_TOOLS.has(doing.tool)
+          ? { ...doing, subject: shownCommand(doing.subject, workspace.worktree.path) }
+          : doing;
+      const words = !shown ? undefined : 'thinking' in shown ? 'Thinking' : activityText(shown);
       return { ...next('working', 'Working', '⚙', 'working'), ...(words ? { doing: words } : {}) };
     }
     case 'needs-you':

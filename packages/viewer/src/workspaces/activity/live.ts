@@ -5,7 +5,7 @@ import type { WorkspaceSummary } from '@symbiote/core';
 import { activityText, askedFor } from '../workspaces.js';
 import { COMMAND_TOOLS, shownCommand } from './classify.js';
 import type { ActivityEvent, ToolCall } from './events.js';
-import { questionsOf, type ActivityGroup } from './groups.js';
+import { questionsOf, waitingAsk, type ActivityGroup } from './groups.js';
 
 export interface LiveActivity {
   /** `working`: a call runs; `thinking`: none does; `waiting`: on the person. */
@@ -34,8 +34,8 @@ export function liveActivity(
   const prompt = events.findLast((e) => e.kind === 'prompt');
   if (agent.state === 'needs-you') {
     if (agent.interrupted) return { state: 'waiting', text: 'Interrupted: waiting for you' };
-    const asks = events.findLast((e) => e.kind === 'asks');
-    if (asks?.kind === 'asks' && (!prompt || events.indexOf(asks) > events.indexOf(prompt))) {
+    const asks = waitingAsk(events);
+    if (asks) {
       const text = asks.entry.questions
         ? `Asks: ${questionsOf(asks.entry)}`
         : askedFor(asks.entry, workspace.worktree.path);

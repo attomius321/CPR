@@ -73,3 +73,13 @@ export function longAge(iso: string, now: number): string {
   const days = Math.floor(hours / 24);
   return hours % 24 === 0 ? `${days} d` : `${days} d ${hours % 24} h`;
 }
+
+const seconds = makeClock(1000);
+
+/**
+ * The time, moved every second while it is shown (V73): only the Activity tab's live strip reads
+ * it, for how long the call running has run; the rest of the page keeps the 30 s clock.
+ */
+export function useSeconds(): number {
+  return useSyncExternalStore(seconds.subscribe, seconds.snapshot);
+}

@@ -534,7 +534,11 @@ function workGroup(run: Run, context: Context): ActivityGroup {
       else {
         const state = outcome(decisive, context);
         const runWords = plural(runs.length, 'run', 'runs');
-        if (state === 'done') {
+        const again = testName(decisive, context);
+        if (state === 'running') {
+          status = 'running';
+          summary = `${name} · ${again === name ? 'running again' : `running ${again}`} · ${editWords}`;
+        } else if (state === 'done') {
           status = status === 'running' ? status : 'recovered';
           summary = `${name} passed after ${runWords} · ${editWords}`;
         } else {
@@ -573,6 +577,9 @@ function workGroup(run: Run, context: Context): ActivityGroup {
     ...(tests ? { tests } : {}),
   };
 }
+
+/** Calls the timeline leaves to the raw stream: a question (its ask says it), reasoning. */
+const SAID_ELSEWHERE = new Set(['AskUserQuestion', 'reasoning']);
 
 const VERDICTS = {
   approve: 'Approved',
@@ -713,6 +720,19 @@ function milestone(
   }
 }
 
+/**
+ * The ask an agent may wait on: its newest, when no prompt or report came after it (a report ends
+ * the turn the ask was in).
+ */
+export function waitingAsk(
+  events: readonly ActivityEvent[],
+): Extract<ActivityEvent, { kind: 'asks' }> | undefined {
+  const last = events.findLast(
+    (e) => e.kind === 'asks' || e.kind === 'prompt' || e.kind === 'report',
+  );
+  return last?.kind === 'asks' ? last : undefined;
+}
+
 /** The text a milestone is compared by, to find one recorded twice. */
 function sameness(event: ActivityEvent): string | null {
   switch (event.kind) {
@@ -737,14 +757,12 @@ export function activityGroups(
   { agent, worktree }: { agent: WorkspaceAgentState; worktree: string },
 ): ActivityGroup[] {
   const lastPrompt = events.findLast((e) => e.kind === 'prompt');
-  const lastAsks = events.findLast((e) => e.kind === 'asks');
+  const asking = waitingAsk(events);
   const context: Context = {
     agent,
     worktree,
     turn: lastPrompt?.at ? Date.parse(lastPrompt.at) : -Infinity,
-    ...(lastAsks && (!lastPrompt || events.indexOf(lastAsks) > events.indexOf(lastPrompt))
-      ? { lastAsks: lastAsks.key }
-      : {}),
+    ...(asking ? { lastAsks: asking.key } : {}),
   };
 
   // Each commit right after the call that made it.
@@ -773,6 +791,8 @@ export function activityGroups(
   };
   let previous: { same: string; at: number; group: ActivityGroup } | null = null;
   for (const event of ordered) {
+    // A question's call is said by its ask; Codex's reasoning is no act (V48c): the raw stream's.
+    if (event.kind === 'call' && SAID_ELSEWHERE.has(event.call.tool)) continue;
     if (event.kind === 'call' || (event.kind === 'commit' && paired.has(event.key))) {
       stretch.push(event);
       continue;

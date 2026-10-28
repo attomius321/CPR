@@ -302,6 +302,22 @@ describe('activityGroups (V73)', () => {
     expect(groups.at(-1)?.summary).toBe('pnpm test not run again · 1 edit');
   });
 
+  it('debugging while its test runs again: running, said so', () => {
+    const tools = [
+      ...bash('t1', 5, 'pnpm test', { end: { failed: true, exit: 1 } }),
+      ...call('e1', 8, 'Edit', 'src/a.ts'),
+      ...bash('t2', 10, 'pnpm test', { ms: null }),
+    ];
+    const groups = groupsOf(tools, [entry(2, { kind: 'prompt', text: 'Go' })], [], {
+      state: 'working',
+    });
+    expect(groups.at(-1)).toMatchObject({
+      kind: 'debug',
+      status: 'running',
+      summary: 'pnpm test · running again · 1 edit',
+    });
+  });
+
   it('screenshots looked at in a row are visual inspection; one image read among edits is not', () => {
     const tools = [
       ...call('e1', 3, 'Edit', 'src/a.css'),
@@ -430,6 +446,21 @@ describe('activityGroups (V73)', () => {
     ]);
   });
 
+  it('an ask a report came after waits no more, though the agent still reads as waiting', () => {
+    const asks = entry(5, {
+      kind: 'asks',
+      tool: 'AskUserQuestion',
+      questions: [{ question: 'Which store?', options: ['A'] }],
+    });
+    const groups = groupsOf(
+      [],
+      [entry(2, { kind: 'prompt', text: 'Go' }), asks, entry(8, { kind: 'report', text: 'Done' })],
+      [],
+      { state: 'needs-you' },
+    );
+    expect(groups.find((g) => g.kind === 'asks')?.status).toBe('done');
+  });
+
   it('the same milestone recorded twice is one; a failed command among reads is counted, not the phase’s end', () => {
     const report = entry(9, { kind: 'report', text: 'Done.' });
     const tools = [
@@ -502,6 +533,16 @@ describe('activityGroups (V73)', () => {
     const groups = activityGroups(events, { agent: w.agent, worktree: W });
     const grouped: ActivityEvent[] = groups.flatMap((g) => g.events);
     expect(grouped.map((e) => e.key)).toEqual(events.map((e) => e.key));
+  });
+
+  it("a question's call and Codex's reasoning are the raw stream's: the question has its milestone", () => {
+    const tools = [
+      ...call('r1', 3, 'Read', 'a.ts'),
+      ...call('q1', 4, 'AskUserQuestion', ''),
+      ...call('x1', 5, 'reasoning', ''),
+    ];
+    const groups = groupsOf(tools, [entry(2, { kind: 'prompt', text: 'Go' })]);
+    expect(shape(groups).slice(2)).toEqual([['explore', 'done', 1]]);
   });
 
   it('keeps each group its key as events arrive, so an opened group stays open', () => {
@@ -608,6 +649,14 @@ describe('liveActivity (V73)', () => {
       text: 'Asks: Which store?',
       since: at(5),
     });
+    // An ask its turn's report came after: not what it waits on now.
+    expect(
+      live([], { state: 'needs-you', waitingFor: 'input' }, [
+        ...prompt,
+        asks,
+        entry(8, { kind: 'report', text: 'Done' }),
+      ]),
+    ).toEqual({ state: 'waiting', text: 'Waiting: input' });
     expect(live([], { state: 'plan-ready' })).toEqual({
       state: 'waiting',
       text: 'Plan ready: read it and answer',
