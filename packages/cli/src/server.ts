@@ -676,6 +676,9 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/workspaces/thread') {
       return ofBranch(req, res, url, (branch) => workspaces.thread(branch));
     }
+    if (url.pathname === '/api/workspaces/activity') {
+      return ofBranch(req, res, url, (branch) => workspaces.tools(branch));
+    }
     if (url.pathname === '/api/workspaces/reply') {
       return written(req, res, parseWorkspaceReply, (request) =>
         oneAtATime(res, 'a message is being sent', () => workspaces.reply(request)),

@@ -282,3 +282,6 @@ merge commit.
 - 2026-10-28 [V72 spike — every page's margins, gutters, head and insets](journal/v72-page-frame.md)
 - 2026-10-28 [V72a–e — one page frame on every page](journal/v72-page-frame.md)
 - 2026-10-28 [V72 — main merged in: V71's analyzing page](journal/v72-page-frame.md)
+- 2026-10-28 [V73 spike — what the Activity tab draws, and what agents' records hold](journal/v73-activity-timeline.md)
+- 2026-10-28 [V73 — the Activity tab as a timeline of phases](journal/v73-activity-timeline.md)
+- 2026-10-28 [V73 — main merged in: V72's page frame](journal/v73-activity-timeline.md)

@@ -183,10 +183,135 @@ function subjectOf(tool: string, input: unknown, worktree: string): string | und
   return words === '' ? undefined : words.slice(0, MAX_SUBJECT);
 }
 
+/** Longest command kept whole (V73): 99 % of the commands agents ran here were shorter. */
+export const MAX_COMMAND = 8192;
+
+/** How much of a command's output, or of a failure's error, is kept (V73): its end. */
+export const MAX_OUTPUT = 2048;
+
+/**
+ * A text's end as an activity line keeps it (V73): whole up to `max` characters, else from the
+ * first whole line in its last `max` (a test run's summary is at its end), said to be clipped.
+ */
+export function outputOf(
+  value: string,
+  max = MAX_OUTPUT,
+): Pick<ActivityEntry, 'output' | 'clipped'> {
+  const whole = value.trimEnd();
+  if (whole === '') return {};
+  if (whole.length <= max) return { output: whole };
+  const end = whole.slice(-max);
+  const from = end.indexOf('\n') + 1;
+  return { output: from > 0 ? end.slice(from) : end, clipped: true };
+}
+
+/** A line's first line that says something, or null. */
+const firstLineOf = (value: string | null): string | null =>
+  value
+    ?.split('\n')
+    .find((line) => line.trim() !== '')
+    ?.trim() ?? null;
+
+/** What a call's start keeps beyond its subject (V73): a command whole, its words, its task. */
+function startDetails(tool: string, input: unknown): Partial<ActivityEntry> {
+  const v = (input ?? {}) as Record<string, unknown>;
+  if (tool === 'Bash') {
+    const command = text(v.command);
+    const about = firstLineOf(text(v.description));
+    return {
+      ...(command ? { input: command.slice(0, MAX_COMMAND) } : {}),
+      ...(about ? { about: about.slice(0, MAX_SUBJECT) } : {}),
+    };
+  }
+  if (tool === 'TaskCreate') {
+    const subject = text(v.subject);
+    return subject ? { task: { subject: subject.slice(0, MAX_SUBJECT) } } : {};
+  }
+  if (tool === 'TaskUpdate') {
+    const id = text(v.taskId);
+    const status = text(v.status);
+    return id ? { task: { id, ...(status ? { status } : {}) } } : {};
+  }
+  return {};
+}
+
+/** The lines an edit's diff hunks (`structuredPatch`) added and removed. */
+function linesOf(patch: unknown): { added: number; removed: number } | null {
+  if (!Array.isArray(patch)) return null;
+  let added = 0;
+  let removed = 0;
+  for (const hunk of patch as unknown[]) {
+    const lines = (hunk as { lines?: unknown } | null)?.lines;
+    if (!Array.isArray(lines)) continue;
+    for (const line of lines) {
+      if (typeof line !== 'string') continue;
+      if (line.startsWith('+')) added += 1;
+      else if (line.startsWith('-')) removed += 1;
+    }
+  }
+  return { added, removed };
+}
+
+/**
+ * What a call's end keeps (V73), from Claude Code's `PostToolUse` (`tool_response`) or
+ * `PostToolUseFailure` (`error`, `is_interrupt`), both with `duration_ms`.
+ */
+function endDetails(tool: string, v: Record<string, unknown>): Partial<ActivityEntry> {
+  const ms =
+    typeof v.duration_ms === 'number' && Number.isFinite(v.duration_ms) && v.duration_ms >= 0
+      ? { ms: Math.round(v.duration_ms) }
+      : {};
+  if (v.hook_event_name === 'PostToolUseFailure') {
+    const error = text(v.error);
+    const code = error ? /^Exit code (\d+)\b/.exec(error)?.[1] : undefined;
+    return {
+      ...ms,
+      ...(code !== undefined ? { exit: Number(code) } : {}),
+      ...(error ? outputOf(error) : {}),
+      ...(v.is_interrupt === true ? { interrupted: true as const } : {}),
+    };
+  }
+  const response = (v.tool_response ?? {}) as Record<string, unknown>;
+  if (tool === 'Bash') {
+    const output = [response.stdout, response.stderr]
+      .map((part) => (typeof part === 'string' ? part.trimEnd() : ''))
+      .filter((part) => part !== '')
+      .join('\n');
+    return {
+      ...ms,
+      ...outputOf(output),
+      ...(response.interrupted === true ? { interrupted: true as const } : {}),
+      ...(text(response.backgroundTaskId) ? { background: true as const } : {}),
+    };
+  }
+  if (tool === 'Edit' || tool === 'MultiEdit' || tool === 'Write') {
+    const content = text(response.content);
+    // A file written new has no hunks: its lines are what was written.
+    const lines =
+      response.type === 'create' && content !== null
+        ? { added: content.trimEnd().split('\n').length, removed: 0 }
+        : linesOf(response.structuredPatch);
+    return { ...ms, ...(lines ?? {}) };
+  }
+  if (tool === 'TaskCreate') {
+    const task = (response.task ?? {}) as Record<string, unknown>;
+    const id = text(task.id);
+    const subject = text(task.subject);
+    return {
+      ...ms,
+      ...(id
+        ? { task: { id, ...(subject ? { subject: subject.slice(0, MAX_SUBJECT) } : {}) } }
+        : {}),
+    };
+  }
+  return ms;
+}
+
 /**
  * The activity line for one tool hook's input (V48f): `PreToolUse` a start, `PostToolUse` an end,
  * `PostToolUseFailure` a failed end; null for any other event, or without a session, a tool or
- * the call's ID (which pairs a start with its end).
+ * the call's ID (which pairs a start with its end). Since V73 a start keeps a command whole and
+ * its words, an end its duration, exit code, output's end and an edit's lines.
  */
 export function activityEntry(input: unknown, at: string, worktree: string): ActivityEntry | null {
   if (!input || typeof input !== 'object') return null;
@@ -210,6 +335,7 @@ export function activityEntry(input: unknown, at: string, worktree: string): Act
     ...(subject ? { subject } : {}),
     phase,
     ...(v.hook_event_name === 'PostToolUseFailure' ? { failed: true as const } : {}),
+    ...(phase === 'start' ? startDetails(tool, v.tool_input) : endDetails(tool, v)),
   };
 }
 
@@ -351,14 +477,15 @@ export const THREAD_END = 256 * 1024;
 
 /**
  * A file's last `bytes`, from the first whole line in them ('' when there is none, or no file):
- * what the workspaces list needs at a cost that does not grow with the file.
+ * what the workspaces list needs at a cost that does not grow with the file. `cut`: lines before
+ * them were left out.
  */
-async function fileEnd(path: string, bytes: number): Promise<string> {
+async function fileWindow(path: string, bytes: number): Promise<{ text: string; cut: boolean }> {
   let file: FileHandle;
   try {
     file = await open(path, 'r');
   } catch {
-    return '';
+    return { text: '', cut: false };
   }
   try {
     const { size } = await file.stat();
@@ -367,11 +494,14 @@ async function fileEnd(path: string, bytes: number): Promise<string> {
     const buffer = Buffer.alloc(size - start);
     await file.read(buffer, 0, buffer.length, start);
     const from = start === 0 ? 0 : buffer.indexOf(0x0a) + 1;
-    return from === 0 && start > 0 ? '' : buffer.subarray(from).toString('utf8');
+    const text = from === 0 && start > 0 ? '' : buffer.subarray(from).toString('utf8');
+    return { text, cut: start > 0 };
   } finally {
     await file.close();
   }
 }
+
+const fileEnd = async (path: string, bytes: number) => (await fileWindow(path, bytes)).text;
 
 /**
  * A thread's last entries, from its file's last `bytes`, the line cut there dropped: what the
@@ -405,14 +535,9 @@ function isActivity(value: unknown): value is ActivityEntry {
   );
 }
 
-/** A workspace's recorded tools (V48f), from its file's last `bytes`; broken lines skipped. */
-export async function readActivityEnd(
-  symbiote: string,
-  branch: string,
-  bytes = ACTIVITY_END,
-): Promise<ActivityEntry[]> {
-  const lines = (await fileEnd(activityPath(symbiote, branch), bytes)).split('\n');
-  return lines.flatMap((line) => {
+/** Recorded tools' lines (V48f): broken lines and other values skipped. */
+function parseActivity(text: string): ActivityEntry[] {
+  return text.split('\n').flatMap((line) => {
     try {
       const value = JSON.parse(line) as unknown;
       return isActivity(value) ? [value] : [];
@@ -420,6 +545,28 @@ export async function readActivityEnd(
       return [];
     }
   });
+}
+
+/** A workspace's recorded tools (V48f), from its file's last `bytes`; broken lines skipped. */
+export async function readActivityEnd(
+  symbiote: string,
+  branch: string,
+  bytes = ACTIVITY_END,
+): Promise<ActivityEntry[]> {
+  return parseActivity(await fileEnd(activityPath(symbiote, branch), bytes));
+}
+
+/**
+ * A workspace's recorded tools for its Activity tab (V73): the file's last `bytes`, and whether
+ * older lines were left out.
+ */
+export async function readActivityWindow(
+  symbiote: string,
+  branch: string,
+  bytes: number,
+): Promise<{ tools: ActivityEntry[]; cut: boolean }> {
+  const { text, cut } = await fileWindow(activityPath(symbiote, branch), bytes);
+  return { tools: parseActivity(text), cut };
 }
 
 /** A thread file's entries, as `readThread` describes them. */

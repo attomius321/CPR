@@ -596,3 +596,79 @@ export const StopIcon = () => (
     <rect x="9" y="9" width="6" height="6" rx="1" />
   </Icon>
 );
+
+/** The Activity tab's implementation (V73): lucide's code-xml. */
+export const CodeIcon = () => (
+  <Icon lucide>
+    <path d="m18 16 4-4-4-4" />
+    <path d="m6 8-4 4 4 4" />
+    <path d="m14.5 4-5 16" />
+  </Icon>
+);
+
+/** The Activity tab's testing (V73): lucide's flask-conical. */
+export const FlaskIcon = () => (
+  <Icon lucide>
+    <path d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2" />
+    <path d="M6.453 15h11.094" />
+    <path d="M8.5 2h7" />
+  </Icon>
+);
+
+/** The Activity tab's debugging (V73): lucide's bug. */
+export const BugIcon = () => (
+  <Icon lucide>
+    <path d="m8 2 1.88 1.88" />
+    <path d="M14.12 3.88 16 2" />
+    <path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1" />
+    <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6" />
+    <path d="M12 20v-9" />
+    <path d="M6.53 9C4.6 8.8 3 7.1 3 5" />
+    <path d="M6 13H2" />
+    <path d="M3 21c0-2.1 1.7-3.9 3.8-4" />
+    <path d="M20.97 5c0 2.1-1.6 3.8-3.5 4" />
+    <path d="M22 13h-4" />
+    <path d="M17.2 17c2.1.1 3.8 1.9 3.8 4" />
+  </Icon>
+);
+
+/** A commit (V73): lucide's git-commit-horizontal. */
+export const CommitIcon = () => (
+  <Icon lucide>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M3 12h6" />
+    <path d="M15 12h6" />
+  </Icon>
+);
+
+/** What an agent asked (V73): lucide's message-circle-question. */
+export const QuestionIcon = () => (
+  <Icon lucide>
+    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+    <path d="M12 17h.01" />
+  </Icon>
+);
+
+/** A notice (V73: a background task ended): lucide's bell. */
+export const BellIcon = () => (
+  <Icon lucide>
+    <path d="M10.268 21a2 2 0 0 0 3.464 0" />
+    <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" />
+  </Icon>
+);
+
+/** Other tools an agent used (V73): lucide's wrench. */
+export const WrenchIcon = () => (
+  <Icon lucide>
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+  </Icon>
+);
+
+/** Copy (V73: a command's whole text): lucide's copy. */
+export const CopyIcon = () => (
+  <Icon lucide>
+    <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+  </Icon>
+);

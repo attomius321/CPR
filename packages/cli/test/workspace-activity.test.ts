@@ -207,7 +207,7 @@ describe('serverTools (V48f)', () => {
             subject: '/w/src/lib.rs, /elsewhere/x.rs',
             status: 'completed',
           },
-          { id: 'm', kind: 'command', subject: 'ls', status: 'inProgress' },
+          { id: 'm', kind: 'command', subject: 'ls', status: 'inProgress', command: 'ls\n-la' },
         ],
       },
       'th',
@@ -235,7 +235,43 @@ describe('serverTools (V48f)', () => {
         subject: 'src/lib.rs, /elsewhere/x.rs',
         phase: 'end',
       },
-      { ...base, id: 'm', tool: 'command', subject: 'ls', phase: 'start' },
+      { ...base, id: 'm', tool: 'command', subject: 'ls', phase: 'start', input: 'ls\n-la' },
     ]);
+  });
+
+  it("a command's whole text on its start; its exit code, length and output on its end (V73)", () => {
+    const [start, end] = serverTools(
+      {
+        id: 't',
+        status: 'completed',
+        startedAt: t0,
+        prompts: ['P'],
+        items: [
+          {
+            id: 'c',
+            kind: 'command',
+            subject: 'cargo test',
+            status: 'failed',
+            failed: true,
+            command: 'cargo test --all',
+            exit: 101,
+            ms: 4210,
+            output: 'test result: FAILED',
+          },
+        ],
+      },
+      'th',
+      '/w',
+    );
+    expect(start).toMatchObject({ phase: 'start', input: 'cargo test --all' });
+    expect(start).not.toHaveProperty('exit');
+    expect(end).toMatchObject({
+      phase: 'end',
+      failed: true,
+      exit: 101,
+      ms: 4210,
+      output: 'test result: FAILED',
+    });
+    expect(end).not.toHaveProperty('input');
   });
 });

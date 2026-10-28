@@ -2382,9 +2382,9 @@ describe('workspaces', () => {
         { at: '2026-10-15T09:00:02.000Z', session: 'session-1', kind: 'report', text: 'The plan' },
       ],
       recorded: true,
-      // Its tools recorded (V48f), none run yet.
-      tools: [],
     });
+    // Its tools recorded (V48f), none run yet: the Activity tab's own read (V73).
+    expect(await s.tools('feature/one')).toEqual({ tools: [] });
 
     // A verdict on the branch: its text for the agent, as "Copy for the agent" has it.
     const review = join(symbiote, 'reviews', 'feature', 'one', 'ada@example.com.json');
@@ -2575,12 +2575,42 @@ describe('workspaces', () => {
     expect(await doing()).toEqual({ tool: 'Edit', subject: 'src/a.ts' });
     await tool('PostToolUse', 't1', '2026-10-15T09:00:06.000Z');
     expect(await doing()).toEqual({ thinking: true });
-    // The thread gives them too, for the Activity tab's timeline (V48c).
+    // The Activity tab reads them on its own (V73), not with the thread.
     const head = { session: 'session-1', id: 't1', tool: 'Edit', subject: 'src/a.ts' };
-    expect((await s.thread('feature/one')).tools).toEqual([
-      { at: '2026-10-15T09:00:05.000Z', ...head, phase: 'start' },
-      { at: '2026-10-15T09:00:06.000Z', ...head, phase: 'end' },
-    ]);
+    expect(await s.tools('feature/one')).toEqual({
+      tools: [
+        { at: '2026-10-15T09:00:05.000Z', ...head, phase: 'start' },
+        { at: '2026-10-15T09:00:06.000Z', ...head, phase: 'end' },
+      ],
+    });
+    expect(await s.thread('feature/one')).not.toHaveProperty('tools');
+  });
+
+  it("gives the Activity tab its tools' last 1 MB, and says when older ones were left out (V73)", async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { activityPath } = await import('../src/thread.js');
+    const file = activityPath(join(repo.root, 'symbiote'), 'feature/one');
+    mkdirSync(dirname(file), { recursive: true });
+    const line = (i: number) =>
+      JSON.stringify({
+        at: '2026-10-15T09:00:00.000Z',
+        session: 's',
+        id: `t${i}`,
+        tool: 'Bash',
+        phase: 'end',
+        output: 'x'.repeat(2000),
+      });
+    // 600 lines of ~2.1 KB: about 1.25 MB, so the oldest are left out.
+    writeFileSync(file, `${Array.from({ length: 600 }, (_, i) => line(i)).join('\n')}\n`);
+    const read = await s.tools('feature/one');
+    expect(read.cut).toBe(true);
+    expect(read.tools?.at(-1)?.id).toBe('t599');
+    expect(read.tools?.length).toBeGreaterThan(450);
+    expect(read.tools?.length).toBeLessThan(600);
+    expect(workspace.branch).toBe('feature/one');
   });
 
   it('says nothing of what runs for an agent started before its tools were recorded (V48f)', async () => {
@@ -2593,7 +2623,7 @@ describe('workspaces', () => {
     delete saved.agent?.activity;
     writeFileSync(record, JSON.stringify(saved));
     expect((await s.list()).workspaces[0]?.activity?.doing).toBeUndefined();
-    expect(await s.thread('feature/one')).not.toHaveProperty('tools');
+    expect(await s.tools('feature/one')).toEqual({});
   });
 
   it('lists no last action for a workspace whose agent was never found (V23)', async () => {
@@ -3024,8 +3054,8 @@ describe('workspaces', () => {
       tool: 'command',
       subject: 'cargo test',
     });
-    // Its thread's turns read in full give what it ran, untimed, for the timeline (V48c).
-    expect((await s.thread('feature/csv')).tools).toEqual([
+    // Its thread's turns read in full give what it ran, untimed, for the timeline (V48c, V73).
+    expect((await s.tools('feature/csv')).tools).toEqual([
       {
         at: expect.any(String) as string,
         session: id,
@@ -3034,6 +3064,7 @@ describe('workspaces', () => {
         tool: 'command',
         subject: 'cargo test',
         phase: 'start',
+        input: 'cargo test',
       },
     ]);
   });

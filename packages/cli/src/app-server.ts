@@ -11,6 +11,7 @@ import {
   type AgentModels,
 } from '@symbiote/core';
 import { openWebSocket, type WebSocketClient } from './websocket.js';
+import { MAX_COMMAND, outputOf } from './thread.js';
 
 /** An error the app server answered, with its JSON-RPC code; or no answer in time. */
 export class AppServerError extends Error {
@@ -205,6 +206,13 @@ export interface CodexItem {
   status?: string;
   /** Failed, declined, or a command that exited with another code than 0. */
   failed?: true;
+  /** A command's whole text, cut at 8 KB (V73). */
+  command?: string;
+  /** A command's exit code, its run's length in ms, its output's end (V73). */
+  exit?: number;
+  ms?: number;
+  output?: string;
+  clipped?: true;
 }
 
 /** What Symbiote asks of Codex's app server (V27a); tests use a fake server. */
@@ -379,11 +387,15 @@ function itemOf(item: Record<string, unknown>): CodexItem | null {
   switch (item.type) {
     case 'commandExecution': {
       const code = item.exitCode;
-      return head(
-        'command',
-        short(text(item.command)),
-        failed || (typeof code === 'number' && code !== 0),
-      );
+      const command = text(item.command);
+      const ms = item.durationMs;
+      return {
+        ...head('command', short(command), failed || (typeof code === 'number' && code !== 0)),
+        ...(command ? { command: command.slice(0, MAX_COMMAND) } : {}),
+        ...(typeof code === 'number' ? { exit: code } : {}),
+        ...(typeof ms === 'number' && ms >= 0 ? { ms: Math.round(ms) } : {}),
+        ...outputOf(text(item.aggregatedOutput) ?? ''),
+      };
     }
     case 'fileChange': {
       const paths = (Array.isArray(item.changes) ? (item.changes as { path?: unknown }[]) : [])

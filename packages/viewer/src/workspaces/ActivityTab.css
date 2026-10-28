@@ -1,36 +1,131 @@
-/* A workspace's Activity tab (V48c, ActivityTab.tsx): one line an event, its time, a mark in its
-   state's colour where it has one, what happened; a row with more opens in place. */
+/* A workspace's Activity tab (V48c; V73, ActivityTab.tsx and activity/): a bar with the counts and
+   Timeline / Raw events, the live strip while the agent works or waits, then the timeline — a time
+   column, a 1 px rail with a node per group in its status's tone, each group's line and summary;
+   open, its events on one hairline surface, each opening to what was recorded of it. Its insets are
+   the page frame's (V72): `--card-pad` from the card's edges. */
 
 .workspace-activity {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
+  container: activity / inline-size;
 }
 
-.activity {
+.activity-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px var(--card-pad);
+  border-bottom: 1px solid var(--line);
+}
+
+.activity-counts {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The live strip: what runs now, in one line; a spinner while it works, still while it waits. */
+.activity-live {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  margin: 12px var(--card-pad) 0;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  font-size: var(--size-small);
+}
+
+.activity-live.waiting {
+  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
+  background: color-mix(in srgb, var(--warning) 5%, var(--panel));
+}
+
+.activity-live .state-dot {
+  margin: 0 2px;
+}
+
+.activity-live-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.activity-live-phase {
+  flex: none;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.activity-live-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+}
+
+.activity-live-command {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font: var(--size-caption) var(--mono);
+  text-overflow: ellipsis;
+}
+
+.activity-live-elapsed {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The timeline and the raw stream: the tab's scrolling part. */
+.activity,
+.activity-scroll {
   flex: 1;
   min-height: 0;
   margin: 0;
-  padding: 8px 16px 16px;
+  padding: 12px var(--card-pad) 24px;
   overflow: auto;
   list-style: none;
   interpolate-size: allow-keywords;
 }
 
-.activity-row {
+/* Three columns: the time, the rail (19 px: its 1 px line and 9 px nodes on whole pixels), the
+   group. The time's column fits "11:02 PM" over "12m 34s" in the caption's size. */
+.activity-group,
+.activity-day,
+.activity-note-row {
+  --activity-when: calc(5.5 * var(--size-caption));
+
   display: grid;
-  /* The time's column in its own size's measure (V61): 48 px fit "11:02 PM" at 12 px, not at 13. */
-  grid-template-columns: calc(5 * var(--size-caption)) 7px minmax(0, 1fr);
-  column-gap: 10px;
-  align-items: baseline;
-  padding: 3px 0;
-  font-size: var(--size-small);
-  line-height: 20px;
+  grid-template-columns: var(--activity-when) 19px minmax(0, 1fr);
+  column-gap: 8px;
 }
 
-/* Added by a read after the tab opened: it fades in, the rows above stay where they are. */
-.activity-row.fresh {
+.activity-group {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 52px;
+}
+
+/* Added by a read after the tab opened: it fades in, the groups above stay where they are. */
+.activity-group.fresh {
   animation: activity-in 200ms ease-out;
 }
 
@@ -40,92 +135,568 @@
   }
 }
 
-.activity-time {
+.activity-when {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  padding-top: 4px;
+  overflow: hidden;
   color: var(--muted);
   font-size: var(--size-caption);
   font-variant-numeric: tabular-nums;
-  text-align: right;
+  line-height: 16px;
   white-space: nowrap;
 }
 
-.activity-mark {
-  width: 7px;
-  height: 7px;
+.activity-took {
+  color: var(--faint);
+}
+
+.activity-rail {
+  position: relative;
+}
+
+.activity-rail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 9px;
+  width: 1px;
+  background: var(--line);
+}
+
+.activity > li:first-child .activity-rail::before {
+  top: 12px;
+}
+
+.activity > li:last-child .activity-rail::before {
+  bottom: auto;
+  height: 12px;
+}
+
+/* A group's node: a phase a hollow ring, a milestone filled; its status's tone when it has one. */
+.activity-node {
+  position: absolute;
+  top: 8px;
+  left: 5px;
+  width: 9px;
+  height: 9px;
   border-radius: 50%;
-  background: var(--activity-tone, var(--faint));
-  transform: translateY(-1px);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1.5px var(--node, var(--faint));
+  transition:
+    background-color 150ms,
+    box-shadow 150ms;
 }
 
-.activity-row.kind-asks {
-  --activity-tone: var(--warning);
+.activity-group.milestone .activity-node {
+  background: var(--node, var(--muted));
+  box-shadow: 0 0 0 3px var(--bg);
 }
 
-.activity-row.kind-edits {
-  --activity-tone: var(--modified);
+.activity-group.kind-commit {
+  --node: var(--added);
 }
 
-.activity-row.kind-commit,
-.activity-row.kind-made {
-  --activity-tone: var(--added);
+.activity-group.status-failed {
+  --node: var(--error);
 }
 
-.activity-row.failed {
-  --activity-tone: var(--removed);
+.activity-group.status-recovered,
+.activity-group.kind-test.status-done {
+  --node: var(--added);
 }
 
-/* The agent's acts in the text's colour; the quiet ones (reads, starts, ends) muted. */
-.activity-text {
+.activity-group.status-running {
+  --node: var(--info);
+}
+
+.activity-group.status-waiting {
+  --node: var(--warning);
+}
+
+.activity-group.status-failed .activity-node,
+.activity-group.status-waiting .activity-node {
+  background: var(--node);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--node) 25%, var(--bg));
+}
+
+.activity-group.status-open .activity-node {
+  box-shadow: none;
+  border: 1.5px dashed var(--faint);
+}
+
+.activity-body {
   min-width: 0;
-  overflow: hidden;
-  color: var(--text);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  padding: 2px 0 10px;
 }
 
-.activity-row.kind-reads .activity-text,
-.activity-row.kind-start .activity-text,
-.activity-row.kind-end .activity-text,
-.activity-row.kind-made .activity-text {
-  color: var(--muted);
+.activity-body > summary {
+  display: block;
+  margin: 0 -6px;
+  padding: 0 6px 2px;
+  border-radius: 8px;
+  transition: background-color 150ms;
 }
 
-.activity-row.failed .activity-text {
-  color: var(--error);
+.activity-body > summary::before {
+  content: none;
 }
 
-details.activity-text {
-  white-space: normal;
-}
-
-/* A row that opens has the shared chevron before its text (controls.css); the others keep its
-   width, so every row's text starts at one place. */
-span.activity-text {
-  padding-left: 18px;
-}
-
-.activity-text summary {
-  min-width: 0;
-  border-radius: 4px;
-}
-
-.activity-text summary > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.activity-text summary:hover {
+.activity-body > summary:hover {
   background: var(--hover);
 }
 
-.activity-text summary:focus-visible {
+.activity-body > summary:focus-visible,
+.activity-event summary:focus-visible,
+.activity-raw summary:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 1px;
 }
 
+.activity-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+}
+
+.activity-icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--muted);
+}
+
+.activity-icon .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.activity-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--size-body);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-group.milestone .activity-title {
+  font-weight: 600;
+}
+
+/* What only marks the way — the workspace made, a session's start, a notice, an end — is quiet. */
+.activity-group.kind-made .activity-title,
+.activity-group.kind-session .activity-title,
+.activity-group.kind-notice .activity-title,
+.activity-group.kind-unknown .activity-title,
+.activity-group.kind-end.status-done .activity-title {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.activity-sha {
+  flex: none;
+  font-family: var(--mono);
+}
+
+.activity-fill {
+  flex: 1;
+}
+
+.activity-status {
+  flex: none;
+}
+
+.activity-status.tone-info {
+  --badge: var(--info);
+}
+
+.activity-status.tone-error {
+  --badge: var(--error);
+}
+
+.activity-status.tone-added {
+  --badge: var(--added);
+}
+
+.activity-status.tone-warning {
+  --badge: var(--warning);
+}
+
+.activity-status.tone-muted {
+  --badge: var(--muted);
+}
+
+.activity-count {
+  flex: none;
+  min-width: 20px;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  text-align: center;
+}
+
+.activity-head .chevron {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--faint);
+}
+
+/* The summary: facts in one line under the title, each part in its tone. */
+.activity-summary {
+  display: block;
+  margin-left: 24px;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-small);
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Between parts: a dot in the quiet tone, whatever the part's own. */
+.activity-sep {
+  color: var(--faint);
+  white-space: pre;
+}
+
+.activity-part.tone-error {
+  color: var(--error);
+}
+
+.activity-part.tone-added {
+  color: var(--added);
+}
+
+.activity-part.tone-warning {
+  color: var(--warning);
+}
+
+.activity-summary code,
+.activity-event-words code {
+  font: var(--size-caption) var(--mono);
+}
+
+.activity-task {
+  margin-right: 8px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--text);
+  font-size: var(--size-caption);
+}
+
+/* Open: a milestone's words, or the events on one surface, rows between hairlines. */
+.activity-open {
+  padding: 6px 0 2px;
+}
+
+.activity-detail,
+.activity-events {
+  margin: 0 0 6px 24px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.activity-detail {
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+.activity-detail.plain {
+  max-height: 360px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+
+.activity-detail.markdown {
+  max-height: 480px;
+  overflow: auto;
+}
+
+.activity-detail p {
+  margin: 0 0 6px;
+}
+
+.activity-questions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: 8px;
+}
+
+.activity-events {
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.activity-event + .activity-event {
+  border-top: 1px solid var(--line);
+}
+
+.activity-event > details > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 10px;
+  font-size: var(--size-small);
+  transition: background-color 150ms;
+}
+
+.activity-event > details > summary::before {
+  content: none;
+}
+
+.activity-event > details > summary:hover {
+  background: var(--hover);
+}
+
+.activity-event-icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--muted);
+}
+
+.activity-event-icon .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.activity-event.failed .activity-event-icon {
+  color: var(--error);
+}
+
+.activity-event.running .activity-event-icon {
+  color: var(--info);
+}
+
+.activity-event-words {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.activity-event-text {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-overflow: ellipsis;
+}
+
+.activity-event-words code,
+.activity-path {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+}
+
+.activity-event-text + .activity-path,
+.activity-event-text + code {
+  flex-basis: 0;
+}
+
+.activity-lines {
+  flex: none;
+  display: inline-flex;
+  gap: 4px;
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-exit {
+  flex: none;
+}
+
+.activity-exit.badge-info {
+  --badge: var(--info);
+}
+
+.activity-event-took,
+.activity-event-time {
+  flex: none;
+  color: var(--faint);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+/* An event open: what was recorded of it, labelled. */
+.activity-event-details {
+  padding: 2px 12px 12px 32px;
+}
+
+.activity-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 6px 16px;
+  margin: 8px 0 0;
+  font-size: var(--size-small);
+}
+
+.activity-facts dt {
+  color: var(--muted);
+}
+
+.activity-facts dd {
+  min-width: 0;
+  margin: 0;
+  color: var(--text);
+}
+
+.activity-facts code {
+  font: var(--size-caption) var(--mono);
+}
+
+.activity-code {
+  position: relative;
+}
+
+.activity-code pre,
+.activity-output {
+  max-height: 280px;
+  margin: 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: var(--size-caption) / 1.5 var(--mono);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.activity-code pre {
+  padding-right: 40px;
+}
+
+.activity-output.failed {
+  border-color: color-mix(in srgb, var(--error) 35%, var(--line));
+}
+
+.activity-copy {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.activity-note {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.activity-all {
+  margin: 0 0 6px 24px;
+  font-size: var(--size-small);
+}
+
+.activity-day {
+  margin: 6px 0 2px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 600;
+}
+
+.activity-day-text {
+  padding: 2px 0;
+}
+
+.activity-note-row {
+  display: block;
+  margin: 8px 0;
+  font-size: var(--size-small);
+}
+
+/* The raw stream: one line a record, opening to its JSON. */
+.activity-raw {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--size-small);
+}
+
+.activity-raw-line {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 28px;
+}
+
+.activity-raw-line > details > summary {
+  gap: 8px;
+  min-height: 28px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.activity-raw-line > details > summary:hover {
+  background: var(--hover);
+}
+
+.activity-raw-line time,
+.activity-raw-untimed {
+  flex: none;
+  width: calc(6.5 * var(--size-caption));
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-raw-line .chip {
+  flex: none;
+}
+
+.activity-raw-what {
+  flex: none;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.activity-raw-gist {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+}
+
+.activity-raw .activity-output {
+  margin: 4px 8px 8px 30px;
+}
+
 /* Opening and closing slide, where the browser can animate to its height. */
-.activity details::details-content {
+.activity details::details-content,
+.activity-raw details::details-content {
   height: 0;
   overflow: clip;
   transition:
@@ -133,31 +704,53 @@ span.activity-text {
     content-visibility 150ms allow-discrete;
 }
 
-.activity details[open]::details-content {
+.activity details[open]::details-content,
+.activity-raw details[open]::details-content {
   height: auto;
 }
 
-.activity-detail {
-  margin: 4px 0 6px 18px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--raised);
-  color: var(--text);
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
+/* A narrow panel: the durations go first, then the time column. */
+@container activity (width < 560px) {
+  .activity-group,
+  .activity-day,
+  .activity-note-row {
+    --activity-when: calc(4 * var(--size-caption));
+  }
+
+  .activity-took,
+  .activity-event-time,
+  .activity-live-command {
+    display: none;
+  }
 }
 
-.activity-note {
-  margin: 8px 0 0 58px;
-  font-size: var(--size-small);
+@container activity (width < 400px) {
+  .activity-group,
+  .activity-day {
+    --activity-when: 0px;
+
+    column-gap: 4px;
+  }
+
+  .activity-summary,
+  .activity-detail,
+  .activity-events,
+  .activity-all {
+    margin-left: 0;
+  }
+
+  .activity-event-took {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .activity-row.fresh {
+  .activity-group.fresh {
     animation: none;
   }
 
-  .activity details::details-content {
+  .activity details::details-content,
+  .activity-raw details::details-content {
     transition: none;
   }
 }

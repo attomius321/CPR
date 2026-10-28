@@ -483,62 +483,6 @@ test('every card says its kind in a chip at the end of its name’s line, Featur
   await expect(chip).toBeHidden();
 });
 
-test('the Activity tab: what happened, in order, from its records; a new event added as it comes (V48c)', async ({
-  page,
-}) => {
-  symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}`);
-  await startFrom(page, 'Add a half function');
-  const branch = 'feature/add-a-half-function';
-  const tool = (event: string, id: string, name: string, input: Record<string, unknown>) =>
-    symbiote.hook(branch, {
-      hook_event_name: event,
-      tool_name: name,
-      tool_input: input,
-      tool_use_id: id,
-    });
-  tool('PreToolUse', 'r1', 'Read', { file_path: `${symbiote.folder(branch)}/src/a.ts` });
-  tool('PostToolUse', 'r1', 'Read', { file_path: `${symbiote.folder(branch)}/src/a.ts` });
-  tool('PreToolUse', 'e1', 'Write', { file_path: `${symbiote.folder(branch)}/src/half.ts` });
-  tool('PostToolUse', 'e1', 'Write', { file_path: `${symbiote.folder(branch)}/src/half.ts` });
-  tool('PreToolUse', 'b1', 'Bash', { command: 'pnpm test' });
-  tool('PostToolUseFailure', 'b1', 'Bash', { command: 'pnpm test' });
-  // Git keeps a commit's time in whole seconds: one after the tools, not in their second.
-  await page.waitForTimeout(1_100);
-  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
-
-  await page.goto(`${symbiote.url}?branch=${encodeURIComponent(branch)}&activity`);
-  await expect(page.getByRole('tab', { name: 'Activity' })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
-  const activity = panel(page, branch).getByRole('list', { name: 'Activity' });
-  // What each row says: a row that opens says it in its summary.
-  const rows = activity.locator('.activity-row').locator('summary, span.activity-text');
-  await expect(rows).toHaveText(
-    [
-      'Workspace made from main at ' + symbiote.shas.at(-1)!.slice(0, 7),
-      'Claude Code started',
-      "Symbiote's prompt",
-      'Read 1 file',
-      'Edited src/half.ts',
-      'Ran pnpm test',
-      /^Committed [0-9a-f]{7}: Add half$/,
-    ],
-    POLL,
-  );
-  await expect(activity.locator('.activity-row.kind-command')).toHaveClass(/failed/);
-
-  // Its report comes: added at the end, by itself, the rows before kept.
-  const made = await activity.locator('.activity-row').first().elementHandle();
-  symbiote.report(branch, 'Added **half**, and its test.');
-  await expect(rows.last()).toHaveText('Reported: Added **half**, and its test.', POLL);
-  expect(await made?.evaluate((row) => row.isConnected)).toBe(true);
-  // It opens to the report, drawn as Markdown.
-  await activity.getByText('Reported: Added **half**, and its test.').click();
-  await expect(activity.locator('.activity-detail.markdown strong')).toHaveText('half');
-});
-
 test('an agent that starts waiting while you are elsewhere: one line in the status bar, and Open (V48)', async ({
   page,
 }) => {

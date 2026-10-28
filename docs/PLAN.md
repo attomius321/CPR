@@ -143,6 +143,7 @@ hosted.
 | Fix | Codex's mark is OpenAI's blossom, in OpenAI's white or black | ready for review | | [journal](journal/fix-codex-icon.md) |
 | [V65](plan/v65-review-against.md) | A workspace reviewed against where it started, or a branch picked in it | ✅ | 471–474 | [journal](journal/v65-review-against.md) |
 | [V68](plan/v68-start-from-search.md) | Start from with a search: the branches narrowed as you type, picked with the keys | ready for review | 490–493 | [journal](journal/v68-start-from-search.md) |
+| [V73](plan/v73-activity-timeline.md) | The Activity tab as a timeline of phases: a live strip, groups that open to every event, the raw stream | ready for review | 513–518 | [journal](journal/v73-activity-timeline.md) |
 
 ### Agents
 

@@ -296,6 +296,7 @@ describe('activityEntry (V48f)', () => {
       ...head,
       tool: 'Bash',
       subject: 'pnpm test',
+      input: 'pnpm test',
       phase: 'start',
     });
     expect(tool('PostToolUse', 'Bash', { command: 'pnpm test' }, { tool_response: {} })).toEqual({
@@ -306,7 +307,14 @@ describe('activityEntry (V48f)', () => {
     });
     expect(
       tool('PostToolUseFailure', 'Bash', { command: 'pnpm test' }, { error: 'exit 1' }),
-    ).toEqual({ ...head, tool: 'Bash', subject: 'pnpm test', phase: 'end', failed: true });
+    ).toEqual({
+      ...head,
+      tool: 'Bash',
+      subject: 'pnpm test',
+      phase: 'end',
+      failed: true,
+      output: 'exit 1',
+    });
   });
 
   it('keeps only what the tool works on: a first line, a path in the worktree, a pattern', () => {
@@ -328,6 +336,139 @@ describe('activityEntry (V48f)', () => {
     expect(subject('mcp__symbiote__review', { branch: 'x' })).toBeUndefined();
     expect(subject('TodoWrite', { todos: [] })).toBeUndefined();
     expect(subject('Bash', 'not an object')).toBeUndefined();
+  });
+
+  it("a command's start keeps its whole text and the agent's words for it (V73)", () => {
+    const command = `cd ${W} && pnpm check 2>&1 | tail -20`;
+    expect(
+      tool('PreToolUse', 'Bash', { command, description: 'Run the full check\nand more' }),
+    ).toEqual({
+      ...head,
+      tool: 'Bash',
+      subject: command,
+      input: command,
+      about: 'Run the full check',
+      phase: 'start',
+    });
+    const long = `echo ${'y'.repeat(9000)}`;
+    expect(tool('PreToolUse', 'Bash', { command: long })?.input).toBe(long.slice(0, 8192));
+    // Anything but a command keeps its subject alone, as before.
+    expect(tool('PreToolUse', 'Read', { file_path: `${W}/a.ts` })).toEqual({
+      ...head,
+      tool: 'Read',
+      subject: 'a.ts',
+      phase: 'start',
+    });
+  });
+
+  it("a command's end keeps its duration and its output's last 2 KB (V73)", () => {
+    const end = tool(
+      'PostToolUse',
+      'Bash',
+      { command: 'pnpm test' },
+      {
+        tool_response: {
+          stdout: 'ok\n Tests  3 passed (3)\n',
+          stderr: 'warn\n',
+          interrupted: false,
+        },
+        duration_ms: 1234,
+      },
+    );
+    expect(end).toEqual({
+      ...head,
+      tool: 'Bash',
+      subject: 'pnpm test',
+      phase: 'end',
+      ms: 1234,
+      output: 'ok\n Tests  3 passed (3)\nwarn',
+    });
+    const lines = Array.from({ length: 400 }, (_, i) => `line ${i}`).join('\n');
+    const cut = tool('PostToolUse', 'Bash', { command: 'x' }, { tool_response: { stdout: lines } });
+    // From the first whole line in its last 2,048 characters, said to be cut.
+    expect(cut?.output?.length).toBeLessThanOrEqual(2048);
+    expect(cut?.output?.startsWith('line ')).toBe(true);
+    expect(cut?.output?.endsWith('line 399')).toBe(true);
+    expect(cut?.clipped).toBe(true);
+  });
+
+  it("a failed command's exit code from its error, its error as its output (V73)", () => {
+    expect(
+      tool(
+        'PostToolUseFailure',
+        'Bash',
+        { command: 'pnpm test' },
+        { error: 'Exit code 1\n FAIL src/a.test.ts\n Tests  1 failed (1)', duration_ms: 900 },
+      ),
+    ).toEqual({
+      ...head,
+      tool: 'Bash',
+      subject: 'pnpm test',
+      phase: 'end',
+      failed: true,
+      ms: 900,
+      exit: 1,
+      output: 'Exit code 1\n FAIL src/a.test.ts\n Tests  1 failed (1)',
+    });
+    // Stopped by the person: interrupted, whichever way Claude Code says it.
+    expect(
+      tool(
+        'PostToolUseFailure',
+        'Bash',
+        { command: 'x' },
+        { error: 'Interrupted', is_interrupt: true },
+      )?.interrupted,
+    ).toBe(true);
+    expect(
+      tool('PostToolUse', 'Bash', { command: 'x' }, { tool_response: { interrupted: true } })
+        ?.interrupted,
+    ).toBe(true);
+    // Sent to the background: its end is not the command's.
+    expect(
+      tool('PostToolUse', 'Bash', { command: 'x' }, { tool_response: { backgroundTaskId: 'b1' } })
+        ?.background,
+    ).toBe(true);
+  });
+
+  it("an edit's end counts the lines it added and removed (V73)", () => {
+    const patch = [
+      { oldStart: 1, oldLines: 2, newStart: 1, newLines: 3, lines: [' a', '-b', '+c', '+d'] },
+      { oldStart: 9, oldLines: 1, newStart: 10, newLines: 1, lines: ['-e', '+f'] },
+    ];
+    const edit = tool(
+      'PostToolUse',
+      'Edit',
+      { file_path: `${W}/src/a.ts` },
+      { tool_response: { filePath: `${W}/src/a.ts`, structuredPatch: patch } },
+    );
+    expect(edit).toMatchObject({ subject: 'src/a.ts', phase: 'end', added: 3, removed: 2 });
+    // A file written new: its lines, from what was written.
+    const created = tool(
+      'PostToolUse',
+      'Write',
+      { file_path: `${W}/b.ts` },
+      { tool_response: { type: 'create', content: 'a\nb\nc\n', structuredPatch: [] } },
+    );
+    expect(created).toMatchObject({ added: 3, removed: 0 });
+    expect(created?.output).toBeUndefined();
+  });
+
+  it("a task's subject, the ID it was given and its updates (V73)", () => {
+    expect(
+      tool('PreToolUse', 'TaskCreate', { subject: 'Write the tests', description: 'd' }),
+    ).toMatchObject({ task: { subject: 'Write the tests' } });
+    expect(
+      tool(
+        'PostToolUse',
+        'TaskCreate',
+        { subject: 'Write the tests' },
+        { tool_response: { task: { id: '3', subject: 'Write the tests' } } },
+      ),
+    ).toMatchObject({ task: { id: '3', subject: 'Write the tests' } });
+    expect(tool('PreToolUse', 'TaskUpdate', { taskId: '3', status: 'in_progress' })).toMatchObject({
+      task: { id: '3', status: 'in_progress' },
+    });
+    expect(tool('PreToolUse', 'TaskUpdate', { taskId: 3 })?.task).toBeUndefined();
   });
 
   it('nothing for another event, or without a session, a tool or its ID', () => {

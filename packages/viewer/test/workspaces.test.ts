@@ -621,6 +621,13 @@ describe('workspaceNext', () => {
       expect(doing({ doing: { thinking: true } })).toBe('Thinking');
     });
 
+    it("a command without its leading cd to the worktree, the worktree's paths short (V73)", () => {
+      const worktree = summary({}).worktree.path;
+      expect(doing({ doing: { tool: 'Bash', subject: `cd ${worktree} && pnpm check` } })).toBe(
+        'Running pnpm check',
+      );
+    });
+
     it('nothing while it does not work, or without recorded tools', () => {
       expect(doing({ doing: { thinking: true } }, 'needs-you' as 'working')).toBeUndefined();
       expect(doing({ since })).toBeUndefined();
