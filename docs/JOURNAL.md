@@ -287,3 +287,4 @@ merge commit.
 - 2026-10-28 [V73 — main merged in: V72's page frame](journal/v73-activity-timeline.md)
 - 2026-10-28 [NX1 spike — what finds a running Symbiote, and a viewer in a frame](journal/nx1-nexus.md)
 - 2026-10-28 [NX1 — Symbiote nexus, built: the records, the command, the page, the window](journal/nx1-nexus.md)
+- 2026-10-28 [IN1 spike — where the install's time and its compiler go](journal/in1-one-command-install.md)
