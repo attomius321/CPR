@@ -57,6 +57,7 @@ import {
   parseWorkspaceOpen,
   parseWorkspaceReply,
   parseWorkspaceRequest,
+  parseSuggestRequest,
   parseWorkspaceTerminal,
   SHA,
   sourceFiles,
@@ -627,6 +628,12 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         parseDocument,
         ({ name, bytes }) => answer(res, () => workspaces.saveDocument(name, bytes)),
         MAX_DOCUMENT_BODY,
+      );
+    }
+    if (url.pathname === '/api/workspaces/suggest') {
+      // The advisor (V75): a proposal for the Start page, only when the person asks for one.
+      return written(req, res, parseSuggestRequest, (request) =>
+        answer(res, () => workspaces.suggest(request)),
       );
     }
     if (url.pathname === '/api/workspaces/check') {

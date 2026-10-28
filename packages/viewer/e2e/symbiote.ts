@@ -616,6 +616,13 @@ export interface RunningWorkspaces extends Running {
   calls(): FakeClaudeCall[];
   /** How many times the fake Claude Code was asked for its models (V47). */
   modelReads(): number;
+  /**
+   * What the fake Claude Code answers the advisor from now on (V75): the schema's answer, or an
+   * exit code and no answer.
+   */
+  advise(answer: Record<string, unknown> | { exit: number }): void;
+  /** Each advisor's run of the fake Claude Code: its arguments and the brief on its stdin. */
+  adviceCalls(): { args: string[]; input: string }[];
   /** The sessions the fake stopped, by ID. */
   stops(): string[];
   /** From now on the fake refuses to start, with Claude Code's trust message. */
@@ -751,6 +758,16 @@ const save = (all) => writeFileSync(sessions, JSON.stringify(all));
 const args = process.argv.slice(2);
 // Its models (V47): its answer to the SDK's initialize request.
 ${answersModels(dir)}
+// The advisor (V75): one turn held to a schema, the brief on stdin; its answer from advice.json.
+if (args.includes('--json-schema')) {
+  const input = readFileSync(0, 'utf8');
+  appendFileSync(join(dir, 'advice-calls.jsonl'), JSON.stringify({ args, input }) + '\\n');
+  const file = join(dir, 'advice.json');
+  const answer = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : {};
+  if (answer.exit) process.exit(answer.exit);
+  process.stdout.write(JSON.stringify({ type: 'result', subtype: 'success', stop_reason: 'tool_use', structured_output: answer }) + '\\n');
+  process.exit(0);
+}
 // The options that take a value, and what is left: the prompt (none: the session waits, V50).
 const VALUED = ['--name', '--tools', '--permission-mode', '--mcp-config', '--settings', '--model', '--effort', '--append-system-prompt', '--add-dir', '--resume'];
 const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
@@ -1421,6 +1438,13 @@ export async function serveWorkspaces({
       return git(folder(branch), 'rev-parse', 'HEAD');
     },
     modelReads: () => lines('models-asked.txt').length,
+    advise(answer) {
+      writeFileSync(join(fake, 'advice.json'), JSON.stringify(answer));
+    },
+    adviceCalls: () =>
+      lines('advice-calls.jsonl').map(
+        (line) => JSON.parse(line) as { args: string[]; input: string },
+      ),
     calls() {
       const file = join(fake, 'calls.jsonl');
       return readFileSync(file, { encoding: 'utf8', flag: 'a+' })

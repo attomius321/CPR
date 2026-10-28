@@ -471,6 +471,35 @@ export interface WorkspaceRequest {
   via?: McpVia;
 }
 
+/**
+ * `POST /api/workspaces/suggest` (V75): the brief as the Start page holds it, for the advisor to
+ * size. Nothing is started.
+ */
+export interface SuggestRequest {
+  kind: WorkKind;
+  title: string;
+  parts: BriefParts;
+  /** The agent picked on the page; the default one when absent. */
+  agent?: AgentKind;
+  /** The attached documents' names: the advisor is told of them, not given them. */
+  documents?: string[];
+}
+
+/** What the advisor suggests for a start (V75): a proposal the person accepts or dismisses. */
+export interface WorkspaceSuggestion {
+  /** The agent it is for: the one picked, never another (decision 545). */
+  agent: AgentKind;
+  /** A model the agent lists; absent: the agent's default. */
+  model?: string;
+  /** A level that model takes; absent: its default level. */
+  effort?: string;
+  planFirst: boolean;
+  /** One sentence for the person: the signal in the brief that decided the size. */
+  why: string;
+  /** The model the advisor ran on, by its ID and name, and its level. */
+  by: { model: string; name: string; effort?: string };
+}
+
 /** A file kept for a workspace about to start (V40): its ID, the name it will have, its size. */
 export interface WorkspaceDocument {
   id: string;

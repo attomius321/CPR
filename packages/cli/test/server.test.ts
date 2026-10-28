@@ -1414,6 +1414,7 @@ describe('symbiote view: workspaces (V18)', () => {
   const uploads: { name: string; bytes: Buffer }[] = [];
   const drafts: Record<string, unknown>[] = [];
   const restarted: string[] = [];
+  const suggested: unknown[] = [];
   /** While set, a start waits for it. */
   let gate: Promise<void> | null = null;
   const workspaces: Workspaces = {
@@ -1424,6 +1425,20 @@ describe('symbiote view: workspaces (V18)', () => {
       if (gate) await gate;
       if (request.branch === 'main') throw new WorkspaceRefused('a branch main exists', 409);
       return { workspace: summary, prompt: 'Build it.' };
+    },
+    suggest: (request) => {
+      suggested.push(request);
+      if (request.agent === 'codex') {
+        return Promise.reject(new WorkspaceRefused('Codex declined the request', 502));
+      }
+      return Promise.resolve({
+        agent: 'claude',
+        model: 'opus',
+        effort: 'high',
+        planFirst: true,
+        why: 'Moves storage to SQLite with a migration: large, with a risk to data.',
+        by: { model: 'haiku', name: 'Haiku 5.5', effort: 'low' },
+      });
     },
     startAgent: (branch) => {
       restarted.push(branch);
@@ -1591,6 +1606,28 @@ describe('symbiote view: workspaces (V18)', () => {
     });
     expect(await (await get('/api/workspaces/options')).json()).toEqual(options);
     expect((await get('/api/workspaces', bare)).status).toBe(404);
+  });
+
+  it('suggests settings for a brief, starting nothing; a refusal keeps its status and words', async () => {
+    const brief = { kind: 'refactor', title: 'SQLite', parts: { restructure: 'Move records.' } };
+    const before = started.length;
+    const ok = await post('/api/workspaces/suggest', brief);
+    expect(ok.status).toBe(200);
+    expect(await ok.json()).toEqual({
+      agent: 'claude',
+      model: 'opus',
+      effort: 'high',
+      planFirst: true,
+      why: 'Moves storage to SQLite with a migration: large, with a risk to data.',
+      by: { model: 'haiku', name: 'Haiku 5.5', effort: 'low' },
+    });
+    expect(suggested).toEqual([brief]);
+    const declined = await post('/api/workspaces/suggest', { ...brief, agent: 'codex' });
+    expect(declined.status).toBe(502);
+    expect(await declined.json()).toEqual({ error: 'Codex declined the request' });
+    expect((await post('/api/workspaces/suggest', { kind: 'epic' })).status).toBe(400);
+    expect((await get('/api/workspaces/suggest')).status).toBe(405);
+    expect(started).toHaveLength(before);
   });
 
   it('starts a workspace as asked; refusals keep their status and words', async () => {

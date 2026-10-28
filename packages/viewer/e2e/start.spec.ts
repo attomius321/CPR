@@ -223,7 +223,7 @@ test("as the person's mockup: the S and a line in the head, the kinds as tabs, t
   await expect(head.locator('.symbiote-mark')).toBeVisible();
   await expect(head.getByRole('heading', { name: 'Start a workspace' })).toBeVisible();
   await expect(head).toContainText('Create a new workspace from a branch with an AI agent');
-  for (const name of ['Cancel', 'Clear']) {
+  for (const name of ['Cancel', 'Clear', 'Suggest settings']) {
     await expect(head.getByRole('button', { name })).toHaveClass(/secondary/);
   }
   await expect(head.getByRole('button', { name: 'Start workspace' })).toHaveClass(/primary/);
@@ -551,6 +551,77 @@ test('Model: none offered for an agent whose list Symbiote cannot read (Codex wi
   await expect(model(page)).toBeVisible();
   await start(page).getByLabel('Agent').selectOption({ label: 'Codex' });
   await expect(model(page)).toHaveCount(0);
+});
+
+// Suggest settings (V75): the head's button runs the advisor, on a press only; its proposal, a card
+// while open, changes the cards only when the person accepts it (decisions 548, 549).
+test('Suggest settings: a proposal only on a press; the cards change only when it is accepted', async ({
+  page,
+}) => {
+  const symbiote = await serve({ codex: true });
+  await page.goto(`${symbiote.url}start`);
+  const card = start(page)
+    .locator('.start-card')
+    .filter({ has: page.getByRole('heading', { name: 'Suggested settings' }) });
+  const suggest = start(page).getByRole('button', { name: 'Suggest settings' });
+  const use = card.getByRole('button', { name: 'Use these settings' });
+  const plan = start(page).getByRole('switch', { name: 'Plan first and wait for my OK' });
+  await expect(suggest).toBeDisabled();
+  await expect(card).toHaveCount(0);
+  await title(page).fill('Move workspace records to SQLite');
+  await goal(page).fill('Move the records to one SQLite database; migrate them on first start.');
+  await expect(suggest).toBeEnabled();
+  // Typing asks nothing.
+  expect(symbiote.adviceCalls()).toEqual([]);
+
+  symbiote.advise({
+    model: 'opus',
+    effort: 'high',
+    planFirst: true,
+    why: 'A storage migration: large, with a risk to data.',
+  });
+  await plan.click();
+  await suggest.click();
+  await expect(card).toContainText('Claude Code suggests Opus 5.5 at high effort, plan first');
+  await expect(card).toContainText('A storage migration: large, with a risk to data.');
+  // A proposal: the cards stay as they were until it is accepted.
+  await expect(model(page)).toHaveValue('');
+  await expect(plan).not.toBeChecked();
+  const [call] = symbiote.adviceCalls();
+  expect(call?.args).toContain('--json-schema');
+  expect(call?.input).toContain('<task>\n# Feature: Move workspace records to SQLite');
+  await use.click();
+  await expect(model(page)).toHaveValue('opus');
+  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
+  await expect(plan).toBeChecked();
+  await expect(card).toHaveCount(0);
+
+  // Dismissed, the cards stay.
+  symbiote.advise({ model: 'sonnet', effort: 'low', planFirst: false, why: 'One file.' });
+  await suggest.click();
+  await expect(card).toContainText('Claude Code suggests Sonnet 5.5 at low effort, no plan first');
+  await card.getByRole('button', { name: 'Dismiss' }).click();
+  await expect(card).toHaveCount(0);
+  await expect(model(page)).toHaveValue('opus');
+  await expect(plan).toBeChecked();
+
+  // Another agent closes an open proposal: its models were Claude Code's.
+  await suggest.click();
+  await expect(use).toBeVisible();
+  await start(page).getByLabel('Agent').selectOption({ label: 'Codex' });
+  await expect(card).toHaveCount(0);
+  // Codex without its daemon lists no models to suggest from.
+  await expect(suggest).toBeDisabled();
+  await start(page).getByLabel('Agent').selectOption({ label: 'Claude Code' });
+
+  // A failure leaves the cards and says why.
+  symbiote.advise({ exit: 1 });
+  await suggest.click();
+  await expect(card).toContainText(
+    'No suggestion: Claude Code ended with exit code 1 and no answer',
+  );
+  await expect(plan).toBeChecked();
+  expect(symbiote.adviceCalls()).toHaveLength(4);
 });
 
 // Start from a branch (V33): the default branch first, then the local ones, then remote-only.

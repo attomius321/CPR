@@ -353,6 +353,7 @@ describe('promptSettingsService', () => {
       'Plan first',
       'Plan without',
       'Documents',
+      'Suggest settings',
     ]);
     // What {documents} becomes (V40): its folder is required, the files' names are not.
     const documents = first.prompts.find((p) => p.key === 'documents');

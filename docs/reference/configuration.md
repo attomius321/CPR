@@ -31,6 +31,8 @@ the merger, Scout and Scribe, and leaves the rest of the file as it is.
 | `agent.model` | Claude Code's own | The model Claude Code starts on. Codex uses its own configuration's model. |
 | `scout.model`, `scribe.model` | `agent.model`, else the agent's own | The model each Scout or Scribe conversation starts on, if the agent offers it. |
 | `scout.effort`, `scribe.effort` | the agent's own | The effort level each Scout or Scribe conversation starts at, if the agent offers it. |
+| `advisor.model` | `haiku` for Claude Code, `gpt-6-luna` for Codex | The model that suggests a workspace's settings when you press **Suggest settings**, if the agent offers it. |
+| `advisor.effort` | `low` | The effort level that model runs at, if it takes that level. |
 | `merge.checks` | a command Symbiote finds | The check a merge runs before it lands: one command, or a list run in order. Put an install first if the check needs dependencies. |
 | `merge.push` | `false` | If `true`, Symbiote pushes the target branch after a merge lands: to its upstream, else to `origin`. |
 | `merge.strategy` | `merge` | How a merge lands unless you pick otherwise: `merge` (a merge commit) or `fast-forward` (the target moves to the approved commit, no new commit, when the target has no commits the branch lacks). |
@@ -88,6 +90,7 @@ and leaves any other brace as text:
 | `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace agent's first prompt, for that kind of work | `{brief}` (required), `{branch}`, `{worktree}`, `{start}`, `{plan}`, `{documents}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{symbiote}` |
 | `plan.first`, `plan.direct` | What `{plan}` becomes, with **Plan first** on and off | none |
 | `documents` | What `{documents}` becomes when you gave files with the brief | `{folder}` (required), `{files}` |
+| `advisor` | The instructions for the model behind **Suggest settings**: how it sizes a brief, and which of the agent's models is small, mid or large. Edit the guide here when your agent lists new models | `{models}` (required), `{agent}` |
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The lines of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`, `{reviewer}`, `{what}`, `{review}`, `{agents}` |
 | `reviews` | The text of `symbiote/AGENTS.md`, which tells agents how to act on a review | none |
 | `merger` | The merger's instructions | none |

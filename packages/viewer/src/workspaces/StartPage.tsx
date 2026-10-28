@@ -7,6 +7,7 @@ import type {
   WorkspaceDocument,
   WorkspaceOptions,
   WorkspaceRequest,
+  SuggestRequest,
   WorkspaceStart,
 } from '@symbiote/core';
 import {
@@ -65,6 +66,8 @@ import { StartCard } from './StartCard.js';
 import { StartDocuments } from './StartDocuments.js';
 import { StartFrom } from './StartFrom.js';
 import { StartKinds } from './StartKinds.js';
+import { SuggestButton, SuggestionCard, useSuggestion } from './StartSuggest.js';
+import { suggestBlocked } from './suggest.js';
 import { tip } from '../ui/tip.js';
 
 /** How long typing pauses before the draft is saved. */
@@ -396,6 +399,15 @@ function StartForm({
       setRunning(false);
     }
   };
+  // Suggested settings (V75): asked only on a press, for the agent picked.
+  const suggestion = useSuggestion(agent?.kind);
+  const suggestRequest = (): SuggestRequest => ({
+    kind: form.kind,
+    title: form.title,
+    parts: formParts(form, spec),
+    ...(agent ? { agent: agent.kind } : {}),
+    ...(documents.length > 0 ? { documents: documents.map((d) => d.name) } : {}),
+  });
   const pick = (kind: WorkKindSpec) => {
     if (kind.kind !== form.kind) edit(withKind(form, spec, kind, guess));
   };
@@ -463,6 +475,11 @@ function StartForm({
         >
           Clear
         </button>
+        <SuggestButton
+          asking={suggestion.asked.state === 'asking'}
+          blocked={suggestBlocked({ agent, main: form.main, heading: mainHeading, running })}
+          onPress={() => void suggestion.ask(suggestRequest())}
+        />
         <button
           type="button"
           className="button primary"
@@ -693,6 +710,14 @@ function StartForm({
                 )}
               </div>
             </StartCard>
+            <SuggestionCard
+              asked={suggestion.asked}
+              agent={agent}
+              run={run}
+              current={{ model, effort, planFirst }}
+              onChoose={choose}
+              onClose={suggestion.close}
+            />
             <StartAgent
               agents={options.agents}
               agent={agent}
