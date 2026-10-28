@@ -285,3 +285,4 @@ merge commit.
 - 2026-10-28 [V73 spike — what the Activity tab draws, and what agents' records hold](journal/v73-activity-timeline.md)
 - 2026-10-28 [V73 — the Activity tab as a timeline of phases](journal/v73-activity-timeline.md)
 - 2026-10-28 [V73 — main merged in: V72's page frame](journal/v73-activity-timeline.md)
+- 2026-10-28 [NX1 spike — what finds a running Symbiote, and a viewer in a frame](journal/nx1-nexus.md)

@@ -226,6 +226,12 @@ hosted.
 | Fix | The app shows a page as a browser does, under its title bar | ready for review | | [journal](journal/fix-title-bar-desktop.md) |
 | [N2](plan/n2-taskbar-waiting.md) | The taskbar's icon says something waits for you: an amber dot, a blink where the desktop has one | ready for review | 465–470 | [journal](journal/n2-taskbar-waiting.md) |
 
+### The nexus
+
+| ID | What | Status | Decisions | Journal |
+|---|---|---|---|---|
+| [NX1](plan/nx1-nexus.md) | Symbiote nexus: every running `symbiote view` found, as tabs in one window or browser tab | planned | 519–527 | [journal](journal/nx1-nexus.md) |
+
 ### Repository monitoring
 
 | ID | What | Status | Decisions | Journal |
