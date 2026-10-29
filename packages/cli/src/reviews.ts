@@ -30,7 +30,7 @@ import type { Pair } from './diffs.js';
 import { FORMER_NAME, moveInto } from './former-name.js';
 import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
 import { reviewBase, reviewedAgainst } from './review-base.js';
-import { readWorkspace, workspacePath, workspacesDir } from './workspace-record.js';
+import { readWorkspace, viaOf, workspacePath, workspacesDir } from './workspace-record.js';
 import type { StateName, StateStore } from './state.js';
 import { writeFileWhole } from './file-write.js';
 
@@ -389,7 +389,7 @@ export function branchReviews(
                   comments: verdict.comments.length,
                   ...(verdict.into ? { into: verdict.into } : {}),
                   merged: await mergedInto(refs, verdict),
-                  ...(verdict.via ? { via: verdict.via } : {}),
+                  ...viaOf(verdict.via),
                 },
               }
             : {}),

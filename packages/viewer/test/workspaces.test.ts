@@ -242,9 +242,9 @@ describe('startedWith (V30b)', () => {
     expect(startedWith(agent({ state: 'no-agent', kind: undefined }))).toBeNull();
   });
 
-  it('says it was started through Scout or symbiote mcp (MC1)', () => {
-    expect(startedWith(agent({ kind: 'codex' }), 'scout')).toBe(
-      'Started through Scout with Codex at its default effort.',
+  it('says it was started through Nucleus or symbiote mcp (MC1)', () => {
+    expect(startedWith(agent({ kind: 'codex' }), 'nucleus')).toBe(
+      'Started through Nucleus with Codex at its default effort.',
     );
     expect(startedWith(agent({ effort: 'low' }), 'mcp')).toBe(
       'Started through symbiote mcp with Claude Code at low effort.',

@@ -4,7 +4,7 @@ import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 // A page agent's terminal fits its box (fix/scribe-terminal-problem): xterm's rows end inside the
 // screen's padding, at every window height, and its size holds. The fit add-on counted the rows
 // from the height of the box xterm opened in, padding included (border-box): up to 8 px too many.
-// On Scout's page that cut the last row off; in Scribe's pane, which scrolls, it gave the pane
+// On Nucleus's page that cut the last row off; in Scribe's pane, which scrolls, it gave the pane
 // scrollbars, which narrowed the terminal, which fitted it again without them, every frame.
 
 // Real scrollbars, as Symbiote's window draws them: Playwright's headless Chromium hides them,
@@ -116,11 +116,11 @@ test("Scribe's terminal fits its pane at every height: no scrollbar comes and go
   );
 });
 
-test("Scout's terminal fits its card at every height: its last row whole", async ({ page }) => {
+test("Nucleus's terminal fits its card at every height: its last row whole", async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`${symbiote.url}scout`);
-  const terminal = page.locator('.scout-page .agent-terminal');
+  await page.goto(`${symbiote.url}nucleus`);
+  const terminal = page.locator('.nucleus-page .agent-terminal');
   await expect(terminal.locator('.xterm-rows')).toContainText('Fake Claude Code', POLL);
   await sweep(page, terminal);
 });

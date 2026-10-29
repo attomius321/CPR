@@ -13,12 +13,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import {
   gateDecision,
+  gateOptions,
   gitReadProblem,
   hookOutput,
+  nucleusReach,
   openWorktrees,
-  scoutReach,
-  type ScoutReach,
-} from '../src/scout-gate.js';
+  type NucleusReach,
+} from '../src/nucleus-gate.js';
 
 describe('gitReadProblem (V35, decision 236)', () => {
   it.each([
@@ -173,17 +174,69 @@ describe('gateDecision (V35)', () => {
     const denied = gateDecision(input('Bash', { command: 'ls -la' }));
     expect(denied).toMatchObject({ allow: false });
     expect(denied && !denied.allow && denied.reason).toMatch(
-      /^Scout runs only git's read commands/,
+      /^Nucleus runs only git's read commands/,
     );
     expect(gateDecision(input('Bash', {}))).toMatchObject({ allow: false });
   });
 
-  it('denies every other tool: Scout changes no file', () => {
-    for (const tool of ['Edit', 'Write', 'NotebookEdit', 'WebFetch', 'Agent']) {
+  it('denies every other tool: Nucleus changes no file', () => {
+    for (const tool of ['Edit', 'Write', 'NotebookEdit', 'Agent']) {
       const decision = gateDecision(input(tool, {}));
       expect(decision).toMatchObject({ allow: false });
-      expect(decision && !decision.allow && decision.reason).toMatch(/Scout changes no file/);
+      expect(decision && !decision.allow && decision.reason).toMatch(/Nucleus changes no file/);
     }
+  });
+
+  // NU1 (decision 592): the agent's own web tools, as they come, when the gate is given `--web`.
+  it('lets WebSearch and WebFetch through with the web on, whatever they ask', () => {
+    const web = { web: true };
+    // Said as what it is, not as one of git's read commands (the hook's words).
+    const allowed = { allow: true, reason: 'the web, as its agent reads it (NU1)' };
+    expect(
+      gateDecision(input('WebSearch', { query: 'vite release', mode: 'standard' }), web),
+    ).toEqual(allowed);
+    for (const url of ['https://registry.npmjs.org/vite/latest', 'http://localhost:4173/']) {
+      expect(gateDecision(input('WebFetch', { url, prompt: 'The version' }), web)).toEqual(allowed);
+    }
+    expect(JSON.parse(hookOutput(allowed))).toMatchObject({
+      hookSpecificOutput: {
+        permissionDecisionReason: 'Nucleus: the web, as its agent reads it (NU1)',
+      },
+    });
+  });
+
+  it('denies the web tools without it, saying how to turn the web on', () => {
+    for (const tool of ['WebSearch', 'WebFetch']) {
+      const decision = gateDecision(input(tool, { query: 'x', url: 'https://example.com' }));
+      expect(decision).toMatchObject({ allow: false });
+      expect(decision && !decision.allow && decision.reason).toMatch(/nucleus\.web/);
+    }
+  });
+
+  it('with the web on, still denies a write, any other command and any other server', () => {
+    const web = { web: true };
+    for (const tool of ['Edit', 'Write', 'NotebookEdit', 'Agent', 'mcp__github__create_issue']) {
+      expect(gateDecision(input(tool, {}), web)).toMatchObject({ allow: false });
+    }
+    for (const command of [
+      'curl -sS https://example.com',
+      'wget https://example.com',
+      'ls',
+      'git fetch origin',
+      'git push origin main',
+      'git ls-remote origin',
+      'echo hi > notes.txt',
+    ]) {
+      expect(gateDecision(input('Bash', { command }), web)).toMatchObject({ allow: false });
+    }
+    expect(gateDecision(input('Bash', { command: 'git log -1' }), web)).toEqual({ allow: true });
+    expect(gateDecision(input('mcp__symbiote__overview', {}), web)).toEqual({ allow: true });
+  });
+
+  it('reads `--web` from its arguments; a settings file from before NU1 gives none', () => {
+    expect(gateOptions(['--web'])).toEqual({ web: true });
+    expect(gateOptions([])).toEqual({ web: false });
+    expect(gateOptions(['--other'])).toEqual({ web: false });
   });
 
   it("lets Symbiote's own tools through; every other server's is denied (MC1)", () => {
@@ -195,7 +248,7 @@ describe('gateDecision (V35)', () => {
       const decision = gateDecision(input(tool, {}));
       expect(decision).toMatchObject({ allow: false });
       expect(decision && !decision.allow && decision.reason).toMatch(
-        /Scout acts only through Symbiote's tools/,
+        /Nucleus acts only through Symbiote's tools/,
       );
     }
   });
@@ -211,7 +264,7 @@ describe('gateDecision (V35)', () => {
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
         permissionDecision: 'allow',
-        permissionDecisionReason: "Scout: one of git's read commands",
+        permissionDecisionReason: "Nucleus: one of git's read commands",
       },
     });
     expect(JSON.parse(hookOutput({ allow: false, reason: 'No.' }))).toEqual({
@@ -240,7 +293,7 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 596-598)", () =>
   let done: string;
   let hand: string;
   let ghost: string;
-  let reach: ScoutReach;
+  let reach: NucleusReach;
 
   const record = (branch: string, worktree: string, more: Record<string, unknown> = {}) => {
     const file = join(records, `${branch}.json`);
@@ -320,12 +373,12 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 596-598)", () =>
       read('Grep', { pattern: 'export', path: join(wt, 'src'), glob: '*.ts' }),
       read('Glob', { pattern: '**/*.ts', path: wt }),
     ]) {
-      expect(gateDecision(input, reach)).toEqual(allowed);
+      expect(gateDecision(input, { reach })).toEqual(allowed);
     }
     expect(JSON.parse(hookOutput(allowed))).toMatchObject({
       hookSpecificOutput: {
         permissionDecision: 'allow',
-        permissionDecisionReason: "Scout: a workspace's worktree",
+        permissionDecisionReason: "Nucleus: a workspace's worktree",
       },
     });
   });
@@ -355,7 +408,7 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 596-598)", () =>
       read('Glob', { pattern: '**/*.ts' }),
       read('Read', {}),
     ]) {
-      expect(gateDecision(input, reach)).toBeNull();
+      expect(gateDecision(input, { reach })).toBeNull();
     }
     // Without the folders (a settings file from before V80): main's gate.
     expect(gateDecision(read('Read', { file_path: join(wt, 'src/a.ts') }))).toBeNull();
@@ -442,8 +495,10 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 596-598)", () =>
 
   it('says where Scout runs git when it refuses a command', () => {
     const bash = (command: string) => read('Bash', { command });
-    expect(gateDecision(bash(`git -C ${wt} diff-index -p HEAD`), reach)).toEqual({ allow: true });
-    const denied = gateDecision(bash(`git -C ${hand} log`), reach);
+    expect(gateDecision(bash(`git -C ${wt} diff-index -p HEAD`), { reach })).toEqual({
+      allow: true,
+    });
+    const denied = gateDecision(bash(`git -C ${hand} log`), { reach });
     expect(denied).toMatchObject({ allow: false });
     expect(denied && !denied.allow && denied.reason).toMatch(/-C <a workspace's worktree>/);
     // Main's words without the folders.
@@ -488,13 +543,13 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 596-598)", () =>
   });
 });
 
-describe("scoutReach (V80): the hook's arguments", () => {
+describe("nucleusReach (V80): the hook's arguments", () => {
   it("takes the checkout and the records folder; without both, none (main's gate)", () => {
-    const reach = scoutReach(['/repo', '/repo/symbiote/workspaces']);
+    const reach = nucleusReach(['/repo', '/repo/symbiote/workspaces']);
     expect(reach?.checkout).toBe('/repo');
     expect(reach?.worktrees()).toEqual([]);
-    expect(scoutReach([])).toBeUndefined();
-    expect(scoutReach(['/repo'])).toBeUndefined();
-    expect(scoutReach(['', ''])).toBeUndefined();
+    expect(nucleusReach([])).toBeUndefined();
+    expect(nucleusReach(['/repo'])).toBeUndefined();
+    expect(nucleusReach(['', ''])).toBeUndefined();
   });
 });

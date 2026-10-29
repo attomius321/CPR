@@ -6,15 +6,15 @@ const ask = (more: Partial<McpAsk> = {}): McpAsk => ({
   id: 'a1',
   tool: 'queue_merge',
   words: 'Merge fix/a at bbbbbbb into main',
-  by: { via: 'scout' },
+  by: { via: 'nucleus' },
   at: '2026-10-25T12:00:00.000Z',
   until: '2026-10-25T12:10:00.000Z',
   ...more,
 });
 
 describe("an ask of Symbiote's MCP, in words (MC1)", () => {
-  it('names who asks: Scout, or an agent through symbiote mcp in its folder', () => {
-    expect(askedBy(ask())).toBe('Scout');
+  it('names who asks: Nucleus, or an agent through symbiote mcp in its folder', () => {
+    expect(askedBy(ask())).toBe('Nucleus');
     expect(
       askedBy(ask({ by: { via: 'mcp', client: 'claude-code', folder: '/home/p/trial' } })),
     ).toBe('Claude Code in trial');
@@ -34,9 +34,9 @@ describe("an ask of Symbiote's MCP, in words (MC1)", () => {
     expect(askLeft(ask(), at('2026-10-25T12:11:00.000Z'))).toBe('under a minute left');
   });
 
-  it('says whether Scout asks: its sidenav mark', () => {
-    expect(asksBy([ask()], 'scout')).toBe(true);
-    expect(asksBy([ask({ by: { via: 'mcp' } })], 'scout')).toBe(false);
-    expect(asksBy([], 'scout')).toBe(false);
+  it('says whether Nucleus asks: its sidenav mark', () => {
+    expect(asksBy([ask()], 'nucleus')).toBe(true);
+    expect(asksBy([ask({ by: { via: 'mcp' } })], 'nucleus')).toBe(false);
+    expect(asksBy([], 'nucleus')).toBe(false);
   });
 });

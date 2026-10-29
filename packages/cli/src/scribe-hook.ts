@@ -3,7 +3,7 @@
 // stdin, its decision on stdout (`scribe-gate.ts`).
 // Input it cannot read gets no answer, which leaves the call to Claude Code's own rules.
 import { scribeDecision } from './scribe-gate.js';
-import { hookOutput } from './scout-gate.js';
+import { hookOutput } from './nucleus-gate.js';
 
 const skills = process.argv.slice(2).filter((folder) => folder !== '');
 let stdin = '';

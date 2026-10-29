@@ -6,7 +6,7 @@ import type { PromptKey, PromptSetting, PromptSettings } from '@symbiote/core';
  * The agents Symbiote brings, by their prompts' group: each one entry under "Prebuilt agents" and
  * one page for its settings — its model, its effort, its prompt (fix/scout-merger-scribe-settings).
  */
-export const PREBUILT_AGENTS = ['Merger', 'Scout', 'Scribe'] as const;
+export const PREBUILT_AGENTS = ['Merger', 'Nucleus', 'Scribe'] as const;
 export type PrebuiltAgent = (typeof PREBUILT_AGENTS)[number];
 export const PREBUILT_GROUP = 'Prebuilt agents';
 

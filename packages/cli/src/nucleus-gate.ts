@@ -1,11 +1,12 @@
-// Scout's gate (V35, decision 236): what Scout's Claude Code may run, decided by Symbiote before
+// Nucleus's gate (V35, decision 236): what Nucleus's Claude Code may run, decided by Symbiote before
 // Claude Code's own rules. Read, Grep and Glob pass to those rules, but in an open workspace's
 // worktree, which the gate opens (V80, decisions 596-597); Bash runs only git's read commands this
 // module parses, there too with `-C` (decision 598); Symbiote's own MCP tools pass (MC1: the asked
-// ones wait for the person in Symbiote); every other tool, and every other server's, is denied.
-// Claude Code's allow rules cannot do this: `Bash(git log *)` matches `git log --output=<file>`.
-// The hook runs once per tool call in Claude Code's process tree (`scout-hook.ts`), so this module
-// uses nothing but Node's modules.
+// ones wait for the person in Symbiote); WebSearch and WebFetch pass when Symbiote gives it the web
+// (NU1, decision 592); every other tool, and every other server's, is denied. Claude Code's allow
+// rules cannot do this: `Bash(git log *)` matches `git log --output=<file>`. The hook runs once per
+// tool call in Claude Code's process tree (`nucleus-hook.ts`), so this module uses nothing but
+// Node's modules.
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, realpathSync } from 'node:fs';
 import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
@@ -96,8 +97,8 @@ export function openWorktrees(checkout: string, records: string): string[] {
   return found;
 }
 
-/** What Scout reads besides the checkout (V80): the open workspaces' worktrees. */
-export interface ScoutReach {
+/** What Nucleus reads besides the checkout (V80): the open workspaces' worktrees. */
+export interface NucleusReach {
   /** The checkout it runs in: a path there is Claude Code's to decide, as before. */
   checkout: string;
   /** The open workspaces' worktrees, real paths (`openWorktrees`). */
@@ -105,11 +106,12 @@ export interface ScoutReach {
 }
 
 /**
- * The reach the hook's arguments give: the checkout and the records folder, from Scout's settings
- * file; without both (a file written before V80), none: `main`'s gate. Read once, when asked.
+ * The reach the hook's arguments give: the checkout and the records folder, from Nucleus's settings
+ * file; without both (a file written before V80), none: the checkout only. Read once, when asked.
  */
-export function scoutReach(args: readonly string[]): ScoutReach | undefined {
-  const [checkout, records] = args;
+export function nucleusReach(args: readonly string[]): NucleusReach | undefined {
+  // Its two folders come first; `--web` (NU1) is a flag after them.
+  const [checkout, records] = args.filter((arg) => !arg.startsWith('--'));
   if (!checkout || !records) return undefined;
   let found: readonly string[] | undefined;
   return { checkout, worktrees: () => (found ??= openWorktrees(checkout, records)) };
@@ -127,7 +129,29 @@ function worktreeProblem(folder: string, worktrees: () => readonly string[]): st
     : `git -C ${folder}: not a workspace's worktree`;
 }
 
-/** git's commands Scout runs: they read the repository and its history, and write nothing. */
+/**
+ * What the gate is told by its arguments in the settings file: the worktrees Nucleus reads (V80),
+ * and whether it has the web (NU1).
+ */
+export interface GateOptions {
+  reach?: NucleusReach;
+  web?: boolean;
+}
+
+/**
+ * The gate's options from its arguments: the checkout and the records folder (V80), and `--web`
+ * when the conversation was started with the web (NU1). A settings file written before NU1, or
+ * with `nucleus.web` false, gives no web; one written before V80, no reach.
+ */
+export function gateOptions(args: readonly string[]): GateOptions {
+  const reach = nucleusReach(args);
+  return { ...(reach ? { reach } : {}), web: args.includes('--web') };
+}
+
+/** Claude Code's tools on the web (NU1): a search at Anthropic, a page read by GET from here. */
+const WEB = ['WebSearch', 'WebFetch'];
+
+/** git's commands Nucleus runs: they read the repository and its history, and write nothing. */
 const READ_COMMANDS = new Set([
   'log',
   'show',
@@ -142,10 +166,10 @@ const READ_COMMANDS = new Set([
 ]);
 
 /**
- * Scout's besides (V80, decision 598): `diff-index`, the uncommitted changes, and `status` with
+ * Nucleus's besides (V80, decision 598): `diff-index`, the uncommitted changes, and `status` with
  * `--no-optional-locks`; neither writes the index, where `git diff` and a plain `git status` do.
  */
-const SCOUT_COMMANDS = new Set([...READ_COMMANDS, 'diff-index', 'status']);
+const NUCLEUS_COMMANDS = new Set([...READ_COMMANDS, 'diff-index', 'status']);
 
 /** What a git read command may be piped into: filters that write nothing. */
 const FILTERS = new Set(['head', 'tail', 'wc', 'grep']);
@@ -326,7 +350,7 @@ function stagesOf(command: string): string[][] | string {
 }
 
 /**
- * git's own options before the command: `--no-pager`; with `worktrees` (Scout's, V80), also
+ * git's own options before the command: `--no-pager`; with `worktrees` (Nucleus's, V80), also
  * `--no-optional-locks` and one `-C` into an open workspace's worktree. The command's words, or
  * what is wrong.
  */
@@ -358,9 +382,9 @@ function ownOptions(
 }
 
 /**
- * Why `command` is not one of git's read commands Scout runs, or null when it is: `git
+ * Why `command` is not one of git's read commands Nucleus runs, or null when it is: `git
  * [--no-pager] <command> …` for the commands in `READ_COMMANDS`, no option that writes or runs a
- * program, optionally piped into `head`, `tail`, `wc` or `grep`. With `worktrees` (Scout's, V80):
+ * program, optionally piped into `head`, `tail`, `wc` or `grep`. With `worktrees` (Nucleus's, V80):
  * also `-C <a workspace's worktree>`, where `git diff` is refused (it rewrites the index), and
  * `diff-index` and `--no-optional-locks status`, here and there.
  */
@@ -372,7 +396,7 @@ export function gitReadProblem(
   if (typeof stages === 'string') return stages;
   const [git = [], ...filters] = stages;
   const [program, ...rest] = git;
-  if (program !== 'git') return `${program ?? command}: Scout runs git only`;
+  if (program !== 'git') return `${program ?? command}: only git runs`;
   const own = ownOptions(rest, worktrees);
   if (typeof own === 'string') return own;
   const [name, ...args] = own.rest;
@@ -382,8 +406,8 @@ export function gitReadProblem(
       ? `git ${name}: none of git's own options but --no-pager, --no-optional-locks and -C <a workspace's worktree>`
       : `git ${name}: none of git's own options but --no-pager`;
   }
-  if (!(worktrees ? SCOUT_COMMANDS : READ_COMMANDS).has(name)) {
-    return `git ${name} is not one of git's read commands Scout runs`;
+  if (!(worktrees ? NUCLEUS_COMMANDS : READ_COMMANDS).has(name)) {
+    return `git ${name} is not one of git's read commands Nucleus runs`;
   }
   if (name === 'status' && !own.quiet) {
     return 'git status only as git --no-optional-locks status: without it git rewrites the index';
@@ -419,7 +443,7 @@ const READS = ['Read', 'Grep', 'Glob'];
 function readDecision(
   tool: string,
   input: { file_path?: unknown; path?: unknown },
-  reach: ScoutReach | undefined,
+  reach: NucleusReach | undefined,
 ): GateDecision {
   const path = tool === 'Read' ? input.file_path : input.path;
   if (!reach || typeof path !== 'string' || !isAbsolute(path)) return null;
@@ -432,9 +456,14 @@ function readDecision(
     : null;
 }
 
-/** The gate's answer to one PreToolUse hook's input (Claude Code's documented fields); `reach`,
- * the worktrees Scout reads besides the checkout (V80). */
-export function gateDecision(input: unknown, reach?: ScoutReach): GateDecision {
+/**
+ * The gate's answer to one PreToolUse hook's input (Claude Code's documented fields): `reach`, the
+ * worktrees Nucleus reads besides the checkout (V80); `web`, whether it has the web (NU1).
+ */
+export function gateDecision(
+  input: unknown,
+  { reach, web = false }: GateOptions = {},
+): GateDecision {
   if (!input || typeof input !== 'object') return null;
   const v = input as { hook_event_name?: unknown; tool_name?: unknown; tool_input?: unknown };
   if (v.hook_event_name !== 'PreToolUse' || typeof v.tool_name !== 'string') return null;
@@ -451,11 +480,11 @@ export function gateDecision(input: unknown, reach?: ScoutReach): GateDecision {
     return {
       allow: false,
       reason: reach
-        ? "Scout runs only git's read commands (git log, show, blame, diff, shortlog, grep, " +
+        ? "Nucleus runs only git's read commands (git log, show, blame, diff, shortlog, grep, " +
           'rev-parse, merge-base, ls-files, ls-tree, diff-index, and status with ' +
           "--no-optional-locks), one at a time, here or with -C <a workspace's worktree>, piped " +
           `into head, tail, wc or grep at most: ${problem}. Read, Grep and Glob read files.`
-        : "Scout runs only git's read commands (git log, show, blame, diff, shortlog, grep, " +
+        : "Nucleus runs only git's read commands (git log, show, blame, diff, shortlog, grep, " +
           'rev-parse, merge-base, ls-files, ls-tree), one at a time, piped into head, tail, wc or ' +
           `grep at most: ${problem}. Read, Grep and Glob read files.`,
     };
@@ -466,23 +495,30 @@ export function gateDecision(input: unknown, reach?: ScoutReach): GateDecision {
     }
     return {
       allow: false,
-      reason: `Scout acts only through Symbiote's tools (${SYMBIOTE_TOOLS}…), not ${v.tool_name}.`,
+      reason: `Nucleus acts only through Symbiote's tools (${SYMBIOTE_TOOLS}…), not ${v.tool_name}.`,
+    };
+  }
+  if (WEB.includes(v.tool_name)) {
+    if (web) return { allow: true, reason: 'the web, as its agent reads it (NU1)' };
+    return {
+      allow: false,
+      reason: `Nucleus has no web in this conversation (${v.tool_name}): nucleus.web is false in symbiote/config.json, or the conversation started before Nucleus had it. A new conversation takes the setting.`,
     };
   }
   return {
     allow: false,
-    reason: `Scout changes no file: it reads files (Read, Grep, Glob) and git's history, and acts only through Symbiote's tools (${v.tool_name}).`,
+    reason: `Nucleus changes no file: it reads files (Read, Grep, Glob) and git's history, and acts only through Symbiote's tools (${v.tool_name}).`,
   };
 }
 
-/** The MCP tools Scout's session is given (MC1): Symbiote's server's, and no other's. */
+/** The MCP tools Nucleus's session is given (MC1): Symbiote's server's, and no other's. */
 const SYMBIOTE_TOOLS = 'mcp__symbiote__';
 
 /**
  * The hook's output: Claude Code's PreToolUse decision, or nothing to leave it to its rules; `who`
- * is the agent whose gate let a command through (Scout's, or Scribe's since V41).
+ * is the agent whose gate let a command through (Nucleus's, or Scribe's since V41).
  */
-export function hookOutput(decision: GateDecision, who = 'Scout'): string {
+export function hookOutput(decision: GateDecision, who = 'Nucleus'): string {
   if (!decision) return '';
   return JSON.stringify({
     hookSpecificOutput: {

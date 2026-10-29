@@ -1,28 +1,33 @@
-import type { AgentKind, AgentModel, ScoutConversation, ScoutStateName } from '@symbiote/core';
+import type {
+  AgentKind,
+  AgentModel,
+  PageAgentConversation,
+  PageAgentStateName,
+} from '@symbiote/core';
 import { AGENT_NAMES } from '../workspaces/workspaces.js';
 
 /**
- * What the sidenav says of Scout (V35, decision 238): `working` while it answers; `answered` when
- * an answer came while the person was on another page, until they open Scout; nothing otherwise.
+ * What the sidenav says of Nucleus (V35, decision 238): `working` while it answers; `answered` when
+ * an answer came while the person was on another page, until they open Nucleus; nothing otherwise.
  */
-export type ScoutMark = 'working' | 'answered' | null;
+export type NucleusMark = 'working' | 'answered' | null;
 
 /** Turns that end on the person: an answer, a dialog, a turn ended by Esc. */
-const ENDED: readonly ScoutStateName[] = ['answered', 'needs-you', 'interrupted'];
+const ENDED: readonly PageAgentStateName[] = ['answered', 'needs-you', 'interrupted'];
 
-/** The mark after a new read of Scout's state (`state`: none without a conversation). */
-export function nextScoutMark(
-  shown: ScoutMark,
-  state: ScoutStateName | undefined,
-  onScout: boolean,
-): ScoutMark {
+/** The mark after a new read of Nucleus's state (`state`: none without a conversation). */
+export function nextNucleusMark(
+  shown: NucleusMark,
+  state: PageAgentStateName | undefined,
+  onNucleus: boolean,
+): NucleusMark {
   if (state === 'working') return 'working';
-  if (onScout || state === undefined || !ENDED.includes(state)) return null;
+  if (onNucleus || state === undefined || !ENDED.includes(state)) return null;
   return shown === 'working' || shown === 'answered' ? 'answered' : null;
 }
 
-/** Scout's state in words, as its page's head says it. */
-export function scoutStateText(conversation: ScoutConversation): string {
+/** Nucleus's state in words, as its page's head says it. */
+export function pageAgentStateText(conversation: PageAgentConversation): string {
   switch (conversation.state) {
     case 'ready':
       return 'Ready: ask in its terminal';
@@ -52,7 +57,7 @@ export function scoutStateText(conversation: ScoutConversation): string {
  */
 export function runsOn(
   kind: AgentKind,
-  conversation: Pick<ScoutConversation, 'model' | 'effort'> | null,
+  conversation: Pick<PageAgentConversation, 'model' | 'effort'> | null,
   models: readonly Pick<AgentModel, 'id' | 'name'>[] | undefined,
 ): string {
   const model = conversation?.model;
@@ -64,4 +69,16 @@ export function runsOn(
   ]
     .filter((w) => w !== '')
     .join(' ');
+}
+
+/**
+ * What the page says of a conversation started under the agent's former name (NU1, decision 591):
+ * it keeps that one's tools, no web, until New conversation; null for any other.
+ */
+export function formerText(
+  conversation: Pick<PageAgentConversation, 'startedAs'> | null,
+  name: string,
+): string | null {
+  if (!conversation?.startedAs) return null;
+  return `Started as ${conversation.startedAs}, without the web: New conversation starts ${name}.`;
 }

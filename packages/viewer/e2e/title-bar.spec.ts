@@ -174,7 +174,7 @@ test('every page of the shell: under the title bar, the browser’s page', async
   const inApp = await open(browser, true);
   const pages: [string, string[]][] = [
     ['history', ['.commits-title', '.scopes', '.commit']],
-    ['scout', []],
+    ['nucleus', []],
     ['skills', []],
     ['monitor', []],
     ['workspace-history', ['.history-none']],

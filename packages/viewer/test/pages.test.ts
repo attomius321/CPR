@@ -182,12 +182,17 @@ describe('diffTitle (N1a)', () => {
   });
 });
 
-describe('Scout (V35)', () => {
-  it('opens at /scout, a page of the shell, titled Scout', () => {
-    expect(routeOf('/scout', '')).toEqual({ route: { page: 'scout' } });
-    expect(hrefOf({ page: 'scout' })).toBe('/scout');
+describe('Nucleus (V35, NU1)', () => {
+  it('opens at /nucleus, a page of the shell, titled Nucleus', () => {
+    expect(routeOf('/nucleus', '')).toEqual({ route: { page: 'nucleus' } });
+    expect(hrefOf({ page: 'nucleus' })).toBe('/nucleus');
+    expect(inShell(new URL('http://symbiote/nucleus'))).toBe(true);
+    expect(routeTitle({ page: 'nucleus' }, 'symbiote')).toBe('Nucleus · symbiote — Symbiote');
+  });
+
+  it("moves Scout's address, from before NU1, to Nucleus's", () => {
+    expect(routeOf('/scout', '')).toEqual({ route: { page: 'nucleus' }, moved: '/nucleus' });
     expect(inShell(new URL('http://symbiote/scout'))).toBe(true);
-    expect(routeTitle({ page: 'scout' }, 'symbiote')).toBe('Scout · symbiote — Symbiote');
   });
 });
 

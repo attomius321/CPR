@@ -32,7 +32,7 @@ decision, and links from the code and from other docs depend on it.
 - `docs/guide/`: one how-to guide a task, named by the task (`review-a-branch.md`).
 - `docs/reference/`: commands and options, configuration, environment variables, keys, findings.
 - An explanation page for how the analysis works (symbols, references, findings), and one for
-  how Symbiote confines its agents (what Scout and Scribe may run, what asks first).
+  how Symbiote confines its agents (what Nucleus and Scribe may run, what asks first).
 - `docs/graph-schema.md` stays where it is: CLAUDE.md and the packages link it.
 
 ## The reader's questions (for the reader test)

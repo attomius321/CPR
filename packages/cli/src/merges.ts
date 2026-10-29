@@ -42,9 +42,9 @@ import {
   type MergeStrategy,
   type MergeTargets,
   type RefList,
-  type ScoutEffortChange,
-  type ScoutEfforts,
-  type ScoutModelChange,
+  type EffortChange,
+  type AgentLevels,
+  type ModelChange,
   type Verdict,
 } from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
@@ -282,12 +282,12 @@ export interface Merger {
   remove(id: string): Promise<void>;
   /** An entry's log from byte `from` (V46a); null when there is no such entry. */
   log(id: string, from?: number): Promise<MergeLogRead | null>;
-  /** The merger's agent's effort levels and `merge.effort` (V46d), as Scout's are listed. */
-  efforts(): Promise<ScoutEfforts>;
+  /** The merger's agent's effort levels and `merge.effort` (V46d), as Nucleus's are listed. */
+  efforts(): Promise<AgentLevels>;
   /** Sets `merge.effort`, one of the merger's agent's levels; null removes it. */
-  setEffort(change: ScoutEffortChange): Promise<ScoutEfforts>;
+  setEffort(change: EffortChange): Promise<AgentLevels>;
   /** Sets `merge.model` (V47), one of the merger's agent's models; null removes it. */
-  setModel(change: ScoutModelChange): Promise<ScoutEfforts>;
+  setModel(change: ModelChange): Promise<AgentLevels>;
   /** Resolves once nothing in the queue can go further. */
   idle(): Promise<void>;
 }
@@ -771,7 +771,7 @@ export function merger(
   /**
    * The level the merger agent is asked at (V46d): `merge.effort` when the agent takes it on
    * `model` (V47: that model's levels when the agent lists it, its default's otherwise), none
-   * otherwise, as Scout's (the project's file may name another agent's level). `say` is told which.
+   * otherwise, as Nucleus's (the project's file may name another agent's level). `say` is told which.
    */
   async function effortOf(
     kind: AgentKind,
@@ -799,7 +799,7 @@ export function merger(
     return effort;
   }
 
-  async function efforts(): Promise<ScoutEfforts> {
+  async function efforts(): Promise<AgentLevels> {
     const config = readMergeConfig(root);
     const agent = await mergerAgent(config.agent);
     const about = {

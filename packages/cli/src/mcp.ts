@@ -1,4 +1,4 @@
-// Symbiote's MCP (MC1): Symbiote's services as tools, for Scout and for the person's own agents
+// Symbiote's MCP (MC1): Symbiote's services as tools, for Nucleus and for the person's own agents
 // (`symbiote mcp`), answered in `symbiote view`'s process at `POST /api/mcp` and reached through a
 // stdio bridge (`mcp-bridge.ts`, decision 358). The protocol's few methods by hand (decision 359).
 // A tool that changes a branch's fate waits for the person's Confirm on Symbiote's pages, 10 minutes
@@ -607,7 +607,7 @@ interface Held {
 }
 
 const callerKey = (c: McpCaller) =>
-  c.via === 'scout' ? 'scout' : `mcp\u0000${c.client ?? ''}\u0000${c.folder ?? ''}`;
+  c.via === 'nucleus' ? 'nucleus' : `mcp\u0000${c.client ?? ''}\u0000${c.folder ?? ''}`;
 
 export interface SymbioteMcp {
   /** One JSON-RPC message from `caller`; null for a notification, or once `signal` aborted. */
@@ -812,7 +812,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       const review = reviews?.reviews.find((r) => r.branch === branch);
       return {
         ...row(w),
-        // Where Scout reads its files and uncommitted changes (V80).
+        // Where Nucleus reads its files and uncommitted changes (V80).
         ...(w.worktree.exists ? { worktree: w.worktree.path } : {}),
         ...(w.from ? { from: w.from } : {}),
         base: w.base,

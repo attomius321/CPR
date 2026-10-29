@@ -184,7 +184,7 @@ test('no page leaves a tooltip to the window system', async ({ page }) => {
   await expect(native(page)).toHaveCount(0);
   for (const [path, name] of [
     ['start', 'Start a workspace'],
-    ['scout', 'Scout'],
+    ['nucleus', 'Nucleus'],
     ['skills', 'Skills'],
     ['monitor', 'Monitor'],
     ['workspace-history', 'History'],

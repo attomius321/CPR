@@ -3,14 +3,14 @@
 This page lists every setting Symbiote reads: the project's settings file, the text Symbiote
 gives its agents, the files it skips, and its environment variables. All of them are optional.
 To install Symbiote, see the [README](../../README.md). It also explains the terms this page
-uses: workspace, merger, verdict, Scout, Scribe and the others.
+uses: workspace, merger, verdict, Nucleus, Scribe and the others.
 
 ## The settings file, `symbiote/config.json`
 
 A project's settings are in `symbiote/config.json`, at the root of the repository. Symbiote reads
 the file in the checkout where `symbiote view` runs. Commit it to share the settings with everyone
 who runs Symbiote there. **Settings** in the app writes `prompts` and the model and effort keys of
-the merger, Scout and Scribe, and leaves the rest of the file as it is.
+the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 
 ```jsonc
 {
@@ -26,11 +26,12 @@ the merger, Scout and Scribe, and leaves the rest of the file as it is.
 | `plugins` | none | Framework plugins every analysis uses, by name or path. |
 | `workspaces.branchPrefixes` | `feature/`, `fix/`, `refactor/`, `chore/`, `spike/` | The start of a new workspace's branch name, for each kind of work. Give only the kinds you change. |
 | `workspaces.worktrees` | `../{repo}.worktrees` | Where workspaces' worktrees go, relative to the checkout. `{repo}` is the checkout's folder name. |
-| `agent.kind` | `claude` | The agent offered first, if it is installed: `claude`, `codex` or `hermes`. Scout, Scribe and the merger skip `hermes`. |
+| `agent.kind` | `claude` | The agent offered first, if it is installed: `claude`, `codex` or `hermes`. Nucleus, Scribe and the merger skip `hermes`. |
 | `agent.permissionMode` | `default` | The permission mode offered first for Claude Code: `default`, `acceptEdits` or `auto`. |
 | `agent.model` | Claude Code's own | The model Claude Code starts on. Codex uses its own configuration's model. |
-| `scout.model`, `scribe.model` | `agent.model`, else the agent's own | The model each Scout or Scribe conversation starts on, if the agent offers it. |
-| `scout.effort`, `scribe.effort` | the agent's own | The effort level each Scout or Scribe conversation starts at, if the agent offers it. |
+| `nucleus.model`, `scribe.model` | `agent.model`, else the agent's own | The model each Nucleus or Scribe conversation starts on, if the agent offers it. |
+| `nucleus.effort`, `scribe.effort` | the agent's own | The effort level each Nucleus or Scribe conversation starts at, if the agent offers it. |
+| `nucleus.web` | `true` | Whether Nucleus searches the web and reads web pages. With `false`, its next conversation has neither; a running one keeps what it started with. See [What Symbiote writes and sends](../../README.md#what-symbiote-writes-and-sends). |
 | `advisor.claude.model`, `advisor.codex.model` | `haiku` for Claude Code, `gpt-6-luna` for Codex | The model that suggests a workspace's settings when you press **Suggest settings** with that agent picked, if the agent offers it. |
 | `advisor.claude.effort`, `advisor.codex.effort` | `low` | The effort level that model runs at, if it takes that level. |
 | `merge.checks` | a command Symbiote finds | The check a merge runs before it lands: one command, or a list run in order. Put an install first if the check needs dependencies. |
@@ -94,7 +95,7 @@ and leaves any other brace as text:
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The lines of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`, `{reviewer}`, `{what}`, `{review}`, `{agents}` |
 | `reviews` | The text of `symbiote/AGENTS.md`, which tells agents how to act on a review | none |
 | `merger` | The merger's instructions | none |
-| `scout` | Scout's instructions, its system prompt | none |
+| `nucleus` | Nucleus's instructions, its system prompt | none |
 | `scribe` | Scribe's instructions, its system prompt. A `{request}` left from an older text is filled with nothing | `{skills}`, `{checkout}`, `{library}` |
 | `library` | What `{library}` becomes in Scribe's prompt when a [skill library](#the-skill-library) is set. Without a library, the line that holds `{library}` is left out | `{folder}` (required), `{skills}` |
 
@@ -104,24 +105,24 @@ cases:
 
 - It is neither text nor a list of lines.
 - It lacks a required placeholder.
-- It is too long. The limits are 8,000 characters for a start prompt and for Scout's and Scribe's,
+- It is too long. The limits are 8,000 characters for a start prompt and for Nucleus's and Scribe's,
   1,000 for `plan.*`, `documents` and `verdict.*`, and 20,000 for `reviews` and `merger`.
 
-Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, Scout cannot edit
-files, Scribe writes only in `.claude/skills/` and the skill library, and Scout's starts, verdicts, merges and clean-ups
-still wait for your **Confirm**.
+Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, Nucleus cannot edit
+files or run any command but git's read commands, and its starts, verdicts, merges and clean-ups
+still wait for your **Confirm**. Scribe writes only in `.claude/skills/` and the skill library.
 
-What Scout reads is fixed the same way. Scout reads the checkout and the worktree of each open
-workspace, and nothing else. A workspace is open until it is cleaned up. In a worktree, Scout runs
-git's read commands with `-C <worktree>`. There it sees uncommitted work with `git
---no-optional-locks status` and `git diff-index -p HEAD`. It cannot run `git diff` there, because
-`git diff` rewrites the worktree's index while the workspace's agent uses it.
+What Nucleus reads is fixed the same way. On this machine, Nucleus reads the checkout and the
+worktree of each open workspace, and nothing else. A workspace is open until it is cleaned up. In a
+worktree, Nucleus runs git's read commands with `-C <worktree>`. There it sees uncommitted work
+with `git --no-optional-locks status` and `git diff-index -p HEAD`. It cannot run `git diff`
+there, because `git diff` rewrites the worktree's index while the workspace's agent uses it.
 
 With Claude Code, a workspace started during a conversation is readable at once. With Codex, it
 is readable from the next conversation: Codex fixes the folders a conversation reads when it
-starts it. Symbiote gives Codex those folders again with every message and before Scout's
+starts it. Symbiote gives Codex those folders again with every message and before Nucleus's
 terminal opens, and refuses to go on if Codex does not answer that the conversation is read-only.
-Continue Scout's Codex conversation from Symbiote only: resumed elsewhere, for example with
+Continue Nucleus's Codex conversation from Symbiote only: resumed elsewhere, for example with
 `codex resume` in a folder Codex trusts, Codex drops those folders and the conversation can
 write.
 
@@ -183,7 +184,7 @@ the same files aside.
 | `SYMBIOTE_CODEX` | The Codex program to start. Default: `codex` on your `PATH`. |
 | `SYMBIOTE_HERMES` | The Hermes program to start. Default: `hermes` on your `PATH`. |
 | `SYMBIOTE_CODE` | The editor command that **Open in VS Code** runs, such as `cursor`. Default: VS Code's `code`. |
-| `SYMBIOTE_TERMINAL` | `off`: no agent terminals. A workspace shows its thread and a reply box instead, and Hermes is not offered. Scout and Scribe run only in a terminal: their pages say none runs. |
+| `SYMBIOTE_TERMINAL` | `off`: no agent terminals. A workspace shows its thread and a reply box instead, and Hermes is not offered. Nucleus and Scribe run only in a terminal: their pages say none runs. |
 | `SYMBIOTE_USAGE` | `off`: Symbiote does not read your subscriptions' usage, and the status bar shows none. |
 | `SYMBIOTE_INTRO` | `off`: no intro the first time Symbiote opens. |
 | `SYMBIOTE_APP` | `off`: always open the browser, never Symbiote's window. |
@@ -233,3 +234,14 @@ Symbiote had another name until 2026-10-21. On first use, it moves what it kept 
 into `symbiote/`. It also reads two older forms of the settings: a `symbiote.config.json` file at
 the repository root, if there is no `symbiote/config.json`, and a `features` section in place of
 `workspaces`.
+
+Nucleus was called Scout before. Symbiote still reads what it kept under that name:
+
+- `scout.model`, `scout.effort` and `prompts.scout` in `symbiote/config.json`, if the file has no
+  `nucleus.model`, `nucleus.effort` or `prompts.nucleus`. When you save one of these in
+  **Settings**, Symbiote writes the new key and removes the old one. Nothing else rewrites them.
+- `symbiote/scout.json`, the conversation Scout had open. Nucleus's page shows it, without the
+  web, until you press **New conversation**. That ends it and removes `scout.json`,
+  `scout-settings.json` and `scout-mcp.json`.
+- `"via": "scout"` on a verdict or on a workspace's record, read as made through Nucleus. The
+  files stay as they are.

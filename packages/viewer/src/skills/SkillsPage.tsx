@@ -18,8 +18,8 @@ import {
 import { OpenIcon } from '../diff/OpenIcon.js';
 import { useShell } from '../shell/shell-context.js';
 import { hrefOf, type Route } from '../shell/pages.js';
-import { Conversation, type ConversationAgent } from '../scout/Conversation.js';
-import { scoutStateText } from '../scout/scout.js';
+import { Conversation, type ConversationAgent } from '../nucleus/Conversation.js';
+import { pageAgentStateText } from '../nucleus/page-agent.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
   checkParts,
@@ -452,7 +452,9 @@ export function SkillsPage() {
                   <button
                     type="button"
                     aria-current={open === SCRIBE ? 'true' : undefined}
-                    {...tip(scribe?.conversation ? scoutStateText(scribe.conversation) : undefined)}
+                    {...tip(
+                      scribe?.conversation ? pageAgentStateText(scribe.conversation) : undefined,
+                    )}
                     onClick={() => show(SCRIBE)}
                   >
                     <SparklesIcon />

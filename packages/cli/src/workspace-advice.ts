@@ -9,7 +9,7 @@ import {
   type AgentEfforts,
   type AgentModel,
   type AgentModels,
-  type ScoutEfforts,
+  type AgentLevels,
   type SuggestRequest,
   type WorkspaceSuggestion,
 } from '@symbiote/core';
@@ -120,7 +120,7 @@ export function advisorChoices(
   listed: AgentModels | null,
   fallback: AgentEfforts | null,
   project: AdvisorPick,
-): ScoutEfforts['agents'][number] {
+): AgentLevels['agents'][number] {
   const models = listed?.models;
   const own = ADVISOR_DEFAULTS[agent];
   const small = models?.find((m) => m.id === own.model);

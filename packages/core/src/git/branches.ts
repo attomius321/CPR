@@ -41,7 +41,7 @@ export interface Verdict {
    * */
   into?: string;
   summary: string;
-  /** Recorded through Symbiote's tools (MC1, decision 362): by Scout, or through `symbiote mcp`. */
+  /** Recorded through Symbiote's tools (MC1, decision 362): by Nucleus, or through `symbiote mcp`. */
   via?: McpVia;
 }
 

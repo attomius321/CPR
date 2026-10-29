@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { PromptKey, PromptSetting, PromptSettings, ScoutEfforts } from '@symbiote/core';
+import type { PromptKey, PromptSetting, PromptSettings, AgentLevels } from '@symbiote/core';
 import { EffortStepper } from '../workspaces/EffortStepper.js';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
@@ -50,7 +50,7 @@ type Advising = (typeof ADVISING)[number];
  * on an agent (V75c).
  */
 interface ModelSetting {
-  key: 'scout.model' | 'scribe.model' | 'merge.model' | `advisor.${Advising}.model`;
+  key: 'nucleus.model' | 'scribe.model' | 'merge.model' | `advisor.${Advising}.model`;
   /** What the model is for, before "from <agent>'s list". */
   about: string;
   /** What Default does, when not "passes none of Settings'". */
@@ -62,11 +62,11 @@ interface ModelSetting {
 }
 
 /**
- * A prebuilt agent's effort in the project's config: Scout's (fix/scout-effort-level), the
+ * A prebuilt agent's effort in the project's config: Nucleus's (fix/scout-effort-level), the
  * merger's (V46d) and Scribe's (fix/scribe-effort-level).
  */
 interface EffortSetting {
-  key: 'scout.effort' | 'scribe.effort' | 'merge.effort' | `advisor.${Advising}.effort`;
+  key: 'nucleus.effort' | 'scribe.effort' | 'merge.effort' | `advisor.${Advising}.effort`;
   /** What the level is for, before "from <agent>'s levels". */
   about: string;
   /** What Default does, when not "passes none: the agent's own setting decides". */
@@ -113,27 +113,27 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
       saved: (level) => `Saved. The merger agent's next run is asked at ${level}.`,
     },
   },
-  Scout: {
-    api: '/api/scout',
-    who: 'Scout',
-    whose: "Scout's",
+  Nucleus: {
+    api: '/api/nucleus',
+    who: 'Nucleus',
+    whose: "Nucleus's",
     model: {
-      key: 'scout.model',
-      about: "The model each of Scout's conversations starts on",
-      saved: (model) => `Saved. Scout's next conversation starts on ${model}.`,
-      unlisted: 'Scout starts on the default',
+      key: 'nucleus.model',
+      about: "The model each of Nucleus's conversations starts on",
+      saved: (model) => `Saved. Nucleus's next conversation starts on ${model}.`,
+      unlisted: 'Nucleus starts on the default',
     },
     effort: {
-      key: 'scout.effort',
-      about: "The level each of Scout's conversations starts at",
+      key: 'nucleus.effort',
+      about: "The level each of Nucleus's conversations starts at",
       also: (
         <>
-          A running conversation keeps its own: New conversation on Scout&apos;s page starts the
+          A running conversation keeps its own: New conversation on Nucleus&apos;s page starts the
           next on this level, and <code>/effort</code> in its terminal changes a running one.
         </>
       ),
-      atDefault: 'Scout starts it at its default',
-      saved: (level) => `Saved. Scout's next conversation starts at ${level}.`,
+      atDefault: 'Nucleus starts it at its default',
+      saved: (level) => `Saved. Nucleus's next conversation starts at ${level}.`,
     },
   },
   Scribe: {
@@ -162,7 +162,7 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
 };
 
 /**
- * The advisor's model and level on `kind` (V75c, decision 556): read and set where Scout's are,
+ * The advisor's model and level on `kind` (V75c, decision 556): read and set where Nucleus's are,
  * per agent, since the advisor runs on the agent picked on the Start page.
  */
 function advisorSettings(kind: Advising): AgentSettings {
@@ -525,11 +525,11 @@ function AgentRows({
   /** After a save: the config file changed. */
   onSaved: () => void;
 }) {
-  const [read, setRead] = useState<ScoutEfforts | null>(null);
+  const [read, setRead] = useState<AgentLevels | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let current = true;
-    getJson<ScoutEfforts>(`${settings.api}/efforts`)
+    getJson<AgentLevels>(`${settings.api}/efforts`)
       .then((answer) => {
         if (current) setRead(answer);
       })
@@ -544,12 +544,12 @@ function AgentRows({
       current = false;
     };
   }, [settings]);
-  const saved = (answer: ScoutEfforts) => {
+  const saved = (answer: AgentLevels) => {
     setRead(answer);
     onSaved();
   };
 
-  // Its agent: Scout's and Scribe's (`agent.kind`'s, else Claude Code), the merger's, the
+  // Its agent: Nucleus's and Scribe's (`agent.kind`'s, else Claude Code), the merger's, the
   // advisor's on that agent.
   const agent = read?.agents[0];
   return (
@@ -584,7 +584,7 @@ function AgentRows({
 
 /**
  * A prebuilt agent's effort in the project's config, on a stepper of its agent's levels, saved
- * when the handle is let go: `scout.effort` and `scribe.effort`, the level each of their
+ * when the handle is let go: `nucleus.effort` and `scribe.effort`, the level each of their
  * conversations starts at (fix/scout-effort-level, fix/scribe-effort-level); `merge.effort`, the
  * level each merger agent's run is asked at (V46d).
  */
@@ -597,8 +597,8 @@ function AgentEffort({
   settings: AgentSettings;
   heading: 'h3' | 'h4';
   /** The agent's models and levels, null while they are read. */
-  read: ScoutEfforts | null;
-  onSaved: (answer: ScoutEfforts) => void;
+  read: AgentLevels | null;
+  onSaved: (answer: AgentLevels) => void;
 }) {
   const { effort: setting } = settings;
   const agent = read?.agents[0];
@@ -618,7 +618,7 @@ function AgentEffort({
   const commit = (next: string) => {
     saving.current = saving.current.then(async () => {
       try {
-        onSaved(await postJson<ScoutEfforts>(`${settings.api}/effort`, { effort: next || null }));
+        onSaved(await postJson<AgentLevels>(`${settings.api}/effort`, { effort: next || null }));
         setNotice({ text: setting.saved(next || (choices[0]?.label ?? `${name}'s default`)) });
       } catch (failed) {
         setNotice({ text: (failed as Error).message, error: true });
@@ -672,7 +672,7 @@ function AgentEffort({
 
 /**
  * A prebuilt agent's model in the project's config (V47), a select of its agent's own list, saved
- * when picked: `scout.model`, `scribe.model`, `merge.model`.
+ * when picked: `nucleus.model`, `scribe.model`, `merge.model`.
  */
 function AgentModel({
   settings,
@@ -683,8 +683,8 @@ function AgentModel({
   settings: AgentSettings;
   heading: 'h3' | 'h4';
   /** The agent's models and levels, null while they are read. */
-  read: ScoutEfforts | null;
-  onSaved: (answer: ScoutEfforts) => void;
+  read: AgentLevels | null;
+  onSaved: (answer: AgentLevels) => void;
 }) {
   const { model: setting } = settings;
   const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
@@ -699,7 +699,7 @@ function AgentModel({
   const pick = async (next: string) => {
     setSaving(true);
     try {
-      const answer = await postJson<ScoutEfforts>(`${settings.api}/model`, {
+      const answer = await postJson<AgentLevels>(`${settings.api}/model`, {
         model: next || null,
       });
       onSaved(answer);

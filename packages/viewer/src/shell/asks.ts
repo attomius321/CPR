@@ -6,9 +6,9 @@ const CLIENTS: Record<string, string> = {
   'codex-mcp-client': 'Codex',
 };
 
-/** Who asks (MC1): Scout, or an agent through `symbiote mcp` and the folder it runs in. */
+/** Who asks (MC1): Nucleus, or an agent through `symbiote mcp` and the folder it runs in. */
 export function askedBy(ask: McpAsk): string {
-  if (ask.by.via === 'scout') return 'Scout';
+  if (ask.by.via === 'nucleus') return 'Nucleus';
   const client = ask.by.client ? (CLIENTS[ask.by.client] ?? ask.by.client) : undefined;
   const folder = ask.by.folder?.replace(/\/+$/, '').split('/').at(-1);
   if (!client) return 'An agent';
@@ -21,7 +21,7 @@ export function askLeft(ask: McpAsk, now: number): string {
   return ms >= 60_000 ? `${Math.ceil(ms / 60_000)} min left` : 'under a minute left';
 }
 
-/** Whether one of `asks` is `via`'s: the sidenav marks Scout while it waits on the person. */
+/** Whether one of `asks` is `via`'s: the sidenav marks Nucleus while it waits on the person. */
 export function asksBy(asks: readonly McpAsk[], via: McpVia): boolean {
   return asks.some((ask) => ask.by.via === via);
 }

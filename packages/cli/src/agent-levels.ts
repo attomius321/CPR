@@ -1,5 +1,5 @@
 // Whether an agent can start at an effort level (V30b) and on a model (V47): the checks a
-// workspace's start, Scout, Scribe and the merger share, for Claude Code and Codex alike.
+// workspace's start, Nucleus, Scribe and the merger share, for Claude Code and Codex alike.
 import type { AgentEfforts, AgentKind, AgentModel } from '@symbiote/core';
 
 /** Each agent's name, as messages say it. */

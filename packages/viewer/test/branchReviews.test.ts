@@ -146,14 +146,14 @@ describe('reviewMarks', () => {
       title: 'Approved · merged into main',
       tone: 'approved',
     });
-    // Through Scout, on the person's Confirm (MC1).
-    const scout = reviewMarks({
+    // Through Nucleus, on the person's Confirm (MC1).
+    const nucleus = reviewMarks({
       ...LIST,
       reviews: [
-        { ...LIST.reviews[1]!, verdict: { ...verdict('approve', sha('c')), via: 'scout' } },
+        { ...LIST.reviews[1]!, verdict: { ...verdict('approve', sha('c')), via: 'nucleus' } },
       ],
     });
-    expect(scout.marks.get('origin/topic')?.title).toBe('Approved through Scout');
+    expect(nucleus.marks.get('origin/topic')?.title).toBe('Approved through Nucleus');
     expect(added.get(sha('e'))).toEqual(['agent']);
     expect(added.has(sha('c'))).toBe(false);
     // Reviewed at the tip with changes requested; reviewed with no verdict yet.

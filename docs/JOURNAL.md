@@ -318,3 +318,5 @@ merge commit.
 - 2026-10-29 [V80 spike — what opens a folder to Scout, and what git writes there](journal/v80-scout-reads-worktrees.md)
 - 2026-10-29 [V80 — Scout reads the workspaces' worktrees](journal/v80-scout-reads-worktrees.md)
 - 2026-10-29 [V80 — Codex's Scout reads like Claude Code's](journal/v80-scout-reads-worktrees.md)
+- 2026-10-29 [NU1 spike — what the agents' web tools do in Scout's modes](journal/nu1-nucleus.md)
+- 2026-10-29 [NU1 — Nucleus: Scout renamed, the agents' web tools, Scout's names still read](journal/nu1-nucleus.md)

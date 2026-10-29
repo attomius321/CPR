@@ -6,7 +6,7 @@ import { MergeView } from '../workspaces/Merge.js';
 import {
   GIT_PAGE,
   MONITOR_PAGE,
-  SCOUT_PAGE,
+  NUCLEUS_PAGE,
   SETTINGS_PAGE,
   SKILLS_PAGE,
   WORKSPACE_HISTORY_PAGE,
@@ -16,7 +16,7 @@ import {
   routeTitle,
   type Route,
 } from './pages.js';
-import { ScoutPage } from '../scout/ScoutPage.js';
+import { NucleusPage } from '../nucleus/NucleusPage.js';
 import { SettingsPage } from '../settings/SettingsPage.js';
 import { SkillsPage } from '../skills/SkillsPage.js';
 import { MonitorPage } from '../monitor/MonitorPage.js';
@@ -80,7 +80,7 @@ const sameRoute = (a: Route, b: Route) => hrefOf(a) === hrefOf(b);
 
 /**
  * `symbiote view`'s window (V29a): the sidenav (the pages, then the workspaces), the main area with
- * what is picked — History, Scout, Settings, a workspace, a merge or Start a workspace —, and the status
+ * what is picked — History, Nucleus, Settings, a workspace, a merge or Start a workspace —, and the status
  * bar. Going from
  * one to another happens in place: the address changes, the page does not load again.
  */
@@ -199,7 +199,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     return () => document.removeEventListener('click', onClick, true);
   }, [go]);
 
-  // g (Git; h until V66) and s go to the pages, a to Scout (V35; on its page, to its question or its terminal), i to
+  // g (Git; h until V66) and s go to the pages, a to Nucleus (V35; on its page, to its question or its terminal), i to
   // Skills (V41), m to the Monitor (RM1), h to History (V77), w to
   // the workspaces (the arrows between them), n starts one (on its page, back to its title), [
   // folds the sidenav. Attached before the first paint, as History's keys are: a key pressed as
@@ -213,9 +213,9 @@ export function Shell({ repo }: { repo?: string | undefined }) {
       else if (event.key === 'm') go(MONITOR_PAGE);
       else if (event.key === 'h') go(WORKSPACE_HISTORY_PAGE);
       else if (event.key === 'a') {
-        const box = document.querySelector<HTMLElement>('.scout-page textarea');
+        const box = document.querySelector<HTMLElement>('.nucleus-page textarea');
         if (box) box.focus();
-        else go(SCOUT_PAGE);
+        else go(NUCLEUS_PAGE);
       } else if (event.key === 'n') {
         const title = document.querySelector<HTMLElement>('.start-page input[name="title"]');
         if (title) title.focus();
@@ -250,7 +250,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
         {sidenav.handle}
         <main className="shell-main">
           {route.page === 'git' && <HistoryPage key={visit} />}
-          {route.page === 'scout' && <ScoutPage />}
+          {route.page === 'nucleus' && <NucleusPage />}
           {route.page === 'skills' && <SkillsPage />}
           {route.page === 'monitor' && <MonitorPage path={route.path} />}
           {route.page === 'workspace-history' && <WorkspaceHistory branch={route.branch} />}

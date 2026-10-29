@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import { scribeDecision, writeProblem } from '../src/scribe-gate.js';
-import { hookOutput } from '../src/scout-gate.js';
+import { hookOutput } from '../src/nucleus-gate.js';
 
 let root: string;
 let skills: string;

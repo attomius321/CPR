@@ -17,8 +17,11 @@ export type PromptKey =
   | 'verdict.where'
   | 'reviews'
   | 'merger'
-  /** Scout's instructions, its first prompt with the question (V35). */
-  | 'scout'
+  /**
+   * Nucleus's instructions, its system prompt (V35, V50); `prompts.scout` before NU1, still read
+   * while there is no `prompts.nucleus` (decision 590).
+   */
+  | 'nucleus'
   /** Scribe's instructions, its first prompt with the person's request (V41). */
   | 'scribe'
   /** What Scribe's `{library}` becomes when a skill library is set (SK1). */
@@ -43,7 +46,7 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'verdict.where',
   'reviews',
   'merger',
-  'scout',
+  'nucleus',
   'scribe',
   'library',
 ];
@@ -60,7 +63,7 @@ export interface PromptPlaceholder {
 /** A prompt as the Settings page shows it. */
 export interface PromptSetting {
   key: PromptKey;
-  /** Whose prompt: `Workspaces`, `Reviews`, `Merger` or `Scout`. */
+  /** Whose prompt: `Workspaces`, `Reviews`, `Merger` or `Nucleus`. */
   group: string;
   /** Its name in the group: "Fix", "Plan first", "symbiote/AGENTS.md". */
   title: string;

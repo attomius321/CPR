@@ -459,7 +459,7 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   of its own in its tone: a 30 % edge, an 8 % wash, the primary at its right.
 - Inside a card (V72): the words start 16 px in (`--card-pad`), a list's row wash 8 px in with
   its words at 16. A card's head is 48 px with its hairline (`.card-head`): tabs stand on the
-  hairline with the first tab's words 16 px in; a head of controls (Scout's model and effort,
+  hairline with the first tab's words 16 px in; a head of controls (Nucleus's model and effort,
   the Monitor's place) has its first control 16 px in. Git's rows card keeps its toolbar head,
   which wraps on a narrow card.
 - Status bar: 24 px, `--side`, `--line` above, 13 px; each segment a button (2 × 4 px padding, 4 px

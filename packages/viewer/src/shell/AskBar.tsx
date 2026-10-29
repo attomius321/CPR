@@ -4,7 +4,7 @@ import { askedBy, askLeft } from './asks.js';
 import { answerAsk, useAsks } from './useAsks.js';
 
 /**
- * What an agent asks the person to confirm through Symbiote's MCP (MC1, decision 361): Scout's
+ * What an agent asks the person to confirm through Symbiote's MCP (MC1, decision 361): Nucleus's
  * start of a workspace, a verdict, a merge, a clean-up; a bar over every page, the oldest first.
  * Confirm does it, Decline does not, and after 10 minutes the agent is told nothing was done.
  */

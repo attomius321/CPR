@@ -17,11 +17,11 @@ import {
   type MergeStrategy,
   type PermissionMode,
   type ReviewFile,
-  type ScoutAsk,
-  type ScoutOpen,
-  type ScoutEffortChange,
-  type ScoutModelChange,
-  type ScoutTerminalRequest,
+  type PageAgentAsk,
+  type PageAgentOpen,
+  type EffortChange,
+  type ModelChange,
+  type PageAgentTerminalRequest,
   type SuggestRequest,
   type WorkKind,
   type WorkspaceReply,
@@ -288,8 +288,8 @@ export function parseWorkspaceTerminal(text: string): WorkspaceTerminalRequest {
   return { branch: value.branch, ...size };
 }
 
-/** `{ text, agent?, effort? }`: a question for Scout (V35). */
-export function parseScoutAsk(text: string): ScoutAsk {
+/** `{ text, agent?, effort? }`: a question for Nucleus (V35). */
+export function parsePageAgentAsk(text: string): PageAgentAsk {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (typeof value?.text !== 'string') throw new Error('text: the question');
   if (value.agent !== undefined && value.agent !== 'claude' && value.agent !== 'codex') {
@@ -310,8 +310,8 @@ export function parseScoutAsk(text: string): ScoutAsk {
   };
 }
 
-/** `{ agent?, model?, effort? }` (V50): Scout's conversation opened with no question. */
-export function parseScoutOpen(text: string): ScoutOpen {
+/** `{ agent?, model?, effort? }` (V50): Nucleus's conversation opened with no question. */
+export function parsePageAgentOpen(text: string): PageAgentOpen {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (value?.agent !== undefined && value.agent !== 'claude' && value.agent !== 'codex') {
     throw new Error('agent: claude or codex');
@@ -330,8 +330,8 @@ export function parseScoutOpen(text: string): ScoutOpen {
   };
 }
 
-/** `{ effort }`: Scout's, Scribe's or the merger's level in the project's config, null for none. */
-export function parseScoutEffort(text: string): ScoutEffortChange {
+/** `{ effort }`: Nucleus's, Scribe's or the merger's level in the project's config, null for none. */
+export function parseEffortChange(text: string): EffortChange {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   const effort = value?.effort;
   if (effort !== null && typeof effort !== 'string') {
@@ -340,8 +340,8 @@ export function parseScoutEffort(text: string): ScoutEffortChange {
   return { effort };
 }
 
-/** `{ model }` (V47): a model's ID, or null for the default; Scout's, Scribe's, the merger's. */
-export function parseModelChange(text: string): ScoutModelChange {
+/** `{ model }` (V47): a model's ID, or null for the default; Nucleus's, Scribe's, the merger's. */
+export function parseModelChange(text: string): ModelChange {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   const model = value?.model;
   if (model !== null && typeof model !== 'string') {
@@ -350,8 +350,8 @@ export function parseModelChange(text: string): ScoutModelChange {
   return { model };
 }
 
-/** `{ cols, rows }`: a terminal on Scout's session (V35). */
-export function parseScoutTerminal(text: string): ScoutTerminalRequest {
+/** `{ cols, rows }`: a terminal on Nucleus's session (V35). */
+export function parsePageAgentTerminal(text: string): PageAgentTerminalRequest {
   const size = terminalSize(JSON.parse(text) as Record<string, unknown> | null);
   if (!size) throw new Error('cols, rows: whole numbers, 2 to 1000');
   return size;

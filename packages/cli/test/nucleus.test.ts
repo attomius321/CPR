@@ -1,24 +1,24 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { openRepo, type AgentModel, type ScoutAsk } from '@symbiote/core';
+import { openRepo, type AgentModel, type PageAgentAsk } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { codexServer, readProfile } from '../src/app-server.js';
 import { codexFolders, type Codex } from '../src/codex.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';
+import { NUCLEUS_NAME, nucleus } from '../src/nucleus.js';
 import {
-  findScoutSession,
-  newScoutSession,
-  scout,
-  ScoutRefused,
-  scoutSettings,
-  scoutState,
-} from '../src/scout.js';
+  findPageAgentSession,
+  newPageAgentSession,
+  PageAgentRefused,
+  pageAgentSettings,
+  pageAgentState,
+} from '../src/page-agent.js';
 import { libraryService, type LibraryService } from '../src/library.js';
 import { scribe, scribePrompt } from '../src/scribe.js';
 import { viewFile } from '../src/mcp-bridge.js';
-import { gateDecision, scoutReach } from '../src/scout-gate.js';
+import { gateDecision, nucleusReach } from '../src/nucleus-gate.js';
 import type { Terminals } from '../src/terminal.js';
 import { claudeCode, type AgentSession, type ClaudeCode } from '../src/claude-code.js';
 import type { Run } from '../src/programs.js';
@@ -53,13 +53,13 @@ function fresh(): TestRepo {
 
 const NOW = new Date('2026-10-22T09:00:00Z');
 /** Where Symbiote's gate would be installed. */
-const GATE = '/opt/symbiote/dist/scout-hook.js';
+const GATE = '/opt/symbiote/dist/nucleus-hook.js';
 /** Where Symbiote's MCP bridge would be installed (MC1). */
 const BRIDGE = '/opt/symbiote/dist/mcp-stdio.js';
 
 /**
  * A fake Claude Code: the person's own interactive session in the checkout, newer than anything
- * Scout starts, and Scout's background session once started (`s9`).
+ * Nucleus starts, and Nucleus's background session once started (`s9`).
  */
 function fakeClaude(root: string) {
   const listed: AgentSession[] = [
@@ -70,7 +70,7 @@ function fakeClaude(root: string) {
       startedAt: 1,
       id: 'other',
       sessionId: 'session-other',
-      name: 'Scout',
+      name: 'Nucleus',
       state: 'done',
       status: 'idle',
     },
@@ -126,7 +126,7 @@ function fakeClaude(root: string) {
     efforts: () => Promise.resolve(null),
     models: () => Promise.resolve(null),
   };
-  /** Sets what Claude Code says of Scout's session. */
+  /** Sets what Claude Code says of Nucleus's session. */
   const set = (id: string, fields: Partial<AgentSession>) => {
     const session = listed.find((s) => s.id === id);
     if (!session) throw new Error(`no session ${id}`);
@@ -193,7 +193,7 @@ const service = async (
     terminals,
   }: { claude?: ClaudeCode | null; codex?: Codex | null; terminals?: Terminals } = {},
 ) =>
-  scout(await openRepo(repo.root), cache, {
+  nucleus(await openRepo(repo.root), cache, {
     claude: () => Promise.resolve(claude),
     codex: () => Promise.resolve(codex),
     now: () => NOW,
@@ -204,10 +204,13 @@ const service = async (
     ...(terminals ? { terminals } : {}),
   });
 
-const record = (repo: TestRepo) => join(repo.root, 'symbiote', 'scout.json');
+const record = (repo: TestRepo) => join(repo.root, 'symbiote', 'nucleus.json');
 
-/** Scout's tools and mode (V35, decision 236). */
-const READ_ONLY = { tools: ['Read', 'Grep', 'Glob', 'Bash'], permissionMode: 'dontAsk' } as const;
+/** Nucleus's tools and mode (V35, decision 236): read-only in the checkout, the web since NU1. */
+const READ_ONLY = {
+  tools: ['Read', 'Grep', 'Glob', 'Bash', 'WebSearch', 'WebFetch'],
+  permissionMode: 'dontAsk',
+} as const;
 
 describe('claudeCode().startPageAgent (V35, decision 236)', () => {
   it('starts a background session with read tools, Bash only through the gate, nothing asked', async () => {
@@ -220,7 +223,7 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
     expect(
       await claude.startPageAgent({
         cwd: '/repo',
-        name: 'Scout',
+        name: 'Nucleus',
         prompt: 'Where is it?',
         settings: '/repo/symbiote/scout-settings.json',
         ...READ_ONLY,
@@ -231,9 +234,9 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
         args: [
           '--bg',
           '--name',
-          'Scout',
+          'Nucleus',
           '--tools',
-          'Read,Grep,Glob,Bash',
+          'Read,Grep,Glob,Bash,WebSearch,WebFetch',
           '--permission-mode',
           'dontAsk',
           '--strict-mcp-config',
@@ -256,7 +259,7 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
       return Promise.resolve({ code: 0, stdout: '', stderr: '' });
     };
     const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
-    const request = { cwd: '/repo', name: 'Scout', prompt: 'Q', settings: '/s', ...READ_ONLY };
+    const request = { cwd: '/repo', name: 'Nucleus', prompt: 'Q', settings: '/s', ...READ_ONLY };
     await claude.startPageAgent({ ...request, effort: 'low' });
     await claude.startPageAgent(request);
     expect(calls[0]?.slice(-4)).toEqual(['--effort', 'low', '--', 'Q']);
@@ -290,7 +293,7 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
       return Promise.resolve({ code: 0, stdout: '', stderr: '' });
     };
     const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
-    const request = { cwd: '/repo', name: 'Scout', prompt: 'Q', settings: '/s', ...READ_ONLY };
+    const request = { cwd: '/repo', name: 'Nucleus', prompt: 'Q', settings: '/s', ...READ_ONLY };
     await claude.startPageAgent({ ...request, mcpConfig: '/repo/symbiote/scout-mcp.json' });
     const at = calls[0]?.indexOf('--strict-mcp-config') ?? -1;
     expect(calls[0]?.slice(at, at + 3)).toEqual([
@@ -309,7 +312,7 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
       return Promise.resolve({ code: 0, stdout: '', stderr: '' });
     };
     const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
-    const request = { cwd: '/repo', name: 'Scout', settings: '/s', ...READ_ONLY };
+    const request = { cwd: '/repo', name: 'Nucleus', settings: '/s', ...READ_ONLY };
     await claude.startPageAgent({ ...request, instructions: 'You are Scout.', effort: 'low' });
     // Nothing after it: no prompt, so the session waits for its first one.
     expect(calls[0]?.slice(-4)).toEqual([
@@ -329,7 +332,7 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
     expect(
       await claude.startPageAgent({
         cwd: '/repo',
-        name: 'Scout',
+        name: 'Nucleus',
         prompt: 'Q',
         settings: '/s',
         ...READ_ONLY,
@@ -338,10 +341,10 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
   });
 });
 
-describe('scoutSettings', () => {
+describe('pageAgentSettings', () => {
   it('runs the gate before every tool, and records nothing', () => {
     const settings = JSON.parse(
-      scoutSettings({ node: '/usr/bin/node', gate: GATE }, 'linux'),
+      pageAgentSettings({ node: '/usr/bin/node', gate: GATE }, 'linux'),
     ) as unknown;
     expect(settings).toEqual({
       hooks: {
@@ -356,7 +359,7 @@ describe('scoutSettings', () => {
   });
 });
 
-describe("finding Scout's session (decision 239)", () => {
+describe("finding Nucleus's session (decision 239)", () => {
   const root = '/repo';
   const real = (path: string) => path;
   const mine: AgentSession = {
@@ -366,40 +369,51 @@ describe("finding Scout's session (decision 239)", () => {
     name: 'symbiote-38',
     status: 'idle',
   };
-  const scouts: AgentSession = {
+  const nucleusSession: AgentSession = {
     cwd: root,
     kind: 'background',
     startedAt: 10,
     id: 's9',
     sessionId: 'session-9',
-    name: 'Scout',
+    name: 'Nucleus',
     state: 'done',
     status: 'idle',
   };
 
-  it('takes the background session named Scout in the checkout that was not listed before', () => {
+  it('takes the background session named Nucleus in the checkout that was not listed before', () => {
     const before = [mine];
-    const other = { ...scouts, cwd: '/elsewhere', id: 'x', startedAt: 20 };
-    const unnamed = { ...scouts, name: 'my-own', id: 'y', startedAt: 30 };
-    expect(newScoutSession(before, [mine, other, unnamed, scouts], root, real)?.id).toBe('s9');
+    const other = { ...nucleusSession, cwd: '/elsewhere', id: 'x', startedAt: 20 };
+    const unnamed = { ...nucleusSession, name: 'my-own', id: 'y', startedAt: 30 };
+    expect(
+      newPageAgentSession(before, [mine, other, unnamed, nucleusSession], root, real, NUCLEUS_NAME)
+        ?.id,
+    ).toBe('s9');
     // Listed before: not the one just started.
-    expect(newScoutSession([mine, scouts], [mine, scouts], root, real)).toBeUndefined();
+    expect(
+      newPageAgentSession([mine, nucleusSession], [mine, nucleusSession], root, real, NUCLEUS_NAME),
+    ).toBeUndefined();
   });
 
   it('finds it by its recorded ID, never by its folder', () => {
-    const newer = { ...scouts, id: 'z', sessionId: 'session-z', startedAt: 99, state: 'working' };
-    expect(findScoutSession({ id: 's9' }, [mine, newer, scouts])).toBe(scouts);
-    expect(findScoutSession({ id: 's9' }, [mine, newer])).toBeUndefined();
+    const newer = {
+      ...nucleusSession,
+      id: 'z',
+      sessionId: 'session-z',
+      startedAt: 99,
+      state: 'working',
+    };
+    expect(findPageAgentSession({ id: 's9' }, [mine, newer, nucleusSession])).toBe(nucleusSession);
+    expect(findPageAgentSession({ id: 's9' }, [mine, newer])).toBeUndefined();
   });
 
   it("reads Claude Code's word for it", () => {
     const read = (fields: Partial<AgentSession>) =>
-      scoutState({ ...scouts, state: undefined, status: undefined, ...fields });
+      pageAgentState({ ...nucleusSession, state: undefined, status: undefined, ...fields });
     expect(read({ state: 'working', status: 'busy' })).toBe('working');
     expect(read({ status: 'busy' })).toBe('working');
     expect(read({ state: 'done', status: 'idle' })).toBe('answered');
     // A finished plan, a turn ended on a refused tool, a session asked nothing yet (V50 spike):
-    // only Scout's record tells the last ('ready', V50).
+    // only Nucleus's record tells the last ('ready', V50).
     expect(read({ state: 'blocked', status: 'idle' })).toBe('answered');
     // Esc: no hook, `working` and idle (V21).
     expect(read({ state: 'working', status: 'idle' })).toBe('interrupted');
@@ -408,11 +422,11 @@ describe("finding Scout's session (decision 239)", () => {
     );
     expect(read({ state: 'stopped' })).toBe('stopped');
     expect(read({ state: 'failed' })).toBe('failed');
-    expect(scoutState(undefined)).toBe('gone');
+    expect(pageAgentState(undefined)).toBe('gone');
   });
 });
 
-describe('scout (V35)', () => {
+describe('nucleus (V35)', () => {
   it('lists the agents installed, the default first, and asks none of them anything else', async () => {
     const repo = fresh();
     const { claude, sessions } = fakeClaude(repo.root);
@@ -430,7 +444,7 @@ describe('scout (V35)', () => {
     // `agent.kind` names the default (decision 240).
     repo.write({ 'symbiote/config.json': '{ "agent": { "kind": "codex" } }\n' });
     expect((await s.state()).agents.map((a) => a.kind)).toEqual(['codex', 'claude']);
-    // A workspace's Hermes (V58) is not Scout's: Scout keeps Claude Code and Codex (decision 421).
+    // A workspace's Hermes (V58) is not Nucleus's: Nucleus keeps Claude Code and Codex (decision 421).
     repo.write({ 'symbiote/config.json': '{ "agent": { "kind": "hermes" } }\n' });
     expect((await s.state()).agents.map((a) => a.kind)).toEqual(['claude', 'codex']);
     await expect(s.ask({ text: 'Why?', agent: 'hermes' })).rejects.toMatchObject({ status: 400 });
@@ -444,24 +458,24 @@ describe('scout (V35)', () => {
     const { claude, startPageAgent } = fakeClaude(repo.root);
     const s = await service(repo, { claude });
     const state = await s.ask({ text: "Where is the merger's prompt defined?" });
-    const settings = join(repo.root, 'symbiote', 'scout-settings.json');
+    const settings = join(repo.root, 'symbiote', 'nucleus-settings.json');
     expect(startPageAgent).toHaveBeenCalledTimes(1);
     const request = startPageAgent.mock.calls[0]?.[0];
-    expect(request).toMatchObject({ cwd: repo.root, name: 'Scout', settings, ...READ_ONLY });
+    expect(request).toMatchObject({ cwd: repo.root, name: 'Nucleus', settings, ...READ_ONLY });
     // Its instructions are its system prompt (V50, decision 383); the question its first message.
-    expect(request?.instructions).toBe(DEFAULT_PROMPTS.scout);
+    expect(request?.instructions).toBe(DEFAULT_PROMPTS.nucleus);
     expect(request?.prompt).toBe("Where is the merger's prompt defined?");
     // Its gate is given the checkout and the workspaces' records (V80, decision 596).
     expect(readFileSync(settings, 'utf8')).toBe(
-      scoutSettings({
+      pageAgentSettings({
         node: '/usr/bin/node',
         gate: GATE,
-        args: [repo.root, join(repo.root, 'symbiote', 'workspaces')],
+        args: [repo.root, join(repo.root, 'symbiote', 'workspaces'), '--web'],
       }),
     );
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toEqual({
       about:
-        "Scout's conversation in this checkout (V35): a read-only agent started in Symbiote. Not a workspace.",
+        "Nucleus's conversation in this checkout (NU1): the person's orchestrator, started in Symbiote. Not a workspace.",
       agent: 'claude',
       id: 's9',
       sessionId: 'session-9',
@@ -477,20 +491,20 @@ describe('scout (V35)', () => {
     expect(repo.git('status', '--porcelain')).toBe('');
   });
 
-  it("never takes the person's own session in the checkout for Scout's", async () => {
+  it("never takes the person's own session in the checkout for Nucleus's", async () => {
     const repo = fresh();
     const { claude, listed, set } = fakeClaude(repo.root);
     const s = await service(repo, { claude });
     await s.ask({ text: 'Q' });
     set('s9', { state: 'done', status: 'idle' });
-    // The person starts a session of their own there, newer, working, even named Scout.
+    // The person starts a session of their own there, newer, working, even named Nucleus.
     listed.push({
       cwd: repo.root,
       kind: 'background',
       startedAt: 9e12,
       id: 'mine',
       sessionId: 'session-mine',
-      name: 'Scout',
+      name: 'Nucleus',
       state: 'working',
       status: 'busy',
     });
@@ -525,13 +539,13 @@ describe('scout (V35)', () => {
     expect(existsSync(record(repo))).toBe(false);
   });
 
-  it('continues the conversation: refused while Scout works, stopped first when it is idle', async () => {
+  it('continues the conversation: refused while Nucleus works, stopped first when it is idle', async () => {
     const repo = fresh();
     const { claude, stop, resume, set } = fakeClaude(repo.root);
     const s = await service(repo, { claude });
     await s.ask({ text: 'Q' });
     const busy = await s.ask({ text: 'And why?' }).catch((e: unknown) => e);
-    expect(busy).toBeInstanceOf(ScoutRefused);
+    expect(busy).toBeInstanceOf(PageAgentRefused);
     expect(busy).toMatchObject({ status: 409 });
     set('s9', { state: 'done', status: 'idle' });
     const state = await s.ask({ text: 'And why?' });
@@ -569,7 +583,7 @@ describe('scout (V35)', () => {
     expect(remove).not.toHaveBeenCalled();
   });
 
-  it("opens a terminal on Scout's session in the checkout", async () => {
+  it("opens a terminal on Nucleus's session in the checkout", async () => {
     const repo = fresh();
     const { claude } = fakeClaude(repo.root);
     const { terminals, opening } = fakeTerminals();
@@ -590,7 +604,7 @@ describe('scout (V35)', () => {
     expect((await s.state()).terminal).toEqual({ available: true });
   });
 
-  it("uses the project's prompt (prompts.scout), and refuses what it cannot ask", async () => {
+  it("uses the project's prompt (prompts.nucleus), and refuses what it cannot ask", async () => {
     const repo = fresh();
     const { claude, startPageAgent } = fakeClaude(repo.root);
     const s = await service(repo, { claude });
@@ -600,7 +614,7 @@ describe('scout (V35)', () => {
     mkdirSync(join(repo.root, 'symbiote'), { recursive: true });
     writeFileSync(
       join(repo.root, 'symbiote', 'config.json'),
-      '{ "prompts": { "scout": "Answer briefly." } }\n',
+      '{ "prompts": { "nucleus": "Answer briefly." } }\n',
     );
     await s.ask({ text: 'Where is X?' });
     expect(startPageAgent.mock.calls[0]?.[0]).toMatchObject({
@@ -611,12 +625,12 @@ describe('scout (V35)', () => {
     await s.renew();
     writeFileSync(
       join(repo.root, 'symbiote', 'config.json'),
-      '{ "prompts": { "scout": "Answer briefly.\\n\\nThe question:\\n\\n{question}" } }\n',
+      '{ "prompts": { "nucleus": "Answer briefly.\\n\\nThe question:\\n\\n{question}" } }\n',
     );
     await s.open({});
     expect(startPageAgent.mock.calls[1]?.[0].instructions).toBe('Answer briefly.\n\nThe question:');
     await expect((await service(fresh())).ask({ text: 'Q' })).rejects.toThrow(
-      /Scout needs Claude Code or Codex/,
+      /Nucleus needs Claude Code or Codex/,
     );
   });
 
@@ -632,7 +646,7 @@ describe('scout (V35)', () => {
     expect(start?.params).toMatchObject({ cwd: repo.root, approvalPolicy: 'never' });
     expect(start?.params).not.toHaveProperty('sandbox');
     expect(server.thread('thread-1')).toMatchObject({
-      name: 'Scout',
+      name: 'Nucleus',
       sandbox: 'read-only',
       reads: [...codexFolders('/usr/bin/codex'), repo.root],
     });
@@ -650,13 +664,13 @@ describe('scout (V35)', () => {
     expect((await s.renew()).conversation).toBeNull();
     expect(server.thread('thread-1')).toMatchObject({ archived: true });
     expect(archive).not.toHaveBeenCalled();
-    // Without its app server, Codex has no terminal: Scout says so.
+    // Without its app server, Codex has no terminal: Nucleus says so.
     const without = await service(repo, { codex: fakeCodex(null).codex });
     await expect(without.ask({ text: 'Q' })).rejects.toThrow(/app server/);
   });
 });
 
-describe("Scout reads the workspaces' worktrees (V80, decisions 596-599)", () => {
+describe("Nucleus reads the workspaces' worktrees (V80, decisions 596-599)", () => {
   /** `repo` with a workspace's worktree beside it, and its record. */
   function withWorkspace(repo: TestRepo) {
     const holder = `${repo.root}.worktrees`;
@@ -681,7 +695,7 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 596-599)", () =>
     return { holder, worktree };
   }
 
-  /** The gate's arguments as Scout's settings file gives them to the hook. */
+  /** The gate's arguments as Nucleus's settings file gives them to the hook. */
   const gateArgsOf = (settings: string): string[] => {
     const text = readFileSync(settings, 'utf8');
     const command = (
@@ -707,15 +721,15 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 596-599)", () =>
     // Nothing opened for the whole session: the gate decides at each call.
     expect(request).not.toHaveProperty('addDirs');
     const args = gateArgsOf(request?.settings ?? '');
-    expect(args).toEqual([repo.root, join(repo.root, 'symbiote', 'workspaces')]);
-    const reach = scoutReach(args);
-    expect(gateDecision(read(join(worktree, 'wip.md')), reach)).toMatchObject({ allow: true });
+    expect(args).toEqual([repo.root, join(repo.root, 'symbiote', 'workspaces'), '--web']);
+    const reach = nucleusReach(args);
+    expect(gateDecision(read(join(worktree, 'wip.md')), { reach })).toMatchObject({ allow: true });
     for (const outside of [
       join(holder, 'other', 'x.md'),
       join(dirname(repo.root), 'x.md'),
       join(repo.root, 'src/a.ts'),
     ]) {
-      expect(gateDecision(read(outside), reach)).toBeNull();
+      expect(gateDecision(read(outside), { reach })).toBeNull();
     }
     // A workspace started during the conversation is read at the next call.
     const later = join(holder, 'feature-b');
@@ -727,12 +741,14 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 596-599)", () =>
         .replace('feature/a', 'feature/b')
         .replace(worktree, later),
     );
-    expect(gateDecision(read(join(later, 'README.md')), scoutReach(args))).toMatchObject({
+    expect(
+      gateDecision(read(join(later, 'README.md')), { reach: nucleusReach(args) }),
+    ).toMatchObject({
       allow: true,
     });
   });
 
-  it("confines Codex's Scout like Claude Code's: the checkout and the open worktrees, read only (decision 599)", async () => {
+  it("confines Codex's Nucleus like Claude Code's: the checkout and the open worktrees, read only (decision 599)", async () => {
     const repo = fresh();
     const { holder, worktree } = withWorkspace(repo);
     // Codex trusts the checkout: without its profile, a thread there would be writable.
@@ -782,7 +798,7 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 596-599)", () =>
     expect(server.thread('thread-1')).toMatchObject({ sandbox: 'read-only' });
   });
 
-  it('refuses a Codex that would not keep Scout read-only: its thread archived, no record', async () => {
+  it('refuses a Codex that would not keep Nucleus read-only: its thread archived, no record', async () => {
     const repo = fresh();
     const dir = mkdtempSync(join(tmpdir(), 'symbiote-scout-as-'));
     folders.push(dir);
@@ -800,7 +816,7 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 596-599)", () =>
   });
 });
 
-describe('Scout is a terminal (V50)', () => {
+describe('Nucleus is a terminal (V50)', () => {
   const LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
   const MODELS: AgentModel[] = [
     { id: 'opus', name: 'Opus 5.5', efforts: { levels: LEVELS } },
@@ -815,11 +831,11 @@ describe('Scout is a terminal (V50)', () => {
     return fake;
   };
   const files = (repo: TestRepo) => ({
-    settings: join(repo.root, 'symbiote', 'scout-settings.json'),
-    mcpConfig: join(repo.root, 'symbiote', 'scout-mcp.json'),
+    settings: join(repo.root, 'symbiote', 'nucleus-settings.json'),
+    mcpConfig: join(repo.root, 'symbiote', 'nucleus-mcp.json'),
   });
 
-  it("opens a conversation with no question: Claude Code waits for its first, Scout's instructions its system prompt", async () => {
+  it("opens a conversation with no question: Claude Code waits for its first, Nucleus's instructions its system prompt", async () => {
     const repo = fresh();
     const { claude, startPageAgent } = fakeClaude(repo.root);
     const { terminals } = fakeTerminals();
@@ -831,10 +847,10 @@ describe('Scout is a terminal (V50)', () => {
     const request = startPageAgent.mock.calls[0]?.[0];
     expect(request).toMatchObject({
       cwd: repo.root,
-      name: 'Scout',
+      name: 'Nucleus',
       ...READ_ONLY,
       ...files(repo),
-      instructions: DEFAULT_PROMPTS.scout,
+      instructions: DEFAULT_PROMPTS.nucleus,
     });
     expect(request).not.toHaveProperty('prompt');
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
@@ -893,7 +909,7 @@ describe('Scout is a terminal (V50)', () => {
     const { claude, startPageAgent } = listing(repo);
     const s = await service(repo, { claude });
     repo.write({
-      'symbiote/config.json': '{ "scout": { "model": "sonnet", "effort": "medium" } }\n',
+      'symbiote/config.json': '{ "nucleus": { "model": "sonnet", "effort": "medium" } }\n',
     });
     expect((await s.open({})).conversation).toMatchObject({ model: 'sonnet', effort: 'medium' });
     expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ model: 'sonnet', effort: 'medium' });
@@ -925,7 +941,7 @@ describe('Scout is a terminal (V50)', () => {
     expect(existsSync(record(repo))).toBe(false);
   });
 
-  it("opens Codex's thread with no turn, Scout's instructions its developer instructions", async () => {
+  it("opens Codex's thread with no turn, Nucleus's instructions its developer instructions", async () => {
     const repo = fresh();
     const server = await appServer();
     const { codex } = fakeCodex(server);
@@ -936,7 +952,7 @@ describe('Scout is a terminal (V50)', () => {
     expect(server.calls.find((c) => c.method === 'thread/start')?.params).toMatchObject({
       cwd: repo.root,
       approvalPolicy: 'never',
-      developerInstructions: DEFAULT_PROMPTS.scout,
+      developerInstructions: DEFAULT_PROMPTS.nucleus,
       config: { model_reasoning_effort: 'low', default_permissions: 'symbiote-read' },
     });
     expect(server.calls.some((c) => c.method === 'turn/start')).toBe(false);
@@ -969,7 +985,7 @@ describe('Scout is a terminal (V50)', () => {
   });
 });
 
-describe("Scout's effort (fix/scout-effort-level)", () => {
+describe("Nucleus's effort (fix/scout-effort-level)", () => {
   const LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
   const config = (repo: TestRepo) => join(repo.root, 'symbiote', 'config.json');
   /** Claude Code with the levels its `--help` lists. */
@@ -997,10 +1013,10 @@ describe("Scout's effort (fix/scout-effort-level)", () => {
       ],
       file: 'symbiote/config.json',
     });
-    repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "high" } }\n' });
+    repo.write({ 'symbiote/config.json': '{ "nucleus": { "effort": "high" } }\n' });
     expect(await s.efforts()).toMatchObject({ effort: 'high' });
     // Not a level's word: none.
-    repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "--max" } }\n' });
+    repo.write({ 'symbiote/config.json': '{ "nucleus": { "effort": "--max" } }\n' });
     expect(await s.efforts()).not.toHaveProperty('effort');
     // An agent whose levels cannot be read: listed without them.
     claude.efforts = () => Promise.resolve(null);
@@ -1021,7 +1037,7 @@ describe("Scout's effort (fix/scout-effort-level)", () => {
     const repo = fresh();
     const { claude, startPageAgent } = leveled(repo);
     const s = await service(repo, { claude });
-    repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "medium" } }\n' });
+    repo.write({ 'symbiote/config.json': '{ "nucleus": { "effort": "medium" } }\n' });
     expect((await s.ask({ text: 'Q' })).conversation).toMatchObject({ effort: 'medium' });
     expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ effort: 'medium' });
     await s.renew();
@@ -1032,7 +1048,7 @@ describe("Scout's effort (fix/scout-effort-level)", () => {
     await s.renew();
     // A level this agent does not list: its default, not a refusal (the project's file may be
     // another agent's or an older Claude Code's).
-    repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "ultra" } }\n' });
+    repo.write({ 'symbiote/config.json': '{ "nucleus": { "effort": "ultra" } }\n' });
     await s.ask({ text: 'Q' });
     expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('effort');
   });
@@ -1045,7 +1061,7 @@ describe("Scout's effort (fix/scout-effort-level)", () => {
       status: 400,
       message: 'Claude Code takes low, medium, high, xhigh or max: ultra',
     });
-    await expect(s.ask({ text: 'Q', effort: 3 } as unknown as ScoutAsk)).rejects.toMatchObject({
+    await expect(s.ask({ text: 'Q', effort: 3 } as unknown as PageAgentAsk)).rejects.toMatchObject({
       status: 400,
       message: 'an effort level is a word, such as high: 3',
     });
@@ -1084,19 +1100,19 @@ describe("Scout's effort (fix/scout-effort-level)", () => {
     // (jsonc-parser rewrites the line it inserts after: an inline object there would be spread.)
     const before =
       '{\n    "merge": {\n        "checks": ["pnpm check", "pnpm build"],\n        "push": true\n    },\n' +
-      '    "prompts": {\n        "scout": "Q: {question}"\n    }\n}\n';
+      '    "prompts": {\n        "nucleus": "Q: {question}"\n    }\n}\n';
     repo.write({ 'symbiote/config.json': before });
     expect(await s.setEffort({ effort: 'high' })).toMatchObject({ effort: 'high' });
     expect(JSON.parse(readFileSync(config(repo), 'utf8'))).toEqual({
       merge: { checks: ['pnpm check', 'pnpm build'], push: true },
-      prompts: { scout: 'Q: {question}' },
-      scout: { effort: 'high' },
+      prompts: { nucleus: 'Q: {question}' },
+      nucleus: { effort: 'high' },
     });
-    expect(readFileSync(config(repo), 'utf8')).toContain('\n    "scout": {');
+    expect(readFileSync(config(repo), 'utf8')).toContain('\n    "nucleus": {');
     // Null: the agent's own default, and the file as it was.
     expect(await s.setEffort({ effort: null })).not.toHaveProperty('effort');
     expect(readFileSync(config(repo), 'utf8')).toBe(before);
-    // Scout's default agent decides what can be saved.
+    // Nucleus's default agent decides what can be saved.
     await expect(s.setEffort({ effort: 'ultra' })).rejects.toMatchObject({
       status: 400,
       message: 'Claude Code takes low, medium, high, xhigh or max: ultra',
@@ -1111,15 +1127,15 @@ describe("Scout's effort (fix/scout-effort-level)", () => {
     const { claude } = leveled(repo);
     const s = await service(repo, { claude });
     await s.setEffort({ effort: 'low' });
-    expect(JSON.parse(readFileSync(config(repo), 'utf8'))).toEqual({ scout: { effort: 'low' } });
+    expect(JSON.parse(readFileSync(config(repo), 'utf8'))).toEqual({ nucleus: { effort: 'low' } });
     await expect((await service(fresh())).setEffort({ effort: 'low' })).rejects.toMatchObject({
       status: 409,
-      message: 'Scout needs Claude Code or Codex: neither is installed',
+      message: 'Nucleus needs Claude Code or Codex: neither is installed',
     });
   });
 });
 
-describe("Scout's and Scribe's model (V47)", () => {
+describe("Nucleus's and Scribe's model (V47)", () => {
   const LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
   /** Some of Claude Code 2.1.310's models: Haiku 4.5 takes no level, Opus 4.6 no xhigh. */
   const MODELS: AgentModel[] = [
@@ -1161,10 +1177,10 @@ describe("Scout's and Scribe's model (V47)", () => {
       'gpt-5.6-luna',
     ]);
     expect(read).not.toHaveProperty('model');
-    // scout.model: said, and the levels its model takes; the project's agent.model is the default.
+    // nucleus.model: said, and the levels its model takes; the project's agent.model is the default.
     repo.write({
       'symbiote/config.json':
-        '{ "agent": { "model": "sonnet" }, "scout": { "model": "claude-opus-4-6" } }\n',
+        '{ "agent": { "model": "sonnet" }, "nucleus": { "model": "claude-opus-4-6" } }\n',
     });
     const set = await s.efforts();
     expect(set.model).toBe('claude-opus-4-6');
@@ -1173,18 +1189,18 @@ describe("Scout's and Scribe's model (V47)", () => {
       efforts: { levels: ['low', 'medium', 'high', 'max'] },
     });
     // Not a model's ID: none.
-    repo.write({ 'symbiote/config.json': '{ "scout": { "model": "--yolo" } }\n' });
+    repo.write({ 'symbiote/config.json': '{ "nucleus": { "model": "--yolo" } }\n' });
     expect(await s.efforts()).not.toHaveProperty('model');
   });
 
-  it('starts a conversation on scout.model when its agent lists it, records and says it; the other agent on its own', async () => {
+  it('starts a conversation on nucleus.model when its agent lists it, records and says it; the other agent on its own', async () => {
     const repo = fresh();
     const { claude, startPageAgent } = listing(repo);
     const server = await appServer();
     const { codex } = fakeCodex(server);
     codex.models = () => codexServer(server.address).models(repo.root);
     const s = await service(repo, { claude, codex });
-    repo.write({ 'symbiote/config.json': '{ "scout": { "model": "sonnet" } }\n' });
+    repo.write({ 'symbiote/config.json': '{ "nucleus": { "model": "sonnet" } }\n' });
     const state = await s.ask({ text: 'Q' });
     expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ model: 'sonnet' });
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({ model: 'sonnet' });
@@ -1197,7 +1213,7 @@ describe("Scout's and Scribe's model (V47)", () => {
     );
     expect(other.conversation).not.toHaveProperty('model');
     await s.renew();
-    repo.write({ 'symbiote/config.json': '{ "scout": { "model": "gpt-5.6-luna" } }\n' });
+    repo.write({ 'symbiote/config.json': '{ "nucleus": { "model": "gpt-5.6-luna" } }\n' });
     await s.ask({ text: 'Q', agent: 'codex' });
     expect(server.calls.filter((c) => c.method === 'thread/start')[1]?.params).toMatchObject({
       model: 'gpt-5.6-luna',
@@ -1209,7 +1225,7 @@ describe("Scout's and Scribe's model (V47)", () => {
     const { claude, startPageAgent } = listing(repo);
     const s = await service(repo, { claude });
     repo.write({
-      'symbiote/config.json': '{ "scout": { "model": "claude-haiku-4-5-20251001" } }\n',
+      'symbiote/config.json': '{ "nucleus": { "model": "claude-haiku-4-5-20251001" } }\n',
     });
     expect((await s.efforts()).agents[0]).not.toHaveProperty('efforts');
     await expect(s.ask({ text: 'Q', effort: 'high' })).rejects.toMatchObject({
@@ -1223,7 +1239,7 @@ describe("Scout's and Scribe's model (V47)", () => {
     const repo = fresh();
     const { claude, startPageAgent, set } = listing(repo);
     const s = await service(repo, { claude });
-    repo.write({ 'symbiote/config.json': '{ "scout": { "model": "sonnet" } }\n' });
+    repo.write({ 'symbiote/config.json': '{ "nucleus": { "model": "sonnet" } }\n' });
     const state = await s.ask({ text: 'Q', model: 'opus', effort: 'max' });
     expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ model: 'opus', effort: 'max' });
     expect(state.conversation).toMatchObject({ model: 'opus', effort: 'max' });
@@ -1242,13 +1258,13 @@ describe("Scout's and Scribe's model (V47)", () => {
     const repo = fresh();
     const { claude } = listing(repo);
     const s = await service(repo, { claude });
-    repo.write({ 'symbiote/config.json': '{\n  "scout": { "effort": "high" }\n}\n' });
+    repo.write({ 'symbiote/config.json': '{\n  "nucleus": { "effort": "high" }\n}\n' });
     expect(await s.setModel({ model: 'sonnet' })).toMatchObject({ model: 'sonnet' });
     expect(JSON.parse(readFileSync(config(repo), 'utf8'))).toEqual({
-      scout: { effort: 'high', model: 'sonnet' },
+      nucleus: { effort: 'high', model: 'sonnet' },
     });
     expect(await s.setModel({ model: null })).not.toHaveProperty('model');
-    expect(JSON.parse(readFileSync(config(repo), 'utf8'))).toEqual({ scout: { effort: 'high' } });
+    expect(JSON.parse(readFileSync(config(repo), 'utf8'))).toEqual({ nucleus: { effort: 'high' } });
     await expect(s.setModel({ model: 'gpt-6-luna' })).rejects.toMatchObject({
       status: 400,
       message: 'Claude Code lists no model gpt-6-luna: pick one it lists',
@@ -1282,7 +1298,7 @@ describe("Scout's and Scribe's model (V47)", () => {
     });
     await s.ask({ text: 'A skill' });
     expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ model: 'claude-opus-4-6' });
-    // Scout's is not Scribe's.
+    // Nucleus's is not Scribe's.
     expect(await (await service(repo, { claude })).efforts()).not.toHaveProperty('model');
   });
 });
@@ -1378,7 +1394,7 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
     // Its folder is made for it; nothing shows in git until it writes a skill.
     expect(existsSync(skills)).toBe(true);
     expect(repo.git('status', '--porcelain')).toBe('');
-    // Scout's conversation is apart.
+    // Nucleus's conversation is apart.
     expect(existsSync(record(repo))).toBe(false);
     expect((await (await service(repo, { claude })).state()).conversation).toBeNull();
   });
@@ -1398,7 +1414,7 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
       approvalPolicy: 'never',
       developerInstructions: scribePrompt(DEFAULT_PROMPTS, { skills, checkout: repo.root }),
     });
-    // No turn: the first is typed in its terminal. Named as Scout's is (the fake is Codex 0.163,
+    // No turn: the first is typed in its terminal. Named as Nucleus's is (the fake is Codex 0.163,
     // which names a thread once it has a message).
     expect(server.calls.some((c) => c.method === 'turn/start')).toBe(false);
     expect(server.calls.find((c) => c.method === 'thread/name/set')?.params).toMatchObject({
@@ -1496,12 +1512,12 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
     claude.efforts = () => Promise.resolve(['low', 'medium', 'high', 'xhigh', 'max']);
     const s = await scribeService(repo, { claude });
     const config = join(repo.root, 'symbiote', 'config.json');
-    repo.write({ 'symbiote/config.json': '{ "scout": { "effort": "low" } }\n' });
-    // Scout's is not Scribe's.
+    repo.write({ 'symbiote/config.json': '{ "nucleus": { "effort": "low" } }\n' });
+    // Nucleus's is not Scribe's.
     expect(await s.efforts()).not.toHaveProperty('effort');
     expect(await s.setEffort({ effort: 'high' })).toMatchObject({ effort: 'high' });
     expect(JSON.parse(readFileSync(config, 'utf8'))).toEqual({
-      scout: { effort: 'low' },
+      nucleus: { effort: 'low' },
       scribe: { effort: 'high' },
     });
     expect(await (await service(repo, { claude })).efforts()).toMatchObject({ effort: 'low' });
@@ -1512,15 +1528,15 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
     // Null: the next conversation at the agent's own, and the file as it was.
     await s.renew();
     expect(await s.setEffort({ effort: null })).not.toHaveProperty('effort');
-    expect(JSON.parse(readFileSync(config, 'utf8'))).toEqual({ scout: { effort: 'low' } });
+    expect(JSON.parse(readFileSync(config, 'utf8'))).toEqual({ nucleus: { effort: 'low' } });
     await s.open({});
     expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('effort');
   });
 });
 
-describe("Scout with Symbiote's tools (MC1, decisions 358, 365)", () => {
+describe("Nucleus with Symbiote's tools (MC1, decisions 358, 365)", () => {
   const viewOf = async (repo: TestRepo) => viewFile(cache, (await openRepo(repo.root)).commonDir);
-  const mcpFile = (repo: TestRepo) => join(repo.root, 'symbiote', 'scout-mcp.json');
+  const mcpFile = (repo: TestRepo) => join(repo.root, 'symbiote', 'nucleus-mcp.json');
 
   it("starts Claude Code with Symbiote's server and no other, its file written before each wake", async () => {
     const repo = fresh();
@@ -1537,7 +1553,7 @@ describe("Scout with Symbiote's tools (MC1, decisions 358, 365)", () => {
         symbiote: {
           type: 'stdio',
           command: '/usr/bin/node',
-          args: [BRIDGE, '--as', 'scout', '--view', await viewOf(repo)],
+          args: [BRIDGE, '--as', 'nucleus', '--view', await viewOf(repo)],
         },
       },
     };
@@ -1564,18 +1580,19 @@ describe("Scout with Symbiote's tools (MC1, decisions 358, 365)", () => {
       mcp_servers: {
         symbiote: {
           command: '/usr/bin/node',
-          args: [BRIDGE, '--as', 'scout', '--view', await viewOf(repo)],
+          args: [BRIDGE, '--as', 'nucleus', '--view', await viewOf(repo)],
           default_tools_approval_mode: 'approve',
           tool_timeout_sec: 660,
         },
       },
+      web_search: 'live',
       // The folders it reads (V80): Codex's program's and the checkout; no workspace here.
       ...readProfile([...codexFolders('/usr/bin/codex'), repo.root]),
     };
     expect(server.calls.find((c) => c.method === 'thread/start')?.params).toEqual({
       cwd: repo.root,
       approvalPolicy: 'never',
-      developerInstructions: DEFAULT_PROMPTS.scout,
+      developerInstructions: DEFAULT_PROMPTS.nucleus,
       config,
     });
     server.reply('thread-1', 'Nothing.');
@@ -1628,5 +1645,238 @@ describe("Scout with Symbiote's tools (MC1, decisions 358, 365)", () => {
     expect(server.calls.find((c) => c.method === 'thread/start')?.params).not.toHaveProperty(
       'config.mcp_servers',
     );
+  });
+});
+
+describe("Nucleus's old names (NU1, decisions 590, 591)", () => {
+  const LEVELS = ['low', 'medium', 'high', 'xhigh', 'max'];
+  const MODELS: AgentModel[] = [
+    { id: 'opus', name: 'Opus 5.5', efforts: { levels: LEVELS } },
+    { id: 'sonnet', name: 'Sonnet 5.5', efforts: { levels: LEVELS } },
+  ];
+  const STARTED = '2026-10-29T19:50:40.704Z';
+  const scoutFiles = (repo: TestRepo) =>
+    ['scout.json', 'scout-settings.json', 'scout-mcp.json'].map((f) =>
+      join(repo.root, 'symbiote', f),
+    );
+  /** A Scout conversation as Symbiote wrote it before NU1: its record and its two files. */
+  const scoutConversation = (repo: TestRepo, fields: Record<string, unknown>) =>
+    repo.write({
+      'symbiote/scout.json': `${JSON.stringify(
+        {
+          about:
+            "Scout's conversation in this checkout (V35): a read-only agent started in Symbiote. Not a workspace.",
+          ...fields,
+          started: STARTED,
+        },
+        null,
+        2,
+      )}\n`,
+      'symbiote/scout-settings.json': '{ "hooks": {} }\n',
+      'symbiote/scout-mcp.json': '{ "mcpServers": {} }\n',
+      'symbiote/.gitignore': '*\n',
+    });
+
+  it("reads a Scout conversation as Nucleus's, as it is, until New conversation removes it and its files", async () => {
+    const repo = fresh();
+    const { claude, listed, stop, remove, startPageAgent } = fakeClaude(repo.root);
+    listed.push({
+      cwd: repo.root,
+      kind: 'background',
+      startedAt: 5,
+      id: 'old',
+      sessionId: 'session-old',
+      name: 'Scout',
+      state: 'done',
+      status: 'idle',
+    });
+    scoutConversation(repo, {
+      agent: 'claude',
+      id: 'old',
+      sessionId: 'session-old',
+      effort: 'xhigh',
+      model: 'opus',
+    });
+    const { terminals, opening } = fakeTerminals();
+    const s = await service(repo, { claude, terminals });
+    expect((await s.state()).conversation).toEqual({
+      kind: 'claude',
+      started: STARTED,
+      effort: 'xhigh',
+      model: 'opus',
+      state: 'answered',
+      id: 'old',
+      startedAs: 'Scout',
+    });
+    // Opened: the one there is, nothing started; its terminal attaches to it.
+    expect((await s.open({})).conversation).toMatchObject({ id: 'old', startedAs: 'Scout' });
+    expect(startPageAgent).not.toHaveBeenCalled();
+    await s.terminal({ cols: 80, rows: 24 });
+    expect(opening[0]?.args).toEqual(['attach', 'old']);
+    expect(existsSync(record(repo))).toBe(false);
+    // New conversation: Scout's session ended, its record and its files gone.
+    expect((await s.renew()).conversation).toBeNull();
+    expect(stop).toHaveBeenCalledWith('old');
+    expect(remove).toHaveBeenCalledWith('old');
+    for (const file of scoutFiles(repo)) expect(existsSync(file)).toBe(false);
+    // The next is Nucleus's.
+    expect((await s.open({})).conversation).toMatchObject({ id: 's9', state: 'ready' });
+    expect((await s.state()).conversation).not.toHaveProperty('startedAs');
+    expect(startPageAgent.mock.calls[0]?.[0]).toMatchObject({ name: 'Nucleus', ...READ_ONLY });
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({ id: 's9' });
+    expect(repo.git('status', '--porcelain')).toBe('');
+  });
+
+  it("opens Nucleus over a Scout session that is gone, and drops Scout's record and files", async () => {
+    const repo = fresh();
+    const { claude } = fakeClaude(repo.root);
+    scoutConversation(repo, { agent: 'claude', id: 'old', sessionId: 'session-old' });
+    const s = await service(repo, { claude });
+    expect((await s.state()).conversation).toMatchObject({ state: 'gone', startedAs: 'Scout' });
+    expect((await s.open({})).conversation).toMatchObject({ id: 's9', state: 'ready' });
+    for (const file of scoutFiles(repo)) expect(existsSync(file)).toBe(false);
+    expect(existsSync(record(repo))).toBe(true);
+  });
+
+  it("reads nucleus.json first: a Scout record beside it is not Nucleus's conversation", async () => {
+    const repo = fresh();
+    const { claude } = fakeClaude(repo.root);
+    const s = await service(repo, { claude });
+    await s.open({});
+    scoutConversation(repo, { agent: 'claude', id: 'old', sessionId: 'session-old' });
+    expect((await s.state()).conversation).toMatchObject({ id: 's9' });
+    expect((await s.state()).conversation).not.toHaveProperty('startedAs');
+  });
+
+  it("reads a Codex Scout thread, gives it Nucleus's tools at its next message, archives it for a new one", async () => {
+    const repo = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    const s = await service(repo, { codex });
+    await s.ask({ text: 'Where is it?' });
+    // As a Scout thread recorded before NU1.
+    const thread = JSON.parse(readFileSync(record(repo), 'utf8')) as Record<string, unknown>;
+    rmSync(record(repo));
+    scoutConversation(repo, { agent: 'codex', thread: thread['thread'] });
+    expect((await s.state()).conversation).toMatchObject({ id: 'thread-1', startedAs: 'Scout' });
+    server.reply('thread-1', 'Here.');
+    await s.ask({ text: 'And the web?' });
+    expect(server.calls.findLast((c) => c.method === 'thread/resume')?.params).toMatchObject({
+      threadId: 'thread-1',
+      config: { web_search: 'live' },
+    });
+    expect((await s.renew()).conversation).toBeNull();
+    expect(server.thread('thread-1')).toMatchObject({ archived: true });
+    for (const file of scoutFiles(repo)) expect(existsSync(file)).toBe(false);
+  });
+
+  it("starts on scout.model and scout.effort when Nucleus has none; a save writes Nucleus's and drops Scout's", async () => {
+    const repo = fresh();
+    const fake = fakeClaude(repo.root);
+    fake.claude.efforts = () => Promise.resolve(LEVELS);
+    fake.claude.models = () => Promise.resolve(structuredClone(MODELS));
+    const config = join(repo.root, 'symbiote', 'config.json');
+    const s = await service(repo, { claude: fake.claude });
+    repo.write({
+      'symbiote/config.json': '{ "scout": { "model": "sonnet", "effort": "medium" } }\n',
+    });
+    expect(await s.efforts()).toMatchObject({ effort: 'medium', model: 'sonnet' });
+    expect((await s.open({})).conversation).toMatchObject({ model: 'sonnet', effort: 'medium' });
+    await s.renew();
+    // Nucleus's own comes first.
+    repo.write({
+      'symbiote/config.json':
+        '{ "nucleus": { "effort": "high" }, "scout": { "model": "sonnet", "effort": "medium" } }\n',
+    });
+    expect((await s.open({})).conversation).toMatchObject({ model: 'sonnet', effort: 'high' });
+    await s.setEffort({ effort: 'low' });
+    expect(JSON.parse(readFileSync(config, 'utf8'))).toEqual({
+      nucleus: { effort: 'low' },
+      scout: { model: 'sonnet' },
+    });
+    await s.setModel({ model: 'opus' });
+    expect(JSON.parse(readFileSync(config, 'utf8'))).toEqual({
+      nucleus: { effort: 'low', model: 'opus' },
+    });
+  });
+
+  it("takes prompts.scout as Nucleus's instructions while there is no prompts.nucleus", async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    const s = await service(repo, { claude });
+    repo.write({
+      'symbiote/config.json': '{ "prompts": { "scout": "You are Scout. Be brief." } }\n',
+    });
+    await s.open({});
+    expect(startPageAgent.mock.calls[0]?.[0].instructions).toBe('You are Scout. Be brief.');
+    await s.renew();
+    repo.write({
+      'symbiote/config.json':
+        '{ "prompts": { "nucleus": "Be brief.", "scout": "You are Scout. Be brief." } }\n',
+    });
+    await s.open({});
+    expect(startPageAgent.mock.calls[1]?.[0].instructions).toBe('Be brief.');
+  });
+});
+
+describe('Nucleus on the web (NU1, decisions 592–594)', () => {
+  it('starts Claude Code with WebSearch and WebFetch, its gate given --web', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    const s = await service(repo, { claude });
+    await s.open({});
+    expect(startPageAgent.mock.calls[0]?.[0].tools).toEqual([
+      'Read',
+      'Grep',
+      'Glob',
+      'Bash',
+      'WebSearch',
+      'WebFetch',
+    ]);
+    const folders = [repo.root, join(repo.root, 'symbiote', 'workspaces')];
+    expect(readFileSync(join(repo.root, 'symbiote', 'nucleus-settings.json'), 'utf8')).toBe(
+      pageAgentSettings({ node: '/usr/bin/node', gate: GATE, args: [...folders, '--web'] }),
+    );
+  });
+
+  it('starts without them when nucleus.web is false: no web tool, a gate without --web', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    repo.write({ 'symbiote/config.json': '{ "nucleus": { "web": false } }\n' });
+    const s = await service(repo, { claude });
+    await s.open({});
+    expect(startPageAgent.mock.calls[0]?.[0].tools).toEqual(['Read', 'Grep', 'Glob', 'Bash']);
+    expect(readFileSync(join(repo.root, 'symbiote', 'nucleus-settings.json'), 'utf8')).toBe(
+      pageAgentSettings({
+        node: '/usr/bin/node',
+        gate: GATE,
+        args: [repo.root, join(repo.root, 'symbiote', 'workspaces')],
+      }),
+    );
+  });
+
+  it("gives Codex's thread live web search at its start, each message and its terminal; disabled when off", async () => {
+    const repo = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    const { terminals } = fakeTerminals();
+    const s = await service(repo, { codex, terminals });
+    await s.ask({ text: 'What is new in Vite?' });
+    const start = server.calls.find((c) => c.method === 'thread/start')?.params;
+    // The thread stays read-only, its network off: the search runs at OpenAI.
+    expect(start).toMatchObject({ config: { web_search: 'live' } });
+    expect(server.thread('thread-1')).toMatchObject({ sandbox: 'read-only' });
+    server.reply('thread-1', 'Vite 8.');
+    await s.ask({ text: 'And 9?' });
+    await s.terminal({ cols: 80, rows: 24 });
+    for (const resume of server.calls.filter((c) => c.method === 'thread/resume')) {
+      expect(resume.params).toMatchObject({ config: { web_search: 'live' } });
+    }
+    await s.renew();
+    repo.write({ 'symbiote/config.json': '{ "nucleus": { "web": false } }\n' });
+    await s.ask({ text: 'Offline?' });
+    expect(server.calls.findLast((c) => c.method === 'thread/start')?.params).toMatchObject({
+      config: { web_search: 'disabled' },
+    });
   });
 });

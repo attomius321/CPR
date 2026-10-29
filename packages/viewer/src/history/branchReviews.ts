@@ -130,7 +130,7 @@ function markOf(review: BranchReviewSummary, tip: string, since: number): Review
     };
   const verdict = review.verdict?.head === tip ? review.verdict : undefined;
   if (verdict?.event === 'approve') {
-    // Through Scout or symbiote mcp, on the person's Confirm (MC1).
+    // Through Nucleus or symbiote mcp, on the person's Confirm (MC1).
     const approved = `Approved${verdict.via ? ` through ${VIA[verdict.via]}` : ''}`;
     const title =
       verdict.merged && verdict.into ? `${approved} · merged into ${verdict.into}` : approved;

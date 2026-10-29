@@ -234,17 +234,17 @@ export {
   type SkillsState,
 } from './skills.js';
 export {
-  type ScoutAgent,
-  type ScoutAsk,
-  type ScoutConversation,
-  type ScoutEffortChange,
-  type ScoutEfforts,
-  type ScoutModelChange,
-  type ScoutOpen,
-  type ScoutState,
-  type ScoutStateName,
-  type ScoutTerminalRequest,
-} from './scout.js';
+  type InstalledAgent,
+  type PageAgentAsk,
+  type PageAgentConversation,
+  type EffortChange,
+  type AgentLevels,
+  type ModelChange,
+  type PageAgentOpen,
+  type PageAgentState,
+  type PageAgentStateName,
+  type PageAgentTerminalRequest,
+} from './page-agent.js';
 export type { McpAnswer, McpAsk, McpAsks, McpCaller, McpVia } from './mcp.js';
 export {
   AGENT_KINDS,

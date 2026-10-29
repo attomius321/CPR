@@ -248,7 +248,7 @@ export interface CodexServer {
    * Starts a thread in `cwd` in the `workspace-write` sandbox, `writable` also writable (the
    * branch's git folders, decision 130), approvals asked (`on-request`), named `name`, with
    * `prompt` as its first turn — at `effort` when given (V30b), which the server keeps for the
-   * thread's next turns —; its ID once the prompt is in the thread. `readOnly` (Scout, V35): the
+   * thread's next turns —; its ID once the prompt is in the thread. `readOnly` (Nucleus, V35): the
    * `read-only` sandbox instead, nothing writable, approvals `never`: a command the sandbox refuses
    * fails, nobody is asked. `confined` (Scribe, V41): `workspace-write` with `cwd` its only writable
    * folder, and `writable` (the skill library, SK1), approvals `never`: a write elsewhere fails
@@ -261,18 +261,18 @@ export interface CodexServer {
     writable: string[];
     name: string;
     prompt?: string;
-    /** Its developer instructions (V50, decision 383): Scout's, before any turn. */
+    /** Its developer instructions (V50, decision 383): Nucleus's, before any turn. */
     instructions?: string;
     effort?: string;
     model?: string;
     readOnly?: true;
     /**
-     * With `readOnly` (Scout, V80): the folders its commands read, through `readProfile` and no
+     * With `readOnly` (Nucleus, V80): the folders its commands read, through `readProfile` and no
      * sandbox mode; refused, the thread archived, unless Codex answers read-only.
      */
     reads?: readonly string[];
     confined?: true;
-    /** The thread's own configuration (MC1: Scout's, Symbiote's MCP server), beside Symbiote's. */
+    /** The thread's own configuration (MC1: Nucleus's, Symbiote's MCP server), beside Symbiote's. */
     config?: Record<string, unknown>;
   }): Promise<string>;
   /**

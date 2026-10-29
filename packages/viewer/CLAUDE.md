@@ -28,7 +28,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 | `workspaces/` | A workspace, its agent's terminal, its changes, merges, Start a workspace |
 | `shell/` | The shell: sidenav, title bar, status bar and usage, pages, theme, the desktop window |
 | `ui/` | Shared: the tokens and controls' CSS, `Help`, `Tooltips`, `Resizer`, icons, menus, Markdown, HTTP |
-| `scout/`, `settings/` | Scout, Settings; `scout/Conversation.tsx` is a page agent's conversation, Scout's page and Scribe's pane (V41) |
+| `nucleus/`, `settings/` | Nucleus (Scout until NU1), Settings; `nucleus/Conversation.tsx` is a page agent's conversation, Nucleus's page and Scribe's pane (V41) |
 | `skills/` | Skills (V41): the checkout's skills, their checks (`skills.ts`, pure), Scribe's pane |
 | `monitor/` | The Monitor (RM1, RM2): the folder tree, concentration and heat (`codemap.ts`), the treemap layout (`treemap.ts`), both pure; the picture `TreemapView.tsx` |
 | `intro/` | The first-time intro (V39): the koi engine, its rig and images, the overlay |
@@ -91,7 +91,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   `settings/LibraryPage.tsx` its entry in Settings (This machine), which asks
   `/api/skills/library?folder=` as the person types.
 - `src/workspaces/AgentTerminal.tsx` — an agent's terminal (xterm.js and its fit add-on): a
-  workspace's agent and shells, Scout, Scribe; `MergeLog.tsx` the merge log's. xterm opens in a
+  workspace's agent and shells, Nucleus, Scribe; `MergeLog.tsx` the merge log's. xterm opens in a
   box with no padding (`.agent-terminal-fit`, `.merge-terminal-fit`), the padding on the box
   around it: the fit add-on counts the rows from the height of the box xterm is in, padding
   included (border-box), and drew up to 8 px more than the box held, which made the scrolling
