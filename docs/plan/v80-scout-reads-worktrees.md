@@ -4,8 +4,10 @@
 
 **Status:** built, ready for review (2026-10-29), on branch `feature/scout-reads-worktrees` (the
 workspace's), `main` (V77, V78, MC2) merged in; the plan confirmed by the person ("Do as you recommend.
-Go"), the real run in a throwaway clone. Planned as V79 (576–579), renumbered when another branch
-took them.
+Go"). Replanned with the person after it was built: Codex's Scout confined too ("Like claude",
+decision 588 changed), and no throwaway copy for the real Scout run ("I don't like the throwaway
+idea"): the person checks a real conversation after the merge. Planned as V79 (576–579),
+renumbered when another branch took them.
 
 **Problem** (asked: "Scout can read the files of every workspace's worktree, its uncommitted
 changes included, so it can look at an agent's work in progress and answer about it. Scout stays
@@ -25,8 +27,8 @@ work only as the `workspace` tool's paths and line counts. Measured on `b3e8c03`
 
 **Goal**: in a new Scout conversation, Scout reads, searches and lists the files of every open
 workspace's worktree, and sees its uncommitted changes through git, while it writes nothing,
-anywhere. **Unchanged**: Scribe and the workspace agents' permissions; Codex's Scout (already able
-to read there); a Scout conversation whose settings file was written before V80 keeps `main`'s gate
+anywhere, with Claude Code and with Codex alike. **Unchanged**: Scribe and the workspace agents'
+permissions; a Scout conversation whose settings file was written before V80 keeps `main`'s gate
 until Symbiote writes the file again at its next wake.
 
 ## What is opened (decision 585)
@@ -67,10 +69,35 @@ For Scout only: Scribe's gate calls `gitReadProblem` without worktrees and keeps
 - Every refusal of f51d03e kept: options that write, run a program or read a file outside after
   the command; the filters after a pipe.
 
-## Codex (decision 588)
+## Codex (decision 588, replanned)
 
-Nothing passed: Scout has no `folders`, its thread starts `readOnly` with `writable: []`, and its
-sandbox reads the worktrees already. Its prompt says the same as Claude Code's.
+Planned: nothing passed, Codex's read-only sandbox reading every folder. The person asked for
+Codex's Scout to read "like claude", measured on Codex 0.163's app server first:
+
+| Codex Scout's thread started… | Reads | Resumed after a restart without it |
+|---|---|---|
+| `sandbox: read-only` (`main`) | every folder | still read-only: Codex keeps the mode |
+| a permission profile (`default_permissions`, `permissions.<name>.filesystem`) reading `:minimal`, Codex's program, the checkout and a worktree; no mode | those folders; another is "No such file or directory", `ls /home/anton` empty, a write refused | in a folder Codex trusts: `workspaceWrite`, a write into the checkout succeeded |
+| the profile and `sandbox: read-only` | every folder: the mode switches the profile off | read-only |
+| the profile and `sandbox_mode = "read-only"` in its config | those folders | `workspaceWrite`: not kept either |
+| the profile, without Codex's own program in it | every command fails: Codex's sandbox runs its binary again inside (`bwrap: execvp …/codex`) | |
+
+A thread the server holds keeps its profile through a resume, wider or none; one it does not hold
+takes the profile it is resumed with. So:
+
+- `readProfile(folders)` (`app-server.ts`): `default_permissions = "symbiote-read"`, its
+  `filesystem` `:minimal` and the folders, each `read`. Scout's Codex thread starts with it and no
+  sandbox mode; `send` and `load` give it again with the resume, the worktrees read again then.
+- Codex must answer `readOnly` at the start and at each resume, else nothing is run: a start is
+  archived and refused, a message or a terminal refused (`mustReadOnly`).
+- Codex's program: `codexFolders(command)` (`codex.ts`), as Codex's npm launcher finds its binary:
+  the package, and each platform package listed in its `optionalDependencies` that Node resolves
+  from the launcher (nested or hoisted); for a program of its own, its folder.
+- A workspace started during a Codex conversation is readable from the next conversation, or after
+  Codex's app server restarts: a thread the server holds keeps the folders it started with, and
+  Scout's terminal holds it.
+- Resumed outside Symbiote (`codex resume` in a folder Codex trusts) the thread drops its profile
+  and can write: `configuration.md` says to continue it from Symbiote only.
 
 ## What Scout is told
 
@@ -95,13 +122,16 @@ sandbox reads the worktrees already. Its prompt says the same as Claude Code's.
      out, `..`, a relative path, no path. Real git: each allowed `-C` form leaves a stale
      worktree's index as it was; `diff` changes it.
    - `scout.test.ts`: Scout's start passes no `addDirs`, its gate the checkout and the records
-     folder; Codex's start read-only with no writable folder.
+     folder; Codex's thread starts with the profile (the checkout, the open worktrees, Codex's
+     program) and no mode, a later workspace in the next message's and load's profile; a thread
+     Codex leaves writable refused and archived. `app-server.test.ts`: the profile and the checks;
+     `codex.test.ts`: `codexFolders`.
    - `mcp.test.ts`: `workspace` gives `worktree`; `prompts.test.ts`: Scout's text.
 2. **Nothing else changes**: Scribe's gate and start as on `main`; every other test as before.
 3. **Real runs**: the built hook run as Claude Code runs it on this machine's records (read only),
    with its time per call; `claude -p` with Scout's tools, `dontAsk` and the built gate in a
-   scratch clone; a real Scout conversation started by this branch's `symbiote view` in a
-   throwaway clone the person trusted: a worktree's file read, one outside refused.
+   scratch clone; Symbiote's built Codex client against a private Codex app server in a scratch
+   repository. A real Scout conversation in the person's checkout: the person's, after the merge.
 4. `pnpm check`, `pnpm build`, the e2e Scout spec (its settings file changes). No analysis change:
    no `regression-check`.
 
@@ -114,6 +144,8 @@ sandbox reads the worktrees already. Its prompt says the same as Claude Code's.
 | The hook slows every tool call | Records and git read only for a path outside the checkout; timed |
 | Programs git runs from config (`core.fsmonitor`, `diff.external`, textconv) | The worktrees share the checkout's config: Scout's git runs them in the checkout already; unchanged |
 | V78 (`feature/remove-scout-in-page-settings`) edits `scout.ts` and `prompts.ts` | Small conflicts, resolved at merge |
+| Codex's thread resumed without its profile turns writable where Codex trusts the folder | Every resume Symbiote makes gives it, and Codex must answer read-only; a resume outside Symbiote is the person's (said in `configuration.md`) |
+| A Codex that does not take profiles starts the thread with the folder's default | Its answer is checked: a thread not read-only is archived and Scout refused |
 
 **Order**: the gate and its tests, then Scout's start and the MCP tool, the prompt and docs, then
 the real runs.
@@ -131,7 +163,7 @@ the real runs.
 | 585 | What Scout reads beyond the checkout | **Open workspaces' worktrees: a record without `finished` whose folder git lists as this repository's worktree, decided at each tool call; no `--add-dir`, not the holder** | Measured: a hook's `allow` opens a path in `dontAsk`; the holder can be anywhere and holds a worktree of no open workspace; a list at start misses a workspace started later |
 | 586 | How Claude Code's reads are opened | **The gate allows Read, Grep and Glob by real path (absolute, no `..`); Claude Code's rules elsewhere** | Read follows symlinks; Node's `realpathSync` takes `..` before links |
 | 587 | git in a worktree | **`-C <worktree>`; `status` only with `--no-optional-locks`; `diff-index` for the patch; `diff` refused there; Scribe's gate unchanged** | Measured: `status` and `diff` rewrite a worktree's index, `diff-index` does not |
-| 588 | Codex | **Nothing passed: read-only, no writable folder** | Its read-only sandbox reads every folder and writes none; Codex's `folders` would be writable |
+| 588 | Codex (replanned) | **The same folders as Claude Code's: a permission profile with Codex's program, no sandbox mode, given at the start and at every resume; read-only checked each time, else refused** | The person: "Like claude". Measured: a mode switches a profile off; a profile is not kept through a resume, and without it a thread in a trusted folder is writable |
 
 **Not in V80 (later)**: finished workspaces' worktrees (gone at Clean up); a worktree made by hand
 or by the analysis cache, which no record names.
@@ -149,6 +181,14 @@ or by the analysis cache, which no record names.
   nothing, as `log`, `show`, `grep` and `ls-files` do.
 - **Scout's prompt** names the two git forms and why not `git diff`: 2,472 characters, 2,980 with
   MC2's `suggest_settings` lines merged in (limit 8,000).
+- **Codex replanned after the build** (decision 588, above): the person asked for Codex's Scout
+  to read like Claude Code's. The fake app server follows the measured rules (a mode switches a
+  profile off; a cold resume without one gets the folder's default, writable where trusted; a
+  Codex without profiles). Two earlier Scout tests pinned the read-only mode at the start; they
+  expect the profile now.
+- **No throwaway copy**: the real Scout conversation was planned in a throwaway clone the person
+  would trust in Claude Code; the person did not want it, and checks a real conversation after
+  the merge. The clone was deleted.
 
 **Results.** Tests first: 49 of the 53 new gate tests failed on `main`'s gate, for the right reason
 (`-C` and `--no-optional-locks` refused, no `openWorktrees`); the other 4 are guards that held
@@ -158,14 +198,18 @@ Codex test is a guard, green before and after. `pnpm check`: 2,301 tests in 162 
 `main` was merged in, 2,318 in 164 with V77 and V78, 2,324 with MC2. e2e: Scout's and the MCP
 specs 13 of 13; the viewer's suite 339 of 340 before the first merge and 341 of 342 after it, each
 time one merger test bound to timing (`merges.spec.ts:200`, then `:373`), each 5 of 5 alone; with
-MC2 merged in, 342 of 342 and the nexus's 15 of 15.
+MC2 merged in, 342 of 342 and the nexus's 15 of 15. Codex's replan: 7 new or changed tests red
+first (the app-server client 2, `codexFolders` 2, Scout's Codex 3); `pnpm check` 2,329 tests in
+164 files; e2e 342 of 342, the nexus's 15 of 15.
 
 | Run | What happened |
 |---|---|
 | The built hook, as Claude Code runs it, on this machine's 103 records | A Read and a Grep in two open workspaces' worktrees allowed; `milestone-v75-suggested-settings` (no open record), the holder, another project and the checkout: no answer; `git --no-optional-locks -C <wt> status` allowed; `git -C <wt> diff` and `-C` into the v75 folder denied. Without arguments: `main`'s answers |
 | Its cost per call, medians of 20 | A Read in the checkout 21.8 ms (`main`'s gate 20.9); in a worktree 30.0 ms, elsewhere 31.1 ms: the records and `git worktree list` read |
 | `claude -p` (Claude Code 2.1.312, haiku) with Scout's tools, `dontAsk` and the built gate, in a throwaway clone with one workspace | Allowed: Read of its uncommitted file, `git --no-optional-locks -C <wt> status --short` (` M README.md`, `?? WIP-NOTES.md`), `git -C <wt> diff-index -p HEAD` (the uncommitted line), a Grep there. Refused: a worktree with no record, a file outside, `git -C` into that worktree, `git -C <wt> diff`. The worktree's index unchanged |
+| Symbiote's built Codex client and `codexFolders`, against a private `codex app-server` (0.163, gpt-6-luna, low) in a scratch repository | `codexFolders` found the `@openai/codex` package and its linux-x64 platform package; the thread read the worktree's uncommitted file and ran `git -C <wt> status --short`; a file outside: "No such file or directory"; nothing written |
 
-Not verified: a real Scout conversation started by `symbiote view` (it needs the person to trust
-the throwaway clone in Claude Code); Codex's Scout in a conversation (its read-only sandbox was
-measured with `codex sandbox`); Windows and macOS paths.
+Not verified: a real Scout conversation started by `symbiote view`, with either agent (the
+person's, after the merge); Codex's terminal joining a profiled thread (it joins one Symbiote
+loaded with the profile, which a held thread keeps); Codex other than 0.163; Windows and macOS
+(Codex's sandbox there is not bubblewrap).

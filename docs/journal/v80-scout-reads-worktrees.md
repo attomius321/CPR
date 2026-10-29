@@ -76,3 +76,52 @@ worktree's index unchanged.
 Not verified: a real Scout conversation started by `symbiote view` (the throwaway clone is not
 trusted in Claude Code yet); Codex's Scout in a conversation; Windows and macOS.
 
+## V80 — Codex's Scout reads like Claude Code's (2026-10-29, branch `feature/scout-reads-worktrees`)
+
+The person, on the built branch: "the scout can be codex", then "Like claude". Codex's Scout read
+every folder (its read-only sandbox); now it reads the checkout and the open workspaces' worktrees,
+as Claude Code's does. Measured first on Codex 0.163: `codex sandbox` with config overrides, then
+real threads on private `codex app-server` processes (stdio and a socket, never the person's
+daemon) in a scratch repository, one short turn each (gpt-6-luna, low), every thread archived.
+Decision 588 replanned. The person also did not want the throwaway copy for the real Scout run
+("I don't like the throwaway idea"): it was deleted, and the person checks a real conversation
+after the merge.
+
+**Learned**:
+- **Codex 0.163 has permission profiles**: `default_permissions = "<name>"` with
+  `[permissions.<name>] filesystem = { ":minimal" = "read", "<folder>" = "read" }`. A thread
+  started with one reads only those folders: another is "No such file or directory", `ls
+  /home/anton` is empty, a write gets "Read-only file system". `codex app-server generate-ts`
+  gave the types; the TOML shape came from Codex's own errors and strings.
+- **A sandbox mode switches a profile off**: with `sandbox: "read-only"` beside it, the thread read
+  every folder again. Scout's thread starts with the profile and no mode.
+- **Codex runs its own binary again inside the sandbox**: without Codex's install folder in the
+  profile, every command failed (`bwrap: execvp …/codex: No such file or directory`).
+  `codexFolders` finds it as Codex's npm launcher does (`require.resolve` of its platform packages
+  from `bin/codex.js`): on this machine the package and its linux-x64 package.
+- **Codex keeps a mode, not a profile**: a thread started with `sandbox: "read-only"` (as on
+  `main`) came back read-only from a bare resume after a restart, as V27 found. A thread started
+  with a profile came back with the folder's default: in a folder Codex trusts,
+  `workspaceWrite`, and a write into the checkout succeeded. `sandbox_mode = "read-only"` in its
+  config was not kept either. The person's checkout is trusted in Codex. So every resume Symbiote
+  makes gives the profile again, and Codex's answer (`sandbox.type`) must be `readOnly` at the
+  start and at each resume, or nothing runs.
+- **A thread the server holds keeps its profile**: a resume with a wider one, or none, changed
+  nothing; a thread it does not hold took the one it was resumed with. A workspace started during
+  a Codex conversation is readable from the next one: Scout's terminal holds the thread.
+- **My probes wrote nothing to Codex's config**: no trust entry for the scratch folders (the trust
+  used in the probes was a config override of each thread).
+
+**Verification**: tests first, red for the right reason: the app-server client's profile and
+checks (2: no `readProfile`, a writable start resolved), `codexFolders` (2), Scout's Codex start,
+its later workspace and its refusal (3). Two earlier Scout tests pinned the read-only mode: they
+expect the profile now. The fake app server follows the measured rules. `pnpm check`: 2,329 tests
+in 164 files. e2e: Scout's, the MCP and the Start specs 33 of 33, then the whole suite 342 of
+342 and the nexus's 15 of 15. Symbiote's built client and
+`codexFolders` against a private Codex: the worktree's file read, `git -C <wt> status` run, a file
+outside not there, nothing written.
+
+Not verified: a real Scout conversation in the person's checkout, with either agent (the
+person's, after the merge); Codex's terminal joining a profiled thread; Codex other than 0.163;
+Windows and macOS.
+

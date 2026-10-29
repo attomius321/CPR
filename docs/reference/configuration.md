@@ -111,13 +111,19 @@ Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, S
 files, Scribe writes only in `.claude/skills/` and the skill library, and Scout's starts, verdicts, merges and clean-ups
 still wait for your **Confirm**.
 
-What Scout reads is fixed the same way. With Claude Code, Scout reads the checkout and the
-worktree of each open workspace, and nothing else. A workspace is open until it is cleaned up,
-and one started during a conversation is readable at once. In a worktree, Scout runs git's read
-commands with `-C <worktree>`. There it sees uncommitted work with `git --no-optional-locks
-status` and `git diff-index -p HEAD`. It cannot run `git diff` there, because `git diff` rewrites
-the worktree's index while the workspace's agent uses it. With Codex, Scout runs in Codex's
-read-only sandbox, which reads any folder and writes none.
+What Scout reads is fixed the same way. Scout reads the checkout and the worktree of each open
+workspace, and nothing else. A workspace is open until it is cleaned up. In a worktree, Scout runs
+git's read commands with `-C <worktree>`. There it sees uncommitted work with `git
+--no-optional-locks status` and `git diff-index -p HEAD`. It cannot run `git diff` there, because
+`git diff` rewrites the worktree's index while the workspace's agent uses it.
+
+With Claude Code, a workspace started during a conversation is readable at once. With Codex, it
+is readable from the next conversation: Codex fixes the folders a conversation reads when it
+starts it. Symbiote gives Codex those folders again with every message and before Scout's
+terminal opens, and refuses to go on if Codex does not answer that the conversation is read-only.
+Continue Scout's Codex conversation from Symbiote only: resumed elsewhere, for example with
+`codex resume` in a folder Codex trusts, Codex drops those folders and the conversation can
+write.
 
 ## The skill library
 

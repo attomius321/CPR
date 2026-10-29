@@ -315,3 +315,4 @@ merge commit.
 - 2026-10-29 [MC2 — `suggest_settings`, the start's Confirm with its settings, Scout's prompt](journal/mc2-mcp-suggest-settings.md)
 - 2026-10-29 [V80 spike — what opens a folder to Scout, and what git writes there](journal/v80-scout-reads-worktrees.md)
 - 2026-10-29 [V80 — Scout reads the workspaces' worktrees](journal/v80-scout-reads-worktrees.md)
+- 2026-10-29 [V80 — Codex's Scout reads like Claude Code's](journal/v80-scout-reads-worktrees.md)
