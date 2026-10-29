@@ -340,9 +340,10 @@ The sidenav also opens these pages. Each has a key.
   Symbiote never forces a push and never discards your changes: when git refuses, it says why.
 - **Scout** (`a`): an agent you can ask about the repository: where something is decided, why it
   works this way, or what waits for you. Scout can also act on your workspaces for you: start one,
-  answer an agent, review or merge a branch. Scout never edits files. It can send a message to an
-  agent without asking you, but a start, a verdict, a merge and a clean-up each wait until you
-  click **Confirm**.
+  answer an agent, review or merge a branch. Before a start, Scout can ask for suggested settings,
+  as **Suggest settings** does, and shows them to you: you choose what it starts with. Scout never
+  edits files. It can send a message to an agent without asking you, but a start, a verdict, a
+  merge and a clean-up each wait until you click **Confirm**.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
   task (`.claude/skills/<name>/SKILL.md`). Search them by name or description, read and edit
   them here (with line numbers, or as a Markdown preview), or open one in VS Code. As you type,
