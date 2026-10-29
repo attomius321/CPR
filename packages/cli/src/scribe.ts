@@ -4,7 +4,8 @@
 // (`scribe-gate.ts`), in `default` mode, where its own rules ask the person before each write, the
 // library given with `--add-dir`; Codex in `workspace-write` started in `.claude/skills`, its only
 // writable folder with the library's. Its record is `symbiote/scribe.json`. It never commits: the
-// person does.
+// person does. Since V77 its instructions are its system prompt, as Scout's (decision 562): a
+// conversation opens with no request, and its terminal takes the first.
 import { statSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -20,13 +21,14 @@ import { CLAUDE_SKILLS, CODEX_SKILLS } from './skills.js';
 const skillsOf = (root: string) => join(root, CLAUDE_SKILLS);
 
 /**
- * Scribe's first prompt: the project's `scribe`, its `{library}` the prompt `library` when a skill
+ * Scribe's instructions: the project's `scribe`, its `{library}` the prompt `library` when a skill
  * library is set; without one, the line holding `{library}` goes with the blank line after it, and
- * the text is what it was before SK1.
+ * the text is what it was before SK1. A project's text from before V77 may still hold `{request}`:
+ * filled with nothing.
  */
 export function scribePrompt(
   prompts: Readonly<Record<PromptKey, string>>,
-  values: { request: string; skills: string; checkout: string; library?: string },
+  values: { skills: string; checkout: string; library?: string },
 ): string {
   const library = values.library
     ? fillPrompt(prompts.library, { folder: values.library, skills: values.skills }).trimEnd()
@@ -35,11 +37,11 @@ export function scribePrompt(
     ? prompts.scribe
     : prompts.scribe.replace(/^\{library\}(?:\n\n?|$)/m, '');
   return fillPrompt(template, {
-    request: values.request,
+    request: '',
     skills: values.skills,
     checkout: values.checkout,
     library,
-  });
+  }).trimEnd();
 }
 
 /** Scribe's spec, the skill library read from `library` at each start (SK1). */
@@ -74,10 +76,10 @@ function scribeSpec(library: LibraryService | undefined): PageAgentSpec {
     // (Claude Code 2.1.309): Scribe's skills are for the checkout's Skills page, so its own settings
     // say none, for its session only.
     claudeSettings: { worktree: { bgIsolation: 'none' } },
-    prompt: (root, text) => {
+    prompt: (_root, text) => text,
+    instructions: (root) => {
       const folder = libraryAt(root);
       return scribePrompt(readPrompts(root).text, {
-        request: text,
         skills: skillsOf(root),
         checkout: root,
         ...(folder ? { library: folder } : {}),

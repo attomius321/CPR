@@ -7,7 +7,8 @@
 // decision 239). Since V50 Scout's conversation starts with no question, its instructions its
 // system prompt and its terminal taking the first; since V52 a model or a level picked on its page
 // is the next conversation's. Scribe (V41, `scribe.ts`) is the same conversation with its own
-// name, tools, gate and prompt (`pageAgent`), no MCP server, and a request to start it.
+// name, tools, gate and instructions (`pageAgent`), and no MCP server; since V77 it opens with no
+// request too.
 import { readFile, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -84,9 +85,9 @@ export interface PageAgentSpec {
   /** Its first prompt: the person's words; in the project's text when it has no `instructions`. */
   prompt(root: string, text: string): string;
   /**
-   * Its system prompt (Scout, V50, decision 383): Claude Code's appended one, Codex's developer
-   * instructions. With it a conversation starts with no question (`open`), its terminal taking
-   * the first; without it (Scribe) a conversation starts with what the person asks.
+   * Its system prompt (Scout, V50, decision 383; Scribe, V77, 562): Claude Code's appended one,
+   * Codex's developer instructions. With it a conversation starts with no question (`open`), its
+   * terminal taking the first; without it a conversation starts with what the person asks.
    */
   instructions?(root: string): string;
   /**
