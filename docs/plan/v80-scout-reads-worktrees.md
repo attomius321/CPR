@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/v80-scout-reads-worktrees.md)
 
 **Status:** built, ready for review (2026-10-29), on branch `feature/scout-reads-worktrees` (the
-workspace's), `main` (V77, V78) merged in; the plan confirmed by the person ("Do as you recommend.
+workspace's), `main` (V77, V78, MC2) merged in; the plan confirmed by the person ("Do as you recommend.
 Go"), the real run in a throwaway clone. Planned as V79 (576–579), renumbered when another branch
 took them.
 
@@ -147,17 +147,18 @@ or by the analysis cache, which no record names.
   permission log, beside `Scout: one of git's read commands`.
 - **`git blame` in a worktree** was added to the forms checked against the index: it writes
   nothing, as `log`, `show`, `grep` and `ls-files` do.
-- **Scout's prompt** names the two git forms and why not `git diff`: 2,472 characters (limit
-  8,000).
+- **Scout's prompt** names the two git forms and why not `git diff`: 2,472 characters, 2,980 with
+  MC2's `suggest_settings` lines merged in (limit 8,000).
 
 **Results.** Tests first: 49 of the 53 new gate tests failed on `main`'s gate, for the right reason
 (`-C` and `--no-optional-locks` refused, no `openWorktrees`); the other 4 are guards that held
 before and after (paths left to Claude Code, two shell refusals, Scribe's rule). Scout's start
 test and its new worktree test, the `workspace` tool's and the prompt's tests failed too; the
 Codex test is a guard, green before and after. `pnpm check`: 2,301 tests in 162 files before
-`main` was merged in, 2,318 in 164 after. e2e: Scout's and the MCP specs 13 of 13; the viewer's
-suite 339 of 340 before the merge and 341 of 342 after, each time one merger test bound to timing
-(`merges.spec.ts:200`, then `:373`), each 5 of 5 alone; the nexus's 15 of 15.
+`main` was merged in, 2,318 in 164 with V77 and V78, 2,324 with MC2. e2e: Scout's and the MCP
+specs 13 of 13; the viewer's suite 339 of 340 before the first merge and 341 of 342 after it, each
+time one merger test bound to timing (`merges.spec.ts:200`, then `:373`), each 5 of 5 alone; with
+MC2 merged in, 342 of 342 and the nexus's 15 of 15.
 
 | Run | What happened |
 |---|---|

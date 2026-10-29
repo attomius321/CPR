@@ -50,7 +50,9 @@ gets nothing new. The `workspace` tool names the worktree's folder; the prompt, 
 **Learned**:
 - **IDs moved twice while this was built**: `feature/workspaces-card-revamp` took V79 and 576–581,
   `feature/mcp-suggest-settings` 582–584, and `main` merged V77 and V78. Renumbered V80, 585–588;
-  `main` merged in with only the two index files in conflict, both sides appended.
+  `main` merged in with only the two index files in conflict, both sides appended. MC2 then
+  changed Scout's prompt, its test, the MCP tools' table and the README's Scout entry beside V80:
+  merged in again, both sides kept in each.
 - **A hook's arguments are the safe way to change an old conversation's gate**: the gate is
   `dist/scout-hook.js`, which a build replaces under every running Scout. Without its arguments it
   answers as `main`'s, so a conversation whose settings file was written before V80 keeps
@@ -64,8 +66,9 @@ gets nothing new. The `workspace` tool names the worktree's folder; the prompt, 
 
 **Verification**: tests first (49 of 53 new gate tests red on `main`'s gate, the 4 others guards;
 Scout's start and worktree tests, the `workspace` tool's and the prompt's red). `pnpm check`:
-2,318 tests in 164 files after `main` was merged in. e2e: the viewer's 339 of 340 before the
-merge and 341 of 342 after (above), the nexus's 15 of 15.
+2,324 tests in 164 files with `main` (V77, V78, MC2) merged in. e2e: the viewer's 339 of 340
+before the first merge and 341 of 342 after it (above); with MC2 merged in, 342 of 342, the
+nexus's 15 of 15.
 The built hook on this machine's records; `claude -p` with Scout's tools, mode and the built
 gate in a throwaway clone: 4 reads of a workspace's uncommitted work allowed, 4 refused, the
 worktree's index unchanged.
