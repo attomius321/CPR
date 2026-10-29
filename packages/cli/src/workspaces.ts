@@ -1392,7 +1392,8 @@ export function workspaces(
     },
 
     async openDiff(branch, file) {
-      const workspace = await readRecord(await place(), branch);
+      const where = await place();
+      const workspace = await readRecord(where, branch);
       const before = file.previousPath ?? file.path;
       for (const path of [file.path, before]) {
         const normal = posix.normalize(path);
@@ -1400,9 +1401,11 @@ export function workspaces(
           throw new WorkspaceRefused(`not a path in its worktree: ${path}`, 400);
         }
       }
-      const worktree = existsSync(workspace.worktree)
-        ? { ...repo, root: workspace.worktree }
-        : null;
+      // A finished workspace's worktree went with Clean up: another may have its folder now.
+      const worktree =
+        !workspace.finished && existsSync(workspace.worktree)
+          ? { ...repo, root: workspace.worktree }
+          : null;
       const own = join(workspace.worktree, ...file.path.split('/'));
       let left: string | null;
       let right: string | null;
@@ -1414,7 +1417,10 @@ export function workspaces(
         right = (await isFile(own)) ? own : null;
       } else {
         const refs = await listRefs(repo);
-        const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha;
+        // Finished: where it ended (V77), its branch perhaps gone.
+        const tip = workspace.finished
+          ? (await endedAt(where, workspace, refs, null)).end
+          : refs.branches.find((b) => b.name === workspace.branch)?.sha;
         if (!tip) throw new WorkspaceRefused(`its branch ${workspace.branch} is gone`, 409);
         const { base } = await changesBase(workspace, refs, tip);
         left = await keptFile(revisions, worktree ?? repo, base, before);

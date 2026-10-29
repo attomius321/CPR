@@ -469,6 +469,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         return serveSite(req, res, url, '/', undefined);
       // Start a workspace, a page of the shell's (V30a).
       if (url.pathname === '/start') return serveSite(req, res, url, '/', undefined);
+      // History, the finished workspaces (V77), a page of the shell's.
+      if (url.pathname === '/workspace-history') return serveSite(req, res, url, '/', undefined);
       if (url.pathname.startsWith('/api/workspaces'))
         return workspacesRoute(req, res, url, workspaces);
     }

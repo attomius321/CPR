@@ -1964,6 +1964,8 @@ describe('symbiote view: workspaces (V18)', () => {
     // Start a workspace, a page of its own since V30a: a reload there is the viewer too.
     expect(await (await get('/start')).text()).toBe('<html>viewer</html>');
     expect((await get('/start', bare)).status).toBe(404);
+    expect(await (await get('/workspace-history')).text()).toBe('<html>viewer</html>');
+    expect((await get('/workspace-history', bare)).status).toBe(404);
 
     expect(await (await get('/api/workspaces/prompt?branch=feature%2Fcsv')).json()).toEqual({
       prompt: 'Build it.',

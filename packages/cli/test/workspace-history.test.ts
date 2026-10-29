@@ -1,8 +1,9 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { openRepo, type ActivityEntry, type ThreadEntry } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
+import type { FolderAt } from '../src/editor.js';
 import { workspaces } from '../src/workspaces.js';
 import { serializeWorkspace, type WorkspaceFile } from '../src/workspace-record.js';
 import { endOf } from '../src/workspace-history.js';
@@ -116,15 +117,23 @@ function review(repo: TestRepo, branch: string, verdicts: { event: string; head:
 
 const lines = (values: unknown[]) => values.map((v) => `${JSON.stringify(v)}\n`).join('');
 
+/** What VS Code was asked to open: a file alone, or a diff's two sides. */
+const opened: FolderAt[] = [];
+
 /** A service whose agents fail the test if anything asks for them. */
 async function service(repo: TestRepo) {
   const asked = (name: string) => () => Promise.reject(new Error(`${name} was asked for`));
+  opened.length = 0;
   return workspaces(await openRepo(repo.root), cache, {
     claude: asked('Claude Code'),
     codex: asked('Codex'),
     hermes: asked('Hermes'),
     now: () => new Date('2026-10-29T09:00:00Z'),
     env: { PATH: '/usr/bin' },
+    openFolder: (_folder, at) => {
+      if (at) opened.push(at);
+      return Promise.resolve({ opened: true });
+    },
   });
 }
 
@@ -301,5 +310,20 @@ describe('workspaces history (V77)', () => {
     const kept = await s.changes('feature/kept');
     expect(kept.commits.listed.map((c) => c.sha)).toEqual([shas.D]);
     expect((await s.changes('fix/nothing')).commits.listed).toEqual([]);
+  });
+
+  it("opens a file's changes in VS Code from where a finished workspace ended, its branch gone", async () => {
+    const { repo, shas } = history();
+    finished(repo, shas);
+    const s = await service(repo);
+    // src/c.ts is new at C: it opens alone, as it is at C.
+    await s.openDiff('feature/merged', { path: 'src/c.ts' });
+    expect(opened).toHaveLength(1);
+    expect(readFileSync((opened[0] as { path: string }).path, 'utf8')).toBe(
+      "export const x = 'feature/merged';\n",
+    );
+    await expect(s.openDiff('fix/nothing', { path: 'src/c.ts' })).rejects.toMatchObject({
+      status: 409,
+    });
   });
 });

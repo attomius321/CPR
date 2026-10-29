@@ -1,0 +1,365 @@
+/* ---- History (V77): the finished workspaces, and the one picked beside them --------------- */
+
+/* In the page frame (V72): the head, then two cards 16 px from the main area's edges and 16 apart:
+   the list (Skills' list's recipe, decision 459) and the picked workspace (a workspace's main
+   card: its tabs as line tabs, the tab to the bottom). */
+.history {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-note {
+  margin: 0 var(--page-pad) 12px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.history-note.error {
+  color: var(--error);
+}
+
+.history-body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--page-gap);
+  padding: 0 var(--page-pad) var(--page-pad);
+  container: history / inline-size;
+}
+
+.history-body.empty {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.history-card {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+/* Nothing to list or nothing picked: the card's words 16 px in, as every card's. */
+.history-none {
+  padding: var(--card-pad);
+}
+
+.history-none p {
+  margin: 0;
+}
+
+.history-none p + p {
+  margin-top: 6px;
+}
+
+/* The list: a card with its own scroll, the search and the kind on top, the days' rows under. */
+.history-list {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--card-pad) 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--side);
+}
+
+.history-filters {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.history-search {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.history-search .icon {
+  position: absolute;
+  left: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.history-search input {
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px 0 34px;
+  font-size: var(--size-body);
+}
+
+/* Esc clears it: no browser cross. */
+.history-search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.history-kind {
+  flex: none;
+  height: 32px;
+  padding: 0 8px;
+  font-size: var(--size-small);
+}
+
+.history-list section + section {
+  margin-top: 16px;
+}
+
+.history-list h2 {
+  margin: 0 0 6px;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+.history-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-list li + li {
+  margin-top: 1px;
+}
+
+.history-none-found {
+  margin: 0;
+  padding: 0 8px;
+}
+
+/* A row: the kind's icon, then its name and outcome over its branch, agent and how long. */
+.history-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    color 150ms;
+}
+
+.history-row:hover {
+  background: var(--hover);
+}
+
+/* The picked one: the selection's wash, its name and icon in the accent (Skills' and Settings'). */
+.history-row[aria-current='true'] {
+  background: var(--selected);
+}
+
+.history-row[aria-current='true'] .history-row-icon,
+.history-row[aria-current='true'] .history-row-name {
+  color: var(--accent);
+}
+
+.history-row-icon {
+  flex: none;
+  display: inline-flex;
+  padding-top: 2px;
+  color: var(--muted);
+}
+
+.history-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history-row-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.history-row-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--size-body);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Its branch (it gives way first), the agent and how long, a dot between. */
+.history-row-facts {
+  display: flex;
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  white-space: nowrap;
+}
+
+.history-row-facts > * {
+  flex: none;
+}
+
+.history-row-facts > * + *::before {
+  content: '·';
+  margin: 0 6px;
+}
+
+.history-row-facts > .history-row-branch {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* What became of its branch: merged in Done's green tint; kept or not merged a quiet chip. */
+.history-outcome {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 8px;
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.history-outcome.outcome-merged {
+  border: 1px solid color-mix(in srgb, var(--added) 30%, transparent);
+  background: color-mix(in srgb, var(--added) 12%, transparent);
+  color: var(--added);
+}
+
+/* The picked workspace: its head (the kind's icon in a raised square, its name and kind, its
+   facts, Open the change), its tabs, the tab to the bottom. */
+.history-workspace {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.history-workspace-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: var(--card-pad) var(--card-pad) 8px;
+  background: var(--side);
+}
+
+.history-workspace-head + .workspace-views {
+  padding-top: 0;
+}
+
+.history-tile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--accent);
+}
+
+.history-tile .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.history-workspace-title {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+
+.history-workspace-title h2 {
+  display: flex;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+.history-workspace-title h2 > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-workspace-title .kind-tag {
+  flex: none;
+  margin: 0;
+}
+
+.history-facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 0;
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.history-facts > span:not(.history-outcome) + span::before {
+  content: '·';
+  margin: 0 6px;
+}
+
+.history-facts > .history-outcome {
+  margin-left: 10px;
+}
+
+.history-workspace-head > .button {
+  flex: none;
+}
+
+.history-reading {
+  margin: var(--card-pad);
+}
+
+.history-workspace .workspace-body > .history-note {
+  margin: var(--card-pad);
+}
+
+/* Its changes fill the tab: the changes panel's card made the tab's content. */
+.history-changes {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.history-changes > .changes {
+  flex: 1;
+  width: auto;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+/* A narrow area: the picked workspace under the list, the list keeping its head and five rows. */
+@container history (max-width: 760px) {
+  .history-body:not(.empty) {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(220px, 38%) minmax(0, 1fr);
+  }
+}
