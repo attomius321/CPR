@@ -1792,7 +1792,7 @@ test('each kind starts a workspace: its brief, its line, its branch, its tag (V2
   await page.goto(`${symbiote.url}`);
   const fix = workspaceRow(page, 'fix/fix-the-totals');
   await expect(fix.locator('.workspace-about')).toHaveText('Fix the totals');
-  await expect(fix.locator('.workspace-head .kind-tag')).toHaveText('fix');
+  await expect(fix.locator('.workspace-meta .kind-tag')).toHaveText('fix');
 });
 
 test('Done when names the check guessed at the start commit; switching kinds keeps every text (V24c)', async ({

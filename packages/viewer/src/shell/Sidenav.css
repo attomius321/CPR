@@ -947,6 +947,11 @@ button.workspace-about {
     margin-top: 4px;
   }
 
+  /* The dots alone, as before V79: no wash at rest; the hover's and the open one's stay. */
+  .sidenav.rail .workspace-row:not(:hover, .picked) {
+    background: transparent;
+  }
+
   .sidenav.rail .workspace-head {
     justify-content: center;
   }

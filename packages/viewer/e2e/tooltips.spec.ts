@@ -179,7 +179,8 @@ test('no page leaves a tooltip to the window system', async ({ page }) => {
   running.push(symbiote);
   const heading = (name: string) => page.getByRole('heading', { level: 1, name });
   await page.goto(`${symbiote.url}git`);
-  await expect(page.locator('.commit-subject').first()).toBeVisible();
+  // Its rows drawn (V79: HEAD's row has no room left for its subject beside two badges at 1440).
+  await expect(page.locator('.commit').first()).toBeVisible();
   await expect(native(page)).toHaveCount(0);
   for (const [path, name] of [
     ['start', 'Start a workspace'],
