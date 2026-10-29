@@ -61,11 +61,13 @@ test('symbiote view opens Git in the shell: the pages, then the workspaces, and 
   await expect(page.locator('.titlebar')).toHaveCount(0);
   // The pages one works in; Settings is at the sidenav's bottom, after the workspaces.
   const links = pages(page).getByRole('link');
-  await expect(links).toHaveCount(4);
+  await expect(links).toHaveCount(5);
   await expect(links.nth(0)).toHaveAccessibleName('Git');
   await expect(links.nth(1)).toHaveAccessibleName('Scout');
   await expect(links.nth(2)).toHaveAccessibleName('Skills');
   await expect(links.nth(3)).toHaveAccessibleName('Monitor');
+  // History (V77): the cleaned-up workspaces, under Monitor.
+  await expect(links.nth(4)).toHaveAccessibleName('History');
   await expect(settingsLink(page)).toBeVisible();
   await expect(pages(page).getByRole('link', { name: 'Git' })).toHaveAttribute(
     'aria-current',

@@ -37,8 +37,14 @@ export interface WorkspaceFile {
   created: string;
   /** The branch `base` was the tip of; absent when a row was picked. */
   from?: string;
-  /** When it was cleaned up (V18c): no longer listed. */
+  /** When it was cleaned up (V18c): no longer listed, but in History (V77). */
   finished?: string;
+  /**
+   * Where its branch ended when it was cleaned up (V77, decision 566): its tip then, and whether
+   * that was merged into the default branch. Absent on records cleaned up before V77.
+   */
+  tip?: string;
+  merged?: true;
   /**
    * The files the person gave with the brief (V40), by name, in `symbiote/documents/<branch>/`;
    * removed at Clean up, their names kept here.
@@ -95,6 +101,9 @@ export interface WorkspaceAgentRecord {
 /** Every workspace file's first key: where an agent that opens it finds its instructions. */
 export const WORKSPACE_ABOUT =
   'A workspace started in Symbiote. Agents: read symbiote/AGENTS.md before acting on it.';
+
+/** A commit's full name: SHA-1's 40 hex digits, or SHA-256's 64. */
+const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 
 /** Longest name a document is given, its extension kept. */
 const MAX_DOCUMENT_NAME = 120;
@@ -164,6 +173,8 @@ export async function readWorkspace(path: string): Promise<WorkspaceFile | null>
     ...documentsRead(v.documents),
     ...(text(v.from) ? { from: text(v.from) } : {}),
     ...(text(v.finished) ? { finished: text(v.finished) } : {}),
+    ...(SHA.test(text(v.tip)) ? { tip: text(v.tip) } : {}),
+    ...(v.merged === true ? { merged: true as const } : {}),
     ...kindOf(v.kind),
     ...partsRead(v.parts),
     planFirst: v.planFirst === true,

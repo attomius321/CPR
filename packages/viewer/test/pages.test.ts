@@ -120,6 +120,11 @@ describe('backLink (V25)', () => {
       href: '/?branch=a',
       label: 'Workspace',
     });
+    // A finished workspace's change, opened from History (V77): back to it there, its tab kept.
+    expect(backLink(`${origin}/workspace-history?branch=feature%2Fx&changes`, origin)).toEqual({
+      href: '/workspace-history?branch=feature%2Fx&changes',
+      label: 'History',
+    });
   });
 
   it('goes to Git when it does not know: a bookmark, another site, another diff', () => {
@@ -213,6 +218,28 @@ describe('Monitor (RM1)', () => {
     expect(routeTitle({ page: 'monitor', path: 'src' }, 'symbiote')).toBe(
       'src · Monitor · symbiote — Symbiote',
     );
+  });
+});
+
+describe('History (V77)', () => {
+  it('opens at /workspace-history, a page of the shell, with the workspace picked in ?branch=', () => {
+    expect(routeOf('/workspace-history', '')).toEqual({ route: { page: 'workspace-history' } });
+    expect(routeOf('/workspace-history', '?branch=feature%2Fcsv&brief')).toEqual({
+      route: { page: 'workspace-history', branch: 'feature/csv' },
+    });
+    expect(hrefOf({ page: 'workspace-history' })).toBe('/workspace-history');
+    expect(hrefOf({ page: 'workspace-history', branch: 'feature/csv' })).toBe(
+      '/workspace-history?branch=feature%2Fcsv',
+    );
+    expect(inShell(new URL('http://symbiote/workspace-history?branch=x'))).toBe(true);
+    expect(routeTitle({ page: 'workspace-history' }, 'symbiote')).toBe(
+      'History · symbiote — Symbiote',
+    );
+    expect(
+      routeTitle({ page: 'workspace-history', branch: 'feature/csv' }, 'symbiote', 'CSV export'),
+    ).toBe('CSV export · History · symbiote — Symbiote');
+    // History's old address stays Git's (V66).
+    expect(routeOf('/history', '')).toEqual({ route: { page: 'git' }, moved: '/git' });
   });
 });
 

@@ -1,7 +1,7 @@
 // The advisor (V75): one turn of the picked agent on its small model, with no tools, that sizes a
 // brief and suggests the start's model, effort level and plan first. The Start page shows it as a
 // proposal the person accepts or dismisses (decision 548); it runs only when they press Suggest
-// settings (decision 549).
+// settings (decision 549), or when an agent asks through Symbiote's MCP (`suggest_settings`, MC2).
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {

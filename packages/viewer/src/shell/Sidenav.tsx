@@ -16,6 +16,7 @@ import {
   DoneIcon,
   SymbioteMark,
   GitIcon,
+  HistoryIcon,
   MenuIcon,
   MergingIcon,
   MonitorIcon,
@@ -42,6 +43,7 @@ import {
   SETTINGS_PAGE,
   SKILLS_PAGE,
   START_PAGE,
+  WORKSPACE_HISTORY_PAGE,
 } from './pages.js';
 import { Resizer } from '../ui/Resizer.js';
 import { nextScoutMark, type ScoutMark } from '../scout/scout.js';
@@ -321,6 +323,19 @@ export function Sidenav({
           <MonitorIcon />
           <span className="sidenav-label">Monitor</span>
           <kbd aria-hidden="true">m</kbd>
+        </a>
+        <a
+          href={WORKSPACE_HISTORY_PAGE}
+          aria-label="History"
+          {...tip('History\nThe workspaces you cleaned up: what their agents did', {
+            keys: 'h',
+            side: 'right',
+          })}
+          aria-current={route?.page === 'workspace-history' ? 'page' : undefined}
+        >
+          <HistoryIcon />
+          <span className="sidenav-label">History</span>
+          <kbd aria-hidden="true">h</kbd>
         </a>
       </nav>
       <section className="sidenav-workspaces" aria-label="Workspaces">

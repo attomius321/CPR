@@ -1,13 +1,5 @@
-import type { AgentKind, AgentOption, ScoutConversation, ScoutStateName } from '@symbiote/core';
-import type { EffortChoice } from '../workspaces/effort.js';
-import {
-  AGENT_NAMES,
-  effortChoices,
-  keptEffort,
-  keptModel,
-  modelChoices,
-  type ModelChoice,
-} from '../workspaces/workspaces.js';
+import type { AgentKind, AgentModel, ScoutConversation, ScoutStateName } from '@symbiote/core';
+import { AGENT_NAMES } from '../workspaces/workspaces.js';
 
 /**
  * What the sidenav says of Scout (V35, decision 238): `working` while it answers; `answered` when
@@ -53,83 +45,23 @@ export function scoutStateText(conversation: ScoutConversation): string {
   }
 }
 
-/** What Scout's head offers and shows: an agent's models and levels, and the ones picked. */
-export interface HeadChoices {
-  models: ModelChoice[];
-  model: string;
-  efforts: EffortChoice[];
-  effort: string;
-}
-
 /**
- * What Scout's head offers and shows (V50): the agent's models and the levels the model takes;
- * the conversation's model and level (`''`: the agent's own), or before one the project's
- * (`scout.model`, `scout.effort`) where the agent lists them. Nothing before the levels are read.
- * Since V52 the head is what New conversation starts on: `picked`, the person's changes there,
- * go over them; a model picked keeps the level shown when it takes it, else the agent's own.
+ * What a page agent's conversation runs on, as its head's line says it (V78, decision 569): "with
+ * Claude Code on Sonnet 5.5 at high effort". The model by its name in the agent's list, else its ID;
+ * the agent's own model or level is left unsaid. Settings sets them; the page only says them.
  */
-export function headChoices(
-  agent: Pick<AgentOption, 'kind' | 'efforts' | 'models' | 'defaultModel'> | undefined,
+export function runsOn(
+  kind: AgentKind,
   conversation: Pick<ScoutConversation, 'model' | 'effort'> | null,
-  project: { model?: string; effort?: string },
-  picked: { model?: string; effort?: string } = {},
-): HeadChoices {
-  if (!agent) return { models: [], model: '', efforts: [], effort: '' };
-  const model =
-    picked.model ??
-    (conversation ? (conversation.model ?? '') : (keptModel(project.model, agent) ?? ''));
-  const on = model || undefined;
-  const shown =
-    picked.effort ??
-    (conversation ? (conversation.effort ?? '') : (keptEffort(project.effort, agent, on) ?? ''));
-  return {
-    models: modelChoices(agent),
-    model,
-    efforts: effortChoices(agent, on),
-    effort: picked.model === undefined ? shown : (keptEffort(shown, agent, on) ?? ''),
-  };
-}
-
-/** A model and a level in words, by the head's lists: "on Sonnet 5.5 at high". */
-function onWords(head: HeadChoices, model: string, effort: string, levels: boolean): string {
-  const name = head.models.find((m) => m.value === model)?.label ?? model;
-  const words = [
-    head.models.length > 0 ? `on ${name}` : '',
-    levels ? `at ${effort || 'its default level'}` : '',
-  ];
-  return words.filter((w) => w !== '').join(' ');
-}
-
-/**
- * New conversation in Scout's head (V52, decision 392): whether the head's choices differ from
- * the running conversation's — the next starts on them, the button then the page's first — and
- * its title, naming both. Only what the head shows is compared: no models read, no model.
- */
-export function newConversation(
-  head: HeadChoices & { kind: AgentKind },
-  conversation: Pick<ScoutConversation, 'kind' | 'model' | 'effort'>,
-): { differs: boolean; title: string } {
-  const ends = 'its session is stopped and removed';
-  const model = conversation.model ?? '';
-  const effort = conversation.effort ?? '';
-  const other = head.kind !== conversation.kind;
-  const differs =
-    other ||
-    (head.models.length > 0 && head.model !== model) ||
-    (head.efforts.length > 0 && head.effort !== effort);
-  if (!differs) {
-    return {
-      differs,
-      title: `Ends this conversation (${ends}) and starts another on this one's agent, model and effort`,
-    };
-  }
-  const now = other
-    ? `${AGENT_NAMES[conversation.kind]}'s`
-    : onWords(head, model, effort, effort !== '' || head.efforts.length > 0);
-  const next = onWords(head, head.model, head.effort, head.efforts.length > 0);
-  const agent = other ? `with ${AGENT_NAMES[head.kind]}${next ? ',' : ''} ` : '';
-  return {
-    differs,
-    title: `Ends this conversation (${now ? `${now}; ` : ''}${ends}) and starts another ${agent}${next}, as picked here`,
-  };
+  models: readonly Pick<AgentModel, 'id' | 'name'>[] | undefined,
+): string {
+  const model = conversation?.model;
+  const name = model ? (models?.find((m) => m.id === model)?.name ?? model) : '';
+  return [
+    `with ${AGENT_NAMES[kind]}`,
+    name ? `on ${name}` : '',
+    conversation?.effort ? `at ${conversation.effort} effort` : '',
+  ]
+    .filter((w) => w !== '')
+    .join(' ');
 }

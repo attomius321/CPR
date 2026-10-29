@@ -97,7 +97,7 @@ toolbar.
 | g | | The Graph page | The Files page |
 | Esc | Back to the commits from a file shown; leave compare mode | Close the comment box | Close the detail panel |
 
-These keys work on Git, Scout, Skills, Monitor, Settings and a workspace's page. In a
+These keys work on Git, Scout, Skills, Monitor, History, Settings and a workspace's page. In a
 change, only n and [ work.
 
 | Key | What it does |
@@ -107,6 +107,7 @@ change, only n and [ work.
 | a | Scout |
 | i | Skills |
 | m | Monitor |
+| h | History: the cleaned-up workspaces. ↑ and ↓ move between them in its list. |
 | w | Move to the workspaces in the sidenav. ↑ and ↓ move between them, and Enter opens one. |
 | [ | Fold the sidenav to a row of icons, or open it again |
 | ] | In a workspace: hide or show the **Changes** panel |
@@ -148,7 +149,8 @@ agent finds on your `PATH`. If `symbiote` is only an alias, write the full comma
 |---|---|---|
 | `overview` | What needs you: workspaces that wait or are ready, merges that wait | |
 | `workspaces`, `workspace`, `thread` | The workspaces; one workspace with its brief, commits and files; its agent's thread | |
-| `start_options`, `start_workspace` | What a start takes here; a start | Yes, to start |
+| `start_options`, `start_workspace` | What a start takes here; a start. Its **Confirm** names the model and the effort it starts with | Yes, to start |
+| `suggest_settings` | Suggested settings for a brief, as **Suggest settings** on the Start page: a model, an effort level, plan first and why. It runs one turn of the agent's small model and starts nothing | |
 | `reply`, `stop_agent`, `restart_agent` | Send a message to a workspace's agent; stop it; start it again | Yes, to start again |
 | `clean_workspace` | Clean a workspace up | Yes |
 | `review`, `finish_review` | A branch's change as Symbiote's graph; a verdict on it | Yes, for a verdict |

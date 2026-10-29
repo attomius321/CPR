@@ -35,6 +35,12 @@ const RECHECK_MS = 5_000;
 const MAX_PATHS = 50;
 /** The style's tooltip: shown once the pointer stays (V38), not while it crosses the screen. */
 const HINT_DELAY_MS = 400;
+/**
+ * A text typed for the person (`type`, V78) waits for the agent's input: its output quiet this
+ * long after it first printed, or this long after its first print if it keeps printing.
+ */
+const QUIET_MS = 300;
+const TYPE_WAIT_MS = 3_000;
 
 /** The hint over a link (V38): what it opens and its keys, by the pointer, above its row. */
 interface Hint {
@@ -61,12 +67,14 @@ export async function toTerminal(id: string, action: string, body: unknown): Pro
 
 /**
  * An open terminal: its ID, to type into it, a way to give it the keys again, and files to attach
- * as a drop does (the images; anything else is said), the keys given back after.
+ * as a drop does (the images; anything else is said), the keys given back after. `type` puts a
+ * text in the agent's input, unsent, as a paste (Improve with Scribe, V78).
  */
 export interface OpenedTerminal {
   id: string;
   focus(): void;
   attach(files: File[]): void;
+  type(text: string): void;
 }
 
 /** The size the last terminal drawn was fitted to: a new shell opens at it (V45). */
@@ -175,12 +183,17 @@ export function AgentTerminal({
       const terminal = (id = opened.id);
       events = new EventSource(`/api/terminals/${terminal}`);
       let connected = false;
+      // When it first printed and last printed: `type` waits for its input to be drawn.
+      let firstPrinted = 0;
+      let printed = 0;
       // A dropped stream reconnects and gets what was printed again: drawn anew.
       events.addEventListener('open', () => {
         if (connected) shown.reset();
         connected = true;
       });
       events.addEventListener('out', (event) => {
+        printed = Date.now();
+        firstPrinted ||= printed;
         shown.write(JSON.parse((event as MessageEvent<string>).data) as string);
       });
       events.addEventListener('exit', () => ended('exited'));
@@ -191,10 +204,32 @@ export function AgentTerminal({
         (data) => toTerminal(terminal, 'in', { data }),
         (failed) => setError(failed.message),
       );
+      // A text to type (V78): pasted once the agent's input is drawn, so not lost before it. While
+      // Codex's trust question waits, held for after the person's key: a paste would answer it.
+      let typing: ReturnType<typeof setTimeout> | undefined;
+      let asksTrust = opened.trusted === false;
+      let held: string | null = null;
+      const typeIn = (text: string) => {
+        clearTimeout(typing);
+        const now = Date.now();
+        const drawn =
+          firstPrinted > 0 && (now - printed >= QUIET_MS || now - firstPrinted >= TYPE_WAIT_MS);
+        if (drawn) {
+          shown.paste(text);
+          shown.focus();
+          return;
+        }
+        typing = setTimeout(() => typeIn(text), firstPrinted > 0 ? QUIET_MS : 100);
+      };
       shown.onData((data) => {
         // Codex's trust question is the first thing in its terminal: a key answers it (V27b).
         setTrust(false);
         send(data);
+        if (asksTrust) {
+          asksTrust = false;
+          if (held !== null) typeIn(held);
+          held = null;
+        }
       });
       // Images for the agent (V36), one after another in the order given: each saved by the
       // server, its path pasted as text is, so bracketed when the agent asked for it.
@@ -230,6 +265,10 @@ export function AgentTerminal({
         attach: (files) => {
           give(files);
           shown.focus();
+        },
+        type: (text) => {
+          if (asksTrust) held = text;
+          else typeIn(text);
         },
       });
       // Ctrl+V left to the browser: its paste comes next, with the clipboard the page sees.
@@ -402,6 +441,7 @@ export function AgentTerminal({
         unlistenDrops();
         provider.dispose();
         clearTimeout(hinting);
+        clearTimeout(typing);
       };
       shown.onResize(({ cols, rows }) => {
         lastSize = { cols, rows };

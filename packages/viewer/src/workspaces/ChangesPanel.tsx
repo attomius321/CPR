@@ -200,11 +200,17 @@ function Files({
 export function ChangesPanel({
   branch,
   version,
+  finished = false,
   onSaid,
 }: {
   branch: string;
   /** The list as last read: the changes are read again with it. */
   version: unknown;
+  /**
+   * A finished workspace's (V77), in History: read only — what it is reviewed against is not
+   * picked — and no worktree, so nothing not committed.
+   */
+  finished?: boolean;
   /** How opening a file went, in words, for the workspace's head. */
   onSaid: (words: string) => void;
 }) {
@@ -234,14 +240,20 @@ export function ChangesPanel({
             <h2>
               Commits <span className="changes-count">{changes.commits.count}</span>
             </h2>
-            <AgainstChoice
-              branch={branch}
-              changes={changes}
-              onPicked={() => setPicks((n) => n + 1)}
-              onSaid={onSaid}
-            />
+            {finished ? (
+              <p className="changes-against">{sinceText(changes.since)}</p>
+            ) : (
+              <AgainstChoice
+                branch={branch}
+                changes={changes}
+                onPicked={() => setPicks((n) => n + 1)}
+                onSaid={onSaid}
+              />
+            )}
             {changes.tip === null ? (
-              <p className="changes-empty">Its branch is gone</p>
+              <p className="changes-empty">
+                {finished ? 'Where its branch ended is not known' : 'Its branch is gone'}
+              </p>
             ) : changes.commits.count === 0 ? (
               <p className="changes-empty">No commits yet</p>
             ) : (
@@ -268,19 +280,21 @@ export function ChangesPanel({
             </h2>
             <Files files={changes.files} empty="No files changed yet" onOpen={opener(false)} />
           </section>
-          <section className="changes-section" aria-label="Not committed">
-            <h2>
-              Not committed{' '}
-              {changes.uncommitted && (
-                <span className="changes-count">{changes.uncommitted.count}</span>
+          {!finished && (
+            <section className="changes-section" aria-label="Not committed">
+              <h2>
+                Not committed{' '}
+                {changes.uncommitted && (
+                  <span className="changes-count">{changes.uncommitted.count}</span>
+                )}
+              </h2>
+              {changes.uncommitted ? (
+                <Files files={changes.uncommitted} empty="Nothing" onOpen={opener(true)} />
+              ) : (
+                <p className="changes-empty">Its worktree is gone</p>
               )}
-            </h2>
-            {changes.uncommitted ? (
-              <Files files={changes.uncommitted} empty="Nothing" onOpen={opener(true)} />
-            ) : (
-              <p className="changes-empty">Its worktree is gone</p>
-            )}
-          </section>
+            </section>
+          )}
         </>
       )}
     </aside>

@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
@@ -142,6 +144,24 @@ test("the shell's pages: the whole main area, one head, cards 16 px from its edg
   await expectPage(page, 'Skills', 'skills', ['.skills-list', '.skills-pane']);
   await expectPage(page, 'the Monitor', 'monitor', ['.monitor-map-card', '.monitor-side']);
   await expectPage(page, 'Settings', 'settings', ['.settings-list', '.settings-editor']);
+  // History (V77): empty, one card; with a finished workspace, the list and the picked one.
+  await expectPage(page, 'History, empty', 'workspace-history', ['.history-none']);
+  const record = join(symbiote.repo, 'symbiote', 'workspaces', 'fix', 'old.json');
+  mkdirSync(dirname(record), { recursive: true });
+  writeFileSync(
+    record,
+    JSON.stringify({
+      agent: null,
+      base: symbiote.shas[0],
+      branch: 'fix/old',
+      brief: '# Fix: old\n',
+      created: '2026-10-20T09:00:00.000Z',
+      finished: '2026-10-20T10:00:00.000Z',
+      planFirst: false,
+      worktree: `${symbiote.repo}.worktrees/fix-old`,
+    }),
+  );
+  await expectPage(page, 'History', 'workspace-history', ['.history-list', '.history-workspace']);
 });
 
 test("a workspace, its review's two views and its merge: the same frame", async ({ page }) => {
@@ -276,7 +296,6 @@ test('inside the cards: heads 48 px, their words or controls 16 px in; a label 8
     ['git', 'Git', '.git-details', '.git-details-head', 'text'],
     ['start', 'Start a workspace', '.start-brief', '.kind-row', 'box'],
     ['settings', 'Settings', '.settings-editor', '.settings-head', 'text'],
-    ['scout', 'Scout', '.scout-card', '.scout-choices', 'box'],
     ['monitor', 'the Monitor', '.monitor-map-card', '.monitor-place', 'box'],
     ['monitor', 'the Monitor', '.monitor-side', '.tabs', 'text'],
   ];
@@ -294,11 +313,10 @@ test('inside the cards: heads 48 px, their words or controls 16 px in; a label 8
     near(`${name}: ${part}'s first ${first === 'text' ? 'word' : 'control'}`, got?.inset, 17);
   }
 
-  // Forms: the brief, a new skill, Scout's question, a dialog.
+  // Forms: the brief, a new skill, a dialog (Scout's question went in V78: it is a terminal).
   const forms: [string, string, string][] = [
     ['start', 'Start a workspace', '.start-brief > .workspace-field'],
     ['skills', 'New skill', '.skills-new > .skills-field'],
-    ['scout', "Scout's question", '.scout-ask'],
   ];
   for (const [path, name, fields] of forms) {
     await page.goto(`${symbiote.url}${path}`);

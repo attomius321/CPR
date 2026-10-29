@@ -149,6 +149,7 @@ hosted.
 | [V74](plan/v74-activity-colours.md) | The Activity tab in colour: a phase's kind on a coloured tile on the rail, the conversation in bubbles | ready for review | 528–531 | [journal](journal/v74-activity-colours.md) |
 | [V75](plan/v75-suggested-settings.md) | Suggested settings: a small model sizes the work and fills the Start page's model, effort and plan first | V75a, V75b, V75c ✅ | 544–550, 556 | [journal](journal/v75-suggested-settings.md) |
 | Fix | Suggest settings could not read the agents' models: `symbiote view` serves the pages it started with, not a newer build's on its older API | ready for review | | [journal](journal/fix-suggest-settings-models.md) |
+| [V77](plan/v77-workspace-history.md) | History: finished workspaces under Monitor, each with its activity, thread, brief and changes | ready for review | 561–567 | [journal](journal/v77-workspace-history.md) |
 | [V79](plan/v79-workspace-cards.md) | Workspace cards one can read: whole names, the state on its own lines, the facts as icons, cards apart; the sidenav 300 px | ready for review | 576–581, 585 | [journal](journal/v79-workspace-cards.md) |
 
 ### Agents
@@ -179,6 +180,8 @@ hosted.
 | [SK1](plan/sk1-skill-library.md) | A skill library: a folder or repository of skills outside the project, on the Skills page and for Scribe; commits as set | ready for review | 426–430 | [journal](journal/sk1-skill-library.md) |
 | Fix | An agent's terminal fits its box: no scrollbars coming and going on Scribe's pane, no last row cut off | merged | | [journal](journal/fix-scribe-terminal-problem.md) |
 | Fix | `scout.spec.ts`: Scout's record read before Codex's start wrote it; the spec waits for it | ready for review | | [journal](journal/fix-scout-record-spec-race.md) |
+| [V78](plan/v78-scout-scribe-terminals.md) | Scout and Scribe are terminals: no choices on their pages, their model and effort set in Settings | ready for review | 569–572 | [journal](journal/v78-scout-scribe-terminals.md) |
+| [MC2](plan/mc2-mcp-suggest-settings.md) | `suggest_settings`: the advisor's proposal through Symbiote's MCP, before a start Scout makes | ready for review | 582–584 | [journal](journal/mc2-mcp-suggest-settings.md) |
 
 ### The merger
 

@@ -120,7 +120,8 @@ once and accept its trust prompt. Codex needs no such step.
    started from, and runs your project's check. If the check passes, Symbiote *lands* the merge:
    it moves that branch to the merge commit.
 8. The workspace moves to **Done**. Click **Clean up** to remove its folder, its branch and the
-   agent's sessions.
+   agent's sessions. The workspace then goes to **History** (`h`), with its brief and what its
+   agent did.
 
 ## Workspaces
 
@@ -325,6 +326,14 @@ sessions, and removes the worktree, the documents and the branch. To remove a wo
 not merged, use **Clean up…** under **⋯**. Symbiote asks first and keeps the branch. Symbiote does
 not clean up a workspace while its worktree has changes that are not committed.
 
+A cleaned-up workspace goes to **History** (`h`, under Monitor in the sidenav). History lists them
+newest first, by the day they were cleaned up. Search them by title, branch or brief, or show one
+kind of work. Pick one to read it: its **Activity**, **Thread**, **Brief** and **Changes**, as its
+page showed them, with nothing to answer or run. Its commits are still shown after its branch is
+deleted: Symbiote finds them from the commit you approved, which the merge keeps. **Open the
+change** shows those commits' files and graph, as comparing two commits in Git does. A
+workspace's old link (`/?branch=…`) opens it in History.
+
 ## The other pages
 
 The sidenav also opens these pages. Each has a key.
@@ -342,14 +351,17 @@ The sidenav also opens these pages. Each has a key.
   Symbiote never forces a push and never discards your changes: when git refuses, it says why.
 - **Scout** (`a`): an agent you can ask about the repository: where something is decided, why it
   works this way, or what waits for you. Scout can also act on your workspaces for you: start one,
-  answer an agent, review or merge a branch. Scout never edits files. It can send a message to an
-  agent without asking you, but a start, a verdict, a merge and a clean-up each wait until you
-  click **Confirm**.
+  answer an agent, review or merge a branch. Before a start, Scout can ask for suggested settings,
+  as **Suggest settings** does, and shows them to you: you choose what it starts with. Scout never
+  edits files. It can send a message to an agent without asking you, but a start, a verdict, a
+  merge and a clean-up each wait until you click **Confirm**. The page is Scout's terminal: you ask
+  there. **New conversation** starts over.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
   task (`.claude/skills/<name>/SKILL.md`). Search them by name or description, read and edit
   them here (with line numbers, or as a Markdown preview), or open one in VS Code. As you type,
   the page flags what an agent would refuse, such as a missing name or description. *Scribe*, an
-  agent on the same page, writes a new skill or improves one. Scribe only writes in
+  agent on the same page, writes a new skill or improves one: you ask in its terminal, and
+  **Improve with Scribe** types the skill's path there for you. Scribe only writes in
   `.claude/skills/` and never commits.
   Your *skill library* is a folder of skills kept outside the repository, a plain folder or one
   in a git repository. Set it once in Settings, and every repository's Skills page lists its
@@ -357,8 +369,11 @@ The sidenav also opens these pages. Each has a key.
   also commits and pushes the library's changes.
 - **Monitor** (`m`): how the code is spread across folders and files, to spot the files that have
   grown too large. A map shows each file sized by its lines of code, and marks the long ones.
+- **History** (`h`): the workspaces you cleaned up, with their activity, thread, brief and
+  changes. See [Clean up](#clean-up).
 - **Settings** (`s`): the prompts Symbiote gives its agents, such as a workspace agent's first
-  prompt; the model and effort of the merger, Scout and Scribe; the **Skill library** (its folder,
+  prompt; the model and effort of the merger, Scout and Scribe (set only here: their pages have no
+  such choices); the **Skill library** (its folder,
   or a repository to clone, and who commits its changes); and **Appearance** (dark, light or your
   system's, and whether Git's commit details show on the right or below the commits).
 

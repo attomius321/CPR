@@ -49,6 +49,8 @@
 @import './workspaces/MergeLog.css';
 @import './workspaces/MergeControl.css';
 @import './workspaces/ChangesPanel.css';
+/* After ChangesPanel.css: History's Changes tab makes the panel's card its content. */
+@import './workspaces/WorkspaceHistory.css';
 @import './scout/ScoutPage.css';
 @import './settings/SettingsPage.css';
 @import './skills/SkillsPage.css';

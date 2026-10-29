@@ -187,6 +187,7 @@ test('no page leaves a tooltip to the window system', async ({ page }) => {
     ['scout', 'Scout'],
     ['skills', 'Skills'],
     ['monitor', 'Monitor'],
+    ['workspace-history', 'History'],
     ['settings', 'Settings'],
   ] as const) {
     await page.goto(`${symbiote.url}${path}`);

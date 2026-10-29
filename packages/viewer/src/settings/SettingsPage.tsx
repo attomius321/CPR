@@ -119,21 +119,21 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
     whose: "Scout's",
     model: {
       key: 'scout.model',
-      about: 'The model Scout starts on when it opens with no conversation',
-      saved: (model) => `Saved. Scout starts on ${model} when it next opens with no conversation.`,
+      about: "The model each of Scout's conversations starts on",
+      saved: (model) => `Saved. Scout's next conversation starts on ${model}.`,
       unlisted: 'Scout starts on the default',
     },
     effort: {
       key: 'scout.effort',
-      about: 'The level Scout starts at when it opens with no conversation',
+      about: "The level each of Scout's conversations starts at",
       also: (
         <>
-          After that, the head of Scout&apos;s page says what New conversation starts on;{' '}
-          <code>/effort</code> in its terminal changes a running one.
+          A running conversation keeps its own: New conversation on Scout&apos;s page starts the
+          next on this level, and <code>/effort</code> in its terminal changes a running one.
         </>
       ),
       atDefault: 'Scout starts it at its default',
-      saved: (level) => `Saved. Scout starts at ${level} when it next opens with no conversation.`,
+      saved: (level) => `Saved. Scout's next conversation starts at ${level}.`,
     },
   },
   Scribe: {
@@ -151,8 +151,8 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
       about: "The level each of Scribe's conversations starts at",
       also: (
         <>
-          Scribe&apos;s box on the Skills page can start one conversation at another;{' '}
-          <code>/effort</code> in its terminal changes it after.
+          A running conversation keeps its own: New conversation in Scribe&apos;s pane starts the
+          next on this level, and <code>/effort</code> in its terminal changes a running one.
         </>
       ),
       atDefault: 'Scribe starts it at its default',
@@ -549,7 +549,7 @@ function AgentRows({
     onSaved();
   };
 
-  // Its agent: Scout's and Scribe's default (Scout's box may pick another), the merger's, the
+  // Its agent: Scout's and Scribe's (`agent.kind`'s, else Claude Code), the merger's, the
   // advisor's on that agent.
   const agent = read?.agents[0];
   return (

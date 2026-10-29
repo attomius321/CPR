@@ -539,8 +539,13 @@ export const allRows = (groups: WorkspaceGroups): WorkspaceRow[] => [
   ...groups.done,
 ];
 
-/** A workspace's name: its title (V24), else its brief's first line, else its branch. */
-export function workspaceName(workspace: WorkspaceSummary): string {
+/**
+ * A workspace's name: its title (V24), else its brief's first line, else its branch; a finished
+ * one's too (V77).
+ */
+export function workspaceName(
+  workspace: Pick<WorkspaceSummary, 'title' | 'brief' | 'branch'>,
+): string {
   const first = workspace.brief.trim().split('\n')[0]?.trim();
   return workspace.title ?? (first || workspace.branch);
 }
