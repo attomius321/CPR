@@ -94,8 +94,8 @@ and leaves any other brace as text:
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The lines of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`, `{reviewer}`, `{what}`, `{review}`, `{agents}` |
 | `reviews` | The text of `symbiote/AGENTS.md`, which tells agents how to act on a review | none |
 | `merger` | The merger's instructions | none |
-| `scout` | Scout's instructions | none |
-| `scribe` | Scribe's first prompt | `{request}` (required), `{skills}`, `{checkout}`, `{library}` |
+| `scout` | Scout's instructions, its system prompt | none |
+| `scribe` | Scribe's instructions, its system prompt. A `{request}` left from an older text is filled with nothing | `{skills}`, `{checkout}`, `{library}` |
 | `library` | What `{library}` becomes in Scribe's prompt when a [skill library](#the-skill-library) is set. Without a library, the line that holds `{library}` is left out | `{folder}` (required), `{skills}` |
 
 Settings lists what each placeholder stands for. Symbiote ignores a prompt it cannot use, uses its
@@ -169,7 +169,7 @@ the same files aside.
 | `SYMBIOTE_CODEX` | The Codex program to start. Default: `codex` on your `PATH`. |
 | `SYMBIOTE_HERMES` | The Hermes program to start. Default: `hermes` on your `PATH`. |
 | `SYMBIOTE_CODE` | The editor command that **Open in VS Code** runs, such as `cursor`. Default: VS Code's `code`. |
-| `SYMBIOTE_TERMINAL` | `off`: no agent terminals. A workspace shows its thread and a reply box instead, and Hermes is not offered. |
+| `SYMBIOTE_TERMINAL` | `off`: no agent terminals. A workspace shows its thread and a reply box instead, and Hermes is not offered. Scout and Scribe run only in a terminal: their pages say none runs. |
 | `SYMBIOTE_USAGE` | `off`: Symbiote does not read your subscriptions' usage, and the status bar shows none. |
 | `SYMBIOTE_INTRO` | `off`: no intro the first time Symbiote opens. |
 | `SYMBIOTE_APP` | `off`: always open the browser, never Symbiote's window. |

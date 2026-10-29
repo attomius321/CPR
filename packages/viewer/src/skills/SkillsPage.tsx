@@ -78,10 +78,14 @@ function toneOf(state: string): string {
   return 'tone-done';
 }
 
-/** Scribe (V41b) as its conversation shows it, `draft` put in its box by Improve with Scribe. */
+/**
+ * Scribe (V41b) as its conversation shows it; `typed` put in its terminal by Improve with Scribe
+ * (V78), then `onTyped`.
+ */
 const scribeAgent = (
   state: ConversationAgent['state'],
-  draft: ConversationAgent['draft'],
+  typed: string | undefined,
+  onTyped: () => void,
 ): ConversationAgent => ({
   name: 'Scribe',
   api: '/api/scribe',
@@ -89,7 +93,6 @@ const scribeAgent = (
   className: 'scribe-pane',
   heading: 'h2',
   doing: 'Writes skills in .claude/skills of',
-  label: 'Ask Scribe for a skill',
   help: (
     <>
       <p>
@@ -97,17 +100,17 @@ const scribeAgent = (
         this checkout&apos;s files and git&apos;s history, and writes nothing else.
       </p>
       <p>
-        Claude Code asks you before each write into .claude, in its terminal here. Scribe never
-        commits: read the skill here, change it, and commit it.
+        Ask in its terminal. Claude Code asks you before each write into .claude, there too. Scribe
+        never commits: read the skill here, change it, and commit it.
+      </p>
+      <p>
+        Settings sets the model and effort each conversation starts on: a running one keeps its own,
+        and New conversation starts the next on Settings&apos;.
       </p>
     </>
   ),
-  placeholder:
-    'A skill for adding a prompt to Settings: where the texts live, the tests to write first, how the page lists it.',
-  submit: 'Write',
-  noun: 'request',
-  effortHelp: 'The level this conversation starts at; Settings sets the one each starts at.',
-  ...(draft ? { draft } : {}),
+  ...(typed === undefined ? {} : { typed }),
+  onTyped,
 });
 
 /**
@@ -128,8 +131,8 @@ export function SkillsPage() {
   });
   const shell = useShell();
   const { scribe } = useWorkspaces();
-  /** What Improve with Scribe puts in Scribe's box. */
-  const [asking, setAsking] = useState<{ text: string; at: number } | undefined>(undefined);
+  /** What Improve with Scribe types in Scribe's terminal, until it is handed over (V78). */
+  const [asking, setAsking] = useState<string | undefined>(undefined);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -219,6 +222,8 @@ export function SkillsPage() {
   const show = (at: string) => {
     setOpen(at);
     if (at === NEW || at === SCRIBE || at === LIBRARY) setExpanded(false);
+    // An Improve not yet typed is not kept for a later visit to Scribe.
+    if (at !== SCRIBE) setAsking(undefined);
     setPicked(true);
     setNotice((current) => (current?.at === at ? current : null));
     window.history.replaceState(null, '', addressOf(at));
@@ -295,7 +300,7 @@ export function SkillsPage() {
     return true;
   };
   const improve = (skill: Skill) => {
-    setAsking({ text: `Improve ${skillPlace(skill, state?.library)}: `, at: Date.now() });
+    setAsking(`Improve ${skillPlace(skill, state?.library)}: `);
     show(SCRIBE);
   };
   /** A change to the library's git (SK1); read again after a refusal, which may follow a commit. */
@@ -517,13 +522,7 @@ export function SkillsPage() {
               <button type="button" className="button ghost skills-back" onClick={back}>
                 <BackIcon /> All skills
               </button>
-              {asking && scribe?.conversation && scribe.conversation.state !== 'gone' && (
-                <p className="skills-scribe-note">
-                  Its conversation goes on: tell it in its terminal, or start a new one, which takes
-                  &ldquo;{asking.text.trim()}&rdquo;.
-                </p>
-              )}
-              <Conversation agent={scribeAgent(scribe, asking)} />
+              <Conversation agent={scribeAgent(scribe, asking, () => setAsking(undefined))} />
             </div>
           )}
           {open === LIBRARY && library && (

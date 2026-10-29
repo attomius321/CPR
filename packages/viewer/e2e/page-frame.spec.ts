@@ -296,7 +296,6 @@ test('inside the cards: heads 48 px, their words or controls 16 px in; a label 8
     ['git', 'Git', '.git-details', '.git-details-head', 'text'],
     ['start', 'Start a workspace', '.start-brief', '.kind-row', 'box'],
     ['settings', 'Settings', '.settings-editor', '.settings-head', 'text'],
-    ['scout', 'Scout', '.scout-card', '.scout-choices', 'box'],
     ['monitor', 'the Monitor', '.monitor-map-card', '.monitor-place', 'box'],
     ['monitor', 'the Monitor', '.monitor-side', '.tabs', 'text'],
   ];
@@ -314,11 +313,10 @@ test('inside the cards: heads 48 px, their words or controls 16 px in; a label 8
     near(`${name}: ${part}'s first ${first === 'text' ? 'word' : 'control'}`, got?.inset, 17);
   }
 
-  // Forms: the brief, a new skill, Scout's question, a dialog.
+  // Forms: the brief, a new skill, a dialog (Scout's question went in V78: it is a terminal).
   const forms: [string, string, string][] = [
     ['start', 'Start a workspace', '.start-brief > .workspace-field'],
     ['skills', 'New skill', '.skills-new > .skills-field'],
-    ['scout', "Scout's question", '.scout-ask'],
   ];
   for (const [path, name, fields] of forms) {
     await page.goto(`${symbiote.url}${path}`);

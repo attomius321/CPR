@@ -102,8 +102,7 @@ test("Scribe's terminal fits its pane at every height: no scrollbar comes and go
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${symbiote.url}skills?scribe`);
   const pane = page.getByRole('region', { name: 'Scribe' });
-  await pane.getByRole('textbox', { name: 'Ask Scribe for a skill' }).fill('A skill for releases');
-  await pane.getByRole('textbox', { name: 'Ask Scribe for a skill' }).press('Enter');
+  // Opened at once, with no request (V78).
   const terminal = pane.locator('.agent-terminal');
   await expect(terminal.locator('.xterm-rows')).toContainText('Fake Claude Code', POLL);
   // The pane's card scrolls for a skill's text; for Scribe's terminal it never has to.

@@ -13,7 +13,6 @@
 .skills-search input,
 .history-search input,
 .reply textarea,
-.scout-ask textarea,
 .settings-editor textarea,
 .skills-field textarea,
 .merge-change textarea,
@@ -41,7 +40,6 @@ select,
 .skills-search input:hover:not(:focus, :disabled),
 .history-search input:hover:not(:focus, :disabled),
 .reply textarea:hover:not(:focus, :disabled),
-.scout-ask textarea:hover:not(:focus, :disabled),
 .settings-editor textarea:hover:not(:focus, :disabled),
 .skills-field textarea:hover:not(:focus, :disabled),
 .merge-change textarea:hover:not(:focus, :disabled),
@@ -62,7 +60,6 @@ select:hover:not(:focus, :disabled),
 .skills-search input:focus-visible,
 .history-search input:focus-visible,
 .reply textarea:focus-visible,
-.scout-ask textarea:focus-visible,
 .settings-editor textarea:focus-visible,
 .skills-field textarea:focus-visible,
 .merge-change textarea:focus-visible,
@@ -81,7 +78,6 @@ select:focus-visible,
 .comment-input,
 .workspace-field textarea,
 .reply textarea,
-.scout-ask textarea,
 .settings-editor textarea,
 .skills-field textarea,
 .merge-change textarea,
@@ -125,7 +121,6 @@ select:disabled {
 }
 
 /* Beside a 28 px button. */
-.scout-ask-row select,
 .merge-control select {
   height: 28px;
 }

@@ -172,6 +172,11 @@ You can read and search files, and run git's read commands, one at a time: git l
 
 Answer with where things are and why: file paths with line numbers, the symbols, and the commits that explain a decision (short SHA and subject); for a workspace, its branch, its state and what it waits on. Say what you did not check. Keep it short: the person asks again for more.`;
 
+/**
+ * Scribe's instructions (V41): its system prompt since V78 (decision 570), the person's words its
+ * first message. Its tools and folders are fixed by Symbiote (`scribe-gate.ts`), whatever this
+ * text says.
+ */
 const SCRIBE = `You are Scribe, Symbiote's agent for this repository's skills. A skill is a folder in {skills}: its SKILL.md tells an agent how this project does something, and the agent loads it when its description matches the task. The person asks for a new skill, or for a change to one; you write it. The repository is at {checkout}.
 
 You write only skills, files in a skill's folder in {skills}: Symbiote refuses any other file, and any command but git's read commands. You never commit, push, check out or stash, and do not offer to: the person reads what you wrote on Symbiote's Skills page, changes it there, and commits it. The agent you run in may ask the person before each write: say first what you are about to write. The rules for workspaces and reviews (symbiote/AGENTS.md, the workflow in the repository's own instructions) are not yours.
@@ -187,11 +192,7 @@ How a skill is written (the open standard, agentskills.io, and what Claude Code 
 - Longer material goes in files beside SKILL.md (references/, scripts/), each linked from SKILL.md and one level deep; scripts for steps that must run the same way each time; forward slashes in paths.
 - A change to a skill is made in place; its name stays.
 
-When you are done, say what you wrote (each path), which tasks the skill will be picked for and which it will not, and what you did not check.
-
-The person's request:
-
-{request}`;
+When you are done, say what you wrote (each path), which tasks the skill will be picked for and which it will not, and what you did not check.`;
 
 /** What Scribe's `{library}` becomes when the person keeps a skill library (SK1, decision 430). */
 const LIBRARY = `The person also keeps skills for all their projects in a skill library outside this repository: {folder}. When they ask for a skill in their library, or for every project, write it there, as {folder}/<name>/SKILL.md: Symbiote lets you write in a skill's folder there too, and nowhere else outside {skills}. Read the library's skills first and write like them. A library skill holds what holds in any project: not this repository's paths, commands or conventions, unless the person asks for them.`;
@@ -420,10 +421,10 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     group: 'Scribe',
     title: 'Instructions',
     about:
-      "What Scribe is told when a conversation starts: Claude Code's first prompt, Codex's first " +
-      'turn. It writes only skills, in .claude/skills and the skill library, whatever it says.',
+      "Scribe's system prompt, from a conversation's start: appended to Claude Code's, Codex's " +
+      "developer instructions. The person's words follow, in its terminal. It writes only skills, " +
+      'in .claude/skills and the skill library, whatever it says.',
     placeholders: [
-      { name: 'request', about: "the person's request", required: true },
       { name: 'skills', about: 'the skills folder, .claude/skills in the checkout' },
       { name: 'checkout', about: 'the checkout Scribe works in' },
       {

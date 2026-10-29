@@ -309,3 +309,5 @@ merge commit.
 - 2026-10-29 [V76c — Files and Graph at the review head's end](journal/v76-review-tab-layout.md)
 - 2026-10-29 [V77 spike — what a cleaned-up workspace leaves](journal/v77-workspace-history.md)
 - 2026-10-29 [V77 — History under Monitor: finished workspaces, their activity and brief](journal/v77-workspace-history.md)
+- 2026-10-29 [V78 spike — what Scout's page and Scribe's pane offer besides the terminal](journal/v78-scout-scribe-terminals.md)
+- 2026-10-29 [V78 — Scout and Scribe are terminals, set in Settings](journal/v78-scout-scribe-terminals.md)

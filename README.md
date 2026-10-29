@@ -351,12 +351,13 @@ The sidenav also opens these pages. Each has a key.
   works this way, or what waits for you. Scout can also act on your workspaces for you: start one,
   answer an agent, review or merge a branch. Scout never edits files. It can send a message to an
   agent without asking you, but a start, a verdict, a merge and a clean-up each wait until you
-  click **Confirm**.
+  click **Confirm**. The page is Scout's terminal: you ask there. **New conversation** starts over.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
   task (`.claude/skills/<name>/SKILL.md`). Search them by name or description, read and edit
   them here (with line numbers, or as a Markdown preview), or open one in VS Code. As you type,
   the page flags what an agent would refuse, such as a missing name or description. *Scribe*, an
-  agent on the same page, writes a new skill or improves one. Scribe only writes in
+  agent on the same page, writes a new skill or improves one: you ask in its terminal, and
+  **Improve with Scribe** types the skill's path there for you. Scribe only writes in
   `.claude/skills/` and never commits.
   Your *skill library* is a folder of skills kept outside the repository, a plain folder or one
   in a git repository. Set it once in Settings, and every repository's Skills page lists its
@@ -367,7 +368,8 @@ The sidenav also opens these pages. Each has a key.
 - **History** (`h`): the workspaces you cleaned up, with their activity, thread, brief and
   changes. See [Clean up](#clean-up).
 - **Settings** (`s`): the prompts Symbiote gives its agents, such as a workspace agent's first
-  prompt; the model and effort of the merger, Scout and Scribe; the **Skill library** (its folder,
+  prompt; the model and effort of the merger, Scout and Scribe (set only here: their pages have no
+  such choices); the **Skill library** (its folder,
   or a repository to clone, and who commits its changes); and **Appearance** (dark, light or your
   system's, and whether Git's commit details show on the right or below the commits).
 
