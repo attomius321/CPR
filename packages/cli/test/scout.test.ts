@@ -451,7 +451,7 @@ describe('scout (V35)', () => {
     // Its instructions are its system prompt (V50, decision 383); the question its first message.
     expect(request?.instructions).toBe(DEFAULT_PROMPTS.scout);
     expect(request?.prompt).toBe("Where is the merger's prompt defined?");
-    // Its gate is given the checkout and the workspaces' records (V79, decision 576).
+    // Its gate is given the checkout and the workspaces' records (V80, decision 585).
     expect(readFileSync(settings, 'utf8')).toBe(
       scoutSettings({
         node: '/usr/bin/node',
@@ -654,7 +654,7 @@ describe('scout (V35)', () => {
   });
 });
 
-describe("Scout reads the workspaces' worktrees (V79, decisions 576-579)", () => {
+describe("Scout reads the workspaces' worktrees (V80, decisions 585-588)", () => {
   /** `repo` with a workspace's worktree beside it, and its record. */
   function withWorkspace(repo: TestRepo) {
     const holder = `${repo.root}.worktrees`;
@@ -730,7 +730,7 @@ describe("Scout reads the workspaces' worktrees (V79, decisions 576-579)", () =>
     });
   });
 
-  it('gives Codex nothing to write: read-only, no writable folder (decision 579)', async () => {
+  it('gives Codex nothing to write: read-only, no writable folder (decision 588)', async () => {
     const repo = fresh();
     const { holder } = withWorkspace(repo);
     const server = await appServer();

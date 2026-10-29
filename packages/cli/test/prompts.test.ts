@@ -395,7 +395,7 @@ describe("Scout's prompt (V35)", () => {
     expect(scout).toContain("the person's Confirm");
     expect(scout).toContain("never the person's");
     expect(scout).toContain('symbiote/AGENTS.md');
-    // What it reads (V79): the checkout and the workspaces' worktrees, their uncommitted work
+    // What it reads (V80): the checkout and the workspaces' worktrees, their uncommitted work
     // through git -C, without git diff there.
     expect(scout).toMatch(/workspaces' worktrees/);
     expect(scout).toContain('git --no-optional-locks -C <worktree> status');

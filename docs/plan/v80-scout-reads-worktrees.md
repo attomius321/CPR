@@ -1,6 +1,6 @@
-# V79 — Scout reads the workspaces' worktrees
+# V80 — Scout reads the workspaces' worktrees
 
-[Index](../PLAN.md) · [Journal](../journal/v79-scout-reads-worktrees.md)
+[Index](../PLAN.md) · [Journal](../journal/v80-scout-reads-worktrees.md)
 
 **Status:** planned (2026-10-29), on branch `feature/scout-reads-worktrees` (the workspace's); the
 plan confirmed by the person ("Do as you recommend. Go"), the real run in a throwaway clone.
@@ -24,10 +24,10 @@ work only as the `workspace` tool's paths and line counts. Measured on `b3e8c03`
 **Goal**: in a new Scout conversation, Scout reads, searches and lists the files of every open
 workspace's worktree, and sees its uncommitted changes through git, while it writes nothing,
 anywhere. **Unchanged**: Scribe and the workspace agents' permissions; Codex's Scout (already able
-to read there); a Scout conversation whose settings file was written before V79 keeps `main`'s gate
+to read there); a Scout conversation whose settings file was written before V80 keeps `main`'s gate
 until Symbiote writes the file again at its next wake.
 
-## What is opened (decision 576)
+## What is opened (decision 585)
 
 - **An open workspace's worktree**: the `worktree` of a record in `symbiote/workspaces/` (or the
   cache's stand-in) without `finished`, that `git worktree list --porcelain` lists as a linked
@@ -39,7 +39,7 @@ until Symbiote writes the file again at its next wake.
 - **No `--add-dir`**: nothing is opened for the whole session, and nothing depends on a
   `--resume` keeping it.
 
-## Claude Code: Read, Grep and Glob (decision 577)
+## Claude Code: Read, Grep and Glob (decision 586)
 
 - Scout's gate (`scout-gate.ts`) answers `allow` for Read (`file_path`), Grep and Glob (`path`)
   when the path is absolute, holds no `..`, and its real path (the nearest folder that exists,
@@ -48,10 +48,10 @@ until Symbiote writes the file again at its next wake.
   anything else is denied in `dontAsk`. A path inside the checkout is answered without reading the
   records.
 - The gate is given the checkout and the records folder as arguments in Scout's settings file
-  (`gateArgs`), written at each start and wake. Without them (a file from before V79) it is
+  (`gateArgs`), written at each start and wake. Without them (a file from before V80) it is
   `main`'s gate.
 
-## The Bash gate: git in a worktree (decision 578)
+## The Bash gate: git in a worktree (decision 587)
 
 For Scout only: Scribe's gate calls `gitReadProblem` without worktrees and keeps `main`'s rule.
 
@@ -65,7 +65,7 @@ For Scout only: Scribe's gate calls `gitReadProblem` without worktrees and keeps
 - Every refusal of f51d03e kept: options that write, run a program or read a file outside after
   the command; the filters after a pipe.
 
-## Codex (decision 579)
+## Codex (decision 588)
 
 Nothing passed: Scout has no `folders`, its thread starts `readOnly` with `writable: []`, and its
 sandbox reads the worktrees already. Its prompt says the same as Claude Code's.
@@ -120,16 +120,16 @@ the real runs.
 
 | # | Milestone | Output |
 |---|---|---|
-| V79 | Scout reads the workspaces' worktrees | The gate opens open workspaces' worktrees to Read, Grep, Glob and `git -C`; the prompt and the `workspace` tool say where |
+| V80 | Scout reads the workspaces' worktrees | The gate opens open workspaces' worktrees to Read, Grep, Glob and `git -C`; the prompt and the `workspace` tool say where |
 
 **Decisions**:
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 576 | What Scout reads beyond the checkout | **Open workspaces' worktrees: a record without `finished` whose folder git lists as this repository's worktree, decided at each tool call; no `--add-dir`, not the holder** | Measured: a hook's `allow` opens a path in `dontAsk`; the holder can be anywhere and holds a worktree of no open workspace; a list at start misses a workspace started later |
-| 577 | How Claude Code's reads are opened | **The gate allows Read, Grep and Glob by real path (absolute, no `..`); Claude Code's rules elsewhere** | Read follows symlinks; Node's `realpathSync` takes `..` before links |
-| 578 | git in a worktree | **`-C <worktree>`; `status` only with `--no-optional-locks`; `diff-index` for the patch; `diff` refused there; Scribe's gate unchanged** | Measured: `status` and `diff` rewrite a worktree's index, `diff-index` does not |
-| 579 | Codex | **Nothing passed: read-only, no writable folder** | Its read-only sandbox reads every folder and writes none; Codex's `folders` would be writable |
+| 585 | What Scout reads beyond the checkout | **Open workspaces' worktrees: a record without `finished` whose folder git lists as this repository's worktree, decided at each tool call; no `--add-dir`, not the holder** | Measured: a hook's `allow` opens a path in `dontAsk`; the holder can be anywhere and holds a worktree of no open workspace; a list at start misses a workspace started later |
+| 586 | How Claude Code's reads are opened | **The gate allows Read, Grep and Glob by real path (absolute, no `..`); Claude Code's rules elsewhere** | Read follows symlinks; Node's `realpathSync` takes `..` before links |
+| 587 | git in a worktree | **`-C <worktree>`; `status` only with `--no-optional-locks`; `diff-index` for the patch; `diff` refused there; Scribe's gate unchanged** | Measured: `status` and `diff` rewrite a worktree's index, `diff-index` does not |
+| 588 | Codex | **Nothing passed: read-only, no writable folder** | Its read-only sandbox reads every folder and writes none; Codex's `folders` would be writable |
 
-**Not in V79 (later)**: finished workspaces' worktrees (gone at Clean up); a worktree made by hand
+**Not in V80 (later)**: finished workspaces' worktrees (gone at Clean up); a worktree made by hand
 or by the analysis cache, which no record names.

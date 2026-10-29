@@ -1,7 +1,7 @@
 // Scout's gate (V35, decision 236): what Scout's Claude Code may run, decided by Symbiote before
 // Claude Code's own rules. Read, Grep and Glob pass to those rules, but in an open workspace's
-// worktree, which the gate opens (V79, decisions 576-577); Bash runs only git's read commands this
-// module parses, there too with `-C` (decision 578); Symbiote's own MCP tools pass (MC1: the asked
+// worktree, which the gate opens (V80, decisions 585-586); Bash runs only git's read commands this
+// module parses, there too with `-C` (decision 587); Symbiote's own MCP tools pass (MC1: the asked
 // ones wait for the person in Symbiote); every other tool, and every other server's, is denied.
 // Claude Code's allow rules cannot do this: `Bash(git log *)` matches `git log --output=<file>`.
 // The hook runs once per tool call in Claude Code's process tree (`scout-hook.ts`), so this module
@@ -41,7 +41,7 @@ function within(folder: string, target: string): boolean {
 }
 
 /**
- * The open workspaces' worktrees (V79, decision 576), as real paths: the folder of each record in
+ * The open workspaces' worktrees (V80, decision 585), as real paths: the folder of each record in
  * `records` (`symbiote/workspaces/<branch>.json`) without `finished`, that git lists as a linked
  * worktree of `checkout`'s repository. Not the folder holding them, which a setting may put
  * anywhere; read at each tool call, so a workspace started during a conversation is in.
@@ -96,7 +96,7 @@ export function openWorktrees(checkout: string, records: string): string[] {
   return found;
 }
 
-/** What Scout reads besides the checkout (V79): the open workspaces' worktrees. */
+/** What Scout reads besides the checkout (V80): the open workspaces' worktrees. */
 export interface ScoutReach {
   /** The checkout it runs in: a path there is Claude Code's to decide, as before. */
   checkout: string;
@@ -106,7 +106,7 @@ export interface ScoutReach {
 
 /**
  * The reach the hook's arguments give: the checkout and the records folder, from Scout's settings
- * file; without both (a file written before V79), none: `main`'s gate. Read once, when asked.
+ * file; without both (a file written before V80), none: `main`'s gate. Read once, when asked.
  */
 export function scoutReach(args: readonly string[]): ScoutReach | undefined {
   const [checkout, records] = args;
@@ -142,7 +142,7 @@ const READ_COMMANDS = new Set([
 ]);
 
 /**
- * Scout's besides (V79, decision 578): `diff-index`, the uncommitted changes, and `status` with
+ * Scout's besides (V80, decision 587): `diff-index`, the uncommitted changes, and `status` with
  * `--no-optional-locks`; neither writes the index, where `git diff` and a plain `git status` do.
  */
 const SCOUT_COMMANDS = new Set([...READ_COMMANDS, 'diff-index', 'status']);
@@ -326,7 +326,7 @@ function stagesOf(command: string): string[][] | string {
 }
 
 /**
- * git's own options before the command: `--no-pager`; with `worktrees` (Scout's, V79), also
+ * git's own options before the command: `--no-pager`; with `worktrees` (Scout's, V80), also
  * `--no-optional-locks` and one `-C` into an open workspace's worktree. The command's words, or
  * what is wrong.
  */
@@ -360,7 +360,7 @@ function ownOptions(
 /**
  * Why `command` is not one of git's read commands Scout runs, or null when it is: `git
  * [--no-pager] <command> …` for the commands in `READ_COMMANDS`, no option that writes or runs a
- * program, optionally piped into `head`, `tail`, `wc` or `grep`. With `worktrees` (Scout's, V79):
+ * program, optionally piped into `head`, `tail`, `wc` or `grep`. With `worktrees` (Scout's, V80):
  * also `-C <a workspace's worktree>`, where `git diff` is refused (it rewrites the index), and
  * `diff-index` and `--no-optional-locks status`, here and there.
  */
@@ -411,7 +411,7 @@ export function gitReadProblem(
 const READS = ['Read', 'Grep', 'Glob'];
 
 /**
- * Read (`file_path`), Grep and Glob (`path`) in an open workspace's worktree (V79, decision 577):
+ * Read (`file_path`), Grep and Glob (`path`) in an open workspace's worktree (V80, decision 586):
  * allowed when the path is absolute, holds no `..` (Node takes it before links), and its real path
  * is there (Read follows links). Anything else is Claude Code's to decide: the checkout, read as
  * before; elsewhere, denied in `dontAsk`.
@@ -433,7 +433,7 @@ function readDecision(
 }
 
 /** The gate's answer to one PreToolUse hook's input (Claude Code's documented fields); `reach`,
- * the worktrees Scout reads besides the checkout (V79). */
+ * the worktrees Scout reads besides the checkout (V80). */
 export function gateDecision(input: unknown, reach?: ScoutReach): GateDecision {
   if (!input || typeof input !== 'object') return null;
   const v = input as { hook_event_name?: unknown; tool_name?: unknown; tool_input?: unknown };

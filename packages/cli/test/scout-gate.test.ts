@@ -224,7 +224,7 @@ describe('gateDecision (V35)', () => {
   });
 });
 
-describe("Scout reads the workspaces' worktrees (V79, decisions 576-578)", () => {
+describe("Scout reads the workspaces' worktrees (V80, decisions 585-587)", () => {
   // A checkout, its worktrees beside it as Symbiote makes them, and their records:
   // - feature-a: an open workspace, with uncommitted work and links out of it;
   // - "with space": an open workspace whose folder has a space;
@@ -357,7 +357,7 @@ describe("Scout reads the workspaces' worktrees (V79, decisions 576-578)", () =>
     ]) {
       expect(gateDecision(input, reach)).toBeNull();
     }
-    // Without the folders (a settings file from before V79): main's gate.
+    // Without the folders (a settings file from before V80): main's gate.
     expect(gateDecision(read('Read', { file_path: join(wt, 'src/a.ts') }))).toBeNull();
   });
 
@@ -488,7 +488,7 @@ describe("Scout reads the workspaces' worktrees (V79, decisions 576-578)", () =>
   });
 });
 
-describe("scoutReach (V79): the hook's arguments", () => {
+describe("scoutReach (V80): the hook's arguments", () => {
   it("takes the checkout and the records folder; without both, none (main's gate)", () => {
     const reach = scoutReach(['/repo', '/repo/symbiote/workspaces']);
     expect(reach?.checkout).toBe('/repo');

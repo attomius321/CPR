@@ -780,7 +780,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       const review = reviews?.reviews.find((r) => r.branch === branch);
       return {
         ...row(w),
-        // Where Scout reads its files and uncommitted changes (V79).
+        // Where Scout reads its files and uncommitted changes (V80).
         ...(w.worktree.exists ? { worktree: w.worktree.path } : {}),
         ...(w.from ? { from: w.from } : {}),
         base: w.base,

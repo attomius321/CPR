@@ -1,8 +1,8 @@
-# Journal: V79 — Scout reads the workspaces' worktrees
+# Journal: V80 — Scout reads the workspaces' worktrees
 
-[Index](../JOURNAL.md) · [Plan](../plan/v79-scout-reads-worktrees.md)
+[Index](../JOURNAL.md) · [Plan](../plan/v80-scout-reads-worktrees.md)
 
-## V79 spike — what opens a folder to Scout, and what git writes there (2026-10-29, branch `feature/scout-reads-worktrees`)
+## V80 spike — what opens a folder to Scout, and what git writes there (2026-10-29, branch `feature/scout-reads-worktrees`)
 
 Measured in a scratch folder under the job's tmp, never the person's `symbiote/`: Claude Code
 2.1.312 (`claude -p --model haiku --tools Read,Grep,Glob --permission-mode dontAsk` with a
@@ -35,4 +35,6 @@ PreToolUse hook from `--settings`), Codex 0.163 (`codex sandbox -c sandbox_mode=
   (`milestone-v75-suggested-settings`) with no open record; 103 records, 98 finished. git lists 30
   worktrees, 21 of them the analysis cache's. A workspace (`feature/mcp-suggest-settings`) was
   started while this was measured: a list read at Scout's start would have missed it.
-- **IDs**: V77 and V78 (twice) are taken on other branches, decisions to 575; V79 takes 576–579.
+- **IDs**: V77 and V78 (twice) are taken on other branches, decisions to 575; this took V79 and
+  576–579 first, then V80 and 585–588 when `feature/workspaces-card-revamp` took V79 and 576–581,
+  and `feature/mcp-suggest-settings` 582–584, while it was built.

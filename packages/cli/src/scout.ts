@@ -75,7 +75,7 @@ export interface PageAgentSpec {
   permissionMode: 'dontAsk' | 'default';
   /**
    * What its gate is given after its script: Scribe's, the skills' folder and `folders`; Scout's,
-   * the checkout and the workspaces' records, whose worktrees it opens (V79, decision 576).
+   * the checkout and the workspaces' records, whose worktrees it opens (V80, decision 585).
    */
   gateArgs(root: string, where: ReviewPlace): string[];
   /**
