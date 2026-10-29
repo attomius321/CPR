@@ -11,6 +11,7 @@ import {
   defaultBranch,
   deleteMergedBranch,
   fileChangedSince,
+  git,
   isAncestor,
   isCommit,
   listRefs,
@@ -921,6 +922,8 @@ export function workspaces(
     workspace: WorkspaceFile,
     refs: RefList,
     into: string | null,
+    /** The default branch's newer commits, read once for the whole list: an end among them is in it. */
+    recent?: ReadonlySet<string>,
   ): Promise<WorkspaceEnd> {
     const kept = refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null;
     const review =
@@ -928,19 +931,35 @@ export function workspaces(
         ? null
         : await readReview(reviewPath(where.dir, workspace.branch, where.reviewer));
     const named = endOf(workspace, kept, review ? approvedHead(review.verdicts) : null);
-    const end = named && (named === kept || (await hasCommit(named))) ? named : null;
+    // In the default branch first: a commit it holds is one git has, so most ends cost one run
+    // (V77: 299 ms for the person's 97 before, two runs each). A name git lacks is not merged.
     let merged = workspace.merged === true;
-    if (!merged && end && end !== workspace.base) {
-      for (const tip of await trunkOf(refs)) {
-        if (await inHistoryOf(end, tip)) {
-          merged = true;
+    let inTrunk = named !== null && named !== workspace.base && recent?.has(named) === true;
+    if (named && named !== workspace.base && !inTrunk) {
+      for (const tip of new Set(await trunkOf(refs))) {
+        if (await inHistoryOf(named, tip).catch(() => false)) {
+          inTrunk = true;
           break;
         }
       }
     }
+    merged ||= inTrunk;
+    const end = named && (inTrunk || named === kept || (await hasCommit(named))) ? named : null;
     const at = end ? { end } : {};
     if (merged) return { outcome: 'merged', ...(into ? { into } : {}), ...at };
     return { outcome: kept ? 'kept' : 'gone', ...at };
+  }
+
+  /**
+   * The default branch's commits since `since` (V77), in one git run: from Node each run costs
+   * about 3 ms to start, one after another (85 ancestry checks took 280 ms on WSL). Whatever it
+   * lists is in the default branch; what it does not is asked on its own.
+   */
+  async function trunkSince(refs: RefList, since: string): Promise<Set<string>> {
+    const tips = [...new Set(await trunkOf(refs))];
+    if (tips.length === 0) return new Set();
+    const listed = await git(repo.root, ['rev-list', `--since=${since}`, ...tips, '--']);
+    return new Set(listed.split('\n').filter(Boolean));
   }
 
   /** A workspace's record, which Clean up finished; 404 otherwise (V77). */
@@ -1068,8 +1087,11 @@ export function workspaces(
       if (list.length === 0) return { workspaces: [], ...head };
       const refs = await listRefs(repo);
       const into = await mainOf(refs);
-      // A git run or two each: a few at once.
-      const ended = await eachLimited(list, 8, (w) => endedAt(where, w, refs, into));
+      // A workspace's commits are made after it started (a rebase's too): from a day before the
+      // oldest, so a clock a little off is no matter.
+      const oldest = Math.min(...list.map((w) => Date.parse(w.created) || Date.now()));
+      const recent = await trunkSince(refs, new Date(oldest - 86_400_000).toISOString());
+      const ended = await eachLimited(list, 8, (w) => endedAt(where, w, refs, into, recent));
       const rows = list.map((w, i) => finishedEntry(w, ended[i] as WorkspaceEnd));
       return { workspaces: rows.sort(byFinished), ...head };
     },

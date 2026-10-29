@@ -234,6 +234,24 @@ describe('workspaces history (V77)', () => {
     expect((await s.history()).workspaces[0]).not.toHaveProperty('end');
   });
 
+  it("finds a merged end older than the default branch's commits it reads at once (a clock off)", async () => {
+    const { repo, shas } = history();
+    // Started, by its record, after every commit was made: none is read in the one run.
+    keep(
+      repo,
+      record({
+        branch: 'feature/merged',
+        base: shas.B,
+        created: '2027-01-01T00:00:00.000Z',
+        finished: '2027-01-02T00:00:00.000Z',
+      }),
+    );
+    review(repo, 'feature/merged', [{ event: 'approve', head: shas.C }]);
+    expect((await (await service(repo)).history()).workspaces).toMatchObject([
+      { branch: 'feature/merged', outcome: 'merged', into: 'main', end: shas.C },
+    ]);
+  });
+
   it('is empty with no finished workspace', async () => {
     const { repo, shas } = history();
     keep(repo, record({ branch: 'feature/live', base: shas.B }));
