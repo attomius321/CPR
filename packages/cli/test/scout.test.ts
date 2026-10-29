@@ -732,14 +732,14 @@ describe("Scout reads the workspaces' worktrees (V79, decisions 576-579)", () =>
 
   it('gives Codex nothing to write: read-only, no writable folder (decision 579)', async () => {
     const repo = fresh();
-    withWorkspace(repo);
+    const { holder } = withWorkspace(repo);
     const server = await appServer();
     const { codex } = fakeCodex(server);
     await (await service(repo, { codex })).open({});
     const start = server.calls.find((c) => c.method === 'thread/start');
     expect(start?.params).toMatchObject({ cwd: repo.root, sandbox: 'read-only' });
     expect(JSON.stringify(start?.params)).not.toContain('writable');
-    expect(JSON.stringify(start?.params)).not.toContain('worktrees');
+    expect(JSON.stringify(start?.params)).not.toContain(holder);
   });
 });
 

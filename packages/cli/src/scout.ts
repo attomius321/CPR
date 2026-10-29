@@ -38,6 +38,7 @@ import { prepareSymbioteFolder, reviewPlace, type ReviewPlace } from './reviews.
 import { TerminalRefused, type Terminals } from './terminal.js';
 import { real } from './thread.js';
 import { readWorkspaceConfig } from './workspaces.js';
+import { workspacesDir } from './workspace-record.js';
 import { shellWord, type AgentSession, type ClaudeCode } from './claude-code.js';
 import { viewFile } from './mcp-bridge.js';
 import {
@@ -72,8 +73,11 @@ export interface PageAgentSpec {
   /** Claude Code's tools and mode for it. */
   tools: readonly string[];
   permissionMode: 'dontAsk' | 'default';
-  /** What its gate is given after its script: Scribe's, the skills' folder and `folders`. */
-  gateArgs(root: string): string[];
+  /**
+   * What its gate is given after its script: Scribe's, the skills' folder and `folders`; Scout's,
+   * the checkout and the workspaces' records, whose worktrees it opens (V79, decision 576).
+   */
+  gateArgs(root: string, where: ReviewPlace): string[];
   /**
    * Folders outside the checkout it works in too, read at each start (Scribe: the skill library,
    * SK1): Claude Code's `--add-dir`, folders Codex's sandbox may also write.
@@ -121,7 +125,8 @@ const SCOUT: PageAgentSpec = {
   settings: 'scout-settings.json',
   tools: ['Read', 'Grep', 'Glob', 'Bash'],
   permissionMode: 'dontAsk',
-  gateArgs: () => [],
+  // No `folders`: its gate opens the worktrees at each call, and Codex's sandbox reads them already.
+  gateArgs: (root, where) => [root, workspacesDir(where)],
   prompt: (_root, text) => text,
   // A project's text from before V50 may still hold {question}: filled with nothing.
   instructions: (root) => fillPrompt(readPrompts(root).text.scout, { question: '' }).trimEnd(),
@@ -409,7 +414,7 @@ export function pageAgent(
   async function settingsFile(where: ReviewPlace): Promise<string> {
     const path = join(folder(where), spec.settings);
     const text = scoutSettings(
-      { node, gate, args: spec.gateArgs(root) },
+      { node, gate, args: spec.gateArgs(root, where) },
       process.platform,
       spec.claudeSettings,
     );
