@@ -74,7 +74,7 @@
 
 /* Wide, the mockup's two columns (decision 454): its proportion, the run at least 412 px — its
    width at 1440 beside V61's 264 px sidenav, so its seven cards keep their lines beside V79's 300
-   (decision 582; 380 before: at 398 px Plan first's line wrapped and the column ran 12 px past
+   (decision 585; 380 before: at 398 px Plan first's line wrapped and the column ran 12 px past
    1440 × 1000). */
 @container start (min-width: 1000px) {
   .start-columns {

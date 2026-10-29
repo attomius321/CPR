@@ -2,10 +2,11 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v79-workspace-cards.md)
 
-**Status:** in progress (2026-10-29), on branch `feature/workspaces-card-revamp` (a workspace
+**Status:** ready for review (2026-10-29), on branch `feature/workspaces-card-revamp` (a workspace
 started in Symbiote, from `main` at `b3e8c03`). The person OK'd the plan with their answers to its
 three choices: "1. Always show it 2. Recommended 3. 300px by default. Go" — the branch on every
-card, a faint wash behind each card, a 300 px sidenav at first.
+card, a faint wash behind each card, a 300 px sidenav at first. Built as planned, with what the
+300 px sidenav moved elsewhere: "As built" and results at the end.
 
 **Problem** (asked: "The curent cards are displayed too condensed, it is hard to read. Make some
 research about how it should look, and then plan"). The sidenav's cards (`shell/Sidenav.tsx`,
@@ -106,3 +107,56 @@ own head, the keys (`w`, the arrows, Enter).
 | 579 | The branch? | **On every card, its last row as today** | The person's choice; it repeats the kind and the title in 95 of 103 records, and is the link to Git |
 | 580 | How are the cards apart? | **10 × 12 px in, 6 px between, 20 px lines; each on a 3.5 % wash of the text; the 72 px limit dropped** | Rows 1 px apart and cards 11 px read as one block; the waiting band's cards are washes already |
 | 581 | The sidenav's width at first? | **300 px (264)** | The person's choice: most names fit on one line; the main area keeps 1,140 px at 1440 |
+| 585 | Start a workspace beside a 300 px sidenav? | **Its run column at least 412 px (380): its width at 1440 beside 264 px; the brief column gives the 13 px** | At 398 px Plan first's line wrapped and More closed ran 12 px past 1440 × 1000, V63's promise |
+
+## As built (V79)
+
+- **The rows as planned**, the branch on every card (the person's choice) and its review mark
+  beside it as before; the time at the end of the name's row. A starting card has its kind too
+  (`StartUnderWay.kind`, from the Start page), so its rows are the card's it becomes.
+- **The facts** are `workspaceFacts` (pure, `workspaces.ts`): the head's words and the card's
+  numbers from one function, the head's words unchanged. On the card each is a `role="img"` span
+  named by its words (a capital first), its tip the same words; `CardFacts` reads the merge check
+  as the head does, the state's line on a card no longer does.
+- **The wash** is a 3.5 % mix of `--text` written in `Sidenav.css`, as Waiting for you's cards'
+  4 % is, not a new theme token. Its hover 7 %. A card being cleaned up keeps it under the pointer
+  (it was transparent there). Folded, the rail draws the dots alone, without it.
+- **The cards' 1 px transparent border is gone**: it made every card 2 px taller than its rows,
+  and nothing drew it since V37.
+- **The branch's link set its own 18 px line**: the branch's row was 18 px in a 20 px rhythm until
+  it took 20.
+- **Groups' headings re-aligned**: their icon over the cards' dots (within 0.5 px) and their name
+  over the cards' names (37 px; 44 in the waiting band), 20 px under the last card.
+- **What 300 px moved elsewhere**, found by the full e2e run (`pnpm test:e2e`, 7 of 340 failed):
+  - Start a workspace at 1440 × 1000 scrolled 12 px with More closed: decision 585 (582 in
+    `46ff79b`, before `main` gave 582 to MC2).
+  - A workspace's terminal: 119 columns alone (124), 89 beside the changes panel (94), 59.7 % and
+    44.6 % of the window (62 %, 47 %); `shell.spec.ts` and `changes.spec.ts` say the new numbers.
+    The changes panel still shows at 1440 (1,140 px of main area, over its 1,100).
+  - Git's HEAD row at 1440 with two badges ("HEAD → main", "origin/main") beside the details:
+    its subject had 23 px on `main` ("h…") and has none now. V10b lets the subject give way before
+    the badges; unchanged here. `tooltips.spec.ts` waits for the row, not its subject.
+  - V44's spec ("no icon in a card") leaves out the facts' icons; V24c's finds the kind in the
+    facts' row.
+
+**Results.** The mock list of the spike (nine workspaces, one in each state, and a merge), 1440 ×
+900, 1×: `main` at `b3e8c03` (264 px) against the branch (300 px).
+
+| What | `main` | V79 |
+|---|---|---|
+| Names cut | 5 of 9 | **0** |
+| State lines cut | 6 of 9 (one line) | **2** (after two lines: a long command, a question) |
+| Branches cut | 4 of 9 | **1** (`feature/remove-scout-in-page-settings`) |
+| A card | 72 px (the merge 54), 1 px apart | 118–146 px (the merge 66), 6 px apart |
+| The cards in all | 807 px | 1,266 px |
+| Cards wholly in view, top of the list | 4 | 3 |
+
+At 264 px (a width the person dragged) V79 still cuts no name; 3 states and 4 branches.
+
+Timings, `main`'s build (`git archive main`, built in the job's folder) and the branch's alternated
+on an idle machine: Git's first paint in a scratch repository with the mock list, cards and rows
+drawn, median of 7, **213 → 211 ms** (first contentful paint 76 ms both). Bitwarden `737ee3f`
+(`measure.mjs`, 8 rounds): first paint median **309 → 316 ms**, select **106 → 105 ms**, pan
+63 fps both, the same 3,160 elements, no page errors. Mark reviewed lands at 50 or 67 ms on both
+builds (3 or 4 frames of 16.7 ms; main 34–68, the branch 49–68): no graph or diff code differs.
+`pnpm test:e2e`: the viewer's 340 and the nexus's 15 pass.
