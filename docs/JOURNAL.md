@@ -303,3 +303,4 @@ merge commit.
 - 2026-10-28 [Fix — the spec waits for Scout's record](journal/fix-scout-record-spec-race.md)
 - 2026-10-29 [V75c — the advisor's model and effort for each agent, in Settings](journal/v75-suggested-settings.md)
 - 2026-10-29 [Fix — `symbiote view` serves the pages it started with](journal/fix-suggest-settings-models.md)
+- 2026-10-29 [V76 spike — the Review tab at the sidebar's width](journal/v76-review-tab-layout.md)
