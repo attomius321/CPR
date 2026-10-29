@@ -17,6 +17,7 @@ import {
   type MergeEntry,
   type MergeStrategy,
   type RepoStatus,
+  type SuggestRequest,
   type WorkspaceRequest,
   type WorkspaceSummary,
 } from '@symbiote/core';
@@ -25,7 +26,12 @@ import { AGENT_NAMES } from './agent-levels.js';
 import type { DiffStatus, Pair } from './diffs.js';
 import type { Merger } from './merges.js';
 import type { BranchReviews } from './reviews.js';
-import { parseLocalReview, parseWorkspaceRequest, sourceFiles } from './server-requests.js';
+import {
+  parseLocalReview,
+  parseSuggestRequest,
+  parseWorkspaceRequest,
+  sourceFiles,
+} from './server-requests.js';
 import type { UsageService } from './usage.js';
 import type { Workspaces } from './workspaces.js';
 
@@ -54,6 +60,7 @@ export interface McpServices {
     Workspaces,
     | 'list'
     | 'options'
+    | 'suggest'
     | 'changes'
     | 'merge'
     | 'thread'
@@ -137,6 +144,17 @@ const ASKS =
   " Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.";
 const branch = { type: 'string', description: "A workspace's branch, as feature/x" };
 const mergeId = { type: 'string', description: "A queue entry's id (from merges)" };
+/** A start's brief: what start_workspace and suggest_settings both take, so one brief fits both. */
+const brief = {
+  kind: { type: 'string', enum: [...WORK_KINDS] },
+  title: { type: 'string' },
+  parts: {
+    type: 'object',
+    description: "The brief's parts the kind takes (start_options), each a text",
+    additionalProperties: { type: 'string' },
+  },
+};
+const agentKind = { type: 'string', enum: [...AGENT_KINDS] };
 const object = (
   properties: Record<string, unknown> = {},
   required: string[] = [],
@@ -193,24 +211,38 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
     needs: ['workspaces'],
   },
   {
+    name: 'suggest_settings',
+    description:
+      "The advisor's proposal for a start of this brief, as the Start page's Suggest settings gives it: a model, an effort level and plan first for the agent, why in one sentence, and the model it ran on. Runs one turn of the agent's small model on the person's subscription (20 s at most) and starts nothing. Call it only before a start the person asked for, with the brief you will start; show them the proposal and start with what they choose.",
+    inputSchema: object(
+      {
+        ...brief,
+        agent: agentKind,
+        documents: {
+          type: 'array',
+          items: { type: 'string' },
+          description: "The attached files' names: the advisor is told the names only",
+        },
+      },
+      ['kind', 'title', 'parts'],
+    ),
+    needs: ['workspaces'],
+  },
+  {
     name: 'start_workspace',
     description:
       'Starts a workspace: a branch, its worktree and an agent working on the brief.' + ASKS,
     inputSchema: object(
       {
-        kind: { type: 'string', enum: [...WORK_KINDS] },
-        title: { type: 'string' },
+        kind: brief.kind,
+        title: brief.title,
         branch: {
           type: 'string',
           description: "The new branch, with its kind's prefix: fix/<slug>",
         },
-        parts: {
-          type: 'object',
-          description: "The brief's parts the kind takes (start_options), each a text",
-          additionalProperties: { type: 'string' },
-        },
+        parts: brief.parts,
         planFirst: { type: 'boolean', description: 'The agent writes a plan and waits for an OK' },
-        agent: { type: 'string', enum: [...AGENT_KINDS] },
+        agent: agentKind,
         effort: { type: 'string' },
         model: { type: 'string' },
         from: {
@@ -828,6 +860,22 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       };
     },
 
+    // Not asked (decision 582): a proposal, which starts nothing; the start that follows asks.
+    async suggest_settings(args) {
+      const picked = Object.fromEntries(
+        ['kind', 'title', 'parts', 'agent', 'documents']
+          .filter((k) => args[k] !== undefined)
+          .map((k) => [k, args[k]]),
+      );
+      let request: SuggestRequest;
+      try {
+        request = parseSuggestRequest(JSON.stringify(picked));
+      } catch (error) {
+        throw new ToolProblem((error as Error).message);
+      }
+      return service('workspaces').suggest(request);
+    },
+
     async reply(args) {
       const branch = branchOf(args);
       const text = words(args, 'text', 'the message for the agent');
@@ -995,7 +1043,10 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       }
       const agent: AgentKind | undefined = request.agent ?? (await ws.options()).agents[0]?.kind;
       const title = request.title ? `, "${request.title}"` : '';
-      const by = agent ? `with ${AGENT_NAMES[agent]}` : 'with no agent installed';
+      // The settings it starts with, so the person confirms them too (decision 584).
+      const by = `${agent ? `with ${AGENT_NAMES[agent]}` : 'with no agent installed'}${
+        request.model ? ` on ${request.model}` : ''
+      }${request.effort ? ` at ${request.effort}` : ''}`;
       return {
         words: `Start ${request.branch}${title}, ${by}${request.planFirst ? ', plan first' : ''}${
           request.from ? `, from ${request.from}` : ''

@@ -401,6 +401,10 @@ describe("Scout's prompt (V35)", () => {
     expect(scout).toContain('git --no-optional-locks -C <worktree> status');
     expect(scout).toContain('git -C <worktree> diff-index -p HEAD');
     expect(scout).toContain('not git diff');
+    // The advisor before a start the person asked for, its proposal theirs to take (MC2).
+    expect(scout).toContain('suggest_settings');
+    expect(scout).toContain('before a start the person asked for');
+    expect(scout).toContain('their choice wins over the proposal');
     expect(readPrompts(withConfig({})).text.scout).toBe(scout);
 
     const own = readPrompts(withConfig({ prompts: { scout: ['Be brief.', '', 'Cite paths.'] } }));
