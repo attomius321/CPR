@@ -395,7 +395,7 @@ test('a card in the sidenav shows a long name whole, on its own rows, 6 px from 
   for (const [title, branch] of [
     ['Add a half function, with a test and its docs', long],
     ['Add a double function', 'feature/add-a-double-function'],
-  ]) {
+  ] as const) {
     await page.getByRole('link', { name: 'Start a workspace' }).click();
     const form = page.getByRole('region', { name: 'Start a workspace' });
     await form.getByRole('textbox', { name: 'Title' }).fill(title);

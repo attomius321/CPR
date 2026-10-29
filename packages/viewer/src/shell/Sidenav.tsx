@@ -50,6 +50,7 @@ import { useAsks } from './useAsks.js';
 import { useShell, type Notice } from './shell-context.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
+  CardFacts,
   KindTag,
   StateAge,
   StateDot,
@@ -354,6 +355,7 @@ export function Sidenav({
                 <span />
                 <span />
                 <span />
+                <span />
               </div>
             ))}
           </div>
@@ -586,6 +588,12 @@ function StartingCard({ start }: { start: StartUnderWay }) {
           <strong>Starting</strong> · its worktree, then {start.agent ?? 'the branch'}
         </p>
       </div>
+      {/* Its kind where its card will have it (V79); no facts yet. */}
+      {start.kind && (
+        <div className="workspace-meta">
+          <span className="kind-tag">{start.kind}</span>
+        </div>
+      )}
       <div className="workspace-branch">
         <span className="ref ref-branch">{start.branch}</span>
       </div>
@@ -593,7 +601,11 @@ function StartingCard({ start }: { start: StartUnderWay }) {
   );
 }
 
-/** A workspace in the sidenav: what it is and what it needs; a click opens it. */
+/**
+ * A workspace in the sidenav: what it is and what it needs; a click opens it. Four rows (V79): its
+ * name and how long its state has lasted; what it does or what is next; its kind and its facts
+ * (Respond and its kind while it waits); its branch.
+ */
 function WorkspaceCard({
   row,
   mark,
@@ -667,9 +679,10 @@ function WorkspaceCard({
         >
           {name}
         </button>
-        <KindTag workspace={workspace} />
+        {!cleaning && <StateAge workspace={workspace} />}
       </div>
-      {/* After the name in the Tab order, before the branch's link: where it is drawn. */}
+      {/* After the name in the Tab order, before the branch's link: where it is drawn, over the
+          time. */}
       {cleanable && (
         <CardRemove
           label={`Clean up ${name}`}
@@ -680,14 +693,14 @@ function WorkspaceCard({
       )}
       {cleaning ? (
         // What happens, in place of its state and its time, as a starting card says it (V48); its
-        // tip says it whole where the sidenav cuts it.
+        // tip says it whole where two lines cut it.
         <div className="workspace-line">
           <p className="workspace-state" {...tip(`Cleaning up · ${goes}`)}>
             <strong>Cleaning up</strong> · {goes}
           </p>
         </div>
       ) : row.next.group === 'waiting' ? (
-        // What it asks, and the way to answer it (V48): the card's own action, and how long.
+        // What it asks, and the way to answer it (V48): the card's own action, then its kind.
         <>
           <p className="workspace-blocked" {...tip(row.next.blocked ?? row.next.text)}>
             {row.next.blocked ?? row.next.text}
@@ -704,13 +717,18 @@ function WorkspaceCard({
             >
               Respond
             </button>
-            <StateAge workspace={workspace} />
+            <KindTag workspace={workspace} />
           </div>
         </>
       ) : (
         <div className="workspace-line">
-          <WorkspaceState row={row} />
-          <StateAge workspace={workspace} />
+          <WorkspaceState row={row} facts={false} />
+        </div>
+      )}
+      {row.next.group !== 'waiting' && (
+        <div className="workspace-meta">
+          <KindTag workspace={workspace} />
+          {!cleaning && <CardFacts workspace={workspace} />}
         </div>
       )}
       <div className="workspace-branch">
@@ -769,13 +787,15 @@ function MergeCard({
           run={() => removeMerge(entry)}
         />
       )}
-      {removing ? (
-        <p className="workspace-state">
-          <strong>Removing</strong> it from the queue
-        </p>
-      ) : (
-        <p className="workspace-state">{text}</p>
-      )}
+      <div className="workspace-line">
+        {removing ? (
+          <p className="workspace-state">
+            <strong>Removing</strong> it from the queue
+          </p>
+        ) : (
+          <p className="workspace-state">{text}</p>
+        )}
+      </div>
     </li>
   );
 }

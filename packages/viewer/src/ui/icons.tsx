@@ -641,6 +641,24 @@ export const CommitIcon = () => (
   </Icon>
 );
 
+/** A workspace's files not committed, on its card (V79): lucide's pencil-line. */
+export const PencilIcon = () => (
+  <Icon lucide>
+    <path d="M13 21h8" />
+    <path d="m15 5 4 4" />
+    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+  </Icon>
+);
+
+/** Whether a workspace merges, on its card (V79): lucide's git-merge. */
+export const MergeIcon = () => (
+  <Icon lucide>
+    <circle cx="18" cy="18" r="3" />
+    <circle cx="6" cy="6" r="3" />
+    <path d="M6 21V9a9 9 0 0 0 9 9" />
+  </Icon>
+);
+
 /** What an agent asked (V73): lucide's message-circle-question. */
 export const QuestionIcon = () => (
   <Icon lucide>
