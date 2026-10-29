@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/v75-suggested-settings.md)
 
 **Status:** V75a and V75b merged into main (2026-10-28, from branch
-`milestone/v75-suggested-settings`); V75c not started. The eval waits for the person's labels.
+`milestone/v75-suggested-settings`); V75c in progress on the same branch. The eval waits for the person's labels.
 "As built" and results are at the end.
 The person answered the plan's three questions: "1. Keep the agent i picked 2. No 3. Show a
 proposal i accept first. This feature should be called on click a button, not everythime i write
@@ -234,6 +234,27 @@ models (sources in the journal):
 - The `advisor` prompt in the Prompts group, with `{models}` and `{agent}` listed as Settings
   lists every placeholder.
 
+**V75c, as designed before the build** (decision 556). The plan above gave the advisor one model
+and one level, from the default agent's list. Scout runs on one agent; the advisor runs on the
+agent picked on the Start page, Claude Code or Codex. One `advisor.model` cannot name a model of
+both: `sonnet` would apply to Claude Code only, and Codex would fall back to Luna without a word.
+The levels differ too: Codex's Luna takes `none`, Claude Code's models do not.
+
+- **A model and a level for each agent**: `advisor.claude.model`, `advisor.claude.effort`,
+  `advisor.codex.model` and `advisor.codex.effort`. Each is read only when that agent suggests.
+  `advisor.model` and `advisor.effort` go: they were merged a day before, and this repository's
+  config has neither.
+- **Settings' Suggest settings entry becomes a page like Scout's**: a Claude Code section and a
+  Codex section, each with the Model and Effort rows of the prebuilt agents' pages, then the
+  prompt. The entry stays in the Workspaces group (V75a's As built).
+- **Default names whose choice it is**, as the merger's Model does: "Symbiote's default (Haiku
+  5.5)", and for Effort "Symbiote's default (low)" when the model takes `low`. Without the small
+  model in the list, the Model says the agent's own default, as the advisor then runs.
+- **Routes as Scout's and the merger's**: `GET /api/workspaces/advisor/<agent>/efforts`, and
+  `POST …/model` and `…/effort` with `{ model }` or `{ effort }`, null to remove. A model the
+  agent does not list, or a level the advisor's model does not take, is refused (400), as
+  Scout's are. An agent not installed answers with no agent, and Settings says so.
+
 ## Verification
 
 1. **Tests first** (red before):
@@ -287,7 +308,7 @@ is built.
 |---|---|---|
 | V75a | The advisor and its prompt | `workspace-advice.ts`, the `advisor` prompt key, the schema, `POST /api/workspaces/suggest`, the eval script and its results |
 | V75b | The button on the Start page | **Suggest settings**, the proposal, **Use these settings** and **Dismiss**, failures; e2e |
-| V75c | Settings | The Advisor group (Model, Effort) and the prompt in Prompts |
+| V75c | Settings | Model and Effort for each agent on the Suggest settings page, above its prompt (decision 556) |
 
 **Proposed decisions**:
 
@@ -300,6 +321,7 @@ is built.
 | 548 | How does a suggestion apply? | **As a proposal the person accepts**: the cards change only on **Use these settings** | The person: "Show a proposal i accept first" |
 | 549 | When does the advisor run? | **Only when the button is pressed**, never as the person types | The person: "should be called on click a button, not everythime i write in the prompt, it is the user decision"; it spends their quota and 3–5 s |
 | 550 | Where does the person's text go? | **Between `<task>` tags, as the message, with the prompt as the agent's instructions (`--system-prompt`, `model_instructions_file`); documents by name only; no tools** | Keeps the person's text apart from the instructions, as Anthropic's guide advises; Codex reads 3,460 fewer tokens (measured) |
+| 556 | Whose model does the advisor run on, once Settings sets it? | **One model and one level for each agent** (`advisor.claude.*`, `advisor.codex.*`), on Suggest settings' page above its prompt | The advisor runs on the agent picked on the Start page; one `advisor.model` names a model of one agent only, and the agents' levels differ |
 
 ## The person's answers
 
