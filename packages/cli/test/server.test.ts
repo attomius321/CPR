@@ -6,6 +6,7 @@ import {
   UnknownCheckoutTarget,
   type BranchReviewInfo,
   type CheckoutTarget,
+  type FinishedWorkspace,
   type WorkspaceOptions,
   type WorkspaceAgainst,
   type WorkspaceChanges,
@@ -1501,6 +1502,16 @@ describe('symbiote view: workspaces (V18)', () => {
     merged: false,
     agent: { state: 'working', kind: 'claude', id: 's1' },
   };
+  const ended: FinishedWorkspace = {
+    branch: 'feature/old',
+    brief: 'Old work',
+    created: '2026-10-14T09:00:00.000Z',
+    finished: '2026-10-15T09:00:00.000Z',
+    planFirst: false,
+    outcome: 'merged',
+    into: 'main',
+    end: C,
+  };
   const options: WorkspaceOptions = {
     base: { from: 'main', sha: C },
     branches: [{ name: 'main', sha: C }],
@@ -1539,6 +1550,11 @@ describe('symbiote view: workspaces (V18)', () => {
   const workspaces: Workspaces = {
     options: () => Promise.resolve(options),
     list: () => Promise.resolve({ workspaces: [summary], place: 'repository' }),
+    history: () => Promise.resolve({ workspaces: [ended], place: 'repository' }),
+    finished: (branch) =>
+      branch === 'feature/old'
+        ? Promise.resolve({ ...summary, branch, finished: C })
+        : Promise.reject(new WorkspaceRefused(`no finished workspace ${branch}`, 404)),
     start: async (request) => {
       started.push(request);
       if (gate) await gate;
@@ -1948,6 +1964,8 @@ describe('symbiote view: workspaces (V18)', () => {
     // Start a workspace, a page of its own since V30a: a reload there is the viewer too.
     expect(await (await get('/start')).text()).toBe('<html>viewer</html>');
     expect((await get('/start', bare)).status).toBe(404);
+    expect(await (await get('/workspace-history')).text()).toBe('<html>viewer</html>');
+    expect((await get('/workspace-history', bare)).status).toBe(404);
 
     expect(await (await get('/api/workspaces/prompt?branch=feature%2Fcsv')).json()).toEqual({
       prompt: 'Build it.',
@@ -2070,6 +2088,20 @@ describe('symbiote view: workspaces (V18)', () => {
       (await post('/api/workspaces/start', { branch: 'x' }, { 'x-symbiote': '' })).status,
     ).toBe(403);
     expect(started.length).toBe(before);
+  });
+
+  it('lists the finished workspaces, and gives one as its tabs read it (V77)', async () => {
+    expect(await (await get('/api/workspaces/history')).json()).toEqual({
+      workspaces: [ended],
+      place: 'repository',
+    });
+    expect(await (await get('/api/workspaces/history?branch=feature%2Fold')).json()).toEqual({
+      ...summary,
+      branch: 'feature/old',
+      finished: C,
+    });
+    expect((await get('/api/workspaces/history?branch=feature%2Fcsv')).status).toBe(404);
+    expect((await post('/api/workspaces/history', {})).status).toBe(405);
   });
 
   it("gives a workspace's thread, sends a message to its agent, cleans it up (V18c)", async () => {

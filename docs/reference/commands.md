@@ -97,7 +97,7 @@ toolbar.
 | g | | The Graph page | The Files page |
 | Esc | Back to the commits from a file shown; leave compare mode | Close the comment box | Close the detail panel |
 
-These keys work on Git, Scout, Skills, Monitor, Settings and a workspace's page. In a
+These keys work on Git, Scout, Skills, Monitor, History, Settings and a workspace's page. In a
 change, only n and [ work.
 
 | Key | What it does |
@@ -107,6 +107,7 @@ change, only n and [ work.
 | a | Scout |
 | i | Skills |
 | m | Monitor |
+| h | History: the cleaned-up workspaces. ↑ and ↓ move between them in its list. |
 | w | Move to the workspaces in the sidenav. ↑ and ↓ move between them, and Enter opens one. |
 | [ | Fold the sidenav to a row of icons, or open it again |
 | ] | In a workspace: hide or show the **Changes** panel |

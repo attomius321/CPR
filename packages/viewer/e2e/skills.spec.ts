@@ -431,26 +431,34 @@ test('Open in VS Code opens the skill at the caret’s line', async ({ page }) =
 /** Lists are read every 5 s while an agent works (V18b). */
 const POLL = { timeout: 15_000 };
 const scribePane = (page: Page) => page.getByRole('region', { name: 'Scribe' });
-const request = (page: Page) =>
-  scribePane(page).getByRole('textbox', { name: 'Ask Scribe for a skill' });
+const screen = (page: Page) => scribePane(page).locator('.agent-terminal .xterm-rows');
+const keys = (page: Page) => scribePane(page).locator('.xterm-helper-textarea');
 /** The fake's starts named Scribe, as Claude Code was asked for them. */
 const scribeCalls = () => symbiote.calls().filter((call) => call.args.includes('Scribe'));
 
-test('Scribe: a request starts Claude Code writing skills only, and what it writes is listed', async ({
+// V78 (decisions 569, 570): Scribe's pane is its terminal, opened with no request, as Scout's page.
+test('Scribe: its pane is its terminal, Claude Code opened writing skills only; what it writes is listed', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
   commit({ '.claude/skills/review/SKILL.md': REVIEW });
   await page.goto(`${symbiote.url}skills`);
+  // Nothing is started before its pane is opened.
+  await expect(entry(page, 'review')).toBeVisible();
+  expect(scribeCalls()).toEqual([]);
   await list(page).getByRole('button', { name: 'Scribe' }).click();
   await expect(page).toHaveURL(`${symbiote.url}skills?scribe`);
   await expect(scribePane(page).getByRole('heading', { name: 'Scribe' })).toBeVisible();
-  // Nothing is started or written until it is asked.
-  expect(scribeCalls()).toEqual([]);
-
-  await request(page).fill('A skill for adding a prompt to Settings');
-  await request(page).press('Enter');
   await expect.poll(() => scribeCalls().length, POLL).toBe(1);
+  await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
+  await expect(keys(page)).toBeFocused();
+  await expect(scribePane(page).getByRole('status')).toHaveText('Ready: ask in its terminal');
+  // No box, no Effort, no Agent, no Write: only New conversation.
+  await expect(scribePane(page).getByRole('textbox', { name: /Ask Scribe/ })).toHaveCount(0);
+  await expect(scribePane(page).getByRole('slider')).toHaveCount(0);
+  await expect(scribePane(page).getByRole('combobox')).toHaveCount(0);
+  await expect(scribePane(page).getByRole('button', { name: 'Write' })).toHaveCount(0);
+  await expect(scribePane(page).getByRole('button', { name: 'New conversation' })).toBeVisible();
   const [call] = scribeCalls();
   expect(call?.cwd).toBe(symbiote.repo);
   const args = call?.args ?? [];
@@ -469,11 +477,14 @@ test('Scribe: a request starts Claude Code writing skills only, and what it writ
   expect(args[9]).toBe(settings);
   // Its gate is given the skills folder.
   expect(readFileSync(settings, 'utf8')).toContain(join(symbiote.repo, '.claude', 'skills'));
-  expect(args.at(-1)).toContain('A skill for adding a prompt to Settings');
-  await expect(scribePane(page).locator('.agent-terminal .xterm-rows')).toContainText(
-    'Fake Claude Code · fake0',
-    POLL,
-  );
+  // Its instructions are its system prompt, and nothing follows: no prompt (decision 570).
+  expect(args.at(-2)).toBe('--append-system-prompt');
+  expect(args.at(-1)).toContain('You are Scribe');
+  // The request is typed in its terminal.
+  await page.keyboard.type('A skill for adding a prompt to Settings');
+  await page.keyboard.press('Enter');
+  await expect(screen(page)).toContainText('got: A skill for adding a prompt to Settings');
+  symbiote.setSession('fake0', { state: 'working', status: 'busy' });
 
   // While it works, what it writes shows in the list; the sidenav marks Skills elsewhere.
   mkdirSync(join(symbiote.repo, '.claude/skills/adding-prompts'), { recursive: true });
@@ -512,8 +523,6 @@ test("Scribe's terminal fills the pane: to the main area's right and bottom edge
 }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}skills?scribe`);
-  await request(page).fill('A skill for releases');
-  await request(page).press('Enter');
   const terminal = page.locator('.scribe-pane .agent-terminal');
   await expect(terminal.locator('.xterm-rows')).toContainText('Fake Claude Code', POLL);
   for (const [width, height] of [
@@ -533,8 +542,8 @@ test("Scribe's terminal fills the pane: to the main area's right and bottom edge
   }
 });
 
-// Scribe's effort (fix/scribe-effort-level): the box starts at the project's `scribe.effort`.
-test("Effort: Scribe's box starts at the project's level, which reaches Claude Code", async ({
+// Scribe's effort (fix/scribe-effort-level): its conversation opens at the project's `scribe.effort`.
+test("Effort: Scribe opens at the project's level, which reaches Claude Code; its line says it", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -542,10 +551,6 @@ test("Effort: Scribe's box starts at the project's level, which reaches Claude C
     'symbiote/config.json': '{ "scout": { "effort": "low" }, "scribe": { "effort": "medium" } }\n',
   });
   await page.goto(`${symbiote.url}skills?scribe`);
-  const effort = scribePane(page).getByRole('slider', { name: 'Effort' });
-  await expect(effort).toHaveAttribute('aria-valuetext', 'medium');
-  await request(page).fill('A skill for releases');
-  await request(page).press('Enter');
   await expect.poll(() => scribeCalls().length, POLL).toBe(1);
   const args = scribeCalls()[0]?.args ?? [];
   expect(args[args.indexOf('--effort') + 1]).toBe('medium');
@@ -554,15 +559,53 @@ test("Effort: Scribe's box starts at the project's level, which reaches Claude C
   );
 });
 
-test('Improve with Scribe: its box takes the skill to change', async ({ page }) => {
+// V78 (decision 571): Improve with Scribe types the skill to change in its terminal, unsent.
+test('Improve with Scribe: the skill to change typed in its terminal, not sent', async ({
+  page,
+}) => {
   symbiote = await serveWorkspaces();
   commit({ '.claude/skills/review/SKILL.md': REVIEW });
   await page.goto(`${symbiote.url}skills`);
   await editor(page).getByRole('button', { name: 'Improve with Scribe' }).click();
   await expect(page).toHaveURL(`${symbiote.url}skills?scribe`);
-  await expect(request(page)).toHaveValue('Improve .claude/skills/review/SKILL.md: ');
-  // From the new skill's form too.
+  await expect(screen(page)).toContainText('> Improve .claude/skills/review/SKILL.md:', POLL);
+  await expect(screen(page)).not.toContainText('got:');
+  await expect(keys(page)).toBeFocused();
+  // The person finishes it, and sends it.
+  await page.keyboard.type('say when to run it');
+  await page.keyboard.press('Enter');
+  await expect(screen(page)).toContainText(
+    'got: Improve .claude/skills/review/SKILL.md: say when to run it',
+  );
+  expect(scribeCalls()).toHaveLength(1);
+
+  // Again from a skill, with the conversation running: the same conversation's terminal, joined
+  // again (the fake prints nothing of before), the text typed there.
+  await entry(page, 'review').click();
+  await editor(page).getByRole('button', { name: 'Improve with Scribe' }).click();
+  await expect.poll(() => symbiote.attaches(), POLL).toEqual(['fake0', 'fake0']);
+  await expect(screen(page)).toContainText('> Improve .claude/skills/review/SKILL.md:', POLL);
+  await expect(screen(page)).not.toContainText('got:');
+  expect(scribeCalls()).toHaveLength(1);
+
+  // From the new skill's form: the pane, nothing typed.
   await page.getByRole('button', { name: 'New skill' }).click();
   await page.getByRole('button', { name: 'ask Scribe to write it' }).click();
-  await expect(request(page)).toBeVisible();
+  await expect(page).toHaveURL(`${symbiote.url}skills?scribe`);
+  await expect(screen(page)).toContainText('Fake Claude Code', POLL);
+});
+
+// V78 (decision 572): Scribe runs in a terminal; without one, no box.
+test('without terminals, Scribe says it runs in a terminal and why none runs, starting nothing', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces({ terminal: false });
+  await page.goto(`${symbiote.url}skills?scribe`);
+  await expect(scribePane(page).locator('.scout-note')).toHaveText(
+    'Scribe runs in a terminal, and none runs here: terminals are turned off (SYMBIOTE_TERMINAL=off).',
+  );
+  await expect(scribePane(page).getByRole('textbox')).toHaveCount(0);
+  await expect(scribePane(page).getByRole('slider')).toHaveCount(0);
+  await page.waitForTimeout(500);
+  expect(scribeCalls()).toEqual([]);
 });

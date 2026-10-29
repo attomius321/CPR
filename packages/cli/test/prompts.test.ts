@@ -435,29 +435,38 @@ describe("Scout's prompt (V35)", () => {
 });
 
 describe("Scribe's prompt (V41)", () => {
-  it("is Symbiote's until the project has its own, and holds the request and the folder", () => {
+  it("is Symbiote's until the project has its own, and holds the folder; the request is not in it (V78)", () => {
     const scribe = DEFAULT_PROMPTS.scribe;
-    expect(scribe).toContain('{request}');
+    // Its system prompt: the person asks in its terminal (decision 570).
+    expect(scribe).not.toContain('{request}');
+    expect(scribe).not.toContain("The person's request");
     expect(scribe).toContain('{skills}');
     // It writes skills only, never commits, and writes them as the standard has them.
     expect(scribe).toMatch(/never commit/i);
     expect(scribe).toContain('1,024');
     expect(scribe).toContain('500 lines');
-    const filled = fillPrompt(scribe, {
-      request: 'A skill for adding a prompt',
-      skills: '/repo/.claude/skills',
-      checkout: '/repo',
-    });
-    expect(filled).toContain('A skill for adding a prompt');
+    const filled = fillPrompt(scribe, { skills: '/repo/.claude/skills', checkout: '/repo' });
     expect(filled).toContain('/repo/.claude/skills');
-    expect(filled).not.toMatch(/\{(request|skills|checkout)\}/);
+    expect(filled).not.toMatch(/\{(skills|checkout)\}/);
     expect(readPrompts(withConfig({})).text.scribe).toBe(scribe);
   });
 
-  it("refuses a project prompt without the request, using Symbiote's", () => {
-    const { text, warnings } = readPrompts(withConfig({ prompts: { scribe: 'Write well.' } }));
-    expect(text.scribe).toBe(DEFAULT_PROMPTS.scribe);
-    expect(warnings.scribe).toContain('{request}');
+  it("uses a project's text without the request (V78)", () => {
+    const own = readPrompts(withConfig({ prompts: { scribe: 'Write well.' } }));
+    expect(own.text.scribe).toBe('Write well.');
+    expect([...own.changed]).toEqual(['scribe']);
+    expect(own.warnings).toEqual({});
+  });
+
+  it("keeps a project's text from before V78, its {request} for Scribe to fill with nothing", () => {
+    const { text, warnings } = readPrompts(
+      withConfig({ prompts: { scribe: 'Write well.\n\n{request}' } }),
+    );
+    expect(text.scribe).toBe('Write well.\n\n{request}');
+    expect(warnings).toEqual({});
+    expect(scribePrompt(text, { skills: '/repo/.claude/skills', checkout: '/repo' })).toBe(
+      'Write well.',
+    );
   });
 
   it('is listed in Settings, in its own group, after Scout', async () => {
@@ -468,11 +477,15 @@ describe("Scribe's prompt (V41)", () => {
     const { prompts } = await promptSettingsService(await openRepo(repo.root)).prompts();
     expect(prompts.at(-2)).toMatchObject({ key: 'scribe', group: 'Scribe', title: 'Instructions' });
     expect(prompts.at(-1)).toMatchObject({ key: 'library', group: 'Scribe', title: 'Library' });
+    // Its system prompt since V78: no request among its placeholders.
+    const scribe = prompts.at(-2);
+    expect(scribe?.placeholders.map((p) => p.name)).toEqual(['skills', 'checkout', 'library']);
+    expect(scribe?.about).toContain('system prompt');
   });
 });
 
 describe("Scribe's prompt with a skill library (SK1, decision 430)", () => {
-  const values = { request: 'A skill', skills: '/repo/.claude/skills', checkout: '/repo' };
+  const values = { skills: '/repo/.claude/skills', checkout: '/repo' };
 
   it("is main's text without a library: the line holding {library} goes with its blank line", () => {
     const scribe = DEFAULT_PROMPTS.scribe;
@@ -496,8 +509,10 @@ describe("Scribe's prompt with a skill library (SK1, decision 430)", () => {
   });
 
   it('leaves a project prompt without {library} as it is', () => {
-    const prompts = { ...DEFAULT_PROMPTS, scribe: 'Write {request}.' };
-    expect(scribePrompt(prompts, { ...values, library: '/home/a/skills' })).toBe('Write A skill.');
+    const prompts = { ...DEFAULT_PROMPTS, scribe: 'Write in {skills}.' };
+    expect(scribePrompt(prompts, { ...values, library: '/home/a/skills' })).toBe(
+      'Write in /repo/.claude/skills.',
+    );
   });
 
   it("refuses a project's library prompt without the folder", () => {

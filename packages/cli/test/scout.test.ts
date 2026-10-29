@@ -891,7 +891,7 @@ describe('Scout is a terminal (V50)', () => {
     });
   });
 
-  it('leaves Scribe as it was: it starts with a request', async () => {
+  it('opens Scribe with no request too (V78, decision 570): its instructions its system prompt', async () => {
     const repo = fresh();
     const { claude, startPageAgent } = fakeClaude(repo.root);
     const s = scribe(await openRepo(repo.root), cache, {
@@ -900,12 +900,15 @@ describe('Scout is a terminal (V50)', () => {
       gate: '/opt/symbiote/dist/scribe-hook.js',
       node: '/usr/bin/node',
     });
-    await expect(s.open({})).rejects.toMatchObject({
-      status: 409,
-      message: 'Scribe starts with what you ask it',
-    });
-    await s.ask({ text: 'A skill' });
-    expect(startPageAgent.mock.calls[0]?.[0]).not.toHaveProperty('instructions');
+    expect((await s.open({})).conversation).toMatchObject({ kind: 'claude', state: 'ready' });
+    const request = startPageAgent.mock.calls[0]?.[0];
+    expect(request).not.toHaveProperty('prompt');
+    expect(request?.instructions).toBe(
+      scribePrompt(DEFAULT_PROMPTS, {
+        skills: join(repo.root, '.claude', 'skills'),
+        checkout: repo.root,
+      }),
+    );
   });
 });
 
@@ -1264,11 +1267,11 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
   };
   const scribeRecord = (repo: TestRepo) => join(repo.root, 'symbiote', 'scribe.json');
 
-  it('starts Claude Code in the checkout with Write and Edit, its gate given the skills folder, asking', async () => {
+  it('opens Claude Code in the checkout with Write and Edit, its gate given the skills folder, asking', async () => {
     const repo = fresh();
     const { claude, startPageAgent } = fakeClaude(repo.root);
     const s = await scribeService(repo, { claude });
-    const state = await s.ask({ text: 'A skill for adding a prompt to Settings' });
+    const state = await s.open({});
     const skills = join(repo.root, '.claude', 'skills');
     const settings = join(repo.root, 'symbiote', 'scribe-settings.json');
     expect(startPageAgent).toHaveBeenCalledTimes(1);
@@ -1281,15 +1284,13 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
       // Claude Code asks the person before each write into .claude (decision 275).
       permissionMode: 'default',
     });
-    // Without a skill library (SK1), the text it had before.
-    expect(request?.prompt).toBe(
-      scribePrompt(DEFAULT_PROMPTS, {
-        request: 'A skill for adding a prompt to Settings',
-        skills,
-        checkout: repo.root,
-      }),
+    // Its instructions its system prompt, the person's words typed in its terminal (V78,
+    // decision 570); without a skill library (SK1), no line of it.
+    expect(request).not.toHaveProperty('prompt');
+    expect(request?.instructions).toBe(
+      scribePrompt(DEFAULT_PROMPTS, { skills, checkout: repo.root }),
     );
-    expect(request?.prompt).not.toMatch(/library|\{\w+\}/);
+    expect(request?.instructions).not.toMatch(/library|\{\w+\}/);
     expect(request).not.toHaveProperty('addDirs');
     // Its gate, given the folder; and its writes in the checkout, not in a worktree of Claude
     // Code's own: a background session refuses an edit outside one unless told so (V41).
@@ -1316,7 +1317,7 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
       agent: 'claude',
       id: 's9',
     });
-    expect(state.conversation).toMatchObject({ kind: 'claude', state: 'working', id: 's9' });
+    expect(state.conversation).toMatchObject({ kind: 'claude', state: 'ready', id: 's9' });
     // Its folder is made for it; nothing shows in git until it writes a skill.
     expect(existsSync(skills)).toBe(true);
     expect(repo.git('status', '--porcelain')).toBe('');
@@ -1325,21 +1326,27 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
     expect((await (await service(repo, { claude })).state()).conversation).toBeNull();
   });
 
-  it('starts Codex in the skills folder, writing there and nowhere else, asking nobody', async () => {
+  it('opens Codex in the skills folder, writing there and nowhere else, asking nobody', async () => {
     const repo = fresh();
     const server = await appServer();
     const { codex } = fakeCodex(server);
     const { terminals, opening } = fakeTerminals();
     const s = await scribeService(repo, { codex, terminals });
-    await s.ask({ text: 'A skill for releases' });
+    expect((await s.open({})).conversation).toMatchObject({ kind: 'codex', state: 'ready' });
     const skills = join(repo.root, '.claude', 'skills');
     const start = server.calls.find((c) => c.method === 'thread/start');
     expect(start?.params).toEqual({
       cwd: skills,
       sandbox: 'workspace-write',
       approvalPolicy: 'never',
+      developerInstructions: scribePrompt(DEFAULT_PROMPTS, { skills, checkout: repo.root }),
     });
-    expect(server.thread('thread-1')).toMatchObject({ name: 'Scribe' });
+    // No turn: the first is typed in its terminal. Named as Scout's is (the fake is Codex 0.163,
+    // which names a thread once it has a message).
+    expect(server.calls.some((c) => c.method === 'turn/start')).toBe(false);
+    expect(server.calls.find((c) => c.method === 'thread/name/set')?.params).toMatchObject({
+      name: 'Scribe',
+    });
     await s.terminal({ cols: 100, rows: 30 });
     expect(opening[0]).toMatchObject({
       command: '/usr/bin/codex',
@@ -1353,19 +1360,14 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
     const library = await libraryAt();
     const { claude, startPageAgent } = fakeClaude(repo.root);
     const s = await scribeService(repo, { claude, library: library.service });
-    await s.ask({ text: 'A skill for deploys, in my library' });
+    await s.open({});
     const skills = join(repo.root, '.claude', 'skills');
     const request = startPageAgent.mock.calls[0]?.[0];
     expect(request?.addDirs).toEqual([library.folder]);
-    expect(request?.prompt).toBe(
-      scribePrompt(DEFAULT_PROMPTS, {
-        request: 'A skill for deploys, in my library',
-        skills,
-        checkout: repo.root,
-        library: library.folder,
-      }),
+    expect(request?.instructions).toBe(
+      scribePrompt(DEFAULT_PROMPTS, { skills, checkout: repo.root, library: library.folder }),
     );
-    expect(request?.prompt).toContain(`${library.folder}/<name>/SKILL.md`);
+    expect(request?.instructions).toContain(`${library.folder}/<name>/SKILL.md`);
     const settings = join(repo.root, 'symbiote', 'scribe-settings.json');
     expect(
       (
@@ -1382,9 +1384,9 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
     const server = await appServer();
     const { codex } = fakeCodex(server);
     const s = await scribeService(repo, { codex, library: library.service });
-    await s.ask({ text: 'A skill for releases' });
+    await s.open({});
     const start = server.calls.find((c) => c.method === 'thread/start');
-    expect(start?.params).toEqual({
+    expect(start?.params).toMatchObject({
       cwd: join(repo.root, '.claude', 'skills'),
       sandbox: 'workspace-write',
       approvalPolicy: 'never',
@@ -1397,24 +1399,33 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
     const gone = await libraryAt();
     rmSync(gone.folder, { recursive: true });
     const { claude, startPageAgent } = fakeClaude(repo.root);
-    await (await scribeService(repo, { claude, library: gone.service })).ask({ text: 'A' });
+    await (await scribeService(repo, { claude, library: gone.service })).open({});
     expect(startPageAgent.mock.calls[0]?.[0]).not.toHaveProperty('addDirs');
-    expect(startPageAgent.mock.calls[0]?.[0]?.prompt).not.toContain(gone.folder);
+    expect(startPageAgent.mock.calls[0]?.[0]?.instructions).not.toContain(gone.folder);
 
     const own = await libraryAt(join(repo.root, '.claude', 'skills'));
     const second = fresh();
     const other = fakeClaude(second.root);
-    await (
-      await scribeService(repo, { claude: other.claude, library: own.service })
-    ).ask({
-      text: 'B',
-    });
+    await (await scribeService(repo, { claude: other.claude, library: own.service })).open({});
     expect(other.startPageAgent.mock.calls[0]?.[0]).not.toHaveProperty('addDirs');
+  });
+
+  it("asked through its API, the person's words are its first prompt, after its instructions (V78)", async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    await (await scribeService(repo, { claude })).ask({ text: 'A skill for releases' });
+    expect(startPageAgent.mock.calls[0]?.[0]).toMatchObject({
+      prompt: 'A skill for releases',
+      instructions: scribePrompt(DEFAULT_PROMPTS, {
+        skills: join(repo.root, '.claude', 'skills'),
+        checkout: repo.root,
+      }),
+    });
   });
 
   it('speaks of itself', async () => {
     const repo = fresh();
-    await expect((await scribeService(repo)).ask({ text: 'Q' })).rejects.toThrow(
+    await expect((await scribeService(repo)).open({})).rejects.toThrow(
       'Scribe needs Claude Code or Codex: neither is installed',
     );
     await expect((await scribeService(repo)).setEffort({ effort: 'low' })).rejects.toThrow(
@@ -1437,7 +1448,7 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
       scribe: { effort: 'high' },
     });
     expect(await (await service(repo, { claude })).efforts()).toMatchObject({ effort: 'low' });
-    const state = await s.ask({ text: 'A skill' });
+    const state = await s.open({});
     expect(startPageAgent.mock.lastCall?.[0]).toMatchObject({ effort: 'high' });
     expect(JSON.parse(readFileSync(scribeRecord(repo), 'utf8'))).toMatchObject({ effort: 'high' });
     expect(state.conversation).toMatchObject({ kind: 'claude', effort: 'high' });
@@ -1445,7 +1456,7 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
     await s.renew();
     expect(await s.setEffort({ effort: null })).not.toHaveProperty('effort');
     expect(JSON.parse(readFileSync(config, 'utf8'))).toEqual({ scout: { effort: 'low' } });
-    await s.ask({ text: 'A skill' });
+    await s.open({});
     expect(startPageAgent.mock.lastCall?.[0]).not.toHaveProperty('effort');
   });
 });

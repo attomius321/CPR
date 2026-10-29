@@ -37,9 +37,12 @@ const timeOf = (at: string) =>
 export function ThreadTab({
   thread,
   worktree,
+  unrecorded = "Symbiote keeps an agent's messages from V18c on: Talk shows this one's.",
 }: {
   thread: WorkspaceThread | null;
   worktree: string;
+  /** What is said when Symbiote kept none of its messages (History's own words, V77). */
+  unrecorded?: string;
 }) {
   const list = useRef<HTMLOListElement>(null);
   const items = thread ? threadItems(thread.entries, worktree) : [];
@@ -51,11 +54,7 @@ export function ThreadTab({
   if (!thread) return <p className="hint">Reading its messages…</p>;
   return (
     <>
-      {!thread.recorded && (
-        <p className="hint">
-          Symbiote keeps an agent's messages from V18c on: Talk shows this one's.
-        </p>
-      )}
+      {!thread.recorded && <p className="hint">{unrecorded}</p>}
       {thread.recorded && items.length === 0 && (
         <p className="hint">Nothing yet: the agent's reports and your messages show here.</p>
       )}

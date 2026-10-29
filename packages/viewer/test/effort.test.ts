@@ -1,6 +1,6 @@
 import type { AgentEfforts } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { scoutLevel, stopOf, stopWord } from '../src/workspaces/effort.js';
+import { stopOf, stopWord } from '../src/workspaces/effort.js';
 import { effortChoices } from '../src/workspaces/workspaces.js';
 
 const claude: { kind: 'claude'; efforts: AgentEfforts } = {
@@ -29,18 +29,5 @@ describe('the effort stepper (fix/scout-effort-level)', () => {
     expect(stopWord({ value: 'xhigh', label: 'xhigh' })).toBe('xHigh');
     expect(stopWord({ value: 'minimal', label: 'minimal' })).toBe('Minimal');
     expect(stopWord({ value: 'ultra', label: 'ultra' })).toBe('Ultra');
-  });
-});
-
-describe("Scout's level in its question box (fix/scout-effort-level)", () => {
-  it("is the one picked, else the project's when the agent lists it, else the agent's own", () => {
-    expect(scoutLevel('low', 'high', claude)).toBe('low');
-    // Default picked over the project's level.
-    expect(scoutLevel('', 'high', claude)).toBe('');
-    expect(scoutLevel(null, 'high', claude)).toBe('high');
-    expect(scoutLevel(null, 'ultra', claude)).toBe('');
-    expect(scoutLevel(null, undefined, claude)).toBe('');
-    // A level picked for another agent that this one does not list.
-    expect(scoutLevel('ultra', 'high', claude)).toBe('high');
   });
 });

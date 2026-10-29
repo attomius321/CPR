@@ -542,7 +542,7 @@ test("Scout's model: Claude Code's own list, saved as scout.model when picked; t
   await expect.poll(scout).toEqual({ effort: 'xhigh' });
   await modelSelect(page).selectOption({ label: 'Opus 4.6' });
   await expect(part(page, 'Model').getByRole('status')).toHaveText(
-    'Saved. Scout starts on Opus 4.6 when it next opens with no conversation.',
+    "Saved. Scout's next conversation starts on Opus 4.6.",
   );
   await expect.poll(scout).toEqual({ effort: 'xhigh', model: 'claude-opus-4-6' });
   await expect(part(page, 'Model').locator('.settings-row-note')).toHaveText(
@@ -554,13 +554,13 @@ test("Scout's model: Claude Code's own list, saved as scout.model when picked; t
   await expect(part(page, 'Effort').getByRole('alert')).toHaveText(
     'scout.effort is xhigh, which Claude Code does not list: Scout starts it at its default.',
   );
-  // The next conversation starts on it, opened with the page (V50), and its head says so.
+  // The next conversation starts on it, opened with the page (V50), and its line says so (V78).
   await page.goto(`${symbiote.url}scout`);
   const scoutPage = page.getByRole('region', { name: 'Scout' });
   await expect
     .poll(() => symbiote.calls().find((call) => call.args.includes('Scout'))?.args ?? [])
     .toEqual(expect.arrayContaining(['--model', 'claude-opus-4-6']));
-  await expect(scoutPage.getByRole('combobox', { name: 'Model' })).toHaveValue('claude-opus-4-6');
+  await expect(scoutPage.locator('.scout-about')).toContainText('with Claude Code on Opus 4.6');
   // Back to the default: the key goes.
   await page.goto(`${symbiote.url}settings?prompt=scout`);
   await expect(modelSelect(page)).toHaveValue('claude-opus-4-6');
