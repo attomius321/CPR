@@ -207,6 +207,22 @@ describe('the nexus server', () => {
     }
   });
 
+  it("refuses what another site's page asks for, but serves a link followed from it", async () => {
+    const cross = { 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'no-cors' };
+    expect(
+      (await get('/api/folders', { headers: { ...cross, 'sec-fetch-dest': 'image' } })).status,
+    ).toBe(403);
+    const link = {
+      'sec-fetch-site': 'cross-site',
+      'sec-fetch-mode': 'navigate',
+      'sec-fetch-dest': 'document',
+    };
+    expect((await get('/', { headers: link })).status).toBe(200);
+    expect(
+      (await get('/api/symbiotes', { headers: { 'sec-fetch-site': 'same-origin' } })).status,
+    ).toBe(200);
+  });
+
   it('answers only its own host, and writes only where it starts or stops a Symbiote', async () => {
     const port = new URL(server.url).port;
     expect((await get('/', { host: `localhost:${port}` })).status).toBe(200);

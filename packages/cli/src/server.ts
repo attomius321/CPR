@@ -348,6 +348,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!hosts.has(req.headers.host ?? '')) return send(res, 421, 'unknown host');
+    if (fromAnotherSite(req)) return send(res, 403, "forbidden: another site's request");
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname === '/api/logs') return pageError(req, res);
     if (url.pathname === '/api/intro' && options.intro) return introApi(req, res, options.intro);
@@ -1800,6 +1801,35 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       return new Promise<void>((resolve) => server.close(() => resolve()));
     },
   };
+}
+
+/**
+ * A request another site's page made — an image, a script, a frame or a fetch, sent with this
+ * server's own host —, as the browser says (`Sec-Fetch-*`): a GET such as a review's address starts
+ * work (fix/security-and-bugs). A link followed from that site is a page the person opens, and is
+ * served, as is what this machine's pages ask for (the nexus).
+ */
+function fromAnotherSite(req: IncomingMessage): boolean {
+  return (
+    req.headers['sec-fetch-site'] === 'cross-site' &&
+    !(
+      req.headers['sec-fetch-mode'] === 'navigate' && req.headers['sec-fetch-dest'] === 'document'
+    ) &&
+    !fromThisMachine(req.headers.referer)
+  );
+}
+
+/**
+ * Whether a request came from a page on this machine (its `Referer`, which a page cannot set): the
+ * nexus at localhost frames a Symbiote at 127.0.0.1, another site to the browser.
+ */
+function fromThisMachine(referer: string | undefined): boolean {
+  try {
+    const { protocol, hostname } = new URL(referer ?? '');
+    return protocol === 'http:' && (hostname === '127.0.0.1' || hostname === 'localhost');
+  } catch {
+    return false;
+  }
 }
 
 function json(res: ServerResponse, status: number, value: unknown): void {
