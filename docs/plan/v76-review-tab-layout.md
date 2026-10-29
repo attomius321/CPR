@@ -120,6 +120,7 @@ Merge                              ← branch reviews with a target only
 |---|---|---|
 | V76a | The e2e of the tab's layout, red | `reviews.spec.ts` |
 | V76b | Sections, labels, the result's box, Merge into's grid, the tab strip | `ReviewTab.tsx/.css`, `MergeControl.tsx/.css`, `Sidebar.css` |
+| V76c | Files and Graph at the review head's end, where they stay put (asked after V76b) | `PageHead.tsx`, `page.css`, `App.tsx`, `files.spec.ts` |
 
 **Decisions**:
 
@@ -129,9 +130,39 @@ Merge                              ← branch reviews with a target only
 | 558 | Merge into in a narrow panel? | **A grid: the button and the branch on one line, how it lands under them across the section; from 300 px of section both dropdowns stacked beside the button; cut with an ellipsis, never wider than the panel; 240 px at most in a workspace's head** | A select is as wide as its longest branch: 423 px in a 298 px panel; beside the button at 300 px, "with a merge commit" had 160 px |
 | 559 | The sidebar's tabs wider than the sidebar? | **The strip scrolls on its own; the panel never moves; the default width stays 300 px** | Picking Review on the Graph page slid the panel 26 px left; a wider default narrows every canvas |
 | 560 | How does the result of a finished review show? | **A box tinted in its state (added, muted, error), its buttons on one row** | Green words among the fields read as one more field; the merge's state is a tinted box already |
+| 568 | Where do a review's Files and Graph go so they do not move? | **At the head's end: `PageHead`'s `end`, after the actions, on the title's line at every width; the actions before it wrap under the title on their own** | Among the actions, the Graph page's toggles moved it 293 px left at 1440 px, and 46 px down where its actions wrapped and the Files page's did not |
 
 **Not in V76 (later)**: a segmented control for the verdict ("Request changes" does not fit
 three to a row in 268 px); a wider default sidebar.
+
+## V76c — Files and Graph that stay put
+
+Asked after V76b: "in the review page… move the switch between graph and files somewhere else,
+somewhere static". The switch was the second of the head's actions, which are right-aligned:
+whatever a page added after it moved it. Measured on the scratch repository (2026-10-29):
+
+| Main area | Files page | Graph page |
+|---|---|---|
+| 1440 px window | x 1256 | x 963: **293 px left**, under Focus, Context, Type references |
+| 1100 px | x 916 | x 623 |
+| 760, 700, 640 px | y 59 | y 105: **46 px down**, the Graph page's actions wrapped under the title |
+
+- **`PageHead`'s `end`** (`ui/PageHead.tsx`, `ui/page.css`): after the actions, on the title's line
+  at every width. With one, the icon, title and actions are in `.page-head-main`, which wraps as
+  any head does (V72: the actions under the title when the title would have less than 200 px);
+  the end stays beside it, its box `--page-head` high, so its control is centred on the title's
+  two lines as the actions are. Without one, the head is today's markup.
+- **The diff page's end**: Files and Graph, then the window's buttons under `symbiote pr` (they
+  stay the head's last). The actions keep the way back, the page's toggles and its keys' help.
+  The end's words are the small size, as the actions'.
+- Why not the first action, or beside the title: the actions are right-aligned and their width
+  changes with the page; beside the title would move V72's title off x 60.
+
+**Results (V76c).** The switch at the same place on both pages at 1440, 1100, 820, 760, 700, 660
+and 640 px (x 1292 at 1440, its right edge the head's content edge), in the browser and under
+`symbiote pr`. Under 640 px the diff's page is wider than the window (its sidebar and diff keep
+their minimum widths), and a tab clicked scrolls it sideways, as on `main`. V76c's e2e
+(`files.spec.ts`) red first (the keys' help after the switch, 36 px), green at 1440, 820 and 700.
 
 ## As built (V76)
 
