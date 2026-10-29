@@ -26,6 +26,14 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* Tabs wider than the sidebar (the Graph page's three take 325 px of its 300) scroll their strip,
+   never the sidebar: focusing Review scrolled the sidebar, `overflow: hidden` though it is, and
+   every row under the tabs lost 26 px at its left (V76). */
+.sidebar .tabs {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
 .tabs button {
   flex: none;
   height: 40px;

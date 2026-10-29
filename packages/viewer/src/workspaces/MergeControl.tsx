@@ -11,7 +11,8 @@ import { tip } from '../ui/tip.js';
  * is the approved commit; the target preselected (the branch it is reviewed against, V65; its
  * `from`, the verdict's `into`, the default branch) and any other branch to pick; how it lands,
  * with a merge commit or by fast-forward (V67, `merge.strategy` preselected), a fast-forward the
- * target cannot take said and not offered. Once queued, the entry's state instead.
+ * target cannot take said and not offered. Once queued, the entry's state instead. A row in a
+ * workspace's head; in a review's Merge section (V76) the button beside the two dropdowns stacked.
  */
 export function MergeControl({ branch }: { branch: string }) {
   const { merges } = useWorkspaces();
@@ -67,6 +68,7 @@ export function MergeControl({ branch }: { branch: string }) {
         Merge into
       </button>{' '}
       <select
+        className="merge-control-target"
         aria-label="Branch to merge into"
         value={target}
         disabled={busy}
@@ -79,6 +81,7 @@ export function MergeControl({ branch }: { branch: string }) {
         ))}
       </select>{' '}
       <select
+        className="merge-control-how"
         aria-label="How it lands"
         value={strategy}
         disabled={busy}
