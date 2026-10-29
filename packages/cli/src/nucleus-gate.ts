@@ -1,13 +1,30 @@
 // Nucleus's gate (V35, decision 236): what Nucleus's Claude Code may run, decided by Symbiote before
 // Claude Code's own rules. Read, Grep and Glob pass to those rules; Bash runs only git's read
 // commands this module parses; Symbiote's own MCP tools pass (MC1: the asked ones wait for the
-// person in Symbiote); every other tool, and every other server's, is denied. Claude Code's allow rules cannot do this:
-// `Bash(git log *)` matches `git log --output=<file>`. The hook runs once per tool call in Claude
-// Code's process tree (`nucleus-hook.ts`), so this module uses nothing but plain TypeScript.
+// person in Symbiote); WebSearch and WebFetch pass when Symbiote gives it the web (NU1, decision
+// 592); every other tool, and every other server's, is denied. Claude Code's allow rules cannot do
+// this: `Bash(git log *)` matches `git log --output=<file>`. The hook runs once per tool call in
+// Claude Code's process tree (`nucleus-hook.ts`), so this module uses nothing but plain TypeScript.
 
 /** What the gate says of one tool call: allowed, denied with the reason, or null: Claude Code's
  * own rules decide. */
 export type GateDecision = { allow: true } | { allow: false; reason: string } | null;
+
+/** What the gate is told by its arguments in the settings file: whether the web is Nucleus's. */
+export interface GateOptions {
+  web: boolean;
+}
+
+/**
+ * The gate's options from its arguments: `--web` when the conversation was started with the web
+ * (NU1). A settings file written before NU1, or with `nucleus.web` false, gives none.
+ */
+export function gateOptions(args: readonly string[]): GateOptions {
+  return { web: args.includes('--web') };
+}
+
+/** Claude Code's tools on the web (NU1): a search at Anthropic, a page read by GET from here. */
+const WEB = ['WebSearch', 'WebFetch'];
 
 /** git's commands Nucleus runs: they read the repository and its history, and write nothing. */
 const READ_COMMANDS = new Set([
@@ -211,12 +228,12 @@ export function gitReadProblem(command: string): string | null {
   if (typeof stages === 'string') return stages;
   const [git = [], ...filters] = stages;
   const [program, ...rest] = git;
-  if (program !== 'git') return `${program ?? command}: Scout runs git only`;
+  if (program !== 'git') return `${program ?? command}: only git runs`;
   const words = rest[0] === '--no-pager' ? rest.slice(1) : rest;
   const [name, ...args] = words;
   if (name === undefined) return 'say which git command: log, show, blame, diff…';
   if (name.startsWith('-')) return `git ${name}: none of git's own options but --no-pager`;
-  if (!READ_COMMANDS.has(name)) return `git ${name} is not one of git's read commands Scout runs`;
+  if (!READ_COMMANDS.has(name)) return `git ${name} is not one of git's read commands`;
   for (const arg of args) {
     const option = refusedOption(name, arg);
     if (option) {
@@ -237,7 +254,7 @@ export function gitReadProblem(command: string): string | null {
 const READS = ['Read', 'Grep', 'Glob'];
 
 /** The gate's answer to one PreToolUse hook's input (Claude Code's documented fields). */
-export function gateDecision(input: unknown): GateDecision {
+export function gateDecision(input: unknown, { web }: GateOptions = { web: false }): GateDecision {
   if (!input || typeof input !== 'object') return null;
   const v = input as { hook_event_name?: unknown; tool_name?: unknown; tool_input?: unknown };
   if (v.hook_event_name !== 'PreToolUse' || typeof v.tool_name !== 'string') return null;
@@ -250,7 +267,7 @@ export function gateDecision(input: unknown): GateDecision {
     return {
       allow: false,
       reason:
-        "Scout runs only git's read commands (git log, show, blame, diff, shortlog, grep, " +
+        "Nucleus runs only git's read commands (git log, show, blame, diff, shortlog, grep, " +
         'rev-parse, merge-base, ls-files, ls-tree), one at a time, piped into head, tail, wc or ' +
         `grep at most: ${problem}. Read, Grep and Glob read files.`,
     };
@@ -261,12 +278,19 @@ export function gateDecision(input: unknown): GateDecision {
     }
     return {
       allow: false,
-      reason: `Scout acts only through Symbiote's tools (${SYMBIOTE_TOOLS}…), not ${v.tool_name}.`,
+      reason: `Nucleus acts only through Symbiote's tools (${SYMBIOTE_TOOLS}…), not ${v.tool_name}.`,
+    };
+  }
+  if (WEB.includes(v.tool_name)) {
+    if (web) return { allow: true };
+    return {
+      allow: false,
+      reason: `Nucleus has no web in this conversation (${v.tool_name}): nucleus.web is false in symbiote/config.json, or the conversation started before Nucleus had it. A new conversation takes the setting.`,
     };
   }
   return {
     allow: false,
-    reason: `Scout changes no file: it reads files (Read, Grep, Glob) and git's history, and acts only through Symbiote's tools (${v.tool_name}).`,
+    reason: `Nucleus changes no file: it reads files (Read, Grep, Glob) and git's history, and acts only through Symbiote's tools (${v.tool_name}).`,
   };
 }
 
@@ -277,7 +301,7 @@ const SYMBIOTE_TOOLS = 'mcp__symbiote__';
  * The hook's output: Claude Code's PreToolUse decision, or nothing to leave it to its rules; `who`
  * is the agent whose gate let a command through (Nucleus's, or Scribe's since V41).
  */
-export function hookOutput(decision: GateDecision, who = 'Scout'): string {
+export function hookOutput(decision: GateDecision, who = 'Nucleus'): string {
   if (!decision) return '';
   return JSON.stringify({
     hookSpecificOutput: {

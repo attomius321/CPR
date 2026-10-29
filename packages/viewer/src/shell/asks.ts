@@ -8,7 +8,7 @@ const CLIENTS: Record<string, string> = {
 
 /** Who asks (MC1): Nucleus, or an agent through `symbiote mcp` and the folder it runs in. */
 export function askedBy(ask: McpAsk): string {
-  if (ask.by.via === 'scout') return 'Scout';
+  if (ask.by.via === 'nucleus') return 'Nucleus';
   const client = ask.by.client ? (CLIENTS[ask.by.client] ?? ask.by.client) : undefined;
   const folder = ask.by.folder?.replace(/\/+$/, '').split('/').at(-1);
   if (!client) return 'An agent';

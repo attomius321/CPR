@@ -50,7 +50,7 @@ type Advising = (typeof ADVISING)[number];
  * on an agent (V75c).
  */
 interface ModelSetting {
-  key: 'scout.model' | 'scribe.model' | 'merge.model' | `advisor.${Advising}.model`;
+  key: 'nucleus.model' | 'scribe.model' | 'merge.model' | `advisor.${Advising}.model`;
   /** What the model is for, before "from <agent>'s list". */
   about: string;
   /** What Default does, when not "passes none of Settings'". */
@@ -66,7 +66,7 @@ interface ModelSetting {
  * merger's (V46d) and Scribe's (fix/scribe-effort-level).
  */
 interface EffortSetting {
-  key: 'scout.effort' | 'scribe.effort' | 'merge.effort' | `advisor.${Advising}.effort`;
+  key: 'nucleus.effort' | 'scribe.effort' | 'merge.effort' | `advisor.${Advising}.effort`;
   /** What the level is for, before "from <agent>'s levels". */
   about: string;
   /** What Default does, when not "passes none: the agent's own setting decides". */
@@ -113,27 +113,27 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
       saved: (level) => `Saved. The merger agent's next run is asked at ${level}.`,
     },
   },
-  Scout: {
-    api: '/api/scout',
-    who: 'Scout',
-    whose: "Scout's",
+  Nucleus: {
+    api: '/api/nucleus',
+    who: 'Nucleus',
+    whose: "Nucleus's",
     model: {
-      key: 'scout.model',
-      about: "The model each of Scout's conversations starts on",
-      saved: (model) => `Saved. Scout's next conversation starts on ${model}.`,
-      unlisted: 'Scout starts on the default',
+      key: 'nucleus.model',
+      about: "The model each of Nucleus's conversations starts on",
+      saved: (model) => `Saved. Nucleus's next conversation starts on ${model}.`,
+      unlisted: 'Nucleus starts on the default',
     },
     effort: {
-      key: 'scout.effort',
-      about: "The level each of Scout's conversations starts at",
+      key: 'nucleus.effort',
+      about: "The level each of Nucleus's conversations starts at",
       also: (
         <>
-          A running conversation keeps its own: New conversation on Scout&apos;s page starts the
+          A running conversation keeps its own: New conversation on Nucleus&apos;s page starts the
           next on this level, and <code>/effort</code> in its terminal changes a running one.
         </>
       ),
-      atDefault: 'Scout starts it at its default',
-      saved: (level) => `Saved. Scout's next conversation starts at ${level}.`,
+      atDefault: 'Nucleus starts it at its default',
+      saved: (level) => `Saved. Nucleus's next conversation starts at ${level}.`,
     },
   },
   Scribe: {
@@ -584,7 +584,7 @@ function AgentRows({
 
 /**
  * A prebuilt agent's effort in the project's config, on a stepper of its agent's levels, saved
- * when the handle is let go: `scout.effort` and `scribe.effort`, the level each of their
+ * when the handle is let go: `nucleus.effort` and `scribe.effort`, the level each of their
  * conversations starts at (fix/scout-effort-level, fix/scribe-effort-level); `merge.effort`, the
  * level each merger agent's run is asked at (V46d).
  */
@@ -672,7 +672,7 @@ function AgentEffort({
 
 /**
  * A prebuilt agent's model in the project's config (V47), a select of its agent's own list, saved
- * when picked: `scout.model`, `scribe.model`, `merge.model`.
+ * when picked: `nucleus.model`, `scribe.model`, `merge.model`.
  */
 function AgentModel({
   settings,

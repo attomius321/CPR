@@ -1,6 +1,6 @@
 // A page's agent (V35, V41): Nucleus or Scribe, an agent in the checkout `symbiote view` runs in,
 // opened from its page. Types only; the CLI starts the agent, keeps its record in `symbiote/` and
-// serves its API (`/api/scout`, `/api/scribe`).
+// serves its API (`/api/nucleus`, `/api/scribe`).
 import type {
   AgentEfforts,
   AgentKind,
@@ -39,6 +39,11 @@ export interface PageAgentConversation {
   model?: string;
   /** Why its state is unknown. */
   error?: string;
+  /**
+   * The name it was started under when that was another (NU1: `Scout`, its record `scout.json`):
+   * it keeps that one's tools until New conversation (decision 591).
+   */
+  startedAs?: string;
 }
 
 /** An agent Nucleus can run, installed here. */
@@ -47,7 +52,7 @@ export interface InstalledAgent {
   command: string;
 }
 
-/** `GET /api/scout`, and what a question or a new conversation answers. */
+/** `GET /api/nucleus`, and what a question or a new conversation answers. */
 export interface PageAgentState {
   /** The folder Nucleus reads: the checkout `symbiote view` runs in. */
   checkout: string;
@@ -61,39 +66,39 @@ export interface PageAgentState {
   terminal?: TerminalAvailability;
 }
 
-/** `POST /api/scout/ask`: a question; it starts a conversation, or continues the one there is. */
+/** `POST /api/nucleus/ask`: a question; it starts a conversation, or continues the one there is. */
 export interface PageAgentAsk {
   text: string;
   /** The agent to start (a new conversation only); the default one when absent. */
   agent?: AgentKind;
   /**
    * The effort level to start at (a new conversation only), one the agent lists; null: the agent's
-   * own. Absent: the project's (`scout.effort`, `scribe.effort`) when the agent lists it, else the
+   * own. Absent: the project's (`nucleus.effort`, `scribe.effort`) when the agent lists it, else the
    * agent's own.
    */
   effort?: string | null;
   /**
    * The model to start on (a new conversation only, V50: Nucleus's head where no terminal runs), one
-   * the agent lists; null: its default. Absent: the project's (`scout.model`).
+   * the agent lists; null: its default. Absent: the project's (`nucleus.model`).
    */
   model?: string | null;
 }
 
 /**
- * `POST /api/scout/open` (V50): a conversation with no question, its terminal taking the first;
+ * `POST /api/nucleus/open` (V50): a conversation with no question, its terminal taking the first;
  * the one there is when it runs.
  */
 export interface PageAgentOpen {
   /** The agent to start; the default one when absent. */
   agent?: AgentKind;
-  /** Its model, one the agent lists; null: its default. Absent: the project's (`scout.model`). */
+  /** Its model, one the agent lists; null: its default. Absent: the project's (`nucleus.model`). */
   model?: string | null;
-  /** Its level on that model; null: the agent's own. Absent: the project's (`scout.effort`). */
+  /** Its level on that model; null: the agent's own. Absent: the project's (`nucleus.effort`). */
   effort?: string | null;
 }
 
 /**
- * `GET /api/scout/efforts`: the levels Nucleus can start at, and its models (V47); also Scribe's and
+ * `GET /api/nucleus/efforts`: the levels Nucleus can start at, and its models (V47); also Scribe's and
  * the merger's. Read only where they are shown: Codex's are on its app server, whose daemon a read
  * starts.
  */
@@ -108,28 +113,28 @@ export interface AgentLevels {
     models?: AgentModel[];
     defaultModel?: DefaultModel;
   }[];
-  /** `scout.effort` (`scribe.effort`, `merge.effort`) in the project's config: the level used. */
+  /** `nucleus.effort` (`scribe.effort`, `merge.effort`) in the project's config: the level used. */
   effort?: string;
-  /** `scout.model` (`scribe.model`, `merge.model`) in the project's config (V47). */
+  /** `nucleus.model` (`scribe.model`, `merge.model`) in the project's config (V47). */
   model?: string;
   /** The project's config file, repo-relative: `symbiote/config.json`. */
   file: string;
 }
 
 /**
- * `POST /api/scout/effort`: Nucleus's level in the project's config (Scribe's, the merger's); null
+ * `POST /api/nucleus/effort`: Nucleus's level in the project's config (Scribe's, the merger's); null
  * removes it.
  */
 export interface EffortChange {
   effort: string | null;
 }
 
-/** `POST /api/scout/model` (V47): Nucleus's model in the project's config; null removes it. */
+/** `POST /api/nucleus/model` (V47): Nucleus's model in the project's config; null removes it. */
 export interface ModelChange {
   model: string | null;
 }
 
-/** `POST /api/scout/terminal`: a terminal on Nucleus's session, at that size. */
+/** `POST /api/nucleus/terminal`: a terminal on Nucleus's session, at that size. */
 export interface PageAgentTerminalRequest {
   cols: number;
   rows: number;

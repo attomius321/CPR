@@ -97,7 +97,7 @@ function refresh(): Promise<void> {
     read<WorkspaceList>('/api/workspaces'),
     read<BranchReviewList>('/api/reviews'),
     read<MergeList>('/api/merges'),
-    read<PageAgentState>('/api/scout'),
+    read<PageAgentState>('/api/nucleus'),
     read<PageAgentState>('/api/scribe'),
   ])
     .then(([list, reviews, merges, nucleus, scribe]) => {

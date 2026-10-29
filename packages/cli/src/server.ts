@@ -95,6 +95,7 @@ import {
   type SkillsService,
 } from './skills.js';
 import { McpRefused, symbioteMcp, type SymbioteMcp } from './mcp.js';
+import { bridgeCaller } from './mcp-bridge.js';
 
 export { sourceFiles } from './server-requests.js';
 
@@ -146,7 +147,10 @@ export interface RepositoryOptions {
   merges?: Merger;
   /** Every agent's prompts (V28): `/api/settings/prompts`. */
   settings?: PromptSettingsService;
-  /** Nucleus, a read-only agent in the checkout (V35): `/scout`, `/api/scout…`. */
+  /**
+   * Nucleus, the person's orchestrator in the checkout (V35, NU1): `/nucleus` (`/scout`, its address
+   * before NU1, too), `/api/nucleus…`.
+   */
   nucleus?: PageAgent;
   /** The checkout's skills (V41): `/skills`, `/api/skills`. */
   skills?: SkillsService;
@@ -416,7 +420,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   /**
    * `symbiote view`'s addresses: a diff's and a branch review's pages, History and the
    * repository's state, the shell's pages, then each service's API (`/api/workspaces…`,
-   * `/api/scout…`, `/api/merges…`); any other, as without a repository.
+   * `/api/nucleus…`, `/api/merges…`); any other, as without a repository.
    */
   async function repositoryRoute(
     req: IncomingMessage,
@@ -474,12 +478,14 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname.startsWith('/api/workspaces'))
         return workspacesRoute(req, res, url, workspaces);
     }
-    // Nucleus's page, a page of the shell's (V35).
-    if (nucleus && url.pathname === '/scout') return serveSite(req, res, url, '/', undefined);
-    if (nucleus && url.pathname.startsWith('/api/scout')) {
+    // Nucleus's page, a page of the shell's (V35); the shell moves `/scout` to it (NU1).
+    if (nucleus && (url.pathname === '/nucleus' || url.pathname === '/scout')) {
+      return serveSite(req, res, url, '/', undefined);
+    }
+    if (nucleus && url.pathname.startsWith('/api/nucleus')) {
       return pageAgentRoute(req, res, url, nucleus, {
-        api: '/api/scout',
-        busy: 'Scout is being asked',
+        api: '/api/nucleus',
+        busy: 'Nucleus is being asked',
       });
     }
     // Scribe (V41), on the Skills page: Nucleus's conversation, its own agent.
@@ -599,7 +605,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
   /** Who calls Symbiote's MCP, as its bridge says (MC1): Nucleus, or an agent through `symbiote mcp`. */
   function callerOf(req: IncomingMessage): McpCaller {
-    if (req.headers['x-symbiote-caller'] === 'scout') return { via: 'scout' };
+    // `scout`: a bridge started from an MCP file written before NU1 (decision 590).
+    if (bridgeCaller(req.headers['x-symbiote-caller'])) return { via: 'nucleus' };
     const header = (name: string) => {
       const value = req.headers[name];
       return typeof value === 'string' && value !== '' ? value : undefined;

@@ -82,6 +82,13 @@
   white-space: pre-wrap;
 }
 
+/* A conversation started as Scout (NU1): said on the ground, under the head, as an error is. */
+.nucleus-former {
+  margin: 0 var(--page-pad) 12px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
 /* The page's card: the terminal, to the main area's bottom. */
 .nucleus-card {
   flex: 1;

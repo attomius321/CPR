@@ -9,8 +9,8 @@ import type { Graph } from '@symbiote/core';
 export type Route =
   /** The repository's history and git's work on it (V66), at `/git`. */
   | { page: 'git' }
-  /** Nucleus (V35), at `/scout`: a read-only agent to ask about the repository. */
-  | { page: 'scout' }
+  /** Nucleus (V35; Scout until NU1), at `/nucleus`: the person's orchestrator in Symbiote. */
+  | { page: 'nucleus' }
   /** The checkout's skills, and Scribe, at `/skills` (V41); the skill open is in `?skill=`. */
   | { page: 'skills' }
   /** Where the checkout's code is (RM1), at `/monitor`; the folder in view in `?path=`. */
@@ -36,7 +36,9 @@ export const GIT_PAGE = '/git';
 /** Git's address until V66, moved to `GIT_PAGE` with its query. */
 const HISTORY_PAGE = '/history';
 export const SETTINGS_PAGE = '/settings';
-export const NUCLEUS_PAGE = '/scout';
+export const NUCLEUS_PAGE = '/nucleus';
+/** Nucleus's address as Scout, until NU1, moved to `NUCLEUS_PAGE`. */
+const SCOUT_PAGE = '/scout';
 export const SKILLS_PAGE = '/skills';
 export const MONITOR_PAGE = '/monitor';
 /** History (V77): not `/history`, Git's address until V66, still moved to `/git`. */
@@ -60,8 +62,8 @@ export function routeTitle(route: Route, repo: string | undefined, name?: string
   switch (route.page) {
     case 'git':
       return pageTitle('Git', repo);
-    case 'scout':
-      return pageTitle('Scout', repo);
+    case 'nucleus':
+      return pageTitle('Nucleus', repo);
     case 'skills':
       return pageTitle('Skills', repo);
     case 'monitor':
@@ -126,7 +128,7 @@ export function hrefOf(route: Route): string {
   switch (route.page) {
     case 'git':
       return GIT_PAGE;
-    case 'scout':
+    case 'nucleus':
       return NUCLEUS_PAGE;
     case 'skills':
       return SKILLS_PAGE;
@@ -157,7 +159,8 @@ export function routeOf(pathname: string, search: string): { route: Route; moved
   if (pathname === GIT_PAGE) return { route: { page: 'git' } };
   if (pathname === HISTORY_PAGE) return { route: { page: 'git' }, moved: `${GIT_PAGE}${search}` };
   if (pathname === SETTINGS_PAGE) return { route: { page: 'settings' } };
-  if (pathname === NUCLEUS_PAGE) return { route: { page: 'scout' } };
+  if (pathname === NUCLEUS_PAGE) return { route: { page: 'nucleus' } };
+  if (pathname === SCOUT_PAGE) return { route: { page: 'nucleus' }, moved: NUCLEUS_PAGE };
   if (pathname === SKILLS_PAGE) return { route: { page: 'skills' } };
   const params = new URLSearchParams(search);
   if (pathname === MONITOR_PAGE) {
@@ -192,6 +195,7 @@ export function inShell(url: URL): boolean {
     url.pathname === HISTORY_PAGE ||
     url.pathname === SETTINGS_PAGE ||
     url.pathname === NUCLEUS_PAGE ||
+    url.pathname === SCOUT_PAGE ||
     url.pathname === SKILLS_PAGE ||
     url.pathname === MONITOR_PAGE ||
     url.pathname === WORKSPACE_HISTORY_PAGE ||

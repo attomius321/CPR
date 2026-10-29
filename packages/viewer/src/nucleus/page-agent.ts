@@ -70,3 +70,15 @@ export function runsOn(
     .filter((w) => w !== '')
     .join(' ');
 }
+
+/**
+ * What the page says of a conversation started under the agent's former name (NU1, decision 591):
+ * it keeps that one's tools, no web, until New conversation; null for any other.
+ */
+export function formerText(
+  conversation: Pick<PageAgentConversation, 'startedAs'> | null,
+  name: string,
+): string | null {
+  if (!conversation?.startedAs) return null;
+  return `Started as ${conversation.startedAs}, without the web: New conversation starts ${name}.`;
+}

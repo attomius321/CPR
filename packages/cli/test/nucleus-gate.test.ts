@@ -160,7 +160,7 @@ describe('gateDecision (V35)', () => {
   });
 
   it('denies every other tool: Nucleus changes no file', () => {
-    for (const tool of ['Edit', 'Write', 'NotebookEdit', 'WebFetch', 'WebSearch', 'Agent']) {
+    for (const tool of ['Edit', 'Write', 'NotebookEdit', 'Agent']) {
       const decision = gateDecision(input(tool, {}));
       expect(decision).toMatchObject({ allow: false });
       expect(decision && !decision.allow && decision.reason).toMatch(/Nucleus changes no file/);

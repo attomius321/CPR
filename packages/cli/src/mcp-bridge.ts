@@ -48,6 +48,14 @@ export function readViewRecord(path: string): ViewRecord | null {
   return { url: v.url, pid: v.pid, root: v.root, started: String(v.started ?? '') };
 }
 
+/**
+ * Who a bridge's `--as` says calls: Nucleus, by its name or by `scout`, its name in an MCP file
+ * written before NU1 (decision 590); else none, an agent through `symbiote mcp`.
+ */
+export function bridgeCaller(value: unknown): 'nucleus' | undefined {
+  return value === 'nucleus' || value === 'scout' ? 'nucleus' : undefined;
+}
+
 /** Removes the record if `pid` wrote it: a newer `symbiote view`'s stays. */
 export async function removeViewRecord(path: string, pid: number): Promise<void> {
   if (readViewRecord(path)?.pid === pid) await rm(path, { force: true });
@@ -57,7 +65,7 @@ export interface BridgeOptions {
   /** The record's file (`viewFile`). */
   view: string;
   /** Nucleus's bridge, started by Symbiote; else an agent's through `symbiote mcp`. */
-  as?: 'scout';
+  as?: 'nucleus';
   input: Readable;
   output: Writable;
   /** The folder the agent runs in: who asks, and the words when no record names the repository. */

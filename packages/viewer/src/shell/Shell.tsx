@@ -250,7 +250,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
         {sidenav.handle}
         <main className="shell-main">
           {route.page === 'git' && <HistoryPage key={visit} />}
-          {route.page === 'scout' && <NucleusPage />}
+          {route.page === 'nucleus' && <NucleusPage />}
           {route.page === 'skills' && <SkillsPage />}
           {route.page === 'monitor' && <MonitorPage path={route.path} />}
           {route.page === 'workspace-history' && <WorkspaceHistory branch={route.branch} />}

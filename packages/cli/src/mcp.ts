@@ -607,7 +607,7 @@ interface Held {
 }
 
 const callerKey = (c: McpCaller) =>
-  c.via === 'scout' ? 'scout' : `mcp\u0000${c.client ?? ''}\u0000${c.folder ?? ''}`;
+  c.via === 'nucleus' ? 'nucleus' : `mcp\u0000${c.client ?? ''}\u0000${c.folder ?? ''}`;
 
 export interface SymbioteMcp {
   /** One JSON-RPC message from `caller`; null for a notification, or once `signal` aborted. */

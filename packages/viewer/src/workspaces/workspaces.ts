@@ -226,7 +226,7 @@ export function startedWith(agent: WorkspaceAgentState, via?: McpVia): string | 
 }
 
 /** What a workspace or a verdict was made through (MC1). */
-export const VIA_NAMES: Record<McpVia, string> = { scout: 'Scout', mcp: 'symbiote mcp' };
+export const VIA_NAMES: Record<McpVia, string> = { nucleus: 'Nucleus', mcp: 'symbiote mcp' };
 
 /** Longest name proposed after the prefix. */
 const MAX_NAME = 40;

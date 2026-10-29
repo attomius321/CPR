@@ -177,12 +177,14 @@ export interface WorkspaceConfig {
   /** Claude Code's permission mode and model. */
   permissionMode: PermissionMode;
   model?: string;
-  /** Nucleus's and Scribe's levels (`scout.effort`, `scribe.effort`): words; absent, the agent's. */
+  /** Nucleus's and Scribe's levels (`nucleus.effort`, `scribe.effort`): words; absent, the agent's. */
   nucleusEffort?: string;
   scribeEffort?: string;
-  /** Nucleus's and Scribe's models (`scout.model`, `scribe.model`, V47): IDs; absent, the default. */
+  /** Nucleus's and Scribe's models (`nucleus.model`, `scribe.model`, V47): IDs; absent, the default. */
   nucleusModel?: string;
   scribeModel?: string;
+  /** `nucleus.web: false` (NU1, decision 594): Nucleus's next conversations without the web. */
+  nucleusWeb?: false;
   /**
    * The advisor's model and level on each agent (`advisor.claude`, `advisor.codex`: `model`,
    * `effort`; V75c); absent, its small model at `low`.
@@ -194,8 +196,10 @@ export interface WorkspaceConfig {
  * `features.branchPrefixes` sets a kind's prefix (V24), each kind its own by default (`fix/`);
  * `features.branchPrefix`, from before V24, sets the Feature's unless `branchPrefixes` does.
  * `agent.kind` names the agent offered first (V20a); `agent.permissionMode` and `agent.model`
- * are Claude Code's. `scout.effort` and `scribe.effort` are the levels Nucleus's and Scribe's
- * conversations start at; `scout.model` and `scribe.model` the models they start on (V47);
+ * are Claude Code's. `nucleus.effort` and `scribe.effort` are the levels Nucleus's and Scribe's
+ * conversations start at; `nucleus.model` and `scribe.model` the models they start on (V47);
+ * `scout.effort` and `scout.model`, Nucleus's before NU1, while it has none of its own (decision
+ * 590); `nucleus.web: false` takes the web from its next conversations (NU1);
  * `advisor.<agent>.model` and `.effort` what the advisor runs on with that agent (V75c).
  */
 export function readWorkspaceConfig(root: string): WorkspaceConfig {
@@ -218,6 +222,8 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
     /** The section's name before V25, still read when `workspaces` is not there. */
     features?: Section;
     agent?: unknown;
+    nucleus?: { effort?: unknown; model?: unknown; web?: unknown } | null;
+    /** Nucleus's section before NU1, still read for what `nucleus` does not say. */
     scout?: { effort?: unknown; model?: unknown } | null;
     scribe?: { effort?: unknown; model?: unknown } | null;
     advisor?: Partial<Record<string, { effort?: unknown; model?: unknown } | null>> | null;
@@ -248,14 +254,15 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
   if (typeof agent.model === 'string' && agent.model !== '') config.model = agent.model;
   const level = (value: unknown) =>
     typeof value === 'string' && EFFORT_LEVEL.test(value) ? value : undefined;
-  const nucleusEffort = level(v.scout?.effort);
+  const nucleusEffort = level(v.nucleus?.effort ?? v.scout?.effort);
   if (nucleusEffort) config.nucleusEffort = nucleusEffort;
   const scribeEffort = level(v.scribe?.effort);
   if (scribeEffort) config.scribeEffort = scribeEffort;
   const id = (value: unknown) =>
     typeof value === 'string' && MODEL_ID.test(value) ? value : undefined;
-  const nucleusModel = id(v.scout?.model);
+  const nucleusModel = id(v.nucleus?.model ?? v.scout?.model);
   if (nucleusModel) config.nucleusModel = nucleusModel;
+  if (v.nucleus?.web === false) config.nucleusWeb = false;
   const scribeModel = id(v.scribe?.model);
   if (scribeModel) config.scribeModel = scribeModel;
   for (const kind of ADVISING_AGENTS) {

@@ -452,7 +452,7 @@ describe("Nucleus's prompt (V35, NU1)", () => {
         '{\n  "prompts": {\n    "nucleus": "Be brief.",\n    "scout": "You are Scout."\n  }\n}\n',
     });
     await writePrompt(repo.root, { key: 'nucleus', text: null, version: version() });
-    expect(read(repo.root)).toBe('{}\n');
+    expect(JSON.parse(read(repo.root))).toEqual({});
   });
 
   it('is listed in Settings, in its own group', async () => {

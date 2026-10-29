@@ -18,6 +18,15 @@ import { sortKeys, type ReviewPlace } from './reviews.js';
 import { BRIEF_PARTS } from './workspace-brief.js';
 import { writeFileWhole } from './file-write.js';
 
+/**
+ * What a record says it was made through (MC1, decision 362): `nucleus` or `mcp`; `scout`, Nucleus's
+ * name before NU1, read as `nucleus` and never rewritten (decision 590).
+ */
+export function viaOf(value: unknown): { via?: McpVia } {
+  if (value === 'nucleus' || value === 'scout') return { via: 'nucleus' };
+  return value === 'mcp' ? { via: 'mcp' } : {};
+}
+
 /** A workspace on disk: `symbiote/workspaces/<branch>.json` (V18; `symbiote/features/` before V25),
  * one per branch. */
 export interface WorkspaceFile {
@@ -179,7 +188,7 @@ export async function readWorkspace(path: string): Promise<WorkspaceFile | null>
     ...partsRead(v.parts),
     planFirst: v.planFirst === true,
     ...(text(v.title) ? { title: text(v.title) } : {}),
-    ...(v.via === 'scout' || v.via === 'mcp' ? { via: v.via } : {}),
+    ...viaOf(v.via),
     worktree: text(v.worktree),
   };
 }

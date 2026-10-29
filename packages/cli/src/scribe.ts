@@ -73,7 +73,7 @@ function scribeSpec(library: LibraryService | undefined): PageAgentSpec {
       "Scribe's conversation in this checkout (V41): an agent started in Symbiote that writes skills in .claude/skills. Not a workspace.",
     record: 'scribe.json',
     settings: 'scribe-settings.json',
-    tools: ['Read', 'Grep', 'Glob', 'Bash', 'Write', 'Edit'],
+    tools: () => ['Read', 'Grep', 'Glob', 'Bash', 'Write', 'Edit'],
     permissionMode: 'default',
     gateArgs: (root) => [skillsOf(root), ...folders(root)],
     folders,

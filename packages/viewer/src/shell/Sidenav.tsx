@@ -147,7 +147,7 @@ export function Sidenav({
     list !== null && list.workspaces.length === 0 && queued.length === 0 && starts.length === 0;
   // Nucleus's mark (V35): working while it answers; answered when it did while you were elsewhere.
   const pageAgentState = nucleus?.conversation?.state;
-  const onNucleus = route?.page === 'scout';
+  const onNucleus = route?.page === 'nucleus';
   const [nucleusMark, setNucleusMark] = useState<NucleusMark>(null);
   useEffect(() => {
     setNucleusMark((shown) => nextNucleusMark(shown, pageAgentState, onNucleus));
@@ -253,15 +253,15 @@ export function Sidenav({
         </a>
         <a
           href={NUCLEUS_PAGE}
-          aria-label={nucleusWaits ? 'Scout, waits for you' : 'Scout'}
+          aria-label={nucleusWaits ? 'Nucleus, waits for you' : 'Nucleus'}
           {...tip(
             nucleusWaits
-              ? 'Scout\nWaits for you'
+              ? 'Nucleus\nWaits for you'
               : nucleusMark === 'working'
-                ? 'Scout\nWorking'
+                ? 'Nucleus\nWorking'
                 : nucleusMark === 'answered'
-                  ? 'Scout\nAnswered while you were away'
-                  : 'Scout\nAsk about the repository, or have it carry a workspace',
+                  ? 'Nucleus\nAnswered while you were away'
+                  : 'Nucleus\nYour orchestrator: ask, research the web, carry a workspace',
             {
               keys: 'a',
               side: 'right',
@@ -274,11 +274,11 @@ export function Sidenav({
                     : undefined,
             },
           )}
-          aria-current={route?.page === 'scout' ? 'page' : undefined}
+          aria-current={route?.page === 'nucleus' ? 'page' : undefined}
           data-state={nucleusWaits ? 'waiting' : (nucleusMark ?? undefined)}
         >
           <NucleusIcon />
-          <span className="sidenav-label">Scout</span>
+          <span className="sidenav-label">Nucleus</span>
           <AgentMark waits={nucleusWaits} mark={nucleusMark} />
           <kbd aria-hidden="true">a</kbd>
         </a>

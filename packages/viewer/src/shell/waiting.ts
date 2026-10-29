@@ -22,7 +22,7 @@ type Read = Pick<WorkspacesState, 'list' | 'reviews' | 'merges' | 'nucleus' | 's
 
 /** Whether Nucleus waits on the person: its ask on the page, or a dialog in its terminal (MC1). */
 export const nucleusWaiting = (nucleus: PageAgentState | null, asks: readonly McpAsk[]): boolean =>
-  asksBy(asks, 'scout') || nucleus?.conversation?.state === 'needs-you';
+  asksBy(asks, 'nucleus') || nucleus?.conversation?.state === 'needs-you';
 
 /** The merges that need the person: `needs-you`, whichever it is (`mergeLabel`). */
 export const mergesWaiting = (merges: readonly MergeEntry[]): number =>
