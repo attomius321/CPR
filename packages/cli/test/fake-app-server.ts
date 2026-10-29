@@ -184,6 +184,11 @@ export interface FakeThread {
   createdAt: number;
   updatedAt: number;
   sandbox: string;
+  /**
+   * The folders a permission profile lets its commands read (V80): Scout's, started with one in its
+   * config and no sandbox mode; absent, the sandbox's own reads.
+   */
+  reads?: string[];
   approvalPolicy: string;
   writableRoots: string[];
   loaded: boolean;
@@ -248,6 +253,10 @@ export interface FakeAppServer {
  * message reaches its items `delayMs` after `turn/start` (Codex 0.163: 0.9 s), and a connection
  * gets item events only for the threads it started or resumed (status changes reach all). A
  * thread is named only once it has an item. The methods in `refuse` fail, in the server's words.
+ * As Codex 0.163 (V80 spike), a thread started with a permission profile and no sandbox mode reads
+ * only the profile's folders; a sandbox mode switches the profile off; with neither, a thread gets
+ * the folder's default, writable where Codex trusts it (`trusted`). `profiles: false` is a Codex
+ * that does not take profiles.
  */
 export async function fakeAppServer(
   path: string,
@@ -255,7 +264,8 @@ export async function fakeAppServer(
     now = () => Math.floor(Date.now() / 1000),
     delayMs = 10,
     refuse = [],
-  }: { now?: () => number; delayMs?: number; refuse?: string[] } = {},
+    profiles = true,
+  }: { now?: () => number; delayMs?: number; refuse?: string[]; profiles?: boolean } = {},
 ): Promise<FakeAppServer> {
   const calls: FakeCall[] = [];
   const threads: FakeThread[] = [];
@@ -390,6 +400,20 @@ export async function fakeAppServer(
           excludeTmpdirEnvVar: false,
           excludeSlashTmp: false,
         };
+  /** The folders a thread's configuration's permission profile reads, or null without one. */
+  const profileOf = (configured: unknown): string[] | null => {
+    if (!profiles || !configured || typeof configured !== 'object') return null;
+    const { default_permissions: name, permissions } = configured as {
+      default_permissions?: unknown;
+      permissions?: Record<string, { filesystem?: Record<string, string> }>;
+    };
+    const filesystem = typeof name === 'string' ? permissions?.[name]?.filesystem : undefined;
+    if (!filesystem) return null;
+    return Object.keys(filesystem).filter((k) => filesystem[k] === 'read' && !k.startsWith(':'));
+  };
+  /** With no sandbox mode and no profile: the folder's default, writable where it is trusted. */
+  const defaultSandbox = (cwd: string) =>
+    trusted[cwd] === 'trusted' ? 'workspace-write' : 'read-only';
   const find = (threadId: unknown): FakeThread => {
     const thread = threads.find((t) => t.id === threadId);
     if (!thread)
@@ -467,13 +491,16 @@ export async function fakeAppServer(
       'thread/start': (params, socket) => {
         const config = params.config as
           { sandbox_workspace_write?: { writable_roots?: string[] } } | undefined;
+        const mode = typeof params.sandbox === 'string' ? params.sandbox : null;
+        const reads = mode ? null : profileOf(params.config);
         const thread: FakeThread = {
           id: id('thread'),
           cwd: String(params.cwd),
           name: null,
           createdAt: now(),
           updatedAt: now(),
-          sandbox: typeof params.sandbox === 'string' ? params.sandbox : 'read-only',
+          sandbox: mode ?? (reads ? 'read-only' : defaultSandbox(String(params.cwd))),
+          ...(reads ? { reads } : {}),
           approvalPolicy:
             typeof params.approvalPolicy === 'string' ? params.approvalPolicy : 'on-request',
           writableRoots: config?.sandbox_workspace_write?.writable_roots ?? [],
@@ -495,6 +522,18 @@ export async function fakeAppServer(
       },
       'thread/resume': (params, socket) => {
         const thread = find(params.threadId);
+        if (!thread.loaded) {
+          // One the server does not hold takes the profile it is resumed with; without one, a
+          // thread that had one gets the folder's default (V80 spike: writable where trusted).
+          const reads = profileOf(params.config);
+          if (reads) {
+            thread.reads = reads;
+            thread.sandbox = 'read-only';
+          } else if (thread.reads) {
+            delete thread.reads;
+            thread.sandbox = defaultSandbox(thread.cwd);
+          }
+        }
         thread.loaded = true;
         clients.get(socket)?.add(thread.id);
         // A client that joins a waiting thread is asked too (the V27 spike's TUI).

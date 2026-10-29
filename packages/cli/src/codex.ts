@@ -1,8 +1,11 @@
 // Codex as a workspace's agent: what Symbiote asks of it, and what its state is. On the person's
 // app-server daemon (V27a), Symbiote starts and reads its threads there; without one, Symbiote runs
 // `codex exec` through its runner (`codex-run.ts`, V20a), which records the thread. This module
-// never reads Codex's own files.
+// never reads Codex's own files (its config, its threads), only where its program is (V80).
 import { spawn } from 'node:child_process';
+import { readFileSync, realpathSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type {
   ActivityEntry,
@@ -377,6 +380,42 @@ export function codex(
       return found ? found.models(cwd).catch(() => null) : null;
     },
   };
+}
+
+/**
+ * The folders holding Codex's own program (V80): its Linux sandbox runs Codex's binary again inside,
+ * so a thread that reads only some folders must read these (`readProfile`). Codex's npm launcher
+ * (`bin/codex.js`): its package, and each platform package it lists that Node finds from it, as the
+ * launcher looks for its binary; a program of its own: its folder; none for a path not there.
+ */
+export function codexFolders(command: string): string[] {
+  let program: string;
+  try {
+    program = realpathSync(command);
+  } catch {
+    return [];
+  }
+  if (!program.endsWith('.js')) return [dirname(program)];
+  const pkg = dirname(dirname(program));
+  let platforms: string[];
+  try {
+    const manifest = JSON.parse(readFileSync(join(pkg, 'package.json'), 'utf8')) as {
+      optionalDependencies?: Record<string, unknown>;
+    };
+    platforms = Object.keys(manifest.optionalDependencies ?? {});
+  } catch {
+    return [pkg];
+  }
+  const find = createRequire(program);
+  const found = platforms.flatMap((name) => {
+    try {
+      return [dirname(realpathSync(find.resolve(`${name}/package.json`)))];
+    } catch {
+      // Not installed here: another platform's.
+      return [];
+    }
+  });
+  return [pkg, ...found];
 }
 
 /** Codex's program: `SYMBIOTE_CODEX` (a path or a command on PATH), else `codex` on PATH. */

@@ -32,15 +32,17 @@ import {
   type ScoutTerminalRequest,
   type WorkspaceTerminalOpened,
 } from '@symbiote/core';
-import { AppServerStartFailed, type CodexServer } from './app-server.js';
-import { asksTrust, type Codex } from './codex.js';
+import { AppServerError, AppServerStartFailed, type CodexServer } from './app-server.js';
+import { asksTrust, codexFolders, type Codex } from './codex.js';
 import { fillPrompt, PromptRefused, readPrompts, writeConfig } from './prompts.js';
 import { prepareSymbioteFolder, reviewPlace, type ReviewPlace } from './reviews.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
 import { real } from './thread.js';
 import { readWorkspaceConfig } from './workspaces.js';
+import { workspacesDir } from './workspace-record.js';
 import { shellWord, type AgentSession, type ClaudeCode } from './claude-code.js';
 import { viewFile } from './mcp-bridge.js';
+import { openWorktrees } from './scout-gate.js';
 import {
   AGENT_NAMES,
   effortOnProblem,
@@ -73,8 +75,11 @@ export interface PageAgentSpec {
   /** Claude Code's tools and mode for it. */
   tools: readonly string[];
   permissionMode: 'dontAsk' | 'default';
-  /** What its gate is given after its script: Scribe's, the skills' folder and `folders`. */
-  gateArgs(root: string): string[];
+  /**
+   * What its gate is given after its script: Scribe's, the skills' folder and `folders`; Scout's,
+   * the checkout and the workspaces' records, whose worktrees it opens (V80, decision 596).
+   */
+  gateArgs(root: string, where: ReviewPlace): string[];
   /**
    * Folders outside the checkout it works in too, read at each start (Scribe: the skill library,
    * SK1): Claude Code's `--add-dir`, folders Codex's sandbox may also write.
@@ -95,6 +100,12 @@ export interface PageAgentSpec {
    * nowhere else (Scribe, its skills; decision 275).
    */
   codex(root: string): { cwd: string; writes: boolean };
+  /**
+   * The folders Codex's read-only thread reads (Scout, V80, decision 599), Codex's own program's
+   * added: a permission profile given at its start and at each message and load; absent, Codex's
+   * read-only mode, which reads every folder.
+   */
+  codexReads?(root: string, where: ReviewPlace): string[];
   /** Made before a start: Scribe's skills folder. */
   prepare?(root: string): Promise<void>;
   /** The project's level in its config (`scout.effort`, `scribe.effort`) and where it is set. */
@@ -122,11 +133,14 @@ const SCOUT: PageAgentSpec = {
   settings: 'scout-settings.json',
   tools: ['Read', 'Grep', 'Glob', 'Bash'],
   permissionMode: 'dontAsk',
-  gateArgs: () => [],
+  // No `folders`, which Codex would write: its gate opens the worktrees at each call (V80).
+  gateArgs: (root, where) => [root, workspacesDir(where)],
   prompt: (_root, text) => text,
   // A project's text from before V50 may still hold {question}: filled with nothing.
   instructions: (root) => fillPrompt(readPrompts(root).text.scout, { question: '' }).trimEnd(),
   codex: (root) => ({ cwd: root, writes: false }),
+  // As its gate opens them to Claude Code: the checkout and the open workspaces' worktrees.
+  codexReads: (root, where) => [root, ...openWorktrees(root, workspacesDir(where))],
   effort: { read: (root) => readWorkspaceConfig(root).scoutEffort, key: ['scout', 'effort'] },
   model: { read: (root) => readWorkspaceConfig(root).scoutModel, key: ['scout', 'model'] },
   mcp: { file: 'scout-mcp.json' },
@@ -410,7 +424,7 @@ export function pageAgent(
   async function settingsFile(where: ReviewPlace): Promise<string> {
     const path = join(folder(where), spec.settings);
     const text = scoutSettings(
-      { node, gate, args: spec.gateArgs(root) },
+      { node, gate, args: spec.gateArgs(root, where) },
       process.platform,
       spec.claudeSettings,
     );
@@ -697,6 +711,15 @@ export function pageAgent(
     codexAt.writes ? { confined: true as const } : { readOnly: true as const };
 
   /**
+   * The folders Codex's thread reads now (V80): Codex's program's and the spec's, read again at
+   * each start, message and load; none for a spec without (Codex's read-only mode).
+   */
+  const readsOf = (where: ReviewPlace, agent: Codex | null) =>
+    spec.codexReads
+      ? { reads: [...codexFolders(agent?.command ?? ''), ...spec.codexReads(root, where)] }
+      : {};
+
+  /**
    * Starts a conversation with `text` as the question (none: it waits for one, V50), at the level
    * asked (`levelFor`), on the model asked (`asked`; absent: the project's).
    */
@@ -754,6 +777,7 @@ export function pageAgent(
         ...first,
         ...(instructions ? { instructions } : {}),
         ...codexSandbox(),
+        ...readsOf(where, codexAgent),
         ...(codexTools ? { config: codexTools } : {}),
         ...at,
       });
@@ -769,13 +793,22 @@ export function pageAgent(
   /** Continues the conversation with `text`: where no terminal runs, the page's box does (V18c). */
   async function reply(where: ReviewPlace, record: ScoutRecord, text: string): Promise<void> {
     if (record.agent === 'codex') {
-      await (
-        await serverOf(await codex())
-      ).send({
-        thread: record.thread ?? '',
-        text,
-        ...(codexTools ? { config: codexTools } : {}),
-      });
+      const agent = await codex();
+      try {
+        await (
+          await serverOf(agent)
+        ).send({
+          thread: record.thread ?? '',
+          text,
+          ...(codexTools ? { config: codexTools } : {}),
+          ...readsOf(where, agent),
+        });
+      } catch (error) {
+        if (error instanceof AppServerError) {
+          throw new ScoutRefused(`Codex's app server: ${error.message}`, 502);
+        }
+        throw error;
+      }
       return;
     }
     const agent = await claude();
@@ -972,8 +1005,19 @@ export function pageAgent(
       } else {
         const agent = await codex();
         const app = await serverOf(agent);
-        // Loaded with Symbiote's MCP server first: the terminal joins the thread as it is (MC1).
-        if (codexTools) await app.load({ thread: record.thread ?? '', config: codexTools });
+        // Loaded with Symbiote's MCP server first, and the folders it reads (V80): the terminal
+        // joins the thread as it is (MC1), read-only.
+        const reads = readsOf(where, agent);
+        if (codexTools || reads.reads) {
+          try {
+            await app.load({ thread: record.thread ?? '', config: codexTools ?? {}, ...reads });
+          } catch (error) {
+            if (error instanceof AppServerError) {
+              throw new ScoutRefused(`Codex's app server: ${error.message}`, 502);
+            }
+            throw error;
+          }
+        }
         command = agent?.command ?? 'codex';
         args = ['resume', record.thread ?? '', '--remote', app.address, '-C', codexAt.cwd];
         // Codex asks to trust a folder first (V27b, decision 160): said, never answered here.

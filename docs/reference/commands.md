@@ -148,7 +148,7 @@ agent finds on your `PATH`. If `symbiote` is only an alias, write the full comma
 | Tools | What they do | Asks you |
 |---|---|---|
 | `overview` | What needs you: workspaces that wait or are ready, merges that wait | |
-| `workspaces`, `workspace`, `thread` | The workspaces; one workspace with its brief, commits and files; its agent's thread | |
+| `workspaces`, `workspace`, `thread` | The workspaces; one workspace with its brief, its worktree's folder, commits and files; its agent's thread | |
 | `start_options`, `start_workspace` | What a start takes here; a start. Its **Confirm** names the model and the effort it starts with | Yes, to start |
 | `suggest_settings` | Suggested settings for a brief, as **Suggest settings** on the Start page: a model, an effort level, plan first and why. It runs one turn of the agent's small model and starts nothing | |
 | `reply`, `stop_agent`, `restart_agent` | Send a message to a workspace's agent; stop it; start it again | Yes, to start again |

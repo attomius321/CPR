@@ -4,29 +4,11 @@
 // the checkout's skills, or of the skill library's (SK1, decision 430), by its real path, and then
 // Claude Code's own rules ask the person; every other tool is denied. Like Scout's gate, it runs once per tool call in Claude
 // Code's process tree (`scribe-hook.ts`), so it uses nothing but Node's modules.
-import { realpathSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
-import { gitReadProblem, type GateDecision } from './scout-gate.js';
+import { isAbsolute, relative, sep } from 'node:path';
+import { gitReadProblem, realTarget, type GateDecision } from './scout-gate.js';
 
 const READS = ['Read', 'Grep', 'Glob'];
 const WRITES = ['Write', 'Edit', 'MultiEdit'];
-
-/** `path`'s real path: its nearest folder that exists, made real, then the rest as written. */
-function realTarget(path: string): string {
-  const rest: string[] = [];
-  let head = path;
-  for (;;) {
-    try {
-      return join(realpathSync(head), ...rest);
-    } catch {
-      // Not there yet: a new skill's folder, a new file.
-    }
-    const up = dirname(head);
-    if (up === head) return path;
-    rest.unshift(basename(head));
-    head = up;
-  }
-}
 
 /** The folders of skills given: one, or the checkout's then the library's. */
 const listOf = (skills: string | readonly string[]): readonly string[] =>
