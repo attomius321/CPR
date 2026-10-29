@@ -103,18 +103,7 @@ export function WorkspaceView({ branch }: { branch: string }) {
   const notify = useCallback((notice: Notice | null) => shell?.notify(notice), [shell]);
   const onGone = useCallback(() => shell?.navigate({ page: 'git' }), [shell]);
   if (!list) return <p className="hint main-hint">Listing workspaces…</p>;
-  if (!row) {
-    return (
-      <div className="main-empty">
-        <p>No workspace {branch}.</p>
-        <p className="hint">
-          It was cleaned up, or started elsewhere. The sidenav lists the workspaces there are;{' '}
-          <a href={`${GIT_PAGE}?branch=${encodeURIComponent(branch)}`}>Git</a> shows its branch, if
-          it is still there.
-        </p>
-      </div>
-    );
-  }
+  if (!row) return <NotListed branch={branch} />;
   return (
     <WorkspacePanel
       key={branch}
@@ -127,6 +116,41 @@ export function WorkspaceView({ branch }: { branch: string }) {
       onNotice={notify}
       onGone={onGone}
     />
+  );
+}
+
+/**
+ * A workspace the list does not have: one cleaned up moves to History (V77), its address replaced;
+ * else it was started elsewhere, or its record is gone.
+ */
+function NotListed({ branch }: { branch: string }) {
+  const shell = useShell();
+  const [asked, setAsked] = useState(false);
+  useEffect(() => {
+    let gone = false;
+    fetch(`/api/workspaces/history?branch=${encodeURIComponent(branch)}`).then(
+      (response) => {
+        if (gone) return;
+        if (response.ok) shell?.navigate({ page: 'workspace-history', branch }, { replace: true });
+        else setAsked(true);
+      },
+      () => !gone && setAsked(true),
+    );
+    return () => {
+      gone = true;
+    };
+  }, [branch, shell]);
+  if (!asked) return <p className="hint main-hint">Looking for it…</p>;
+  return (
+    <div className="main-empty">
+      <p>No workspace {branch}.</p>
+      <p className="hint">
+        It was started elsewhere, or its record is gone. The sidenav lists the workspaces there are,
+        History the finished ones;{' '}
+        <a href={`${GIT_PAGE}?branch=${encodeURIComponent(branch)}`}>Git</a> shows its branch, if it
+        is still there.
+      </p>
+    </div>
   );
 }
 

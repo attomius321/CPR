@@ -177,6 +177,7 @@ test('every page of the shell: under the title bar, the browser’s page', async
     ['scout', []],
     ['skills', []],
     ['monitor', []],
+    ['workspace-history', ['.history-none']],
     ['settings', ['.settings-list']],
     ['start', ['.start-page input[name="title"]']],
   ];

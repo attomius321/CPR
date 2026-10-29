@@ -146,6 +146,46 @@ export interface WorkspaceSummary {
   via?: McpVia;
   /** What its agent did last and since when (V48); absent when nothing was recorded. */
   activity?: WorkspaceActivity;
+  /** When it was cleaned up (V77): History shows it, read only. */
+  finished?: string;
+}
+
+/**
+ * What became of a finished workspace's branch (V77, decision 565): `merged`, the commit it ended
+ * at is in the default branch; `kept`, its branch is still there, not merged; `gone`, neither.
+ */
+export type WorkspaceOutcome = 'merged' | 'kept' | 'gone';
+
+/** A finished workspace, as History lists it (V77): its record and what became of its branch. */
+export interface FinishedWorkspace {
+  branch: string;
+  kind?: WorkKind;
+  title?: string;
+  brief: string;
+  created: string;
+  /** When it was cleaned up. */
+  finished: string;
+  /** Who started it (`user.email`). */
+  by?: string;
+  via?: McpVia;
+  planFirst: boolean;
+  /** Its agent as it was started; absent when none was found. */
+  agent?: { kind: AgentKind; model?: string; effort?: string };
+  outcome: WorkspaceOutcome;
+  /** `merged`: the default branch it is in. */
+  into?: string;
+  /**
+   * The commit it ended at (decision 565): the tip Clean up recorded, else its branch's, else
+   * the last Approve's; absent when none is known or git no longer has it.
+   */
+  end?: string;
+}
+
+/** `GET /api/workspaces/history` (V77): the finished workspaces, the newest finished first. */
+export interface WorkspaceHistory {
+  workspaces: FinishedWorkspace[];
+  place: 'repository' | 'cache';
+  note?: string;
 }
 
 /** A tool an agent runs (V48f), and what it works on. */

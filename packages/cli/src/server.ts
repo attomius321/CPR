@@ -469,6 +469,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         return serveSite(req, res, url, '/', undefined);
       // Start a workspace, a page of the shell's (V30a).
       if (url.pathname === '/start') return serveSite(req, res, url, '/', undefined);
+      // History, the finished workspaces (V77), a page of the shell's.
+      if (url.pathname === '/workspace-history') return serveSite(req, res, url, '/', undefined);
       if (url.pathname.startsWith('/api/workspaces'))
         return workspacesRoute(req, res, url, workspaces);
     }
@@ -626,6 +628,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/workspaces') return workspacesApi(req, res, workspaces);
     if (url.pathname === '/api/workspaces/options')
       return read(req, res, () => workspaces.options());
+    if (url.pathname === '/api/workspaces/history') {
+      // History (V77): the finished workspaces, or one of them as its tabs read it.
+      if (url.searchParams.has('branch')) {
+        return ofBranch(req, res, url, (branch) => workspaces.finished(branch));
+      }
+      return read(req, res, () => workspaces.history());
+    }
     if (url.pathname === '/api/workspaces/draft') {
       if (req.method === 'GET') return json(res, 200, await workspaces.draft());
       return written(req, res, parseDraft, (draft) =>

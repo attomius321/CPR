@@ -9,6 +9,7 @@ import {
   SCOUT_PAGE,
   SETTINGS_PAGE,
   SKILLS_PAGE,
+  WORKSPACE_HISTORY_PAGE,
   hrefOf,
   inShell,
   routeOf,
@@ -20,6 +21,7 @@ import { SettingsPage } from '../settings/SettingsPage.js';
 import { SkillsPage } from '../skills/SkillsPage.js';
 import { MonitorPage } from '../monitor/MonitorPage.js';
 import { StartPage } from '../workspaces/StartPage.js';
+import { WorkspaceHistory } from '../workspaces/WorkspaceHistory.js';
 import { ConfirmDialog } from '../ui/ConfirmDialog.js';
 import { desktop } from './desktop.js';
 import {
@@ -198,7 +200,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   }, [go]);
 
   // g (Git; h until V66) and s go to the pages, a to Scout (V35; on its page, to its question or its terminal), i to
-  // Skills (V41), m to the Monitor (RM1), w to
+  // Skills (V41), m to the Monitor (RM1), h to History (V77), w to
   // the workspaces (the arrows between them), n starts one (on its page, back to its title), [
   // folds the sidenav. Attached before the first paint, as History's keys are: a key pressed as
   // soon as the page shows is not lost.
@@ -209,6 +211,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
       else if (event.key === 's') go(SETTINGS_PAGE);
       else if (event.key === 'i') go(SKILLS_PAGE);
       else if (event.key === 'm') go(MONITOR_PAGE);
+      else if (event.key === 'h') go(WORKSPACE_HISTORY_PAGE);
       else if (event.key === 'a') {
         const box = document.querySelector<HTMLElement>('.scout-page textarea');
         if (box) box.focus();
@@ -250,6 +253,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
           {route.page === 'scout' && <ScoutPage />}
           {route.page === 'skills' && <SkillsPage />}
           {route.page === 'monitor' && <MonitorPage path={route.path} />}
+          {route.page === 'workspace-history' && <WorkspaceHistory branch={route.branch} />}
           {route.page === 'settings' && <SettingsPage />}
           {route.page === 'workspace' && <WorkspaceView key={route.branch} branch={route.branch} />}
           {route.page === 'merge' && <MergeView key={route.branch} branch={route.branch} />}

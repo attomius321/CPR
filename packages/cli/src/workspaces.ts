@@ -11,6 +11,7 @@ import {
   defaultBranch,
   deleteMergedBranch,
   fileChangedSince,
+  git,
   isAncestor,
   isCommit,
   listRefs,
@@ -34,6 +35,7 @@ import {
   type WorkspaceAgentState,
   type WorkspaceChanges,
   type WorkspaceDocument,
+  type WorkspaceHistory,
   type WorkspaceList,
   type WorkspaceOptions,
   type WorkspaceReplied,
@@ -156,6 +158,15 @@ import {
   workspacesFolder,
 } from './thread.js';
 import { writeFileWhole } from './file-write.js';
+import {
+  approvedHead,
+  byFinished,
+  eachLimited,
+  endOf,
+  finishedEntry,
+  type FinishedRecord,
+  type WorkspaceEnd,
+} from './workspace-history.js';
 
 /** What `symbiote/config.json` says of workspaces and their agent; anything unknown is ignored. */
 export interface WorkspaceConfig {
@@ -283,6 +294,16 @@ async function modelsOf(agent: FoundAgent): Promise<AgentModels | null> {
 export interface Workspaces {
   options(): Promise<WorkspaceOptions>;
   list(): Promise<WorkspaceList>;
+  /**
+   * The finished workspaces (V77), newest first, each with what became of its branch: from
+   * records, reviews and git, never an agent (decision 564).
+   */
+  history(): Promise<WorkspaceHistory>;
+  /**
+   * A finished workspace as a workspace's tabs read it (V77): its agent not running, `tip` the
+   * commit it ended at (decision 565); 404 unless its record is finished.
+   */
+  finished(branch: string): Promise<WorkspaceSummary>;
   /** Makes the branch, its worktree and record, then starts the agent. Rejects with
    * `FeatureRefused`. */
   start(request: WorkspaceRequest): Promise<WorkspaceStart>;
@@ -871,6 +892,83 @@ export function workspaces(
     return false;
   }
 
+  /** Ancestry answers by commit and tip, and commits known to git (V77): neither ever changes. */
+  const ancestry = new Map<string, Promise<boolean>>();
+  const known = new Set<string>();
+  const inHistoryOf = (commit: string, tip: string) => {
+    const key = `${commit}:${tip}`;
+    let answer = ancestry.get(key);
+    if (!answer) {
+      answer = isAncestor(repo, commit, tip);
+      ancestry.set(key, answer);
+      answer.catch(() => ancestry.delete(key));
+    }
+    return answer;
+  };
+  const hasCommit = async (sha: string) => {
+    if (known.has(sha)) return true;
+    const has = await isCommit(repo, sha);
+    if (has) known.add(sha);
+    return has;
+  };
+
+  /**
+   * What became of a finished workspace's branch (V77): the commit it ended at (decision 565),
+   * when git has it, and whether the default branch `into` holds it — a branch with no commit of
+   * its own (its end its base) is not merged.
+   */
+  async function endedAt(
+    where: ReviewPlace,
+    workspace: WorkspaceFile,
+    refs: RefList,
+    into: string | null,
+    /** The default branch's newer commits, read once for the whole list: an end among them is in it. */
+    recent?: ReadonlySet<string>,
+  ): Promise<WorkspaceEnd> {
+    const kept = refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null;
+    const review =
+      workspace.tip || kept
+        ? null
+        : await readReview(reviewPath(where.dir, workspace.branch, where.reviewer));
+    const named = endOf(workspace, kept, review ? approvedHead(review.verdicts) : null);
+    // In the default branch first: a commit it holds is one git has, so most ends cost one run
+    // (V77: 299 ms for the person's 97 before, two runs each). A name git lacks is not merged.
+    let merged = workspace.merged === true;
+    let inTrunk = named !== null && named !== workspace.base && recent?.has(named) === true;
+    if (named && named !== workspace.base && !inTrunk) {
+      for (const tip of new Set(await trunkOf(refs))) {
+        if (await inHistoryOf(named, tip).catch(() => false)) {
+          inTrunk = true;
+          break;
+        }
+      }
+    }
+    merged ||= inTrunk;
+    const end = named && (inTrunk || named === kept || (await hasCommit(named))) ? named : null;
+    const at = end ? { end } : {};
+    if (merged) return { outcome: 'merged', ...(into ? { into } : {}), ...at };
+    return { outcome: kept ? 'kept' : 'gone', ...at };
+  }
+
+  /**
+   * The default branch's commits since `since` (V77), in one git run: from Node each run costs
+   * about 3 ms to start, one after another (85 ancestry checks took 280 ms on WSL). Whatever it
+   * lists is in the default branch; what it does not is asked on its own.
+   */
+  async function trunkSince(refs: RefList, since: string): Promise<Set<string>> {
+    const tips = [...new Set(await trunkOf(refs))];
+    if (tips.length === 0) return new Set();
+    const listed = await git(repo.root, ['rev-list', `--since=${since}`, ...tips, '--']);
+    return new Set(listed.split('\n').filter(Boolean));
+  }
+
+  /** A workspace's record, which Clean up finished; 404 otherwise (V77). */
+  async function finishedRecord(where: ReviewPlace, branch: string): Promise<FinishedRecord> {
+    const workspace = await readRecord(where, branch);
+    if (!workspace.finished) throw new WorkspaceRefused(`no finished workspace ${branch}`, 404);
+    return workspace as FinishedRecord;
+  }
+
   return {
     async options() {
       const [refs, claudeCode, codexAgent, hermesAgent] = await Promise.all([
@@ -980,6 +1078,71 @@ export function workspaces(
       }
       const terminal = await terminals?.available();
       return { workspaces: summaries, ...head, ...(terminal ? { terminal } : {}) };
+    },
+
+    async history() {
+      const where = await place();
+      const list = (await readRecords(where)).filter((w): w is FinishedRecord => !!w.finished);
+      const head = { place: where.place, ...(where.note ? { note: where.note } : {}) };
+      if (list.length === 0) return { workspaces: [], ...head };
+      const refs = await listRefs(repo);
+      const into = await mainOf(refs);
+      // A workspace's commits are made after it started (a rebase's too): from a day before the
+      // oldest, so a clock a little off is no matter.
+      const oldest = Math.min(...list.map((w) => Date.parse(w.created) || Date.now()));
+      const recent = await trunkSince(refs, new Date(oldest - 86_400_000).toISOString());
+      const ended = await eachLimited(list, 8, (w) => endedAt(where, w, refs, into, recent));
+      const rows = list.map((w, i) => finishedEntry(w, ended[i] as WorkspaceEnd));
+      return { workspaces: rows.sort(byFinished), ...head };
+    },
+
+    async finished(branch) {
+      const where = await place();
+      const workspace = await finishedRecord(where, branch);
+      const refs = await listRefs(repo);
+      const ended = await endedAt(where, workspace, refs, await mainOf(refs));
+      const tip = ended.end ?? null;
+      let ahead = 0;
+      if (tip && (await hasCommit(workspace.base))) {
+        const { base } = await changesBase(workspace, refs, tip);
+        ahead = (await commitsBetween(repo, base, tip, 1)).count;
+      }
+      const started = workspace.agent;
+      const agent: WorkspaceAgentState = started
+        ? {
+            state: 'not-running',
+            kind: started.kind,
+            ...(started.effort ? { effort: started.effort } : {}),
+            ...(started.model ? { model: started.model } : {}),
+          }
+        : { state: 'no-agent' };
+      return {
+        branch: workspace.branch,
+        ...(workspace.kind ? { kind: workspace.kind } : {}),
+        ...(workspace.title ? { title: workspace.title } : {}),
+        base: workspace.base,
+        ...(workspace.from ? { from: workspace.from } : {}),
+        ...(workspace.against ? { against: workspace.against } : {}),
+        created: workspace.created,
+        planFirst: workspace.planFirst,
+        brief: workspace.brief,
+        // Clean up removed it: nothing is offered in it.
+        worktree: { path: workspace.worktree, exists: false },
+        tip,
+        ahead,
+        merged: ended.outcome === 'merged',
+        agent,
+        ...(workspace.documents
+          ? {
+              documents: {
+                folder: documentsDir(where, workspace.branch),
+                files: workspace.documents,
+              },
+            }
+          : {}),
+        ...(workspace.via ? { via: workspace.via } : {}),
+        finished: workspace.finished,
+      };
     },
 
     async suggest(request) {
@@ -1251,7 +1414,8 @@ export function workspaces(
     },
 
     async openDiff(branch, file) {
-      const workspace = await readRecord(await place(), branch);
+      const where = await place();
+      const workspace = await readRecord(where, branch);
       const before = file.previousPath ?? file.path;
       for (const path of [file.path, before]) {
         const normal = posix.normalize(path);
@@ -1259,9 +1423,11 @@ export function workspaces(
           throw new WorkspaceRefused(`not a path in its worktree: ${path}`, 400);
         }
       }
-      const worktree = existsSync(workspace.worktree)
-        ? { ...repo, root: workspace.worktree }
-        : null;
+      // A finished workspace's worktree went with Clean up: another may have its folder now.
+      const worktree =
+        !workspace.finished && existsSync(workspace.worktree)
+          ? { ...repo, root: workspace.worktree }
+          : null;
       const own = join(workspace.worktree, ...file.path.split('/'));
       let left: string | null;
       let right: string | null;
@@ -1273,7 +1439,10 @@ export function workspaces(
         right = (await isFile(own)) ? own : null;
       } else {
         const refs = await listRefs(repo);
-        const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha;
+        // Finished: where it ended (V77), its branch perhaps gone.
+        const tip = workspace.finished
+          ? (await endedAt(where, workspace, refs, null)).end
+          : refs.branches.find((b) => b.name === workspace.branch)?.sha;
         if (!tip) throw new WorkspaceRefused(`its branch ${workspace.branch} is gone`, 409);
         const { base } = await changesBase(workspace, refs, tip);
         left = await keptFile(revisions, worktree ?? repo, base, before);
@@ -1300,12 +1469,17 @@ export function workspaces(
     },
 
     async changes(branch) {
-      const workspace = await readRecord(await place(), branch);
+      const where = await place();
+      const workspace = await readRecord(where, branch);
       const refs = await listRefs(repo);
-      const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null;
-      const uncommitted = existsSync(workspace.worktree)
-        ? await worktreeChanges(repo, workspace.worktree)
-        : null;
+      // A finished workspace's branch may be gone: where it ended (V77, decision 565).
+      const tip = workspace.finished
+        ? ((await endedAt(where, workspace, refs, null)).end ?? null)
+        : (refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null);
+      const uncommitted =
+        !workspace.finished && existsSync(workspace.worktree)
+          ? await worktreeChanges(repo, workspace.worktree)
+          : null;
       const none = {
         commits: { count: 0, listed: [] },
         files: { count: 0, added: 0, removed: 0, listed: [] },
@@ -1313,15 +1487,15 @@ export function workspaces(
       if (!tip || !(await isCommit(repo, workspace.base))) {
         return { branch, base: workspace.base, tip, ...none, uncommitted };
       }
-      const where = await changesBase(workspace, refs, tip);
-      const key = `${where.base}:${tip}`;
+      const from = await changesBase(workspace, refs, tip);
+      const key = `${from.base}:${tip}`;
       let kept = branchChanges.get(branch);
       if (kept?.key !== key) {
-        kept = { key, read: readBranchChanges(repo, where.base, tip) };
+        kept = { key, read: readBranchChanges(repo, from.base, tip) };
         branchChanges.set(branch, kept);
         kept.read.catch(() => branchChanges.delete(branch));
       }
-      return { branch, ...where, tip, ...(await kept.read), uncommitted };
+      return { branch, ...from, tip, ...(await kept.read), uncommitted };
     },
 
     async merge(branch) {
@@ -1369,8 +1543,13 @@ export function workspaces(
     async thread(branch) {
       const where = await place();
       const workspace = await readRecord(where, branch);
+      // Finished (V77): what Symbiote kept, never its agent asked (decision 564).
+      const kept =
+        !workspace.finished || !(workspace.agent?.kind === 'hermes' || onServer(workspace));
       let entries: ThreadEntry[];
-      if (workspace.agent?.kind === 'hermes') {
+      if (!kept) {
+        entries = [];
+      } else if (workspace.agent?.kind === 'hermes') {
         // From its session (decision 416); none when it cannot be read: the state says why.
         const read = await viaHermes.read(workspace);
         const session = read instanceof Error ? null : read;
@@ -1397,9 +1576,10 @@ export function workspaces(
         // Claude Code's hooks record it (V18c); Symbiote's runner records Codex's (V20a), or
         // Codex's app server keeps it (V27a); Hermes's own store keeps its (V58).
         recorded:
-          workspace.agent?.hooks === true ||
-          workspace.agent?.kind === 'codex' ||
-          workspace.agent?.kind === 'hermes',
+          kept &&
+          (workspace.agent?.hooks === true ||
+            workspace.agent?.kind === 'codex' ||
+            workspace.agent?.kind === 'hermes'),
         ...(review && verdict
           ? {
               verdict: {
@@ -1425,6 +1605,10 @@ export function workspaces(
     async tools(branch) {
       const where = await place();
       const workspace = await readRecord(where, branch);
+      // Finished (V77): Hermes's and the app server's are their own, and are not asked.
+      if (workspace.finished && (workspace.agent?.kind === 'hermes' || onServer(workspace))) {
+        return {};
+      }
       if (workspace.agent?.kind === 'hermes') {
         const read = await viaHermes.read(workspace);
         const session = read instanceof Error ? null : read;
@@ -1614,7 +1798,9 @@ export function workspaces(
     async clean({ branch, unmerged }) {
       const where = await place();
       const workspace = await readRecord(where, branch);
-      const merged = await isMerged(workspace, await listRefs(repo));
+      const refs = await listRefs(repo);
+      const merged = await isMerged(workspace, refs);
+      const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha;
       if (!merged && !unmerged) {
         throw new WorkspaceRefused(
           `${branch} is not merged into the default branch: clean up anyway to remove its worktree and keep the branch`,
@@ -1658,6 +1844,9 @@ export function workspaces(
       // Its documents go with its worktree; the record keeps their names (V40).
       if (workspace.documents) await removeDocuments(where, workspace.branch);
       workspace.finished = now().toISOString();
+      // Where its branch ended (V77, decision 566): History reads it once the branch is gone.
+      if (tip) workspace.tip = tip;
+      if (merged) workspace.merged = true;
       await writeRecord(where, workspace);
       return { finished: workspace.finished };
     },

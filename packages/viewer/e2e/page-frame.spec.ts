@@ -1,3 +1,5 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
@@ -142,6 +144,24 @@ test("the shell's pages: the whole main area, one head, cards 16 px from its edg
   await expectPage(page, 'Skills', 'skills', ['.skills-list', '.skills-pane']);
   await expectPage(page, 'the Monitor', 'monitor', ['.monitor-map-card', '.monitor-side']);
   await expectPage(page, 'Settings', 'settings', ['.settings-list', '.settings-editor']);
+  // History (V77): empty, one card; with a finished workspace, the list and the picked one.
+  await expectPage(page, 'History, empty', 'workspace-history', ['.history-none']);
+  const record = join(symbiote.repo, 'symbiote', 'workspaces', 'fix', 'old.json');
+  mkdirSync(dirname(record), { recursive: true });
+  writeFileSync(
+    record,
+    JSON.stringify({
+      agent: null,
+      base: symbiote.shas[0],
+      branch: 'fix/old',
+      brief: '# Fix: old\n',
+      created: '2026-10-20T09:00:00.000Z',
+      finished: '2026-10-20T10:00:00.000Z',
+      planFirst: false,
+      worktree: `${symbiote.repo}.worktrees/fix-old`,
+    }),
+  );
+  await expectPage(page, 'History', 'workspace-history', ['.history-list', '.history-workspace']);
 });
 
 test("a workspace, its review's two views and its merge: the same frame", async ({ page }) => {

@@ -120,7 +120,8 @@ once and accept its trust prompt. Codex needs no such step.
    started from, and runs your project's check. If the check passes, Symbiote *lands* the merge:
    it moves that branch to the merge commit.
 8. The workspace moves to **Done**. Click **Clean up** to remove its folder, its branch and the
-   agent's sessions.
+   agent's sessions. The workspace then goes to **History** (`h`), with its brief and what its
+   agent did.
 
 ## Workspaces
 
@@ -323,6 +324,14 @@ sessions, and removes the worktree, the documents and the branch. To remove a wo
 not merged, use **Clean up…** under **⋯**. Symbiote asks first and keeps the branch. Symbiote does
 not clean up a workspace while its worktree has changes that are not committed.
 
+A cleaned-up workspace goes to **History** (`h`, under Monitor in the sidenav). History lists them
+newest first, by the day they were cleaned up. Search them by title, branch or brief, or show one
+kind of work. Pick one to read it: its **Activity**, **Thread**, **Brief** and **Changes**, as its
+page showed them, with nothing to answer or run. Its commits are still shown after its branch is
+deleted: Symbiote finds them from the commit you approved, which the merge keeps. **Open the
+change** shows those commits' files and graph, as comparing two commits in Git does. A
+workspace's old link (`/?branch=…`) opens it in History.
+
 ## The other pages
 
 The sidenav also opens these pages. Each has a key.
@@ -356,6 +365,8 @@ The sidenav also opens these pages. Each has a key.
   also commits and pushes the library's changes.
 - **Monitor** (`m`): how the code is spread across folders and files, to spot the files that have
   grown too large. A map shows each file sized by its lines of code, and marks the long ones.
+- **History** (`h`): the workspaces you cleaned up, with their activity, thread, brief and
+  changes. See [Clean up](#clean-up).
 - **Settings** (`s`): the prompts Symbiote gives its agents, such as a workspace agent's first
   prompt; the model and effort of the merger, Scout and Scribe; the **Skill library** (its folder,
   or a repository to clone, and who commits its changes); and **Appearance** (dark, light or your
