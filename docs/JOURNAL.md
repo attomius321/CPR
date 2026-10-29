@@ -298,3 +298,4 @@ merge commit.
 - 2026-10-28 [V75a — the advisor and its prompt, built](journal/v75-suggested-settings.md)
 - 2026-10-28 [V75b — the button and the proposal on the Start page](journal/v75-suggested-settings.md)
 - 2026-10-28 [V75 test — the advisor on 18 written briefs, four ways](journal/v75-suggested-settings.md)
+- 2026-10-29 [V75c — the advisor's model and effort for each agent, in Settings](journal/v75-suggested-settings.md)

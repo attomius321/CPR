@@ -244,8 +244,8 @@ The levels differ too: Codex's Luna takes `none`, Claude Code's models do not.
   `advisor.codex.model` and `advisor.codex.effort`. Each is read only when that agent suggests.
   `advisor.model` and `advisor.effort` go: they were merged a day before, and this repository's
   config has neither.
-- **Settings' Suggest settings entry becomes a page like Scout's**: a Claude Code section and a
-  Codex section, each with the Model and Effort rows of the prebuilt agents' pages, then the
+- **Settings' Suggest settings entry becomes a page like Scout's.** It has a Claude Code section
+  and a Codex section, each with the Model and Effort rows of the prebuilt agents' pages, then the
   prompt. The entry stays in the Workspaces group (V75a's As built).
 - **Default names whose choice it is**, as the merger's Model does: "Symbiote's default (Haiku
   5.5)", and for Effort "Symbiote's default (low)" when the model takes `low`. Without the small
@@ -281,9 +281,10 @@ The levels differ too: Codex's Luna takes `none`, Claude Code's models do not.
 4. **The eval, on real briefs**: 24 briefs from this repository's records, every chore and
    refactor (6) and the rest spread over the other kinds. The person labels each with the size and
    level they would pick. Each brief runs through Haiku 5.5 at `low` and `medium`, and through
-   Luna at `none` and `low`. The report gives agreement on size and on plan first, the time at the
-   50th and 90th percentile, and the tokens. The eval picks `advisor.effort`'s default. Target: the
-   right size on at least 18 of 24 briefs, and the 90th percentile under 8 s.
+   Luna at `low` and `medium`. Luna's second run was `none` until V75c, but the person's Codex
+   lists no `none` for Luna, so that run ran at `low`. The report gives agreement on size and on plan first, the time at the
+   50th and 90th percentile, and the tokens. The eval picks the advisor's default level. Target:
+   the right size on at least 18 of 24 briefs, and the 90th percentile under 8 s.
 5. **Viewer**: the `viewer-check` skill's screenshot of the page before and after a suggestion.
 6. **Cost**: nothing until the press. A press costs 3–5 s and about 2,700 tokens on Claude Code
    or about 12,400 on Codex (spike).
@@ -387,4 +388,37 @@ lists 19 entries (14 prompts). `pnpm check`: 2,188 tests pass. `pnpm build`; the
 change (12 of 12 in `settings.spec.ts`); the nexus' 14 passed. In the built app on a scratch
 repository, the real Claude Code (Haiku 5.5) proposed Opus 5.5 at high effort, plan first, for a
 storage migration, in 3.9 s.
+
+## As built (V75c)
+
+- **A model and a level for each agent**, as designed (decision 556): `advisor.claude.model`,
+  `.effort`, `advisor.codex.model`, `.effort`. `advisor.model` and `advisor.effort` are no longer
+  read.
+- **The page reuses the prebuilt agents' rows.** `AgentRows` reads an agent's models and levels
+  once for its Model and Effort, on Scout's, Scribe's and the merger's pages and twice on Suggest
+  settings'. Under an agent's name the rows' names are `h4`.
+- **The prompt's section is named Instructions**, as on the prebuilt agents' pages. The page keeps
+  its title, **Workspaces: Suggest settings**, and the entry its place in the Workspaces group.
+- **Effort says whose default it is.** `AgentEfforts` has an optional `by: 'symbiote'`, and the
+  first stop reads "Symbiote's default (low)" when the advisor's model takes `low`.
+- **A level is never saved for nothing.** With neither the picked model nor the small one listed,
+  the advisor runs on the agent's own model. It now runs at the project's level when that model
+  takes it, so the Effort row is honoured there too.
+- **A missing agent is one line.** Its section says "Codex is not installed here." with no empty
+  Model and Effort. The prebuilt agents' pages lost their empty rows the same way.
+- **A level reset to its default says the default's name**: "Symbiote's default (low)" for the
+  advisor, and for Scout on Codex "Codex's default (medium)" where it said "Codex's default".
+- **The Start page's help named a group that does not exist** ("under Prompts"). It now says that
+  Settings, under Workspaces: Suggest settings, holds the model, the effort and the instructions.
+- **The eval measured one run under the wrong level.** The person's Codex lists Luna's levels as
+  `low` to `max`. Asked at `none`, the advisor fell back to `low` without a word, and every answer
+  of that run says `low`. `scripts/advisor-eval.mjs` now skips a run whose model is not listed or
+  whose level that model does not take, and says why; Luna at `medium` replaces `none`.
+
+**Results (V75c).** Tests first, red for the right reasons: 6 CLI unit tests, a server route test
+and a viewer unit test. An e2e test in `settings.spec.ts` covers both agents' lists and defaults,
+saving and removing the keys, and the next suggestion asking on the saved model and level.
+`pnpm check`: 2,195 unit tests pass. `pnpm build`, then the whole e2e suite: the viewer's 338
+tests and the nexus' 14 pass. With the real agents through the built view, Claude Code on Sonnet
+5.5 at `medium` answered in 3.1 s and Codex on GPT-5.6-Terra at `low` in 5.5 s.
 
