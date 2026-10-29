@@ -158,6 +158,39 @@ describe('startViewServer', () => {
   });
 });
 
+describe('the viewer it started with (fix/suggest-settings-models)', () => {
+  const viewer = tempDir();
+  let server: ViewServer;
+
+  beforeAll(async () => {
+    mkdirSync(join(viewer, 'assets'));
+    writeFileSync(join(viewer, 'index.html'), '<script src="./assets/index-old.js"></script>');
+    writeFileSync(join(viewer, 'assets', 'index-old.js'), 'old');
+    server = await startViewServer({ viewerDir: viewer });
+  });
+
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+
+  it('serves it after a build replaced it: its page and its chunks', async () => {
+    // A build as Vite makes one (emptyOutDir): a new page naming a new chunk, the old chunk gone.
+    // Its page would ask this server for routes it was started without (a 404, "not found").
+    rmSync(join(viewer, 'assets'), { recursive: true });
+    mkdirSync(join(viewer, 'assets'));
+    writeFileSync(join(viewer, 'index.html'), '<script src="./assets/index-new.js"></script>');
+    writeFileSync(join(viewer, 'assets', 'index-new.js'), 'new');
+
+    const page = await fetch(new URL('/', server.url));
+    expect(await page.text()).toBe('<script src="./assets/index-old.js"></script>');
+    const chunk = await fetch(new URL('/assets/index-old.js', server.url));
+    expect(chunk.status).toBe(200);
+    expect(await chunk.text()).toBe('old');
+    expect((await fetch(new URL('/assets/index-new.js', server.url))).status).toBe(404);
+  });
+});
+
 describe('GET /api/files and /api/file (V60)', () => {
   const viewer = tempDir();
   const asked: string[] = [];

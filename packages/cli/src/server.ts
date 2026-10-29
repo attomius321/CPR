@@ -1,7 +1,7 @@
-import { readFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { extname, join, normalize, sep } from 'node:path';
+import { extname, join, normalize } from 'node:path';
 import {
   BranchNotMerged,
   CheckoutRefused,
@@ -325,6 +325,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   // The pages' errors, as they sent them: `err` is theirs, not an Error for pino to read.
   const pageLog = log.as('viewer').child({}, { serializers: { err: (err: unknown) => err } });
   const pageErrors = { since: 0, count: 0 };
+  const viewerFiles = await readViewer(options.viewerDir);
   const server = createServer((req, res) => {
     const started = performance.now();
     let failure: unknown;
@@ -917,19 +918,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     return serveFile(res, path);
   }
 
-  /** Static viewer files; anything outside the viewer folder is refused. */
-  async function serveFile(res: ServerResponse, pathname: string): Promise<void> {
+  /** Static viewer files, as the server started with them: nothing outside the viewer folder. */
+  function serveFile(res: ServerResponse, pathname: string): void {
     const relative = normalize(decodeURIComponent(pathname)).replace(/^[/\\]+/, '') || 'index.html';
     const path = join(options.viewerDir, relative);
-    if (!path.startsWith(options.viewerDir + sep) && path !== options.viewerDir) {
-      return send(res, 404, 'not found');
-    }
-    try {
-      const body = await readFile(path);
-      return send(res, 200, body, TYPES[extname(path)] ?? 'application/octet-stream');
-    } catch {
-      return send(res, 404, 'not found');
-    }
+    const body = viewerFiles.get(path);
+    if (!body) return send(res, 404, 'not found');
+    return send(res, 200, body, TYPES[extname(path)] ?? 'application/octet-stream');
   }
 
   /** A diff's page: its graph once analyzed, its progress meanwhile. */
@@ -1812,6 +1807,27 @@ function send(
   if (status >= 400) answers.set(res, body.toString().slice(0, 500));
   res.writeHead(status, { 'content-type': type, 'cache-control': 'no-store' });
   res.end(body);
+}
+
+/**
+ * The built viewer's files by path, read once as the server starts (2.1 MB, 3 ms): a build under
+ * a running `symbiote view` (a merge's, in the checkout it serves) would otherwise hand this older
+ * server a page calling routes it lacks, and take away the chunks of a page opened before it
+ * (fix/suggest-settings-models). A file it cannot read is missing, as it was when asked for.
+ */
+async function readViewer(dir: string): Promise<Map<string, Buffer>> {
+  const files = new Map<string, Buffer>();
+  const entries = await readdir(dir, { recursive: true, withFileTypes: true }).catch(() => []);
+  await Promise.all(
+    entries
+      .filter((entry) => entry.isFile())
+      .map(async (entry) => {
+        const path = join(entry.parentPath, entry.name);
+        const body = await readFile(path).catch(() => undefined);
+        if (body) files.set(path, body);
+      }),
+  );
+  return files;
 }
 
 function readBody(req: IncomingMessage, limit: number): Promise<string> {

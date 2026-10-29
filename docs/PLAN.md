@@ -147,6 +147,7 @@ hosted.
 | [V73](plan/v73-activity-timeline.md) | The Activity tab as a timeline of phases: a live strip, groups that open to every event, the raw stream | ready for review | 513–518 | [journal](journal/v73-activity-timeline.md) |
 | [V74](plan/v74-activity-colours.md) | The Activity tab in colour: a phase's kind on a coloured tile on the rail, the conversation in bubbles | ready for review | 528–531 | [journal](journal/v74-activity-colours.md) |
 | [V75](plan/v75-suggested-settings.md) | Suggested settings: a small model sizes the work and fills the Start page's model, effort and plan first | V75a, V75b, V75c ✅ | 544–550, 556 | [journal](journal/v75-suggested-settings.md) |
+| Fix | Suggest settings could not read the agents' models: `symbiote view` serves the pages it started with, not a newer build's on its older API | ready for review | | [journal](journal/fix-suggest-settings-models.md) |
 
 ### Agents
 
