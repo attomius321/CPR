@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { openRepo, type AgentModel, type ScoutAsk } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
@@ -18,6 +18,7 @@ import {
 import { libraryService, type LibraryService } from '../src/library.js';
 import { scribe, scribePrompt } from '../src/scribe.js';
 import { viewFile } from '../src/mcp-bridge.js';
+import { gateDecision, scoutReach } from '../src/scout-gate.js';
 import type { Terminals } from '../src/terminal.js';
 import { claudeCode, type AgentSession, type ClaudeCode } from '../src/claude-code.js';
 import type { Run } from '../src/programs.js';
@@ -450,8 +451,13 @@ describe('scout (V35)', () => {
     // Its instructions are its system prompt (V50, decision 383); the question its first message.
     expect(request?.instructions).toBe(DEFAULT_PROMPTS.scout);
     expect(request?.prompt).toBe("Where is the merger's prompt defined?");
+    // Its gate is given the checkout and the workspaces' records (V79, decision 576).
     expect(readFileSync(settings, 'utf8')).toBe(
-      scoutSettings({ node: '/usr/bin/node', gate: GATE }),
+      scoutSettings({
+        node: '/usr/bin/node',
+        gate: GATE,
+        args: [repo.root, join(repo.root, 'symbiote', 'workspaces')],
+      }),
     );
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toEqual({
       about:
@@ -645,6 +651,95 @@ describe('scout (V35)', () => {
     // Without its app server, Codex has no terminal: Scout says so.
     const without = await service(repo, { codex: fakeCodex(null).codex });
     await expect(without.ask({ text: 'Q' })).rejects.toThrow(/app server/);
+  });
+});
+
+describe("Scout reads the workspaces' worktrees (V79, decisions 576-579)", () => {
+  /** `repo` with a workspace's worktree beside it, and its record. */
+  function withWorkspace(repo: TestRepo) {
+    const holder = `${repo.root}.worktrees`;
+    folders.push(holder);
+    const worktree = join(holder, 'feature-a');
+    repo.git('worktree', 'add', '--quiet', worktree, '-b', 'feature/a');
+    writeFileSync(join(worktree, 'wip.md'), 'not committed\n');
+    const file = join(repo.root, 'symbiote', 'workspaces', 'feature', 'a.json');
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(
+      file,
+      JSON.stringify({
+        agent: null,
+        base: repo.git('rev-parse', 'HEAD'),
+        branch: 'feature/a',
+        brief: 'b',
+        created: NOW.toISOString(),
+        planFirst: false,
+        worktree,
+      }),
+    );
+    return { holder, worktree };
+  }
+
+  /** The gate's arguments as Scout's settings file gives them to the hook. */
+  const gateArgsOf = (settings: string): string[] => {
+    const text = readFileSync(settings, 'utf8');
+    const command = (
+      JSON.parse(text) as { hooks: { PreToolUse: { hooks: { command: string }[] }[] } }
+    ).hooks.PreToolUse[0]?.hooks[0]?.command;
+    return (command ?? '')
+      .split(' ')
+      .slice(2)
+      .map((word) => word.replace(/^'|'$/g, ''));
+  };
+  const read = (file_path: string) => ({
+    hook_event_name: 'PreToolUse',
+    tool_name: 'Read',
+    tool_input: { file_path },
+  });
+
+  it("opens the workspaces' worktrees to its gate and nothing outside them; no --add-dir", async () => {
+    const repo = fresh();
+    const { holder, worktree } = withWorkspace(repo);
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    await (await service(repo, { claude })).open({});
+    const request = startPageAgent.mock.calls[0]?.[0];
+    // Nothing opened for the whole session: the gate decides at each call.
+    expect(request).not.toHaveProperty('addDirs');
+    const args = gateArgsOf(request?.settings ?? '');
+    expect(args).toEqual([repo.root, join(repo.root, 'symbiote', 'workspaces')]);
+    const reach = scoutReach(args);
+    expect(gateDecision(read(join(worktree, 'wip.md')), reach)).toMatchObject({ allow: true });
+    for (const outside of [
+      join(holder, 'other', 'x.md'),
+      join(dirname(repo.root), 'x.md'),
+      join(repo.root, 'src/a.ts'),
+    ]) {
+      expect(gateDecision(read(outside), reach)).toBeNull();
+    }
+    // A workspace started during the conversation is read at the next call.
+    const later = join(holder, 'feature-b');
+    repo.git('worktree', 'add', '--quiet', later, '-b', 'feature/b');
+    const file = join(repo.root, 'symbiote', 'workspaces', 'feature', 'b.json');
+    writeFileSync(
+      file,
+      readFileSync(join(dirname(file), 'a.json'), 'utf8')
+        .replace('feature/a', 'feature/b')
+        .replace(worktree, later),
+    );
+    expect(gateDecision(read(join(later, 'README.md')), scoutReach(args))).toMatchObject({
+      allow: true,
+    });
+  });
+
+  it('gives Codex nothing to write: read-only, no writable folder (decision 579)', async () => {
+    const repo = fresh();
+    withWorkspace(repo);
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    await (await service(repo, { codex })).open({});
+    const start = server.calls.find((c) => c.method === 'thread/start');
+    expect(start?.params).toMatchObject({ cwd: repo.root, sandbox: 'read-only' });
+    expect(JSON.stringify(start?.params)).not.toContain('writable');
+    expect(JSON.stringify(start?.params)).not.toContain('worktrees');
   });
 });
 

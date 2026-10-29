@@ -535,9 +535,12 @@ describe("Symbiote's MCP: what it reads", () => {
       expect.objectContaining({ branch: 'feature/b' }),
       expect.objectContaining({ branch: 'chore/c' }),
     ]);
+    // The list gives no paths; one workspace gives its worktree, where Scout reads (V79).
+    expect(listed.text).not.toContain('/w/fix/a');
     const one = await call(mcp, 'workspace', { branch: 'fix/a' });
     expect(one.value).toMatchObject({
       branch: 'fix/a',
+      worktree: '/w/fix/a',
       brief: '# The brief of fix/a\n\nA long text.',
       commits: { count: 1, listed: [{ sha: HEAD, subject: 'Fix: the thing' }] },
       files: { count: 1, listed: [{ path: 'src/a.ts', status: 'modified' }] },
