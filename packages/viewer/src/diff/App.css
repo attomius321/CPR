@@ -12,7 +12,7 @@
   background: var(--bg);
 }
 
-.bar .page-actions {
+.bar :is(.page-actions, .page-end) {
   font-size: var(--size-small);
 }
 

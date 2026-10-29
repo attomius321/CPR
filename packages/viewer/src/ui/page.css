@@ -15,7 +15,8 @@
   padding: var(--page-pad);
 }
 
-.page-head > .page-icon {
+/* With an end (V76c) the icon, title and actions are in `.page-head-main`. */
+:is(.page-head, .page-head-main) > .page-icon {
   flex: none;
   display: inline-flex;
   align-items: center;
@@ -25,7 +26,7 @@
   color: var(--accent);
 }
 
-.page-head > .page-icon .icon {
+:is(.page-head, .page-head-main) > .page-icon .icon {
   width: 28px;
   height: 28px;
   stroke-width: 1.4;
@@ -76,6 +77,31 @@
   justify-content: flex-end;
   gap: 8px 12px;
   margin-left: auto;
+}
+
+/* A head with an end (V76c, decision 568): what must not move between pages (a diff's Files and
+   Graph). The icon, title and actions wrap as any head's, in a box of their own; the end stays at
+   the right of the title's line at every width, whatever the actions before it are. */
+.page-head-end {
+  flex-wrap: nowrap;
+  align-items: flex-start;
+}
+
+.page-head-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.page-end {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: var(--page-head);
 }
 
 /* A card's head: its tabs, or its title and actions, `--card-head` high with the hairline under

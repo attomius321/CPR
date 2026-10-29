@@ -353,8 +353,8 @@ export function App() {
       onDrop={onDrop}
     >
       {/* The page frame's head (V72, decision 511): what is reviewed the title, its facts the
-          line, the way back, Files and Graph and the page's toggles its actions. With no shell
-          (symbiote pr) it is the window's title bar, Symbiote's S its icon (N1d). */}
+          line, the way back and the page's toggles its actions, Files and Graph its end (V76c).
+          With no shell (symbiote pr) it is the window's title bar, Symbiote's S its icon (N1d). */}
       <PageHead
         className="bar"
         icon={inView ? <ReviewIcon /> : <SymbioteMark />}
@@ -374,7 +374,6 @@ export function App() {
         actions={
           <>
             {state.status === 'ready' && state.commits && <BackLink />}
-            {state.status === 'ready' && <PageSwitch page={page} onPage={showPage} />}
             {state.status === 'ready' && page === 'files' && (
               <Help label="This page's keys">
                 <FilesKeys review={Boolean(forge)} canOpen={state.open} />
@@ -437,8 +436,18 @@ export function App() {
                 </Help>
               </>
             )}
-            {!inView && <WindowButtons />}
           </>
+        }
+        end={
+          // Files and Graph at the head's end (V76c, decision 568): the actions before it change
+          // with the page, and wrap under the title on their own; it stays put. The window's
+          // buttons stay last.
+          state.status === 'ready' || !inView ? (
+            <>
+              {state.status === 'ready' && <PageSwitch page={page} onPage={showPage} />}
+              {!inView && <WindowButtons />}
+            </>
+          ) : undefined
         }
       />
       {state.status === 'ready' && page === 'files' ? (
