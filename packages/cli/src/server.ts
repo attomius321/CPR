@@ -233,6 +233,16 @@ const TYPES: Record<string, string> = {
 /** Largest review or state the viewer may send. */
 const MAX_BODY_BYTES = 1 << 20;
 
+/**
+ * Sent with every answer (fix/security-and-bugs): only pages on this machine may frame one — the
+ * nexus frames each `symbiote view` —, so no other site shows a page under its own and has the
+ * person click in it; and no answer is read as another type than it says.
+ */
+const GUARD_HEADERS = {
+  'content-security-policy': "frame-ancestors 'self' http://127.0.0.1:* http://localhost:*",
+  'x-content-type-options': 'nosniff',
+};
+
 /** Rows of the history the viewer may ask for at once. */
 const MAX_HISTORY_ROWS = 500;
 
@@ -326,6 +336,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const pageLog = log.as('viewer').child({}, { serializers: { err: (err: unknown) => err } });
   const pageErrors = { since: 0, count: 0 };
   const server = createServer((req, res) => {
+    for (const [name, value] of Object.entries(GUARD_HEADERS)) res.setHeader(name, value);
     const started = performance.now();
     let failure: unknown;
     res.once('close', () => requestLine(req, res, performance.now() - started, failure));

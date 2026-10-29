@@ -54,6 +54,15 @@ const WRITES = new Set(['/api/symbiotes', '/api/symbiotes/stop']);
 /** The most a write's body may hold. */
 const BODY_LIMIT = 64 * 1024;
 
+/**
+ * Sent with every answer, as the viewer's server sends them (fix/security-and-bugs): only pages on
+ * this machine may frame the page, and no answer is read as another type than it says.
+ */
+const GUARD_HEADERS = {
+  'content-security-policy': "frame-ancestors 'self' http://127.0.0.1:* http://localhost:*",
+  'x-content-type-options': 'nosniff',
+};
+
 /** A folder the system would not list, in words. */
 const FOLDER_ERRORS: Record<string, [number, string]> = {
   ENOENT: [404, 'No such folder'],
@@ -150,6 +159,7 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
   }
 
   const server = createServer((req, res) => {
+    for (const [name, value] of Object.entries(GUARD_HEADERS)) res.setHeader(name, value);
     handle(req, res).catch((error: unknown) => {
       options.log?.error({ err: error, path: req.url }, 'request failed');
       send(res, 500, String(error));

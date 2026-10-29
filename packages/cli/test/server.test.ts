@@ -122,6 +122,18 @@ describe('startViewServer', () => {
     expect(status).toBe(421);
   });
 
+  // Another site may not frame a page of Symbiote's and have the person click in it
+  // (fix/security-and-bugs); the nexus, on this machine, frames them.
+  it('lets only pages on this machine frame it, and no answer be sniffed', async () => {
+    for (const path of ['/', '/api/graph', '/missing.js', '/api/nothing']) {
+      const response = await fetch(new URL(path, server.url));
+      expect(response.headers.get('content-security-policy'), path).toBe(
+        "frame-ancestors 'self' http://127.0.0.1:* http://localhost:*",
+      );
+      expect(response.headers.get('x-content-type-options'), path).toBe('nosniff');
+    }
+  });
+
   it('says what it can do: sources, but no reviews outside symbiote pr', async () => {
     expect(JSON.parse((await get('/api/capabilities')).body)).toEqual({
       sources: true,
