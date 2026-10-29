@@ -256,15 +256,23 @@ spinner, and a merge's at work (fix/merging-status): a comet, a 2 px ring whose 
 round head, 11 px around the dot's 7 px place, so nothing moves (until then a plain ¾ arc); a
 working card's line starts with its agent's mark, 14 px, in its vendor's colours (the one place a
 non-state colour is on a card, the person's choice); every card's kind is a neutral `.chip` at the
-end of its name's line, over its time.
+start of its facts' row (V79; at the end of its name's row V53–V78).
 
-Workspace card: 10 px radius, 6 × 8 px padding, at most 72 px; hover `--hover` and current
-`--selected`, as every row (V37: a hover of `--raised` at 40 % vanished in light, and a border and
-shadow made the current card a box). First line: status dot, name (15 px, 600) and its kind chip,
-the open one's in the accent (V61). Second: the state in 14 px `--muted`, its time right-aligned.
-Third: the branch in 14 px `--muted` sans. Waiting for you (V48, V61): the group an amber card
-(14 px radius, a 30 % `--warning` edge, a 5 % wash), each workspace a card inside it (a 4 % wash
-of the text), what it asks on two lines at most, Respond the primary at 28 px.
+Workspace card (V79, decisions 576–581): four rows on 20 px lines, 10 × 12 px in, 10 px radius,
+6 px between cards, each on a 3.5 % wash of the text, 7 % on hover, the open one `--selected` (no
+edge or shadow: V37's border and shadow made the current card a box). The dot, 10 px from the
+words, on the first line of the name (15 px, 600, two lines then "…"), how long its state has
+lasted in 13 px `--muted` at that row's end. What it does or what is next in 14 px `--muted`, two
+lines then "…", the agent's mark before it while it works. Its facts' row: the kind chip (the open
+one's in the accent, V61), then each fact as a 15 px icon and a number or a word in 14 px
+`--muted` (commits, files not committed), the merge check in its state's colour ("clean" in
+`--added`, "n conflicts" in `--removed`), each named in words in its tip and its `aria-label`.
+Last, the branch in 14 px `--muted` sans and its review mark. Until V79 a card was three rows in
+72 px, 1 px apart, each cut to one line: 5 of 9 names and 6 of 9 states read "…". Waiting for you
+(V48, V61): the group an amber card (14 px radius, a 30 % `--warning` edge, a 5 % wash), each
+workspace a card inside it (a 4 % wash of the text), what it asks on two lines at most, Respond
+the primary at 28 px then its kind. A group's icon stands over its cards' dots and its name over
+theirs. Folded, the rail draws the dots alone, without the wash.
 
 ## Chips, badges, counts, keycaps
 
@@ -431,7 +439,7 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
 
 ## Shell
 
-- Sidenav: `--side`, 264 px (V61), `--line` on its right. From the top: the brand row (52 px: the
+- Sidenav: `--side`, 300 px at first (V79; 264 since V61), `--line` on its right. From the top: the brand row (52 px: the
   round mark at 32 px, "Symbiote" at 17 px 600, the repository in `--muted`, the fold a 32 px
   raised square), the pages as 36 px rows with 18 px icons, the section header, the groups and
   their cards; at the bottom, Settings alone, a page's row over a `--line` hairline (6 × 8 px

@@ -205,8 +205,10 @@ The sidenav lists your workspaces in groups, by what each one needs from you:
 | **Working** | Agents at work, with what each one is doing right now |
 | **Done** | Merged workspaces, ready to clean up |
 
-Each card shows the workspace's title, its kind, its state, and how long it has been in that
-state. A waiting card has **Respond**, which opens the agent's terminal. When Scout or Scribe waits
+Each card shows the workspace's title and how long it has been in its state, what its agent is
+doing or what comes next, its kind, its facts and its branch. The facts are its commits, its files
+not committed and whether it merges cleanly; hover one to read it in words. A waiting card has
+**Respond**, which opens the agent's terminal. When Scout or Scribe waits
 for you, its page's link turns amber like this group and says **Waits**.
 
 The window's title counts everything that waits for you: workspaces, merges, Scout, Scribe and

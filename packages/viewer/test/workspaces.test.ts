@@ -20,6 +20,7 @@ import {
   activityText,
   allRows,
   workspaceChips,
+  workspaceFacts,
   workspaceGroups,
   workspaceName,
   workspaceNext,
@@ -729,6 +730,45 @@ describe('cleanableOnCard (V55)', () => {
         .filter(cleanableOnCard)
         .map((r) => r.workspace.branch),
     ).toEqual(['feature/c', 'feature/f']);
+  });
+});
+
+describe('workspaceFacts (V79)', () => {
+  const facts = (
+    over: Partial<WorkspaceSummary>,
+    merge: Parameters<typeof workspaceFacts>[1] = null,
+  ) => workspaceFacts(summary(over), merge);
+
+  it('says its commits, its files not committed and a worktree gone: on the card a number, in the head words', () => {
+    expect(facts({})).toEqual([{ kind: 'commits', shown: '0', words: 'no commits yet' }]);
+    expect(facts({ ahead: 3, worktree: { path: '/w', exists: true, changed: 1 } })).toEqual([
+      { kind: 'commits', shown: '3', words: '3 commits' },
+      { kind: 'changed', shown: '1', words: '1 file not committed yet' },
+    ]);
+    expect(facts({ ahead: 1, worktree: { path: '/w', exists: false, changed: 0 } })).toEqual([
+      { kind: 'commits', shown: '1', words: '1 commit' },
+      { kind: 'gone', shown: 'worktree gone', words: 'its worktree is gone' },
+    ]);
+  });
+
+  it('says the merge check last: clean, or how many files conflict', () => {
+    expect(facts({ ahead: 2 }, { into: 'main', clean: true }).at(-1)).toEqual({
+      kind: 'clean',
+      shown: 'clean',
+      words: 'Merges cleanly into main',
+    });
+    expect(facts({ ahead: 2 }, { into: 'main', conflicts: ['a.ts'] }).at(-1)).toEqual({
+      kind: 'conflicts',
+      shown: '1 conflict',
+      words: 'Conflicts with main in 1 file',
+    });
+    expect(facts({ ahead: 2 }, { into: 'dev', conflicts: ['a.ts', 'b.ts'] }).at(-1)).toEqual({
+      kind: 'conflicts',
+      shown: '2 conflicts',
+      words: 'Conflicts with dev in 2 files',
+    });
+    // A check git could not make says nothing.
+    expect(facts({ ahead: 2 }, { into: 'main', error: 'no merge base' })).toHaveLength(1);
   });
 });
 
