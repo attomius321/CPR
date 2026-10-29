@@ -24,7 +24,7 @@ opens in a window of its own or in your browser.
 - git, and Node 22.12 or newer. The install gets pnpm itself; no compiler is needed.
 - Claude Code, Codex or Hermes Agent, installed and set up. Symbiote starts them with your own
   login and configuration, so their work counts against your own subscription, API key or model
-  server. Symbiote's own helper agents, the merger, Scout and Scribe (described below), run on
+  server. Symbiote's own helper agents, the merger, Nucleus and Scribe (described below), run on
   Claude Code or Codex.
 
 ## Install
@@ -206,10 +206,10 @@ The sidenav lists your workspaces in groups, by what each one needs from you:
 | **Done** | Merged workspaces, ready to clean up |
 
 Each card shows the workspace's title, its kind, its state, and how long it has been in that
-state. A waiting card has **Respond**, which opens the agent's terminal. When Scout or Scribe waits
+state. A waiting card has **Respond**, which opens the agent's terminal. When Nucleus or Scribe waits
 for you, its page's link turns amber like this group and says **Waits**.
 
-The window's title counts everything that waits for you: workspaces, merges, Scout, Scribe and
+The window's title counts everything that waits for you: workspaces, merges, Nucleus, Scribe and
 agents' asks. In Symbiote's own window, the taskbar icon also gets an amber dot while anything
 waits. When something new waits while you are in another window, Symbiote asks the desktop to
 blink its taskbar button until you come back. Desktops that blink a window asking for attention do
@@ -347,13 +347,16 @@ The sidenav also opens these pages. Each has a key.
   them in the details pane. **Fetch**, **Pull** (fast-forward only, merge or rebase) and **Push**
   are at the top, with **Find a commit** (`f`) to search the messages, authors and SHAs.
   Symbiote never forces a push and never discards your changes: when git refuses, it says why.
-- **Scout** (`a`): an agent you can ask about the repository: where something is decided, why it
-  works this way, or what waits for you. Scout can also act on your workspaces for you: start one,
-  answer an agent, review or merge a branch. Before a start, Scout can ask for suggested settings,
-  as **Suggest settings** does, and shows them to you: you choose what it starts with. Scout never
-  edits files. It can send a message to an agent without asking you, but a start, a verdict, a
-  merge and a clean-up each wait until you click **Confirm**. The page is Scout's terminal: you ask
-  there. **New conversation** starts over.
+- **Nucleus** (`a`): your orchestrator in Symbiote, an agent you talk to in its terminal on this
+  page. Ask it about the repository: where something is decided, why it works this way, or what
+  waits for you. It searches the web and reads web pages, to research tools, libraries and docs
+  (see [What Symbiote writes and sends](#what-symbiote-writes-and-sends)). Nucleus can also act on
+  your workspaces for you: start one, answer an agent, review or merge a branch. Before a start,
+  it can ask for suggested settings, as **Suggest settings** does, and you choose what it starts
+  with. Nucleus never edits files. It can send a message to an agent without asking you, but a
+  start, a verdict, a merge and a clean-up each wait until you click **Confirm**. **New
+  conversation** starts over. Nucleus was called Scout before. A conversation that Scout started
+  stays open on this page, without the web, until you press **New conversation**.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
   task (`.claude/skills/<name>/SKILL.md`). Search them by name or description, read and edit
   them here (with line numbers, or as a Markdown preview), or open one in VS Code. As you type,
@@ -370,7 +373,7 @@ The sidenav also opens these pages. Each has a key.
 - **History** (`h`): the workspaces you cleaned up, with their activity, thread, brief and
   changes. See [Clean up](#clean-up).
 - **Settings** (`s`): the prompts Symbiote gives its agents, such as a workspace agent's first
-  prompt; the model and effort of the merger, Scout and Scribe (set only here: their pages have no
+  prompt; the model and effort of the merger, Nucleus and Scribe (set only here: their pages have no
   such choices); the **Skill library** (its folder,
   or a repository to clone, and who commits its changes); and **Appearance** (dark, light or your
   system's, and whether Git's commit details show on the right or below the commits).
@@ -430,11 +433,19 @@ Symbiote itself sends three things over the network:
 The agents talk to their own services, as they do when you run them yourself. Symbiote's fonts
 and pages are served by `symbiote view` itself.
 
+Nucleus also searches the web and reads web pages when a question needs it. On Claude Code, the
+searches go through Anthropic, and Claude Code fetches each page from your machine. It can reach
+any address your machine can, including addresses on your own network. On Codex, OpenAI runs the
+searches and opens the pages. What leaves your machine is the search and the page's address. A
+page can hold instructions: Nucleus treats it as data, and nothing it reads can start, approve,
+merge or clean up without your **Confirm**. To turn Nucleus's web access off, set `nucleus.web`
+to `false` in [the settings file](docs/reference/configuration.md).
+
 All settings are in the [configuration reference](docs/reference/configuration.md).
 
 ## Limits
 
-- Workspaces start Claude Code, Codex or Hermes. Other agents are not supported yet, and Scout,
+- Workspaces start Claude Code, Codex or Hermes. Other agents are not supported yet, and Nucleus,
   Scribe and the merger run on Claude Code or Codex only.
 - The graph reads TypeScript, JavaScript, CSS and SCSS. Other files have no symbols in the graph;
   a review shows their diffs on its **Files** page, where you can comment on their lines.

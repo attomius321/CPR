@@ -2,7 +2,7 @@
 
 This page lists the `symbiote` command's commands and options, and the keys of the app it opens.
 To install Symbiote and start a first workspace, see the [README](../../README.md). It also
-explains the terms this page uses: workspace, merger, verdict, Scout and the others.
+explains the terms this page uses: workspace, merger, verdict, Nucleus and the others.
 
 ## Commands
 
@@ -97,14 +97,14 @@ toolbar.
 | g | | The Graph page | The Files page |
 | Esc | Back to the commits from a file shown; leave compare mode | Close the comment box | Close the detail panel |
 
-These keys work on Git, Scout, Skills, Monitor, History, Settings and a workspace's page. In a
+These keys work on Git, Nucleus, Skills, Monitor, History, Settings and a workspace's page. In a
 change, only n and [ work.
 
 | Key | What it does |
 |---|---|
 | n | Open **Start a workspace** |
 | g, s | Git, Settings |
-| a | Scout |
+| a | Nucleus |
 | i | Skills |
 | m | Monitor |
 | h | History: the cleaned-up workspaces. ↑ and ↓ move between them in its list. |
@@ -123,7 +123,7 @@ Ctrl+Enter saves, starts, sends or commits. On macOS, use Cmd instead of Ctrl.
 ## Symbiote's tools for your own agent
 
 `symbiote view` offers what its pages do as tools over MCP, the Model Context Protocol: list the
-workspaces, start one, review a branch, merge it. Scout uses these tools, and you can give them to
+workspaces, start one, review a branch, merge it. Nucleus uses these tools, and you can give them to
 your own agent. The agent reaches them through `symbiote mcp`, which finds the `symbiote view`
 running for the repository the agent works in. If none is running, each tool says so.
 

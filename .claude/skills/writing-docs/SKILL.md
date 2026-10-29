@@ -106,7 +106,7 @@ list or a definition that cannot be split.
 
 | Before | After | Rule |
 |---|---|---|
-| Its model is the project's when the conversation's agent lists it, else the agent's own. | Scout starts on the model set in **Settings**. If the agent does not offer that model, Scout uses the agent's default. | Name the actor; "if" and "otherwise"; no possessive chain |
+| Its model is the project's when the conversation's agent lists it, else the agent's own. | Nucleus starts on the model set in **Settings**. If the agent does not offer that model, Nucleus uses the agent's default. | Name the actor; "if" and "otherwise"; no possessive chain |
 | A failed check does not take Approve away: the page says which commands passed; the log has their output. | You can approve a merge even when its check fails. The page lists the commands that passed and failed, and the log shows their output. | One idea a sentence; no colon or semicolon for "and" |
 | The records (`symbiote/features/` before V25) | The records are in `symbiote/workspaces/`. (Older versions: one line in an "Upgrading" section.) | No milestone IDs in user docs |
 | The list comes from the SDK's `initialize` answer, cached for a day. (In a how-to.) | Pick a model from the list. It shows the models your agent offers. | A how-to says what the reader does and sees; internals go elsewhere |
@@ -119,7 +119,7 @@ list or a definition that cannot be split.
   "for example", not "e.g."; "that is", not "i.e."; "through" or "with", not "via".
 - **Define each term where the reader first meets it**, or link to its definition. Symbiote's
   own terms need it: symbol, change, finding, context (the unchanged callers and callees), map,
-  workspace, worktree, brief, thread, review, verdict, merger, Scout, Scribe, plugin, forge.
+  workspace, worktree, brief, thread, review, verdict, merger, Nucleus, Scribe, plugin, forge.
 - **One word for one thing**, everywhere. A workspace was called a "feature" until V25
   (`docs/journal/chore-workspaces-term.md`), and both words are still in places. Pick the
   current one and keep it; do not switch to a synonym for variety.
