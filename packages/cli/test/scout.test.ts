@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { openRepo, type AgentModel, type ScoutAsk } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
-import { codexServer } from '../src/app-server.js';
+import { codexServer, readProfile } from '../src/app-server.js';
 import { codexFolders, type Codex } from '../src/codex.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';
 import {
@@ -932,12 +932,12 @@ describe('Scout is a terminal (V50)', () => {
     codex.efforts = () => Promise.resolve({ levels: ['low', 'medium', 'high'], default: 'medium' });
     const s = await service(repo, { codex });
     const state = await s.open({ effort: 'low' });
+    // Read-only through its profile (V80), not a sandbox mode.
     expect(server.calls.find((c) => c.method === 'thread/start')?.params).toMatchObject({
       cwd: repo.root,
-      sandbox: 'read-only',
       approvalPolicy: 'never',
       developerInstructions: DEFAULT_PROMPTS.scout,
-      config: { model_reasoning_effort: 'low' },
+      config: { model_reasoning_effort: 'low', default_permissions: 'symbiote-read' },
     });
     expect(server.calls.some((c) => c.method === 'turn/start')).toBe(false);
     expect(state.conversation).toMatchObject({
@@ -1569,10 +1569,11 @@ describe("Scout with Symbiote's tools (MC1, decisions 358, 365)", () => {
           tool_timeout_sec: 660,
         },
       },
+      // The folders it reads (V80): Codex's program's and the checkout; no workspace here.
+      ...readProfile([...codexFolders('/usr/bin/codex'), repo.root]),
     };
     expect(server.calls.find((c) => c.method === 'thread/start')?.params).toEqual({
       cwd: repo.root,
-      sandbox: 'read-only',
       approvalPolicy: 'never',
       developerInstructions: DEFAULT_PROMPTS.scout,
       config,
