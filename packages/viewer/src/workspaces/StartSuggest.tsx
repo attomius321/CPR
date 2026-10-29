@@ -110,11 +110,14 @@ export function SuggestionCard({
       help={
         <Help label="About suggested settings">
           <p>
-            Your agent&apos;s small model read the brief: Haiku 5.5 for Claude Code, GPT-6 Luna for
-            Codex. It proposes a model, an effort level and whether to plan first. Your cards change
-            only if you press Use these settings.
+            A small model read the brief: Haiku 5.5 for Claude Code and GPT-6 Luna for Codex, unless
+            Settings names another. It proposes a model, an effort level and whether to plan first.
+            Your cards change only if you press Use these settings.
           </p>
-          <p>Its instructions are in Settings, under Prompts: Suggest settings.</p>
+          <p>
+            Settings, under Workspaces: Suggest settings, holds its model, its effort and its
+            instructions for each agent.
+          </p>
         </Help>
       }
     >

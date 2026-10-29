@@ -240,9 +240,12 @@ p.settings-section.settings-about {
 }
 
 /* A prebuilt agent's prompts (fix/scout-merger-scribe-settings): sections of its page under its
-   Model and Effort, a hairline between; the name, the chip and Reset on the first line. */
+   Model and Effort, a hairline between; the name, the chip and Reset on the first line. Suggest
+   settings' page (V75c): an agent's name over its Model and Effort, each agent a section. */
 .settings-rows + .settings-prompt,
-.settings-prompt + .settings-prompt {
+.settings-prompt + .settings-prompt,
+.settings-advisor + .settings-advisor,
+.settings-advisor + .settings-prompt {
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid var(--line);
@@ -255,9 +258,14 @@ p.settings-section.settings-about {
   gap: 8px 12px;
 }
 
-.settings-part-head h3 {
+.settings-part-head h3,
+.settings-advisor > h3 {
   font-size: var(--size-body);
   font-weight: 600;
+}
+
+.settings-advisor > h3 {
+  margin: 0 0 12px;
 }
 
 .settings-part > .settings-notice {
@@ -287,7 +295,7 @@ p.settings-section.settings-about {
   padding-bottom: 0;
 }
 
-.settings-rows > .settings-part > h3 {
+.settings-rows > .settings-part > :is(h3, h4) {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -297,7 +305,7 @@ p.settings-section.settings-about {
   font-weight: 500;
 }
 
-.settings-rows > .settings-part > :not(h3) {
+.settings-rows > .settings-part > :not(h3, h4) {
   grid-column: 2;
   justify-self: start;
   margin: 0;
@@ -308,7 +316,7 @@ p.settings-section.settings-about {
   grid-template-columns: minmax(0, 1fr);
 }
 
-.settings-rows > .settings-effort > :not(h3) {
+.settings-rows > .settings-effort > :not(h3, h4) {
   grid-column: 1;
   justify-self: stretch;
 }

@@ -64,7 +64,10 @@ describe('effortChoices and keptEffort (V30b)', () => {
   });
 
   it("names Symbiote's level as the default when the level is Symbiote's choice (V75c)", () => {
-    const advisor = { kind: 'codex' as const, efforts: { levels: ['none', 'low'], default: 'low' } };
+    const advisor = {
+      kind: 'codex' as const,
+      efforts: { levels: ['none', 'low'], default: 'low' },
+    };
     expect(effortChoices({ ...advisor, efforts: { ...advisor.efforts, by: 'symbiote' } })).toEqual([
       { value: '', label: "Symbiote's default (low)" },
       { value: 'none', label: 'none' },

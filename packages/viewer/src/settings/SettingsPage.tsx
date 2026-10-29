@@ -41,11 +41,20 @@ import { SettingsCard } from './SettingsCard.js';
 
 const API = '/api/settings/prompts';
 
-/** A prebuilt agent's model in the project's config (V47), from its agent's own list. */
+/** The agents the advisor runs on (V75c), each its model and level on Suggest settings' page. */
+const ADVISING = ['claude', 'codex'] as const;
+type Advising = (typeof ADVISING)[number];
+
+/**
+ * A prebuilt agent's model in the project's config (V47), from its agent's own list; the advisor's
+ * on an agent (V75c).
+ */
 interface ModelSetting {
-  key: 'scout.model' | 'scribe.model' | 'merge.model';
+  key: 'scout.model' | 'scribe.model' | 'merge.model' | `advisor.${Advising}.model`;
   /** What the model is for, before "from <agent>'s list". */
   about: string;
+  /** What Default does, when not "passes none of Settings'". */
+  byDefault?: string;
   /** What the next run does on `model` once saved. */
   saved: (model: string) => string;
   /** What happens with a configured model its agent does not list (decision 343). */
@@ -57,9 +66,11 @@ interface ModelSetting {
  * merger's (V46d) and Scribe's (fix/scribe-effort-level).
  */
 interface EffortSetting {
-  key: 'scout.effort' | 'scribe.effort' | 'merge.effort';
+  key: 'scout.effort' | 'scribe.effort' | 'merge.effort' | `advisor.${Advising}.effort`;
   /** What the level is for, before "from <agent>'s levels". */
   about: string;
+  /** What Default does, when not "passes none: the agent's own setting decides". */
+  byDefault?: string;
   /** Where else it changes, when it does. */
   also?: ReactNode;
   /** What happens without a level it can use. */
@@ -75,6 +86,8 @@ interface AgentSettings {
   /** Its name in a sentence, and whose settings they are. */
   who: string;
   whose: string;
+  /** What the page says without its agent, when not that it needs Claude Code or Codex. */
+  missing?: string;
   model: ModelSetting;
   effort: EffortSetting;
 }
@@ -146,6 +159,39 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
       saved: (level) => `Saved. Scribe's next conversation starts at ${level}.`,
     },
   },
+};
+
+/**
+ * The advisor's model and level on `kind` (V75c, decision 556): read and set where Scout's are,
+ * per agent, since the advisor runs on the agent picked on the Start page.
+ */
+function advisorSettings(kind: Advising): AgentSettings {
+  const name = AGENT_NAMES[kind];
+  return {
+    api: `/api/workspaces/advisor/${kind}`,
+    who: name,
+    whose: `${name}'s`,
+    missing: `${name} is not installed here.`,
+    model: {
+      key: `advisor.${kind}.model`,
+      about: `The model that reads the brief when you press Suggest settings with ${name} picked`,
+      byDefault:
+        "Default is Symbiote's pick, the agent's small model, when the agent lists it: the first entry says which it is.",
+      saved: (model) => `Saved. With ${name} picked, Suggest settings asks ${model}.`,
+      unlisted: 'Suggest settings asks on the default',
+    },
+    effort: {
+      key: `advisor.${kind}.effort`,
+      about: 'The level that model reads it at',
+      byDefault: "Default is Symbiote's low when the model takes it, else the agent's own.",
+      atDefault: 'Suggest settings asks at the default',
+      saved: (level) => `Saved. With ${name} picked, Suggest settings asks at ${level}.`,
+    },
+  };
+}
+const ADVISOR: Record<Advising, AgentSettings> = {
+  claude: advisorSettings('claude'),
+  codex: advisorSettings('codex'),
 };
 
 /** This browser's settings (V51, decision 388): an entry of their own at the list's end. */
@@ -280,11 +326,12 @@ export function SettingsPage() {
     }
   };
 
-  const editor = (prompt: PromptSetting, part?: boolean) => (
+  const editor = (prompt: PromptSetting, part?: boolean, name?: string) => (
     <PromptEditor
       key={prompt.key}
       prompt={prompt}
       part={part}
+      name={name}
       draft={drafts[prompt.key]}
       busy={busy}
       notice={notice?.key === prompt.key ? notice : null}
@@ -382,6 +429,10 @@ export function SettingsPage() {
             <AppearancePage onBack={back} />
           ) : open === LIBRARY ? (
             <LibraryPage onBack={back} />
+          ) : current?.key === 'advisor' ? (
+            <AdvisorPage onSaved={() => void load()} onBack={back}>
+              {current.prompts.map((prompt) => editor(prompt, true, 'Instructions'))}
+            </AdvisorPage>
           ) : current?.agent ? (
             // A save changes the file: the prompts' version is read again, or their next save
             // would be refused as changed since.
@@ -405,9 +456,7 @@ export function SettingsPage() {
 
 /**
  * A prebuilt agent's page (fix/scout-merger-scribe-settings): its Model and its Effort as rows
- * (V51), then its prompts (`children`), a section each, in one card (V62). The agent's models and
- * levels are read once for both: a model saved answers with its own levels, and the Effort follows
- * it.
+ * (V51), then its prompts (`children`), a section each, in one card (V62).
  */
 function AgentPage({
   name,
@@ -421,6 +470,60 @@ function AgentPage({
   onSaved: () => void;
   onBack: () => void;
   children: ReactNode;
+}) {
+  return (
+    <SettingsCard label={name} title={name} onBack={onBack}>
+      <AgentRows settings={settings} onSaved={onSaved} />
+      {children}
+    </SettingsCard>
+  );
+}
+
+/**
+ * Suggest settings' page (V75c, decision 556): the advisor's Model and Effort on Claude Code and
+ * on Codex, a section each, since it runs on the agent picked on the Start page; then its
+ * instructions (`children`).
+ */
+function AdvisorPage({
+  onSaved,
+  onBack,
+  children,
+}: {
+  onSaved: () => void;
+  onBack: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <SettingsCard
+      label="Workspaces: Suggest settings"
+      title="Workspaces: Suggest settings"
+      onBack={onBack}
+    >
+      {ADVISING.map((kind) => (
+        <section key={kind} className="settings-advisor" aria-label={AGENT_NAMES[kind]}>
+          <h3>{AGENT_NAMES[kind]}</h3>
+          <AgentRows settings={ADVISOR[kind]} heading="h4" onSaved={onSaved} />
+        </section>
+      ))}
+      {children}
+    </SettingsCard>
+  );
+}
+
+/**
+ * An agent's Model and Effort as rows (V51). Its models and levels are read once for both: a model
+ * saved answers with its own levels, and the Effort follows it.
+ */
+function AgentRows({
+  settings,
+  heading = 'h3',
+  onSaved,
+}: {
+  settings: AgentSettings;
+  /** The rows' names: headings under the card's, or under an agent's on Suggest settings'. */
+  heading?: 'h3' | 'h4';
+  /** After a save: the config file changed. */
+  onSaved: () => void;
 }) {
   const [read, setRead] = useState<ScoutEfforts | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -446,10 +549,11 @@ function AgentPage({
     onSaved();
   };
 
-  // Its agent: Scout's and Scribe's default (Scout's box may pick another), the merger's.
+  // Its agent: Scout's and Scribe's default (Scout's box may pick another), the merger's, the
+  // advisor's on that agent.
   const agent = read?.agents[0];
   return (
-    <SettingsCard label={name} title={name} onBack={onBack}>
+    <>
       {error && (
         <p className="settings-warning" role="alert">
           {error}
@@ -457,21 +561,24 @@ function AgentPage({
       )}
       {read && !agent && (
         <p className="settings-warning" role="alert">
-          {settings.who} needs Claude Code or Codex: neither is installed here.
+          {settings.missing ??
+            `${settings.who} needs Claude Code or Codex: neither is installed here.`}
         </p>
       )}
-      <div className="settings-rows">
-        <AgentModel settings={settings} read={read} onSaved={saved} />
-        <AgentEffort
-          // Drawn again on another model: its levels, and the level kept on them, are that model's.
-          key={read ? `on ${read.model ?? ''}` : 'reading'}
-          settings={settings}
-          read={read}
-          onSaved={saved}
-        />
-      </div>
-      {children}
-    </SettingsCard>
+      {(!read || agent) && (
+        <div className="settings-rows">
+          <AgentModel settings={settings} heading={heading} read={read} onSaved={saved} />
+          <AgentEffort
+            // Drawn again on another model: its levels, and the level kept on them, are that model's.
+            key={read ? `on ${read.model ?? ''}` : 'reading'}
+            settings={settings}
+            heading={heading}
+            read={read}
+            onSaved={saved}
+          />
+        </div>
+      )}
+    </>
   );
 }
 
@@ -483,10 +590,12 @@ function AgentPage({
  */
 function AgentEffort({
   settings,
+  heading: Heading,
   read,
   onSaved,
 }: {
   settings: AgentSettings;
+  heading: 'h3' | 'h4';
   /** The agent's models and levels, null while they are read. */
   read: ScoutEfforts | null;
   onSaved: (answer: ScoutEfforts) => void;
@@ -510,7 +619,7 @@ function AgentEffort({
     saving.current = saving.current.then(async () => {
       try {
         onSaved(await postJson<ScoutEfforts>(`${settings.api}/effort`, { effort: next || null }));
-        setNotice({ text: setting.saved(next ? next : `${name}'s default`) });
+        setNotice({ text: setting.saved(next || (choices[0]?.label ?? `${name}'s default`)) });
       } catch (failed) {
         setNotice({ text: (failed as Error).message, error: true });
       }
@@ -519,20 +628,20 @@ function AgentEffort({
 
   return (
     <section className="settings-part settings-effort" aria-label="Effort">
-      <h3>
+      <Heading>
         Effort
         <Help label={`About ${settings.whose} effort`}>
           <p>
             {setting.about}
-            {name ? `, from ${name}'s levels` : ''}. Default passes none: the agent&apos;s own
-            setting decides.
+            {name ? `, from ${name}'s levels` : ''}.{' '}
+            {setting.byDefault ?? "Default passes none: the agent's own setting decides."}
           </p>
           <p>
             {setting.also} Saved in {read?.file ?? 'symbiote/config.json'} (
             <code>{setting.key}</code>) when you let go.
           </p>
         </Help>
-      </h3>
+      </Heading>
       {agent && !agent.efforts && (
         <p className="settings-warning" role="alert">
           Symbiote cannot read {name}&apos;s effort levels: {setting.atDefault}.
@@ -567,10 +676,12 @@ function AgentEffort({
  */
 function AgentModel({
   settings,
+  heading: Heading,
   read,
   onSaved,
 }: {
   settings: AgentSettings;
+  heading: 'h3' | 'h4';
   /** The agent's models and levels, null while they are read. */
   read: ScoutEfforts | null;
   onSaved: (answer: ScoutEfforts) => void;
@@ -603,20 +714,21 @@ function AgentModel({
 
   return (
     <section className="settings-part" aria-label="Model">
-      <h3>
+      <Heading>
         Model
         <Help label={`About ${settings.whose} model`}>
           <p>
             {setting.about}
-            {name ? `, from ${name}'s own list` : ''}. Default passes none of Settings&apos;: the
-            first entry says which it is.
+            {name ? `, from ${name}'s own list` : ''}.{' '}
+            {setting.byDefault ??
+              "Default passes none of Settings': the first entry says which it is."}
           </p>
           <p>
             The Effort below follows it: its levels are this model&apos;s. Saved in{' '}
             {read?.file ?? 'symbiote/config.json'} (<code>{setting.key}</code>) when you pick one.
           </p>
         </Help>
-      </h3>
+      </Heading>
       {/* A row (V51): the select beside the name, what it says under it. */}
       {choices.length > 0 && (
         <select
@@ -737,6 +849,7 @@ function AppearancePage({ onBack }: { onBack: () => void }) {
 function PromptEditor({
   prompt,
   part,
+  name = prompt.title,
   draft,
   busy,
   notice,
@@ -749,6 +862,8 @@ function PromptEditor({
 }: {
   prompt: PromptSetting;
   part?: boolean;
+  /** Its section's name on an agent's page: the prompt's title, or the page's word for it. */
+  name?: string | undefined;
   draft: string | undefined;
   busy: boolean;
   notice: Notice | null;
@@ -931,10 +1046,10 @@ function PromptEditor({
     </>
   );
   return part ? (
-    <section className="settings-part settings-prompt" aria-label={prompt.title}>
+    <section className="settings-part settings-prompt" aria-label={name}>
       <div className="settings-part-head">
         <h3>
-          {prompt.title}
+          {name}
           {chip}
         </h3>
         {reset}
