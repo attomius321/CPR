@@ -1,6 +1,7 @@
 // What the server accepts (`server.ts`): each request's JSON body and query, checked; a value
 // that is not one throws with the words the server answers 400 with.
 import {
+  AGENT_KINDS,
   HISTORY_SCOPES,
   MERGE_STRATEGIES,
   WORK_KINDS,
@@ -125,8 +126,8 @@ export function parseWorkspaceRequest(text: string): WorkspaceRequest {
 
 /**
  * `{ kind, title?, parts?, agent?, documents? }` (V75): the Start page's brief for the advisor,
- * its documents by name. Anything else the page sends (the branch, the run's choices) is left out:
- * a suggestion starts nothing.
+ * its documents by name; also `suggest_settings`'s (MC2). Anything else the page sends (the
+ * branch, the run's choices) is left out: a suggestion starts nothing.
  */
 export function parseSuggestRequest(text: string): SuggestRequest {
   const value = JSON.parse(text) as Record<string, unknown> | null;
@@ -149,7 +150,8 @@ export function parseSuggestRequest(text: string): SuggestRequest {
   ) {
     throw new Error('parts: each a text');
   }
-  if (agent !== undefined && typeof agent !== 'string') {
+  // One Symbiote starts (MC2): the service reads any other as Codex.
+  if (agent !== undefined && !AGENT_KINDS.some((k) => k === agent)) {
     throw new Error('agent: claude, codex or hermes');
   }
   if (

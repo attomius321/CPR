@@ -311,3 +311,5 @@ merge commit.
 - 2026-10-29 [V77 — History under Monitor: finished workspaces, their activity and brief](journal/v77-workspace-history.md)
 - 2026-10-29 [V78 spike — what Scout's page and Scribe's pane offer besides the terminal](journal/v78-scout-scribe-terminals.md)
 - 2026-10-29 [V78 — Scout and Scribe are terminals, set in Settings](journal/v78-scout-scribe-terminals.md)
+- 2026-10-29 [MC2 spike — what a start through Scout runs on, and what the advisor's endpoint checks](journal/mc2-mcp-suggest-settings.md)
+- 2026-10-29 [MC2 — `suggest_settings`, the start's Confirm with its settings, Scout's prompt](journal/mc2-mcp-suggest-settings.md)

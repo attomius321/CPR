@@ -180,6 +180,7 @@ hosted.
 | Fix | An agent's terminal fits its box: no scrollbars coming and going on Scribe's pane, no last row cut off | merged | | [journal](journal/fix-scribe-terminal-problem.md) |
 | Fix | `scout.spec.ts`: Scout's record read before Codex's start wrote it; the spec waits for it | ready for review | | [journal](journal/fix-scout-record-spec-race.md) |
 | [V78](plan/v78-scout-scribe-terminals.md) | Scout and Scribe are terminals: no choices on their pages, their model and effort set in Settings | ready for review | 569–572 | [journal](journal/v78-scout-scribe-terminals.md) |
+| [MC2](plan/mc2-mcp-suggest-settings.md) | `suggest_settings`: the advisor's proposal through Symbiote's MCP, before a start Scout makes | ready for review | 582–584 | [journal](journal/mc2-mcp-suggest-settings.md) |
 
 ### The merger
 
