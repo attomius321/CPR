@@ -182,7 +182,7 @@ hosted.
 | Fix | `scout.spec.ts`: Scout's record read before Codex's start wrote it; the spec waits for it | ready for review | | [journal](journal/fix-scout-record-spec-race.md) |
 | [V78](plan/v78-scout-scribe-terminals.md) | Scout and Scribe are terminals: no choices on their pages, their model and effort set in Settings | ready for review | 569–572 | [journal](journal/v78-scout-scribe-terminals.md) |
 | [MC2](plan/mc2-mcp-suggest-settings.md) | `suggest_settings`: the advisor's proposal through Symbiote's MCP, before a start Scout makes | ready for review | 582–584 | [journal](journal/mc2-mcp-suggest-settings.md) |
-| [NU1](plan/nu1-nucleus.md) | Nucleus: Scout renamed, with the agents' web search and pages; its next steps planned | planned | 589–595 | [journal](journal/nu1-nucleus.md) |
+| [NU1](plan/nu1-nucleus.md) | Nucleus: Scout renamed, with the agents' web search and pages; its next steps planned | ready for review | 589–595 | [journal](journal/nu1-nucleus.md) |
 
 ### The merger
 

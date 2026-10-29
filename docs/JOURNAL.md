@@ -316,3 +316,4 @@ merge commit.
 - 2026-10-29 [V79 spike — the sidenav's cards measured, three layouts tried](journal/v79-workspace-cards.md)
 - 2026-10-29 [V79 — workspace cards in four rows, names whole, facts as icons; the sidenav 300 px](journal/v79-workspace-cards.md)
 - 2026-10-29 [NU1 spike — what the agents' web tools do in Scout's modes](journal/nu1-nucleus.md)
+- 2026-10-29 [NU1 — Nucleus: Scout renamed, the agents' web tools, Scout's names still read](journal/nu1-nucleus.md)

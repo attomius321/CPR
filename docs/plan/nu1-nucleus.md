@@ -2,12 +2,13 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nu1-nucleus.md)
 
-**Status:** planned (2026-10-29), on branch `feature/nucleus` (a workspace started in Symbiote,
-from `main` at `3af5243`, `main` merged in at `eee7458` with MC2). The person OK'd the plan with
-five answers: the network is "normal network access provided by the harness"; the Scout
-conversation is not carried over ("We'll reset the conversation, is ok"); the code is renamed too;
-the real run is in this repository ("I'm done with throwaway clones"); the work starts without
-waiting for V80 (`feature/scout-reads-worktrees`), which will merge after it.
+**Status:** ready for review (2026-10-29), on branch `feature/nucleus` (a workspace started in
+Symbiote, from `main` at `3af5243`; `main` merged in at `eee7458` with MC2, and at `596aa1c` with
+V79). The person OK'd the plan with five answers: the network is "normal network access provided
+by the harness"; the Scout conversation is not carried over ("We'll reset the conversation, is
+ok"); the code is renamed too; the real run is in this repository ("I'm done with throwaway
+clones"); the work starts without waiting for V80 (`feature/scout-reads-worktrees`), which will
+merge after it. Its "As built" and results below.
 
 **Problem** (asked: "Scout becomes Nucleus, the person's orchestrator in Symbiote, and this is its
 first step", and "Nucleus can search the web and make requests ... so it can research other tools,
@@ -199,3 +200,53 @@ the old names and the network; the viewer; docs; the real runs.
 
 **Not in NU1 (later)**: the steps above; a domain list for WebFetch; Settings' switch for
 `nucleus.web`; calling APIs with other methods.
+
+## As built (NU1)
+
+- **The page agent's spec reads its tools at each start**: `tools(root)` is a function (Scribe's
+  returns its six tools as before), so `nucleus.web` is read when a conversation starts. The same
+  for `codexConfig(root)`, merged with Symbiote's MCP server into the thread's `config` at its
+  start, at each resume and before its terminal joins. `mcp.as` names the bridge's caller,
+  `former` the name, record and files of before the rename, and a setting's `older` path is
+  removed in the same write as its new one (`setIn` takes several changes).
+- **The gate's words**: its refusals say Nucleus; `gitReadProblem`'s, which Scribe's gate shares,
+  lost the name ("only git runs"). The allow reason stays "one of git's read commands", so
+  Scribe's hook answers as on `main`. Without `--web`, a web tool is refused with how to turn the
+  web on, not "changes no file".
+- **A test written red was wrong, not the code**: it listed WebFetch and WebSearch among the tools
+  refused as "changes no file", while the next test wanted the web's own refusal. Fixed in the
+  test. Another expected `{}` after Reset removed the only prompt; jsonc-parser leaves `{\n}\n`,
+  as on `main`: the test reads the JSON.
+- **The real run kept its records in Symbiote's cache**, not in `symbiote/`: this branch's
+  `symbiote view` ran in this worktree with `GIT_CONFIG_GLOBAL=/dev/null` (without `user.email`,
+  Symbiote keeps reviews and page agents' records in its cache) and a job-local
+  `SYMBIOTE_CACHE_DIR`. The person's live Scout conversation was read from a copy of its record,
+  not ended; New conversation over a Scout record was run on a Nucleus session of the run's own,
+  its record renamed `scout.json`.
+- **`symbiote/AGENTS.md` changes**: its `via` line names `"nucleus"` and `"scout"`; Symbiote
+  rewrites the file the first time the merged build runs.
+
+**Results.** Tests first, red for the right reason: 48 CLI tests (the gate, Nucleus's start,
+records and Codex config, the old names, prompts, `via`, the bridge's caller) and 8 viewer tests,
+`e2e/nucleus.spec.ts` 10 of 10 on the rename commit's build. `pnpm check` 2,290 tests, e2e 343 of
+343 and the nexus 15 of 15 on the tree with V79 merged (343 and 15 before it too). Real runs, this branch's
+`symbiote view` in this repository's worktree, Claude Code 2.1.312 on the project's
+`scout.model` and `scout.effort` (opus, xhigh, read as Nucleus's), Codex 0.163:
+
+| What | Result |
+|---|---|
+| The person's Scout conversation (`7e95d2a4`), its record copied into the run's place | Read as Nucleus's: `startedAs: "Scout"`, answered, nothing started; the copy removed by hand, the session left as it was |
+| "What is the latest Vite, and two changes in it? Name your pages" (Claude Code) | 47 s: 1 WebSearch and 5 WebFetch calls through the gate (npmjs.com answered 403, so it read the registry's JSON); 8.3.5 with its changes and five sources; it said what it did not check. The first request wrote 15,746 tokens to the cache |
+| "Create nucleus-probe.txt and commit it" | Declined, no tool call; `git status` empty, HEAD unchanged |
+| Bash `echo hello > nucleus-probe.txt`, Bash `curl -sS https://example.com \| head -c 100`, Write | Both commands refused by the gate in its words ("no > outside quotes", "curl: only git runs"); no Write tool in the session |
+| New conversation over a Scout record | 1.6 s: the session out of `claude agents`, `scout.json`, `scout-settings.json` and `scout-mcp.json` removed |
+| The same question on Codex | 9.1 s in the read-only thread (network "restricted"): its web tool searched twice and opened two pages ("Crawled: today"); 8.3.5, two sources, the 403 said; 61,128 input tokens (36,992 cached), 397 out; archived by New conversation |
+
+Screenshots of Nucleus's page with a conversation started as Scout, 1440×900 dark and light and
+390 px: the note under the head, nothing overflowing. Not verified: New conversation ending the
+person's own Scout conversation (only read, by choice); a Codex thread recorded as Scout's with the
+real Codex (the fake app server's test only); Codex's terminal joining Nucleus's thread; WebFetch
+reaching an address on the person's network (no filter, as answered); macOS and Windows; the
+docs' reader test; `regression-check` (no analysis code changed). V80 is not merged: its gate and
+prompt changes will meet the renamed files when it merges `main`.
+
