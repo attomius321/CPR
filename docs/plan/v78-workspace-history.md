@@ -1,10 +1,13 @@
-# V77 — History: finished workspaces, their activity and brief
+# V78 — History: finished workspaces, their activity and brief
 
-[Index](../PLAN.md) · [Journal](../journal/v77-workspace-history.md)
+[Index](../PLAN.md) · [Journal](../journal/v78-workspace-history.md)
 
-**Status:** planned (2026-10-29), on branch `feature/workspaces-history` (a workspace's branch).
-Plan agreed by the person, with History a page of its own under Monitor ("History should be a new
-page under Monitor!", then "Yes, keep the styling of the app.").
+**Status:** ready for review (2026-10-29), on branch `feature/workspaces-history` (a workspace's
+branch). Plan agreed by the person, with History a page of its own under Monitor ("History should
+be a new page under Monitor!", then "Yes, keep the styling of the app."). Planned as V77
+(decisions 561–567): `feature/remove-scout-in-page-settings` planned its own V77 (561–564) five
+minutes later, and `main` took 568 for V76c; renumbered to V78 (569–575). The commits before the
+renumbering say V77a and V77b. Its "As built" and results below.
 
 **Problem** (asked: "Would like to have a workspaces history, with their activity logs, and
 brief."). Clean up (V18c) removes a workspace's worktree and agent sessions, and its branch once
@@ -36,7 +39,7 @@ its commits in it), its Thread, its Brief and its Changes. **Kept**: the live wo
 pages and the sidenav's groups as today; no agent is started or asked for a finished workspace;
 the app's style (V61, V72): `PageHead`, cards on the ground, line tabs, the tokens.
 
-## Server (V77a)
+## Server (V78a)
 
 - **`GET /api/workspaces/history`** (`workspaces().history()`): the finished records as
   `WorkspaceHistoryEntry` rows (core, `workspaces.ts`), newest `finished` first: branch, kind,
@@ -44,7 +47,7 @@ the app's style (V61, V72): `PageHead`, cards on the ground, line tabs, the toke
   outcome. Never a session, a thread or an activity file: records, reviews and one `git rev-list`
   of the default branch.
 - **The outcome** (`outcomeOf`): the commit the workspace ended at is the tip recorded at Clean
-  up, else the last Approve verdict's `head` (records before V77), else the branch's tip when it
+  up, else the last Approve verdict's `head` (records before V78), else the branch's tip when it
   is kept. "Merged into `<into>`" when that commit is in the default branch (or the record says
   `merged`), "Branch kept" when the branch is there, else "Not merged".
 - **`GET /api/workspaces/history?branch=`**: one finished workspace as a `WorkspaceSummary` with
@@ -59,7 +62,7 @@ the app's style (V61, V72): `PageHead`, cards on the ground, line tabs, the toke
 - **Clean up records** `tip` (the branch's tip when it was cleaned up) and `merged` in the record
   (`WorkspaceFile`), so the history no longer depends on the review.
 
-## Viewer (V77b)
+## Viewer (V78b)
 
 - **The page**: `Route` `{ page: 'workspace-history'; branch?; view? }` at `/workspace-history`
   (`/history` stays Git's old address, moved to `/git` since V66; Git's API is `/api/history`).
@@ -110,29 +113,77 @@ the app's style (V61, V72): `PageHead`, cards on the ground, line tabs, the toke
 | The list reads 97 records and reviews on every open | No thread or activity file; one `rev-list`; measured on the copies |
 | A finished Codex or Hermes workspace starts its agent | Its reads never reach `viaCodex`/`viaHermes`; tests with agents that throw |
 | An approved commit not in the default branch (2 of 85) | "Not merged" unless the branch is kept; its commits still listed while git has them |
-| A branch name used again: the new record replaces the old, its files appended to | Not in V77 (none of the 97 collide); noted for a later fix |
+| A branch name used again: the new record replaces the old, its files appended to | Not in V78 (none of the 97 collide); noted for a later fix |
 
-**Order**: the server and its tests (V77a), then the page (V77b), then the e2e spec, the real
+**Order**: the server and its tests (V78a), then the page (V78b), then the e2e spec, the real
 records and the docs.
 
 ## Milestones
 
 | # | Milestone | Output |
 |---|---|---|
-| V77a | History's API | `/api/workspaces/history` (list, one), finished reads from Symbiote's files, Clean up records `tip` and `merged` |
-| V77b | The History page | Under Monitor (`h`): the list and the picked workspace's Activity, Thread, Brief and Changes; the old address moves there |
+| V78a | History's API | `/api/workspaces/history` (list, one), finished reads from Symbiote's files, Clean up records `tip` and `merged` |
+| V78b | The History page | Under Monitor (`h`): the list and the picked workspace's Activity, Thread, Brief and Changes; the old address moves there |
 
 **Proposed decisions**:
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 561 | Where finished workspaces are listed | **A History page in the sidenav, under Monitor, key `h`** | The person's choice; a sidenav group of 97 cards would bury the live ones |
-| 562 | What a finished workspace shows | **The list, the picked one beside it, read-only: Activity (first), Thread, Brief, Changes** | The brief asks for its activity and brief; Git's rows and details are the app's pattern for a list and its pick |
-| 563 | Its address | **`/workspace-history?branch=…&<tab>`; a finished workspace's `/?branch=` moves there** | `/history` is Git's old address and `/api/history` Git's API; old links keep working |
-| 564 | What a finished workspace's reads may touch | **Symbiote's files and git only; no agent asked or started** | Clean up archived its sessions; Codex's app server and Hermes would start for nothing |
-| 565 | Where its commits come from | **Its base to the tip recorded at Clean up; else the approved commit; else the kept branch** | 96 of the 97 recoverable; precise: none when git has none |
-| 566 | What Clean up records | **`tip` and `merged`** | The outcome without the review, from V77 on |
-| 567 | The page's icon | **lucide's `history`, drawn in `icons.tsx`** | No clock in the set; the style draws icons from lucide's paths |
+| 569 | Where finished workspaces are listed | **A History page in the sidenav, under Monitor, key `h`** | The person's choice; a sidenav group of 97 cards would bury the live ones |
+| 570 | What a finished workspace shows | **The list, the picked one beside it, read-only: Activity (first), Thread, Brief, Changes** | The brief asks for its activity and brief; Git's rows and details are the app's pattern for a list and its pick |
+| 571 | Its address | **`/workspace-history?branch=…&<tab>`; a finished workspace's `/?branch=` moves there** | `/history` is Git's old address and `/api/history` Git's API; old links keep working |
+| 572 | What a finished workspace's reads may touch | **Symbiote's files and git only; no agent asked or started** | Clean up archived its sessions; Codex's app server and Hermes would start for nothing |
+| 573 | Where its commits come from | **Its base to the tip recorded at Clean up; else the approved commit; else the kept branch** | 96 of the 97 recoverable; precise: none when git has none |
+| 574 | What Clean up records | **`tip` and `merged`** | The outcome without the review, from V78 on |
+| 575 | The page's icon | **lucide's `history`, drawn in `icons.tsx`** | No clock in the set; the style draws icons from lucide's paths |
 
-**Not in V77 (later)**: removing an entry from History; starting a finished workspace again;
+**Not in V78 (later)**: removing an entry from History; starting a finished workspace again;
 landed merges (the merge queue's own entries); a branch name used again keeping both records.
+
+## As built (V78)
+
+- **One `git rev-list --since`, not one run per workspace**: the plan's "one `git rev-list` of the
+  default branch" was first built as two git runs per finished workspace (is its end a commit, is
+  it in the default branch). From Node each run costs about 3 ms to start, one after another
+  (WSL): 173 runs, 299 ms cold for the person's 97. Now one `rev-list --since` of the default
+  branch, from a day before the oldest finished workspace started, answers for most; an end it
+  leaves out (a clock off, a kept branch) is asked on its own, and whether a commit exists only
+  when it is not merged. 9 runs, 47–53 ms cold.
+- **Open the change, not Show in Git**: Git's address names a branch (`?branch=`), not a commit,
+  and a merged workspace's branch is gone. The head's action opens its commits (its base to where
+  it ended) as a change, Files and Graph, as a comparison in Git does; the change's way back is
+  History, with the pick and the tab (`backLink`). Shown only when it has commits.
+- **A file's diff from History**: the Changes tab's files open in VS Code as a live workspace's
+  do; `openDiff` reads a finished workspace's end, as `changes` does (not in the plan).
+- **Rows say "Merged"**: on the person's records every row's "Merged into main" cut its name short;
+  the card says into which branch, beside the name and kind, where the facts line had wrapped it.
+- **None picked, the newest shown**: `/workspace-history` alone shows the newest and leaves the
+  address as it is until a row or a tab is picked; the picked row scrolls into sight.
+- **Narrow**: the picked workspace goes under the list where the page is 800 px wide or less (a
+  container query on the page: a query cannot style its own container, which the first build
+  did).
+- **Read only, in the tabs' own words**: the Thread tab says a Codex-on-its-app-server or Hermes
+  workspace's messages are its agent's; the Brief says its documents were removed at Clean up; the
+  Changes panel shows no "review against" choice and no "Not committed".
+- **The accent's roles**: the picked workspace's kind tile (`.history-tile`) joins
+  `tokens.test.ts`'s `ACCENT_ROLES`, as an open workspace's kind in its head.
+
+**Results.**
+
+- **Tests**: CLI 1,006 unit tests (`workspace-history.test.ts`: 9, its agents rejecting if asked;
+  the record's `tip`/`merged`; Clean up's; the route); viewer 627 (`workspace-history.test.ts`,
+  `pages.test.ts`); e2e `workspace-history.spec.ts` (2) and `page-frame.spec.ts` with History
+  empty and with a finished workspace, at 1440 and 1920. Full suite: E2E_RESULT.
+- **The person's records** (a clone of this repository in the job's tmp, copies of
+  `symbiote/workspaces`, `threads`, `activity`, `reviews`; 97 finished): 83 merged into main, 13
+  branches kept (10 of them with no commit of their own), 1 not merged; 96 with commits shown.
+  The list: 47–53 ms cold, 32–38 ms warm, 92 KB. One workspace: 23–25 ms; its activity 7 ms (485
+  KB, `extend-view-with-wrapper`); its changes 34–36 ms.
+- **Screenshots** at 1440×900 and 760 px, 1×, dark and light: the list, `layout-fixing` (62
+  phases, 355 calls), `fix/scout-effort-level` (no recorded calls: its conversation, commits,
+  review and end), a Codex workspace (`feature/test-2`: "Codex keeps this one's messages"),
+  `done-workspace`'s Changes (3 commits, 18 files, its branch deleted) and Brief.
+- **Not verified**: a finished Hermes or Codex-on-app-server workspace's conversation is not read
+  (decision 572: by design); the desktop window (Electron) was not opened, its title-bar spec
+  covers History's page.
+

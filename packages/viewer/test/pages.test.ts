@@ -120,7 +120,7 @@ describe('backLink (V25)', () => {
       href: '/?branch=a',
       label: 'Workspace',
     });
-    // A finished workspace's change, opened from History (V77): back to it there, its tab kept.
+    // A finished workspace's change, opened from History (V78): back to it there, its tab kept.
     expect(backLink(`${origin}/workspace-history?branch=feature%2Fx&changes`, origin)).toEqual({
       href: '/workspace-history?branch=feature%2Fx&changes',
       label: 'History',
@@ -221,7 +221,7 @@ describe('Monitor (RM1)', () => {
   });
 });
 
-describe('History (V77)', () => {
+describe('History (V78)', () => {
   it('opens at /workspace-history, a page of the shell, with the workspace picked in ?branch=', () => {
     expect(routeOf('/workspace-history', '')).toEqual({ route: { page: 'workspace-history' } });
     expect(routeOf('/workspace-history', '?branch=feature%2Fcsv&brief')).toEqual({

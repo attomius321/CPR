@@ -323,7 +323,7 @@ describe('colour is for state (V31, decision 214)', () => {
   // page (its icon in its head too, V62), what is selected or checked (a picked kind's tab, V63),
   // focus, a link under the pointer, selected text; the start page's card icons (V63, the
   // person's mockup); a Skills pane's icon and the headings in a skill's text (V64, its mockup);
-  // the kind of the workspace picked in History (V77), as an open workspace's in its head.
+  // the kind of the workspace picked in History (V78), as an open workspace's in its head.
   // Never a state, a lane or a diff kind: those keep their colours.
   const ACCENT_ROLES =
     /aria-current|aria-selected|aria-pressed|aria-checked|\.selected|\.current|\.page-icon|\.start-card-icon|\.skills-tile|\.history-tile|\.md-heading|:checked|focus|::selection|\.link|a:hover/;

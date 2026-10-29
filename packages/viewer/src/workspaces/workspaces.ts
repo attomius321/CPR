@@ -491,7 +491,7 @@ export const allRows = (groups: WorkspaceGroups): WorkspaceRow[] => [
 
 /**
  * A workspace's name: its title (V24), else its brief's first line, else its branch; a finished
- * one's too (V77).
+ * one's too (V78).
  */
 export function workspaceName(
   workspace: Pick<WorkspaceSummary, 'title' | 'brief' | 'branch'>,

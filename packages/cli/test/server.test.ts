@@ -2090,7 +2090,7 @@ describe('symbiote view: workspaces (V18)', () => {
     expect(started.length).toBe(before);
   });
 
-  it('lists the finished workspaces, and gives one as its tabs read it (V77)', async () => {
+  it('lists the finished workspaces, and gives one as its tabs read it (V78)', async () => {
     expect(await (await get('/api/workspaces/history')).json()).toEqual({
       workspaces: [ended],
       place: 'repository',

@@ -207,7 +207,7 @@ export function ChangesPanel({
   /** The list as last read: the changes are read again with it. */
   version: unknown;
   /**
-   * A finished workspace's (V77), in History: read only — what it is reviewed against is not
+   * A finished workspace's (V78), in History: read only — what it is reviewed against is not
    * picked — and no worktree, so nothing not committed.
    */
   finished?: boolean;

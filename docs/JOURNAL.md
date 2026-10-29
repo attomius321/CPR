@@ -304,4 +304,5 @@ merge commit.
 - 2026-10-29 [V75c — the advisor's model and effort for each agent, in Settings](journal/v75-suggested-settings.md)
 - 2026-10-29 [Fix — `symbiote view` serves the pages it started with](journal/fix-suggest-settings-models.md)
 - 2026-10-29 [Fix — security and bugs across the app](journal/fix-security-and-bugs.md)
-- 2026-10-29 [V77 spike — what a cleaned-up workspace leaves](journal/v77-workspace-history.md)
+- 2026-10-29 [V78 spike — what a cleaned-up workspace leaves](journal/v78-workspace-history.md)
+- 2026-10-29 [V78 — History under Monitor: finished workspaces, their activity and brief](journal/v78-workspace-history.md)

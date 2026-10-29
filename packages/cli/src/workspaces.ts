@@ -295,13 +295,13 @@ export interface Workspaces {
   options(): Promise<WorkspaceOptions>;
   list(): Promise<WorkspaceList>;
   /**
-   * The finished workspaces (V77), newest first, each with what became of its branch: from
-   * records, reviews and git, never an agent (decision 564).
+   * The finished workspaces (V78), newest first, each with what became of its branch: from
+   * records, reviews and git, never an agent (decision 572).
    */
   history(): Promise<WorkspaceHistory>;
   /**
-   * A finished workspace as a workspace's tabs read it (V77): its agent not running, `tip` the
-   * commit it ended at (decision 565); 404 unless its record is finished.
+   * A finished workspace as a workspace's tabs read it (V78): its agent not running, `tip` the
+   * commit it ended at (decision 573); 404 unless its record is finished.
    */
   finished(branch: string): Promise<WorkspaceSummary>;
   /** Makes the branch, its worktree and record, then starts the agent. Rejects with
@@ -892,7 +892,7 @@ export function workspaces(
     return false;
   }
 
-  /** Ancestry answers by commit and tip, and commits known to git (V77): neither ever changes. */
+  /** Ancestry answers by commit and tip, and commits known to git (V78): neither ever changes. */
   const ancestry = new Map<string, Promise<boolean>>();
   const known = new Set<string>();
   const inHistoryOf = (commit: string, tip: string) => {
@@ -913,7 +913,7 @@ export function workspaces(
   };
 
   /**
-   * What became of a finished workspace's branch (V77): the commit it ended at (decision 565),
+   * What became of a finished workspace's branch (V78): the commit it ended at (decision 573),
    * when git has it, and whether the default branch `into` holds it — a branch with no commit of
    * its own (its end its base) is not merged.
    */
@@ -932,7 +932,7 @@ export function workspaces(
         : await readReview(reviewPath(where.dir, workspace.branch, where.reviewer));
     const named = endOf(workspace, kept, review ? approvedHead(review.verdicts) : null);
     // In the default branch first: a commit it holds is one git has, so most ends cost one run
-    // (V77: 299 ms for the person's 97 before, two runs each). A name git lacks is not merged.
+    // (V78: 299 ms for the person's 97 before, two runs each). A name git lacks is not merged.
     let merged = workspace.merged === true;
     let inTrunk = named !== null && named !== workspace.base && recent?.has(named) === true;
     if (named && named !== workspace.base && !inTrunk) {
@@ -951,7 +951,7 @@ export function workspaces(
   }
 
   /**
-   * The default branch's commits since `since` (V77), in one git run: from Node each run costs
+   * The default branch's commits since `since` (V78), in one git run: from Node each run costs
    * about 3 ms to start, one after another (85 ancestry checks took 280 ms on WSL). Whatever it
    * lists is in the default branch; what it does not is asked on its own.
    */
@@ -962,7 +962,7 @@ export function workspaces(
     return new Set(listed.split('\n').filter(Boolean));
   }
 
-  /** A workspace's record, which Clean up finished; 404 otherwise (V77). */
+  /** A workspace's record, which Clean up finished; 404 otherwise (V78). */
   async function finishedRecord(where: ReviewPlace, branch: string): Promise<FinishedRecord> {
     const workspace = await readRecord(where, branch);
     if (!workspace.finished) throw new WorkspaceRefused(`no finished workspace ${branch}`, 404);
@@ -1439,7 +1439,7 @@ export function workspaces(
         right = (await isFile(own)) ? own : null;
       } else {
         const refs = await listRefs(repo);
-        // Finished: where it ended (V77), its branch perhaps gone.
+        // Finished: where it ended (V78), its branch perhaps gone.
         const tip = workspace.finished
           ? (await endedAt(where, workspace, refs, null)).end
           : refs.branches.find((b) => b.name === workspace.branch)?.sha;
@@ -1472,7 +1472,7 @@ export function workspaces(
       const where = await place();
       const workspace = await readRecord(where, branch);
       const refs = await listRefs(repo);
-      // A finished workspace's branch may be gone: where it ended (V77, decision 565).
+      // A finished workspace's branch may be gone: where it ended (V78, decision 573).
       const tip = workspace.finished
         ? ((await endedAt(where, workspace, refs, null)).end ?? null)
         : (refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null);
@@ -1543,7 +1543,7 @@ export function workspaces(
     async thread(branch) {
       const where = await place();
       const workspace = await readRecord(where, branch);
-      // Finished (V77): what Symbiote kept, never its agent asked (decision 564).
+      // Finished (V78): what Symbiote kept, never its agent asked (decision 572).
       const kept =
         !workspace.finished || !(workspace.agent?.kind === 'hermes' || onServer(workspace));
       let entries: ThreadEntry[];
@@ -1605,7 +1605,7 @@ export function workspaces(
     async tools(branch) {
       const where = await place();
       const workspace = await readRecord(where, branch);
-      // Finished (V77): Hermes's and the app server's are their own, and are not asked.
+      // Finished (V78): Hermes's and the app server's are their own, and are not asked.
       if (workspace.finished && (workspace.agent?.kind === 'hermes' || onServer(workspace))) {
         return {};
       }
@@ -1844,7 +1844,7 @@ export function workspaces(
       // Its documents go with its worktree; the record keeps their names (V40).
       if (workspace.documents) await removeDocuments(where, workspace.branch);
       workspace.finished = now().toISOString();
-      // Where its branch ended (V77, decision 566): History reads it once the branch is gone.
+      // Where its branch ended (V78, decision 574): History reads it once the branch is gone.
       if (tip) workspace.tip = tip;
       if (merged) workspace.merged = true;
       await writeRecord(where, workspace);

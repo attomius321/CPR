@@ -1,6 +1,6 @@
-// History (V77): the finished workspaces — cleaned up, their records kept — in a card, by the day
+// History (V78): the finished workspaces — cleaned up, their records kept — in a card, by the day
 // they finished, and the one picked beside them, read only: its Activity, Thread, Brief and
-// Changes (decisions 561–563). Under Monitor in the sidenav (`h`), at `/workspace-history`; the
+// Changes (decisions 569–571). Under Monitor in the sidenav (`h`), at `/workspace-history`; the
 // picked one in `?branch=`, its tab after it (`&brief`).
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type {
@@ -78,7 +78,7 @@ function useHistory(): { read: History | null; error: string | null } {
   return state;
 }
 
-/** A finished workspace as its tabs read it (V77); null until read, the server's words if not. */
+/** A finished workspace as its tabs read it (V78); null until read, the server's words if not. */
 function useFinished(branch: string): WorkspaceSummary | string | null {
   const [read, setRead] = useState<WorkspaceSummary | string | null>(null);
   useEffect(() => {
@@ -305,7 +305,7 @@ function unrecorded(summary: WorkspaceSummary): string {
 }
 
 /**
- * The picked workspace, read only (decision 562): its name, branch, when it finished, how long it
+ * The picked workspace, read only (decision 570): its name, branch, when it finished, how long it
  * ran and what became of its branch; Open the change; then its tabs.
  */
 function FinishedCard({

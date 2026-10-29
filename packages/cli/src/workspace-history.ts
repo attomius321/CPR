@@ -1,5 +1,5 @@
-// History (V77): the finished workspaces — cleaned up, their records kept — and what became of
-// their branches, read from Symbiote's own files and git, never from an agent (decision 564).
+// History (V78): the finished workspaces — cleaned up, their records kept — and what became of
+// their branches, read from Symbiote's own files and git, never from an agent (decision 572).
 import type { FinishedWorkspace, WorkspaceOutcome } from '@symbiote/core';
 import type { WorkspaceFile } from './workspace-record.js';
 
@@ -14,7 +14,7 @@ export interface WorkspaceEnd {
 }
 
 /**
- * The commit a finished workspace ended at (decision 565): the tip Clean up recorded (V77), else
+ * The commit a finished workspace ended at (decision 573): the tip Clean up recorded (V78), else
  * its branch's tip while the branch is kept, else its review's last Approve; null when none is
  * known.
  */

@@ -171,7 +171,7 @@ function finished(repo: TestRepo, shas: ReturnType<typeof history>['shas']) {
   keep(repo, record({ branch: 'feature/live', base: shas.B }));
 }
 
-describe('endOf (V77, decision 565)', () => {
+describe('endOf (V78, decision 573)', () => {
   it('is the tip Clean up recorded, else the branch kept, else the last Approve, else none', () => {
     const recorded = record({ branch: 'feature/x', tip: 'f'.repeat(40) });
     expect(endOf(recorded, 'b'.repeat(40), 'c'.repeat(40))).toBe('f'.repeat(40));
@@ -183,7 +183,7 @@ describe('endOf (V77, decision 565)', () => {
   });
 });
 
-describe('workspaces history (V77)', () => {
+describe('workspaces history (V78)', () => {
   it('lists the finished workspaces only, the newest finished first, each with its outcome', async () => {
     const { repo, shas } = history();
     finished(repo, shas);
@@ -191,13 +191,13 @@ describe('workspaces history (V77)', () => {
     const read = await s.history();
     expect(read.place).toBe('repository');
     expect(read.workspaces.map((w) => [w.branch, w.outcome, w.into, w.end])).toEqual([
-      // Clean up's record says so (decision 566).
+      // Clean up's record says so (decision 574).
       ['feature/recorded', 'merged', 'main', shas.F],
       // Not merged, its branch still there: its commits from the branch.
       ['feature/kept', 'kept', undefined, shas.D],
       // Approved, never merged, the branch deleted: git still has the commit.
       ['feature/gone', 'gone', undefined, shas.E],
-      // Before V77: the last Approve's commit, which main holds through its merge.
+      // Before V78: the last Approve's commit, which main holds through its merge.
       ['feature/merged', 'merged', 'main', shas.C],
       // Nothing known of its end.
       ['fix/nothing', 'gone', undefined, undefined],

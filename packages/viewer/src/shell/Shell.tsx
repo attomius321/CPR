@@ -200,7 +200,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   }, [go]);
 
   // g (Git; h until V66) and s go to the pages, a to Scout (V35; on its page, to its question or its terminal), i to
-  // Skills (V41), m to the Monitor (RM1), h to History (V77), w to
+  // Skills (V41), m to the Monitor (RM1), h to History (V78), w to
   // the workspaces (the arrows between them), n starts one (on its page, back to its title), [
   // folds the sidenav. Attached before the first paint, as History's keys are: a key pressed as
   // soon as the page shows is not lost.

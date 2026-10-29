@@ -175,7 +175,7 @@ describe('workspacePath and serializeWorkspace', () => {
     expect(await readWorkspace(join(dir, 'missing.json'))).toBeNull();
   });
 
-  it("reads where a cleaned-up workspace's branch ended (V77): a commit's SHA, merged only when true", async () => {
+  it("reads where a cleaned-up workspace's branch ended (V78): a commit's SHA, merged only when true", async () => {
     const dir = tempDir();
     folders.push(dir);
     const path = workspacePath(dir, 'feature/csv');
@@ -2673,7 +2673,7 @@ describe('workspaces', () => {
       readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'one.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved.finished).toBe(NOW.toISOString());
-    // Where its branch ended, and that it was merged (V77): History reads them.
+    // Where its branch ended, and that it was merged (V78): History reads them.
     expect(saved.tip).toBe(tip);
     expect(saved.merged).toBe(true);
     expect(saved.documents).toEqual(['spec.md']);
