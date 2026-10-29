@@ -298,3 +298,6 @@ merge commit.
 - 2026-10-28 [V75a — the advisor and its prompt, built](journal/v75-suggested-settings.md)
 - 2026-10-28 [V75b — the button and the proposal on the Start page](journal/v75-suggested-settings.md)
 - 2026-10-28 [V75 test — the advisor on 18 written briefs, four ways](journal/v75-suggested-settings.md)
+- 2026-10-28 [NX3 spike — the nexus's screens today, and what a listing can say cheaply](journal/nx3-nexus-look.md)
+- 2026-10-28 [NX3 — the row's two groups, Symbiotes and Folders as cards, a repository the end](journal/nx3-nexus-look.md)
+- 2026-10-28 [Fix — the spec waits for Scout's record](journal/fix-scout-record-spec-race.md)

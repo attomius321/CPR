@@ -175,6 +175,7 @@ hosted.
 | Fix | Scout's head on one line: Effort and its stepper centred with the selects | ready for review | | [journal](journal/fix-scout-not-aligned.md) |
 | [SK1](plan/sk1-skill-library.md) | A skill library: a folder or repository of skills outside the project, on the Skills page and for Scribe; commits as set | ready for review | 426–430 | [journal](journal/sk1-skill-library.md) |
 | Fix | An agent's terminal fits its box: no scrollbars coming and going on Scribe's pane, no last row cut off | merged | | [journal](journal/fix-scribe-terminal-problem.md) |
+| Fix | `scout.spec.ts`: Scout's record read before Codex's start wrote it; the spec waits for it | ready for review | | [journal](journal/fix-scout-record-spec-race.md) |
 
 ### The merger
 
@@ -235,6 +236,7 @@ hosted.
 |---|---|---|---|---|
 | [NX1](plan/nx1-nexus.md) | Symbiote nexus: every running `symbiote view` found, as tabs in one window or browser tab | ready for review | 519–527 | [journal](journal/nx1-nexus.md) |
 | [NX2](plan/nx2-open-from-folders.md) | Open a Symbiote from the nexus: this PC's folders, Open Symbiote, Stop and Start again | ready for review | 539–543 | [journal](journal/nx2-open-from-folders.md) |
+| [NX3](plan/nx3-nexus-look.md) | The nexus's own tabs apart from the Symbiotes', fuller pages, a repository the end of Folders | ready for review | 551–555 | [journal](journal/nx3-nexus-look.md) |
 
 ### Repository monitoring
 

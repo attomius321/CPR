@@ -11,7 +11,8 @@ import {
 } from './nexus.js';
 
 // The Folders tab (NX2): this PC's folders, a Symbiote opened in one, stopped and started again,
-// with real `symbiote view`s started by the nexus, on a home and a cache of the spec's own.
+// with real `symbiote view`s started by the nexus, on a home and a cache of the spec's own. Since
+// NX3 a folder's repositories are cards, the end of the way down, and its other folders rows.
 
 function pageErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -23,9 +24,13 @@ const tab = (page: Page, name: string | RegExp) =>
   page.locator('.nexus-tabs').getByRole('tab', { name });
 const frameOf = (page: Page, name: string) =>
   page.frameLocator(`iframe.nexus-frame[title="${name}"]`);
-const rows = (page: Page) => page.locator('.nexus-folder');
-const row = (page: Page, name: string) =>
-  page.locator('.nexus-folder', { has: page.locator('.nexus-folder-name', { hasText: name }) });
+/** The folder's other folders, as rows. */
+const rows = (page: Page) => page.locator('.nexus-folders .nexus-folder-open');
+const row = (page: Page, name: string) => rows(page).filter({ hasText: name });
+/** The folder's repositories, as cards. */
+const cards = (page: Page) => page.locator('.nexus-folders .nexus-repo');
+const card = (page: Page, name: string) =>
+  cards(page).filter({ has: page.locator('.nexus-repo-name', { hasText: name }) });
 const shown = (page: Page) => page.locator('.nexus-crumbs [aria-current="page"]');
 
 test.describe('Symbiote nexus: Folders', () => {
@@ -68,29 +73,30 @@ test.describe('Symbiote nexus: Folders', () => {
     await expect(page.locator('.nexus-place').first()).toHaveText('Home');
     await expect(page.locator('.nexus-place', { hasText: /^\/$/ })).toHaveCount(1);
 
-    await row(page, 'projects').locator('.nexus-folder-open').click();
+    await row(page, 'projects').click();
     await expect(shown(page)).toHaveText('projects');
     await expect(page.locator('.nexus-crumbs')).toHaveText('Home/projects');
-    await expect(rows(page)).toHaveText([
-      'alpharepositoryOpen Symbiote',
-      'betarepositoryOpen Symbiote',
-      'notes',
-    ]);
+    // The repositories as cards, what they have checked out; the other folders as rows.
+    await expect(cards(page)).toHaveText(['alphamainOpen Symbiote', 'betamainOpen Symbiote']);
+    await expect(rows(page)).toHaveText(['notes']);
+    await expect(page.locator('.nexus-folders-counts')).toHaveText('2 repositories · 1 folder');
+    await expect(page.locator('.nexus-group-head')).toHaveText(['Repositories2', 'Folders1']);
     expect(new URL(page.url()).hash).toBe(`#folders:${encodeURIComponent(home.projects)}`);
     await expect(page).toHaveTitle('Folders — Symbiote nexus');
 
-    // Open Symbiote: its tab, its Git page in a frame.
-    await page.getByRole('button', { name: 'Open Symbiote in alpha' }).click();
+    // A repository's card opens its Symbiote, never its folders: its tab, its Git page.
+    await card(page, 'alpha').click();
     await expect(tab(page, /^alpha/)).toHaveAttribute('aria-selected', 'true');
     await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
     expect(recorded(cache)).toHaveLength(1);
 
-    // Back in Folders, where it was: alpha runs; Show opens its tab.
+    // Back in Folders, where it was: alpha runs; its card shows its tab.
     await tab(page, 'Folders').click();
     await expect(shown(page)).toHaveText('projects');
-    await expect(row(page, 'alpha')).toHaveText('alpharepositoryrunningShow');
-    await row(page, 'alpha').getByRole('button', { name: 'Show' }).click();
+    await expect(card(page, 'alpha')).toHaveText('alphamainRunning · Show');
+    await page.getByRole('button', { name: 'Show alpha' }).click();
     await expect(tab(page, /^alpha/)).toHaveAttribute('aria-selected', 'true');
+    expect(recorded(cache)).toHaveLength(1);
 
     // Opened again (a folder inside it, as a second click or another window would): no second one.
     const again = await page.evaluate(
@@ -118,27 +124,46 @@ test.describe('Symbiote nexus: Folders', () => {
     await page.goto(`${served.url}#folders:${encodeURIComponent(home.projects)}`);
     await expect(shown(page)).toHaveText('projects');
 
-    // ↓ and ↑ between rows, Enter opens a folder, Backspace goes up.
-    await row(page, 'alpha').locator('.nexus-folder-open').focus();
+    // The arrows by place: → the next card, ↓ the row under, ↑ back; Enter opens a folder,
+    // Backspace goes up.
+    await card(page, 'alpha').focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(card(page, 'beta')).toBeFocused();
     await page.keyboard.press('ArrowDown');
-    await expect(row(page, 'beta').locator('.nexus-folder-open')).toBeFocused();
+    await expect(row(page, 'notes')).toBeFocused();
+    await page.keyboard.press('ArrowUp');
+    await expect(card(page, 'alpha')).toBeFocused();
+    await row(page, 'notes').focus();
     await page.keyboard.press('Enter');
-    await expect(shown(page)).toHaveText('beta');
-    await expect(rows(page)).toHaveText(['src']);
-    // Inside a repository: its Symbiote from the card's head.
-    await page.keyboard.press('Enter');
-    await expect(shown(page)).toHaveText('src');
-    await expect(page.locator('.nexus-folders-actions')).toHaveText('In betaOpen Symbiote');
+    await expect(shown(page)).toHaveText('notes');
     await expect(page.locator('.nexus-folders-none')).toHaveText('No folders here');
     await page.keyboard.press('Backspace');
-    await expect(shown(page)).toHaveText('beta');
+    await expect(shown(page)).toHaveText('projects');
+
+    // A repository is the end (decision 554): a folder inside one, typed, shows the folder
+    // holding it, the repository picked; so does an address inside one, loaded.
+    const field = page.getByRole('textbox', { name: 'Go to folder' });
+    await field.fill('~/projects/beta/src');
+    await field.press('Enter');
+    await expect(shown(page)).toHaveText('projects');
+    await expect(card(page, 'beta')).toHaveClass(/\bpicked\b/);
+    await expect(card(page, 'beta')).toBeFocused();
+    expect(new URL(page.url()).hash).toBe(`#folders:${encodeURIComponent(home.projects)}`);
+    // (A new load: a `goto` that changes only the hash keeps the page.)
+    await page.goto('about:blank');
+    await page.goto(
+      `${served.url}#folders:${encodeURIComponent(join(home.projects, 'alpha', 'src'))}`,
+    );
+    await expect(shown(page)).toHaveText('projects');
+    await expect(card(page, 'alpha')).toHaveClass(/\bpicked\b/);
     await page.getByRole('button', { name: 'Up a folder' }).click();
+    await expect(shown(page)).toHaveText('Home');
+    await row(page, 'projects').click();
     await expect(shown(page)).toHaveText('projects');
 
     // The places, and a typed folder.
     await page.locator('.nexus-place', { hasText: 'Home' }).click();
     await expect(shown(page)).toHaveText('Home');
-    const field = page.getByRole('textbox', { name: 'Go to folder' });
     await field.fill('~/projects/notes');
     await field.press('Enter');
     await expect(shown(page)).toHaveText('notes');

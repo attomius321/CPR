@@ -51,3 +51,8 @@ export const DRIVE =
 export const FOLDER_GIT =
   '<path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5" /><circle cx="13" cy="12" r="2" /><path d="M18 19c-2.8 0-5-2.2-5-5v8" /><circle cx="20" cy="19" r="2" />';
 export const ARROW_UP = '<path d="m5 12 7-7 7 7" /><path d="M12 19V5" />';
+
+// NX3's, lucide's (ISC): layout-grid (Symbiotes' tab), chevron-right (a folder's way in).
+export const GRID =
+  '<rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" />';
+export const CHEVRON_RIGHT = '<path d="m9 18 6-6-6-6" />';

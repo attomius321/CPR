@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { chmodSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -40,11 +41,10 @@ describe('listFolder', () => {
       join(root, 'ky.worktrees', 'feature', '.git'),
       'gitdir: ../../ky/.git/worktrees/x',
     );
-    const listing = await listFolder(root, { repositoryOf: noRepository });
+    const listing = await listFolder(root);
     expect(listing).toEqual({
       path: root,
       parent: dir,
-      repository: null,
       folders: [
         { name: 'Beta', path: join(root, 'Beta'), repository: false },
         { name: 'item9', path: join(root, 'item9'), repository: false },
@@ -56,9 +56,9 @@ describe('listFolder', () => {
       ],
       more: 0,
     });
-    expect(
-      (await listFolder(join(root, 'ky.worktrees'), { repositoryOf: noRepository })).folders,
-    ).toEqual([{ name: 'feature', path: join(root, 'ky.worktrees', 'feature'), repository: true }]);
+    expect((await listFolder(join(root, 'ky.worktrees'))).folders).toEqual([
+      { name: 'feature', path: join(root, 'ky.worktrees', 'feature'), repository: true },
+    ]);
   });
 
   it('lists a link to a folder as a folder, at its own path; a broken link not', async () => {
@@ -66,7 +66,7 @@ describe('listFolder', () => {
     symlinkSync(join(root, 'real'), join(root, 'linked'));
     symlinkSync(join(root, 'gone'), join(root, 'broken'));
     symlinkSync(join(dir, 'nowhere.txt'), join(root, 'file-link'));
-    const { folders } = await listFolder(root, { repositoryOf: noRepository });
+    const { folders } = await listFolder(root);
     expect(folders).toEqual([
       { name: 'linked', path: join(root, 'linked'), repository: true },
       { name: 'real', path: join(root, 'real'), repository: true },
@@ -75,25 +75,53 @@ describe('listFolder', () => {
 
   it('lists the first `limit` folders by name, and counts the rest', async () => {
     const root = tree('many', ['e', 'd', 'c', 'b', 'a']);
-    const listing = await listFolder(root, { limit: 3, repositoryOf: noRepository });
+    const listing = await listFolder(root, { limit: 3 });
     expect(listing.folders.map((folder) => folder.name)).toEqual(['a', 'b', 'c']);
     expect(listing.more).toBe(2);
   });
 
-  it('names the repository a folder is in: its root, from any folder inside', async () => {
-    repo.write({ 'src/deep/a.ts': '' });
-    repo.commit('first');
-    expect((await listFolder(repo.root)).repository).toBe(repo.root);
-    expect((await listFolder(join(repo.root, 'src', 'deep'))).repository).toBe(repo.root);
-    expect((await listFolder(dir)).repository).toBeNull();
+  it('says what each repository has checked out, from its HEAD (NX3, decision 555)', async () => {
+    const root = tree('heads', ['on-main+', 'detached+', 'reftable+', 'no-head+', 'plain']);
+    const head = (name: string, text: string) =>
+      writeFileSync(join(root, name, '.git', 'HEAD'), text);
+    head('on-main', 'ref: refs/heads/feature/nexus\n');
+    head('detached', `${'c5031f43a7eaa0d96311746acf759ee6d6acb053'}\n`);
+    // Reftable keeps HEAD as a stub naming no branch.
+    head('reftable', 'ref: refs/heads/.invalid\n');
+    // Worktrees: their `.git` file names their folder, absolute or relative to the worktree.
+    const gitDirs = join(root, 'on-main', '.git', 'worktrees');
+    mkdirSync(join(gitDirs, 'a'), { recursive: true });
+    mkdirSync(join(gitDirs, 'b'), { recursive: true });
+    writeFileSync(join(gitDirs, 'a', 'HEAD'), 'ref: refs/heads/fix/a\n');
+    writeFileSync(join(gitDirs, 'b', 'HEAD'), 'ref: refs/heads/fix/b\n');
+    mkdirSync(join(root, 'worktree-a'));
+    writeFileSync(join(root, 'worktree-a', '.git'), `gitdir: ${join(gitDirs, 'a')}\n`);
+    mkdirSync(join(root, 'worktree-b'));
+    writeFileSync(join(root, 'worktree-b', '.git'), 'gitdir: ../on-main/.git/worktrees/b\n');
+    mkdirSync(join(root, 'worktree-gone'));
+    writeFileSync(join(root, 'worktree-gone', '.git'), 'gitdir: /nowhere/.git/worktrees/x\n');
+    const { folders } = await listFolder(root);
+    expect(folders).toEqual([
+      {
+        name: 'detached',
+        path: join(root, 'detached'),
+        repository: true,
+        detached: 'c5031f43a7eaa0d96311746acf759ee6d6acb053',
+      },
+      { name: 'no-head', path: join(root, 'no-head'), repository: true },
+      { name: 'on-main', path: join(root, 'on-main'), repository: true, branch: 'feature/nexus' },
+      { name: 'plain', path: join(root, 'plain'), repository: false },
+      { name: 'reftable', path: join(root, 'reftable'), repository: true },
+      { name: 'worktree-a', path: join(root, 'worktree-a'), repository: true, branch: 'fix/a' },
+      { name: 'worktree-b', path: join(root, 'worktree-b'), repository: true, branch: 'fix/b' },
+      { name: 'worktree-gone', path: join(root, 'worktree-gone'), repository: true },
+    ]);
   });
 
   it('resolves the path, and has no parent at the top', async () => {
     const root = tree('dots', ['a']);
-    expect((await listFolder(join(root, 'a', '..'), { repositoryOf: noRepository })).path).toBe(
-      root,
-    );
-    const top = await listFolder('/', { repositoryOf: noRepository });
+    expect((await listFolder(join(root, 'a', '..'))).path).toBe(root);
+    const top = await listFolder('/');
     expect(top.parent).toBeNull();
     expect(top.folders.length).toBeGreaterThan(0);
   });
@@ -139,11 +167,82 @@ describe('folders', () => {
     expect((await folders(join(root, 'work'), { ...options, roots })).path).toBe(
       join(root, 'work'),
     );
+    expect(theirs.picked).toBeNull();
+  });
+});
+
+describe('folders: a repository is the end of the way down (NX3, decision 554)', () => {
+  it('answers the folder holding the repository, picked, for the repository or any folder inside', async () => {
+    const held = tree('held', ['other', 'app/src/deep']);
+    const app = join(held, 'app');
+    execFileSync('git', ['init', '--quiet', '--initial-branch=main', app]);
+    const options = { home: dir, roots: [], drives: [] };
+    for (const inside of [
+      app,
+      join(app, 'src'),
+      join(app, 'src', 'deep'),
+      join(app, '.git', 'refs'),
+    ]) {
+      const answer = await folders(inside, options);
+      expect(answer.path, inside).toBe(held);
+      expect(answer.picked, inside).toBe(app);
+      expect(answer.folders).toEqual([
+        { name: 'app', path: app, repository: true, branch: 'main' },
+        { name: 'other', path: join(held, 'other'), repository: false },
+      ]);
+    }
+    const outside = await folders(join(held, 'other'), options);
+    expect([outside.path, outside.picked]).toEqual([join(held, 'other'), null]);
+  });
+
+  it('goes up to the outermost repository; one holding home is no end', async () => {
+    const root = tree('nested', ['outer/vendor/inner/src', 'git-home/projects/ky']);
+    const outer = join(root, 'outer');
+    const inner = join(outer, 'vendor', 'inner');
+    const gitHome = join(root, 'git-home');
+    const repositoryOf = (folder: string) =>
+      Promise.resolve(
+        folder.startsWith(inner)
+          ? inner
+          : folder.startsWith(outer)
+            ? outer
+            : folder.startsWith(gitHome)
+              ? gitHome
+              : null,
+      );
+    const nested = await folders(join(inner, 'src'), {
+      home: dir,
+      roots: [],
+      drives: [],
+      repositoryOf,
+    });
+    expect([nested.path, nested.picked]).toEqual([root, outer]);
+    // A home kept in git (`~/.git`): every folder of it is in that repository, and listed.
+    const inHome = await folders(join(gitHome, 'projects'), {
+      home: gitHome,
+      roots: [],
+      drives: [],
+      repositoryOf,
+    });
+    expect([inHome.path, inHome.picked]).toEqual([join(gitHome, 'projects'), null]);
+  });
+
+  it("is the system's error for a folder outside any repository that cannot be listed", async () => {
+    await expect(
+      folders(join(dir, 'missing'), {
+        home: dir,
+        roots: [],
+        drives: [],
+        repositoryOf: noRepository,
+      }),
+    ).rejects.toMatchObject({ code: 'ENOENT' });
   });
 });
 
 describe('repositoryRoot', () => {
   it("is git's top level for a folder in a work tree, null elsewhere", async () => {
+    repo.write({ 'src/deep/a.ts': '' });
+    repo.commit('first');
     expect(await repositoryRoot(repo.root)).toBe(repo.root);
     expect(await repositoryRoot(join(repo.root, 'src'))).toBe(repo.root);
     expect(await repositoryRoot(dir)).toBeNull();

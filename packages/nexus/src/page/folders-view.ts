@@ -1,9 +1,12 @@
 // The Folders tab (NX2b, decisions 539, 540): this PC's folders, the repositories marked, and Open
-// Symbiote on each. Drawn in the viewer's classes (the page head, a card and its head, buttons,
-// chips, its field); `nexus.css` lays out the places, the crumbs and the rows.
+// Symbiote on each. Since NX3 (decisions 553–555) the places are a card at its left, a folder's
+// repositories cards (`cards.ts`) and its other folders rows in columns; a repository is the end of
+// the way down: its card opens its Symbiote, never its folders. Drawn in the viewer's classes (the
+// page head, a card and its head, its field); `nexus.css` lays out the rest.
 import type { Folder, FoldersAnswer, Place } from '../folders.js';
-import { ARROW_UP, DRIVE, el, FOLDER, FOLDER_GIT, HOUSE, icon } from './dom.js';
-import { actionOf, crumbsOf, moreText, typedFolder } from './folders-tab.js';
+import { repositoryCard } from './cards.js';
+import { ARROW_UP, CHEVRON_RIGHT, DRIVE, el, FOLDER, HOUSE, icon } from './dom.js';
+import { countsText, crumbsOf, moreText, nextOnGrid, typedFolder } from './folders-tab.js';
 
 export interface FoldersView {
   element: HTMLElement;
@@ -32,6 +35,9 @@ const PLACE_ICONS: Record<Place['kind'], string> = {
 };
 
 const lastName = (path: string) => path.split('/').filter(Boolean).at(-1) ?? '/';
+
+/** What the arrows move between, in reading order: the repositories' cards, then the folders. */
+const ITEMS = '.nexus-repo, .nexus-folder-open';
 
 export function foldersView(deps: FoldersDeps): FoldersView {
   let answer: FoldersAnswer | null = null;
@@ -81,25 +87,40 @@ export function foldersView(deps: FoldersDeps): FoldersView {
         el('div', { class: 'page-name-line' }, el('h1', {}, 'Folders')),
         el('div', { class: 'page-line' }, 'Open a Symbiote in any repository on this PC'),
       ),
+      el('div', { class: 'page-actions' }, go),
     ),
-    el('div', { class: 'nexus-folders-bar' }, places, go),
-    el('div', { class: 'nexus-card nexus-folders-card' }, cardHead, body),
+    el(
+      'div',
+      { class: 'nexus-folders-main' },
+      el(
+        'nav',
+        { class: 'nexus-card nexus-places-card', 'aria-label': 'Places' },
+        el('div', { class: 'card-head' }, el('h2', { class: 'nexus-card-title' }, 'Places')),
+        places,
+      ),
+      el('div', { class: 'nexus-card nexus-folders-card' }, cardHead, body),
+    ),
   );
 
-  // The rows by the keys: ↑ and ↓ between them, Backspace up a folder (Enter opens, as a button);
-  // the field keeps its own keys.
+  // The cards and rows by the keys: the arrows by their place on the page, Backspace up a folder
+  // (Enter acts, as a button's); the field keeps its own keys.
   element.addEventListener('keydown', (event) => {
     if (event.target === field) return;
-    const rows = [...body.querySelectorAll<HTMLButtonElement>('.nexus-folder-open')];
-    const at = rows.indexOf(document.activeElement as HTMLButtonElement);
     if (event.key === 'Backspace' && answer?.parent) {
       event.preventDefault();
       void list(answer.parent, { focus: true });
       return;
     }
-    const to = event.key === 'ArrowDown' ? at + 1 : event.key === 'ArrowUp' ? at - 1 : -2;
-    const next = rows[to];
-    if (at < 0 || !next) return;
+    const items = [...body.querySelectorAll<HTMLElement>(ITEMS)];
+    const at = items.indexOf(document.activeElement as HTMLElement);
+    if (at < 0) return;
+    const to = nextOnGrid(
+      items.map((item) => item.getBoundingClientRect()),
+      at,
+      event.key,
+    );
+    const next = to === null ? undefined : items[to];
+    if (!next) return;
     event.preventDefault();
     next.focus();
   });
@@ -134,10 +155,16 @@ export function foldersView(deps: FoldersDeps): FoldersView {
     field.value = '';
     deps.moved(next.path);
     draw(running);
-    // The first row, or Up in a folder without any: the keys stay in the tab.
-    if (focus) {
+    // A repository asked for (decision 554): its card, in the folder holding it. Else the first
+    // card or row, or Up in a folder without any: the keys stay in the tab.
+    const picked =
+      next.picked === null
+        ? null
+        : body.querySelector<HTMLElement>(`.nexus-repo[data-path="${CSS.escape(next.picked)}"]`);
+    if (picked) picked.focus();
+    else if (focus) {
       (
-        body.querySelector<HTMLElement>('.nexus-folder-open') ??
+        body.querySelector<HTMLElement>(ITEMS) ??
         cardHead.querySelector<HTMLElement>('.icon-button')
       )?.focus();
     }
@@ -153,32 +180,6 @@ export function foldersView(deps: FoldersDeps): FoldersView {
     draw(running);
   }
 
-  function action(
-    folder: string,
-    kind: 'open' | 'show' | null,
-    primary = false,
-  ): HTMLElement | null {
-    if (kind === null) return null;
-    if (kind === 'show') {
-      const show = el('button', { type: 'button', class: 'button secondary' }, 'Show');
-      show.addEventListener('click', () => deps.show(folder));
-      return show;
-    }
-    const busy = starting.has(folder);
-    const open = el(
-      'button',
-      {
-        type: 'button',
-        class: primary ? 'button' : 'button secondary',
-        disabled: busy,
-        'aria-label': `Open Symbiote in ${lastName(folder)}`,
-      },
-      busy ? 'Starting…' : 'Open Symbiote',
-    );
-    open.addEventListener('click', () => void start(folder));
-    return open;
-  }
-
   function placeButton(place: Place, current: string | null): HTMLButtonElement {
     const here = place.path === current;
     const button = el(
@@ -190,42 +191,56 @@ export function foldersView(deps: FoldersDeps): FoldersView {
         'data-path': place.path,
       },
       icon(PLACE_ICONS[place.kind], true),
-      place.name,
+      el('span', {}, place.name),
     );
     button.addEventListener('click', () => void list(place.path, { focus: true }));
     return button;
   }
 
-  function row(folder: Folder): HTMLElement {
-    const kind = actionOf(folder, running);
+  /** A folder that is no repository: a row, its way in. */
+  function folderRow(folder: Folder): HTMLElement {
     const open = el(
       'button',
       { type: 'button', class: 'nexus-folder-open', 'data-path': folder.path },
-      icon(folder.repository ? FOLDER_GIT : FOLDER, true),
+      icon(FOLDER, true),
       el('span', { class: 'nexus-folder-name' }, folder.name),
-      folder.repository && el('span', { class: 'chip' }, 'repository'),
-      kind === 'show' && el('span', { class: 'chip' }, 'running'),
+      el('span', { class: 'nexus-folder-in', 'aria-hidden': 'true' }, icon(CHEVRON_RIGHT, true)),
     );
     open.addEventListener('click', () => void list(folder.path, { focus: true }));
-    return el(
-      'div',
-      { class: 'nexus-folder', 'data-path': folder.path },
-      open,
-      action(folder.path, kind),
-    );
+    return open;
   }
+
+  /** A repository: a card, the end of the way down. */
+  function repository(folder: Folder): HTMLElement {
+    const live = running.has(folder.path);
+    const card = repositoryCard({
+      folder,
+      running: live,
+      busy: starting.has(folder.path),
+      act: () => (live ? deps.show(folder.path) : void start(folder.path)),
+    });
+    if (folder.path === answer?.picked) card.classList.add('picked');
+    return card;
+  }
+
+  /** A group's head, when a folder has both kinds: its name and its count. */
+  const groupHead = (name: string, count: number) =>
+    el(
+      'h3',
+      { class: 'nexus-group-head' },
+      name,
+      el('span', { class: 'count' }, count.toLocaleString('en')),
+    );
 
   function draw(next: ReadonlySet<string>): void {
     running = next;
     const marks = answer
-      ? [answer.repository, ...answer.folders.map((folder) => folder.path)].filter(
-          (path): path is string => path !== null && running.has(path),
-        )
+      ? answer.folders.map((folder) => folder.path).filter((path) => running.has(path))
       : [];
     const key = JSON.stringify([answer, marks, error, [...starting]]);
     if (key === drawn) return;
     drawn = key;
-    // Focus stays on what had it (a place or a row), drawn again.
+    // Focus stays on what had it (a place, a card or a row), drawn again.
     const active = document.activeElement as HTMLElement | null;
     const focused = active?.dataset.path;
     const focusedKind = active?.classList[0];
@@ -242,7 +257,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
       );
       return;
     }
-    const { parent, repository } = answer;
+    const { parent } = answer;
     const up = el(
       'button',
       { type: 'button', class: 'icon-button', 'aria-label': 'Up a folder', disabled: !parent },
@@ -264,30 +279,37 @@ export function foldersView(deps: FoldersDeps): FoldersView {
       link.addEventListener('click', () => void list(crumb.path, { focus: true }));
       trail.append(link);
     });
-    const inside =
-      repository !== null && repository !== answer.path
-        ? el('span', { class: 'nexus-folders-in' }, `In ${lastName(repository)}`)
-        : null;
+    const counts = countsText(answer.folders);
     cardHead.replaceChildren(
       up,
       trail,
-      ...(repository === null
-        ? []
-        : [
-            el(
-              'div',
-              { class: 'nexus-folders-actions' },
-              inside,
-              action(repository, running.has(repository) ? 'show' : 'open', true),
-            ),
-          ]),
+      counts && el('span', { class: 'nexus-folders-counts' }, counts),
     );
+    const repositories = answer.folders.filter((folder) => folder.repository);
+    const others = answer.folders.filter((folder) => !folder.repository);
+    const both = repositories.length > 0 && others.length > 0;
     body.replaceChildren(
       ...[
         error ? el('p', { class: 'nexus-folders-error error', role: 'alert' }, error) : null,
-        answer.folders.length > 0
-          ? el('div', { class: 'nexus-rows nexus-folder-rows' }, ...answer.folders.map(row))
-          : el('p', { class: 'nexus-folders-none' }, 'No folders here'),
+        repositories.length > 0
+          ? el(
+              'section',
+              { class: 'nexus-group', 'aria-label': 'Repositories' },
+              both && groupHead('Repositories', repositories.length),
+              el('div', { class: 'nexus-repos' }, ...repositories.map(repository)),
+            )
+          : null,
+        others.length > 0
+          ? el(
+              'section',
+              { class: 'nexus-group', 'aria-label': 'Folders' },
+              both && groupHead('Folders', others.length),
+              el('div', { class: 'nexus-folder-rows' }, ...others.map(folderRow)),
+            )
+          : null,
+        answer.folders.length === 0
+          ? el('p', { class: 'nexus-folders-none' }, 'No folders here')
+          : null,
         answer.more > 0 ? el('p', { class: 'nexus-folders-none' }, moreText(answer.more)) : null,
       ].filter((part) => part !== null),
     );

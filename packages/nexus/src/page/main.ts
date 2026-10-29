@@ -1,14 +1,18 @@
 // Symbiote nexus's page (NX1b): a row of tabs, Symbiotes, Folders (NX2b), then one per running
 // Symbiote, and the open one in a frame under it (decisions 521–523, 539). A frame opened once
 // stays loaded, hidden while another tab is shown. Drawn in the viewer's own stylesheet and its
-// classes; the nexus's own layout is `page/nexus.css`.
+// classes; the nexus's own layout is `page/nexus.css`. Since NX3 the row has two groups, a line
+// between (decision 551), and Symbiotes shows cards and the repositories near them (552).
+import type { FoldersAnswer } from '../folders.js';
 import type { Running } from '../registry.js';
 import type { Symbiote } from '../symbiotes.js';
+import { repositoryCard } from './cards.js';
 import {
   BRANCH,
   CLOSE,
   el,
   FOLDER,
+  GRID,
   icon,
   MAXIMIZE,
   MINIMIZE,
@@ -17,13 +21,14 @@ import {
   STOPPED,
   type Child,
 } from './dom.js';
-import { folderFromHash, FOLDERS, foldersHash } from './folders-tab.js';
+import { folderFromHash, FOLDERS, foldersHash, idleRepositories } from './folders-tab.js';
 import { foldersView } from './folders-view.js';
 import {
   changesText,
   checkoutText,
   closeTab,
   hashOf,
+  nearFolders,
   nextTabs,
   selectedFrom,
   sinceText,
@@ -59,8 +64,16 @@ const opened = new Set<string>();
 const frames = new Map<string, HTMLIFrameElement>();
 let failure: string | null = null;
 let readOnce = false;
-/** Why a Symbiote did not stop, on the list. */
-let stopFailure: string | null = null;
+/** Why a Symbiote did not stop, or one of the near repositories did not open, on the list. */
+let actionFailure: string | null = null;
+/** The repositories near the running Symbiotes (decision 552): each folder's listing. */
+let near: FoldersAnswer[] = [];
+/** The running Symbiotes `near` was read for; it is read again when they change. */
+let nearFor = '';
+/** Each read of `near`; an answer to an older one is dropped. */
+let nearAsked = 0;
+/** The near repositories whose Symbiote is starting. */
+const startingNear = new Set<string>();
 /** The stopped tabs whose Symbiote is starting again, and why one did not. */
 const restarting = new Set<string>();
 let restartFailure: { root: string; why: string } | null = null;
@@ -153,13 +166,27 @@ function drawStrip(): void {
   const running = tabs.filter((tab) => tab.url !== null).length;
   const list = tabButton(
     null,
+    icon(GRID, true),
     el('span', {}, 'Symbiotes'),
     el('span', { class: 'count' }, String(running)),
   );
-  const children: HTMLElement[] = [list, tabButton(FOLDERS, icon(FOLDER, true), 'Folders')];
+  // The nexus's own pages, with icons, stay at the left; a line, then the Symbiotes, each with
+  // its state's dot (decision 551).
+  const own = el(
+    'div',
+    { class: 'nexus-own' },
+    list,
+    tabButton(FOLDERS, icon(FOLDER, true), 'Folders'),
+    tabs.length > 0 && el('span', { class: 'views-divider nexus-divider', 'aria-hidden': 'true' }),
+  );
+  const children: HTMLElement[] = [own];
   for (const tab of tabs) {
     const button = tabButton(
       tab.root,
+      el('span', {
+        class: tab.url === null ? 'state-dot tone-idle' : 'state-dot nexus-live',
+        'aria-hidden': 'true',
+      }),
       el('span', { class: 'nexus-tab-name' }, tab.name),
       el('span', { class: 'nexus-tab-where' }, tab.url === null ? 'stopped' : checkoutText(tab)),
     );
@@ -178,6 +205,8 @@ function drawStrip(): void {
     children.push(el('div', { class: 'shell-tab' }, button, close));
   }
   strip.replaceChildren(...children);
+  // A Symbiote's tab focused by the keys scrolls clear of the own pages over the strip's start.
+  strip.style.scrollPaddingInlineStart = `${own.offsetWidth}px`;
   if (focused !== undefined)
     strip.querySelector<HTMLElement>(`[data-tab="${CSS.escape(focused)}"]`)?.focus();
 }
@@ -202,12 +231,15 @@ function tabButton(root: string | null, ...children: Child[]): HTMLButtonElement
 
 function drawHome(): void {
   const running = tabs.filter((tab): tab is Tab & { url: string } => tab.url !== null);
+  const roots = new Set(running.map((tab) => tab.root));
   const now = new Date();
   const key = JSON.stringify([
     readOnce,
     failure,
-    stopFailure,
+    actionFailure,
     running,
+    near,
+    [...startingNear],
     now.toDateString(),
     now.getHours(),
     now.getMinutes(),
@@ -218,6 +250,13 @@ function drawHome(): void {
   const line = !readOnce
     ? 'Looking for running Symbiotes…'
     : `${count === 0 ? 'None' : count} running on this machine`;
+  // Open a folder: the empty state's action with none running, else the head's.
+  const toFolders = el(
+    'button',
+    { type: 'button', class: count > 0 ? 'button secondary' : 'button' },
+    'Open a folder',
+  );
+  toFolders.addEventListener('click', () => select(FOLDERS));
   const head = el(
     'header',
     { class: 'page-head' },
@@ -228,59 +267,108 @@ function drawHome(): void {
       el('div', { class: 'page-name-line' }, el('h1', {}, 'Symbiotes')),
       el('div', { class: 'page-line' }, line),
     ),
+    count > 0 && el('div', { class: 'page-actions' }, toFolders),
   );
-  const rows = running.map((tab) => {
+  // A running Symbiote's card opens its tab; Stop stands beside it, a button cannot hold one.
+  const cards = running.map((tab) => {
     const open = el(
       'button',
-      { type: 'button', class: 'nexus-row-open', 'data-root': tab.root },
+      { type: 'button', class: 'nexus-symbiote-open', 'data-root': tab.root },
       el(
         'span',
-        { class: 'nexus-row-main' },
-        el('span', { class: 'nexus-row-name' }, tab.name),
-        el('span', { class: 'nexus-row-folder' }, tab.root),
+        { class: 'nexus-symbiote-name' },
+        el('span', { class: 'state-dot nexus-live', 'aria-hidden': 'true' }),
+        el('span', {}, tab.name),
       ),
-      el('span', { class: 'nexus-row-checkout' }, icon(BRANCH, true), checkoutText(tab)),
-      el('span', { class: 'nexus-row-changes' }, changesText(tab.changed)),
-      el('span', { class: 'nexus-row-since' }, sinceText(tab.started, now)),
+      el('span', { class: 'nexus-symbiote-folder' }, tab.root),
+      el(
+        'span',
+        { class: 'nexus-symbiote-meta' },
+        el('span', { class: 'nexus-symbiote-checkout' }, icon(BRANCH, true), checkoutText(tab)),
+        el('span', {}, changesText(tab.changed)),
+        el('span', {}, sinceText(tab.started, now)),
+      ),
     );
     open.addEventListener('click', () => select(tab.root, { focusFrame: true }));
     const stop = el(
       'button',
-      { type: 'button', class: 'icon-button nexus-row-stop', 'aria-label': `Stop ${tab.name}` },
+      {
+        type: 'button',
+        class: 'icon-button nexus-symbiote-stop',
+        'aria-label': `Stop ${tab.name}`,
+      },
       icon(STOP, true),
     );
     stop.addEventListener('click', () => void stopSymbiote(tab, stop));
-    return el('div', { class: 'nexus-row' }, open, stop);
+    return el('div', { class: 'nexus-symbiote' }, open, stop);
   });
-  const toFolders = el('button', { type: 'button', class: 'button' }, 'Open a folder');
-  toFolders.addEventListener('click', () => select(FOLDERS));
   const empty = el(
     'div',
-    { class: 'nexus-empty' },
-    icon(STOPPED),
-    el('p', { class: 'nexus-empty-title' }, 'No Symbiote is running'),
+    { class: 'nexus-card' },
     el(
-      'p',
-      { class: 'nexus-empty-text' },
-      'Open one on a repository in Folders, or start one with ',
-      el('code', {}, 'symbiote view'),
-      ' in a repository: it shows here within 2 seconds.',
+      'div',
+      { class: 'nexus-empty' },
+      icon(STOPPED),
+      el('p', { class: 'nexus-empty-title' }, 'No Symbiote is running'),
+      el(
+        'p',
+        { class: 'nexus-empty-text' },
+        'Open one on a repository in Folders, or start one with ',
+        el('code', {}, 'symbiote view'),
+        ' in a repository: it shows here within 2 seconds.',
+      ),
+      toFolders,
     ),
-    toFolders,
   );
-  const problem = failure ?? stopFailure;
+  const problem = failure ?? actionFailure;
   home.replaceChildren(
     ...[
       head,
       problem ? el('p', { class: 'nexus-failure error', role: 'alert' }, problem) : null,
-      readOnce
-        ? el(
-            'div',
-            { class: 'nexus-card' },
-            count > 0 ? el('div', { class: 'nexus-rows' }, ...rows) : empty,
-          )
-        : null,
+      readOnce ? (count > 0 ? el('div', { class: 'nexus-symbiotes' }, ...cards) : empty) : null,
+      ...near.map((answer) => nearCard(answer, roots)),
     ].filter((part) => part !== null),
+  );
+}
+
+/**
+ * The repositories of a folder the running Symbiotes are in that no Symbiote serves, as Folders
+ * draws them (decision 552): one click opens the next Symbiote. Null when there is none.
+ */
+function nearCard(answer: FoldersAnswer, running: ReadonlySet<string>): HTMLElement | null {
+  const idle = idleRepositories(answer.folders, running);
+  if (idle.length === 0) return null;
+  const name =
+    answer.places.find((place) => place.path === answer.path)?.name ??
+    answer.path.split('/').filter(Boolean).at(-1) ??
+    '/';
+  const inFolders = el('button', { type: 'button', class: 'link' }, 'Show in Folders');
+  inFolders.addEventListener('click', () => {
+    folders.open(answer.path);
+    select(FOLDERS);
+  });
+  return el(
+    'section',
+    { class: 'nexus-card nexus-near', 'aria-label': `Repositories in ${name}` },
+    el(
+      'div',
+      { class: 'card-head' },
+      el('h2', { class: 'nexus-card-title' }, `Repositories in ${name}`),
+      el('span', { class: 'count' }, String(idle.length)),
+      el('span', { class: 'nexus-card-actions' }, inFolders),
+    ),
+    el(
+      'div',
+      { class: 'nexus-repos' },
+      ...idle.map((folder) =>
+        repositoryCard({
+          folder,
+          running: false,
+          busy: startingNear.has(folder.path),
+          act: () => void openNear(folder.path, folder.name),
+        }),
+      ),
+    ),
   );
 }
 
@@ -434,15 +522,26 @@ async function stopSymbiote(tab: Tab, from: HTMLElement): Promise<void> {
   const stop = await confirmStop(tab.name);
   from.focus();
   if (!stop) return;
-  stopFailure = null;
+  actionFailure = null;
   try {
     const res = await post('/api/symbiotes/stop', { root: tab.root });
     if (!res.ok && res.status !== 404)
-      stopFailure = `${tab.name} did not stop: ${await res.text()}`;
+      actionFailure = `${tab.name} did not stop: ${await res.text()}`;
   } catch (error) {
-    stopFailure = `${tab.name} did not stop: ${(error as Error).message}`;
+    actionFailure = `${tab.name} did not stop: ${(error as Error).message}`;
   }
   await refresh();
+}
+
+/** Opens a Symbiote in one of the repositories near the running ones (decision 552). */
+async function openNear(folder: string, name: string): Promise<void> {
+  startingNear.add(folder);
+  actionFailure = null;
+  render();
+  const why = await startSymbiote(folder);
+  startingNear.delete(folder);
+  if (why !== null) actionFailure = `${name} did not open: ${why}`;
+  render();
 }
 
 /**
@@ -529,6 +628,7 @@ async function refresh(): Promise<void> {
     const { symbiotes } = (await res.json()) as { symbiotes: Symbiote[] };
     tabs = nextTabs(tabs, symbiotes, opened);
     failure = null;
+    void readNear();
     const first = !readOnce;
     readOnce = true;
     // A tab asked for by the address that is not there (any more): the list.
@@ -541,6 +641,37 @@ async function refresh(): Promise<void> {
     failure = `The running Symbiotes could not be read: ${(error as Error).message}`;
     render();
   }
+}
+
+/**
+ * Reads the repositories near the running Symbiotes again when they changed (decision 552): one
+ * listing of each folder they are in, three at most, 5–6 ms each (NX2), not at each 2 s read.
+ */
+async function readNear(): Promise<void> {
+  const running = tabs.filter((tab) => tab.url !== null).map((tab) => tab.root);
+  const key = JSON.stringify(running.sort());
+  if (key === nearFor) return;
+  nearFor = key;
+  const mine = ++nearAsked;
+  const answers = await Promise.all(
+    nearFolders(tabs).map(async (path) => {
+      try {
+        const res = await fetch(`/api/folders?path=${encodeURIComponent(path)}`, {
+          cache: 'no-store',
+        });
+        return res.ok ? ((await res.json()) as FoldersAnswer) : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  if (mine !== nearAsked) return;
+  // A folder asked for twice (one inside a repository answers its holder) is drawn once.
+  near = answers.filter(
+    (answer, at): answer is FoldersAnswer =>
+      answer !== null && answers.findIndex((other) => other?.path === answer.path) === at,
+  );
+  render();
 }
 
 async function read(): Promise<void> {

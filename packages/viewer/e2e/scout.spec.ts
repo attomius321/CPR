@@ -500,7 +500,13 @@ test('another agent picked in its head starts nothing: New conversation starts i
   expect((symbiote.codexServer?.calls ?? []).some((call) => call.method === 'turn/start')).toBe(
     false,
   );
-  expect(JSON.parse(readFileSync(record(), 'utf8'))).toMatchObject({ agent: 'codex' });
+  // The record is written once the thread has started: the fake's call comes first.
+  await expect
+    .poll(
+      () => (existsSync(record()) ? (JSON.parse(readFileSync(record(), 'utf8')) as unknown) : null),
+      POLL,
+    )
+    .toMatchObject({ agent: 'codex' });
   await expect(agent).toHaveValue('codex');
   await expect(renew(page)).toHaveClass(/secondary/);
   expect(scoutCalls()).toHaveLength(1);
