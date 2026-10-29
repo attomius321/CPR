@@ -1,7 +1,7 @@
 // Scout's gate (V35, decision 236): what Scout's Claude Code may run, decided by Symbiote before
 // Claude Code's own rules. Read, Grep and Glob pass to those rules, but in an open workspace's
-// worktree, which the gate opens (V80, decisions 585-586); Bash runs only git's read commands this
-// module parses, there too with `-C` (decision 587); Symbiote's own MCP tools pass (MC1: the asked
+// worktree, which the gate opens (V80, decisions 596-597); Bash runs only git's read commands this
+// module parses, there too with `-C` (decision 598); Symbiote's own MCP tools pass (MC1: the asked
 // ones wait for the person in Symbiote); every other tool, and every other server's, is denied.
 // Claude Code's allow rules cannot do this: `Bash(git log *)` matches `git log --output=<file>`.
 // The hook runs once per tool call in Claude Code's process tree (`scout-hook.ts`), so this module
@@ -41,7 +41,7 @@ function within(folder: string, target: string): boolean {
 }
 
 /**
- * The open workspaces' worktrees (V80, decision 585), as real paths: the folder of each record in
+ * The open workspaces' worktrees (V80, decision 596), as real paths: the folder of each record in
  * `records` (`symbiote/workspaces/<branch>.json`) without `finished`, that git lists as a linked
  * worktree of `checkout`'s repository. Not the folder holding them, which a setting may put
  * anywhere; read at each tool call, so a workspace started during a conversation is in.
@@ -142,7 +142,7 @@ const READ_COMMANDS = new Set([
 ]);
 
 /**
- * Scout's besides (V80, decision 587): `diff-index`, the uncommitted changes, and `status` with
+ * Scout's besides (V80, decision 598): `diff-index`, the uncommitted changes, and `status` with
  * `--no-optional-locks`; neither writes the index, where `git diff` and a plain `git status` do.
  */
 const SCOUT_COMMANDS = new Set([...READ_COMMANDS, 'diff-index', 'status']);
@@ -411,7 +411,7 @@ export function gitReadProblem(
 const READS = ['Read', 'Grep', 'Glob'];
 
 /**
- * Read (`file_path`), Grep and Glob (`path`) in an open workspace's worktree (V80, decision 586):
+ * Read (`file_path`), Grep and Glob (`path`) in an open workspace's worktree (V80, decision 597):
  * allowed when the path is absolute, holds no `..` (Node takes it before links), and its real path
  * is there (Read follows links). Anything else is Claude Code's to decide: the checkout, read as
  * before; elsewhere, denied in `dontAsk`.

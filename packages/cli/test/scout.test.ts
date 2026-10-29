@@ -451,7 +451,7 @@ describe('scout (V35)', () => {
     // Its instructions are its system prompt (V50, decision 383); the question its first message.
     expect(request?.instructions).toBe(DEFAULT_PROMPTS.scout);
     expect(request?.prompt).toBe("Where is the merger's prompt defined?");
-    // Its gate is given the checkout and the workspaces' records (V80, decision 585).
+    // Its gate is given the checkout and the workspaces' records (V80, decision 596).
     expect(readFileSync(settings, 'utf8')).toBe(
       scoutSettings({
         node: '/usr/bin/node',
@@ -628,7 +628,7 @@ describe('scout (V35)', () => {
     const s = await service(repo, { codex, terminals });
     const state = await s.ask({ text: 'Where is it?' });
     const start = server.calls.find((c) => c.method === 'thread/start');
-    // Read-only through a profile that reads the checkout (V80, decision 588), not a mode.
+    // Read-only through a profile that reads the checkout (V80, decision 599), not a mode.
     expect(start?.params).toMatchObject({ cwd: repo.root, approvalPolicy: 'never' });
     expect(start?.params).not.toHaveProperty('sandbox');
     expect(server.thread('thread-1')).toMatchObject({
@@ -656,7 +656,7 @@ describe('scout (V35)', () => {
   });
 });
 
-describe("Scout reads the workspaces' worktrees (V80, decisions 585-588)", () => {
+describe("Scout reads the workspaces' worktrees (V80, decisions 596-599)", () => {
   /** `repo` with a workspace's worktree beside it, and its record. */
   function withWorkspace(repo: TestRepo) {
     const holder = `${repo.root}.worktrees`;
@@ -732,7 +732,7 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 585-588)", () =>
     });
   });
 
-  it("confines Codex's Scout like Claude Code's: the checkout and the open worktrees, read only (decision 588)", async () => {
+  it("confines Codex's Scout like Claude Code's: the checkout and the open worktrees, read only (decision 599)", async () => {
     const repo = fresh();
     const { holder, worktree } = withWorkspace(repo);
     // Codex trusts the checkout: without its profile, a thread there would be writable.

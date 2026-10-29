@@ -3,11 +3,12 @@
 [Index](../PLAN.md) · [Journal](../journal/v80-scout-reads-worktrees.md)
 
 **Status:** built, ready for review (2026-10-29), on branch `feature/scout-reads-worktrees` (the
-workspace's), `main` (V77, V78, MC2) merged in; the plan confirmed by the person ("Do as you recommend.
-Go"). Replanned with the person after it was built: Codex's Scout confined too ("Like claude",
-decision 588 changed), and no throwaway copy for the real Scout run ("I don't like the throwaway
-idea"): the person checks a real conversation after the merge. Planned as V79 (576–579),
-renumbered when another branch took them.
+workspace's), `main` (V77, V78, MC2) merged in; the plan confirmed by the person ("Do as you
+recommend. Go"). Replanned with the person after it was built: Codex's Scout confined too ("Like
+claude", decision 599 changed), and no throwaway copy for the real Scout run ("I don't like the
+throwaway idea"): the person checks a real conversation after the merge. Planned as V79
+(576–579), renumbered V80 (585–588) when another branch took them, then 596–599 when V79 merged
+into `main` with 585.
 
 **Problem** (asked: "Scout can read the files of every workspace's worktree, its uncommitted
 changes included, so it can look at an agent's work in progress and answer about it. Scout stays
@@ -31,7 +32,7 @@ anywhere, with Claude Code and with Codex alike. **Unchanged**: Scribe and the w
 permissions; a Scout conversation whose settings file was written before V80 keeps `main`'s gate
 until Symbiote writes the file again at its next wake.
 
-## What is opened (decision 585)
+## What is opened (decision 596)
 
 - **An open workspace's worktree**: the `worktree` of a record in `symbiote/workspaces/` (or the
   cache's stand-in) without `finished`, that `git worktree list --porcelain` lists as a linked
@@ -43,7 +44,7 @@ until Symbiote writes the file again at its next wake.
 - **No `--add-dir`**: nothing is opened for the whole session, and nothing depends on a
   `--resume` keeping it.
 
-## Claude Code: Read, Grep and Glob (decision 586)
+## Claude Code: Read, Grep and Glob (decision 597)
 
 - Scout's gate (`scout-gate.ts`) answers `allow` for Read (`file_path`), Grep and Glob (`path`)
   when the path is absolute, holds no `..`, and its real path (the nearest folder that exists,
@@ -55,7 +56,7 @@ until Symbiote writes the file again at its next wake.
   (`gateArgs`), written at each start and wake. Without them (a file from before V80) it is
   `main`'s gate.
 
-## The Bash gate: git in a worktree (decision 587)
+## The Bash gate: git in a worktree (decision 598)
 
 For Scout only: Scribe's gate calls `gitReadProblem` without worktrees and keeps `main`'s rule.
 
@@ -69,7 +70,7 @@ For Scout only: Scribe's gate calls `gitReadProblem` without worktrees and keeps
 - Every refusal of f51d03e kept: options that write, run a program or read a file outside after
   the command; the filters after a pipe.
 
-## Codex (decision 588, replanned)
+## Codex (decision 599, replanned)
 
 Planned: nothing passed, Codex's read-only sandbox reading every folder. The person asked for
 Codex's Scout to read "like claude", measured on Codex 0.163's app server first:
@@ -160,10 +161,10 @@ the real runs.
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 585 | What Scout reads beyond the checkout | **Open workspaces' worktrees: a record without `finished` whose folder git lists as this repository's worktree, decided at each tool call; no `--add-dir`, not the holder** | Measured: a hook's `allow` opens a path in `dontAsk`; the holder can be anywhere and holds a worktree of no open workspace; a list at start misses a workspace started later |
-| 586 | How Claude Code's reads are opened | **The gate allows Read, Grep and Glob by real path (absolute, no `..`); Claude Code's rules elsewhere** | Read follows symlinks; Node's `realpathSync` takes `..` before links |
-| 587 | git in a worktree | **`-C <worktree>`; `status` only with `--no-optional-locks`; `diff-index` for the patch; `diff` refused there; Scribe's gate unchanged** | Measured: `status` and `diff` rewrite a worktree's index, `diff-index` does not |
-| 588 | Codex (replanned) | **The same folders as Claude Code's: a permission profile with Codex's program, no sandbox mode, given at the start and at every resume; read-only checked each time, else refused** | The person: "Like claude". Measured: a mode switches a profile off; a profile is not kept through a resume, and without it a thread in a trusted folder is writable |
+| 596 | What Scout reads beyond the checkout | **Open workspaces' worktrees: a record without `finished` whose folder git lists as this repository's worktree, decided at each tool call; no `--add-dir`, not the holder** | Measured: a hook's `allow` opens a path in `dontAsk`; the holder can be anywhere and holds a worktree of no open workspace; a list at start misses a workspace started later |
+| 597 | How Claude Code's reads are opened | **The gate allows Read, Grep and Glob by real path (absolute, no `..`); Claude Code's rules elsewhere** | Read follows symlinks; Node's `realpathSync` takes `..` before links |
+| 598 | git in a worktree | **`-C <worktree>`; `status` only with `--no-optional-locks`; `diff-index` for the patch; `diff` refused there; Scribe's gate unchanged** | Measured: `status` and `diff` rewrite a worktree's index, `diff-index` does not |
+| 599 | Codex (replanned) | **The same folders as Claude Code's: a permission profile with Codex's program, no sandbox mode, given at the start and at every resume; read-only checked each time, else refused** | The person: "Like claude". Measured: a mode switches a profile off; a profile is not kept through a resume, and without it a thread in a trusted folder is writable |
 
 **Not in V80 (later)**: finished workspaces' worktrees (gone at Clean up); a worktree made by hand
 or by the analysis cache, which no record names.
@@ -181,7 +182,7 @@ or by the analysis cache, which no record names.
   nothing, as `log`, `show`, `grep` and `ls-files` do.
 - **Scout's prompt** names the two git forms and why not `git diff`: 2,472 characters, 2,980 with
   MC2's `suggest_settings` lines merged in (limit 8,000).
-- **Codex replanned after the build** (decision 588, above): the person asked for Codex's Scout
+- **Codex replanned after the build** (decision 599, above): the person asked for Codex's Scout
   to read like Claude Code's. The fake app server follows the measured rules (a mode switches a
   profile off; a cold resume without one gets the folder's default, writable where trusted; a
   Codex without profiles). Two earlier Scout tests pinned the read-only mode at the start; they

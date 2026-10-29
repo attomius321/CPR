@@ -162,7 +162,7 @@ const READ_PROFILE = 'symbiote-read';
 
 /**
  * A thread's configuration that lets its commands read only `folders`, with Codex's minimal system
- * folders, and write nothing (Codex 0.163's permission profiles; V80, decision 588). It works only
+ * folders, and write nothing (Codex 0.163's permission profiles; V80, decision 599). It works only
  * without a sandbox mode, which switches it off; and it is not kept: a thread resumed without it
  * gets the folder's default, writable where Codex trusts it (V80 spike). So it is given at the
  * start and at every resume.

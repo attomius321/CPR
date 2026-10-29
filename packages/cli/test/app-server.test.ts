@@ -473,7 +473,7 @@ describe('codexServer', () => {
     });
   });
 
-  it('reads only the folders it is given: a permission profile, no sandbox mode, given again at each resume (V80, decision 588)', async () => {
+  it('reads only the folders it is given: a permission profile, no sandbox mode, given again at each resume (V80, decision 599)', async () => {
     const server = await serve();
     const codex = codexServer(server.address);
     const config = { mcp_servers: {} };

@@ -36,7 +36,7 @@ PreToolUse hook from `--settings`), Codex 0.163 (`codex sandbox -c sandbox_mode=
   worktrees, 21 of them the analysis cache's. A workspace (`feature/mcp-suggest-settings`) was
   started while this was measured: a list read at Scout's start would have missed it.
 - **IDs**: V77 and V78 (twice) are taken on other branches, decisions to 575; this took V79 and
-  576–579 first, then V80 and 585–588 when `feature/workspaces-card-revamp` took V79 and 576–581,
+  576–579 first, then V80 and 596–599 when `feature/workspaces-card-revamp` took V79 and 576–581,
   and `feature/mcp-suggest-settings` 582–584, while it was built.
 
 ## V80 — Scout reads the workspaces' worktrees (2026-10-29, branch `feature/scout-reads-worktrees`)
@@ -45,14 +45,15 @@ Built: Scout's gate opens each open workspace's worktree at each tool call: Read
 there by real path, and git with `-C <worktree>`, `--no-optional-locks status` and `diff-index`;
 `git diff` there refused. Its settings file gives the gate the checkout and the records. Codex
 gets nothing new. The `workspace` tool names the worktree's folder; the prompt, the README and
-`configuration.md` say what Scout reads. Decisions 585–588.
+`configuration.md` say what Scout reads. Decisions 596–599.
 
 **Learned**:
 - **IDs moved twice while this was built**: `feature/workspaces-card-revamp` took V79 and 576–581,
-  `feature/mcp-suggest-settings` 582–584, and `main` merged V77 and V78. Renumbered V80, 585–588;
+  `feature/mcp-suggest-settings` 582–584, and `main` merged V77 and V78. Renumbered V80, 596–599;
   `main` merged in with only the two index files in conflict, both sides appended. MC2 then
   changed Scout's prompt, its test, the MCP tools' table and the README's Scout entry beside V80:
-  merged in again, both sides kept in each.
+  merged in again, both sides kept in each. Then V79 merged into `main` with its decision 582
+  renumbered 585: V80's decisions moved to 596–599, past the 589–595 another branch holds.
 - **A hook's arguments are the safe way to change an old conversation's gate**: the gate is
   `dist/scout-hook.js`, which a build replaces under every running Scout. Without its arguments it
   answers as `main`'s, so a conversation whose settings file was written before V80 keeps
@@ -83,7 +84,7 @@ every folder (its read-only sandbox); now it reads the checkout and the open wor
 as Claude Code's does. Measured first on Codex 0.163: `codex sandbox` with config overrides, then
 real threads on private `codex app-server` processes (stdio and a socket, never the person's
 daemon) in a scratch repository, one short turn each (gpt-6-luna, low), every thread archived.
-Decision 588 replanned. The person also did not want the throwaway copy for the real Scout run
+Decision 599 replanned. The person also did not want the throwaway copy for the real Scout run
 ("I don't like the throwaway idea"): it was deleted, and the person checks a real conversation
 after the merge.
 

@@ -224,7 +224,7 @@ describe('gateDecision (V35)', () => {
   });
 });
 
-describe("Scout reads the workspaces' worktrees (V80, decisions 585-587)", () => {
+describe("Scout reads the workspaces' worktrees (V80, decisions 596-598)", () => {
   // A checkout, its worktrees beside it as Symbiote makes them, and their records:
   // - feature-a: an open workspace, with uncommitted work and links out of it;
   // - "with space": an open workspace whose folder has a space;

@@ -77,7 +77,7 @@ export interface PageAgentSpec {
   permissionMode: 'dontAsk' | 'default';
   /**
    * What its gate is given after its script: Scribe's, the skills' folder and `folders`; Scout's,
-   * the checkout and the workspaces' records, whose worktrees it opens (V80, decision 585).
+   * the checkout and the workspaces' records, whose worktrees it opens (V80, decision 596).
    */
   gateArgs(root: string, where: ReviewPlace): string[];
   /**
@@ -101,7 +101,7 @@ export interface PageAgentSpec {
    */
   codex(root: string): { cwd: string; writes: boolean };
   /**
-   * The folders Codex's read-only thread reads (Scout, V80, decision 588), Codex's own program's
+   * The folders Codex's read-only thread reads (Scout, V80, decision 599), Codex's own program's
    * added: a permission profile given at its start and at each message and load; absent, Codex's
    * read-only mode, which reads every folder.
    */
