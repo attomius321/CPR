@@ -150,6 +150,13 @@ It needs a token:
 - GitHub: `GITHUB_TOKEN` or `GH_TOKEN`. If neither is set, Symbiote asks `gh auth token`.
 - GitLab: `GITLAB_TOKEN`.
 
+A token from the environment goes only to the forge it is for: github.com or gitlab.com, the
+server a CI job runs on, or the API address you set. The remote names the host, and a host such as
+`github.com.example.net` must not get your github.com token. For GitHub Enterprise, set
+`GITHUB_API_URL` (`https://<host>/api/v3`) with `GITHUB_TOKEN`, or `GH_HOST` with
+`GH_ENTERPRISE_TOKEN`, or log in with `gh auth login --hostname <host>`. For self-managed GitLab,
+set `GITLAB_API_URL` or `GITLAB_HOST` with `GITLAB_TOKEN`.
+
 Comment on symbols and lines as in a branch review. On **Files**, only added and removed lines
 take a comment: GitHub and GitLab accept comments inside their own diff's hunks only. In the
 **Review** tab, pick **Comment**,

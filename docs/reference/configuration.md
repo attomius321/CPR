@@ -177,8 +177,9 @@ the same files aside.
 | `SYMBIOTE_LOG` | `off`: Symbiote writes no logs. |
 | `SYMBIOTE_LOG_LEVEL` | The lowest level a log line must have to be written: `debug`, `info` (default), `warn` or `error`. |
 | `SYMBIOTE_LOG_DIR` | Where the logs go. Default: `logs` in the cache folder. |
-| `GITHUB_TOKEN`, `GH_TOKEN` | The GitHub token for `symbiote pr`. Without one, Symbiote asks `gh auth token`. |
-| `GITLAB_TOKEN` | The GitLab token for `symbiote pr`. |
+| `GITHUB_TOKEN`, `GH_TOKEN` | The GitHub token for `symbiote pr`. It goes to github.com, to the host a GitHub Actions job runs on (`GITHUB_SERVER_URL`), or to `GITHUB_API_URL` when that is set. For any other host, Symbiote asks `gh auth token` for that host. |
+| `GH_ENTERPRISE_TOKEN`, `GH_HOST` | A GitHub Enterprise token, and the host it is for, as `gh` reads them. |
+| `GITLAB_TOKEN` | The GitLab token for `symbiote pr`. It goes to gitlab.com, to GitLab CI's own server, to `GITLAB_API_URL` when that is set, or to the host `GITLAB_HOST` names. |
 | `GITHUB_API_URL`, `GITLAB_API_URL` | The forge's API address, for a self-hosted GitHub or GitLab. |
 | `SYMBIOTE_FORGE` | `github` or `gitlab`, as `--forge` does. |
 

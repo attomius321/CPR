@@ -1,4 +1,5 @@
 import { SymbioteError } from '@symbiote/core';
+import { hostOf } from './github.js';
 import { api, paged } from './http.js';
 import type { ChangeRequest, Env, Forge, Review } from './types.js';
 
@@ -18,6 +19,21 @@ interface MergeRequestResponse {
   diff_refs: { base_sha: string; head_sha: string; start_sha: string } | null;
 }
 
+/**
+ * The token for `host`'s API, only where the environment says it is for: `GITLAB_TOKEN` for
+ * gitlab.com, GitLab CI's own server (`CI_SERVER_HOST`), an API address set (`GITLAB_API_URL`,
+ * where the requests then go) or the host `GITLAB_HOST` names, as glab has it; else the CI job
+ * token, to its own server or the API address set. Any other host gets none: the remote's host is the repository's to name.
+ */
+export function gitlabHeaders(host: string, env: Env): Record<string, string> {
+  const ci = !!env.CI_SERVER_HOST && host === env.CI_SERVER_HOST.toLowerCase();
+  const set = !!env.GITLAB_API_URL;
+  const named = host === 'gitlab.com' || set || ci || host === hostOf(env.GITLAB_HOST);
+  if (env.GITLAB_TOKEN && named) return { 'private-token': env.GITLAB_TOKEN };
+  if (env.CI_JOB_TOKEN && (ci || set)) return { 'job-token': env.CI_JOB_TOKEN };
+  return {};
+}
+
 /** GitLab.com and self-managed GitLab merge requests. */
 export class GitLabForge implements Forge {
   readonly kind = 'gitlab';
@@ -32,12 +48,7 @@ export class GitLabForge implements Forge {
     // Inside GitLab CI, the instance's own API URL (it knows ports and path prefixes).
     const ci = env.CI_SERVER_HOST === host ? env.CI_API_V4_URL : undefined;
     this.apiBase = (env.GITLAB_API_URL ?? ci ?? `https://${host}/api/v4`).replace(/\/+$/, '');
-    // A personal/project token, or the job token inside GitLab CI.
-    this.headers = env.GITLAB_TOKEN
-      ? { 'private-token': env.GITLAB_TOKEN }
-      : env.CI_JOB_TOKEN
-        ? { 'job-token': env.CI_JOB_TOKEN }
-        : {};
+    this.headers = gitlabHeaders(host, env);
   }
 
   async getChangeRequest(number: number): Promise<ChangeRequest> {

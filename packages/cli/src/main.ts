@@ -251,7 +251,8 @@ approve, or request changes).
 
 In a GitHub Actions or GitLab CI job for a pull/merge request, <number> defaults to it.
 
-Tokens: GITHUB_TOKEN / GH_TOKEN (or gh auth login) · GITLAB_TOKEN.
+Tokens: GITHUB_TOKEN / GH_TOKEN (or gh auth login) · GITLAB_TOKEN, sent to github.com,
+gitlab.com, the CI job's server or the API address set; GH_ENTERPRISE_TOKEN with GH_HOST.
 API overrides: GITHUB_API_URL · GITLAB_API_URL.
 
 Options:

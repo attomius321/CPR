@@ -4,6 +4,10 @@ import type { ChangeRequest, Env, Forge, Review } from './types.js';
 
 const TOKEN_HINT = 'GITHUB_TOKEN or GH_TOKEN, or log in with gh auth login';
 
+/** What to set for a GitHub Enterprise host, whose token the environment does not name. */
+const enterpriseHint = (host: string) =>
+  `GH_ENTERPRISE_TOKEN with GH_HOST=${host}, or GITHUB_TOKEN with GITHUB_API_URL=https://${host}/api/v3, or log in with gh auth login --hostname ${host}`;
+
 interface PullResponse {
   number: number;
   title: string;
@@ -21,6 +25,7 @@ export class GitHubForge implements Forge {
   readonly kind = 'github';
   private readonly apiBase: string;
   private readonly token: string | undefined;
+  private readonly tokenHint: string;
 
   constructor(
     readonly host: string,
@@ -31,7 +36,8 @@ export class GitHubForge implements Forge {
       env.GITHUB_API_URL ??
       (host === 'github.com' ? 'https://api.github.com' : `https://${host}/api/v3`)
     ).replace(/\/+$/, '');
-    this.token = env.GITHUB_TOKEN ?? env.GH_TOKEN ?? ghToken(host);
+    this.token = githubToken(host, env);
+    this.tokenHint = host === 'github.com' ? TOKEN_HINT : enterpriseHint(host);
   }
 
   async getChangeRequest(number: number): Promise<ChangeRequest> {
@@ -94,13 +100,48 @@ export class GitHubForge implements Forge {
     return api<T>(`${this.apiBase}${path}`, {
       method,
       body,
-      tokenHint: TOKEN_HINT,
+      tokenHint: this.tokenHint,
       headers: {
         accept: 'application/vnd.github+json',
         'x-github-api-version': '2022-11-28',
         ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
       },
     });
+  }
+}
+
+/**
+ * The token for `host`'s API, only where the environment says it is for: `GITHUB_TOKEN` or
+ * `GH_TOKEN` for github.com, the host GitHub Actions runs on (`GITHUB_SERVER_URL`) or an API
+ * address set (`GITHUB_API_URL`, where the requests then go); `GH_ENTERPRISE_TOKEN` for the host
+ * `GH_HOST` names, as gh has it. Any other host gets gh's token for that host, or none: the remote's
+ * host is the repository's to name, and `github.com.evil.example` says "github" too.
+ */
+export function githubToken(
+  host: string,
+  env: Env,
+  stored: (host: string) => string | undefined = ghToken,
+): string | undefined {
+  const own = env.GITHUB_TOKEN || env.GH_TOKEN || undefined;
+  if (
+    own &&
+    (host === 'github.com' || env.GITHUB_API_URL || host === hostOf(env.GITHUB_SERVER_URL))
+  )
+    return own;
+  if (env.GH_HOST && host === hostOf(env.GH_HOST)) {
+    const enterprise = env.GH_ENTERPRISE_TOKEN || env.GITHUB_ENTERPRISE_TOKEN || own;
+    if (enterprise) return enterprise;
+  }
+  return stored(host);
+}
+
+/** A host named alone or by an address (`github.acme.dev`, `https://github.acme.dev/`). */
+export function hostOf(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  try {
+    return new URL(value.includes('://') ? value : `https://${value}`).hostname.toLowerCase();
+  } catch {
+    return undefined;
   }
 }
 
