@@ -171,7 +171,7 @@ landed merges (the merge queue's own entries); a branch name used again keeping 
 **Results.**
 
 - **Tests**: CLI 1,006 unit tests (`workspace-history.test.ts`: 9, its agents rejecting if asked;
-  the record's `tip`/`merged`; Clean up's; the route); viewer 627 (`workspace-history.test.ts`,
+  the record's `tip`/`merged`; Clean up's; the route); viewer 626 (`workspace-history.test.ts`,
   `pages.test.ts`); e2e `workspace-history.spec.ts` (2) and `page-frame.spec.ts` with History
   empty and with a finished workspace, at 1440 and 1920. Full suite: E2E_RESULT.
 - **The person's records** (a clone of this repository in the job's tmp, copies of
