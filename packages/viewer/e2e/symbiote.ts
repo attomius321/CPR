@@ -768,11 +768,13 @@ if (args.includes('--json-schema')) {
   process.stdout.write(JSON.stringify({ type: 'result', subtype: 'success', stop_reason: 'tool_use', structured_output: answer }) + '\\n');
   process.exit(0);
 }
-// The options that take a value, and what is left: the prompt (none: the session waits, V50).
+// The options that take a value, and what is left: the prompt, after \`--\` (none: the session
+// waits, V50).
 const VALUED = ['--name', '--tools', '--permission-mode', '--mcp-config', '--settings', '--model', '--effort', '--append-system-prompt', '--add-dir', '--resume'];
 const option = (name) => (args.includes(name) ? args[args.indexOf(name) + 1] : undefined);
 const promptOf = (list) => {
   for (let i = 0; i < list.length; i++) {
+    if (list[i] === '--') return list[i + 1];
     if (VALUED.includes(list[i])) i++;
     else if (!list[i].startsWith('--')) return list[i];
   }
@@ -800,7 +802,8 @@ const started = (fields) => {
 };
 if (args[0] === '--bg' && args[1] === '--resume') {
   appendFileSync(join(dir, 'calls.jsonl'), JSON.stringify({ args, cwd: process.cwd() }) + '\\n');
-  const [, , id, text] = args;
+  const [, , id] = args;
+  const text = promptOf(args.slice(3));
   const all = list();
   const session = all.find((s) => s.sessionId === id);
   if (!session) {

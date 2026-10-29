@@ -448,6 +448,8 @@ export function claudeCode(
           : ['--permission-mode', request.permissionMode]),
         ...choose(request.model, model),
         ...(request.effort ? ['--effort', request.effort] : []),
+        // After `--`, whatever it starts with: "- plan first" was read as an unknown option.
+        '--',
         request.prompt,
       ];
       const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
@@ -475,7 +477,7 @@ export function claudeCode(
         ...choose(request.model, model),
         ...(request.effort ? ['--effort', request.effort] : []),
         ...(request.instructions ? ['--append-system-prompt', request.instructions] : []),
-        ...(request.prompt === undefined ? [] : [request.prompt]),
+        ...(request.prompt === undefined ? [] : ['--', request.prompt]),
       ];
       const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
       sessions = null;
@@ -492,7 +494,7 @@ export function claudeCode(
       return { ok: false, error: wordsOf(result) || `could not stop ${id}` };
     },
     async resume(request) {
-      const args = ['--bg', '--resume', request.sessionId, request.text];
+      const args = ['--bg', '--resume', request.sessionId, '--', request.text];
       const result = await run(command, args, { cwd: request.cwd, timeoutMs: 60_000 });
       sessions = null;
       if (result.code === 0) return { ok: true };

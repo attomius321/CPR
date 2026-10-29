@@ -776,7 +776,10 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
   await expect(here.locator('.thread-you')).toContainText('OK, name it half.', POLL);
   expect(symbiote.stops()).toEqual(['fake0']);
   expect(resumes()).toEqual([
-    { args: ['--bg', '--resume', 'session-0', 'OK, name it half.'], cwd: symbiote.folder(branch) },
+    {
+      args: ['--bg', '--resume', 'session-0', '--', 'OK, name it half.'],
+      cwd: symbiote.folder(branch),
+    },
   ]);
   await expect(here.locator('.thread-line')).toHaveText('Continued');
   // The newest is in view: the thread opens at its end, and follows it.
@@ -838,7 +841,7 @@ test('Send the verdict: a review fills the box, from the panel and from the Revi
   await expect(box(page, branch)).toHaveValue(/Name it halve\./);
   await panel(page, branch).getByRole('button', { name: 'Send', exact: true }).click();
   await expect(panel(page, branch).locator('.thread-you')).toContainText('Name it halve.', POLL);
-  expect(resumes()[0]?.args[3]).toContain('Address this review of the branch');
+  expect(resumes()[0]?.args.at(-1)).toContain('Address this review of the branch');
   // Sent: the panel no longer offers it.
   await expect(panel(page, branch).getByRole('button', { name: 'Send the verdict' })).toHaveCount(
     0,
