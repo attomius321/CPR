@@ -190,3 +190,4 @@ Suggest settings' page in Settings, above its instructions.
 Not verified: a real Codex that lists no small model, which only the unit tests cover. The new
 page was not seen in a narrow window; Settings' phone test passed.
 
+Merged into main (2026-10-29).
