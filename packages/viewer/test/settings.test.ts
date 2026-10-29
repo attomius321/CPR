@@ -59,7 +59,7 @@ describe('promptGroups', () => {
       prompt({ key: 'start.fix' }),
       prompt({ key: 'reviews', group: 'Reviews', title: 'symbiote/AGENTS.md' }),
       prompt({ key: 'merger', group: 'Merger', title: 'Instructions' }),
-      prompt({ key: 'scout', group: 'Scout', title: 'Instructions' }),
+      prompt({ key: 'nucleus', group: 'Nucleus', title: 'Instructions' }),
       prompt({ key: 'scribe', group: 'Scribe', title: 'Instructions' }),
     ];
     expect(entries(prompts)).toEqual([
@@ -69,7 +69,7 @@ describe('promptGroups', () => {
         'Prebuilt agents',
         [
           ['merger', 'Merger', ['merger'], 'Merger'],
-          ['scout', 'Scout', ['scout'], 'Scout'],
+          ['nucleus', 'Nucleus', ['nucleus'], 'Nucleus'],
           ['scribe', 'Scribe', ['scribe'], 'Scribe'],
         ],
       ],

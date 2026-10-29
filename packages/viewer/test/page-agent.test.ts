@@ -1,14 +1,19 @@
 import type { PageAgentConversation } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { nextNucleusMark, runsOn, pageAgentStateText } from '../src/nucleus/page-agent.js';
+import {
+  formerText,
+  nextNucleusMark,
+  pageAgentStateText,
+  runsOn,
+} from '../src/nucleus/page-agent.js';
 
-describe("the sidenav's mark for Scout (V35, decision 238)", () => {
-  it('says working while Scout answers, wherever the person is', () => {
+describe("the sidenav's mark for Nucleus (V35, decision 238)", () => {
+  it('says working while Nucleus answers, wherever the person is', () => {
     expect(nextNucleusMark(null, 'working', false)).toBe('working');
     expect(nextNucleusMark(null, 'working', true)).toBe('working');
   });
 
-  it('says answered when an answer came while the person was on another page, until Scout is opened', () => {
+  it('says answered when an answer came while the person was on another page, until Nucleus is opened', () => {
     let mark = nextNucleusMark(null, 'working', false);
     mark = nextNucleusMark(mark, 'answered', false);
     expect(mark).toBe('answered');
@@ -28,7 +33,7 @@ describe("the sidenav's mark for Scout (V35, decision 238)", () => {
   });
 });
 
-describe("Scout's state in words", () => {
+describe("a page agent's state in words", () => {
   const conversation = (state: PageAgentConversation['state']): PageAgentConversation => ({
     kind: 'claude',
     started: '2026-10-22T09:00:00.000Z',
@@ -74,5 +79,22 @@ describe('what a page agent runs on, in its line', () => {
     expect(runsOn('claude', {}, MODELS)).toBe('with Claude Code');
     // Before a conversation: the agent that will run it.
     expect(runsOn('claude', null, MODELS)).toBe('with Claude Code');
+  });
+});
+
+describe('a conversation from before NU1 (decision 591)', () => {
+  const conversation: PageAgentConversation = {
+    kind: 'claude',
+    started: '2026-10-29T19:50:40.704Z',
+    state: 'answered',
+    id: 'old',
+  };
+
+  it('says it started as Scout, without the web, and what starts Nucleus', () => {
+    expect(formerText({ ...conversation, startedAs: 'Scout' }, 'Nucleus')).toBe(
+      'Started as Scout, without the web: New conversation starts Nucleus.',
+    );
+    expect(formerText(conversation, 'Nucleus')).toBeNull();
+    expect(formerText(null, 'Nucleus')).toBeNull();
   });
 });

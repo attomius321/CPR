@@ -599,20 +599,25 @@ describe('finishing a branch review (V16, V17)', () => {
     );
   });
 
-  it("says a verdict was finished through Scout or symbiote mcp, on the person's Confirm (MC1)", async () => {
+  it("says a verdict was finished through Nucleus or symbiote mcp, on the person's Confirm (MC1)", async () => {
     const { repo } = pushedRepo();
     const reviews = branchReviews(await openRepo(repo.root), cache, { now: () => NOW });
     const { info } = await reviews.resolve('agent');
     const { verdict } = await reviews.finish(
       info,
-      { ...APPROVE, via: 'scout' },
+      { ...APPROVE, via: 'nucleus' },
       reader(repo.root, info),
     );
-    expect(verdict.via).toBe('scout');
-    const file = JSON.parse(
-      readFileSync(join(repo.root, 'symbiote', 'reviews', 'agent', 'ada@example.com.json'), 'utf8'),
-    ) as { verdicts: { via?: string }[] };
-    expect(file.verdicts.at(-1)?.via).toBe('scout');
+    expect(verdict.via).toBe('nucleus');
+    const path = join(repo.root, 'symbiote', 'reviews', 'agent', 'ada@example.com.json');
+    const file = JSON.parse(readFileSync(path, 'utf8')) as { verdicts: { via?: string }[] };
+    expect(file.verdicts.at(-1)?.via).toBe('nucleus');
+    expect((await reviews.list()).reviews[0]?.verdict).toMatchObject({ via: 'nucleus' });
+    // A verdict made through Scout, before NU1: read as Nucleus's, the file as it was (590).
+    const before = readFileSync(path, 'utf8').replace('"via": "nucleus"', '"via": "scout"');
+    writeFileSync(path, before);
+    expect((await reviews.list()).reviews[0]?.verdict).toMatchObject({ via: 'nucleus' });
+    expect(readFileSync(path, 'utf8')).toBe(before);
     // The page's own verdict says nothing of it.
     const { verdict: own } = await reviews.finish(info, APPROVE, reader(repo.root, info));
     expect(own).not.toHaveProperty('via');

@@ -75,10 +75,10 @@ describe('what waits for the person (N2)', () => {
     expect(whatWaits({ ...nothing, merges }, []).merges).toBe(1);
   });
 
-  it('Scout by its ask or a dialog in its terminal, once; Scribe by its dialog', () => {
+  it('Nucleus by its ask or a dialog in its terminal, once; Scribe by its dialog', () => {
     expect(whatWaits({ ...nothing, nucleus: page('needs-you') }, []).nucleus).toBe(true);
     expect(whatWaits({ ...nothing, nucleus: page('working') }, []).nucleus).toBe(false);
-    const nucleusAsks = [ask({ via: 'scout' })];
+    const nucleusAsks = [ask({ via: 'nucleus' })];
     expect(whatWaits({ ...nothing, nucleus: page('working') }, nucleusAsks)).toMatchObject({
       nucleus: true,
       asks: 0,

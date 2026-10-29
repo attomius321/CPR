@@ -3461,11 +3461,11 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
         method: 'tools/call',
         params: { name: 'queue_merge', arguments: { branch: 'feature/csv' } },
       },
-      { 'x-symbiote-caller': 'scout' },
+      { 'x-symbiote-caller': 'nucleus' },
     );
     await expect.poll(async () => (await asks()).length).toBe(1);
     const [ask] = await asks();
-    expect(ask).toMatchObject({ tool: 'queue_merge', by: { via: 'scout' } });
+    expect(ask).toMatchObject({ tool: 'queue_merge', by: { via: 'nucleus' } });
     expect(queued).toEqual([]);
     const answered = await post('/api/mcp/answer', { id: ask?.id, yes: true });
     expect(answered.status).toBe(200);
@@ -3473,6 +3473,24 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
     const result = (await (await call).json()) as { result: { isError?: boolean } };
     expect(result.result.isError).toBeUndefined();
     expect(queued).toEqual([{ branch: 'feature/csv', into: 'main' }]);
+  });
+
+  it('takes a bridge from before NU1, which says scout, for Nucleus (decision 590)', async () => {
+    const call = post(
+      '/api/mcp',
+      {
+        jsonrpc: '2.0',
+        id: 4,
+        method: 'tools/call',
+        params: { name: 'queue_merge', arguments: { branch: 'feature/csv' } },
+      },
+      { 'x-symbiote-caller': 'scout' },
+    );
+    await expect.poll(async () => (await asks()).length).toBe(1);
+    const [ask] = await asks();
+    expect(ask?.by).toEqual({ via: 'nucleus' });
+    await post('/api/mcp/answer', { id: ask?.id, yes: false });
+    await call;
   });
 
   it('says who asks through symbiote mcp; drops the ask when its caller hangs up', async () => {

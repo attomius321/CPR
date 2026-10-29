@@ -116,10 +116,10 @@ test("Scribe's terminal fits its pane at every height: no scrollbar comes and go
   );
 });
 
-test("Scout's terminal fits its card at every height: its last row whole", async ({ page }) => {
+test("Nucleus's terminal fits its card at every height: its last row whole", async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto(`${symbiote.url}scout`);
+  await page.goto(`${symbiote.url}nucleus`);
   const terminal = page.locator('.nucleus-page .agent-terminal');
   await expect(terminal.locator('.xterm-rows')).toContainText('Fake Claude Code', POLL);
   await sweep(page, terminal);

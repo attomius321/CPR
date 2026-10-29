@@ -25,7 +25,7 @@ const graph = JSON.parse(
   ),
 ) as Graph;
 
-const NUCLEUS: McpCaller = { via: 'scout' };
+const NUCLEUS: McpCaller = { via: 'nucleus' };
 const SUGGESTION: WorkspaceSuggestion = {
   agent: 'codex',
   model: 'gpt-6',
@@ -737,7 +737,7 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
         id,
         tool: 'queue_merge',
         words: `Merge fix/a at ${HEAD.slice(0, 7)} into main`,
-        by: { via: 'scout' },
+        by: { via: 'nucleus' },
         at: expect.any(String) as unknown,
         until: expect.any(String) as unknown,
       },
@@ -900,7 +900,7 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     expect(finish?.[2]).toMatchObject({
       event: 'approve',
       body: 'Looks right.',
-      via: 'scout',
+      via: 'nucleus',
       comments: [
         {
           id: 'c1',
@@ -933,7 +933,7 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     );
     await mcp.answer({ id, yes: true });
     expect((await pending).value).toMatchObject({ workspace: { branch: 'fix/the-button' } });
-    expect(calls).toContainEqual(['start', { ...request, via: 'scout' }]);
+    expect(calls).toContainEqual(['start', { ...request, via: 'nucleus' }]);
 
     const other = call(
       mcp,

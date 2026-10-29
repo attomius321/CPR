@@ -6,6 +6,7 @@ import { PassThrough } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import {
+  bridgeCaller,
   readViewRecord,
   removeViewRecord,
   runBridge,
@@ -56,7 +57,7 @@ afterEach(() => {
 });
 
 /** A bridge on a view file: write lines to it, read its answers. */
-function bridge(view: string, as?: 'scout') {
+function bridge(view: string, as?: 'nucleus') {
   const input = new PassThrough();
   const output = new PassThrough();
   let out = '';
@@ -87,7 +88,7 @@ describe("Symbiote's MCP bridge (MC1, decision 358)", () => {
       root: '/home/p/trial',
       started: 'now',
     });
-    const b = bridge(file, 'scout');
+    const b = bridge(file, 'nucleus');
     b.send({
       jsonrpc: '2.0',
       id: 1,
@@ -106,9 +107,16 @@ describe("Symbiote's MCP bridge (MC1, decision 358)", () => {
     expect(view.seen[2]?.headers).toMatchObject({
       'content-type': 'application/json',
       'x-symbiote': '1',
-      'x-symbiote-caller': 'scout',
+      'x-symbiote-caller': 'nucleus',
     });
     await view.close();
+  });
+
+  it("is Nucleus's with --as nucleus, or scout, its name in a file written before NU1", () => {
+    expect(bridgeCaller('nucleus')).toBe('nucleus');
+    expect(bridgeCaller('scout')).toBe('nucleus');
+    expect(bridgeCaller(undefined)).toBeUndefined();
+    expect(bridgeCaller('scribe')).toBeUndefined();
   });
 
   it('says who calls through symbiote mcp: the client it introduced, and its folder', async () => {
@@ -194,7 +202,7 @@ describe("Symbiote's MCP bridge (MC1, decision 358)", () => {
     const view = await fakeView(() => closed++);
     const file = join(dir, 'view.json');
     await writeViewRecord(file, { url: view.url, pid: process.pid, root: '/r', started: 'now' });
-    const b = bridge(file, 'scout');
+    const b = bridge(file, 'nucleus');
     b.send({ jsonrpc: '2.0', id: 9, method: 'slow' });
     await expect.poll(() => view.seen.length).toBe(1);
     b.send({ jsonrpc: '2.0', method: 'notifications/cancelled', params: { requestId: 9 } });

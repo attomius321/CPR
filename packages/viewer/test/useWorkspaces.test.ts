@@ -36,7 +36,7 @@ describe('readEvery', () => {
     ).toBe(5_000);
   });
 
-  it('also while Scout answers (V35) or waits on the person (V59)', () => {
+  it('also while Nucleus answers (V35) or waits on the person (V59)', () => {
     const done = state({ state: 'ready' });
     const nucleus = (state: PageAgentStateName): WorkspacesState => ({
       ...done,

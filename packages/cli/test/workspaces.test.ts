@@ -944,21 +944,25 @@ describe('workspaces', () => {
     expect(existsSync(join(repo.root, 'symbiote', '.gitignore'))).toBe(true);
   });
 
-  it('says a workspace was started through Scout or symbiote mcp: in its record and the list (MC1)', async () => {
+  it('says a workspace was started through Nucleus or symbiote mcp: in its record and the list (MC1)', async () => {
     const { repo } = fresh();
     const service_ = await service(repo, fakeClaude().claude);
     const { workspace } = await service_.start({
       brief: 'Fix the discount',
       branch: 'fix/discount',
       planFirst: true,
-      via: 'scout',
+      via: 'nucleus',
     });
-    expect(workspace.via).toBe('scout');
-    const saved = JSON.parse(
-      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'fix', 'discount.json'), 'utf8'),
-    ) as WorkspaceFile;
-    expect(saved).toMatchObject({ via: 'scout', by: 'ada@example.com' });
-    expect((await service_.list()).workspaces[0]?.via).toBe('scout');
+    expect(workspace.via).toBe('nucleus');
+    const path = join(repo.root, 'symbiote', 'workspaces', 'fix', 'discount.json');
+    const saved = JSON.parse(readFileSync(path, 'utf8')) as WorkspaceFile;
+    expect(saved).toMatchObject({ via: 'nucleus', by: 'ada@example.com' });
+    expect((await service_.list()).workspaces[0]?.via).toBe('nucleus');
+    // A record from before NU1 says Scout: read as Nucleus's, the file as it was (decision 590).
+    const before = readFileSync(path, 'utf8').replace('"via": "nucleus"', '"via": "scout"');
+    writeFileSync(path, before);
+    expect((await service_.list()).workspaces[0]?.via).toBe('nucleus');
+    expect(readFileSync(path, 'utf8')).toBe(before);
     const { workspace: own } = await service_.start({
       brief: 'Another',
       branch: 'fix/another',

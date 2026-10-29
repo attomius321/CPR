@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gateDecision, gitReadProblem, hookOutput } from '../src/nucleus-gate.js';
+import { gateDecision, gateOptions, gitReadProblem, hookOutput } from '../src/nucleus-gate.js';
 
 describe('gitReadProblem (V35, decision 236)', () => {
   it.each([
@@ -154,17 +154,64 @@ describe('gateDecision (V35)', () => {
     const denied = gateDecision(input('Bash', { command: 'ls -la' }));
     expect(denied).toMatchObject({ allow: false });
     expect(denied && !denied.allow && denied.reason).toMatch(
-      /^Scout runs only git's read commands/,
+      /^Nucleus runs only git's read commands/,
     );
     expect(gateDecision(input('Bash', {}))).toMatchObject({ allow: false });
   });
 
-  it('denies every other tool: Scout changes no file', () => {
-    for (const tool of ['Edit', 'Write', 'NotebookEdit', 'WebFetch', 'Agent']) {
+  it('denies every other tool: Nucleus changes no file', () => {
+    for (const tool of ['Edit', 'Write', 'NotebookEdit', 'WebFetch', 'WebSearch', 'Agent']) {
       const decision = gateDecision(input(tool, {}));
       expect(decision).toMatchObject({ allow: false });
-      expect(decision && !decision.allow && decision.reason).toMatch(/Scout changes no file/);
+      expect(decision && !decision.allow && decision.reason).toMatch(/Nucleus changes no file/);
     }
+  });
+
+  // NU1 (decision 592): the agent's own web tools, as they come, when the gate is given `--web`.
+  it('lets WebSearch and WebFetch through with the web on, whatever they ask', () => {
+    const web = { web: true };
+    expect(
+      gateDecision(input('WebSearch', { query: 'vite release', mode: 'standard' }), web),
+    ).toEqual({ allow: true });
+    for (const url of ['https://registry.npmjs.org/vite/latest', 'http://localhost:4173/']) {
+      expect(gateDecision(input('WebFetch', { url, prompt: 'The version' }), web)).toEqual({
+        allow: true,
+      });
+    }
+  });
+
+  it('denies the web tools without it, saying how to turn the web on', () => {
+    for (const tool of ['WebSearch', 'WebFetch']) {
+      const decision = gateDecision(input(tool, { query: 'x', url: 'https://example.com' }));
+      expect(decision).toMatchObject({ allow: false });
+      expect(decision && !decision.allow && decision.reason).toMatch(/nucleus\.web/);
+    }
+  });
+
+  it('with the web on, still denies a write, any other command and any other server', () => {
+    const web = { web: true };
+    for (const tool of ['Edit', 'Write', 'NotebookEdit', 'Agent', 'mcp__github__create_issue']) {
+      expect(gateDecision(input(tool, {}), web)).toMatchObject({ allow: false });
+    }
+    for (const command of [
+      'curl -sS https://example.com',
+      'wget https://example.com',
+      'ls',
+      'git fetch origin',
+      'git push origin main',
+      'git ls-remote origin',
+      'echo hi > notes.txt',
+    ]) {
+      expect(gateDecision(input('Bash', { command }), web)).toMatchObject({ allow: false });
+    }
+    expect(gateDecision(input('Bash', { command: 'git log -1' }), web)).toEqual({ allow: true });
+    expect(gateDecision(input('mcp__symbiote__overview', {}), web)).toEqual({ allow: true });
+  });
+
+  it('reads `--web` from its arguments; a settings file from before NU1 gives none', () => {
+    expect(gateOptions(['--web'])).toEqual({ web: true });
+    expect(gateOptions([])).toEqual({ web: false });
+    expect(gateOptions(['--other'])).toEqual({ web: false });
   });
 
   it("lets Symbiote's own tools through; every other server's is denied (MC1)", () => {
@@ -176,7 +223,7 @@ describe('gateDecision (V35)', () => {
       const decision = gateDecision(input(tool, {}));
       expect(decision).toMatchObject({ allow: false });
       expect(decision && !decision.allow && decision.reason).toMatch(
-        /Scout acts only through Symbiote's tools/,
+        /Nucleus acts only through Symbiote's tools/,
       );
     }
   });
@@ -192,7 +239,7 @@ describe('gateDecision (V35)', () => {
       hookSpecificOutput: {
         hookEventName: 'PreToolUse',
         permissionDecision: 'allow',
-        permissionDecisionReason: "Scout: one of git's read commands",
+        permissionDecisionReason: "Nucleus: one of git's read commands",
       },
     });
     expect(JSON.parse(hookOutput({ allow: false, reason: 'No.' }))).toEqual({

@@ -548,7 +548,8 @@ test("Effort: Scribe opens at the project's level, which reaches Claude Code; it
 }) => {
   symbiote = await serveWorkspaces();
   commit({
-    'symbiote/config.json': '{ "scout": { "effort": "low" }, "scribe": { "effort": "medium" } }\n',
+    'symbiote/config.json':
+      '{ "nucleus": { "effort": "low" }, "scribe": { "effort": "medium" } }\n',
   });
   await page.goto(`${symbiote.url}skills?scribe`);
   await expect.poll(() => scribeCalls().length, POLL).toBe(1);

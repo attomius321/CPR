@@ -279,7 +279,7 @@ test("fields and buttons take the page's font and spacing on every page", async 
   await expect(page.locator('.settings-editor textarea')).toBeVisible();
   expect(await unlike()).toEqual([]);
 
-  await page.getByRole('link', { name: 'Scout' }).click();
+  await page.getByRole('link', { name: 'Nucleus' }).click();
   // Its terminal (V50), drawn by xterm.js: its own look, not the page's.
   await expect(page.locator('.nucleus-page .agent-terminal .xterm-rows')).toContainText(
     'Fake Claude Code',
@@ -367,10 +367,10 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
   await expect(tip).toBeHidden();
 
   // Nucleus's: what it is, behind the "?" by its title.
-  await page.goto(`${symbiote.url}scout`);
-  await expect(page.getByRole('heading', { name: 'Scout' })).toBeVisible();
+  await page.goto(`${symbiote.url}nucleus`);
+  await expect(page.getByRole('heading', { name: 'Nucleus' })).toBeVisible();
   await expect(page.getByText('changes no file')).toBeHidden();
-  await page.getByRole('button', { name: 'About Scout' }).focus();
+  await page.getByRole('button', { name: 'About Nucleus' }).focus();
   await expect(tip).toContainText('changes no file');
   await inside(tip);
   await page.keyboard.press('Escape');
