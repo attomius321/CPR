@@ -58,12 +58,18 @@ Code's WebSearch and WebFetch through the gate with `--web`, Codex's `web_search
   read.
 - **npmjs.com answered 403 to both agents' page reads**; Claude Code's Nucleus read
   `registry.npmjs.org/vite/latest` instead, Codex's said it could not check. Both named pages.
+- **V80 merged into `main` while NU1 was built, on the files NU1 renamed.** Its gate's reach and
+  NU1's web became one options object; the built hook, fed tool calls with Nucleus's new
+  arguments, allowed WebSearch, WebFetch and `git -C <worktree> log`, refused `curl` and Write,
+  and through `dist/scout-hook.js` with no arguments refused WebFetch. It also showed a web allow
+  labelled "one of git's read commands": it now says "the web".
 - **A resumed Claude Code session reconnects its MCP server**: the turn right after a wake said
   "Symbiote's tools are reconnecting right now". The next turn had them (the gate test's).
 
 **Verification**: tests first, red for the right reason (48 CLI, 8 viewer, `nucleus.spec.ts` 10
 of 10 on the old build), then `pnpm check` 2,288 tests, build, e2e 343 of 343 and the nexus 15 of
-15; after `main` (V79) was merged in, `pnpm check` 2,290, e2e 343 of 343, the nexus 15 of 15.
+15; after `main` was merged in with V79 and then V80, `pnpm check` 2,350, e2e 343 of 343, the
+nexus 15 of 15.
 Real runs in this repository's worktree (the plan's Results): the person's Scout conversation read as Nucleus's; a web answer in 47 s on
 Claude Code (1 search, 5 pages) and 9.1 s on Codex (2 searches, 2 pages); a write declined, the
 gate refusing `echo >` and `curl`, no Write tool; New conversation over a Scout record in 1.6 s.

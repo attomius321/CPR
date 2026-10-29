@@ -190,14 +190,19 @@ describe('gateDecision (V35)', () => {
   // NU1 (decision 592): the agent's own web tools, as they come, when the gate is given `--web`.
   it('lets WebSearch and WebFetch through with the web on, whatever they ask', () => {
     const web = { web: true };
+    // Said as what it is, not as one of git's read commands (the hook's words).
+    const allowed = { allow: true, reason: 'the web, as its agent reads it (NU1)' };
     expect(
       gateDecision(input('WebSearch', { query: 'vite release', mode: 'standard' }), web),
-    ).toEqual({ allow: true });
+    ).toEqual(allowed);
     for (const url of ['https://registry.npmjs.org/vite/latest', 'http://localhost:4173/']) {
-      expect(gateDecision(input('WebFetch', { url, prompt: 'The version' }), web)).toEqual({
-        allow: true,
-      });
+      expect(gateDecision(input('WebFetch', { url, prompt: 'The version' }), web)).toEqual(allowed);
     }
+    expect(JSON.parse(hookOutput(allowed))).toMatchObject({
+      hookSpecificOutput: {
+        permissionDecisionReason: 'Nucleus: the web, as its agent reads it (NU1)',
+      },
+    });
   });
 
   it('denies the web tools without it, saying how to turn the web on', () => {

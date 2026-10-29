@@ -224,13 +224,19 @@ the old names and the network; the viewer; docs; the real runs.
   `SYMBIOTE_CACHE_DIR`. The person's live Scout conversation was read from a copy of its record,
   not ended; New conversation over a Scout record was run on a Nucleus session of the run's own,
   its record renamed `scout.json`.
+- **V80 merged first** (`ef78106`), its changes on the files NU1 renamed. Its reach of the
+  workspaces' worktrees and NU1's web are one options object in the gate, `{ reach, web }`, read
+  from the hook's arguments (the two folders first, `--web` after them); its `gateArgs` and
+  `codexReads` moved into Nucleus's spec; its Codex permission profile replaced the `sandbox:
+  read-only` NU1's Codex tests looked for at the start. A web allow now says what it is ("the web,
+  as its agent reads it"), as V80's allows in a worktree do, not "one of git's read commands".
 - **`symbiote/AGENTS.md` changes**: its `via` line names `"nucleus"` and `"scout"`; Symbiote
   rewrites the file the first time the merged build runs.
 
 **Results.** Tests first, red for the right reason: 48 CLI tests (the gate, Nucleus's start,
 records and Codex config, the old names, prompts, `via`, the bridge's caller) and 8 viewer tests,
-`e2e/nucleus.spec.ts` 10 of 10 on the rename commit's build. `pnpm check` 2,290 tests, e2e 343 of
-343 and the nexus 15 of 15 on the tree with V79 merged (343 and 15 before it too). Real runs, this branch's
+`e2e/nucleus.spec.ts` 10 of 10 on the rename commit's build. `pnpm check` 2,350 tests, e2e 343 of
+343 and the nexus 15 of 15 on the tree with V79 and V80 merged (the same e2e before each merge). Real runs, this branch's
 `symbiote view` in this repository's worktree, Claude Code 2.1.312 on the project's
 `scout.model` and `scout.effort` (opus, xhigh, read as Nucleus's), Codex 0.163:
 

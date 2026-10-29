@@ -499,7 +499,7 @@ export function gateDecision(
     };
   }
   if (WEB.includes(v.tool_name)) {
-    if (web) return { allow: true };
+    if (web) return { allow: true, reason: 'the web, as its agent reads it (NU1)' };
     return {
       allow: false,
       reason: `Nucleus has no web in this conversation (${v.tool_name}): nucleus.web is false in symbiote/config.json, or the conversation started before Nucleus had it. A new conversation takes the setting.`,
