@@ -129,11 +129,11 @@ test('History, under Monitor: the cleaned-up workspaces, the picked one read onl
   await expect(list(page).locator('h2')).toHaveText(['Today', /\S/]);
   await expect(list(page).locator('.history-row')).toHaveCount(2);
   await expect(rowOf(page, HALF)).toHaveAttribute('aria-current', 'true');
-  await expect(rowOf(page, HALF)).toContainText('Merged into main');
+  await expect(rowOf(page, HALF).locator('.history-outcome')).toHaveText('Merged');
   await expect(rowOf(page, OLD)).toContainText('Not merged');
   const half = picked(page, HALF);
   await expect(half.locator('h2')).toContainText('Add a half function');
-  await expect(half.locator('.history-facts')).toContainText('Merged into main');
+  await expect(half.locator('h2 .history-outcome')).toHaveText('Merged into main');
   // Read only: its four tabs, no terminal, no shells, no reply, no Clean up.
   await expect(half.getByRole('tab')).toHaveText(['Activity', 'Thread', 'Brief', 'Changes']);
   await expect(half.getByRole('tab', { name: 'Activity' })).toHaveAttribute(

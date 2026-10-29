@@ -9,6 +9,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  container: history / inline-size;
 }
 
 .history-note {
@@ -29,7 +30,6 @@
   grid-template-rows: minmax(0, 1fr);
   gap: var(--page-gap);
   padding: 0 var(--page-pad) var(--page-pad);
-  container: history / inline-size;
 }
 
 .history-body.empty {
@@ -310,23 +310,37 @@
   margin: 0;
 }
 
+/* Its outcome after its kind, on the name's line, as a row's is after its name. */
+.history-workspace-title h2 > .history-outcome {
+  font-size: var(--size-caption);
+}
+
+/* One line, a dot between: its branch gives way first, as a workspace's head's does. */
 .history-facts {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px 0;
+  min-width: 0;
   margin: 2px 0 0;
+  overflow: hidden;
   color: var(--muted);
   font-size: var(--size-small);
+  white-space: nowrap;
 }
 
-.history-facts > span:not(.history-outcome) + span::before {
+.history-facts > span {
+  flex: none;
+}
+
+.history-facts > .history-facts-branch {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-facts > span + span::before {
   content: '·';
   margin: 0 6px;
-}
-
-.history-facts > .history-outcome {
-  margin-left: 10px;
 }
 
 .history-workspace-head > .button {
@@ -357,7 +371,7 @@
 }
 
 /* A narrow area: the picked workspace under the list, the list keeping its head and five rows. */
-@container history (max-width: 760px) {
+@container history (max-width: 800px) {
   .history-body:not(.empty) {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: minmax(220px, 38%) minmax(0, 1fr);

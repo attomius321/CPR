@@ -2,7 +2,7 @@
 // they finished, and the one picked beside them, read only: its Activity, Thread, Brief and
 // Changes (decisions 561–563). Under Monitor in the sidenav (`h`), at `/workspace-history`; the
 // picked one in `?branch=`, its tab after it (`&brief`).
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import type {
   FinishedWorkspace,
   WorkKind,
@@ -28,6 +28,7 @@ import {
   kindsOf,
   matching,
   outcomeText,
+  outcomeWord,
   ranFor,
   withHistoryView,
   type HistoryView,
@@ -138,6 +139,15 @@ export function WorkspaceHistory({ branch }: { branch: string | undefined }) {
     if (next?.dataset.branch) pick(next.dataset.branch);
   };
 
+  // The picked row in sight in its card (an address, Back, or the list under a narrow head).
+  const listRef = useRef<HTMLElement>(null);
+  const shownBranch = shown?.branch;
+  useEffect(() => {
+    listRef.current
+      ?.querySelector<HTMLElement>(`${ROWS}[aria-current='true']`)
+      ?.scrollIntoView({ block: 'nearest' });
+  }, [shownBranch, read]);
+
   const count = read ? all.length : null;
   return (
     <div className="history">
@@ -170,14 +180,19 @@ export function WorkspaceHistory({ branch }: { branch: string | undefined }) {
         </div>
       ) : (
         <div className="history-body">
-          <nav className="history-list" aria-label="Finished workspaces" onKeyDown={onKeyDown}>
+          <nav
+            ref={listRef}
+            className="history-list"
+            aria-label="Finished workspaces"
+            onKeyDown={onKeyDown}
+          >
             <div className="history-filters">
               <label className="history-search">
                 <SearchIcon />
                 <input
                   type="search"
                   aria-label="Search finished workspaces"
-                  placeholder="Search titles, branches, briefs…"
+                  placeholder="Search workspaces…"
                   value={query}
                   autoComplete="off"
                   spellCheck={false}
@@ -268,7 +283,7 @@ function HistoryRow({
       <span className="history-row-text">
         <span className="history-row-line">
           <span className="history-row-name">{workspaceName(row)}</span>
-          <span className={`history-outcome outcome-${row.outcome}`}>{outcomeText(row)}</span>
+          <span className={`history-outcome outcome-${row.outcome}`}>{outcomeWord(row)}</span>
         </span>
         <span className="history-row-facts">
           <span className="history-row-branch">{row.branch}</span>
@@ -334,12 +349,12 @@ function FinishedCard({
           <h2>
             <span {...tip(briefTip(entry.brief))}>{workspaceName(entry)}</span>
             {entry.kind && <span className="kind-tag">{entry.kind}</span>}
+            <span className={`history-outcome outcome-${entry.outcome}`}>{outcomeText(entry)}</span>
           </h2>
           <p className="history-facts">
             <span className="history-facts-branch">{entry.branch}</span>
             <span>Finished {when(entry.finished)}</span>
             {ran && <span>ran {ran}</span>}
-            <span className={`history-outcome outcome-${entry.outcome}`}>{outcomeText(entry)}</span>
           </p>
         </div>
         {said && (

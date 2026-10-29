@@ -14,6 +14,12 @@ export function outcomeText(workspace: FinishedWorkspace): string {
   return workspace.outcome === 'kept' ? 'Branch kept' : 'Not merged';
 }
 
+/** The same, short, for a row of the list: the default branch's name is the card's to say. */
+export function outcomeWord(workspace: FinishedWorkspace): string {
+  if (workspace.outcome === 'merged') return 'Merged';
+  return workspace.outcome === 'kept' ? 'Branch kept' : 'Not merged';
+}
+
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**

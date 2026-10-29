@@ -6,6 +6,7 @@ import {
   kindsOf,
   matching,
   outcomeText,
+  outcomeWord,
   ranFor,
   withHistoryView,
 } from '../src/workspaces/history.js';
@@ -26,6 +27,9 @@ describe('outcomeText (V77)', () => {
     expect(outcomeText(row({ branch: 'a', into: undefined }))).toBe('Merged');
     expect(outcomeText(row({ branch: 'a', outcome: 'kept', into: undefined }))).toBe('Branch kept');
     expect(outcomeText(row({ branch: 'a', outcome: 'gone', into: undefined }))).toBe('Not merged');
+    // A row says it short: the card says into which branch.
+    expect(outcomeWord(row({ branch: 'a' }))).toBe('Merged');
+    expect(outcomeWord(row({ branch: 'a', outcome: 'kept' }))).toBe('Branch kept');
   });
 });
 
