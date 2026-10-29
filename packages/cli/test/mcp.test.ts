@@ -508,7 +508,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
     ]);
   });
 
-  it("lists suggest_settings with start_workspace's brief and the documents' names (MC2, decision 577)", async () => {
+  it("lists suggest_settings with start_workspace's brief and the documents' names (MC2, decision 583)", async () => {
     const mcp = server(fakes().services);
     const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, SCOUT)) as {
       result: {
@@ -946,7 +946,7 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     expect(calls).toContainEqual(['start', { ...request, branch: 'fix/two', via: 'mcp' }]);
   });
 
-  it('names the model and the effort it starts with in the Confirm (MC2, decision 578)', async () => {
+  it('names the model and the effort it starts with in the Confirm (MC2, decision 584)', async () => {
     const mcp = server(fakes().services);
     const request = {
       kind: 'fix',
@@ -1015,7 +1015,7 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
 });
 
 describe("Symbiote's MCP: the advisor's proposal (MC2)", () => {
-  it("gives the advisor start_workspace's brief and answers its suggestion unchanged, asking nothing (decision 576)", async () => {
+  it("gives the advisor start_workspace's brief and answers its suggestion unchanged, asking nothing (decision 582)", async () => {
     const { services, calls } = fakes();
     const mcp = server(services);
     const start = {

@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/mc2-mcp-suggest-settings.md)
 
-**Status:** planned (2026-10-29), on branch `feature/mcp-suggest-settings` (a workspace started
-through Scout); the person's answers below.
+**Status:** ready for review (2026-10-29), on branch `feature/mcp-suggest-settings` (a workspace
+started through Scout); planned the same day with the person's answers below. Its "As built" and
+results below.
 
 **Problem** (asked: "Scout (or any client of Symbiote's MCP server) can ask the advisor (V75) for
 a workspace's settings before it starts one"). The advisor is reachable only from the Start page's
@@ -44,12 +45,12 @@ person's choice wins, and the Confirm of the start names the model and the effor
 - Its description says what it costs and when to call it: one turn of the agent's small model on
   the person's subscription, 20 s at most, nothing started; only before a start the person asked
   for; the person's choice wins. A client other than Scout reads only that.
-- No Confirm (decision 576): it is not in `asking`.
+- No Confirm (decision 582): it is not in `asking`.
 
 ## The start's Confirm (`start_workspace`)
 
 The words name the model and the effort when the call gives them: `Start fix/x, "Title", with
-Codex on gpt-6 at high, plan first` (decision 578). Without them, as today.
+Codex on gpt-6 at high, plan first` (decision 584). Without them, as today.
 
 ## The request's check (`server-requests.ts`)
 
@@ -105,9 +106,31 @@ journal.
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 576 | Does `suggest_settings` wait for the person's Confirm? | **No**; Scout's prompt and the tool's description: only before a start the person asked for, and Scout waits for their answer before it starts | It starts nothing (a proposal, decision 548) and costs one small turn at `low` (3–5 s, V75); the start that follows waits for Confirm already, so a second would double the person's clicks per start. Decision 549's "only when asked" stays, in the words that bound when it is called |
-| 577 | What does it take and answer? | **`start_workspace`'s brief (kind, title, parts, agent) and the documents' names, checked by `parseSuggestRequest`; the `WorkspaceSuggestion` unchanged, a refusal or failure in the service's words** | Scout passes one brief to both; one check gives the endpoint's words to both; a guess in a failure's place would be a proposal nobody made |
-| 578 | What does the start's Confirm say of the settings? | **The model and the effort, when the call gives them** | The person confirms what starts; today a model Scout passes is not in the words |
+| 582 | Does `suggest_settings` wait for the person's Confirm? | **No**; Scout's prompt and the tool's description: only before a start the person asked for, and Scout waits for their answer before it starts | It starts nothing (a proposal, decision 548) and costs one small turn at `low` (3–5 s, V75); the start that follows waits for Confirm already, so a second would double the person's clicks per start. Decision 549's "only when asked" stays, in the words that bound when it is called |
+| 583 | What does it take and answer? | **`start_workspace`'s brief (kind, title, parts, agent) and the documents' names, checked by `parseSuggestRequest`; the `WorkspaceSuggestion` unchanged, a refusal or failure in the service's words** | Scout passes one brief to both; one check gives the endpoint's words to both; a guess in a failure's place would be a proposal nobody made |
+| 584 | What does the start's Confirm say of the settings? | **The model and the effort, when the call gives them** | The person confirms what starts; today a model Scout passes is not in the words |
 
 **Not in MC2**: attaching documents through `start_workspace`; changing a running workspace's
 model or effort; the advisor itself.
+
+## As built (MC2)
+
+- **As planned**, but for the decisions' numbers: planned as 576–578, they are **582–584**. While
+  MC2 was built, `feature/scout-reads-worktrees` and `feature/workspaces-card-revamp` both took
+  576–579 (and both V79), and another branch went up to 581.
+- **The shared brief**: `brief` (`kind`, `title`, `parts`) and `agentKind` in `mcp.ts` are the
+  schema of both tools; a test compares `suggest_settings`'s properties with `start_workspace`'s.
+- **The endpoint's 400s are now tested by their words** (`server.test.ts`): `kind: feature, fix,
+  refactor, chore or spike` for `epic`, `agent: claude, codex or hermes` for `nope`. Before, only
+  the status was.
+
+**Results.** Tests first, 9 red for the reason they name (`unknown tool: suggest_settings`; the
+Confirm without the model; Scout's prompt without the tool; a 200 for `agent: "nope"`), then
+green; `pnpm check` 2,252 tests; `pnpm build`; `e2e/mcp.spec.ts` 2 of 2 (24 tools). A real call
+through `symbiote mcp`, against this branch's `symbiote view` in a scratch repository with a
+cache of its own: 24 tools listed; a one-line fix brief on Claude Code answered in 3.9 s with
+`{ agent: claude, model: haiku, effort: low, planFirst: false, why: "A single word typo in one
+README heading is a small, mechanical copy fix.", by: Haiku 5.5 at low }`; `agent: "nope"`
+refused in 2 ms with `agent: claude, codex or hermes`, the words the endpoint answered with its
+400 on the same server. Not verified: Scout itself calling the tool (a real Scout run writes into
+the person's `symbiote/`), Codex as the advisor, a project with its own Scout prompt.

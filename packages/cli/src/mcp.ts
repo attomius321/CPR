@@ -858,7 +858,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       };
     },
 
-    // Not asked (decision 576): a proposal, which starts nothing; the start that follows asks.
+    // Not asked (decision 582): a proposal, which starts nothing; the start that follows asks.
     async suggest_settings(args) {
       const picked = Object.fromEntries(
         ['kind', 'title', 'parts', 'agent', 'documents']
@@ -1041,7 +1041,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       }
       const agent: AgentKind | undefined = request.agent ?? (await ws.options()).agents[0]?.kind;
       const title = request.title ? `, "${request.title}"` : '';
-      // The settings it starts with, so the person confirms them too (decision 578).
+      // The settings it starts with, so the person confirms them too (decision 584).
       const by = `${agent ? `with ${AGENT_NAMES[agent]}` : 'with no agent installed'}${
         request.model ? ` on ${request.model}` : ''
       }${request.effort ? ` at ${request.effort}` : ''}`;

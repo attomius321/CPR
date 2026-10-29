@@ -178,7 +178,7 @@ hosted.
 | [SK1](plan/sk1-skill-library.md) | A skill library: a folder or repository of skills outside the project, on the Skills page and for Scribe; commits as set | ready for review | 426–430 | [journal](journal/sk1-skill-library.md) |
 | Fix | An agent's terminal fits its box: no scrollbars coming and going on Scribe's pane, no last row cut off | merged | | [journal](journal/fix-scribe-terminal-problem.md) |
 | Fix | `scout.spec.ts`: Scout's record read before Codex's start wrote it; the spec waits for it | ready for review | | [journal](journal/fix-scout-record-spec-race.md) |
-| [MC2](plan/mc2-mcp-suggest-settings.md) | `suggest_settings`: the advisor's proposal through Symbiote's MCP, before a start Scout makes | planned | 576–578 | [journal](journal/mc2-mcp-suggest-settings.md) |
+| [MC2](plan/mc2-mcp-suggest-settings.md) | `suggest_settings`: the advisor's proposal through Symbiote's MCP, before a start Scout makes | ready for review | 582–584 | [journal](journal/mc2-mcp-suggest-settings.md) |
 
 ### The merger
 
