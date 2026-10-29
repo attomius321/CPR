@@ -4,11 +4,12 @@
 // session. Both sources are undocumented or `[experimental]`: every field is checked as it is
 // read, and what Symbiote cannot read is left out, never guessed. `symbiote view` keeps a copy for
 // 5 min (`usageService`).
-import { mkdir, open, readdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { open, readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { UsageReport, UsageSubscription, UsageWindow } from '@symbiote/core';
 import type { Codex } from './codex.js';
 import { runProgram, type Run } from './programs.js';
+import { writeFileWhole } from './file-write.js';
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -210,12 +211,8 @@ async function lastRead(file: string, account: string | null): Promise<UsageSubs
 /** Keeps a live read in `file` for the next run and other `symbiote view`s; a failure loses
  * nothing. */
 async function keepRead(file: string, account: string | null, subscription: UsageSubscription) {
-  const next = `${file}.${process.pid}.tmp`;
   try {
-    await mkdir(dirname(file), { recursive: true });
-    await writeFile(next, JSON.stringify({ account, subscription }));
-    // Renamed into place: a reader never sees half a file.
-    await rename(next, file);
+    await writeFileWhole(file, JSON.stringify({ account, subscription }));
   } catch {
     // Kept in memory still (`usageService`).
   }

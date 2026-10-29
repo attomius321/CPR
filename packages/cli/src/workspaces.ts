@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, posix, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -155,6 +155,7 @@ import {
   turnEnded,
   workspacesFolder,
 } from './thread.js';
+import { writeFileWhole } from './file-write.js';
 
 /** What `symbiote/config.json` says of workspaces and their agent; anything unknown is ignored. */
 export interface WorkspaceConfig {
@@ -461,10 +462,7 @@ export function workspaces(
     const path = join(symbioteFolder(where), 'claude-settings.json');
     const text = agentSettings({ node, hook, symbiote: symbioteFolder(where) });
     if ((await readFile(path, 'utf8').catch(() => null)) !== text) {
-      await mkdir(dirname(path), { recursive: true });
-      const temp = `${path}.${process.pid}.tmp`;
-      await writeFile(temp, text);
-      await rename(temp, path);
+      await writeFileWhole(path, text);
     }
     return path;
   }
@@ -1174,10 +1172,7 @@ export function workspaces(
     },
 
     async saveDraft(value) {
-      await mkdir(dirname(draftFile), { recursive: true });
-      const temp = `${draftFile}.${process.pid}.tmp`;
-      await writeFile(temp, `${JSON.stringify(value)}\n`);
-      await rename(temp, draftFile);
+      await writeFileWhole(draftFile, `${JSON.stringify(value)}\n`);
     },
 
     saveDocument(name, bytes) {

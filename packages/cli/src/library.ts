@@ -5,7 +5,7 @@
 // setting says (decision 428): never a force, a branch switch, a rebase or a stash.
 import { execFile } from 'node:child_process';
 import { lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, rm } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
 import {
@@ -19,6 +19,7 @@ import {
   type SkillChange,
 } from '@symbiote/core';
 import { SkillRefused } from './skills.js';
+import { writeFileWhole } from './file-write.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -205,10 +206,7 @@ export function libraryService(file: string, { home }: { home: string }): Librar
   }
 
   async function write(next: LibrarySetting): Promise<void> {
-    await mkdir(dirname(file), { recursive: true });
-    const temp = `${file}.${process.pid}.tmp`;
-    await writeFile(temp, `${JSON.stringify(next, null, 2)}\n`);
-    await rename(temp, file);
+    await writeFileWhole(file, `${JSON.stringify(next, null, 2)}\n`);
   }
 
   /** The setting, refused (409) without one. */

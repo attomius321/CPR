@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Graph } from '@symbiote/core';
+import { writeFileWhole } from './file-write.js';
 
 /** What the viewer keeps between sessions: reviewed marks and draft comments. */
 export type StateName = 'review' | 'drafts';
@@ -29,7 +30,7 @@ export function stateDir(cacheDir: string, repoId: string, graph: Graph): string
   );
 }
 
-/** JSON files in a folder, written atomically (temp file + rename). */
+/** JSON files in a folder, each written whole (`writeFileWhole`). */
 export function fileStateStore(dir: string): StateStore {
   const file = (name: StateName) => join(dir, `${name}.json`);
   return {
@@ -41,10 +42,7 @@ export function fileStateStore(dir: string): StateStore {
       }
     },
     async write(name, value) {
-      await mkdir(dir, { recursive: true });
-      const temp = `${file(name)}.${process.pid}.tmp`;
-      await writeFile(temp, JSON.stringify(value));
-      await rename(temp, file(name));
+      await writeFileWhole(file(name), JSON.stringify(value));
     },
   };
 }

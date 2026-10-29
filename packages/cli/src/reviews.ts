@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs';
-import { mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import {
   checkMerge,
@@ -32,6 +32,7 @@ import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
 import { reviewBase, reviewedAgainst } from './review-base.js';
 import { readWorkspace, workspacePath, workspacesDir } from './workspace-record.js';
 import type { StateName, StateStore } from './state.js';
+import { writeFileWhole } from './file-write.js';
 
 /** A branch review on disk: `symbiote/reviews/<branch>/<reviewer>.json` (V15). */
 export interface BranchReviewFile {
@@ -347,10 +348,7 @@ export function branchReviews(
       const text = readPrompts(repo.root).text.reviews;
       await prepareSymbioteFolder(where, { agents: instructed.get(where.agents) !== text, text });
       instructed.set(where.agents, text);
-      await mkdir(dirname(path), { recursive: true });
-      const temp = `${path}.${process.pid}.tmp`;
-      await writeFile(temp, serializeReview(next));
-      await rename(temp, path);
+      await writeFileWhole(path, serializeReview(next));
       return next;
     });
   }

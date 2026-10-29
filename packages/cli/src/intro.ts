@@ -1,8 +1,9 @@
 // The first-time intro (V39): two koi form the S over the first page a person opens. Seen once
 // per person, whichever repository or window: recorded in Symbiote's config folder, since browser
 // storage is per origin and each `symbiote view` has a port of its own (decision 17).
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { dirname, posix, win32 } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { posix, win32 } from 'node:path';
+import { writeFileWhole } from './file-write.js';
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -48,10 +49,7 @@ export function introRecord(
     },
     async markSeen() {
       if (off) return;
-      await mkdir(dirname(file), { recursive: true });
-      const next = `${file}.${process.pid}.tmp`;
-      await writeFile(next, `${JSON.stringify({ seen: now().toISOString() }, null, 2)}\n`);
-      await rename(next, file);
+      await writeFileWhole(file, `${JSON.stringify({ seen: now().toISOString() }, null, 2)}\n`);
     },
   };
 }
