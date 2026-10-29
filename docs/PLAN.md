@@ -177,6 +177,7 @@ hosted.
 | [SK1](plan/sk1-skill-library.md) | A skill library: a folder or repository of skills outside the project, on the Skills page and for Scribe; commits as set | ready for review | 426–430 | [journal](journal/sk1-skill-library.md) |
 | Fix | An agent's terminal fits its box: no scrollbars coming and going on Scribe's pane, no last row cut off | merged | | [journal](journal/fix-scribe-terminal-problem.md) |
 | Fix | `scout.spec.ts`: Scout's record read before Codex's start wrote it; the spec waits for it | ready for review | | [journal](journal/fix-scout-record-spec-race.md) |
+| [V77](plan/v77-scout-scribe-terminals.md) | Scout and Scribe are terminals: no choices on their pages, their model and effort set in Settings | building | 561–564 | [journal](journal/v77-scout-scribe-terminals.md) |
 
 ### The merger
 
