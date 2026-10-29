@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // The look (V29b): dark by default, light or the system's chosen in Settings for this browser;
-// the bundled fonts, served by Symbiote; compact cards in the sidenav. Symbiote's style since V31.
+// the bundled fonts, served by Symbiote; the sidenav's cards. Symbiote's style since V31.
 let symbiote: RunningWorkspaces;
 const errors: string[] = [];
 
@@ -384,18 +384,54 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
   await inside(tip);
 });
 
-// 72 px since V61's bigger type (64 before): its name at 15 px, its lines at 14.
-test('a card in the sidenav is at most 72 px high', async ({ page }) => {
+// V79: four rows on 20 px lines, 10 × 12 px in, the cards 6 px apart; a name or a state on two
+// lines, whole (until V79 three rows in 72 px, each cut to one line).
+test('a card in the sidenav shows a long name whole, on its own rows, 6 px from the next (V79)', async ({
+  page,
+}) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}git`);
-  await page.getByRole('link', { name: 'Start a workspace' }).click();
-  const form = page.getByRole('region', { name: 'Start a workspace' });
-  await form.getByRole('textbox', { name: 'Title' }).fill('Add a half function, with a test');
-  await form.getByRole('textbox', { name: 'Goal' }).fill('Half of a number.');
-  await form.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
-  const card = page.locator('.sidenav .workspace-row').first();
-  await expect(card).toContainText('feature/add-a-half-function', POLL);
-  expect((await card.boundingBox())?.height ?? 0).toBeLessThanOrEqual(72);
+  const long = 'feature/add-a-half-function-with';
+  for (const [title, branch] of [
+    ['Add a half function, with a test and its docs', long],
+    ['Add a double function', 'feature/add-a-double-function'],
+  ]) {
+    await page.getByRole('link', { name: 'Start a workspace' }).click();
+    const form = page.getByRole('region', { name: 'Start a workspace' });
+    await form.getByRole('textbox', { name: 'Title' }).fill(title);
+    await form.getByRole('textbox', { name: 'Goal' }).fill('Half of a number.');
+    await form.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
+    // Started: the page goes, and the card is the workspace's, no longer the one starting.
+    await expect(form).toBeHidden(POLL);
+    await expect(
+      page.locator(`.sidenav .workspace-row[data-branch="${branch}"]:not(.starting)`),
+    ).toBeVisible(POLL);
+  }
+  const card = page.locator(`.sidenav .workspace-row[data-branch="${long}"]`);
+  // The name on two lines, nothing cut.
+  expect(
+    await card
+      .locator('.workspace-about')
+      .evaluate((e) => [
+        e.scrollWidth <= e.clientWidth && e.scrollHeight <= e.clientHeight,
+        e.getBoundingClientRect().height,
+      ]),
+  ).toEqual([true, 44]);
+  // 10 × 12 px in; the state and the branch on 20 px lines, the kind's chip in a row of its own.
+  expect(
+    await card.evaluate((e) => [getComputedStyle(e).paddingTop, getComputedStyle(e).paddingLeft]),
+  ).toEqual(['10px', '12px']);
+  const state = card.locator('.workspace-line .workspace-state');
+  await expect(state).toHaveCSS('line-height', '20px');
+  await expect(card.locator('.workspace-branch')).toHaveCSS('line-height', '20px');
+  await expect(card.locator('.workspace-meta .kind-tag')).toHaveText('feature');
+  // Two lines of name over a line of each other row: 10 + 44 + 4 + 20 + 6 + 22 + 4 + 20 + 10.
+  expect((await state.boundingBox())?.height).toBe(20);
+  expect(Math.round((await card.boundingBox())?.height ?? 0)).toBe(140);
+  // The next card of its group, 6 px under it.
+  const next = page.locator('.sidenav .workspace-row[data-branch="feature/add-a-double-function"]');
+  const [above, below] = [await card.boundingBox(), await next.boundingBox()];
+  expect(Math.round(below!.y - (above!.y + above!.height))).toBe(6);
 });
 
 // V37: Terminal, Thread and Brief are flat buttons on the chrome's strip, the picked one a wash of

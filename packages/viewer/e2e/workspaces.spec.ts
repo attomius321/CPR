@@ -257,9 +257,11 @@ test('the workspaces view: what each workspace needs, as its agent goes on', asy
   // Claude Code's sessions are read at most every 2 s: the page's next look sees it.
   symbiote.session(branch, { state: 'done' });
   await expect(row).toContainText('Ready for review', POLL);
-  await expect(row).toContainText('1 commit');
-  await expect(row).toContainText('1 file not committed yet');
-  await expect(row).toContainText('Merges cleanly into main');
+  // Its facts in a row of their own (V79): an icon and a number, named in words.
+  const facts = row.locator('.workspace-meta');
+  await expect(facts.getByRole('img', { name: '1 commit' })).toHaveText('1');
+  await expect(facts.getByRole('img', { name: '1 file not committed yet' })).toHaveText('1');
+  await expect(facts.getByRole('img', { name: 'Merges cleanly into main' })).toHaveText('clean');
 });
 
 test('the agents that wait for you: first, what each asks, Respond, the count in the title, the next one (V48)', async ({
@@ -287,14 +289,19 @@ test('the agents that wait for you: first, what each asks, Respond, the count in
   );
   await expect(page.locator('.sidenav .page-count')).toHaveText('1');
   await expect(page).toHaveTitle(/^\(1\) /);
-  // Its kind ends over its time, as on every card (V53).
+  // Its kind after Respond; how long it has waited at its name's row's end, as on every card (V79).
   const card = waiting.locator(workspaceRow(page, tests));
-  const [kind, age] = await Promise.all(
-    [card.locator('.kind-tag'), card.locator('.workspace-respond .commit-date')].map((part) =>
-      part.boundingBox(),
-    ),
+  const [respond, kind, name, age] = await Promise.all(
+    [
+      card.getByRole('button', { name: 'Respond' }),
+      card.locator('.workspace-respond .kind-tag'),
+      card.locator('.workspace-about'),
+      card.locator('.workspace-head .commit-date'),
+    ].map((part) => part.boundingBox()),
   );
-  expect(Math.abs(kind!.x + kind!.width - (age!.x + age!.width))).toBeLessThanOrEqual(1);
+  expect(kind!.x).toBeGreaterThan(respond!.x + respond!.width);
+  expect(age!.x).toBeGreaterThan(name!.x + name!.width);
+  await expect(card.locator('.workspace-respond .commit-date')).toHaveCount(0);
 
   // Respond: its workspace, on its terminal, focused.
   await page.goto(`${symbiote.url}git`);
@@ -448,24 +455,35 @@ test('a working card names its agent by its mark, in its colour, before what it 
   await expect(row.locator('.agent-mark')).toHaveCount(0);
 });
 
-test('every card says its kind in a chip at the end of its name’s line, Feature too (V53)', async ({
+test('every card says its kind in a chip at the start of its facts’ row, Feature too (V53, V79)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const row = workspaceRow(page, 'feature/add-a-half-function');
-  const chip = row.locator('.workspace-head .kind-tag');
+  const chip = row.locator('.workspace-meta .kind-tag');
   await expect(chip).toHaveText('feature');
-  await expect(row.locator('.workspace-branch .kind-tag')).toHaveCount(0);
-  // At the line's end, over its time: the kinds make a column down the list.
-  const [name, tag, time] = await Promise.all(
-    [row.locator('.workspace-about'), chip, row.locator('.workspace-line .commit-date')].map(
-      (part) => part.boundingBox(),
-    ),
+  await expect(row.locator('.workspace-head .kind-tag, .workspace-branch .kind-tag')).toHaveCount(
+    0,
   );
-  expect(tag!.x).toBeGreaterThan(name!.x + name!.width);
-  expect(Math.abs(tag!.x + tag!.width - (time!.x + time!.width))).toBeLessThanOrEqual(1);
+  // Under the words of its state: the kinds make a column down the list. Its commits after it;
+  // the time at the end of the name's row.
+  const [name, state, tag, commits, time] = await Promise.all(
+    [
+      row.locator('.workspace-about'),
+      row.locator('.workspace-line .workspace-state'),
+      chip,
+      row.getByRole('img', { name: 'No commits yet' }),
+      row.locator('.workspace-head .commit-date'),
+    ].map((part) => part.boundingBox()),
+  );
+  expect(Math.abs(tag!.x - state!.x)).toBeLessThanOrEqual(1);
+  expect(commits!.x).toBeGreaterThan(tag!.x + tag!.width);
+  expect(time!.x).toBeGreaterThan(name!.x + name!.width);
+  const card = (await row.boundingBox())!;
+  expect(Math.round(card.x + card.width - (time!.x + time!.width))).toBe(12);
+  await expect(row.getByRole('img', { name: 'No commits yet' })).toHaveText('0');
   // The style's metadata chip: raised, no edge; 22 px for its 13 px words (V61).
   expect(
     await chip.evaluate((element) => {
@@ -552,8 +570,9 @@ test('while a workspace is made, its card says it starts; its own card takes its
   await expect
     .poll(() => spinner(starting.locator('.state-dot')))
     .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
-  // A card's height, as every card's (look.spec.ts).
-  expect((await starting.boundingBox())?.height ?? 0).toBeLessThanOrEqual(72);
+  // A card's rows, as every card's (V79): its name, what happens, its kind, its branch.
+  await expect(starting.locator('.workspace-meta .kind-tag')).toHaveText('feature');
+  await expect(starting.locator('.workspace-branch')).toHaveText('feature/add-a-half-function');
   await expect(starting).toHaveCount(0, POLL);
   await expect(workspaceRow(page, 'feature/add-a-half-function')).toBeVisible();
 });
@@ -962,21 +981,24 @@ test("a done card's icon cleans it up from the sidenav: on hover or focus, witho
   // Only a done card has it.
   await expect(workspaceRow(page, other).getByRole('button', { name: /^Clean up/ })).toHaveCount(0);
 
-  // At rest it is transparent (named all the same); on hover it shows where the kind and the time
-  // were, and nothing moves.
+  // At rest it is transparent (named all the same); on hover it shows where the time was, at the
+  // end of the name's row (V79: the kind is in the facts' row, and stays), and nothing moves.
   await page.mouse.move(800, 600);
   await expect(icon).toHaveCSS('opacity', '0');
-  await expect(card.locator('.kind-tag')).toBeVisible();
+  const time = card.locator('.workspace-head .commit-date');
+  await expect(time).toBeVisible();
   const name = await card.locator('.workspace-about').boundingBox();
+  const head = await card.locator('.workspace-head').boundingBox();
   await card.hover();
   await expect(icon).toHaveCSS('opacity', '1');
-  await expect(card.locator('.kind-tag')).toBeHidden();
-  await expect(card.locator('.workspace-line .commit-date')).toBeHidden();
+  await expect(time).toBeHidden();
+  await expect(card.locator('.kind-tag')).toBeVisible();
   expect(await card.locator('.workspace-about').boundingBox()).toEqual(name);
   const box = await icon.boundingBox();
   const row = await card.boundingBox();
   expect(box!.width).toBe(24);
   expect(Math.round(row!.x + row!.width - (box!.x + box!.width))).toBeLessThanOrEqual(8);
+  expect(Math.abs(box!.y + box!.height / 2 - (head!.y + 11))).toBeLessThanOrEqual(1);
   // From the keyboard: Tab from the card's name reaches it, and it shows.
   await page.mouse.move(800, 600);
   await card.locator('.workspace-about').focus();
@@ -1092,17 +1114,21 @@ test('a card being cleaned up is disabled until it goes: it says so, opens nothi
   expect(colour).toBe(faint);
   await expect(card.locator('.workspace-about')).toHaveCSS('opacity', '0.5');
   await expect(card.locator('.workspace-branch')).toHaveCSS('opacity', '0.5');
+  await expect(card.locator('.workspace-meta')).toHaveCSS('opacity', '0.5');
   await expect(card.locator('.workspace-line')).toHaveCSS('opacity', '1');
   // Nothing to use: no bin, no hover, its name a disabled button; a click opens nothing.
   await expect(card.locator('.workspace-about')).toBeDisabled();
   await expect(card.getByRole('button', { name: /^Clean up/ })).toHaveCount(0);
   await expect(card.locator('.kind-tag')).toBeVisible();
-  await card.hover();
-  // Past the wash's 150 ms transition, which starts from transparent too.
+  // Its wash at rest (V79) stays under the pointer: past the 150 ms transition.
+  await page.mouse.move(800, 600);
   await page.waitForTimeout(200);
-  await expect(card).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  const rest = await card.evaluate((e) => getComputedStyle(e).backgroundColor);
+  expect(rest).not.toBe('rgba(0, 0, 0, 0)');
+  await card.hover();
+  await page.waitForTimeout(200);
+  await expect(card).toHaveCSS('background-color', rest);
   await expect(card).toHaveCSS('cursor', 'default');
-  expect((await card.boundingBox())?.height ?? 0).toBeLessThanOrEqual(72);
   const box = (await card.locator('.workspace-state').boundingBox())!;
   await page.mouse.click(box.x + 20, box.y + box.height / 2);
   await expect(panel(page, triple)).toBeVisible();

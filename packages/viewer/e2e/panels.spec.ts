@@ -69,16 +69,16 @@ async function drag(page: Page, handle: Locator, dx: number): Promise<void> {
 test('drags the sidenav wider and narrower; kept across a reload and a fold', async ({ page }) => {
   const symbiote = await serve();
   await history(page, symbiote.url);
-  expect(await width(sidenav(page))).toBe(264);
+  expect(await width(sidenav(page))).toBe(300);
   const wide = await width(main(page));
 
   await drag(page, sidenavHandle(page), 100);
-  await expect.poll(() => width(sidenav(page))).toBe(364);
+  await expect.poll(() => width(sidenav(page))).toBe(400);
   expect(await width(main(page))).toBe(wide - 100);
 
   await page.reload();
   await expect(page.locator('.commit').first()).toBeVisible();
-  expect(await width(sidenav(page))).toBe(364);
+  expect(await width(sidenav(page))).toBe(400);
 
   // Folded, a rail without a handle; opened, the width it had.
   await page.keyboard.press('[');
@@ -86,14 +86,14 @@ test('drags the sidenav wider and narrower; kept across a reload and a fold', as
   expect(await width(sidenav(page))).toBeLessThanOrEqual(56);
   await expect(sidenavHandle(page)).toHaveCount(0);
   await page.keyboard.press('[');
-  await expect.poll(() => width(sidenav(page))).toBe(364);
+  await expect.poll(() => width(sidenav(page))).toBe(400);
 
   // A double-click restores the default, and that is kept too.
   await sidenavHandle(page).dblclick();
-  await expect.poll(() => width(sidenav(page))).toBe(264);
+  await expect.poll(() => width(sidenav(page))).toBe(300);
   await page.reload();
   await expect(page.locator('.commit').first()).toBeVisible();
-  expect(await width(sidenav(page))).toBe(264);
+  expect(await width(sidenav(page))).toBe(300);
 });
 
 test('the sidenav stops at 180 and 480 px, and leaves the main area 480 px', async ({ page }) => {
@@ -106,7 +106,7 @@ test('the sidenav stops at 180 and 480 px, and leaves the main area 480 px', asy
 
   await page.setViewportSize({ width: 920, height: 900 });
   await sidenavHandle(page).dblclick();
-  await expect.poll(() => width(sidenav(page))).toBe(264);
+  await expect.poll(() => width(sidenav(page))).toBe(300);
   await drag(page, sidenavHandle(page), 1000);
   await expect.poll(() => width(main(page))).toBe(480);
   expect(await width(sidenav(page))).toBe(440);
@@ -117,18 +117,18 @@ test('resizes the sidenav from the keyboard', async ({ page }) => {
   await history(page, symbiote.url);
   const handle = sidenavHandle(page);
   await handle.focus();
-  // 264 px at first since V61 (240 before).
-  await expect(handle).toHaveAttribute('aria-valuenow', '264');
+  // 300 px at first since V79 (264 since V61, 240 before).
+  await expect(handle).toHaveAttribute('aria-valuenow', '300');
   await expect(handle).toHaveAttribute('aria-valuemin', '180');
   await expect(handle).toHaveAttribute('aria-valuemax', '480');
 
   await page.keyboard.press('ArrowRight');
-  await expect.poll(() => width(sidenav(page))).toBe(280);
+  await expect.poll(() => width(sidenav(page))).toBe(316);
   await page.keyboard.press('Shift+ArrowRight');
-  await expect.poll(() => width(sidenav(page))).toBe(344);
-  await expect(handle).toHaveAttribute('aria-valuenow', '344');
+  await expect.poll(() => width(sidenav(page))).toBe(380);
+  await expect(handle).toHaveAttribute('aria-valuenow', '380');
   await page.keyboard.press('ArrowLeft');
-  await expect.poll(() => width(sidenav(page))).toBe(328);
+  await expect.poll(() => width(sidenav(page))).toBe(364);
   await page.keyboard.press('Home');
   await expect.poll(() => width(sidenav(page))).toBe(180);
   await page.keyboard.press('End');
@@ -157,10 +157,10 @@ test("a diff's sidenav, once opened, resizes too", async ({ page }) => {
   await page.keyboard.press('[');
   await expect(sidenav(page)).not.toHaveClass(/rail/);
   await drag(page, sidenavHandle(page), 60);
-  await expect.poll(() => width(sidenav(page))).toBe(324);
+  await expect.poll(() => width(sidenav(page))).toBe(360);
   await page.reload();
   await expect(page.locator('.react-flow__node').first()).toBeVisible({ timeout: 20_000 });
-  expect(await width(sidenav(page))).toBe(324);
+  expect(await width(sidenav(page))).toBe(360);
 });
 
 test("drags a workspace's changes wider and narrower; the terminal follows", async ({ page }) => {
