@@ -71,3 +71,7 @@ Bitwarden `737ee3f` first paint 309 → 316 ms, select 106 → 105 ms, pan 63 fp
 Mark reviewed is 50 or 67 ms on either build, a frame's rounding. Not verified: the person's own
 workspaces on the branch's build (their running Symbiote serves `main`'s), the desktop window
 (the cards are the page's; `title-bar.spec.ts` passes), a real screen reader on the facts.
+
+`main` merged in (V77's History link, V78, MC2; only the plan index and the journal's list
+conflicted, rows appended at one place, both kept): `pnpm check` 2,271 unit tests, `pnpm test:e2e`
+342 and the nexus's 15 pass on the merged tree.

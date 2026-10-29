@@ -159,4 +159,5 @@ drawn, median of 7, **213 → 211 ms** (first contentful paint 76 ms both). Bitw
 (`measure.mjs`, 8 rounds): first paint median **309 → 316 ms**, select **106 → 105 ms**, pan
 63 fps both, the same 3,160 elements, no page errors. Mark reviewed lands at 50 or 67 ms on both
 builds (3 or 4 frames of 16.7 ms; main 34–68, the branch 49–68): no graph or diff code differs.
-`pnpm test:e2e`: the viewer's 340 and the nexus's 15 pass.
+`pnpm test:e2e`: the viewer's 340 and the nexus's 15 pass; after `main` was merged in (V77, V78,
+MC2) 342 and 15, `pnpm check` 2,271 unit tests.
