@@ -796,7 +796,7 @@ describe('Scout is a terminal (V50)', () => {
     });
   });
 
-  it('opens Scribe with no request too (V77, decision 562): its instructions its system prompt', async () => {
+  it('opens Scribe with no request too (V78, decision 570): its instructions its system prompt', async () => {
     const repo = fresh();
     const { claude, startPageAgent } = fakeClaude(repo.root);
     const s = scribe(await openRepo(repo.root), cache, {
@@ -1189,8 +1189,8 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
       // Claude Code asks the person before each write into .claude (decision 275).
       permissionMode: 'default',
     });
-    // Its instructions its system prompt, the person's words typed in its terminal (V77,
-    // decision 562); without a skill library (SK1), no line of it.
+    // Its instructions its system prompt, the person's words typed in its terminal (V78,
+    // decision 570); without a skill library (SK1), no line of it.
     expect(request).not.toHaveProperty('prompt');
     expect(request?.instructions).toBe(
       scribePrompt(DEFAULT_PROMPTS, { skills, checkout: repo.root }),
@@ -1315,7 +1315,7 @@ describe('Scribe (V41): the same conversation, writing skills', () => {
     expect(other.startPageAgent.mock.calls[0]?.[0]).not.toHaveProperty('addDirs');
   });
 
-  it("asked through its API, the person's words are its first prompt, after its instructions (V77)", async () => {
+  it("asked through its API, the person's words are its first prompt, after its instructions (V78)", async () => {
     const repo = fresh();
     const { claude, startPageAgent } = fakeClaude(repo.root);
     await (await scribeService(repo, { claude })).ask({ text: 'A skill for releases' });

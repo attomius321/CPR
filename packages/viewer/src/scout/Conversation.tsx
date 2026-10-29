@@ -55,7 +55,7 @@ export interface PageAgent {
 }
 
 /**
- * A page agent's conversation, Scout's page and Scribe's pane alike (V77, decision 561): with
+ * A page agent's conversation, Scout's page and Scribe's pane alike (V78, decision 569): with
  * terminals and no conversation (or a gone one), one is opened at once with nothing asked, on
  * Settings' model and level; New conversation ends it, and the next opens the same way. A failed
  * open says why, and is tried again only on Try again. Nothing on the page picks the agent, the
@@ -155,7 +155,7 @@ export function PageAgentError({ agent }: { agent: PageAgent }) {
   );
 }
 
-/** Its state, and New conversation: the next opens at once on Settings' (V77). */
+/** Its state, and New conversation: the next opens at once on Settings' (V78). */
 export function PageAgentActions({ agent }: { agent: PageAgent }) {
   const { conversation } = agent;
   if (!conversation) return null;
@@ -182,7 +182,7 @@ export function PageAgentActions({ agent }: { agent: PageAgent }) {
 
 /**
  * What the card holds: the agent's terminal, "Starting…" while it opens, or why there is none.
- * A page agent runs in a terminal (V77, decision 564): where none can run, no box takes a
+ * A page agent runs in a terminal (V78, decision 572): where none can run, no box takes a
  * question; the page says why, and how to reach a running conversation from a terminal of one's
  * own. `typed` is put in the terminal's input, unsent, once it is open (Improve with Scribe).
  */
@@ -254,14 +254,14 @@ export interface ConversationAgent {
   doing: string;
   /** What it is, behind the "?" by its name. */
   help: ReactNode;
-  /** A text to put in its terminal's input, unsent (Improve with Scribe, V77); then `onTyped`. */
+  /** A text to put in its terminal's input, unsent (Improve with Scribe, V78); then `onTyped`. */
   typed?: string;
   onTyped?: () => void;
 }
 
 /**
  * A page's agent in a pane (Scribe's, V41): a head strip — its name, what it does where and on
- * what, its state, New conversation — over its terminal, opened at once (V77).
+ * what, its state, New conversation — over its terminal, opened at once (V78).
  */
 export function Conversation({ agent: own }: { agent: ConversationAgent }) {
   const agent = usePageAgent(own.api, own.state);

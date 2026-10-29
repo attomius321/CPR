@@ -316,7 +316,7 @@ test("a path Scout prints opens in VS Code, in the checkout's window (V38)", asy
     .toEqual([[symbiote.repo, '--goto', `${join(symbiote.repo, 'src', 'math.ts')}:1:1`]]);
 });
 
-// V77 (decision 561): the agent, the model and the effort are Settings'; the page says which.
+// V78 (decision 569): the agent, the model and the effort are Settings'; the page says which.
 test('its page has no choices: the terminal, its line saying what it runs on, the state and New conversation', async ({
   page,
 }) => {
@@ -347,7 +347,7 @@ test('its page has no choices: the terminal, its line saying what it runs on, th
   await expect(page.getByRole('tooltip')).toContainText('Settings sets the model and effort');
 });
 
-// V72 (decision 510): the state and New conversation the page head's actions; since V77 the card
+// V72 (decision 510): the state and New conversation the page head's actions; since V78 the card
 // is the terminal alone, with no head of its own.
 test("the state and New conversation share one centre; the terminal starts at the card's top", async ({
   page,
@@ -403,7 +403,7 @@ test("New conversation: the old session stopped and removed, the next opened at 
   expect(JSON.parse(readFileSync(config(), 'utf8'))).toEqual({ scout: { effort: 'high' } });
 });
 
-// V77 (decision 564): Scout runs in a terminal; without one, no box.
+// V78 (decision 572): Scout runs in a terminal; without one, no box.
 test('without terminals, no box: it says Scout runs in a terminal, and why none runs, starting nothing', async ({
   page,
 }) => {

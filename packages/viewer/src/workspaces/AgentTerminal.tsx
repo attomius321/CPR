@@ -36,7 +36,7 @@ const MAX_PATHS = 50;
 /** The style's tooltip: shown once the pointer stays (V38), not while it crosses the screen. */
 const HINT_DELAY_MS = 400;
 /**
- * A text typed for the person (`type`, V77) waits for the agent's input: its output quiet this
+ * A text typed for the person (`type`, V78) waits for the agent's input: its output quiet this
  * long after it first printed, or this long after its first print if it keeps printing.
  */
 const QUIET_MS = 300;
@@ -68,7 +68,7 @@ export async function toTerminal(id: string, action: string, body: unknown): Pro
 /**
  * An open terminal: its ID, to type into it, a way to give it the keys again, and files to attach
  * as a drop does (the images; anything else is said), the keys given back after. `type` puts a
- * text in the agent's input, unsent, as a paste (Improve with Scribe, V77).
+ * text in the agent's input, unsent, as a paste (Improve with Scribe, V78).
  */
 export interface OpenedTerminal {
   id: string;
@@ -204,7 +204,7 @@ export function AgentTerminal({
         (data) => toTerminal(terminal, 'in', { data }),
         (failed) => setError(failed.message),
       );
-      // A text to type (V77): pasted once the agent's input is drawn, so not lost before it. While
+      // A text to type (V78): pasted once the agent's input is drawn, so not lost before it. While
       // Codex's trust question waits, held for after the person's key: a paste would answer it.
       let typing: ReturnType<typeof setTimeout> | undefined;
       let asksTrust = opened.trusted === false;

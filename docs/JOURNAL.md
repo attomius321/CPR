@@ -304,4 +304,5 @@ merge commit.
 - 2026-10-29 [V75c — the advisor's model and effort for each agent, in Settings](journal/v75-suggested-settings.md)
 - 2026-10-29 [Fix — `symbiote view` serves the pages it started with](journal/fix-suggest-settings-models.md)
 - 2026-10-29 [Fix — security and bugs across the app](journal/fix-security-and-bugs.md)
-- 2026-10-29 [V77 spike — what Scout's page and Scribe's pane offer besides the terminal](journal/v77-scout-scribe-terminals.md)
+- 2026-10-29 [V78 spike — what Scout's page and Scribe's pane offer besides the terminal](journal/v78-scout-scribe-terminals.md)
+- 2026-10-29 [V78 — Scout and Scribe are terminals, set in Settings](journal/v78-scout-scribe-terminals.md)

@@ -429,9 +429,9 @@ describe("Scout's prompt (V35)", () => {
 });
 
 describe("Scribe's prompt (V41)", () => {
-  it("is Symbiote's until the project has its own, and holds the folder; the request is not in it (V77)", () => {
+  it("is Symbiote's until the project has its own, and holds the folder; the request is not in it (V78)", () => {
     const scribe = DEFAULT_PROMPTS.scribe;
-    // Its system prompt: the person asks in its terminal (decision 562).
+    // Its system prompt: the person asks in its terminal (decision 570).
     expect(scribe).not.toContain('{request}');
     expect(scribe).not.toContain("The person's request");
     expect(scribe).toContain('{skills}');
@@ -445,14 +445,14 @@ describe("Scribe's prompt (V41)", () => {
     expect(readPrompts(withConfig({})).text.scribe).toBe(scribe);
   });
 
-  it("uses a project's text without the request (V77)", () => {
+  it("uses a project's text without the request (V78)", () => {
     const own = readPrompts(withConfig({ prompts: { scribe: 'Write well.' } }));
     expect(own.text.scribe).toBe('Write well.');
     expect([...own.changed]).toEqual(['scribe']);
     expect(own.warnings).toEqual({});
   });
 
-  it("keeps a project's text from before V77, its {request} for Scribe to fill with nothing", () => {
+  it("keeps a project's text from before V78, its {request} for Scribe to fill with nothing", () => {
     const { text, warnings } = readPrompts(
       withConfig({ prompts: { scribe: 'Write well.\n\n{request}' } }),
     );
@@ -471,7 +471,7 @@ describe("Scribe's prompt (V41)", () => {
     const { prompts } = await promptSettingsService(await openRepo(repo.root)).prompts();
     expect(prompts.at(-2)).toMatchObject({ key: 'scribe', group: 'Scribe', title: 'Instructions' });
     expect(prompts.at(-1)).toMatchObject({ key: 'library', group: 'Scribe', title: 'Library' });
-    // Its system prompt since V77: no request among its placeholders.
+    // Its system prompt since V78: no request among its placeholders.
     const scribe = prompts.at(-2);
     expect(scribe?.placeholders.map((p) => p.name)).toEqual(['skills', 'checkout', 'library']);
     expect(scribe?.about).toContain('system prompt');

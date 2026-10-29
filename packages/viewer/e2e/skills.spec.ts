@@ -436,7 +436,7 @@ const keys = (page: Page) => scribePane(page).locator('.xterm-helper-textarea');
 /** The fake's starts named Scribe, as Claude Code was asked for them. */
 const scribeCalls = () => symbiote.calls().filter((call) => call.args.includes('Scribe'));
 
-// V77 (decisions 561, 562): Scribe's pane is its terminal, opened with no request, as Scout's page.
+// V78 (decisions 569, 570): Scribe's pane is its terminal, opened with no request, as Scout's page.
 test('Scribe: its pane is its terminal, Claude Code opened writing skills only; what it writes is listed', async ({
   page,
 }) => {
@@ -477,7 +477,7 @@ test('Scribe: its pane is its terminal, Claude Code opened writing skills only; 
   expect(args[9]).toBe(settings);
   // Its gate is given the skills folder.
   expect(readFileSync(settings, 'utf8')).toContain(join(symbiote.repo, '.claude', 'skills'));
-  // Its instructions are its system prompt, and nothing follows: no prompt (decision 562).
+  // Its instructions are its system prompt, and nothing follows: no prompt (decision 570).
   expect(args.at(-2)).toBe('--append-system-prompt');
   expect(args.at(-1)).toContain('You are Scribe');
   // The request is typed in its terminal.
@@ -559,7 +559,7 @@ test("Effort: Scribe opens at the project's level, which reaches Claude Code; it
   );
 });
 
-// V77 (decision 563): Improve with Scribe types the skill to change in its terminal, unsent.
+// V78 (decision 571): Improve with Scribe types the skill to change in its terminal, unsent.
 test('Improve with Scribe: the skill to change typed in its terminal, not sent', async ({
   page,
 }) => {
@@ -595,7 +595,7 @@ test('Improve with Scribe: the skill to change typed in its terminal, not sent',
   await expect(screen(page)).toContainText('Fake Claude Code', POLL);
 });
 
-// V77 (decision 564): Scribe runs in a terminal; without one, no box.
+// V78 (decision 572): Scribe runs in a terminal; without one, no box.
 test('without terminals, Scribe says it runs in a terminal and why none runs, starting nothing', async ({
   page,
 }) => {

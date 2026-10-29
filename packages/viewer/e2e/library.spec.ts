@@ -234,7 +234,7 @@ test('Scribe is given the library: Claude Code’s --add-dir, its gate’s secon
   await page.goto(`${symbiote.url}skills`);
   await librarySection(page).getByRole('button', { name: 'deploy' }).click();
   await editor(page).getByRole('button', { name: 'Improve with Scribe' }).click();
-  // Its terminal takes the library skill's full path, unsent (V77).
+  // Its terminal takes the library skill's full path, unsent (V78).
   await expect(
     page.getByRole('region', { name: 'Scribe' }).locator('.agent-terminal .xterm-rows'),
   ).toContainText(`> Improve ${dir}/deploy/SKILL.md:`, { timeout: 15_000 });
@@ -245,7 +245,7 @@ test('Scribe is given the library: Claude Code’s --add-dir, its gate’s secon
     .toBe(1);
   const args = symbiote.calls().find((call) => call.args.includes('Scribe'))?.args ?? [];
   expect(args[args.indexOf('--add-dir') + 1]).toBe(dir);
-  // In its system prompt (V77, decision 562).
+  // In its system prompt (V78, decision 570).
   expect(args.at(-2)).toBe('--append-system-prompt');
   expect(args.at(-1)).toContain(`${dir}/<name>/SKILL.md`);
   const settings = readFileSync(join(symbiote.repo, 'symbiote', 'scribe-settings.json'), 'utf8');

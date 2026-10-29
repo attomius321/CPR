@@ -293,7 +293,7 @@ test('inside the cards: heads 48 px, their words or controls 16 px in; a label 8
     near(`${name}: ${part}'s first ${first === 'text' ? 'word' : 'control'}`, got?.inset, 17);
   }
 
-  // Forms: the brief, a new skill, a dialog (Scout's question went in V77: it is a terminal).
+  // Forms: the brief, a new skill, a dialog (Scout's question went in V78: it is a terminal).
   const forms: [string, string, string][] = [
     ['start', 'Start a workspace', '.start-brief > .workspace-field'],
     ['skills', 'New skill', '.skills-new > .skills-field'],

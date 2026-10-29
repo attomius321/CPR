@@ -1,4 +1,4 @@
-/* Scout (V35): its head, then its agent's terminal in a card (V77: no box, no choices), the page
+/* Scout (V35): its head, then its agent's terminal in a card (V78: no box, no choices), the page
    frame's since V72 (`PageHead`, `.scout-head`). Scribe's pane (V41) shares the card's parts, and
    its own head is `.scout-top`, a strip on the pane's card. */
 .scout-page {

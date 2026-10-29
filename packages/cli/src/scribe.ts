@@ -4,7 +4,7 @@
 // (`scribe-gate.ts`), in `default` mode, where its own rules ask the person before each write, the
 // library given with `--add-dir`; Codex in `workspace-write` started in `.claude/skills`, its only
 // writable folder with the library's. Its record is `symbiote/scribe.json`. It never commits: the
-// person does. Since V77 its instructions are its system prompt, as Scout's (decision 562): a
+// person does. Since V78 its instructions are its system prompt, as Scout's (decision 570): a
 // conversation opens with no request, and its terminal takes the first.
 import { statSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
@@ -23,7 +23,7 @@ const skillsOf = (root: string) => join(root, CLAUDE_SKILLS);
 /**
  * Scribe's instructions: the project's `scribe`, its `{library}` the prompt `library` when a skill
  * library is set; without one, the line holding `{library}` goes with the blank line after it, and
- * the text is what it was before SK1. A project's text from before V77 may still hold `{request}`:
+ * the text is what it was before SK1. A project's text from before V78 may still hold `{request}`:
  * filled with nothing.
  */
 export function scribePrompt(

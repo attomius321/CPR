@@ -80,7 +80,7 @@ function toneOf(state: string): string {
 
 /**
  * Scribe (V41b) as its conversation shows it; `typed` put in its terminal by Improve with Scribe
- * (V77), then `onTyped`.
+ * (V78), then `onTyped`.
  */
 const scribeAgent = (
   state: ConversationAgent['state'],
@@ -131,7 +131,7 @@ export function SkillsPage() {
   });
   const shell = useShell();
   const { scribe } = useWorkspaces();
-  /** What Improve with Scribe types in Scribe's terminal, until it is handed over (V77). */
+  /** What Improve with Scribe types in Scribe's terminal, until it is handed over (V78). */
   const [asking, setAsking] = useState<string | undefined>(undefined);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);

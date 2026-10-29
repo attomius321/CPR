@@ -52,7 +52,7 @@ describe("Scout's state in words", () => {
   });
 });
 
-// V77 (decision 561): the page shows what the conversation runs on; Settings sets it.
+// V78 (decision 569): the page shows what the conversation runs on; Settings sets it.
 describe('what a page agent runs on, in its line', () => {
   const MODELS = [
     { id: 'sonnet', name: 'Sonnet 5.5' },

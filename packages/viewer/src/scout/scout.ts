@@ -46,7 +46,7 @@ export function scoutStateText(conversation: ScoutConversation): string {
 }
 
 /**
- * What a page agent's conversation runs on, as its head's line says it (V77, decision 561): "with
+ * What a page agent's conversation runs on, as its head's line says it (V78, decision 569): "with
  * Claude Code on Sonnet 5.5 at high effort". The model by its name in the agent's list, else its ID;
  * the agent's own model or level is left unsaid. Settings sets them; the page only says them.
  */

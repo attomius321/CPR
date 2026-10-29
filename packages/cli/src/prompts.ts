@@ -173,7 +173,7 @@ You can read and search files, and run git's read commands, one at a time: git l
 Answer with where things are and why: file paths with line numbers, the symbols, and the commits that explain a decision (short SHA and subject); for a workspace, its branch, its state and what it waits on. Say what you did not check. Keep it short: the person asks again for more.`;
 
 /**
- * Scribe's instructions (V41): its system prompt since V77 (decision 562), the person's words its
+ * Scribe's instructions (V41): its system prompt since V78 (decision 570), the person's words its
  * first message. Its tools and folders are fixed by Symbiote (`scribe-gate.ts`), whatever this
  * text says.
  */

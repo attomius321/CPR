@@ -16,8 +16,8 @@ const API = '/api/scout';
 /**
  * Scout (V35): an agent in the checkout; since MC1 it carries workspaces from a start to a merge
  * through Symbiote's tools, asking the person to confirm what changes a branch's fate. Since V50
- * the page is its terminal: opened with no question, which the terminal takes. Since V77 nothing
- * on the page picks its agent, model or level (decision 561): Settings does, and its head says
+ * the page is its terminal: opened with no question, which the terminal takes. Since V78 nothing
+ * on the page picks its agent, model or level (decision 569): Settings does, and its head says
  * what the conversation runs on; New conversation starts the next on Settings'.
  */
 export function ScoutPage() {

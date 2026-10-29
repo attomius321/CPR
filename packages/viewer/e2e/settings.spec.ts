@@ -554,7 +554,7 @@ test("Scout's model: Claude Code's own list, saved as scout.model when picked; t
   await expect(part(page, 'Effort').getByRole('alert')).toHaveText(
     'scout.effort is xhigh, which Claude Code does not list: Scout starts it at its default.',
   );
-  // The next conversation starts on it, opened with the page (V50), and its line says so (V77).
+  // The next conversation starts on it, opened with the page (V50), and its line says so (V78).
   await page.goto(`${symbiote.url}scout`);
   const scoutPage = page.getByRole('region', { name: 'Scout' });
   await expect
