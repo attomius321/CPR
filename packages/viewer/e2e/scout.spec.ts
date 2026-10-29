@@ -1,8 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { dragTo, stops } from './stepper.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 import { textAt } from './terminal.js';
 
@@ -28,8 +27,6 @@ const git = (...args: string[]) =>
 const scoutPage = (page: Page) => page.getByRole('region', { name: 'Scout' });
 const screen = (page: Page) => scoutPage(page).locator('.agent-terminal .xterm-rows');
 const keys = (page: Page) => scoutPage(page).locator('.xterm-helper-textarea');
-const model = (page: Page) => scoutPage(page).getByRole('combobox', { name: 'Model' });
-const effort = (page: Page) => scoutPage(page).getByRole('slider', { name: 'Effort' });
 const renew = (page: Page) => scoutPage(page).getByRole('button', { name: 'New conversation' });
 const scoutLink = (page: Page) =>
   page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: /Scout/ });
@@ -319,90 +316,43 @@ test("a path Scout prints opens in VS Code, in the checkout's window (V38)", asy
     .toEqual([[symbiote.repo, '--goto', `${join(symbiote.repo, 'src', 'math.ts')}:1:1`]]);
 });
 
-test('a model and an effort picked in its head start nothing: New conversation starts the next on them', async ({
-  page,
-}) => {
-  symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}scout`);
-  await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
-  // The conversation's: Claude Code's own, from its own list (V47).
-  await expect(model(page)).toHaveValue('');
-  await expect(model(page).locator('option')).toHaveText([
-    "Claude Code's default",
-    'Opus 5.5',
-    'Sonnet 5.5',
-    'Haiku 4.5',
-    'Opus 4.6',
-  ]);
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
-  await expect(stops(effort(page))).toHaveText([
-    'Default',
-    'Low',
-    'Medium',
-    'High',
-    'xHigh',
-    'Max',
-  ]);
-  await expect(renew(page)).toHaveClass(/secondary/);
-
-  // A model, then three levels by keys (each a copy of the session before V52): nothing runs.
-  await model(page).selectOption('sonnet');
-  for (let i = 0; i < 3; i += 1) await effort(page).press('ArrowRight');
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
-  await expect(model(page)).toHaveValue('sonnet');
-  // New conversation is the one to start them, and says so.
-  await expect(renew(page)).not.toHaveClass(/secondary/);
-  await expect(renew(page)).toHaveAttribute('data-tip', /starts another on Sonnet 5\.5 at high/);
-  expect(scoutCalls()).toHaveLength(1);
-  expect(symbiote.stops()).toEqual([]);
-  expect(symbiote.removed()).toEqual([]);
-  expect(symbiote.attaches()).toEqual(['fake0']);
-  await expect(screen(page)).toContainText('Fake Claude Code · fake0');
-  expect(JSON.parse(readFileSync(record(), 'utf8'))).not.toHaveProperty('model');
-
-  // While Scout answers they stay free: they touch nothing that runs.
-  symbiote.setSession('fake0', { state: 'working', status: 'busy' });
-  await expect(scoutPage(page).getByRole('status')).toHaveText('Answering', POLL);
-  await expect(model(page)).toBeEnabled();
-  await expect(effort(page)).toBeEnabled();
-  symbiote.setSession('fake0', { state: 'done', status: 'idle' });
-  await expect(scoutPage(page).getByRole('status')).toHaveText(
-    'Answered: ask more in its terminal',
-    POLL,
-  );
-
-  await renew(page).click();
-  await expect.poll(() => scoutCalls().length, POLL).toBe(2);
-  const next = scoutCalls()[1]?.args ?? [];
-  // A new session, not a copy of the old one: what was said there stays there.
-  expect(next.slice(0, 3)).toEqual(['--bg', '--name', 'Scout']);
-  expect(flag(next, '--model')).toBe('sonnet');
-  expect(flag(next, '--effort')).toBe('high');
-  expect(symbiote.stops()).toEqual(['fake0']);
-  expect(symbiote.removed()).toEqual(['fake0']);
-  await expect.poll(() => symbiote.attaches(), POLL).toEqual(['fake0', 'fake0']);
-  await expect(scoutPage(page).getByRole('status')).toHaveText('Ready: ask in its terminal', POLL);
-  await expect(model(page)).toHaveValue('sonnet');
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
-  await expect(renew(page)).toHaveClass(/secondary/);
-  await expect(keys(page)).toBeFocused();
-  expect(JSON.parse(readFileSync(record(), 'utf8'))).toMatchObject({
-    model: 'sonnet',
-    effort: 'high',
-  });
-  // The project's settings are as they were: these are the head's.
-  expect(existsSync(config())).toBe(false);
-});
-
-// fix/scout-not-aligned: "Effort" sat on its track's line, 10 px over the selects' centre, and the
-// stepper's 36 px of track and words stood out of the selects. V72 (decision 510): the choices are
-// the terminal card's 48 px head, on one line at 1,920 and 1,200 px (the page's head wrapped them
-// under its title at 1,440 before); the state and New conversation the page head's actions.
-test("the card head's choices and Effort share one centre on one line; the state and New conversation another", async ({
+// V77 (decision 561): the agent, the model and the effort are Settings'; the page says which.
+test('its page has no choices: the terminal, its line saying what it runs on, the state and New conversation', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces({ codex: true, appServer: true });
-  const choices = scoutPage(page).locator('.scout-choices');
+  mkdirSync(join(symbiote.repo, 'symbiote'), { recursive: true });
+  writeFileSync(config(), '{ "scout": { "model": "sonnet", "effort": "high" } }\n');
+  await page.goto(`${symbiote.url}scout`);
+  await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
+  // Two agents installed, and still no Agent, Model or Effort; no box either.
+  await expect(scoutPage(page).getByRole('combobox')).toHaveCount(0);
+  await expect(scoutPage(page).getByRole('slider')).toHaveCount(0);
+  await expect(scoutPage(page).getByRole('textbox', { name: 'Ask Scout' })).toHaveCount(0);
+  await expect(scoutPage(page).locator('.scout-about')).toHaveText(
+    /^In \S+, with Claude Code on Sonnet 5\.5 at high effort$/,
+  );
+  // Its only buttons: its help and New conversation.
+  expect(
+    await scoutPage(page)
+      .getByRole('button')
+      .evaluateAll((all) => all.map((b) => b.getAttribute('aria-label') ?? b.textContent?.trim())),
+  ).toEqual(['About Scout', 'New conversation']);
+  await expect(renew(page)).toHaveClass(/secondary/);
+  const args = scoutCalls()[0]?.args ?? [];
+  expect(flag(args, '--model')).toBe('sonnet');
+  expect(flag(args, '--effort')).toBe('high');
+  // The Help says where they are set.
+  await scoutPage(page).getByRole('button', { name: 'About Scout' }).click();
+  await expect(page.getByRole('tooltip')).toContainText('Settings sets the model and effort');
+});
+
+// V72 (decision 510): the state and New conversation the page head's actions; since V77 the card
+// is the terminal alone, with no head of its own.
+test("the state and New conversation share one centre; the terminal starts at the card's top", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
   const box = async (part: Locator) => {
     const b = await part.boundingBox();
     if (!b) throw new Error('not drawn');
@@ -412,28 +362,18 @@ test("the card head's choices and Effort share one centre on one line; the state
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${symbiote.url}scout`);
     await expect(screen(page)).toContainText('Fake Claude Code', POLL);
-    const agent = await box(choices.getByRole('combobox', { name: 'Agent' }));
-    const parts = [
-      await box(model(page)),
-      await box(choices.locator('.scout-effort-label')),
-      await box(choices.locator('.effort-stepper')),
-    ];
-    for (const part of parts) {
-      expect(Math.abs(part.centre - agent.centre)).toBeLessThanOrEqual(1);
-    }
-    // The stepper no taller than the selects beside it, the head the card's 48 px.
-    expect(parts[2]?.top).toBeGreaterThanOrEqual(agent.top - 1);
-    expect(parts[2]?.bottom).toBeLessThanOrEqual(agent.bottom + 1);
-    expect(agent.bottom - agent.top).toBe(32);
-    expect((await choices.boundingBox())?.height).toBe(48);
     const state = await box(scoutPage(page).getByRole('status'));
     const button = await box(renew(page));
     expect(Math.abs(state.centre - button.centre)).toBeLessThanOrEqual(1);
-    expect(button.bottom).toBeLessThan(agent.top);
+    const card = await box(scoutPage(page).locator('.scout-card'));
+    const terminal = await box(scoutPage(page).locator('.scout-terminal'));
+    // Inside the card's 1 px border.
+    expect(Math.abs(terminal.top - (card.top + 1))).toBeLessThanOrEqual(1);
+    expect(button.bottom).toBeLessThan(card.top);
   }
 });
 
-test('New conversation: the old session stopped and removed, the next opened at once on what the head shows', async ({
+test("New conversation: the old session stopped and removed, the next opened at once on Settings'", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -443,13 +383,11 @@ test('New conversation: the old session stopped and removed, the next opened at 
   await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
   // Opened on the project's level.
   expect(flag(scoutCalls()[0]?.args, '--effort')).toBe('medium');
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'medium');
-  // A level picked, by a drag, starts nothing (decision 391); New conversation starts on it.
-  await dragTo(page, effort(page), 3);
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
-  await expect(renew(page)).not.toHaveClass(/secondary/);
-  expect(scoutCalls()).toHaveLength(1);
+  await expect(scoutPage(page).locator('.scout-about')).toContainText('at medium effort');
+  await expect(renew(page)).toHaveAttribute('data-tip', /starts another on Settings'/);
 
+  // Settings changed while it runs: the running conversation keeps its own.
+  writeFileSync(config(), '{ "scout": { "effort": "high" } }\n');
   await renew(page).click();
   await expect.poll(() => scoutCalls().length, POLL).toBe(2);
   expect(flag(scoutCalls()[1]?.args, '--effort')).toBe('high');
@@ -458,101 +396,28 @@ test('New conversation: the old session stopped and removed, the next opened at 
   // The fake numbers sessions by its list's length: fake0 again, a new session.
   await expect.poll(() => symbiote.attaches(), POLL).toEqual(['fake0', 'fake0']);
   await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
-  await expect(renew(page)).toHaveClass(/secondary/);
+  await expect(scoutPage(page).getByRole('status')).toHaveText('Ready: ask in its terminal', POLL);
+  await expect(scoutPage(page).locator('.scout-about')).toContainText('at high effort');
   await expect(keys(page)).toBeFocused();
-
-  // Nothing changed: the next starts on this one's, what the head shows, not Settings' (392).
-  await renew(page).click();
-  await expect.poll(() => scoutCalls().length, POLL).toBe(3);
-  expect(flag(scoutCalls()[2]?.args, '--effort')).toBe('high');
-  expect(symbiote.removed()).toEqual(['fake0', 'fake0']);
-  await expect.poll(() => symbiote.attaches(), POLL).toEqual(['fake0', 'fake0', 'fake0']);
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
-  expect(JSON.parse(readFileSync(config(), 'utf8'))).toEqual({ scout: { effort: 'medium' } });
+  // Nothing written by the page: the project's settings are Settings'.
+  expect(JSON.parse(readFileSync(config(), 'utf8'))).toEqual({ scout: { effort: 'high' } });
 });
 
-test('another agent picked in its head starts nothing: New conversation starts it', async ({
-  page,
-}) => {
-  symbiote = await serveWorkspaces({ codex: true, appServer: true });
-  const threads = () =>
-    (symbiote.codexServer?.calls ?? []).filter((call) => call.method === 'thread/start');
-  await page.goto(`${symbiote.url}scout`);
-  await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
-  const agent = scoutPage(page).getByRole('combobox', { name: 'Agent' });
-  await expect(agent).toHaveValue('claude');
-
-  await agent.selectOption('codex');
-  await expect(renew(page)).not.toHaveClass(/secondary/);
-  await expect(renew(page)).toHaveAttribute('data-tip', /starts another with Codex/);
-  // Codex's models in the head; Claude Code's conversation in the terminal, as it was.
-  await expect(model(page).locator('option').first()).toHaveText(/^Codex's default/);
-  expect(threads()).toEqual([]);
-  expect(symbiote.stops()).toEqual([]);
-  expect(symbiote.removed()).toEqual([]);
-  await expect(screen(page)).toContainText('Fake Claude Code · fake0');
-
-  await renew(page).click();
-  await expect.poll(() => threads().length, POLL).toBe(1);
-  expect(symbiote.removed()).toEqual(['fake0']);
-  // A thread with no turn: its terminal takes the first question.
-  expect((symbiote.codexServer?.calls ?? []).some((call) => call.method === 'turn/start')).toBe(
-    false,
-  );
-  // The record is written once the thread has started: the fake's call comes first.
-  await expect
-    .poll(
-      () => (existsSync(record()) ? (JSON.parse(readFileSync(record(), 'utf8')) as unknown) : null),
-      POLL,
-    )
-    .toMatchObject({ agent: 'codex' });
-  await expect(agent).toHaveValue('codex');
-  await expect(renew(page)).toHaveClass(/secondary/);
-  expect(scoutCalls()).toHaveLength(1);
-});
-
-test('without terminals, the question box: the head picks what its first question starts on', async ({
+// V77 (decision 564): Scout runs in a terminal; without one, no box.
+test('without terminals, no box: it says Scout runs in a terminal, and why none runs, starting nothing', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces({ terminal: false });
   await page.goto(`${symbiote.url}scout`);
-  const question = scoutPage(page).getByRole('textbox', { name: 'Ask Scout' });
-  await expect(question).toBeVisible();
-  await expect(question).toBeFocused();
-  // Nothing starts before the question: no terminal to take it.
+  await expect(scoutPage(page).locator('.scout-note')).toHaveText(
+    'Scout runs in a terminal, and none runs here: terminals are turned off (SYMBIOTE_TERMINAL=off).',
+  );
+  await expect(scoutPage(page).getByRole('textbox')).toHaveCount(0);
+  await expect(scoutPage(page).getByRole('combobox')).toHaveCount(0);
+  await expect(scoutPage(page).getByRole('slider')).toHaveCount(0);
+  await expect(renew(page)).toHaveCount(0);
+  await page.waitForTimeout(500);
   expect(scoutCalls()).toEqual([]);
-  await model(page).selectOption('opus');
-  await effort(page).press('End');
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'max');
-  expect(scoutCalls()).toEqual([]);
-  await question.fill('Where is add?');
-  await question.press('Enter');
-  await expect.poll(() => scoutCalls().length, POLL).toBe(1);
-  const args = scoutCalls()[0]?.args ?? [];
-  expect(flag(args, '--model')).toBe('opus');
-  expect(flag(args, '--effort')).toBe('max');
-  expect(args.slice(-2)).toEqual(['--', 'Where is add?']);
-  expect(args.at(-4)).toBe('--append-system-prompt');
-  await expect(scoutPage(page)).toContainText('claude attach fake0', POLL);
-  await expect(model(page)).toHaveValue('opus');
-
-  // During it, a model picked starts nothing; after New conversation, the next question starts
-  // on it.
-  await model(page).selectOption('sonnet');
-  await expect(renew(page)).not.toHaveClass(/secondary/);
-  expect(scoutCalls()).toHaveLength(1);
-  await renew(page).click();
-  await expect.poll(() => symbiote.removed(), POLL).toEqual(['fake0']);
-  await expect(scoutPage(page)).not.toContainText('claude attach', POLL);
-  await expect(model(page)).toHaveValue('sonnet');
-  expect(scoutCalls()).toHaveLength(1);
-  await question.fill('Where is sub?');
-  await question.press('Enter');
-  await expect.poll(() => scoutCalls().length, POLL).toBe(2);
-  const second = scoutCalls()[1]?.args ?? [];
-  expect(flag(second, '--model')).toBe('sonnet');
-  expect(second.at(-1)).toBe('Where is sub?');
 });
 
 test('without Claude Code or Codex, Scout says what it needs', async ({ page }) => {

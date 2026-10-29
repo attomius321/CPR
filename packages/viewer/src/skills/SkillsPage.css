@@ -781,14 +781,6 @@
   flex-direction: column;
 }
 
-.skills-scribe-note {
-  margin: 0;
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--line);
-  color: var(--muted);
-  font-size: var(--size-small);
-}
-
 .scribe-pane {
   flex: 1;
   min-height: 0;
@@ -797,7 +789,6 @@
 }
 
 .scribe-pane .scout-top h2 {
-  grid-area: title;
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;

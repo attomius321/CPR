@@ -1,6 +1,6 @@
-/* Scout (V35): its head, then its agent's terminal (or its question where no terminal runs) in a
-   card, the page frame's since V72 (`PageHead`, `.scout-head`). Scribe's pane (V41) shares the
-   box, and its own head is `.scout-top`, a strip on the pane's card. */
+/* Scout (V35): its head, then its agent's terminal in a card (V77: no box, no choices), the page
+   frame's since V72 (`PageHead`, `.scout-head`). Scribe's pane (V41) shares the card's parts, and
+   its own head is `.scout-top`, a strip on the pane's card. */
 .scout-page {
   flex: 1;
   min-width: 0;
@@ -20,10 +20,17 @@
 }
 
 .scout-top h1 {
-  grid-area: title;
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;
+}
+
+/* Its name and its help. */
+.scout-title {
+  grid-area: title;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .scout-about {
@@ -64,21 +71,6 @@
   }
 }
 
-/* The choices (V50), the terminal card's head since V72 (decision 510): the agent, the model and
-   the effort New conversation starts on, 32 px as every control; they wrap in a narrow card. */
-.scout-choices {
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  /* 32 px controls in the head's 48, its hairline included. */
-  padding-block: 7px;
-}
-
-.scout-choices select {
-  height: 32px;
-  max-width: 220px;
-  font-size: var(--size-small);
-}
-
 .scout-starting {
   margin: 0;
   color: var(--muted);
@@ -90,7 +82,7 @@
   white-space: pre-wrap;
 }
 
-/* The page's card: the choices, then the terminal or the question, to the main area's bottom. */
+/* The page's card: the terminal, to the main area's bottom. */
 .scout-card {
   flex: 1;
   min-height: 0;
@@ -110,79 +102,13 @@
   padding: var(--card-pad);
 }
 
-/* The question as a form (V72's rhythm): its label `--field-label-gap` over the box, which fills
-   the card's width (decision 512). */
-.scout-ask {
-  display: grid;
-  gap: var(--field-label-gap);
-}
-
-.scout-ask label {
-  font-weight: 500;
-}
-
 .scout-note {
   margin: 0;
-  color: var(--muted);
   font-size: var(--size-small);
 }
 
-.scout-note {
-  color: var(--text);
-}
-
-.scout-ask textarea {
-  box-sizing: border-box;
-  width: 100%;
-  font-size: var(--size-body);
-}
-
-/* The agent, the keys, then Ask at the right; narrow, Ask stays at the right of its line. */
-.scout-ask-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px 12px;
-}
-
-.scout-ask-row .button {
-  margin-left: auto;
-}
-
-/* The level (fix/scout-effort-level): Scribe's box, Scout's head (V50); in the box its label on
-   the track's line. */
-.scout-effort {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-/* In the head, on the line of the selects beside it (fix/scout-not-aligned): its label on their
-   centre, the stepper as high as they are (16 px of track and 12 of words). 340 px since V61's
-   bigger type (300 before): narrower, the first stop's word meets the second's. */
-.scout-choices .scout-effort {
-  align-items: center;
-  gap: 8px;
-  width: 340px;
-}
-
-.scout-choices .effort-stepper {
-  gap: 0;
-}
-
-.scout-choices .effort-stops {
-  height: 12px;
-  line-height: 12px;
-}
-
-.scout-effort-label {
-  font-size: var(--size-small);
-  font-weight: 500;
-  line-height: 16px;
-}
-
-.scout-effort .effort-stepper {
-  flex: 1;
+.scout-note + .scout-note {
+  margin-top: 8px;
 }
 
 .scout-terminal {

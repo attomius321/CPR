@@ -1,20 +1,11 @@
-import { useEffect, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
-import type { AgentKind, ScoutConversation, ScoutEfforts, ScoutState } from '@symbiote/core';
-import { AgentTerminal } from '../workspaces/AgentTerminal.js';
-import { scoutLevel } from '../workspaces/effort.js';
-import { EffortStepper } from '../workspaces/EffortStepper.js';
+import { useEffect, useState, type ReactNode } from 'react';
+import type { ScoutConversation, ScoutEfforts, ScoutState } from '@symbiote/core';
+import { AgentTerminal, type OpenedTerminal } from '../workspaces/AgentTerminal.js';
 import { Help } from '../ui/Help.js';
 import { getJson, postJson } from '../ui/http.js';
-import { scoutStateText } from './scout.js';
+import { runsOn, scoutStateText } from './scout.js';
 import { readWorkspacesAgain, reloadWorkspaces } from '../workspaces/useWorkspaces.js';
-import { effortChoices } from '../workspaces/workspaces.js';
 import { tip } from '../ui/tip.js';
-
-export const AGENT_NAMES: Record<AgentKind, string> = {
-  claude: 'Claude Code',
-  codex: 'Codex',
-  hermes: 'Hermes',
-};
 
 /** The last part of a folder's path: the checkout's name. */
 export const folderName = (path: string) => path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
@@ -44,92 +35,78 @@ export const attachCommand = (conversation: ScoutConversation) =>
     ? `claude attach ${conversation.id ?? ''}`
     : `codex resume ${conversation.id ?? ''}`;
 
-/**
- * A page's agent as its conversation shows it: Scribe's pane (V41), Scout's page until V50 (now
- * `ScoutPage.tsx`, which shares its head, its terminal and its words).
- */
-export interface ConversationAgent {
-  name: string;
-  /** Its API: `/api/scout`, `/api/scribe`. */
-  api: string;
-  /** Its state, read with the workspaces. */
-  state: ScoutState | null;
-  /** The root's class (`scribe-pane`) and its heading's level. */
-  className: string;
-  heading: 'h1' | 'h2';
-  /** What it does where, before the checkout's name: "Read-only in", "Writes skills in". */
-  doing: string;
-  /** The box's label, help, placeholder and button. */
-  label: string;
-  help: ReactNode;
-  placeholder: string;
-  submit: string;
-  /** What the person sends it ("question", "request"), and what its effort's help says. */
-  noun: string;
-  effortHelp: string;
-  /** Text put in the box from outside (Improve with Scribe), new each time `at` changes. */
-  draft?: { text: string; at: number };
+/** A page agent's conversation as its page draws it (`usePageAgent`). */
+export interface PageAgent {
+  read: ScoutState | null;
+  conversation: ScoutConversation | null;
+  /** A conversation that is not gone. */
+  live: boolean;
+  terminals: boolean;
+  /** Read, and neither Claude Code nor Codex installed. */
+  none: boolean;
+  busy: boolean;
+  error: string | null;
+  /** What it runs on, in words: "with Claude Code on Sonnet 5.5 at high effort". */
+  on: string;
+  /** New conversation: this one ends, the next opens. */
+  renew: () => void;
+  /** After a failed open: open again. */
+  retry: () => void;
 }
 
 /**
- * A page's agent: with no conversation, the box (the agent, its effort); with one, the agent's own
- * terminal, where its answer is and the person goes on (the box where no terminal runs). New
- * conversation starts over.
+ * A page agent's conversation, Scout's page and Scribe's pane alike (V77, decision 561): with
+ * terminals and no conversation (or a gone one), one is opened at once with nothing asked, on
+ * Settings' model and level; New conversation ends it, and the next opens the same way. A failed
+ * open says why, and is tried again only on Try again. Nothing on the page picks the agent, the
+ * model or the level: Settings does.
  */
-export function Conversation({ agent: own }: { agent: ConversationAgent }) {
-  const { name, api, state: read } = own;
-  const [text, setText] = useState('');
-  const [picked, setPicked] = useState<AgentKind | ''>('');
+export function usePageAgent(api: string, read: ScoutState | null): PageAgent {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // The levels and the project's, read for a new conversation; the level picked for it (null: none
-  // picked, the project's).
+  // An open was asked for while there is no conversation: asked once, until one runs or Try again.
+  const [opening, setOpening] = useState(false);
+  // The agents' models, read for the name of the conversation's.
   const [efforts, setEfforts] = useState<ScoutEfforts | null>(null);
-  const [level, setLevel] = useState<string | null>(null);
-
-  const draft = own.draft;
-  useEffect(() => {
-    if (draft) setText(draft.text);
-  }, [draft]);
 
   const conversation = read?.conversation ?? null;
   const agents = read?.agents ?? [];
   const live = conversation !== null && conversation.state !== 'gone';
-  const terminal = live && read?.terminal?.available === true;
-  const agent = conversation?.kind ?? (picked || agents[0]?.kind);
-  // Known only once read: until then a request can be made, and the server answers.
+  const terminals = read?.terminal?.available === true;
   const none = read !== null && agents.length === 0;
-  const levels = efforts?.agents.find((a) => a.kind === agent);
-  const choices = !live && levels ? effortChoices(levels) : [];
-  const effort = levels ? scoutLevel(level, efforts?.effort, levels) : '';
+  const kind = conversation?.kind ?? agents[0]?.kind;
 
-  // Read where the stepper shows, for each new conversation: the project's level may have changed.
-  const asking = read !== null && !live && !none;
+  // Read once a conversation runs on a model: its list names it.
+  const model = live ? conversation.model : undefined;
   useEffect(() => {
-    if (!asking) return;
+    if (!model) return;
     let current = true;
     getJson<ScoutEfforts>(`${api}/efforts`)
       .then((answer) => {
         if (current) setEfforts(answer);
       })
       .catch(() => {
-        // No levels: no stepper, and the request starts at the project's level or the agent's.
+        // None read: the model said by its ID.
         if (current) setEfforts(null);
       });
     return () => {
       current = false;
     };
-  }, [asking, api]);
+  }, [api, model]);
+
+  useEffect(() => {
+    if (live) {
+      setOpening(false);
+      setError(null);
+    }
+  }, [live]);
 
   /** Runs a write, then reads the agent's state again before the page goes on. */
-  const act = (task: () => Promise<ScoutState>, after?: () => void) => {
+  const act = (task: () => Promise<ScoutState>) => {
     setBusy(true);
     setError(null);
-    task()
-      .then(async () => {
-        after?.();
-        await readWorkspacesAgain();
-      })
+    return task()
+      .then(() => readWorkspacesAgain())
       .catch((e: unknown) => {
         setError((e as Error).message);
         void reloadWorkspaces();
@@ -137,159 +114,218 @@ export function Conversation({ agent: own }: { agent: ConversationAgent }) {
       .finally(() => setBusy(false));
   };
 
-  const ask = (event?: FormEvent) => {
-    event?.preventDefault();
-    if (text.trim() === '' || busy) return;
-    act(
-      () =>
-        postJson<ScoutState>(`${api}/ask`, {
-          text,
-          ...(picked && !live ? { agent: picked } : {}),
-          // Null: the agent's own, even where the project names a level.
-          ...(choices.length > 0 ? { effort: effort || null } : {}),
-        }),
-      () => {
-        setText('');
-        setLevel(null);
-      },
-    );
-  };
-  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return;
-    event.preventDefault();
-    ask();
-  };
+  // With terminals and no conversation, one is opened at once, with no question.
+  const open = read !== null && terminals && !none && !live && !busy && !opening && !error;
+  useEffect(() => {
+    if (!open) return;
+    setOpening(true);
+    void act(() => postJson<ScoutState>(`${api}/open`, {}));
+  }, [open]);
 
+  const models = efforts?.agents.find((a) => a.kind === kind)?.models;
+  return {
+    read,
+    conversation,
+    live,
+    terminals,
+    none,
+    busy,
+    error,
+    on: kind ? runsOn(kind, live ? conversation : null, models) : '',
+    renew: () => void act(() => postJson<ScoutState>(`${api}/new`, {})),
+    retry: () => {
+      setError(null);
+      setOpening(false);
+    },
+  };
+}
+
+/** A failed open or New conversation, in words; Try again where a terminal would open. */
+export function PageAgentError({ agent }: { agent: PageAgent }) {
+  if (!agent.error) return null;
+  return (
+    <p className="error scout-error" role="alert">
+      {agent.error}{' '}
+      {agent.terminals && !agent.live && (
+        <button type="button" className="button ghost" onClick={agent.retry}>
+          Try again
+        </button>
+      )}
+    </p>
+  );
+}
+
+/** Its state, and New conversation: the next opens at once on Settings' (V77). */
+export function PageAgentActions({ agent }: { agent: PageAgent }) {
+  const { conversation } = agent;
+  if (!conversation) return null;
+  return (
+    <>
+      <span className="scout-state" role="status">
+        <span className={`state-dot ${toneOf(conversation)}`} aria-hidden="true" />
+        {scoutStateText(conversation)}
+      </span>
+      <button
+        type="button"
+        className="button secondary"
+        disabled={agent.busy}
+        {...tip(
+          "Ends this conversation and starts another on Settings' model and effort\nIts session is stopped and removed",
+        )}
+        onClick={agent.renew}
+      >
+        New conversation
+      </button>
+    </>
+  );
+}
+
+/**
+ * What the card holds: the agent's terminal, "Starting…" while it opens, or why there is none.
+ * A page agent runs in a terminal (V77, decision 564): where none can run, no box takes a
+ * question; the page says why, and how to reach a running conversation from a terminal of one's
+ * own. `typed` is put in the terminal's input, unsent, once it is open (Improve with Scribe).
+ */
+export function PageAgentBody({
+  name,
+  api,
+  agent,
+  typed,
+  onTyped,
+}: {
+  name: string;
+  api: string;
+  agent: PageAgent;
+  typed?: string;
+  onTyped?: () => void;
+}) {
+  const { read, conversation } = agent;
+  if (agent.none) {
+    return (
+      <div className="scout-body">
+        <p className="scout-note">{name} needs Claude Code or Codex: neither is installed here.</p>
+      </div>
+    );
+  }
+  if (read && !agent.terminals) {
+    const reason = read.terminal && !read.terminal.available ? `: ${read.terminal.reason}` : '';
+    return (
+      <div className="scout-body">
+        <p className="scout-note">
+          {name} runs in a terminal, and none runs here{reason}.
+        </p>
+        {agent.live && conversation && (
+          <p className="scout-note">
+            Its conversation is in its session: <code>{attachCommand(conversation)}</code> in a
+            terminal of yours.
+          </p>
+        )}
+      </div>
+    );
+  }
+  if (agent.live && conversation) {
+    return (
+      <ConversationTerminal
+        key={conversation.id ?? conversation.started}
+        api={api}
+        {...(typed === undefined ? {} : { typed })}
+        {...(onTyped ? { onTyped } : {})}
+      />
+    );
+  }
+  return (
+    <div className="scout-body">
+      {!agent.error && read !== null && <p className="scout-starting">Starting {name}…</p>}
+    </div>
+  );
+}
+
+/** A page's agent besides Scout's own page: Scribe's pane (V41). */
+export interface ConversationAgent {
+  name: string;
+  /** Its API: `/api/scribe`. */
+  api: string;
+  /** Its state, read with the workspaces. */
+  state: ScoutState | null;
+  /** The root's class (`scribe-pane`) and its heading's level. */
+  className: string;
+  heading: 'h1' | 'h2';
+  /** What it does where, before the checkout's name: "Writes skills in .claude/skills of". */
+  doing: string;
+  /** What it is, behind the "?" by its name. */
+  help: ReactNode;
+  /** A text to put in its terminal's input, unsent (Improve with Scribe, V77); then `onTyped`. */
+  typed?: string;
+  onTyped?: () => void;
+}
+
+/**
+ * A page's agent in a pane (Scribe's, V41): a head strip — its name, what it does where and on
+ * what, its state, New conversation — over its terminal, opened at once (V77).
+ */
+export function Conversation({ agent: own }: { agent: ConversationAgent }) {
+  const agent = usePageAgent(own.api, own.state);
+  const { read } = agent;
   const Heading = own.heading;
   const id = `${own.className}-title`;
-  const field = `${own.className}-question`;
   return (
     <section className={own.className} aria-labelledby={id}>
       <header className="scout-top">
-        <Heading id={id}>{name}</Heading>
+        <span className="scout-title">
+          <Heading id={id}>{own.name}</Heading>
+          <Help label={`About ${own.name}`}>{own.help}</Help>
+        </span>
         {read && (
           <p className="scout-about" {...tip(read.checkout, { code: true })}>
             {own.doing} {folderName(read.checkout)}
-            {agent ? `, with ${AGENT_NAMES[agent]}` : ''}
-            {conversation?.model ? ` on ${conversation.model}` : ''}
-            {conversation?.effort ? ` at ${conversation.effort} effort` : ''}
+            {agent.on ? `, ${agent.on}` : ''}
           </p>
         )}
         <div className="scout-actions">
-          {conversation && (
-            <span className="scout-state" role="status">
-              <span className={`state-dot ${toneOf(conversation)}`} aria-hidden="true" />
-              {scoutStateText(conversation)}
-            </span>
-          )}
-          {conversation && (
-            <button
-              type="button"
-              className="button secondary"
-              disabled={busy}
-              {...tip('Ends this conversation\nIts session is stopped and removed')}
-              onClick={() => act(() => postJson<ScoutState>(`${api}/new`, {}))}
-            >
-              New conversation
-            </button>
-          )}
+          <PageAgentActions agent={agent} />
         </div>
       </header>
-      {error && (
-        <p className="error scout-error" role="alert">
-          {error}
-        </p>
-      )}
-      {terminal ? (
-        <ConversationTerminal api={api} />
-      ) : (
-        <div className="scout-body">
-          <form className="scout-ask" onSubmit={ask}>
-            <span className="field-label">
-              <label htmlFor={field}>{own.label}</label>
-              <Help label={`About ${name}`}>{own.help}</Help>
-            </span>
-            {none && (
-              <p className="scout-note">
-                {name} needs Claude Code or Codex: neither is installed here.
-              </p>
-            )}
-            {conversation?.state === 'gone' && (
-              <p className="scout-note">
-                Its last session is gone (removed outside Symbiote): a {own.noun} starts a new
-                conversation.
-              </p>
-            )}
-            {live && !terminal && (
-              <p className="scout-note">
-                No terminal here
-                {read?.terminal && !read.terminal.available
-                  ? ` (${read.terminal.reason})`
-                  : ''}: {name}&apos;s answers are in its session,{' '}
-                <code>{attachCommand(conversation)}</code> in a terminal of yours. A {own.noun} here
-                continues it.
-              </p>
-            )}
-            <textarea
-              id={field}
-              rows={4}
-              value={text}
-              placeholder={own.placeholder}
-              disabled={none}
-              autoFocus
-              onChange={(event) => setText(event.target.value)}
-              onKeyDown={onKeyDown}
-            />
-            {choices.length > 0 && (
-              <div className="scout-effort">
-                <span className="scout-effort-label field-label">
-                  Effort
-                  <Help label="About the effort">{own.effortHelp}</Help>
-                </span>
-                <EffortStepper
-                  label="Effort"
-                  choices={choices}
-                  value={effort}
-                  onChange={setLevel}
-                />
-              </div>
-            )}
-            <div className="scout-ask-row">
-              {agents.length > 1 && !live && (
-                <select
-                  aria-label="Agent"
-                  value={picked || agents[0]?.kind}
-                  onChange={(event) => setPicked(event.target.value as AgentKind)}
-                >
-                  {agents.map((a) => (
-                    <option key={a.kind} value={a.kind}>
-                      {AGENT_NAMES[a.kind]}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <button
-                type="submit"
-                className="button"
-                disabled={busy || none || text.trim() === ''}
-              >
-                {own.submit}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <PageAgentError agent={agent} />
+      <PageAgentBody
+        name={own.name}
+        api={own.api}
+        agent={agent}
+        {...(own.typed === undefined ? {} : { typed: own.typed })}
+        {...(own.onTyped ? { onTyped: own.onTyped } : {})}
+      />
     </section>
   );
 }
 
-/** A page agent's terminal edge to edge (V35), opened on its session; "Open again" when it ends. */
-export function ConversationTerminal({ api }: { api: string }) {
+/**
+ * A page agent's terminal edge to edge (V35), opened on its session; "Open again" when it ends.
+ * `typed` goes in its input once it is open, unsent; `onTyped` says it was handed over.
+ */
+export function ConversationTerminal({
+  api,
+  typed,
+  onTyped,
+}: {
+  api: string;
+  typed?: string;
+  onTyped?: () => void;
+}) {
   const [ended, setEnded] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const [opened, setOpened] = useState<OpenedTerminal | null>(null);
+  useEffect(() => {
+    if (typed === undefined || !opened) return;
+    opened.type(typed);
+    onTyped?.();
+  }, [typed, opened]);
   return (
     <div className="scout-terminal workspace-terminal">
-      <AgentTerminal key={attempt} url={`${api}/terminal`} onOpened={() => {}} onEnded={setEnded} />
+      <AgentTerminal
+        key={attempt}
+        url={`${api}/terminal`}
+        onOpened={setOpened}
+        onEnded={setEnded}
+      />
       {ended && (
         <p className="workspace-confirm">
           The terminal {ended === 'exited' ? 'ended' : 'lost its session'}.{' '}
