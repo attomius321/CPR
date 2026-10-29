@@ -149,6 +149,7 @@ hosted.
 | [V74](plan/v74-activity-colours.md) | The Activity tab in colour: a phase's kind on a coloured tile on the rail, the conversation in bubbles | ready for review | 528–531 | [journal](journal/v74-activity-colours.md) |
 | [V75](plan/v75-suggested-settings.md) | Suggested settings: a small model sizes the work and fills the Start page's model, effort and plan first | V75a, V75b, V75c ✅ | 544–550, 556 | [journal](journal/v75-suggested-settings.md) |
 | Fix | Suggest settings could not read the agents' models: `symbiote view` serves the pages it started with, not a newer build's on its older API | ready for review | | [journal](journal/fix-suggest-settings-models.md) |
+| [V79](plan/v79-workspace-cards.md) | Workspace cards one can read: whole names, the state on its own lines, the facts as icons, cards apart; the sidenav 300 px | in progress | 576–581 | [journal](journal/v79-workspace-cards.md) |
 
 ### Agents
 
