@@ -195,6 +195,34 @@ describe('the nexus server', () => {
     expect((await get('/api/symbiotes')).status).toBe(200);
   });
 
+  // As the viewer's server (fix/security-and-bugs): no other site frames the page.
+  it('lets only pages on this machine frame it, and no answer be sniffed', async () => {
+    for (const path of ['/', '/api/symbiotes', '/elsewhere']) {
+      const url = new URL(path, server.url);
+      const response = await fetch(url);
+      expect(response.headers.get('content-security-policy'), path).toBe(
+        "frame-ancestors 'self' http://127.0.0.1:* http://localhost:*",
+      );
+      expect(response.headers.get('x-content-type-options'), path).toBe('nosniff');
+    }
+  });
+
+  it("refuses what another site's page asks for, but serves a link followed from it", async () => {
+    const cross = { 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'no-cors' };
+    expect(
+      (await get('/api/folders', { headers: { ...cross, 'sec-fetch-dest': 'image' } })).status,
+    ).toBe(403);
+    const link = {
+      'sec-fetch-site': 'cross-site',
+      'sec-fetch-mode': 'navigate',
+      'sec-fetch-dest': 'document',
+    };
+    expect((await get('/', { headers: link })).status).toBe(200);
+    expect(
+      (await get('/api/symbiotes', { headers: { 'sec-fetch-site': 'same-origin' } })).status,
+    ).toBe(200);
+  });
+
   it('answers only its own host, and writes only where it starts or stops a Symbiote', async () => {
     const port = new URL(server.url).port;
     expect((await get('/', { host: `localhost:${port}` })).status).toBe(200);

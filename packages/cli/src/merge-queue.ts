@@ -1,8 +1,9 @@
 // The merger's queue (V26a): a repository's merges in Symbiote's cache (`merges.json`), changed
 // one write at a time in a process, and the pid lock by which one Symbiote process merges.
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { MergeEntry } from '@symbiote/core';
+import { writeFileWhole } from './file-write.js';
 
 /** The queue of merges kept in `stateDir`, and its lock. */
 export function mergeQueue(stateDir: string) {
@@ -24,10 +25,7 @@ export function mergeQueue(stateDir: string) {
     const next = writing.then(async () => {
       const merges = await read();
       const result = await task(merges);
-      await mkdir(stateDir, { recursive: true });
-      const temp = `${queueFile}.${process.pid}.tmp`;
-      await writeFile(temp, `${JSON.stringify({ merges }, null, 2)}\n`);
-      await rename(temp, queueFile);
+      await writeFileWhole(queueFile, `${JSON.stringify({ merges }, null, 2)}\n`);
       return result;
     });
     writing = next.catch(() => undefined);

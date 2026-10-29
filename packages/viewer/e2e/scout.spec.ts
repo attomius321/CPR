@@ -532,8 +532,8 @@ test('without terminals, the question box: the head picks what its first questio
   const args = scoutCalls()[0]?.args ?? [];
   expect(flag(args, '--model')).toBe('opus');
   expect(flag(args, '--effort')).toBe('max');
-  expect(args.at(-1)).toBe('Where is add?');
-  expect(args.at(-3)).toBe('--append-system-prompt');
+  expect(args.slice(-2)).toEqual(['--', 'Where is add?']);
+  expect(args.at(-4)).toBe('--append-system-prompt');
   await expect(scoutPage(page)).toContainText('claude attach fake0', POLL);
   await expect(model(page)).toHaveValue('opus');
 

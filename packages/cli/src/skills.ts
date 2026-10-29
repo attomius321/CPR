@@ -7,8 +7,8 @@
 // (decision 429), and changed there in the same way.
 import { createHash } from 'node:crypto';
 import { lstatSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
-import { mkdir, rename, rm, symlink, writeFile } from 'node:fs/promises';
-import { dirname, join, sep } from 'node:path';
+import { mkdir, rm, symlink } from 'node:fs/promises';
+import { join, sep } from 'node:path';
 import {
   fileGitState,
   openRepo,
@@ -24,6 +24,7 @@ import {
 } from '@symbiote/core';
 import type { OpenFolder } from './editor.js';
 import type { LibraryService } from './library.js';
+import { writeFileWhole } from './file-write.js';
 
 export const CLAUDE_SKILLS = '.claude/skills';
 export const CODEX_SKILLS = '.agents/skills';
@@ -344,10 +345,7 @@ export function skillsService(
   }
 
   async function put(file: string, text: string): Promise<void> {
-    await mkdir(dirname(file), { recursive: true });
-    const temp = join(dirname(file), `.SKILL.md.${process.pid}.tmp`);
-    await writeFile(temp, text);
-    await rename(temp, file);
+    await writeFileWhole(file, text);
   }
 
   async function apply(change: SkillChange): Promise<void> {

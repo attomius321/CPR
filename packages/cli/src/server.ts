@@ -233,6 +233,16 @@ const TYPES: Record<string, string> = {
 /** Largest review or state the viewer may send. */
 const MAX_BODY_BYTES = 1 << 20;
 
+/**
+ * Sent with every answer (fix/security-and-bugs): only pages on this machine may frame one — the
+ * nexus frames each `symbiote view` —, so no other site shows a page under its own and has the
+ * person click in it; and no answer is read as another type than it says.
+ */
+const GUARD_HEADERS = {
+  'content-security-policy': "frame-ancestors 'self' http://127.0.0.1:* http://localhost:*",
+  'x-content-type-options': 'nosniff',
+};
+
 /** Rows of the history the viewer may ask for at once. */
 const MAX_HISTORY_ROWS = 500;
 
@@ -327,6 +337,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const pageErrors = { since: 0, count: 0 };
   const viewerFiles = await readViewer(options.viewerDir);
   const server = createServer((req, res) => {
+    for (const [name, value] of Object.entries(GUARD_HEADERS)) res.setHeader(name, value);
     const started = performance.now();
     let failure: unknown;
     res.once('close', () => requestLine(req, res, performance.now() - started, failure));
@@ -338,6 +349,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!hosts.has(req.headers.host ?? '')) return send(res, 421, 'unknown host');
+    if (fromAnotherSite(req)) return send(res, 403, "forbidden: another site's request");
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname === '/api/logs') return pageError(req, res);
     if (url.pathname === '/api/intro' && options.intro) return introApi(req, res, options.intro);
@@ -561,7 +573,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     let message: unknown;
     try {
       message = JSON.parse(await readBody(req, MAX_BODY_BYTES));
-    } catch {
+    } catch (error) {
+      if (error instanceof BodyTooLarge) return badBody(res, error);
       return json(res, 400, {
         jsonrpc: '2.0',
         id: null,
@@ -920,7 +933,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
   /** Static viewer files, as the server started with them: nothing outside the viewer folder. */
   function serveFile(res: ServerResponse, pathname: string): void {
-    const relative = normalize(decodeURIComponent(pathname)).replace(/^[/\\]+/, '') || 'index.html';
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(pathname);
+    } catch {
+      return send(res, 400, 'not a path');
+    }
+    const relative = normalize(decoded).replace(/^[/\\]+/, '') || 'index.html';
     const path = join(options.viewerDir, relative);
     const body = viewerFiles.get(path);
     if (!body) return send(res, 404, 'not found');
@@ -1018,7 +1037,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       ref = parseRef(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     let review: { info: BranchReviewInfo; pair: Pair };
     try {
@@ -1140,7 +1159,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       try {
         request = parseGitOpen(await readBody(req, MAX_BODY_BYTES));
       } catch (error) {
-        return send(res, 400, (error as Error).message);
+        return badBody(res, error);
       }
       try {
         await page.open(request);
@@ -1159,7 +1178,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       try {
         request = parseGitWrite(name, await readBody(req, MAX_BODY_BYTES));
       } catch (error) {
-        return send(res, 400, (error as Error).message);
+        return badBody(res, error);
       }
       try {
         return json(res, 200, await page.write(request));
@@ -1301,7 +1320,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       target = parseCheckoutTarget(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     if (checkingOut) return json(res, 409, { error: 'a checkout is running' });
     checkingOut = true;
@@ -1329,7 +1348,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       request = parseWorkspaceRequest(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     return startingOne(res, () => workspaces.start(request));
   }
@@ -1348,7 +1367,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
       branch = value.branch;
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     return act(branch);
   }
@@ -1367,7 +1386,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       request = parse(await readBody(req, limit));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     return act(request);
   }
@@ -1559,7 +1578,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       pair = parsePair(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     if (pair.base === pair.head) return send(res, 400, 'pick two different commits');
     for (const sha of [pair.base, pair.head]) {
@@ -1580,7 +1599,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       pair = parsePair(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     if (!repo.diffs.stop(pair)) return send(res, 404, 'not running');
     res.writeHead(204, { 'cache-control': 'no-store' });
@@ -1599,7 +1618,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       review = parseLocalReview(await readBody(req, MAX_BODY_BYTES), site.graph, site.allowed);
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     const { finish } = site;
     if (!finish) return send(res, 404, 'not a branch review');
@@ -1631,7 +1650,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       review = parseReview(await readBody(req, MAX_BODY_BYTES), site.allowed);
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     try {
       return send(res, 200, JSON.stringify(await target.submit(review)), TYPES['.json']);
@@ -1711,7 +1730,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         target = parseOpen(text, site.allowed, new Set(merge.conflicts));
       }
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     const { revisions } = site.graph;
     const sha = target.side === 'base' ? revisions.from : revisions.head.sha;
@@ -1744,7 +1763,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       value = JSON.parse(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     await store.write(name as StateName, value);
     res.writeHead(204, { 'cache-control': 'no-store' });
@@ -1784,6 +1803,35 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       return new Promise<void>((resolve) => server.close(() => resolve()));
     },
   };
+}
+
+/**
+ * A request another site's page made — an image, a script, a frame or a fetch, sent with this
+ * server's own host —, as the browser says (`Sec-Fetch-*`): a GET such as a review's address starts
+ * work (fix/security-and-bugs). A link followed from that site is a page the person opens, and is
+ * served, as is what this machine's pages ask for (the nexus).
+ */
+function fromAnotherSite(req: IncomingMessage): boolean {
+  return (
+    req.headers['sec-fetch-site'] === 'cross-site' &&
+    !(
+      req.headers['sec-fetch-mode'] === 'navigate' && req.headers['sec-fetch-dest'] === 'document'
+    ) &&
+    !fromThisMachine(req.headers.referer)
+  );
+}
+
+/**
+ * Whether a request came from a page on this machine (its `Referer`, which a page cannot set): the
+ * nexus at localhost frames a Symbiote at 127.0.0.1, another site to the browser.
+ */
+function fromThisMachine(referer: string | undefined): boolean {
+  try {
+    const { protocol, hostname } = new URL(referer ?? '');
+    return protocol === 'http:' && (hostname === '127.0.0.1' || hostname === 'localhost');
+  } catch {
+    return false;
+  }
 }
 
 function json(res: ServerResponse, status: number, value: unknown): void {
@@ -1830,16 +1878,35 @@ async function readViewer(dir: string): Promise<Map<string, Buffer>> {
   return files;
 }
 
+/** A request's body over the most it may weigh: answered 413 with that most. */
+class BodyTooLarge extends Error {
+  override name = 'BodyTooLarge';
+}
+
+/** A request's body refused: 413 over its limit, else 400 with what is wrong with it. */
+function badBody(res: ServerResponse, error: unknown): void {
+  send(res, error instanceof BodyTooLarge ? 413 : 400, (error as Error).message);
+}
+
+/** `bytes` in words: `1 MB`, `32 KB`. */
+const weight = (bytes: number) =>
+  bytes >= 2 ** 20 ? `${Math.round(bytes / 2 ** 20)} MB` : `${Math.round(bytes / 1024)} KB`;
+
+/**
+ * A request's body as text; over `limit`, a `BodyTooLarge`, the rest read and dropped: cut off,
+ * the request got no answer (fix/security-and-bugs).
+ */
 function readBody(req: IncomingMessage, limit: number): Promise<string> {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks: Buffer[] = [];
     req.on('data', (chunk: Buffer) => {
       size += chunk.length;
-      if (size > limit) {
-        reject(new Error('review too large'));
-        req.destroy();
-      } else chunks.push(chunk);
+      if (size <= limit) chunks.push(chunk);
+      else if (chunks.length > 0 || size - chunk.length <= limit) {
+        chunks.length = 0;
+        reject(new BodyTooLarge(`a request of at most ${weight(limit)}`));
+      }
     });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);

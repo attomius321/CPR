@@ -8,7 +8,7 @@
 // system prompt and its terminal taking the first; since V52 a model or a level picked on its page
 // is the next conversation's. Scribe (V41, `scribe.ts`) is the same conversation with its own
 // name, tools, gate and prompt (`pageAgent`), no MCP server, and a request to start it.
-import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -48,6 +48,7 @@ import {
   modelProblem,
   modelWordProblem,
 } from './agent-levels.js';
+import { writeFileWhole } from './file-write.js';
 
 /** The name Scout's session and thread are given: how a new one is told from the person's. */
 export const SCOUT_NAME = 'Scout';
@@ -398,10 +399,7 @@ export function pageAgent(
   /** Writes a file of Scout's in `symbiote/`, its `.gitignore` first: the checkout stays clean. */
   async function put(where: ReviewPlace, path: string, text: string): Promise<void> {
     await prepareSymbioteFolder(where, { agents: false });
-    await mkdir(dirname(path), { recursive: true });
-    const temp = `${path}.${process.pid}.tmp`;
-    await writeFile(temp, text);
-    await rename(temp, path);
+    await writeFileWhole(path, text);
   }
 
   /**

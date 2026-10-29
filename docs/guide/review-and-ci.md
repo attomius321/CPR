@@ -150,6 +150,13 @@ It needs a token:
 - GitHub: `GITHUB_TOKEN` or `GH_TOKEN`. If neither is set, Symbiote asks `gh auth token`.
 - GitLab: `GITLAB_TOKEN`.
 
+A token from the environment goes only to the forge it is for: github.com or gitlab.com, the
+server a CI job runs on, or the API address you set. The remote names the host, and a host such as
+`github.com.example.net` must not get your github.com token. For GitHub Enterprise, set
+`GITHUB_API_URL` (`https://<host>/api/v3`) with `GITHUB_TOKEN`, or `GH_HOST` with
+`GH_ENTERPRISE_TOKEN`, or log in with `gh auth login --hostname <host>`. For self-managed GitLab,
+set `GITLAB_API_URL` or `GITLAB_HOST` with `GITLAB_TOKEN`.
+
 Comment on symbols and lines as in a branch review. On **Files**, only added and removed lines
 take a comment: GitHub and GitLab accept comments inside their own diff's hunks only. In the
 **Review** tab, pick **Comment**,
@@ -218,6 +225,10 @@ The action writes the summary to the run's page. Its output `graph` is the path 
 JSON, which you can upload as an artifact. A pull request from a fork gets a read-only token, so
 review it without posting: set `post-findings` to an empty string for such pull requests.
 Symbiote's own [workflow](../../.github/workflows/symbiote.yml) does that.
+
+Symbiote reads `symbiote/config.json` from the checkout, and its `plugins` are code it runs. Use
+`on: pull_request`, as above. Never run the action on `pull_request_target` with the pull
+request's code checked out: that would run a fork's code with your repository's token.
 
 ### GitLab CI
 

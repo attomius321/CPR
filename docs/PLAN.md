@@ -265,3 +265,9 @@ hosted.
 | [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | ready for review | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
 | [Refactor](plan/refactor-readability.md) | The CLI's services and the viewer's pages in modules one can read | ready for review | 344–348 | [journal](journal/refactor-readability.md) |
 | [IN1](plan/in1-one-command-install.md) | Install in one command (`./install.sh`), with no native build: the agents' terminal prebuilt | ready for review | 532–538 | [journal](journal/in1-one-command-install.md) |
+
+### Across the app
+
+| ID | What | Status | Decisions | Journal |
+|---|---|---|---|---|
+| Fix | Security and bugs: saves at once, forge tokens, framing, agents' `--`, Scout's gate, cross-site GETs, 400 and 413 | ready for review | | [journal](journal/fix-security-and-bugs.md) |

@@ -1,6 +1,6 @@
 // A workspace's record on disk (V18): `symbiote/workspaces/<branch>.json`, how it is written and
 // read back, and the refusal every workspace request answers with.
-import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import { dirname, extname, join, relative } from 'node:path';
 import {
   AGENT_KINDS,
@@ -16,6 +16,7 @@ import {
 } from '@symbiote/core';
 import { sortKeys, type ReviewPlace } from './reviews.js';
 import { BRIEF_PARTS } from './workspace-brief.js';
+import { writeFileWhole } from './file-write.js';
 
 /** A workspace on disk: `symbiote/workspaces/<branch>.json` (V18; `symbiote/features/` before V25),
  * one per branch. */
@@ -246,13 +247,10 @@ export const symbioteFolder = (where: ReviewPlace) => dirname(where.dir);
 /** Where the records are: `workspaces/` beside the reviews. */
 export const workspacesDir = (where: ReviewPlace) => join(symbioteFolder(where), 'workspaces');
 
-/** Writes a workspace's record: to a file of its own, then renamed. */
+/** Writes a workspace's record whole (`writeFileWhole`). */
 export async function writeRecord(where: ReviewPlace, workspace: WorkspaceFile): Promise<void> {
   const path = workspacePath(workspacesDir(where), workspace.branch);
-  await mkdir(dirname(path), { recursive: true });
-  const temp = `${path}.${process.pid}.tmp`;
-  await writeFile(temp, serializeWorkspace(workspace));
-  await rename(temp, path);
+  await writeFileWhole(path, serializeWorkspace(workspace));
 }
 
 /** Every workspace's record in `where`, oldest first; a file not its branch's is left out. */

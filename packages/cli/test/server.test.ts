@@ -50,6 +50,34 @@ const graph = JSON.parse(
   ),
 ) as Graph;
 
+/** The status of a GET to `url` with these headers, as a browser sends them (`sec-fetch-*`). */
+function statusOf(url: URL, headers: Record<string, string>): Promise<number | undefined> {
+  return new Promise((resolve, reject) => {
+    const req = request(url, { headers });
+    req.on('response', (res) => {
+      res.resume();
+      resolve(res.statusCode);
+    });
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+/** What a browser says of a request another site's page made: an image, a frame, a link. */
+const FROM_ANOTHER_SITE = {
+  image: { 'sec-fetch-site': 'cross-site', 'sec-fetch-mode': 'no-cors', 'sec-fetch-dest': 'image' },
+  frame: {
+    'sec-fetch-site': 'cross-site',
+    'sec-fetch-mode': 'navigate',
+    'sec-fetch-dest': 'iframe',
+  },
+  link: {
+    'sec-fetch-site': 'cross-site',
+    'sec-fetch-mode': 'navigate',
+    'sec-fetch-dest': 'document',
+  },
+};
+
 describe('startViewServer', () => {
   const viewer = tempDir();
   let server: ViewServer;
@@ -101,6 +129,11 @@ describe('startViewServer', () => {
     expect((await get('/%2e%2e/%2e%2e/package.json')).status).toBe(404);
   });
 
+  // A broken escape threw URIError: a 500 (fix/security-and-bugs).
+  it('answers a path whose escapes are broken with 400', async () => {
+    expect(await get('/%E0%A4%A')).toMatchObject({ status: 400, body: 'not a path' });
+  });
+
   it('serves the graph', async () => {
     const { status, body } = await get('/api/graph');
     expect(status).toBe(200);
@@ -120,6 +153,41 @@ describe('startViewServer', () => {
       req.end();
     });
     expect(status).toBe(421);
+  });
+
+  // Another site may not frame a page of Symbiote's and have the person click in it
+  // (fix/security-and-bugs); the nexus, on this machine, frames them.
+  it('lets only pages on this machine frame it, and no answer be sniffed', async () => {
+    for (const path of ['/', '/api/graph', '/missing.js', '/api/nothing']) {
+      const response = await fetch(new URL(path, server.url));
+      expect(response.headers.get('content-security-policy'), path).toBe(
+        "frame-ancestors 'self' http://127.0.0.1:* http://localhost:*",
+      );
+      expect(response.headers.get('x-content-type-options'), path).toBe('nosniff');
+    }
+  });
+
+  // An image or a script of another site's page reaches the server with its own host, and a GET
+  // can start work (fix/security-and-bugs): only a link followed from that site is served.
+  it("refuses what another site's page asks for, but serves a link followed from it", async () => {
+    const at = (path: string) => new URL(path, server.url);
+    expect(await statusOf(at('/api/graph'), FROM_ANOTHER_SITE.image)).toBe(403);
+    expect(await statusOf(at('/'), FROM_ANOTHER_SITE.frame)).toBe(403);
+    expect(await statusOf(at('/'), FROM_ANOTHER_SITE.link)).toBe(200);
+    // A page on this machine at another name (the nexus at localhost) is another site too.
+    for (const referer of ['http://localhost:4100/', 'http://127.0.0.1:4100/x']) {
+      expect(await statusOf(at('/'), { ...FROM_ANOTHER_SITE.frame, referer }), referer).toBe(200);
+    }
+    const remote = { ...FROM_ANOTHER_SITE.frame, referer: 'http://evil.example/' };
+    expect(await statusOf(at('/'), remote)).toBe(403);
+    for (const site of ['same-origin', 'same-site', 'none']) {
+      const headers = {
+        'sec-fetch-site': site,
+        'sec-fetch-mode': 'cors',
+        'sec-fetch-dest': 'empty',
+      };
+      expect(await statusOf(at('/api/graph'), headers), site).toBe(200);
+    }
   });
 
   it('says what it can do: sources, but no reviews outside symbiote pr', async () => {
@@ -413,6 +481,16 @@ describe('/api/state', () => {
     expect(await read('review')).toEqual({ 'src/math.ts#add': 'x|y' });
     expect(await store.read('review')).toEqual({ 'src/math.ts#add': 'x|y' });
     expect(JSON.parse((await get('/api/capabilities')).body)).toMatchObject({ state: true });
+  });
+
+  // Over the limit, the request was cut and the page got no answer (fix/security-and-bugs).
+  it('answers a body over its limit with 413, saving nothing', async () => {
+    const big = { reviewed: 'x'.repeat(2 * 2 ** 20) };
+    const response = await put('drafts', big);
+    expect(response.status).toBe(413);
+    expect(await response.text()).toBe('a request of at most 1 MB');
+    expect(await read('drafts')).toBeNull();
+    expect((await get('/api/capabilities')).status).toBe(200);
   });
 
   it('refuses unknown names and writes other sites could send', async () => {
@@ -1279,6 +1357,13 @@ describe('symbiote view: branch reviews', () => {
     });
     // The same pair picked in compare mode keeps its own state.
     expect(JSON.parse((await get(`/diff/${A}..${B}/api/state/review`)).body)).toBe('pair state');
+  });
+
+  it("starts no analysis for another site's page: a review's address as an image", async () => {
+    const before = resolved.length;
+    const status = await statusOf(new URL('/review/topic/', server.url), FROM_ANOTHER_SITE.image);
+    expect(status).toBe(403);
+    expect(resolved.slice(before)).toEqual([]);
   });
 
   it('resolves a review opened anew, and again when it is asked for again', async () => {

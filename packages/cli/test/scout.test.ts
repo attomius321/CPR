@@ -240,6 +240,7 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
           '/repo/symbiote/scout-settings.json',
           '--model',
           'sonnet',
+          '--',
           'Where is it?',
         ],
         cwd: '/repo',
@@ -257,7 +258,7 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
     const request = { cwd: '/repo', name: 'Scout', prompt: 'Q', settings: '/s', ...READ_ONLY };
     await claude.startPageAgent({ ...request, effort: 'low' });
     await claude.startPageAgent(request);
-    expect(calls[0]?.slice(-3)).toEqual(['--effort', 'low', 'Q']);
+    expect(calls[0]?.slice(-4)).toEqual(['--effort', 'low', '--', 'Q']);
     expect(calls[1]).not.toContain('--effort');
   });
 
@@ -317,7 +318,7 @@ describe('claudeCode().startPageAgent (V35, decision 236)', () => {
       'You are Scout.',
     ]);
     await claude.startPageAgent({ ...request, instructions: 'You are Scout.', prompt: 'Q' });
-    expect(calls[1]?.slice(-3)).toEqual(['--append-system-prompt', 'You are Scout.', 'Q']);
+    expect(calls[1]?.slice(-4)).toEqual(['--append-system-prompt', 'You are Scout.', '--', 'Q']);
   });
 
   it("says Claude Code's words when it does not start", async () => {

@@ -1,5 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { GitHubForge, GitLabForge, type ChangeRequest, type ReviewComment } from '../src/index.js';
+import {
+  GitHubForge,
+  GitLabForge,
+  githubToken,
+  gitlabHeaders,
+  type ChangeRequest,
+  type ReviewComment,
+} from '../src/index.js';
 import { mockApi } from './mock-api.js';
 
 const BASE = 'a'.repeat(40);
@@ -351,5 +358,66 @@ describe('GitLab CI', () => {
       'Commenting on GitLab needs GITLAB_TOKEN (a personal or project access token with api scope); CI_JOB_TOKEN cannot comment on merge requests',
     );
     await expect(forge.commentBodies(request)).rejects.toThrow('Reading comments on GitLab needs');
+  });
+});
+
+// A token from the environment goes only to the forge it is for (fix/security-and-bugs): the
+// remote's host is the repository's to name, and `github.com.evil.example` says "github".
+describe('tokens from the environment', () => {
+  const env = {
+    GITHUB_TOKEN: 'ghp_env',
+    GH_TOKEN: 'gh_env',
+    GH_ENTERPRISE_TOKEN: 'ghe_env',
+    GITLAB_TOKEN: 'glpat_env',
+    CI_JOB_TOKEN: 'job',
+  };
+  const asked: string[] = [];
+  const stored = (host: string) => {
+    asked.push(host);
+    return host === 'github.acme.dev' ? 'gho_stored' : undefined;
+  };
+
+  it("sends GitHub's to github.com, else only gh's own token for the host", () => {
+    expect(githubToken('github.com', env, stored)).toBe('ghp_env');
+    expect(githubToken('github.com', { GH_TOKEN: 'gh_env' }, stored)).toBe('gh_env');
+    expect(githubToken('github.com.evil.example', env, stored)).toBeUndefined();
+    expect(githubToken('github.acme.dev', env, stored)).toBe('gho_stored');
+    expect(asked).toEqual(['github.com.evil.example', 'github.acme.dev']);
+  });
+
+  it('sends it to GitHub Enterprise where the environment names that host', () => {
+    // GitHub Actions on GitHub Enterprise.
+    const actions = { GITHUB_TOKEN: 'ghs_job', GITHUB_SERVER_URL: 'https://github.acme.dev' };
+    expect(githubToken('github.acme.dev', actions, stored)).toBe('ghs_job');
+    expect(githubToken('github.evil.example', actions, stored)).toBeUndefined();
+    // An API address set: the token goes there, whatever the remote says.
+    const api = { GITHUB_TOKEN: 'ghp_env', GITHUB_API_URL: 'https://github.acme.dev/api/v3' };
+    expect(githubToken('github.evil.example', api, stored)).toBe('ghp_env');
+    // gh's own way: GH_ENTERPRISE_TOKEN with GH_HOST.
+    const gh = { GH_ENTERPRISE_TOKEN: 'ghe_env', GH_HOST: 'github.acme.dev' };
+    expect(githubToken('github.acme.dev', gh, stored)).toBe('ghe_env');
+    expect(githubToken('github.evil.example', gh, stored)).toBeUndefined();
+  });
+
+  it("sends GitLab's to gitlab.com, CI's own server, or the host named", () => {
+    expect(gitlabHeaders('gitlab.com', env)).toEqual({ 'private-token': 'glpat_env' });
+    expect(gitlabHeaders('gitlab.attacker.io', env)).toEqual({});
+    const ci = { CI_SERVER_HOST: 'gitlab.example.com', CI_JOB_TOKEN: 'job' };
+    expect(gitlabHeaders('gitlab.example.com', ci)).toEqual({ 'job-token': 'job' });
+    expect(gitlabHeaders('gitlab.example.com', { ...ci, GITLAB_TOKEN: 'glpat_env' })).toEqual({
+      'private-token': 'glpat_env',
+    });
+    expect(gitlabHeaders('gitlab.attacker.io', { ...ci, GITLAB_TOKEN: 'glpat_env' })).toEqual({});
+    expect(
+      gitlabHeaders('gitlab.attacker.io', {
+        GITLAB_TOKEN: 'glpat_env',
+        GITLAB_API_URL: 'https://gitlab.example.com/api/v4',
+      }),
+    ).toEqual({ 'private-token': 'glpat_env' });
+    for (const host of ['gitlab.example.com', 'https://gitlab.example.com']) {
+      expect(
+        gitlabHeaders('gitlab.example.com', { GITLAB_TOKEN: 'glpat_env', GITLAB_HOST: host }),
+      ).toEqual({ 'private-token': 'glpat_env' });
+    }
   });
 });

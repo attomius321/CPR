@@ -3755,6 +3755,38 @@ describe('workspaces', () => {
 });
 
 describe('claudeCode', () => {
+  // A reply such as "- also fix the tests" was read as an unknown option: the session woke with
+  // no message and Symbiote said it was sent; "--version" ran as the flag (fix/security-and-bugs).
+  it("gives a prompt or a message after --, whatever it starts with: never one of Claude Code's options", async () => {
+    const calls: string[][] = [];
+    const run: Run = (_command, args) => {
+      calls.push(args);
+      return Promise.resolve({ code: 0, stdout: '', stderr: '' });
+    };
+    const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+    await claude.start({
+      cwd: '/w',
+      name: 'feature/x',
+      prompt: '- plan first',
+      permissionMode: 'default',
+      addDir: '/repo/symbiote',
+    });
+    await claude.startPageAgent({
+      cwd: '/repo',
+      name: 'Scout',
+      prompt: '--settings={}',
+      settings: '/s.json',
+      tools: ['Read'],
+      permissionMode: 'dontAsk',
+    });
+    await claude.resume({ sessionId: 'session-1', cwd: '/w', text: '- also fix the tests' });
+    expect(calls.map((args) => args.slice(-2))).toEqual([
+      ['--', '- plan first'],
+      ['--', '--settings={}'],
+      ['--', '- also fix the tests'],
+    ]);
+  });
+
   it('starts with --settings, resumes with no other flag, and removes a session', async () => {
     const calls: { args: string[]; cwd: string }[] = [];
     const run: Run = (_command, args, { cwd }) => {
@@ -3791,11 +3823,12 @@ describe('claudeCode', () => {
           '/repo/symbiote',
           '--settings',
           '/repo/symbiote/claude-settings.json',
+          '--',
           'Do it',
         ],
         cwd: '/w',
       },
-      { args: ['--bg', '--resume', 'session-1', 'OK'], cwd: '/w' },
+      { args: ['--bg', '--resume', 'session-1', '--', 'OK'], cwd: '/w' },
       { args: ['rm', 's1'], cwd: '/repo' },
       {
         args: [
@@ -3808,6 +3841,7 @@ describe('claudeCode', () => {
           'auto',
           '--effort',
           'high',
+          '--',
           'Do it',
         ],
         cwd: '/w',
@@ -3842,11 +3876,11 @@ describe('claudeCode', () => {
     const project = claudeCode('/usr/bin/claude', { run, cwd: '/repo', model: 'opus' });
     await project.start(request);
     await project.start({ ...request, model: 'sonnet' });
-    expect(calls.map((args) => args.slice(-3))).toEqual([
-      ['--model', 'sonnet', 'Do it'],
-      ['--model', 'claude-opus-4-6', 'Q'],
-      ['--model', 'opus', 'Do it'],
-      ['--model', 'sonnet', 'Do it'],
+    expect(calls.map((args) => args.slice(-4))).toEqual([
+      ['--model', 'sonnet', '--', 'Do it'],
+      ['--model', 'claude-opus-4-6', '--', 'Q'],
+      ['--model', 'opus', '--', 'Do it'],
+      ['--model', 'sonnet', '--', 'Do it'],
     ]);
     expect(calls.every((args) => args.filter((a) => a === '--model').length === 1)).toBe(true);
   });

@@ -54,6 +54,15 @@ const WRITES = new Set(['/api/symbiotes', '/api/symbiotes/stop']);
 /** The most a write's body may hold. */
 const BODY_LIMIT = 64 * 1024;
 
+/**
+ * Sent with every answer, as the viewer's server sends them (fix/security-and-bugs): only pages on
+ * this machine may frame the page, and no answer is read as another type than it says.
+ */
+const GUARD_HEADERS = {
+  'content-security-policy': "frame-ancestors 'self' http://127.0.0.1:* http://localhost:*",
+  'x-content-type-options': 'nosniff',
+};
+
 /** A folder the system would not list, in words. */
 const FOLDER_ERRORS: Record<string, [number, string]> = {
   ENOENT: [404, 'No such folder'],
@@ -75,6 +84,7 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
 
   async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
     if (!hosts.has(req.headers.host ?? '')) return send(res, 421, 'unknown host');
+    if (fromAnotherSite(req)) return send(res, 403, "forbidden: another site's request");
     const url = new URL(req.url ?? '/', 'http://localhost');
     const path = url.pathname;
     if (req.method === 'POST' && WRITES.has(path)) return write(req, res, path);
@@ -150,6 +160,7 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
   }
 
   const server = createServer((req, res) => {
+    for (const [name, value] of Object.entries(GUARD_HEADERS)) res.setHeader(name, value);
     handle(req, res).catch((error: unknown) => {
       options.log?.error({ err: error, path: req.url }, 'request failed');
       send(res, 500, String(error));
@@ -203,6 +214,34 @@ function assetNames(viewerDir: string): string[] {
     return readdirSync(join(viewerDir, 'assets'));
   } catch {
     return [];
+  }
+}
+
+/**
+ * A request another site's page made (an image, a script, a frame, a fetch), as the browser says
+ * (`Sec-Fetch-*`), as the viewer's server refuses it; a link followed from that site is served, as
+ * is what this machine's pages ask for.
+ */
+function fromAnotherSite(req: IncomingMessage): boolean {
+  return (
+    req.headers['sec-fetch-site'] === 'cross-site' &&
+    !(
+      req.headers['sec-fetch-mode'] === 'navigate' && req.headers['sec-fetch-dest'] === 'document'
+    ) &&
+    !fromThisMachine(req.headers.referer)
+  );
+}
+
+/**
+ * Whether a request came from a page on this machine (its `Referer`, which a page cannot set): the
+ * nexus at localhost frames a Symbiote at 127.0.0.1, another site to the browser.
+ */
+function fromThisMachine(referer: string | undefined): boolean {
+  try {
+    const { protocol, hostname } = new URL(referer ?? '');
+    return protocol === 'http:' && (hostname === '127.0.0.1' || hostname === 'localhost');
+  } catch {
+    return false;
   }
 }
 

@@ -5,11 +5,12 @@
 // session lives on. Node's modules only, like the hooks: it starts with every agent session.
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { mkdir, rename, rm, writeFile } from 'node:fs/promises';
+import { rm } from 'node:fs/promises';
 import { request, type ClientRequest } from 'node:http';
-import { dirname, join } from 'node:path';
+import { join } from 'node:path';
 import { createInterface } from 'node:readline';
 import type { Readable, Writable } from 'node:stream';
+import { writeFileWhole } from './file-write.js';
 
 /** Where a `symbiote view` serves a repository, for the bridge: `<cache>/views/<hash>.json`. */
 export interface ViewRecord {
@@ -28,10 +29,7 @@ export function viewFile(cacheDir: string, commonDir: string): string {
 
 /** Writes the record whole (a bridge may read it at any time). */
 export async function writeViewRecord(path: string, record: ViewRecord): Promise<void> {
-  await mkdir(dirname(path), { recursive: true });
-  const temp = `${path}.${process.pid}.tmp`;
-  await writeFile(temp, `${JSON.stringify(record, null, 2)}\n`);
-  await rename(temp, path);
+  await writeFileWhole(path, `${JSON.stringify(record, null, 2)}\n`);
 }
 
 /** The record, or null when there is none or it is not one. */
