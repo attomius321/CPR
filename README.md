@@ -280,9 +280,9 @@ last review is left to look at.
 
 ### Merge
 
-After you approve a branch, **Merge into** appears in the **Review** tab and on the workspace's
-page. The target is the branch the workspace is reviewed against: the one it started from, unless
-you picked another in **since**, or pick another here. Symbiote then:
+After you approve a branch, **Merge into** appears in the **Review** tab, under **Merge**, and on
+the workspace's page. The target is the branch the workspace is reviewed against: the one it
+started from, unless you picked another in **since**, or pick another here. Symbiote then:
 
 1. merges the commit you approved (not any later one) in a worktree of its own, so neither your
    checkout nor the agent's worktree is used;

@@ -1,4 +1,36 @@
-/* The review tab (ReviewTab.tsx): the drafts, the review to post, whether the branch merges. */
+/* The review tab (ReviewTab.tsx): the drafts, the review to post, whether the branch merges. Since
+   V76 three sections — Comments, Your review, Merge — each with its head, `--card-pad` in and a
+   hairline between them; V72's form rhythm inside. */
+
+.list.review-tab {
+  padding: 0;
+}
+
+.review-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: var(--card-pad);
+}
+
+.review-section + .review-section {
+  border-top: 1px solid var(--line);
+}
+
+/* A section's head: 15 px, 600, a count after it as the tabs' (V61's section header). */
+.review-head {
+  display: flex;
+  align-items: center;
+  margin: 0 0 4px;
+  font-size: var(--size-body);
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.review-empty {
+  margin: 0;
+  font-size: var(--size-small);
+}
 
 .draft,
 .draft-row {
@@ -10,7 +42,7 @@
 }
 
 .draft-row {
-  margin: 0 12px 8px;
+  margin: 0;
 }
 
 .draft-where {
@@ -28,18 +60,48 @@
   word-break: break-word;
 }
 
+/* Your review: the summary, the verdict, Finish review, then what it recorded. */
 .submit-review {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--line);
+  gap: var(--field-gap);
 }
 
-/* Whether the branch merges cleanly into the default branch (V17). */
-.merge-check {
+/* A field's label and the verdict's legend: 14 px, 500, `--field-label-gap` above the control. */
+.review-field {
+  display: grid;
+  gap: var(--field-label-gap);
+}
+
+.review-field label,
+.events legend {
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+/* Whether the branch merges cleanly into the default branch (V17): its state's icon, then the
+   words (V76). */
+.merge-check,
+.merge-checking {
   margin: 0;
+}
+
+.merge-check-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+}
+
+.merge-check-line .icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.merge-check-clean .icon {
+  color: var(--added);
 }
 
 .merge-check-head {
@@ -102,16 +164,24 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
   font-size: var(--size-body);
 }
 
+/* A fieldset's legend takes no part in its flex gap. */
+.events legend {
+  margin-bottom: var(--field-label-gap);
+  padding: 0;
+}
+
 .events label {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
+  min-height: 24px;
   cursor: pointer;
 }
 
@@ -126,8 +196,57 @@
   flex: 1;
 }
 
-.posted {
+/* What finishing or posting did (V76): a box in its state's tint, as a queued merge's line
+   (`p.merge-control`); an approval or a posted review `--added`, comments or changes requested
+   neutral, a failure `--error`. Its buttons on one row, wrapping to fill it. */
+.review-result {
+  --result-tone: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   margin: 0;
-  color: var(--added);
-  font-size: var(--size-body);
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--result-tone) 25%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--result-tone) 10%, transparent);
+  font-size: var(--size-small);
+}
+
+.review-result p {
+  margin: 0;
+}
+
+/* "Review posted. Open on GitHub": one line of words, the link in the text's colour (V37). */
+p.review-result {
+  display: block;
+}
+
+.review-result a {
+  color: var(--text);
+  text-underline-offset: 3px;
+}
+
+.review-result a:hover {
+  color: var(--accent);
+}
+
+.review-result-ok {
+  --result-tone: var(--added);
+}
+
+.review-result-failed {
+  --result-tone: var(--error);
+}
+
+.review-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.review-result-actions .button {
+  flex: 1 1 auto;
+  min-height: 28px;
+  padding: 0 10px;
 }

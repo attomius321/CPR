@@ -179,3 +179,37 @@ test('under symbiote pr, only changed lines take a comment, posted on the forge'
     pr.stop();
   }
 });
+
+test("the Files and Graph switch stays put between the two pages, at the head's end (V76c)", async ({
+  page,
+}) => {
+  const pageSwitch = page.locator('.page-switch');
+  const head = page.locator('.bar');
+  const at = async () => {
+    const [own, all] = [(await pageSwitch.boundingBox())!, (await head.boundingBox())!];
+    const pad = await head.evaluate((el) => parseFloat(getComputedStyle(el).paddingRight));
+    return {
+      x: Math.round(own.x),
+      y: Math.round(own.y),
+      right: Math.round(own.x + own.width),
+      end: Math.round(all.x + all.width - pad),
+    };
+  };
+  await page.goto(`${symbiote.url}review/agent/`);
+  // At 700 the Graph page's actions wrap under the title, the Files page's do not (under 640 the
+  // diff's page is wider than the window).
+  for (const width of [1440, 820, 700]) {
+    await page.setViewportSize({ width, height: 900 });
+    await pageSwitch.getByRole('tab', { name: 'Files' }).click();
+    await expect(pageSwitch.locator('.scope.active')).toHaveText('Files');
+    const files = await at();
+    // The head's end: nothing a page adds comes after it.
+    expect(files.right).toBe(files.end);
+    // The Graph page adds its toggles to the head (they moved the switch 293 px left at 1440).
+    await pageSwitch.getByRole('tab', { name: 'Graph' }).click();
+    await expect(pageSwitch.locator('.scope.active')).toHaveText('Graph');
+    await expect(page.getByLabel('Focus')).toBeVisible();
+    const graph = await at();
+    expect({ width, x: graph.x, y: graph.y }).toEqual({ width, x: files.x, y: files.y });
+  }
+});

@@ -469,6 +469,12 @@
   font-size: var(--size-small);
 }
 
+/* A branch's name past 240 px is cut (V76): as wide as its longest branch, the dropdown took the
+   workspace's state down to "Approved: as…". The button's tip names the whole branch. */
+.workspace-top .merge-control-target {
+  max-width: 240px;
+}
+
 /* The strip under the heading (V48): a waiting agent's question and its answer, or a failure
    and where to read it, in its state's tint; a card of its own since V61, its edge in the tone. */
 .workspace-strip {

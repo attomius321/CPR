@@ -127,7 +127,8 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   (`grep -rn '^\.name' src --include='*.css'`; the sidebar's review bar is `.progress`). Shared
   controls are in `src/ui/controls.css`.
 - The page frame (V72): `src/ui/PageHead.tsx` is every page's head (its icon, title, the line
-  under it, its actions) and `src/ui/page.css` its rules and a card's head (`.card-head`, 48 px).
+  under it, its actions; an `end` after them that stays on the title's line at every width, V76c: a
+  diff's Files and Graph) and `src/ui/page.css` its rules and a card's head (`.card-head`, 48 px).
   A page's margins, gutters, card insets and form rhythm come from the layout tokens on `:root`
   (`--page-pad`, `--page-gap`, `--card-pad`, `--card-head`, `--field-label-gap`, `--field-gap`),
   not from px values of its own; a `Resizer` between two cards takes `gutter`. `e2e/page-frame.spec.ts` measures every page: a new

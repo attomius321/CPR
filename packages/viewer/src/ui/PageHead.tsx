@@ -12,6 +12,7 @@ export function PageHead({
   beside,
   line,
   actions,
+  end,
   className,
 }: {
   /** 28 px, drawn in the accent; Symbiote's S on Start a workspace. */
@@ -25,11 +26,16 @@ export function PageHead({
   line?: ReactNode;
   /** At the head's right; under the title where the main area is too narrow for them. */
   actions?: ReactNode;
+  /**
+   * After the actions, at the right of the title's line at every width (V76c): what must stay
+   * put while the actions before it change, page to page.
+   */
+  end?: ReactNode;
   /** The page's own class: its rules and its tests find the head by it. */
   className?: string;
 }) {
-  return (
-    <header className={className ? `page-head ${className}` : 'page-head'}>
+  const parts = (
+    <>
       <span className="page-icon" aria-hidden="true">
         {icon}
       </span>
@@ -41,6 +47,19 @@ export function PageHead({
         {line !== undefined && <div className="page-line">{line}</div>}
       </div>
       {actions && <div className="page-actions">{actions}</div>}
+    </>
+  );
+  const classes = ['page-head', end !== undefined && 'page-head-end', className].filter(Boolean);
+  return (
+    <header className={classes.join(' ')}>
+      {end === undefined ? (
+        parts
+      ) : (
+        <>
+          <div className="page-head-main">{parts}</div>
+          <div className="page-end">{end}</div>
+        </>
+      )}
     </header>
   );
 }
