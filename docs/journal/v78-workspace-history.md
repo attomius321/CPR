@@ -53,7 +53,7 @@ Clean up records `tip` and `merged`. Decisions 569–575 (planned as V77, 561–
 **Verification**: tests first, red for the right reason (the module, the route, the record's
 fields missing; then a fixture's wrong base). CLI 1,006 unit tests, viewer 626; e2e
 `workspace-history.spec.ts` (2), `page-frame.spec.ts` with History, `shell.spec.ts`,
-`title-bar.spec.ts` and `tooltips.spec.ts` with History among the pages; full suite: E2E_RESULT.
+`title-bar.spec.ts` and `tooltips.spec.ts` with History among the pages; full suite: the viewer's 340 specs passed but one, `shell.spec.ts`'s count of the sidenav's pages (4), corrected during the run; after `main` was merged in, the six specs History touches (77 tests) and nexus's 15 pass.
 The person's 97 finished workspaces on a clone: 83 merged, 13 kept, 1 not merged, 96 with
 commits; the list 47–53 ms cold, 32–38 ms warm; screenshots at 1440 and 760 px, dark and light.
 
