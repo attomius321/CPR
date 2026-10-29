@@ -339,8 +339,10 @@ The sidenav also opens these pages. Each has a key.
   are at the top, with **Find a commit** (`f`) to search the messages, authors and SHAs.
   Symbiote never forces a push and never discards your changes: when git refuses, it says why.
 - **Scout** (`a`): an agent you can ask about the repository: where something is decided, why it
-  works this way, or what waits for you. Scout can also act on your workspaces for you: start one,
-  answer an agent, review or merge a branch. Scout never edits files. It can send a message to an
+  works this way, or what waits for you. It reads the checkout and your workspaces' worktrees, so
+  it can answer about an agent's work before it is committed. Scout can also act on your
+  workspaces for you: start one, answer an agent, review or merge a branch. Scout never edits
+  files. It can send a message to an
   agent without asking you, but a start, a verdict, a merge and a clean-up each wait until you
   click **Confirm**.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of

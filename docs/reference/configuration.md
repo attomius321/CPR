@@ -111,6 +111,14 @@ Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, S
 files, Scribe writes only in `.claude/skills/` and the skill library, and Scout's starts, verdicts, merges and clean-ups
 still wait for your **Confirm**.
 
+What Scout reads is fixed the same way. With Claude Code, Scout reads the checkout and the
+worktree of each open workspace, and nothing else. A workspace is open until it is cleaned up,
+and one started during a conversation is readable at once. In a worktree, Scout runs git's read
+commands with `-C <worktree>`. There it sees uncommitted work with `git --no-optional-locks
+status` and `git diff-index -p HEAD`. It cannot run `git diff` there, because `git diff` rewrites
+the worktree's index while the workspace's agent uses it. With Codex, Scout runs in Codex's
+read-only sandbox, which reads any folder and writes none.
+
 ## The skill library
 
 The skill library is one folder of skills kept outside the repository: each skill is a folder

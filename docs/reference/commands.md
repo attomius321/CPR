@@ -147,7 +147,7 @@ agent finds on your `PATH`. If `symbiote` is only an alias, write the full comma
 | Tools | What they do | Asks you |
 |---|---|---|
 | `overview` | What needs you: workspaces that wait or are ready, merges that wait | |
-| `workspaces`, `workspace`, `thread` | The workspaces; one workspace with its brief, commits and files; its agent's thread | |
+| `workspaces`, `workspace`, `thread` | The workspaces; one workspace with its brief, its worktree's folder, commits and files; its agent's thread | |
 | `start_options`, `start_workspace` | What a start takes here; a start | Yes, to start |
 | `reply`, `stop_agent`, `restart_agent` | Send a message to a workspace's agent; stop it; start it again | Yes, to start again |
 | `clean_workspace` | Clean a workspace up | Yes |
