@@ -2,6 +2,7 @@
 // worktree, starting the agent); meanwhile the sidenav shows its card, starting. Held from the
 // request until the list has the workspace, or the start failed.
 import { useSyncExternalStore } from 'react';
+import type { WorkKind } from '@symbiote/core';
 
 export interface StartUnderWay {
   branch: string;
@@ -9,6 +10,8 @@ export interface StartUnderWay {
   name: string;
   /** The agent it starts ("Claude Code"); absent when none was found. */
   agent?: string;
+  /** Its kind, on its card as on the card it becomes (V79). */
+  kind?: WorkKind;
 }
 
 let starts: readonly StartUnderWay[] = [];

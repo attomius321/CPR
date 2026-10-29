@@ -1,25 +1,37 @@
 // What a workspace's heading says, in its panel and on its card in the sidenav: its state as a dot,
 // its kind, its branch and review mark, a line of what is next and its facts, and how long its
 // state has lasted (V48).
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type { BranchMerge, WorkspaceSummary } from '@symbiote/core';
 import { reviewTip, type ReviewMark } from '../history/branchReviews.js';
 import { relativeDate } from '../history/commits.js';
 import { GIT_PAGE } from '../shell/pages.js';
-import { ClaudeMark, CodexMark, HermesMark } from '../ui/icons.js';
+import {
+  AlertIcon,
+  ClaudeMark,
+  CodexMark,
+  CommitIcon,
+  HermesMark,
+  MergeIcon,
+  PencilIcon,
+} from '../ui/icons.js';
 import { longAge, useNow } from './clock.js';
-import { AGENT_NAMES, shortAge, type WorkspaceRow } from './workspaces.js';
+import {
+  AGENT_NAMES,
+  shortAge,
+  workspaceFacts,
+  type WorkspaceFact,
+  type WorkspaceRow,
+} from './workspaces.js';
 import { tip } from '../ui/tip.js';
-
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
  * Whether a workspace with commits merges into the branch it is reviewed against (V17's check,
- * V65), read once per tip and pick.
+ * V65), read once per tip and pick; not at all where it is not shown (`read` false).
  */
-function useMergeCheck(workspace: WorkspaceSummary): BranchMerge | null {
+function useMergeCheck(workspace: WorkspaceSummary, read = true): BranchMerge | null {
   const [merge, setMerge] = useState<BranchMerge | null>(null);
-  const wanted = workspace.ahead > 0 && !workspace.merged && workspace.tip !== null;
+  const wanted = read && workspace.ahead > 0 && !workspace.merged && workspace.tip !== null;
   useEffect(() => {
     if (!wanted) return;
     let live = true;
@@ -34,32 +46,23 @@ function useMergeCheck(workspace: WorkspaceSummary): BranchMerge | null {
   return wanted ? merge : null;
 }
 
-function mergeText(merge: BranchMerge | null): string | null {
-  if (!merge) return null;
-  if ('clean' in merge) return `Merges cleanly into ${merge.into}`;
-  if ('conflicts' in merge) {
-    return `Conflicts with ${merge.into} in ${plural(merge.conflicts.length, 'file')}`;
-  }
-  return null;
-}
-
 /**
  * What is next for a workspace — what its agent runs while it works (V48f), after the agent's mark
- * (V53) — then its facts: commits, files not committed, the merge check.
+ * (V53) — then its facts in words: commits, files not committed, the merge check. On a card the
+ * facts are a row of their own (`facts` false, `CardFacts`, V79).
  */
-export function WorkspaceState({ row: { workspace, next } }: { row: WorkspaceRow }) {
-  const merge = useMergeCheck(workspace);
+export function WorkspaceState({
+  row: { workspace, next },
+  facts: withFacts = true,
+}: {
+  row: WorkspaceRow;
+  facts?: boolean;
+}) {
+  const merge = useMergeCheck(workspace, withFacts);
   const said = next.doing ?? next.text;
   // Only while it works is the line the agent's action; the rest is Symbiote's to say.
   const agent = next.group === 'working' ? (workspace.agent.kind ?? 'claude') : null;
-  const facts = [
-    workspace.ahead > 0 ? plural(workspace.ahead, 'commit') : 'no commits yet',
-    workspace.worktree.changed
-      ? `${plural(workspace.worktree.changed, 'file')} not committed yet`
-      : null,
-    workspace.worktree.exists ? null : 'its worktree is gone',
-    mergeText(merge),
-  ].filter((fact): fact is string => fact !== null);
+  const facts = withFacts ? workspaceFacts(workspace, merge).map((fact) => fact.words) : [];
   const text = [said, ...facts].join(' · ');
   return (
     <p className="workspace-state" {...tip(agent ? `${AGENT_NAMES[agent]}\n${text}` : text)}>
@@ -76,6 +79,38 @@ export function WorkspaceState({ row: { workspace, next } }: { row: WorkspaceRow
       ))}
     </p>
   );
+}
+
+const FACT_ICONS: Record<WorkspaceFact['kind'], () => ReactNode> = {
+  commits: CommitIcon,
+  changed: PencilIcon,
+  gone: AlertIcon,
+  clean: MergeIcon,
+  conflicts: MergeIcon,
+};
+
+/**
+ * A card's facts (V79): each an icon and a number or a word, named by its words (a capital first)
+ * for screen readers and in its tip; the merge check and a worktree gone in their state's colour.
+ */
+export function CardFacts({ workspace }: { workspace: WorkspaceSummary }) {
+  const merge = useMergeCheck(workspace);
+  return workspaceFacts(workspace, merge).map(({ kind, shown, words }) => {
+    const Icon = FACT_ICONS[kind];
+    const named = words.charAt(0).toUpperCase() + words.slice(1);
+    return (
+      <span
+        key={kind}
+        className={`card-fact fact-${kind}`}
+        role="img"
+        aria-label={named}
+        {...tip(named)}
+      >
+        <Icon />
+        {shown}
+      </span>
+    );
+  });
 }
 
 /** A workspace's kind (V24c), in a chip for every kind (V53); none recorded before V24. */

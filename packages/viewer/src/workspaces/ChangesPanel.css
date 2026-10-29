@@ -18,7 +18,8 @@
   font-size: var(--size-small);
 }
 
-/* From 1,100 px since V61 (1,200 before): the sidenav's 264 px left 1,176 at 1440. */
+/* From 1,100 px since V61 (1,200 before): the sidenav's 264 px left 1,176 at 1440, its 300 (V79)
+   1,140. */
 @container workspace (max-width: 1099px) {
   .changes,
   .changes-toggle,

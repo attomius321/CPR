@@ -90,13 +90,14 @@ test("lists the branch's commits and files and what is not committed; a file ope
   const folder = symbiote.folder(BRANCH);
   expect(symbiote.opened()).toEqual([[folder, join(folder, 'half.ts')]]);
 
-  // Beside it the terminal keeps about half the window (decision 186): 47 % and 94 columns of 9 px
-  // since V72 (the page frame's 16 px margins and gutter, its two-line head); 49 % and 97 since
-  // V61 (the cards' gutters, a 264 px sidenav, its 15 px type); 56 % and 110 before.
+  // Beside it the terminal keeps about half the window (decision 186): 44.6 % and 89 columns of
+  // 9 px since V79's 300 px sidenav; 47 % and 94 since V72 (the page frame's 16 px margins and
+  // gutter, its two-line head); 49 % and 97 since V61 (the cards' gutters, a 264 px sidenav, its
+  // 15 px type); 56 % and 110 before.
   await expect.poll(async () => (await lastSize(page)).columns, POLL).toBeGreaterThan(0);
   const box = await workspace(page).locator('.xterm-screen').boundingBox();
-  expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.45);
-  expect((await lastSize(page)).columns).toBeGreaterThanOrEqual(92);
+  expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.44);
+  expect((await lastSize(page)).columns).toBeGreaterThanOrEqual(88);
 });
 
 test("] and the head's button hide it, kept across a reload; shown only where there is room", async ({
@@ -110,9 +111,9 @@ test("] and the head's button hide it, kept across a reload; shown only where th
   await toggle(page).click();
   await expect(panel(page)).toBeHidden();
   await expect(toggle(page)).toHaveAttribute('aria-pressed', 'false');
-  // The terminal takes the room back: 124 columns of 9 px since V72's 16 px margins (127 since
-  // V61, 140 of 8 px before).
-  await expect.poll(async () => (await lastSize(page)).columns, POLL).toBeGreaterThanOrEqual(122);
+  // The terminal takes the room back: 119 columns of 9 px since V79's 300 px sidenav (124 since
+  // V72's 16 px margins, 127 since V61, 140 of 8 px before).
+  await expect.poll(async () => (await lastSize(page)).columns, POLL).toBeGreaterThanOrEqual(118);
 
   await page.reload();
   await expect(workspace(page)).toBeVisible();

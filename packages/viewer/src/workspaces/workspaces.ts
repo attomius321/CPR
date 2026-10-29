@@ -5,6 +5,7 @@ import type {
   AgentEfforts,
   AgentKind,
   AgentOption,
+  BranchMerge,
   BranchReviewList,
   BranchReviewSummary,
   McpVia,
@@ -447,6 +448,55 @@ export function activityText({ tool, subject }: ToolActivity): string {
   if (!words) return `Using ${subject && tool === 'mcp' ? subject : tool}`;
   const [verb, alone] = words;
   return subject && verb !== alone ? `${verb} ${subject}` : alone;
+}
+
+/** A workspace's fact (V48): its card shows it as an icon and `shown` (V79), its head says `words`. */
+export interface WorkspaceFact {
+  kind: 'commits' | 'changed' | 'gone' | 'clean' | 'conflicts';
+  /** Beside its icon on the card: "3", "1 conflict". */
+  shown: string;
+  /** In the workspace's head, and the card's tip: "3 commits", "Conflicts with main in 1 file". */
+  words: string;
+}
+
+/**
+ * A workspace's facts: its commits, its files not committed, a worktree gone, then whether it
+ * merges into the branch it is reviewed against (V17's check, V65); a check git could not make
+ * says nothing.
+ */
+export function workspaceFacts(
+  workspace: WorkspaceSummary,
+  merge: BranchMerge | null,
+): WorkspaceFact[] {
+  const { ahead, worktree } = workspace;
+  const facts: WorkspaceFact[] = [
+    {
+      kind: 'commits',
+      shown: `${ahead}`,
+      words: ahead > 0 ? plural(ahead, 'commit') : 'no commits yet',
+    },
+  ];
+  if (worktree.changed) {
+    facts.push({
+      kind: 'changed',
+      shown: `${worktree.changed}`,
+      words: `${plural(worktree.changed, 'file')} not committed yet`,
+    });
+  }
+  if (!worktree.exists) {
+    facts.push({ kind: 'gone', shown: 'worktree gone', words: 'its worktree is gone' });
+  }
+  if (merge && 'clean' in merge) {
+    facts.push({ kind: 'clean', shown: 'clean', words: `Merges cleanly into ${merge.into}` });
+  } else if (merge && 'conflicts' in merge) {
+    const files = merge.conflicts.length;
+    facts.push({
+      kind: 'conflicts',
+      shown: plural(files, 'conflict'),
+      words: `Conflicts with ${merge.into} in ${plural(files, 'file')}`,
+    });
+  }
+  return facts;
 }
 
 export interface WorkspaceRow {

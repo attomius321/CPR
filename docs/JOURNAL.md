@@ -313,4 +313,6 @@ merge commit.
 - 2026-10-29 [V78 — Scout and Scribe are terminals, set in Settings](journal/v78-scout-scribe-terminals.md)
 - 2026-10-29 [MC2 spike — what a start through Scout runs on, and what the advisor's endpoint checks](journal/mc2-mcp-suggest-settings.md)
 - 2026-10-29 [MC2 — `suggest_settings`, the start's Confirm with its settings, Scout's prompt](journal/mc2-mcp-suggest-settings.md)
+- 2026-10-29 [V79 spike — the sidenav's cards measured, three layouts tried](journal/v79-workspace-cards.md)
+- 2026-10-29 [V79 — workspace cards in four rows, names whole, facts as icons; the sidenav 300 px](journal/v79-workspace-cards.md)
 - 2026-10-29 [NU1 spike — what the agents' web tools do in Scout's modes](journal/nu1-nucleus.md)

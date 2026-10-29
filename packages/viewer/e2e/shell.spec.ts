@@ -321,9 +321,9 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
     await expect(icon).toHaveCSS('color', await tokenColour(page, tone));
     drawings.add(await icon.innerHTML());
     // Only the group has the icon: its cards keep their state's dot. A done card's bin (V55) is
-    // an action, not its state.
+    // an action, and the icons of its facts' row (V79) are its facts, not its state.
     await expect(
-      group(page, name).locator('.workspace-row .icon:not(.card-remove .icon)'),
+      group(page, name).locator('.workspace-row .icon:not(.card-remove .icon, .card-fact .icon)'),
     ).toHaveCount(0);
     await expect(group(page, name).locator('.workspace-row .state-dot')).toBeVisible();
   }
@@ -371,15 +371,15 @@ test('the terminal fills the main area, down to the status bar', async ({ page }
       .map(Number) ?? [0, 0];
   // Without the branch's changes beside it (V29d; changes.spec measures it with them).
   await workspace(page, branch).getByRole('button', { name: 'Changes' }).click();
-  await expect.poll(async () => (await size())[0], POLL).toBeGreaterThanOrEqual(122);
+  await expect.poll(async () => (await size())[0], POLL).toBeGreaterThanOrEqual(118);
   const [, rows = 0] = await size();
-  // At least 60 % of the window. In Geist Mono at 15 px (V61) a cell is 9 x 19 px: 124 x 38 here
-  // since V72 (the page frame's 16 px margins, its two-line head, the tabs' 48 px head), 62 % of
-  // the window; 127 x 40 and 67 % before; at 14 px (V32) 8 x 18, 148 x 44; 46 rows at 13 px
+  // Most of the window. In Geist Mono at 15 px (V61) a cell is 9 x 19 px: 119 x 38 here since
+  // V79's 300 px sidenav, 59.7 % of the window; 124 x 38 and 62 % since V72 (the page frame's
+  // 16 px margins, its two-line head, the tabs' 48 px head); 127 x 40 and 67 % before; at 14 px (V32) 8 x 18, 148 x 44; 46 rows at 13 px
   // (V29b), 58 in the fallback font's 13 px lines (V29a), 41 on `main` then.
   expect(rows).toBeGreaterThanOrEqual(38);
   const box = await workspace(page, branch).locator('.xterm-screen').boundingBox();
-  expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.6);
+  expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.59);
   const bar = await statusBar(page).boundingBox();
   expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan((bar?.y ?? 0) - 40);
 });

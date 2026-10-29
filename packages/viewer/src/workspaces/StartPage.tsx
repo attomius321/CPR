@@ -385,6 +385,7 @@ function StartForm({
     beginStart({
       branch,
       name: form.title.trim() || branch,
+      kind: form.kind,
       ...(agent ? { agent: AGENT_NAMES[agent.kind] } : {}),
     });
     try {

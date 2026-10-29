@@ -362,8 +362,8 @@ button.workspace-about {
 
 .skeleton-card {
   display: grid;
-  gap: 6px;
-  padding: 8px;
+  gap: 10px;
+  padding: 12px;
 }
 
 .skeleton-card span {
@@ -380,8 +380,12 @@ button.workspace-about {
   width: 90%;
 }
 
+.skeleton-card span:nth-child(3) {
+  width: 35%;
+}
+
 .skeleton-card span:last-child {
-  width: 50%;
+  width: 60%;
 }
 
 /* What was read stays, said to be old (V48). */
@@ -397,7 +401,7 @@ button.workspace-about {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 14px 8px 4px 6px;
+  margin: 20px 8px 8px 7px;
   color: var(--muted);
   font-size: var(--size-body);
   font-weight: 500;
@@ -426,7 +430,7 @@ button.workspace-about {
 }
 
 .sidenav .group-waiting h3 {
-  margin: 9px 8px 6px 9px;
+  margin: 10px 8px 8px 13px;
   color: var(--text);
 }
 
@@ -436,42 +440,37 @@ button.workspace-about {
 }
 
 .sidenav .group-waiting .workspace-row + .workspace-row {
-  margin-top: 4px;
+  margin-top: 6px;
+}
+
+.sidenav .group-waiting .workspace-row:not(.picked):hover {
+  background: color-mix(in srgb, var(--text) 7%, transparent);
 }
 
 /* What it asks: two lines at most, all of it in the title. */
 .sidenav .workspace-blocked {
   display: -webkit-box;
-  margin: 2px 0 0 15px;
+  margin: 4px 0 0 17px;
   overflow: hidden;
   color: var(--text);
   font-size: var(--size-small);
-  line-height: 19px;
+  line-height: 20px;
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 
-/* Its answer, then how long it has waited. */
+/* Its answer, then its kind (V79: how long it has waited is at its name's row's end). */
 .sidenav .workspace-respond {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 6px;
-  margin: 8px 0 6px 15px;
+  gap: 10px;
+  margin: 8px 0 2px 17px;
 }
 
 .sidenav .button.respond {
   min-height: 28px;
   padding: 0 14px;
-}
-
-/* Its own width, not History's column: it ends where the line does, under the kind (V53). */
-.sidenav .workspace-respond .commit-date {
-  width: auto;
-  color: var(--muted);
-  font-size: var(--size-caption);
-  font-variant-numeric: tabular-nums;
 }
 
 .sidenav .group-stopped {
@@ -501,24 +500,24 @@ button.workspace-about {
   font-variant-numeric: tabular-nums;
 }
 
-/* A card, at most 72 px (64 before V61's bigger type): the dot, the title and the kind; the state
-   and its age; the branch. */
+/* A card (V79): four rows — the dot, the name and its time; what it does or what is next; its
+   kind and its facts; its branch — on 20 px lines, 10 × 12 px in, 6 px apart, each on a wash of
+   the text as Waiting for you's cards are. A name or a state takes two lines, then "…". Until V79
+   three rows in 72 px, 1 px apart, each cut to one line. */
 .sidenav .workspace-row {
-  padding: 5px 8px;
-  border: 1px solid transparent;
+  padding: 10px 12px;
   border-radius: 10px;
+  background: color-mix(in srgb, var(--text) 3.5%, transparent);
   cursor: pointer;
-  transition:
-    background-color 150ms,
-    border-color 150ms;
+  transition: background-color 150ms;
 }
 
 .sidenav .workspace-row + .workspace-row {
-  margin-top: 1px;
+  margin-top: 6px;
 }
 
 .sidenav .workspace-row:hover {
-  background: var(--hover);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
 }
 
 /* The one shown: a wash of the text, as the current page (V37: no edge or shadow of its own). */
@@ -526,14 +525,37 @@ button.workspace-about {
   background: var(--selected);
 }
 
+/* The dot on the name's first line, 10 px from it: every row's words start 17 px in. */
 .sidenav .workspace-head {
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
   line-height: 22px;
 }
 
+.sidenav .workspace-head > .state-dot {
+  margin-top: 7.5px;
+}
+
+/* Two lines, then "…"; its tip (the rail's) or its page says the rest. */
 .sidenav .workspace-about {
+  display: -webkit-box;
+  overflow: hidden;
   font-size: var(--size-body);
   font-weight: 600;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+/* How long its state has lasted, at the name's row's end (V79; under the kind until then). */
+.sidenav .workspace-head .commit-date {
+  flex: none;
+  width: auto;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
 }
 
 .sidenav .workspace-line,
@@ -542,22 +564,22 @@ button.workspace-about {
   align-items: center;
   gap: 6px;
   min-width: 0;
-  /* Its line's height whatever sits on it: the agent's mark on its baseline made it 18.00003 px,
-     and the card a fraction over its 72 (V61). */
-  height: 18px;
-  margin: 1px 0 0 15px;
+  margin: 4px 0 0 17px;
   font-size: var(--size-small);
-  line-height: 18px;
+  line-height: 20px;
 }
 
+/* What it does or what is next: two lines, then "…"; its tip says it whole. */
 .sidenav .workspace-state {
+  display: -webkit-box;
   flex: 1;
   min-width: 0;
   margin: 0;
   overflow: hidden;
   font-size: var(--size-small);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .sidenav .workspace-state strong {
@@ -565,18 +587,55 @@ button.workspace-about {
   font-weight: 400;
 }
 
-.sidenav .workspace-line .commit-date {
-  flex: none;
-  width: auto;
+/* The agent's mark leads its words, inline so a second line starts under it. */
+.sidenav .workspace-state .agent-mark {
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+
+/* Its kind, then its facts (V79): the kinds a column down the list, under the state's words. */
+.sidenav .workspace-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  min-width: 0;
+  min-height: 22px;
+  margin: 6px 0 0 17px;
   color: var(--muted);
-  font-size: var(--size-caption);
+  font-size: var(--size-small);
+  line-height: 20px;
   font-variant-numeric: tabular-nums;
 }
 
-/* Its kind (V53): at the end of the name's line, over its time: the kinds make a column. */
-.sidenav .workspace-head .kind-tag {
+.sidenav :is(.workspace-meta, .workspace-respond) .kind-tag {
   flex: none;
   margin: 0;
+}
+
+/* A fact: its icon and a number or a word, on one line; a row too short for them wraps. */
+.sidenav .card-fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.sidenav .card-fact .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.sidenav .fact-clean {
+  color: var(--added);
+}
+
+.sidenav .fact-conflicts {
+  color: var(--removed);
+}
+
+.sidenav .fact-gone {
+  color: var(--warning);
 }
 
 /* The branch as git names it: plain, not History's badge; in the text's font (V31). */
@@ -586,7 +645,7 @@ button.workspace-about {
   border-radius: 0;
   background: none;
   color: var(--muted);
-  font: var(--size-small)/18px var(--sans);
+  font: var(--size-small)/20px var(--sans);
 }
 
 .sidenav .workspace-branch a.ref-branch:hover {
@@ -716,31 +775,32 @@ button.workspace-about {
 
 /* Its name as a card's is drawn, in a block so the card keeps a card's height; not a button. */
 .sidenav .starting-name {
-  display: block;
+  display: -webkit-box;
   flex: 1;
   min-width: 0;
   overflow: hidden;
   font-size: var(--size-body);
   font-weight: 600;
   line-height: 22px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .merge-card .state-dot {
   --dot: var(--merge-tone);
 }
 
-/* A done workspace's or a landed merge's bin (V55): at the card's end, over its kind and its time,
-   which give way while it shows; nothing else moves. Its glyph ends where the chip does. */
+/* A done workspace's or a landed merge's bin (V55): at the end of the name's row, over its time,
+   which gives way while it shows (V79: the kind is in its own row); nothing else moves. */
 .sidenav .workspace-row.removable {
   position: relative;
 }
 
 .sidenav .card-remove {
   position: absolute;
-  top: 8px;
-  right: 4px;
+  top: 9px;
+  right: 6px;
   width: 24px;
   height: 24px;
 }
@@ -750,9 +810,8 @@ button.workspace-about {
   padding-right: 32px;
 }
 
-/* Without hover (a touch screen) the bin always shows: the kind and the time give way for good. */
-.sidenav .removable .workspace-head .kind-tag,
-.sidenav .removable .workspace-line .commit-date {
+/* Without hover (a touch screen) the bin always shows: the time gives way for good. */
+.sidenav .removable .workspace-head .commit-date {
   visibility: hidden;
 }
 
@@ -763,8 +822,7 @@ button.workspace-about {
     opacity: 0;
   }
 
-  .sidenav .removable:not(:hover, :has(:focus-visible)) .workspace-head .kind-tag,
-  .sidenav .removable:not(:hover, :has(:focus-visible)) .workspace-line .commit-date {
+  .sidenav .removable:not(:hover, :has(:focus-visible)) .workspace-head .commit-date {
     visibility: visible;
   }
 }
@@ -776,11 +834,13 @@ button.workspace-about {
   cursor: default;
 }
 
+/* No hover: its wash at rest stays under the pointer (V79). */
 .sidenav .workspace-row.removing:not(.picked):hover {
-  background: transparent;
+  background: color-mix(in srgb, var(--text) 3.5%, transparent);
 }
 
 .sidenav .removing .workspace-head > :not(.state-dot),
+.sidenav .removing .workspace-meta,
 .sidenav .removing .workspace-branch {
   opacity: 0.5;
 }
@@ -797,6 +857,8 @@ button.workspace-about {
   .sidenav.rail .sidenav-waits,
   .sidenav.rail .branches-count,
   .sidenav.rail .workspace-line,
+  .sidenav.rail .workspace-meta,
+  .sidenav.rail .workspace-head .commit-date,
   .sidenav.rail .workspace-blocked,
   .sidenav.rail .workspace-respond,
   .sidenav.rail .workspace-branch,
@@ -881,8 +943,21 @@ button.workspace-about {
     padding: 8px 0;
   }
 
+  .sidenav.rail .workspace-row + .workspace-row {
+    margin-top: 4px;
+  }
+
+  /* The dots alone, as before V79: no wash at rest; the hover's and the open one's stay. */
+  .sidenav.rail .workspace-row:not(:hover, .picked) {
+    background: transparent;
+  }
+
   .sidenav.rail .workspace-head {
     justify-content: center;
+  }
+
+  .sidenav.rail .workspace-head > .state-dot {
+    margin-top: 0;
   }
 
   /* Its name stays for screen readers and the keyboard; the mark is what shows. */

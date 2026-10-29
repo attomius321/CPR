@@ -219,7 +219,7 @@ spacing from these; `e2e/page-frame.spec.ts` measures the result on every page.
 | Rows | 28 px dense, 36 px nav |
 | Buttons | 32 px in toolbars and forms, 28 in a sidenav card, 24 px in rows |
 | Icons | 16 px; 18 px in the sidenav's pages; 14 px in menus and dense rows; 12 px in chips |
-| Sidenav | 264 px (240 before V61); the mark 32 px in a 52 px brand row |
+| Sidenav | 300 px at first (V79; 264 from V61, 240 before); the mark 32 px in a 52 px brand row |
 | Cards' margins and gutter | 16 px from the main area's edges and between cards (V72; 8, 16 or 24 px before) |
 | Motion | colours 150 ms; menus fade in 150 ms, dialogs 200 ms, by opacity only |
 
