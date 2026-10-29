@@ -30,6 +30,16 @@ describe('gitReadProblem (V35, decision 236)', () => {
     // A capital O in a pickaxe string or a pattern is no option.
     "git log -S'Options' --oneline",
     'git grep -n -e Options HEAD',
+    // Filters over git's output, with their options (fix/security-and-bugs).
+    'git log --oneline | head -n 20',
+    'git log | tail -n +5',
+    'git log | head -c 100',
+    'git log | grep -i -n merger',
+    'git log | grep -e foo -e bar',
+    'git log | grep -A 3 --max-count 2 foo',
+    'git log | grep -- -x',
+    'git log | wc -lw',
+    'git blame --ignore-rev 84bc324 README.md',
   ])('accepts %s', (command) => {
     expect(gitReadProblem(command)).toBeNull();
   });
@@ -48,6 +58,29 @@ describe('gitReadProblem (V35, decision 236)', () => {
     ['git log -1 --outp=/tmp/x', '--outp'],
     ['git diff --no-ind a b', '--no-ind'],
     ['git diff --no-index /etc/passwd README.md', '--no-index'],
+    // Options that read a file outside the repository and print it, or its first line in an
+    // error (fix/security-and-bugs: --no-index was refused, these went through).
+    ['git blame --contents=/etc/hostname -- README.md', '--contents'],
+    ['git blame --contents /etc/hostname README.md', '--contents'],
+    ['git blame --cont=/etc/hostname README.md', '--cont'],
+    ['git blame --ignore-revs-file /etc/hostname README.md', '--ignore-revs-file'],
+    ['git blame -S /etc/hostname README.md', '-S'],
+    ['git blame -wS /etc/hostname README.md', '-wS'],
+    ['git grep -f /etc/hostname', '-f'],
+    ['git grep -nf/etc/hostname', '-nf/etc/hostname'],
+    ['git grep --file=/etc/hostname', '--file'],
+    // A filter reads git's output, never a file of its own.
+    ['git log -1 | tail -n 3 ~/.bashrc', '~/.bashrc'],
+    ['git log | head /etc/hostname', '/etc/hostname'],
+    ['git log | grep -r PRIVATE /home', '-r'],
+    ['git log | grep -nR PRIVATE', '-nR'],
+    ['git log | grep --recursive PRIVATE', '--recursive'],
+    ['git log | grep -f /etc/hostname', '-f'],
+    ['git log | grep --file=/etc/hostname', '--file'],
+    ['git log | grep root /etc/passwd', '/etc/passwd'],
+    ['git log | grep -e root /etc/passwd', '/etc/passwd'],
+    ['git log | wc -l /etc/passwd', '/etc/passwd'],
+    ['git log | wc --files0-from=/etc/x', '--files0-from'],
     // git's own options before the command.
     ['git -c core.pager=touch log', 'git -c'],
     ['git -C /tmp log', 'git -C'],

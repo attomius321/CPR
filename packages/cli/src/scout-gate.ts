@@ -40,17 +40,107 @@ const PLAIN = /^[A-Za-z0-9_\-./:=@^~,+%]$/;
  */
 const WRITING = ['--output', '--open-files-in-pager', '--ext-diff', '--no-index'];
 
-function writingOption(command: string, word: string): string | null {
+/**
+ * Options that read a file anywhere and print it, or its first line in an error, as `--no-index`
+ * would (fix/security-and-bugs): blame's `--contents`, `--ignore-revs-file` and `-S`, grep's
+ * `--file` and `-f`. `--ignore-rev`, a commit to ignore, is blame's own and reads nothing.
+ */
+const READING = ['--contents', '--ignore-revs-file', '--file'];
+const OWN = new Set(['--ignore-rev']);
+
+/** Whether git would take `name` for `option`: the option itself, or its unique beginning. */
+const takes = (name: string, option: string) =>
+  name.length >= 3 && (option.startsWith(name) || name.startsWith(option));
+
+function refusedOption(command: string, word: string): string | null {
   if (word.startsWith('--')) {
     const name = word.split('=')[0] ?? word;
-    const hit = WRITING.some(
-      (option) => name.length >= 3 && (option.startsWith(name) || name.startsWith(option)),
-    );
-    return hit ? name : null;
+    if (WRITING.some((option) => takes(name, option))) return name;
+    if (!OWN.has(name) && READING.some((option) => takes(name, option))) return name;
+    return null;
   }
   if (word.startsWith('-O')) return '-O';
-  if (command === 'grep' && /^-[^-]*O/.test(word)) return word;
+  if (command === 'grep' && /^-[^-]*[Of]/.test(word)) return word;
+  if (command === 'blame' && /^-[^-]*S/.test(word)) return word;
   return null;
+}
+
+/** Short options of grep's that take a value (`-e PATTERN`, `-m NUM`…), bundled last or alone. */
+const GREP_VALUED = 'eABCm';
+const GREP_VALUED_LONG = [
+  '--regexp',
+  '--max-count',
+  '--after-context',
+  '--before-context',
+  '--context',
+  '--label',
+  '--binary-files',
+];
+/** grep's options that read files or folders, as short letters and long names. */
+const GREP_READING = 'rRfdD';
+const GREP_READING_LONG = [
+  '--recursive',
+  '--dereference-recursive',
+  '--file',
+  '--directories',
+  '--devices',
+  '--include',
+  '--exclude',
+  '--exclude-from',
+  '--exclude-dir',
+];
+
+/**
+ * Why a filter after a pipe would read something besides git's output, or null: `head` and `tail`
+ * take options and counts, `wc` its counting options, `grep` its options but those that read files
+ * and one pattern (none after `-e`); no file of their own (fix/security-and-bugs: `| tail ~/.bashrc`
+ * read it).
+ */
+function filterProblem([filter, ...words]: string[]): string | null {
+  const noFile = (word: string) => `${filter} ${word}: a filter reads git's output, no file`;
+  if (filter === 'head' || filter === 'tail') {
+    const file = words.find((w) => !w.startsWith('-') && !/^\+?\d+[a-zA-Z]*$/.test(w));
+    return file === undefined ? null : noFile(file);
+  }
+  if (filter === 'wc') {
+    const other = words.find(
+      (w) => !/^-[clmwL]+$|^--(lines|words|bytes|chars|max-line-length)$/.test(w),
+    );
+    return other === undefined ? null : noFile(other);
+  }
+  // grep
+  let patterns = 0;
+  const operands: string[] = [];
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i] as string;
+    if (word === '--') {
+      operands.push(...words.slice(i + 1));
+      break;
+    }
+    if (word.startsWith('--')) {
+      const name = word.split('=')[0] ?? word;
+      if (GREP_READING_LONG.some((option) => takes(name, option))) return noFile(name);
+      const valued = GREP_VALUED_LONG.find((option) => takes(name, option));
+      if (valued === '--regexp') patterns++;
+      if (valued && !word.includes('=')) i++;
+      continue;
+    }
+    if (word.startsWith('-') && word !== '-') {
+      for (let k = 1; k < word.length; k++) {
+        const letter = word.charAt(k);
+        if (GREP_READING.includes(letter)) return noFile(word);
+        if (GREP_VALUED.includes(letter)) {
+          if (letter === 'e') patterns++;
+          if (k === word.length - 1) i++;
+          break;
+        }
+      }
+      continue;
+    }
+    operands.push(word);
+  }
+  const files = operands.slice(patterns > 0 ? 0 : 1);
+  return files.length === 0 ? null : noFile(files[0] as string);
 }
 
 /** A command split into pipeline stages of words, or what makes it something else. */
@@ -128,13 +218,18 @@ export function gitReadProblem(command: string): string | null {
   if (name.startsWith('-')) return `git ${name}: none of git's own options but --no-pager`;
   if (!READ_COMMANDS.has(name)) return `git ${name} is not one of git's read commands Scout runs`;
   for (const arg of args) {
-    const option = writingOption(name, arg);
-    if (option) return `git ${name} ${option}: it writes a file or runs a program`;
+    const option = refusedOption(name, arg);
+    if (option) {
+      return `git ${name} ${option}: it writes a file, runs a program, or reads a file outside the repository`;
+    }
   }
-  for (const [filter] of filters) {
+  for (const stage of filters) {
+    const [filter] = stage;
     if (!filter || !FILTERS.has(filter)) {
       return `a pipe into ${filter ?? 'nothing'}: only head, tail, wc or grep`;
     }
+    const problem = filterProblem(stage);
+    if (problem) return problem;
   }
   return null;
 }
