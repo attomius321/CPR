@@ -626,6 +626,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/workspaces') return workspacesApi(req, res, workspaces);
     if (url.pathname === '/api/workspaces/options')
       return read(req, res, () => workspaces.options());
+    if (url.pathname === '/api/workspaces/history') {
+      // History (V77): the finished workspaces, or one of them as its tabs read it.
+      if (url.searchParams.has('branch')) {
+        return ofBranch(req, res, url, (branch) => workspaces.finished(branch));
+      }
+      return read(req, res, () => workspaces.history());
+    }
     if (url.pathname === '/api/workspaces/draft') {
       if (req.method === 'GET') return json(res, 200, await workspaces.draft());
       return written(req, res, parseDraft, (draft) =>
