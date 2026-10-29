@@ -474,12 +474,15 @@ test("the Review tab in sections at the sidebar's width; Merge into's dropdowns 
   await expect(yours.locator('label', { hasText: /^Summary$/ })).toBeVisible();
   await expect(yours.getByRole('group', { name: 'Verdict' })).toBeVisible();
   await expect(merge.locator('.merge-check')).toHaveText('Merges cleanly into main.');
+  // Finishing takes the comments: their card is measured before.
+  const card = (await comments.locator('.draft-row').boundingBox())!;
 
   await yours.getByLabel('Approve').check();
   await yours.getByRole('button', { name: 'Finish review' }).click();
   await expect(yours.locator('.finished')).toContainText('Approved');
 
-  // Merge into as a sentence: the button, then both dropdowns stacked in one column beside it.
+  // Merge into as a sentence: the button and the branch on one line, how it lands under them;
+  // in this 268 px section across it, so "with a merge commit" is not cut.
   const button = merge.getByRole('button', { name: 'Merge into', exact: true });
   const target = merge.getByLabel('Branch to merge into');
   const how = merge.getByLabel('How it lands');
@@ -487,9 +490,9 @@ test("the Review tab in sections at the sidebar's width; Merge into's dropdowns 
   const box = async (locator: Locator) => (await locator.boundingBox())!;
   const [area, b, t, h] = await Promise.all([box(tab), box(button), box(target), box(how)]);
   expect(t.x).toBeGreaterThan(b.x + b.width);
-  expect(h.x).toBeCloseTo(t.x, 0);
-  expect(h.width).toBeCloseTo(t.width, 0);
   expect(h.y).toBeGreaterThanOrEqual(t.y + t.height);
+  expect(h.x).toBeCloseTo(b.x, 0);
+  expect(h.x + h.width).toBeCloseTo(t.x + t.width, 0);
 
   // Nothing wider than the panel: the tab does not scroll sideways, the dropdowns end inside it.
   const pad = await tab.evaluate((el) =>
@@ -502,6 +505,17 @@ test("the Review tab in sections at the sidebar's width; Merge into's dropdowns 
   }
   // Every section's contents start the card's inset in.
   const summary = await box(yours.getByLabel('Review summary'));
-  const card = await box(comments.locator('.draft-row'));
   for (const left of [summary.x, card.x, b.x]) expect(left - area.x).toBeCloseTo(pad, 0);
+
+  // A wider sidebar (300 px of section and more): both dropdowns stacked beside the button.
+  await page.evaluate(() =>
+    localStorage.setItem('symbiote.viewer.widths', JSON.stringify({ sidebar: 480 })),
+  );
+  await page.reload();
+  await reviewTab(page).click();
+  const [wb, wt, wh] = await Promise.all([box(button), box(target), box(how)]);
+  expect(wt.x).toBeGreaterThan(wb.x + wb.width);
+  expect(wh.x).toBeCloseTo(wt.x, 0);
+  expect(wh.width).toBeCloseTo(wt.width, 0);
+  expect(wh.y).toBeGreaterThanOrEqual(wt.y + wt.height);
 });

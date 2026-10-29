@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import type { BranchMerge, FinishResult, Graph, GraphNode } from '@symbiote/core';
 import {
   canFinish,
@@ -20,6 +20,7 @@ import { OpenIcon } from './OpenIcon.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { MergeControl } from '../workspaces/MergeControl.js';
 import { Help } from '../ui/Help.js';
+import { AlertIcon, CheckIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
 
 export interface ReviewProps {
@@ -83,6 +84,7 @@ export function ReviewTab({
   const [event, setEvent] = useState<ReviewEvent>('comment');
   const [submission, setSubmission] = useState<Submission>({ status: 'idle' });
   const nodes = useMemo(() => new Map(graph.nodes.map((n) => [n.id, n])), [graph]);
+  const id = useId();
   const site = forge === 'gitlab' ? 'GitLab' : 'GitHub';
 
   const local = forge === 'local';
@@ -109,123 +111,148 @@ export function ReviewTab({
 
   return (
     <div className="list review-tab">
-      {draft.drafts.length === 0 && (
-        <p className="muted pad">
-          No comments yet: click a line of a file, or select a symbol and write one in its panel (
-          <kbd>c</kbd>).
-        </p>
-      )}
-      {draft.drafts.map((d) => {
-        const name = draftName(d, nodes);
-        return (
-          <div key={d.id} className="draft-row">
-            <div className="draft-where">
-              <button className="list-link" onClick={() => onOpen(d)}>
-                {name}
-              </button>
-              <button
-                className="link"
-                aria-label={`Delete comment on ${name}`}
-                onClick={() => review.onRemove(d.id)}
-              >
-                Delete
-              </button>
+      <section className="review-section" aria-labelledby={`${id}-comments`}>
+        <h3 id={`${id}-comments`} className="review-head">
+          Comments <span className="count">{draft.drafts.length}</span>
+        </h3>
+        {draft.drafts.length === 0 && (
+          <p className="muted review-empty">
+            No comments yet: click a line of a file, or select a symbol and write one in its panel (
+            <kbd>c</kbd>).
+          </p>
+        )}
+        {draft.drafts.map((d) => {
+          const name = draftName(d, nodes);
+          return (
+            <div key={d.id} className="draft-row">
+              <div className="draft-where">
+                <button className="list-link" onClick={() => onOpen(d)}>
+                  {name}
+                </button>
+                <button
+                  className="link"
+                  aria-label={`Delete comment on ${name}`}
+                  onClick={() => review.onRemove(d.id)}
+                >
+                  Delete
+                </button>
+              </div>
+              <div className="muted small">{describeDraft(d)}</div>
+              <p className="draft-body">{d.body}</p>
             </div>
-            <div className="muted small">{describeDraft(d)}</div>
-            <p className="draft-body">{d.body}</p>
-          </div>
-        );
-      })}
+          );
+        })}
+      </section>
 
-      <form
-        className="submit-review"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void submit();
-        }}
-      >
-        <textarea
-          className="comment-input"
-          aria-label="Review summary"
-          placeholder="Summary"
-          rows={4}
-          value={draft.body}
-          onChange={(e) => review.onBody(e.target.value)}
-        />
-        <fieldset className="events">
-          {EVENTS.map((option) => (
-            <label key={option.value}>
-              <input
-                type="radio"
-                name="event"
-                value={option.value}
-                checked={event === option.value}
-                onChange={() => setEvent(option.value)}
-              />
-              {option.label}
-            </label>
-          ))}
-        </fieldset>
-        {local && into && <MergeCheck canOpen={canOpen} />}
-        {forge === 'gitlab' && event === 'request-changes' && (
-          <p className="muted small">
-            GitLab gets a note marked “Changes requested”, and your approval is withdrawn.
-          </p>
-        )}
-        <div className="review-submit">
-          <button
-            type="submit"
-            className="button"
-            disabled={
-              submission.status === 'posting' ||
-              !(local ? canFinish : canSubmit)(draft.drafts, event, draft.body)
-            }
-          >
-            {submission.status === 'posting'
-              ? local
-                ? 'Finishing…'
-                : 'Posting…'
-              : local
-                ? 'Finish review'
-                : `Submit review to ${site}`}
-          </button>
-          {local && (
-            <Help label="Where the verdict goes">
-              The verdict and its comments stay in this repository, for the agent to read.{' '}
-              {into
-                ? `Approve, then Merge: Symbiote merges ${head} into ${into} (or a branch you pick), checks it and lands it.`
-                : 'Approve tells it these commits may be pushed.'}
-            </Help>
+      <section className="review-section" aria-labelledby={`${id}-yours`}>
+        <h3 id={`${id}-yours`} className="review-head">
+          Your review
+        </h3>
+        <form
+          className="submit-review"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void submit();
+          }}
+        >
+          <div className="review-field">
+            <label htmlFor={`${id}-summary`}>Summary</label>
+            <textarea
+              id={`${id}-summary`}
+              className="comment-input"
+              aria-label="Review summary"
+              rows={3}
+              value={draft.body}
+              onChange={(e) => review.onBody(e.target.value)}
+            />
+          </div>
+          <fieldset className="events">
+            <legend>Verdict</legend>
+            {EVENTS.map((option) => (
+              <label key={option.value}>
+                <input
+                  type="radio"
+                  name="event"
+                  value={option.value}
+                  checked={event === option.value}
+                  onChange={() => setEvent(option.value)}
+                />
+                {option.label}
+              </label>
+            ))}
+          </fieldset>
+          {forge === 'gitlab' && event === 'request-changes' && (
+            <p className="muted small">
+              GitLab gets a note marked “Changes requested”, and your approval is withdrawn.
+            </p>
           )}
-        </div>
-        {submission.status === 'finished' && (
-          <Finished branch={review.local?.branch ?? ''} result={submission.result} />
-        )}
-        {submission.status === 'posted' && (
-          <p className="posted">
-            Review posted.{' '}
-            <a href={submission.url} target="_blank" rel="noreferrer">
-              Open on {site}
-            </a>
-          </p>
-        )}
-        {submission.status === 'failed' && <p className="error">{submission.error}</p>}
-        {/* An approval made before, or just now (V26a): Merge into ▾. */}
-        {local && into && submission.status !== 'posting' && (
-          <MergeControl key={submission.status} branch={review.local?.branch ?? ''} />
-        )}
-      </form>
+          <div className="review-submit">
+            <button
+              type="submit"
+              className="button"
+              disabled={
+                submission.status === 'posting' ||
+                !(local ? canFinish : canSubmit)(draft.drafts, event, draft.body)
+              }
+            >
+              {submission.status === 'posting'
+                ? local
+                  ? 'Finishing…'
+                  : 'Posting…'
+                : local
+                  ? 'Finish review'
+                  : `Submit review to ${site}`}
+            </button>
+            {local && (
+              <Help label="Where the verdict goes">
+                The verdict and its comments stay in this repository, for the agent to read.{' '}
+                {into
+                  ? `Approve, then Merge: Symbiote merges ${head} into ${into} (or a branch you pick), checks it and lands it.`
+                  : 'Approve tells it these commits may be pushed.'}
+              </Help>
+            )}
+          </div>
+          {submission.status === 'finished' && (
+            <Finished branch={review.local?.branch ?? ''} result={submission.result} />
+          )}
+          {submission.status === 'posted' && (
+            <p className="posted review-result review-result-ok">
+              Review posted.{' '}
+              <a href={submission.url} target="_blank" rel="noreferrer">
+                Open on {site}
+              </a>
+            </p>
+          )}
+          {submission.status === 'failed' && (
+            <p className="error review-result review-result-failed">{submission.error}</p>
+          )}
+        </form>
+      </section>
+
+      {local && into && (
+        <section className="review-section review-merge" aria-labelledby={`${id}-merge`}>
+          <h3 id={`${id}-merge`} className="review-head">
+            Merge
+          </h3>
+          <MergeCheck into={into} canOpen={canOpen} />
+          {/* An approval made before, or just now (V26a): Merge into ▾. */}
+          {submission.status !== 'posting' && (
+            <MergeControl key={submission.status} branch={review.local?.branch ?? ''} />
+          )}
+        </section>
+      )}
     </div>
   );
 }
 
 /**
  * Whether the branch merges cleanly into the default branch (V17), checked in the background:
- * nothing while git works (seconds on a long-lived branch), then clean, or each conflicting file
- * on its line — its name, its folder, and a button that opens it in VS Code. Merge into gives the
- * conflicts to the merger agent (V26c, decision 142): the sentence says so.
+ * "Checking…" while git works (seconds on a long-lived branch), then clean, or each conflicting
+ * file on its line — its name, its folder, and a button that opens it in VS Code. Merge into gives
+ * the conflicts to the merger agent (V26c, decision 142): the sentence says so. Each state's line
+ * starts with its icon (V76).
  */
-function MergeCheck({ canOpen }: { canOpen: boolean }) {
+function MergeCheck({ into, canOpen }: { into: string; canOpen: boolean }) {
   const [merge, setMerge] = useState<BranchMerge | { failed: string } | null>(null);
   const [note, setNote] = useState<{ text: string; error: boolean } | null>(null);
   useEffect(() => {
@@ -237,16 +264,24 @@ function MergeCheck({ canOpen }: { canOpen: boolean }) {
       live = false;
     };
   }, []);
-  if (!merge) return null;
+  if (!merge) {
+    return <p className="merge-checking muted small">Checking whether it merges into {into}…</p>;
+  }
   if ('failed' in merge || 'error' in merge) {
     return (
-      <p className="merge-check muted small">
-        Could not check the merge: {'failed' in merge ? merge.failed : merge.error}
+      <p className="merge-check merge-check-line muted small">
+        <AlertIcon />
+        <span>Could not check the merge: {'failed' in merge ? merge.failed : merge.error}</span>
       </p>
     );
   }
   if ('clean' in merge) {
-    return <p className="merge-check muted small">Merges cleanly into {merge.into}.</p>;
+    return (
+      <p className="merge-check merge-check-line merge-check-clean small">
+        <CheckIcon />
+        <span>Merges cleanly into {merge.into}.</span>
+      </p>
+    );
   }
   const open = (file: string) =>
     void openInEditor({ side: 'head', file, line: 1, column: 1 }).then((answer) =>
@@ -259,9 +294,12 @@ function MergeCheck({ canOpen }: { canOpen: boolean }) {
   const count = merge.conflicts.length;
   return (
     <div className="merge-check conflicts small">
-      <p className="merge-check-head">
-        Conflicts with {merge.into} in {count} file{count === 1 ? '' : 's'}: Merge into gives them
-        to the merger agent, and you review its resolution before it lands:
+      <p className="merge-check-head merge-check-line">
+        <AlertIcon />
+        <span>
+          Conflicts with {merge.into} in {count} file{count === 1 ? '' : 's'}: Merge into gives them
+          to the merger agent, and you review its resolution before it lands:
+        </span>
       </p>
       <ul className="merge-files">
         {merge.conflicts.map((path) => {
@@ -306,7 +344,9 @@ function Finished({ branch, result }: { branch: string; result: FinishResult }) 
   const { verdict } = result;
   const at = short(verdict.head);
   return (
-    <div className="posted finished">
+    <div
+      className={`posted finished review-result${verdict.event === 'approve' ? ' review-result-ok' : ''}`}
+    >
       <p>
         {verdict.event !== 'approve' ? (
           <>
@@ -319,28 +359,27 @@ function Finished({ branch, result }: { branch: string; result: FinishResult }) 
           `Approved ${at}: the agent may push these commits when you ask it to act on this review.`
         )}
       </p>
-      {/* Secondary (V42): Send to the agent or Merge into is the action that follows. */}
-      <button
-        type="button"
-        className="button secondary"
-        onClick={() =>
-          void navigator.clipboard
-            .writeText(result.text)
-            .then(() => setCopied('Copied.'))
-            .catch((error: unknown) => setCopied(`Could not copy: ${(error as Error).message}`))
-        }
-      >
-        Copy for the agent
-      </button>
-      {workspace && (
-        <>
-          {' '}
+      <div className="review-result-actions">
+        {/* Secondary (V42): Send to the agent or Merge into is the action that follows. */}
+        <button
+          type="button"
+          className="button secondary"
+          onClick={() =>
+            void navigator.clipboard
+              .writeText(result.text)
+              .then(() => setCopied('Copied.'))
+              .catch((error: unknown) => setCopied(`Could not copy: ${(error as Error).message}`))
+          }
+        >
+          Copy for the agent
+        </button>
+        {workspace && (
           <a className="button" href={`${workspaceHref(branch)}&send=verdict`}>
             Send to the agent
           </a>
-        </>
-      )}
-      {copied && <span className="muted small"> {copied}</span>}
+        )}
+        {copied && <span className="muted small">{copied}</span>}
+      </div>
     </div>
   );
 }
