@@ -53,11 +53,21 @@ import {
   type GitRepo,
   type PermissionMode,
   type RefList,
+  type ScoutEffortChange,
+  type ScoutEfforts,
+  type ScoutModelChange,
   type WorkKind,
 } from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
-import { readPrompts } from './prompts.js';
-import { advise } from './workspace-advice.js';
+import { PromptRefused, readPrompts, writeConfig } from './prompts.js';
+import {
+  ADVISING_AGENTS,
+  advise,
+  advisorChoices,
+  advisorOn,
+  type AdvisingAgent,
+  type AdvisorPick,
+} from './workspace-advice.js';
 import type { Run, RunWithInput } from './programs.js';
 import {
   codexState,
@@ -161,9 +171,11 @@ export interface WorkspaceConfig {
   /** Scout's and Scribe's models (`scout.model`, `scribe.model`, V47): IDs; absent, the default. */
   scoutModel?: string;
   scribeModel?: string;
-  /** The advisor's model and level (`advisor.model`, `advisor.effort`, V75); absent, its own. */
-  advisorModel?: string;
-  advisorEffort?: string;
+  /**
+   * The advisor's model and level on each agent (`advisor.claude`, `advisor.codex`: `model`,
+   * `effort`; V75c); absent, its small model at `low`.
+   */
+  advisor?: Partial<Record<AdvisingAgent, AdvisorPick>>;
 }
 
 /**
@@ -172,7 +184,7 @@ export interface WorkspaceConfig {
  * `agent.kind` names the agent offered first (V20a); `agent.permissionMode` and `agent.model`
  * are Claude Code's. `scout.effort` and `scribe.effort` are the levels Scout's and Scribe's
  * conversations start at; `scout.model` and `scribe.model` the models they start on (V47);
- * `advisor.model` and `advisor.effort` what the advisor runs on (V75).
+ * `advisor.<agent>.model` and `.effort` what the advisor runs on with that agent (V75c).
  */
 export function readWorkspaceConfig(root: string): WorkspaceConfig {
   const branchPrefixes = Object.fromEntries(WORK_KINDS.map((k) => [k, `${k}/`])) as Record<
@@ -196,7 +208,7 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
     agent?: unknown;
     scout?: { effort?: unknown; model?: unknown } | null;
     scribe?: { effort?: unknown; model?: unknown } | null;
-    advisor?: { effort?: unknown; model?: unknown } | null;
+    advisor?: Partial<Record<string, { effort?: unknown; model?: unknown } | null>> | null;
   };
   const section = v.workspaces ?? v.features;
   if (typeof section?.branchPrefix === 'string') {
@@ -234,10 +246,13 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
   if (scoutModel) config.scoutModel = scoutModel;
   const scribeModel = id(v.scribe?.model);
   if (scribeModel) config.scribeModel = scribeModel;
-  const advisorModel = id(v.advisor?.model);
-  if (advisorModel) config.advisorModel = advisorModel;
-  const advisorEffort = level(v.advisor?.effort);
-  if (advisorEffort) config.advisorEffort = advisorEffort;
+  for (const kind of ADVISING_AGENTS) {
+    const model = id(v.advisor?.[kind]?.model);
+    const effort = level(v.advisor?.[kind]?.effort);
+    if (!model && !effort) continue;
+    const pick = { ...(model ? { model } : {}), ...(effort ? { effort } : {}) };
+    config.advisor = { ...config.advisor, [kind]: pick };
+  }
   return config;
 }
 
@@ -275,6 +290,15 @@ export interface Workspaces {
    * plan first, from the picked agent's small model. Nothing is started.
    */
   suggest(request: SuggestRequest): Promise<WorkspaceSuggestion>;
+  /**
+   * The advisor's models and levels on `agent` for Settings (V75c), and the project's picks; no
+   * agent when it is not installed. Refused (400) for an agent the advisor does not run on.
+   */
+  advisor(agent: AgentKind): Promise<ScoutEfforts>;
+  /** Sets the advisor's model on `agent` (`advisor.<agent>.model`), or removes it (null). */
+  setAdvisorModel(agent: AgentKind, change: ScoutModelChange): Promise<ScoutEfforts>;
+  /** Sets the advisor's level on `agent` (`advisor.<agent>.effort`), or removes it (null). */
+  setAdvisorEffort(agent: AgentKind, change: ScoutEffortChange): Promise<ScoutEfforts>;
   /** Starts a workspace's agent again (after a failed start, or once it ended). */
   startAgent(branch: string): Promise<WorkspaceStart>;
   /** The prompt its agent was given, to copy. */
@@ -718,6 +742,55 @@ export function workspaces(
     return effort;
   }
 
+  /** `kind` as an agent the advisor runs on (V75c); refused for Hermes, which lists no models. */
+  function advising(kind: AgentKind): AdvisingAgent {
+    const known = ADVISING_AGENTS.find((k) => k === kind);
+    if (!known) {
+      throw new WorkspaceRefused(
+        `${AGENT_NAMES[kind]} lists no models: Symbiote suggests settings for Claude Code and Codex`,
+        400,
+      );
+    }
+    return known;
+  }
+
+  /** The advisor's models and levels on `kind` (V75c), as Settings shows them. */
+  async function advisorOf(kind: AgentKind): Promise<ScoutEfforts> {
+    const on = advising(kind);
+    const pick = config().advisor?.[on] ?? {};
+    const about = {
+      ...(pick.effort ? { effort: pick.effort } : {}),
+      ...(pick.model ? { model: pick.model } : {}),
+      file: readPrompts(root).file,
+    };
+    const agent = await found(on);
+    if (!agent) return { agents: [], ...about };
+    const [listed, levels] = await Promise.all([modelsOf(agent), effortsOf(agent)]);
+    return { agents: [advisorChoices(on, listed, levels, pick)], ...about };
+  }
+
+  /** `kind`'s agent for a change of the advisor's settings; refused when it is not installed. */
+  async function advisorAgent(kind: AgentKind): Promise<FoundAgent> {
+    const agent = await found(advising(kind));
+    if (!agent) throw new WorkspaceRefused(`${AGENT_NAMES[kind]} is not installed`, 409);
+    return agent;
+  }
+
+  /** Writes `advisor.<kind>.<key>` (V75c), or removes it; a config that is not JSON refuses. */
+  async function writeAdvisor(
+    kind: AgentKind,
+    key: keyof AdvisorPick,
+    value: string | null,
+  ): Promise<ScoutEfforts> {
+    try {
+      await writeConfig(root, ['advisor', kind, key], value ?? undefined);
+    } catch (error) {
+      if (error instanceof PromptRefused) throw new WorkspaceRefused(error.message, error.status);
+      throw error;
+    }
+    return advisorOf(kind);
+  }
+
   /** Starts the workspace's agent and records how that went; the prompt it was given. */
   async function launch(
     where: ReviewPlace,
@@ -934,7 +1007,11 @@ export function workspaces(
           409,
         );
       }
-      const { advisorModel, advisorEffort } = config();
+      const pick = config().advisor?.[agent.kind] ?? {};
+      // The agent's own levels only when it runs on its own model: neither model is listed.
+      const levels = advisorOn(agent.kind, listed.models, pick).model
+        ? null
+        : await effortsOf(agent);
       return advise({
         agent: {
           kind: agent.kind,
@@ -944,10 +1021,44 @@ export function workspaces(
         models: listed.models,
         prompt: readPrompts(root).text.advisor,
         request,
-        config: { model: advisorModel, effort: advisorEffort },
+        config: pick,
+        levels,
         cacheDir,
         ...advisor,
       });
+    },
+    advisor: advisorOf,
+    async setAdvisorModel(kind, { model }) {
+      advising(kind);
+      if (model !== null) {
+        if (typeof model !== 'string' || !MODEL_ID.test(model)) {
+          throw new WorkspaceRefused(modelWordProblem(model), 400);
+        }
+        const agent = await advisorAgent(kind);
+        const problem = modelProblem(model, AGENT_NAMES[kind], (await modelsOf(agent))?.models);
+        if (problem) throw new WorkspaceRefused(problem, 400);
+      }
+      return writeAdvisor(kind, 'model', model);
+    },
+    async setAdvisorEffort(kind, { effort }) {
+      const on = advising(kind);
+      if (effort !== null) {
+        if (typeof effort !== 'string' || !EFFORT_LEVEL.test(effort)) {
+          throw new WorkspaceRefused(effortWordProblem(effort), 400);
+        }
+        const agent = await advisorAgent(kind);
+        // The levels of the model the advisor runs on: the project's, else its small model.
+        const listed = (await modelsOf(agent))?.models;
+        const problem = effortOnProblem(
+          effort,
+          AGENT_NAMES[kind],
+          listed,
+          advisorOn(on, listed ?? [], config().advisor?.[on] ?? {}).model?.id,
+          await effortsOf(agent),
+        );
+        if (problem) throw new WorkspaceRefused(problem, 400);
+      }
+      return writeAdvisor(kind, 'effort', effort);
     },
     async start(request) {
       const work = workOf(request);

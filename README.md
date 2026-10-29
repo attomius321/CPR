@@ -173,11 +173,12 @@ The cards beside the form hold the workspace's choices:
   each.
 
 To have the model, effort and **Plan first** picked for you, write the brief and click **Suggest
-settings**. Your agent's small model (Haiku 5.5 for Claude Code, GPT-6 Luna for Codex) reads the
+settings**. A small model (by default Haiku 5.5 for Claude Code, GPT-6 Luna for Codex) reads the
 brief, and a card proposes the settings with one sentence on why, in 3 to 5 seconds. Your cards
 change only if you click **Use these settings**; **Dismiss** keeps them. It never changes the
-agent or its permissions, and it runs only when you click. Its instructions, including which
-models it counts as small, mid and large, are the **Suggest settings** prompt in **Settings**.
+agent or its permissions, and it runs only when you click. In **Settings**, **Suggest settings**
+holds the model and effort it runs on for each agent. It also holds its instructions, including
+which models it counts as small, mid and large.
 
 When you click **Start workspace** (or press Ctrl+Enter), Symbiote:
 

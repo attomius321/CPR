@@ -122,7 +122,11 @@ the models a real `symbiote view` listed (Claude Code 2.1.312, Codex 0.163):
 | Haiku 5.5 at `low` | 18 of 18 | 18 of 18 | 17 of 18 | 0 | 3.3 s | 4.4 s | 4.5 s |
 | Haiku 5.5 at `medium` | 17 of 18 | 18 of 18 | 17 of 18 | 0 | 3.5 s | 4.2 s | 4.7 s |
 | GPT-6 Luna at `low` | 5 of 18 | 11 of 18 | 18 of 18 | 0 | 3.0 s | 3.7 s | 4.0 s |
-| GPT-6 Luna at `none` | 5 of 18 | 12 of 18 | 18 of 18 | 0 | 3.0 s | 4.3 s | 5.1 s |
+| GPT-6 Luna asked at `none`, ran at `low` | 5 of 18 | 12 of 18 | 18 of 18 | 0 | 3.0 s | 4.3 s | 5.1 s |
+
+Corrected in V75c: this Codex lists Luna's levels as `low` to `max`, with no `none`. The advisor
+then runs at its default `low`, and all 18 answers of the fourth run record `low`. That run is a
+second run at `low`; its differences from the third are run-to-run variation.
 
 **Learned**:
 - **Haiku 5.5 at `low` is the right default for Claude Code.** It sized every brief as expected,
@@ -145,3 +149,44 @@ Not verified: the person's own labels on their 24 briefs (the sheet waits); a Co
 GPT-6 models; the prompt change for a list without a model of the size.
 
 Merged into main (2026-10-28).
+
+## V75c — the advisor's model and effort for each agent, in Settings (2026-10-29, branch `milestone/v75-suggested-settings`)
+
+Asked: "Continue with v75c". The plan gave the advisor one model and one level, from the default
+agent's list, as Scout's. Built instead: a model and a level for each agent (decision 556), on
+Suggest settings' page in Settings, above its instructions.
+
+**Learned**:
+- **One model setting cannot serve the advisor.** Scout runs on one agent; the advisor runs on
+  the agent picked on the Start page. `advisor.model: sonnet` would have applied to Claude Code
+  only, and Codex would have fallen back to Luna without a word. The levels differ too.
+- **A silent fallback hid a wrong measurement.** The advisor runs at `low` when the level asked
+  is not one its model takes. The V75 test asked Luna at `none`, which this Codex does not list,
+  and all 18 answers record `low`. The eval now skips such a run and says why; Settings refuses
+  such a level (400) with the levels the model takes.
+- **The real lists name the defaults.** Through the built view, Claude Code 2.1.312 lists `haiku`
+  and Codex 0.163 lists `gpt-6-luna`. The page reads "Symbiote's default (Haiku 5.5)" and
+  "Symbiote's default (GPT-6-Luna)", each at "Symbiote's default (low)". The e2e fake lists no
+  `haiku`, so the test sees Claude Code's own default there, the other branch of the same code.
+- **The view refuses a write without `x-symbiote: 1`** (403, "forbidden"). A `curl` check of a
+  write route needs the header and a JSON content type, as the viewer sends them.
+
+**Verification**:
+- Tests first, red for the right reasons: no `advisorChoices`, no routes, no per-agent config, no
+  "Symbiote's default" label. Six CLI unit tests, a server route test and a viewer unit test.
+- An e2e test in `settings.spec.ts`, written before the page. It checks both agents' lists and
+  defaults. It saves Sonnet 5.5 as `advisor.claude.model`, `medium` as its level and Terra for
+  Codex, and a reload keeps them. The next suggestion asks Sonnet 5.5 at `medium` and says so.
+  The defaults remove the keys, and a model written by hand that Claude Code does not list is said.
+- `pnpm check`: 2,195 unit tests pass. `pnpm build`, then the whole e2e suite: the viewer's 338
+  tests and the nexus' 14 pass.
+- With the real agents through the built view on a scratch repository, Claude Code on Sonnet 5.5
+  at `medium` answered in 3.1 s. Codex on GPT-5.6-Terra at `low` answered in 5.5 s. A model Claude
+  Code does not list and a level Terra does not take were refused with those words.
+- Screenshots of the page at 1440 × 900, dark and light, beside Scout's page.
+- The eval's new check, against a stand-in view listing this Codex's models: Luna at `none` and an
+  unlisted Astra were skipped with the reason, and no agent was asked.
+
+Not verified: a real Codex that lists no small model, which only the unit tests cover. The new
+page was not seen in a narrow window; Settings' phone test passed.
+

@@ -6,7 +6,10 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   EFFORT_LEVEL,
+  type AgentEfforts,
   type AgentModel,
+  type AgentModels,
+  type ScoutEfforts,
   type SuggestRequest,
   type WorkspaceSuggestion,
 } from '@symbiote/core';
@@ -20,6 +23,7 @@ export const ADVISOR_TIMEOUT_MS = 20_000;
 
 /** The agents the advisor runs on: those that list their models (Hermes lists none). */
 export type AdvisingAgent = 'claude' | 'codex';
+export const ADVISING_AGENTS: readonly AdvisingAgent[] = ['claude', 'codex'];
 
 /** Each agent's small model and its level, unless the project names others (decision 544). */
 export const ADVISOR_DEFAULTS: Readonly<Record<AdvisingAgent, { model: string; effort: string }>> =
@@ -74,24 +78,69 @@ export function adviceTask(request: Omit<SuggestRequest, 'agent'>): string {
   return `<task>\n${brief}${documents}</task>`;
 }
 
+/** The advisor's model and level on an agent, as the project's config names them (V75c). */
+export interface AdvisorPick {
+  model?: string | undefined;
+  effort?: string | undefined;
+}
+
 /**
- * The model and level the advisor runs on: the project's (`advisor.model`, `advisor.effort`) when
- * the agent lists the model and it takes the level, else the agent's small model at `low`; no
- * model (the agent's default) and no level when it lists neither.
+ * The model and level the advisor runs on: the project's (`advisor.<agent>.model`, `.effort`)
+ * when the agent lists the model and it takes the level, else the agent's small model at `low`.
+ * When it lists neither model: no model (the agent's default), at the project's level when
+ * `fallback`, the default model's levels, has it.
  */
 export function advisorOn(
   agent: AdvisingAgent,
   models: readonly AgentModel[],
-  project: { model?: string | undefined; effort?: string | undefined },
+  project: AdvisorPick,
+  fallback?: AgentEfforts | null,
 ): { model?: AgentModel; effort?: string } {
   const listed = (id: string | undefined) => models.find((m) => m.id === id);
   const model = listed(project.model) ?? listed(ADVISOR_DEFAULTS[agent].model);
-  if (!model) return {};
+  if (!model) {
+    const effort = project.effort;
+    return effort && fallback?.levels.includes(effort) ? { effort } : {};
+  }
   const levels = model.efforts?.levels ?? [];
   const effort = [project.effort, ADVISOR_DEFAULTS[agent].effort].find(
     (level) => level !== undefined && levels.includes(level),
   );
   return effort ? { model, effort } : { model };
+}
+
+/**
+ * The advisor on `agent` as Settings shows it (V75c): the agent's models; its small model as
+ * Symbiote's default when listed, else the agent's own; the levels of the model it runs on, `low`
+ * named as Symbiote's default when that model takes it. `fallback` is the agent's levels on its
+ * own default model.
+ */
+export function advisorChoices(
+  agent: AdvisingAgent,
+  listed: AgentModels | null,
+  fallback: AgentEfforts | null,
+  project: AdvisorPick,
+): ScoutEfforts['agents'][number] {
+  const models = listed?.models;
+  const own = ADVISOR_DEFAULTS[agent];
+  const small = models?.find((m) => m.id === own.model);
+  const on = advisorOn(agent, models ?? [], project).model;
+  const levels = on ? on.efforts : (fallback ?? undefined);
+  const efforts =
+    on && levels?.levels.includes(own.effort)
+      ? { levels: levels.levels, default: own.effort, by: 'symbiote' as const }
+      : levels;
+  const defaultModel = small
+    ? { id: small.id, by: 'symbiote' as const }
+    : listed?.default
+      ? { id: listed.default, by: 'agent' as const }
+      : undefined;
+  return {
+    kind: agent,
+    ...(efforts ? { efforts } : {}),
+    ...(models ? { models } : {}),
+    ...(defaultModel ? { defaultModel } : {}),
+  };
 }
 
 /**
@@ -219,6 +268,7 @@ export async function advise({
   prompt,
   request,
   config,
+  levels,
   cacheDir,
   run = runProgram,
   runInput = runWithInput,
@@ -230,14 +280,17 @@ export async function advise({
   /** The `advisor` prompt in use: the project's, else Symbiote's. */
   prompt: string;
   request: Omit<SuggestRequest, 'agent'>;
-  config: { model?: string | undefined; effort?: string | undefined };
+  /** The project's model and level for this agent (`advisor.<agent>`). */
+  config: AdvisorPick;
+  /** The agent's levels on its own default model, for a level without a model of its list. */
+  levels?: AgentEfforts | null;
   cacheDir: string;
   run?: Run;
   runInput?: RunWithInput;
   now?: () => number;
   timeoutMs?: number;
 }): Promise<WorkspaceSuggestion> {
-  const on = advisorOn(agent.kind, models, config);
+  const on = advisorOn(agent.kind, models, config, levels);
   const instructions = fillPrompt(prompt, { agent: agent.name, models: modelLines(models) });
   const schema = adviceSchema(models);
   const task = adviceTask(request);

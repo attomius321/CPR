@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { dragTo, stops } from './stepper.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
@@ -636,4 +636,103 @@ test("Scribe's page: its Model, Effort and Instructions; saved as scribe.model a
     'scribe.effort is ultra, which Claude Code does not list: Scribe starts it at its default.',
   );
   await expect(effort).toHaveAttribute('aria-valuetext', "Claude Code's default");
+});
+
+// The advisor's model and level on each agent (V75c, decision 556): Suggest settings' page, a
+// section for Claude Code and one for Codex above its instructions, saved as advisor.<agent>; the
+// next suggestion runs on them.
+test("Suggest settings' page: a Model and an Effort for each agent, saved as advisor.<agent>; the next suggestion asks on them", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces({ codex: true, appServer: true });
+  const advisor = section<Record<string, unknown>>('advisor');
+  await page.goto(`${symbiote.url}settings`);
+  await entry(page, 'Suggest settings').click();
+  await expect(page).toHaveURL(`${symbiote.url}settings?prompt=advisor`);
+  await expect(editor(page).getByRole('heading')).toHaveText([
+    'Workspaces: Suggest settings',
+    'Claude Code',
+    'Model',
+    'Effort',
+    'Codex',
+    'Model',
+    'Effort',
+    "InstructionsSymbiote's",
+    'Placeholders',
+  ]);
+  const claude = editor(page).getByRole('region', { name: 'Claude Code' });
+  const codex = editor(page).getByRole('region', { name: 'Codex' });
+  const model = (agent: Locator) => agent.getByRole('combobox', { name: 'Model' });
+  const effort = (agent: Locator) => agent.getByRole('slider', { name: 'Effort' });
+  // Codex lists its small model: Symbiote's default, at Symbiote's low.
+  await expect(model(codex).locator('option')).toHaveText([
+    "Symbiote's default (GPT-6-Luna)",
+    'GPT-6-Luna',
+    'GPT-5.6-Terra',
+    'GPT-5.6-Luna',
+  ]);
+  await expect(effort(codex)).toHaveAttribute('aria-valuetext', "Symbiote's default (low)");
+  // This Claude Code lists no Haiku 5.5: the advisor asks on its default model.
+  await expect(model(claude).locator('option').first()).toHaveText("Claude Code's default");
+  await expect(effort(claude)).toHaveAttribute('aria-valuetext', "Claude Code's default");
+
+  await model(claude).selectOption({ label: 'Sonnet 5.5' });
+  await expect(claude.getByRole('region', { name: 'Model' }).getByRole('status')).toHaveText(
+    'Saved. With Claude Code picked, Suggest settings asks Sonnet 5.5.',
+  );
+  await expect.poll(advisor).toEqual({ claude: { model: 'sonnet' } });
+  // On Sonnet 5.5, Symbiote's low is the default level.
+  await expect(effort(claude)).toHaveAttribute('aria-valuetext', "Symbiote's default (low)");
+  await dragTo(page, effort(claude), 2);
+  await expect(claude.getByRole('region', { name: 'Effort' }).getByRole('status')).toHaveText(
+    'Saved. With Claude Code picked, Suggest settings asks at medium.',
+  );
+  await expect.poll(advisor).toEqual({ claude: { model: 'sonnet', effort: 'medium' } });
+  await model(codex).selectOption({ label: 'GPT-5.6-Terra' });
+  await expect.poll(advisor).toEqual({
+    claude: { model: 'sonnet', effort: 'medium' },
+    codex: { model: 'gpt-5.6-terra' },
+  });
+  await expect(stops(effort(codex))).toHaveText([
+    'Default',
+    'Low',
+    'Medium',
+    'High',
+    'xHigh',
+    'Max',
+    'Ultra',
+  ]);
+  await page.reload();
+  await expect(model(claude)).toHaveValue('sonnet');
+  await expect(effort(claude)).toHaveAttribute('aria-valuetext', 'medium');
+
+  // The next suggestion with Claude Code asks Sonnet 5.5 at medium, and says so.
+  symbiote.advise({ model: 'opus', effort: 'high', planFirst: true, why: 'A migration.' });
+  await page.goto(`${symbiote.url}start`);
+  const start = page.getByRole('region', { name: 'Start a workspace' });
+  await start.getByRole('textbox', { name: 'Title' }).fill('Move workspace records to SQLite');
+  await start.getByRole('textbox', { name: 'Goal' }).fill('Move the records to one database.');
+  await start.getByRole('button', { name: 'Suggest settings' }).click();
+  await expect(start.locator('.start-proposal')).toContainText(
+    'Sonnet 5.5 suggests Opus 5.5 at high effort, plan first',
+  );
+  expect(symbiote.adviceCalls()[0]?.args.slice(0, 5)).toEqual([
+    '-p',
+    '--model',
+    'sonnet',
+    '--effort',
+    'medium',
+  ]);
+
+  // Back to Symbiote's: the keys go. A model written by hand that Claude Code does not list is said.
+  await page.goto(`${symbiote.url}settings?prompt=advisor`);
+  await model(claude).selectOption({ label: "Claude Code's default" });
+  await effort(claude).press('Home');
+  await model(codex).selectOption({ label: "Symbiote's default (GPT-6-Luna)" });
+  await expect.poll(advisor).toBeUndefined();
+  writeFileSync(config(), '{ "advisor": { "claude": { "model": "gpt-6-luna" } } }\n');
+  await page.reload();
+  await expect(claude.getByRole('region', { name: 'Model' }).getByRole('alert')).toHaveText(
+    'advisor.claude.model is gpt-6-luna, which Claude Code does not list: Suggest settings asks on the default.',
+  );
 });

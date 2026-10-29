@@ -2785,6 +2785,94 @@ describe('workspaces', () => {
     expect(readWorkspaceConfig(repo.root).agent).toBe('codex');
   });
 
+  it("keeps the advisor's model and level for each agent in the project's config; a suggestion runs on them (V75c)", async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const { codex } = fakeCodex();
+    const asked: string[][] = [];
+    const answer = {
+      stop_reason: 'tool_use',
+      structured_output: { model: 'opus', effort: 'high', planFirst: true, why: 'A migration.' },
+    };
+    const s = await openRepo(repo.root).then((git) =>
+      workspaces(git, cache, {
+        claude: () => Promise.resolve(claude),
+        codex: () => Promise.resolve(codex),
+        advisor: {
+          runInput: (_command, args) => {
+            asked.push(args);
+            return Promise.resolve({ code: 0, stdout: JSON.stringify(answer), stderr: '' });
+          },
+        },
+      }),
+    );
+    const file = join(repo.root, 'symbiote', 'config.json');
+    // This Claude Code lists no haiku: the advisor runs on its default, at its levels.
+    expect(await s.advisor('claude')).toEqual({
+      agents: [{ kind: 'claude', models: CLAUDE_MODELS, efforts: { levels: [...CLAUDE_LEVELS] } }],
+      file: 'symbiote/config.json',
+    });
+    // A Codex with no app server: no models or levels to pick.
+    expect(await s.advisor('codex')).toEqual({
+      agents: [{ kind: 'codex' }],
+      file: 'symbiote/config.json',
+    });
+    expect(await s.setAdvisorModel('claude', { model: 'sonnet' })).toEqual({
+      agents: [
+        {
+          kind: 'claude',
+          models: CLAUDE_MODELS,
+          efforts: { levels: [...CLAUDE_LEVELS], default: 'low', by: 'symbiote' },
+        },
+      ],
+      model: 'sonnet',
+      file: 'symbiote/config.json',
+    });
+    expect((await s.setAdvisorEffort('claude', { effort: 'medium' })).effort).toBe('medium');
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
+      advisor: { claude: { model: 'sonnet', effort: 'medium' } },
+    });
+    await s.suggest({
+      kind: 'chore',
+      title: 'Bump',
+      parts: { change: 'Bump it.' },
+      agent: 'claude',
+    });
+    expect(asked[0]?.slice(0, 5)).toEqual(['-p', '--model', 'sonnet', '--effort', 'medium']);
+
+    await expect(s.setAdvisorModel('claude', { model: 'gpt-6-luna' })).rejects.toMatchObject({
+      status: 400,
+      message: 'Claude Code lists no model gpt-6-luna: pick one it lists',
+    });
+    await expect(s.setAdvisorEffort('claude', { effort: 'ultra' })).rejects.toMatchObject({
+      status: 400,
+      message: 'Sonnet 5.5 takes low, medium, high, xhigh or max: ultra',
+    });
+    await expect(s.setAdvisorModel('claude', { model: '--x' })).rejects.toMatchObject({
+      status: 400,
+    });
+    await expect(s.setAdvisorModel('codex', { model: 'gpt-6-luna' })).rejects.toMatchObject({
+      status: 400,
+      message: "Symbiote cannot read Codex's models: start it on its default",
+    });
+    await expect(s.advisor('hermes')).rejects.toMatchObject({ status: 400 });
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
+      advisor: { claude: { model: 'sonnet', effort: 'medium' } },
+    });
+    // Back to Symbiote's: the keys go, and their emptied sections with them.
+    await s.setAdvisorModel('claude', { model: null });
+    await s.setAdvisorEffort('claude', { effort: null });
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({});
+    const alone = await openRepo(repo.root).then((git) =>
+      workspaces(git, cache, { claude: () => Promise.resolve(claude) }),
+    );
+    expect(await alone.advisor('codex')).toEqual({ agents: [], file: 'symbiote/config.json' });
+    await expect(alone.setAdvisorEffort('codex', { effort: 'low' })).rejects.toMatchObject({
+      status: 409,
+      message: 'Codex is not installed',
+    });
+  });
+
   it("starts Codex in its worktree through the runner, its branch's git folders writable (V20a)", async () => {
     const { repo, shas } = fresh();
     const { claude, start: claudeStart } = fakeClaude();

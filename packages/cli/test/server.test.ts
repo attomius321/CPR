@@ -1415,6 +1415,7 @@ describe('symbiote view: workspaces (V18)', () => {
   const drafts: Record<string, unknown>[] = [];
   const restarted: string[] = [];
   const suggested: unknown[] = [];
+  const advised: unknown[] = [];
   /** While set, a start waits for it. */
   let gate: Promise<void> | null = null;
   const workspaces: Workspaces = {
@@ -1425,6 +1426,15 @@ describe('symbiote view: workspaces (V18)', () => {
       if (gate) await gate;
       if (request.branch === 'main') throw new WorkspaceRefused('a branch main exists', 409);
       return { workspace: summary, prompt: 'Build it.' };
+    },
+    advisor: (kind) => Promise.resolve({ agents: [{ kind }], file: 'symbiote/config.json' }),
+    setAdvisorModel: (kind, change) => {
+      advised.push({ kind, ...change });
+      return Promise.resolve({ agents: [{ kind }], file: 'symbiote/config.json' });
+    },
+    setAdvisorEffort: (kind, change) => {
+      advised.push({ kind, ...change });
+      return Promise.resolve({ agents: [{ kind }], file: 'symbiote/config.json' });
     },
     suggest: (request) => {
       suggested.push(request);
@@ -1628,6 +1638,25 @@ describe('symbiote view: workspaces (V18)', () => {
     expect((await post('/api/workspaces/suggest', { kind: 'epic' })).status).toBe(400);
     expect((await get('/api/workspaces/suggest')).status).toBe(405);
     expect(started).toHaveLength(before);
+  });
+
+  it("reads and sets the advisor's model and level for each agent, as Scout's are (V75c)", async () => {
+    expect(await (await get('/api/workspaces/advisor/codex/efforts')).json()).toEqual({
+      agents: [{ kind: 'codex' }],
+      file: 'symbiote/config.json',
+    });
+    expect((await post('/api/workspaces/advisor/claude/model', { model: 'sonnet' })).status).toBe(
+      200,
+    );
+    expect((await post('/api/workspaces/advisor/codex/effort', { effort: null })).status).toBe(200);
+    expect(advised).toEqual([
+      { kind: 'claude', model: 'sonnet' },
+      { kind: 'codex', effort: null },
+    ]);
+    expect((await post('/api/workspaces/advisor/claude/model', { model: 3 })).status).toBe(400);
+    expect((await post('/api/workspaces/advisor/claude/efforts', {})).status).toBe(405);
+    expect((await get('/api/workspaces/advisor/hermes/efforts')).status).toBe(404);
+    expect(advised).toHaveLength(2);
   });
 
   it('starts a workspace as asked; refusals keep their status and words', async () => {

@@ -301,3 +301,4 @@ merge commit.
 - 2026-10-28 [NX3 spike — the nexus's screens today, and what a listing can say cheaply](journal/nx3-nexus-look.md)
 - 2026-10-28 [NX3 — the row's two groups, Symbiotes and Folders as cards, a repository the end](journal/nx3-nexus-look.md)
 - 2026-10-28 [Fix — the spec waits for Scout's record](journal/fix-scout-record-spec-race.md)
+- 2026-10-29 [V75c — the advisor's model and effort for each agent, in Settings](journal/v75-suggested-settings.md)

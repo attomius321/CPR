@@ -8,10 +8,11 @@
 //
 //   node scripts/advisor-eval.mjs run <labels.json> <view URL> [agent:model:effort ...]
 //     asks the advisor for each brief, once per run (default: claude:haiku:low,
-//     claude:haiku:medium, codex:gpt-6-luna:none, codex:gpt-6-luna:low), with the agents and
-//     models a running `symbiote view` lists. Prints each run's agreement with the labels on size
-//     and plan first, and its time at the 50th and 90th percentile; writes every answer beside the
-//     labels (<labels>.results.json).
+//     claude:haiku:medium, codex:gpt-6-luna:low, codex:gpt-6-luna:medium), with the agents and
+//     models a running `symbiote view` lists. A run whose model the agent does not list, or whose
+//     level that model does not take, is skipped and said: the advisor would run on another.
+//     Prints each run's agreement with the labels on size and plan first, and its time at the
+//     50th and 90th percentile; writes every answer beside the labels (<labels>.results.json).
 //
 // Build first: pnpm build. The records hold the person's briefs: keep the labels file out of git.
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -34,8 +35,8 @@ const SIZES = {
 const DEFAULT_RUNS = [
   'claude:haiku:low',
   'claude:haiku:medium',
-  'codex:gpt-6-luna:none',
   'codex:gpt-6-luna:low',
+  'codex:gpt-6-luna:medium',
 ];
 const BRIEFS = 24;
 
@@ -104,6 +105,19 @@ async function run(file, view, given) {
     const agent = options.agents.find((a) => a.kind === kind);
     if (!agent?.models) {
       console.log(`| ${spec} | ${kind} is not installed, or lists no models | | | | |`);
+      continue;
+    }
+    // The advisor falls back to its small model at low without a word (V75 test: a run "at none"
+    // ran at low on a Codex whose Luna takes no none): such a run measures another one.
+    const listed = agent.models.find((m) => m.id === model);
+    if (!listed) {
+      console.log(`| ${spec} | ${kind} lists no model ${model} | | | | |`);
+      continue;
+    }
+    const levels = listed.efforts?.levels ?? [];
+    if (effort && !levels.includes(effort)) {
+      const takes = levels.length > 0 ? levels.join(', ') : 'no level';
+      console.log(`| ${spec} | ${listed.name} takes ${takes}, not ${effort} | | | | |`);
       continue;
     }
     let size = 0;

@@ -439,6 +439,8 @@ export interface AgentEfforts {
   levels: string[];
   /** Its own level when none is given, when the agent says (Codex's configuration). */
   default?: string;
+  /** Whose choice `default` is when not the agent's: Symbiote's (the advisor's `low`, V75c). */
+  by?: 'symbiote';
 }
 
 /**
