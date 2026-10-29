@@ -11,6 +11,7 @@ import {
   adviceSchema,
   adviceTask,
   advise,
+  advisorChoices,
   advisorOn,
   claudeAdviceArgs,
   codexAdviceArgs,
@@ -144,6 +145,83 @@ describe("the advisor's own model", () => {
     const noLevels = CLAUDE_MODELS.filter((m) => m.id === 'claude-haiku-4-5-20251001');
     expect(advisorOn('claude', noLevels, { model: 'claude-haiku-4-5-20251001' })).toEqual({
       model: noLevels[0],
+    });
+  });
+
+  it("takes the project's level on the agent's default model when its default model takes it", () => {
+    const astra = [CODEX_MODELS[0] as AgentModel];
+    const levels = { levels: ['low', 'medium', 'high'] };
+    expect(advisorOn('codex', astra, { effort: 'high' }, levels)).toEqual({ effort: 'high' });
+    // Not Symbiote's low: that is its small model's, and the agent's own model runs here.
+    expect(advisorOn('codex', astra, {}, levels)).toEqual({});
+    expect(advisorOn('codex', astra, { effort: 'ultra' }, levels)).toEqual({});
+    expect(advisorOn('codex', astra, { effort: 'high' })).toEqual({});
+  });
+});
+
+describe('the advisor in Settings', () => {
+  const CLAUDE_LEVELS = { levels: ['low', 'medium', 'high', 'xhigh', 'max'] };
+
+  it("names the small model and low as Symbiote's defaults, the levels the small model's", () => {
+    expect(advisorChoices('claude', { models: CLAUDE_MODELS }, CLAUDE_LEVELS, {})).toEqual({
+      kind: 'claude',
+      models: CLAUDE_MODELS,
+      defaultModel: { id: 'haiku', by: 'symbiote' },
+      efforts: {
+        levels: ['low', 'medium', 'high', 'xhigh', 'max'],
+        default: 'low',
+        by: 'symbiote',
+      },
+    });
+    expect(
+      advisorChoices('codex', { models: CODEX_MODELS, default: 'gpt-6-astra' }, null, {}),
+    ).toEqual({
+      kind: 'codex',
+      models: CODEX_MODELS,
+      defaultModel: { id: 'gpt-6-luna', by: 'symbiote' },
+      efforts: {
+        levels: ['none', 'low', 'medium', 'high', 'xhigh', 'max'],
+        default: 'low',
+        by: 'symbiote',
+      },
+    });
+  });
+
+  it('gives the levels of the model picked, low its default only when that model takes it', () => {
+    const opus46 = { levels: ['low', 'medium', 'high', 'max'], default: 'low', by: 'symbiote' };
+    expect(
+      advisorChoices('claude', { models: CLAUDE_MODELS }, CLAUDE_LEVELS, {
+        model: 'claude-opus-4-6',
+      }).efforts,
+    ).toEqual(opus46);
+    // Haiku 4.5 takes none: no levels to pick.
+    expect(
+      advisorChoices('claude', { models: CLAUDE_MODELS }, CLAUDE_LEVELS, {
+        model: 'claude-haiku-4-5-20251001',
+      }).efforts,
+    ).toBeUndefined();
+    // A model the agent does not list: the advisor runs on its small model, and so do the levels.
+    expect(
+      advisorChoices('claude', { models: CLAUDE_MODELS }, CLAUDE_LEVELS, { model: 'gpt-6-luna' })
+        .efforts,
+    ).toEqual({ ...CLAUDE_LEVELS, default: 'low', by: 'symbiote' });
+  });
+
+  it("is the agent's own default when its small model is not listed, at the agent's levels", () => {
+    const astra = [CODEX_MODELS[0] as AgentModel];
+    const codexLevels = { levels: ['low', 'medium', 'high'], default: 'medium' };
+    expect(
+      advisorChoices('codex', { models: astra, default: 'gpt-6-astra' }, codexLevels, {}),
+    ).toEqual({
+      kind: 'codex',
+      models: astra,
+      defaultModel: { id: 'gpt-6-astra', by: 'agent' },
+      efforts: codexLevels,
+    });
+    // Models Symbiote cannot read: no model to pick, the agent's levels.
+    expect(advisorChoices('claude', null, CLAUDE_LEVELS, {})).toEqual({
+      kind: 'claude',
+      efforts: CLAUDE_LEVELS,
     });
   });
 });
@@ -383,24 +461,23 @@ describe('advise', () => {
 });
 
 describe("the advisor's settings and the request", () => {
-  it('reads advisor.model and advisor.effort from the project config', () => {
+  it("reads each agent's model and level from the project config: advisor.claude, advisor.codex", () => {
     const root = tempDir();
     dirs.push(root);
     writeFileSync(
       join(root, 'symbiote.config.json'),
-      '{"advisor":{"model":"sonnet","effort":"medium"}}',
+      '{"advisor":{"claude":{"model":"sonnet","effort":"medium"},"codex":{"effort":"high"}}}',
     );
-    expect(readWorkspaceConfig(root)).toMatchObject({
-      advisorModel: 'sonnet',
-      advisorEffort: 'medium',
+    expect(readWorkspaceConfig(root).advisor).toEqual({
+      claude: { model: 'sonnet', effort: 'medium' },
+      codex: { effort: 'high' },
     });
+    // No ID or level, or one model for both agents (V75a's keys): none read.
     writeFileSync(
       join(root, 'symbiote.config.json'),
-      '{"advisor":{"model":"-x y","effort":"Low!"}}',
+      '{"advisor":{"model":"sonnet","effort":"low","claude":{"model":"-x y","effort":"Low!"},"hermes":{"model":"x"}}}',
     );
-    const config = readWorkspaceConfig(root);
-    expect(config.advisorModel).toBeUndefined();
-    expect(config.advisorEffort).toBeUndefined();
+    expect(readWorkspaceConfig(root).advisor).toBeUndefined();
   });
 
   it("parses the Start page's brief, its agent and its documents' names", () => {

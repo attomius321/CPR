@@ -245,6 +245,8 @@ const REVIEW_PATH = /^\/review\/([^/]+)(\/.*)?$/;
  * `…/paths`, `…/open` (V38).
  */
 const TERMINAL_PATH = /^\/api\/terminals\/([0-9a-z]+)(?:\/(in|resize|close|image|paths|open))?$/;
+/** The advisor's settings on an agent (V75c): its models and levels, and its model or level set. */
+const ADVISOR_SETTING = /^\/api\/workspaces\/advisor\/(claude|codex)\/(efforts|effort|model)$/;
 /** Most a terminal is sent at once: keys typed, or a line Symbiote types (V21). */
 const MAX_TERMINAL_INPUT = 64 * 1024;
 /** How often an open merge log's stream looks for new lines (V46a). */
@@ -634,6 +636,20 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       // The advisor (V75): a proposal for the Start page, only when the person asks for one.
       return written(req, res, parseSuggestRequest, (request) =>
         answer(res, () => workspaces.suggest(request)),
+      );
+    }
+    // The advisor's model and level on each agent (V75c), read and set where Settings shows them.
+    const advising = ADVISOR_SETTING.exec(url.pathname);
+    if (advising) {
+      const kind = advising[1] === 'codex' ? 'codex' : 'claude';
+      if (advising[2] === 'efforts') return read(req, res, () => workspaces.advisor(kind));
+      if (advising[2] === 'effort') {
+        return written(req, res, parseScoutEffort, (change) =>
+          answer(res, () => workspaces.setAdvisorEffort(kind, change)),
+        );
+      }
+      return written(req, res, parseModelChange, (change) =>
+        answer(res, () => workspaces.setAdvisorModel(kind, change)),
       );
     }
     if (url.pathname === '/api/workspaces/check') {

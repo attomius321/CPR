@@ -144,8 +144,8 @@ function levelsOn(
 /**
  * The Effort choices for an agent (V30b) on the model picked (V47): its own default first —
  * named with its level when the agent says it (Codex), not otherwise (Claude Code, decision
- * 210) — then the levels it lists, in its words. None when Symbiote could not read its levels,
- * or the model takes none.
+ * 210); Symbiote's when the level is Symbiote's choice (the advisor's, V75c) — then the levels it
+ * lists, in its words. None when Symbiote could not read its levels, or the model takes none.
  */
 export function effortChoices(
   agent: Pick<AgentOption, 'kind' | 'efforts' | 'models'>,
@@ -154,8 +154,9 @@ export function effortChoices(
   const efforts = levelsOn(agent, model);
   if (!efforts) return [];
   const own = efforts.default ? ` (${efforts.default})` : '';
+  const whose = efforts.by === 'symbiote' ? 'Symbiote' : AGENT_NAMES[agent.kind];
   return [
-    { value: '', label: `${AGENT_NAMES[agent.kind]}'s default${own}` },
+    { value: '', label: `${whose}'s default${own}` },
     ...efforts.levels.map((level) => ({ value: level, label: level })),
   ];
 }
