@@ -41,7 +41,7 @@ export function ThreadTab({
 }: {
   thread: WorkspaceThread | null;
   worktree: string;
-  /** What is said when Symbiote kept none of its messages (History's own words, V78). */
+  /** What is said when Symbiote kept none of its messages (History's own words, V77). */
   unrecorded?: string;
 }) {
   const list = useRef<HTMLOListElement>(null);

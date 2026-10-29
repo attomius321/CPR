@@ -21,7 +21,7 @@ const row = (over: Partial<FinishedWorkspace> & { branch: string }): FinishedWor
   ...over,
 });
 
-describe('outcomeText (V78)', () => {
+describe('outcomeText (V77)', () => {
   it('says what became of its branch: merged into the default branch, kept, or not merged', () => {
     expect(outcomeText(row({ branch: 'a' }))).toBe('Merged into main');
     expect(outcomeText(row({ branch: 'a', into: undefined }))).toBe('Merged');
@@ -33,7 +33,7 @@ describe('outcomeText (V78)', () => {
   });
 });
 
-describe('ranFor (V78)', () => {
+describe('ranFor (V77)', () => {
   it('says how long it ran, from its start to its clean-up, in words', () => {
     const at = (minutes: number) => new Date(Date.parse('2026-10-27T18:00:00Z') + minutes * 60_000);
     const from = '2026-10-27T18:00:00.000Z';
@@ -53,7 +53,7 @@ describe('ranFor (V78)', () => {
   });
 });
 
-describe('matching (V78)', () => {
+describe('matching (V77)', () => {
   const rows = [
     row({ branch: 'feature/done-workspace', title: 'done workspace', kind: 'feature' }),
     row({
@@ -89,7 +89,7 @@ describe('matching (V78)', () => {
   });
 });
 
-describe('byDay (V78)', () => {
+describe('byDay (V77)', () => {
   const now = new Date('2026-10-29T15:00:00');
   const at = (local: string) => new Date(local).toISOString();
 
@@ -127,7 +127,7 @@ describe('byDay (V78)', () => {
   });
 });
 
-describe("History's tab in the address (V78)", () => {
+describe("History's tab in the address (V77)", () => {
   it('reads the tab, Activity without one', () => {
     expect(historyView('?branch=x')).toBe('activity');
     expect(historyView('?branch=x&brief')).toBe('brief');

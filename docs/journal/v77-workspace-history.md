@@ -1,8 +1,8 @@
-# Journal: V78 — History: finished workspaces, their activity and brief
+# Journal: V77 — History: finished workspaces, their activity and brief
 
-[Index](../JOURNAL.md) · [Plan](../plan/v78-workspace-history.md)
+[Index](../JOURNAL.md) · [Plan](../plan/v77-workspace-history.md)
 
-## V78 spike — what a cleaned-up workspace leaves (2026-10-29, branch `feature/workspaces-history`)
+## V77 spike — what a cleaned-up workspace leaves (2026-10-29, branch `feature/workspaces-history`)
 
 The person's `symbiote/` folder read (not changed): 99 workspace records, 97 of them `finished`;
 their threads, recorded tools and reviews; `git merge-base --is-ancestor` of each approved commit
@@ -14,22 +14,22 @@ against `main`, and whether each branch is still there.
 - **The commits outlive the branch**: Clean up deletes a merged branch, but 83 approved commits
   are on `main` (Symbiote merges with `--no-ff`, the approved commit the merge's second parent)
   and 13 workspaces kept their branch: 96 of 97 can show their commits. The record itself says
-  nothing of the branch's end, so V78 has Clean up write `tip` and `merged`.
+  nothing of the branch's end, so V77 has Clean up write `tip` and `merged`.
 - **Two approved commits are not on `main`**: an Approve is not proof of a merge; the outcome is
   read from git, not from the verdict.
 - **A finished Codex or Hermes workspace keeps its conversation in the agent** (3 of 97): reading
   it means asking Codex's app server or starting Hermes for a workspace whose sessions were
-  archived. V78 reads Symbiote's own files only and says so.
+  archived. V77 reads Symbiote's own files only and says so.
 - **`/history` is taken**: Git's address until V66, still moved to `/git`, and Git's API is
   `/api/history`. The page is `/workspace-history`.
 
-## V78 — History under Monitor: finished workspaces, their activity and brief (2026-10-29, branch `feature/workspaces-history`)
+## V77 — History under Monitor: finished workspaces, their activity and brief (2026-10-29, branch `feature/workspaces-history`)
 
 A History page in the sidenav under Monitor (`h`, `/workspace-history`): the finished workspaces
 by the day they were cleaned up, searched by title, branch or brief and by kind; the picked one
 beside them, read only, in the workspace page's own tabs: Activity, Thread, Brief, Changes; Open
 the change. Its API (`/api/workspaces/history`) reads records, reviews and git, never an agent;
-Clean up records `tip` and `merged`. Decisions 569–575 (planned as V77, 561–567).
+Clean up records `tip` and `merged`. Decisions 561–567.
 
 **Learned**:
 - **A git run from Node costs ~3 ms to start, and starts do not overlap**: 85 `merge-base
@@ -46,9 +46,11 @@ Clean up records `tip` and `merged`. Decisions 569–575 (planned as V77, 561–
   never stacked it at 760 px; the page (`.history`) is the container now.
 - **On real records the row's outcome cut every name**: 83 of 97 said "Merged into main"; rows
   say "Merged", the card the branch.
-- **Milestone IDs collide again**: `feature/remove-scout-in-page-settings` planned V77 (561–564)
-  five minutes after this plan; `main` took 568 meanwhile. Renumbered at the end, by a script on
-  this branch's own lines only (an SVG path holds "11.562").
+- **Milestone IDs collide again, and renumbering on both sides collides twice**:
+  `feature/remove-scout-in-page-settings` planned V77 (561–564) five minutes after this plan, and
+  `main` took 568 for V76c. Both branches moved to V78 within minutes of each other; this one went
+  back to V77 once the other's V78 (569–572) was final. Renumber by a script on the branch's own
+  lines only (an SVG path holds "11.562"), and recheck every branch after pushing.
 
 **Verification**: tests first, red for the right reason (the module, the route, the record's
 fields missing; then a fixture's wrong base). CLI 1,006 unit tests, viewer 626; e2e

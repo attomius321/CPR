@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
-// History (V78): the finished workspaces under Monitor (`h`), the picked one beside the list,
+// History (V77): the finished workspaces under Monitor (`h`), the picked one beside the list,
 // read only — its Activity, Thread, Brief and Changes — from Symbiote's files and git.
 let symbiote: RunningWorkspaces;
 const errors: string[] = [];
@@ -36,7 +36,7 @@ function put(path: string, text: string) {
 const lines = (values: unknown[]) => values.map((v) => `${JSON.stringify(v)}\n`).join('');
 
 /**
- * A fix finished two days ago, before V78 (no `tip`): its brief, a report in its thread, one
+ * A fix finished two days ago, before V77 (no `tip`): its brief, a report in its thread, one
  * recorded command; its branch gone, never merged.
  */
 function oldFix() {
@@ -105,7 +105,7 @@ const rowOf = (page: Page, branch: string) => list(page).locator(`[data-branch="
 const picked = (page: Page, branch: string) =>
   page.getByRole('region', { name: `Workspace ${branch}` });
 
-test('History, under Monitor: the cleaned-up workspaces, the picked one read only (V78)', async ({
+test('History, under Monitor: the cleaned-up workspaces, the picked one read only (V77)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();

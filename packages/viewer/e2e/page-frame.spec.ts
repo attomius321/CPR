@@ -144,7 +144,7 @@ test("the shell's pages: the whole main area, one head, cards 16 px from its edg
   await expectPage(page, 'Skills', 'skills', ['.skills-list', '.skills-pane']);
   await expectPage(page, 'the Monitor', 'monitor', ['.monitor-map-card', '.monitor-side']);
   await expectPage(page, 'Settings', 'settings', ['.settings-list', '.settings-editor']);
-  // History (V78): empty, one card; with a finished workspace, the list and the picked one.
+  // History (V77): empty, one card; with a finished workspace, the list and the picked one.
   await expectPage(page, 'History, empty', 'workspace-history', ['.history-none']);
   const record = join(symbiote.repo, 'symbiote', 'workspaces', 'fix', 'old.json');
   mkdirSync(dirname(record), { recursive: true });

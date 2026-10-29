@@ -37,11 +37,11 @@ export interface WorkspaceFile {
   created: string;
   /** The branch `base` was the tip of; absent when a row was picked. */
   from?: string;
-  /** When it was cleaned up (V18c): no longer listed, but in History (V78). */
+  /** When it was cleaned up (V18c): no longer listed, but in History (V77). */
   finished?: string;
   /**
-   * Where its branch ended when it was cleaned up (V78, decision 574): its tip then, and whether
-   * that was merged into the default branch. Absent on records cleaned up before V78.
+   * Where its branch ended when it was cleaned up (V77, decision 566): its tip then, and whether
+   * that was merged into the default branch. Absent on records cleaned up before V77.
    */
   tip?: string;
   merged?: true;

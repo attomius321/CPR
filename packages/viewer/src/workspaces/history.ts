@@ -1,4 +1,4 @@
-// History (V78): the finished workspaces as the page lists them — by the day they finished,
+// History (V77): the finished workspaces as the page lists them — by the day they finished,
 // searched, what became of each branch and how long each ran, in words — and the picked one's tab
 // in the address. Pure: `WorkspaceHistory.tsx` draws what these say.
 import type { FinishedWorkspace, WorkKind } from '@symbiote/core';
@@ -6,7 +6,7 @@ import type { FinishedWorkspace, WorkKind } from '@symbiote/core';
 /** The kinds in the start page's order (core's `WORK_KINDS`, which the viewer cannot import). */
 const KINDS: readonly WorkKind[] = ['feature', 'fix', 'refactor', 'chore', 'spike'];
 
-/** What became of a finished workspace's branch, in words (decision 573). */
+/** What became of a finished workspace's branch, in words (decision 565). */
 export function outcomeText(workspace: FinishedWorkspace): string {
   if (workspace.outcome === 'merged') {
     return workspace.into ? `Merged into ${workspace.into}` : 'Merged';
@@ -104,7 +104,7 @@ export function byDay(rows: readonly FinishedWorkspace[], now: Date): HistoryDay
   return days;
 }
 
-/** The picked workspace's tabs (V78, decision 570), Activity first. */
+/** The picked workspace's tabs (V77, decision 562), Activity first. */
 export type HistoryView = 'activity' | 'thread' | 'brief' | 'changes';
 export const HISTORY_VIEWS: readonly HistoryView[] = ['activity', 'thread', 'brief', 'changes'];
 

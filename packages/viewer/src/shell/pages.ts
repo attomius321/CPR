@@ -2,7 +2,7 @@ import type { Graph } from '@symbiote/core';
 
 /**
  * `symbiote view`'s pages and what its sidenav opens (V29a): Git (History until V66), Scout (V35),
- * Skills (V41), Monitor (RM1), History (V78), Settings, a workspace or a merge, and Start a
+ * Skills (V41), Monitor (RM1), History (V77), Settings, a workspace or a merge, and Start a
  * workspace (V30a), each shown in the shell's main area. There is no Workspaces page since V29a: the workspaces are in the
  * sidenav, and `/` alone opens Git.
  */
@@ -16,7 +16,7 @@ export type Route =
   /** Where the checkout's code is (RM1), at `/monitor`; the folder in view in `?path=`. */
   | { page: 'monitor'; path?: string }
   /**
-   * History (V78), at `/workspace-history`: the finished workspaces; the one picked in `?branch=`,
+   * History (V77), at `/workspace-history`: the finished workspaces; the one picked in `?branch=`,
    * its tab in the address too (`&brief`), which the page reads as a workspace's does.
    */
   | { page: 'workspace-history'; branch?: string }
@@ -39,7 +39,7 @@ export const SETTINGS_PAGE = '/settings';
 export const SCOUT_PAGE = '/scout';
 export const SKILLS_PAGE = '/skills';
 export const MONITOR_PAGE = '/monitor';
-/** History (V78): not `/history`, Git's address until V66, still moved to `/git`. */
+/** History (V77): not `/history`, Git's address until V66, still moved to `/git`. */
 export const WORKSPACE_HISTORY_PAGE = '/workspace-history';
 export const START_PAGE = '/start';
 
@@ -54,7 +54,7 @@ export function pageTitle(...parts: (string | undefined)[]): string {
 
 /**
  * A shell page's title: a workspace by its title (`name`) when known, else its branch; History's
- * picked one too (V78).
+ * picked one too (V77).
  */
 export function routeTitle(route: Route, repo: string | undefined, name?: string): string {
   switch (route.page) {
@@ -203,7 +203,7 @@ export function inShell(url: URL): boolean {
 
 /**
  * A diff's way back: to the page it was opened from (`referrer`, which outlives a reload), with
- * its address — Git, a workspace, History (V78) —; else Git, where comparisons are picked.
+ * its address — Git, a workspace, History (V77) —; else Git, where comparisons are picked.
  */
 export function backLink(referrer: string, origin: string): { href: string; label: string } {
   let from: URL | null = null;

@@ -66,7 +66,7 @@ test('symbiote view opens Git in the shell: the pages, then the workspaces, and 
   await expect(links.nth(1)).toHaveAccessibleName('Scout');
   await expect(links.nth(2)).toHaveAccessibleName('Skills');
   await expect(links.nth(3)).toHaveAccessibleName('Monitor');
-  // History (V78): the cleaned-up workspaces, under Monitor.
+  // History (V77): the cleaned-up workspaces, under Monitor.
   await expect(links.nth(4)).toHaveAccessibleName('History');
   await expect(settingsLink(page)).toBeVisible();
   await expect(pages(page).getByRole('link', { name: 'Git' })).toHaveAttribute(

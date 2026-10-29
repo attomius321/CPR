@@ -19,7 +19,7 @@ export function BriefTab({
   started: string | null;
   /** The files given with it (V40). */
   documents: WorkspaceSummary['documents'];
-  /** Clean up removed them, their names kept (a finished workspace's, V78). */
+  /** Clean up removed them, their names kept (a finished workspace's, V77). */
   removed?: boolean;
 }) {
   const lexer = useMarkdown();

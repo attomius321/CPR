@@ -120,7 +120,7 @@ export function WorkspaceView({ branch }: { branch: string }) {
 }
 
 /**
- * A workspace the list does not have: one cleaned up moves to History (V78), its address replaced;
+ * A workspace the list does not have: one cleaned up moves to History (V77), its address replaced;
  * else it was started elsewhere, or its record is gone.
  */
 function NotListed({ branch }: { branch: string }) {
