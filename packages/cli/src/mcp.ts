@@ -1,4 +1,4 @@
-// Symbiote's MCP (MC1): Symbiote's services as tools, for Scout and for the person's own agents
+// Symbiote's MCP (MC1): Symbiote's services as tools, for Nucleus and for the person's own agents
 // (`symbiote mcp`), answered in `symbiote view`'s process at `POST /api/mcp` and reached through a
 // stdio bridge (`mcp-bridge.ts`, decision 358). The protocol's few methods by hand (decision 359).
 // A tool that changes a branch's fate waits for the person's Confirm on Symbiote's pages, 10 minutes

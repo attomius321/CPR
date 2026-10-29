@@ -1,5 +1,5 @@
 // What waits for the person (N2): counted once for the window's title and the app's icon. Pure.
-import type { McpAsk, MergeEntry, ScoutState } from '@symbiote/core';
+import type { McpAsk, MergeEntry, PageAgentState } from '@symbiote/core';
 import { workspaceGroups } from '../workspaces/workspaces.js';
 import type { WorkspacesState } from '../workspaces/useWorkspaces.js';
 import { asksBy } from './asks.js';
@@ -10,26 +10,26 @@ export interface Waiting {
   workspaces: number;
   /** Merges that need the person: a question, a resolution to review, conflicts left. */
   merges: number;
-  /** Scout: its own ask, or a dialog in its terminal (its link's amber band, V59). */
-  scout: boolean;
+  /** Nucleus: its own ask, or a dialog in its terminal (its link's amber band, V59). */
+  nucleus: boolean;
   /** Scribe: a dialog in its terminal. */
   scribe: boolean;
-  /** Asks of agents through `symbiote mcp` (MC1), in the ask bar; Scout's count as Scout. */
+  /** Asks of agents through `symbiote mcp` (MC1), in the ask bar; Nucleus's count as Nucleus. */
   asks: number;
 }
 
-type Read = Pick<WorkspacesState, 'list' | 'reviews' | 'merges' | 'scout' | 'scribe'>;
+type Read = Pick<WorkspacesState, 'list' | 'reviews' | 'merges' | 'nucleus' | 'scribe'>;
 
-/** Whether Scout waits on the person: its ask on the page, or a dialog in its terminal (MC1). */
-export const scoutWaiting = (scout: ScoutState | null, asks: readonly McpAsk[]): boolean =>
-  asksBy(asks, 'scout') || scout?.conversation?.state === 'needs-you';
+/** Whether Nucleus waits on the person: its ask on the page, or a dialog in its terminal (MC1). */
+export const nucleusWaiting = (nucleus: PageAgentState | null, asks: readonly McpAsk[]): boolean =>
+  asksBy(asks, 'scout') || nucleus?.conversation?.state === 'needs-you';
 
 /** The merges that need the person: `needs-you`, whichever it is (`mergeLabel`). */
 export const mergesWaiting = (merges: readonly MergeEntry[]): number =>
   merges.filter((entry) => entry.state === 'needs-you').length;
 
 /** Whether Scribe waits on the person: a dialog in its terminal (V59). */
-export const scribeWaiting = (scribe: ScoutState | null): boolean =>
+export const scribeWaiting = (scribe: PageAgentState | null): boolean =>
   scribe?.conversation?.state === 'needs-you';
 
 /** What waits for the person, from what the page read and the open asks. */
@@ -37,7 +37,7 @@ export function whatWaits(read: Read, asks: readonly McpAsk[]): Waiting {
   return {
     workspaces: workspaceGroups(read.list?.workspaces ?? [], read.reviews).waiting.length,
     merges: mergesWaiting(read.merges?.merges ?? []),
-    scout: scoutWaiting(read.scout, asks),
+    nucleus: nucleusWaiting(read.nucleus, asks),
     scribe: scribeWaiting(read.scribe),
     asks: asks.filter((ask) => ask.by.via === 'mcp').length,
   };
@@ -47,6 +47,6 @@ export function whatWaits(read: Read, asks: readonly McpAsk[]): Waiting {
 export const waitingCount = (waiting: Waiting): number =>
   waiting.workspaces +
   waiting.merges +
-  (waiting.scout ? 1 : 0) +
+  (waiting.nucleus ? 1 : 0) +
   (waiting.scribe ? 1 : 0) +
   waiting.asks;

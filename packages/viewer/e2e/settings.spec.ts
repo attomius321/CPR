@@ -394,14 +394,14 @@ test('Appearance is an entry of its own: the theme and the intro; listed when th
   );
 });
 
-// Scout's effort (fix/scout-effort-level): `scout.effort` in the project's config, the level each
-// conversation starts at, set on a stepper of Scout's agent's levels and saved when let go.
+// Nucleus's effort (fix/scout-effort-level): `scout.effort` in the project's config, the level each
+// conversation starts at, set on a stepper of Nucleus's agent's levels and saved when let go.
 test("Scout's page: its Model, Effort and Instructions; the effort a stepper of Claude Code's levels, saved in symbiote/config.json when let go", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
   // Null while the server writes it: it truncates the file, then writes it.
-  const scout = () => {
+  const nucleus = () => {
     try {
       return (JSON.parse(readFileSync(config(), 'utf8')) as { scout?: Record<string, unknown> })
         .scout;
@@ -424,14 +424,14 @@ test("Scout's page: its Model, Effort and Instructions; the effort a stepper of 
   await dragTo(page, effort, 3);
   await expect(effort).toHaveAttribute('aria-valuetext', 'high');
   await expect(part(page, 'Effort').getByRole('status')).toContainText('Saved.');
-  await expect.poll(scout).toEqual({ effort: 'high' });
+  await expect.poll(nucleus).toEqual({ effort: 'high' });
   // A key steps one level, and saves it; the page reads the prompts' version again after.
   const reread = page.waitForResponse(
     (response) =>
       response.url().endsWith('/api/settings/prompts') && response.request().method() === 'GET',
   );
   await effort.press('ArrowLeft');
-  await expect.poll(scout).toEqual({ effort: 'medium' });
+  await expect.poll(nucleus).toEqual({ effort: 'medium' });
   await reread;
   // So the Instructions saved after, on the same page, are not refused as changed since.
   await text(page, 'Instructions').fill('Answer briefly.');
@@ -445,12 +445,12 @@ test("Scout's page: its Model, Effort and Instructions; the effort a stepper of 
   await expect(text(page, 'Instructions')).toHaveValue('Answer briefly.');
   // The agent's own default: the key goes, the rest stays.
   await effort.press('Home');
-  await expect.poll(scout).toBeUndefined();
+  await expect.poll(nucleus).toBeUndefined();
   expect(prompts()).toEqual({ scout: 'Answer briefly.' });
 });
 
 // The merger's effort (V46d): `merge.effort`, the level each merger agent's run is asked at, on
-// the same stepper as Scout's, on the merger's page.
+// the same stepper as Nucleus's, on the merger's page.
 test("the merger's effort: a stepper of its agent's levels, saved as merge.effort when let go", async ({
   page,
 }) => {
@@ -507,7 +507,7 @@ test("Scout's effort: a level its agent does not list is said, and Scout starts 
   );
 });
 
-// Scout's, Scribe's and the merger's model (V47): from their agent's own list, saved in the
+// Nucleus's, Scribe's and the merger's model (V47): from their agent's own list, saved in the
 // project's config when picked; their Effort follows it.
 const section =
   <T>(name: string) =>
@@ -525,7 +525,7 @@ test("Scout's model: Claude Code's own list, saved as scout.model when picked; t
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  const scout = section<Record<string, unknown>>('scout');
+  const nucleus = section<Record<string, unknown>>('scout');
   await page.goto(`${symbiote.url}settings`);
   await agents(page).getByRole('button', { name: 'Scout' }).click();
   await expect(page).toHaveURL(`${symbiote.url}settings?prompt=scout`);
@@ -539,16 +539,16 @@ test("Scout's model: Claude Code's own list, saved as scout.model when picked; t
   // xhigh, on Claude Code's default model.
   const effort = part(page, 'Effort').getByRole('slider', { name: 'Effort' });
   await dragTo(page, effort, 4);
-  await expect.poll(scout).toEqual({ effort: 'xhigh' });
+  await expect.poll(nucleus).toEqual({ effort: 'xhigh' });
   await modelSelect(page).selectOption({ label: 'Opus 4.6' });
   await expect(part(page, 'Model').getByRole('status')).toHaveText(
     "Saved. Scout's next conversation starts on Opus 4.6.",
   );
-  await expect.poll(scout).toEqual({ effort: 'xhigh', model: 'claude-opus-4-6' });
+  await expect.poll(nucleus).toEqual({ effort: 'xhigh', model: 'claude-opus-4-6' });
   await expect(part(page, 'Model').locator('.settings-row-note')).toHaveText(
     'Best for everyday, complex tasks',
   );
-  // The Effort beside it follows at once: Opus 4.6 has no xhigh, so Scout starts at the default.
+  // The Effort beside it follows at once: Opus 4.6 has no xhigh, so Nucleus starts at the default.
   await expect(stops(effort)).toHaveText(['Default', 'Low', 'Medium', 'High', 'Max']);
   await expect(effort).toHaveAttribute('aria-valuetext', "Claude Code's default");
   await expect(part(page, 'Effort').getByRole('alert')).toHaveText(
@@ -556,16 +556,18 @@ test("Scout's model: Claude Code's own list, saved as scout.model when picked; t
   );
   // The next conversation starts on it, opened with the page (V50), and its line says so (V78).
   await page.goto(`${symbiote.url}scout`);
-  const scoutPage = page.getByRole('region', { name: 'Scout' });
+  const nucleusPage = page.getByRole('region', { name: 'Scout' });
   await expect
     .poll(() => symbiote.calls().find((call) => call.args.includes('Scout'))?.args ?? [])
     .toEqual(expect.arrayContaining(['--model', 'claude-opus-4-6']));
-  await expect(scoutPage.locator('.scout-about')).toContainText('with Claude Code on Opus 4.6');
+  await expect(nucleusPage.locator('.page-agent-about')).toContainText(
+    'with Claude Code on Opus 4.6',
+  );
   // Back to the default: the key goes.
   await page.goto(`${symbiote.url}settings?prompt=scout`);
   await expect(modelSelect(page)).toHaveValue('claude-opus-4-6');
   await modelSelect(page).selectOption({ label: "Claude Code's default" });
-  await expect.poll(scout).toEqual({ effort: 'xhigh' });
+  await expect.poll(nucleus).toEqual({ effort: 'xhigh' });
 });
 
 test("the merger's model: Symbiote's sonnet named as its default; merge.model saved, one written by hand said", async ({
@@ -593,7 +595,7 @@ test("the merger's model: Symbiote's sonnet named as its default; merge.model sa
 });
 
 // Scribe's effort (fix/scribe-effort-level): `scribe.effort`, the level each of its conversations
-// starts at, as Scout's.
+// starts at, as Nucleus's.
 test("Scribe's page: its Model, Effort and Instructions; saved as scribe.model and scribe.effort", async ({
   page,
 }) => {
@@ -622,7 +624,7 @@ test("Scribe's page: its Model, Effort and Instructions; saved as scribe.model a
     "Saved. Scribe's next conversation starts at high.",
   );
   await expect.poll(scribe).toEqual({ model: 'sonnet', effort: 'high' });
-  // Scout's is not Scribe's.
+  // Nucleus's is not Scribe's.
   await expect.poll(section('scout')).toBeUndefined();
   await page.reload();
   await expect(effort).toHaveAttribute('aria-valuetext', 'high');

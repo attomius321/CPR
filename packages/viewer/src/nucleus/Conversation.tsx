@@ -1,9 +1,9 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import type { ScoutConversation, ScoutEfforts, ScoutState } from '@symbiote/core';
+import type { PageAgentConversation, AgentLevels, PageAgentState } from '@symbiote/core';
 import { AgentTerminal, type OpenedTerminal } from '../workspaces/AgentTerminal.js';
 import { Help } from '../ui/Help.js';
 import { getJson, postJson } from '../ui/http.js';
-import { runsOn, scoutStateText } from './scout.js';
+import { runsOn, pageAgentStateText } from './page-agent.js';
 import { readWorkspacesAgain, reloadWorkspaces } from '../workspaces/useWorkspaces.js';
 import { tip } from '../ui/tip.js';
 
@@ -11,7 +11,7 @@ import { tip } from '../ui/tip.js';
 export const folderName = (path: string) => path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
 
 /** The state's tone, as the workspaces' dots draw it. */
-export function toneOf(conversation: ScoutConversation): string {
+export function toneOf(conversation: PageAgentConversation): string {
   switch (conversation.state) {
     case 'working':
       return 'tone-working';
@@ -30,15 +30,15 @@ export function toneOf(conversation: ScoutConversation): string {
 }
 
 /** How to reach the conversation from a terminal of one's own, where Symbiote runs none. */
-export const attachCommand = (conversation: ScoutConversation) =>
+export const attachCommand = (conversation: PageAgentConversation) =>
   conversation.kind === 'claude'
     ? `claude attach ${conversation.id ?? ''}`
     : `codex resume ${conversation.id ?? ''}`;
 
 /** A page agent's conversation as its page draws it (`usePageAgent`). */
 export interface PageAgent {
-  read: ScoutState | null;
-  conversation: ScoutConversation | null;
+  read: PageAgentState | null;
+  conversation: PageAgentConversation | null;
   /** A conversation that is not gone. */
   live: boolean;
   terminals: boolean;
@@ -55,19 +55,19 @@ export interface PageAgent {
 }
 
 /**
- * A page agent's conversation, Scout's page and Scribe's pane alike (V78, decision 569): with
+ * A page agent's conversation, Nucleus's page and Scribe's pane alike (V78, decision 569): with
  * terminals and no conversation (or a gone one), one is opened at once with nothing asked, on
  * Settings' model and level; New conversation ends it, and the next opens the same way. A failed
  * open says why, and is tried again only on Try again. Nothing on the page picks the agent, the
  * model or the level: Settings does.
  */
-export function usePageAgent(api: string, read: ScoutState | null): PageAgent {
+export function usePageAgent(api: string, read: PageAgentState | null): PageAgent {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // An open was asked for while there is no conversation: asked once, until one runs or Try again.
   const [opening, setOpening] = useState(false);
   // The agents' models, read for the name of the conversation's.
-  const [efforts, setEfforts] = useState<ScoutEfforts | null>(null);
+  const [efforts, setEfforts] = useState<AgentLevels | null>(null);
 
   const conversation = read?.conversation ?? null;
   const agents = read?.agents ?? [];
@@ -81,7 +81,7 @@ export function usePageAgent(api: string, read: ScoutState | null): PageAgent {
   useEffect(() => {
     if (!model) return;
     let current = true;
-    getJson<ScoutEfforts>(`${api}/efforts`)
+    getJson<AgentLevels>(`${api}/efforts`)
       .then((answer) => {
         if (current) setEfforts(answer);
       })
@@ -102,7 +102,7 @@ export function usePageAgent(api: string, read: ScoutState | null): PageAgent {
   }, [live]);
 
   /** Runs a write, then reads the agent's state again before the page goes on. */
-  const act = (task: () => Promise<ScoutState>) => {
+  const act = (task: () => Promise<PageAgentState>) => {
     setBusy(true);
     setError(null);
     return task()
@@ -119,7 +119,7 @@ export function usePageAgent(api: string, read: ScoutState | null): PageAgent {
   useEffect(() => {
     if (!open) return;
     setOpening(true);
-    void act(() => postJson<ScoutState>(`${api}/open`, {}));
+    void act(() => postJson<PageAgentState>(`${api}/open`, {}));
   }, [open]);
 
   const models = efforts?.agents.find((a) => a.kind === kind)?.models;
@@ -132,7 +132,7 @@ export function usePageAgent(api: string, read: ScoutState | null): PageAgent {
     busy,
     error,
     on: kind ? runsOn(kind, live ? conversation : null, models) : '',
-    renew: () => void act(() => postJson<ScoutState>(`${api}/new`, {})),
+    renew: () => void act(() => postJson<PageAgentState>(`${api}/new`, {})),
     retry: () => {
       setError(null);
       setOpening(false);
@@ -144,7 +144,7 @@ export function usePageAgent(api: string, read: ScoutState | null): PageAgent {
 export function PageAgentError({ agent }: { agent: PageAgent }) {
   if (!agent.error) return null;
   return (
-    <p className="error scout-error" role="alert">
+    <p className="error page-agent-error" role="alert">
       {agent.error}{' '}
       {agent.terminals && !agent.live && (
         <button type="button" className="button ghost" onClick={agent.retry}>
@@ -161,9 +161,9 @@ export function PageAgentActions({ agent }: { agent: PageAgent }) {
   if (!conversation) return null;
   return (
     <>
-      <span className="scout-state" role="status">
+      <span className="page-agent-state" role="status">
         <span className={`state-dot ${toneOf(conversation)}`} aria-hidden="true" />
-        {scoutStateText(conversation)}
+        {pageAgentStateText(conversation)}
       </span>
       <button
         type="button"
@@ -202,20 +202,22 @@ export function PageAgentBody({
   const { read, conversation } = agent;
   if (agent.none) {
     return (
-      <div className="scout-body">
-        <p className="scout-note">{name} needs Claude Code or Codex: neither is installed here.</p>
+      <div className="page-agent-body">
+        <p className="page-agent-note">
+          {name} needs Claude Code or Codex: neither is installed here.
+        </p>
       </div>
     );
   }
   if (read && !agent.terminals) {
     const reason = read.terminal && !read.terminal.available ? `: ${read.terminal.reason}` : '';
     return (
-      <div className="scout-body">
-        <p className="scout-note">
+      <div className="page-agent-body">
+        <p className="page-agent-note">
           {name} runs in a terminal, and none runs here{reason}.
         </p>
         {agent.live && conversation && (
-          <p className="scout-note">
+          <p className="page-agent-note">
             Its conversation is in its session: <code>{attachCommand(conversation)}</code> in a
             terminal of yours.
           </p>
@@ -234,19 +236,19 @@ export function PageAgentBody({
     );
   }
   return (
-    <div className="scout-body">
-      {!agent.error && read !== null && <p className="scout-starting">Starting {name}…</p>}
+    <div className="page-agent-body">
+      {!agent.error && read !== null && <p className="page-agent-starting">Starting {name}…</p>}
     </div>
   );
 }
 
-/** A page's agent besides Scout's own page: Scribe's pane (V41). */
+/** A page's agent besides Nucleus's own page: Scribe's pane (V41). */
 export interface ConversationAgent {
   name: string;
   /** Its API: `/api/scribe`. */
   api: string;
   /** Its state, read with the workspaces. */
-  state: ScoutState | null;
+  state: PageAgentState | null;
   /** The root's class (`scribe-pane`) and its heading's level. */
   className: string;
   heading: 'h1' | 'h2';
@@ -270,18 +272,18 @@ export function Conversation({ agent: own }: { agent: ConversationAgent }) {
   const id = `${own.className}-title`;
   return (
     <section className={own.className} aria-labelledby={id}>
-      <header className="scout-top">
-        <span className="scout-title">
+      <header className="page-agent-top">
+        <span className="page-agent-title">
           <Heading id={id}>{own.name}</Heading>
           <Help label={`About ${own.name}`}>{own.help}</Help>
         </span>
         {read && (
-          <p className="scout-about" {...tip(read.checkout, { code: true })}>
+          <p className="page-agent-about" {...tip(read.checkout, { code: true })}>
             {own.doing} {folderName(read.checkout)}
             {agent.on ? `, ${agent.on}` : ''}
           </p>
         )}
-        <div className="scout-actions">
+        <div className="page-agent-actions">
           <PageAgentActions agent={agent} />
         </div>
       </header>
@@ -319,7 +321,7 @@ export function ConversationTerminal({
     onTyped?.();
   }, [typed, opened]);
   return (
-    <div className="scout-terminal workspace-terminal">
+    <div className="page-agent-terminal workspace-terminal">
       <AgentTerminal
         key={attempt}
         url={`${api}/terminal`}

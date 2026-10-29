@@ -55,9 +55,9 @@ import {
   type GitRepo,
   type PermissionMode,
   type RefList,
-  type ScoutEffortChange,
-  type ScoutEfforts,
-  type ScoutModelChange,
+  type EffortChange,
+  type AgentLevels,
+  type ModelChange,
   type WorkKind,
 } from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
@@ -177,11 +177,11 @@ export interface WorkspaceConfig {
   /** Claude Code's permission mode and model. */
   permissionMode: PermissionMode;
   model?: string;
-  /** Scout's and Scribe's levels (`scout.effort`, `scribe.effort`): words; absent, the agent's. */
-  scoutEffort?: string;
+  /** Nucleus's and Scribe's levels (`scout.effort`, `scribe.effort`): words; absent, the agent's. */
+  nucleusEffort?: string;
   scribeEffort?: string;
-  /** Scout's and Scribe's models (`scout.model`, `scribe.model`, V47): IDs; absent, the default. */
-  scoutModel?: string;
+  /** Nucleus's and Scribe's models (`scout.model`, `scribe.model`, V47): IDs; absent, the default. */
+  nucleusModel?: string;
   scribeModel?: string;
   /**
    * The advisor's model and level on each agent (`advisor.claude`, `advisor.codex`: `model`,
@@ -194,7 +194,7 @@ export interface WorkspaceConfig {
  * `features.branchPrefixes` sets a kind's prefix (V24), each kind its own by default (`fix/`);
  * `features.branchPrefix`, from before V24, sets the Feature's unless `branchPrefixes` does.
  * `agent.kind` names the agent offered first (V20a); `agent.permissionMode` and `agent.model`
- * are Claude Code's. `scout.effort` and `scribe.effort` are the levels Scout's and Scribe's
+ * are Claude Code's. `scout.effort` and `scribe.effort` are the levels Nucleus's and Scribe's
  * conversations start at; `scout.model` and `scribe.model` the models they start on (V47);
  * `advisor.<agent>.model` and `.effort` what the advisor runs on with that agent (V75c).
  */
@@ -248,14 +248,14 @@ export function readWorkspaceConfig(root: string): WorkspaceConfig {
   if (typeof agent.model === 'string' && agent.model !== '') config.model = agent.model;
   const level = (value: unknown) =>
     typeof value === 'string' && EFFORT_LEVEL.test(value) ? value : undefined;
-  const scoutEffort = level(v.scout?.effort);
-  if (scoutEffort) config.scoutEffort = scoutEffort;
+  const nucleusEffort = level(v.scout?.effort);
+  if (nucleusEffort) config.nucleusEffort = nucleusEffort;
   const scribeEffort = level(v.scribe?.effort);
   if (scribeEffort) config.scribeEffort = scribeEffort;
   const id = (value: unknown) =>
     typeof value === 'string' && MODEL_ID.test(value) ? value : undefined;
-  const scoutModel = id(v.scout?.model);
-  if (scoutModel) config.scoutModel = scoutModel;
+  const nucleusModel = id(v.scout?.model);
+  if (nucleusModel) config.nucleusModel = nucleusModel;
   const scribeModel = id(v.scribe?.model);
   if (scribeModel) config.scribeModel = scribeModel;
   for (const kind of ADVISING_AGENTS) {
@@ -316,11 +316,11 @@ export interface Workspaces {
    * The advisor's models and levels on `agent` for Settings (V75c), and the project's picks; no
    * agent when it is not installed. Refused (400) for an agent the advisor does not run on.
    */
-  advisor(agent: AgentKind): Promise<ScoutEfforts>;
+  advisor(agent: AgentKind): Promise<AgentLevels>;
   /** Sets the advisor's model on `agent` (`advisor.<agent>.model`), or removes it (null). */
-  setAdvisorModel(agent: AgentKind, change: ScoutModelChange): Promise<ScoutEfforts>;
+  setAdvisorModel(agent: AgentKind, change: ModelChange): Promise<AgentLevels>;
   /** Sets the advisor's level on `agent` (`advisor.<agent>.effort`), or removes it (null). */
-  setAdvisorEffort(agent: AgentKind, change: ScoutEffortChange): Promise<ScoutEfforts>;
+  setAdvisorEffort(agent: AgentKind, change: EffortChange): Promise<AgentLevels>;
   /** Starts a workspace's agent again (after a failed start, or once it ended). */
   startAgent(branch: string): Promise<WorkspaceStart>;
   /** The prompt its agent was given, to copy. */
@@ -774,7 +774,7 @@ export function workspaces(
   }
 
   /** The advisor's models and levels on `kind` (V75c), as Settings shows them. */
-  async function advisorOf(kind: AgentKind): Promise<ScoutEfforts> {
+  async function advisorOf(kind: AgentKind): Promise<AgentLevels> {
     const on = advising(kind);
     const pick = config().advisor?.[on] ?? {};
     const about = {
@@ -800,7 +800,7 @@ export function workspaces(
     kind: AgentKind,
     key: keyof AdvisorPick,
     value: string | null,
-  ): Promise<ScoutEfforts> {
+  ): Promise<AgentLevels> {
     try {
       await writeConfig(root, ['advisor', kind, key], value ?? undefined);
     } catch (error) {

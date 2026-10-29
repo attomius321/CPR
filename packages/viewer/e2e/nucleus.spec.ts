@@ -5,7 +5,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 import { textAt } from './terminal.js';
 
-// Scout (V35): an agent in the checkout, its terminal on its page since V50 — a fake Claude Code,
+// Nucleus (V35): an agent in the checkout, its terminal on its page since V50 — a fake Claude Code,
 // never a real one.
 let symbiote: RunningWorkspaces;
 const errors: string[] = [];
@@ -24,18 +24,18 @@ test.afterEach(() => {
 const POLL = { timeout: 15_000 };
 const git = (...args: string[]) =>
   execFileSync('git', args, { cwd: symbiote.repo, encoding: 'utf8' }).trim();
-const scoutPage = (page: Page) => page.getByRole('region', { name: 'Scout' });
-const screen = (page: Page) => scoutPage(page).locator('.agent-terminal .xterm-rows');
-const keys = (page: Page) => scoutPage(page).locator('.xterm-helper-textarea');
-const renew = (page: Page) => scoutPage(page).getByRole('button', { name: 'New conversation' });
-const scoutLink = (page: Page) =>
+const nucleusPage = (page: Page) => page.getByRole('region', { name: 'Scout' });
+const screen = (page: Page) => nucleusPage(page).locator('.agent-terminal .xterm-rows');
+const keys = (page: Page) => nucleusPage(page).locator('.xterm-helper-textarea');
+const renew = (page: Page) => nucleusPage(page).getByRole('button', { name: 'New conversation' });
+const nucleusLink = (page: Page) =>
   page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: /Scout/ });
 const historyLink = (page: Page) =>
   page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: /Git/ });
 const record = () => join(symbiote.repo, 'symbiote', 'scout.json');
 const config = () => join(symbiote.repo, 'symbiote', 'config.json');
 /** The fake's starts and copies in the checkout, as Claude Code was asked for them. */
-const scoutCalls = () => symbiote.calls().filter((call) => call.args.includes('Scout'));
+const nucleusCalls = () => symbiote.calls().filter((call) => call.args.includes('Scout'));
 const flag = (args: readonly string[] = [], name: string) =>
   args.includes(name) ? args[args.indexOf(name) + 1] : undefined;
 
@@ -43,25 +43,25 @@ test("opens as Scout's terminal, from the sidenav and by its key: started in the
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  // The person's own session in the checkout, started before (V35: never taken for Scout's).
+  // The person's own session in the checkout, started before (V35: never taken for Nucleus's).
   symbiote.addSession({ cwd: symbiote.repo, kind: 'interactive', name: 'mine', status: 'idle' });
   await page.goto(`${symbiote.url}git`);
-  await expect(scoutLink(page)).toHaveAttribute('data-tip-keys', 'a');
-  // Nothing is started before Scout is opened.
-  expect(scoutCalls()).toEqual([]);
-  await scoutLink(page).click();
+  await expect(nucleusLink(page)).toHaveAttribute('data-tip-keys', 'a');
+  // Nothing is started before Nucleus is opened.
+  expect(nucleusCalls()).toEqual([]);
+  await nucleusLink(page).click();
   await expect(page).toHaveURL(`${symbiote.url}scout`);
-  await expect(scoutPage(page).getByRole('heading', { name: 'Scout' })).toBeVisible();
-  await expect(scoutLink(page)).toHaveAttribute('aria-current', 'page');
+  await expect(nucleusPage(page).getByRole('heading', { name: 'Scout' })).toBeVisible();
+  await expect(nucleusLink(page)).toHaveAttribute('aria-current', 'page');
   await expect(page).toHaveTitle(/^Scout · /);
 
   // Its terminal, with no question asked first: no box, no form.
   await expect(screen(page)).toContainText('Fake Claude Code · fake1', POLL);
-  await expect(scoutPage(page).getByRole('textbox', { name: 'Ask Scout' })).toHaveCount(0);
+  await expect(nucleusPage(page).getByRole('textbox', { name: 'Ask Scout' })).toHaveCount(0);
   await expect(keys(page)).toBeFocused();
-  await expect(scoutPage(page).getByRole('status')).toHaveText('Ready: ask in its terminal');
-  expect(scoutCalls()).toHaveLength(1);
-  const [call] = scoutCalls();
+  await expect(nucleusPage(page).getByRole('status')).toHaveText('Ready: ask in its terminal');
+  expect(nucleusCalls()).toHaveLength(1);
+  const [call] = nucleusCalls();
   expect(call?.cwd).toBe(symbiote.repo);
   const args = call?.args ?? [];
   // Read-only, Symbiote's MCP server and no other (MC1), then the gate's settings.
@@ -116,7 +116,7 @@ test("opens as Scout's terminal, from the sidenav and by its key: started in the
   await expect(page).toHaveURL(`${symbiote.url}scout`);
   await expect(screen(page)).toContainText('Fake Claude Code · fake1', POLL);
   await expect(keys(page)).toBeFocused();
-  expect(scoutCalls()).toHaveLength(1);
+  expect(nucleusCalls()).toHaveLength(1);
   expect(symbiote.attaches()).toEqual(['fake1', 'fake1']);
   // Read-only: the checkout is as it was.
   expect(git('status', '--porcelain')).toBe('');
@@ -127,7 +127,7 @@ test("a session of the person's in the checkout is not taken for Scout's", async
   await page.goto(`${symbiote.url}scout`);
   await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
   symbiote.setSession('fake0', { state: 'done', status: 'idle' });
-  // The person starts a session of their own there: newer, working, even named Scout.
+  // The person starts a session of their own there: newer, working, even named Nucleus.
   symbiote.addSession({
     cwd: symbiote.repo,
     kind: 'background',
@@ -140,13 +140,13 @@ test("a session of the person's in the checkout is not taken for Scout's", async
   await page.reload();
   await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
   expect(symbiote.attaches()).toEqual(['fake0', 'fake0']);
-  await expect(scoutPage(page).getByRole('status')).toHaveText(
+  await expect(nucleusPage(page).getByRole('status')).toHaveText(
     'Answered: ask more in its terminal',
     POLL,
   );
   const kept = JSON.parse(readFileSync(record(), 'utf8')) as { id: string };
   expect(kept.id).toBe('fake0');
-  expect(scoutCalls()).toHaveLength(1);
+  expect(nucleusCalls()).toHaveLength(1);
 });
 
 test('the sidenav says Scout works, then that it answered while you were away', async ({
@@ -156,17 +156,17 @@ test('the sidenav says Scout works, then that it answered while you were away', 
   await page.goto(`${symbiote.url}scout`);
   await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
   // Ready is not an answer: no mark.
-  await expect(scoutLink(page)).not.toHaveAttribute('data-state', /.+/);
+  await expect(nucleusLink(page)).not.toHaveAttribute('data-state', /.+/);
   await page.keyboard.type('Why does a reply stop the session first?');
   await page.keyboard.press('Enter');
   symbiote.setSession('fake0', { state: 'working', status: 'busy' });
   await historyLink(page).click();
-  await expect(scoutLink(page)).toHaveAttribute('data-state', 'working', POLL);
+  await expect(nucleusLink(page)).toHaveAttribute('data-state', 'working', POLL);
   symbiote.setSession('fake0', { state: 'done', status: 'idle', answer: 'Because…' });
-  await expect(scoutLink(page)).toHaveAttribute('data-state', 'answered', POLL);
-  await expect(scoutLink(page)).toHaveAttribute('data-tip', /Answered/);
-  await scoutLink(page).click();
-  await expect(scoutLink(page)).not.toHaveAttribute('data-state', /.+/);
+  await expect(nucleusLink(page)).toHaveAttribute('data-state', 'answered', POLL);
+  await expect(nucleusLink(page)).toHaveAttribute('data-tip', /Answered/);
+  await nucleusLink(page).click();
+  await expect(nucleusLink(page)).not.toHaveAttribute('data-state', /.+/);
 });
 
 /**
@@ -221,7 +221,7 @@ const token = (page: Page, name: string) =>
     return color;
   }, name);
 
-// V59 (decisions 422, 423): Scout waiting on the person is its whole link, in Waiting for you's
+// V59 (decisions 422, 423): Nucleus waiting on the person is its whole link, in Waiting for you's
 // amber band, saying so; nothing moves.
 test('Scout waiting for you: its whole link an amber band saying "Waits", folded and on its page too', async ({
   page,
@@ -230,7 +230,7 @@ test('Scout waiting for you: its whole link an amber band saying "Waits", folded
   await page.goto(`${symbiote.url}scout`);
   await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
   await historyLink(page).click();
-  const link = scoutLink(page);
+  const link = nucleusLink(page);
   const waits = link.locator('.sidenav-waits');
   const atRest = await link.boundingBox();
   const warning = await token(page, '--warning');
@@ -307,7 +307,7 @@ test("a path Scout prints opens in VS Code, in the checkout's window (V38)", asy
   await expect(screen(page)).toContainText('In src/math.ts:1.', POLL);
   const at = await textAt(screen(page), 'src/math.ts:1');
   await page.mouse.move(at.x, at.y);
-  await expect(scoutPage(page).getByRole('tooltip')).toHaveText(/^Open in VS Code/);
+  await expect(nucleusPage(page).getByRole('tooltip')).toHaveText(/^Open in VS Code/);
   await page.keyboard.down('ControlOrMeta');
   await page.mouse.click(at.x, at.y);
   await page.keyboard.up('ControlOrMeta');
@@ -326,24 +326,24 @@ test('its page has no choices: the terminal, its line saying what it runs on, th
   await page.goto(`${symbiote.url}scout`);
   await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
   // Two agents installed, and still no Agent, Model or Effort; no box either.
-  await expect(scoutPage(page).getByRole('combobox')).toHaveCount(0);
-  await expect(scoutPage(page).getByRole('slider')).toHaveCount(0);
-  await expect(scoutPage(page).getByRole('textbox', { name: 'Ask Scout' })).toHaveCount(0);
-  await expect(scoutPage(page).locator('.scout-about')).toHaveText(
+  await expect(nucleusPage(page).getByRole('combobox')).toHaveCount(0);
+  await expect(nucleusPage(page).getByRole('slider')).toHaveCount(0);
+  await expect(nucleusPage(page).getByRole('textbox', { name: 'Ask Scout' })).toHaveCount(0);
+  await expect(nucleusPage(page).locator('.page-agent-about')).toHaveText(
     /^In \S+, with Claude Code on Sonnet 5\.5 at high effort$/,
   );
   // Its only buttons: its help and New conversation.
   expect(
-    await scoutPage(page)
+    await nucleusPage(page)
       .getByRole('button')
       .evaluateAll((all) => all.map((b) => b.getAttribute('aria-label') ?? b.textContent?.trim())),
   ).toEqual(['About Scout', 'New conversation']);
   await expect(renew(page)).toHaveClass(/secondary/);
-  const args = scoutCalls()[0]?.args ?? [];
+  const args = nucleusCalls()[0]?.args ?? [];
   expect(flag(args, '--model')).toBe('sonnet');
   expect(flag(args, '--effort')).toBe('high');
   // The Help says where they are set.
-  await scoutPage(page).getByRole('button', { name: 'About Scout' }).click();
+  await nucleusPage(page).getByRole('button', { name: 'About Scout' }).click();
   await expect(page.getByRole('tooltip')).toContainText('Settings sets the model and effort');
 });
 
@@ -362,11 +362,11 @@ test("the state and New conversation share one centre; the terminal starts at th
     await page.setViewportSize({ width, height: 900 });
     await page.goto(`${symbiote.url}scout`);
     await expect(screen(page)).toContainText('Fake Claude Code', POLL);
-    const state = await box(scoutPage(page).getByRole('status'));
+    const state = await box(nucleusPage(page).getByRole('status'));
     const button = await box(renew(page));
     expect(Math.abs(state.centre - button.centre)).toBeLessThanOrEqual(1);
-    const card = await box(scoutPage(page).locator('.scout-card'));
-    const terminal = await box(scoutPage(page).locator('.scout-terminal'));
+    const card = await box(nucleusPage(page).locator('.nucleus-card'));
+    const terminal = await box(nucleusPage(page).locator('.page-agent-terminal'));
     // Inside the card's 1 px border.
     expect(Math.abs(terminal.top - (card.top + 1))).toBeLessThanOrEqual(1);
     expect(button.bottom).toBeLessThan(card.top);
@@ -382,48 +382,51 @@ test("New conversation: the old session stopped and removed, the next opened at 
   await page.goto(`${symbiote.url}scout`);
   await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
   // Opened on the project's level.
-  expect(flag(scoutCalls()[0]?.args, '--effort')).toBe('medium');
-  await expect(scoutPage(page).locator('.scout-about')).toContainText('at medium effort');
+  expect(flag(nucleusCalls()[0]?.args, '--effort')).toBe('medium');
+  await expect(nucleusPage(page).locator('.page-agent-about')).toContainText('at medium effort');
   await expect(renew(page)).toHaveAttribute('data-tip', /starts another on Settings'/);
 
   // Settings changed while it runs: the running conversation keeps its own.
   writeFileSync(config(), '{ "scout": { "effort": "high" } }\n');
   await renew(page).click();
-  await expect.poll(() => scoutCalls().length, POLL).toBe(2);
-  expect(flag(scoutCalls()[1]?.args, '--effort')).toBe('high');
+  await expect.poll(() => nucleusCalls().length, POLL).toBe(2);
+  expect(flag(nucleusCalls()[1]?.args, '--effort')).toBe('high');
   expect(symbiote.stops()).toEqual(['fake0']);
   expect(symbiote.removed()).toEqual(['fake0']);
   // The fake numbers sessions by its list's length: fake0 again, a new session.
   await expect.poll(() => symbiote.attaches(), POLL).toEqual(['fake0', 'fake0']);
   await expect(screen(page)).toContainText('Fake Claude Code · fake0', POLL);
-  await expect(scoutPage(page).getByRole('status')).toHaveText('Ready: ask in its terminal', POLL);
-  await expect(scoutPage(page).locator('.scout-about')).toContainText('at high effort');
+  await expect(nucleusPage(page).getByRole('status')).toHaveText(
+    'Ready: ask in its terminal',
+    POLL,
+  );
+  await expect(nucleusPage(page).locator('.page-agent-about')).toContainText('at high effort');
   await expect(keys(page)).toBeFocused();
   // Nothing written by the page: the project's settings are Settings'.
   expect(JSON.parse(readFileSync(config(), 'utf8'))).toEqual({ scout: { effort: 'high' } });
 });
 
-// V78 (decision 572): Scout runs in a terminal; without one, no box.
+// V78 (decision 572): Nucleus runs in a terminal; without one, no box.
 test('without terminals, no box: it says Scout runs in a terminal, and why none runs, starting nothing', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces({ terminal: false });
   await page.goto(`${symbiote.url}scout`);
-  await expect(scoutPage(page).locator('.scout-note')).toHaveText(
+  await expect(nucleusPage(page).locator('.page-agent-note')).toHaveText(
     'Scout runs in a terminal, and none runs here: terminals are turned off (SYMBIOTE_TERMINAL=off).',
   );
-  await expect(scoutPage(page).getByRole('textbox')).toHaveCount(0);
-  await expect(scoutPage(page).getByRole('combobox')).toHaveCount(0);
-  await expect(scoutPage(page).getByRole('slider')).toHaveCount(0);
+  await expect(nucleusPage(page).getByRole('textbox')).toHaveCount(0);
+  await expect(nucleusPage(page).getByRole('combobox')).toHaveCount(0);
+  await expect(nucleusPage(page).getByRole('slider')).toHaveCount(0);
   await expect(renew(page)).toHaveCount(0);
   await page.waitForTimeout(500);
-  expect(scoutCalls()).toEqual([]);
+  expect(nucleusCalls()).toEqual([]);
 });
 
 test('without Claude Code or Codex, Scout says what it needs', async ({ page }) => {
   symbiote = await serveWorkspaces({ agent: false });
   await page.goto(`${symbiote.url}scout`);
-  await expect(scoutPage(page)).toContainText('Scout needs Claude Code or Codex');
-  await expect(scoutPage(page).locator('.agent-terminal')).toHaveCount(0);
-  await expect(scoutPage(page).getByRole('button', { name: 'New conversation' })).toHaveCount(0);
+  await expect(nucleusPage(page)).toContainText('Scout needs Claude Code or Codex');
+  await expect(nucleusPage(page).locator('.agent-terminal')).toHaveCount(0);
+  await expect(nucleusPage(page).getByRole('button', { name: 'New conversation' })).toHaveCount(0);
 });

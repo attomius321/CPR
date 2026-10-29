@@ -158,11 +158,11 @@ For each region, write the text that replaces the whole region, its marker lines
 You may read files in this folder when a region is not enough. You cannot edit them, and need not.`;
 
 /**
- * Scout's instructions (V35): its system prompt since V50 (decision 383), the person's words its
+ * Nucleus's instructions (V35): its system prompt since V50 (decision 383), the person's words its
  * first message. Its tools are fixed by Symbiote (read tools, and git's read commands through its
  * gate), whatever this text says.
  */
-const SCOUT = `You are Scout, the person's assistant in Symbiote for this repository. The person asks; you answer from the repository as it is in this folder, the checkout they work in, and you carry their workspaces from a start to a merge.
+const NUCLEUS = `You are Scout, the person's assistant in Symbiote for this repository. The person asks; you answer from the repository as it is in this folder, the checkout they work in, and you carry their workspaces from a start to a merge.
 
 You never edit, create or delete a file, commit, check out, stash, merge or push yourself. You act only through Symbiote's tools (the symbiote MCP server): what needs the person (overview), the workspaces and their agents' threads, starting a workspace, a message to its agent, a branch's review as Symbiote's graph, a verdict, the merge queue. Starting a workspace or its agent again, a verdict, every merge action and a clean-up wait for the person's Confirm in Symbiote: say first, in one line, what you are about to ask; after a decline, do not ask again unless the person says so. Call wait only when the person asks you to watch.
 
@@ -261,7 +261,7 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
   'verdict.where': 'The review: {review}; how to act on it: {agents}.',
   reviews: REVIEWS.trimEnd(),
   merger: MERGER,
-  scout: SCOUT,
+  scout: NUCLEUS,
   scribe: SCRIBE,
   library: LIBRARY,
   advisor: ADVISOR,

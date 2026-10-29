@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { PromptKey, PromptSetting, PromptSettings, ScoutEfforts } from '@symbiote/core';
+import type { PromptKey, PromptSetting, PromptSettings, AgentLevels } from '@symbiote/core';
 import { EffortStepper } from '../workspaces/EffortStepper.js';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
@@ -62,7 +62,7 @@ interface ModelSetting {
 }
 
 /**
- * A prebuilt agent's effort in the project's config: Scout's (fix/scout-effort-level), the
+ * A prebuilt agent's effort in the project's config: Nucleus's (fix/scout-effort-level), the
  * merger's (V46d) and Scribe's (fix/scribe-effort-level).
  */
 interface EffortSetting {
@@ -162,7 +162,7 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
 };
 
 /**
- * The advisor's model and level on `kind` (V75c, decision 556): read and set where Scout's are,
+ * The advisor's model and level on `kind` (V75c, decision 556): read and set where Nucleus's are,
  * per agent, since the advisor runs on the agent picked on the Start page.
  */
 function advisorSettings(kind: Advising): AgentSettings {
@@ -525,11 +525,11 @@ function AgentRows({
   /** After a save: the config file changed. */
   onSaved: () => void;
 }) {
-  const [read, setRead] = useState<ScoutEfforts | null>(null);
+  const [read, setRead] = useState<AgentLevels | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let current = true;
-    getJson<ScoutEfforts>(`${settings.api}/efforts`)
+    getJson<AgentLevels>(`${settings.api}/efforts`)
       .then((answer) => {
         if (current) setRead(answer);
       })
@@ -544,12 +544,12 @@ function AgentRows({
       current = false;
     };
   }, [settings]);
-  const saved = (answer: ScoutEfforts) => {
+  const saved = (answer: AgentLevels) => {
     setRead(answer);
     onSaved();
   };
 
-  // Its agent: Scout's and Scribe's (`agent.kind`'s, else Claude Code), the merger's, the
+  // Its agent: Nucleus's and Scribe's (`agent.kind`'s, else Claude Code), the merger's, the
   // advisor's on that agent.
   const agent = read?.agents[0];
   return (
@@ -597,8 +597,8 @@ function AgentEffort({
   settings: AgentSettings;
   heading: 'h3' | 'h4';
   /** The agent's models and levels, null while they are read. */
-  read: ScoutEfforts | null;
-  onSaved: (answer: ScoutEfforts) => void;
+  read: AgentLevels | null;
+  onSaved: (answer: AgentLevels) => void;
 }) {
   const { effort: setting } = settings;
   const agent = read?.agents[0];
@@ -618,7 +618,7 @@ function AgentEffort({
   const commit = (next: string) => {
     saving.current = saving.current.then(async () => {
       try {
-        onSaved(await postJson<ScoutEfforts>(`${settings.api}/effort`, { effort: next || null }));
+        onSaved(await postJson<AgentLevels>(`${settings.api}/effort`, { effort: next || null }));
         setNotice({ text: setting.saved(next || (choices[0]?.label ?? `${name}'s default`)) });
       } catch (failed) {
         setNotice({ text: (failed as Error).message, error: true });
@@ -683,8 +683,8 @@ function AgentModel({
   settings: AgentSettings;
   heading: 'h3' | 'h4';
   /** The agent's models and levels, null while they are read. */
-  read: ScoutEfforts | null;
-  onSaved: (answer: ScoutEfforts) => void;
+  read: AgentLevels | null;
+  onSaved: (answer: AgentLevels) => void;
 }) {
   const { model: setting } = settings;
   const [notice, setNotice] = useState<{ text: string; error?: boolean } | null>(null);
@@ -699,7 +699,7 @@ function AgentModel({
   const pick = async (next: string) => {
     setSaving(true);
     try {
-      const answer = await postJson<ScoutEfforts>(`${settings.api}/model`, {
+      const answer = await postJson<AgentLevels>(`${settings.api}/model`, {
         model: next || null,
       });
       onSaved(answer);

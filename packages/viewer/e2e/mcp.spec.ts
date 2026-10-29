@@ -77,7 +77,7 @@ function client(args: string[], cwd: string, env: Record<string, string> = {}) {
 }
 
 const ask = (page: Page) => page.getByRole('region', { name: /asks$/ });
-const scoutLink = (page: Page) =>
+const nucleusLink = (page: Page) =>
   page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: /Scout/ });
 const POLL = { timeout: 15_000 };
 
@@ -86,24 +86,24 @@ test("Scout reviews a branch, approves it and queues its merge, each on the pers
 }) => {
   const running = await serveAgentBranch();
   symbiote = running;
-  const scout = client([BRIDGE, '--as', 'scout', '--view', record(running.cache)], running.repo);
-  const init = await scout.request('initialize', {
+  const nucleus = client([BRIDGE, '--as', 'scout', '--view', record(running.cache)], running.repo);
+  const init = await nucleus.request('initialize', {
     protocolVersion: '2025-06-18',
     clientInfo: { name: 'claude-code', version: '2' },
   });
   expect(init).toMatchObject({ result: { serverInfo: { name: 'symbiote' } } });
-  const listed = await scout.request('tools/list');
+  const listed = await nucleus.request('tools/list');
   expect((listed.result as { tools: unknown[] }).tools).toHaveLength(24);
 
   // The branch's graph: its findings in the detector's words.
-  const review = await scout.call('review', { branch: 'agent' });
+  const review = await nucleus.call('review', { branch: 'agent' });
   expect(review.isError).toBe(false);
   expect(review.text).toContain('square is new and nothing references it');
   const head = running.shas.at(-1) ?? '';
 
   // An approval waits for the person, on whatever page they are.
   await page.goto(`${running.url}history`);
-  const approving = scout.call('finish_review', {
+  const approving = nucleus.call('finish_review', {
     branch: 'agent',
     event: 'approve',
     summary: 'Square and cube, as asked.',
@@ -114,7 +114,7 @@ test("Scout reviews a branch, approves it and queues its merge, each on the pers
     `Scout asks: Approve agent at ${head.slice(0, 7)}: it is to be merged into main`,
   );
   await expect(ask(page).locator('.ask-left')).toHaveText('10 min left');
-  await expect(scoutLink(page)).toHaveAttribute('data-tip', 'Scout\nWaits for you');
+  await expect(nucleusLink(page)).toHaveAttribute('data-tip', 'Scout\nWaits for you');
   await ask(page).getByRole('button', { name: 'Confirm' }).click();
   await expect(ask(page)).toHaveCount(0);
   const approved = await approving;
@@ -134,7 +134,7 @@ test("Scout reviews a branch, approves it and queues its merge, each on the pers
   );
 
   // Its merge: declined, nothing is queued; confirmed, it is.
-  const declined = scout.call('queue_merge', { branch: 'agent' });
+  const declined = nucleus.call('queue_merge', { branch: 'agent' });
   await expect(ask(page).locator('.ask-words')).toHaveText(
     `Scout asks: Merge agent at ${head.slice(0, 7)} into main`,
     POLL,
@@ -143,14 +143,14 @@ test("Scout reviews a branch, approves it and queues its merge, each on the pers
   expect(await declined).toMatchObject({ isError: true });
   expect((await declined).text).toContain('The person declined');
   await expect(page.locator('.sidenav [data-merge="agent"]')).toHaveCount(0);
-  const queued = scout.call('queue_merge', { branch: 'agent' });
+  const queued = nucleus.call('queue_merge', { branch: 'agent' });
   await ask(page).getByRole('button', { name: 'Confirm' }).click();
   expect((await queued).value).toMatchObject({ branch: 'agent', into: 'main' });
   await expect(page.locator('.sidenav [data-merge="agent"]')).toBeVisible(POLL);
 
   // symbiote view on another port: the bridge reads its record again.
   await running.restart();
-  const after = await scout.call('overview');
+  const after = await nucleus.call('overview');
   expect(after.isError).toBe(false);
   expect(after.value).toMatchObject({ checkout: { branch: 'main' } });
 });
@@ -175,8 +175,8 @@ test("an agent of the person's starts a workspace through symbiote mcp, on their
   await expect(ask(page).locator('.ask-words')).toHaveText(
     `e2e-agent in ${folder} asks: Start fix/discount, "The discount", with Claude Code, plan first`,
   );
-  // Not Scout's: its mark stays.
-  await expect(scoutLink(page)).not.toHaveAttribute('data-tip', 'Scout\nWaits for you');
+  // Not Nucleus's: its mark stays.
+  await expect(nucleusLink(page)).not.toHaveAttribute('data-tip', 'Scout\nWaits for you');
   await ask(page).getByRole('button', { name: 'Confirm' }).click();
   expect((await starting).value).toMatchObject({ workspace: { branch: 'fix/discount' } });
   await page.goto(`${running.url}?branch=fix%2Fdiscount&brief`);

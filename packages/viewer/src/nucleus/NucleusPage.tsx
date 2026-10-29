@@ -1,6 +1,6 @@
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
-import { ScoutIcon } from '../ui/icons.js';
+import { NucleusIcon } from '../ui/icons.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
   folderName,
@@ -14,24 +14,24 @@ import { tip } from '../ui/tip.js';
 const API = '/api/scout';
 
 /**
- * Scout (V35): an agent in the checkout; since MC1 it carries workspaces from a start to a merge
+ * Nucleus (V35): an agent in the checkout; since MC1 it carries workspaces from a start to a merge
  * through Symbiote's tools, asking the person to confirm what changes a branch's fate. Since V50
  * the page is its terminal: opened with no question, which the terminal takes. Since V78 nothing
  * on the page picks its agent, model or level (decision 569): Settings does, and its head says
  * what the conversation runs on; New conversation starts the next on Settings'.
  */
-export function ScoutPage() {
-  const { scout: read } = useWorkspaces();
+export function NucleusPage() {
+  const { nucleus: read } = useWorkspaces();
   const agent = usePageAgent(API, read);
   return (
-    <section className="scout-page" aria-labelledby="scout-title">
+    <section className="nucleus-page" aria-labelledby="nucleus-title">
       {/* The page frame's head (V72): what it reads and runs on its line; its state and New
           conversation at the right. */}
       <PageHead
-        className="scout-head"
-        icon={<ScoutIcon />}
+        className="nucleus-head"
+        icon={<NucleusIcon />}
         title="Scout"
-        titleId="scout-title"
+        titleId="nucleus-title"
         beside={
           <Help label="About Scout">
             <p>
@@ -49,7 +49,7 @@ export function ScoutPage() {
         }
         line={
           read ? (
-            <span className="scout-about" {...tip(read.checkout, { code: true })}>
+            <span className="page-agent-about" {...tip(read.checkout, { code: true })}>
               In {folderName(read.checkout)}
               {agent.on ? `, ${agent.on}` : ''}
             </span>
@@ -59,7 +59,7 @@ export function ScoutPage() {
       />
       <PageAgentError agent={agent} />
       {/* The page's card (V61), in the page frame since V72: the terminal. */}
-      <div className="scout-card">
+      <div className="nucleus-card">
         <PageAgentBody name="Scout" api={API} agent={agent} />
       </div>
     </section>

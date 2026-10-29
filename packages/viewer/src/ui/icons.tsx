@@ -42,8 +42,8 @@ export const GitIcon = () => (
   </Icon>
 );
 
-/** Scout (V35): a compass, after lucide's (ISC). */
-export const ScoutIcon = () => (
+/** Nucleus (V35): a compass, after lucide's (ISC). */
+export const NucleusIcon = () => (
   <Icon>
     <circle cx="8" cy="8" r="6" />
     <path d="M10.5 5.5 9.3 9.3 5.5 10.5l1.2-3.8z" />

@@ -25,7 +25,7 @@ const graph = JSON.parse(
   ),
 ) as Graph;
 
-const SCOUT: McpCaller = { via: 'scout' };
+const NUCLEUS: McpCaller = { via: 'scout' };
 const SUGGESTION: WorkspaceSuggestion = {
   agent: 'codex',
   model: 'gpt-6',
@@ -363,7 +363,7 @@ async function call(
   mcp: Mcp,
   name: string,
   args: Record<string, unknown> = {},
-  caller: McpCaller = SCOUT,
+  caller: McpCaller = NUCLEUS,
   signal?: AbortSignal,
 ) {
   const answer = await mcp.handle(
@@ -409,7 +409,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
           clientInfo: { name: 'claude-code', version: '2' },
         },
       },
-      SCOUT,
+      NUCLEUS,
     );
     expect(answer).toEqual({
       jsonrpc: '2.0',
@@ -423,7 +423,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
     });
     const bare = await mcp.handle(
       { jsonrpc: '2.0', id: 2, method: 'initialize', params: {} },
-      SCOUT,
+      NUCLEUS,
     );
     expect((bare as { result: { protocolVersion: string } }).result.protocolVersion).toBe(
       '2025-06-18',
@@ -432,34 +432,34 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
 
   it('answers ping, no notification, and refuses what it does not know', async () => {
     const mcp = server(fakes().services);
-    expect(await mcp.handle({ jsonrpc: '2.0', id: 'p', method: 'ping' }, SCOUT)).toEqual({
+    expect(await mcp.handle({ jsonrpc: '2.0', id: 'p', method: 'ping' }, NUCLEUS)).toEqual({
       jsonrpc: '2.0',
       id: 'p',
       result: {},
     });
     expect(
-      await mcp.handle({ jsonrpc: '2.0', method: 'notifications/initialized' }, SCOUT),
+      await mcp.handle({ jsonrpc: '2.0', method: 'notifications/initialized' }, NUCLEUS),
     ).toBeNull();
     expect(
-      await mcp.handle({ jsonrpc: '2.0', id: 3, method: 'resources/list' }, SCOUT),
+      await mcp.handle({ jsonrpc: '2.0', id: 3, method: 'resources/list' }, NUCLEUS),
     ).toMatchObject({
       id: 3,
       error: { code: -32601 },
     });
     for (const wrong of [{}, [], null, 'text', { jsonrpc: '2.0', id: 4 }]) {
-      expect(await mcp.handle(wrong, SCOUT)).toMatchObject({ id: null, error: { code: -32600 } });
+      expect(await mcp.handle(wrong, NUCLEUS)).toMatchObject({ id: null, error: { code: -32600 } });
     }
     expect(
       await mcp.handle(
         { jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'nope' } },
-        SCOUT,
+        NUCLEUS,
       ),
     ).toMatchObject({ id: 5, error: { code: -32602, message: 'unknown tool: nope' } });
   });
 
   it('lists its tools, each with a schema; the asked ones say they ask', async () => {
     const mcp = server(fakes().services);
-    const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, SCOUT)) as {
+    const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, NUCLEUS)) as {
       result: { tools: { name: string; description: string; inputSchema: { type: string } }[] };
     };
     const { tools } = answer.result;
@@ -510,7 +510,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
 
   it("lists suggest_settings with start_workspace's brief and the documents' names (MC2, decision 583)", async () => {
     const mcp = server(fakes().services);
-    const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, SCOUT)) as {
+    const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, NUCLEUS)) as {
       result: {
         tools: {
           name: string;
@@ -550,7 +550,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
   it('leaves out the tools of a service it does not have', async () => {
     const { services } = fakes();
     const mcp = server({ ...services, merges: undefined, monitor: undefined });
-    const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, SCOUT)) as {
+    const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, NUCLEUS)) as {
       result: { tools: { name: string }[] };
     };
     const names = answer.result.tools.map((t) => t.name);
@@ -831,7 +831,7 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     const { services, calls } = fakes();
     const mcp = server(services);
     const controller = new AbortController();
-    const hung = call(mcp, 'remove_merge', { id: 'm1' }, SCOUT, controller.signal);
+    const hung = call(mcp, 'remove_merge', { id: 'm1' }, NUCLEUS, controller.signal);
     await askOf(mcp);
     expect(await call(mcp, 'remove_merge', { id: 'm1' })).toMatchObject({
       isError: true,
@@ -1097,7 +1097,7 @@ describe("Symbiote's MCP: the advisor's proposal (MC2)", () => {
   it('is left out without workspaces', async () => {
     const { services } = fakes();
     const mcp = server({ ...services, workspaces: undefined });
-    const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, SCOUT)) as {
+    const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, NUCLEUS)) as {
       result: { tools: { name: string }[] };
     };
     expect(answer.result.tools.map((t) => t.name)).not.toContain('suggest_settings');

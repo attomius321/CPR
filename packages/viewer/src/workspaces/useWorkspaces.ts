@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import type { BranchReviewList, MergeList, ScoutState, WorkspaceList } from '@symbiote/core';
+import type { BranchReviewList, MergeList, PageAgentState, WorkspaceList } from '@symbiote/core';
 import { mergeLive } from './merges.js';
 
 /**
  * The workspaces, the reviews and the merge queue (V26), read together: a review changes what a
- * workspace needs next, and an approval is merged. Scout's state too (V35), and Scribe's (V41):
+ * workspace needs next, and an approval is merged. Nucleus's state too (V35), and Scribe's (V41):
  * the sidenav shows them.
  */
 export interface WorkspacesState {
@@ -12,10 +12,10 @@ export interface WorkspacesState {
   reviews: BranchReviewList | null;
   /** Null where Symbiote does not merge (no repository). */
   merges: MergeList | null;
-  /** Null where there is no Scout (no repository). */
-  scout: ScoutState | null;
+  /** Null where there is no Nucleus (no repository). */
+  nucleus: PageAgentState | null;
   /** Null where there is no Scribe (no repository). */
-  scribe: ScoutState | null;
+  scribe: PageAgentState | null;
   /** When they were last read (V48), by the page's clock; absent before the first. */
   readAt?: number;
   /** The last read failed (V48): Symbiote did not answer. What was read stays. */
@@ -32,15 +32,15 @@ let current: WorkspacesState = {
   list: null,
   reviews: null,
   merges: null,
-  scout: null,
+  nucleus: null,
   scribe: null,
 };
 const listeners = new Set<(state: WorkspacesState) => void>();
 let loading: Promise<void> | null = null;
 let timer: ReturnType<typeof setTimeout> | undefined;
 
-/** Scout or Scribe answering, or waiting on the person (V59: its link a band until a read). */
-const busy = (page: ScoutState | null) =>
+/** Nucleus or Scribe answering, or waiting on the person (V59: its link a band until a read). */
+const busy = (page: PageAgentState | null) =>
   page?.conversation?.state === 'working' || page?.conversation?.state === 'needs-you';
 
 const live = (state: WorkspacesState) =>
@@ -48,7 +48,7 @@ const live = (state: WorkspacesState) =>
     (f) => f.agent.state === 'working' || f.agent.state === 'needs-you',
   ) ??
     false) ||
-  busy(state.scout) ||
+  busy(state.nucleus) ||
   busy(state.scribe);
 
 const merging = (state: WorkspacesState) => mergeLive(state.merges?.merges ?? []);
@@ -57,13 +57,13 @@ const merging = (state: WorkspacesState) => mergeLive(state.merges?.merges ?? []
 let terminalsOpen = 0;
 /**
  * Until when the last terminal closed counts as open (V50): a question typed just before leaving
- * Scout's starts its turn after, and a read on the next page may come before the server's list
+ * Nucleus's starts its turn after, and a read on the next page may come before the server's list
  * says so.
  */
 let closedUntil = 0;
 
 /**
- * How long until the next read: 1.5 s while a merge runs; 5 s while an agent works or waits, Scout
+ * How long until the next read: 1.5 s while a merge runs; 5 s while an agent works or waits, Nucleus
  * answers, Scribe writes, either waits on the person, a terminal is open (`open`), or the last
  * read failed (V48: until one answers); none otherwise.
  */
@@ -91,17 +91,17 @@ async function read<T>(path: string): Promise<T | null> {
   return response.ok ? ((await response.json()) as T) : null;
 }
 
-/** Reads the workspaces (V18b), the reviews, the merges, Scout and Scribe, unless one is under way. */
+/** Reads the workspaces (V18b), the reviews, the merges, Nucleus and Scribe, unless one is under way. */
 function refresh(): Promise<void> {
   loading ??= Promise.all([
     read<WorkspaceList>('/api/workspaces'),
     read<BranchReviewList>('/api/reviews'),
     read<MergeList>('/api/merges'),
-    read<ScoutState>('/api/scout'),
-    read<ScoutState>('/api/scribe'),
+    read<PageAgentState>('/api/scout'),
+    read<PageAgentState>('/api/scribe'),
   ])
-    .then(([list, reviews, merges, scout, scribe]) => {
-      current = { list, reviews, merges, scout, scribe, readAt: Date.now() };
+    .then(([list, reviews, merges, nucleus, scribe]) => {
+      current = { list, reviews, merges, nucleus, scribe, readAt: Date.now() };
       for (const listener of listeners) listener(current);
     })
     .catch(() => {

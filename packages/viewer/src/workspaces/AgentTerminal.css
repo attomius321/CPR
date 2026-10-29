@@ -1,4 +1,4 @@
-/* An agent's terminal (AgentTerminal.tsx, V21), in a workspace and in Scout. */
+/* An agent's terminal (AgentTerminal.tsx, V21), in a workspace and in Nucleus. */
 
 /* What Codex asks before its terminal goes on (V27b): above the screen, read before answering. */
 .agent-terminal .terminal-trust {
@@ -20,7 +20,7 @@
 
 /* What xterm opens in: the screen's content box, its padding outside (fix/scribe-terminal-problem).
    The fit add-on counts the rows from the height of the box xterm is in, padding included
-   (border-box): in the screen itself, up to 8 px more than it holds. Scout's page cut the last row
+   (border-box): in the screen itself, up to 8 px more than it holds. Nucleus's page cut the last row
    off; Scribe's pane, which scrolls, had scrollbars that came and went every frame. */
 .agent-terminal-fit {
   flex: 1;

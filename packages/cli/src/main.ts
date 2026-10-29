@@ -78,7 +78,7 @@ import { branchReviews } from './reviews.js';
 import { merger, MergeRefused } from './merges.js';
 import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
 import { promptSettingsService } from './prompts.js';
-import { scout } from './scout.js';
+import { nucleus } from './nucleus.js';
 import { scribe } from './scribe.js';
 import { skillsService } from './skills.js';
 import { readClaudeProfile, readClaudeUsage, readCodexUsage, usageService } from './usage.js';
@@ -723,7 +723,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   const hermesOf = hermesFinder(repo.root, ctx.env);
   // The skill library (SK1): the Skills page's and Scribe's.
   const library = libraryOf(ctx);
-  // One Claude Code for workspaces, Scout (V35) and Scribe (V41): one read of its sessions every 2 s.
+  // One Claude Code for workspaces, Nucleus (V35) and Scribe (V41): one read of its sessions every 2 s.
   const claudeOf = agentFinder(repo.root, ctx.env, cacheDir);
   const repoWorkspaces = workspaces(repo, cacheDir, {
     claude: claudeOf,
@@ -780,7 +780,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         models: modelsFinder(claudeOf, codexOf),
       }),
       settings: promptSettingsService(repo),
-      scout: scout(repo, cacheDir, {
+      nucleus: nucleus(repo, cacheDir, {
         claude: claudeOf,
         codex: codexOf,
         env: ctx.env,
@@ -821,7 +821,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     log,
     version,
   });
-  // Where Symbiote's MCP bridge finds this server (MC1): Scout's, and `symbiote mcp`'s.
+  // Where Symbiote's MCP bridge finds this server (MC1): Nucleus's, and `symbiote mcp`'s.
   const viewRecord = viewFile(cacheDir, repo.commonDir);
   const started = new Date().toISOString();
   await writeViewRecord(viewRecord, {

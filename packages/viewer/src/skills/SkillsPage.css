@@ -773,8 +773,8 @@
   font-weight: normal;
 }
 
-/* Scribe (V41b): Scout's conversation (`ScoutPage.css`'s parts) filling the pane (decision 410):
-   its head strip, then its terminal to the right and bottom edges, as Scout's page and a
+/* Scribe (V41b): Nucleus's conversation (`NucleusPage.css`'s parts) filling the pane (decision 410):
+   its head strip, then its terminal to the right and bottom edges, as Nucleus's page and a
    workspace's terminal are. */
 .skills-scribe {
   display: flex;
@@ -788,7 +788,7 @@
   flex-direction: column;
 }
 
-.scribe-pane .scout-top h2 {
+.scribe-pane .page-agent-top h2 {
   margin: 0;
   font-size: var(--size-title);
   font-weight: 600;

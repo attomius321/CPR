@@ -1,4 +1,4 @@
-// Symbiote's MCP bridge (MC1, decision 358): the stdio MCP server an agent starts — Scout's, or the
+// Symbiote's MCP bridge (MC1, decision 358): the stdio MCP server an agent starts — Nucleus's, or the
 // person's own through `symbiote mcp` — that hands each message to the `symbiote view` serving the
 // repository (`POST /api/mcp`) and writes its answer back. That server's address is read from its
 // record on every message, since a restarted `symbiote view` takes another port while an agent's
@@ -56,7 +56,7 @@ export async function removeViewRecord(path: string, pid: number): Promise<void>
 export interface BridgeOptions {
   /** The record's file (`viewFile`). */
   view: string;
-  /** Scout's bridge, started by Symbiote; else an agent's through `symbiote mcp`. */
+  /** Nucleus's bridge, started by Symbiote; else an agent's through `symbiote mcp`. */
   as?: 'scout';
   input: Readable;
   output: Writable;

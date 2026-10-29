@@ -301,7 +301,7 @@ export interface ClaudeCode {
     model?: string;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   /**
-   * Starts a page's agent as a background session in `cwd`: Scout (V35, decision 236), read tools
+   * Starts a page's agent as a background session in `cwd`: Nucleus (V35, decision 236), read tools
    * and Bash, nothing asked (`dontAsk`); Scribe (V41, decision 275), Write and Edit too, in
    * `default`, where Claude Code asks before a write into `.claude`. Every tool through the gate in
    * `settings`, no MCP server. A wake keeps all of it (V35 spike). Without a prompt the session
@@ -317,7 +317,7 @@ export interface ClaudeCode {
     settings: string;
     tools: readonly string[];
     permissionMode: 'dontAsk' | 'default';
-    /** Its MCP servers' file (`--mcp-config`, MC1): Scout's, Symbiote's; none otherwise. */
+    /** Its MCP servers' file (`--mcp-config`, MC1): Nucleus's, Symbiote's; none otherwise. */
     mcpConfig?: string;
     /** Folders outside `cwd` it works in too (`--add-dir`; Scribe's skill library, SK1). */
     addDirs?: readonly string[];

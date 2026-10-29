@@ -1,15 +1,15 @@
-// Scout's gate (V35, decision 236): what Scout's Claude Code may run, decided by Symbiote before
+// Nucleus's gate (V35, decision 236): what Nucleus's Claude Code may run, decided by Symbiote before
 // Claude Code's own rules. Read, Grep and Glob pass to those rules; Bash runs only git's read
 // commands this module parses; Symbiote's own MCP tools pass (MC1: the asked ones wait for the
 // person in Symbiote); every other tool, and every other server's, is denied. Claude Code's allow rules cannot do this:
 // `Bash(git log *)` matches `git log --output=<file>`. The hook runs once per tool call in Claude
-// Code's process tree (`scout-hook.ts`), so this module uses nothing but plain TypeScript.
+// Code's process tree (`nucleus-hook.ts`), so this module uses nothing but plain TypeScript.
 
 /** What the gate says of one tool call: allowed, denied with the reason, or null: Claude Code's
  * own rules decide. */
 export type GateDecision = { allow: true } | { allow: false; reason: string } | null;
 
-/** git's commands Scout runs: they read the repository and its history, and write nothing. */
+/** git's commands Nucleus runs: they read the repository and its history, and write nothing. */
 const READ_COMMANDS = new Set([
   'log',
   'show',
@@ -202,7 +202,7 @@ function stagesOf(command: string): string[][] | string {
 }
 
 /**
- * Why `command` is not one of git's read commands Scout runs, or null when it is: `git
+ * Why `command` is not one of git's read commands Nucleus runs, or null when it is: `git
  * [--no-pager] <command> …` for the commands in `READ_COMMANDS`, no option that writes or runs a
  * program, optionally piped into `head`, `tail`, `wc` or `grep`.
  */
@@ -270,12 +270,12 @@ export function gateDecision(input: unknown): GateDecision {
   };
 }
 
-/** The MCP tools Scout's session is given (MC1): Symbiote's server's, and no other's. */
+/** The MCP tools Nucleus's session is given (MC1): Symbiote's server's, and no other's. */
 const SYMBIOTE_TOOLS = 'mcp__symbiote__';
 
 /**
  * The hook's output: Claude Code's PreToolUse decision, or nothing to leave it to its rules; `who`
- * is the agent whose gate let a command through (Scout's, or Scribe's since V41).
+ * is the agent whose gate let a command through (Nucleus's, or Scribe's since V41).
  */
 export function hookOutput(decision: GateDecision, who = 'Scout'): string {
   if (!decision) return '';

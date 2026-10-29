@@ -1,5 +1,6 @@
-// Scout (V35): a read-only agent in the checkout `symbiote view` runs in, asked from its page. Types
-// only; the CLI starts the agent, keeps its record in `symbiote/scout.json` and serves `/api/scout`.
+// A page's agent (V35, V41): Nucleus or Scribe, an agent in the checkout `symbiote view` runs in,
+// opened from its page. Types only; the CLI starts the agent, keeps its record in `symbiote/` and
+// serves its API (`/api/scout`, `/api/scribe`).
 import type {
   AgentEfforts,
   AgentKind,
@@ -8,8 +9,8 @@ import type {
   TerminalAvailability,
 } from './workspaces.js';
 
-/** What Scout's agent is doing, as its page and the sidenav say it. */
-export type ScoutStateName =
+/** What Nucleus's agent is doing, as its page and the sidenav say it. */
+export type PageAgentStateName =
   /** Started with no question (V50): its terminal takes the first. */
   | 'ready'
   | 'working'
@@ -25,11 +26,11 @@ export type ScoutStateName =
   | 'gone'
   | 'unknown';
 
-/** Scout's conversation: one per repository, kept until the person starts a new one. */
-export interface ScoutConversation {
+/** Nucleus's conversation: one per repository, kept until the person starts a new one. */
+export interface PageAgentConversation {
   kind: AgentKind;
   started: string;
-  state: ScoutStateName;
+  state: PageAgentStateName;
   /** Claude Code's session, as `claude attach` takes it; Codex's thread. Absent once gone. */
   id?: string;
   /** The effort level it started at; absent: the agent's own. Its terminal may change it since. */
@@ -40,19 +41,19 @@ export interface ScoutConversation {
   error?: string;
 }
 
-/** An agent Scout can run, installed here. */
-export interface ScoutAgent {
+/** An agent Nucleus can run, installed here. */
+export interface InstalledAgent {
   kind: AgentKind;
   command: string;
 }
 
 /** `GET /api/scout`, and what a question or a new conversation answers. */
-export interface ScoutState {
-  /** The folder Scout reads: the checkout `symbiote view` runs in. */
+export interface PageAgentState {
+  /** The folder Nucleus reads: the checkout `symbiote view` runs in. */
   checkout: string;
-  /** The agents installed, the one Scout runs unless another is picked first. */
-  agents: ScoutAgent[];
-  conversation: ScoutConversation | null;
+  /** The agents installed, the one Nucleus runs unless another is picked first. */
+  agents: InstalledAgent[];
+  conversation: PageAgentConversation | null;
   /**
    * Whether its terminal can run (V21), with no conversation too (V50): the page shows it, or the
    * question box. Absent where Symbiote runs no terminals.
@@ -61,7 +62,7 @@ export interface ScoutState {
 }
 
 /** `POST /api/scout/ask`: a question; it starts a conversation, or continues the one there is. */
-export interface ScoutAsk {
+export interface PageAgentAsk {
   text: string;
   /** The agent to start (a new conversation only); the default one when absent. */
   agent?: AgentKind;
@@ -72,7 +73,7 @@ export interface ScoutAsk {
    */
   effort?: string | null;
   /**
-   * The model to start on (a new conversation only, V50: Scout's head where no terminal runs), one
+   * The model to start on (a new conversation only, V50: Nucleus's head where no terminal runs), one
    * the agent lists; null: its default. Absent: the project's (`scout.model`).
    */
   model?: string | null;
@@ -82,7 +83,7 @@ export interface ScoutAsk {
  * `POST /api/scout/open` (V50): a conversation with no question, its terminal taking the first;
  * the one there is when it runs.
  */
-export interface ScoutOpen {
+export interface PageAgentOpen {
   /** The agent to start; the default one when absent. */
   agent?: AgentKind;
   /** Its model, one the agent lists; null: its default. Absent: the project's (`scout.model`). */
@@ -92,13 +93,13 @@ export interface ScoutOpen {
 }
 
 /**
- * `GET /api/scout/efforts`: the levels Scout can start at, and its models (V47); also Scribe's and
+ * `GET /api/scout/efforts`: the levels Nucleus can start at, and its models (V47); also Scribe's and
  * the merger's. Read only where they are shown: Codex's are on its app server, whose daemon a read
  * starts.
  */
-export interface ScoutEfforts {
+export interface AgentLevels {
   /**
-   * The agents installed, Scout's default first; each one's levels on the model it would start
+   * The agents installed, Nucleus's default first; each one's levels on the model it would start
    * on, its models and the model it runs on without the project's, when Symbiote can read them.
    */
   agents: {
@@ -116,20 +117,20 @@ export interface ScoutEfforts {
 }
 
 /**
- * `POST /api/scout/effort`: Scout's level in the project's config (Scribe's, the merger's); null
+ * `POST /api/scout/effort`: Nucleus's level in the project's config (Scribe's, the merger's); null
  * removes it.
  */
-export interface ScoutEffortChange {
+export interface EffortChange {
   effort: string | null;
 }
 
-/** `POST /api/scout/model` (V47): Scout's model in the project's config; null removes it. */
-export interface ScoutModelChange {
+/** `POST /api/scout/model` (V47): Nucleus's model in the project's config; null removes it. */
+export interface ModelChange {
   model: string | null;
 }
 
-/** `POST /api/scout/terminal`: a terminal on Scout's session, at that size. */
-export interface ScoutTerminalRequest {
+/** `POST /api/scout/terminal`: a terminal on Nucleus's session, at that size. */
+export interface PageAgentTerminalRequest {
   cols: number;
   rows: number;
 }

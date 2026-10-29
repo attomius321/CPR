@@ -9,11 +9,11 @@ import { whatWaits, type Waiting } from './waiting.js';
  * until the workspaces are first read, so a page that just opened does not say "nothing".
  */
 export function useWaiting(): Waiting | null {
-  const { list, reviews, merges, scout, scribe } = useWorkspaces();
+  const { list, reviews, merges, nucleus, scribe } = useWorkspaces();
   const asks = useAsks();
   return useMemo(
-    () => (list ? whatWaits({ list, reviews, merges, scout, scribe }, asks) : null),
-    [list, reviews, merges, scout, scribe, asks],
+    () => (list ? whatWaits({ list, reviews, merges, nucleus, scribe }, asks) : null),
+    [list, reviews, merges, nucleus, scribe, asks],
   );
 }
 

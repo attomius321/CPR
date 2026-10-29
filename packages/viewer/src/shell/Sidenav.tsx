@@ -22,7 +22,7 @@ import {
   MonitorIcon,
   PlusIcon,
   ReviewIcon,
-  ScoutIcon,
+  NucleusIcon,
   SettingsIcon,
   SidenavIcon,
   SkillsIcon,
@@ -39,15 +39,15 @@ import {
   GIT_PAGE,
   hrefOf,
   MONITOR_PAGE,
-  SCOUT_PAGE,
+  NUCLEUS_PAGE,
   SETTINGS_PAGE,
   SKILLS_PAGE,
   START_PAGE,
   WORKSPACE_HISTORY_PAGE,
 } from './pages.js';
 import { Resizer } from '../ui/Resizer.js';
-import { nextScoutMark, type ScoutMark } from '../scout/scout.js';
-import { mergesWaiting, scoutWaiting, scribeWaiting } from './waiting.js';
+import { nextNucleusMark, type NucleusMark } from '../nucleus/page-agent.js';
+import { mergesWaiting, nucleusWaiting, scribeWaiting } from './waiting.js';
 import { useAsks } from './useAsks.js';
 import { useShell, type Notice } from './shell-context.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
@@ -96,7 +96,7 @@ export const CARD_NAMES = `${CARD}:not(:disabled, [aria-disabled='true'])`;
  * answered. Waiting on the person (V59), "Waits": the link is an amber band then, and its dot
  * shows only on the folded rail, where words do not.
  */
-function AgentMark({ waits, mark }: { waits: boolean; mark: ScoutMark }) {
+function AgentMark({ waits, mark }: { waits: boolean; mark: NucleusMark }) {
   if (waits) {
     return (
       <>
@@ -132,7 +132,7 @@ export function Sidenav({
   flashed: string | null;
 }) {
   const shell = useShell();
-  const { list, reviews, merges, scout, scribe, failing, readAt } = useWorkspaces();
+  const { list, reviews, merges, nucleus, scribe, failing, readAt } = useWorkspaces();
   // Workspaces being made (V48), until the list has them.
   const starts = useStarts().filter(
     (start) => !list?.workspaces.some((workspace) => workspace.branch === start.branch),
@@ -145,23 +145,23 @@ export function Sidenav({
   const needs = groups.waiting.length + mergesWaiting(queued);
   const empty =
     list !== null && list.workspaces.length === 0 && queued.length === 0 && starts.length === 0;
-  // Scout's mark (V35): working while it answers; answered when it did while you were elsewhere.
-  const scoutState = scout?.conversation?.state;
-  const onScout = route?.page === 'scout';
-  const [scoutMark, setScoutMark] = useState<ScoutMark>(null);
+  // Nucleus's mark (V35): working while it answers; answered when it did while you were elsewhere.
+  const pageAgentState = nucleus?.conversation?.state;
+  const onNucleus = route?.page === 'scout';
+  const [nucleusMark, setNucleusMark] = useState<NucleusMark>(null);
   useEffect(() => {
-    setScoutMark((shown) => nextScoutMark(shown, scoutState, onScout));
-  }, [scoutState, onScout]);
+    setNucleusMark((shown) => nextNucleusMark(shown, pageAgentState, onNucleus));
+  }, [pageAgentState, onNucleus]);
   // It waits for the person (MC1): an ask of its own on the page, or a dialog in its terminal.
-  const scoutWaits = scoutWaiting(scout, useAsks());
-  // Scribe's, on Skills (V41): as Scout's.
+  const nucleusWaits = nucleusWaiting(nucleus, useAsks());
+  // Scribe's, on Skills (V41): as Nucleus's.
   const scribeState = scribe?.conversation?.state;
   const onSkills = route?.page === 'skills';
-  const [scribeMark, setScribeMark] = useState<ScoutMark>(null);
+  const [scribeMark, setScribeMark] = useState<NucleusMark>(null);
   useEffect(() => {
-    setScribeMark((shown) => nextScoutMark(shown, scribeState, onSkills));
+    setScribeMark((shown) => nextNucleusMark(shown, scribeState, onSkills));
   }, [scribeState, onSkills]);
-  // A dialog in its terminal (V59): it waits as Scout does.
+  // A dialog in its terminal (V59): it waits as Nucleus does.
   const scribeWaits = scribeWaiting(scribe);
 
   // A card whose workspace moves to another group (its agent moved on) is drawn anew there, and
@@ -252,34 +252,34 @@ export function Sidenav({
           <kbd aria-hidden="true">g</kbd>
         </a>
         <a
-          href={SCOUT_PAGE}
-          aria-label={scoutWaits ? 'Scout, waits for you' : 'Scout'}
+          href={NUCLEUS_PAGE}
+          aria-label={nucleusWaits ? 'Scout, waits for you' : 'Scout'}
           {...tip(
-            scoutWaits
+            nucleusWaits
               ? 'Scout\nWaits for you'
-              : scoutMark === 'working'
+              : nucleusMark === 'working'
                 ? 'Scout\nWorking'
-                : scoutMark === 'answered'
+                : nucleusMark === 'answered'
                   ? 'Scout\nAnswered while you were away'
                   : 'Scout\nAsk about the repository, or have it carry a workspace',
             {
               keys: 'a',
               side: 'right',
-              tone: scoutWaits
+              tone: nucleusWaits
                 ? 'warn'
-                : scoutMark === 'working'
+                : nucleusMark === 'working'
                   ? 'info'
-                  : scoutMark === 'answered'
+                  : nucleusMark === 'answered'
                     ? 'ok'
                     : undefined,
             },
           )}
           aria-current={route?.page === 'scout' ? 'page' : undefined}
-          data-state={scoutWaits ? 'waiting' : (scoutMark ?? undefined)}
+          data-state={nucleusWaits ? 'waiting' : (nucleusMark ?? undefined)}
         >
-          <ScoutIcon />
+          <NucleusIcon />
           <span className="sidenav-label">Scout</span>
-          <AgentMark waits={scoutWaits} mark={scoutMark} />
+          <AgentMark waits={nucleusWaits} mark={nucleusMark} />
           <kbd aria-hidden="true">a</kbd>
         </a>
         <a

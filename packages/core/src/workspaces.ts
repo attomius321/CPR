@@ -142,7 +142,7 @@ export interface WorkspaceSummary {
    * started; absent when no agent was found.
    */
   lastAction?: string;
-  /** Started through Symbiote's tools (MC1): by Scout, or through `symbiote mcp`. */
+  /** Started through Symbiote's tools (MC1): by Nucleus, or through `symbiote mcp`. */
   via?: McpVia;
   /** What its agent did last and since when (V48); absent when nothing was recorded. */
   activity?: WorkspaceActivity;
@@ -509,7 +509,7 @@ export interface WorkspaceRequest {
   model?: string;
   /** Files to give the agent with the brief (V40), each kept by `POST /api/workspaces/documents`. */
   documents?: { id: string; name: string }[];
-  /** Started through Symbiote's tools (MC1, decision 362): by Scout, or through `symbiote mcp`. */
+  /** Started through Symbiote's tools (MC1, decision 362): by Nucleus, or through `symbiote mcp`. */
   via?: McpVia;
 }
 

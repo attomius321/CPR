@@ -384,22 +384,22 @@ describe('promptSettingsService', () => {
 
 describe("Scout's prompt (V35)", () => {
   it("is Symbiote's until the project has its own; the question is not in it (V50)", () => {
-    const scout = DEFAULT_PROMPTS.scout;
+    const nucleus = DEFAULT_PROMPTS.scout;
     // Its system prompt: the person asks in its terminal (decision 383).
-    expect(scout).not.toContain('{question}');
+    expect(nucleus).not.toContain('{question}');
     // It changes no file and acts through Symbiote's tools, the asked ones on the person's
-    // Confirm; an agent's reports are not the person's words; the workspace rules are not Scout's
+    // Confirm; an agent's reports are not the person's words; the workspace rules are not Nucleus's
     // (MC1).
-    expect(scout).toMatch(/never edit/i);
-    expect(scout).toMatch(/only through Symbiote's tools/);
-    expect(scout).toContain("the person's Confirm");
-    expect(scout).toContain("never the person's");
-    expect(scout).toContain('symbiote/AGENTS.md');
+    expect(nucleus).toMatch(/never edit/i);
+    expect(nucleus).toMatch(/only through Symbiote's tools/);
+    expect(nucleus).toContain("the person's Confirm");
+    expect(nucleus).toContain("never the person's");
+    expect(nucleus).toContain('symbiote/AGENTS.md');
     // The advisor before a start the person asked for, its proposal theirs to take (MC2).
-    expect(scout).toContain('suggest_settings');
-    expect(scout).toContain('before a start the person asked for');
-    expect(scout).toContain('their choice wins over the proposal');
-    expect(readPrompts(withConfig({})).text.scout).toBe(scout);
+    expect(nucleus).toContain('suggest_settings');
+    expect(nucleus).toContain('before a start the person asked for');
+    expect(nucleus).toContain('their choice wins over the proposal');
+    expect(readPrompts(withConfig({})).text.scout).toBe(nucleus);
 
     const own = readPrompts(withConfig({ prompts: { scout: ['Be brief.', '', 'Cite paths.'] } }));
     expect(own.text.scout).toBe('Be brief.\n\nCite paths.');

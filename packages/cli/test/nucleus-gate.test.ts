@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gateDecision, gitReadProblem, hookOutput } from '../src/scout-gate.js';
+import { gateDecision, gitReadProblem, hookOutput } from '../src/nucleus-gate.js';
 
 describe('gitReadProblem (V35, decision 236)', () => {
   it.each([

@@ -51,7 +51,7 @@
 @import './workspaces/ChangesPanel.css';
 /* After ChangesPanel.css: History's Changes tab makes the panel's card its content. */
 @import './workspaces/WorkspaceHistory.css';
-@import './scout/ScoutPage.css';
+@import './nucleus/NucleusPage.css';
 @import './settings/SettingsPage.css';
 @import './skills/SkillsPage.css';
 @import './monitor/MonitorPage.css';

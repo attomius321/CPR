@@ -1,10 +1,10 @@
 // Scribe (V41): an agent on the Skills page that writes the checkout's skills, one conversation per
-// repository, as Scout's (`pageAgent`). It writes only in `.claude/skills/` (decision 275), and in
+// repository, as Nucleus's (`pageAgent`). It writes only in `.claude/skills/` (decision 275), and in
 // the skill library when one is set (SK1, decision 430): Claude Code through Scribe's gate
 // (`scribe-gate.ts`), in `default` mode, where its own rules ask the person before each write, the
 // library given with `--add-dir`; Codex in `workspace-write` started in `.claude/skills`, its only
 // writable folder with the library's. Its record is `symbiote/scribe.json`. It never commits: the
-// person does. Since V78 its instructions are its system prompt, as Scout's (decision 570): a
+// person does. Since V78 its instructions are its system prompt, as Nucleus's (decision 570): a
 // conversation opens with no request, and its terminal takes the first.
 import { statSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
@@ -14,7 +14,12 @@ import type { GitRepo, PromptKey } from '@symbiote/core';
 import type { LibraryService } from './library.js';
 import { fillPrompt, readPrompts } from './prompts.js';
 import { readWorkspaceConfig } from './workspaces.js';
-import { pageAgent, type PageAgentOptions, type PageAgentSpec, type Scout } from './scout.js';
+import {
+  pageAgent,
+  type PageAgentOptions,
+  type PageAgentSpec,
+  type PageAgent,
+} from './page-agent.js';
 import { real } from './thread.js';
 import { CLAUDE_SKILLS, CODEX_SKILLS } from './skills.js';
 
@@ -102,7 +107,7 @@ export function scribe(
   repo: GitRepo,
   cacheDir: string,
   { library, ...options }: PageAgentOptions & { library?: LibraryService },
-): Scout {
+): PageAgent {
   return pageAgent(scribeSpec(library), repo, cacheDir, {
     gate: fileURLToPath(new URL('./scribe-hook.js', import.meta.url)),
     ...options,

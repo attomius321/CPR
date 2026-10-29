@@ -45,10 +45,10 @@ import {
   parsePair,
   parseRef,
   parseReview,
-  parseScoutAsk,
-  parseScoutOpen,
-  parseScoutEffort,
-  parseScoutTerminal,
+  parsePageAgentAsk,
+  parsePageAgentOpen,
+  parseEffortChange,
+  parsePageAgentTerminal,
   parseTerminalFile,
   parseTerminalPaths,
   parseWorkspaceAgainst,
@@ -86,7 +86,7 @@ import {
 } from './git-page.js';
 import { ReviewRefused, type BranchReviews } from './reviews.js';
 import { imageKind, MAX_IMAGE_BYTES, type Terminals } from './terminal.js';
-import { ScoutRefused, type Scout } from './scout.js';
+import { PageAgentRefused, type PageAgent } from './page-agent.js';
 import {
   MAX_SKILL,
   parseSkillChange,
@@ -146,12 +146,12 @@ export interface RepositoryOptions {
   merges?: Merger;
   /** Every agent's prompts (V28): `/api/settings/prompts`. */
   settings?: PromptSettingsService;
-  /** Scout, a read-only agent in the checkout (V35): `/scout`, `/api/scout…`. */
-  scout?: Scout;
+  /** Nucleus, a read-only agent in the checkout (V35): `/scout`, `/api/scout…`. */
+  nucleus?: PageAgent;
   /** The checkout's skills (V41): `/skills`, `/api/skills`. */
   skills?: SkillsService;
   /** Scribe, the Skills page's agent that writes skills (V41): `/api/scribe…`. */
-  scribe?: Scout;
+  scribe?: PageAgent;
   /** Where the checkout's code is, by file (RM1): `/monitor`, `/api/monitor…`. */
   monitor?: { map(): Promise<CodeMap> };
   /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 5-min copy. */
@@ -461,7 +461,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
     if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
     if (mcp && url.pathname.startsWith('/api/mcp')) return mcpRoute(req, res, url, mcp);
-    const { workspaces, scout, scribe, skills, monitor, settings, usage, merges } = repository;
+    const { workspaces, nucleus, scribe, skills, monitor, settings, usage, merges } = repository;
     if (workspaces) {
       // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves
       // them to `/`.
@@ -474,15 +474,15 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname.startsWith('/api/workspaces'))
         return workspacesRoute(req, res, url, workspaces);
     }
-    // Scout's page, a page of the shell's (V35).
-    if (scout && url.pathname === '/scout') return serveSite(req, res, url, '/', undefined);
-    if (scout && url.pathname.startsWith('/api/scout')) {
-      return pageAgentRoute(req, res, url, scout, {
+    // Nucleus's page, a page of the shell's (V35).
+    if (nucleus && url.pathname === '/scout') return serveSite(req, res, url, '/', undefined);
+    if (nucleus && url.pathname.startsWith('/api/scout')) {
+      return pageAgentRoute(req, res, url, nucleus, {
         api: '/api/scout',
         busy: 'Scout is being asked',
       });
     }
-    // Scribe (V41), on the Skills page: Scout's conversation, its own agent.
+    // Scribe (V41), on the Skills page: Nucleus's conversation, its own agent.
     if (scribe && url.pathname.startsWith('/api/scribe')) {
       return pageAgentRoute(req, res, url, scribe, {
         api: '/api/scribe',
@@ -597,7 +597,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     res.end();
   }
 
-  /** Who calls Symbiote's MCP, as its bridge says (MC1): Scout, or an agent through `symbiote mcp`. */
+  /** Who calls Symbiote's MCP, as its bridge says (MC1): Nucleus, or an agent through `symbiote mcp`. */
   function callerOf(req: IncomingMessage): McpCaller {
     if (req.headers['x-symbiote-caller'] === 'scout') return { via: 'scout' };
     const header = (name: string) => {
@@ -667,7 +667,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       const kind = advising[1] === 'codex' ? 'codex' : 'claude';
       if (advising[2] === 'efforts') return read(req, res, () => workspaces.advisor(kind));
       if (advising[2] === 'effort') {
-        return written(req, res, parseScoutEffort, (change) =>
+        return written(req, res, parseEffortChange, (change) =>
           answer(res, () => workspaces.setAdvisorEffort(kind, change)),
         );
       }
@@ -756,7 +756,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   }
 
   /**
-   * A page agent's API under `api` (Scout's, V35; Scribe's, V41): its state; a question or a new
+   * A page agent's API under `api` (Nucleus's, V35; Scribe's, V41): its state; a question or a new
    * conversation, one at a time (each starts or stops an agent), refused meanwhile with `busy`;
    * its terminal; the levels, read where a stepper shows them (Codex's start its daemon), and its
    * level and model (V47) in the project's config, set in Settings.
@@ -765,18 +765,18 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     req: IncomingMessage,
     res: ServerResponse,
     url: URL,
-    agent: Scout,
+    agent: PageAgent,
     { api, busy }: { api: string; busy: string },
   ): Promise<void> {
     if (url.pathname === api) return read(req, res, () => agent.state());
     if (url.pathname === `${api}/ask`) {
-      return written(req, res, parseScoutAsk, (request) =>
+      return written(req, res, parsePageAgentAsk, (request) =>
         oneAtATime(res, busy, () => agent.ask(request)),
       );
     }
-    // Scout's conversation with no question (V50).
+    // Nucleus's conversation with no question (V50).
     if (url.pathname === `${api}/open`) {
-      return written(req, res, parseScoutOpen, (request) =>
+      return written(req, res, parsePageAgentOpen, (request) =>
         oneAtATime(res, busy, () => agent.open(request)),
       );
     }
@@ -789,13 +789,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       );
     }
     if (url.pathname === `${api}/terminal`) {
-      return written(req, res, parseScoutTerminal, (request) =>
+      return written(req, res, parsePageAgentTerminal, (request) =>
         answer(res, () => agent.terminal(request)),
       );
     }
     if (url.pathname === `${api}/efforts`) return read(req, res, () => agent.efforts());
     if (url.pathname === `${api}/effort`) {
-      return written(req, res, parseScoutEffort, (change) =>
+      return written(req, res, parseEffortChange, (change) =>
         answer(res, () => agent.setEffort(change)),
       );
     }
@@ -824,10 +824,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       return ofBranch(req, res, url, (branch) => merges.targets(branch));
     }
     if (url.pathname === '/api/merges/log') return mergeLog(req, res, url, merges);
-    // The merger's effort (V46d), read and set where Settings' stepper shows it, as Scout's.
+    // The merger's effort (V46d), read and set where Settings' stepper shows it, as Nucleus's.
     if (url.pathname === '/api/merges/efforts') return read(req, res, () => merges.efforts());
     if (url.pathname === '/api/merges/effort') {
-      return written(req, res, parseScoutEffort, (change) =>
+      return written(req, res, parseEffortChange, (change) =>
         answer(res, () => merges.setEffort(change)),
       );
     }
@@ -1562,7 +1562,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         error instanceof WorkspaceRefused ||
         error instanceof MergeRefused ||
         error instanceof PromptRefused ||
-        error instanceof ScoutRefused ||
+        error instanceof PageAgentRefused ||
         error instanceof SkillRefused
       )
         return json(res, error.status, { error: error.message });

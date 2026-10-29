@@ -281,7 +281,7 @@ test("fields and buttons take the page's font and spacing on every page", async 
 
   await page.getByRole('link', { name: 'Scout' }).click();
   // Its terminal (V50), drawn by xterm.js: its own look, not the page's.
-  await expect(page.locator('.scout-page .agent-terminal .xterm-rows')).toContainText(
+  await expect(page.locator('.nucleus-page .agent-terminal .xterm-rows')).toContainText(
     'Fake Claude Code',
     POLL,
   );
@@ -366,7 +366,7 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
   await page.mouse.move(700, 600);
   await expect(tip).toBeHidden();
 
-  // Scout's: what it is, behind the "?" by its title.
+  // Nucleus's: what it is, behind the "?" by its title.
   await page.goto(`${symbiote.url}scout`);
   await expect(page.getByRole('heading', { name: 'Scout' })).toBeVisible();
   await expect(page.getByText('changes no file')).toBeHidden();

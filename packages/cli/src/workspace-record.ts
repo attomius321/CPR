@@ -55,7 +55,7 @@ export interface WorkspaceFile {
   parts?: BriefParts;
   planFirst: boolean;
   title?: string;
-  /** Started through Symbiote's tools (MC1, decision 362): by Scout, or through `symbiote mcp`. */
+  /** Started through Symbiote's tools (MC1, decision 362): by Nucleus, or through `symbiote mcp`. */
   via?: McpVia;
   /** The workspace's worktree folder. */
   worktree: string;

@@ -436,7 +436,7 @@ const keys = (page: Page) => scribePane(page).locator('.xterm-helper-textarea');
 /** The fake's starts named Scribe, as Claude Code was asked for them. */
 const scribeCalls = () => symbiote.calls().filter((call) => call.args.includes('Scribe'));
 
-// V78 (decisions 569, 570): Scribe's pane is its terminal, opened with no request, as Scout's page.
+// V78 (decisions 569, 570): Scribe's pane is its terminal, opened with no request, as Nucleus's page.
 test('Scribe: its pane is its terminal, Claude Code opened writing skills only; what it writes is listed', async ({
   page,
 }) => {
@@ -499,7 +499,7 @@ test('Scribe: its pane is its terminal, Claude Code opened writing skills only; 
     name: /Skills/,
   });
   await expect(skillsLink).toHaveAttribute('data-state', 'working', POLL);
-  // It asks the person (V59, decision 424): Skills is the amber band Scout's link is.
+  // It asks the person (V59, decision 424): Skills is the amber band Nucleus's link is.
   symbiote.setSession('fake0', {
     state: 'waiting',
     status: 'idle',
@@ -517,7 +517,7 @@ test('Scribe: its pane is its terminal, Claude Code opened writing skills only; 
   await expect(skillsLink).not.toHaveAttribute('data-state');
 });
 
-// V56 (decision 410): Scribe's terminal edge to edge in the pane, as Scout's and a workspace's.
+// V56 (decision 410): Scribe's terminal edge to edge in the pane, as Nucleus's and a workspace's.
 test("Scribe's terminal fills the pane: to the main area's right and bottom edges", async ({
   page,
 }) => {
@@ -554,7 +554,7 @@ test("Effort: Scribe opens at the project's level, which reaches Claude Code; it
   await expect.poll(() => scribeCalls().length, POLL).toBe(1);
   const args = scribeCalls()[0]?.args ?? [];
   expect(args[args.indexOf('--effort') + 1]).toBe('medium');
-  await expect(scribePane(page).locator('.scout-about')).toContainText(
+  await expect(scribePane(page).locator('.page-agent-about')).toContainText(
     'with Claude Code at medium effort',
   );
 });
@@ -601,7 +601,7 @@ test('without terminals, Scribe says it runs in a terminal and why none runs, st
 }) => {
   symbiote = await serveWorkspaces({ terminal: false });
   await page.goto(`${symbiote.url}skills?scribe`);
-  await expect(scribePane(page).locator('.scout-note')).toHaveText(
+  await expect(scribePane(page).locator('.page-agent-note')).toHaveText(
     'Scribe runs in a terminal, and none runs here: terminals are turned off (SYMBIOTE_TERMINAL=off).',
   );
   await expect(scribePane(page).getByRole('textbox')).toHaveCount(0);

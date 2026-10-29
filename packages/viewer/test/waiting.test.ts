@@ -1,4 +1,4 @@
-import type { McpAsk, MergeEntry, ScoutState, WorkspaceSummary } from '@symbiote/core';
+import type { McpAsk, MergeEntry, PageAgentState, WorkspaceSummary } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { waitingCount, whatWaits } from '../src/shell/waiting.js';
 
@@ -25,7 +25,7 @@ const merge = (state: MergeEntry['state']): MergeEntry => ({
   queued: '2026-10-27T12:00:00.000Z',
   updated: '2026-10-27T12:00:00.000Z',
 });
-const page = (state: 'working' | 'needs-you' | 'answered' | null): ScoutState => ({
+const page = (state: 'working' | 'needs-you' | 'answered' | null): PageAgentState => ({
   checkout: '/work/app',
   agents: [],
   conversation: state ? { kind: 'claude', state, started: '2026-10-27T12:00:00.000Z' } : null,
@@ -39,14 +39,14 @@ const ask = (by: McpAsk['by']): McpAsk => ({
   until: '2026-10-27T12:10:00.000Z',
 });
 
-const nothing = { list: null, reviews: null, merges: null, scout: null, scribe: null };
+const nothing = { list: null, reviews: null, merges: null, nucleus: null, scribe: null };
 
 describe('what waits for the person (N2)', () => {
   it('nothing, before anything is read', () => {
     expect(whatWaits(nothing, [])).toEqual({
       workspaces: 0,
       merges: 0,
-      scout: false,
+      nucleus: false,
       scribe: false,
       asks: 0,
     });
@@ -76,14 +76,16 @@ describe('what waits for the person (N2)', () => {
   });
 
   it('Scout by its ask or a dialog in its terminal, once; Scribe by its dialog', () => {
-    expect(whatWaits({ ...nothing, scout: page('needs-you') }, []).scout).toBe(true);
-    expect(whatWaits({ ...nothing, scout: page('working') }, []).scout).toBe(false);
-    const scoutAsks = [ask({ via: 'scout' })];
-    expect(whatWaits({ ...nothing, scout: page('working') }, scoutAsks)).toMatchObject({
-      scout: true,
+    expect(whatWaits({ ...nothing, nucleus: page('needs-you') }, []).nucleus).toBe(true);
+    expect(whatWaits({ ...nothing, nucleus: page('working') }, []).nucleus).toBe(false);
+    const nucleusAsks = [ask({ via: 'scout' })];
+    expect(whatWaits({ ...nothing, nucleus: page('working') }, nucleusAsks)).toMatchObject({
+      nucleus: true,
       asks: 0,
     });
-    expect(waitingCount(whatWaits({ ...nothing, scout: page('needs-you') }, scoutAsks))).toBe(1);
+    expect(waitingCount(whatWaits({ ...nothing, nucleus: page('needs-you') }, nucleusAsks))).toBe(
+      1,
+    );
     expect(whatWaits({ ...nothing, scribe: page('needs-you') }, []).scribe).toBe(true);
     expect(whatWaits({ ...nothing, scribe: page('answered') }, []).scribe).toBe(false);
   });
@@ -106,7 +108,7 @@ describe('what waits for the person (N2)', () => {
         list,
         reviews: null,
         merges: { merges: [merge('needs-you')] },
-        scout: page('needs-you'),
+        nucleus: page('needs-you'),
         scribe: page('needs-you'),
       },
       [ask({ via: 'mcp' })],

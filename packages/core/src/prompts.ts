@@ -17,7 +17,7 @@ export type PromptKey =
   | 'verdict.where'
   | 'reviews'
   | 'merger'
-  /** Scout's instructions, its first prompt with the question (V35). */
+  /** Nucleus's instructions, its first prompt with the question (V35). */
   | 'scout'
   /** Scribe's instructions, its first prompt with the person's request (V41). */
   | 'scribe'
@@ -60,7 +60,7 @@ export interface PromptPlaceholder {
 /** A prompt as the Settings page shows it. */
 export interface PromptSetting {
   key: PromptKey;
-  /** Whose prompt: `Workspaces`, `Reviews`, `Merger` or `Scout`. */
+  /** Whose prompt: `Workspaces`, `Reviews`, `Merger` or `Nucleus`. */
   group: string;
   /** Its name in the group: "Fix", "Plan first", "symbiote/AGENTS.md". */
   title: string;

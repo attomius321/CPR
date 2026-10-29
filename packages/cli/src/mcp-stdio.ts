@@ -1,5 +1,5 @@
 // Symbiote's MCP bridge as an agent starts it (MC1): `node mcp-stdio.js --view <record> [--as
-// scout]`, written into Scout's configuration by Symbiote (`mcp-bridge.ts`). `symbiote mcp` runs the
+// scout]`, written into Nucleus's configuration by Symbiote (`mcp-bridge.ts`). `symbiote mcp` runs the
 // same bridge for the repository it is run in.
 import { parseArgs } from 'node:util';
 import { runBridge } from './mcp-bridge.js';

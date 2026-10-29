@@ -140,7 +140,7 @@ test("the shell's pages: the whole main area, one head, cards 16 px from its edg
     ],
     { bottom: false },
   );
-  await expectPage(page, 'Scout', 'scout', ['.scout-card']);
+  await expectPage(page, 'Scout', 'scout', ['.nucleus-card']);
   await expectPage(page, 'Skills', 'skills', ['.skills-list', '.skills-pane']);
   await expectPage(page, 'the Monitor', 'monitor', ['.monitor-map-card', '.monitor-side']);
   await expectPage(page, 'Settings', 'settings', ['.settings-list', '.settings-editor']);
@@ -313,7 +313,7 @@ test('inside the cards: heads 48 px, their words or controls 16 px in; a label 8
     near(`${name}: ${part}'s first ${first === 'text' ? 'word' : 'control'}`, got?.inset, 17);
   }
 
-  // Forms: the brief, a new skill, a dialog (Scout's question went in V78: it is a terminal).
+  // Forms: the brief, a new skill, a dialog (Nucleus's question went in V78: it is a terminal).
   const forms: [string, string, string][] = [
     ['start', 'Start a workspace', '.start-brief > .workspace-field'],
     ['skills', 'New skill', '.skills-new > .skills-field'],

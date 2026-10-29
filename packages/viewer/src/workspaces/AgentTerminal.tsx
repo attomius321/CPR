@@ -87,7 +87,7 @@ export const lastTerminalSize = (): { cols: number; rows: number } => lastSize;
  * loaded when a terminal first opens) and fitted to its box. The agent keeps hosting the session:
  * closing this hangs up only the client. While it is open the list is read every 5 s, since what
  * is typed here may start a turn. `onOpened` gives the open terminal (to type into it), `onEnded`
- * says it ended. `url`: where it is opened — a workspace's (`branch`), or Scout's (V35). An image
+ * says it ended. `url`: where it is opened — a workspace's (`branch`), or Nucleus's (V35). An image
  * pasted (Ctrl+V too, off macOS), dropped or given to `attach` (`AttachImages`) is saved by the
  * server and its path pasted, which the agent attaches to the message being typed (V36). A path it prints to a file in its folder, a web
  * address and its own links (OSC 8) are links: Ctrl+click (⌘ on macOS) opens the file in VS Code
