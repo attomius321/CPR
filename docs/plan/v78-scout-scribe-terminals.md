@@ -148,7 +148,8 @@ effort, kept for now though no page sends them.
 Claude Code and on Codex, its instructions with and without a library, a project's `{request}`
 filled with nothing); the viewer's `runsOn` added, the head choices' and the box level's tests
 removed with their code. e2e: the whole viewer suite 337 of 338, the one failure
-`library.spec.ts`'s box, then fixed (it and `skills.spec.ts`, 23 of 23); nexus 15 of 15.
+`library.spec.ts`'s box, then fixed (it and `skills.spec.ts`, 23 of 23); nexus 15 of 15. With
+`main` (V76) merged in: the viewer's 340 of 340, nexus 15 of 15.
 Screenshots at 1440×900 and 390×844, dark and light, at 1x (the e2e fake): Scout's page, Scribe's
 pane, Improve's text in the terminal, the no-terminal note, Settings' Scout and Scribe pages. At
 1,440 px Scribe's line is cut with an ellipsis ("…of repo, with Codex at low e…"), as it was

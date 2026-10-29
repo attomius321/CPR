@@ -48,7 +48,8 @@ holding `{request}`; Scout's head still drawing its selects and stepper; Scribe'
 `pnpm check`: 2,241 unit tests. e2e: the viewer's 338 (337, then the missed `library.spec.ts`
 fixed: 23 of 23 with `skills.spec.ts`), nexus 15. Screenshots of the four screens and two states,
 both themes, 1440×900 and 390×844. Real Codex: Scribe opened with no turn, at `low`, its terminal
-joined; stopped at Codex's trust question.
+joined; stopped at Codex's trust question. After merging `main` (V76): `pnpm check` 2,241, the
+viewer's e2e 340 of 340, nexus 15 of 15.
 
 Not verified: a request typed in a real agent's terminal, Improve's paste into a real agent's
 input, Scout on a real agent (its open is V50's, unchanged), Claude Code at all (its trust needs
