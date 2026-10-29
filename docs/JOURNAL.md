@@ -307,3 +307,4 @@ merge commit.
 - 2026-10-29 [V76 spike — the Review tab at the sidebar's width](journal/v76-review-tab-layout.md)
 - 2026-10-29 [V76 — the Review tab in sections, Merge into's dropdowns in the sidebar](journal/v76-review-tab-layout.md)
 - 2026-10-29 [V76c — Files and Graph at the review head's end](journal/v76-review-tab-layout.md)
+- 2026-10-29 [V79 spike — what opens a folder to Scout, and what git writes there](journal/v79-scout-reads-worktrees.md)
