@@ -351,14 +351,16 @@ The sidenav also opens these pages. Each has a key.
   Symbiote never forces a push and never discards your changes: when git refuses, it says why.
 - **Nucleus** (`a`): your orchestrator in Symbiote, an agent you talk to in its terminal on this
   page. Ask it about the repository: where something is decided, why it works this way, or what
-  waits for you. It searches the web and reads web pages, to research tools, libraries and docs
-  (see [What Symbiote writes and sends](#what-symbiote-writes-and-sends)). Nucleus can also act on
-  your workspaces for you: start one, answer an agent, review or merge a branch. Before a start,
-  it can ask for suggested settings, as **Suggest settings** does, and you choose what it starts
-  with. Nucleus never edits files. It can send a message to an agent without asking you, but a
-  start, a verdict, a merge and a clean-up each wait until you click **Confirm**. **New
-  conversation** starts over. Nucleus was called Scout before. A conversation that Scout started
-  stays open on this page, without the web, until you press **New conversation**.
+  waits for you. It reads the checkout and your workspaces' worktrees, so it can answer about an
+  agent's work before it is committed. It searches the web and reads web pages, to research tools,
+  libraries and docs (see [What Symbiote writes and sends](#what-symbiote-writes-and-sends)).
+  Nucleus can also act on your workspaces for you: start one, answer an agent, review or merge a
+  branch. Before a start, it can ask for suggested settings, as **Suggest settings** does, and you
+  choose what it starts with. Nucleus never edits files. It can send a message to an agent without
+  asking you, but a start, a verdict, a merge and a clean-up each wait until you click
+  **Confirm**. **New conversation** starts over. Nucleus was called Scout before. A conversation
+  that Scout started stays open on this page, without the web, until you press **New
+  conversation**.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
   task (`.claude/skills/<name>/SKILL.md`). Search them by name or description, read and edit
   them here (with line numbers, or as a Markdown preview), or open one in VS Code. As you type,

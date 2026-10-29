@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ThreadEntry } from '@symbiote/core';
@@ -16,6 +16,7 @@ import {
   serverEntries,
   serverState,
   type DetachedRun,
+  codexFolders,
 } from '../src/codex.js';
 import { runCodex } from '../src/codex-run.js';
 import type { WorkspaceFile } from '../src/workspace-record.js';
@@ -961,5 +962,57 @@ describe('asksTrust (V27b)', () => {
       ]),
     ).toBe(false);
     expect(asksTrust({ [`${W}/`]: 'trusted' }, [W])).toBe(false);
+  });
+});
+
+describe("codexFolders (V80): Codex's own program, which its sandbox runs again inside", () => {
+  /** `files` written under a temporary folder; its path. */
+  const tree = (files: Record<string, string>) => {
+    const root = tempDir();
+    for (const [path, text] of Object.entries(files)) {
+      mkdirSync(join(root, path, '..'), { recursive: true });
+      writeFileSync(join(root, path), text);
+    }
+    return root;
+  };
+  const manifest = JSON.stringify({
+    name: '@openai/codex',
+    optionalDependencies: { '@openai/codex-linux-x64': '1', '@openai/codex-darwin-arm64': '1' },
+  });
+
+  it('an npm install: the package and the platform package its launcher finds, nested or beside it', () => {
+    const nested = tree({
+      'lib/node_modules/@openai/codex/package.json': manifest,
+      'lib/node_modules/@openai/codex/bin/codex.js': '',
+      'lib/node_modules/@openai/codex/node_modules/@openai/codex-linux-x64/package.json': '{}',
+    });
+    mkdirSync(join(nested, 'bin'));
+    symlinkSync(
+      join(nested, 'lib/node_modules/@openai/codex/bin/codex.js'),
+      join(nested, 'bin/codex'),
+    );
+    const pkg = join(nested, 'lib/node_modules/@openai/codex');
+    expect(codexFolders(join(nested, 'bin/codex'))).toEqual([
+      pkg,
+      join(pkg, 'node_modules/@openai/codex-linux-x64'),
+    ]);
+    // Hoisted beside it (another package manager's layout).
+    const hoisted = tree({
+      'node_modules/@openai/codex/package.json': manifest,
+      'node_modules/@openai/codex/bin/codex.js': '',
+      'node_modules/@openai/codex-linux-x64/package.json': '{}',
+    });
+    expect(codexFolders(join(hoisted, 'node_modules/@openai/codex/bin/codex.js'))).toEqual([
+      join(hoisted, 'node_modules/@openai/codex'),
+      join(hoisted, 'node_modules/@openai/codex-linux-x64'),
+    ]);
+    for (const root of [nested, hoisted]) rmSync(root, { recursive: true, force: true });
+  });
+
+  it('a program of its own: its folder; none for a path that is not there', () => {
+    const root = tree({ 'opt/codex/bin/codex': '' });
+    expect(codexFolders(join(root, 'opt/codex/bin/codex'))).toEqual([join(root, 'opt/codex/bin')]);
+    expect(codexFolders(join(root, 'nowhere/codex'))).toEqual([]);
+    rmSync(root, { recursive: true, force: true });
   });
 });

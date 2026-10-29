@@ -27,8 +27,8 @@ import {
   type PageAgentTerminalRequest,
   type WorkspaceTerminalOpened,
 } from '@symbiote/core';
-import { AppServerStartFailed, type CodexServer } from './app-server.js';
-import { asksTrust, type Codex } from './codex.js';
+import { AppServerError, AppServerStartFailed, type CodexServer } from './app-server.js';
+import { asksTrust, codexFolders, type Codex } from './codex.js';
 import { PromptRefused, readPrompts, writeConfig } from './prompts.js';
 import { prepareSymbioteFolder, reviewPlace, type ReviewPlace } from './reviews.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
@@ -63,9 +63,10 @@ export interface PageAgentSpec {
   permissionMode: 'dontAsk' | 'default';
   /**
    * What its gate is given after its script, at each start and wake: Scribe's, the skills' folder
-   * and `folders`; Nucleus's, `--web` when it has the web (NU1).
+   * and `folders`; Nucleus's, the checkout and the workspaces' records, whose worktrees it opens
+   * (V80, decision 596), and `--web` when it has the web (NU1).
    */
-  gateArgs(root: string): string[];
+  gateArgs(root: string, where: ReviewPlace): string[];
   /**
    * Folders outside the checkout it works in too, read at each start (Scribe: the skill library,
    * SK1): Claude Code's `--add-dir`, folders Codex's sandbox may also write.
@@ -86,6 +87,12 @@ export interface PageAgentSpec {
    * nowhere else (Scribe, its skills; decision 275).
    */
   codex(root: string): { cwd: string; writes: boolean };
+  /**
+   * The folders Codex's read-only thread reads (Nucleus, V80, decision 599), Codex's own program's
+   * added: a permission profile given at its start and at each message and load; absent, Codex's
+   * read-only mode, which reads every folder.
+   */
+  codexReads?(root: string, where: ReviewPlace): string[];
   /** Made before a start: Scribe's skills folder. */
   prepare?(root: string): Promise<void>;
   /**
@@ -423,7 +430,7 @@ export function pageAgent(
   async function settingsFile(where: ReviewPlace): Promise<string> {
     const path = join(folder(where), spec.settings);
     const text = pageAgentSettings(
-      { node, gate, args: spec.gateArgs(root) },
+      { node, gate, args: spec.gateArgs(root, where) },
       process.platform,
       spec.claudeSettings,
     );
@@ -723,6 +730,15 @@ export function pageAgent(
     codexAt.writes ? { confined: true as const } : { readOnly: true as const };
 
   /**
+   * The folders Codex's thread reads now (V80): Codex's program's and the spec's, read again at
+   * each start, message and load; none for a spec without (Codex's read-only mode).
+   */
+  const readsOf = (where: ReviewPlace, agent: Codex | null) =>
+    spec.codexReads
+      ? { reads: [...codexFolders(agent?.command ?? ''), ...spec.codexReads(root, where)] }
+      : {};
+
+  /**
    * Starts a conversation with `text` as the question (none: it waits for one, V50), at the level
    * asked (`levelFor`), on the model asked (`asked`; absent: the project's).
    */
@@ -781,6 +797,7 @@ export function pageAgent(
         ...first,
         ...(instructions ? { instructions } : {}),
         ...codexSandbox(),
+        ...readsOf(where, codexAgent),
         ...(config ? { config } : {}),
         ...at,
       });
@@ -797,13 +814,22 @@ export function pageAgent(
   async function reply(where: ReviewPlace, record: ReadRecord, text: string): Promise<void> {
     if (record.agent === 'codex') {
       const config = codexTools();
-      await (
-        await serverOf(await codex())
-      ).send({
-        thread: record.thread ?? '',
-        text,
-        ...(config ? { config } : {}),
-      });
+      const agent = await codex();
+      try {
+        await (
+          await serverOf(agent)
+        ).send({
+          thread: record.thread ?? '',
+          text,
+          ...(config ? { config } : {}),
+          ...readsOf(where, agent),
+        });
+      } catch (error) {
+        if (error instanceof AppServerError) {
+          throw new PageAgentRefused(`Codex's app server: ${error.message}`, 502);
+        }
+        throw error;
+      }
       return;
     }
     const agent = await claude();
@@ -1014,9 +1040,20 @@ export function pageAgent(
       } else {
         const agent = await codex();
         const app = await serverOf(agent);
-        // Loaded with Symbiote's MCP server first: the terminal joins the thread as it is (MC1).
+        // Loaded with Symbiote's MCP server and its web first, and the folders it reads (V80): the
+        // terminal joins the thread as it is (MC1), read-only.
         const config = codexTools();
-        if (config) await app.load({ thread: record.thread ?? '', config });
+        const reads = readsOf(where, agent);
+        if (config || reads.reads) {
+          try {
+            await app.load({ thread: record.thread ?? '', config: config ?? {}, ...reads });
+          } catch (error) {
+            if (error instanceof AppServerError) {
+              throw new PageAgentRefused(`Codex's app server: ${error.message}`, 502);
+            }
+            throw error;
+          }
+        }
         command = agent?.command ?? 'codex';
         args = ['resume', record.thread ?? '', '--remote', app.address, '-C', codexAt.cwd];
         // Codex asks to trust a folder first (V27b, decision 160): said, never answered here.

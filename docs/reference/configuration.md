@@ -112,6 +112,20 @@ Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, N
 files or run any command but git's read commands, and its starts, verdicts, merges and clean-ups
 still wait for your **Confirm**. Scribe writes only in `.claude/skills/` and the skill library.
 
+What Nucleus reads is fixed the same way. On this machine, Nucleus reads the checkout and the
+worktree of each open workspace, and nothing else. A workspace is open until it is cleaned up. In a
+worktree, Nucleus runs git's read commands with `-C <worktree>`. There it sees uncommitted work
+with `git --no-optional-locks status` and `git diff-index -p HEAD`. It cannot run `git diff`
+there, because `git diff` rewrites the worktree's index while the workspace's agent uses it.
+
+With Claude Code, a workspace started during a conversation is readable at once. With Codex, it
+is readable from the next conversation: Codex fixes the folders a conversation reads when it
+starts it. Symbiote gives Codex those folders again with every message and before Nucleus's
+terminal opens, and refuses to go on if Codex does not answer that the conversation is read-only.
+Continue Nucleus's Codex conversation from Symbiote only: resumed elsewhere, for example with
+`codex resume` in a folder Codex trusts, Codex drops those folders and the conversation can
+write.
+
 ## The skill library
 
 The skill library is one folder of skills kept outside the repository: each skill is a folder

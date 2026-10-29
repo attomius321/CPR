@@ -1,11 +1,11 @@
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { openRepo, type AgentModel, type PageAgentAsk } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
-import { codexServer } from '../src/app-server.js';
-import type { Codex } from '../src/codex.js';
+import { codexServer, readProfile } from '../src/app-server.js';
+import { codexFolders, type Codex } from '../src/codex.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';
 import { NUCLEUS_NAME, nucleus } from '../src/nucleus.js';
 import {
@@ -18,6 +18,7 @@ import {
 import { libraryService, type LibraryService } from '../src/library.js';
 import { scribe, scribePrompt } from '../src/scribe.js';
 import { viewFile } from '../src/mcp-bridge.js';
+import { gateDecision, nucleusReach } from '../src/nucleus-gate.js';
 import type { Terminals } from '../src/terminal.js';
 import { claudeCode, type AgentSession, type ClaudeCode } from '../src/claude-code.js';
 import type { Run } from '../src/programs.js';
@@ -464,8 +465,13 @@ describe('nucleus (V35)', () => {
     // Its instructions are its system prompt (V50, decision 383); the question its first message.
     expect(request?.instructions).toBe(DEFAULT_PROMPTS.nucleus);
     expect(request?.prompt).toBe("Where is the merger's prompt defined?");
+    // Its gate is given the checkout and the workspaces' records (V80, decision 596).
     expect(readFileSync(settings, 'utf8')).toBe(
-      pageAgentSettings({ node: '/usr/bin/node', gate: GATE, args: ['--web'] }),
+      pageAgentSettings({
+        node: '/usr/bin/node',
+        gate: GATE,
+        args: [repo.root, join(repo.root, 'symbiote', 'workspaces'), '--web'],
+      }),
     );
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toEqual({
       about:
@@ -636,12 +642,14 @@ describe('nucleus (V35)', () => {
     const s = await service(repo, { codex, terminals });
     const state = await s.ask({ text: 'Where is it?' });
     const start = server.calls.find((c) => c.method === 'thread/start');
-    expect(start?.params).toMatchObject({
-      cwd: repo.root,
+    // Read-only through a profile that reads the checkout (V80, decision 599), not a mode.
+    expect(start?.params).toMatchObject({ cwd: repo.root, approvalPolicy: 'never' });
+    expect(start?.params).not.toHaveProperty('sandbox');
+    expect(server.thread('thread-1')).toMatchObject({
+      name: 'Nucleus',
       sandbox: 'read-only',
-      approvalPolicy: 'never',
+      reads: [...codexFolders('/usr/bin/codex'), repo.root],
     });
-    expect(server.thread('thread-1')).toMatchObject({ name: 'Nucleus', sandbox: 'read-only' });
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
       agent: 'codex',
       thread: 'thread-1',
@@ -659,6 +667,152 @@ describe('nucleus (V35)', () => {
     // Without its app server, Codex has no terminal: Nucleus says so.
     const without = await service(repo, { codex: fakeCodex(null).codex });
     await expect(without.ask({ text: 'Q' })).rejects.toThrow(/app server/);
+  });
+});
+
+describe("Nucleus reads the workspaces' worktrees (V80, decisions 596-599)", () => {
+  /** `repo` with a workspace's worktree beside it, and its record. */
+  function withWorkspace(repo: TestRepo) {
+    const holder = `${repo.root}.worktrees`;
+    folders.push(holder);
+    const worktree = join(holder, 'feature-a');
+    repo.git('worktree', 'add', '--quiet', worktree, '-b', 'feature/a');
+    writeFileSync(join(worktree, 'wip.md'), 'not committed\n');
+    const file = join(repo.root, 'symbiote', 'workspaces', 'feature', 'a.json');
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(
+      file,
+      JSON.stringify({
+        agent: null,
+        base: repo.git('rev-parse', 'HEAD'),
+        branch: 'feature/a',
+        brief: 'b',
+        created: NOW.toISOString(),
+        planFirst: false,
+        worktree,
+      }),
+    );
+    return { holder, worktree };
+  }
+
+  /** The gate's arguments as Nucleus's settings file gives them to the hook. */
+  const gateArgsOf = (settings: string): string[] => {
+    const text = readFileSync(settings, 'utf8');
+    const command = (
+      JSON.parse(text) as { hooks: { PreToolUse: { hooks: { command: string }[] }[] } }
+    ).hooks.PreToolUse[0]?.hooks[0]?.command;
+    return (command ?? '')
+      .split(' ')
+      .slice(2)
+      .map((word) => word.replace(/^'|'$/g, ''));
+  };
+  const read = (file_path: string) => ({
+    hook_event_name: 'PreToolUse',
+    tool_name: 'Read',
+    tool_input: { file_path },
+  });
+
+  it("opens the workspaces' worktrees to its gate and nothing outside them; no --add-dir", async () => {
+    const repo = fresh();
+    const { holder, worktree } = withWorkspace(repo);
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    await (await service(repo, { claude })).open({});
+    const request = startPageAgent.mock.calls[0]?.[0];
+    // Nothing opened for the whole session: the gate decides at each call.
+    expect(request).not.toHaveProperty('addDirs');
+    const args = gateArgsOf(request?.settings ?? '');
+    expect(args).toEqual([repo.root, join(repo.root, 'symbiote', 'workspaces'), '--web']);
+    const reach = nucleusReach(args);
+    expect(gateDecision(read(join(worktree, 'wip.md')), { reach })).toMatchObject({ allow: true });
+    for (const outside of [
+      join(holder, 'other', 'x.md'),
+      join(dirname(repo.root), 'x.md'),
+      join(repo.root, 'src/a.ts'),
+    ]) {
+      expect(gateDecision(read(outside), { reach })).toBeNull();
+    }
+    // A workspace started during the conversation is read at the next call.
+    const later = join(holder, 'feature-b');
+    repo.git('worktree', 'add', '--quiet', later, '-b', 'feature/b');
+    const file = join(repo.root, 'symbiote', 'workspaces', 'feature', 'b.json');
+    writeFileSync(
+      file,
+      readFileSync(join(dirname(file), 'a.json'), 'utf8')
+        .replace('feature/a', 'feature/b')
+        .replace(worktree, later),
+    );
+    expect(
+      gateDecision(read(join(later, 'README.md')), { reach: nucleusReach(args) }),
+    ).toMatchObject({
+      allow: true,
+    });
+  });
+
+  it("confines Codex's Nucleus like Claude Code's: the checkout and the open worktrees, read only (decision 599)", async () => {
+    const repo = fresh();
+    const { holder, worktree } = withWorkspace(repo);
+    // Codex trusts the checkout: without its profile, a thread there would be writable.
+    const server = await appServer();
+    server.trusted[repo.root] = 'trusted';
+    const { codex } = fakeCodex(server);
+    const { terminals } = fakeTerminals();
+    const s = await service(repo, { codex, terminals });
+    await s.open({});
+    const own = codexFolders('/usr/bin/codex');
+    const start = server.calls.find((c) => c.method === 'thread/start');
+    expect(start?.params).not.toHaveProperty('sandbox');
+    expect(JSON.stringify(start?.params)).not.toContain('writable');
+    expect(server.thread('thread-1')).toMatchObject({
+      sandbox: 'read-only',
+      reads: [...own, repo.root, worktree],
+    });
+    expect(JSON.stringify(start?.params)).not.toContain(`"${holder}"`);
+    // A workspace started since is in the profile given with the next message, and at a load.
+    const later = join(holder, 'feature-b');
+    repo.git('worktree', 'add', '--quiet', later, '-b', 'feature/b');
+    const file = join(repo.root, 'symbiote', 'workspaces', 'feature', 'b.json');
+    writeFileSync(
+      file,
+      readFileSync(join(dirname(file), 'a.json'), 'utf8')
+        .replace('feature/a', 'feature/b')
+        .replace(worktree, later),
+    );
+    const profileOf = (call: { params: Record<string, unknown> } | undefined) =>
+      Object.keys(
+        (call?.params.config as { permissions: Record<string, { filesystem: object }> })
+          .permissions['symbiote-read']?.filesystem ?? {},
+      );
+    await s.ask({ text: 'What does feature/b change?' });
+    const resumed = server.calls.findLast((c) => c.method === 'thread/resume');
+    expect(profileOf(resumed)).toEqual([':minimal', ...own, repo.root, worktree, later]);
+    server.restart();
+    await s.terminal({ cols: 100, rows: 30 });
+    expect(profileOf(server.calls.findLast((c) => c.method === 'thread/resume'))).toEqual([
+      ':minimal',
+      ...own,
+      repo.root,
+      worktree,
+      later,
+    ]);
+    // Still read-only after the restart: the profile came with the load.
+    expect(server.thread('thread-1')).toMatchObject({ sandbox: 'read-only' });
+  });
+
+  it('refuses a Codex that would not keep Nucleus read-only: its thread archived, no record', async () => {
+    const repo = fresh();
+    const dir = mkdtempSync(join(tmpdir(), 'symbiote-scout-as-'));
+    folders.push(dir);
+    // A Codex without permission profiles, in a checkout it trusts.
+    const server = await fakeAppServer(join(dir, 's.sock'), { profiles: false });
+    closers.push(() => server.close());
+    server.trusted[repo.root] = 'trusted';
+    const { codex } = fakeCodex(server);
+    await expect((await service(repo, { codex })).open({})).rejects.toMatchObject({
+      status: 502,
+      message: expect.stringMatching(/not read-only/) as unknown,
+    });
+    expect(server.threads[0]).toMatchObject({ sandbox: 'workspace-write', archived: true });
+    expect(existsSync(record(repo))).toBe(false);
   });
 });
 
@@ -794,12 +948,12 @@ describe('Nucleus is a terminal (V50)', () => {
     codex.efforts = () => Promise.resolve({ levels: ['low', 'medium', 'high'], default: 'medium' });
     const s = await service(repo, { codex });
     const state = await s.open({ effort: 'low' });
+    // Read-only through its profile (V80), not a sandbox mode.
     expect(server.calls.find((c) => c.method === 'thread/start')?.params).toMatchObject({
       cwd: repo.root,
-      sandbox: 'read-only',
       approvalPolicy: 'never',
       developerInstructions: DEFAULT_PROMPTS.nucleus,
-      config: { model_reasoning_effort: 'low' },
+      config: { model_reasoning_effort: 'low', default_permissions: 'symbiote-read' },
     });
     expect(server.calls.some((c) => c.method === 'turn/start')).toBe(false);
     expect(state.conversation).toMatchObject({
@@ -1432,10 +1586,11 @@ describe("Nucleus with Symbiote's tools (MC1, decisions 358, 365)", () => {
         },
       },
       web_search: 'live',
+      // The folders it reads (V80): Codex's program's and the checkout; no workspace here.
+      ...readProfile([...codexFolders('/usr/bin/codex'), repo.root]),
     };
     expect(server.calls.find((c) => c.method === 'thread/start')?.params).toEqual({
       cwd: repo.root,
-      sandbox: 'read-only',
       approvalPolicy: 'never',
       developerInstructions: DEFAULT_PROMPTS.nucleus,
       config,
@@ -1678,8 +1833,9 @@ describe('Nucleus on the web (NU1, decisions 592–594)', () => {
       'WebSearch',
       'WebFetch',
     ]);
+    const folders = [repo.root, join(repo.root, 'symbiote', 'workspaces')];
     expect(readFileSync(join(repo.root, 'symbiote', 'nucleus-settings.json'), 'utf8')).toBe(
-      pageAgentSettings({ node: '/usr/bin/node', gate: GATE, args: ['--web'] }),
+      pageAgentSettings({ node: '/usr/bin/node', gate: GATE, args: [...folders, '--web'] }),
     );
   });
 
@@ -1691,7 +1847,11 @@ describe('Nucleus on the web (NU1, decisions 592–594)', () => {
     await s.open({});
     expect(startPageAgent.mock.calls[0]?.[0].tools).toEqual(['Read', 'Grep', 'Glob', 'Bash']);
     expect(readFileSync(join(repo.root, 'symbiote', 'nucleus-settings.json'), 'utf8')).toBe(
-      pageAgentSettings({ node: '/usr/bin/node', gate: GATE }),
+      pageAgentSettings({
+        node: '/usr/bin/node',
+        gate: GATE,
+        args: [repo.root, join(repo.root, 'symbiote', 'workspaces')],
+      }),
     );
   });
 
@@ -1703,8 +1863,9 @@ describe('Nucleus on the web (NU1, decisions 592–594)', () => {
     const s = await service(repo, { codex, terminals });
     await s.ask({ text: 'What is new in Vite?' });
     const start = server.calls.find((c) => c.method === 'thread/start')?.params;
-    // The sandbox keeps its network off: the search runs at OpenAI.
-    expect(start).toMatchObject({ sandbox: 'read-only', config: { web_search: 'live' } });
+    // The thread stays read-only, its network off: the search runs at OpenAI.
+    expect(start).toMatchObject({ config: { web_search: 'live' } });
+    expect(server.thread('thread-1')).toMatchObject({ sandbox: 'read-only' });
     server.reply('thread-1', 'Vite 8.');
     await s.ask({ text: 'And 9?' });
     await s.terminal({ cols: 80, rows: 24 });

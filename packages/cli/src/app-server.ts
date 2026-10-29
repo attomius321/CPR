@@ -157,6 +157,31 @@ export async function connectAppServer(
   return connection;
 }
 
+/** The permission profile a thread that reads only some folders runs under (V80): Symbiote's. */
+const READ_PROFILE = 'symbiote-read';
+
+/**
+ * A thread's configuration that lets its commands read only `folders`, with Codex's minimal system
+ * folders, and write nothing (Codex 0.163's permission profiles; V80, decision 599). It works only
+ * without a sandbox mode, which switches it off; and it is not kept: a thread resumed without it
+ * gets the folder's default, writable where Codex trusts it (V80 spike). So it is given at the
+ * start and at every resume.
+ */
+export function readProfile(folders: readonly string[]): Record<string, unknown> {
+  const filesystem = Object.fromEntries([':minimal', ...folders].map((f) => [f, 'read']));
+  return { default_permissions: READ_PROFILE, permissions: { [READ_PROFILE]: { filesystem } } };
+}
+
+/** Throws unless Codex answered that the thread runs read-only (`readOnly`, V80). */
+function mustReadOnly(answer: { sandbox?: { type?: unknown } }): void {
+  const type = answer.sandbox?.type;
+  if (type !== 'readOnly') {
+    throw new AppServerError(
+      `Codex's thread is not read-only (${typeof type === 'string' ? type : 'no sandbox said'}): nothing is run in it`,
+    );
+  }
+}
+
 /** A Codex thread as Symbiote reads it. */
 export interface CodexThread {
   id: string;
@@ -241,6 +266,11 @@ export interface CodexServer {
     effort?: string;
     model?: string;
     readOnly?: true;
+    /**
+     * With `readOnly` (Nucleus, V80): the folders its commands read, through `readProfile` and no
+     * sandbox mode; refused, the thread archived, unless Codex answers read-only.
+     */
+    reads?: readonly string[];
     confined?: true;
     /** The thread's own configuration (MC1: Nucleus's, Symbiote's MCP server), beside Symbiote's. */
     config?: Record<string, unknown>;
@@ -266,12 +296,19 @@ export interface CodexServer {
     text: string;
     /** Given again with the resume (MC1): a thread the server does not hold gets it back. */
     config?: Record<string, unknown>;
+    /** The folders it reads (V80), given again with the resume; no message unless read-only. */
+    reads?: readonly string[];
   }): Promise<'started' | 'steered'>;
   /**
    * Loads a thread with `config` and no turn (MC1): before Codex's terminal joins it, so the
-   * thread has Symbiote's MCP server whatever the server held.
+   * thread has Symbiote's MCP server whatever the server held; with `reads` (V80), its profile
+   * too, refused unless read-only.
    */
-  load(request: { thread: string; config: Record<string, unknown> }): Promise<void>;
+  load(request: {
+    thread: string;
+    config: Record<string, unknown>;
+    reads?: readonly string[];
+  }): Promise<void>;
   /**
    * Interrupts the turn that runs, once it ended (2 s at most), then the commands the thread's
    * turns left running (Codex's background terminals, decision 159); whether a turn ran. Where
@@ -545,6 +582,7 @@ export function codexServer(
       effort,
       model,
       readOnly,
+      reads,
       confined,
       config,
     }) =>
@@ -557,35 +595,57 @@ export function codexServer(
           ...(instructions ? { developerInstructions: instructions } : {}),
         };
         const own = configured ? { config: configured } : {};
-        const started = await connection.request<{ thread?: { id?: unknown } }>(
+        const profiled = readOnly && reads;
+        const started = await connection.request<{
+          thread?: { id?: unknown };
+          sandbox?: { type?: unknown };
+        }>(
           'thread/start',
-          readOnly
-            ? { cwd, sandbox: 'read-only', approvalPolicy: 'never', ...on, ...own }
-            : confined
-              ? {
-                  cwd,
-                  sandbox: 'workspace-write',
-                  approvalPolicy: 'never',
-                  ...on,
-                  ...(writable.length > 0
-                    ? {
-                        config: {
-                          ...configured,
-                          sandbox_workspace_write: { writable_roots: writable },
-                        },
-                      }
-                    : own),
-                }
-              : {
-                  cwd,
-                  ...on,
-                  sandbox: 'workspace-write',
-                  approvalPolicy: 'on-request',
-                  config: { sandbox_workspace_write: { writable_roots: writable }, ...configured },
-                },
+          profiled
+            ? {
+                cwd,
+                approvalPolicy: 'never',
+                ...on,
+                config: { ...configured, ...readProfile(reads) },
+              }
+            : readOnly
+              ? { cwd, sandbox: 'read-only', approvalPolicy: 'never', ...on, ...own }
+              : confined
+                ? {
+                    cwd,
+                    sandbox: 'workspace-write',
+                    approvalPolicy: 'never',
+                    ...on,
+                    ...(writable.length > 0
+                      ? {
+                          config: {
+                            ...configured,
+                            sandbox_workspace_write: { writable_roots: writable },
+                          },
+                        }
+                      : own),
+                  }
+                : {
+                    cwd,
+                    ...on,
+                    sandbox: 'workspace-write',
+                    approvalPolicy: 'on-request',
+                    config: {
+                      sandbox_workspace_write: { writable_roots: writable },
+                      ...configured,
+                    },
+                  },
         );
         const thread = text(started.thread?.id);
         if (!thread) throw new AppServerError('Codex started no thread');
+        if (profiled) {
+          try {
+            mustReadOnly(started);
+          } catch (error) {
+            await connection.request('thread/archive', { threadId: thread }).catch(() => undefined);
+            throw error;
+          }
+        }
         if (prompt === undefined) {
           // Codex 0.164 names an empty thread; 0.163 refuses until a message is in it.
           await connection
@@ -611,18 +671,20 @@ export function codexServer(
           .catch(() => undefined);
         return thread;
       }),
-    send: ({ thread, text: words, config }) =>
+    send: ({ thread, text: words, config, reads }) =>
       using(async (connection) => {
         // Joining the thread: one the server does not hold is loaded with its own options (the
         // server keeps them), and this connection hears when the message is in.
-        const resumed = await connection.request<{ thread?: { status?: unknown } }>(
-          'thread/resume',
-          {
-            threadId: thread,
-            excludeTurns: true,
-            ...(config ? { config } : {}),
-          },
-        );
+        const configured = reads ? { ...config, ...readProfile(reads) } : config;
+        const resumed = await connection.request<{
+          thread?: { status?: unknown };
+          sandbox?: { type?: unknown };
+        }>('thread/resume', {
+          threadId: thread,
+          excludeTurns: true,
+          ...(configured ? { config: configured } : {}),
+        });
+        if (reads) mustReadOnly(resumed);
         const sent = messageIn(connection, thread);
         let how: 'started' | 'steered' = 'started';
         const running =
@@ -640,9 +702,17 @@ export function codexServer(
         await sent;
         return how;
       }),
-    load: ({ thread, config }) =>
+    load: ({ thread, config, reads }) =>
       using(async (connection) => {
-        await connection.request('thread/resume', { threadId: thread, excludeTurns: true, config });
+        const resumed = await connection.request<{ sandbox?: { type?: unknown } }>(
+          'thread/resume',
+          {
+            threadId: thread,
+            excludeTurns: true,
+            config: reads ? { ...config, ...readProfile(reads) } : config,
+          },
+        );
+        if (reads) mustReadOnly(resumed);
       }),
     async interrupt(thread) {
       const interrupted = await using(async (connection) => {

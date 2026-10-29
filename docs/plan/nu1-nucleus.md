@@ -3,12 +3,13 @@
 [Index](../PLAN.md) · [Journal](../journal/nu1-nucleus.md)
 
 **Status:** ready for review (2026-10-29), on branch `feature/nucleus` (a workspace started in
-Symbiote, from `main` at `3af5243`; `main` merged in at `eee7458` with MC2, and at `596aa1c` with
-V79). The person OK'd the plan with five answers: the network is "normal network access provided
-by the harness"; the Scout conversation is not carried over ("We'll reset the conversation, is
-ok"); the code is renamed too; the real run is in this repository ("I'm done with throwaway
-clones"); the work starts without waiting for V80 (`feature/scout-reads-worktrees`), which will
-merge after it. Its "As built" and results below.
+Symbiote, from `main` at `3af5243`; `main` merged in at `eee7458` with MC2, at `596aa1c` with V79,
+and at `ef78106` with V80, its reads of the workspaces' worktrees). The person OK'd the plan with
+five answers: the network is "normal network access provided by the harness"; the Scout
+conversation is not carried over ("We'll reset the conversation, is ok"); the code is renamed too;
+the real run is in this repository ("I'm done with throwaway clones"); the work starts without
+waiting for V80 (`feature/scout-reads-worktrees`), which merged into `main` before NU1. Its "As
+built" and results below.
 
 **Problem** (asked: "Scout becomes Nucleus, the person's orchestrator in Symbiote, and this is its
 first step", and "Nucleus can search the web and make requests ... so it can research other tools,

@@ -7,6 +7,7 @@ import {
   AppServerUnreachable,
   codexServer,
   connectAppServer,
+  readProfile,
 } from '../src/app-server.js';
 import { fakeAppServer, webSocketServer, type FakeAppServer } from './fake-app-server.js';
 
@@ -470,6 +471,100 @@ describe('codexServer', () => {
     expect(server.calls.findLast((c) => c.method === 'thread/start')?.params).toMatchObject({
       config: { sandbox_workspace_write: { writable_roots: ROOTS }, ...config },
     });
+  });
+
+  it('reads only the folders it is given: a permission profile, no sandbox mode, given again at each resume (V80, decision 599)', async () => {
+    const server = await serve();
+    const codex = codexServer(server.address);
+    const config = { mcp_servers: {} };
+    const reads = ['/codex', '/repo', '/repo.worktrees/feature-a'];
+    const thread = await codex.start({
+      cwd: '/repo',
+      writable: [],
+      name: 'Scout',
+      prompt: 'P',
+      readOnly: true,
+      reads,
+      config,
+    });
+    // Codex's minimal system folders, then the folders given; read only, nothing written.
+    expect(readProfile(reads)).toEqual({
+      default_permissions: 'symbiote-read',
+      permissions: {
+        'symbiote-read': {
+          filesystem: {
+            ':minimal': 'read',
+            '/codex': 'read',
+            '/repo': 'read',
+            '/repo.worktrees/feature-a': 'read',
+          },
+        },
+      },
+    });
+    // No sandbox mode: Codex 0.163 takes a mode over a profile (V80 spike).
+    expect(server.calls.find((c) => c.method === 'thread/start')?.params).toEqual({
+      cwd: '/repo',
+      approvalPolicy: 'never',
+      config: { ...config, ...readProfile(reads) },
+    });
+    expect(server.thread(thread)).toMatchObject({ sandbox: 'read-only', reads });
+    server.reply(thread, 'Done');
+    // A resume without it falls back to the folder's default: each one gives it again, newer.
+    const later = [...reads, '/repo.worktrees/feature-b'];
+    await codex.send({ thread, text: 'Again', config, reads: later });
+    expect(server.calls.findLast((c) => c.method === 'thread/resume')?.params).toEqual({
+      threadId: thread,
+      excludeTurns: true,
+      config: { ...config, ...readProfile(later) },
+    });
+    server.reply(thread, 'Done again');
+    server.restart();
+    await codex.load({ thread, config, reads: later });
+    expect(server.calls.findLast((c) => c.method === 'thread/resume')?.params).toEqual({
+      threadId: thread,
+      excludeTurns: true,
+      config: { ...config, ...readProfile(later) },
+    });
+    // A thread the server did not hold takes the newer folders.
+    expect(server.thread(thread)).toMatchObject({ sandbox: 'read-only', reads: later });
+  });
+
+  it('refuses a thread Codex does not keep read-only: the start archived, no message, no load (V80)', async () => {
+    const path = socketPath();
+    // A Codex that does not take profiles, in a folder it trusts: writable without a mode.
+    const server = await fakeAppServer(path, { profiles: false });
+    closers.push(() => server.close());
+    server.trusted['/repo'] = 'trusted';
+    const codex = codexServer(server.address);
+    const reads = ['/codex', '/repo'];
+    await expect(
+      codex.start({
+        cwd: '/repo',
+        writable: [],
+        name: 'Scout',
+        prompt: 'P',
+        readOnly: true,
+        reads,
+      }),
+    ).rejects.toThrow(/not read-only/);
+    expect(server.threads[0]).toMatchObject({ sandbox: 'workspace-write', archived: true });
+    expect(server.calls.some((c) => c.method === 'turn/start')).toBe(false);
+
+    // A thread that lost its profile (resumed without it elsewhere) gets no message and no load.
+    const good = await fakeAppServer(socketPath());
+    closers.push(() => good.close());
+    const other = codexServer(good.address);
+    const thread = await other.start({
+      cwd: '/repo',
+      writable: [],
+      name: 'Scout',
+      readOnly: true,
+      reads,
+    });
+    good.thread(thread).sandbox = 'workspace-write';
+    await expect(other.send({ thread, text: 'Hi', reads })).rejects.toThrow(/not read-only/);
+    await expect(other.load({ thread, config: {}, reads })).rejects.toThrow(/not read-only/);
+    expect(good.calls.some((c) => c.method === 'turn/start')).toBe(false);
   });
 
   it('interrupts the running turn and answers once it ended; nothing to interrupt otherwise', async () => {

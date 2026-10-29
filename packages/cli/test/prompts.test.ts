@@ -398,6 +398,12 @@ describe("Nucleus's prompt (V35, NU1)", () => {
     expect(nucleus).toContain("the person's Confirm");
     expect(nucleus).toContain("never the person's");
     expect(nucleus).toContain('symbiote/AGENTS.md');
+    // What it reads (V80): the checkout and the workspaces' worktrees, their uncommitted work
+    // through git -C, without git diff there.
+    expect(nucleus).toMatch(/workspaces' worktrees/);
+    expect(nucleus).toContain('git --no-optional-locks -C <worktree> status');
+    expect(nucleus).toContain('git -C <worktree> diff-index -p HEAD');
+    expect(nucleus).toContain('not git diff');
     // The advisor before a start the person asked for, its proposal theirs to take (MC2).
     expect(nucleus).toContain('suggest_settings');
     expect(nucleus).toContain('before a start the person asked for');

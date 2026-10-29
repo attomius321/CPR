@@ -1,5 +1,25 @@
-import { describe, expect, it } from 'vitest';
-import { gateDecision, gateOptions, gitReadProblem, hookOutput } from '../src/nucleus-gate.js';
+import { execFileSync } from 'node:child_process';
+import {
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  utimesSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
+import {
+  gateDecision,
+  gateOptions,
+  gitReadProblem,
+  hookOutput,
+  nucleusReach,
+  openWorktrees,
+  type NucleusReach,
+} from '../src/nucleus-gate.js';
 
 describe('gitReadProblem (V35, decision 236)', () => {
   it.each([
@@ -249,5 +269,282 @@ describe('gateDecision (V35)', () => {
         permissionDecisionReason: 'No.',
       },
     });
+  });
+});
+
+describe("Scout reads the workspaces' worktrees (V80, decisions 596-598)", () => {
+  // A checkout, its worktrees beside it as Symbiote makes them, and their records:
+  // - feature-a: an open workspace, with uncommitted work and links out of it;
+  // - "with space": an open workspace whose folder has a space;
+  // - feature-done: a finished workspace whose worktree is still there;
+  // - feature-hand: a worktree no record names;
+  // - ghost: a record whose folder git does not list as a worktree.
+  let repo: TestRepo;
+  let outside: string;
+  let holder: string;
+  let records: string;
+  let wt: string;
+  let spaced: string;
+  let done: string;
+  let hand: string;
+  let ghost: string;
+  let reach: NucleusReach;
+
+  const record = (branch: string, worktree: string, more: Record<string, unknown> = {}) => {
+    const file = join(records, `${branch}.json`);
+    mkdirSync(dirname(file), { recursive: true });
+    const workspace = {
+      agent: null,
+      base: 'abc',
+      branch,
+      brief: 'b',
+      created: '2026-10-29T00:00:00Z',
+    };
+    writeFileSync(file, JSON.stringify({ ...workspace, planFirst: false, worktree, ...more }));
+  };
+
+  beforeAll(() => {
+    repo = createRepo();
+    repo.write({ 'src/a.ts': 'export const a = 1;\n', 'src/b.ts': 'export const b = 2;\n' });
+    repo.commit('A');
+    outside = tempDir();
+    writeFileSync(join(outside, 'secret.txt'), 'SECRET\n');
+    holder = `${repo.root}.worktrees`;
+    wt = join(holder, 'feature-a');
+    spaced = join(holder, 'with space');
+    done = join(holder, 'feature-done');
+    hand = join(holder, 'feature-hand');
+    ghost = join(holder, 'ghost');
+    for (const [folder, branch] of [
+      [wt, 'feature/a'],
+      [spaced, 'feature/spaced'],
+      [done, 'feature/done'],
+      [hand, 'feature/hand'],
+    ] as const) {
+      repo.git('worktree', 'add', '--quiet', folder, '-b', branch);
+    }
+    mkdirSync(ghost);
+    writeFileSync(join(wt, 'src/a.ts'), 'export const a = 3;\n');
+    writeFileSync(join(wt, 'notes.md'), 'not committed\n');
+    symlinkSync(outside, join(wt, 'out'));
+    symlinkSync(join(outside, 'secret.txt'), join(wt, 'out-file.txt'));
+    records = join(repo.root, 'symbiote', 'workspaces');
+    record('feature/a', wt);
+    record('feature/spaced', spaced);
+    record('feature/done', done, { finished: '2026-10-29T01:00:00Z' });
+    record('feature/ghost', ghost);
+    record('feature/root', '/');
+    reach = { checkout: repo.root, worktrees: () => openWorktrees(repo.root, records) };
+  });
+  afterAll(() => {
+    repo.cleanup();
+    rmSync(holder, { recursive: true, force: true });
+    rmSync(outside, { recursive: true, force: true });
+  });
+
+  it("opens an open workspace's worktree that git lists, nothing else", () => {
+    expect([...openWorktrees(repo.root, records)].sort()).toEqual([wt, spaced].sort());
+    // No records folder, or a repository git cannot read: none.
+    expect(openWorktrees(repo.root, join(repo.root, 'nothing'))).toEqual([]);
+    expect(openWorktrees(outside, records)).toEqual([]);
+  });
+
+  const read = (tool: string, tool_input: unknown) => ({
+    hook_event_name: 'PreToolUse',
+    cwd: repo.root,
+    tool_name: tool,
+    tool_input,
+  });
+
+  it("allows Read, Grep and Glob in an open workspace's worktree, by real path", () => {
+    const allowed = { allow: true, reason: "a workspace's worktree" };
+    for (const input of [
+      read('Read', { file_path: join(wt, 'src/a.ts') }),
+      read('Read', { file_path: join(wt, 'notes.md') }),
+      // Claude Code says a missing file is missing.
+      read('Read', { file_path: join(wt, 'not-yet.md') }),
+      read('Read', { file_path: join(spaced, 'src/b.ts') }),
+      read('Grep', { pattern: 'export', path: wt }),
+      read('Grep', { pattern: 'export', path: join(wt, 'src'), glob: '*.ts' }),
+      read('Glob', { pattern: '**/*.ts', path: wt }),
+    ]) {
+      expect(gateDecision(input, { reach })).toEqual(allowed);
+    }
+    expect(JSON.parse(hookOutput(allowed))).toMatchObject({
+      hookSpecificOutput: {
+        permissionDecision: 'allow',
+        permissionDecisionReason: "Nucleus: a workspace's worktree",
+      },
+    });
+  });
+
+  it("leaves every other path to Claude Code's own rules", () => {
+    for (const input of [
+      // The checkout: Claude Code reads it, as before.
+      read('Read', { file_path: join(repo.root, 'src/a.ts') }),
+      read('Grep', { pattern: 'x', path: repo.root }),
+      // Around the checkout, the folder holding the worktrees, other worktrees.
+      read('Read', { file_path: join(dirname(repo.root), 'x.txt') }),
+      read('Glob', { pattern: '**', path: holder }),
+      read('Read', { file_path: join(done, 'src/a.ts') }),
+      read('Read', { file_path: join(hand, 'src/a.ts') }),
+      read('Read', { file_path: join(ghost, 'x') }),
+      read('Read', { file_path: '/etc/hostname' }),
+      read('Grep', { pattern: 'root', path: '/etc' }),
+      // Links out of a worktree, and "..".
+      read('Read', { file_path: join(wt, 'out-file.txt') }),
+      read('Read', { file_path: join(wt, 'out', 'secret.txt') }),
+      read('Grep', { pattern: 'SECRET', path: join(wt, 'out') }),
+      read('Read', { file_path: `${wt}/../feature-hand/src/a.ts` }),
+      read('Read', { file_path: `${wt}/src/../../feature-hand/src/a.ts` }),
+      // Relative, or no path: Claude Code's folder.
+      read('Grep', { pattern: 'x', path: 'feature-a' }),
+      read('Grep', { pattern: 'x' }),
+      read('Glob', { pattern: '**/*.ts' }),
+      read('Read', {}),
+    ]) {
+      expect(gateDecision(input, { reach })).toBeNull();
+    }
+    // Without the folders (a settings file from before V80): main's gate.
+    expect(gateDecision(read('Read', { file_path: join(wt, 'src/a.ts') }))).toBeNull();
+  });
+
+  /** A command with its folders named: `<wt>`, `<holder>`, `<done>`, `<hand>`, `<ghost>`… */
+  const fill = (command: string) =>
+    command
+      .replaceAll('<wt>', wt)
+      .replaceAll('<spaced>', spaced)
+      .replaceAll('<holder>', holder)
+      .replaceAll('<done>', done)
+      .replaceAll('<hand>', hand)
+      .replaceAll('<ghost>', ghost)
+      .replaceAll('<checkout>', repo.root)
+      .replaceAll('<around>', dirname(repo.root));
+
+  it.each([
+    'git --no-optional-locks -C <wt> status --short',
+    'git -C <wt> --no-optional-locks status --porcelain',
+    'git -C <wt> diff-index -p HEAD',
+    'git -C <wt> diff-index --stat HEAD -- src',
+    'git -C <wt> ls-files --others --exclude-standard',
+    'git --no-pager -C <wt> log --oneline -3',
+    'git -C <wt> show HEAD:src/a.ts | head -5',
+    'git -C <wt>/src grep -n export',
+    'git -C <wt> blame src/a.ts',
+    "git -C '<spaced>' log --oneline",
+    'git -C "<spaced>/src" diff-index -p HEAD',
+    // Scout's two new commands in the checkout too.
+    'git --no-optional-locks status --short',
+    'git diff-index -p HEAD',
+  ])('accepts %s', (command) => {
+    expect(gitReadProblem(fill(command), reach.worktrees)).toBeNull();
+  });
+
+  it.each([
+    // -C anywhere but an open workspace's worktree.
+    ['git -C <around> log', 'not a workspace'],
+    ['git -C /home log', 'not a workspace'],
+    ['git -C <holder> log', 'not a workspace'],
+    ['git -C <checkout> log', 'not a workspace'],
+    ['git -C <done> log', 'not a workspace'],
+    ['git -C <hand> log', 'not a workspace'],
+    ['git -C <ghost> log', 'not a workspace'],
+    ['git -C / log', 'not a workspace'],
+    ['git -C <wt>/out log', 'not a workspace'],
+    ['git -C <wt>/../feature-hand log', '..'],
+    ['git -C feature-a log', 'absolute'],
+    ['git -C ~/projects log', 'absolute'],
+    ['git -C <wt> -C src log', 'one -C'],
+    ['git -C', 'a folder'],
+    ['git -C <wt>', 'which git command'],
+    // In a worktree, git diff rewrites its index; status only with --no-optional-locks.
+    ['git -C <wt> diff', 'diff-index'],
+    ['git -C <wt> diff HEAD --stat', 'diff-index'],
+    ['git -C <wt> status', '--no-optional-locks'],
+    ['git status --short', '--no-optional-locks'],
+    // Every refusal of fix/security-and-bugs, with -C in front.
+    ['git -C <wt> log -1 --output=/tmp/x', '--output'],
+    ['git -C <wt> diff-index --output=/tmp/x HEAD', '--output'],
+    ['git -C <wt> diff-index --ext-diff -p HEAD', '--ext-diff'],
+    ['git -C <wt> grep --no-index x /etc', '--no-index'],
+    ["git -C <wt> grep -O'touch /tmp/x' foo", '-O'],
+    ['git -C <wt> blame --contents=/etc/hostname README.md', '--contents'],
+    ['git -C <wt> grep -f /etc/hostname', '-f'],
+    ['git -C <wt> log -1 | tail -n 3 ~/.bashrc', '~/.bashrc'],
+    ['git -C <wt> -c core.pager=touch log', 'git -c'],
+    ['git -C <wt> --git-dir=/tmp/x log', 'git --git-dir=/tmp/x'],
+    ['git --no-optional-locks -C <wt> checkout -b x', 'git checkout'],
+    ['git -C <wt> stash', 'git stash'],
+    ['git -C <wt> log; touch x', ';'],
+    ['git -C $(echo <wt>) log', '$'],
+  ])('refuses %s', (command, named) => {
+    expect(gitReadProblem(fill(command), reach.worktrees)).toContain(named);
+  });
+
+  it("keeps Scribe's rule: no -C, status or diff-index without the worktrees", () => {
+    expect(gitReadProblem(`git -C ${wt} log`)).toContain('git -C');
+    expect(gitReadProblem('git --no-optional-locks status')).toContain('--no-optional-locks');
+    expect(gitReadProblem('git diff-index -p HEAD')).toContain('git diff-index');
+    expect(gitReadProblem('git status')).toContain('git status');
+  });
+
+  it('says where Scout runs git when it refuses a command', () => {
+    const bash = (command: string) => read('Bash', { command });
+    expect(gateDecision(bash(`git -C ${wt} diff-index -p HEAD`), { reach })).toEqual({
+      allow: true,
+    });
+    const denied = gateDecision(bash(`git -C ${hand} log`), { reach });
+    expect(denied).toMatchObject({ allow: false });
+    expect(denied && !denied.allow && denied.reason).toMatch(/-C <a workspace's worktree>/);
+    // Main's words without the folders.
+    const before = gateDecision(bash(`git -C ${wt} log`));
+    expect(before && !before.allow && before.reason).not.toMatch(/worktree/);
+  });
+
+  it('writes nothing in the worktree: its index stays as it was, but git diff rewrites it', () => {
+    const index = execFileSync(
+      'git',
+      ['-C', wt, 'rev-parse', '--path-format=absolute', '--git-path', 'index'],
+      { encoding: 'utf8' },
+    ).trim();
+    let tick = Date.now() / 1000 + 60;
+    // A file's time changed and its text did not: git refreshes the index when it may.
+    const stale = () => {
+      tick += 5;
+      utimesSync(join(wt, 'src/b.ts'), tick, tick);
+    };
+    const state = () => `${statSync(index).mtimeMs} ${readFileSync(index).toString('base64')}`;
+    const forms = [
+      ['--no-optional-locks', '-C', wt, 'status', '--short'],
+      ['-C', wt, 'diff-index', '-p', 'HEAD'],
+      ['-C', wt, 'diff-index', '--stat', 'HEAD'],
+      ['-C', wt, 'ls-files', '--others', '--exclude-standard'],
+      ['-C', wt, 'log', '--oneline', '-1'],
+      ['-C', wt, 'show', 'HEAD:src/a.ts'],
+      ['-C', wt, 'grep', '-n', 'export'],
+      ['-C', wt, 'blame', 'src/b.ts'],
+    ];
+    for (const args of forms) {
+      expect(gitReadProblem(`git ${args.join(' ')}`, reach.worktrees)).toBeNull();
+      stale();
+      const before = state();
+      execFileSync('git', args, { stdio: 'ignore' });
+      expect(state(), args.join(' ')).toBe(before);
+    }
+    stale();
+    const before = state();
+    execFileSync('git', ['-C', wt, 'diff'], { stdio: 'ignore' });
+    expect(state()).not.toBe(before);
+  });
+});
+
+describe("nucleusReach (V80): the hook's arguments", () => {
+  it("takes the checkout and the records folder; without both, none (main's gate)", () => {
+    const reach = nucleusReach(['/repo', '/repo/symbiote/workspaces']);
+    expect(reach?.checkout).toBe('/repo');
+    expect(reach?.worktrees()).toEqual([]);
+    expect(nucleusReach([])).toBeUndefined();
+    expect(nucleusReach(['/repo'])).toBeUndefined();
+    expect(nucleusReach(['', ''])).toBeUndefined();
   });
 });
