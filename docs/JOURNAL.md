@@ -307,3 +307,5 @@ merge commit.
 - 2026-10-29 [V76 spike — the Review tab at the sidebar's width](journal/v76-review-tab-layout.md)
 - 2026-10-29 [V76 — the Review tab in sections, Merge into's dropdowns in the sidebar](journal/v76-review-tab-layout.md)
 - 2026-10-29 [V76c — Files and Graph at the review head's end](journal/v76-review-tab-layout.md)
+- 2026-10-29 [V77 spike — what a cleaned-up workspace leaves](journal/v77-workspace-history.md)
+- 2026-10-29 [V77 — History under Monitor: finished workspaces, their activity and brief](journal/v77-workspace-history.md)

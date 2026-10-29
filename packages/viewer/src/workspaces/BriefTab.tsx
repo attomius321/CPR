@@ -13,11 +13,14 @@ export function BriefTab({
   text,
   started,
   documents,
+  removed = false,
 }: {
   text: string;
   started: string | null;
   /** The files given with it (V40). */
   documents: WorkspaceSummary['documents'];
+  /** Clean up removed them, their names kept (a finished workspace's, V77). */
+  removed?: boolean;
 }) {
   const lexer = useMarkdown();
   return (
@@ -34,7 +37,13 @@ export function BriefTab({
             Documents <span className="count">{documents.files.length}</span>
           </h2>
           <p className="workspace-documents-folder">
-            In <code>{documents.folder}</code>
+            {removed ? (
+              'Removed when it was cleaned up'
+            ) : (
+              <>
+                In <code>{documents.folder}</code>
+              </>
+            )}
           </p>
           <ul>
             {documents.files.map((name) => (

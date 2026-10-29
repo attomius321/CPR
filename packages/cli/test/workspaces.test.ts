@@ -175,6 +175,20 @@ describe('workspacePath and serializeWorkspace', () => {
     expect(await readWorkspace(join(dir, 'missing.json'))).toBeNull();
   });
 
+  it("reads where a cleaned-up workspace's branch ended (V77): a commit's SHA, merged only when true", async () => {
+    const dir = tempDir();
+    folders.push(dir);
+    const path = workspacePath(dir, 'feature/csv');
+    mkdirSync(dirname(path), { recursive: true });
+    const ended = record({ finished: NOW.toISOString(), tip: 'c'.repeat(40), merged: true });
+    writeFileSync(path, serializeWorkspace(ended));
+    expect(await readWorkspace(path)).toEqual(ended);
+    writeFileSync(path, JSON.stringify({ ...ended, tip: 'main', merged: 'yes' }));
+    const read = await readWorkspace(path);
+    expect(read).not.toHaveProperty('tip');
+    expect(read).not.toHaveProperty('merged');
+  });
+
   it("reads a record's kind, title and parts (V24); what is not one of them is left out", async () => {
     const dir = tempDir();
     folders.push(dir);
@@ -2648,6 +2662,7 @@ describe('workspaces', () => {
     });
     await commitIn(workspace.worktree.path, 'src/c.ts', 'export const c = 1;\n');
     repo.git('merge', '--quiet', '--ff-only', 'feature/one');
+    const tip = repo.git('rev-parse', 'feature/one');
     await s.clean({ branch: 'feature/one' });
     expect(remove).toHaveBeenCalledWith('s1');
     expect(existsSync(workspace.worktree.path)).toBe(false);
@@ -2658,6 +2673,9 @@ describe('workspaces', () => {
       readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'one.json'), 'utf8'),
     ) as WorkspaceFile;
     expect(saved.finished).toBe(NOW.toISOString());
+    // Where its branch ended, and that it was merged (V77): History reads them.
+    expect(saved.tip).toBe(tip);
+    expect(saved.merged).toBe(true);
     expect(saved.documents).toEqual(['spec.md']);
     expect((await s.list()).workspaces).toEqual([]);
   });
@@ -2685,6 +2703,11 @@ describe('workspaces', () => {
     expect(remove).toHaveBeenCalledWith('s1');
     expect(existsSync(workspace.worktree.path)).toBe(false);
     expect(repo.git('branch', '--list', 'feature/one')).toContain('feature/one');
+    const saved = JSON.parse(
+      readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'one.json'), 'utf8'),
+    ) as WorkspaceFile;
+    expect(saved.tip).toBe(repo.git('rev-parse', 'feature/one'));
+    expect(saved).not.toHaveProperty('merged');
   });
 
   /**
