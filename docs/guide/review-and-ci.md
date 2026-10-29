@@ -226,6 +226,10 @@ JSON, which you can upload as an artifact. A pull request from a fork gets a rea
 review it without posting: set `post-findings` to an empty string for such pull requests.
 Symbiote's own [workflow](../../.github/workflows/symbiote.yml) does that.
 
+Symbiote reads `symbiote/config.json` from the checkout, and its `plugins` are code it runs. Use
+`on: pull_request`, as above. Never run the action on `pull_request_target` with the pull
+request's code checked out: that would run a fork's code with your repository's token.
+
 ### GitLab CI
 
 Add this to your `.gitlab-ci.yml`:
