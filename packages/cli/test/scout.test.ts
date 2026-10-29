@@ -5,7 +5,7 @@ import { openRepo, type AgentModel, type ScoutAsk } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { codexServer } from '../src/app-server.js';
-import type { Codex } from '../src/codex.js';
+import { codexFolders, type Codex } from '../src/codex.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';
 import {
   findScoutSession,
@@ -628,12 +628,14 @@ describe('scout (V35)', () => {
     const s = await service(repo, { codex, terminals });
     const state = await s.ask({ text: 'Where is it?' });
     const start = server.calls.find((c) => c.method === 'thread/start');
-    expect(start?.params).toMatchObject({
-      cwd: repo.root,
+    // Read-only through a profile that reads the checkout (V80, decision 588), not a mode.
+    expect(start?.params).toMatchObject({ cwd: repo.root, approvalPolicy: 'never' });
+    expect(start?.params).not.toHaveProperty('sandbox');
+    expect(server.thread('thread-1')).toMatchObject({
+      name: 'Scout',
       sandbox: 'read-only',
-      approvalPolicy: 'never',
+      reads: [...codexFolders('/usr/bin/codex'), repo.root],
     });
-    expect(server.thread('thread-1')).toMatchObject({ name: 'Scout', sandbox: 'read-only' });
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
       agent: 'codex',
       thread: 'thread-1',
@@ -730,16 +732,71 @@ describe("Scout reads the workspaces' worktrees (V80, decisions 585-588)", () =>
     });
   });
 
-  it('gives Codex nothing to write: read-only, no writable folder (decision 588)', async () => {
+  it("confines Codex's Scout like Claude Code's: the checkout and the open worktrees, read only (decision 588)", async () => {
     const repo = fresh();
-    const { holder } = withWorkspace(repo);
+    const { holder, worktree } = withWorkspace(repo);
+    // Codex trusts the checkout: without its profile, a thread there would be writable.
     const server = await appServer();
+    server.trusted[repo.root] = 'trusted';
     const { codex } = fakeCodex(server);
-    await (await service(repo, { codex })).open({});
+    const { terminals } = fakeTerminals();
+    const s = await service(repo, { codex, terminals });
+    await s.open({});
+    const own = codexFolders('/usr/bin/codex');
     const start = server.calls.find((c) => c.method === 'thread/start');
-    expect(start?.params).toMatchObject({ cwd: repo.root, sandbox: 'read-only' });
+    expect(start?.params).not.toHaveProperty('sandbox');
     expect(JSON.stringify(start?.params)).not.toContain('writable');
-    expect(JSON.stringify(start?.params)).not.toContain(holder);
+    expect(server.thread('thread-1')).toMatchObject({
+      sandbox: 'read-only',
+      reads: [...own, repo.root, worktree],
+    });
+    expect(JSON.stringify(start?.params)).not.toContain(`"${holder}"`);
+    // A workspace started since is in the profile given with the next message, and at a load.
+    const later = join(holder, 'feature-b');
+    repo.git('worktree', 'add', '--quiet', later, '-b', 'feature/b');
+    const file = join(repo.root, 'symbiote', 'workspaces', 'feature', 'b.json');
+    writeFileSync(
+      file,
+      readFileSync(join(dirname(file), 'a.json'), 'utf8')
+        .replace('feature/a', 'feature/b')
+        .replace(worktree, later),
+    );
+    const profileOf = (call: { params: Record<string, unknown> } | undefined) =>
+      Object.keys(
+        (call?.params.config as { permissions: Record<string, { filesystem: object }> })
+          .permissions['symbiote-read']?.filesystem ?? {},
+      );
+    await s.ask({ text: 'What does feature/b change?' });
+    const resumed = server.calls.findLast((c) => c.method === 'thread/resume');
+    expect(profileOf(resumed)).toEqual([':minimal', ...own, repo.root, worktree, later]);
+    server.restart();
+    await s.terminal({ cols: 100, rows: 30 });
+    expect(profileOf(server.calls.findLast((c) => c.method === 'thread/resume'))).toEqual([
+      ':minimal',
+      ...own,
+      repo.root,
+      worktree,
+      later,
+    ]);
+    // Still read-only after the restart: the profile came with the load.
+    expect(server.thread('thread-1')).toMatchObject({ sandbox: 'read-only' });
+  });
+
+  it('refuses a Codex that would not keep Scout read-only: its thread archived, no record', async () => {
+    const repo = fresh();
+    const dir = mkdtempSync(join(tmpdir(), 'symbiote-scout-as-'));
+    folders.push(dir);
+    // A Codex without permission profiles, in a checkout it trusts.
+    const server = await fakeAppServer(join(dir, 's.sock'), { profiles: false });
+    closers.push(() => server.close());
+    server.trusted[repo.root] = 'trusted';
+    const { codex } = fakeCodex(server);
+    await expect((await service(repo, { codex })).open({})).rejects.toMatchObject({
+      status: 502,
+      message: expect.stringMatching(/not read-only/) as unknown,
+    });
+    expect(server.threads[0]).toMatchObject({ sandbox: 'workspace-write', archived: true });
+    expect(existsSync(record(repo))).toBe(false);
   });
 });
 
