@@ -3,7 +3,9 @@
 React 19 + `@xyflow/react` 12 + dagre, bundled by Vite into `dist/`. `symbiote view`/`symbiote pr`
 serve it with `/api/graph`, `/api/source`, `/api/files`, `/api/file` (V60), `/api/state/<name>`
 and `/api/review` (`packages/cli/src/server.ts`); `?graph=<url>` loads any graph JSON instead
-(used by `scripts/viewer/measure.mjs`). Under `symbiote view` the pages live in a shell (V29a,
+(used by `scripts/viewer/measure.mjs`). Both commands serve `dist/` as it was when they
+started, read into memory (fix/suggest-settings-models): restart a running `symbiote view` after `pnpm build`
+to see a viewer change. Under `symbiote view` the pages live in a shell (V29a,
 `src/shell/Shell.tsx`): a sidenav with Git (`/git`, History until V66: `/api/history…`,
 `/api/git…`, `POST /api/diffs`), the workspaces (`/api/workspaces…`) and, at its bottom,
 Settings, each opened in place; `/` alone and `/history` are Git. Each diff is served under

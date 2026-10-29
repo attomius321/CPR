@@ -8,7 +8,7 @@ explains the terms this page uses: workspace, merger, verdict, Scout and the oth
 
 | Command | What it does |
 |---|---|
-| `symbiote view [<base> [head]]` | Opens the app. Without revisions, it opens on Git, with your workspaces in the sidenav. With revisions, it opens on that comparison. It runs until you press Ctrl+C or close its window. |
+| `symbiote view [<base> [head]]` | Opens the app. Without revisions, it opens on Git, with your workspaces in the sidenav. With revisions, it opens on that comparison. It runs until you press Ctrl+C or close its window. It serves the pages it started with: after Symbiote is built again (`pnpm build`, `./install.sh`), start it again to get the new ones. |
 | `symbiote diff <base> [head]` | Compares `head` (default `HEAD`) with `base` and prints the changed symbols and the findings. |
 | `symbiote pr [<number>]` | Opens a GitHub pull request or a GitLab merge request for review. `symbiote mr` is the same command. |
 | `symbiote merge <branch>` | Merges the commit that your review of `branch` approved, as **Merge into** does in the app, and prints each step. |
