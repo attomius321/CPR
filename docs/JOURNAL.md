@@ -312,3 +312,4 @@ merge commit.
 - 2026-10-29 [V78 spike — what Scout's page and Scribe's pane offer besides the terminal](journal/v78-scout-scribe-terminals.md)
 - 2026-10-29 [V78 — Scout and Scribe are terminals, set in Settings](journal/v78-scout-scribe-terminals.md)
 - 2026-10-29 [V80 spike — what opens a folder to Scout, and what git writes there](journal/v80-scout-reads-worktrees.md)
+- 2026-10-29 [V80 — Scout reads the workspaces' worktrees](journal/v80-scout-reads-worktrees.md)

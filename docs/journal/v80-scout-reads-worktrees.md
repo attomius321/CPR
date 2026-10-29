@@ -38,3 +38,38 @@ PreToolUse hook from `--settings`), Codex 0.163 (`codex sandbox -c sandbox_mode=
 - **IDs**: V77 and V78 (twice) are taken on other branches, decisions to 575; this took V79 and
   576–579 first, then V80 and 585–588 when `feature/workspaces-card-revamp` took V79 and 576–581,
   and `feature/mcp-suggest-settings` 582–584, while it was built.
+
+## V80 — Scout reads the workspaces' worktrees (2026-10-29, branch `feature/scout-reads-worktrees`)
+
+Built: Scout's gate opens each open workspace's worktree at each tool call: Read, Grep and Glob
+there by real path, and git with `-C <worktree>`, `--no-optional-locks status` and `diff-index`;
+`git diff` there refused. Its settings file gives the gate the checkout and the records. Codex
+gets nothing new. The `workspace` tool names the worktree's folder; the prompt, the README and
+`configuration.md` say what Scout reads. Decisions 585–588.
+
+**Learned**:
+- **IDs moved twice while this was built**: `feature/workspaces-card-revamp` took V79 and 576–581,
+  `feature/mcp-suggest-settings` 582–584, and `main` merged V77 and V78. Renumbered V80, 585–588;
+  `main` merged in with only the two index files in conflict, both sides appended.
+- **A hook's arguments are the safe way to change an old conversation's gate**: the gate is
+  `dist/scout-hook.js`, which a build replaces under every running Scout. Without its arguments it
+  answers as `main`'s, so a conversation whose settings file was written before V80 keeps
+  `main`'s rules until Symbiote writes the file again at its next wake.
+- **The checkout is answered first**: a Read there needs neither the records nor git, 21.8 ms
+  against 20.9 for `main`'s gate; a path outside it costs about 9 ms more (103 records parsed,
+  `git worktree list`).
+- **The merger's e2e tests are timing-bound under a full run**: `merges.spec.ts:200` failed once
+  in 340, `:373` once in 342 after the merge; each passed 5 of 5 alone. This change touches
+  neither the merger nor the viewer.
+
+**Verification**: tests first (49 of 53 new gate tests red on `main`'s gate, the 4 others guards;
+Scout's start and worktree tests, the `workspace` tool's and the prompt's red). `pnpm check`:
+2,318 tests in 164 files after `main` was merged in. e2e: the viewer's 339 of 340 before the
+merge and 341 of 342 after (above), the nexus's 15 of 15.
+The built hook on this machine's records; `claude -p` with Scout's tools, mode and the built
+gate in a throwaway clone: 4 reads of a workspace's uncommitted work allowed, 4 refused, the
+worktree's index unchanged.
+
+Not verified: a real Scout conversation started by `symbiote view` (the throwaway clone is not
+trusted in Claude Code yet); Codex's Scout in a conversation; Windows and macOS.
+

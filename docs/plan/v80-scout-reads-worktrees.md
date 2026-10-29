@@ -2,8 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v80-scout-reads-worktrees.md)
 
-**Status:** planned (2026-10-29), on branch `feature/scout-reads-worktrees` (the workspace's); the
-plan confirmed by the person ("Do as you recommend. Go"), the real run in a throwaway clone.
+**Status:** built, ready for review (2026-10-29), on branch `feature/scout-reads-worktrees` (the
+workspace's), `main` (V77, V78) merged in; the plan confirmed by the person ("Do as you recommend.
+Go"), the real run in a throwaway clone. Planned as V79 (576–579), renumbered when another branch
+took them.
 
 **Problem** (asked: "Scout can read the files of every workspace's worktree, its uncommitted
 changes included, so it can look at an agent's work in progress and answer about it. Scout stays
@@ -133,3 +135,36 @@ the real runs.
 
 **Not in V80 (later)**: finished workspaces' worktrees (gone at Clean up); a worktree made by hand
 or by the analysis cache, which no record names.
+
+## As built (V80)
+
+- **One rule for Scout's git, here and in a worktree**: `diff-index` and `--no-optional-locks
+  status` are Scout's in the checkout too, not only with `-C`; `git diff` is refused only with
+  `-C`. Simpler to say in the prompt, and neither writes anything.
+- **One real-path rule for both gates**: `realTarget` moved from `scribe-gate.ts` to
+  `scout-gate.ts`, which Scribe's gate imports; Scribe's rule and tests are unchanged.
+- **The gate says why it allows a read**: `Scout: a workspace's worktree` in Claude Code's
+  permission log, beside `Scout: one of git's read commands`.
+- **`git blame` in a worktree** was added to the forms checked against the index: it writes
+  nothing, as `log`, `show`, `grep` and `ls-files` do.
+- **Scout's prompt** names the two git forms and why not `git diff`: 2,472 characters (limit
+  8,000).
+
+**Results.** Tests first: 49 of the 53 new gate tests failed on `main`'s gate, for the right reason
+(`-C` and `--no-optional-locks` refused, no `openWorktrees`); the other 4 are guards that held
+before and after (paths left to Claude Code, two shell refusals, Scribe's rule). Scout's start
+test and its new worktree test, the `workspace` tool's and the prompt's tests failed too; the
+Codex test is a guard, green before and after. `pnpm check`: 2,301 tests in 162 files before
+`main` was merged in, 2,318 in 164 after. e2e: Scout's and the MCP specs 13 of 13; the viewer's
+suite 339 of 340 before the merge and 341 of 342 after, each time one merger test bound to timing
+(`merges.spec.ts:200`, then `:373`), each 5 of 5 alone; the nexus's 15 of 15.
+
+| Run | What happened |
+|---|---|
+| The built hook, as Claude Code runs it, on this machine's 103 records | A Read and a Grep in two open workspaces' worktrees allowed; `milestone-v75-suggested-settings` (no open record), the holder, another project and the checkout: no answer; `git --no-optional-locks -C <wt> status` allowed; `git -C <wt> diff` and `-C` into the v75 folder denied. Without arguments: `main`'s answers |
+| Its cost per call, medians of 20 | A Read in the checkout 21.8 ms (`main`'s gate 20.9); in a worktree 30.0 ms, elsewhere 31.1 ms: the records and `git worktree list` read |
+| `claude -p` (Claude Code 2.1.312, haiku) with Scout's tools, `dontAsk` and the built gate, in a throwaway clone with one workspace | Allowed: Read of its uncommitted file, `git --no-optional-locks -C <wt> status --short` (` M README.md`, `?? WIP-NOTES.md`), `git -C <wt> diff-index -p HEAD` (the uncommitted line), a Grep there. Refused: a worktree with no record, a file outside, `git -C` into that worktree, `git -C <wt> diff`. The worktree's index unchanged |
+
+Not verified: a real Scout conversation started by `symbiote view` (it needs the person to trust
+the throwaway clone in Claude Code); Codex's Scout in a conversation (its read-only sandbox was
+measured with `codex sandbox`); Windows and macOS paths.
