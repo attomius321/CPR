@@ -129,6 +129,11 @@ describe('startViewServer', () => {
     expect((await get('/%2e%2e/%2e%2e/package.json')).status).toBe(404);
   });
 
+  // A broken escape threw URIError: a 500 (fix/security-and-bugs).
+  it('answers a path whose escapes are broken with 400', async () => {
+    expect(await get('/%E0%A4%A')).toMatchObject({ status: 400, body: 'not a path' });
+  });
+
   it('serves the graph', async () => {
     const { status, body } = await get('/api/graph');
     expect(status).toBe(200);
@@ -443,6 +448,16 @@ describe('/api/state', () => {
     expect(await read('review')).toEqual({ 'src/math.ts#add': 'x|y' });
     expect(await store.read('review')).toEqual({ 'src/math.ts#add': 'x|y' });
     expect(JSON.parse((await get('/api/capabilities')).body)).toMatchObject({ state: true });
+  });
+
+  // Over the limit, the request was cut and the page got no answer (fix/security-and-bugs).
+  it('answers a body over its limit with 413, saving nothing', async () => {
+    const big = { reviewed: 'x'.repeat(2 * 2 ** 20) };
+    const response = await put('drafts', big);
+    expect(response.status).toBe(413);
+    expect(await response.text()).toBe('a request of at most 1 MB');
+    expect(await read('drafts')).toBeNull();
+    expect((await get('/api/capabilities')).status).toBe(200);
   });
 
   it('refuses unknown names and writes other sites could send', async () => {

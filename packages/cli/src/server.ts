@@ -572,7 +572,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     let message: unknown;
     try {
       message = JSON.parse(await readBody(req, MAX_BODY_BYTES));
-    } catch {
+    } catch (error) {
+      if (error instanceof BodyTooLarge) return badBody(res, error);
       return json(res, 400, {
         jsonrpc: '2.0',
         id: null,
@@ -931,7 +932,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
   /** Static viewer files; anything outside the viewer folder is refused. */
   async function serveFile(res: ServerResponse, pathname: string): Promise<void> {
-    const relative = normalize(decodeURIComponent(pathname)).replace(/^[/\\]+/, '') || 'index.html';
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(pathname);
+    } catch {
+      return send(res, 400, 'not a path');
+    }
+    const relative = normalize(decoded).replace(/^[/\\]+/, '') || 'index.html';
     const path = join(options.viewerDir, relative);
     if (!path.startsWith(options.viewerDir + sep) && path !== options.viewerDir) {
       return send(res, 404, 'not found');
@@ -1035,7 +1042,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       ref = parseRef(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     let review: { info: BranchReviewInfo; pair: Pair };
     try {
@@ -1157,7 +1164,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       try {
         request = parseGitOpen(await readBody(req, MAX_BODY_BYTES));
       } catch (error) {
-        return send(res, 400, (error as Error).message);
+        return badBody(res, error);
       }
       try {
         await page.open(request);
@@ -1176,7 +1183,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       try {
         request = parseGitWrite(name, await readBody(req, MAX_BODY_BYTES));
       } catch (error) {
-        return send(res, 400, (error as Error).message);
+        return badBody(res, error);
       }
       try {
         return json(res, 200, await page.write(request));
@@ -1318,7 +1325,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       target = parseCheckoutTarget(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     if (checkingOut) return json(res, 409, { error: 'a checkout is running' });
     checkingOut = true;
@@ -1346,7 +1353,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       request = parseWorkspaceRequest(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     return startingOne(res, () => workspaces.start(request));
   }
@@ -1365,7 +1372,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
       branch = value.branch;
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     return act(branch);
   }
@@ -1384,7 +1391,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       request = parse(await readBody(req, limit));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     return act(request);
   }
@@ -1576,7 +1583,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       pair = parsePair(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     if (pair.base === pair.head) return send(res, 400, 'pick two different commits');
     for (const sha of [pair.base, pair.head]) {
@@ -1597,7 +1604,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       pair = parsePair(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     if (!repo.diffs.stop(pair)) return send(res, 404, 'not running');
     res.writeHead(204, { 'cache-control': 'no-store' });
@@ -1616,7 +1623,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       review = parseLocalReview(await readBody(req, MAX_BODY_BYTES), site.graph, site.allowed);
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     const { finish } = site;
     if (!finish) return send(res, 404, 'not a branch review');
@@ -1648,7 +1655,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       review = parseReview(await readBody(req, MAX_BODY_BYTES), site.allowed);
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     try {
       return send(res, 200, JSON.stringify(await target.submit(review)), TYPES['.json']);
@@ -1728,7 +1735,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         target = parseOpen(text, site.allowed, new Set(merge.conflicts));
       }
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     const { revisions } = site.graph;
     const sha = target.side === 'base' ? revisions.from : revisions.head.sha;
@@ -1761,7 +1768,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     try {
       value = JSON.parse(await readBody(req, MAX_BODY_BYTES));
     } catch (error) {
-      return send(res, 400, (error as Error).message);
+      return badBody(res, error);
     }
     await store.write(name as StateName, value);
     res.writeHead(204, { 'cache-control': 'no-store' });
@@ -1855,16 +1862,35 @@ function send(
   res.end(body);
 }
 
+/** A request's body over the most it may weigh: answered 413 with that most. */
+class BodyTooLarge extends Error {
+  override name = 'BodyTooLarge';
+}
+
+/** A request's body refused: 413 over its limit, else 400 with what is wrong with it. */
+function badBody(res: ServerResponse, error: unknown): void {
+  send(res, error instanceof BodyTooLarge ? 413 : 400, (error as Error).message);
+}
+
+/** `bytes` in words: `1 MB`, `32 KB`. */
+const weight = (bytes: number) =>
+  bytes >= 2 ** 20 ? `${Math.round(bytes / 2 ** 20)} MB` : `${Math.round(bytes / 1024)} KB`;
+
+/**
+ * A request's body as text; over `limit`, a `BodyTooLarge`, the rest read and dropped: cut off,
+ * the request got no answer (fix/security-and-bugs).
+ */
 function readBody(req: IncomingMessage, limit: number): Promise<string> {
   return new Promise((resolve, reject) => {
     let size = 0;
     const chunks: Buffer[] = [];
     req.on('data', (chunk: Buffer) => {
       size += chunk.length;
-      if (size > limit) {
-        reject(new Error('review too large'));
-        req.destroy();
-      } else chunks.push(chunk);
+      if (size <= limit) chunks.push(chunk);
+      else if (chunks.length > 0 || size - chunk.length <= limit) {
+        chunks.length = 0;
+        reject(new BodyTooLarge(`a request of at most ${weight(limit)}`));
+      }
     });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
     req.on('error', reject);
