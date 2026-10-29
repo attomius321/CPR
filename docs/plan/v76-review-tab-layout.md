@@ -2,7 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v76-review-tab-layout.md)
 
-**Status:** planned (2026-10-29), on branch `feature/review-merge-layout`; the person's OK given.
+**Status:** ready for review (2026-10-29), on branch `feature/review-merge-layout`. Its "As built"
+and results below.
 
 **Problem** (asked: "The review tab from reviewer page is ugly, the inputs are all around there,
 make some structure on them, also the dropdown is not responsive"). The Review tab is the diff
@@ -120,14 +121,52 @@ Merge                              ← branch reviews with a target only
 | V76a | The e2e of the tab's layout, red | `reviews.spec.ts` |
 | V76b | Sections, labels, the result's box, Merge into's grid, the tab strip | `ReviewTab.tsx/.css`, `MergeControl.tsx/.css`, `Sidebar.css` |
 
-**Proposed decisions**:
+**Decisions**:
 
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 557 | How is the Review tab organised? | **Three sections with heads — Comments, Your review, Merge — 16 px in, a hairline between, V72's form rhythm; no word of today's changed** | The person: "the inputs are all around there"; one column at one spacing |
-| 558 | Merge into in a narrow panel? | **A grid: the button, then the two dropdowns stacked in one column that they fill, cut with an ellipsis; never wider than the panel** | A select is as wide as its longest branch: 423 px in a 298 px panel |
+| 558 | Merge into in a narrow panel? | **A grid: the button and the branch on one line, how it lands under them across the section; from 300 px of section both dropdowns stacked beside the button; cut with an ellipsis, never wider than the panel; 240 px at most in a workspace's head** | A select is as wide as its longest branch: 423 px in a 298 px panel; beside the button at 300 px, "with a merge commit" had 160 px |
 | 559 | The sidebar's tabs wider than the sidebar? | **The strip scrolls on its own; the panel never moves; the default width stays 300 px** | Picking Review on the Graph page slid the panel 26 px left; a wider default narrows every canvas |
 | 560 | How does the result of a finished review show? | **A box tinted in its state (added, muted, error), its buttons on one row** | Green words among the fields read as one more field; the merge's state is a tinted box already |
 
 **Not in V76 (later)**: a segmented control for the verdict ("Request changes" does not fit
 three to a row in 268 px); a wider default sidebar.
+
+## As built (V76)
+
+- **Merge into's grid responds to its section's width.** As planned, the two dropdowns stacked
+  beside the button left the second 160 px at the default sidebar, and "with a merge commit" read
+  "with a merge c…". Below 300 px of section (the default sidebar gives 266), how it lands takes
+  the row under the button and the branch; from 300 px, both dropdowns stack beside the button. A
+  container query on the Merge section (`container-type: inline-size`): the section holds nothing
+  `position: fixed` (the tooltips and `Help` draw on `document.body`), which layout containment
+  would place. Decision 558 says so.
+- **The workspace head's branch dropdown stops at 240 px.** The plan gave it only the shrink rule
+  (`min-width: 0`, `max-width: 100%`): in the head's row the state's words shrank first, to
+  "Approved: as…", beside a 400 px dropdown. The button's tooltip names the whole branch.
+- **"Checking whether it merges into main…"** while git works, in the Merge section: without it
+  the section was a head alone for the seconds the check takes on a long-lived branch. The line
+  is `.merge-checking`, not `.merge-check`, so the specs that wait for the check's words are
+  unchanged.
+- **"Review posted. Open on GitHub" stays one line**, its link in the text's colour (the
+  browser's blue before; `p.review-result` is a block, the finished box a column).
+- The summary starts at three lines (four before): it grows with its text.
+- `README.md`: Merge into appears in the Review tab "under **Merge**". Its review screenshot
+  (`docs/images/review.png`) predates V61's look and was not retaken.
+
+**Results.** At the default 300 px sidebar, 1440 × 900, the scratch repository of the spike:
+
+| What | Before (5c34635) | After |
+|---|---|---|
+| Merge into's branch dropdown, with a 50-character branch | 423 px in a 298 px panel | in the panel: 158 px beside the button, the name cut; how it lands 266 px under them |
+| The Review tab's content after an approval | 435 px in 298 (scrolls sideways) | 298 in 298 |
+| The sidebar's `scrollLeft` after picking Review on the Graph page | 26 | 0 (the tab strip scrolls 26 px instead) |
+| Headings, visible labels | none | Comments, Your review, Merge; Summary; the Verdict legend |
+| A workspace's head, a 50-character branch picked | the dropdown ~400 px, the state "Approved: as…" | 240 px, the state "Approved: ask your agent to merge it …" |
+
+V76's e2e (`reviews.spec.ts`) was red on the branch's start (the sidebar slid 22 px; no
+sections) and is green at 300 and 480 px of sidebar. Screenshots before and after, dark and
+light: the Files and Graph pages at 300 and 480 px, the clean branch before and after Approve,
+the conflicting branch, a long branch picked, a fast-forward the target cannot take, a GitHub
+pull request before and after posting, a workspace's review and its head.

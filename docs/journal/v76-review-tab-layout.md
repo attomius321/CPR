@@ -20,3 +20,40 @@ before and after an approval, with the sidebar's elements measured in the page.
 - **Merge into is the workspace head's row, wrapped.** `.merge-control` is a wrapping flex row
   made for the head; in a 268 px column the button, the branch dropdown and the strategy dropdown
   fall onto three ragged lines.
+
+## V76 — the Review tab in sections, Merge into's dropdowns in the sidebar (2026-10-29, branch `feature/review-merge-layout`)
+
+The Review tab in three sections with heads — Comments, Your review, Merge — 16 px in, a hairline
+between them; the summary labelled, the radios under a Verdict legend, what finishing recorded in
+a box of its state's tint; Merge into a grid whose dropdowns never outgrow the panel; the sidebar's
+tab strip scrolling on its own. Decisions 557–560.
+
+**Learned**:
+- **A grid track of `minmax(0, 1fr)` is not enough for a select**: a grid item's automatic
+  minimum is its min-content width, which for a select is its longest option. The select needs
+  its own `min-width: 0` (and `width: 100%`) to fill the track and no more.
+- **Stacked beside the button, the second dropdown was too narrow at the default width**: 160 px,
+  "with a merge c…". A container query on the Merge section puts it under both below 300 px of
+  section. A container's layout containment makes it the containing block of `position: fixed`
+  descendants (the trap the start page met); the section has none, as the tooltips and `Help`
+  draw on `document.body`.
+- **The shrink rule did nothing in a workspace's head**: in that flex row the state's words have
+  `min-width: 0` and shrank first, to "Approved: as…". The dropdown needed a cap (240 px).
+- **A fieldset's legend takes no part in its flex `gap`**: Chromium draws it outside the
+  fieldset's anonymous content box, so its space under it is a margin.
+- **`$!` after `cd … && node … &` is the subshell's PID**, not node's: stopping it left the
+  scratch `symbiote view` serving the old build on its port, and the next one failed with
+  `EADDRINUSE` while the screenshots came from the old server. `(exec env … node …) &`, then the
+  PID from `pgrep -f` of node's own command line.
+
+**Verification**: V76's e2e (`reviews.spec.ts`, "the Review tab in sections at the sidebar's width")
+red first for the right reason (the sidebar slid 22 px; with soft checks: no sections, no label),
+green after at 300 and 480 px of sidebar. `pnpm check`: 2,205 tests. `pnpm build`. `pnpm test:e2e`:
+339 viewer and 15 nexus tests passed. Screenshots before (5c34635's build) and after, 1440 × 900 at
+1×, dark and light: the Files and Graph pages at 300 and 480 px, the clean and the conflicting
+branch, before and after Approve, a long branch picked, a fast-forward the target cannot take, a
+GitHub pull request before and after posting, a workspace's review and its head; the tab's words at
+3× for uneven gaps between letters.
+
+Not verified: the native list of options when open (headless Chromium does not draw it: it is
+the browser's, as wide as its longest name); the desktop app's window (the page is the browser's).
