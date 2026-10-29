@@ -497,5 +497,14 @@ describe("the advisor's settings and the request", () => {
     expect(() => parseSuggestRequest(JSON.stringify({ kind: 'fix', documents: [1] }))).toThrow(
       "documents: each a file's name",
     );
+    // An agent Symbiote does not start is refused, not read as Codex (MC2).
+    for (const agent of [7, 'nope', 'Claude']) {
+      expect(() => parseSuggestRequest(JSON.stringify({ kind: 'fix', agent }))).toThrow(
+        'agent: claude, codex or hermes',
+      );
+    }
+    for (const agent of ['claude', 'codex', 'hermes']) {
+      expect(parseSuggestRequest(JSON.stringify({ kind: 'fix', agent })).agent).toBe(agent);
+    }
   });
 });

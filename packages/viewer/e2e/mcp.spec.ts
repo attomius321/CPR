@@ -93,7 +93,7 @@ test("Scout reviews a branch, approves it and queues its merge, each on the pers
   });
   expect(init).toMatchObject({ result: { serverInfo: { name: 'symbiote' } } });
   const listed = await scout.request('tools/list');
-  expect((listed.result as { tools: unknown[] }).tools).toHaveLength(23);
+  expect((listed.result as { tools: unknown[] }).tools).toHaveLength(24);
 
   // The branch's graph: its findings in the detector's words.
   const review = await scout.call('review', { branch: 'agent' });

@@ -1753,7 +1753,15 @@ describe('symbiote view: workspaces (V18)', () => {
     const declined = await post('/api/workspaces/suggest', { ...brief, agent: 'codex' });
     expect(declined.status).toBe(502);
     expect(await declined.json()).toEqual({ error: 'Codex declined the request' });
-    expect((await post('/api/workspaces/suggest', { kind: 'epic' })).status).toBe(400);
+    const epic = await post('/api/workspaces/suggest', { kind: 'epic' });
+    expect([epic.status, await epic.text()]).toEqual([
+      400,
+      'kind: feature, fix, refactor, chore or spike',
+    ]);
+    // An agent that is not one is refused, not run as Codex (MC2).
+    const nope = await post('/api/workspaces/suggest', { ...brief, agent: 'nope' });
+    expect([nope.status, await nope.text()]).toEqual([400, 'agent: claude, codex or hermes']);
+    expect(suggested).toHaveLength(2);
     expect((await get('/api/workspaces/suggest')).status).toBe(405);
     expect(started).toHaveLength(before);
   });

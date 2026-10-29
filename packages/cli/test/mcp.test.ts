@@ -5,7 +5,9 @@ import type {
   LocalReview,
   McpCaller,
   MergeEntry,
+  SuggestRequest,
   WorkspaceRequest,
+  WorkspaceSuggestion,
   WorkspaceSummary,
 } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
@@ -13,6 +15,7 @@ import type { DiffStatus, Pair } from '../src/diffs.js';
 import { MCP_TOOLS, symbioteMcp, type McpServices } from '../src/mcp.js';
 import { MergeRefused } from '../src/merges.js';
 import { ReviewRefused } from '../src/reviews.js';
+import { parseSuggestRequest } from '../src/server-requests.js';
 import { WorkspaceRefused } from '../src/workspace-record.js';
 
 const graph = JSON.parse(
@@ -23,6 +26,14 @@ const graph = JSON.parse(
 ) as Graph;
 
 const SCOUT: McpCaller = { via: 'scout' };
+const SUGGESTION: WorkspaceSuggestion = {
+  agent: 'codex',
+  model: 'gpt-6',
+  effort: 'high',
+  planFirst: true,
+  why: 'Three parts of the app change together.',
+  by: { model: 'gpt-6-luna', name: 'GPT-6 Luna', effort: 'low' },
+};
 const BASE = 'a'.repeat(40);
 const HEAD = 'b'.repeat(40);
 
@@ -78,6 +89,8 @@ function fakes(
     workspaces?: WorkspaceSummary[];
     merges?: MergeEntry[];
     diff?: () => DiffStatus | undefined;
+    /** The advisor's answer, or its refusal. */
+    suggest?: () => Promise<WorkspaceSuggestion>;
   } = {},
 ) {
   const calls: unknown[][] = [];
@@ -183,6 +196,10 @@ function fakes(
       startAgent: (branch: string) => {
         calls.push(['startAgent', branch]);
         return Promise.resolve({ workspace: workspace(branch, 'working'), prompt: 'the prompt' });
+      },
+      suggest: (request: SuggestRequest) => {
+        calls.push(['suggest', request]);
+        return options.suggest ? options.suggest() : Promise.resolve(SUGGESTION);
       },
       start: (request: WorkspaceRequest) => {
         calls.push(['start', request]);
@@ -453,6 +470,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
       'workspace',
       'thread',
       'start_options',
+      'suggest_settings',
       'start_workspace',
       'reply',
       'stop_agent',
@@ -488,6 +506,45 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
       'recheck_merge',
       'remove_merge',
     ]);
+  });
+
+  it("lists suggest_settings with start_workspace's brief and the documents' names (MC2, decision 577)", async () => {
+    const mcp = server(fakes().services);
+    const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, SCOUT)) as {
+      result: {
+        tools: {
+          name: string;
+          description: string;
+          inputSchema: { properties: Record<string, unknown>; required?: string[] };
+        }[];
+      };
+    };
+    const tool = (name: string) => answer.result.tools.find((t) => t.name === name);
+    const suggest = tool('suggest_settings');
+    const start = tool('start_workspace');
+    expect(suggest?.inputSchema).toEqual({
+      type: 'object',
+      properties: {
+        kind: start?.inputSchema.properties.kind,
+        title: start?.inputSchema.properties.title,
+        parts: start?.inputSchema.properties.parts,
+        agent: start?.inputSchema.properties.agent,
+        documents: {
+          type: 'array',
+          items: { type: 'string' },
+          description: expect.stringContaining('names') as unknown,
+        },
+      },
+      required: ['kind', 'title', 'parts'],
+    });
+    expect(suggest?.inputSchema.properties.kind).toEqual({
+      type: 'string',
+      enum: ['feature', 'fix', 'refactor', 'chore', 'spike'],
+    });
+    // What it costs and when to call it, for a client that reads only the description.
+    expect(suggest?.description).toContain('starts nothing');
+    expect(suggest?.description).toContain('only before a start the person asked for');
+    expect(suggest?.description).not.toContain("the person's Confirm");
   });
 
   it('leaves out the tools of a service it does not have', async () => {
@@ -889,6 +946,35 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     expect(calls).toContainEqual(['start', { ...request, branch: 'fix/two', via: 'mcp' }]);
   });
 
+  it('names the model and the effort it starts with in the Confirm (MC2, decision 578)', async () => {
+    const mcp = server(fakes().services);
+    const request = {
+      kind: 'fix',
+      title: 'The button',
+      branch: 'fix/the-button',
+      parts: { happens: 'It does nothing' },
+      planFirst: true,
+      agent: 'codex',
+    };
+    const words = async (more: Record<string, unknown>) => {
+      const pending = call(mcp, 'start_workspace', { ...request, ...more });
+      const id = await askOf(mcp);
+      const said = mcp.asks().asks[0]?.words;
+      await mcp.answer({ id, yes: false });
+      await pending;
+      return said;
+    };
+    expect(await words({ model: 'gpt-6', effort: 'high' })).toBe(
+      'Start fix/the-button, "The button", with Codex on gpt-6 at high, plan first',
+    );
+    expect(await words({ model: 'gpt-6' })).toBe(
+      'Start fix/the-button, "The button", with Codex on gpt-6, plan first',
+    );
+    expect(await words({ effort: 'xhigh', planFirst: false })).toBe(
+      'Start fix/the-button, "The button", with Codex at xhigh',
+    );
+  });
+
   it('says what a clean-up removes, merged or not', async () => {
     const { services } = fakes();
     const mcp = server(services);
@@ -925,6 +1011,96 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
     expect(calls).toContainEqual(['reply', { branch: 'fix/a', text: 'OK, go ahead' }]);
     expect(calls).toContainEqual(['stopAgent', 'feature/b']);
     expect(mcp.asks().asks).toEqual([]);
+  });
+});
+
+describe("Symbiote's MCP: the advisor's proposal (MC2)", () => {
+  it("gives the advisor start_workspace's brief and answers its suggestion unchanged, asking nothing (decision 576)", async () => {
+    const { services, calls } = fakes();
+    const mcp = server(services);
+    const start = {
+      kind: 'feature',
+      title: 'Search',
+      branch: 'feature/search',
+      parts: { goal: 'Find a commit by its message' },
+      planFirst: false,
+      agent: 'codex',
+      effort: 'medium',
+      model: 'gpt-6',
+      from: 'main',
+    };
+    const answer = await call(mcp, 'suggest_settings', { ...start, documents: ['spec.pdf'] });
+    expect(answer).toEqual({ text: JSON.stringify(SUGGESTION), isError: false, value: SUGGESTION });
+    // The brief and the documents' names; the run's choices are not the advisor's to read.
+    expect(calls).toEqual([
+      [
+        'suggest',
+        {
+          kind: 'feature',
+          title: 'Search',
+          parts: { goal: 'Find a commit by its message' },
+          agent: 'codex',
+          documents: ['spec.pdf'],
+        },
+      ],
+    ]);
+    expect(mcp.asks().asks).toEqual([]);
+
+    // No agent named: the service's default, as a start's.
+    await call(mcp, 'suggest_settings', { kind: 'spike', title: 'Try it', parts: {} });
+    expect(calls.at(-1)).toEqual(['suggest', { kind: 'spike', title: 'Try it', parts: {} }]);
+  });
+
+  it('refuses a brief with the words of /api/workspaces/suggest, before the advisor runs', async () => {
+    const { services, calls } = fakes();
+    const mcp = server(services);
+    const brief = { kind: 'fix', title: 'The button', parts: { happens: 'It does nothing' } };
+    const cases: [Record<string, unknown>, string][] = [
+      [{}, 'kind: feature, fix, refactor, chore or spike'],
+      [{ ...brief, kind: 'epic' }, 'kind: feature, fix, refactor, chore or spike'],
+      [{ ...brief, title: 7 }, "title: the work's name"],
+      [{ ...brief, parts: { happens: 1 } }, 'parts: each a text'],
+      [{ ...brief, parts: ['It does nothing'] }, 'parts: each a text'],
+      [{ ...brief, agent: 7 }, 'agent: claude, codex or hermes'],
+      [{ ...brief, agent: 'nope' }, 'agent: claude, codex or hermes'],
+      [{ ...brief, documents: [{ id: 'd1', name: 'spec.pdf' }] }, "documents: each a file's name"],
+    ];
+    for (const [args, words] of cases) {
+      // The endpoint's parser says the same for the same body.
+      expect(() => parseSuggestRequest(JSON.stringify(args)), JSON.stringify(args)).toThrow(words);
+      expect(await call(mcp, 'suggest_settings', args), JSON.stringify(args)).toEqual({
+        text: words,
+        isError: true,
+        value: undefined,
+      });
+    }
+    expect(calls).toEqual([]);
+  });
+
+  it("passes the advisor's refusal or failure through in its words, nothing in its place", async () => {
+    for (const [refused, status] of [
+      ['Codex declined the request', 502],
+      ['Codex gave no answer within 20 s', 502],
+      ['the answer was not one Symbiote can use', 502],
+      ['Hermes lists no models: Symbiote suggests settings for Claude Code and Codex', 400],
+      ['Claude Code is not installed', 409],
+    ] as const) {
+      const mcp = server(
+        fakes({ suggest: () => Promise.reject(new WorkspaceRefused(refused, status)) }).services,
+      );
+      expect(
+        await call(mcp, 'suggest_settings', { kind: 'chore', title: 'Bump', parts: {} }),
+      ).toEqual({ text: refused, isError: true, value: undefined });
+    }
+  });
+
+  it('is left out without workspaces', async () => {
+    const { services } = fakes();
+    const mcp = server({ ...services, workspaces: undefined });
+    const answer = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, SCOUT)) as {
+      result: { tools: { name: string }[] };
+    };
+    expect(answer.result.tools.map((t) => t.name)).not.toContain('suggest_settings');
   });
 });
 
