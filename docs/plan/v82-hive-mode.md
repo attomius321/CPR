@@ -9,8 +9,8 @@ reference picture of glossy black liquid; the second (below) was approved. Then:
 icon to match this style" (decision 616). Merged into `main` (6cd7fc0). Then
 [Hive per repository](#fix-hive-per-repository-fixhive-per-symbiote) (decisions 621–624), on
 `fix/hive-per-symbiote`, merged. Then [Hive tentacles](#feature-hive-tentacles-featurehive-tentacles)
-(decisions 629–633), on `feature/hive-tentacles`: planned, the person's OK given ("Go") after three
-rounds of candidates.
+(decisions 629–633), on `feature/hive-tentacles`: built, ready for review, after the person's OK
+("Go") on the third round of candidates.
 
 **Problem** (asked: "Add a Hive mode setting to Settings. Its control must look dangerous to
 press… While Hive mode is on, the whole interface takes a subtle Venom look"). Hive is the planned
@@ -354,3 +354,48 @@ plan's, both themes, 1x, a short and a tall window, a full workspace list; the c
 **Risks**: a slower machine (the idle's rate and the canvas's size are set by measured budgets, and
 the look still changes on time); without the blur the page behind the question is sharp under its red
 darkening; a motion made of noise varies run to run (tests keep it in bounds).
+
+**As built** (what differs from the plan given to the person):
+
+- **The sidenav's tendrils at 0.6 opacity, their highlights at half** (the plan's at 0.9, full): the
+  filled tendrils sit behind the words, and against the brightest pixel behind them the muted ones
+  (`#bcaeb0`, the times) fell to 3.14:1; at 0.6, 4.46:1 (4.70 in a 700 px window), the others at
+  least 8.75:1. Without the tendrils the lowest is 5.1 (white on a Respond button); today's thin
+  outlines rarely cross a word (7.44).
+- **Every tube is drawn lean**: its shading exactly to its outline, no clipping mask (a third
+  cheaper, the same look), smoothed 2 points a segment, a gradient every 3; the arrival's lean tube
+  was the plan's, now the question's and the sidenav's too.
+- **The lumps never vanish**: the noise that scaled them could reach 0 and leave a plain taper (a
+  test found two); they are scaled between 0.5 and 1.
+- **The rise**: the sidenav's tendrils wait 0.41 s after the swap (the boom), rise and settle by
+  2.2 s; the canvas says `data-moving` until then.
+- **The question's art fades at its lower edge** into the question (`mask-image`), and the arrival
+  starts from the art's middle and size (`Origin` is `{ x, y, scale }`).
+
+**Results.**
+
+- Tests first, red before (`hive-art.test.ts`: the module's exports missing; `hive.spec.ts`: no
+  canvas in the question). Now `hive-art.test.ts` 14, `hive.spec.ts` 6 (the window's sampled pixels
+  all opaque on the frame the look changes). `pnpm check`: 2,483 tests; `pnpm build`;
+  `pnpm test:e2e`: 352 viewer and 20 nexus tests.
+- Recorded on the build the same way as the plan's (Playwright's clock stepping the page 1/30 s, the
+  CSS animations seeked), both themes, and set beside them: the join's timing matches frame for frame
+  (out 0.3–0.6 s, strike 0.7–0.8 s, grabs 0.8–1.1 s); the arrival's too (covered at 1.0 s, the boom at
+  1.2 s, the new look at 1.3 s).
+- Costs on the build, hardware acceleration off:
+
+| | fps | worst frame | CPU |
+|---|---|---|---|
+| The question open, alive / with reduced motion (two runs each) | 60 / 60 | 16.8 / 16.8 ms | 21 / 4 % |
+| Panning 599 nodes, Hive off / on (three runs each) | 59.6–59.9 / 59.3–59.8 | 16.8 / 33 ms once | 122–126 / 147–155 % |
+| Turning on at 2560×1440, headless (three runs) | 59 | 33 ms once | |
+| Turning on at 2560×1440 in a window (Xvfb, three runs) | 54–56 | 50 ms | |
+| Today's (`main`'s build) the same, in a window | 33–35 | 117 ms | |
+
+  In a window, of the 6–14 frames over 20 ms, 1–4 fall in the blackout; the rest at the swap (the
+  page drawn again in Hive's look under the cover) and after it, where the streak and the sheen's
+  fade (kept as they were) run at about 30 frames a second on `main` too.
+
+Not verified: the app's window itself (Electron is not installed here: Chromium with hardware
+acceleration off stood in for it), a GPU, WSLg's own display (a private Xvfb stood in for it).
+

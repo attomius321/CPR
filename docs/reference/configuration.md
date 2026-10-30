@@ -159,7 +159,13 @@ No agent reads the library from its folder: it is where you keep and write skill
 Hive will be Symbiote's graph loop: an orchestrator with full access running a main agent, a
 researcher and a reviewer in every workspace. It is not built yet. Its switch is in **Settings**,
 under **This repository**, **Hive mode**, and turning it on asks first. For now it changes only
-the look: every page in ink and crimson, in both themes, and the S in crimson.
+the look: every page in ink and crimson, in both themes, the S in crimson, and red and black
+tendrils at the sidenav's foot.
+
+The question shows tendrils that grab a Hive Mind and keep moving while it is open. Turning Hive on,
+the Mind grows to the middle of the window, a blackout closes on it, and the new look appears after
+a burst from the Mind. If your system asks for reduced motion, the question shows one still picture
+and the look changes at once.
 
 Each repository has its own Hive mode. Symbiote keeps it in `symbiote/hive.json`, beside the
 reviews:

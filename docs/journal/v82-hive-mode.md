@@ -139,3 +139,37 @@ blackout animation". Planned as decisions 629–633.
 `/proc` for every browser process; the graph for the pan is this repository's last 40 commits
 (474 files, 2,923 symbols, 599 nodes drawn). Not measured: the app's window itself (Electron is not
 installed here).
+
+## Hive tentacles — built (2026-10-30, branch `feature/hive-tentacles`)
+
+Built as planned (decisions 629–633): `ui/hive-art.ts` (pure: springs, ropes, the tendrils, goo,
+the Hive Mind, the three scenes), `ui/hive-draw.ts` (the canvas), `ui/HiveArt.tsx` (the question's
+and the sidenav's canvases and their runner), `shell/hive-arrival.ts` (the Mind and the blackout),
+`hive.css` (Carnage's palette as custom properties, no blur on the question).
+
+**Learned**:
+- **Filled art behind words is a contrast problem outlines never were**: against the brightest pixel
+  behind each word (the words hidden, the page screenshot read in the page), the muted times fell to
+  3.14:1 over the tendrils' crimson rims; today's thin outlines rarely cross a word (7.44). At 0.6
+  opacity with highlights at half: 4.46.
+- **Noise that scales a feature can switch it off**: the lumps were scaled by noise reaching 0, and a
+  test caught two tendrils as plain tapers. A feature that must always show gets a floor.
+- **Playwright's clock flows in real time after `install()`**: frames recorded with `runFor` ran ahead
+  until `pauseAt` stopped it before the dialog opened; then the page's own rAF loop records frame for
+  frame.
+- **The real page costs more than a page of screenshots**: the arrival measured 61 fps over two
+  screenshots and 54–56 in the real page in a 2560×1440 window. The extra frames are the swap (the
+  whole shell drawn again in Hive's look) and today's streak and sheen fade after it, which run at
+  about 30 frames a second on `main` too; today's arrival is 33–35 fps.
+- **A cover can be tested pixel by pixel**: a MutationObserver on `data-hive` reads the blackout's
+  canvas in the same task as the swap, before the next frame is drawn: every sampled pixel opaque.
+
+**Verification**: tests first (red: no exports, no canvas); `pnpm check` 2,483 tests; `pnpm build`;
+`pnpm test:e2e` 352 viewer and 20 nexus tests. The built question and arrival recorded in both
+themes and set beside the plan's; screenshots at 1x in both themes, a 700 px and a 1200 px window, a
+full workspace list. Costs on the build with hardware acceleration off: the question 21 % of a core
+while open (4 % with reduced motion), the pan 59.3–59.8 fps with Hive on, the arrival 59 fps
+headless and 54–56 in a window at 2560×1440 (today's 33–35).
+
+Not verified: the app's window, a GPU, WSLg's own display.
+
