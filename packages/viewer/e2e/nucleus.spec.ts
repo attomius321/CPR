@@ -349,7 +349,7 @@ test('its page has no choices: the terminal, its line saying what it runs on, th
 
 // V72 (decision 510): the state and New conversation the page head's actions; since V78 the card
 // is the terminal alone, with no head of its own.
-test("the state and New conversation share one centre; the terminal starts at the card's top", async ({
+test("the state and New conversation share one centre; the tabs start at the card's top", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -366,9 +366,11 @@ test("the state and New conversation share one centre; the terminal starts at th
     const button = await box(renew(page));
     expect(Math.abs(state.centre - button.centre)).toBeLessThanOrEqual(1);
     const card = await box(nucleusPage(page).locator('.nucleus-card'));
+    const tabs = await box(nucleusPage(page).getByRole('tablist', { name: 'Nucleus' }));
     const terminal = await box(nucleusPage(page).locator('.page-agent-terminal'));
-    // Inside the card's 1 px border.
-    expect(Math.abs(terminal.top - (card.top + 1))).toBeLessThanOrEqual(1);
+    // Its tabs (NU2) inside the card's 1 px border, the terminal right under them.
+    expect(Math.abs(tabs.top - (card.top + 1))).toBeLessThanOrEqual(1);
+    expect(Math.abs(terminal.top - tabs.bottom)).toBeLessThanOrEqual(1);
     expect(button.bottom).toBeLessThan(card.top);
   }
 });

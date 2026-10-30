@@ -12,6 +12,7 @@ import {
 } from '@symbiote/core';
 import { openWebSocket, type WebSocketClient } from './websocket.js';
 import { MAX_COMMAND, outputOf } from './thread.js';
+import { headOf } from './nucleus-activity.js';
 
 /** An error the app server answered, with its JSON-RPC code; or no answer in time. */
 export class AppServerError extends Error {
@@ -190,6 +191,8 @@ export interface CodexThread {
   updatedAt: number;
   /** `active` while a turn runs, `idle`, `notLoaded` (the server restarted), `systemError`. */
   status: string;
+  /** Its session file on disk (NU2: the turns' tokens are read there). */
+  path?: string;
   /** What an active thread waits on: an approval, or the person's input. */
   waiting?: 'approval' | 'input';
   /** Its newest turns, oldest first. */
@@ -203,6 +206,10 @@ export interface CodexTurn {
   /** Unix seconds. */
   startedAt?: number;
   completedAt?: number;
+  /** How long it ran, as Codex measured it (NU2). */
+  ms?: number;
+  /** Read in full (NU2): the IDs of its context's compactions. */
+  compactions?: string[];
   /** Why it failed, in Codex's words. */
   error?: string;
   /** What it was given: its first message, then those that joined it (`turn/steer`). */
@@ -238,6 +245,10 @@ export interface CodexItem {
   ms?: number;
   output?: string;
   clipped?: true;
+  /** An MCP call (NU2, Nucleus's record): its arguments, its answer's start, its time. */
+  mcp?: { args?: string; answer?: string; clipped?: true; ms?: number };
+  /** A web search (NU2): its queries and the pages it opened or searched in. */
+  web?: { queries: string[]; pages: string[] };
 }
 
 /** What Symbiote asks of Codex's app server (V27a); tests use a fake server. */
@@ -403,6 +414,16 @@ function modelsOf(
   return { models, ...(chosen && MODEL_ID.test(chosen) ? { default: chosen } : {}) };
 }
 
+/** An MCP call's answer as text: its result's text blocks, else its error's message. */
+function mcpAnswer(result: unknown, error: unknown): string | undefined {
+  const content = (result as { content?: unknown } | null)?.content;
+  const words = (Array.isArray(content) ? (content as { text?: unknown }[]) : [])
+    .map((block) => text(block?.text))
+    .filter((t): t is string => t !== undefined)
+    .join('\n');
+  return words !== '' ? words : text((error as { message?: unknown } | null)?.message);
+}
+
 /** A turn's fields Symbiote uses, from what the server sent. */
 /** Longest subject kept of an item (V48f), as Claude Code's hooks keep theirs. */
 const SUBJECT = 160;
@@ -443,10 +464,44 @@ function itemOf(item: Record<string, unknown>): CodexItem | null {
     case 'mcpToolCall': {
       const server = text(item.server);
       const tool = text(item.tool);
-      return head('mcp', short(server && tool ? `${server}.${tool}` : (tool ?? server)));
+      const args =
+        item.arguments && typeof item.arguments === 'object'
+          ? JSON.stringify(item.arguments).slice(0, MAX_COMMAND)
+          : undefined;
+      const answer = mcpAnswer(item.result, item.error);
+      const ms = item.durationMs;
+      const mcp = {
+        ...(args && args !== '{}' ? { args } : {}),
+        ...(answer ? headOf(answer) : {}),
+        ...(typeof ms === 'number' && ms >= 0 ? { ms: Math.round(ms) } : {}),
+      };
+      const { output, ...rest } = mcp as typeof mcp & { output?: string };
+      const shown = { ...rest, ...(output ? { answer: output } : {}) };
+      return {
+        ...head(
+          'mcp',
+          short(server && tool ? `${server}.${tool}` : (tool ?? server)),
+          failed || !!item.error,
+        ),
+        ...(Object.keys(shown).length > 0 ? { mcp: shown } : {}),
+      };
     }
-    case 'webSearch':
-      return head('webSearch', short(text(item.query)));
+    case 'webSearch': {
+      const action = (item.action ?? {}) as Record<string, unknown>;
+      const queries = [
+        ...(Array.isArray(action.queries) ? (action.queries as unknown[]) : []),
+        action.query,
+        item.query,
+      ]
+        .map(text)
+        .filter((q, i, all): q is string => q !== undefined && all.indexOf(q) === i);
+      const page = text(action.url);
+      const web = { queries, pages: page ? [page] : [] };
+      return {
+        ...head('webSearch', short(text(item.query) ?? queries[0] ?? page)),
+        ...(queries.length > 0 || page ? { web } : {}),
+      };
+    }
     case 'reasoning':
       return { id, kind: 'reasoning' };
     default:
@@ -460,11 +515,13 @@ function turnOf(value: unknown, full = false): CodexTurn | null {
   if (!id) return null;
   const prompts: string[] = [];
   const items: CodexItem[] = [];
+  const compactions: string[] = [];
   let final: string | undefined;
   let last: string | undefined;
   for (const item of Array.isArray(v.items) ? (v.items as Record<string, unknown>[]) : []) {
     const shown = item ? itemOf(item) : null;
     if (shown) items.push(shown);
+    if (item?.type === 'contextCompaction' && text(item.id)) compactions.push(item.id as string);
     if (item?.type === 'userMessage' && Array.isArray(item.content)) {
       const words = (item.content as { type?: unknown; text?: unknown }[])
         .map((part) => (part?.type === 'text' && typeof part.text === 'string' ? part.text : ''))
@@ -479,6 +536,7 @@ function turnOf(value: unknown, full = false): CodexTurn | null {
   }
   const startedAt = seconds(v.startedAt);
   const completedAt = seconds(v.completedAt);
+  const ms = seconds(v.durationMs);
   const error = text((v.error as { message?: unknown } | null)?.message);
   const report = final ?? last;
   return {
@@ -486,6 +544,8 @@ function turnOf(value: unknown, full = false): CodexTurn | null {
     status: text(v.status) ?? 'unknown',
     ...(startedAt !== undefined ? { startedAt } : {}),
     ...(completedAt !== undefined ? { completedAt } : {}),
+    ...(ms !== undefined && ms >= 0 ? { ms: Math.round(ms) } : {}),
+    ...(full && compactions.length > 0 ? { compactions } : {}),
     ...(error ? { error } : {}),
     prompts,
     ...(report ? { report } : {}),
@@ -793,6 +853,7 @@ export function codexServer(
           createdAt: seconds(v.createdAt) ?? 0,
           updatedAt: seconds(v.updatedAt) ?? 0,
           ...statusOf(v.status),
+          ...(text(v.path) ? { path: v.path as string } : {}),
           turns: (listed.data ?? [])
             .map((turn) => turnOf(turn, items === 'full'))
             .filter((turn): turn is CodexTurn => turn !== null)

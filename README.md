@@ -358,9 +358,12 @@ The sidenav also opens these pages. Each has a key.
   branch. Before a start, it can ask for suggested settings, as **Suggest settings** does, and you
   choose what it starts with. Nucleus never edits files. It can send a message to an agent without
   asking you, but a start, a verdict, a merge and a clean-up each wait until you click
-  **Confirm**. **New conversation** starts over. Nucleus was called Scout before. A conversation
-  that Scout started stays open on this page, without the web, until you press **New
-  conversation**.
+  **Confirm**. **New conversation** starts over. Its **Activity** tab shows what it did, across
+  conversations, as a workspace's does: your messages and its answers with their tokens, every
+  command, file read, search and page with what its gate allowed or refused, each call of
+  Symbiote's tools, and each **Confirm** with your answer. Nucleus was called Scout before. A
+  conversation that Scout started stays open on this page, without the web, until you press
+  **New conversation**.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
   task (`.claude/skills/<name>/SKILL.md`). Search them by name or description, read and edit
   them here (with line numbers, or as a Markdown preview), or open one in VS Code. As you type,
@@ -408,7 +411,10 @@ plugins for Angular and Qwik, and CSS and SCSS. Every command and option is in t
 In your repository, Symbiote keeps its files in the `symbiote/` folder: workspace records,
 reviews, the agents' threads and activity, documents, and the settings of the agents it starts.
 An agent's activity holds each command it ran, whole up to 8 KB, and the last 2 KB of its output
-or error. It also writes `symbiote/AGENTS.md`, which tells any agent how to act on a review. Symbiote's own
+or error. Nucleus's activity, `symbiote/nucleus-activity.jsonl`, also keeps the first 2 KB of a
+page it read or a tool's answer; values of your environment variables named like secrets, and
+tokens by their shape, are replaced with `[redacted]` before anything is written. Past 4 MB it
+moves to `nucleus-activity.1.jsonl`, replacing the one before. It also writes `symbiote/AGENTS.md`, which tells any agent how to act on a review. Symbiote's own
 `symbiote/.gitignore` keeps everything there out of git, itself included, except two files. They
 are yours to commit and share: `config.json` holds your settings, and `merge.md` your rules for
 the merger.

@@ -643,6 +643,10 @@ export interface RunningWorkspaces extends Running {
   report(branch: string, text: string): void;
   /** Runs the newest session's hooks for one event (`hook_event_name` and its fields). */
   hook(branch: string, input: Record<string, unknown>): void;
+  /** Runs Nucleus's session's hooks for one event, as Claude Code runs them (NU2). */
+  nucleusHook(input: Record<string, unknown>): void;
+  /** Stops `symbiote view` and starts it again on the same repository; its new address (NU2). */
+  restart(): Promise<string>;
   /** Adds a session to the fake's list, as Claude Code lists one (V35: the person's own). */
   addSession(session: Record<string, unknown>): void;
   /**
@@ -1305,7 +1309,7 @@ export async function serveWorkspaces({
     `#!/usr/bin/env node\nrequire('node:fs').appendFileSync(${JSON.stringify(join(fake, 'code.jsonl'))}, JSON.stringify(process.argv.slice(2)) + '\\n');\n`,
     { mode: 0o755 },
   );
-  const { url, child } = await startSymbiote(['view'], repo, {
+  const env = {
     SYMBIOTE_CACHE_DIR: cache,
     SYMBIOTE_CLAUDE: claude,
     SYMBIOTE_CODEX: codex ? fakeCodex(fake) : join(fake, 'no-codex'),
@@ -1319,7 +1323,8 @@ export async function serveWorkspaces({
     // V21: terminals turned off, as where node-pty cannot run.
     ...(terminal ? {} : { SYMBIOTE_TERMINAL: 'off' }),
     ...(usageEndpoint?.env ?? {}),
-  });
+  };
+  let running = await startSymbiote(['view'], repo, env);
   const lines = (file: string) =>
     readFileSync(join(fake, file), { encoding: 'utf8', flag: 'a+' })
       .split('\n')
@@ -1381,7 +1386,9 @@ export async function serveWorkspaces({
     }
   };
   return {
-    url,
+    get url() {
+      return running.url;
+    },
     repo,
     config: join(fake, 'config', 'symbiote'),
     cache,
@@ -1410,6 +1417,20 @@ export async function serveWorkspaces({
         newest(branch, () => {}),
         input,
       );
+    },
+    nucleusHook(input) {
+      const sessions = JSON.parse(
+        readFileSync(join(fake, 'sessions.json'), 'utf8'),
+      ) as (FakeSession & { name?: string })[];
+      const mine = sessions.filter((s) => s.cwd === repo && s.name === 'Nucleus').at(-1);
+      if (!mine) throw new Error('no Nucleus session');
+      runHooks(mine, input);
+    },
+    async restart() {
+      running.child.kill('SIGINT');
+      await new Promise((resolve) => running.child.once('exit', resolve));
+      running = await startSymbiote(['view'], repo, env);
+      return running.url;
     },
     addSession(session) {
       const file = join(fake, 'sessions.json');
@@ -1491,7 +1512,7 @@ export async function serveWorkspaces({
     },
     usageRequests: () => [...usageRequests],
     stop() {
-      child.kill('SIGINT');
+      running.child.kill('SIGINT');
       void codexServer?.close();
       usageEndpoint?.server.close();
       for (const dir of [repo, `${repo}.worktrees`, origin, fake, cache]) {

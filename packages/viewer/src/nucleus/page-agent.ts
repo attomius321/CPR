@@ -3,6 +3,7 @@ import type {
   AgentModel,
   PageAgentConversation,
   PageAgentStateName,
+  WorkspaceAgentState,
 } from '@symbiote/core';
 import { AGENT_NAMES } from '../workspaces/workspaces.js';
 
@@ -81,4 +82,30 @@ export function formerText(
 ): string | null {
   if (!conversation?.startedAs) return null;
   return `Started as ${conversation.startedAs}, without the web: New conversation starts ${name}.`;
+}
+
+/**
+ * Nucleus's conversation as its Activity tab reads an agent's state (NU2): working while it
+ * answers, waiting on a dialog or after Esc, else done, stopped, failed or not running.
+ */
+export function nucleusAgent(conversation: PageAgentConversation | null): WorkspaceAgentState {
+  if (!conversation) return { state: 'not-running' };
+  const kind = { kind: conversation.kind };
+  switch (conversation.state) {
+    case 'working':
+      return { state: 'working', ...kind };
+    case 'needs-you':
+      return { state: 'needs-you', ...kind };
+    case 'interrupted':
+      return { state: 'needs-you', interrupted: true, ...kind };
+    case 'ready':
+    case 'answered':
+      return { state: 'done', ...kind };
+    case 'stopped':
+      return { state: 'stopped', ...kind };
+    case 'failed':
+      return { state: 'failed', ...kind };
+    default:
+      return { state: 'not-running', ...kind };
+  }
 }

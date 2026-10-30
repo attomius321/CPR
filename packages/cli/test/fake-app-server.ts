@@ -163,10 +163,15 @@ export async function webSocketServer(
 }
 
 /** A thread item, as Codex 0.163 sends them (the fields Symbiote reads, and a few it does not). */
-type FakeItem =
+export type FakeItem =
   | { type: 'userMessage'; id: string; clientId: null; content: { type: 'text'; text: string }[] }
   | { type: 'agentMessage'; id: string; text: string; phase: 'commentary' | 'final_answer' }
-  | { type: 'commandExecution'; id: string; command: string; status: string };
+  | { type: 'commandExecution'; id: string; command: string; status: string }
+  /** Any other item as Codex sends it (NU2: MCP calls, web searches, compactions). */
+  | ({ type: 'mcpToolCall' | 'webSearch' | 'contextCompaction' | 'reasoning'; id: string } & Record<
+      string,
+      unknown
+    >);
 
 interface FakeTurn {
   id: string;
@@ -198,6 +203,8 @@ export interface FakeThread {
   turns: FakeTurn[];
   /** Commands its turns left running (Codex's background terminals): they outlive an interrupt. */
   terminals: string[];
+  /** Its session file (NU2), as `thread/read` gives it. */
+  path?: string;
 }
 
 /** What the fake was asked: each request's method and parameters, in order. */
@@ -225,6 +232,8 @@ export interface FakeAppServer {
   typed(thread: string, text: string): void;
   /** The running turn starts a command that runs on (a test run, a server): until it is cleaned. */
   command(thread: string, command: string): void;
+  /** An item in the running turn, as Codex sends it (NU2); the same ID replaces it. */
+  item(thread: string, item: FakeItem): void;
   /** Codex's trust entries (`projects` in its config), by folder: what `config/read` answers. */
   trusted: Record<string, string>;
   /** Who is signed in (`account/read`, V29c): a ChatGPT Go plan unless a test says otherwise. */
@@ -382,7 +391,7 @@ export async function fakeAppServer(
     createdAt: thread.createdAt,
     updatedAt: thread.updatedAt,
     status: status(thread),
-    path: null,
+    path: thread.path ?? null,
     cwd: thread.cwd,
     cliVersion: '0.163.0',
     source: 'vscode',
@@ -730,6 +739,14 @@ export async function fakeAppServer(
         status: 'inProgress',
       });
       t.terminals.push(value);
+    },
+    item(thread, item) {
+      const t = find(thread);
+      const turn = running(t);
+      const at = turn.items.findIndex((i) => i.id === item.id);
+      if (at >= 0) turn.items[at] = item;
+      else turn.items.push(item);
+      t.updatedAt = now();
     },
     trusted,
     config,

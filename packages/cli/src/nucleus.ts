@@ -12,6 +12,7 @@ import {
   type PageAgentOptions,
   type PageAgentSpec,
 } from './page-agent.js';
+import { NUCLEUS_ACTIVITY } from './nucleus-activity.js';
 import { openWorktrees } from './nucleus-gate.js';
 import { fillPrompt, readPrompts } from './prompts.js';
 import { workspacesDir } from './workspace-record.js';
@@ -67,6 +68,7 @@ const NUCLEUS: PageAgentSpec = {
     older: ['scout', 'model'],
   },
   mcp: { file: 'nucleus-mcp.json', as: 'nucleus' },
+  activity: NUCLEUS_ACTIVITY,
   former: {
     name: 'Scout',
     record: 'scout.json',

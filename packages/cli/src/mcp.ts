@@ -16,6 +16,7 @@ import {
   type McpCaller,
   type MergeEntry,
   type MergeStrategy,
+  type NucleusActivityLine,
   type RepoStatus,
   type SuggestRequest,
   type WorkspaceRequest,
@@ -25,6 +26,8 @@ import type { CodeMap } from '@symbiote/monitor';
 import { AGENT_NAMES } from './agent-levels.js';
 import type { DiffStatus, Pair } from './diffs.js';
 import type { Merger } from './merges.js';
+import { headOf } from './nucleus-activity.js';
+import { MAX_COMMAND } from './tool-activity.js';
 import type { BranchReviews } from './reviews.js';
 import {
   parseLocalReview,
@@ -105,6 +108,11 @@ export interface McpOptions {
    * with its pages); rejects with `McpRefused` meanwhile.
    */
   exclusive?: <T>(words: string, task: () => Promise<T>) => Promise<T>;
+  /**
+   * Records one of Nucleus's calls (NU2, decision 607): its start and end, and a Confirm asked and
+   * its end. Only Nucleus's calls; never throws.
+   */
+  record?: (line: NucleusActivityLine) => void;
 }
 
 /** An ask or a write the server cannot take: its status and why. */
@@ -694,7 +702,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       signal.addEventListener('abort', gone);
       held.set(ask.id, { ask, settle, finished });
     });
-    return { answer, done };
+    return { answer, done, ask };
   }
 
   async function workspaceOf(branch: string): Promise<WorkspaceSummary> {
@@ -1247,12 +1255,94 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
     },
   };
 
-  /** A tool's call: its value, or its problem in words. */
+  let recorded = 0;
+  /** Where Nucleus's calls are recorded (NU2): a call's start, its end, a Confirm's. */
+  function recorder(name: string, args: Args, caller: McpCaller) {
+    const record = options.record;
+    if (!record || caller.via !== 'nucleus') return null;
+    const started = now();
+    const head = {
+      session: 'symbiote',
+      id: `m${++recorded}-${started.getTime().toString(36)}`,
+      tool: name,
+      source: 'symbiote' as const,
+    };
+    const put = (line: NucleusActivityLine) => {
+      try {
+        record(line);
+      } catch {
+        // A call is never failed by its record.
+      }
+    };
+    const input = JSON.stringify(args);
+    put({
+      at: started.toISOString(),
+      ...head,
+      phase: 'start',
+      ...(input !== '{}' ? { input: input.slice(0, MAX_COMMAND) } : {}),
+    });
+    return {
+      id: head.id,
+      asked(ask: McpAsk) {
+        put({
+          at: ask.at,
+          kind: 'confirm',
+          ask: ask.id,
+          tool: ask.tool,
+          words: ask.words,
+          call: head.id,
+          stage: 'asked',
+          until: ask.until,
+        });
+      },
+      answered(ask: McpAsk, answer: 'yes' | 'no' | 'expired' | 'gone') {
+        const at = now();
+        put({
+          at: at.toISOString(),
+          kind: 'confirm',
+          ask: ask.id,
+          tool: ask.tool,
+          words: ask.words,
+          call: head.id,
+          stage: 'ended',
+          answer: answer === 'yes' ? 'confirmed' : answer === 'no' ? 'declined' : answer,
+          ms: Math.max(0, at.getTime() - Date.parse(ask.at)),
+        });
+      },
+      ended(done: { text: string; isError?: true } | null) {
+        const at = now();
+        put({
+          at: at.toISOString(),
+          ...head,
+          phase: 'end',
+          ms: Math.max(0, at.getTime() - started.getTime()),
+          ...(done ? headOf(done.text) : {}),
+          ...(done?.isError ? { failed: true as const } : {}),
+          ...(done ? {} : { interrupted: true as const }),
+        });
+      },
+    };
+  }
+
+  /** A tool's call: its value, or its problem in words; Nucleus's recorded (NU2). */
   async function run(
     name: string,
     args: Args,
     caller: McpCaller,
     signal: AbortSignal,
+  ): Promise<{ text: string; isError?: true } | null> {
+    const recording = recorder(name, args, caller);
+    const done = await answerOf(name, args, caller, signal, recording);
+    recording?.ended(done);
+    return done;
+  }
+
+  async function answerOf(
+    name: string,
+    args: Args,
+    caller: McpCaller,
+    signal: AbortSignal,
+    recording: ReturnType<typeof recorder>,
   ): Promise<{ text: string; isError?: true } | null> {
     try {
       const read = reads[name];
@@ -1263,9 +1353,11 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       const prepare = asking[name];
       if (!prepare) throw new ToolProblem(`unknown tool: ${name}`);
       const { words: said, act } = await prepare(args, caller, signal);
-      const { answer: answered, done } = ask(name, said, caller, signal);
+      const { answer: answered, done, ask: held } = ask(name, said, caller, signal);
+      recording?.asked(held);
       try {
         const answer = await answered;
+        recording?.answered(held, answer);
         if (answer === 'gone') return null;
         if (answer === 'no') {
           return { text: `The person declined: ${said}. Nothing was done.`, isError: true };

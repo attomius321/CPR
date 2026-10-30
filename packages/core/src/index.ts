@@ -246,6 +246,16 @@ export {
   type PageAgentTerminalRequest,
 } from './page-agent.js';
 export type { McpAnswer, McpAsk, McpAsks, McpCaller, McpVia } from './mcp.js';
+export type {
+  ConfirmStage,
+  GateRecord,
+  NucleusActivity,
+  NucleusActivityLine,
+  NucleusCall,
+  NucleusEntry,
+  TurnTokens,
+  WebPage,
+} from './nucleus-activity.js';
 export {
   AGENT_KINDS,
   EFFORT_LEVEL,

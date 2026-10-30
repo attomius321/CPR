@@ -16,6 +16,8 @@ import {
   type DefaultModel,
   type GitRepo,
   type InstalledAgent,
+  type NucleusActivity,
+  type NucleusActivityLine,
   type PageAgentAsk,
   type PageAgentConversation,
   type EffortChange,
@@ -45,6 +47,8 @@ import {
   modelWordProblem,
 } from './agent-levels.js';
 import { writeFileWhole } from './file-write.js';
+import { appendActivity, readNucleusActivity, rotateActivity } from './nucleus-activity.js';
+import { codexLines, rolloutTokens, seenOf } from './nucleus-codex.js';
 
 /** Longest question: it goes on Claude Code's command line with Nucleus's prompt (8,000 at most). */
 export const MAX_QUESTION = 20_000;
@@ -114,6 +118,8 @@ export interface PageAgentSpec {
    * record is its conversation while it has none of its own; New conversation removes it all.
    */
   former?: { name: string; record: string; files: readonly string[] };
+  /** What it did, recorded beside its record (NU2, decision 604): Nucleus's. */
+  activity?: string;
 }
 
 /** A setting of the project's config: its value, its path, its path before a rename. */
@@ -122,6 +128,12 @@ interface ConfigSetting {
   key: readonly string[];
   older?: readonly string[];
 }
+
+/** How often Codex's thread is read for the activity while it works (NU2, decision 606). */
+const CODEX_EVERY_MS = 2_000;
+
+/** Codex's newest turns read for the activity: a turn's steered messages are in it. */
+const CODEX_TURNS = 5;
 
 /** How long Codex waits on one of Symbiote's tools (MC1): longer than an ask or a `wait`. */
 const TOOL_TIMEOUT_SEC = 660;
@@ -190,23 +202,65 @@ export interface PageAgent {
    * default agent lists.
    */
   setModel(change: ModelChange): Promise<AgentLevels>;
+  /** What it did (NU2, decision 604): its activity file's newest megabyte; Nucleus's only. */
+  activity?: () => Promise<NucleusActivity>;
+  /** Records a line of Symbiote's own (its tools, a Confirm), redacted; Nucleus's only. */
+  record?: (line: NucleusActivityLine) => void;
 }
 
+/** The young generation the recording gate starts with, in MB (NU2). */
+const SEMI_SPACE_MB = 4;
+
+/** The events Nucleus's activity records besides the gate's (NU2): Claude Code's, in the background. */
+const RECORDED_EVENTS = [
+  'UserPromptSubmit',
+  'Stop',
+  'StopFailure',
+  'SessionStart',
+  'SessionEnd',
+  'PreCompact',
+  'PostCompact',
+  'Notification',
+  'PostToolUse',
+  'PostToolUseFailure',
+  'PermissionDenied',
+] as const;
+
 /**
- * Nucleus's settings file for Claude Code: the gate before every tool, and nothing else — no hook
- * records its thread (decision 238).
+ * A page agent's settings file for Claude Code: the gate before every tool. With `activity`
+ * (Nucleus's, NU2, decision 605, which revisits 238), the gate records each call and its decision
+ * there, and the other events run it in the background (`async`) to record them.
  */
 export function pageAgentSettings(
-  where: { node: string; gate: string; args?: readonly string[] },
+  where: { node: string; gate: string; args?: readonly string[]; activity?: string },
   platform: NodeJS.Platform = process.platform,
   more: Readonly<Record<string, unknown>> = {},
 ): string {
-  const command = [where.node, where.gate, ...(where.args ?? [])]
+  const command = [
+    where.node,
+    // Recording takes the gate's heap past V8's first young-generation limit: one 3.5 ms scavenge
+    // on every call (NU2 measured), which a larger start avoids for ~0.7 ms.
+    ...(where.activity ? [`--min-semi-space-size=${SEMI_SPACE_MB}`] : []),
+    where.gate,
+    ...(where.args ?? []),
+    ...(where.activity ? [`--activity=${where.activity}`] : []),
+  ]
     .map((p) => shellWord(p, platform))
     .join(' ');
-  const hooks = {
+  const hooks: Record<string, unknown[]> = {
     PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command, timeout: 30 }] }],
   };
+  if (where.activity) {
+    for (const event of RECORDED_EVENTS) {
+      const tools = event.includes('Tool') || event === 'PermissionDenied';
+      hooks[event] = [
+        {
+          ...(tools ? { matcher: '*' } : {}),
+          hooks: [{ type: 'command', command, timeout: 30, async: true }],
+        },
+      ];
+    }
+  }
   return `${JSON.stringify({ ...more, hooks }, null, 2)}\n`;
 }
 
@@ -377,6 +431,93 @@ export function pageAgent(
       ? [spec.former.record, ...spec.former.files].map((file) => join(folder(where), file))
       : [];
 
+  /** Its activity file (NU2), or none. */
+  const activityPath = (where: ReviewPlace) =>
+    spec.activity ? join(folder(where), spec.activity) : undefined;
+  /** Writes to the activity file one after another, in the order asked; never fails. */
+  let writing: Promise<void> = Promise.resolve();
+  function write(lines: readonly NucleusActivityLine[]): Promise<void> {
+    if (!spec.activity || lines.length === 0) return writing;
+    writing = writing
+      .then(async () => {
+        const where = await place();
+        const path = activityPath(where);
+        if (!path) return;
+        await prepareSymbioteFolder(where, { agents: false });
+        appendActivity(path, lines, env);
+      })
+      .catch(() => {});
+    return writing;
+  }
+  /** The conversation a line is for: Claude Code's session ID (as its hooks name it), Codex's thread. */
+  const conversationId = (record: PageAgentRecord) =>
+    record.agent === 'claude' ? (record.sessionId ?? record.id) : record.thread;
+  const ofRecord = (record: PageAgentRecord) => {
+    const conversation = conversationId(record);
+    return { ...(conversation ? { conversation } : {}), agent: record.agent };
+  };
+
+  /** What of each Codex thread the activity holds (decision 606): read from the file at first. */
+  const codexSeen = new Map<string, Set<string>>();
+  /** The thread being read every 2 s, its last change read, and how to read it again now. */
+  let watching: string | undefined;
+  const changed = new Map<string, number>();
+  let wake: (() => void) | undefined;
+
+  /** One read of Codex's thread for the activity: what is new written; whether a turn runs. */
+  async function codexPass(where: ReviewPlace, thread: string): Promise<boolean> {
+    const read = await (
+      await serverOf(await codex())
+    ).read(thread, { turns: CODEX_TURNS, items: 'full' });
+    let seen = codexSeen.get(thread);
+    if (!seen) {
+      seen = seenOf((await readNucleusActivity(folder(where))).lines, thread);
+      codexSeen.set(thread, seen);
+    }
+    const ending = read.turns.filter((t) => t.status !== 'inProgress' && !seen.has(`end:${t.id}`));
+    const tokens =
+      read.path && ending.length > 0
+        ? await rolloutTokens(read.path, ending).catch(() => new Map())
+        : new Map();
+    await write(codexLines(read, seen, now().toISOString(), tokens));
+    return read.status === 'active';
+  }
+
+  /**
+   * Reads Codex's thread for the activity (decision 606): once when it changed since, and every
+   * 2 s while a turn runs; a read asked while it is read again comes sooner.
+   */
+  function watchCodex(where: ReviewPlace, thread: string, status: string, updatedAt: number) {
+    if (!spec.activity) return;
+    if (watching === thread) {
+      wake?.();
+      return;
+    }
+    if (status !== 'active' && changed.get(thread) === updatedAt) return;
+    changed.set(thread, updatedAt);
+    watching = thread;
+    void (async () => {
+      try {
+        while (await codexPass(where, thread)) {
+          await new Promise<void>((resolve) => {
+            const timer = setTimeout(resolve, CODEX_EVERY_MS);
+            timer.unref();
+            wake = () => {
+              clearTimeout(timer);
+              resolve();
+            };
+          });
+          wake = undefined;
+        }
+      } catch {
+        // Read again at the next state's read.
+        changed.delete(thread);
+      } finally {
+        watching = undefined;
+      }
+    })();
+  }
+
   /** Its record; while there is none, the one under its former name (decision 591). */
   async function readRecord(where: ReviewPlace): Promise<ReadRecord | null> {
     const own = await readRecordAt(recordPath(where));
@@ -430,7 +571,12 @@ export function pageAgent(
   async function settingsFile(where: ReviewPlace): Promise<string> {
     const path = join(folder(where), spec.settings);
     const text = pageAgentSettings(
-      { node, gate, args: spec.gateArgs(root, where) },
+      {
+        node,
+        gate,
+        args: spec.gateArgs(root, where),
+        ...(spec.activity ? { activity: join(folder(where), spec.activity) } : {}),
+      },
       process.platform,
       spec.claudeSettings,
     );
@@ -666,6 +812,7 @@ export function pageAgent(
         turns: 1,
         items: 'summary',
       });
+      if (where) watchCodex(where, thread, read.status, read.updatedAt);
       return {
         ...head,
         state: threadState(read.status, read.waiting, read.turns.length),
@@ -780,6 +927,7 @@ export function pageAgent(
         started,
       };
       await put(where, recordPath(where), `${JSON.stringify(record, null, 2)}\n`);
+      await write([{ at: started, ...ofRecord(record), kind: 'opened', ...at }]);
       return;
     }
     const codexAgent = agent.codex ?? null;
@@ -808,6 +956,7 @@ export function pageAgent(
     }
     const record: PageAgentRecord = { about: spec.about, agent: 'codex', thread, ...at, started };
     await put(where, recordPath(where), `${JSON.stringify(record, null, 2)}\n`);
+    await write([{ at: started, ...ofRecord(record), kind: 'opened', ...at }]);
   }
 
   /** Continues the conversation with `text`: where no terminal runs, the page's box does (V18c). */
@@ -858,8 +1007,19 @@ export function pageAgent(
     if (!resumed.ok) throw new PageAgentRefused(resumed.error, 502);
   }
 
+  /** The activity's read (NU2): the file moved to its older one past 4 MB first. */
+  async function activity(): Promise<NucleusActivity> {
+    const where = await place();
+    await writing;
+    await rotateActivity(folder(where)).catch(() => false);
+    return readNucleusActivity(folder(where));
+  }
+
   return {
     state,
+    ...(spec.activity
+      ? { activity, record: (line: NucleusActivityLine) => void write([line]) }
+      : {}),
 
     async ask({ text, agent, effort, model }) {
       if (text.trim() === '') throw new PageAgentRefused('a question cannot be empty', 400);
@@ -955,6 +1115,7 @@ export function pageAgent(
           : false;
         if (!archived) await agent?.archive(record.thread).catch(() => undefined);
       }
+      if (record) await write([{ at: now().toISOString(), ...ofRecord(record), kind: 'renewed' }]);
       await rm(recordPath(where), { force: true });
       if (record?.former) await dropFormer(where);
       return state();

@@ -3,7 +3,7 @@
 // session's start and end) between phases of calls (exploring, implementing, documenting, testing,
 // looking at screenshots, debugging, git). A presentation of the events: each event is in one
 // group, as it is; a group says only what its events say.
-import type { ThreadEntry, WorkspaceAgentState } from '@symbiote/core';
+import type { ThreadEntry, TurnTokens, WorkspaceAgentState } from '@symbiote/core';
 import { AGENT_NAMES, askedFor } from '../workspaces.js';
 import {
   callKind,
@@ -18,7 +18,7 @@ import {
   shownCommand,
   type WorkKind,
 } from './classify.js';
-import type { ActivityEvent, ToolCall } from './events.js';
+import { symbioteTool, type ActivityEvent, type NucleusOwn, type ToolCall } from './events.js';
 import { countsText, testCounts, type TestCounts } from './test-summary.js';
 
 export type GroupKind =
@@ -36,7 +36,12 @@ export type GroupKind =
   | 'verdict'
   /** Claude Code's word that a background task ended, given as a prompt. */
   | 'notice'
-  | 'unknown';
+  | 'unknown'
+  /** Nucleus's (NU2): a Confirm, a compaction, an error, a turn interrupted. */
+  | 'confirm'
+  | 'compact'
+  | 'error'
+  | 'interrupted';
 
 /**
  * `running`: a call runs now; `recovered`: failed, then passed; `cancelled`: stopped by the person;
@@ -69,6 +74,11 @@ export interface ActivityGroup {
   sha?: string;
   /** What its decisive test run printed. */
   tests?: TestCounts;
+  /** Its status in its own words, over the status's (NU2: a Confirm's end). */
+  said?: { text: string; tone: 'info' | 'error' | 'added' | 'warning' | 'muted' };
+  /** An answer's turn (NU2): its tokens and time, as its agent reported them. */
+  tokens?: TurnTokens;
+  took?: number;
 }
 
 type CallEvent = Extract<ActivityEvent, { kind: 'call' }>;
@@ -91,6 +101,8 @@ interface Context {
   turn: number;
   /** The newest question, when the agent asked it this turn. */
   lastAsks?: string;
+  /** Nucleus's activity (NU2): its own words and milestones. */
+  nucleus?: true;
 }
 
 const plural = (n: number, one: string, many: string) =>
@@ -105,8 +117,9 @@ const callsIn = (events: readonly ActivityEvent[]) => events.filter(isCall).map(
 const running = (call: ToolCall, context: Context) =>
   !call.end && context.agent.state === 'working' && lineTime(call) >= context.turn;
 
-/** A call's kind, `reasoning` and questions none (the thread says those). */
-const kindOf = (call: ToolCall): WorkKind | null => callKind(call);
+/** A call's kind (Nucleus's own when it has one, NU2), `reasoning` and questions none. */
+const kindOf = (call: ToolCall): WorkKind | null =>
+  call.kind !== undefined ? call.kind : callKind(call);
 
 /** Where a call's command is shown: its whole text when kept, else its subject. */
 const commandOf = (call: ToolCall) => call.input ?? call.subject ?? '';
@@ -479,15 +492,50 @@ const TITLES: Record<WorkKind | 'debug' | 'other', string> = {
   visual: 'Visual inspection',
   debug: 'Debugging',
   git: 'Git',
+  web: 'Web research',
+  symbiote: 'Symbiote',
   other: 'Other tools',
 };
+
+/** What Nucleus did on the web (NU2): "2 searches · 5 pages". */
+function webText(calls: readonly ToolCall[]): string {
+  let searches = 0;
+  let pages = 0;
+  for (const call of calls) {
+    if (call.refused) continue;
+    if (call.tool === 'WebFetch') pages += 1;
+    else if (call.tool === 'WebSearch') searches += 1;
+    else if (call.tool === 'webSearch') {
+      // Codex's item is a search, or a page it opened or searched in.
+      if (call.pages && call.pages.length > 0) pages += call.pages.length;
+      else searches += 1;
+    }
+  }
+  return [
+    searches > 0 ? plural(searches, 'search', 'searches') : '',
+    pages > 0 ? plural(pages, 'page', 'pages') : '',
+  ]
+    .filter((p) => p !== '')
+    .join(' · ');
+}
+
+/** Which of Symbiote's tools Nucleus used, once each in order (NU2): "workspaces · review". */
+function symbioteText(calls: readonly ToolCall[]): string {
+  return [...new Set(calls.flatMap((c) => symbioteTool(c) ?? (c.source ? [c.tool] : [])))].join(
+    ' · ',
+  );
+}
 
 /** A phase of calls as a group: its title, its facts, its status. */
 function workGroup(run: Run, context: Context): ActivityGroup {
   const calls = callsIn(run.events);
   const commit = run.events.find((e): e is CommitEvent => e.kind === 'commit');
   const kind: GroupKind = commit ? 'commit' : (run.kind ?? 'other');
-  const failures = calls.filter((c) => c.failed && !c.interrupted).length;
+  // A call Nucleus's gate or agent refused is said as refused (NU2), one the person declined by
+  // its Confirm: neither is a failure.
+  const failures = calls.filter(
+    (c) => c.failed && !c.interrupted && !c.refused && !c.declined,
+  ).length;
   const last = calls.at(-1);
   let status: GroupStatus = 'done';
   if (calls.some((c) => running(c, context))) status = 'running';
@@ -561,11 +609,23 @@ function workGroup(run: Run, context: Context): ActivityGroup {
       if (status === 'done' && lastGit?.failed && !lastGit.interrupted) status = 'failed';
       break;
     }
+    case 'web':
+      summary = webText(calls);
+      break;
+    case 'symbiote':
+      summary = symbioteText(calls);
+      break;
     default: {
       const tools = [...new Set(calls.map((c) => c.tool))];
       summary = `${plural(calls.length, 'call', 'calls')}: ${tools.slice(0, 3).join(', ')}${tools.length > 3 ? '…' : ''}`;
     }
   }
+  // Nucleus's calls its gate or its agent refused (NU2): said, never folded away.
+  const refused = calls.filter((c) => c.refused !== undefined).length;
+  if (refused > 0)
+    summary = [summary, `${refused.toLocaleString('en-US')} refused`]
+      .filter((p) => p !== '')
+      .join(' · ');
   const first = run.events[0] as WorkEvent;
   return {
     key: first.key,
@@ -605,6 +665,89 @@ function endGroup(entry: Extract<ThreadEntry, { kind: 'end' }>, codex: boolean) 
     : { title: `Its session ended: ${firstLine(reason)}`, status: 'done' as const };
 }
 
+/** A Confirm's end in words and tone (NU2). */
+const CONFIRM_ENDS = {
+  confirmed: { text: 'Confirmed', tone: 'added' },
+  declined: { text: 'Declined', tone: 'muted' },
+  expired: { text: 'No answer in time', tone: 'warning' },
+  gone: { text: 'Its call ended first', tone: 'muted' },
+} as const;
+
+type Base = Pick<ActivityGroup, 'key' | 'start' | 'end' | 'failures' | 'events'>;
+
+/** A Confirm (NU2): asked, waiting for the person until it ends; what the yes did, its detail. */
+function confirmGroup(
+  event: Extract<ActivityEvent, { kind: 'confirm' }>,
+  base: Base,
+  context: Context,
+): ActivityGroup {
+  const words = (event.asked ?? event.ended)?.words ?? '';
+  const answer = event.ended?.stage === 'ended' ? event.ended.answer : undefined;
+  const did = event.did?.output;
+  // Unanswered while Nucleus works on: it waits for the person; else its end was never recorded.
+  const live = context.agent.state === 'working' || context.agent.state === 'needs-you';
+  return {
+    ...base,
+    ...times([event, ...(event.ended ? [{ ...event, at: event.ended.at }] : [])]),
+    kind: 'confirm',
+    milestone: true,
+    title: `Confirm: ${words}`,
+    ...((event.asked ?? event.ended) ? { summary: (event.asked ?? event.ended)?.tool ?? '' } : {}),
+    ...(answer === 'confirmed' && did ? { detail: did } : {}),
+    status: !answer
+      ? live
+        ? 'waiting'
+        : 'open'
+      : answer === 'declined' || answer === 'gone'
+        ? 'cancelled'
+        : 'done',
+    ...(answer ? { said: CONFIRM_ENDS[answer] } : {}),
+  };
+}
+
+/** Nucleus's own events (NU2): an error, a turn interrupted, a conversation opened or ended. */
+function nucleusGroup(entry: NucleusOwn, base: Base, context: Context): ActivityGroup {
+  const agent = AGENT_NAMES[entry.agent ?? context.agent.kind ?? 'claude'];
+  switch (entry.kind) {
+    case 'error':
+      return {
+        ...base,
+        kind: 'error',
+        milestone: true,
+        title: `Error: ${firstLine(entry.error)}`,
+        ...(entry.details ? { detail: entry.details } : {}),
+        status: 'failed',
+      };
+    case 'interrupted':
+      return {
+        ...base,
+        kind: 'interrupted',
+        milestone: false,
+        title: 'Interrupted',
+        status: 'cancelled',
+      };
+    case 'opened': {
+      const on = [entry.model, entry.effort ? `${entry.effort} effort` : ''].filter(Boolean);
+      return {
+        ...base,
+        kind: 'session',
+        milestone: true,
+        title: `A conversation opened on ${agent}`,
+        ...(on.length > 0 ? { summary: on.join(' · ') } : {}),
+        status: 'done',
+      };
+    }
+    default:
+      return {
+        ...base,
+        kind: 'end',
+        milestone: true,
+        title: 'New conversation: this one ended',
+        status: 'done',
+      };
+  }
+}
+
 /** What a question asks, its questions alone: "Which store?; Which plan?". */
 export const questionsOf = (entry: Extract<ThreadEntry, { kind: 'asks' }>) =>
   (entry.questions ?? []).map((q) => q.question).join('; ');
@@ -628,9 +771,13 @@ function milestone(
         ? `${AGENT_NAMES[context.agent.kind ?? 'claude']} started`
         : entry.source === 'resume'
           ? 'Continued'
-          : entry.source === 'fork'
-            ? 'A copy of the session started'
-            : 'Started again';
+          : entry.source === 'compact'
+            ? 'Continued after compacting'
+            : entry.source === 'clear'
+              ? 'Started again: context cleared'
+              : entry.source === 'fork'
+                ? 'A copy of the session started'
+                : 'Started again';
       return { ...base, kind: 'session', milestone: false, title, status: 'done' };
     }
     case 'prompt': {
@@ -690,11 +837,31 @@ function milestone(
         ...base,
         kind: 'report',
         milestone: true,
-        title: 'Reported',
+        title: context.nucleus ? 'Answered' : 'Reported',
         summary: firstLine(event.entry.text).replace(/^#+\s*/, ''),
         detail: event.entry.text,
         status: 'done',
+        ...(event.tokens ? { tokens: event.tokens } : {}),
+        ...(event.ms !== undefined ? { took: event.ms } : {}),
       };
+    case 'confirm':
+      return confirmGroup(event, base, context);
+    case 'compact': {
+      const done = event.after !== undefined;
+      const trigger = (event.before ?? event.after)?.trigger;
+      return {
+        ...base,
+        ...times([event, ...(event.after ? [{ ...event, at: event.after.at }] : [])]),
+        kind: 'compact',
+        milestone: false,
+        title: done ? 'Its context compacted' : 'Compacting its context',
+        ...(trigger ? { summary: trigger === 'auto' ? 'automatically' : 'asked' } : {}),
+        ...(event.after?.summary ? { detail: event.after.summary } : {}),
+        status: 'done',
+      };
+    }
+    case 'nucleus':
+      return nucleusGroup(event.entry, base, context);
     case 'end': {
       const said = endGroup(
         event.entry,
@@ -755,17 +922,19 @@ function sameness(event: ActivityEvent): string | null {
 
 /**
  * The Activity tab's groups (V73), oldest first: milestones, and the phases of the calls between
- * them. `agent`: its state, for what runs and what waits; `worktree`: to write paths short.
+ * them. `agent`: its state, for what runs and what waits; `worktree`: to write paths short;
+ * `nucleus`: Nucleus's activity (NU2), its answers and its own milestones in its words.
  */
 export function activityGroups(
   events: readonly ActivityEvent[],
-  { agent, worktree }: { agent: WorkspaceAgentState; worktree: string },
+  { agent, worktree, nucleus }: { agent: WorkspaceAgentState; worktree: string; nucleus?: true },
 ): ActivityGroup[] {
   const lastPrompt = events.findLast((e) => e.kind === 'prompt');
   const asking = waitingAsk(events);
   const context: Context = {
     agent,
     worktree,
+    ...(nucleus ? { nucleus } : {}),
     turn: lastPrompt?.at ? Date.parse(lastPrompt.at) : -Infinity,
     ...(asking ? { lastAsks: asking.key } : {}),
   };

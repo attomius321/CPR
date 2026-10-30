@@ -1,7 +1,7 @@
 // What the agent is doing now, for the Activity tab's live strip (V73, decision 516): from its
 // state and its newest call not ended this turn — never a progress guessed. Elapsed from that
 // call's recorded start; none for Codex's untimed items.
-import type { WorkspaceSummary } from '@symbiote/core';
+import type { WorkspaceAgentState } from '@symbiote/core';
 import { activityText, askedFor } from '../workspaces.js';
 import { COMMAND_TOOLS, shownCommand } from './classify.js';
 import type { ActivityEvent, ToolCall } from './events.js';
@@ -26,13 +26,16 @@ const lineAt = (call: ToolCall) => Date.parse((call.start ?? call.end)?.at ?? ''
 const firstLine = (text: string) =>
   (text.split('\n').find((line) => line.trim() !== '') ?? '').trim();
 
-/** What the agent of `workspace` is doing now, from its events and their groups; null when it is not at work or waiting. */
+/**
+ * What `agent` is doing now, from its events and their groups; null when it is not at work or
+ * waiting. A workspace's agent, or Nucleus (NU2); `worktree` where its paths are written short from.
+ */
 export function liveActivity(
-  workspace: WorkspaceSummary,
+  agent: WorkspaceAgentState,
+  worktree: string,
   events: readonly ActivityEvent[],
   groups: readonly ActivityGroup[],
 ): LiveActivity | null {
-  const { agent } = workspace;
   const prompt = events.findLast((e) => e.kind === 'prompt');
   if (agent.state === 'needs-you') {
     if (agent.interrupted) return { state: 'waiting', text: 'Interrupted: waiting for you' };
@@ -40,7 +43,7 @@ export function liveActivity(
     if (asks) {
       const text = asks.entry.questions
         ? `Asks: ${questionsOf(asks.entry)}`
-        : askedFor(asks.entry, workspace.worktree.path);
+        : askedFor(asks.entry, worktree);
       return { state: 'waiting', text, since: asks.entry.at };
     }
     return { state: 'waiting', text: `Waiting: ${agent.waitingFor ?? 'for you'}` };
@@ -49,6 +52,15 @@ export function liveActivity(
     return { state: 'waiting', text: 'Plan ready: read it and answer' };
   }
   if (agent.state !== 'working') return null;
+  // Nucleus's (NU2): a Confirm asked and not answered, while its call waits for the person.
+  const confirm = events.findLast((e) => e.kind === 'confirm');
+  if (confirm?.kind === 'confirm' && confirm.asked && !confirm.ended) {
+    return {
+      state: 'waiting',
+      text: `Waiting for your Confirm: ${confirm.asked.words}`,
+      since: confirm.asked.at,
+    };
+  }
 
   const turn = prompt?.at ? Date.parse(prompt.at) : -Infinity;
   const calls = events
@@ -59,7 +71,7 @@ export function liveActivity(
   if (open && open.tool !== 'reasoning') {
     const phase = groups.find((g) => g.events.some((e) => e.kind === 'call' && e.call === open));
     const command = COMMAND_TOOLS.has(open.tool)
-      ? firstLine(shownCommand(open.input ?? open.subject ?? '', workspace.worktree.path))
+      ? firstLine(shownCommand(open.input ?? open.subject ?? '', worktree))
       : undefined;
     const text =
       open.about ??
