@@ -65,8 +65,8 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
   );
   // 14 prompts (Documents since V40, Suggest settings since V75) and the three prebuilt agents,
   // each one page of its settings (fix/scout-merger-scribe-settings); this machine's Skill library
-  // (SK1); this browser's Appearance last (V51).
-  await expect(list(page).getByRole('button')).toHaveCount(19);
+  // (SK1) and Hive mode (V82); this browser's Appearance last (V51).
+  await expect(list(page).getByRole('button')).toHaveCount(20);
   await expect(entry(page, 'Documents')).toBeVisible();
   await expect(entry(page, 'Suggest settings')).toBeVisible();
   // The first is open; each group in its order.
@@ -385,6 +385,8 @@ const ICONS: [group: string, name: string, drawing: string, tint: string][] = [
   ['Prebuilt agents', 'Nucleus', '<circle cx="12" cy="12" r="1">', '--phase-visual'],
   ['Prebuilt agents', 'Scribe', 'M9.937 15.5', '--phase-visual'],
   ['This machine', 'Skill library', 'M20 20a2 2 0 0 0 2-2V8', '--phase-docs'],
+  // V82: Hive mode's tile in the error's red, the only one not its group's.
+  ['This machine', 'Hive mode', 'M21 16V8a2 2 0 0 0-1-1.73', '--error'],
   ['This browser', 'Appearance', 'M12 22a1 1 0 0 1 0-20', '--phase-explore'],
 ];
 

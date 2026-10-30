@@ -46,6 +46,8 @@ import {
   WORKSPACE_HISTORY_PAGE,
 } from './pages.js';
 import { Resizer } from '../ui/Resizer.js';
+import { HiveTendrils } from '../ui/HiveArt.js';
+import { useHive } from './hive.js';
 import { nextNucleusMark, type NucleusMark } from '../nucleus/page-agent.js';
 import { mergesWaiting, nucleusWaiting, scribeWaiting } from './waiting.js';
 import { useAsks } from './useAsks.js';
@@ -133,6 +135,7 @@ export function Sidenav({
   flashed: string | null;
 }) {
   const shell = useShell();
+  const hive = useHive();
   const { list, reviews, merges, nucleus, scribe, failing, readAt } = useWorkspaces();
   // Workspaces being made (V48), until the list has them.
   const starts = useStarts().filter(
@@ -459,6 +462,7 @@ export function Sidenav({
           <kbd aria-hidden="true">s</kbd>
         </a>
       </footer>
+      {hive && <HiveTendrils />}
     </aside>
   );
 }

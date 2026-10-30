@@ -1,6 +1,9 @@
 import { useId, type ReactNode } from 'react';
+import { useHive } from '../shell/hive.js';
 import mark from './mark.png';
 import markLarge from './mark-96.png';
+import markHive from './mark-hive.png';
+import markHiveLarge from './mark-hive-96.png';
 import { tip } from './tip.js';
 
 /**
@@ -266,18 +269,22 @@ export const ForwardIcon = () => (
 /**
  * Symbiote's mark (V61): the person's S, cut round from `scripts/desktop/logo.png` by
  * `scripts/desktop/icon.mjs`, at 64 px for 32 on screen (20 in the title bar), 96 for the start
- * page's 48 (V63). Never 16: V39's koi S did not read there.
+ * page's 48 (V63). Never 16: V39's koi S did not read there. Crimson while Hive mode is on (V82,
+ * decision 616).
  */
-export const SymbioteMark = ({ size = 32 }: { size?: 32 | 48 }) => (
-  <img
-    className={size === 32 ? 'symbiote-mark' : 'symbiote-mark large'}
-    src={size === 32 ? mark : markLarge}
-    alt=""
-    width={size}
-    height={size}
-    draggable={false}
-  />
-);
+export function SymbioteMark({ size = 32 }: { size?: 32 | 48 }) {
+  const hive = useHive();
+  return (
+    <img
+      className={size === 32 ? 'symbiote-mark' : 'symbiote-mark large'}
+      src={size === 32 ? (hive ? markHive : mark) : hive ? markHiveLarge : markLarge}
+      alt=""
+      width={size}
+      height={size}
+      draggable={false}
+    />
+  );
+}
 
 /** Open or folded (a folder, a project, More): down when open, right when folded. */
 export const ChevronIcon = ({ open }: { open: boolean }) => (
@@ -617,6 +624,21 @@ export const ChecksIcon = () => (
   <Icon lucide>
     <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
     <path d="m9 12 2 2 4-4" />
+  </Icon>
+);
+
+/** Hive mode (V82): lucide's hexagon, a cell of the hive. */
+export const HexagonIcon = () => (
+  <Icon lucide>
+    <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+  </Icon>
+);
+
+/** A danger ahead (V82: what Hive mode would let agents do): lucide's triangle-alert. */
+export const DangerIcon = () => (
+  <Icon lucide>
+    <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+    <path d="M12 9v4M12 17h.01" />
   </Icon>
 );
 

@@ -8,11 +8,15 @@ import '@xyflow/react/dist/style.css';
 import './styles.css';
 import { App } from './diff/App.js';
 import { askIntro, startIntro } from './intro/intro.js';
+import { isHive, showTabIcon } from './shell/hive.js';
 import { reportPageErrors } from './ui/report.js';
 import { Tooltips } from './ui/Tooltip.js';
 
 // The page's errors go to Symbiote's logs (LG1), from its first script on; a `?graph=` page (a
 // graph file, the measure scripts) has no server to tell.
+// Hive mode's S in the tab (V82): the server marked the page; the tab's icon is the page's own.
+if (isHive()) showTabIcon(true);
+
 const reportError = new URLSearchParams(window.location.search).has('graph')
   ? undefined
   : reportPageErrors();
