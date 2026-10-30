@@ -227,7 +227,7 @@ hosted.
 | Feature | Settings at the sidenav's bottom, under the workspaces | ready for review | | [journal](journal/sidenav-settings-at-the-bottom.md) |
 | [V71](plan/v71-analyzing-page.md) | The analyzing page in the style: a card on the start page's arcs, the phases as steps, a review named | ready for review | 502–506 | [journal](journal/v71-analyzing-page.md) |
 | [V72](plan/v72-page-frame.md) | One page frame: every page the whole main area, one head, 16 px margins and gutters, the same insets inside cards | ready for review | 507–512 | [journal](journal/v72-page-frame.md) |
-| [V81](plan/v81-settings-list-icons.md) | Settings' list scanned: a lucide icon per entry, on a tile tinted by its group | in progress | 600–603 | [journal](journal/v81-settings-list-icons.md) |
+| [V81](plan/v81-settings-list-icons.md) | Settings' list scanned: a lucide icon per entry, on a tile tinted by its group | ready for review | 600–603 | [journal](journal/v81-settings-list-icons.md) |
 
 ### Native window
 

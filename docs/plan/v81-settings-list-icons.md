@@ -2,13 +2,16 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v81-settings-list-icons.md)
 
-**Status:** planned (2026-10-30), on branch `feature/settings-list-icons` (the workspace's); the
-plan confirmed by the person ("OK"), decision 603 (`CommentIcon` redrawn) and the tints with it.
+**Status:** built, ready for review (2026-10-30), on branch `feature/settings-list-icons` (the
+workspace's); the plan confirmed by the person ("OK"), decision 603 (`CommentIcon` redrawn) and the
+tints with it. Built with two changes to decision 602 (below, "As built"): the list 300 px, the
+tile's radius 8 px.
 
 **Problem** (asked: "Settings' list is hard to navigate: 20 entries in five groups, words only.
 Give every entry an icon, so the list can be scanned"). On `main` (`0173bca`) the list is 20 rows
 of 32 px in a 280 px card, five group headings, no icon: V62's decision 448 left them out at the
-person's request then. The person reverses it now.
+person's request then. (The brief counted 20 entries; the list has 19: nine, five, three, one,
+one.) The person reverses it now.
 
 **Goal**: every entry shows a lucide icon in a small tile tinted by its group (the macOS System
 Settings idea): the tint says the group, the drawing the entry; the name stays the row's label.
@@ -89,5 +92,32 @@ on the 16 grid today).
 |---|---|---|---|
 | 600 | Icons in the list | **One lucide icon per entry, in a tile before its name; supersedes 448's "no icons" (its card, hairlines and accent stay)** | the person's brief: the list scanned, not read |
 | 601 | The tints | **The `--phase-*` colours: Workspaces implement, Reviews test, Prebuilt agents visual, This machine docs, This browser explore; `--muted` for any other** | contrast-checked already, one hue in both themes; git is the accent's hue, debug the docs' neighbour |
-| 602 | The tile | **22 px, 6 px radius, 14 px icon, opaque over `--side`; 1.75 idle, 2.25 and the accent open; headings in line with the tiles** | the sidenav's open recipe; 20 tiles in 280 px without crowding |
+| 602 | The tile | **22 px, 8 px radius, 14 px icon, opaque over `--side`; 1.75 idle, 2.25 and the accent open; headings in line with the tiles; the list 300 px (280 before)** | the sidenav's open recipe; the longest name open beside the widest mark needs 291 px; 6 px is off the style's radius scale |
 | 603 | `CommentIcon` | **Lucide's message-square on its 24 grid, same weight on the pages that use it** | the 24-unit strokes would draw it thicker than the others |
+
+## As built (V81)
+
+As planned, but two parts of decision 602:
+
+- **The list 300 px, not 280.** With the tile, "Changes or comments" open (weight 500, 160 px)
+  beside "not saved" (59 px) got 149 px and ended in an ellipsis; the row needs 22 + 8 + 160 + 8 +
+  59 = 257 px, the card 291. Without icons it had 30 px to spare. A smaller tile or gap wins at
+  most 4 px. 300 is the sidenav's width (V79); 9 px to spare. Skills' list stays 280 (another
+  page, out of scope): the two lists differ by 20 px.
+- **The tile's radius 8 px**, not 6: the style's scale has 4, 8, 10 (`tokens.test.ts`); 8 is the
+  Activity tab's tile's; at 4× it reads as a rounded square, not a circle.
+- 14 px icons at stroke 1.75 read at 1x in both themes (screenshots); the 16 px comparison was not
+  needed.
+- The icons by key in `SettingsPage.tsx` (`ICONS`, checked by `satisfies` against every entry's key:
+  a prompt added without an icon fails the typecheck); a group's tint by `data-tint` on its section.
+
+## Results
+
+| What | Measured |
+|---|---|
+| Entries with their icon on their group's tile | 19 of 19 (`settings.spec.ts`) |
+| Icon on its tile, dark / light | 5.46–7.47 / 3.94–4.48 (≥ 3, `tokens.test.ts`) |
+| The open entry's accent on its tile, dark / light | 4.83–5.08 / 5.27–5.37 |
+| The list | 300 px (280); rows 32 px, unchanged |
+| Longest row: "Changes or comments" open, "not saved" | 160 of 160 px of its name shown (149 at 280) |
+| New icons | 6, paths from lucide-static 1.65.0 |
