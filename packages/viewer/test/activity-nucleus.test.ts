@@ -267,7 +267,10 @@ describe("Nucleus's groups (NU2)", () => {
 
   it("the web's searches and pages, Symbiote's tools, the Confirm's end", () => {
     expect(groups.find((g) => g.kind === 'web')?.summary).toBe('1 search · 1 page');
-    expect(groups.find((g) => g.kind === 'symbiote')?.summary).toBe('workspaces · queue_merge');
+    const tools = groups.find((g) => g.kind === 'symbiote');
+    expect(tools?.summary).toBe('workspaces · queue_merge');
+    // The declined call failed by the person's choice: its Confirm says so, not a failure.
+    expect(tools?.failures).toBe(0);
     const confirm = groups.find((g) => g.kind === 'confirm');
     expect(confirm?.summary).toBe('queue_merge');
     expect(confirm && statusWords(confirm)).toEqual({ text: 'Declined', tone: 'muted' });

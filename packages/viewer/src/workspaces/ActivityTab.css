@@ -890,9 +890,20 @@
   color: var(--error);
 }
 
-.activity-facts .tone-muted,
-.activity-tokens {
+.activity-facts .tone-muted {
   color: var(--muted);
+}
+
+/* An answer's tokens and time, quiet on its title's line, cut short when it is narrow. */
+.activity-tokens {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .activity-pages {

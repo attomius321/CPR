@@ -268,7 +268,9 @@ function CallFacts({ call, running }: { call: ToolCall; running: boolean }) {
       )}
       {call.ms !== undefined && <Fact label="Took">{durationText(call.ms)}</Fact>}
       {call.startedAt && <Fact label="Started">{when(call.startedAt)}</Fact>}
-      {call.endedAt ? (
+      {call.gate?.decision === 'deny' ? (
+        <Fact label="Ended">Never ran: its gate refused it</Fact>
+      ) : call.endedAt ? (
         <Fact label="Ended">{when(call.endedAt)}</Fact>
       ) : (
         <Fact label="Ended">{running ? 'Running now' : 'No end recorded'}</Fact>
@@ -479,6 +481,12 @@ function GroupRowView({
       <span className="activity-head">
         <span className="activity-title">{group.title}</span>
         {group.sha && <code className="chip activity-sha">{group.sha.slice(0, 7)}</code>}
+        {group.tokens && (
+          <span className="activity-tokens">
+            {tokensText(group.tokens)}
+            {group.took !== undefined && ` · ${durationText(group.took)}`}
+          </span>
+        )}
         <span className="activity-fill" />
         {status && (
           <span className={`badge activity-status tone-${status.tone}`}>
@@ -493,7 +501,7 @@ function GroupRowView({
         )}
         {expandable && <ChevronIcon open={open} />}
       </span>
-      {(parts.length > 0 || group.task || group.failures > 0 || group.tokens) && (
+      {(parts.length > 0 || group.task || group.failures > 0) && (
         <span className="activity-summary">
           {group.task && <span className="activity-task">{group.task}</span>}
           {parts.map((part, i) => (
@@ -511,13 +519,6 @@ function GroupRowView({
               )}
             </span>
           ))}
-          {group.tokens && (
-            <span className="activity-part activity-tokens">
-              {parts.length > 0 && <span className="activity-sep"> · </span>}
-              {tokensText(group.tokens)}
-              {group.took !== undefined && ` · ${durationText(group.took)}`}
-            </span>
-          )}
           {group.failures > 0 && group.status !== 'failed' && group.kind !== 'test' && (
             <span className="activity-part tone-warning">
               {parts.length > 0 && <span className="activity-sep"> · </span>}

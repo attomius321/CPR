@@ -531,8 +531,11 @@ function workGroup(run: Run, context: Context): ActivityGroup {
   const calls = callsIn(run.events);
   const commit = run.events.find((e): e is CommitEvent => e.kind === 'commit');
   const kind: GroupKind = commit ? 'commit' : (run.kind ?? 'other');
-  // A call Nucleus's gate or agent refused is said as refused (NU2), not as failed.
-  const failures = calls.filter((c) => c.failed && !c.interrupted && !c.refused).length;
+  // A call Nucleus's gate or agent refused is said as refused (NU2), one the person declined by
+  // its Confirm: neither is a failure.
+  const failures = calls.filter(
+    (c) => c.failed && !c.interrupted && !c.refused && !c.declined,
+  ).length;
   const last = calls.at(-1);
   let status: GroupStatus = 'done';
   if (calls.some((c) => running(c, context))) status = 'running';

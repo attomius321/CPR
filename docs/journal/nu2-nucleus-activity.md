@@ -25,3 +25,33 @@ person's live Nucleus transcript (read only; nothing started, nothing written in
 - **Codex says which pages it opened**: a `webSearch` item's `action` is `search` (queries),
   `openPage` (URL) or `findInPage`. An `mcpToolCall` has `arguments`, `result`, `durationMs`.
   Tokens only live (`thread/tokenUsage/updated`) or in its session file (`token_count`, timed).
+
+## NU2 — Nucleus's Activity tab: everything it does, recorded (2026-10-30, branch `feature/nucleus-activity`)
+
+Built as planned (decisions 604–610) in three parts. **Recording**: Nucleus's settings file runs
+its hook with `--activity=<file>`. The gate records each call's start and decision. Async hooks
+record the rest of Claude Code's events. `mcp.ts` records Nucleus's calls of Symbiote's tools and
+each Confirm. The page agent records a conversation opened and New conversation. Codex's thread is
+read every 2 s while a turn runs. Everything is redacted, in one file, rotated at 4 MB. **The tab**:
+the workspace tab's timeline is shared (`ActivityTimeline`), and `nucleusEvents` reads Nucleus's
+lines into its events: Web research and Symbiote phases, refused calls in sight, Confirms,
+answers with tokens. **Verification**: tests, e2e, the person's records, real runs.
+
+**Learned**:
+- **A hook's cost is Node's start, and a young-generation scavenge.** The recording gate first ran
+  4.5 ms slower than `main`'s, while its own work measured 0.7 ms in-process. Turning each part
+  off showed it: any one of the redaction or the JSON put the heap past V8's first limit, and
+  `--trace-gc` showed one 3.5 ms scavenge. `--min-semi-space-size=4` on the hook's command removes
+  it. Separately, a case-insensitive alternation regex costs ~1.3 ms at a process's start.
+- **Claude Code runs a session's SessionStart hook before Symbiote finds the session**: the
+  record starts "Claude Code started", then "A conversation opened".
+- **Codex's MCP items are seen after they end**: read every 2 s, a fast call's start and end land
+  in one read, timed then, up to 2 s after Symbiote's own record of it. Pairing the two allows 5 s
+  each side.
+- **Codex's sandboxed shell failed on this machine** in the real run: `bwrap: execvp …
+  app-server-daemon/releases/0.166.0…` for both commands (the daemon is 0.166, the CLI 0.163). The
+  record shows exit 1 and the error; NU2 changes nothing there.
+- **Test times lose fractions in `Date.UTC`**: `Date.UTC(…, 13.3)` is 13 s, which tied a Confirm
+  with its call in a test. The helper adds milliseconds instead.
+
+**Verification**: see the plan's Results.

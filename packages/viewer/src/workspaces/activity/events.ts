@@ -58,6 +58,8 @@ export interface ToolCall {
   kind?: WorkKind | null;
   /** Nucleus: Symbiote's record of this call of its tools, paired with the agent's. */
   symbiote?: ToolCall;
+  /** Nucleus: it asked the person, who declined or did not answer: its Confirm says so. */
+  declined?: true;
 }
 
 type Asks = Extract<ThreadEntry, { kind: 'asks' }>;
@@ -542,6 +544,14 @@ export function nucleusEvents(lines: readonly NucleusActivityLine[]): ActivityEv
         add({ ...head, kind: 'unknown', entry: unknown }, unknown.at);
       }
     }
+  }
+  // A call whose Confirm was not given failed by the person's choice: said by the Confirm.
+  for (const confirm of confirms.values()) {
+    const answer = confirm.ended?.stage === 'ended' ? confirm.ended.answer : undefined;
+    if (!confirm.did || !answer || answer === 'confirmed') continue;
+    confirm.did.declined = true;
+    const asked = calls.find((c) => c.symbiote === confirm.did);
+    if (asked) asked.declined = true;
   }
   for (const call of calls) {
     if (paired.has(call)) continue;

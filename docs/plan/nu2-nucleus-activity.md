@@ -155,3 +155,38 @@ environment and the shapes.
 | 610 | The workspace's tab | **Unchanged: Nucleus's phases by an option** | Out of scope but for shared parts |
 
 **Not in NU2 (later)**: NU3–NU7; Scribe's activity; a cost where the agent gives none.
+
+## As built (NU2)
+
+- **The gate's own record cost 4.5 ms a call, not the append.** Built as planned (one
+  `appendFileSync` in the gate's process), the hook took 26 ms against `main`'s 21. Two causes,
+  measured by turning parts off one at a time: a case-insensitive regex costs ~1.3 ms at a
+  process's start (the redaction now matches variables' names by string), and the recording took
+  the hook's heap past V8's first young-generation limit: one 3.5 ms scavenge on every call
+  (`--trace-gc`). Nucleus's hook command starts Node with `--min-semi-space-size=4` (only when it
+  records: Scribe's settings are unchanged); no scavenge then, even for a 7 KB input.
+- **The gate loads only what it needs**: `nucleus-record.ts` (redaction, the start line, the
+  append) and `tool-activity.ts` (the tool line's code, moved out of `thread.ts`, which loads
+  `fs/promises`); the rest of the record, `nucleus-activity.ts`, is loaded only for the events
+  Claude Code runs in the background.
+- **Not "a message sent" by the page agent**: a message is recorded once, by Claude Code's
+  `UserPromptSubmit` or Codex's turn; Symbiote records a conversation opened and New
+  conversation. A conversation is named by Claude Code's session ID, as its hooks name it.
+- **A refused call ends at its start**: the viewer gives a call the gate refused an end at its
+  start, so every phase rule reads it as done; its details say "Never ran: its gate refused it".
+  A call refused, or declined by the person's Confirm, is not counted as a failure: the summary
+  says "1 refused", the Confirm "Declined".
+- **Codex's items in the app server's reader**: MCP arguments and answers, the pages a search
+  opened, a turn's time and compactions are kept in fields `serverTools` does not read (`mcp`,
+  `web`, `ms`, `compactions`), so a workspace's Codex activity is as on `main`. The turn's `ms`
+  shows in one existing test's expectation.
+- **The workspace's tab**: `ActivityTimeline.tsx` is the timeline both tabs draw;
+  `liveActivity` takes an agent's state and a folder instead of a workspace. Nucleus's own kinds
+  (`web`, `symbiote`) are set on its calls by `nucleusEvents`, so the workspace's classification
+  is untouched.
+- **Colours**: `--phase-web` a yellow (`#d4c84a` dark, `#6f6a00` light) and `--phase-symbiote` a
+  magenta (`#dc7cf0`, `#9c2fb8`), between the existing hues; `tokens.test.ts` checks 3:1 on every
+  background and on their wash.
+- **The tab's place**: line tabs on the card's head, as a workspace's; the terminal's tab unmounts
+  its terminal as a workspace's does. `nucleus.spec.ts`'s layout check now has the tabs at the
+  card's top and the terminal under them.
