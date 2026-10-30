@@ -7,7 +7,6 @@ import type { Log } from '@symbiote/log';
 import { findApp, openAppWindow, openUrl, type AppWindow } from './app-window.js';
 import { folders, repositoryRoot, windowsDrives } from './folders.js';
 import { cacheDir, isRunning, readRecords } from './registry.js';
-import { configDir, hiveOn } from './hive.js';
 import { startNexusServer } from './server.js';
 import { starter } from './start.js';
 import { liveSymbiotes, readStatus, type Probe } from './symbiotes.js';
@@ -107,7 +106,6 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
       pageDir: PAGE_DIR,
       scriptsDir: SCRIPTS_DIR,
       viewerDir: viewerDir(ctx.env),
-      hive: () => hiveOn(configDir(ctx.env, process.platform, home)),
       ...(log ? { log } : {}),
     });
   } catch (error) {
