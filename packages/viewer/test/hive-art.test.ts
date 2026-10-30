@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   centreline,
+  FLOOD,
+  floodCover,
   hexagon,
   highlight,
   JOINING,
@@ -72,5 +74,39 @@ describe("Hive's tendrils", () => {
     const corners = points(hexagon(260, 64, 30));
     expect(corners).toHaveLength(6);
     for (const [x, y] of corners) expect(Math.hypot(x - 260, y - 64)).toBeCloseTo(30, 0);
+  });
+});
+
+// Hive's arrival (decision 624): ink from the question's hexagon until it covers the window.
+describe("Hive's flood", () => {
+  it('bursts tendrils from its hexagon, each its own closed shape, outside the hexagon at the tip', () => {
+    expect(FLOOD.tendrils.length).toBeGreaterThan(6);
+    for (const tendril of FLOOD.tendrils) {
+      expect(taper(tendril)).toMatch(/^M.* Z$/);
+      const tip = tendril.path.at(-1)![3];
+      expect(Math.hypot(...tip)).toBeGreaterThan(FLOOD.hexagon * 1.5);
+    }
+  });
+
+  it('covers the window with its hexagon at the cover scale, from anywhere, whatever its turn', () => {
+    const inner = FLOOD.hexagon * Math.cos(Math.PI / 6);
+    for (const [x, y, width, height] of [
+      [720, 450, 1440, 900],
+      [10, 10, 1440, 900],
+      [1430, 890, 1440, 900],
+      [200, 600, 390, 844],
+    ] as const) {
+      const scale = floodCover([x, y], width, height);
+      for (const [cx, cy] of [
+        [0, 0],
+        [width, 0],
+        [0, height],
+        [width, height],
+      ] as const) {
+        expect(Math.hypot(cx - x, cy - y)).toBeLessThan(inner * scale);
+      }
+      // Not far beyond: the ink's edge still moves while it covers.
+      expect(inner * scale).toBeLessThan(Math.hypot(width, height) * 1.1);
+    }
   });
 });

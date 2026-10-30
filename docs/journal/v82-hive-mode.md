@@ -60,3 +60,39 @@ tests (the Hive, Settings, shell and look specs again on the final build: 39). E
 
 Not verified: an open workspace's page and Nucleus's page (they attach to live agents'
 terminals); the nexus's page in a browser; the app's window; panning on a GPU.
+
+## Fix — Hive per repository, Settings readable, the ink takes the page (2026-10-30, branch `fix/hive-per-symbiote`)
+
+Hive mode moved from the machine's settings folder to each repository's `symbiote/hive.json`
+(decision 621, replacing 611); the nexus's page never takes it (622); its Settings entry is under
+This repository (623). Settings at the sidenav's foot is readable again, and turning Hive on
+animates until still (624).
+
+**Learned**:
+- **"Not visible" was "not readable"**: Settings' row was there and took clicks
+  (`elementFromPoint` found its link), but the tendrils filled the sidenav's bottom 45 %, its
+  row included, and their white highlights ran through the gear and the word. They are drawn in
+  the workspaces' column now; the sidenav stays their stacking context (`isolation`), so they
+  still sit behind the cards.
+- **A reveal of the new look through a growing mask would show little in dark**: `#090b0e`
+  against `#070506`. The ink is drawn instead, over the window, and the look changes under it.
+- **The ink's strokes need `vector-effect: non-scaling-stroke`**: the layer scales from 0.3 to
+  about 20; a 1.5 px crimson edge would have grown to 30 px.
+- **A pseudo-element cannot go in `:is()`**: `:is(.a, .b::before)` is dropped whole; the
+  reduced-motion rule lists its three selectors.
+- **The e2e repositories have no git user** (`GIT_CONFIG_GLOBAL=/dev/null`), so their reviews,
+  and Hive, go to the cache. The spec gives its `symbiote view` one through git's own variables
+  (`GIT_CONFIG_COUNT`, `GIT_CONFIG_KEY_0`, `GIT_CONFIG_VALUE_0`), as the person's repositories
+  have, and checks `symbiote/hive.json` and a clean `git status`.
+- **Env set in a `describe` body leaks into every other describe of the file** (they are all
+  collected before any test runs): the new `main.test.ts` block sets its variables in
+  `beforeAll`.
+
+**Verification**: tests first (red: two `symbiote view`s both marked by the machine's record;
+the nexus's page marked; no This repository; the tendrils' bottom at 876 against Settings' top
+at 827.5; no ink). `pnpm check` 2,457 tests; `pnpm build`; `pnpm test:e2e` 352 viewer and 15
+nexus tests (one workspace card's position check failed once beside screenshot scripts, Hive
+off; 5 of 5 alone, then the whole suite). Frames of the arrival in both themes at 1440×900;
+every page with Hive on, both themes, and the narrow drawer; `on()` 7–11 ms a page load.
+
+Not verified: the app's window; the off fade's look.

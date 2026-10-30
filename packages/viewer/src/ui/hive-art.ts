@@ -236,3 +236,62 @@ export const JOINING = {
   hexagon: { cx: 260, cy: 64, r: 30 },
   tendrils: [...LEFT, ...LEFT.map(mirror)],
 } as const;
+
+/** A unit vector at `degrees`, `length` long. */
+const toward = (degrees: number, length: number): Point => {
+  const rad = (degrees * Math.PI) / 180;
+  return [length * Math.cos(rad), length * Math.sin(rad)];
+};
+
+/**
+ * Hive's arrival (decision 624): ink round (0, 0), a hexagon of `hexagon` with tendrils bursting
+ * from it, each a cubic that bends one way then back. Scaled from the question's hexagon until
+ * it covers the window (`floodCover`).
+ */
+export const FLOOD = {
+  hexagon: 100,
+  tendrils: [
+    // [angle, length, curl, width], uneven as a splash is.
+    [-80, 240, 18, 62],
+    [-38, 190, -22, 50],
+    [-6, 262, 14, 70],
+    [28, 200, -16, 48],
+    [63, 250, 24, 66],
+    [96, 180, -12, 44],
+    [131, 232, 20, 60],
+    [162, 272, -18, 72],
+    [196, 190, 15, 46],
+    [228, 244, -24, 64],
+    [262, 212, 12, 52],
+  ].map(([angle = 0, length = 0, curl = 0, width = 0]): Tendril => {
+    const from = 55;
+    return {
+      width,
+      tip: 2,
+      path: [
+        [
+          toward(angle, from),
+          toward(angle + curl, from + (length - from) * 0.35),
+          toward(angle - curl * 0.6, from + (length - from) * 0.7),
+          toward(angle + curl * 0.5, length),
+        ],
+      ],
+    };
+  }),
+} as const;
+
+/**
+ * The flood's scale at which its hexagon, round `at`, covers a `width` × `height` window whatever
+ * its turn: its inner circle reaches the farthest corner.
+ */
+export function floodCover([x, y]: Point, width: number, height: number): number {
+  const farthest = Math.max(
+    ...[
+      [0, 0],
+      [width, 0],
+      [0, height],
+      [width, height],
+    ].map(([cx = 0, cy = 0]) => Math.hypot(cx - x, cy - y)),
+  );
+  return (farthest / (FLOOD.hexagon * Math.cos(Math.PI / 6))) * 1.04;
+}

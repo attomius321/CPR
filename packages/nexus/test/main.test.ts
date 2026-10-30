@@ -47,9 +47,11 @@ async function nexus(
   {
     during,
     openApp,
+    env = {},
   }: {
     during?: (url: string) => Promise<void>;
     openApp?: NexusContext['openApp'];
+    env?: NexusContext['env'];
   } = {},
 ) {
   let out = '';
@@ -61,7 +63,7 @@ async function nexus(
   const ctx: NexusContext = {
     stdout: (text) => (out += text),
     stderr: (text) => (err += text),
-    env: { SYMBIOTE_CACHE_DIR: cache, SYMBIOTE_VIEWER_DIR: viewer },
+    env: { SYMBIOTE_CACHE_DIR: cache, SYMBIOTE_VIEWER_DIR: viewer, ...env },
     openUrl: (url) => opened.push(url),
     ...(openApp
       ? {
@@ -129,6 +131,24 @@ describe('symbiote-nexus', () => {
     });
     expect(result.opened).toEqual([]);
     expect(result.asked).toEqual([]);
+  });
+
+  it("never takes Hive mode's look: each tab shows its own Symbiote's (fix/hive-per-symbiote)", async () => {
+    // V82's record in the settings folder, on: the nexus read it for its own page.
+    const config = join(dir, 'config');
+    mkdirSync(join(config, 'symbiote'), { recursive: true });
+    writeFileSync(join(config, 'symbiote', 'hive.json'), '{"on":true}');
+    let page = '';
+    const result = await nexus(['--no-open'], {
+      during: async (url) => {
+        page = await (await fetch(url)).text();
+      },
+      openApp: () => Promise.resolve(null),
+      env: { XDG_CONFIG_HOME: config, APPDATA: config },
+    });
+    expect(result.code).toBe(0);
+    expect(page).toContain('<html');
+    expect(page).not.toContain('data-hive');
   });
 
   it("lists this PC's folders, and starts a Symbiote only in one (NX2)", async () => {

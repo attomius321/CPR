@@ -1,4 +1,4 @@
-import { useId } from 'react';
+import { useId, type CSSProperties } from 'react';
 import {
   centreline,
   hexagon,
@@ -28,10 +28,12 @@ const svgId = (id: string) => id.replace(/[^\w-]/g, '');
 
 /**
  * Hive mode's tendrils at the sidenav's foot (V82, decision 614), behind its rows; decorative.
- * Their colours are `ui/hive.css`'s.
+ * Their colours are `ui/hive.css`'s. Each under a mask along its line, drawn whole but as Hive
+ * arrives, when they grow from their roots one after another (decision 624).
  */
 export function HiveTendrils() {
-  const ink = `hive-ink-${svgId(useId())}`;
+  const id = svgId(useId());
+  const ink = `hive-ink-${id}`;
   return (
     <svg
       className="hive-tendrils"
@@ -45,9 +47,22 @@ export function HiveTendrils() {
           <stop className="hive-ink-deep" offset="0" />
           <stop className="hive-ink-top" offset="1" />
         </linearGradient>
+        {SIDENAV_TENDRILS.map((tendril, i) => (
+          <mask key={i} id={`${id}-rise-${i}`} maskUnits="userSpaceOnUse">
+            <path
+              className="hive-rise"
+              d={centreline(tendril.path)}
+              pathLength={1}
+              strokeWidth={tendril.width + 6}
+              style={{ '--rise': i } as CSSProperties}
+            />
+          </mask>
+        ))}
       </defs>
       {SIDENAV_TENDRILS.map((tendril, i) => (
-        <Body key={i} tendril={tendril} fill={`url(#${ink})`} />
+        <g key={i} mask={`url(#${id}-rise-${i})`}>
+          <Body tendril={tendril} fill={`url(#${ink})`} />
+        </g>
       ))}
     </svg>
   );

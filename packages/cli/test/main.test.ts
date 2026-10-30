@@ -1,9 +1,14 @@
 import { SCHEMA_VERSION } from '@symbiote/core';
-import { afterAll, describe, expect, it, vi } from 'vitest';
-import { readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import { PassThrough } from 'node:stream';
-import { createBranchedRepo, tempDir } from '../../core/test/helpers/git-repo.js';
+import {
+  createBranchedRepo,
+  createRepo,
+  tempDir,
+  type TestRepo,
+} from '../../core/test/helpers/git-repo.js';
 import type { AppWindow } from '../src/app.js';
 import { run } from '../src/main.js';
 
@@ -398,5 +403,94 @@ describe('symbiote diff', () => {
     expect((await symbiote(['diff', 'a', 'b', 'c'], repo.root)).stderr).toContain(
       "unexpected argument 'c'",
     );
+  });
+});
+
+// Hive mode per repository (fix/hive-per-symbiote, decision 621): each repository's `symbiote
+// view` has its own; the config folder's record of V82 is not read.
+describe('symbiote view: Hive mode, per repository', () => {
+  const repos = [createRepo(), createRepo()];
+  for (const repo of repos) {
+    repo.git('config', 'user.email', 'hive@example.com');
+    repo.write({ 'a.ts': 'export const a = 1;\n' });
+    repo.commit('one');
+  }
+  const viewer = tempDir();
+  writeFileSync(join(viewer, 'index.html'), '<html lang="en">viewer</html>');
+  const cacheDir = tempDir();
+  const config = tempDir();
+  const earlier = join(config, 'symbiote', 'hive.json');
+  const EARLIER = '{"on":true,"since":"2026-10-30T18:00:00.000Z"}';
+  mkdirSync(dirname(earlier), { recursive: true });
+  writeFileSync(earlier, EARLIER);
+  const names = [
+    'SYMBIOTE_VIEWER_DIR',
+    'SYMBIOTE_CACHE_DIR',
+    'XDG_CONFIG_HOME',
+    'APPDATA',
+    'SYMBIOTE_USAGE',
+  ] as const;
+  const previous = Object.fromEntries(names.map((name) => [name, process.env[name]]));
+  beforeAll(() => {
+    Object.assign(process.env, {
+      SYMBIOTE_VIEWER_DIR: viewer,
+      SYMBIOTE_CACHE_DIR: cacheDir,
+      // The machine's settings folder on Linux and Windows: V82 kept Hive there.
+      XDG_CONFIG_HOME: config,
+      APPDATA: config,
+      SYMBIOTE_USAGE: 'off',
+    });
+  });
+  afterAll(() => {
+    for (const name of names) {
+      if (previous[name] === undefined) delete process.env[name];
+      else process.env[name] = previous[name];
+    }
+    for (const repo of repos) repo.cleanup();
+    for (const dir of [viewer, cacheDir, config]) rmSync(dir, { recursive: true, force: true });
+  });
+
+  const urlOf = (stdout: () => string) => /Symbiote viewer: (\S+)/.exec(stdout())?.[1] ?? '';
+  const page = async (url: string) => (await fetch(url)).text();
+  const hive = async (url: string) =>
+    ((await (await fetch(new URL('api/hive', url))).json()) as { on: boolean }).on;
+  const OFF = '<html lang="en">viewer</html>';
+  const ON = '<html data-hive="on" lang="en">viewer</html>';
+
+  it("turning it on in one leaves another's off; it is kept for a restart, out of git", async () => {
+    const [one, other] = repos as [TestRepo, TestRepo];
+    const seen: Record<string, unknown> = {};
+    const first = await symbiote(['view', '--no-open'], one.root, async (oneOut) => {
+      const oneUrl = urlOf(oneOut);
+      const second = await symbiote(['view', '--no-open'], other.root, async (otherOut) => {
+        const otherUrl = urlOf(otherOut);
+        seen.before = [await page(oneUrl), await page(otherUrl)];
+        const turned = await fetch(new URL('api/hive', oneUrl), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+          body: '{"on":true}',
+        });
+        seen.turned = turned.status;
+        seen.after = [await page(oneUrl), await page(otherUrl)];
+        seen.api = [await hive(oneUrl), await hive(otherUrl)];
+      });
+      seen.second = second.code;
+    });
+    expect(first.code).toBe(0);
+    expect(seen.second).toBe(0);
+    // The machine's record of an earlier Symbiote turns on neither.
+    expect(seen.before).toEqual([OFF, OFF]);
+    expect(seen.turned).toBe(200);
+    expect(seen.after).toEqual([ON, OFF]);
+    expect(seen.api).toEqual([true, false]);
+    expect(one.git('status', '--porcelain', '--untracked-files=all')).toBe('');
+    // Left as it was.
+    expect(readFileSync(earlier, 'utf8')).toBe(EARLIER);
+
+    const again = await symbiote(['view', '--no-open'], one.root, async (stdout) => {
+      seen.restarted = await page(urlOf(stdout));
+    });
+    expect(again.code).toBe(0);
+    expect(seen.restarted).toBe(ON);
   });
 });

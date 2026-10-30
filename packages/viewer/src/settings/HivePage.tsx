@@ -7,7 +7,7 @@ import { SettingsCard } from './SettingsCard.js';
 /**
  * Hive mode (V82, decision 613): the planned graph loop's switch, a danger to press. What Hive
  * will do, in the error's tint, and a danger button that asks first; off is the safe way and does
- * not ask. Kept for this person on this machine (decision 611); for now it changes only the look.
+ * not ask. Kept for this repository, out of git (decision 621); for now it changes only the look.
  */
 export function HivePage({ onBack }: { onBack: () => void }) {
   const on = useHive();
@@ -19,8 +19,22 @@ export function HivePage({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      await setHive(next);
-      setAsking(false);
+      // The ink bursts from the question's hexagon, which closes under it (decision 624).
+      const hexagon = document
+        .querySelector('.hive-joining .hive-hex-fill')
+        ?.getBoundingClientRect();
+      await setHive(next, {
+        ...(hexagon
+          ? {
+              from: {
+                x: hexagon.x + hexagon.width / 2,
+                y: hexagon.y + hexagon.height / 2,
+                r: hexagon.height / 2,
+              },
+            }
+          : {}),
+        then: () => setAsking(false),
+      });
     } catch (failed) {
       setError(
         `Hive mode could not be turned ${next ? 'on' : 'off'}: ${(failed as Error).message}`,
@@ -72,7 +86,10 @@ export function HivePage({ onBack }: { onBack: () => void }) {
             Turn on Hive mode
           </button>
         )}
-        <p className="settings-row-note">For you on this machine: every repository and window.</p>
+        <p className="settings-row-note">
+          For this repository: every window of its symbiote view. Kept with its reviews, never
+          committed.
+        </p>
       </div>
       {error && (
         <p className="settings-notice error" role="alert">

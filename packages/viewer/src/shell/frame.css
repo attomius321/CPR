@@ -40,7 +40,7 @@
 
 /* What is fixed over the whole window takes the corners too; the drawer, under the title bar,
    those at the bottom. */
-:root[data-frame='own'][data-window='normal'] .dialog-backdrop {
+:root[data-frame='own'][data-window='normal'] :is(.dialog-backdrop, .hive-flood) {
   border-radius: 10px;
 }
 
