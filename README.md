@@ -87,6 +87,12 @@ The places are on the left: your home folder, the folders your Symbiotes are in,
 the Windows drives (`C:`). To go to any folder, hidden ones included, type its path in **Go to
 folder** and press Enter.
 
+To keep a folder at hand, pin it: the pin at the right of the folder's head, or, for a repository,
+the pin in its card's corner. Pinned folders are listed under **Pinned**, below the places, and stay
+there the next time you open the nexus. Clicking one shows it; a pinned repository is shown picked
+in the folder that holds it, and its Symbiote starts only when you open it. A pinned folder that was
+moved or deleted stays marked "not found" until you unpin it with the pin at the end of its row.
+
 Closing the nexus stops no Symbiote, not even the ones it started, so their agents keep working.
 To stop a Symbiote, click the stop button on its card in **Symbiotes**, then **Stop**.
 Its terminals, and the agents working in them, stop with it. If you had opened its tab, the tab

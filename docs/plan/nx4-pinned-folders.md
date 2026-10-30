@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nx4-pinned-folders.md)
 
-**Status:** planned (2026-10-30) on branch `feature/pinned-in-symbiote-nexus` (a workspace started
-in Symbiote). OK'd by the person the same day, with their answers (decisions 617–620).
+**Status:** built (2026-10-30) on branch `feature/pinned-in-symbiote-nexus` (a workspace started
+in Symbiote), ready for review. Planned and OK'd by the person the same day, with their answers
+(decisions 617–620); NX4a–c built. "As built" and results at the end.
 
 **Problem** (asked: "I need pinned feature in symbiote-nexus"; to the plan's questions: what is
 pinned, "Folders"; a pinned one not running, "Wait for my start"; a pin on a repository's card, "As
@@ -50,8 +51,8 @@ until the person asks. **Unchanged**: the row, Symbiotes, starting and stopping 
   count, after the places the nexus finds itself (home stays at the top, where it always is), in
   the order pinned.
 - **A pin's row** is a place's (the sidenav's row): the folder's icon, or the repository's for a
-  repository; its name; a green dot when a Symbiote serves it. The full path is its tooltip. Two
-  pins of one name also show their parent's ("Symbiote · Symbiote.worktrees").
+  repository; its name; a green dot when a Symbiote serves it. Two pins of one name also show
+  their parent's ("Symbiote · Symbiote.worktrees").
 - **A folder that is gone** keeps its pin, marked "not found": the person unpins it. A pin is the
   person's; the nexus never drops one silently.
 - **A place the nexus found that is pinned too** (a running Symbiote's folder) is drawn once, as
@@ -155,3 +156,63 @@ docs.
 **Not in NX4 (later)**: dragging pins to reorder them (unpin and pin again moves one to the end);
 pins on Symbiotes' page or in the row; a Restart button (6 of the person's 7 stops from the nexus
 were followed by a start of the same repository 4–22 s later).
+
+## As built (NX4)
+
+- **The places card is 260 px wide** (NX3's 220): a pin's row keeps room for its unpin, and at 220
+  "Symbiote.worktrees" was cut to "Symbiote.worktr…" and a gone folder's name to "old-not…". The
+  folder's card is 40 px narrower; under 960 px nothing changes.
+- **A pin's unpin is the sidenav's bin** (V55): over the row's end, the row keeping its room
+  (36 px), so the row's hover and current wash span it as a place's do. It shows on the row's
+  hover or keyboard focus (`:has(:focus-visible)`), and always without hover (`@media (hover:
+  hover)`); a card's pin the same. The first try kept the unpin beside the row, in a grid: the
+  row's wash ended 30 px short of the places'.
+- **No tooltip with the full path**: the viewer never draws one by `title` (V54) and the nexus has
+  no tooltips of its own. Two pins of one name show their parent's name, or their parent's path
+  when those are alike as well; a pin's click shows its path in the crumbs.
+- **An unpin from its own row** puts the focus on the next pin's row (the one before it when it was
+  the last), else on the first place.
+- **A pin of a file** is refused, 400 "Not a folder", beside the planned 404 and 422.
+- **Each pin and unpin is a line of the nexus's log** (`folder pinned`, `folder unpinned`, LG1).
+- **The places come with a listing**, as before NX4: a Symbiote started from Folders makes its
+  folder a place at the next listing. The spec of a running Symbiote's folder pinned lists again
+  first.
+- **NX3's spec** counted every `.nexus-group-head` on the page; the places card has one now
+  (Pinned): scoped to the folder's card.
+- **NX4a's commit message** says the unit tests went from 97 to 104: they went from 94. The amend
+  that would have fixed it needed a force-push, refused.
+
+**Results (NX4).** Tests first for the pins (red: no `pins.ts`, no route) and the page's pure part
+(red: `pinNames`, `placesShown`, `currentPlace`, `pinnable` missing): the nexus's unit tests went
+from 94 to 108 (the pins file and its writes 7, the routes 3, the page's pure part 4; the listing's
+test now expects the pins). e2e: a new `pins.spec.ts`, 3 specs (a folder pinned from its head, kept
+from one nexus to the next on the same settings folder, unpinned from its row; a repository pinned
+from its card, its pin showing it picked with no Symbiote started until Enter, then its green dot,
+and a running Symbiote's folder pinned drawn once; a gone folder's pin, "not found", unpinned); the
+nexus's 18 specs pass, the 3 in Symbiote's window under Xvfb among them. `pnpm check` passes
+(2,465 tests); the whole e2e suite passes (`pnpm test:e2e`: the viewer's 349 specs in 5.3 min, then
+the nexus's 18 in 21.7 s). `git diff --stat main`
+touches `packages/nexus`, the docs and the README only: no analysis change, no regression-check.
+
+The pins' cost, on this machine (WSL2), five runs after a warm-up, the person's own folders (read
+only), taken while the e2e suite ran:
+
+| What | Time |
+|---|---|
+| The pins read and described, none pinned | 0.1–0.4 ms |
+| Five pins (`~/projects`, `Symbiote`, `Symbiote.worktrees`, `/mnt/c/Users`, one gone) | 0.6–0.7 ms |
+| `~/projects` listed (46 folders, 16 repositories) | 3.3–4.3 ms |
+| `~/projects` listed and five pins read at once (`GET /api/folders`' work) | 3.6–4.5 ms |
+| A pin or an unpin of a folder (git asked on a pin) | 0.7–2.7 ms |
+| A repository pinned | 2.2–2.5 ms |
+
+Screenshots at 1×, dark and light, Hive mode in both, 1440 and 800 px wide (48): Folders with no
+pins (the hint), with four (a folder, a running repository, a folder in home, one gone), a card's
+pin on hover beside a pinned one, a pin's row on hover, a pinned folder listed (its row current),
+home (no pin in the head). The hint and the Pinned head start at x 33 at both widths, as the
+places card's title.
+
+Not verified: macOS and Windows outside WSL; the person's own window on WSLg (Xvfb only); two
+nexuses pinning in the same few milliseconds (the last write wins: not tested); the person's real
+settings folder (never written: every test and screenshot had its own); a reader test of the
+README's paragraph by a fresh reader.

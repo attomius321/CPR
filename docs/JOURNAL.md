@@ -326,3 +326,4 @@ merge commit.
 - 2026-10-30 [V82 mockups — two looks tried on the running viewer](journal/v82-hive-mode.md)
 - 2026-10-30 [V82 — Hive mode in Settings and its ink and crimson look](journal/v82-hive-mode.md)
 - 2026-10-30 [NX4 spike — how the person uses the nexus, and what Folders offers to come back to](journal/nx4-pinned-folders.md)
+- 2026-10-30 [NX4 — pinned folders in Folders' places, kept in the settings folder](journal/nx4-pinned-folders.md)

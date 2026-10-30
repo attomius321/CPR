@@ -236,7 +236,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
       'button',
       {
         type: 'button',
-        class: pin.missing ? 'nexus-place missing' : 'nexus-place',
+        class: 'nexus-place',
         'aria-current': here ? 'true' : false,
         'data-path': pin.path,
       },
