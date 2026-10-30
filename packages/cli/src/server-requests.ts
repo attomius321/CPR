@@ -227,6 +227,13 @@ export function parsePageError(text: string): PageError {
   return error;
 }
 
+/** `{ on }`: Hive mode turned on or off (V82). */
+export function parseHiveChange(text: string): { on: boolean } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.on !== 'boolean') throw new Error('on: true or false');
+  return { on: value.on };
+}
+
 /** `{ branch, text, stop? }`: a message for a workspace's agent (V18c). */
 export function parseWorkspaceReply(text: string): WorkspaceReply {
   const value = JSON.parse(text) as Record<string, unknown> | null;
