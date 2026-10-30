@@ -154,6 +154,24 @@ after two minutes, or at once if git would ask for one.
 
 No agent reads the library from its folder: it is where you keep and write skills.
 
+## Hive mode
+
+Hive will be Symbiote's graph loop: an orchestrator with full access running a main agent, a
+researcher and a reviewer in every workspace. It is not built yet. Its switch is in **Settings**,
+under **This machine**, **Hive mode**, and turning it on asks first. For now it changes only the
+look: every page in ink and crimson, in both themes, and the S in crimson.
+
+Symbiote keeps the choice for you on this machine, in its settings folder beside `library.json`
+(see [The skill library](#the-skill-library)): `hive.json`. It is not in the project, so a commit
+never turns it on for everyone who clones the repository.
+
+```json
+{ "on": true, "since": "2026-10-30T18:00:00.000Z" }
+```
+
+Every `symbiote view` and the nexus read it when they serve a page. A window already open takes a
+change on its next load.
+
 ## Files Symbiote skips, `.symbioteignore`
 
 Symbiote lists changed files in these folders but does not analyze them, so they show no symbols

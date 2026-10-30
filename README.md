@@ -382,8 +382,10 @@ The sidenav also opens these pages. Each has a key.
 - **Settings** (`s`): the prompts Symbiote gives its agents, such as a workspace agent's first
   prompt; the model and effort of the merger, Nucleus and Scribe (set only here: their pages have no
   such choices); the **Skill library** (its folder,
-  or a repository to clone, and who commits its changes); and **Appearance** (dark, light or your
-  system's, and whether Git's commit details show on the right or below the commits).
+  or a repository to clone, and who commits its changes); **Hive mode** (the switch for Hive, not
+  built yet: for now an ink and crimson look; see
+  [configuration](docs/reference/configuration.md#hive-mode)); and **Appearance** (dark, light or
+  your system's, and whether Git's commit details show on the right or below the commits).
 
 The status bar at the bottom shows how much of your Claude and Codex subscription limits you have
 used.

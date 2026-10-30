@@ -2,11 +2,11 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v82-hive-mode.md)
 
-**Status:** planned (2026-10-30), on branch `feature/hive-mode-setting` (the workspace's); the
-plan confirmed by the person ("YES. Do it") after two rounds of mockups: the first (a neutral ink
-tint, white highlights) was "more like this, but redish and black", with a reference picture of
-glossy black liquid; the second (below) was approved. Then: "Also change the icon to match this
-style" (decision 616).
+**Status:** built, ready for review (2026-10-30), on branch `feature/hive-mode-setting` (the
+workspace's). The plan was confirmed by the person ("YES. Do it") after two rounds of mockups: the
+first (a neutral ink tint, white highlights) was "more like this, but redish and black", with a
+reference picture of glossy black liquid; the second (below) was approved. Then: "Also change the
+icon to match this style" (decision 616).
 
 **Problem** (asked: "Add a Hive mode setting to Settings. Its control must look dangerous to
 press… While Hive mode is on, the whole interface takes a subtle Venom look"). Hive is the planned
@@ -143,3 +143,42 @@ icon (taskbar) stays.
 
 **Not in V82 (later)**: Hive itself; the app's taskbar icon and the desktop start page; other
 open windows following a change at once.
+
+## As built (V82)
+
+- **The question** is a dialog of Hive's own (`settings/HivePage.tsx`), not `ConfirmDialog`: its
+  art, its ink and its two buttons (a danger, a secondary Cancel focused) shared nothing with
+  "Stay" and its primary.
+- **The ink sidenav in light Hive** needs the whole dark set, not only Hive's names: its cards show
+  states, an agent's status and lanes. The theme's dark block also matches
+  `:root[data-hive] .sidenav` and `.hive-ink`; Hive's dark block comes after it.
+- **The sidenav's place**: the tendrils need it positioned, but the narrow shell's drawer is
+  `position: fixed` at the same specificity, and `hive.css` comes after `Shell.css`. The rule is
+  `:where(:root[data-hive]) .sidenav`: no specificity, the drawer keeps its place.
+- **The tendrils** take at most 45 % of the sidenav, their tops cut and faded: whole, they showed
+  through a workspace card's wash in a 700 px window.
+- **The nexus** reads `hive.json` from its own copy of the config folder's rules (a test keeps it
+  equal to the app's): it does not import the CLI.
+- **The S** is cut by `scripts/desktop/icon.mjs` like the others; the existing icons came out byte
+  for byte the same.
+
+**Results.**
+
+- Unit: `pnpm check`, 2,451 tests (CLI: the record and `/api/hive` in both modes, every page's
+  `<html>`; the nexus's page; the viewer: Hive's token blocks against the same contrast rules,
+  the tendrils' geometry).
+- e2e: `hive.spec.ts` (3 tests), `settings.spec.ts` (20 entries, Hive mode's red tile); the whole
+  suite, 349 viewer and 15 nexus tests.
+- **Off is `main`**: every page (Git, Settings with three entries open, Skills, Monitor, History,
+  Start, a diff's Files and Graph), both themes, from `main`'s build and the branch's, back to
+  back, pixel by pixel. Identical but Settings' list (the new entry, and where the list scrolls
+  for an entry under it) and what changes between two shots of `main` itself: the working
+  spinner (≈ 115 px), relative times, a workspace's live timeline, the canvas card's corner
+  pixels (57–74 px).
+- **On**: every page above, dark and light, at 1×, no page errors; text at 3× shows even gaps.
+- **Cost**: panning a diff of 3,468 changed symbols (55 nodes drawn), three runs each,
+  alternated: 60–61 fps with Hive on and off (headless Chromium, its frame clock's cap: the sheen
+  costs no frame there, not measured on a GPU).
+
+Not verified: an open workspace's page and Nucleus's (they attach to live agents' terminals);
+the nexus's page in a browser (its server is unit-tested); the app's window.

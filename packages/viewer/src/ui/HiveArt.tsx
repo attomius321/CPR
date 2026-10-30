@@ -36,7 +36,7 @@ export function HiveTendrils() {
     <svg
       className="hive-tendrils"
       viewBox="0 0 300 420"
-      preserveAspectRatio="xMidYMax meet"
+      preserveAspectRatio="xMidYMax slice"
       aria-hidden="true"
       focusable="false"
     >

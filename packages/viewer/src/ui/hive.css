@@ -48,6 +48,8 @@
     );
 }
 
+/* At most 45 % of the sidenav, their tops cut (`slice`) and faded: in a short window or a full
+   list they stay at its foot, behind the cards' washes, not under their words. */
 .hive-tendrils {
   position: absolute;
   left: 0;
@@ -55,9 +57,10 @@
   z-index: -1;
   width: 100%;
   max-width: 300px;
-  height: auto;
+  height: min(420px, 45%);
   opacity: 0.9;
   pointer-events: none;
+  mask-image: linear-gradient(to top, #000 55%, transparent);
 }
 
 .sidenav.rail .hive-tendrils {

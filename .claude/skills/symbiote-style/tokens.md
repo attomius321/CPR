@@ -153,6 +153,30 @@ the accent.
 A state tint is mixed from its state, never a new hex: `color-mix(in srgb, var(--added) 10%,
 transparent)` for a fill, `25%` for its edge.
 
+## Hive mode (V82, decisions 614–616)
+
+While Hive mode is on (`data-hive="on"` on `<html>`, written by the server), ink and crimson over
+each theme. Three blocks after the themes in `ui/base.css`: dark Hive
+(`:root[data-hive]:not([data-theme='light'])`, also light Hive's `.sidenav` and the Hive dialog's
+`.hive-ink`), light Hive and its system-light copy (equal, tested; the same names as dark Hive's).
+The theme's dark block also matches `:root[data-hive] .sidenav` and `.hive-ink`: an ink element in
+light Hive needs the whole dark set (states, lanes), not only Hive's names. Change a theme's
+surface or words and check Hive's still pass (`tokens.test.ts`, "Hive mode").
+
+| Token | Hive dark | Hive light | Lowest dark / light |
+|---|---|---|---|
+| `--bg` / `--side` / `--raised` | `#070506` / `#0d090a` / `#1b1214` | `#ffffff` / `#f7f4f4` / `#ece5e6` | — |
+| `--line` / `--edge` | `#2b1d20` / `#725b5f` | `#e2d8da` / `#87787b` | 1.23, 3.07 / 1.27, 3.84 |
+| `--text` / `--muted` / `--faint` | `#f7f2f2` / `#bcaeb0` / `#86787b` | `#120a0c` / `#5e5053` / `#84777a` | 16.57, 8.59 / 15.74, 6.16 |
+| `--accent`, `--focus` | `#ffc4cc` | `#9b1230` | 12.26 / 6.71 |
+| `--primary` / `--primary-hover` | `#c8102e` / `#b00d28`, white words | `#b0102b` / `#960c24`, white words | 5.88 / 7.11 |
+| `--hive-red` | `#e0243f` | `#c8102e` | not text: the selection's wash (20 % / 10 %), the art's edges, glows |
+
+States, lanes, kinds of work and type are the theme's. Not tokens: `--hive-gloss` (the primary's
+light from above), `--hive-sheen`, `--hive-streak`, `--hive-glow` (the layer over `.shell-main`).
+The art's own colours (`.hive-ink-*` stops) are in `ui/hive.css`: it is always drawn on ink. Light
+Hive's wine accent is 1.71:1 from `--error`: a selection is a wash, never red words.
+
 ## Outside the tokens
 
 Kept in step by hand, each with a comment pointing here: the terminal's theme

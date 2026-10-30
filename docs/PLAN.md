@@ -224,7 +224,7 @@ hosted.
 | [V71](plan/v71-analyzing-page.md) | The analyzing page in the style: a card on the start page's arcs, the phases as steps, a review named | ✅ | 502–506 | [journal](journal/v71-analyzing-page.md) |
 | [V72](plan/v72-page-frame.md) | One page frame: every page the whole main area, one head, 16 px margins and gutters, the same insets inside cards | ✅ | 507–512 | [journal](journal/v72-page-frame.md) |
 | [V81](plan/v81-settings-list-icons.md) | Settings' list scanned: a lucide icon per entry, on a tile tinted by its group | ✅ | 600–603 | [journal](journal/v81-settings-list-icons.md) |
-| [V82](plan/v82-hive-mode.md) | Hive mode: a dangerous switch in Settings and an ink and crimson look while it is on | planned | 611–616 | [journal](journal/v82-hive-mode.md) |
+| [V82](plan/v82-hive-mode.md) | Hive mode: a dangerous switch in Settings and an ink and crimson look while it is on | ready for review | 611–616 | [journal](journal/v82-hive-mode.md) |
 
 ### Native window
 
