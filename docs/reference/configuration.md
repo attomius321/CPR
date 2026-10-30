@@ -184,7 +184,7 @@ it is. You can delete it.
 
 ## The nexus's pinned folders
 
-The folders you pin in Symbiote nexus's **Folders** are kept in the same settings folder:
+The folders and repositories you pin in Symbiote nexus are kept in the same settings folder:
 `nexus.json`. Pins are kept for this machine, not for a project.
 
 ```json

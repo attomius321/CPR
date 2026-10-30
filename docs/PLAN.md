@@ -246,6 +246,7 @@ hosted.
 | [NX3](plan/nx3-nexus-look.md) | The nexus's own tabs apart from the Symbiotes', fuller pages, a repository the end of Folders | ✅ | 551–555 | [journal](journal/nx3-nexus-look.md) |
 | [NX4](plan/nx4-pinned-folders.md) | Pinned folders: the person's folders and repositories kept in Folders' places from one run to the next | ready for review | 617–620 | [journal](journal/nx4-pinned-folders.md) |
 | [Fix](plan/nx2-open-from-folders.md#fix-a-symbiote-framed-once-this-browser-reaches-it-fixfirst-time-symbiote-from-nexus) | A Symbiote opened from the nexus in Chrome on Windows is framed once Chrome reaches it, not left on Chrome's error page | ready for review | 625 | [journal](journal/fix-first-time-symbiote-from-nexus.md) |
+| [Fix](plan/nx4-pinned-folders.md#fix-pinned-symbiotes-on-symbiotes-the-folders-under-them-fixnexus-pinned-symbiotes) | Pinned repositories among Symbiotes' cards, first; Folders no tab: this PC's folders under the Symbiotes | ready for review | 626–628 | [journal](journal/fix-nexus-pinned-symbiotes.md) |
 
 ### Repository monitoring
 
