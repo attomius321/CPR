@@ -492,9 +492,13 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   `--muted` at the left. Files are added in a dashed drop area (`--field-line`) with the button
   in it. The mockup's arc (`--ground-arc`) rings the head's S. A tall window makes the goal
   taller; the cards stay under the head.
-- A page of settings (Settings and Skills): the frame's head, then the list (280 px, a card) and
-  the open page (a card) to the area's bottom, each scrolling on its own, over the whole width
-  (V72: Settings was centred at 1,400 px). A page is its heading (with its chip and "?") over
+- A page of settings (Settings and Skills): the frame's head, then the list (a card: 300 px in
+  Settings since V81, 280 in Skills) and the open page (a card) to the area's bottom, each
+  scrolling on its own, over the whole width (V72: Settings was centred at 1,400 px). Settings'
+  entries each have a lucide icon on a 22 px tile (8 px radius, the icon 14 px) tinted by their
+  group with a `--phase-*` colour (V81, decisions 600–602): the tile a `--phase-wash` share over
+  `--side`, opaque; the icon in the group's colour at stroke 1.75, the open entry's `--accent` at
+  2.25; the tiles in line with the group's heading. A page is its heading (with its chip and "?") over
   its sections; a prebuilt agent's settings rows (`.settings-rows`: the name an `h3` in
   `--muted` 500) then a section per prompt. A setting of this browser's (the theme, the intro)
   is an entry of the list, not a control in the head.

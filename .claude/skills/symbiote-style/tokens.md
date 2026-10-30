@@ -68,6 +68,9 @@ their own tile (a `--phase-wash` share of the colour over `--bg`: 16 % dark, 12 
 in both themes, unlike lanes 5 and 6 (tan and olive, lime and brown), so the lanes could not be
 reused. A phase's tile, its count, an event's icon, a raw line's chip take them; titles and
 summaries keep the text's colours, and a status stays on its badge and the tile's ring.
+Settings' list tints its groups' tiles with five of them (V81, decision 601: not git's, the
+accent's violet, nor debug's, beside docs' amber), on a tile over `--side`: lowest 5.46 dark,
+3.94 light; the open entry's `--accent` on them 4.83 / 5.27.
 
 | Token | Kind | Dark | Light | Lowest dark / light |
 |---|---|---|---|---|
