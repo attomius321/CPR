@@ -198,3 +198,52 @@ Windows outside WSL; the person's own window on WSLg (Xvfb only); a start on a r
 `/mnt/c` (git over WSL's 9p); a Symbiote stopped while an agent works in one of its terminals
 (the specs run no agent); a reader test of the README's section by a fresh reader.
 
+
+## Fix: a Symbiote framed once this browser reaches it (fix/first-time-symbiote-from-nexus)
+
+**Problem** (2026-10-30, the person: "I get this error on first time connecting to a repo with
+symbiote..fix it", with a screenshot). The nexus was open in Chrome on Windows, over WSL2 with NAT
+networking. After Open Symbiote on a repository, its tab showed Chrome's error page for a frame
+and kept it. A browser on Windows reaches a port that WSL listens on only once WSL forwards it:
+18–858 ms after the server listens. The page framed the Symbiote as soon as its record appeared,
+within about 50 ms of that. Chrome was refused and does not ask again, and the nexus never reloads
+a frame (decision 521). With main's build, headless Chrome on Windows loaded 1 of 6 Symbiotes
+opened this way.
+
+**Decision 625**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 625 | When a frame gets its Symbiote's address | **Once the page's own browser reaches it: a HEAD without CORS, any answer counts, asked every 500 ms for 10 s at most, then framed anyway** (the person: "every 500ms for up to 10s") | The nexus's server reaches a Symbiote from inside WSL, where its port answers as it listens; a browser on Windows reaches it up to ~0.9 s later, and a refused frame stays refused |
+
+- **`src/page/reach.ts`**: `reached(url, reach)` asks until the address answers or 10 s pass, each
+  ask held to the time left. `answers` is the browser's own request, `fetch(url, { method: 'HEAD',
+  mode: 'no-cors', cache: 'no-store' })`: a response of any status is an answer, a network error
+  is not. The Symbiote answers `HEAD /` from the page it holds in memory.
+- **`src/page/main.ts`**: a new frame is made without an address and given one by `address(frame,
+  url)`; so is a moved frame (its Symbiote restarted on another port). A frame unloaded or moved
+  again while it waits is left alone.
+- **While it waits**, the frame shows the page's own ground (`.nexus-frame`'s `var(--bg)`), in
+  both themes. Where the browser runs inside WSL (Symbiote's window, a Linux browser) one ask
+  answers at once.
+
+**As built**: as planned, but every 500 ms instead of the plan's 250 ms (the person's change).
+
+**Results.**
+
+- Tests first, red before: `e2e/folders.spec.ts` refuses each Symbiote's address for its first
+  second (`page.route`), as Windows finds it. Before, the frame stayed on
+  `chrome-error://chromewebdata/` and the Git page never showed; after, it shows, for Open Symbiote
+  and for Start again. `test/reach.test.ts`, 4 tests (red: no module).
+- Chrome on Windows, headless with a profile of its own, driven over the DevTools protocol from
+  Windows' Node: Open Symbiote on a throwaway repository, its frame read 5 s after the click, 6
+  times each. main (`93e0e31`, built from `git archive`): 1 of 6 loaded, 5 frames unreachable.
+  This branch: 6 of 6; the frame committed 814–1,313 ms after the click (the start, then one or
+  two asks).
+- `pnpm check` (2,475 tests), `pnpm build`, `pnpm test:e2e` (the viewer's 352 specs, the nexus's
+  19). `git diff --stat` against `93e0e31` touches `packages/nexus` and the docs only: no analysis
+  change, no regression-check.
+
+Not verified: WSL's mirrored networking; Edge or Firefox on Windows; the person's own Chrome;
+`symbiote view --browser` and `symbiote-nexus --browser` opening a Windows browser on a new port
+(the same gap in principle, not seen: a browser starts slower than WSL forwards a port).

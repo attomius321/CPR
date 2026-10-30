@@ -237,6 +237,39 @@ test.describe('Symbiote nexus: Folders', () => {
     expect(errors).toEqual([]);
   });
 
+  test('frames a Symbiote once this browser reaches it, as WSL forwards a new port late', async ({
+    page,
+  }) => {
+    const errors = pageErrors(page);
+    const { home, cache } = setUp();
+    const served = await nexus(cache, home.dir);
+    // A browser on Windows reaches a WSL port only once WSL forwards it, 18–858 ms after the
+    // Symbiote listens (fix/first-time-symbiote-from-nexus): each Symbiote's address is refused
+    // here for a second from the first request to it.
+    const own = new URL(served.url).origin;
+    const firstAsked = new Map<string, number>();
+    await page.route(/^http:\/\/127\.0\.0\.1:\d+\//, (route) => {
+      const { origin } = new URL(route.request().url());
+      if (origin === own) return route.continue();
+      const since = firstAsked.get(origin) ?? Date.now();
+      firstAsked.set(origin, since);
+      return Date.now() - since < 1000 ? route.abort('connectionrefused') : route.continue();
+    });
+    await page.goto(`${served.url}#folders:${encodeURIComponent(home.projects)}`);
+    await page.getByRole('button', { name: 'Open Symbiote in alpha' }).click();
+    await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
+
+    // Started again, on another port: framed once that one answers too.
+    await tab(page, /^Symbiotes/).click();
+    await page.getByRole('button', { name: 'Stop alpha' }).click();
+    await page.getByRole('button', { name: 'Stop', exact: true }).click();
+    await tab(page, /^alpha/).click();
+    await page.getByRole('button', { name: 'Start again' }).click();
+    await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
+    expect(firstAsked.size).toBe(2);
+    expect(errors).toEqual([]);
+  });
+
   test('a Symbiote started from the nexus serves on after the nexus stops', async ({ page }) => {
     const { home, cache } = setUp();
     const first = await startNexus(cache, home.dir);
