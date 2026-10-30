@@ -383,3 +383,99 @@ test('find a commit by its message, author or SHA; Enter steps through them (V66
   await expect(field).toHaveValue('');
   await expect(page.locator('.commit.matched')).toHaveCount(0);
 });
+
+/**
+ * Moves `wip` to a new commit made elsewhere (an agent's, in its worktree), dated after every
+ * other: the checkout and its files untouched. Its SHA.
+ */
+const commitOnWip = (subject: string) => {
+  const date = `@${Math.floor(Date.now() / 1000) + 3600} +0000`;
+  const sha = execFileSync('git', ['commit-tree', 'wip^{tree}', '-p', 'wip', '-m', subject], {
+    cwd: symbiote.repo,
+    env: { ...env, GIT_AUTHOR_DATE: date, GIT_COMMITTER_DATE: date },
+    encoding: 'utf8',
+  }).trim();
+  git(symbiote.repo, 'update-ref', 'refs/heads/wip', sha);
+  return sha;
+};
+
+/**
+ * Watches the file shown from now on: whether it ever left the page, and whether the page ever
+ * said it lists the commits (it was listed afresh).
+ */
+const watchShown = (page: Page) =>
+  page.evaluate(() => {
+    const shown = document.querySelector('.git-shown');
+    const seen = { removed: shown === null, listing: false };
+    new MutationObserver(() => {
+      if (!shown?.isConnected) seen.removed = true;
+      if (
+        [...document.querySelectorAll('p.hint')].some((p) => p.textContent === 'Listing commits…')
+      )
+        seen.listing = true;
+    }).observe(document.body, { childList: true, subtree: true, characterData: true });
+    Object.assign(window, { seen });
+  });
+const seen = (page: Page) =>
+  page.evaluate(() => (window as unknown as { seen: { removed: boolean; listing: boolean } }).seen);
+
+test('a branch moved elsewhere is listed in place: the file shown stays, the cursor on its commit (fix)', async ({
+  page,
+}) => {
+  await page.goto(`${symbiote.url}git`);
+  await row(page, 'Add cube').click();
+  await pane(page).getByRole('button', { name: 'Show the diff of src/math.ts' }).click();
+  await expect(fileView(page)).toHaveAttribute('aria-label', 'Changes to src/math.ts');
+  await watchShown(page);
+  // Another branch moves, then the window has the focus again.
+  commitOnWip('An agent commits on wip');
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+  await expect(row(page, 'An agent commits on wip')).toHaveCount(1);
+  expect(await seen(page)).toEqual({ removed: false, listing: false });
+  await expect(fileView(page)).toHaveAttribute('aria-label', 'Changes to src/math.ts');
+  await expect(pane(page).locator('.git-details-title')).toHaveText('Add cube');
+  // Back to the rows: the cursor still on its commit, one row lower now.
+  await page.keyboard.press('Escape');
+  await expect(row(page, 'Add cube')).toHaveClass(/cursor/);
+});
+
+test("a workspace's agent committing is listed in place: the file shown stays (fix)", async ({
+  page,
+}) => {
+  // A workspace on wip whose agent works: its list read every 5 s, its tip as git has it.
+  const workspace = (tip: string) => ({
+    workspaces: [
+      {
+        branch: 'wip',
+        kind: 'feature',
+        title: 'A wobble',
+        base: symbiote.shas[2],
+        created: new Date().toISOString(),
+        planFirst: false,
+        brief: '# Feature: a wobble',
+        worktree: { path: symbiote.repo, exists: true },
+        tip,
+        ahead: 1,
+        merged: false,
+        agent: { state: 'working', kind: 'claude' },
+      },
+    ],
+    place: 'repository',
+  });
+  let tip = git(symbiote.repo, 'rev-parse', 'wip');
+  await page.route('**/api/workspaces', (route) =>
+    route.request().method() === 'GET' ? route.fulfill({ json: workspace(tip) }) : route.continue(),
+  );
+  await page.goto(`${symbiote.url}git`);
+  await row(page, 'Add cube').click();
+  await pane(page).getByRole('button', { name: 'Show the diff of src/math.ts' }).click();
+  await expect(fileView(page)).toHaveAttribute('aria-label', 'Changes to src/math.ts');
+  await watchShown(page);
+  tip = commitOnWip('The agent commits');
+  // The next read of the workspaces finds wip moved.
+  await expect(row(page, 'The agent commits')).toHaveCount(1, { timeout: 10_000 });
+  expect(await seen(page)).toEqual({ removed: false, listing: false });
+  await expect(fileView(page)).toHaveAttribute('aria-label', 'Changes to src/math.ts');
+  await page.keyboard.press('Escape');
+  await expect(row(page, 'Add cube')).toHaveClass(/cursor/);
+});
