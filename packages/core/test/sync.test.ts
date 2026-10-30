@@ -2,7 +2,15 @@ import { execFileSync } from 'node:child_process';
 import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { fetchAll, GitRefused, openRepo, pull, push, syncState } from '../src/index.js';
+import {
+  deleteRemoteBranch,
+  fetchAll,
+  GitRefused,
+  openRepo,
+  pull,
+  push,
+  syncState,
+} from '../src/index.js';
 import { createRepo, tempDir, type TestRepo } from './helpers/git-repo.js';
 
 const cleanups: (() => void)[] = [];
@@ -145,5 +153,22 @@ describe('push (V66e)', () => {
     here.write({ 'mine.txt': 'mine\n' });
     here.commit('mine');
     await expect(push(repo)).rejects.toThrow(/rejected|fetch first/);
+  });
+});
+
+describe('deleteRemoteBranch (decision 644)', () => {
+  it("deletes a branch on its remote; refuses the remote's default branch and one not listed", async () => {
+    const { here } = remotes();
+    here.git('push', '--quiet', 'origin', 'main:topic');
+    here.git('fetch', '--quiet', 'origin');
+    here.git('remote', 'set-head', 'origin', 'main');
+    const repo = await openRepo(here.root);
+    await deleteRemoteBranch(repo, 'origin/topic');
+    expect(here.git('ls-remote', '--heads', 'origin')).not.toContain('refs/heads/topic');
+    expect(here.git('branch', '--remotes')).not.toContain('origin/topic');
+    await expect(deleteRemoteBranch(repo, 'origin/main')).rejects.toThrow(
+      "origin/main is origin's default branch",
+    );
+    await expect(deleteRemoteBranch(repo, 'origin/nope')).rejects.toThrow(GitRefused);
   });
 });

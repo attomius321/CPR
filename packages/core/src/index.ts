@@ -131,6 +131,43 @@ export {
 } from './git/commit-info.js';
 export { GitRefused } from './git/refused.js';
 export {
+  cherryPick,
+  commitsLeaving,
+  discardFile,
+  endOperation,
+  mergeInto,
+  rebaseOnto,
+  resetTo,
+  RESET_MODES,
+  revertCommit,
+  type OperationEnd,
+  type ResetMode,
+  type Stoppable,
+} from './git/operations.js';
+export {
+  blameFile,
+  fileHistory,
+  parseBlame,
+  type BlameCommit,
+  type BlameLine,
+  type FileBlame,
+  type FileCommit,
+} from './git/file-log.js';
+export {
+  partialPatch,
+  stageLines,
+  type LinePick,
+  type LinesRequest,
+} from './git/line-staging.js';
+export {
+  applyStash,
+  dropStash,
+  listStashes,
+  stashChanges,
+  type StashEntry,
+} from './git/stash.js';
+export {
+  deleteRemoteBranch,
   fetchAll,
   pull,
   PULL_MODES,

@@ -152,3 +152,30 @@ export async function push(repo: GitRepo): Promise<{ upstream: string; set?: tru
   const upstream = `${target.remote}/${target.ref.replace(/^refs\/heads\//, '')}`;
   return { upstream, ...(target.set ? { set: true as const } : {}) };
 }
+
+/**
+ * Deletes a remote branch (`origin/topic`) on its remote (decision 644): `git push <remote>
+ * --delete`, never forced. Refused for one not listed and for the remote's default branch (its
+ * `HEAD`), which is everyone's; a rejection is said in git's words.
+ */
+export async function deleteRemoteBranch(repo: GitRepo, name: string): Promise<void> {
+  const remote = (await listRefs(repo)).remotes.find((r) => r.name === name);
+  if (!remote) throw new GitRefused(`no remote branch ${name}`);
+  const head = (
+    await git(repo.root, ['symbolic-ref', '--quiet', `refs/remotes/${remote.remote}/HEAD`]).catch(
+      () => '',
+    )
+  ).trim();
+  if (head === `refs/remotes/${name}`)
+    throw new GitRefused(`${name} is ${remote.remote}'s default branch`);
+  try {
+    await git(
+      repo.root,
+      ['push', '--quiet', remote.remote, '--delete', `refs/heads/${remote.branch}`],
+      await network(repo),
+    );
+  } catch (error) {
+    if (error instanceof GitError) throw new GitRefused(words(error), { cause: error });
+    throw error;
+  }
+}

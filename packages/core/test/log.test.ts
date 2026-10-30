@@ -186,6 +186,19 @@ describe('streamHistory', () => {
     }
   });
 
+  it('leaves hidden branches out of every branch (decision 645), never HEAD', async () => {
+    const git = await openRepo(repo.root);
+    const hidden = ['refs/heads/wip', 'refs/remotes/origin/topic', 'refs/heads/main'];
+    const rows: HistoryRow[] = [];
+    await streamHistory(git, 'all', (batch) => rows.push(...batch), hidden);
+    expect(new Set(rows.map((r) => r.sha))).toEqual(new Set([A, B, F, M, C]));
+    expect(await findCommits(git, 'all', 'W', hidden)).toEqual([]);
+    expect(await findCommits(git, 'all', 'W')).toEqual([W]);
+    const state = await historyState(git);
+    expect((await historyState(git, hidden)).version).not.toBe(state.version);
+    expect((await historyState(git, [])).version).toBe(state.version);
+  });
+
   it('lists nothing in a repository without commits', async () => {
     const empty = createRepo();
     try {
