@@ -333,3 +333,4 @@ merge commit.
 - 2026-10-30 [Spike — push instead of polling: a noticeable improvement, and reliable with one stream per browser](journal/spike-push-instead-of-polling.md)
 - 2026-10-30 [Hive tentacles spike — three candidates, then Carnage](journal/v82-hive-mode.md)
 - 2026-10-30 [Hive tentacles — built](journal/v82-hive-mode.md)
+- 2026-10-31 [Fix — no Hive tendrils in the sidenav](journal/fix-remove-hive-tendrils-from-sidenav.md)

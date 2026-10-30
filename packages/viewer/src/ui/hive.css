@@ -1,4 +1,4 @@
-/* Hive mode's look (V82, decisions 614–616): the gloss, the tendrils and the dialog; its tokens
+/* Hive mode's look (V82, decisions 614–616): the gloss and the dialog; its tokens
    are in `ui/base.css`. Everything here is under `:root[data-hive]`, but Hive mode's own page and
    question, which look the same whether it is on: off, the interface is main's. Last in the
    cascade (`styles.css`). */
@@ -31,18 +31,7 @@
     radial-gradient(55% 50% at 100% 100%, var(--hive-glow), transparent 70%);
 }
 
-/* The sidenav: light from above, a crimson glow at its foot, the tendrils behind its rows (its
-   own stacking context, at no specificity: the narrow shell's drawer keeps its place, Shell.css).
-   They rise from the hairline over Settings: placed in the workspaces' column, not the sidenav,
-   so Settings' row stays on plain ground. */
-:where(:root[data-hive]) .sidenav {
-  isolation: isolate;
-}
-
-:where(:root[data-hive]) .sidenav-workspaces {
-  position: relative;
-}
-
+/* The sidenav: light from above, a crimson glow at its foot. */
 :root[data-hive] .sidenav {
   background-image:
     linear-gradient(170deg, var(--hive-sheen), transparent 40%),
@@ -53,30 +42,8 @@
     );
 }
 
-/* At most 70 % of the workspaces' column (about V82's 45 % of the sidenav), their tops cut
-   (`slice`) and faded: in a short window or a full list they stay at its foot, behind the cards'
-   washes, not under their words. */
-.hive-tendrils {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  z-index: -1;
-  width: 100%;
-  max-width: 300px;
-  height: min(420px, 70%);
-  /* Filled glossy tendrils sit behind the words: at 0.6 the muted ones keep 4.46:1 against the
-     brightest pixel behind them, the others 8.75:1 (at 0.9, 3.14). */
-  opacity: 0.6;
-  pointer-events: none;
-  mask-image: linear-gradient(to top, #000 55%, transparent);
-}
-
-.sidenav.rail .hive-tendrils {
-  display: none;
-}
-
 /* The tendrils' and the Hive Mind's colours (decision 629, Carnage's red and black), read once by
-   `hive-draw.ts` for each canvas: the question's, the sidenav's and the arrival's. */
+   `hive-draw.ts` for each canvas: the question's and the arrival's. */
 .hive-art {
   --art-ink: #0b0102;
   --art-lit: #6e0a19;

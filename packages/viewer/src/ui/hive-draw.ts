@@ -4,7 +4,6 @@
 // arrival's blackout and boom. The colours are `hive.css`'s (`.hive-art`), read once.
 import {
   ARRIVAL,
-  edgeAt,
   hash,
   noise,
   Rope,
@@ -15,7 +14,6 @@ import {
   type Mind,
   type Plug,
   type QuestionScene,
-  type SidenavScene,
 } from './hive-art.js';
 
 /** Hive's art colours, `#rrggbb`, from `hive.css`'s custom properties on the canvas. */
@@ -457,90 +455,6 @@ export class Painter {
     for (const plug of scene.plugs) this.foot(ctx, plug, t);
   }
 
-  /** The sidenav's foot: strands, the tendrils (small ones behind), webbing between roots, the pool. */
-  sidenav(ctx: CanvasRenderingContext2D, scene: SidenavScene): void {
-    const t = scene.t;
-    this.strands(ctx, scene.strands, t);
-    // Small ones behind; highlights at half, as the words are over them.
-    for (const i of [5, 6, 7, 8, 1, 3, 0, 4, 2]) {
-      const free = scene.tendrils[i];
-      if (free) this.free(ctx, free, t, 0.5);
-    }
-    const big = scene.tendrils;
-    for (let i = 0; i < 4; i++) {
-      const a = big[i];
-      const b = big[i + 1];
-      if (a && b)
-        this.web(
-          ctx,
-          a,
-          b,
-          0.13 + 0.05 * ((i * 7) % 3),
-          0.12 + 0.04 * ((i * 5) % 3),
-          scene.height,
-          t,
-          i,
-        );
-    }
-    // The pool they rise out of, along the foot.
-    const out = this.scratch;
-    for (let k = 0; k < 16; k++) {
-      const s = k / 15;
-      out.px[k] = -10 + s * (scene.width + 20);
-      out.py[k] = scene.height + 8 - 6 * noise(s * 5 + t * 0.15, 61);
-      out.hw[k] = 16 + 6 * noise(s * 7 + 3, 62);
-    }
-    this.rope(ctx, out, 16, { t, seed: 61, specK: 0.5 });
-  }
-
-  /** Goo webbing between two roots: a membrane whose free edge sags, wet along its rim. */
-  private web(
-    ctx: CanvasRenderingContext2D,
-    a: Free,
-    b: Free,
-    sa: number,
-    sb: number,
-    height: number,
-    t: number,
-    k: number,
-  ): void {
-    if (!a.alive || !b.alive || a.len.x < 20 || b.len.x < 20) return;
-    const pa = Array.from({ length: 7 }, (_, q) => edgeAt(a.rope, (sa * q) / 6, 1));
-    const pb = Array.from({ length: 7 }, (_, q) => edgeAt(b.rope, (sb * q) / 6, -1));
-    const [ax, ay] = pa[6]!;
-    const [bx, by] = pb[6]!;
-    const mx = (ax + bx) / 2;
-    const my =
-      Math.min(ay, by) +
-      (height + 20 - Math.min(ay, by)) * (0.55 + 0.1 * noise(t * 0.3, 70 + k)) * 0.6;
-    const path = new Path2D();
-    path.moveTo(pa[0]![0], height + 40);
-    for (const [x, y] of pa) path.lineTo(x, y);
-    path.quadraticCurveTo(mx, my, bx, by);
-    for (let q = 6; q >= 0; q--) path.lineTo(pb[q]![0], pb[q]![1]);
-    path.lineTo(pb[0]![0], height + 40);
-    path.closePath();
-    const g = ctx.createLinearGradient(0, my - 30, 0, height);
-    g.addColorStop(0, this.palette.wallLit);
-    g.addColorStop(0.25, this.palette.ink);
-    g.addColorStop(1, this.palette.ink);
-    ctx.fillStyle = g;
-    ctx.fill(path);
-    ctx.lineCap = 'round';
-    ctx.strokeStyle = `rgba(${this.glow},0.55)`;
-    ctx.lineWidth = 1.4;
-    ctx.beginPath();
-    ctx.moveTo(ax, ay);
-    ctx.quadraticCurveTo(mx, my, bx, by);
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(${this.spec},0.32)`;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(ax + (mx - ax) * 0.25, ay + (my - ay) * 0.25 + 1.5);
-    ctx.quadraticCurveTo(mx, my + 1.5, bx + (mx - bx) * 0.4, by + (my - by) * 0.4 + 1.5);
-    ctx.stroke();
-  }
-
   /**
    * The Hive Mind: its aura, the comb as one glossy mass, each chamber lit from within (the core
    * white-hot at the height of a beat), its outer walls catching the light, sparks of thought.
@@ -868,15 +782,14 @@ function trace(
 }
 
 /**
- * Draws a `width` × `height` scene on `canvas` at the device's pixel ratio times `scale`: whole and
- * centred (`contain`), or covering it from its bottom (`bottom`, the sidenav's).
+ * Draws a `width` × `height` scene on `canvas` at the device's pixel ratio times `scale`, whole and
+ * centred.
  */
 export function paint(
   canvas: HTMLCanvasElement,
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  how: 'contain' | 'bottom',
   scale: number,
   draw: (ctx: CanvasRenderingContext2D) => void,
 ): void {
@@ -886,17 +799,9 @@ export function paint(
   const ch = Math.max(1, Math.round(box.height * dpr));
   if (canvas.width !== cw) canvas.width = cw;
   if (canvas.height !== ch) canvas.height = ch;
-  const k =
-    how === 'contain' ? Math.min(cw / width, ch / height) : Math.max(cw / width, ch / height);
+  const k = Math.min(cw / width, ch / height);
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, cw, ch);
-  ctx.setTransform(
-    k,
-    0,
-    0,
-    k,
-    (cw - width * k) / 2,
-    how === 'bottom' ? ch - height * k : (ch - height * k) / 2,
-  );
+  ctx.setTransform(k, 0, 0, k, (cw - width * k) / 2, (ch - height * k) / 2);
   draw(ctx);
 }

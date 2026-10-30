@@ -46,8 +46,6 @@ import {
   WORKSPACE_HISTORY_PAGE,
 } from './pages.js';
 import { Resizer } from '../ui/Resizer.js';
-import { HiveTendrils } from '../ui/HiveArt.js';
-import { useHive } from './hive.js';
 import { nextNucleusMark, type NucleusMark } from '../nucleus/page-agent.js';
 import { mergesWaiting, nucleusWaiting, scribeWaiting } from './waiting.js';
 import { useAsks } from './useAsks.js';
@@ -135,7 +133,6 @@ export function Sidenav({
   flashed: string | null;
 }) {
   const shell = useShell();
-  const hive = useHive();
   const { list, reviews, merges, nucleus, scribe, failing, readAt } = useWorkspaces();
   // Workspaces being made (V48), until the list has them.
   const starts = useStarts().filter(
@@ -447,8 +444,6 @@ export function Sidenav({
             );
           })}
         </div>
-        {/* Behind the cards, rising from the hairline over Settings: its row on plain ground. */}
-        {hive && <HiveTendrils />}
       </section>
       {/* Settings at the bottom, under the workspaces: not a page one works in. No landmark of its
           own: the Settings page has the navigation named "Settings". */}
