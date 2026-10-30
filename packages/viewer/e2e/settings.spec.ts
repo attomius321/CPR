@@ -75,6 +75,7 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
     'Workspaces',
     'Reviews',
     'Prebuilt agents',
+    'This repository',
     'This machine',
     'This browser',
   ]);
@@ -385,8 +386,9 @@ const ICONS: [group: string, name: string, drawing: string, tint: string][] = [
   ['Prebuilt agents', 'Nucleus', '<circle cx="12" cy="12" r="1">', '--phase-visual'],
   ['Prebuilt agents', 'Scribe', 'M9.937 15.5', '--phase-visual'],
   ['This machine', 'Skill library', 'M20 20a2 2 0 0 0 2-2V8', '--phase-docs'],
-  // V82: Hive mode's tile in the error's red, the only one not its group's.
-  ['This machine', 'Hive mode', 'M21 16V8a2 2 0 0 0-1-1.73', '--error'],
+  // V82: Hive mode's tile in the error's red, the only one not its group's; this repository's
+  // (decision 623).
+  ['This repository', 'Hive mode', 'M21 16V8a2 2 0 0 0-1-1.73', '--error'],
   ['This browser', 'Appearance', 'M12 22a1 1 0 0 1 0-20', '--phase-explore'],
 ];
 

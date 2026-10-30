@@ -447,6 +447,8 @@ export function Sidenav({
             );
           })}
         </div>
+        {/* Behind the cards, rising from the hairline over Settings: its row on plain ground. */}
+        {hive && <HiveTendrils />}
       </section>
       {/* Settings at the bottom, under the workspaces: not a page one works in. No landmark of its
           own: the Settings page has the navigation named "Settings". */}
@@ -462,7 +464,6 @@ export function Sidenav({
           <kbd aria-hidden="true">s</kbd>
         </a>
       </footer>
-      {hive && <HiveTendrils />}
     </aside>
   );
 }

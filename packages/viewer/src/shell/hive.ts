@@ -1,11 +1,13 @@
-// Hive mode (V82): kept for this person on this machine by `symbiote view` (decision 611), and
-// written on <html> as `data-hive` with the page (decision 612), so the look is there from the
-// first paint. This module reads it, turns it on or off from Settings, and keeps the tab's icon in
-// step (decision 616).
+// Hive mode (V82): kept for this repository by its `symbiote view` (decision 621), and written on
+// <html> as `data-hive` with the page (decision 612), so the look is there from the first paint.
+// This module reads it, turns it on or off from Settings, and keeps the tab's icon in step
+// (decision 616). On, the ink takes the page (decision 624, `hive-arrival.ts`); off, a short fade.
 import { useSyncExternalStore } from 'react';
+import { flushSync } from 'react-dom';
 import { postJson } from '../ui/http.js';
 import favicon from './favicon.png';
 import faviconHive from './favicon-hive.png';
+import { arrive, lessMotion, type Origin } from './hive-arrival.js';
 
 /** Whether Hive mode is on, as the page says. */
 export function isHive(): boolean {
@@ -20,13 +22,44 @@ export function showTabIcon(on = isHive()): void {
   if (link) link.href = on ? faviconHive : favicon;
 }
 
-/** Turns Hive mode on or off for every page and window; the look follows once it is kept. */
-export async function setHive(on: boolean): Promise<void> {
+/** The page in the mode's look, every listener told, all drawn before it returns. */
+function show(on: boolean, then?: () => void): void {
+  flushSync(() => {
+    if (on) document.documentElement.dataset.hive = 'on';
+    else delete document.documentElement.dataset.hive;
+    showTabIcon(on);
+    for (const listener of listeners) listener();
+    then?.();
+  });
+}
+
+/**
+ * Turns Hive mode on or off for this repository's pages; the look follows once it is kept, and
+ * `then` runs as it changes (the question closing under the ink). On, the ink bursts from `from`
+ * (the question's hexagon; the window's middle without one); off, the page fades. Resolves once
+ * the look has changed; the arrival goes on to its end.
+ */
+export async function setHive(
+  on: boolean,
+  { from, then }: { from?: Origin; then?: () => void } = {},
+): Promise<void> {
   const kept = await postJson<{ on: boolean }>('/api/hive', { on });
-  if (kept.on) document.documentElement.dataset.hive = 'on';
-  else delete document.documentElement.dataset.hive;
-  showTabIcon(kept.on);
-  for (const listener of listeners) listener();
+  if (kept.on === isHive() || lessMotion()) return show(kept.on, then);
+  if (kept.on) {
+    const origin = from ?? { x: window.innerWidth / 2, y: window.innerHeight / 2, r: 30 };
+    return new Promise((resolve) => {
+      void arrive(origin, () => {
+        show(true, then);
+        resolve();
+      });
+    });
+  }
+  if (!document.startViewTransition) return show(false, then);
+  const root = document.documentElement;
+  root.dataset.hiveLeaving = '';
+  const fade = document.startViewTransition(() => show(false, then));
+  void fade.finished.finally(() => delete root.dataset.hiveLeaving);
+  await fade.updateCallbackDone;
 }
 
 function subscribe(listener: () => void): () => void {

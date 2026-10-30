@@ -224,8 +224,9 @@ const ADVISOR: Record<Advising, AgentSettings> = {
 const APPEARANCE = 'appearance';
 /** The skill library (SK1): this machine's, for every repository, not the project's. */
 const LIBRARY = 'skill-library';
-/** Hive mode (V82): this person's on this machine, a danger to press. */
+/** Hive mode (V82): this repository's, kept out of git (decision 623), a danger to press. */
 const HIVE = 'hive-mode';
+const REPOSITORY_GROUP = 'This repository';
 const MACHINE_GROUP = 'This machine';
 const BROWSER_GROUP = 'This browser';
 type EntryKey = PromptKey | typeof LIBRARY | typeof APPEARANCE | typeof HIVE;
@@ -299,9 +300,9 @@ interface Notice {
  * Settings (V28b): every agent's prompts, Symbiote's until the project changes them. A change is
  * saved in `symbiote/config.json` (`prompts`); unsaved drafts are kept while another prompt is
  * open, and leaving the page with one asks first. A prebuilt agent is one entry, whose page holds
- * its model, its effort and its prompt (fix/scout-merger-scribe-settings). This machine's Skill
- * library (SK1) and this browser's Appearance (V51) are the last entries, listed even when the
- * prompts cannot be read.
+ * its model, its effort and its prompt (fix/scout-merger-scribe-settings). This repository's Hive
+ * mode (V82), this machine's Skill library (SK1) and this browser's Appearance (V51) are the last
+ * entries, listed even when the prompts cannot be read.
  */
 export function SettingsPage() {
   const [settings, setSettings] = useState<PromptSettings | null>(null);
@@ -475,6 +476,23 @@ export function SettingsPage() {
                 </ul>
               </section>
             ))}
+            {/* Untinted: its one entry's tile is Hive mode's red. */}
+            <section aria-label={REPOSITORY_GROUP}>
+              <h2>{REPOSITORY_GROUP}</h2>
+              <ul>
+                <li>
+                  <button
+                    type="button"
+                    aria-current={open === HIVE ? 'true' : undefined}
+                    onClick={() => show(HIVE)}
+                  >
+                    <Tile entry={HIVE} />
+                    <span className="settings-name">Hive mode</span>
+                    {hive && <span className="settings-mark hive-on">on</span>}
+                  </button>
+                </li>
+              </ul>
+            </section>
             <section aria-label={MACHINE_GROUP} data-tint={TINTS[MACHINE_GROUP]}>
               <h2>{MACHINE_GROUP}</h2>
               <ul>
@@ -486,17 +504,6 @@ export function SettingsPage() {
                   >
                     <Tile entry={LIBRARY} />
                     <span className="settings-name">Skill library</span>
-                  </button>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    aria-current={open === HIVE ? 'true' : undefined}
-                    onClick={() => show(HIVE)}
-                  >
-                    <Tile entry={HIVE} />
-                    <span className="settings-name">Hive mode</span>
-                    {hive && <span className="settings-mark hive-on">on</span>}
                   </button>
                 </li>
               </ul>

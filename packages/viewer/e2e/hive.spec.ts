@@ -1,13 +1,15 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveCommits, type RunningCommits } from './symbiote.js';
 
-// Hive mode (V82): a dangerous switch in Settings, asked before it turns on, kept for the person in
-// Symbiote's config folder (here a folder of the spec's own), and the ink and crimson look on
-// every page while it is on, from the first paint.
+// Hive mode (V82): a dangerous switch in Settings, asked before it turns on, kept per repository in
+// its `symbiote/` (decision 621), and the ink and crimson look on every page while it is on, from
+// the first paint; the ink takes the page as it turns on (decision 624).
 let symbiote: RunningCommits | undefined;
+let other: RunningCommits | undefined;
 let config: string;
 const errors: string[] = [];
 
@@ -19,13 +21,24 @@ test.beforeEach(({ page }) => {
 
 test.afterEach(() => {
   symbiote?.stop();
-  symbiote = undefined;
+  other?.stop();
+  symbiote = other = undefined;
   rmSync(config, { recursive: true, force: true });
   expect(errors).toEqual([]);
 });
 
-const serve = async () => (symbiote = await serveCommits({ XDG_CONFIG_HOME: config }));
-const record = () => join(config, 'symbiote', 'hive.json');
+/** A `symbiote view` with a git user (git's own variables): its reviews, so Hive, in `symbiote/`. */
+const view = () =>
+  serveCommits({
+    XDG_CONFIG_HOME: config,
+    GIT_CONFIG_COUNT: '1',
+    GIT_CONFIG_KEY_0: 'user.email',
+    GIT_CONFIG_VALUE_0: 'hive@example.com',
+  });
+const serve = async () => (symbiote = await view());
+const record = () => join(symbiote!.repo, 'symbiote', 'hive.json');
+/** Where V82 kept it for the whole machine: never read since. */
+const machineRecord = () => join(config, 'symbiote', 'hive.json');
 const hivePage = (page: Page) => page.goto(`${symbiote!.url}settings?prompt=hive-mode`);
 const html = (page: Page) => page.locator('html');
 const editor = (page: Page) => page.getByRole('region', { name: 'Hive mode' });
@@ -38,19 +51,23 @@ const colour = (page: Page, selector: string, property: 'color' | 'backgroundCol
     .first()
     .evaluate((element, property) => getComputedStyle(element)[property], property);
 
-test('Hive mode: a danger to press, asked first, kept for the person, its look on every page', async ({
+test('Hive mode: a danger to press, asked first, kept for the repository, its look on every page', async ({
   page,
 }) => {
+  // The machine's record of V82, on: neither Symbiote takes it.
+  mkdirSync(join(config, 'symbiote'), { recursive: true });
+  writeFileSync(machineRecord(), '{"on":true}');
   await serve();
+  other = await view();
   await hivePage(page);
   await expect(html(page)).not.toHaveAttribute('data-hive');
   expect(await colour(page, 'body', 'backgroundColor')).toBe('rgb(9, 11, 14)');
 
-  // Under This machine, the open entry; what it would do, in the error's tint; a danger button.
-  const machine = page
+  // Under This repository, the open entry; what it would do, in the error's tint; a danger button.
+  const repository = page
     .getByRole('navigation', { name: 'Settings' })
-    .getByRole('region', { name: 'This machine' });
-  await expect(machine.getByRole('button', { name: 'Hive mode' })).toHaveAttribute(
+    .getByRole('region', { name: 'This repository' });
+  await expect(repository.getByRole('button', { name: 'Hive mode' })).toHaveAttribute(
     'aria-current',
     'true',
   );
@@ -59,6 +76,9 @@ test('Hive mode: a danger to press, asked first, kept for the person, its look o
     'Hive runs agents with full access to this machine.',
   );
   await expect(turnOn(page)).toHaveClass(/\bdanger\b/);
+  await expect(editor(page)).toContainText(
+    'For this repository: every window of its symbiote view. Kept with its reviews, never committed.',
+  );
 
   // Escape and a click beside the question cancel; Cancel is where the focus is.
   await turnOn(page).click();
@@ -82,11 +102,21 @@ test('Hive mode: a danger to press, asked first, kept for the person, its look o
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
   expect(await colour(page, 'body', 'backgroundColor')).toBe('rgb(7, 5, 6)');
   await expect(editor(page).getByRole('heading', { level: 2 })).toHaveText('Hive mode On');
-  await expect(machine.getByRole('button', { name: 'Hive mode on' })).toBeVisible();
+  await expect(repository.getByRole('button', { name: 'Hive mode on' })).toBeVisible();
   await expect(page.locator('.sidenav .hive-tendrils')).toBeAttached();
   await expect(page.locator('.sidenav-brand img')).toHaveAttribute('src', /mark-hive/);
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /favicon-hive/);
   expect(JSON.parse(readFileSync(record(), 'utf8'))).toMatchObject({ on: true });
+  // Out of git; the machine's record as it was; another repository's Symbiote as it was.
+  expect(
+    execFileSync('git', ['status', '--porcelain', '--untracked-files=all'], {
+      cwd: symbiote!.repo,
+      encoding: 'utf8',
+    }),
+  ).toBe('');
+  expect(readFileSync(machineRecord(), 'utf8')).toBe('{"on":true}');
+  const elsewhere = await page.request.get(`${other.url}git`);
+  expect(await elsewhere.text()).not.toContain('data-hive');
 
   // A reload, and every page: marked by the server, so from the first paint.
   const reloaded = await page.reload();
@@ -165,4 +195,78 @@ test('the tendrils join, then all is still; with reduced motion, at once', async
       .locator('.hive-hex-fill')
       .evaluate((e) => getComputedStyle(e).opacity),
   ).toBe('1');
+});
+
+test('the tendrils rise from above Settings: its row stays on plain ground', async ({ page }) => {
+  await serve();
+  await hivePage(page);
+  await turnOn(page).click();
+  await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
+  await expect(html(page)).toHaveAttribute('data-hive', 'on');
+  const tendrils = await page.locator('.sidenav .hive-tendrils').boundingBox();
+  const foot = await page.locator('.sidenav-foot').boundingBox();
+  expect(tendrils!.y + tendrils!.height).toBeLessThanOrEqual(foot!.y + 0.5);
+});
+
+/** The animations of Hive's arrival still running: the ink, the tendrils, the sheen. */
+const arriving = (page: Page) =>
+  page.evaluate(
+    () =>
+      document.getAnimations().filter((animation) => {
+        const effect = animation.effect as KeyframeEffect | null;
+        const target = effect?.target;
+        return (
+          animation.playState !== 'finished' &&
+          !!target &&
+          (!!target.closest('.hive-flood, .hive-tendrils') ||
+            (target.matches('.shell-main') && !!effect.pseudoElement))
+        );
+      }).length,
+  );
+
+test('turning on, the ink takes the page from the hexagon, the tendrils grow, then all is still', async ({
+  page,
+}) => {
+  await serve();
+  await hivePage(page);
+  await turnOn(page).click();
+  await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
+  // The ink over the page; the look changes under it, the question gone.
+  await expect(page.locator('.hive-flood')).toBeAttached();
+  await expect(html(page)).toHaveAttribute('data-hive', 'on');
+  await expect(question(page)).toBeHidden();
+  await page.waitForFunction(
+    () =>
+      document
+        .getAnimations()
+        .some((animation) =>
+          (animation.effect as KeyframeEffect | null)?.target?.closest('.hive-tendrils'),
+        ),
+    undefined,
+    { timeout: 3_000 },
+  );
+  // Then still, within 3 s: the ink gone, nothing of the arrival running.
+  await expect(page.locator('.hive-flood')).toHaveCount(0, { timeout: 3_000 });
+  await expect(html(page)).not.toHaveAttribute('data-hive-arriving', { timeout: 3_000 });
+  expect(await arriving(page)).toBe(0);
+
+  // Loaded with Hive on: still from the first paint.
+  await page.reload();
+  await expect(html(page)).toHaveAttribute('data-hive', 'on');
+  await expect(page.locator('.sidenav .hive-tendrils')).toBeAttached();
+  expect(await arriving(page)).toBe(0);
+  await expect(page.locator('.hive-flood')).toHaveCount(0);
+});
+
+test('with reduced motion, Hive turns on at once: no ink, no growing', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await serve();
+  await hivePage(page);
+  await turnOn(page).click();
+  await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
+  await expect(html(page)).toHaveAttribute('data-hive', 'on');
+  await expect(page.locator('.sidenav .hive-tendrils')).toBeAttached();
+  expect(await arriving(page)).toBe(0);
+  await expect(page.locator('.hive-flood')).toHaveCount(0);
+  await expect(html(page)).not.toHaveAttribute('data-hive-arriving');
 });
