@@ -328,3 +328,4 @@ merge commit.
 - 2026-10-30 [NX4 spike — how the person uses the nexus, and what Folders offers to come back to](journal/nx4-pinned-folders.md)
 - 2026-10-30 [NX4 — pinned folders in Folders' places, kept in the settings folder](journal/nx4-pinned-folders.md)
 - 2026-10-30 [Fix — Hive per repository, Settings readable, the ink takes the page](journal/v82-hive-mode.md)
+- 2026-10-30 [Spike — push instead of polling: a noticeable improvement, and reliable with one stream per browser](journal/spike-push-instead-of-polling.md)

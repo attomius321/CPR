@@ -1,0 +1,54 @@
+
+## the view runs
+main (no ping)           median 25.4 ms, p90 27.2, max 28.2; pings received 0/60
+spike, ping off          median 26.8 ms, p90 29.3, max 37.1; pings received 0/60
+spike, http (waits)      median 43.4 ms, p90 46.0, max 53.1; pings received 60/60
+spike, http (no wait)    median 42.8 ms, p90 45.0, max 46.5; pings received 60/60
+spike, udp               median 28.1 ms, p90 29.9, max 31.1; pings received 60/60
+spike, tcp (bare POST)   median 28.1 ms, p90 31.2, max 37.9; pings received 60/60
+
+## the view hangs (SIGSTOP)
+main (no ping)           median 25.8 ms, p90 30.0, max 36.0; pings received 0/60
+spike, ping off          median 26.1 ms, p90 28.2, max 29.6; pings received 0/60
+spike, http (waits)      median 193.1 ms, p90 196.5, max 197.9; pings received 0/60
+spike, http (no wait)    median 43.7 ms, p90 46.8, max 51.2; pings received 0/60
+spike, udp               median 27.2 ms, p90 29.7, max 31.3; pings received 0/60
+spike, tcp (bare POST)   median 179.1 ms, p90 181.6, max 182.3; pings received 0/60
+
+## no view runs (no record)
+main (no ping)           median 25.8 ms, p90 29.2, max 45.6; pings received 0/60
+spike, ping off          median 25.7 ms, p90 27.7, max 30.1; pings received 0/60
+spike, http (waits)      median 27.7 ms, p90 32.2, max 52.3; pings received 0/60
+spike, http (no wait)    median 27.6 ms, p90 30.3, max 53.5; pings received 0/60
+spike, udp               median 26.3 ms, p90 29.5, max 32.1; pings received 0/60
+spike, tcp (bare POST)   median 26.0 ms, p90 28.9, max 40.5; pings received 0/60
+
+## a stale record (nothing on its port)
+main (no ping)           median 24.6 ms, p90 27.0, max 30.7; pings received 0/60
+spike, ping off          median 25.7 ms, p90 27.5, max 67.9; pings received 0/60
+spike, http (waits)      median 42.7 ms, p90 46.5, max 54.2; pings received 0/60
+spike, http (no wait)    median 42.8 ms, p90 44.6, max 46.2; pings received 0/60
+spike, udp               median 28.1 ms, p90 30.2, max 31.5; pings received 0/60
+spike, tcp (bare POST)   median 28.7 ms, p90 30.3, max 32.3; pings received 0/60
+
+thread lines written: 1464
+## the view runs
+main (no ping)           median 23.9 ms, p90 27.0, max 28.6; pings received 0/60
+spike, udp               median 28.3 ms, p90 29.5, max 30.9; pings received 60/60
+spike, tcp (bare POST)   median 28.4 ms, p90 31.2, max 33.1; pings received 60/60
+spike, tcp (no answer)   median 27.9 ms, p90 30.4, max 31.6; pings received 60/60
+## the view hangs (SIGSTOP)
+main (no ping)           median 24.6 ms, p90 26.3, max 27.4; pings received 0/60
+spike, udp               median 27.9 ms, p90 30.7, max 49.6; pings received 0/60
+spike, tcp (bare POST)   median 178.9 ms, p90 180.4, max 191.2; pings received 0/60
+spike, tcp (no answer)   median 27.6 ms, p90 29.8, max 30.4; pings received 0/60
+## no view runs (no record)
+main (no ping)           median 25.7 ms, p90 28.8, max 67.8; pings received 0/60
+spike, udp               median 26.4 ms, p90 28.1, max 29.0; pings received 0/60
+spike, tcp (bare POST)   median 25.7 ms, p90 27.4, max 29.2; pings received 0/60
+spike, tcp (no answer)   median 25.3 ms, p90 28.3, max 28.7; pings received 0/60
+## a stale record (nothing on its port)
+main (no ping)           median 25.3 ms, p90 27.8, max 52.7; pings received 0/60
+spike, udp               median 28.1 ms, p90 30.1, max 31.4; pings received 0/60
+spike, tcp (bare POST)   median 28.0 ms, p90 30.2, max 32.4; pings received 0/60
+spike, tcp (no answer)   median 27.7 ms, p90 29.8, max 31.2; pings received 0/60

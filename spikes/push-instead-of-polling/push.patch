@@ -1,0 +1,776 @@
+diff --git a/packages/cli/src/claude-code.ts b/packages/cli/src/claude-code.ts
+index f50e03f..5bce6b2 100644
+--- a/packages/cli/src/claude-code.ts
++++ b/packages/cli/src/claude-code.ts
+@@ -16,6 +16,7 @@ import { localHost, onPath } from './editor.js';
+ import { runProgram, runWithInput, type Run, type RunWithInput } from './programs.js';
+ import type { WorkspaceFile } from './workspace-record.js';
+ import { writeFileWhole } from './file-write.js';
++import { fresh as pushFresh } from './push.js';
+ 
+ /** A Claude Code session, as `claude agents --json --all` lists it. */
+ export interface AgentSession {
+@@ -507,7 +508,8 @@ export function claudeCode(
+       return { ok: false, error: wordsOf(result) || `could not remove ${id}` };
+     },
+     sessions() {
+-      if (!sessions || Date.now() - sessions.at > 2_000) {
++      if (!sessions || Date.now() - sessions.at > 2_000 || pushFresh.sessions) {
++        pushFresh.sessions = false;
+         const list = run(command, ['agents', '--json', '--all'], { cwd, timeoutMs: 20_000 }).then(
+           (result) => (result.code === 0 ? parseSessions(result.stdout) : null),
+         );
+@@ -577,9 +579,14 @@ export function agentSettings(
+   where: { node: string; hook: string; symbiote: string },
+   platform: NodeJS.Platform = process.platform,
+ ): string {
+-  const command = [where.node, where.hook, where.symbiote]
+-    .map((p) => shellWord(p, platform))
+-    .join(' ');
++  // SPIKE: agents start with a clean environment: what the hook needs to find the view goes here.
++  const spikeEnv = (['SYMBIOTE_CACHE_DIR', 'SPIKE_PING'] as const)
++    .filter((k) => process.env[k])
++    .map((k) => `${k}=${shellWord(process.env[k] as string, platform)} `)
++    .join('');
++  const command =
++    spikeEnv +
++    [where.node, where.hook, where.symbiote].map((p) => shellWord(p, platform)).join(' ');
+   const tools = {
+     matcher: '*',
+     hooks: [{ type: 'command', command: `${command} activity`, timeout: 30, async: true }],
+diff --git a/packages/cli/src/hook-ping.ts b/packages/cli/src/hook-ping.ts
+new file mode 100644
+index 0000000..3d1c880
+--- /dev/null
++++ b/packages/cli/src/hook-ping.ts
+@@ -0,0 +1,110 @@
++// SPIKE: a hook tells the running `symbiote view` of its `symbiote/` folder that it wrote, found
++// through the registry (`<cache>/running/<pid>.json`). `SPIKE_PING`: `off`, `http` (waits for the
++// answer, 150 ms at most), `nowait` (the request sent, no answer waited for), `udp` (one datagram).
++// Never throws, never waits longer than the cap: a hook must not slow or fail the agent.
++import { readdirSync, readFileSync } from 'node:fs';
++import { homedir } from 'node:os';
++import { dirname, join } from 'node:path';
++
++const CAP_MS = 150;
++
++function cacheDir(): string {
++  const env = process.env;
++  if (env.SYMBIOTE_CACHE_DIR) return env.SYMBIOTE_CACHE_DIR;
++  if (env.XDG_CACHE_HOME) return join(env.XDG_CACHE_HOME, 'symbiote');
++  if (process.platform === 'darwin') return join(homedir(), 'Library', 'Caches', 'symbiote');
++  return join(homedir(), '.cache', 'symbiote');
++}
++
++/** The ports of the views serving the checkout that holds `symbiote`. */
++export function viewPorts(symbiote: string): number[] {
++  const root = dirname(symbiote);
++  const dir = join(cacheDir(), 'running');
++  const ports: number[] = [];
++  let names: string[] = [];
++  try {
++    names = readdirSync(dir).filter((n) => n.endsWith('.json'));
++  } catch {
++    return ports;
++  }
++  for (const name of names) {
++    try {
++      const record = JSON.parse(readFileSync(join(dir, name), 'utf8')) as { url?: string; root?: string };
++      if (record.root !== root || !record.url) continue;
++      const port = Number(new URL(record.url).port);
++      if (port) ports.push(port);
++    } catch {
++      // Not a record.
++    }
++  }
++  return ports;
++}
++
++export async function ping(symbiote: string, how = process.env.SPIKE_PING ?? 'off'): Promise<void> {
++  if (how === 'off') return;
++  const ports = viewPorts(symbiote);
++  if (ports.length === 0) return;
++  if (how === 'udp') {
++    const { createSocket } = await import('node:dgram');
++    const socket = createSocket('udp4');
++    await Promise.all(
++      ports.map((port) => new Promise<void>((resolve) => socket.send('w', port, '127.0.0.1', () => resolve()))),
++    );
++    socket.close();
++    return;
++  }
++  if (how === 'net' || how === 'netflush') {
++    // The same POST, written on a bare socket: node:http is most of the cost.
++    const { connect } = await import('node:net');
++    await Promise.all(
++      ports.map(
++        (port) =>
++          new Promise<void>((resolve) => {
++            const socket = connect(port, '127.0.0.1');
++            const done = () => {
++              socket.destroy();
++              resolve();
++            };
++            socket.setTimeout(CAP_MS, done);
++            socket.on('error', done);
++            socket.on('close', done);
++            socket.on('data', done);
++            // `netflush`: done once the request is written, its answer not waited for.
++            if (how === 'netflush') socket.on('finish', done);
++            socket.end(
++              `POST /api/events/ping HTTP/1.1\r\nhost: 127.0.0.1:${port}\r\nx-symbiote: 1\r\ncontent-type: application/json\r\ncontent-length: 2\r\nconnection: close\r\n\r\n{}`,
++            );
++          }),
++      ),
++    );
++    return;
++  }
++  const { request } = await import('node:http');
++  await Promise.all(
++    ports.map(
++      (port) =>
++        new Promise<void>((resolve) => {
++          const req = request({
++            host: '127.0.0.1',
++            port,
++            method: 'POST',
++            path: '/api/events/ping',
++            headers: { 'content-type': 'application/json', 'x-symbiote': '1', 'content-length': 2 },
++            timeout: CAP_MS,
++          });
++          const done = () => {
++            req.destroy();
++            resolve();
++          };
++          req.on('error', done);
++          req.on('timeout', done);
++          req.on('response', (res) => {
++            res.resume();
++            done();
++          });
++          if (how === 'nowait') req.on('finish', done);
++          req.end('{}');
++        }),
++    ),
++  );
++}
+diff --git a/packages/cli/src/mcp.ts b/packages/cli/src/mcp.ts
+index 8d92f1a..030011c 100644
+--- a/packages/cli/src/mcp.ts
++++ b/packages/cli/src/mcp.ts
+@@ -37,6 +37,7 @@ import {
+ } from './server-requests.js';
+ import type { UsageService } from './usage.js';
+ import type { Workspaces } from './workspaces.js';
++import { changed } from './push.js';
+ 
+ /** The protocol version answered to a client that names none. */
+ const LATEST_PROTOCOL = '2025-06-18';
+@@ -696,11 +697,13 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
+         clearTimeout(timer);
+         signal.removeEventListener('abort', gone);
+         held.delete(ask.id);
++        changed('asks');
+         resolve(answer);
+       }
+       if (signal.aborted) return settle('gone');
+       signal.addEventListener('abort', gone);
+       held.set(ask.id, { ask, settle, finished });
++      changed('asks');
+     });
+     return { answer, done, ask };
+   }
+diff --git a/packages/cli/src/merge-queue.ts b/packages/cli/src/merge-queue.ts
+index 5249c20..caaa83a 100644
+--- a/packages/cli/src/merge-queue.ts
++++ b/packages/cli/src/merge-queue.ts
+@@ -4,6 +4,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+ import { join } from 'node:path';
+ import type { MergeEntry } from '@symbiote/core';
+ import { writeFileWhole } from './file-write.js';
++import { changed } from './push.js';
+ 
+ /** The queue of merges kept in `stateDir`, and its lock. */
+ export function mergeQueue(stateDir: string) {
+@@ -26,6 +27,7 @@ export function mergeQueue(stateDir: string) {
+       const merges = await read();
+       const result = await task(merges);
+       await writeFileWhole(queueFile, `${JSON.stringify({ merges }, null, 2)}\n`);
++      changed('merges');
+       return result;
+     });
+     writing = next.catch(() => undefined);
+diff --git a/packages/cli/src/push.ts b/packages/cli/src/push.ts
+new file mode 100644
+index 0000000..ea867bc
+--- /dev/null
++++ b/packages/cli/src/push.ts
+@@ -0,0 +1,273 @@
++// SPIKE (push instead of polling): one server-sent stream of the shell's state. On every connect
++// the whole state; then only the parts whose JSON changed, after a trigger: a hook's ping, a file
++// watched, a change in memory, or the slow safety read. `SPIKE_PUSH` picks the triggers:
++// `ping`, `watch`, `both` (default) — merges and asks are pushed from memory in each.
++import { readdirSync, statSync, watch, type FSWatcher } from 'node:fs';
++import { createSocket } from 'node:dgram';
++import { join } from 'node:path';
++import { execFileSync } from 'node:child_process';
++import type { IncomingMessage, ServerResponse } from 'node:http';
++
++export type Part = 'workspaces' | 'reviews' | 'merges' | 'nucleus' | 'scribe' | 'asks';
++export const PARTS: Part[] = ['workspaces', 'reviews', 'merges', 'nucleus', 'scribe', 'asks'];
++
++/** Changes in this process that pages should see: the merge queue written, an ask held or let go. */
++export const bus = new EventTarget();
++export const changed = (part: Part) => bus.dispatchEvent(new CustomEvent('part', { detail: part }));
++
++/** Whether the next read of Claude Code's sessions skips its 2 s cache (set by a trigger). */
++export const fresh = { sessions: false };
++
++export interface PushOptions {
++  read: Partial<Record<Part, () => Promise<unknown>>>;
++  /** The checkout the server runs in: its `symbiote/` and git's common folder are watched. */
++  root: string;
++  port: number;
++  log?: (fields: Record<string, unknown>, msg: string) => void;
++}
++
++const env = process.env;
++const MODE = env.SPIKE_PUSH ?? 'both';
++const SAFETY_MS = Number(env.SPIKE_SAFETY_MS ?? 60_000);
++const DEBOUNCE_MS = Number(env.SPIKE_DEBOUNCE_MS ?? 30);
++const KEEPALIVE_MS = 25_000;
++/** After a hook's ping, Claude Code's own list may say the new state a little later: read again. */
++const SETTLE_MS = (env.SPIKE_SETTLE_MS ?? '300,1000,2500').split(',').map(Number).filter(Boolean);
++
++export function pushStream(options: PushOptions) {
++  const clients = new Set<ServerResponse>();
++  const last = new Map<Part, string>();
++  const pending = new Set<Part>();
++  const why = new Set<string>();
++  let timer: ReturnType<typeof setTimeout> | undefined;
++  let running: Promise<void> | null = null;
++  const stats = { triggers: 0, runs: 0, sent: 0, bytes: 0, reads: {} as Record<string, number> };
++
++  const write = (res: ServerResponse, text: string) => {
++    stats.bytes += Buffer.byteLength(text);
++    res.write(text);
++  };
++  const event = (name: string, data: unknown) => {
++    const text = `event: ${name}\ndata: ${JSON.stringify(data)}\n\n`;
++    for (const res of clients) write(res, text);
++    stats.sent++;
++  };
++
++  async function readParts(parts: Iterable<Part>): Promise<Map<Part, string>> {
++    const out = new Map<Part, string>();
++    await Promise.all(
++      [...parts].map(async (part) => {
++        const read = options.read[part];
++        if (!read) return;
++        stats.reads[part] = (stats.reads[part] ?? 0) + 1;
++        try {
++          out.set(part, JSON.stringify(await read()));
++        } catch {
++          // A failed read sends nothing: the last value stays the page's.
++        }
++      }),
++    );
++    return out;
++  }
++
++  /** Reads what was asked for and sends what changed; one run at a time, the next after it. */
++  function run(): void {
++    if (running) return;
++    const parts = new Set(pending);
++    const reasons = [...why];
++    pending.clear();
++    why.clear();
++    if (clients.size === 0 || parts.size === 0) return;
++    stats.runs++;
++    const t0 = Date.now();
++    running = readParts(parts)
++      .then((read) => {
++        const changes: Record<string, unknown> = {};
++        for (const [part, text] of read) {
++          if (last.get(part) === text) continue;
++          last.set(part, text);
++          changes[part] = JSON.parse(text) as unknown;
++        }
++        if (Object.keys(changes).length > 0) {
++          event('change', { parts: changes, why: reasons, at: Date.now(), ms: Date.now() - t0 });
++        }
++      })
++      .finally(() => {
++        running = null;
++        if (pending.size > 0) schedule();
++      });
++  }
++  function schedule(): void {
++    clearTimeout(timer);
++    timer = setTimeout(run, DEBOUNCE_MS);
++  }
++
++  /** Something may have changed `parts`. */
++  function trigger(parts: Iterable<Part>, reason: string): void {
++    stats.triggers++;
++    for (const part of parts) pending.add(part);
++    why.add(reason);
++    if (pending.has('workspaces')) fresh.sessions = true;
++    schedule();
++  }
++
++  bus.addEventListener('part', (e) => trigger([(e as CustomEvent<Part>).detail], 'memory'));
++
++  // Hooks' pings: HTTP (`ping`) or one UDP datagram on the same port number.
++  const settle = (reason: string) => {
++    trigger(['workspaces'], reason);
++    for (const ms of SETTLE_MS) setTimeout(() => trigger(['workspaces'], `${reason}+${ms}`), ms);
++  };
++  let udp: ReturnType<typeof createSocket> | null = null;
++  if (MODE === 'ping' || MODE === 'both') {
++    udp = createSocket('udp4');
++    udp.on('message', () => settle('udp'));
++    udp.on('error', () => udp?.close());
++    udp.bind(options.port, '127.0.0.1');
++  }
++
++  // Files watched: the records, reviews, threads and activity; git's refs for commits. One plain
++  // watch per folder, folders added as they appear: Node's recursive watch on Linux misses a
++  // write by rename after the second, and says nothing when its folder is not there yet (spike).
++  const watchers: FSWatcher[] = [];
++  const trees: { close(): void }[] = [];
++  if (MODE === 'watch' || MODE === 'both') {
++    const symbiote = join(options.root, 'symbiote');
++    const partsOf = (path: string): Part[] =>
++      path.startsWith(join(symbiote, 'reviews')) ? ['reviews', 'workspaces'] : ['workspaces'];
++    trees.push(
++      watchTree(options.root, 'symbiote', (path) => trigger(partsOf(path), `watch:${path.slice(options.root.length + 1)}`)),
++    );
++    let common = '';
++    try {
++      common = execFileSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], {
++        cwd: options.root,
++        encoding: 'utf8',
++      }).trim();
++    } catch {
++      // Not a repository.
++    }
++    if (common) {
++      trees.push(watchTree(join(common, 'refs'), 'heads', () => trigger(['workspaces', 'reviews'], 'watch:refs')));
++      try {
++        watchers.push(
++          watch(common, (_kind, name) => {
++            if (name === 'packed-refs') trigger(['workspaces', 'reviews'], 'watch:packed-refs');
++          }),
++        );
++      } catch {
++        // Gone.
++      }
++    }
++  }
++
++  const keepalive = setInterval(() => {
++    for (const res of clients) write(res, ': ka\n\n');
++  }, KEEPALIVE_MS);
++  const safety = setInterval(() => trigger(PARTS, 'safety'), SAFETY_MS);
++
++  return {
++    stats,
++    clients,
++    /** `GET /api/events`: the whole state, then changes. */
++    async open(req: IncomingMessage, res: ServerResponse): Promise<void> {
++      res.writeHead(200, {
++        'content-type': 'text/event-stream',
++        'cache-control': 'no-store',
++        connection: 'keep-alive',
++      });
++      write(res, 'retry: 1000\n\n');
++      clients.add(res);
++      req.on('close', () => clients.delete(res));
++      fresh.sessions = true;
++      const read = await readParts(PARTS);
++      const parts: Record<string, unknown> = {};
++      for (const [part, text] of read) {
++        last.set(part, text);
++        parts[part] = JSON.parse(text) as unknown;
++      }
++      if (!clients.has(res)) return;
++      const text = `event: state\ndata: ${JSON.stringify({ parts, at: Date.now() })}\n\n`;
++      write(res, text);
++    },
++    /** `POST /api/events/ping`: a hook wrote. */
++    ping(): void {
++      settle('http');
++    },
++    /** For the spike's reliability cases: every stream cut. */
++    drop(): void {
++      for (const res of clients) res.destroy();
++      clients.clear();
++    },
++    close(): void {
++      clearInterval(keepalive);
++      clearInterval(safety);
++      clearTimeout(timer);
++      for (const w of watchers) w.close();
++      for (const t of trees) t.close();
++      // An open socket keeps the process: a server that does not stop (found on the spike's runs).
++      udp?.close();
++      for (const res of clients) res.end();
++    },
++  };
++}
++
++/**
++ * Watches `<parent>/<name>` and every folder under it, each with a plain watch; a folder made
++ * later is added when its parent says so, and `<name>` itself once it is made.
++ */
++function watchTree(parent: string, name: string, onChange: (path: string) => void): { close(): void } {
++  const watchers = new Map<string, FSWatcher>();
++  const root = join(parent, name);
++  const add = (dir: string) => {
++    if (watchers.has(dir)) return;
++    let w: FSWatcher;
++    try {
++      w = watch(dir, (_kind, file) => {
++        const path = join(dir, String(file ?? ''));
++        onChange(path);
++        let folder = false;
++        try {
++          folder = statSync(path).isDirectory();
++        } catch {
++          // Gone: its watch ends with it.
++        }
++        if (folder) addTree(path);
++      });
++    } catch {
++      return;
++    }
++    w.on('error', () => {
++      w.close();
++      watchers.delete(dir);
++    });
++    watchers.set(dir, w);
++  };
++  const addTree = (dir: string) => {
++    add(dir);
++    let entries: import('node:fs').Dirent[] = [];
++    try {
++      entries = readdirSync(dir, { withFileTypes: true });
++    } catch {
++      return;
++    }
++    for (const e of entries) if (e.isDirectory()) addTree(join(dir, e.name));
++  };
++  // The parent, for `name` made (or made again) after the watch started.
++  let top: FSWatcher | null = null;
++  try {
++    top = watch(parent, (_kind, file) => {
++      if (String(file) === name) addTree(root);
++    });
++  } catch {
++    // No parent: nothing to watch.
++  }
++  addTree(root);
++  return {
++    close() {
++      top?.close();
++      for (const w of watchers.values()) w.close();
++      watchers.clear();
++    },
++  };
++}
+diff --git a/packages/cli/src/server.ts b/packages/cli/src/server.ts
+index 8d8c433..f0f0da4 100644
+--- a/packages/cli/src/server.ts
++++ b/packages/cli/src/server.ts
+@@ -28,6 +28,7 @@ import type { Review } from '@symbiote/forge';
+ import { silentLog, type Log } from '@symbiote/log';
+ import type { CodeMap } from '@symbiote/monitor';
+ import { pairKey, type Diffs, type Pair } from './diffs.js';
++import { pushStream } from './push.js';
+ import {
+   count,
+   historyScope,
+@@ -346,6 +347,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
+   const pageLog = log.as('viewer').child({}, { serializers: { err: (err: unknown) => err } });
+   const pageErrors = { since: 0, count: 0 };
+   const viewerFiles = await readViewer(options.viewerDir);
++  // SPIKE: the shell's state pushed (`SPIKE_PUSH`=off: as main).
++  let push: ReturnType<typeof pushStream> | null = null;
+   const server = createServer((req, res) => {
+     for (const [name, value] of Object.entries(GUARD_HEADERS)) res.setHeader(name, value);
+     const started = performance.now();
+@@ -457,6 +460,27 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
+     if (url.pathname === '/api/reviews' && repository.reviews) {
+       return reviewsApi(req, res, repository, repository.reviews);
+     }
++    if (push && url.pathname === '/api/events') {
++      if (req.method !== 'GET') return send(res, 405, 'method not allowed');
++      if (!sameSite(req)) return send(res, 403, 'forbidden');
++      return push.open(req, res);
++    }
++    if (push && url.pathname === '/api/events/ping' && req.method === 'POST') {
++      req.resume();
++      push.ping();
++      res.writeHead(204);
++      res.end();
++      return;
++    }
++    if (push && url.pathname === '/api/events/stats') {
++      return json(res, 200, { ...push.stats, clients: push.clients.size });
++    }
++    if (push && url.pathname === '/api/events/drop' && req.method === 'POST') {
++      push.drop();
++      res.writeHead(204);
++      res.end();
++      return;
++    }
+     // The history page (V25; at `/` before, which is now the workspaces view).
+     // Git (V66); History's old address too, which the page moves to /git.
+     if (url.pathname === '/git' || url.pathname === '/history')
+@@ -1845,11 +1869,28 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
+   const { port } = server.address() as AddressInfo;
+   hosts = new Set([`127.0.0.1:${port}`, `localhost:${port}`]);
+   address = `http://127.0.0.1:${port}/`;
++  if (repository?.workspaces && process.env.SPIKE_PUSH !== 'off') {
++    const { workspaces, reviews, merges, nucleus, scribe } = repository;
++    push = pushStream({
++      root: process.cwd(),
++      port,
++      read: {
++        workspaces: () => workspaces.list(),
++        ...(reviews ? { reviews: () => reviews.list() } : {}),
++        ...(merges ? { merges: () => merges.list() } : {}),
++        ...(nucleus ? { nucleus: () => nucleus.state() } : {}),
++        ...(scribe ? { scribe: () => scribe.state() } : {}),
++        ...(mcp ? { asks: () => Promise.resolve(mcp.asks()) } : {}),
++      },
++      log: (fields, msg) => log.log.info(fields, msg),
++    });
++  }
+   return {
+     url: address,
+     close: () => {
+       // A held call or wait would keep its connection, and the server, open.
+       mcp?.close();
++      push?.close();
+       // Open streams would keep the server from closing: the terminals end them.
+       repository?.terminals?.closeAll();
+       for (const stream of streams) stream.end();
+diff --git a/packages/cli/src/thread.ts b/packages/cli/src/thread.ts
+index f9a290c..eb9ee56 100644
+--- a/packages/cli/src/thread.ts
++++ b/packages/cli/src/thread.ts
+@@ -16,6 +16,7 @@ import {
+ import { dirname, join, relative, sep } from 'node:path';
+ import type { ActivityEntry, ThreadEntry, ThreadQuestion } from '@symbiote/core';
+ import { activityEntry } from './tool-activity.js';
++import { ping } from './hook-ping.js';
+ 
+ export { activityEntry, MAX_COMMAND, MAX_OUTPUT, MAX_SUBJECT, outputOf } from './tool-activity.js';
+ 
+@@ -252,6 +253,8 @@ export async function hookMain(
+   } catch {
+     // Nothing the hook can do about it, and nothing Claude Code should see.
+   }
++  // SPIKE: the running view told.
++  await ping(symbiote).catch(() => {});
+ }
+ 
+ /** Whether a line is an entry the thread keeps. */
+diff --git a/packages/viewer/src/shell/useAsks.ts b/packages/viewer/src/shell/useAsks.ts
+index d5324e4..44bf18a 100644
+--- a/packages/viewer/src/shell/useAsks.ts
++++ b/packages/viewer/src/shell/useAsks.ts
+@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
+ import type { McpAsk, McpAsks } from '@symbiote/core';
+ import { postJson } from '../ui/http.js';
+ import { readsHidden, reloadWorkspaces } from '../workspaces/useWorkspaces.js';
++import { pushStatus, subscribe, type Parts, type Status } from '../workspaces/push.js';
+ 
+ /**
+  * How often the asks of Symbiote's MCP are read while a page shows (MC1): an agent may ask at any
+@@ -38,6 +39,8 @@ async function readAsks(): Promise<void> {
+ function schedule(): void {
+   clearTimeout(timer);
+   if (listeners.size === 0 || none) return;
++  // SPIKE: pushed, nothing to read.
++  if (pushStatus() === 'streaming') return;
+   timer = setTimeout(() => {
+     const hidden = document.visibilityState === 'hidden' && !readsHidden();
+     void (hidden ? Promise.resolve() : readAsks()).then(schedule);
+@@ -48,12 +51,21 @@ function schedule(): void {
+  * The asks waiting for the person, oldest first: read on mount and every 2 s while shown; in the
+  * app, hidden too (N2).
+  */
++const onPush = (parts: Parts) => {
++  const pushed = parts.asks as McpAsks | null | undefined;
++  if (pushed) set(pushed.asks);
++};
++const onStatus = (status: Status) => {
++  if (status === 'unavailable') void readAsks().then(schedule);
++};
++
+ export function useAsks(): McpAsk[] {
+   const [asks, setAsks] = useState(current);
+   useEffect(() => {
+     listeners.add(setAsks);
+-    if (listeners.size === 1) void readAsks().then(schedule);
++    const unsubscribe = subscribe(onPush, onStatus);
+     return () => {
++      unsubscribe();
+       listeners.delete(setAsks);
+       if (listeners.size === 0) clearTimeout(timer);
+     };
+diff --git a/packages/viewer/src/workspaces/push.ts b/packages/viewer/src/workspaces/push.ts
+new file mode 100644
+index 0000000..6961d75
+--- /dev/null
++++ b/packages/viewer/src/workspaces/push.ts
+@@ -0,0 +1,65 @@
++// SPIKE: the shell's state as the server pushes it (`/api/events`): one stream per page, the whole
++// state on each connect, then the parts that changed. Unavailable (404, `?poll`): polling as today.
++
++export type Status = 'streaming' | 'reconnecting' | 'unavailable';
++export type Parts = Record<string, unknown>;
++type Listener = (parts: Parts, whole: boolean) => void;
++type StatusListener = (status: Status) => void;
++
++const listeners = new Set<Listener>();
++const statusListeners = new Set<StatusListener>();
++let source: EventSource | null = null;
++let status: Status | null = null;
++
++export const pushStatus = (): Status | null => status;
++
++function setStatus(next: Status): void {
++  if (status === next) return;
++  status = next;
++  for (const listener of statusListeners) listener(next);
++}
++
++function open(): void {
++  if (typeof EventSource === 'undefined' || new URLSearchParams(location.search).has('poll')) {
++    setStatus('unavailable');
++    return;
++  }
++  const es = new EventSource('/api/events');
++  source = es;
++  let opened = false;
++  es.addEventListener('state', (e) => {
++    opened = true;
++    setStatus('streaming');
++    const { parts } = JSON.parse((e as MessageEvent<string>).data) as { parts: Parts };
++    for (const listener of listeners) listener(parts, true);
++  });
++  es.addEventListener('change', (e) => {
++    const { parts } = JSON.parse((e as MessageEvent<string>).data) as { parts: Parts };
++    for (const listener of listeners) listener(parts, false);
++  });
++  es.onerror = () => {
++    // A 404 or another type closes it for good; a lost connection is tried again (`retry`).
++    if (es.readyState === EventSource.CLOSED) {
++      source = null;
++      setStatus(opened ? 'reconnecting' : 'unavailable');
++      if (opened) setTimeout(open, 1000);
++    } else setStatus('reconnecting');
++  };
++}
++
++/** Listens to the pushed state; the stream opens with the first listener and closes with the last. */
++export function subscribe(listener: Listener, onStatus: StatusListener): () => void {
++  listeners.add(listener);
++  statusListeners.add(onStatus);
++  if (!source && status !== 'unavailable') open();
++  else if (status) onStatus(status);
++  return () => {
++    listeners.delete(listener);
++    statusListeners.delete(onStatus);
++    if (listeners.size === 0) {
++      source?.close();
++      source = null;
++      if (status !== 'unavailable') status = null;
++    }
++  };
++}
+diff --git a/packages/viewer/src/workspaces/useWorkspaces.ts b/packages/viewer/src/workspaces/useWorkspaces.ts
+index 4123fbb..22319d4 100644
+--- a/packages/viewer/src/workspaces/useWorkspaces.ts
++++ b/packages/viewer/src/workspaces/useWorkspaces.ts
+@@ -1,6 +1,7 @@
+ import { useEffect, useState } from 'react';
+ import type { BranchReviewList, MergeList, PageAgentState, WorkspaceList } from '@symbiote/core';
+ import { mergeLive } from './merges.js';
++import { pushStatus, subscribe, type Parts, type Status } from './push.js';
+ 
+ /**
+  * The workspaces, the reviews and the merge queue (V26), read together: a review changes what a
+@@ -152,6 +153,8 @@ export const readsHidden = (): boolean => window.symbioteApp?.waiting !== undefi
+ function schedule(): void {
+   clearTimeout(timer);
+   if (listeners.size === 0) return;
++  // SPIKE: pushed, nothing to read.
++  if (pushStatus() === 'streaming') return;
+   const wait = readEvery(current, terminalsOpen + (Date.now() < closedUntil ? 1 : 0));
+   if (wait === null) return;
+   timer = setTimeout(() => {
+@@ -161,9 +164,43 @@ function schedule(): void {
+ }
+ 
+ const onShown = () => {
++  if (pushStatus() === 'streaming' || pushStatus() === null) return;
+   if (document.visibilityState !== 'hidden') void refresh();
+ };
+ 
++const PUSHED = ['workspaces', 'reviews', 'merges', 'nucleus', 'scribe'] as const;
++const KEYS: Record<(typeof PUSHED)[number], keyof WorkspacesState> = {
++  workspaces: 'list',
++  reviews: 'reviews',
++  merges: 'merges',
++  nucleus: 'nucleus',
++  scribe: 'scribe',
++};
++
++/** SPIKE: what the server pushed, the parts not sent kept as they were (their identity too). */
++function onPush(parts: Parts): void {
++  const next: WorkspacesState = { ...current, readAt: Date.now() };
++  delete next.failing;
++  let any = current.failing === true;
++  for (const part of PUSHED) {
++    if (!(part in parts)) continue;
++    (next as unknown as Record<string, unknown>)[KEYS[part]] = parts[part] ?? null;
++    any = true;
++  }
++  if (!any) return;
++  current = next;
++  for (const listener of listeners) listener(current);
++}
++
++function onStatus(status: Status): void {
++  if (status === 'unavailable') void refresh();
++  else if (status === 'reconnecting' && !current.failing) {
++    current = { ...current, failing: true };
++    for (const listener of listeners) listener(current);
++  }
++}
++let unsubscribe: (() => void) | null = null;
++
+ /**
+  * The workspaces, reviews and merges, read on mount, when the page is back in view, every 5 s
+  * while an agent works or waits for the person, and every 1.5 s while a merge runs.
+@@ -175,11 +212,14 @@ export function useWorkspaces(): WorkspacesState {
+     if (listeners.size === 1) {
+       window.addEventListener('focus', onShown);
+       document.addEventListener('visibilitychange', onShown);
++      unsubscribe = subscribe(onPush, onStatus);
+     }
+-    void refresh();
++    if (pushStatus() === 'unavailable') void refresh();
+     return () => {
+       listeners.delete(setState);
+       if (listeners.size > 0) return;
++      unsubscribe?.();
++      unsubscribe = null;
+       window.removeEventListener('focus', onShown);
+       document.removeEventListener('visibilitychange', onShown);
+       clearTimeout(timer);

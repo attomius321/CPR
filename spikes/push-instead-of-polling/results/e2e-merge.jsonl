@@ -1,0 +1,16 @@
+{"mode":"off","test":"merge","who":"the tab that clicked","state":"merging","shownMs":null}
+{"mode":"off","test":"merge","who":"the tab that clicked","state":"checking","shownMs":1501}
+{"mode":"off","test":"merge","who":"the tab that clicked","state":"ready","shownMs":null}
+{"mode":"off","test":"merge","who":"the tab that clicked","state":"landed","shownMs":560}
+{"mode":"off","test":"merge","who":"another window","state":"merging","shownMs":null}
+{"mode":"off","test":"merge","who":"another window","state":"checking","shownMs":null}
+{"mode":"off","test":"merge","who":"another window","state":"ready","shownMs":null}
+{"mode":"off","test":"merge","who":"another window","state":"landed","shownMs":null}
+{"mode":"both","test":"merge","who":"the tab that clicked","state":"merging","shownMs":null}
+{"mode":"both","test":"merge","who":"the tab that clicked","state":"checking","shownMs":31}
+{"mode":"both","test":"merge","who":"the tab that clicked","state":"ready","shownMs":null}
+{"mode":"both","test":"merge","who":"the tab that clicked","state":"landed","shownMs":51}
+{"mode":"both","test":"merge","who":"another window","state":"merging","shownMs":null}
+{"mode":"both","test":"merge","who":"another window","state":"checking","shownMs":31}
+{"mode":"both","test":"merge","who":"another window","state":"ready","shownMs":null}
+{"mode":"both","test":"merge","who":"another window","state":"landed","shownMs":51}
