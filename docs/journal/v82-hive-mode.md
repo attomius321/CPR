@@ -96,3 +96,46 @@ off; 5 of 5 alone, then the whole suite). Frames of the arrival in both themes a
 every page with Hive on, both themes, and the narrow drawer; `on()` 7–11 ms a page load.
 
 Not verified: the app's window; the off fade's look.
+
+## Hive tentacles spike — three candidates, then Carnage (2026-10-30, branch `feature/hive-tentacles`)
+
+A prototype engine (outside the repository: springs and noise, tubes on a canvas, goo strands, a
+Hive Mind) drew three candidates, Venom, Hive and Carnage, in place of today's art in this branch's
+`symbiote view` (a scratch repository, a full workspace list mocked with `page.route`), recorded
+frame by frame (the prototype stepped by 1/30 s, a screenshot each frame, the CSS animations seeked
+to the same time) and shown live on a page with the costs. The person picked Carnage, then asked for
+tendrils that stay attached, a more natural feel, and a turning-on of "only the Hive mind, and the
+blackout animation". Planned as decisions 629–633.
+
+**Learned**:
+- **The blur behind the question costs more than any drawing in it.** With hardware acceleration
+  off (as the app runs on WSL), a canvas loop, SVG paths rewritten each frame and today's SVG under a
+  moving displacement filter all took 99–112 % of a core at 16–31 fps in the open dialog; with both
+  blurs off, 61, 25 and 19 % at 60 fps. The 3 px blur over the whole window is most of it: the
+  software compositor blurs it again on any change above it.
+- **A canvas's drawing is mostly raster, not script**: for the question, 0.2 ms to step, 1.8 to
+  record the drawing, 4.4 ms to raster it (forced by reading a pixel). A clipping mask per tube cost a
+  third of it; shading drawn exactly to each tube's outline looks the same.
+- **The heavy frames of a cover are the covered ones**: everything is drawn under solid ink. The
+  covered window is one picture, taken once and moved (19–21 ms a frame to 2–3 ms at 2560×1440).
+- **Tentacles count, not their size**: binding tentacles doubled the tubes and took the arrival to
+  53–56 fps at 2560×1440; slimmer ones barely helped, the lean tube did. Without tentacles the
+  blackout and the Mind cost 3 ms a frame.
+- **A grabbing tip must not ride its spring back out**: an under-damped strike overshoots into the
+  cell and swings back below it, the tip leaving the cell ("like sucking", the person). Once it
+  grabs, the strike's spring is held at the cell and the bounce goes into the body; the old re-grip
+  events went too.
+- **What made it look artificial**: tendrils as parallel bands from edge to centre (hoses), even
+  widths, a twitchy noise, dashed veins along them, light outlines on the comb's cells (hex nuts).
+- **Recording motion**: real time in a headless browser stutters under load; stepping the scene by
+  exact time and seeking the page's CSS animations gives smooth films (30 frames a second, 6 s of a
+  dialog in about 15 s). The arrival was recorded in the real page: today's ink made to run at once
+  and hidden, the real Turn on clicked on the frame the candidate's cover was complete.
+- **The Artifact tool reads only the worktree**: the plan's page and media were published from the
+  worktree's ignored `coverage/` folder.
+
+**Verification**: costs measured in this branch's viewer with `--disable-gpu
+--enable-unsafe-swiftshader`, headless and in a window on a private Xvfb (2560×1440), CPU from
+`/proc` for every browser process; the graph for the pan is this repository's last 40 commits
+(474 files, 2,923 symbols, 599 nodes drawn). Not measured: the app's window itself (Electron is not
+installed here).

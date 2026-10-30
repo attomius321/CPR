@@ -330,3 +330,4 @@ merge commit.
 - 2026-10-30 [Fix — Hive per repository, Settings readable, the ink takes the page](journal/v82-hive-mode.md)
 - 2026-10-30 [Fix — a Symbiote opened from the nexus in Chrome on Windows framed once Chrome reaches it](journal/fix-first-time-symbiote-from-nexus.md)
 - 2026-10-30 [Fix — pinned Symbiotes on Symbiotes, the folders under them](journal/fix-nexus-pinned-symbiotes.md)
+- 2026-10-30 [Hive tentacles spike — three candidates, then Carnage](journal/v82-hive-mode.md)
