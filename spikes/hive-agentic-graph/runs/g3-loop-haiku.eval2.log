@@ -1,0 +1,91 @@
+{
+ "run": "/tmp/hive-spike-b89c2d5a/runs/g3-loop-haiku",
+ "mode": "loop",
+ "profile": "haiku",
+ "status": "done",
+ "head": "058895d3a5e1a411161b4928a0bbd7a4155136fb",
+ "cost": 1.917,
+ "byRole": {
+  "researcher": {
+   "calls": 1,
+   "cost": 0.00595811,
+   "ms": 19054
+  },
+  "main": {
+   "calls": 2,
+   "cost": 0.11701825,
+   "ms": 292379
+  },
+  "reviewer": {
+   "calls": 3,
+   "cost": 1.7940198,
+   "ms": 463113
+  }
+ },
+ "calls": 6,
+ "wallMinutes": 13,
+ "gates": [
+  {
+   "kind": "land",
+   "node": "goal",
+   "at": "2026-10-30T23:14:47.631Z",
+   "auto": true
+  },
+  {
+   "kind": "land",
+   "node": "goal",
+   "at": "2026-10-30T23:46:15.696Z",
+   "auto": true
+  }
+ ],
+ "windows": [
+  {
+   "before": {
+    "fiveHour": 45,
+    "week": 67,
+    "at": "2026-10-30T23:08:17.153Z"
+   },
+   "after": {
+    "fiveHour": 45,
+    "week": 67,
+    "at": "2026-10-30T23:08:17.153Z"
+   }
+  },
+  {
+   "before": {
+    "fiveHour": 67,
+    "week": 69,
+    "at": "2026-10-30T23:39:47.392Z"
+   },
+   "after": {
+    "fiveHour": 68,
+    "week": 69,
+    "at": "2026-10-30T23:46:16.890Z"
+   }
+  }
+ ],
+ "change": {
+  "shortstat": "3 files changed, 297 insertions(+), 22 deletions(-)",
+  "files": [
+   "M\tsrc/count.ts",
+   "M\tsrc/languages.ts",
+   "M\ttest/count.test.ts"
+  ]
+ },
+ "check": true,
+ "build": true,
+ "acceptance": {
+  "passed": 8,
+  "total": 8,
+  "failed": []
+ },
+ "symbioteFindings": [
+  "info signature-changed src/count.ts#closeAt: closeAt changed its signature; its only user was updated",
+  "info signature-changed src/count.ts#Open: Open changed its signature; 1 of 4 users not updated: countLines",
+  "info signature-changed src/languages.ts#Syntax: Syntax changed its signature compatibly; existing users keep working (23 users, 18 untouched)"
+ ],
+ "blind": {
+  "n": 4,
+  "cost": 0.7867154000000001
+ }
+}

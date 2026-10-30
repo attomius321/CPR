@@ -1,0 +1,66 @@
+{
+ "run": "/tmp/hive-spike-b89c2d5a/runs/g1-one",
+ "mode": "one",
+ "profile": "real",
+ "status": "done",
+ "head": "6d84ea2dd78ff19acbb6bb57068a8d14c268e351",
+ "cost": 0.47,
+ "byRole": {
+  "one": {
+   "calls": 1,
+   "cost": 0.47044340000000007,
+   "ms": 88970
+  }
+ },
+ "calls": 1,
+ "wallMinutes": 1.5,
+ "gates": [
+  {
+   "kind": "land",
+   "node": "goal",
+   "at": "2026-10-30T22:37:32.021Z",
+   "auto": true
+  }
+ ],
+ "windows": [
+  {
+   "before": {
+    "fiveHour": 8,
+    "week": 63,
+    "at": "2026-10-30T22:36:02.069Z"
+   },
+   "after": {
+    "fiveHour": 10,
+    "week": 64,
+    "at": "2026-10-30T22:37:33.348Z"
+   }
+  }
+ ],
+ "change": {
+  "shortstat": "10 files changed, 425 insertions(+), 1 deletion(-)",
+  "files": [
+   "M\tREADME.md",
+   "A\tsrc/cli.ts",
+   "M\tsrc/index.ts",
+   "A\tsrc/report.ts",
+   "A\tsrc/scan.ts",
+   "A\tsrc/summary.ts",
+   "M\tsrc/types.ts",
+   "A\ttest/cli.test.ts",
+   "A\ttest/scan.test.ts",
+   "A\ttest/summary.test.ts"
+  ]
+ },
+ "check": true,
+ "build": true,
+ "acceptance": {
+  "passed": 11,
+  "total": 11,
+  "failed": []
+ },
+ "symbioteFindings": [],
+ "blind": {
+  "n": 6,
+  "cost": 0.3191774
+ }
+}

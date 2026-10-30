@@ -1,0 +1,9 @@
+{"at":"2026-10-30T22:30:17.986Z","kind":"run","mode":"one","profile":"fake","fake":"happy"}
+{"at":"2026-10-30T22:30:17.996Z","kind":"workspace-start","node":"goal","from":"main","base":"f144387"}
+{"at":"2026-10-30T22:30:17.997Z","kind":"agent-start","role":"one","node":"goal","round":1,"model":"fake","session":"f70381e0-8c06-432f-9622-c828489c8106","resume":false}
+{"at":"2026-10-30T22:30:18.027Z","kind":"agent-end","role":"one","node":"goal","round":1,"exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T22:30:18.955Z","kind":"check","node":"goal","ok":true}
+{"at":"2026-10-30T22:30:18.956Z","kind":"land","node":"goal","auto":true}
+{"at":"2026-10-30T22:30:19.909Z","kind":"merge-check","node":"goal","ok":true,"ms":940}
+{"at":"2026-10-30T22:30:19.913Z","kind":"merged","node":"goal","sha":"bd43d1a"}
+{"at":"2026-10-30T22:30:19.913Z","kind":"finished","status":"done","cost":"0.00"}

@@ -1,0 +1,29 @@
+{
+  "review": {
+    "summary": "I found one defect, and it affects both Rust and Swift. A nested block comment loses count of its depth. If a line inside an open comment has a `/*` but no `*/`, that `/*` is not counted. The cause is in `nestedEnd` (src/count.ts): when `line.indexOf(close)` is -1 it returns straight away with the depth unchanged, before checking for openers. As a result the comment ends one `*/` too early, and the lines after that point are counted as code.\n\nI kept 2 failing tests in test/probe-a.test.ts. These cases passed, so I deleted their tests:\n- **Rust:** nesting that closes and reopens on the same line; `/*/` and `/**/`; multi-line `br##\"…\"##`; character literals (`'\\x41'`, `b'\\''`, `'/'`, `'\"'`, `'\\u{10FFFF}'`); lifetimes and labels before a later char or comment; escapes over lines; `r\"` after an identifier.\n- **Swift:** `##\"\"\"…\"\"\"##` with `\\##` escapes; `\\#(x)` in `#\"…\"#`; `\\\"\"\"` in `\"\"\"`; `#selector`.\n- **Lua:** long strings and comments at different `=` levels; `--[[` inside strings; `f[[…]]`; `---[==[`; `- -1 --[[`.",
+    "findings": [
+      {
+        "severity": "major",
+        "test": "test/probe-a.test.ts > probe: nested block comments > counts a Rust /* opened on a line with no */ toward the nesting",
+        "text": "Rust block comments do not nest across lines when a line inside the comment opens another `/*` but has no `*/`. `nestedEnd` returns `{ end: -1, depth }` as soon as `indexOf(close)` is -1, so it never counts the `/*` openers on that line. Input: `/* 1` / `/* 2` / `/* 3 */ */` / `still` / `*/` / `x`. The depth should go 1→2→1→1→0, so only `x` is code (expected code 1, comments 5). Instead the depth stays at 1 after line 2, the comment closes on line 3, and `still` and `*/` are counted as code (got code 3, comments 3)."
+      },
+      {
+        "severity": "major",
+        "test": "test/probe-a.test.ts > probe: nested block comments > counts a Swift /* opened on a line with no */ toward the nesting",
+        "text": "Swift has the same defect, because it uses the same `nestedEnd`. Input: `/* a` / `/* b` / `*/` / `still` / `*/` / `let x = 1`. The comment should stay open until the second `*/` (expected code 1, comments 5). Instead the `/* b` opener is dropped, so the comment ends on line 3 and `still` and the final `*/` are counted as code (got code 3, comments 3)."
+      }
+    ],
+    "cost": 0.8333618,
+    "ms": 210559
+  },
+  "tests": {
+    "files": [
+      "probe-a.test.ts"
+    ],
+    "failed": [
+      "probe: nested block comments counts a Rust /* opened on a line with no */ toward the nesting",
+      "probe: nested block comments counts a Swift /* opened on a line with no */ toward the nesting"
+    ],
+    "passed": 0
+  }
+}

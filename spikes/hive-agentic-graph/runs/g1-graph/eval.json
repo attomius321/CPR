@@ -1,0 +1,182 @@
+{
+  "run": "/tmp/hive-spike-b89c2d5a/runs/g1-graph",
+  "mode": "graph",
+  "profile": "real",
+  "status": "done",
+  "head": "ae05f0dc0a65598c82a991d470143f633277d220",
+  "cost": 1.045,
+  "byModel": {
+    "claude-opus-5-5": {
+      "input": 30,
+      "output": 14116,
+      "cacheRead": 285572,
+      "cacheWrite": 58532,
+      "cost": 0.8078104
+    },
+    "claude-sonnet-5-5": {
+      "input": 18,
+      "output": 4942,
+      "cacheRead": 82468,
+      "cacheWrite": 44938,
+      "cost": 0.23745480000000002
+    }
+  },
+  "byRole": {
+    "orchestrator": {
+      "calls": 1,
+      "cost": 0.24724379999999999,
+      "ms": 38191
+    },
+    "researcher": {
+      "calls": 2,
+      "cost": 0.11587120000000001,
+      "ms": 29443
+    },
+    "main": {
+      "calls": 2,
+      "cost": 0.5605666,
+      "ms": 85551
+    },
+    "reviewer": {
+      "calls": 2,
+      "cost": 0.12158360000000001,
+      "ms": 17824
+    }
+  },
+  "calls": 7,
+  "wallMinutes": 3,
+  "nodes": [
+    {
+      "id": "scan-summary",
+      "phase": "merged",
+      "rounds": 1,
+      "from": "main",
+      "replans": 0,
+      "reviews": [
+        {
+          "round": 1,
+          "verdict": "approve",
+          "blocking": 0,
+          "minor": 0
+        }
+      ],
+      "checks": [
+        true
+      ]
+    },
+    {
+      "id": "cli",
+      "phase": "merged",
+      "rounds": 1,
+      "from": "hive/scan-summary",
+      "replans": 0,
+      "reviews": [
+        {
+          "round": 1,
+          "verdict": "approve",
+          "blocking": 0,
+          "minor": 0
+        }
+      ],
+      "checks": [
+        true
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "scan-summary",
+      "at": "2026-10-30T22:36:23.275Z",
+      "auto": true
+    },
+    {
+      "kind": "land",
+      "node": "cli",
+      "at": "2026-10-30T22:37:37.573Z",
+      "auto": true
+    }
+  ],
+  "windows": [
+    {
+      "before": {
+        "fiveHour": 7,
+        "week": 63,
+        "at": "2026-10-30T22:34:40.990Z"
+      },
+      "after": {
+        "fiveHour": 10,
+        "week": 64,
+        "at": "2026-10-30T22:37:38.868Z"
+      }
+    }
+  ],
+  "change": {
+    "shortstat": "13 files changed, 467 insertions(+), 1 deletion(-)",
+    "files": [
+      "M\tREADME.md",
+      "M\tpackage.json",
+      "A\tsrc/cli.ts",
+      "M\tsrc/index.ts",
+      "A\tsrc/run.ts",
+      "A\tsrc/scan.ts",
+      "A\tsrc/summary.ts",
+      "A\tsrc/table.ts",
+      "M\tsrc/types.ts",
+      "A\ttest/run.test.ts",
+      "A\ttest/scan.test.ts",
+      "A\ttest/summary.test.ts",
+      "A\ttest/table.test.ts"
+    ]
+  },
+  "check": true,
+  "build": true,
+  "acceptance": {
+    "passed": 11,
+    "total": 11,
+    "failed": []
+  },
+  "symbioteFindings": [],
+  "blind": {
+    "findings": [
+      {
+        "severity": "major",
+        "path": "src/scan.ts",
+        "line": 25,
+        "text": "Any I/O error during the walk rejects the whole scan. Examples: an unreadable subfolder (readdir EACCES), an unreadable file (readFile EACCES at line 32), or a file deleted between readdir and readFile (ENOENT). run.ts:36 does not catch the error, so it reaches the top-level await in cli.ts:4. Node then prints an uncaught stack trace and exits with code 1. The goal expects exit code 0 with a report, or a `loc: ` message on stderr. Running `loc` on a real tree that contains a root-owned or permission-restricted folder crashes outright. No test covers this."
+      },
+      {
+        "severity": "minor",
+        "path": "src/run.ts",
+        "line": 32,
+        "text": "The bare `catch` reports every stat failure as `no such directory`: EACCES on a parent folder, ELOOP, ENAMETOOLONG and so on. The exit code (2) and the `loc: ` prefix are correct, but the message is wrong for anything other than ENOENT."
+      },
+      {
+        "severity": "minor",
+        "path": "src/scan.ts",
+        "line": 35,
+        "text": "`buffer.toString('utf8')` keeps a leading UTF-8 BOM as U+FEFF, unlike TextDecoder, which strips it. In count.ts:94 the comparison looks only for ' ' and '\\t', so it treats U+FEFF as code. The first line of a BOM-prefixed file that is only a comment (e.g. `﻿// header`) is therefore counted as code instead of a comment, and a shebang check (`startsWith('#!')`) after a BOM fails. Such files get the wrong counts."
+      },
+      {
+        "severity": "minor",
+        "path": "src/scan.ts",
+        "line": 32,
+        "text": "Every file is read in full before the 8,000-byte binary check, so large binaries (images, archives, databases) are loaded into memory only to be thrown away. A file of 2 GiB or more makes readFile throw ERR_FS_FILE_TOO_LARGE, and the scan crashes as in the I/O-error finding. Reading only the first 8,000 bytes first would avoid both problems."
+      },
+      {
+        "severity": "minor",
+        "path": "test/scan.test.ts",
+        "line": 17,
+        "text": "Two cases are untested. First, the goal skips only *directories* named `.git` and `node_modules`. A *file* named `.git`, as in git worktrees and submodules, should still be counted, but no test checks that the code keeps it. Second, nothing checks how a root that is itself a symbolic link to a directory is handled."
+      },
+      {
+        "severity": "minor",
+        "path": "src/cli.ts",
+        "line": 4,
+        "text": "No test runs the built command (`node dist/cli.js …`) as the goal states it. The test suite exercises only `run()`. So nothing checks the shebang, that `process.exitCode` actually reaches the process exit status, or that the output arrives on the real stdout and stderr."
+      }
+    ],
+    "summary": "The change meets the goal for the cases it names. I found no blockers. scanFolder walks recursively, skips .git and node_modules directories, leaves out symlinks and binaries using the first 8,000 bytes, uses relative `/` paths with the right language and counts, and sorts by path. summarize sorts and sums as specified. The CLI prints JSON or a right-aligned table, and returns exit code 2 with a `loc: ` message for a missing folder, a non-directory or an unknown option. The tests cover the 8,000-byte boundary, symlinks to files and folders, and nested node_modules.\n\nThe defects left are about I/O errors:\n- **Major:** if any file or folder under the root can't be read, the whole scan fails. The command then crashes with a stack trace and exit code 1.\n- **Minor:** a UTF-8 BOM is kept in the text, so a comment on a file's first line is counted as code.\n- **Minor:** any stat error is reported as \"no such directory\".\n- **Minor:** every file is read in full, even binaries.\n- **Minor:** a few cases are untested, including the built `dist/cli.js` itself.",
+    "cost": 0.2952622
+  }
+}

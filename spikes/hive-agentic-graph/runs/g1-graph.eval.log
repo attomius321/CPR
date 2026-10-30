@@ -1,0 +1,90 @@
+{
+ "run": "/tmp/hive-spike-b89c2d5a/runs/g1-graph",
+ "mode": "graph",
+ "profile": "real",
+ "status": "done",
+ "head": "ae05f0dc0a65598c82a991d470143f633277d220",
+ "cost": 1.045,
+ "byRole": {
+  "orchestrator": {
+   "calls": 1,
+   "cost": 0.24724379999999999,
+   "ms": 38191
+  },
+  "researcher": {
+   "calls": 2,
+   "cost": 0.11587120000000001,
+   "ms": 29443
+  },
+  "main": {
+   "calls": 2,
+   "cost": 0.5605666,
+   "ms": 85551
+  },
+  "reviewer": {
+   "calls": 2,
+   "cost": 0.12158360000000001,
+   "ms": 17824
+  }
+ },
+ "calls": 7,
+ "wallMinutes": 3,
+ "gates": [
+  {
+   "kind": "land",
+   "node": "scan-summary",
+   "at": "2026-10-30T22:36:23.275Z",
+   "auto": true
+  },
+  {
+   "kind": "land",
+   "node": "cli",
+   "at": "2026-10-30T22:37:37.573Z",
+   "auto": true
+  }
+ ],
+ "windows": [
+  {
+   "before": {
+    "fiveHour": 7,
+    "week": 63,
+    "at": "2026-10-30T22:34:40.990Z"
+   },
+   "after": {
+    "fiveHour": 10,
+    "week": 64,
+    "at": "2026-10-30T22:37:38.868Z"
+   }
+  }
+ ],
+ "change": {
+  "shortstat": "13 files changed, 467 insertions(+), 1 deletion(-)",
+  "files": [
+   "M\tREADME.md",
+   "M\tpackage.json",
+   "A\tsrc/cli.ts",
+   "M\tsrc/index.ts",
+   "A\tsrc/run.ts",
+   "A\tsrc/scan.ts",
+   "A\tsrc/summary.ts",
+   "A\tsrc/table.ts",
+   "M\tsrc/types.ts",
+   "A\ttest/run.test.ts",
+   "A\ttest/scan.test.ts",
+   "A\ttest/summary.test.ts",
+   "A\ttest/table.test.ts"
+  ]
+ },
+ "check": true,
+ "build": true,
+ "acceptance": {
+  "passed": 11,
+  "total": 11,
+  "failed": []
+ },
+ "symbioteFindings": [],
+ "blind": {
+  "n": 6,
+  "cost": 0.2952622
+ }
+}

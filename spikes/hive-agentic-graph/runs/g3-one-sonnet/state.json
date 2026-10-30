@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "mode": "one",
+  "profile": "sonnet",
+  "goal": "# Goal: count Rust, Swift and Lua right\n\n`loc` knows Rust, Swift and Lua only roughly (`src/languages.ts`): Rust's and Swift's block comments\ndo not nest, raw strings and Lua's long brackets with `=` are unknown, and Rust's `'` is taken for\na string. Lines are miscounted. Teach `loc` each one's real comments and strings, so `countLines`\nsorts their lines right (the rule for a line stays: blank, a comment when it holds only comments,\notherwise code). Keep every other language counted as it is now. No new dependencies.\n\n1. **Rust**: `.rs` files, the language `Rust`, a source.\n   - `//` line comments (`///` and `//!` too); `/* */` block comments, which nest:\n     `/* a /* b */ still a comment */`, over any number of lines.\n   - Strings `\"…\"` with backslash escapes, which may go on over lines; raw strings `r\"…\"`,\n     `r#\"…\"#`, `r##\"…\"##` (any number of `#`; the closer is `\"` and the same number of `#`; no\n     escapes), which may go on over lines; byte strings `b\"…\"`, `br\"…\"`, `br#\"…\"#` likewise.\n   - `'` starts a character literal only when one character, or one escape (`'\\n'`, `'\\''`,\n     `'\\\\'`, `'\\u{1F600}'`), and a closing `'` follow it on the line; otherwise it is a lifetime\n     or a label (`'a`, `'static`, `'outer:`) and starts nothing.\n2. **Swift**: `.swift` files, the language `Swift`, a source.\n   - `//` line comments; `/* */` block comments, which nest, as Rust's.\n   - Strings `\"…\"` with backslash escapes, ending on their line; multi-line strings `\"\"\"…\"\"\"`;\n     raw strings `#\"…\"#` and `#\"\"\"…\"\"\"#` with any number of `#` (the closer is the quotes and the\n     same number of `#`; a backslash escapes nothing unless that many `#` follow it). A `#` not\n     followed by more `#` and a `\"` starts nothing (`#if`, `#selector`).\n3. **Lua**: `.lua` files, the language `Lua`, a source.\n   - `--` line comments; long comments `--[[ … ]]` and `--[==[ … ]==]` (any number of `=`; the\n     closer has the same number), which may go on over lines. `--[` not followed by `=`s and\n     another `[` is a line comment.\n   - Strings `\"…\"` and `'…'` with backslash escapes, ending on their line; long strings `[[ … ]]`\n     and `[==[ … ]==]` (the same rule for `=`), which may go on over lines.\n",
+  "goalFile": "/home/anton/projects/Symbiote.worktrees/spike-hive-agentic-graph/spikes/hive-agentic-graph/goals/g3-rust-swift-lua.md",
+  "template": "/tmp/hive-spike-b89c2d5a/template/loc",
+  "repo": "/tmp/hive-spike-b89c2d5a/runs/g3-one-sonnet/repo",
+  "base": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+  "status": "done",
+  "started": "2026-10-30T23:08:16.862Z",
+  "ledger": null,
+  "nodes": [
+    {
+      "id": "goal",
+      "title": "the whole goal",
+      "brief": "# Goal: count Rust, Swift and Lua right\n\n`loc` knows Rust, Swift and Lua only roughly (`src/languages.ts`): Rust's and Swift's block comments\ndo not nest, raw strings and Lua's long brackets with `=` are unknown, and Rust's `'` is taken for\na string. Lines are miscounted. Teach `loc` each one's real comments and strings, so `countLines`\nsorts their lines right (the rule for a line stays: blank, a comment when it holds only comments,\notherwise code). Keep every other language counted as it is now. No new dependencies.\n\n1. **Rust**: `.rs` files, the language `Rust`, a source.\n   - `//` line comments (`///` and `//!` too); `/* */` block comments, which nest:\n     `/* a /* b */ still a comment */`, over any number of lines.\n   - Strings `\"…\"` with backslash escapes, which may go on over lines; raw strings `r\"…\"`,\n     `r#\"…\"#`, `r##\"…\"##` (any number of `#`; the closer is `\"` and the same number of `#`; no\n     escapes), which may go on over lines; byte strings `b\"…\"`, `br\"…\"`, `br#\"…\"#` likewise.\n   - `'` starts a character literal only when one character, or one escape (`'\\n'`, `'\\''`,\n     `'\\\\'`, `'\\u{1F600}'`), and a closing `'` follow it on the line; otherwise it is a lifetime\n     or a label (`'a`, `'static`, `'outer:`) and starts nothing.\n2. **Swift**: `.swift` files, the language `Swift`, a source.\n   - `//` line comments; `/* */` block comments, which nest, as Rust's.\n   - Strings `\"…\"` with backslash escapes, ending on their line; multi-line strings `\"\"\"…\"\"\"`;\n     raw strings `#\"…\"#` and `#\"\"\"…\"\"\"#` with any number of `#` (the closer is the quotes and the\n     same number of `#`; a backslash escapes nothing unless that many `#` follow it). A `#` not\n     followed by more `#` and a `\"` starts nothing (`#if`, `#selector`).\n3. **Lua**: `.lua` files, the language `Lua`, a source.\n   - `--` line comments; long comments `--[[ … ]]` and `--[==[ … ]==]` (any number of `=`; the\n     closer has the same number), which may go on over lines. `--[` not followed by `=`s and\n     another `[` is a line comment.\n   - Strings `\"…\"` and `'…'` with backslash escapes, ending on their line; long strings `[[ … ]]`\n     and `[==[ … ]==]` (the same rule for `=`), which may go on over lines.\n",
+      "deps": [],
+      "branch": "hive/goal",
+      "phase": "merged",
+      "round": 0,
+      "reviews": [],
+      "checks": [
+        {
+          "round": 1,
+          "ok": true,
+          "ms": 933,
+          "tail": ""
+        }
+      ],
+      "progress": [],
+      "replans": 0,
+      "from": "main",
+      "worktree": "/tmp/hive-spike-b89c2d5a/runs/g3-one-sonnet/wt/goal",
+      "forkBase": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+      "session": "3f7289d8-ad13-4b4a-87f9-22f9238c0ee6",
+      "interrupted": false,
+      "merged": "2629fc74b0a4f63d265d47cd0432c84364311929"
+    }
+  ],
+  "merges": [
+    {
+      "node": "goal",
+      "sha": "2629fc74b0a4f63d265d47cd0432c84364311929",
+      "at": "2026-10-30T23:10:31.991Z"
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "goal",
+      "at": "2026-10-30T23:10:30.986Z",
+      "auto": true
+    }
+  ],
+  "calls": [
+    {
+      "role": "one",
+      "node": "goal",
+      "round": 1,
+      "model": "sonnet",
+      "effort": "high",
+      "session": "3f7289d8-ad13-4b4a-87f9-22f9238c0ee6",
+      "started": "2026-10-30T23:08:17.167Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/g3-one-sonnet/agents/01-one-goal-r1.jsonl",
+      "ended": "2026-10-30T23:10:30.050Z",
+      "ms": 132884,
+      "exit": 0,
+      "cost": 0.34425680000000003,
+      "turns": 12,
+      "usage": {
+        "input_tokens": 22,
+        "cache_creation_input_tokens": 35417,
+        "cache_read_input_tokens": 347348,
+        "output_tokens": 16781,
+        "output_tokens_details": {
+          "thinking_tokens": 6925
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 35417,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 627,
+            "cache_read_input_tokens": 44241,
+            "cache_creation_input_tokens": 259,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 259
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "modelUsage": {
+        "claude-sonnet-5-5": {
+          "inputTokens": 22,
+          "outputTokens": 16781,
+          "cacheReadInputTokens": 347348,
+          "cacheCreationInputTokens": 35417,
+          "webSearchRequests": 0,
+          "costUSD": 0.34425680000000003,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 6925,
+          "cacheCreationEphemeral5mInputTokens": 0,
+          "cacheCreationEphemeral1hInputTokens": 35417,
+          "canonicalModel": "claude-sonnet-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      },
+      "subtype": "success"
+    }
+  ],
+  "runs": [
+    {
+      "pid": 41887,
+      "started": "2026-10-30T23:08:16.863Z",
+      "windows": {
+        "fiveHour": 45,
+        "week": 67,
+        "at": "2026-10-30T23:08:17.153Z"
+      },
+      "ended": "2026-10-30T23:10:31.991Z",
+      "windowsAfter": {
+        "fiveHour": 45,
+        "week": 67,
+        "at": "2026-10-30T23:08:17.153Z"
+      }
+    }
+  ],
+  "finished": "2026-10-30T23:10:31.991Z"
+}

@@ -333,3 +333,4 @@ merge commit.
 - 2026-10-30 [Spike — push instead of polling: a noticeable improvement, and reliable with one stream per browser](journal/spike-push-instead-of-polling.md)
 - 2026-10-30 [Hive tentacles spike — three candidates, then Carnage](journal/v82-hive-mode.md)
 - 2026-10-30 [Hive tentacles — built](journal/v82-hive-mode.md)
+- 2026-10-31 [HV1 spike — Hive's graph against one agent: no gain at twice the cost; a reviewer that runs code catches what a read-only one approves](journal/hv1-hive-graph.md)

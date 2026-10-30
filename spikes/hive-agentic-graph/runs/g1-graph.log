@@ -1,0 +1,29 @@
+22:34:40 run mode=graph profile=real fake=
+22:34:40 agent-start role=orchestrator node=undefined round=undefined model=opus session=31d888f7-3d3a-49a1-9e10-f25f08bd3d6e resume=false
+22:35:19 agent-end role=orchestrator node=undefined round=undefined exit=0 subtype=success cost=0.247 s=38
+22:35:19 planned workspaces=scan-summary<-[] cli<-[scan-summary]
+22:35:19 workspace-start node=scan-summary from=main base=f144387
+22:35:19 agent-start role=researcher node=scan-summary round=0 model=sonnet session=38b27bdf-b2bc-4c21-8889-54508abc18c4 resume=false
+22:35:33 agent-end role=researcher node=scan-summary round=0 exit=0 subtype=success cost=0.057 s=14
+22:35:33 agent-start role=main node=scan-summary round=1 model=opus session=fe541995-f12c-4ad7-9b51-2a895c194e8f resume=false
+22:36:13 agent-end role=main node=scan-summary round=1 exit=0 subtype=success cost=0.272 s=40
+22:36:14 check node=scan-summary round=1 ok=true ms=939
+22:36:15 agent-start role=reviewer node=scan-summary round=1 model=sonnet session=3756d30d-34a1-488c-b024-acfb00f617e6 resume=false
+22:36:23 agent-end role=reviewer node=scan-summary round=1 exit=0 subtype=success cost=0.061 s=8
+22:36:23 review node=scan-summary round=1 verdict=approve blocking=0 findings=0
+22:36:23 workspace-start node=cli from=hive/scan-summary base=afee3c2
+22:36:23 gate kind=land node=scan-summary auto=true
+22:36:24 merge-check node=scan-summary ok=true ms=941
+22:36:24 merged node=scan-summary sha=37d23f7
+22:36:24 agent-start role=researcher node=cli round=0 model=sonnet session=96b9d69e-32d5-4cf3-b3ae-df25520b7143 resume=false
+22:36:39 agent-end role=researcher node=cli round=0 exit=0 subtype=success cost=0.059 s=15
+22:36:39 agent-start role=main node=cli round=1 model=opus session=c7b5b439-4dc6-4e31-a675-3c921c56e76a resume=false
+22:37:24 agent-end role=main node=cli round=1 exit=0 subtype=success cost=0.289 s=46
+22:37:25 check node=cli round=1 ok=true ms=970
+22:37:27 agent-start role=reviewer node=cli round=1 model=sonnet session=f0f6cb6e-5dd4-4fe8-8aa1-e9628e841446 resume=false
+22:37:37 agent-end role=reviewer node=cli round=1 exit=0 subtype=success cost=0.060 s=10
+22:37:37 review node=cli round=1 verdict=approve blocking=0 findings=0
+22:37:37 gate kind=land node=cli auto=true
+22:37:38 merge-check node=cli ok=true ms=961
+22:37:38 merged node=cli sha=ae05f0d
+22:37:38 finished status=done cost=1.05

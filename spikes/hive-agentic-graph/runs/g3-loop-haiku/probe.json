@@ -1,0 +1,35 @@
+{
+  "review": {
+    "summary": "I found one defect, in Lua's long strings, and three tests show it failing. Lua's long-string fence is `{ mark: '=', open: '[', close: ']', suffix: ']' }` with no prefix (src/languages.ts:91). `fenceAt` reads the `=` marks after the prefix and before `open`. With no prefix it looks for `=`s before the opening `[`, finds none, and then matches that `[` as the opener. So two things go wrong. First, any `[` opens a level-0 long string that only `]]` closes, including an index like `t[1]`. Second, `[==[` is read as level 0, so it closes at the first `]]`, not at `]==]`. The comment fence (`prefix: '--['`) does not have this problem. The cost is large because index brackets are everywhere in Lua: after the first `t[1]`, every later line in the file counts as code, comments too. The goal's own test only passed because `local w = t[1][2]` is its last line. The three failing tests are kept in test/probe-all.test.ts. Everything else I ran passed and was deleted, about 60 cases in all. Rust: nested comments up to depth 3 over lines, raw and byte-raw strings with 0–3 `#`s, `r\"\\\"`, raw identifiers, a word ending in `r`, character literals (`'\"'`, `'\\''`, `'\\\\'`, `'\\x22'`, `'\\u{…}'`, `b'\"'`, emoji) against lifetimes and labels, and lines holding only `b`, `r` or a char literal. Swift: nested comments, `#\"\"#`, `##\"…\"##` with `\\#` and `\\##`, `#\"\"\"…\"\"\"#`, `\"\"\"` with escapes, `#if`, `#selector` and `#available`. Lua: `---[[`, `--]]`, `--[===[`, code before a long comment, and quoted strings with escapes. Python, SQL, C and TypeScript count as they did before the change.",
+    "findings": [
+      {
+        "severity": "blocker",
+        "test": "test/probe-all.test.ts > probe: Lua's long strings > opens no long string at an index bracket, so a comment after it is a comment",
+        "text": "Any `[` in Lua opens a long string. `local x = t[1]` followed by `-- a comment` gives code 2, comments 0; the expected count is code 1, comments 1. The no-prefix fence in src/languages.ts:91 matches `open: '['` at the `[` itself with zero marks. The resulting string only closes at `]]`, so after the first index or table bracket every later line counts as code, comments included. The goal says strings are `\"…\"`, `'…'` and long strings `[[ … ]]`/`[==[ … ]==]`. A lone `[` is none of those."
+      },
+      {
+        "severity": "major",
+        "test": "test/probe-all.test.ts > probe: Lua's long strings > closes a [==[ long string at ]==], so a comment after it is a comment",
+        "text": "`[==[` is taken as a level-0 long string whose closer is `]]`, not `]==]`. `local s = [==[` / `x` / `]==]` / `-- a comment` gives code 4, comments 0; the expected count is code 3, comments 1. The string never closes at `]==]`, which breaks the goal's rule that \"the closer has the same number\" of `=`s. The cause is the same fence: `fenceAt` reads marks after the (empty) prefix, which is before the `[`, so the `==` between the two brackets is never counted."
+      },
+      {
+        "severity": "major",
+        "test": "test/probe-all.test.ts > probe: Lua's long strings > keeps a [==[ long string open past ]]",
+        "text": "`local s = [==[` / `]] -- not the end` / `-- still in the string` / `]==]` gives code 3, comments 1; the expected count is code 4, comments 0. Because `[==[` is read as level 0, the `]]` on line 2 wrongly closes the string. The `-- not the end` on that line then reads as a trailing comment, and line 3 counts as a comment even though it is inside the string. Same root cause. A fix would give the string fence `prefix: '['` with `open: '['`, as the comment fence uses `--[`."
+      }
+    ],
+    "cost": 1.2298612,
+    "ms": 312116
+  },
+  "tests": {
+    "files": [
+      "probe-all.test.ts"
+    ],
+    "failed": [
+      "probe: Lua's long strings opens no long string at an index bracket, so a comment after it is a comment",
+      "probe: Lua's long strings closes a [==[ long string at ]==], so a comment after it is a comment",
+      "probe: Lua's long strings keeps a [==[ long string open past ]]"
+    ],
+    "passed": 0
+  }
+}

@@ -1,0 +1,435 @@
+{
+  "version": 1,
+  "mode": "graph",
+  "profile": "fake",
+  "fake": "happy",
+  "goal": "# Goal: a folder report for loc\n\nGive `loc` a report of a folder: how many files and lines each language has, from the command\nline. No new dependencies.\n\n1. `scanFolder(root: string): Promise<FileCount[]>`, exported from `src/index.ts`:\n   - every file under `root`, recursively; directories named `.git` and `node_modules` are skipped;\n     symbolic links are not followed (left out);\n   - a file whose first 8,000 bytes hold a NUL byte is binary: left out;\n   - each file is `{ path, language, lines, code, comments, blank }`: `path` relative to `root`\n     with `/` separators; `language` is `languageOf(path)?.name`, `\"Text\"` when there is none; the\n     counts are `countLines(text, languageOf(path)?.syntax)` of its UTF-8 text;\n   - sorted by `path` (plain string order).\n2. `summarize(files: FileCount[]): Summary`, exported from `src/index.ts`:\n   - `{ languages: LanguageTotal[]; total: Totals }`, where `Totals` is\n     `{ files, lines, code, comments, blank }` and `LanguageTotal` is `Totals` plus `language`;\n   - one entry per language, sorted by `code` (most first), then by `language` (plain string\n     order);\n   - `total` sums every file.\n3. A command, `node dist/cli.js [folder] [--json]` (after `npm run build`); `folder` defaults to\n   the current directory:\n   - `--json`: prints `summarize(await scanFolder(folder))` as JSON, two-space indented, with a\n     final newline;\n   - otherwise a table: a header row, one row per language in the summary's order, and a last row\n     `Total`; columns `Language`, `Files`, `Lines`, `Code`, `Comments`, `Blank`; numbers\n     right-aligned;\n   - exit code 0; a folder that does not exist or is not a directory: a message on stderr that\n     starts with `loc: `, exit code 2; an unknown option: the same.\n",
+  "goalFile": "/home/anton/projects/Symbiote.worktrees/spike-hive-agentic-graph/spikes/hive-agentic-graph/goals/g1-folder-report.md",
+  "template": "/tmp/hive-spike-b89c2d5a/template/loc",
+  "repo": "/tmp/hive-spike-b89c2d5a/runs/f-happy/repo",
+  "base": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+  "status": "done",
+  "started": "2026-10-30T23:27:51.993Z",
+  "ledger": {
+    "facts": [
+      "src/count.ts counts lines"
+    ],
+    "guesses": [
+      "a CLI needs a build"
+    ],
+    "plan": "summary first, then the CLI on it"
+  },
+  "nodes": [
+    {
+      "id": "summary",
+      "title": "scanFolder and summarize",
+      "brief": "Write scanFolder and summarize.",
+      "deps": [],
+      "branch": "hive/summary",
+      "phase": "merged",
+      "round": 2,
+      "reviews": [
+        {
+          "round": 1,
+          "verdict": "changes",
+          "summary": "1 findings",
+          "findings": [
+            {
+              "severity": "major",
+              "path": "summary.txt",
+              "line": 1,
+              "text": "finding 1"
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "verdict": "approve",
+          "summary": "0 findings",
+          "findings": []
+        }
+      ],
+      "checks": [
+        {
+          "round": 1,
+          "ok": true,
+          "ms": 908,
+          "tail": ""
+        },
+        {
+          "round": 2,
+          "ok": true,
+          "ms": 869,
+          "tail": ""
+        }
+      ],
+      "progress": [
+        {
+          "round": 1,
+          "commits": 1,
+          "check": true,
+          "blocking": 1,
+          "progressed": true
+        },
+        {
+          "round": 2,
+          "commits": 1,
+          "check": true,
+          "blocking": 0,
+          "progressed": true
+        }
+      ],
+      "replans": 0,
+      "from": "main",
+      "worktree": "/tmp/hive-spike-b89c2d5a/runs/f-happy/wt/summary",
+      "forkBase": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+      "research": "Notes: count.ts and languages.ts; tests in test/.",
+      "roundStart": "e85b35a305455df457f156c732924ebb58046f74",
+      "session": "66543f5e-2957-4b83-b96d-8009c85b52ff",
+      "interrupted": false,
+      "fresh": false,
+      "commits": 1,
+      "merged": "9ea4cf3ed0ea5d44cdc1c9896a09d0ce33bf497a"
+    },
+    {
+      "id": "cli",
+      "title": "the loc command",
+      "brief": "Write the CLI on summarize.",
+      "deps": [
+        "summary"
+      ],
+      "branch": "hive/cli",
+      "phase": "merged",
+      "round": 2,
+      "reviews": [
+        {
+          "round": 1,
+          "verdict": "changes",
+          "summary": "1 findings",
+          "findings": [
+            {
+              "severity": "major",
+              "path": "cli.txt",
+              "line": 1,
+              "text": "finding 1"
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "verdict": "approve",
+          "summary": "0 findings",
+          "findings": []
+        }
+      ],
+      "checks": [
+        {
+          "round": 1,
+          "ok": true,
+          "ms": 870,
+          "tail": ""
+        },
+        {
+          "round": 2,
+          "ok": true,
+          "ms": 902,
+          "tail": ""
+        }
+      ],
+      "progress": [
+        {
+          "round": 1,
+          "commits": 1,
+          "check": true,
+          "blocking": 1,
+          "progressed": true
+        },
+        {
+          "round": 2,
+          "commits": 1,
+          "check": true,
+          "blocking": 0,
+          "progressed": true
+        }
+      ],
+      "replans": 0,
+      "from": "hive/summary",
+      "worktree": "/tmp/hive-spike-b89c2d5a/runs/f-happy/wt/cli",
+      "forkBase": "52a3b06cdd0874601ed657b32a0c1fa5626b571a",
+      "research": "Notes: count.ts and languages.ts; tests in test/.",
+      "roundStart": "776aea966d2340b7f761a804fb47bfd890217445",
+      "session": "ea16e4fb-cd52-4f1c-878b-a4f7c3ff4e67",
+      "interrupted": false,
+      "fresh": false,
+      "commits": 1,
+      "merged": "ebbf5de4fc2be9ec59bfe9cc4dd4b9682741ff85"
+    }
+  ],
+  "merges": [
+    {
+      "node": "summary",
+      "sha": "9ea4cf3ed0ea5d44cdc1c9896a09d0ce33bf497a",
+      "at": "2026-10-30T23:27:55.369Z"
+    },
+    {
+      "node": "cli",
+      "sha": "ebbf5de4fc2be9ec59bfe9cc4dd4b9682741ff85",
+      "at": "2026-10-30T23:27:58.733Z"
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "summary",
+      "at": "2026-10-30T23:27:54.474Z",
+      "auto": true
+    },
+    {
+      "kind": "land",
+      "node": "cli",
+      "at": "2026-10-30T23:27:57.809Z",
+      "auto": true
+    }
+  ],
+  "calls": [
+    {
+      "role": "orchestrator",
+      "model": "fake",
+      "session": "0ca307c3-4a06-439f-a171-4f8d4165ec0e",
+      "started": "2026-10-30T23:27:51.997Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-happy/agents/01-orchestrator-run-r0.jsonl",
+      "ended": "2026-10-30T23:27:52.022Z",
+      "ms": 26,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "researcher",
+      "node": "summary",
+      "round": 0,
+      "model": "fake",
+      "session": "c0e31269-33f3-401f-b9cc-8e980da136a2",
+      "started": "2026-10-30T23:27:52.033Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-happy/agents/02-researcher-summary-r0.jsonl",
+      "ended": "2026-10-30T23:27:52.057Z",
+      "ms": 25,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "main",
+      "node": "summary",
+      "round": 1,
+      "model": "fake",
+      "session": "66543f5e-2957-4b83-b96d-8009c85b52ff",
+      "started": "2026-10-30T23:27:52.061Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-happy/agents/03-main-summary-r1.jsonl",
+      "ended": "2026-10-30T23:27:52.094Z",
+      "ms": 35,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "reviewer",
+      "node": "summary",
+      "round": 1,
+      "model": "fake",
+      "session": "f6020bdc-fde5-43c8-9be2-316e1bc80600",
+      "started": "2026-10-30T23:27:53.265Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-happy/agents/04-reviewer-summary-r1.jsonl",
+      "ended": "2026-10-30T23:27:53.289Z",
+      "ms": 25,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "main",
+      "node": "summary",
+      "round": 2,
+      "model": "fake",
+      "session": "66543f5e-2957-4b83-b96d-8009c85b52ff",
+      "started": "2026-10-30T23:27:53.294Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-happy/agents/05-main-summary-r2.jsonl",
+      "ended": "2026-10-30T23:27:53.324Z",
+      "ms": 31,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "reviewer",
+      "node": "summary",
+      "round": 2,
+      "model": "fake",
+      "session": "ed6d7e38-187d-48c2-93ed-893466deede3",
+      "started": "2026-10-30T23:27:54.444Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-happy/agents/06-reviewer-summary-r2.jsonl",
+      "ended": "2026-10-30T23:27:54.463Z",
+      "ms": 20,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "researcher",
+      "node": "cli",
+      "round": 0,
+      "model": "fake",
+      "session": "15fa682a-9363-4b24-bc09-b8a15e1a407a",
+      "started": "2026-10-30T23:27:55.371Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-happy/agents/07-researcher-cli-r0.jsonl",
+      "ended": "2026-10-30T23:27:55.394Z",
+      "ms": 24,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "main",
+      "node": "cli",
+      "round": 1,
+      "model": "fake",
+      "session": "ea16e4fb-cd52-4f1c-878b-a4f7c3ff4e67",
+      "started": "2026-10-30T23:27:55.397Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-happy/agents/08-main-cli-r1.jsonl",
+      "ended": "2026-10-30T23:27:55.430Z",
+      "ms": 34,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "reviewer",
+      "node": "cli",
+      "round": 1,
+      "model": "fake",
+      "session": "f0619bbe-6f51-46d8-a127-31dbc2eff5f9",
+      "started": "2026-10-30T23:27:56.549Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-happy/agents/09-reviewer-cli-r1.jsonl",
+      "ended": "2026-10-30T23:27:56.572Z",
+      "ms": 24,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "main",
+      "node": "cli",
+      "round": 2,
+      "model": "fake",
+      "session": "ea16e4fb-cd52-4f1c-878b-a4f7c3ff4e67",
+      "started": "2026-10-30T23:27:56.575Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-happy/agents/10-main-cli-r2.jsonl",
+      "ended": "2026-10-30T23:27:56.631Z",
+      "ms": 56,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "reviewer",
+      "node": "cli",
+      "round": 2,
+      "model": "fake",
+      "session": "c19e9041-c0d4-4eb1-a383-0d7d96cc962c",
+      "started": "2026-10-30T23:27:57.783Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-happy/agents/11-reviewer-cli-r2.jsonl",
+      "ended": "2026-10-30T23:27:57.808Z",
+      "ms": 26,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    }
+  ],
+  "runs": [
+    {
+      "pid": 98846,
+      "started": "2026-10-30T23:27:51.994Z",
+      "windows": null,
+      "ended": "2026-10-30T23:27:58.734Z",
+      "windowsAfter": null
+    }
+  ],
+  "finished": "2026-10-30T23:27:58.734Z"
+}

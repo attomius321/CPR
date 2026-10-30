@@ -1,0 +1,498 @@
+{
+  "version": 1,
+  "mode": "graph",
+  "profile": "fake",
+  "fake": "parallel",
+  "goal": "# Goal: a folder report for loc\n\nGive `loc` a report of a folder: how many files and lines each language has, from the command\nline. No new dependencies.\n\n1. `scanFolder(root: string): Promise<FileCount[]>`, exported from `src/index.ts`:\n   - every file under `root`, recursively; directories named `.git` and `node_modules` are skipped;\n     symbolic links are not followed (left out);\n   - a file whose first 8,000 bytes hold a NUL byte is binary: left out;\n   - each file is `{ path, language, lines, code, comments, blank }`: `path` relative to `root`\n     with `/` separators; `language` is `languageOf(path)?.name`, `\"Text\"` when there is none; the\n     counts are `countLines(text, languageOf(path)?.syntax)` of its UTF-8 text;\n   - sorted by `path` (plain string order).\n2. `summarize(files: FileCount[]): Summary`, exported from `src/index.ts`:\n   - `{ languages: LanguageTotal[]; total: Totals }`, where `Totals` is\n     `{ files, lines, code, comments, blank }` and `LanguageTotal` is `Totals` plus `language`;\n   - one entry per language, sorted by `code` (most first), then by `language` (plain string\n     order);\n   - `total` sums every file.\n3. A command, `node dist/cli.js [folder] [--json]` (after `npm run build`); `folder` defaults to\n   the current directory:\n   - `--json`: prints `summarize(await scanFolder(folder))` as JSON, two-space indented, with a\n     final newline;\n   - otherwise a table: a header row, one row per language in the summary's order, and a last row\n     `Total`; columns `Language`, `Files`, `Lines`, `Code`, `Comments`, `Blank`; numbers\n     right-aligned;\n   - exit code 0; a folder that does not exist or is not a directory: a message on stderr that\n     starts with `loc: `, exit code 2; an unknown option: the same.\n",
+  "goalFile": "/home/anton/projects/Symbiote.worktrees/spike-hive-agentic-graph/spikes/hive-agentic-graph/goals/g1-folder-report.md",
+  "template": "/tmp/hive-spike-b89c2d5a/template/loc",
+  "repo": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/repo",
+  "base": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+  "status": "done",
+  "started": "2026-10-30T22:49:55.643Z",
+  "ledger": {
+    "facts": [],
+    "guesses": [],
+    "plan": "two parts at once"
+  },
+  "nodes": [
+    {
+      "id": "left",
+      "title": "left part",
+      "brief": "Write the left part.",
+      "deps": [],
+      "branch": "hive/left",
+      "phase": "merged",
+      "round": 3,
+      "reviews": [
+        {
+          "round": 1,
+          "verdict": "changes",
+          "summary": "1 findings",
+          "findings": [
+            {
+              "severity": "major",
+              "path": "left.txt",
+              "line": 1,
+              "text": "finding 1"
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "verdict": "approve",
+          "summary": "0 findings",
+          "findings": []
+        },
+        {
+          "round": 3,
+          "verdict": "approve",
+          "summary": "0 findings",
+          "findings": []
+        }
+      ],
+      "checks": [
+        {
+          "round": 1,
+          "ok": true,
+          "ms": 975,
+          "tail": ""
+        },
+        {
+          "round": 2,
+          "ok": true,
+          "ms": 905,
+          "tail": ""
+        },
+        {
+          "round": 3,
+          "ok": true,
+          "ms": 859,
+          "tail": ""
+        }
+      ],
+      "progress": [
+        {
+          "round": 1,
+          "commits": 1,
+          "check": true,
+          "blocking": 1,
+          "progressed": true
+        },
+        {
+          "round": 2,
+          "commits": 1,
+          "check": true,
+          "blocking": 0,
+          "progressed": true
+        },
+        {
+          "round": 3,
+          "commits": 4,
+          "check": true,
+          "blocking": 0,
+          "progressed": false
+        }
+      ],
+      "replans": 0,
+      "from": "main",
+      "worktree": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/wt/left",
+      "forkBase": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+      "research": "Notes: count.ts and languages.ts; tests in test/.",
+      "roundStart": "20c94c512d48700d3b01ba6738e3c50ff4856e7e",
+      "session": "d7cb6911-ba38-487f-b34e-311c59d2987d",
+      "interrupted": false,
+      "fresh": false,
+      "commits": 4,
+      "rebases": 1,
+      "roundBase": 2,
+      "merged": "74a6598ed0a00f106a195dd61a1455028cf4743e"
+    },
+    {
+      "id": "right",
+      "title": "right part",
+      "brief": "Write the right part.",
+      "deps": [],
+      "branch": "hive/right",
+      "phase": "merged",
+      "round": 2,
+      "reviews": [
+        {
+          "round": 1,
+          "verdict": "changes",
+          "summary": "1 findings",
+          "findings": [
+            {
+              "severity": "major",
+              "path": "right.txt",
+              "line": 1,
+              "text": "finding 1"
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "verdict": "approve",
+          "summary": "0 findings",
+          "findings": []
+        }
+      ],
+      "checks": [
+        {
+          "round": 1,
+          "ok": true,
+          "ms": 884,
+          "tail": ""
+        },
+        {
+          "round": 2,
+          "ok": true,
+          "ms": 875,
+          "tail": ""
+        }
+      ],
+      "progress": [
+        {
+          "round": 1,
+          "commits": 1,
+          "check": true,
+          "blocking": 1,
+          "progressed": true
+        },
+        {
+          "round": 2,
+          "commits": 1,
+          "check": true,
+          "blocking": 0,
+          "progressed": true
+        }
+      ],
+      "replans": 0,
+      "from": "main",
+      "worktree": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/wt/right",
+      "forkBase": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+      "research": "Notes: count.ts and languages.ts; tests in test/.",
+      "roundStart": "d50e502e477bf43b9a704cb847417c7e74c0dcb0",
+      "session": "f70eff85-9c29-4a61-a203-117ac8592ed7",
+      "interrupted": false,
+      "fresh": false,
+      "commits": 1,
+      "merged": "bf4483dd6ed0476faa67b87cff568a17de63d52d"
+    }
+  ],
+  "merges": [
+    {
+      "node": "right",
+      "sha": "bf4483dd6ed0476faa67b87cff568a17de63d52d",
+      "at": "2026-10-30T22:50:01.315Z"
+    },
+    {
+      "node": "left",
+      "sha": "74a6598ed0a00f106a195dd61a1455028cf4743e",
+      "at": "2026-10-30T22:50:03.363Z"
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "right",
+      "at": "2026-10-30T22:50:00.451Z",
+      "auto": true
+    },
+    {
+      "kind": "land",
+      "node": "left",
+      "at": "2026-10-30T22:50:01.316Z",
+      "auto": true
+    },
+    {
+      "kind": "land",
+      "node": "left",
+      "at": "2026-10-30T22:50:02.488Z",
+      "auto": true
+    }
+  ],
+  "calls": [
+    {
+      "role": "orchestrator",
+      "model": "fake",
+      "session": "49b92e38-b34f-4545-86e8-6339e17857fd",
+      "started": "2026-10-30T22:49:55.647Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/01-orchestrator-run-r0.jsonl",
+      "ended": "2026-10-30T22:49:55.669Z",
+      "ms": 24,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "researcher",
+      "node": "left",
+      "round": 0,
+      "model": "fake",
+      "session": "6a0f73a3-b8e0-40cf-916c-bb3e8ea09cf3",
+      "started": "2026-10-30T22:49:55.688Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/02-researcher-left-r0.jsonl",
+      "ended": "2026-10-30T22:49:55.712Z",
+      "ms": 25,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "researcher",
+      "node": "right",
+      "round": 0,
+      "model": "fake",
+      "session": "336c5f8f-afbf-42ba-a268-110a2f4fefa2",
+      "started": "2026-10-30T22:49:55.689Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/03-researcher-right-r0.jsonl",
+      "ended": "2026-10-30T22:49:55.708Z",
+      "ms": 20,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "main",
+      "node": "right",
+      "round": 1,
+      "model": "fake",
+      "session": "f70eff85-9c29-4a61-a203-117ac8592ed7",
+      "started": "2026-10-30T22:49:55.711Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/04-main-right-r1.jsonl",
+      "ended": "2026-10-30T22:49:55.741Z",
+      "ms": 32,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "main",
+      "node": "left",
+      "round": 1,
+      "model": "fake",
+      "session": "d7cb6911-ba38-487f-b34e-311c59d2987d",
+      "started": "2026-10-30T22:49:55.714Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/05-main-left-r1.jsonl",
+      "ended": "2026-10-30T22:49:56.905Z",
+      "ms": 1192,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "reviewer",
+      "node": "right",
+      "round": 1,
+      "model": "fake",
+      "session": "6ec52bc0-535f-4f50-a41f-15c537733e58",
+      "started": "2026-10-30T22:49:56.904Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/06-reviewer-right-r1.jsonl",
+      "ended": "2026-10-30T22:49:58.149Z",
+      "ms": 1246,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "reviewer",
+      "node": "left",
+      "round": 1,
+      "model": "fake",
+      "session": "e6d39ad6-4673-4ed9-be00-97371411cb88",
+      "started": "2026-10-30T22:49:58.148Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/07-reviewer-left-r1.jsonl",
+      "ended": "2026-10-30T22:49:58.172Z",
+      "ms": 25,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "main",
+      "node": "right",
+      "round": 2,
+      "model": "fake",
+      "session": "f70eff85-9c29-4a61-a203-117ac8592ed7",
+      "started": "2026-10-30T22:49:58.152Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/08-main-right-r2.jsonl",
+      "ended": "2026-10-30T22:49:58.178Z",
+      "ms": 26,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "main",
+      "node": "left",
+      "round": 2,
+      "model": "fake",
+      "session": "d7cb6911-ba38-487f-b34e-311c59d2987d",
+      "started": "2026-10-30T22:49:58.175Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/09-main-left-r2.jsonl",
+      "ended": "2026-10-30T22:49:59.295Z",
+      "ms": 1121,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "reviewer",
+      "node": "right",
+      "round": 2,
+      "model": "fake",
+      "session": "97e79f6c-6d76-4d61-9369-d0200c3ad357",
+      "started": "2026-10-30T22:49:59.294Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/10-reviewer-right-r2.jsonl",
+      "ended": "2026-10-30T22:50:00.450Z",
+      "ms": 1157,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "reviewer",
+      "node": "left",
+      "round": 2,
+      "model": "fake",
+      "session": "f7332209-add4-42a6-ab69-a5d96f356f48",
+      "started": "2026-10-30T22:50:00.449Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/11-reviewer-left-r2.jsonl",
+      "ended": "2026-10-30T22:50:01.315Z",
+      "ms": 866,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "main",
+      "node": "left",
+      "round": 3,
+      "model": "fake",
+      "session": "d7cb6911-ba38-487f-b34e-311c59d2987d",
+      "started": "2026-10-30T22:50:01.325Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/12-main-left-r3.jsonl",
+      "ended": "2026-10-30T22:50:01.357Z",
+      "ms": 32,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "reviewer",
+      "node": "left",
+      "round": 3,
+      "model": "fake",
+      "session": "002e5545-6013-4a7b-bdee-e842017891ca",
+      "started": "2026-10-30T22:50:02.463Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-parallel/agents/13-reviewer-left-r3.jsonl",
+      "ended": "2026-10-30T22:50:02.487Z",
+      "ms": 25,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    }
+  ],
+  "runs": [
+    {
+      "pid": 63601,
+      "started": "2026-10-30T22:49:55.644Z",
+      "windows": null,
+      "ended": "2026-10-30T22:50:03.364Z",
+      "windowsAfter": null
+    }
+  ],
+  "finished": "2026-10-30T22:50:03.364Z"
+}

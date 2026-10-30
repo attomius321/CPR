@@ -1,0 +1,62 @@
+{
+ "run": "/tmp/hive-spike-b89c2d5a/runs/g3-one-sonnet",
+ "mode": "one",
+ "profile": "sonnet",
+ "status": "done",
+ "head": "2629fc74b0a4f63d265d47cd0432c84364311929",
+ "cost": 0.344,
+ "byRole": {
+  "one": {
+   "calls": 1,
+   "cost": 0.34425680000000003,
+   "ms": 132884
+  }
+ },
+ "calls": 1,
+ "wallMinutes": 2.3,
+ "gates": [
+  {
+   "kind": "land",
+   "node": "goal",
+   "at": "2026-10-30T23:10:30.986Z",
+   "auto": true
+  }
+ ],
+ "windows": [
+  {
+   "before": {
+    "fiveHour": 45,
+    "week": 67,
+    "at": "2026-10-30T23:08:17.153Z"
+   },
+   "after": {
+    "fiveHour": 45,
+    "week": 67,
+    "at": "2026-10-30T23:08:17.153Z"
+   }
+  }
+ ],
+ "change": {
+  "shortstat": "4 files changed, 403 insertions(+), 8 deletions(-)",
+  "files": [
+   "M\tsrc/count.ts",
+   "A\tsrc/dialects.ts",
+   "M\tsrc/languages.ts",
+   "A\ttest/dialects.test.ts"
+  ]
+ },
+ "check": true,
+ "build": true,
+ "acceptance": {
+  "passed": 8,
+  "total": 8,
+  "failed": []
+ },
+ "symbioteFindings": [
+  "info signature-changed src/languages.ts#Syntax: Syntax changed its signature compatibly; existing users keep working (20 users, 19 untouched)"
+ ],
+ "blind": {
+  "n": 3,
+  "cost": 0.5549379999999999
+ }
+}

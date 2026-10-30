@@ -1,0 +1,219 @@
+{
+  "version": 1,
+  "mode": "loop",
+  "profile": "fake",
+  "fake": "happy",
+  "goal": "# Goal: a folder report for loc\n\nGive `loc` a report of a folder: how many files and lines each language has, from the command\nline. No new dependencies.\n\n1. `scanFolder(root: string): Promise<FileCount[]>`, exported from `src/index.ts`:\n   - every file under `root`, recursively; directories named `.git` and `node_modules` are skipped;\n     symbolic links are not followed (left out);\n   - a file whose first 8,000 bytes hold a NUL byte is binary: left out;\n   - each file is `{ path, language, lines, code, comments, blank }`: `path` relative to `root`\n     with `/` separators; `language` is `languageOf(path)?.name`, `\"Text\"` when there is none; the\n     counts are `countLines(text, languageOf(path)?.syntax)` of its UTF-8 text;\n   - sorted by `path` (plain string order).\n2. `summarize(files: FileCount[]): Summary`, exported from `src/index.ts`:\n   - `{ languages: LanguageTotal[]; total: Totals }`, where `Totals` is\n     `{ files, lines, code, comments, blank }` and `LanguageTotal` is `Totals` plus `language`;\n   - one entry per language, sorted by `code` (most first), then by `language` (plain string\n     order);\n   - `total` sums every file.\n3. A command, `node dist/cli.js [folder] [--json]` (after `npm run build`); `folder` defaults to\n   the current directory:\n   - `--json`: prints `summarize(await scanFolder(folder))` as JSON, two-space indented, with a\n     final newline;\n   - otherwise a table: a header row, one row per language in the summary's order, and a last row\n     `Total`; columns `Language`, `Files`, `Lines`, `Code`, `Comments`, `Blank`; numbers\n     right-aligned;\n   - exit code 0; a folder that does not exist or is not a directory: a message on stderr that\n     starts with `loc: `, exit code 2; an unknown option: the same.\n",
+  "goalFile": "/home/anton/projects/Symbiote.worktrees/spike-hive-agentic-graph/spikes/hive-agentic-graph/goals/g1-folder-report.md",
+  "template": "/tmp/hive-spike-b89c2d5a/template/loc",
+  "repo": "/tmp/hive-spike-b89c2d5a/runs/f-loop/repo",
+  "base": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+  "status": "done",
+  "started": "2026-10-30T22:30:19.971Z",
+  "ledger": null,
+  "nodes": [
+    {
+      "id": "goal",
+      "title": "the whole goal",
+      "brief": "# Goal: a folder report for loc\n\nGive `loc` a report of a folder: how many files and lines each language has, from the command\nline. No new dependencies.\n\n1. `scanFolder(root: string): Promise<FileCount[]>`, exported from `src/index.ts`:\n   - every file under `root`, recursively; directories named `.git` and `node_modules` are skipped;\n     symbolic links are not followed (left out);\n   - a file whose first 8,000 bytes hold a NUL byte is binary: left out;\n   - each file is `{ path, language, lines, code, comments, blank }`: `path` relative to `root`\n     with `/` separators; `language` is `languageOf(path)?.name`, `\"Text\"` when there is none; the\n     counts are `countLines(text, languageOf(path)?.syntax)` of its UTF-8 text;\n   - sorted by `path` (plain string order).\n2. `summarize(files: FileCount[]): Summary`, exported from `src/index.ts`:\n   - `{ languages: LanguageTotal[]; total: Totals }`, where `Totals` is\n     `{ files, lines, code, comments, blank }` and `LanguageTotal` is `Totals` plus `language`;\n   - one entry per language, sorted by `code` (most first), then by `language` (plain string\n     order);\n   - `total` sums every file.\n3. A command, `node dist/cli.js [folder] [--json]` (after `npm run build`); `folder` defaults to\n   the current directory:\n   - `--json`: prints `summarize(await scanFolder(folder))` as JSON, two-space indented, with a\n     final newline;\n   - otherwise a table: a header row, one row per language in the summary's order, and a last row\n     `Total`; columns `Language`, `Files`, `Lines`, `Code`, `Comments`, `Blank`; numbers\n     right-aligned;\n   - exit code 0; a folder that does not exist or is not a directory: a message on stderr that\n     starts with `loc: `, exit code 2; an unknown option: the same.\n",
+      "deps": [],
+      "branch": "hive/goal",
+      "phase": "merged",
+      "round": 2,
+      "reviews": [
+        {
+          "round": 1,
+          "verdict": "changes",
+          "summary": "1 findings",
+          "findings": [
+            {
+              "severity": "major",
+              "path": "goal.txt",
+              "line": 1,
+              "text": "finding 1"
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "verdict": "approve",
+          "summary": "0 findings",
+          "findings": []
+        }
+      ],
+      "checks": [
+        {
+          "round": 1,
+          "ok": true,
+          "ms": 892,
+          "tail": ""
+        },
+        {
+          "round": 2,
+          "ok": true,
+          "ms": 878,
+          "tail": ""
+        }
+      ],
+      "progress": [
+        {
+          "round": 1,
+          "commits": 1,
+          "check": true,
+          "blocking": 1,
+          "progressed": true
+        },
+        {
+          "round": 2,
+          "commits": 1,
+          "check": true,
+          "blocking": 0,
+          "progressed": true
+        }
+      ],
+      "replans": 0,
+      "from": "main",
+      "worktree": "/tmp/hive-spike-b89c2d5a/runs/f-loop/wt/goal",
+      "forkBase": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+      "research": "Notes: count.ts and languages.ts; tests in test/.",
+      "roundStart": "69520adfdf5ad4d1480b950b42366f02b1e9dc6c",
+      "session": "50796fe2-915c-4dc2-9384-9f58a6045832",
+      "interrupted": false,
+      "fresh": false,
+      "commits": 1,
+      "merged": "598f0f4d492a54278843717465225a7c8664d7f7"
+    }
+  ],
+  "merges": [
+    {
+      "node": "goal",
+      "sha": "598f0f4d492a54278843717465225a7c8664d7f7",
+      "at": "2026-10-30T22:30:23.312Z"
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "goal",
+      "at": "2026-10-30T22:30:22.394Z",
+      "auto": true
+    }
+  ],
+  "calls": [
+    {
+      "role": "researcher",
+      "node": "goal",
+      "round": 0,
+      "model": "fake",
+      "session": "65fd7d05-2374-45b3-9b53-9343fc3fea7f",
+      "started": "2026-10-30T22:30:19.985Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-loop/agents/01-researcher-goal-r0.jsonl",
+      "ended": "2026-10-30T22:30:20.009Z",
+      "ms": 26,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "main",
+      "node": "goal",
+      "round": 1,
+      "model": "fake",
+      "session": "50796fe2-915c-4dc2-9384-9f58a6045832",
+      "started": "2026-10-30T22:30:20.012Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-loop/agents/02-main-goal-r1.jsonl",
+      "ended": "2026-10-30T22:30:20.042Z",
+      "ms": 31,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "reviewer",
+      "node": "goal",
+      "round": 1,
+      "model": "fake",
+      "session": "a6672612-6b82-40b4-9068-8aa8c29d4eb5",
+      "started": "2026-10-30T22:30:21.181Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-loop/agents/03-reviewer-goal-r1.jsonl",
+      "ended": "2026-10-30T22:30:21.200Z",
+      "ms": 20,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "main",
+      "node": "goal",
+      "round": 2,
+      "model": "fake",
+      "session": "50796fe2-915c-4dc2-9384-9f58a6045832",
+      "started": "2026-10-30T22:30:21.205Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-loop/agents/04-main-goal-r2.jsonl",
+      "ended": "2026-10-30T22:30:21.233Z",
+      "ms": 29,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    },
+    {
+      "role": "reviewer",
+      "node": "goal",
+      "round": 2,
+      "model": "fake",
+      "session": "ba5232a4-eab0-414e-a021-5835feda5225",
+      "started": "2026-10-30T22:30:22.369Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-loop/agents/05-reviewer-goal-r2.jsonl",
+      "ended": "2026-10-30T22:30:22.393Z",
+      "ms": 25,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    }
+  ],
+  "runs": [
+    {
+      "pid": 93830,
+      "started": "2026-10-30T22:30:19.972Z",
+      "windows": null,
+      "ended": "2026-10-30T22:30:23.313Z",
+      "windowsAfter": null
+    }
+  ],
+  "finished": "2026-10-30T22:30:23.313Z"
+}

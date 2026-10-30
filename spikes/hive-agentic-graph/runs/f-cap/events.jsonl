@@ -1,0 +1,27 @@
+{"at":"2026-10-30T23:27:58.786Z","kind":"run","mode":"graph","profile":"fake","fake":"cap"}
+{"at":"2026-10-30T23:27:58.788Z","kind":"agent-start","role":"orchestrator","model":"fake","session":"f2fd77da-3f1b-4775-91e7-4dcf07112494","resume":false}
+{"at":"2026-10-30T23:27:58.816Z","kind":"agent-end","role":"orchestrator","exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T23:27:58.816Z","kind":"planned","workspaces":"summary<-[] cli<-[summary]"}
+{"at":"2026-10-30T23:27:58.826Z","kind":"workspace-start","node":"summary","from":"main","base":"f144387"}
+{"at":"2026-10-30T23:27:58.827Z","kind":"agent-start","role":"researcher","node":"summary","round":0,"model":"fake","session":"c5dbc18c-a99f-4ba9-8cfb-642f093a76ca","resume":false}
+{"at":"2026-10-30T23:27:58.849Z","kind":"agent-end","role":"researcher","node":"summary","round":0,"exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T23:27:58.852Z","kind":"agent-start","role":"main","node":"summary","round":1,"model":"fake","session":"8b68ea41-10d7-4286-94d3-31afccb80e47","resume":false}
+{"at":"2026-10-30T23:27:58.886Z","kind":"agent-end","role":"main","node":"summary","round":1,"exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T23:27:59.776Z","kind":"check","node":"summary","round":1,"ok":true,"ms":886}
+{"at":"2026-10-30T23:28:00.019Z","kind":"agent-start","role":"reviewer","node":"summary","round":1,"model":"fake","session":"541b741c-e8ae-4312-95a0-3cbe1cfb9883","resume":false}
+{"at":"2026-10-30T23:28:00.043Z","kind":"agent-end","role":"reviewer","node":"summary","round":1,"exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T23:28:00.043Z","kind":"review","node":"summary","round":1,"verdict":"changes","blocking":3,"findings":3}
+{"at":"2026-10-30T23:28:00.045Z","kind":"agent-start","role":"main","node":"summary","round":2,"model":"fake","session":"8b68ea41-10d7-4286-94d3-31afccb80e47","resume":true}
+{"at":"2026-10-30T23:28:00.076Z","kind":"agent-end","role":"main","node":"summary","round":2,"exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T23:28:00.962Z","kind":"check","node":"summary","round":2,"ok":true,"ms":881}
+{"at":"2026-10-30T23:28:01.209Z","kind":"agent-start","role":"reviewer","node":"summary","round":2,"model":"fake","session":"27dd4112-ecaf-4ab9-b3d9-c0f4bb38df5e","resume":false}
+{"at":"2026-10-30T23:28:01.233Z","kind":"agent-end","role":"reviewer","node":"summary","round":2,"exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T23:28:01.233Z","kind":"review","node":"summary","round":2,"verdict":"changes","blocking":2,"findings":2}
+{"at":"2026-10-30T23:28:01.236Z","kind":"agent-start","role":"main","node":"summary","round":3,"model":"fake","session":"8b68ea41-10d7-4286-94d3-31afccb80e47","resume":true}
+{"at":"2026-10-30T23:28:01.265Z","kind":"agent-end","role":"main","node":"summary","round":3,"exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T23:28:02.171Z","kind":"check","node":"summary","round":3,"ok":true,"ms":902}
+{"at":"2026-10-30T23:28:02.413Z","kind":"agent-start","role":"reviewer","node":"summary","round":3,"model":"fake","session":"71dcdac2-e848-41b3-81d7-dab5c5c0779f","resume":false}
+{"at":"2026-10-30T23:28:02.441Z","kind":"agent-end","role":"reviewer","node":"summary","round":3,"exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T23:28:02.441Z","kind":"review","node":"summary","round":3,"verdict":"changes","blocking":1,"findings":1}
+{"at":"2026-10-30T23:28:02.442Z","kind":"round-cap","node":"summary","auto":false}
+{"at":"2026-10-30T23:28:02.442Z","kind":"finished","status":"needs-person","cost":"0.00"}
