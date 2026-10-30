@@ -85,6 +85,12 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
     'Start a workspace here',
     'New branch here…',
     'New tag here…',
+    // fix/git-page-feature-extend: onto the branch checked out; the row's branch merged or rebased onto.
+    'Cherry-pick onto main…',
+    'Revert…',
+    'Reset main to here…',
+    'Merge into main',
+    'Rebase main onto',
   ]);
   await page.getByRole('menuitem', { name: 'Review', exact: true }).hover();
   const targets = page.getByRole('menu', { name: 'Review' }).getByRole('menuitem');

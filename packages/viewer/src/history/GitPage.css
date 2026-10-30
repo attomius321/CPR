@@ -318,10 +318,33 @@
   white-space: nowrap;
 }
 
-/* Beside the pane the card is narrow: the pane's row has the status's letter; the side stays. */
+/* Beside the pane the card is narrow: the pane's row has the status's letter; the side stays.
+   With Diff, History and Blame in the head too, Open in VS Code is its icon, the folder (the path
+   is in the tip) and the lines (the pane's row has them) go, the gaps close up and the name gives
+   way last, cut. */
 @container git-rows (max-width: 640px) {
-  .git-shown-words {
+  .git-shown-words,
+  .git-shown-folder,
+  .git-shown-head .changes-lines,
+  .git-open-words,
+  .git-shown-tail .open-editor kbd {
     display: none;
+  }
+
+  .git-shown-head,
+  .git-shown-tail {
+    gap: 8px;
+  }
+
+  .git-shown-name {
+    flex: 0 1 auto;
+    min-width: 3ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .git-shown-views .scope {
+    padding: 0 8px;
   }
 }
 

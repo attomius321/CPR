@@ -199,7 +199,9 @@
   line-height: 18px;
 }
 
-/* The stashes, after the branches (decision 639): a click opens a stash's menu. */
+/* The stashes, at the panel's foot under a hairline (decision 639): the branches scroll above
+   them; many stashes scroll in their own third. A click opens a stash's menu. */
 .branches-stashes {
-  margin-top: 8px;
+  flex: none;
+  max-height: 33%;
 }

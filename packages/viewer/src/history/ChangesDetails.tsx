@@ -108,17 +108,31 @@ export function ChangesDetails({
       .finally(() => setBusy(false));
   };
   const askAbort = () =>
-    onAsk({
-      title: `Abort the ${changes.operation}?`,
-      note: 'The branch goes back to where it was before it started; the conflicts resolved so far are lost.',
-      verb: 'Abort',
-      danger: true,
-      run: async () => {
-        await endOperation('abort');
-        return { text: `Aborted the ${changes.operation}` };
-      },
-      after: 'afresh',
-    });
+    onAsk(
+      changes.operation === 'bisect'
+        ? {
+            title: 'Stop bisecting?',
+            note: 'HEAD goes back to where the bisect started; what it found so far is forgotten.',
+            verb: 'Stop',
+            danger: true,
+            run: async () => {
+              await endOperation('abort');
+              return { text: 'Stopped bisecting' };
+            },
+            after: 'afresh',
+          }
+        : {
+            title: `Abort the ${changes.operation}?`,
+            note: 'The branch goes back to where it was before it started; the conflicts resolved so far are lost.',
+            verb: 'Abort',
+            danger: true,
+            run: async () => {
+              await endOperation('abort');
+              return { text: `Aborted the ${changes.operation}` };
+            },
+            after: 'afresh',
+          },
+    );
   const askStash = () =>
     onAsk({
       title: 'Stash the changes?',

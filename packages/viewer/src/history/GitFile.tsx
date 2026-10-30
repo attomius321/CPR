@@ -103,11 +103,13 @@ export function GitFile({
             id={OPEN_FILE_ID}
             type="button"
             className="open-editor"
+            aria-label="Open in VS Code"
             {...tip("Its diff in VS Code's diff editor", { keys: 'o' })}
             onClick={open}
           >
             <OpenIcon />
-            Open in VS Code
+            {/* Its words go when the card is narrow: the icon and its tip stay. */}
+            <span className="git-open-words">Open in VS Code</span>
             <kbd aria-hidden="true">o</kbd>
           </button>
           <button
