@@ -1,7 +1,8 @@
 // Hive mode (V82): kept for this repository by its `symbiote view` (decision 621), and written on
 // <html> as `data-hive` with the page (decision 612), so the look is there from the first paint.
 // This module reads it, turns it on or off from Settings, and keeps the tab's icon in step
-// (decision 616). On, the ink takes the page (decision 624, `hive-arrival.ts`); off, a short fade.
+// (decision 616). On, the Hive Mind and a blackout take the page (decision 632, `hive-arrival.ts`);
+// off, a short fade.
 import { useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import { postJson } from '../ui/http.js';
@@ -35,8 +36,8 @@ function show(on: boolean, then?: () => void): void {
 
 /**
  * Turns Hive mode on or off for this repository's pages; the look follows once it is kept, and
- * `then` runs as it changes (the question closing under the ink). On, the ink bursts from `from`
- * (the question's hexagon; the window's middle without one); off, the page fades. Resolves once
+ * `then` runs as it changes (the question closing under the blackout). On, the Hive Mind grows
+ * from `from` (the question's; the window's middle without one); off, the page fades. Resolves once
  * the look has changed; the arrival goes on to its end.
  */
 export async function setHive(
@@ -46,7 +47,7 @@ export async function setHive(
   const kept = await postJson<{ on: boolean }>('/api/hive', { on });
   if (kept.on === isHive() || lessMotion()) return show(kept.on, then);
   if (kept.on) {
-    const origin = from ?? { x: window.innerWidth / 2, y: window.innerHeight / 2, r: 30 };
+    const origin = from ?? { x: window.innerWidth / 2, y: window.innerHeight / 2, scale: 1 };
     return new Promise((resolve) => {
       void arrive(origin, () => {
         show(true, then);

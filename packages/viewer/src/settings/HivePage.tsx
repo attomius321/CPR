@@ -19,17 +19,15 @@ export function HivePage({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      // The ink bursts from the question's hexagon, which closes under it (decision 624).
-      const hexagon = document
-        .querySelector('.hive-joining .hive-hex-fill')
-        ?.getBoundingClientRect();
+      // The question's Hive Mind grows from its middle as the blackout closes (decision 632).
+      const art = document.querySelector('.hive-joining')?.getBoundingClientRect();
       await setHive(next, {
-        ...(hexagon
+        ...(art
           ? {
               from: {
-                x: hexagon.x + hexagon.width / 2,
-                y: hexagon.y + hexagon.height / 2,
-                r: hexagon.height / 2,
+                x: art.x + art.width / 2,
+                y: art.y + art.height / 2,
+                scale: art.width / 520,
               },
             }
           : {}),
@@ -109,8 +107,8 @@ export function HivePage({ onBack }: { onBack: () => void }) {
 
 /**
  * Turning Hive mode on asks first (decision 615), in Hive's own look whatever the theme and the
- * mode: tendrils join into a hexagon over the question, then are still. Cancel is focused; Escape
- * and a click beside the dialog cancel.
+ * mode: tendrils grab the Hive Mind over the question and live while it is open (decision 631).
+ * Cancel is focused; Escape and a click beside the dialog cancel.
  */
 function HiveQuestion({
   busy,

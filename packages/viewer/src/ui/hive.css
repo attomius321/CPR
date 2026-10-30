@@ -64,7 +64,9 @@
   width: 100%;
   max-width: 300px;
   height: min(420px, 70%);
-  opacity: 0.9;
+  /* Filled glossy tendrils sit behind the words: at 0.6 the muted ones keep 4.46:1 against the
+     brightest pixel behind them, the others 8.75:1 (at 0.9, 3.14). */
+  opacity: 0.6;
   pointer-events: none;
   mask-image: linear-gradient(to top, #000 55%, transparent);
 }
@@ -73,111 +75,36 @@
   display: none;
 }
 
-/* The art's colours (`HiveArt.tsx`): always on ink, the sidenav's or the dialog's. */
-.hive-ink-top {
-  stop-color: #3a141b;
+/* The tendrils' and the Hive Mind's colours (decision 629, Carnage's red and black), read once by
+   `hive-draw.ts` for each canvas: the question's, the sidenav's and the arrival's. */
+.hive-art {
+  --art-ink: #0b0102;
+  --art-lit: #6e0a19;
+  --art-env: #ff8a96;
+  --art-rim: #e8243a;
+  --art-spec: #ffd8de;
+  --art-glow: #eb2028;
+  --art-cell-hot: #ff8250;
+  --art-core-hot: #ffb478;
+  --art-chamber: #160204;
+  --art-thought: #ff826e;
+  --art-wall: #170306;
+  --art-wall-lit: #45101a;
+  --art-wall-deep: #050101;
 }
 
-.hive-ink-mid {
-  stop-color: #070405;
-}
+/* --- Hive's arrival (decision 632): the Mind and the blackout, then the light; then still --- */
 
-.hive-ink-deep {
-  stop-color: #120809;
-}
-
-.hive-joining .hive-ink-deep {
-  stop-color: #4a0e1a;
-}
-
-.hive-core-light {
-  stop-color: #3a1018;
-}
-
-.hive-core-dark {
-  stop-color: #0a0506;
-}
-
-.hive-body {
-  stroke: var(--hive-red);
-  stroke-opacity: 0.55;
-  stroke-width: 1;
-}
-
-.hive-shine {
-  fill: none;
-  stroke: #ffffff;
-  stroke-opacity: 0.55;
-  stroke-width: 2;
-  stroke-linecap: round;
-}
-
-.hive-shine.faint {
-  stroke-opacity: 0.3;
-  stroke-width: 1;
-}
-
-/* --- Hive's arrival (decision 624): the ink, then the tendrils and the light; then still --- */
-
-/* The ink over the whole window, the question's too, under the window's edge (frame.css, 100). */
+/* The blackout over the whole window, the question's too, under the window's edge (frame.css,
+   100); drawn at most 0.9 megapixels and stretched. */
 .hive-flood {
   position: fixed;
   inset: 0;
   z-index: 90;
+  display: block;
   width: 100%;
   height: 100%;
   pointer-events: none;
-}
-
-/* Lines as thin at the window's size as at the hexagon's. */
-.hive-flood path {
-  vector-effect: non-scaling-stroke;
-}
-
-.hive-flood-heart {
-  stop-color: #2a0a12;
-}
-
-.hive-flood .hive-body {
-  stroke-width: 1.5;
-  stroke-opacity: 0.8;
-}
-
-.hive-flood-core {
-  stroke: var(--hive-red);
-  stroke-width: 2;
-}
-
-.hive-flood-line {
-  fill: none;
-  stroke: #ffffff;
-  stroke-opacity: 0.6;
-  stroke-width: 1.5;
-}
-
-/* The sidenav's tendrils, each under a mask along its line: drawn whole, but as Hive arrives,
-   when they grow from their roots one after another. */
-.hive-rise {
-  fill: none;
-  stroke: #ffffff;
-  stroke-linecap: round;
-  stroke-dasharray: 1 1;
-  stroke-dashoffset: 0;
-}
-
-:root[data-hive-arriving] .hive-rise {
-  animation: hive-arrive-rise 900ms cubic-bezier(0.25, 0.7, 0.2, 1) both;
-  animation-delay: calc(120ms + var(--rise, 0) * 110ms);
-}
-
-@keyframes hive-arrive-rise {
-  from {
-    stroke-dashoffset: 1;
-  }
-
-  to {
-    stroke-dashoffset: 0;
-  }
 }
 
 /* The sheen comes in, and a streak of light crosses the main area once. */
@@ -230,7 +157,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root[data-hive-arriving] .hive-rise,
   :root[data-hive-arriving] .shell-main::before,
   :root[data-hive-arriving] .shell-main::after {
     animation: none;
@@ -299,9 +225,11 @@
 
 /* --- The question (decision 615): ink and crimson whatever the theme and the mode --- */
 
+/* No blur behind it or in it while its art moves: in software (the app on WSL) the compositor blurs
+   the whole window again each frame, a core's work at 16–31 fps (decision 631). */
 .dialog-backdrop.hive {
   background: radial-gradient(60% 60% at 50% 50%, rgb(70 4 16 / 55%), rgb(2 0 1 / 82%));
-  backdrop-filter: blur(3px);
+  backdrop-filter: none;
 }
 
 .dialog.hive-ink {
@@ -318,6 +246,7 @@
     0 24px 80px rgb(0 0 0 / 70%),
     0 0 48px color-mix(in srgb, var(--hive-red) 22%, transparent),
     inset 0 1px 0 rgb(255 255 255 / 10%);
+  backdrop-filter: none;
 }
 
 /* A streak of light across it, as over the pages. */
@@ -333,11 +262,14 @@
   position: relative;
 }
 
+/* The art: the dialog's width, faded at its lower edge into the question. */
 .hive-joining {
   display: block;
   width: calc(100% + 2 * var(--card-pad));
   height: auto;
+  aspect-ratio: 520 / 128;
   margin: 0 calc(-1 * var(--card-pad)) 4px;
+  mask-image: linear-gradient(#000 72%, transparent);
 }
 
 .dialog.hive-ink h2 {
@@ -360,70 +292,6 @@
   background: var(--primary);
   background-image: var(--hive-gloss);
   box-shadow: var(--primary-shine);
-}
-
-/* Joining: the tendrils grow along their lines to the middle (900 ms), the hexagon's edge closes,
-   then its inner line, and its core shows; then all is still. */
-.hive-grow {
-  fill: none;
-  stroke: #ffffff;
-  stroke-linecap: round;
-  stroke-dasharray: 1 1;
-  stroke-dashoffset: 1;
-  animation: hive-grow 900ms cubic-bezier(0.25, 0.7, 0.2, 1) forwards;
-}
-
-.hive-grow.later {
-  animation-delay: 120ms;
-}
-
-.hive-hex-line,
-.hive-hex-inner {
-  fill: none;
-  stroke-linejoin: round;
-  stroke-dasharray: 1 1;
-  stroke-dashoffset: 1;
-}
-
-.hive-hex-line {
-  stroke: var(--hive-red);
-  stroke-width: 2.5;
-  animation: hive-grow 450ms 780ms ease-out forwards;
-}
-
-.hive-hex-inner {
-  stroke: #ffffff;
-  stroke-opacity: 0.85;
-  stroke-width: 1.6;
-  animation: hive-grow 450ms 980ms ease-out forwards;
-}
-
-.hive-hex-fill {
-  opacity: 0;
-  animation: hive-show 400ms 900ms forwards;
-}
-
-@keyframes hive-grow {
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes hive-show {
-  to {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hive-grow,
-  .hive-hex-line,
-  .hive-hex-inner,
-  .hive-hex-fill {
-    animation: none;
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
 }
 
 /* Its mark in the list while it is on. */
