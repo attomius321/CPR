@@ -321,3 +321,4 @@ merge commit.
 - 2026-10-29 [NU1 spike — what the agents' web tools do in Scout's modes](journal/nu1-nucleus.md)
 - 2026-10-29 [NU1 — Nucleus: Scout renamed, the agents' web tools, Scout's names still read](journal/nu1-nucleus.md)
 - 2026-10-30 [V81 — Settings: icons in the list](journal/v81-settings-list-icons.md)
+- 2026-10-30 [NU2 spike — what Nucleus's agents give to record](journal/nu2-nucleus-activity.md)

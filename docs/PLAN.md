@@ -184,6 +184,7 @@ hosted.
 | [MC2](plan/mc2-mcp-suggest-settings.md) | `suggest_settings`: the advisor's proposal through Symbiote's MCP, before a start Scout makes | ready for review | 582–584 | [journal](journal/mc2-mcp-suggest-settings.md) |
 | [V80](plan/v80-scout-reads-worktrees.md) | Scout reads the workspaces' worktrees: their files and uncommitted changes, by its gate at each call; still read-only | ready for review | 596–599 | [journal](journal/v80-scout-reads-worktrees.md) |
 | [NU1](plan/nu1-nucleus.md) | Nucleus: Scout renamed, with the agents' web search and pages; its next steps planned | ready for review | 589–595 | [journal](journal/nu1-nucleus.md) |
+| [NU2](plan/nu2-nucleus-activity.md) | Nucleus's Activity tab: its messages, calls, the gate's decisions, Symbiote's tools and Confirms, recorded across conversations | in progress | 604–610 | [journal](journal/nu2-nucleus-activity.md) |
 
 ### The merger
 
