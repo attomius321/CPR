@@ -245,3 +245,49 @@ row menu's two entries and the keys' help.
 
 The pane shows a commit's names within 10 ms; on a blobless clone its lines come after, as
 planned.
+
+## Fix: the page lists in place; more of git (fix/git-page-feature-extend)
+
+**Problem** (2026-10-31, the person: "there is something that keeps refreshing the git page...and
+i lose my current view (i loook at a file, and goes back to the history)", and "Implement other
+git features"). Reproduced on `main` (`9330f9a`) with the e2e repository: "Add cube"'s file open,
+another branch moved (an agent's commit, the checkout untouched), the window focused again: one
+listing, the file closed (`.git-shown` 0), the cursor from "Add cube" to HEAD's "Add half".
+
+Listing anew remounts the page (`<History key={scope:generation}>`): every state goes, and
+"Listing commits…" replaces the page meanwhile. Three things do it unasked:
+
+| What | How often | What is lost |
+|---|---|---|
+| The window focused or shown again after HEAD or any branch moved | each return to the window | the file, the scroll, and the cursor (to HEAD) |
+| A workspace's tip moved (read every 5 s while an agent works) | each commit an agent makes, each merge into main | the file and the diff's scroll |
+| A block of rows or a search answered 409 (a branch moved, the server listed anew) | while scrolling or searching | the whole page: "The branches moved since this page listed them" |
+
+**Decisions 634–645**:
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 634 | Listing anew unasked | **In place**: the new version's first rows, shape and branches read while the page stays, then swapped in one render; the cursor on its commit (its new row by SHA, `GET /api/history/rows`), the rows where they were on screen, the file and the pane untouched. A cursor on HEAD with no file shown follows HEAD; a commit no longer listed puts it on HEAD. For the focus, a workspace's tip, a 409, Fetch and Push | Asked; Fetch and Push move only remote branches. A checkout, a commit, a pull and the dialogs still list afresh: the person asked for the change |
+| 635 | The file shown | **Held by its commit's SHA** (or the uncommitted row), not its row number | A row number changes with every commit listed above it |
+| 636 | A merge, rebase, cherry-pick or revert in progress | **A band in the uncommitted row's pane: Continue and Abort** (`--continue` with no editor, `--abort`; a merge continues as `commit --no-edit`; bisect: Stop) | A pull that stops on conflicts was left with no way out on the page |
+| 637 | Cherry-pick, revert | **A row's menu, onto the branch checked out; a merge against its first parent (`-m 1`); conflicts left in progress** | Their usual meaning; nothing is lost on a conflict |
+| 638 | Merge, rebase | **A branch's menu (panel and row): Merge into the current branch (git's default, fast-forward when it can, `--no-edit`), Rebase the current branch onto it. Never `--autostash`** | No stash the person did not ask for (V66's rule) |
+| 639 | Stash | **Everything, new files too (`-u`), with a message, from the uncommitted pane; listed in the branches panel; Apply, Pop, Drop (asks first) by the stash's SHA** | A stash's index shifts as others come and go |
+| 640 | Reset | **A row's menu: the branch checked out to that commit, Soft (changes staged) or Mixed (unstaged); never hard; the dialog says how many commits leave the branch** | Nothing on disk is lost; the commits stay in the reflog |
+| 641 | Discard | **A not-staged file only, asked first: a tracked file back to the index, a new file deleted** | A staged change is unstaged first: one loss at a time |
+| 642 | Staging hunks and lines | **In an uncommitted file's diff: Stage (or Unstage) a hunk, or the lines picked; a patch applied to the index; refused if the file changed since it was read** | Line numbers of a stale diff would stage other lines |
+| 643 | A file's history and blame | **From a file shown: History (`git log --follow`, each commit a link to its row) and Blame (`git blame --porcelain` at the commit, or the disk for an uncommitted file)** | Only files the page lists (decision 58) |
+| 644 | Deleting a remote branch | **A remote branch's menu, asked first: `git push <remote> --delete`; refused for the remote's default branch; never forced** | A remote's default branch is everyone's |
+| 645 | Hiding branches | **A branch's menu: Hide; kept per repository beside the reviews (`symbiote/git.json`, never committed); left out of "All branches" (`--exclude`), listed hidden in the panel with Show; HEAD's branch always listed** | As Hive's record (decision 621): a `symbiote view` is an origin of its own |
+
+**Order**: the fix (failing e2e first), then 636 (the others leave operations in progress), 637,
+638, 639, 640–641, 642, 643, 644–645. Every write as V66's: one at a time per repository, refused
+during an operation (but staging, committing, continuing and aborting), git's refusals in its
+words.
+
+**Verification**: tests first, red for the right reason: `e2e/git.spec.ts` for the fix (a file
+shown, a branch moved, the window focused; a workspace's tip moved): the file never removed (a
+MutationObserver), the rows listed anew, the cursor on its commit; core on temporary repositories
+for each git command, its conflict and its refusals; the server's routes; e2e for each feature.
+`pnpm check`, `pnpm build`, `pnpm test:e2e`; screenshots at 1,440 × 900 and 1,280 × 800, dark and
+light. No analysis code changes: no `regression-check`.
