@@ -8,7 +8,9 @@ first (a neutral ink tint, white highlights) was "more like this, but redish and
 reference picture of glossy black liquid; the second (below) was approved. Then: "Also change the
 icon to match this style" (decision 616). Merged into `main` (6cd7fc0). Then
 [Hive per repository](#fix-hive-per-repository-fixhive-per-symbiote) (decisions 621–624), on
-`fix/hive-per-symbiote`, ready for review.
+`fix/hive-per-symbiote`, merged. Then [Hive tentacles](#feature-hive-tentacles-featurehive-tentacles)
+(decisions 629–633), on `feature/hive-tentacles`: built, ready for review, after the person's OK
+("Go") on the third round of candidates.
 
 **Problem** (asked: "Add a Hive mode setting to Settings. Its control must look dangerous to
 press… While Hive mode is on, the whole interface takes a subtle Venom look"). Hive is the planned
@@ -149,6 +151,11 @@ icon (taskbar) stays.
 | 622 | The nexus | **Its page never takes Hive's look; its reader, option and route change removed** | each tab is its own `symbiote view`'s page, marked by its own server |
 | 623 | Settings' entry (amends 613) | **Under a new group, This repository, above This machine** | the choice is this repository's |
 | 624 | Turning it on | **Ink bursts from the question's hexagon and covers the window, the look changes under it, the ink thins away, the sidenav's tendrils grow and a streak of light crosses once; still after about 2 s. Reduced motion: at once. A page loaded with Hive on: still. Off: a 250 ms fade** | the person: "animate its background until it is static… surprise me"; "even those tendrils should have an animation" |
+| 629 | Hive's tendrils (amends 614) | **Ropes of points that follow a living pose with under-damped springs and noise, drawn on a canvas as shaded tubes in Carnage's red and black; the same drawing in the question and the sidenav (turning on has none, 632)** | the person: "make the tentacles realer… more symbiotic like Venom… Carnage", then "We'll go with the Carnage one"; only a canvas shades across a bending width and moves strands and forks |
+| 630 | The question's centre | **A Hive Mind: a honeycomb round a core that beats, the tendrils plugged into its cells and holding on once they grab, sparks of thought from the cells to the core** | the person: "make it look more like a Hive Mind"; "they should remain attached after the grabing" |
+| 631 | The question's motion (amends 615) | **The tendrils come out, draw back, strike and grab, then live while the dialog is open (30 frames a second, nothing after it closes); its backdrop has no blur; reduced motion: one still frame of the joined art** | the person: "never quite still"; with the blur any motion in the dialog took a whole core at 16–31 fps |
+| 632 | Turning it on (amends 624) | **The question's Hive Mind grows to the middle of the window and a blackout closes from the edges until only it is lit; the look changes under the cover; it flares and a boom from it throws the ink back; no tentacles; then the streak and the sidenav's rise; the canvas at most 0.9 megapixels; reduced motion: at once** | the person: "then boom, the new UI"; "Keep only the Hive mind, and the blackout animation. No tentacles there"; 61 fps at 2560×1440 in software |
+| 633 | The sidenav's tendrils | **The new drawing behind the rows; they rise as Hive arrives, then are still** | a slow idle cost 21 % of a core on every page against 4 % still |
 
 **Not in V82 (later)**: Hive itself; the app's taskbar icon and the desktop start page; other
 open windows following a change at once.
@@ -259,3 +266,136 @@ tendrils should have an animation".
 
 Not verified: the app's window (its rounded frame takes the ink's corners by `frame.css`, not
 seen); the off fade's look (a view transition, checked only to end in main's look).
+
+## Feature: Hive tentacles (feature/hive-tentacles)
+
+**Problem** (2026-10-30, the person: "the tentacles should look more real… some motion on it…
+also the hexagon on the center… make it look more like a Hive Mind"; "only the left side
+navigation is pretty bad… those tentacles… ew"; "the motion should feel natural… more symbiotic
+like Venom from Marvel… Carnage, Venom"; "when transitioning to Hive mode… then boom, the new UI").
+The sidenav's tendrils are ink on ink (`#120809` on `#0d090a`): only their 1 px crimson edge and
+their white lines show, wire outlines over the workspace cards. The question's ribbons have an even
+taper, are drawn in along masks (900 ms) and meet at a hexagon, then nothing moves. The arrival is
+one transformed group.
+
+**Goal**: living tendrils of glossy symbiote, Carnage's red and black, in the question and the
+sidenav; a Hive Mind at the question's centre; turning on as the Mind and a blackout, then the boom.
+**Unchanged**: the look Hive turns on (tokens, the sheen, the pages, the streak); the sidenav's rows,
+Settings' row and the cards; the dialog's words, buttons, focus and Escape; off's 250 ms fade.
+
+**How it was chosen.** Three candidates were drawn by one prototype engine (Venom, Hive, Carnage),
+put in the real viewer at 1x in both themes in place of today's art, recorded frame by frame and
+shown live on a page. The person picked Carnage and asked for three changes, each recorded again:
+the tendrils stay attached once they grab; turning on keeps "only the Hive mind, and the blackout
+animation"; the tendrils "should feel more natural" (no parallel hoses, fine curling tips, an arm
+that moves as one when it strikes, no jitter, no dashed veins, no hard outlines on the comb).
+
+**The drawing** (decision 629). A tendril is a rope of 18–26 points. Each point follows a pose with
+an under-damped spring, softer toward the tip (the tip trails); a tension between neighbours carries
+waves down it. The pose is noise with each tendril's seed and time lag, so the small ones follow the
+big ones late. Its width swells and pinches (lumps that crawl, pulses that run into the Mind) and
+thins where it is stretched. It is drawn on a canvas as a tube: smoothed (Catmull-Rom), shaded
+across its width as a cylinder lit from the upper left like the pages' sheen (a gradient per few
+points, by the normal's direction), a crimson rim on its shadow side, a broad sheen and a specular
+where the curve faces the light, broken into streaks that run along it. Goo strands form between
+neighbours that come close, thin as they part, snap and pull back; small tendrils fork and join.
+The palette is `hive.css`'s, read once; nothing new to install.
+
+**The Hive Mind** (decision 630): 16 honeycomb cells of the same ink, chambers lit crimson from
+within, a core that breathes and beats twice like a heart, white-hot at its peaks; a tendril that
+grabs spreads its foot round a cell's wall and keeps hold; a pulse arriving lights its cell and
+sometimes sends a spark along a curved thread to the core.
+
+**The question** (decision 631): tendrils come out of the ink at both sides and over the top
+corners, draw back, strike in an arc and grab (0.1–1.4 s, 60 frames a second), then live while the
+dialog is open at 30 frames a second; stopped when it closes. Reduced motion: the joined art drawn
+once. Its backdrop and the dialog lose their blurs (the dialog's own is under an opaque background).
+
+**Turning on** (decision 632), a canvas over the window (`.hive-flood`, z-index 90): the question's
+Mind grows to the middle (0.1–0.4 s); the blackout closes from every edge, a liquid rim of crimson
+and light, on the Mind until only it is lit; covered at 1.0 s: the frame drawn fully covered is the
+one `swap` runs after, and the question closes under it; the Mind flares (160 ms); boom: the ink
+tears out from the Mind, a shockwave ring throws it back to the edges (620 ms); then today's streak,
+and the sidenav's tendrils rise. The canvas is at most 0.9 megapixels (half resolution at
+2560×1440). The look still changes if the canvas cannot be drawn. Reduced motion: at once, as now.
+
+**The sidenav** (decision 633): the same drawing behind the rows, from the hairline over Settings,
+out of a pool of ink with webbing between the roots, at most 70 % of the workspaces' column, its top
+faded; drawn once, again on a resize; as Hive arrives they rise (shoot up, overshoot, curl over,
+settle), then are still.
+
+**Measured** (this branch's viewer, hardware acceleration off as the app runs on WSL; CPU is every
+browser process, in % of one core):
+
+| | fps | worst frame | CPU |
+|---|---|---|---|
+| The question, today, still | 60 | 16.8 ms | 4 % |
+| Any motion in it (canvas, SVG paths, a moving SVG filter) with the backdrop blurs | 16–31 | 50–100 ms | 99–112 % |
+| Carnage's idle, 30 fps, no blurs (two runs) | 60 | 16.8 ms | 23–24 % |
+| Panning 599 nodes (2,923 changed symbols): Hive off / today / new still / new moving | 59 / 60 / 59 / 59 | | 138 / 156 / 162 / 163 % |
+| The sidenav at rest: still / moving at 30 fps | 60 / 60 | | 4 / 21 % |
+| Turning on, 2560×1440, full resolution, in a window | 55 | 33 ms | |
+| Turning on, 2560×1440, 0.9 megapixels, 2 runs headless and 2 in a window | 61 | 16.8 ms | |
+
+**Files**: `ui/hive-art.ts` (pure: noise, springs, ropes, poses, widths, strands, the Mind, the three
+scenes, the arrival's cover and resolution), `ui/hive-draw.ts` (new: the canvas drawing),
+`ui/HiveArt.tsx` (the question's and the sidenav's canvases and their runner), `shell/hive-arrival.ts`
+(the Mind and the blackout), `ui/hive.css` (the palette, no SVG mask rules, no blurs on the question),
+`settings/HivePage.tsx` (the arrival from the question's Mind).
+
+**Verification**: tests first (`hive-art.test.ts`: springs overshoot and settle, ropes stay finite
+for minutes, a grabbed tip never leaves its cell, strands form and snap, widths swell and thin, the
+blackout covers the window by its end, the resolution budget; `hive.spec.ts`: the question moves
+while open and stops when it closes, one still frame with reduced motion, the window's sampled
+pixels all opaque on the frame the look changes, nothing moving by 3 s); `pnpm check`, `pnpm build`,
+`pnpm test:e2e`; the built question, sidenav and arrival recorded the same way and set beside the
+plan's, both themes, 1x, a short and a tall window, a full workspace list; the costs again.
+
+**Risks**: a slower machine (the idle's rate and the canvas's size are set by measured budgets, and
+the look still changes on time); without the blur the page behind the question is sharp under its red
+darkening; a motion made of noise varies run to run (tests keep it in bounds).
+
+**As built** (what differs from the plan given to the person):
+
+- **The sidenav's tendrils at 0.6 opacity, their highlights at half** (the plan's at 0.9, full): the
+  filled tendrils sit behind the words, and against the brightest pixel behind them the muted ones
+  (`#bcaeb0`, the times) fell to 3.14:1; at 0.6, 4.46:1 (4.70 in a 700 px window), the others at
+  least 8.75:1. Without the tendrils the lowest is 5.1 (white on a Respond button); today's thin
+  outlines rarely cross a word (7.44).
+- **Every tube is drawn lean**: its shading exactly to its outline, no clipping mask (a third
+  cheaper, the same look), smoothed 2 points a segment, a gradient every 3; the arrival's lean tube
+  was the plan's, now the question's and the sidenav's too.
+- **The lumps never vanish**: the noise that scaled them could reach 0 and leave a plain taper (a
+  test found two); they are scaled between 0.5 and 1.
+- **The rise**: the sidenav's tendrils wait 0.41 s after the swap (the boom), rise and settle by
+  2.2 s; the canvas says `data-moving` until then.
+- **The question's art fades at its lower edge** into the question (`mask-image`), and the arrival
+  starts from the art's middle and size (`Origin` is `{ x, y, scale }`).
+
+**Results.**
+
+- Tests first, red before (`hive-art.test.ts`: the module's exports missing; `hive.spec.ts`: no
+  canvas in the question). Now `hive-art.test.ts` 14, `hive.spec.ts` 6 (the window's sampled pixels
+  all opaque on the frame the look changes). `pnpm check`: 2,483 tests; `pnpm build`;
+  `pnpm test:e2e`: 352 viewer and 20 nexus tests.
+- Recorded on the build the same way as the plan's (Playwright's clock stepping the page 1/30 s, the
+  CSS animations seeked), both themes, and set beside them: the join's timing matches frame for frame
+  (out 0.3–0.6 s, strike 0.7–0.8 s, grabs 0.8–1.1 s); the arrival's too (covered at 1.0 s, the boom at
+  1.2 s, the new look at 1.3 s).
+- Costs on the build, hardware acceleration off:
+
+| | fps | worst frame | CPU |
+|---|---|---|---|
+| The question open, alive / with reduced motion (two runs each) | 60 / 60 | 16.8 / 16.8 ms | 21 / 4 % |
+| Panning 599 nodes, Hive off / on (three runs each) | 59.6–59.9 / 59.3–59.8 | 16.8 / 33 ms once | 122–126 / 147–155 % |
+| Turning on at 2560×1440, headless (three runs) | 59 | 33 ms once | |
+| Turning on at 2560×1440 in a window (Xvfb, three runs) | 54–56 | 50 ms | |
+| Today's (`main`'s build) the same, in a window | 33–35 | 117 ms | |
+
+  In a window, of the 6–14 frames over 20 ms, 1–4 fall in the blackout; the rest at the swap (the
+  page drawn again in Hive's look under the cover) and after it, where the streak and the sheen's
+  fade (kept as they were) run at about 30 frames a second on `main` too.
+
+Not verified: the app's window itself (Electron is not installed here: Chromium with hardware
+acceleration off stood in for it), a GPU, WSLg's own display (a private Xvfb stood in for it).
+

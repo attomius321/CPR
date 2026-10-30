@@ -1,117 +1,113 @@
-import { useId, type CSSProperties } from 'react';
-import {
-  centreline,
-  hexagon,
-  highlight,
-  JOINING,
-  SIDENAV_TENDRILS,
-  taper,
-  type Tendril,
-} from './hive-art.js';
-
-/** A tendril's body, its crimson edge, and two highlights: wet, rounded, glossy. */
-function Body({ tendril, fill }: { tendril: Tendril; fill: string }) {
-  return (
-    <>
-      <path className="hive-body" d={taper(tendril)} fill={fill} />
-      <path className="hive-shine" d={highlight(tendril, { side: 0.28, from: 0.05, to: 0.7 })} />
-      <path
-        className="hive-shine faint"
-        d={highlight(tendril, { side: -0.18, from: 0.2, to: 0.55 })}
-      />
-    </>
-  );
-}
-
-/** An SVG id of `useId`'s, without the characters a `url(#…)` reference would trip on. */
-const svgId = (id: string) => id.replace(/[^\w-]/g, '');
+import { useEffect, useRef } from 'react';
+import { lessMotion } from '../shell/hive-arrival.js';
+import { ARRIVAL, JOIN_SECONDS, questionScene, sidenavScene, STILL_AT } from './hive-art.js';
+import { Painter, paint, readPalette } from './hive-draw.js';
 
 /**
- * Hive mode's tendrils at the sidenav's foot (V82, decision 614), behind its rows; decorative.
- * Their colours are `ui/hive.css`'s. Each under a mask along its line, drawn whole but as Hive
- * arrives, when they grow from their roots one after another (decision 624).
+ * Runs `frame` on each animation frame, at most `fps()` a second, while `going()`; the canvas
+ * says `data-moving` meanwhile (tests read it). Returns what stops it.
  */
-export function HiveTendrils() {
-  const id = svgId(useId());
-  const ink = `hive-ink-${id}`;
-  return (
-    <svg
-      className="hive-tendrils"
-      viewBox="0 0 300 420"
-      preserveAspectRatio="xMidYMax slice"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <defs>
-        <linearGradient id={ink} x1="0" y1="1" x2="0" y2="0">
-          <stop className="hive-ink-deep" offset="0" />
-          <stop className="hive-ink-top" offset="1" />
-        </linearGradient>
-        {SIDENAV_TENDRILS.map((tendril, i) => (
-          <mask key={i} id={`${id}-rise-${i}`} maskUnits="userSpaceOnUse">
-            <path
-              className="hive-rise"
-              d={centreline(tendril.path)}
-              pathLength={1}
-              strokeWidth={tendril.width + 6}
-              style={{ '--rise': i } as CSSProperties}
-            />
-          </mask>
-        ))}
-      </defs>
-      {SIDENAV_TENDRILS.map((tendril, i) => (
-        <g key={i} mask={`url(#${id}-rise-${i})`}>
-          <Body tendril={tendril} fill={`url(#${ink})`} />
-        </g>
-      ))}
-    </svg>
-  );
+function animate(
+  canvas: HTMLCanvasElement,
+  frame: (seconds: number) => void,
+  fps: () => number,
+  going: () => boolean,
+): () => void {
+  canvas.dataset.moving = '';
+  let last = performance.now();
+  let id = 0;
+  const stop = () => {
+    cancelAnimationFrame(id);
+    delete canvas.dataset.moving;
+  };
+  const tick = (now: number) => {
+    if (now - last >= 1000 / fps() - 2) {
+      frame(Math.min(0.05, (now - last) / 1000));
+      last = now;
+      if (!going()) return stop();
+    }
+    id = requestAnimationFrame(tick);
+  };
+  id = requestAnimationFrame(tick);
+  return stop;
 }
 
 /**
- * The Hive dialog's head (decision 615): tendrils grow in from both sides along their lines (a
- * mask drawn by `hive.css`'s animation), meet, and a hexagon closes where they meet; then all is
- * still. With reduced motion, the last frame.
+ * The Hive question's head (decisions 630, 631): tendrils strike, grab the Hive Mind's cells and
+ * hold, then live while the dialog is open: 60 frames a second for the join, 30 after, nothing
+ * once it closes. With reduced motion, the joined art drawn once.
  */
 export function HiveJoining() {
-  const id = svgId(useId());
-  const { cx, cy, r } = JOINING.hexagon;
-  return (
-    <svg
-      className="hive-joining"
-      viewBox={`0 0 ${JOINING.width} ${JOINING.height}`}
-      aria-hidden="true"
-      focusable="false"
-    >
-      <defs>
-        <linearGradient id={`${id}-ink`} x1="0" y1="0" x2="0" y2="1">
-          <stop className="hive-ink-top" offset="0" />
-          <stop className="hive-ink-mid" offset="0.6" />
-          <stop className="hive-ink-deep" offset="1" />
-        </linearGradient>
-        <radialGradient id={`${id}-core`} cx="0.4" cy="0.3" r="0.8">
-          <stop className="hive-core-light" offset="0" />
-          <stop className="hive-core-dark" offset="0.7" />
-        </radialGradient>
-        {JOINING.tendrils.map((tendril, i) => (
-          <mask key={i} id={`${id}-grow-${i}`} maskUnits="userSpaceOnUse">
-            <path
-              className={i % 3 === 2 ? 'hive-grow later' : 'hive-grow'}
-              d={centreline(tendril.path)}
-              pathLength={1}
-              strokeWidth={tendril.width + 6}
-            />
-          </mask>
-        ))}
-      </defs>
-      {JOINING.tendrils.map((tendril, i) => (
-        <g key={i} mask={`url(#${id}-grow-${i})`}>
-          <Body tendril={tendril} fill={`url(#${id}-ink)`} />
-        </g>
-      ))}
-      <path className="hive-hex-fill" d={hexagon(cx, cy, r)} fill={`url(#${id}-core)`} />
-      <path className="hive-hex-line" d={hexagon(cx, cy, r)} pathLength={1} />
-      <path className="hive-hex-inner" d={hexagon(cx, cy, r * 0.55)} pathLength={1} />
-    </svg>
-  );
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const painter = new Painter(readPalette(canvas));
+    const scene = questionScene();
+    const draw = () =>
+      paint(canvas, ctx, scene.width, scene.height, 'contain', 1, (c) =>
+        painter.question(c, scene),
+      );
+    if (lessMotion()) {
+      for (let t = 0; t < STILL_AT; t += 1 / 30) scene.step(1 / 30);
+      draw();
+      return;
+    }
+    return animate(
+      canvas,
+      (seconds) => {
+        scene.step(seconds);
+        draw();
+      },
+      () => (scene.t < JOIN_SECONDS ? 60 : 30),
+      () => true,
+    );
+  }, []);
+  return <canvas ref={ref} className="hive-joining hive-art" aria-hidden="true" />;
+}
+
+/** As Hive arrives, the sidenav's tendrils rise once the boom has thrown the ink back. */
+const RISE_AFTER = ARRIVAL.hold + 0.25;
+
+/**
+ * Hive mode's tendrils at the sidenav's foot (decision 633), behind its rows; decorative. Drawn
+ * once (again on a resize); as Hive arrives (`data-hive-arriving`) they rise, then are still.
+ */
+export function HiveTendrils() {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = ref.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const painter = new Painter(readPalette(canvas));
+    const rise = document.documentElement.dataset.hiveArriving !== undefined && !lessMotion();
+    const scene = sidenavScene({ rise });
+    const draw = () =>
+      paint(canvas, ctx, scene.width, scene.height, 'bottom', 1, (c) => painter.sidenav(c, scene));
+    const resized = new ResizeObserver(draw);
+    resized.observe(canvas);
+    if (!rise) {
+      scene.settle();
+      draw();
+      return () => resized.disconnect();
+    }
+    let wait = RISE_AFTER;
+    draw();
+    const stop = animate(
+      canvas,
+      (seconds) => {
+        if (wait > 0) wait -= seconds;
+        else scene.step(seconds);
+        draw();
+      },
+      () => 60,
+      () => wait > 0 || scene.moving,
+    );
+    return () => {
+      stop();
+      resized.disconnect();
+    };
+  }, []);
+  return <canvas ref={ref} className="hive-tendrils hive-art" aria-hidden="true" />;
 }

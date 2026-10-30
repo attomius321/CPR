@@ -226,6 +226,7 @@ hosted.
 | [V81](plan/v81-settings-list-icons.md) | Settings' list scanned: a lucide icon per entry, on a tile tinted by its group | ✅ | 600–603 | [journal](journal/v81-settings-list-icons.md) |
 | [V82](plan/v82-hive-mode.md) | Hive mode: a dangerous switch in Settings and an ink and crimson look while it is on | ready for review | 611–616 | [journal](journal/v82-hive-mode.md) |
 | [Fix](plan/v82-hive-mode.md#fix-hive-per-repository-fixhive-per-symbiote) | Hive mode per repository, never on the nexus; Settings readable under the tendrils; the ink takes the page as it turns on | ready for review | 621–624 | [journal](journal/v82-hive-mode.md) |
+| [Feature](plan/v82-hive-mode.md#feature-hive-tentacles-featurehive-tentacles) | Hive's tendrils alive: Carnage's red and black in the question and the sidenav, a Hive Mind they grab and hold, turning on as the Mind and a blackout, then a boom | ready for review | 629–633 | [journal](journal/v82-hive-mode.md) |
 
 ### Native window
 

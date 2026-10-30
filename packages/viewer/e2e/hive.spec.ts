@@ -7,7 +7,7 @@ import { serveCommits, type RunningCommits } from './symbiote.js';
 
 // Hive mode (V82): a dangerous switch in Settings, asked before it turns on, kept per repository in
 // its `symbiote/` (decision 621), and the ink and crimson look on every page while it is on, from
-// the first paint; the ink takes the page as it turns on (decision 624).
+// the first paint; the Hive Mind and a blackout take the page as it turns on (decision 632).
 let symbiote: RunningCommits | undefined;
 let other: RunningCommits | undefined;
 let config: string;
@@ -160,41 +160,45 @@ test('light: the content stays white, the sidenav goes ink; the question is ink 
   expect(await colour(page, '.sidenav', 'color')).toBe('rgb(247, 242, 242)');
 });
 
-test('the tendrils join, then all is still; with reduced motion, at once', async ({ page }) => {
+/** A canvas's pixels, to tell whether it moved. */
+const pixels = (page: Page, selector: string) =>
+  page.locator(selector).evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
+
+test('the tendrils grab the Hive Mind and live while the question is open, then stop; with reduced motion, one still frame', async ({
+  page,
+}) => {
   await serve();
   await hivePage(page);
   await turnOn(page).click();
-  await expect(question(page).locator('.hive-joining')).toBeVisible();
-  await page.waitForFunction(
-    () =>
-      [...document.querySelectorAll('.hive-joining *')].flatMap((e) => e.getAnimations()).length >
-        0 &&
-      [...document.querySelectorAll('.hive-joining *')]
-        .flatMap((e) => e.getAnimations())
-        .every((animation) => animation.playState === 'finished'),
-    undefined,
-    { timeout: 5_000 },
-  );
+  const art = question(page).locator('canvas.hive-joining');
+  await expect(art).toBeVisible();
+  // Still moving long after the join: the idle (decision 631).
+  await page.waitForTimeout(2_500);
+  await expect(art).toHaveAttribute('data-moving', '');
+  const a = await pixels(page, '.hive-joining');
+  await page.waitForTimeout(300);
+  expect(await pixels(page, '.hive-joining')).not.toBe(a);
+  // Closed, nothing of it runs.
   await question(page).getByRole('button', { name: 'Cancel' }).click();
+  await expect(question(page)).toBeHidden();
+  await expect(page.locator('[data-moving]')).toHaveCount(0);
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await turnOn(page).click();
-  await expect(question(page).locator('.hive-joining')).toBeVisible();
-  // None in the art (the page's own may run: a spinner, the dialog's fade is its own rule).
+  await expect(art).toBeVisible();
+  await expect(art).not.toHaveAttribute('data-moving');
+  const still = await pixels(page, '.hive-joining');
+  await page.waitForTimeout(400);
+  expect(await pixels(page, '.hive-joining')).toBe(still);
+  // The joined art, drawn once: not a blank canvas.
   expect(
-    await page.evaluate(
-      () =>
-        document
-          .getAnimations()
-          .map((animation) => (animation.effect as KeyframeEffect | null)?.target)
-          .filter((target) => target?.closest('.hive-joining')).length,
-    ),
-  ).toBe(0);
-  expect(
-    await question(page)
-      .locator('.hive-hex-fill')
-      .evaluate((e) => getComputedStyle(e).opacity),
-  ).toBe('1');
+    await art.evaluate((canvas: HTMLCanvasElement) => {
+      const { data } = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
+      let drawn = 0;
+      for (let i = 3; i < data.length; i += 4) if (data[i]! > 200) drawn++;
+      return drawn / (data.length / 4);
+    }),
+  ).toBeGreaterThan(0.2);
 });
 
 test('the tendrils rise from above Settings: its row stays on plain ground', async ({ page }) => {
@@ -224,36 +228,56 @@ const arriving = (page: Page) =>
       }).length,
   );
 
-test('turning on, the ink takes the page from the hexagon, the tendrils grow, then all is still', async ({
+test('turning on, the Hive Mind and a blackout cover the window, the look changes under it, then all is still', async ({
   page,
 }) => {
   await serve();
   await hivePage(page);
   await turnOn(page).click();
+  await expect(question(page).locator('canvas.hive-joining')).toBeVisible();
+  // When the look changes, read the blackout's canvas: every sampled pixel opaque.
+  await page.evaluate(() => {
+    const w = window as unknown as { coveredAtSwap?: number | null };
+    w.coveredAtSwap = null;
+    new MutationObserver((_, observer) => {
+      if (document.documentElement.dataset.hive !== 'on') return;
+      observer.disconnect();
+      const canvas = document.querySelector<HTMLCanvasElement>('.hive-flood');
+      if (!canvas) return;
+      const { data } = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
+      let least = 255;
+      for (let y = 0; y < 9; y++) {
+        for (let x = 0; x < 16; x++) {
+          const px = Math.min(canvas.width - 1, Math.round(((x + 0.5) / 16) * canvas.width));
+          const py = Math.min(canvas.height - 1, Math.round(((y + 0.5) / 9) * canvas.height));
+          least = Math.min(least, data[(py * canvas.width + px) * 4 + 3]!);
+        }
+      }
+      w.coveredAtSwap = least;
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-hive'] });
+  });
   await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
-  // The ink over the page; the look changes under it, the question gone.
   await expect(page.locator('.hive-flood')).toBeAttached();
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
   await expect(question(page)).toBeHidden();
-  await page.waitForFunction(
-    () =>
-      document
-        .getAnimations()
-        .some((animation) =>
-          (animation.effect as KeyframeEffect | null)?.target?.closest('.hive-tendrils'),
-        ),
-    undefined,
-    { timeout: 3_000 },
-  );
-  // Then still, within 3 s: the ink gone, nothing of the arrival running.
+  expect(
+    await page.evaluate(() => (window as unknown as { coveredAtSwap?: number }).coveredAtSwap),
+  ).toBe(255);
+  // The sidenav's tendrils rise as it ends.
+  await expect(page.locator('.sidenav canvas.hive-tendrils[data-moving]')).toBeAttached({
+    timeout: 3_000,
+  });
+  // Then still, within 3 s: the blackout gone, nothing of the arrival running.
   await expect(page.locator('.hive-flood')).toHaveCount(0, { timeout: 3_000 });
   await expect(html(page)).not.toHaveAttribute('data-hive-arriving', { timeout: 3_000 });
+  await expect(page.locator('[data-moving]')).toHaveCount(0, { timeout: 3_000 });
   expect(await arriving(page)).toBe(0);
 
   // Loaded with Hive on: still from the first paint.
   await page.reload();
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
-  await expect(page.locator('.sidenav .hive-tendrils')).toBeAttached();
+  await expect(page.locator('.sidenav canvas.hive-tendrils')).toBeAttached();
+  await expect(page.locator('[data-moving]')).toHaveCount(0);
   expect(await arriving(page)).toBe(0);
   await expect(page.locator('.hive-flood')).toHaveCount(0);
 });
@@ -268,5 +292,6 @@ test('with reduced motion, Hive turns on at once: no ink, no growing', async ({ 
   await expect(page.locator('.sidenav .hive-tendrils')).toBeAttached();
   expect(await arriving(page)).toBe(0);
   await expect(page.locator('.hive-flood')).toHaveCount(0);
+  await expect(page.locator('[data-moving]')).toHaveCount(0);
   await expect(html(page)).not.toHaveAttribute('data-hive-arriving');
 });

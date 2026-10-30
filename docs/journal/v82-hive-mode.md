@@ -96,3 +96,80 @@ off; 5 of 5 alone, then the whole suite). Frames of the arrival in both themes a
 every page with Hive on, both themes, and the narrow drawer; `on()` 7–11 ms a page load.
 
 Not verified: the app's window; the off fade's look.
+
+## Hive tentacles spike — three candidates, then Carnage (2026-10-30, branch `feature/hive-tentacles`)
+
+A prototype engine (outside the repository: springs and noise, tubes on a canvas, goo strands, a
+Hive Mind) drew three candidates, Venom, Hive and Carnage, in place of today's art in this branch's
+`symbiote view` (a scratch repository, a full workspace list mocked with `page.route`), recorded
+frame by frame (the prototype stepped by 1/30 s, a screenshot each frame, the CSS animations seeked
+to the same time) and shown live on a page with the costs. The person picked Carnage, then asked for
+tendrils that stay attached, a more natural feel, and a turning-on of "only the Hive mind, and the
+blackout animation". Planned as decisions 629–633.
+
+**Learned**:
+- **The blur behind the question costs more than any drawing in it.** With hardware acceleration
+  off (as the app runs on WSL), a canvas loop, SVG paths rewritten each frame and today's SVG under a
+  moving displacement filter all took 99–112 % of a core at 16–31 fps in the open dialog; with both
+  blurs off, 61, 25 and 19 % at 60 fps. The 3 px blur over the whole window is most of it: the
+  software compositor blurs it again on any change above it.
+- **A canvas's drawing is mostly raster, not script**: for the question, 0.2 ms to step, 1.8 to
+  record the drawing, 4.4 ms to raster it (forced by reading a pixel). A clipping mask per tube cost a
+  third of it; shading drawn exactly to each tube's outline looks the same.
+- **The heavy frames of a cover are the covered ones**: everything is drawn under solid ink. The
+  covered window is one picture, taken once and moved (19–21 ms a frame to 2–3 ms at 2560×1440).
+- **Tentacles count, not their size**: binding tentacles doubled the tubes and took the arrival to
+  53–56 fps at 2560×1440; slimmer ones barely helped, the lean tube did. Without tentacles the
+  blackout and the Mind cost 3 ms a frame.
+- **A grabbing tip must not ride its spring back out**: an under-damped strike overshoots into the
+  cell and swings back below it, the tip leaving the cell ("like sucking", the person). Once it
+  grabs, the strike's spring is held at the cell and the bounce goes into the body; the old re-grip
+  events went too.
+- **What made it look artificial**: tendrils as parallel bands from edge to centre (hoses), even
+  widths, a twitchy noise, dashed veins along them, light outlines on the comb's cells (hex nuts).
+- **Recording motion**: real time in a headless browser stutters under load; stepping the scene by
+  exact time and seeking the page's CSS animations gives smooth films (30 frames a second, 6 s of a
+  dialog in about 15 s). The arrival was recorded in the real page: today's ink made to run at once
+  and hidden, the real Turn on clicked on the frame the candidate's cover was complete.
+- **The Artifact tool reads only the worktree**: the plan's page and media were published from the
+  worktree's ignored `coverage/` folder.
+
+**Verification**: costs measured in this branch's viewer with `--disable-gpu
+--enable-unsafe-swiftshader`, headless and in a window on a private Xvfb (2560×1440), CPU from
+`/proc` for every browser process; the graph for the pan is this repository's last 40 commits
+(474 files, 2,923 symbols, 599 nodes drawn). Not measured: the app's window itself (Electron is not
+installed here).
+
+## Hive tentacles — built (2026-10-30, branch `feature/hive-tentacles`)
+
+Built as planned (decisions 629–633): `ui/hive-art.ts` (pure: springs, ropes, the tendrils, goo,
+the Hive Mind, the three scenes), `ui/hive-draw.ts` (the canvas), `ui/HiveArt.tsx` (the question's
+and the sidenav's canvases and their runner), `shell/hive-arrival.ts` (the Mind and the blackout),
+`hive.css` (Carnage's palette as custom properties, no blur on the question).
+
+**Learned**:
+- **Filled art behind words is a contrast problem outlines never were**: against the brightest pixel
+  behind each word (the words hidden, the page screenshot read in the page), the muted times fell to
+  3.14:1 over the tendrils' crimson rims; today's thin outlines rarely cross a word (7.44). At 0.6
+  opacity with highlights at half: 4.46.
+- **Noise that scales a feature can switch it off**: the lumps were scaled by noise reaching 0, and a
+  test caught two tendrils as plain tapers. A feature that must always show gets a floor.
+- **Playwright's clock flows in real time after `install()`**: frames recorded with `runFor` ran ahead
+  until `pauseAt` stopped it before the dialog opened; then the page's own rAF loop records frame for
+  frame.
+- **The real page costs more than a page of screenshots**: the arrival measured 61 fps over two
+  screenshots and 54–56 in the real page in a 2560×1440 window. The extra frames are the swap (the
+  whole shell drawn again in Hive's look) and today's streak and sheen fade after it, which run at
+  about 30 frames a second on `main` too; today's arrival is 33–35 fps.
+- **A cover can be tested pixel by pixel**: a MutationObserver on `data-hive` reads the blackout's
+  canvas in the same task as the swap, before the next frame is drawn: every sampled pixel opaque.
+
+**Verification**: tests first (red: no exports, no canvas); `pnpm check` 2,483 tests; `pnpm build`;
+`pnpm test:e2e` 352 viewer and 20 nexus tests. The built question and arrival recorded in both
+themes and set beside the plan's; screenshots at 1x in both themes, a 700 px and a 1200 px window, a
+full workspace list. Costs on the build with hardware acceleration off: the question 21 % of a core
+while open (4 % with reduced motion), the pan 59.3–59.8 fps with Hive on, the arrival 59 fps
+headless and 54–56 in a window at 2560×1440 (today's 33–35).
+
+Not verified: the app's window, a GPU, WSLg's own display.
+
