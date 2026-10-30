@@ -54,6 +54,10 @@ describe('changesSummary and commitProblem (V66c)', () => {
     expect(changesSummary({ staged: [], unstaged: [file('a')], operation: 'merge' })).toBe(
       '1 file · a merge in progress',
     );
+    // Every file committed, the operation still in progress (decision 636): no "0 files".
+    expect(changesSummary({ staged: [], unstaged: [], operation: 'rebase' })).toBe(
+      'a rebase in progress',
+    );
   });
 
   it('says why a commit cannot be made yet', () => {

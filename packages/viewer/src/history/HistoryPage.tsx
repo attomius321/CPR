@@ -16,6 +16,7 @@ import type {
   PullMode,
   RefList,
   RepoStatus,
+  StashEntry,
   SyncState,
   WorkingChanges,
 } from '@symbiote/core';
@@ -37,16 +38,30 @@ import { CompareBar } from './CompareBar.js';
 import { useBranchReviews } from './useBranchReviews.js';
 import { branchChoice, checkedOut, checkoutChoices, type CheckoutChoice } from './checkout.js';
 import {
+  cherryPick,
+  deleteRemoteBranch,
   fetchChangeFile,
   fetchChanges,
   fetchCommitFile,
+  fetchLeaving,
   fetchRemotes,
+  fetchStashes,
   fetchSync,
   findRows,
+  hideBranch,
+  merge,
   openDiff,
   pull,
   push,
+  rebase,
+  reset,
+  revert,
+  stageLines,
+  unstash,
 } from './git-api.js';
+import type { Staging } from './GitDiff.js';
+import { AskDialog, type After, type Ask } from './AskDialog.js';
+import { stashWords, stoppedNotice } from './actions.js';
 import {
   changesOrder,
   changesSummary,
@@ -289,6 +304,8 @@ function History({
   const [changes, setChanges] = useState<WorkingChanges | null>(null);
   const [sync, setSync] = useState<SyncState | null>(null);
   const [syncing, setSyncing] = useState<SyncRun | null>(null);
+  // The stashes (decision 639), in the branches panel.
+  const [stashes, setStashes] = useState<StashEntry[]>([]);
   const readChanges = useCallback(() => {
     fetchChanges()
       .then(setChanges)
@@ -296,10 +313,18 @@ function History({
     fetchSync()
       .then(setSync)
       .catch(() => {});
+    fetchStashes()
+      .then(setStashes)
+      .catch(() => {});
   }, []);
   useEffect(readChanges, [readChanges]);
+  // The uncommitted row: files changed, or an operation in progress (decision 636: its Continue
+  // and Abort are in the row's pane, even with every file committed).
   const working =
-    changes !== null && changes.staged.length + changes.unstaged.length > 0 ? changes : null;
+    changes !== null &&
+    (changes.staged.length + changes.unstaged.length > 0 || changes.operation !== null)
+      ? changes
+      : null;
   // The file shown in the rows' place (V70): of a commit, by its SHA, or uncommitted (null); not
   // by its row, which a commit listed above it changes (decision 635). Closed when the cursor
   // goes to another commit.
@@ -308,7 +333,10 @@ function History({
   const commitSha = onWorking ? null : (details.current.get(cursor)?.sha ?? null);
   const cursorKey = onWorking ? 'working' : (commitSha ?? `row ${cursor}`);
   useEffect(() => {
-    setOpenFile(null);
+    // A row not read yet: decided once it is (a file's history goes to a row and opens the file).
+    if (!onWorking && commitSha === null) return;
+    setOpenFile((open) => (open && open.sha === commitSha ? open : null));
+    // Only the cursor's commit changing closes the file: `cursorKey` says it.
   }, [cursorKey]);
   const shownHere =
     openFile && (onWorking ? openFile.sha === null : openFile.sha === commitSha) ? openFile : null;
@@ -359,12 +387,24 @@ function History({
           ),
     [shownPath, shownStaged, onWorking, commitSha],
   );
+  // An uncommitted modified file's lines, staged or unstaged from its diff (decision 642).
+  const staging = useMemo<Staging | undefined>(() => {
+    if (!onWorking || !shownPath || fileShown?.status !== 'modified' || fileShown.previousPath)
+      return undefined;
+    return {
+      staged: shownStaged,
+      onLines: async (lines, index) =>
+        setChanges(await stageLines(shownPath, shownStaged, lines, index)),
+    };
+  }, [onWorking, shownPath, shownStaged, fileShown]);
   // A branch or tag dialog (V66d), and a branch's menu in the panel.
   const [refAction, setRefAction] = useState<RefAction | null>(null);
   const [branchMenu, setBranchMenu] = useState<{
     at: { x: number; y: number };
     entry: BranchEntry;
   } | null>(null);
+  // A git write asked first (decisions 636–645).
+  const [question, setQuestion] = useState<Ask | null>(null);
   const [resizing, setResizing] = useState(false);
   const place = useDetailsPlace();
   // The search (V66f): the rows found in this listing, the field.
@@ -668,6 +708,7 @@ function History({
         setRefAction({ kind: 'new-tag', at: sha });
       },
     },
+    ...commitItems(sha),
     ...(details.current.get(cursor)?.sha === sha ? (details.current.get(cursor)?.refs ?? []) : [])
       .filter((ref) => ref.kind === 'tag')
       .map((ref) => ({
@@ -679,9 +720,55 @@ function History({
       })),
   ];
 
+  /**
+   * A commit's writes onto the branch checked out (decisions 637, 638, 640): cherry-pick, revert,
+   * reset; its branches merged in or rebased onto.
+   */
+  const commitItems = (sha: string): RowMenuItem[] => {
+    const ask = (question: Ask) => () => {
+      setMenu(null);
+      setQuestion(question);
+    };
+    const commit = details.current.get(cursor);
+    const branches = (commit?.sha === sha ? commit.refs : []).flatMap((ref) =>
+      (ref.kind === 'branch' || ref.kind === 'remote') && ref.name !== first?.branch
+        ? [{ kind: ref.kind, name: ref.name }]
+        : [],
+    );
+    const detached = first?.branch ? {} : { disabled: 'HEAD is detached: check out a branch' };
+    const choices = (verb: string) =>
+      branches.map((ref) => ({
+        label: `${verb} ${ref.name}`,
+        ref,
+        note: ref.kind === 'remote' ? 'remote branch' : 'branch',
+        ...detached,
+      }));
+    const choose = (make: (name: string) => Ask) => (index: number) => {
+      const ref = branches[index];
+      setMenu(null);
+      if (ref && first?.branch) setQuestion(make(ref.name));
+    };
+    return [
+      { label: `Cherry-pick onto ${onto}…`, onSelect: ask(askCherryPick(sha)) },
+      { label: 'Revert…', onSelect: ask(askRevert(sha)) },
+      { label: `Reset ${onto} to here…`, onSelect: ask(askReset(sha)) },
+      ...(branches.length === 0
+        ? []
+        : [
+            { label: `Merge into ${onto}`, choices: choices('Merge'), onChoose: choose(askMerge) },
+            {
+              label: `Rebase ${onto} onto`,
+              choices: choices('Onto'),
+              onChoose: choose(askRebase),
+            },
+          ]),
+    ];
+  };
+
   /** A branch's menu in the panel (V66d): check out, go to its tip, review, rename, delete. */
   const branchMenuItems = (entry: BranchEntry): RowMenuItem[] => {
     const local = refs?.branches.some((b) => b.name === entry.name) ?? false;
+    const remote = local ? undefined : refs?.remotes.find((r) => r.name === entry.name);
     const close = (then: () => void) => () => {
       setBranchMenu(null);
       then();
@@ -713,6 +800,41 @@ function History({
             },
           ]
         : []),
+      // Merged in or rebased onto (decision 638); a remote's deleted there (644); hidden (645).
+      ...(first?.branch && entry.name !== first.branch
+        ? [
+            {
+              label: `Merge into ${first.branch}…`,
+              onSelect: close(() => setQuestion(askMerge(entry.name))),
+            },
+            {
+              label: `Rebase ${first.branch} onto it…`,
+              onSelect: close(() => setQuestion(askRebase(entry.name))),
+            },
+          ]
+        : []),
+      ...(remote
+        ? [
+            {
+              label: `Delete from ${remote.remote}…`,
+              onSelect: close(() => setQuestion(askDeleteRemote(entry.name, remote.remote))),
+            },
+          ]
+        : []),
+      ...(local && entry.name === first?.branch
+        ? []
+        : [
+            {
+              label: entry.hidden ? 'Show in the graph' : 'Hide from the graph',
+              onSelect: close(() =>
+                toggleHidden(
+                  `refs/${local ? 'heads' : 'remotes'}/${entry.name}`,
+                  entry.name,
+                  !entry.hidden,
+                ),
+              ),
+            },
+          ]),
     ];
   };
 
@@ -979,6 +1101,171 @@ function History({
     return done;
   }, [scope, readChanges]);
   relistRef.current = relistHere;
+
+  /** A commit of a file's history or blame (decision 643): its row, the file open there. */
+  const goToFile = useCallback(
+    ({ sha, path }: { sha: string; path: string }) => {
+      const version = latest.current.first?.version;
+      if (!version) return;
+      fetchRowsOf(scope, version, [sha])
+        .then(([row]) => {
+          if (row === null || row === undefined)
+            return shell?.notify({
+              text: `${shortSha(sha)} is not listed here`,
+              warning:
+                scope === 'current'
+                  ? 'Show every branch to go to it'
+                  : 'No branch listed holds it (a hidden one may)',
+            });
+          jump(row);
+          setOpenFile({ sha, path });
+        })
+        .catch((e: unknown) => {
+          if (e instanceof StaleHistory) void relistRef.current();
+          else setError(`Could not find ${shortSha(sha)}: ${(e as Error).message}`);
+        });
+    },
+    [scope, shell, jump],
+  );
+
+  /**
+   * A git write done (decisions 636–645): the status bar says how it ended, then the page lists
+   * afresh (HEAD moved), in place, or reads the uncommitted changes again.
+   */
+  const answered = useCallback(
+    (notice: Notice, after: After) => {
+      setQuestion(null);
+      if (after === 'afresh') return onRelist(notice);
+      shell?.notify(notice);
+      if (after === 'here') void relistRef.current();
+      else readChanges();
+    },
+    [onRelist, shell, readChanges],
+  );
+  // The branch the writes go onto: HEAD's.
+  const onto = first?.branch ?? 'HEAD';
+  const stopsNote = 'On a conflict it stops: the conflicts are in the uncommitted changes.';
+  const askCherryPick = (sha: string): Ask => ({
+    title: `Cherry-pick ${shortSha(sha)} onto ${onto}?`,
+    note: `Its changes made again on ${onto}, a new commit. ${stopsNote}`,
+    verb: 'Cherry-pick',
+    run: async () =>
+      stoppedNotice(await cherryPick(sha), `Cherry-picked ${shortSha(sha)} onto ${onto}`),
+    after: 'afresh',
+  });
+  const askRevert = (sha: string): Ask => ({
+    title: `Revert ${shortSha(sha)}?`,
+    note: `A new commit on ${onto} that undoes its changes. ${stopsNote}`,
+    verb: 'Revert',
+    run: async () => stoppedNotice(await revert(sha), `Reverted ${shortSha(sha)}`),
+    after: 'afresh',
+  });
+  const askReset = (sha: string): Ask => ({
+    title: `Reset ${onto} to ${shortSha(sha)}?`,
+    note: `${onto} moves to ${shortSha(sha)}. The changes of the commits it leaves stay on disk, and the commits stay in git's reflog: nothing is lost.`,
+    verb: 'Reset',
+    choices: [
+      { value: 'mixed', label: 'Mixed', note: 'their changes not staged' },
+      { value: 'soft', label: 'Soft', note: 'their changes staged' },
+    ],
+    more: async () => {
+      const count = await fetchLeaving(sha);
+      return count === 0
+        ? `No commit leaves ${onto}.`
+        : `${count} commit${count === 1 ? ' leaves' : 's leave'} ${onto}.`;
+    },
+    run: async ({ choice }) => {
+      await reset(sha, choice === 'soft' ? 'soft' : 'mixed');
+      return { text: `Reset ${onto} to ${shortSha(sha)}, ${choice}` };
+    },
+    after: 'afresh',
+  });
+  const askMerge = (name: string): Ask => ({
+    title: `Merge ${name} into ${onto}?`,
+    note: `git's merge: a fast-forward when ${onto} has no commit of its own, else a merge commit. ${stopsNote}`,
+    verb: 'Merge',
+    run: async () => stoppedNotice(await merge(name), `Merged ${name} into ${onto}`),
+    after: 'afresh',
+  });
+  const askRebase = (name: string): Ask => ({
+    title: `Rebase ${onto} onto ${name}?`,
+    note: `${onto}'s own commits are made again on top of ${name}; local changes must be committed or stashed first. On a conflict it stops at that commit: the conflicts are in the uncommitted changes.`,
+    verb: 'Rebase',
+    run: async () => stoppedNotice(await rebase(name), `Rebased ${onto} onto ${name}`),
+    after: 'afresh',
+  });
+  const askDeleteRemote = (name: string, remote: string): Ask => ({
+    title: `Delete ${name} from ${remote}?`,
+    note: `The branch goes from ${remote}, for everyone who fetches it; local branches stay. ${remote}'s default branch is refused.`,
+    verb: 'Delete',
+    danger: true,
+    run: async () => {
+      await deleteRemoteBranch(name);
+      return { text: `Deleted ${name} from ${remote}` };
+    },
+    after: 'here',
+  });
+  /** Hides a branch from the graph or shows it again (decision 645): listed in place. */
+  const toggleHidden = (ref: string, name: string, hidden: boolean) => {
+    hideBranch(ref, hidden)
+      .then(() => {
+        shell?.notify({ text: hidden ? `Hid ${name} from the graph` : `Showing ${name} again` });
+        void relistRef.current();
+      })
+      .catch((e: unknown) =>
+        shell?.notify({
+          text: `Could not ${hidden ? 'hide' : 'show'} ${name}`,
+          warning: (e as Error).message,
+          error: true,
+        }),
+      );
+  };
+  /** A stash's menu (decision 639): apply or pop it at once; drop it once asked. */
+  const [stashMenu, setStashMenu] = useState<{
+    at: { x: number; y: number };
+    stash: StashEntry;
+  } | null>(null);
+  const stashItems = (entry: StashEntry): RowMenuItem[] => {
+    const words = stashWords(entry);
+    const apply = (action: 'apply' | 'pop') => () => {
+      setStashMenu(null);
+      unstash(entry.sha, action)
+        .then((result) =>
+          answered(
+            stoppedNotice(result, `${action === 'pop' ? 'Popped' : 'Applied'} the stash ${words}`),
+            'changes',
+          ),
+        )
+        .catch((e: unknown) =>
+          shell?.notify({
+            text: `Could not ${action} the stash`,
+            warning: (e as Error).message,
+            error: true,
+          }),
+        );
+    };
+    return [
+      { label: 'Apply', onSelect: apply('apply') },
+      { label: 'Pop: apply, then drop', onSelect: apply('pop') },
+      {
+        label: 'Drop…',
+        onSelect: () => {
+          setStashMenu(null);
+          setQuestion({
+            title: `Drop the stash ${words}?`,
+            note: 'Its changes are lost: git keeps no other copy.',
+            verb: 'Drop',
+            danger: true,
+            run: async () => {
+              await unstash(entry.sha, 'drop');
+              return { text: `Dropped the stash ${words}` };
+            },
+            after: 'changes',
+          });
+        },
+      },
+    ];
+  };
   // Listed in place: the rows where they were on screen, or the cursor revealed when it moved.
   useLayoutEffect(() => {
     const to = scrollTo.current;
@@ -1001,7 +1288,8 @@ function History({
   useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       // Typing (the search, the commit's message), and the menus and dialogs: their own keys.
-      if (keyIsTaken(event) || menu || confirm || refAction || branchMenu) return;
+      if (keyIsTaken(event) || menu || confirm || refAction || branchMenu || stashMenu || question)
+        return;
       // A file shown in the rows' place (V70): j/k step the files, o opens its diff in VS Code,
       // Esc goes back to the rows; the rows' own keys wait under it.
       if (fileShown && shownHere) {
@@ -1083,6 +1371,8 @@ function History({
     panelOpen,
     refAction,
     branchMenu,
+    stashMenu,
+    question,
     working,
     pane,
   ]);
@@ -1156,6 +1446,8 @@ function History({
           onGo={goToBranch}
           onCheckout={checkoutBranch}
           onMenu={(entry, x, y) => setBranchMenu({ at: { x, y }, entry })}
+          stashes={stashes}
+          onStash={(stash, x, y) => setStashMenu({ at: { x, y }, stash })}
         />
         <div
           className={`commits-main${below ? ' below' : ''}${resizing ? ' resizing' : ''}`}
@@ -1305,6 +1597,9 @@ function History({
               <GitFile
                 key={`${shownHere?.sha ?? 'working'}:${shownStaged}:${fileShown.path}`}
                 file={fileShown}
+                sha={shownHere?.sha ?? null}
+                {...(staging ? { staging } : {})}
+                onGo={goToFile}
                 {...(onWorking ? { side: shownStaged ? 'staged' : 'not staged' } : {})}
                 load={loadShown}
                 onEditor={openShown}
@@ -1339,6 +1634,8 @@ function History({
                   onCommitted={(sha, amend) =>
                     onRelist({ text: `${amend ? 'Amended' : 'Committed'} ${shortSha(sha)}` })
                   }
+                  onAsk={setQuestion}
+                  onDone={answered}
                 />
               ) : selected && commitRead ? (
                 <CommitDetails
@@ -1365,6 +1662,16 @@ function History({
           items={branchMenuItems(branchMenu.entry)}
           onClose={() => setBranchMenu(null)}
         />
+      )}
+      {stashMenu && (
+        <RowMenu
+          at={stashMenu.at}
+          items={stashItems(stashMenu.stash)}
+          onClose={() => setStashMenu(null)}
+        />
+      )}
+      {question && (
+        <AskDialog ask={question} onDone={answered} onCancel={() => setQuestion(null)} />
       )}
       {refAction && (
         <RefDialog

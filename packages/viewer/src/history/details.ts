@@ -72,7 +72,7 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 export function changesSummary({ staged, unstaged, operation }: WorkingChanges): string {
   const files = new Set([...staged, ...unstaged].map((f) => f.path)).size;
   return [
-    plural(files, 'file'),
+    ...(files > 0 || !operation ? [plural(files, 'file')] : []),
     ...(staged.length > 0 ? [`${staged.length} staged`] : []),
     ...(operation ? [`a ${operation} in progress`] : []),
   ].join(' · ');

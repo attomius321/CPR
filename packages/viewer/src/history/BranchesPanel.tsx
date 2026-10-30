@@ -1,5 +1,6 @@
-import { memo, useEffect, useMemo, useReducer, type RefObject } from 'react';
-import type { HistoryRefs, HistoryScope } from '@symbiote/core';
+import { memo, useEffect, useMemo, useReducer, type MouseEvent, type RefObject } from 'react';
+import type { HistoryRefs, HistoryScope, StashEntry } from '@symbiote/core';
+import { stashWords } from './actions.js';
 import { branchTree, type PanelEntry } from './branches.js';
 import { reviewTip, type ReviewMark } from './branchReviews.js';
 import { longDate, relativeDate } from './commits.js';
@@ -51,7 +52,7 @@ function Age({ at }: { at: string }) {
  * The branches panel (V10b): Local and Remotes by folder, a filter on top; a click goes to the
  * branch's tip row, a double-click checks it out and a right-click opens its menu (V66d). Local
  * lists the workspaces that need the person first (V23, `first`). Under 900 px it is shown only
- * while `open` (over the rows).
+ * while `open` (over the rows). The stashes last (decision 639), each a menu on a click.
  */
 export const BranchesPanel = memo(function BranchesPanel({
   refs,
@@ -69,6 +70,8 @@ export const BranchesPanel = memo(function BranchesPanel({
   onGo,
   onCheckout,
   onMenu,
+  stashes,
+  onStash,
 }: {
   /** Null until the branches are listed. */
   refs: HistoryRefs | null;
@@ -92,6 +95,10 @@ export const BranchesPanel = memo(function BranchesPanel({
   onCheckout: (entry: BranchEntry) => void;
   /** A right-click: the branch's menu at a point of the window (V66d). */
   onMenu: (entry: BranchEntry, x: number, y: number) => void;
+  /** The stashes, newest first (decision 639). */
+  stashes: readonly StashEntry[];
+  /** A stash's menu at a point of the window: apply, pop, drop. */
+  onStash: (stash: StashEntry, x: number, y: number) => void;
 }) {
   const entries = useMemo(
     () =>
@@ -100,6 +107,8 @@ export const BranchesPanel = memo(function BranchesPanel({
   );
   // Remote branches' names hold their remote: only the local entries match.
   const ages = useMemo(() => new Map(first.map((f) => [f.branch, f.at] as const)), [first]);
+  const needle = filter.trim().toLowerCase();
+  const shownStashes = stashes.filter((s) => stashWords(s).toLowerCase().includes(needle));
   return (
     <aside className={open ? 'branches open' : 'branches'} aria-label="Branches">
       <input
@@ -141,6 +150,39 @@ export const BranchesPanel = memo(function BranchesPanel({
                   onMenu={onMenu}
                 />
                 {agent && <WorkspaceMark chip={agent} />}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {shownStashes.length > 0 && (
+        <ul className="branches-list branches-stashes" aria-label="Stashes">
+          <li>
+            <h2 className="branches-section">
+              Stashes <span className="branches-count">{shownStashes.length}</span>
+            </h2>
+          </li>
+          {shownStashes.map((stash) => {
+            const menu = (event: MouseEvent) => {
+              event.preventDefault();
+              onStash(stash, event.clientX, event.clientY);
+            };
+            return (
+              <li key={stash.sha}>
+                <button
+                  type="button"
+                  className="branches-branch branches-stash"
+                  style={{ paddingLeft: 8 }}
+                  aria-haspopup="menu"
+                  {...tip(
+                    `${stash.message}${stash.branch ? `\nMade on ${stash.branch}` : ''}\n${longDate(stash.date)}`,
+                  )}
+                  onClick={menu}
+                  onContextMenu={menu}
+                >
+                  <span className="branches-name">{stashWords(stash)}</span>
+                  <span className="branches-age">{shortAge(stash.date, Date.now())}</span>
+                </button>
               </li>
             );
           })}
@@ -198,13 +240,19 @@ function Entry({
   const track = tracking(entry);
   // Under "This branch" a tip not listed is in every branch's history: the click goes there.
   const unlisted = entry.row === null && scope === 'all';
+  const hint = entry.hidden
+    ? `${entry.name}\nHidden from the graph: right-click to show it again`
+    : unlisted
+      ? `${entry.name}\nIts commits are not in this clone's history`
+      : entry.name;
   return (
     <button
       type="button"
       className={`branches-branch${entry.current ? ' current' : ''}${unlisted ? ' unlisted' : ''}`}
       style={indent}
-      {...tip(unlisted ? `${entry.name}\nIts commits are not in this clone's history` : entry.name)}
-      aria-disabled={unlisted || undefined}
+      {...tip(hint)}
+      // A hidden branch is not listed either, but its menu shows it again.
+      aria-disabled={(unlisted && !entry.hidden) || undefined}
       onClick={() => !unlisted && onGo(entry)}
       onDoubleClick={() => onCheckout(entry)}
       onContextMenu={(event) => {
@@ -218,6 +266,7 @@ function Entry({
         </span>
       )}
       <span className="branches-name">{entry.label}</span>
+      {entry.hidden && <span className="branches-hidden">hidden</span>}
       {mark && (
         <span className={`ref-review ref-review-${mark.tone}`} {...reviewTip(mark)}>
           {mark.mark}

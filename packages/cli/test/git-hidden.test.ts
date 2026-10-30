@@ -55,7 +55,7 @@ describe('repositoryHiddenBranches', () => {
     rmSync(cache, { recursive: true, force: true });
   });
 
-  it("keeps them beside the reviews, in symbiote/ with a git user, never committed", async () => {
+  it('keeps them beside the reviews, in symbiote/ with a git user, never committed', async () => {
     repo.git('config', 'user.email', 'test@example.com');
     const record = repositoryHiddenBranches(await openRepo(repo.root), cache);
     await record.set('refs/heads/wip', true);

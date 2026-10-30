@@ -153,19 +153,8 @@ export {
   type FileBlame,
   type FileCommit,
 } from './git/file-log.js';
-export {
-  partialPatch,
-  stageLines,
-  type LinePick,
-  type LinesRequest,
-} from './git/line-staging.js';
-export {
-  applyStash,
-  dropStash,
-  listStashes,
-  stashChanges,
-  type StashEntry,
-} from './git/stash.js';
+export { partialPatch, stageLines, type LinePick, type LinesRequest } from './git/line-staging.js';
+export { applyStash, dropStash, listStashes, stashChanges, type StashEntry } from './git/stash.js';
 export {
   deleteRemoteBranch,
   fetchAll,

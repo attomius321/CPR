@@ -54,6 +54,12 @@ test('offers what each row can check out, in a submenu', async ({ page }) => {
     'Start a workspace here',
     'New branch here…',
     'New tag here…',
+    // fix/git-page-feature-extend: onto the branch checked out; wip is merged or rebased onto.
+    'Cherry-pick onto main…',
+    'Revert…',
+    'Reset main to here…',
+    'Merge into main',
+    'Rebase main onto',
   ]);
   await expect(checkOut(page)).toHaveAttribute('aria-expanded', 'false');
   await checkOut(page).hover();
