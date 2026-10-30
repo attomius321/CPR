@@ -35,14 +35,17 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  /* 300 px since V81 (decision 602; 280 before): a tile before each name, and the longest name
+     open beside its widest mark ("Changes or comments", "not saved") still whole. */
+  grid-template-columns: 300px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   gap: var(--page-gap);
   padding: 0 var(--page-pad) var(--page-pad);
 }
 
-/* The list (decision 448): a card, a hairline between its groups, the entries' words in line with
-   their group's heading, `--card-pad` in, their wash 8 px out; no icons (the brief). */
+/* The list (decision 448): a card, a hairline between its groups, `--card-pad` in, the entries'
+   wash 8 px out; since V81 (decision 600) an icon on a tile before each name, the tiles in line
+   with their group's heading. */
 .settings-list {
   min-height: 0;
   overflow: auto;
@@ -90,7 +93,6 @@
 .settings-list button {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   width: 100%;
   min-height: 32px;
@@ -118,6 +120,53 @@
   font-weight: 500;
 }
 
+/* A group's tint (V81, decision 601): the Activity tab's kinds of work, one hue in both themes;
+   not git's (the accent's violet) nor debug's (beside the docs' amber). Any other group: muted. */
+.settings-list section[data-tint='workspaces'] {
+  --tint: var(--phase-implement);
+}
+
+.settings-list section[data-tint='reviews'] {
+  --tint: var(--phase-test);
+}
+
+.settings-list section[data-tint='agents'] {
+  --tint: var(--phase-visual);
+}
+
+.settings-list section[data-tint='machine'] {
+  --tint: var(--phase-docs);
+}
+
+.settings-list section[data-tint='browser'] {
+  --tint: var(--phase-explore);
+}
+
+/* An entry's tile (decision 602): a wash of its group's colour, opaque so the open row's wash does
+   not tint it; the icon in the colour, the sidenav's strokes, the open one's in the accent. */
+.settings-tile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--tint, var(--muted)) var(--phase-wash), var(--side));
+  color: var(--tint, var(--muted));
+}
+
+.settings-tile .icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.75;
+}
+
+.settings-list button[aria-current='true'] .settings-tile .icon {
+  color: var(--accent);
+  stroke-width: 2.25;
+}
+
 .settings-name {
   min-width: 0;
   overflow: hidden;
@@ -127,6 +176,7 @@
 
 .settings-mark {
   flex: none;
+  margin-left: auto;
   font-size: var(--size-caption);
   font-weight: 400;
 }

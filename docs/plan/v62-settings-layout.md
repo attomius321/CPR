@@ -67,8 +67,8 @@ narrow layout (the list, then a page with All settings), the prompt's font, the 
   (About Settings) and the mockup's line under it in `--muted` (the person's answer). The git
   note leaves the head for each prompt's footer (below). Warnings and errors stay under the head.
 - **The list a card** (decision 448): the style's card (10 px, `--side`, a `--line` hairline),
-  group headings in `--muted` caption, rows 32 px with no icon (the brief), a hairline between
-  groups; the open entry the `--selected` wash, its words `--accent` and weight 500 (a new accent
+  group headings in `--muted` caption, rows 32 px with no icon (the brief; since V81's decision
+  600 an icon on its group's tile), a hairline between groups; the open entry the `--selected` wash, its words `--accent` and weight 500 (a new accent
   role, "the current entry", in `tokens.test.ts`'s `ACCENT_ROLES`). The marks stay at a row's end.
 - **The page one card** (decision 449): a head — the name (a prompt's "Workspaces: Feature", an
   agent's "Scout", "Skill library", "Appearance") and, on a prompt's page, its chip and Reset to
@@ -129,7 +129,7 @@ narrow layout (the list, then a page with All settings), the prompt's font, the 
 |---|---|---|---|
 | 446 | Where Settings stands | **The whole main area: two cards to its bottom, 24 px margins, 16 apart; centred past 1,400 px** | the mockup; V51's 760 px left 206 px of ground each side at its size |
 | 447 | The head | **The Settings icon, the title, its "?" and the mockup's line; the git note beside Save** | the mockup; the person's answer |
-| 448 | The list | **A card, hairlines between groups, no icons, the open entry in the accent** | the mockup and the brief |
+| 448 | The list | **A card, hairlines between groups, no icons, the open entry in the accent** ("no icons" superseded by [V81](v81-settings-list-icons.md)'s decision 600) | the mockup and the brief |
 | 449 | A page | **One card: its head (name, chip, Reset) over a hairline, sections with a line of what they are** | the mockup; the prompt's `about` read without a click |
 | 450 | The controls | **Save changes, Cancel, Reset to default (shown as today); placeholders round accent chips in two columns** | the mockup; the person's answer on when they show |
 

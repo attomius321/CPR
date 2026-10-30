@@ -26,6 +26,7 @@ import {
   promptGroups,
   promptOfUrl,
   sizeOf,
+  PREBUILT_GROUP,
   type PrebuiltAgent,
 } from './settings.js';
 import {
@@ -36,7 +37,29 @@ import {
   modelChoices,
 } from '../workspaces/workspaces.js';
 import { tip } from '../ui/tip.js';
-import { ResetIcon, SettingsIcon } from '../ui/icons.js';
+import {
+  AdviceIcon,
+  AgentsFileIcon,
+  AppearanceIcon,
+  ApprovedIcon,
+  BranchIcon,
+  ChoreIcon,
+  CommentIcon,
+  DocumentsIcon,
+  FixIcon,
+  FolderIcon,
+  MergeIcon,
+  NucleusIcon,
+  PlanIcon,
+  PlanWithoutIcon,
+  PushIcon,
+  RefactorIcon,
+  ResetIcon,
+  SettingsIcon,
+  SparklesIcon,
+  SpikeIcon,
+  WhereIcon,
+} from '../ui/icons.js';
 import { SettingsCard } from './SettingsCard.js';
 
 const API = '/api/settings/prompts';
@@ -201,6 +224,51 @@ const LIBRARY = 'skill-library';
 const MACHINE_GROUP = 'This machine';
 const BROWSER_GROUP = 'This browser';
 type EntryKey = PromptKey | typeof LIBRARY | typeof APPEARANCE;
+
+/**
+ * An entry's icon in the list (V81, decision 600), by its key (an agent's: its first prompt's);
+ * every entry has one, Scribe's `library` prompt is not an entry.
+ */
+const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
+  'start.feature': BranchIcon,
+  'start.fix': FixIcon,
+  'start.refactor': RefactorIcon,
+  'start.chore': ChoreIcon,
+  'start.spike': SpikeIcon,
+  'plan.first': PlanIcon,
+  'plan.direct': PlanWithoutIcon,
+  documents: DocumentsIcon,
+  advisor: AdviceIcon,
+  'verdict.approve': ApprovedIcon,
+  'verdict.push': PushIcon,
+  'verdict.address': CommentIcon,
+  'verdict.where': WhereIcon,
+  reviews: AgentsFileIcon,
+  merger: MergeIcon,
+  nucleus: NucleusIcon,
+  scribe: SparklesIcon,
+  [LIBRARY]: FolderIcon,
+  [APPEARANCE]: AppearanceIcon,
+} satisfies Record<Exclude<EntryKey, 'library'>, () => ReactNode>;
+
+/** A group's tint in the list (decision 601): `SettingsPage.css` gives each its colour. */
+const TINTS: Record<string, string> = {
+  Workspaces: 'workspaces',
+  Reviews: 'reviews',
+  [PREBUILT_GROUP]: 'agents',
+  [MACHINE_GROUP]: 'machine',
+  [BROWSER_GROUP]: 'browser',
+};
+
+/** An entry's icon on its group's tile, before its name; decorative. */
+function Tile({ entry }: { entry: EntryKey }) {
+  const Drawn = ICONS[entry];
+  return Drawn ? (
+    <span className="settings-tile" aria-hidden="true">
+      <Drawn />
+    </span>
+  ) : null;
+}
 
 /** The list's mark for an entry, by `markOf`. */
 const MARKS = { unsaved: 'not saved', warning: 'not used', changed: 'changed' } as const;
@@ -375,7 +443,7 @@ export function SettingsPage() {
         <div className={`settings-body${picked ? ' picked' : ''}`}>
           <nav ref={list} className="settings-list" aria-label="Settings">
             {groups.map(({ group, entries }) => (
-              <section key={group} aria-label={group}>
+              <section key={group} aria-label={group} data-tint={TINTS[group]}>
                 <h2>{group}</h2>
                 <ul>
                   {entries.map((entry) => {
@@ -387,6 +455,7 @@ export function SettingsPage() {
                           aria-current={entry.key === open ? 'true' : undefined}
                           onClick={() => show(entry.key)}
                         >
+                          <Tile entry={entry.key} />
                           <span className="settings-name">{entry.name}</span>
                           {mark && <span className={`settings-mark ${mark}`}>{MARKS[mark]}</span>}
                         </button>
@@ -396,7 +465,7 @@ export function SettingsPage() {
                 </ul>
               </section>
             ))}
-            <section aria-label={MACHINE_GROUP}>
+            <section aria-label={MACHINE_GROUP} data-tint={TINTS[MACHINE_GROUP]}>
               <h2>{MACHINE_GROUP}</h2>
               <ul>
                 <li>
@@ -405,12 +474,13 @@ export function SettingsPage() {
                     aria-current={open === LIBRARY ? 'true' : undefined}
                     onClick={() => show(LIBRARY)}
                   >
+                    <Tile entry={LIBRARY} />
                     <span className="settings-name">Skill library</span>
                   </button>
                 </li>
               </ul>
             </section>
-            <section aria-label={BROWSER_GROUP}>
+            <section aria-label={BROWSER_GROUP} data-tint={TINTS[BROWSER_GROUP]}>
               <h2>{BROWSER_GROUP}</h2>
               <ul>
                 <li>
@@ -419,6 +489,7 @@ export function SettingsPage() {
                     aria-current={open === APPEARANCE ? 'true' : undefined}
                     onClick={() => show(APPEARANCE)}
                   >
+                    <Tile entry={APPEARANCE} />
                     <span className="settings-name">Appearance</span>
                   </button>
                 </li>

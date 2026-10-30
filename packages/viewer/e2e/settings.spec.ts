@@ -32,6 +32,16 @@ const text = (page: Page, title: string) =>
 const save = (page: Page) =>
   editor(page).getByRole('button', { name: 'Save changes', exact: true });
 const config = () => join(symbiote.repo, 'symbiote', 'config.json');
+/** A CSS colour as the page computes it, `var(--accent)` or a mix. */
+const colour = (page: Page, value: string) =>
+  page.evaluate((value) => {
+    const probe = document.createElement('span');
+    probe.style.color = value;
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  }, value);
 const prompts = () =>
   (JSON.parse(readFileSync(config(), 'utf8')) as { prompts?: Record<string, unknown> }).prompts;
 
@@ -69,15 +79,15 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
     'This browser',
   ]);
   await expect(agents(page).getByRole('button')).toHaveText(['Merger', 'Nucleus', 'Scribe']);
-  // An entry's words in line with its group's heading (V62, the mockup), 16 px in (V72, the
-  // card's inset), its wash further out.
+  // An entry's tile in line with its group's heading's words (V81, decision 602; the entry's
+  // words before, V62), 16 px in (V72, the card's inset), its wash further out.
   const heading = await list(page).getByRole('heading', { name: 'Workspaces' }).boundingBox();
-  const name = await entry(page, 'Feature').locator('.settings-name').boundingBox();
+  const tile = await entry(page, 'Feature').locator('.settings-tile').boundingBox();
   const first = await entry(page, 'Feature').boundingBox();
   const card = await list(page).boundingBox();
-  expect(Math.abs((name?.x ?? 0) - (heading?.x ?? 0) - 8)).toBeLessThanOrEqual(1);
-  expect(Math.abs((name?.x ?? 0) - (card?.x ?? 0) - 17)).toBeLessThanOrEqual(1);
-  expect(first?.x).toBeLessThan(name?.x ?? 0);
+  expect(Math.abs((tile?.x ?? 0) - (heading?.x ?? 0) - 8)).toBeLessThanOrEqual(1);
+  expect(Math.abs((tile?.x ?? 0) - (card?.x ?? 0) - 17)).toBeLessThanOrEqual(1);
+  expect(first?.x).toBeLessThan(tile?.x ?? 0);
 
   await entry(page, 'Fix').click();
   await expect(page).toHaveURL(`${symbiote.url}settings?prompt=start.fix`);
@@ -241,9 +251,9 @@ test('on a phone, the list first; a prompt or an agent takes the page, and comes
 });
 
 // V62: the person's mockup. The list and the page are two cards filling the main area to its
-// bottom; the list has no icons (the brief); the page is one card, its head over sections that say
-// what they are.
-test("the mockup: two cards to the main area's bottom, the list without icons, the page a head over its sections", async ({
+// bottom (its entries' icons since V81, below); the page is one card, its head over sections that
+// say what they are.
+test("the mockup: two cards to the main area's bottom, the page a head over its sections", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -265,8 +275,9 @@ test("the mockup: two cards to the main area's bottom, the list without icons, t
     await page.goto(`${symbiote.url}settings`);
     await expect(text(page, 'Feature')).toBeVisible();
     const { area, l, e } = await boxes();
-    // The page frame since V72 (decision 508): 16 px from the area's edges, 16 apart.
-    near(l.width, 280);
+    // The page frame since V72 (decision 508): 16 px from the area's edges, 16 apart; the list
+    // 300 px since V81 (decision 602), its tiles' room.
+    near(l.width, 300);
     near(l.x - area.x, 16);
     near(e.x - (l.x + l.width), 16);
     near(area.x + area.width - (e.x + e.width), 16);
@@ -280,19 +291,11 @@ test("the mockup: two cards to the main area's bottom, the list without icons, t
   await expect(entry(page, 'Appearance')).toBeInViewport({ ratio: 1 });
   await page.goto(`${symbiote.url}settings`);
   await expect(text(page, 'Feature')).toBeVisible();
-  // Cards, the style's 10 px; no icon by an entry.
+  // Cards, the style's 10 px.
   await expect(list(page)).toHaveCSS('border-top-left-radius', '10px');
   await expect(editor(page)).toHaveCSS('border-top-left-radius', '10px');
-  await expect(list(page).locator('svg')).toHaveCount(0);
   // The open entry's words in the accent.
-  const accent = await page.evaluate(() => {
-    const probe = document.createElement('span');
-    probe.style.color = 'var(--accent)';
-    document.body.append(probe);
-    const color = getComputedStyle(probe).color;
-    probe.remove();
-    return color;
-  });
+  const accent = await colour(page, 'var(--accent)');
   await expect(entry(page, 'Feature')).toHaveCSS('color', accent);
   await expect(entry(page, 'Fix')).not.toHaveCSS('color', accent);
 
@@ -358,6 +361,85 @@ test("the mockup: two cards to the main area's bottom, the list without icons, t
   expect(field.x).toBeGreaterThan(name.x + name.width);
   expect(Math.abs(field.y + field.height / 2 - (name.y + name.height / 2))).toBeLessThanOrEqual(4);
   await expect(part(page, 'Instructions').getByText("Nucleus's system prompt")).toBeVisible();
+});
+
+// V81 (decisions 600–602): every entry its lucide icon (a path of its drawing) on a tile tinted
+// by its group; decorative, so the row's name is still its name. The open entry's icon in the
+// accent, drawn bolder: the sidenav's recipe.
+const ICONS: [group: string, name: string, drawing: string, tint: string][] = [
+  ['Workspaces', 'Feature', 'M6 3v12', '--phase-implement'],
+  ['Workspaces', 'Fix', 'M8.12 8.12 12 12', '--phase-implement'],
+  ['Workspaces', 'Refactor', 'M10 21V8', '--phase-implement'],
+  ['Workspaces', 'Chore', 'M18.4 6.6a9', '--phase-implement'],
+  ['Workspaces', 'Spike', 'M9 19h8.5', '--phase-implement'],
+  ['Workspaces', 'Plan first', 'M12 6v6l4 2', '--phase-implement'],
+  ['Workspaces', 'Plan without', 'M4.6 11a8', '--phase-implement'],
+  ['Workspaces', 'Documents', 'M14 2v4', '--phase-implement'],
+  ['Workspaces', 'Suggest settings', 'M9 18h6', '--phase-implement'],
+  ['Reviews', 'Approved', 'm16 9-5.5 5.5', '--phase-test'],
+  ['Reviews', 'Approved to push', 'M4 14.899', '--phase-test'],
+  ['Reviews', 'Changes or comments', 'M22 17a2', '--phase-test'],
+  ['Reviews', 'Where the review is', 'M20 10c0 4.993', '--phase-test'],
+  ['Reviews', 'symbiote/AGENTS.md', 'M19 17V5', '--phase-test'],
+  ['Prebuilt agents', 'Merger', 'M6 21V9a9 9 0 0 0 9 9', '--phase-visual'],
+  ['Prebuilt agents', 'Nucleus', '<circle cx="12" cy="12" r="1">', '--phase-visual'],
+  ['Prebuilt agents', 'Scribe', 'M9.937 15.5', '--phase-visual'],
+  ['This machine', 'Skill library', 'M20 20a2 2 0 0 0 2-2V8', '--phase-docs'],
+  ['This browser', 'Appearance', 'M12 22a1 1 0 0 1 0-20', '--phase-explore'],
+];
+
+test("every entry its icon on its group's tile; the open one in the accent, drawn bolder", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.setViewportSize({ width: 1700, height: 925 });
+  await page.goto(`${symbiote.url}settings`);
+  await expect(text(page, 'Feature')).toBeVisible();
+  await expect(list(page).getByRole('button')).toHaveCount(ICONS.length);
+  for (const [group, name, drawing, tint] of ICONS) {
+    const row = list(page)
+      .getByRole('region', { name: group })
+      .getByRole('button', { name, exact: true });
+    const tile = row.locator('.settings-tile');
+    await expect(tile).toHaveAttribute('aria-hidden', 'true');
+    await expect(tile.locator('svg')).toHaveCount(1);
+    expect(await tile.innerHTML(), name).toContain(drawing);
+    // The tile a wash of the group's colour over the card's ground; the icon in that colour
+    // but the open one's.
+    const wash = `color-mix(in srgb, var(${tint}) var(--phase-wash), var(--side))`;
+    await expect(tile).toHaveCSS('background-color', await colour(page, wash));
+    if (name !== 'Feature') {
+      await expect(tile.locator('svg')).toHaveCSS('color', await colour(page, `var(${tint})`));
+      await expect(tile.locator('svg')).toHaveCSS('stroke-width', '1.75px');
+    }
+    const box = await tile.boundingBox();
+    expect([box?.width, box?.height]).toEqual([22, 22]);
+  }
+  const open = entry(page, 'Feature').locator('.settings-tile svg');
+  await expect(open).toHaveCSS('color', await colour(page, 'var(--accent)'));
+  await expect(open).toHaveCSS('stroke-width', '2.25px');
+
+  // The group's heading in line with its tiles; the name after the tile, a mark after the name.
+  const reviews = list(page).getByRole('region', { name: 'Reviews' });
+  const heading = await reviews.getByRole('heading').boundingBox();
+  const tile = await reviews.locator('.settings-tile').first().boundingBox();
+  expect(Math.abs((heading?.x ?? 0) + 8 - (tile?.x ?? 0))).toBeLessThanOrEqual(1);
+  await entry(page, 'Changes or comments').click();
+  await text(page, 'Changes or comments').fill('Address the review.');
+  const row = list(page).getByRole('button', { name: /^Changes or comments/ });
+  await expect(row.locator('.settings-mark')).toHaveText('not saved');
+  const [icon, name, mark] = await Promise.all(
+    ['.settings-tile', '.settings-name', '.settings-mark'].map((at) =>
+      row.locator(at).boundingBox(),
+    ),
+  );
+  if (!icon || !name || !mark) throw new Error('no box');
+  expect(name.x).toBeGreaterThanOrEqual(icon.x + icon.width);
+  expect(mark.x).toBeGreaterThan(name.x + name.width);
+  // The long name whole beside its mark.
+  expect(
+    await row.locator('.settings-name').evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
 });
 
 // V51 (decision 388): the theme and the intro, a setting each, under an entry of their own; the

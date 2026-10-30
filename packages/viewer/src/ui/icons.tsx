@@ -157,10 +157,13 @@ export const FileIcon = () => (
   </Icon>
 );
 
-/** A review's comments on a file (V60), after lucide's message-square (ISC). */
+/**
+ * A review's comments on a file (V60), and Settings' Changes or comments: lucide's message-square
+ * (ISC), on its 24-unit grid since V81 (decision 603) for Settings' strokes; as wide as before.
+ */
 export const CommentIcon = () => (
-  <Icon>
-    <path d="M14 10a1.3 1.3 0 0 1-1.3 1.3H4.7L2 14V3.3A1.3 1.3 0 0 1 3.3 2h9.4A1.3 1.3 0 0 1 14 3.3Z" />
+  <Icon lucide>
+    <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />
   </Icon>
 );
 
@@ -697,5 +700,67 @@ export const CopyIcon = () => (
   <Icon lucide>
     <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
     <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+  </Icon>
+);
+
+/*
+ * Settings' list (V81, decision 600): the entries without an icon elsewhere, lucide's paths (ISC)
+ * as published in lucide-static 1.65.0.
+ */
+
+/** Plan without: lucide's timer-off. */
+export const PlanWithoutIcon = () => (
+  <Icon lucide>
+    <path d="M10 2h4" />
+    <path d="M4.6 11a8 8 0 0 0 1.7 8.7 8 8 0 0 0 8.7 1.7" />
+    <path d="M7.4 7.4a8 8 0 0 1 10.3 1 8 8 0 0 1 .9 10.2" />
+    <path d="m2 2 20 20" />
+    <path d="M12 12v-2" />
+  </Icon>
+);
+
+/** Approved: lucide's badge-check. */
+export const ApprovedIcon = () => (
+  <Icon lucide>
+    <path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" />
+    <path d="m16 9-5.5 5.5L8 12" />
+  </Icon>
+);
+
+/** Approved to push: lucide's cloud-upload. */
+export const PushIcon = () => (
+  <Icon lucide>
+    <path d="M12 13v8" />
+    <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242" />
+    <path d="m8 17 4-4 4 4" />
+  </Icon>
+);
+
+/** Where the review is: lucide's map-pin. */
+export const WhereIcon = () => (
+  <Icon lucide>
+    <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+    <circle cx="12" cy="10" r="3" />
+  </Icon>
+);
+
+/** symbiote/AGENTS.md, what an agent reads on a review: lucide's scroll-text. */
+export const AgentsFileIcon = () => (
+  <Icon lucide>
+    <path d="M15 12h-5" />
+    <path d="M15 8h-5" />
+    <path d="M19 17V5a2 2 0 0 0-2-2H4" />
+    <path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3" />
+  </Icon>
+);
+
+/** Appearance: lucide's palette, its four dots filled. */
+export const AppearanceIcon = () => (
+  <Icon lucide>
+    <path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z" />
+    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor" />
+    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor" />
+    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor" />
+    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
   </Icon>
 );
