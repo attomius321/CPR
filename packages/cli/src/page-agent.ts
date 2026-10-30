@@ -114,6 +114,8 @@ export interface PageAgentSpec {
    * record is its conversation while it has none of its own; New conversation removes it all.
    */
   former?: { name: string; record: string; files: readonly string[] };
+  /** What it did, recorded beside its record (NU2, decision 604): Nucleus's. */
+  activity?: string;
 }
 
 /** A setting of the project's config: its value, its path, its path before a rename. */
@@ -192,21 +194,59 @@ export interface PageAgent {
   setModel(change: ModelChange): Promise<AgentLevels>;
 }
 
+/** The young generation the recording gate starts with, in MB (NU2). */
+const SEMI_SPACE_MB = 4;
+
+/** The events Nucleus's activity records besides the gate's (NU2): Claude Code's, in the background. */
+const RECORDED_EVENTS = [
+  'UserPromptSubmit',
+  'Stop',
+  'StopFailure',
+  'SessionStart',
+  'SessionEnd',
+  'PreCompact',
+  'PostCompact',
+  'Notification',
+  'PostToolUse',
+  'PostToolUseFailure',
+  'PermissionDenied',
+] as const;
+
 /**
- * Nucleus's settings file for Claude Code: the gate before every tool, and nothing else — no hook
- * records its thread (decision 238).
+ * A page agent's settings file for Claude Code: the gate before every tool. With `activity`
+ * (Nucleus's, NU2, decision 605, which revisits 238), the gate records each call and its decision
+ * there, and the other events run it in the background (`async`) to record them.
  */
 export function pageAgentSettings(
-  where: { node: string; gate: string; args?: readonly string[] },
+  where: { node: string; gate: string; args?: readonly string[]; activity?: string },
   platform: NodeJS.Platform = process.platform,
   more: Readonly<Record<string, unknown>> = {},
 ): string {
-  const command = [where.node, where.gate, ...(where.args ?? [])]
+  const command = [
+    where.node,
+    // Recording takes the gate's heap past V8's first young-generation limit: one 3.5 ms scavenge
+    // on every call (NU2 measured), which a larger start avoids for ~0.7 ms.
+    ...(where.activity ? [`--min-semi-space-size=${SEMI_SPACE_MB}`] : []),
+    where.gate,
+    ...(where.args ?? []),
+    ...(where.activity ? [`--activity=${where.activity}`] : []),
+  ]
     .map((p) => shellWord(p, platform))
     .join(' ');
-  const hooks = {
+  const hooks: Record<string, unknown[]> = {
     PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command, timeout: 30 }] }],
   };
+  if (where.activity) {
+    for (const event of RECORDED_EVENTS) {
+      const tools = event.includes('Tool') || event === 'PermissionDenied';
+      hooks[event] = [
+        {
+          ...(tools ? { matcher: '*' } : {}),
+          hooks: [{ type: 'command', command, timeout: 30, async: true }],
+        },
+      ];
+    }
+  }
   return `${JSON.stringify({ ...more, hooks }, null, 2)}\n`;
 }
 
@@ -430,7 +470,12 @@ export function pageAgent(
   async function settingsFile(where: ReviewPlace): Promise<string> {
     const path = join(folder(where), spec.settings);
     const text = pageAgentSettings(
-      { node, gate, args: spec.gateArgs(root, where) },
+      {
+        node,
+        gate,
+        args: spec.gateArgs(root, where),
+        ...(spec.activity ? { activity: join(folder(where), spec.activity) } : {}),
+      },
       process.platform,
       spec.claudeSettings,
     );

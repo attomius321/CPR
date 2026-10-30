@@ -359,6 +359,46 @@ describe('pageAgentSettings', () => {
   });
 });
 
+describe('pageAgentSettings with an activity file (NU2, decision 605)', () => {
+  it("records through the gate's own run, and every other event in the background", () => {
+    const file = '/repo/symbiote/nucleus-activity.jsonl';
+    const settings = JSON.parse(
+      pageAgentSettings(
+        { node: '/usr/bin/node', gate: GATE, args: ['--web'], activity: file },
+        'linux',
+      ),
+    ) as { hooks: Record<string, { matcher?: string; hooks: unknown[] }[]> };
+    const command = `'/usr/bin/node' '--min-semi-space-size=4' '${GATE}' '--web' '--activity=${file}'`;
+    expect(settings.hooks.PreToolUse).toEqual([
+      { matcher: '*', hooks: [{ type: 'command', command, timeout: 30 }] },
+    ]);
+    const recorded = Object.keys(settings.hooks).filter((event) => event !== 'PreToolUse');
+    expect(recorded.sort()).toEqual(
+      [
+        'Notification',
+        'PermissionDenied',
+        'PostCompact',
+        'PostToolUse',
+        'PostToolUseFailure',
+        'PreCompact',
+        'SessionEnd',
+        'SessionStart',
+        'Stop',
+        'StopFailure',
+        'UserPromptSubmit',
+      ].sort(),
+    );
+    for (const event of recorded) {
+      expect(settings.hooks[event]).toEqual([
+        {
+          ...(event.includes('Tool') || event === 'PermissionDenied' ? { matcher: '*' } : {}),
+          hooks: [{ type: 'command', command, timeout: 30, async: true }],
+        },
+      ]);
+    }
+  });
+});
+
 describe("finding Nucleus's session (decision 239)", () => {
   const root = '/repo';
   const real = (path: string) => path;
@@ -471,6 +511,8 @@ describe('nucleus (V35)', () => {
         node: '/usr/bin/node',
         gate: GATE,
         args: [repo.root, join(repo.root, 'symbiote', 'workspaces'), '--web'],
+        // What it does, recorded beside its record (NU2).
+        activity: join(repo.root, 'symbiote', 'nucleus-activity.jsonl'),
       }),
     );
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toEqual({
@@ -701,10 +743,14 @@ describe("Nucleus reads the workspaces' worktrees (V80, decisions 596-599)", () 
     const command = (
       JSON.parse(text) as { hooks: { PreToolUse: { hooks: { command: string }[] }[] } }
     ).hooks.PreToolUse[0]?.hooks[0]?.command;
-    return (command ?? '')
-      .split(' ')
-      .slice(2)
-      .map((word) => word.replace(/^'|'$/g, ''));
+    return (
+      (command ?? '')
+        .split(' ')
+        .map((word) => word.replace(/^'|'$/g, ''))
+        // The recording gate's node flag (NU2).
+        .filter((word) => !word.startsWith('--min-semi-space-size'))
+        .slice(2)
+    );
   };
   const read = (file_path: string) => ({
     hook_event_name: 'PreToolUse',
@@ -721,7 +767,12 @@ describe("Nucleus reads the workspaces' worktrees (V80, decisions 596-599)", () 
     // Nothing opened for the whole session: the gate decides at each call.
     expect(request).not.toHaveProperty('addDirs');
     const args = gateArgsOf(request?.settings ?? '');
-    expect(args).toEqual([repo.root, join(repo.root, 'symbiote', 'workspaces'), '--web']);
+    expect(args).toEqual([
+      repo.root,
+      join(repo.root, 'symbiote', 'workspaces'),
+      '--web',
+      `--activity=${join(repo.root, 'symbiote', 'nucleus-activity.jsonl')}`,
+    ]);
     const reach = nucleusReach(args);
     expect(gateDecision(read(join(worktree, 'wip.md')), { reach })).toMatchObject({ allow: true });
     for (const outside of [
@@ -1835,7 +1886,12 @@ describe('Nucleus on the web (NU1, decisions 592–594)', () => {
     ]);
     const folders = [repo.root, join(repo.root, 'symbiote', 'workspaces')];
     expect(readFileSync(join(repo.root, 'symbiote', 'nucleus-settings.json'), 'utf8')).toBe(
-      pageAgentSettings({ node: '/usr/bin/node', gate: GATE, args: [...folders, '--web'] }),
+      pageAgentSettings({
+        node: '/usr/bin/node',
+        gate: GATE,
+        args: [...folders, '--web'],
+        activity: join(repo.root, 'symbiote', 'nucleus-activity.jsonl'),
+      }),
     );
   });
 
@@ -1851,6 +1907,7 @@ describe('Nucleus on the web (NU1, decisions 592–594)', () => {
         node: '/usr/bin/node',
         gate: GATE,
         args: [repo.root, join(repo.root, 'symbiote', 'workspaces')],
+        activity: join(repo.root, 'symbiote', 'nucleus-activity.jsonl'),
       }),
     );
   });
