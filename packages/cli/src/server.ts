@@ -464,6 +464,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
     if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
     if (url.pathname === '/api/history/refs') return historyRefs(req, res, url, repository);
+    if (url.pathname === '/api/history/rows') return historyRowsOf(req, res, url, repository);
     if (url.pathname.startsWith('/api/git/') && repository.git)
       return gitApi(req, res, url, repository, repository.git);
     if (url.pathname === '/api/status') return read(req, res, () => repository.status());
@@ -1168,6 +1169,26 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       remotes: remotes.map((r, i) => ({ ...r, row: rows[branches.length + i] ?? null })),
     };
     return json(res, 200, answer);
+  }
+
+  /**
+   * The rows of commits in a listing, by SHA (decision 634: the page lists anew in place, the
+   * cursor kept on its commit): `?scope=…&version=…&sha=…&sha=…`, null for a SHA it does not list.
+   */
+  async function historyRowsOf(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    repo: RepositoryOptions,
+  ): Promise<void> {
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    const scope = historyScope(url);
+    const version = url.searchParams.get('version');
+    const shas = url.searchParams.getAll('sha');
+    if (!scope || !version || shas.length === 0) return send(res, 400, 'scope, version and sha');
+    const rows = await repo.history.tips(scope, version, shas);
+    if (!rows) return send(res, 409, 'the history changed: list it again');
+    return json(res, 200, { rows });
   }
 
   /**

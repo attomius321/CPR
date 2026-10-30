@@ -980,6 +980,18 @@ describe('symbiote view: commits and diffs', () => {
     expect((await post('/api/history/refs', {})).status).toBe(405);
   });
 
+  it("finds commits' rows in a listing by SHA, null for one it does not list (decision 634)", async () => {
+    const listed = JSON.parse((await get('/api/history')).body) as { version: string };
+    const answer = await get(
+      `/api/history/rows?scope=all&version=${listed.version}&sha=${C}&sha=${'e'.repeat(40)}`,
+    );
+    expect(answer.status).toBe(200);
+    expect(JSON.parse(answer.body)).toEqual({ rows: [0, null] });
+    expect((await get(`/api/history/rows?scope=all&version=${listed.version}`)).status).toBe(400);
+    expect((await get(`/api/history/rows?scope=all&version=old&sha=${C}`)).status).toBe(409);
+    expect((await post('/api/history/rows', {})).status).toBe(405);
+  });
+
   it("checks out what the page asks for; git's refusals are 409, unknown targets 400", async () => {
     const ok = await post('/api/checkout', { kind: 'branch', name: 'wip' });
     expect(ok.status).toBe(200);

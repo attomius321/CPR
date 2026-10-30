@@ -149,3 +149,26 @@ export function followShown(changes: WorkingChanges, shown: ShownFile): ShownFil
   if (on(staged)) return shown;
   return on(!staged) ? { path: shown.path, staged: !staged } : null;
 }
+
+/**
+ * The cursor's row once the page lists anew in place (decision 634): the uncommitted row (−1)
+ * stays; a cursor on HEAD with no file shown follows HEAD; else its commit's new row (`kept`),
+ * or HEAD's when the listing no longer has it.
+ */
+export function rowAfterListing({
+  cursor,
+  wasHead,
+  shown,
+  kept,
+  head,
+}: {
+  cursor: number;
+  wasHead: boolean;
+  shown: boolean;
+  kept: number | null;
+  head: number | null;
+}): number {
+  if (cursor < 0) return cursor;
+  if (wasHead && !shown && head !== null) return head;
+  return kept ?? head ?? 0;
+}

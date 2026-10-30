@@ -24,6 +24,7 @@ import {
   fetchJson,
   fetchReviews,
   fetchRows,
+  fetchRowsOf,
   fetchShape,
   postCheckout,
   StaleHistory,
@@ -51,6 +52,7 @@ import {
   changesSummary,
   followShown,
   nextMatch,
+  rowAfterListing,
   stepShown,
   syncWords,
   useDetailsPlace,
@@ -99,12 +101,6 @@ const scopeOfUrl = (): HistoryScope =>
 /** `?branch=<name>` (V18b: a workspace's branch): its tip, once listed. */
 const branchOfUrl = (): string | null => new URLSearchParams(window.location.search).get('branch');
 
-/** The commit the cursor was on before listing anew, and how far down the view it was. */
-interface Keep {
-  sha: string;
-  offset: number;
-}
-
 type BranchEntry = Extract<PanelEntry, { kind: 'branch' }>;
 
 /** The uncommitted row's number (V66c): above the first commit's. */
@@ -146,7 +142,6 @@ export function HistoryPage() {
   );
   // A branch to go to once every branch is listed: "This branch" did not list its tip.
   const [goTo, setGoTo] = useState<string | null>(branchOfUrl);
-  const [keep, setKeep] = useState<Keep | null>(null);
   // The search's words and the details pane, kept across listings (V66).
   const [query, setQuery] = useState('');
   const [detailsOpen, setDetailsOpen] = useState(true);
@@ -164,16 +159,16 @@ export function HistoryPage() {
   );
   const arrived = useCallback(() => setGoTo(null), []);
   const relist = useCallback(
-    (next: Notice | null, branch?: string, kept?: Keep) => {
+    (next: Notice | null, branch?: string) => {
       if (next) shell?.notify(next);
       // A new branch (a workspace's): its tip once listed.
       if (branch) setGoTo(branch);
-      setKeep(kept ?? null);
       setGeneration((g) => g + 1);
     },
     [shell],
   );
-  // A new scope or generation starts afresh: its own rows, lanes and picks.
+  // A new scope or generation starts afresh: its own rows, lanes and picks. What moves unasked
+  // is listed in place instead (decision 634).
   return (
     <History
       key={`${scope}:${generation}`}
@@ -184,7 +179,6 @@ export function HistoryPage() {
       onComparing={setComparing}
       panel={{ filter, onFilter: setFilter, toggled, onToggle: toggle }}
       goTo={goTo}
-      keep={keep}
       onGoElsewhere={goElsewhere}
       onArrived={arrived}
       find={{ query, onQuery: setQuery }}
@@ -209,7 +203,6 @@ function History({
   onComparing,
   panel,
   goTo,
-  keep,
   onGoElsewhere,
   onArrived,
   find,
@@ -217,8 +210,11 @@ function History({
 }: {
   scope: HistoryScope;
   onScope: (scope: HistoryScope) => void;
-  /** Lists anew, saying `notice` in the status bar; with `branch`, the cursor goes to its tip. */
-  onRelist: (notice: Notice | null, branch?: string, keep?: Keep) => void;
+  /**
+   * Lists afresh after the person's own change, saying `notice` in the status bar; with `branch`,
+   * the cursor goes to its tip.
+   */
+  onRelist: (notice: Notice | null, branch?: string) => void;
   comparing: boolean;
   onComparing: (comparing: boolean) => void;
   /** The branches panel's filter and folders, kept by the page across listings. */
@@ -230,8 +226,6 @@ function History({
   };
   /** A branch whose tip to go to once listed (from "This branch", `?branch=`, a new workspace). */
   goTo: string | null;
-  /** Listed anew while reading: the commit to keep the cursor on, where it was in the view. */
-  keep: Keep | null;
   /** A branch this scope does not list: list every branch, then go to it. */
   onGoElsewhere: (name: string) => void;
   onArrived: () => void;
@@ -306,14 +300,18 @@ function History({
   useEffect(readChanges, [readChanges]);
   const working =
     changes !== null && changes.staged.length + changes.unstaged.length > 0 ? changes : null;
-  // The file shown in the rows' place (V70), of the cursor's row: closed when the cursor moves.
-  const [openFile, setOpenFile] = useState<(ShownFile & { row: number }) | null>(null);
-  useEffect(() => {
-    setOpenFile(null);
-  }, [cursor]);
-  const shownHere = openFile?.row === cursor ? openFile : null;
+  // The file shown in the rows' place (V70): of a commit, by its SHA, or uncommitted (null); not
+  // by its row, which a commit listed above it changes (decision 635). Closed when the cursor
+  // goes to another commit.
+  const [openFile, setOpenFile] = useState<(ShownFile & { sha: string | null }) | null>(null);
   const onWorking = cursor === WORKING;
   const commitSha = onWorking ? null : (details.current.get(cursor)?.sha ?? null);
+  const cursorKey = onWorking ? 'working' : (commitSha ?? `row ${cursor}`);
+  useEffect(() => {
+    setOpenFile(null);
+  }, [cursorKey]);
+  const shownHere =
+    openFile && (onWorking ? openFile.sha === null : openFile.sha === commitSha) ? openFile : null;
   // Read for the pane and the file shown; not while the pane is folded and nothing is shown.
   const commitRead = useCommitRead(pane.open || shownHere ? commitSha : null);
   const workingHere = onWorking ? working : null;
@@ -338,9 +336,9 @@ function History({
   );
   // Staged or unstaged, the uncommitted file shown follows it to its other side.
   useEffect(() => {
-    if (openFile?.row !== WORKING) return;
+    if (!openFile || openFile.sha !== null) return;
     const next = working ? followShown(working, openFile) : null;
-    if (next !== openFile) setOpenFile(next && { ...next, row: WORKING });
+    if (next !== openFile) setOpenFile(next && { ...next, sha: null });
   }, [working, openFile]);
   const shownPath = shownHere?.path ?? null;
   const shownStaged = shownHere?.staged === true;
@@ -373,8 +371,10 @@ function History({
   const [matches, setMatches] = useState<number[] | null>(null);
   const findRef = useRef<HTMLInputElement>(null);
 
+  // Listing anew in place (decision 634), defined once the rows are: what a stale answer calls.
+  const relistRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const failed = useCallback((e: unknown) => {
-    if (e instanceof StaleHistory) setStale(true);
+    if (e instanceof StaleHistory) void relistRef.current();
     else setError(`Could not list commits: ${(e as Error).message}`);
   }, []);
 
@@ -407,7 +407,7 @@ function History({
     const check = () => {
       if (document.visibilityState === 'hidden') return;
       fetchJson<RepoStatus>('api/status')
-        .then((status) => (status.version !== first.version ? onRelist(null) : readChanges()))
+        .then((status) => (status.version !== first.version ? relistRef.current() : readChanges()))
         .catch(() => {});
     };
     window.addEventListener('focus', check);
@@ -416,7 +416,7 @@ function History({
       window.removeEventListener('focus', check);
       document.removeEventListener('visibilitychange', check);
     };
-  }, [first, onRelist, readChanges]);
+  }, [first, readChanges]);
 
   const parents = useMemo(
     () => shape?.parents ?? (first ? parentRows(first.commits) : []),
@@ -455,13 +455,16 @@ function History({
     (block: number) => {
       if (!first || asked.current.has(block)) return;
       asked.current.add(block);
+      // Into this listing's rows: listed anew in place meanwhile, they are another's.
+      const into = details.current;
+      const wanted = asked.current;
       fetchRows(scope, block * BLOCK, Math.min(rows, (block + 1) * BLOCK), first.version)
         .then((page) => {
-          page.commits.forEach((c, i) => details.current.set(page.from + i, c));
+          page.commits.forEach((c, i) => into.set(page.from + i, c));
           setLoaded((n) => n + 1);
         })
         .catch((e: unknown) => {
-          asked.current.delete(block);
+          wanted.delete(block);
           failed(e);
         });
     },
@@ -519,21 +522,13 @@ function History({
     if (tip && tip.row !== null) goToBranch(tip);
   }, [goTo, branches, onArrived, goToBranch]);
 
-  // The cursor starts on HEAD's row, once it is known; listed anew while reading, on the commit
-  // it was on, where it was in the view.
+  // The cursor starts on HEAD's row, once it is known.
   useLayoutEffect(() => {
     if (placed.current || headRow === null || !first) return;
     placed.current = true;
-    const kept = keep ? first.commits.findIndex((c) => c.sha === keep.sha) : -1;
-    const box = scroller.current;
-    if (keep && kept >= 0 && box) {
-      setCursor(kept);
-      box.scrollTop = (list.current?.offsetTop ?? 0) + kept * ROW_HEIGHT - keep.offset;
-      return;
-    }
     setCursor(headRow);
     if ((headRow + 1) * ROW_HEIGHT > view.height) reveal(headRow, true);
-  }, [headRow, view.height, reveal, keep, first]);
+  }, [headRow, view.height, reveal, first]);
 
   const compare = useCallback(async (pair: Pair) => {
     setStarting(true);
@@ -579,7 +574,7 @@ function History({
   const openWorkspace = useCallback((sha?: string) => shell?.startWorkspace(sha), [shell]);
 
   // Each workspace's mark on its branch's badges, a link to it (V18b); its agent's commits listed
-  // as they come, the cursor kept on its commit.
+  // as they come, in place (decision 634).
   const { list: workspaces, reviews: workspaceReviews } = useWorkspaces();
   const chips = useMemo(
     () => workspaceChips(workspaces?.workspaces ?? [], workspaceReviews, refs?.remotes ?? []),
@@ -596,13 +591,8 @@ function History({
       const listed = refs.branches.find((b) => b.name === f.branch);
       return f.tip !== null && listed !== undefined && listed.sha !== f.tip;
     });
-    if (!moved) return;
-    const box = scroller.current;
-    const sha = details.current.get(cursor)?.sha;
-    const top = (list.current?.offsetTop ?? 0) + cursor * ROW_HEIGHT;
-    onRelist(null, undefined, sha && box ? { sha, offset: top - box.scrollTop } : undefined);
-    // Only a workspace's tip moving lists anew; the cursor is read as it is then.
-  }, [workspaces, refs, onRelist]);
+    if (moved) void relistRef.current();
+  }, [workspaces, refs]);
 
   /** The workspace whose branch's tip is this commit (V18b), if any. */
   const workspaceOn = (sha: string) =>
@@ -757,7 +747,13 @@ function History({
                 text: set ? `Pushed to ${upstream}, now its upstream` : `Pushed to ${upstream}`,
               }));
       said.then(
-        (notice) => onRelist(notice),
+        (notice) => {
+          // A pull moves the branch checked out: afresh, on HEAD. Fetch and push move only
+          // remote branches: in place (decision 634).
+          if (run === 'pull') return onRelist(notice);
+          shell?.notify(notice);
+          void relistRef.current().finally(() => setSyncing(null));
+        },
         (e: unknown) => {
           setSyncing(null);
           shell?.notify({ text: `Could not ${run}`, warning: (e as Error).message, error: true });
@@ -838,17 +834,25 @@ function History({
   const version = first?.version;
   const cursorAt = useRef(cursor);
   cursorAt.current = cursor;
+  // The words last searched: listed anew in place, the same words find again without moving.
+  const searched = useRef('');
   useEffect(() => {
-    setMatches(null);
-    if (!query || !version) return;
+    if (!query || !version) {
+      setMatches(null);
+      searched.current = '';
+      return;
+    }
+    const fresh = query !== searched.current;
+    if (fresh) setMatches(null);
     let live = true;
     const timer = setTimeout(() => {
       findRows(scope, version, query)
         .then((found) => {
           if (!live) return;
-          if (found === null) return setStale(true);
+          if (found === null) return void relistRef.current();
           setMatches(found);
-          const row = nextMatch(found, cursorAt.current - 1, true);
+          searched.current = query;
+          const row = fresh ? nextMatch(found, cursorAt.current - 1, true) : null;
           if (row !== null) jump(row);
         })
         .catch((e: unknown) => live && setError(`Could not find commits: ${(e as Error).message}`));
@@ -866,6 +870,126 @@ function History({
     },
     [matches, cursor, jump],
   );
+  // Listing anew in place (decision 634): what moved unasked (a branch elsewhere, an agent's
+  // commit, a fetch) is read while the page stays, then swapped in at once. The cursor stays on its
+  // commit (on HEAD from HEAD with no file shown), the rows where they were on screen, the file
+  // shown and the pane as they were. One at a time; asked meanwhile, once more after.
+  const latest = useRef({ first, headRow, picks, shown: openFile !== null });
+  latest.current = { first, headRow, picks, shown: openFile !== null };
+  const relisting = useRef<Promise<void> | null>(null);
+  const relistAgain = useRef(false);
+  const scrollTo = useRef<{ row: number; offset: number } | { reveal: number } | null>(null);
+  const relistHere = useCallback((): Promise<void> => {
+    if (relisting.current) {
+      relistAgain.current = true;
+      return relisting.current;
+    }
+    const run = async (tries: number): Promise<void> => {
+      const { first: before, headRow: oldHead, picks: picked, shown } = latest.current;
+      if (!before) return;
+      readChanges();
+      const page = await fetchRows(scope, 0, BLOCK);
+      if (page.version === before.version) return;
+      const cursor = cursorAt.current;
+      const box = scroller.current;
+      const top = list.current?.offsetTop ?? 0;
+      const at = (row: number) => top + row * ROW_HEIGHT - (box?.scrollTop ?? 0);
+      // The row kept in its place on screen: the cursor's when in view, else the first in view.
+      const inView = (row: number) =>
+        box !== null && row >= 0 && at(row) > -ROW_HEIGHT && at(row) < box.clientHeight;
+      const anchor = inView(cursor)
+        ? cursor
+        : Math.max(0, Math.floor(((box?.scrollTop ?? 0) - top) / ROW_HEIGHT));
+      const shaOf = (row: number) => details.current.get(row)?.sha;
+      const kept = cursor === WORKING ? undefined : shaOf(cursor);
+      const anchored = shaOf(anchor);
+      const shas = [
+        ...new Set([kept, anchored, ...picked.map((p) => p.sha)].filter((s) => s !== undefined)),
+      ];
+      try {
+        const [nextShape, nextRefs, found] = await Promise.all([
+          fetchShape(scope, page.version),
+          fetchBranches(scope, page.version),
+          shas.length > 0 ? fetchRowsOf(scope, page.version, shas) : Promise.resolve([]),
+        ]);
+        const rowOf = new Map(shas.map((sha, i) => [sha, found[i] ?? null]));
+        const keptRow = kept === undefined ? null : (rowOf.get(kept) ?? null);
+        const next = rowAfterListing({
+          cursor,
+          wasHead: cursor === oldHead,
+          shown,
+          kept: keptRow,
+          head: nextShape.head,
+        });
+        // The first rows' details, and the cursor's when further down: its pane and file stay.
+        const fresh = new Map<number, Commit>();
+        page.commits.forEach((c, i) => fresh.set(i, c));
+        const blocks = new Set([0]);
+        if (next >= 0 && !fresh.has(next) && next < nextShape.rows) {
+          const block = Math.floor(next / BLOCK);
+          const more = await fetchRows(
+            scope,
+            block * BLOCK,
+            Math.min(nextShape.rows, (block + 1) * BLOCK),
+            page.version,
+          );
+          more.commits.forEach((c, i) => fresh.set(more.from + i, c));
+          blocks.add(block);
+        }
+        const anchorRow = anchored === undefined ? null : (rowOf.get(anchored) ?? null);
+        scrollTo.current =
+          next >= 0 && next !== keptRow
+            ? { reveal: next }
+            : anchorRow !== null
+              ? { row: anchorRow, offset: at(anchor) }
+              : null;
+        details.current = fresh;
+        asked.current = blocks;
+        setFirst(page);
+        setShape(nextShape);
+        setRefs(nextRefs);
+        setCursor(next);
+        setPicks((ps) =>
+          ps.flatMap((p) => {
+            const row = rowOf.get(p.sha);
+            return row === null || row === undefined ? [] : [{ ...p, row }];
+          }),
+        );
+        setFlash(null);
+        setLoaded((n) => n + 1);
+      } catch (e) {
+        // Moved again while read: read the newer listing.
+        if (e instanceof StaleHistory && tries > 0) return run(tries - 1);
+        throw e;
+      }
+    };
+    const done = run(2)
+      .catch((e: unknown) => {
+        if (e instanceof StaleHistory) setStale(true);
+        else setError(`Could not list commits: ${(e as Error).message}`);
+      })
+      .finally(() => {
+        relisting.current = null;
+        if (relistAgain.current) {
+          relistAgain.current = false;
+          void relistRef.current();
+        }
+      });
+    relisting.current = done;
+    return done;
+  }, [scope, readChanges]);
+  relistRef.current = relistHere;
+  // Listed in place: the rows where they were on screen, or the cursor revealed when it moved.
+  useLayoutEffect(() => {
+    const to = scrollTo.current;
+    const box = scroller.current;
+    if (!to || !box) return;
+    scrollTo.current = null;
+    if ('reveal' in to) reveal(to.reveal);
+    else box.scrollTop = (list.current?.offsetTop ?? 0) + to.row * ROW_HEIGHT - to.offset;
+    measure();
+  }, [first, reveal, measure]);
+
   // The uncommitted row gone (committed, or changed elsewhere): the cursor back on HEAD.
   useEffect(() => {
     if (cursor === WORKING && !working) setCursor(headRow ?? 0);
@@ -883,7 +1007,7 @@ function History({
       if (fileShown && shownHere) {
         if (event.key === 'j' || event.key === 'k') {
           const step = event.key === 'j' ? 1 : -1;
-          setOpenFile({ ...stepShown(fileOrder, shownHere, step), row: cursor });
+          setOpenFile({ ...stepShown(fileOrder, shownHere, step), sha: shownHere.sha });
           return;
         }
         if (event.key === 'o') {
@@ -1179,7 +1303,7 @@ function History({
             </div>
             {fileShown && (
               <GitFile
-                key={`${cursor}:${shownStaged}:${fileShown.path}`}
+                key={`${shownHere?.sha ?? 'working'}:${shownStaged}:${fileShown.path}`}
                 file={fileShown}
                 {...(onWorking ? { side: shownStaged ? 'staged' : 'not staged' } : {})}
                 load={loadShown}
@@ -1210,7 +1334,7 @@ function History({
                   changes={working}
                   read={changesRead}
                   open={shownHere}
-                  onOpen={(file) => setOpenFile(file && { ...file, row: WORKING })}
+                  onOpen={(file) => setOpenFile(file && { ...file, sha: null })}
                   onChanges={setChanges}
                   onCommitted={(sha, amend) =>
                     onRelist({ text: `${amend ? 'Amended' : 'Committed'} ${shortSha(sha)}` })
@@ -1224,7 +1348,7 @@ function History({
                   parentRows={parents[cursor] ?? []}
                   starting={starting}
                   open={shownHere?.path ?? null}
-                  onOpen={(path) => setOpenFile(path ? { row: cursor, path } : null)}
+                  onOpen={(path) => setOpenFile(path ? { sha: selected.sha, path } : null)}
                   onJump={jump}
                   onReview={(parent) => void compare({ base: parent, head: selected.sha })}
                 />

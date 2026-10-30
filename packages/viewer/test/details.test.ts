@@ -7,6 +7,7 @@ import {
   followShown,
   nextMatch,
   placeOf,
+  rowAfterListing,
   stepShown,
   syncWords,
   withLines,
@@ -156,5 +157,28 @@ describe("the file shown in the rows' place (V70)", () => {
       staged: true,
     });
     expect(followShown(staged, { path: 'gone.ts', staged: true })).toBeNull();
+  });
+});
+
+describe('rowAfterListing (decision 634: listed anew in place)', () => {
+  it('keeps the cursor on its commit, at its new row', () => {
+    expect(rowAfterListing({ cursor: 4, wasHead: false, shown: false, kept: 5, head: 0 })).toBe(5);
+    expect(rowAfterListing({ cursor: 0, wasHead: true, shown: true, kept: 1, head: 0 })).toBe(1);
+  });
+
+  it('follows HEAD from HEAD when no file is shown', () => {
+    expect(rowAfterListing({ cursor: 2, wasHead: true, shown: false, kept: 3, head: 0 })).toBe(0);
+  });
+
+  it('goes to HEAD when its commit is no longer listed; the uncommitted row stays', () => {
+    expect(rowAfterListing({ cursor: 4, wasHead: false, shown: true, kept: null, head: 2 })).toBe(
+      2,
+    );
+    expect(
+      rowAfterListing({ cursor: 4, wasHead: false, shown: false, kept: null, head: null }),
+    ).toBe(0);
+    expect(rowAfterListing({ cursor: -1, wasHead: false, shown: true, kept: null, head: 3 })).toBe(
+      -1,
+    );
   });
 });
