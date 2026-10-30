@@ -4,10 +4,246 @@
     "merge": "a5fc28a0beb7ee961a10b0314d3fd5b975e72f4a",
     "candidates": []
   },
+  "22015": {
+    "number": 22015,
+    "merge": "fce56c7651a5da291a740621316a518aa94af6a3",
+    "candidates": [
+      {
+        "sha": "e9545df85e4da2cffab33bd8fbc51ffc11182f47",
+        "date": "2026-10-27T13:15:57-04:00",
+        "title": "[PM-43870] Fix Send drawer inconsistency in item Send display (#23368)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/browser/src/tools/popup/send-v2/add-edit/send-add-edit.component.ts",
+          "libs/tools/send/send-ui/src/add-edit/send-add-edit-dialog.component.ts"
+        ],
+        "symbols": [
+          "libs/tools/send/send-ui/src/add-edit/send-add-edit-dialog.component.ts#SendAddEditDialogComponent.constructor"
+        ]
+      },
+      {
+        "sha": "36e7c7a03f7355841facf3c8edccf8cb2cbd17af",
+        "date": "2026-08-04T15:31:55-04:00",
+        "title": "[PM-39978] Add Item Send enum and fix resulting build errors (#22135)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/browser/src/tools/popup/send-v2/add-edit/send-add-edit.component.ts",
+          "libs/tools/send/send-ui/src/add-edit/send-add-edit-dialog.component.ts"
+        ],
+        "symbols": []
+      }
+    ]
+  },
+  "22260": {
+    "number": 22260,
+    "merge": "9e1be224da0f09f29d627fedf9cf1503f060c183",
+    "candidates": [
+      {
+        "sha": "82809d5c8c5e79aabfe52e893d67c82ce68aa6c2",
+        "date": "2026-10-08T13:07:37-04:00",
+        "title": "[CL-1366] fix: Re-measure the table's virtual viewport when it resizes (#23734)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "libs/components/src/table/v2/table-v2.component.ts",
+          "libs/components/src/table/v2/table-v2.stories.ts"
+        ],
+        "symbols": [
+          "libs/components/src/table/v2/table-v2.component.ts#BitTableV2Component"
+        ]
+      },
+      {
+        "sha": "9cf96819802822de959e91f1181bddde1ed9f47f",
+        "date": "2026-10-08T08:33:11-05:00",
+        "title": "[PM-44315] Fix batch bar count including items hidden by a filter (#23579)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "libs/vault/src/components/vault-items-table/vault-items-table.component.spec.ts",
+          "libs/vault/src/components/vault-items-table/vault-items-table.component.ts"
+        ],
+        "symbols": [
+          "libs/vault/src/components/vault-items-table/vault-items-table.component.ts#VaultItemsTableComponent.registerSelection"
+        ]
+      },
+      {
+        "sha": "51c775bdb8c033d58dad2f29893160e6bcd1b00b",
+        "date": "2026-09-17T12:30:16-07:00",
+        "title": "[PM-43782] fix: uncheck select-all after clearing a capped selection (#23227)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "libs/components/src/table/v2/table-v2.component.html",
+          "libs/components/src/table/v2/table-v2.component.ts",
+          "libs/vault/src/components/vault-items-table/vault-items-table.component.spec.ts"
+        ],
+        "symbols": [
+          "libs/components/src/table/v2/table-v2.component.html#(template)",
+          "libs/components/src/table/v2/table-v2.component.ts#BitTableV2Component"
+        ]
+      }
+    ]
+  },
+  "22287": {
+    "number": 22287,
+    "merge": "acfcc87999bd2ecec2c4a15ef8363590096f2192",
+    "candidates": []
+  },
   "22523": {
     "number": 22523,
     "merge": "2992d17688c0ad43afc434da09f9aae9a9f6d996",
     "candidates": []
+  },
+  "22535": {
+    "number": 22535,
+    "merge": "be5687185c365fbcc3b281fceac8cac899531290",
+    "candidates": [
+      {
+        "sha": "e9545df85e4da2cffab33bd8fbc51ffc11182f47",
+        "date": "2026-10-27T13:15:57-04:00",
+        "title": "[PM-43870] Fix Send drawer inconsistency in item Send display (#23368)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/desktop/src/vault/app/vault-v3/vault.component.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "3ab340df784d87563482acb4d7961a6b24546361",
+        "date": "2026-09-15T11:31:45-04:00",
+        "title": "fix: correct trash detection in desktop vault batch action bar (#23175)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/desktop/src/vault/app/vault-v3/vault.component.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "5f812eb7e12e300bc8af174a0b1998471a63bc91",
+        "date": "2026-09-15T10:25:22-04:00",
+        "title": "[PM-43348] fix: Render live vault updates on the desktop list (#23191)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/desktop/src/vault/app/vault-v3/vault.component.ts"
+        ],
+        "symbols": []
+      }
+    ]
+  },
+  "22539": {
+    "number": 22539,
+    "merge": "3be299bbd41737c1ee384a2729bb7c31bd387148",
+    "candidates": [
+      {
+        "sha": "cd44cba2cf5209375752d8d0347c712f7c2f53b5",
+        "date": "2026-10-26T15:00:06+01:00",
+        "title": "fix(logging): Performance marks and measures grow without limit (#24136)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/browser/src/background/main.background.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "474596bee2b9b040f58960d22011a55c5f5dd6e9",
+        "date": "2026-10-15T20:57:41+09:00",
+        "title": "[PM-44494] fix(biometrics): fix biometric id update enrollment despite failed biometrics (#23646)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/cli/src/service-container/service-container.ts",
+          "libs/angular/src/services/jslib-services.module.ts"
+        ],
+        "symbols": [
+          "apps/cli/src/service-container/service-container.ts#ServiceContainer.constructor",
+          "libs/angular/src/services/jslib-services.module.ts#safeProviders"
+        ]
+      },
+      {
+        "sha": "c6c5deb3e705d1ce0e3c4c49d563f40733f6a2e8",
+        "date": "2026-10-13T22:00:11+00:00",
+        "title": "Auth/PM-38259 - Desktop -  Fix account switch loop and add AccountSwitcherService (#23699)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/browser/src/background/main.background.ts",
+          "apps/desktop/src/app/app.component.ts",
+          "libs/angular/src/services/jslib-services.module.ts"
+        ],
+        "symbols": [
+          "apps/desktop/src/app/app.component.ts#AppComponent.ngOnInit",
+          "libs/angular/src/services/jslib-services.module.ts#safeProviders"
+        ]
+      },
+      {
+        "sha": "fdc8b349e4b5e7e23cdc3296c37fdb55c240a1bb",
+        "date": "2026-10-08T21:32:35+00:00",
+        "title": "Auth/PM-44119 - SSO + MP Decryption - Deep linking fix (#23491)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/web/src/app/app.component.ts"
+        ],
+        "symbols": [
+          "apps/web/src/app/app.component.ts#AppComponent.ngOnInit"
+        ]
+      }
+    ]
+  },
+  "22649": {
+    "number": 22649,
+    "merge": "bcca0fd1abac554bdd8dde157d2dceb50f36b4ab",
+    "candidates": []
+  },
+  "22789": {
+    "number": 22789,
+    "merge": "26c25d3d4e9463714ffe30d2b6727615ba56dac9",
+    "candidates": [
+      {
+        "sha": "cd44cba2cf5209375752d8d0347c712f7c2f53b5",
+        "date": "2026-10-26T15:00:06+01:00",
+        "title": "fix(logging): Performance marks and measures grow without limit (#24136)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/browser/src/background/main.background.ts"
+        ],
+        "symbols": [
+          "apps/browser/src/background/main.background.ts#MainBackground.bootstrap"
+        ]
+      },
+      {
+        "sha": "c6c5deb3e705d1ce0e3c4c49d563f40733f6a2e8",
+        "date": "2026-10-13T22:00:11+00:00",
+        "title": "Auth/PM-38259 - Desktop -  Fix account switch loop and add AccountSwitcherService (#23699)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/browser/src/background/main.background.ts"
+        ],
+        "symbols": []
+      }
+    ]
   },
   "22893": {
     "number": 22893,
@@ -65,6 +301,11 @@
       }
     ]
   },
+  "22938": {
+    "number": 22938,
+    "merge": "19ab04d14c28b9b4b8ad283a4afb8db292679473",
+    "candidates": []
+  },
   "23031": {
     "number": 23031,
     "merge": "a018a2170a071d885b7072ff2c3be1177f2987b6",
@@ -99,9 +340,83 @@
       }
     ]
   },
+  "23197": {
+    "number": 23197,
+    "merge": "31dda4f38df055aade3c0f06d48e98a6c4e65e51",
+    "candidates": [
+      {
+        "sha": "e9545df85e4da2cffab33bd8fbc51ffc11182f47",
+        "date": "2026-10-27T13:15:57-04:00",
+        "title": "[PM-43870] Fix Send drawer inconsistency in item Send display (#23368)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/desktop/src/vault/app/vault-v3/vault.component.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "0ebd1706a65393b2dc8452f9b37c19ad7e11e107",
+        "date": "2026-10-19T14:47:28-04:00",
+        "title": "Bug fix for scroll glitch (#23827)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/browser/src/vault/popup/components/vault/vault-popup-list-table/vault-popup-list-table.component.html"
+        ],
+        "symbols": [
+          "apps/browser/src/vault/popup/components/vault/vault-popup-list-table/vault-popup-list-table.component.html#(template)"
+        ]
+      },
+      {
+        "sha": "d4e43318cbdebb51f444cbc0ff2d39752233ebcd",
+        "date": "2026-10-14T13:20:35-04:00",
+        "title": "[CL-1336] fix: Keep vault header collapsed when returning from an item (#23805)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/browser/src/vault/popup/components/vault/vault-popup-list-table/vault-popup-list-table.component.html",
+          "apps/browser/src/vault/popup/components/vault/vault-popup-list-table/vault-popup-list-table.component.ts"
+        ],
+        "symbols": [
+          "apps/browser/src/vault/popup/components/vault/vault-popup-list-table/vault-popup-list-table.component.html#(template)",
+          "apps/browser/src/vault/popup/components/vault/vault-popup-list-table/vault-popup-list-table.component.ts#VaultPopupListTableComponent"
+        ]
+      },
+      {
+        "sha": "4bbac4ae34110bf6c415d33acc356b668bd939f4",
+        "date": "2026-10-06T09:10:12-04:00",
+        "title": "[CL-1325] fix: Keep the vfo1 filter dialog open across popup close (#23348)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/browser/src/vault/popup/components/vault/vault-popup-list-table/vault-popup-list-table.component.html",
+          "apps/browser/src/vault/popup/components/vault/vault-popup-list-table/vault-popup-list-table.component.ts"
+        ],
+        "symbols": [
+          "apps/browser/src/vault/popup/components/vault/vault-popup-list-table/vault-popup-list-table.component.html#(template)",
+          "apps/browser/src/vault/popup/components/vault/vault-popup-list-table/vault-popup-list-table.component.ts#VaultPopupListTableComponent"
+        ]
+      }
+    ]
+  },
+  "23367": {
+    "number": 23367,
+    "merge": "9edb8189d9277f155e59b7d95266d6b047c8bd66",
+    "candidates": []
+  },
   "23549": {
     "number": 23549,
     "merge": "0ceb6aed61228e70e237ebb61b18115ede0b80e4",
+    "candidates": []
+  },
+  "23564": {
+    "number": 23564,
+    "merge": "6811928a1238ef42ee207fad69413aa6c9f5800d",
     "candidates": []
   }
 }
