@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/lg1-logs.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/logging-system` (a workspace started in
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `feature/logging-system` (a workspace started in
 Symbiote, from `main` at `278b3e7`). Replanned after the person's answer to the first plan: "So i
 want the logs t o be seen from another app, in case of Symbiote crashes, that is the whole point."
 The first plan's Logs page inside Symbiote is dropped: the logs are read by an app that runs on

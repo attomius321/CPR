@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v72-page-frame.md)
 
-**Status:** ready for review (2026-10-28), on branch `feature/layout-fixing` (a Symbiote
+**Status:** merged into `main` on 2026-10-28 (built 2026-10-28), on branch `feature/layout-fixing` (a Symbiote
 workspace, from `main` at `88cb800`). The person OK'd the plan ("Ok") with the three recommended
 choices: 16 px from the edges and 16 between cards; the workspace's, merge's and review's heads
 in two lines, as every page's; long text fills its card. Its "As built" and results are below.

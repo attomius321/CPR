@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v52-scout-next-conversation.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/scout-view-settings` (a workspace
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `feature/scout-view-settings` (a workspace
 started in Symbiote, from `main` at `c136ee3`). The person OK'd the plan: decision 392 as
 proposed, and for 393 "Remove it now". Built as planned, with Settings' words changed too; "As
 built" and results at the end.

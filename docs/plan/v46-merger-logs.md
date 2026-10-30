@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v46-merger-logs.md)
 
-**Status:** ready for review (2026-10-24), on branch `feature/merger-logs` (a workspace started
+**Status:** merged into `main` on 2026-10-24 (built 2026-10-24), on branch `feature/merger-logs` (a workspace started
 in Symbiote, from `main` at `561826d`). The plan OK'd by the person, with its three questions
 answered: "1. Add a merger effort in settings. 2. Yes 3. Yes, recommendation. Ok" — a merger
 effort in Settings (V46d), the log in a terminal, a file's regions only. As built and results

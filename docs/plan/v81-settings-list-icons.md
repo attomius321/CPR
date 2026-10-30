@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v81-settings-list-icons.md)
 
-**Status:** built, ready for review (2026-10-30), on branch `feature/settings-list-icons` (the
+**Status:** built, merged into `main` on 2026-10-30, on branch `feature/settings-list-icons` (the
 workspace's); the plan confirmed by the person ("OK"), decision 603 (`CommentIcon` redrawn) and the
 tints with it. Built with two changes to decision 602 (below, "As built"): the list 300 px, the
 tile's radius 8 px.

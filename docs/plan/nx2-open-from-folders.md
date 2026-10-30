@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nx2-open-from-folders.md)
 
-**Status:** built (2026-10-28), ready for review, on branch `feature/symbiote-nexus-upgrades` (a
+**Status:** built (2026-10-28), merged into `main` on 2026-10-28, on branch `feature/symbiote-nexus-upgrades` (a
 workspace started in Symbiote). Planned and OK'd by the person the same day, with their answers
 (decisions 539–543); NX2a–c built. "As built" and results at the end.
 

@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v74-activity-colours.md)
 
-**Status:** ready for review (2026-10-28), on branch `feature/workspace-activity-improvements` (a
+**Status:** merged into `main` on 2026-10-28 (built 2026-10-28), on branch `feature/workspace-activity-improvements` (a
 workspace's branch). Plan agreed by the person ("1. Yes. 2 Yes. Ok": the palette, purple for git
 included, and bubbles for their messages). Its "As built" and results below.
 

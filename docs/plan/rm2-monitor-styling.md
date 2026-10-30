@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/rm2-monitor-styling.md)
 
-**Status:** ready for review (2026-10-24), on branch `feature/monitor-styling` (a workspace
+**Status:** merged into `main` on 2026-10-24 (built 2026-10-24), on branch `feature/monitor-styling` (a workspace
 started in Symbiote, from `main` at `f6e5408`); the plan OK'd by the person with one change:
 "COlour: by nr of lines, per file.. the file should have different colors..like normal (current)
 -> yellow -> orange -> red. The rest is ok". As built and results under "As built (RM2)" below.

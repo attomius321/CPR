@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v57-cleaning-up-card.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/deleted-workspace-in-progress` (a
+**Status:** merged into `main` on 2026-10-26 (built 2026-10-25), on branch `feature/deleted-workspace-in-progress` (a
 workspace started in Symbiote, from `main` at `d3dd6e1`). The person OK'd the plan with "1. Yes 2.
 Yes both as you recommended. 3. Yes, leave it out. OK": a landed merge's card too; the words
 dimmed, a grey spinner and the "Cleaning up · …" line; a Clean up Scout runs left out. Built as

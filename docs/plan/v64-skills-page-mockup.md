@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v64-skills-page-mockup.md)
 
-**Status:** ready for review (2026-10-27), on branch `feature/skills-page-revamp` (the
+**Status:** merged into `main` on 2026-10-27 (built 2026-10-27), on branch `feature/skills-page-revamp` (the
 workspace's); the plan confirmed by the person, with four answers: the skill's text in Geist as Settings' prompts
 (not the mockup's mono), the actions in the skill's card as Settings' pages have theirs, the git
 chips as they are (Committed stays quiet), the icons as proposed. Asked after: Open in VS Code for

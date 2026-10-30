@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v70-git-file-view.md)
 
-**Status:** ready for review (2026-10-27), on branch `feature/history-commit-details` (a
+**Status:** merged into `main` on 2026-10-27 (built 2026-10-27), on branch `feature/history-commit-details` (a
 Symbiote workspace, from `main` at `2ee21cd`). The plan OK'd by the person ("OK, do it"), with
 their two choices: Open in VS Code opens VS Code's diff editor ("Yes, the diff"), and the file
 shows in the rows' place ("Where you say would fit perfectly"). Its "As built" and results below.

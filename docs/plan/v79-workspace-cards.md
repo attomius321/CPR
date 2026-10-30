@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v79-workspace-cards.md)
 
-**Status:** ready for review (2026-10-29), on branch `feature/workspaces-card-revamp` (a workspace
+**Status:** merged into `main` on 2026-10-29 (built 2026-10-29), on branch `feature/workspaces-card-revamp` (a workspace
 started in Symbiote, from `main` at `b3e8c03`). The person OK'd the plan with their answers to its
 three choices: "1. Always show it 2. Recommended 3. 300px by default. Go" — the branch on every
 card, a faint wash behind each card, a 300 px sidenav at first. Built as planned, with what the

@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/mc1-symbiote-mcp.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/symbiote-mcp` (a workspace started
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `feature/symbiote-mcp` (a workspace started
 in Symbiote); planned and replanned the same day with the person's answers (what asks: as
 proposed; Codex now, "this app Symbiote will firstly be used with Codex"; `symbiote mcp`
 included). Its "As built" and results below.

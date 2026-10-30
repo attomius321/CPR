@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/in1-one-command-install.md)
 
-**Status:** built (2026-10-28), ready for review, on branch `feature/extend-view-with-wrapper` (a
+**Status:** built (2026-10-28), merged into `main` on 2026-10-28, on branch `feature/extend-view-with-wrapper` (a
 workspace started in Symbiote, after NX1). Planned and OK'd by the person the same day, with their
 answers (decisions 534, 537, 538). "As built" and results at the end.
 

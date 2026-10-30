@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v62-settings-layout.md)
 
-**Status:** ready for review (2026-10-27), on branch `feature/layout-settings` (the workspace's);
+**Status:** merged into `main` on 2026-10-27 (built 2026-10-27), on branch `feature/layout-settings` (the workspace's);
 the plan confirmed by the person, with three answers: the prompt stays in Geist (not the mockup's
 mono), the head's line is the mockup's, Cancel and Reset show only when they apply (as today).
 "As built" and results at the end.
