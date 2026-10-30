@@ -291,3 +291,37 @@ MutationObserver), the rows listed anew, the cursor on its commit; core on tempo
 for each git command, its conflict and its refusals; the server's routes; e2e for each feature.
 `pnpm check`, `pnpm build`, `pnpm test:e2e`; screenshots at 1,440 × 900 and 1,280 × 800, dark and
 light. No analysis code changes: no `regression-check`.
+
+**As built** (what differs from the plan given to the person):
+
+- **The writes asked first share one dialog** (`AskDialog.tsx`): its title, what the write does
+  and keeps or loses, a choice (a reset's Soft or Mixed), a text (a stash's message), a count
+  read as it opens (the commits a reset takes off), then git's refusal in it. Cherry-pick,
+  revert, merge and rebase are asked too, not only the writes that lose something: one Enter.
+- **Where things are**: a row's menu gains Cherry-pick onto main…, Revert…, Reset main to here…,
+  and Merge into main ▸ / Rebase main onto ▸ with the row's branches (eleven entries; the
+  checkout spec pins them). A branch's menu in the panel gains Merge into…, Rebase … onto it…,
+  Delete from <remote>… and Hide from / Show in the graph. The stashes are a section under the
+  branches; a click opens Apply, Pop, Drop….
+- **An operation in progress keeps the uncommitted row**, even with every file committed ("a
+  rebase in progress"): its pane is where Continue and Abort are.
+- **Lines are picked by their mark** (the `+`/`−` column, a button), Shift for a run; a bar over
+  the diff says how many and stages them. Each run of changed lines next to each other is a
+  hunk with its own button, finer than git's hunks (which join changes 6 lines apart).
+- **History and Blame** are a segmented control in the shown file's head (`.scopes`, as All
+  branches / This branch), not tabs: three views of one file. No new key; the keys' help is
+  unchanged.
+- **A commit of a file's history or blame** goes to its row (found by SHA) with the file open
+  there, under its path then; one not listed in this scope is said in the status bar.
+- **Hidden branches** are marked with a quiet chip in the panel; a hidden branch's commits stay
+  listed when another branch or HEAD holds them.
+
+**Results.** Tests first, red for the right reason: the fix's two e2e tests on `main` (the file
+view removed, "Listing commits…" shown); core 25 (operations, stash, line staging, file log, a
+remote branch deleted, hidden branches), the CLI 9, the viewer's pure parts 10, then
+`e2e/git-writes.spec.ts` (8). `pnpm check`: 2,525 unit tests. The full e2e suite: 359 passed, 2
+failed (a pinned menu, updated; a workspace card's chip, 3 of 3 alone). One in-place listing
+takes 29–34 ms on this repository (1,127 rows) and 186–193 ms on Bitwarden (23,495); the page
+stays on screen meanwhile, where before it showed "Listing commits…" (the
+[journal](../journal/fix-git-page-feature-extend.md) has the table).
+

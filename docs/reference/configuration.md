@@ -187,6 +187,20 @@ Before, Hive mode was one switch for the whole machine, in Symbiote's settings f
 `~/.config/symbiote/hive.json` on Linux. Symbiote no longer reads that file, and leaves it where
 it is. You can delete it.
 
+## Branches hidden from Git, `symbiote/git.json`
+
+A branch hidden from Git's graph (right-click it in the branches panel, **Hide from the graph**)
+is kept per repository, in `symbiote/git.json`, beside the reviews:
+
+```json
+{ "hidden": ["refs/heads/wip", "refs/remotes/origin/old-release"] }
+```
+
+`hidden` lists full ref names. **All branches** leaves their commits out unless another branch
+or HEAD holds them; the branches panel still lists them, marked *hidden*, and their menu shows
+them again. The branch checked out is always listed. As Hive's record, the file is shared by the
+repository's worktrees, kept in Symbiote's cache without a git user, and never committed.
+
 ## The nexus's pinned folders
 
 The folders and repositories you pin in Symbiote nexus are kept in the same settings folder:

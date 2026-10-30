@@ -100,7 +100,7 @@ hosted.
 | Fix | Compare mode's toggle stays put with wider fonts | ✅ | | [journal](journal/fix-compare-toggle-wrap.md) |
 | [V66](plan/v66-git-page.md) | Git: History renamed; a commit's details, changes staged and committed, branches and tags, fetch/pull/push, find a commit | ✅ | 475–484 | [journal](journal/v66-git-page.md) |
 | [V70](plan/v70-git-file-view.md) | Git: a commit's file shown in the rows' place; Open in VS Code (its diff) from the pane | ✅ | 498–501 | [journal](journal/v70-git-file-view.md) |
-| [Fix](plan/v66-git-page.md#fix-the-page-lists-in-place-more-of-git-fixgit-page-feature-extend) | Git lists in place (the file shown kept); continue/abort, cherry-pick, revert, merge, rebase, stash, reset, discard, hunks and lines, a file's history and blame, remote branches deleted, branches hidden | planned | 634–645 | [journal](journal/fix-git-page-feature-extend.md) |
+| [Fix](plan/v66-git-page.md#fix-the-page-lists-in-place-more-of-git-fixgit-page-feature-extend) | Git lists in place (the file shown kept); continue/abort, cherry-pick, revert, merge, rebase, stash, reset, discard, hunks and lines, a file's history and blame, remote branches deleted, branches hidden | built, in review | 634–645 | [journal](journal/fix-git-page-feature-extend.md) |
 
 ### Reviews
 

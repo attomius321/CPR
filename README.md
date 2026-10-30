@@ -349,14 +349,22 @@ The sidenav also opens these pages. Each has a key.
 - **Git** (`g`): the repository's commits and branches, drawn as a graph. Select a commit to see
   its message, author, parents and files in the details pane. Click a file to see its diff in the
   commits' place, and **Open in VS Code** (`o`) to open that diff in VS Code; `j` and `k` step
-  through the files, `Esc` goes back to the commits. Right-click a
-  commit to check it out, review its branch (`r`), start a workspace from it, or make a branch or
-  a tag there. Right-click a branch in the branches panel to rename or delete it. Double-click
+  through the files, `Esc` goes back to the commits. Beside **Diff**, **History** lists the
+  commits that changed the file, and **Blame** shows each line's commit; click one to go to it.
+  Right-click a commit to check it out, review its branch (`r`), start a workspace from it, make
+  a branch or a tag there, cherry-pick or revert it, or reset your branch to it (your changes
+  stay on disk). Right-click a branch in the branches panel to rename, delete, merge or hide it,
+  or to rebase your branch onto it; a remote branch can be deleted from its remote. Double-click
   the branch to check it out. Press `x` to compare two commits.
-  Your uncommitted changes are a row above the commits: stage files, write a message and commit
-  them in the details pane. **Fetch**, **Pull** (fast-forward only, merge or rebase) and **Push**
-  are at the top, with **Find a commit** (`f`) to search the messages, authors and SHAs.
-  Symbiote never forces a push and never discards your changes: when git refuses, it says why.
+  Your uncommitted changes are a row above the commits: stage files, or only the lines you pick
+  in a file's diff, write a message and commit them in the details pane. **Stash…** puts them
+  aside; the stashes are listed under the branches. When a merge, rebase or cherry-pick stops on
+  conflicts, resolve and stage the files, then **Continue** or **Abort** there. **Fetch**,
+  **Pull** (fast-forward only, merge or rebase) and **Push** are at the top, with **Find a
+  commit** (`f`) to search the messages, authors and SHAs. When a branch moves elsewhere (an
+  agent commits, say), the page lists it without closing what you look at. Symbiote never forces
+  a push or a reset, and asks before anything it does would lose changes: when git refuses, it
+  says why.
 - **Nucleus** (`a`): your orchestrator in Symbiote, an agent you talk to in its terminal on this
   page. Ask it about the repository: where something is decided, why it works this way, or what
   waits for you. It reads the checkout and your workspaces' worktrees, so it can answer about an
