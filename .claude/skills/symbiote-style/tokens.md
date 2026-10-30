@@ -153,7 +153,7 @@ the accent.
 A state tint is mixed from its state, never a new hex: `color-mix(in srgb, var(--added) 10%,
 transparent)` for a fill, `25%` for its edge.
 
-## Hive mode (V82, decisions 614–616)
+## Hive mode (V82, decisions 614–616, 624)
 
 While Hive mode is on (`data-hive="on"` on `<html>`, written by the server), ink and crimson over
 each theme. Three blocks after the themes in `ui/base.css`: dark Hive
@@ -174,8 +174,10 @@ surface or words and check Hive's still pass (`tokens.test.ts`, "Hive mode").
 
 States, lanes, kinds of work and type are the theme's. Not tokens: `--hive-gloss` (the primary's
 light from above), `--hive-sheen`, `--hive-streak`, `--hive-glow` (the layer over `.shell-main`).
-The art's own colours (`.hive-ink-*` stops) are in `ui/hive.css`: it is always drawn on ink. Light
-Hive's wine accent is 1.71:1 from `--error`: a selection is a wash, never red words.
+The art's own colours (`.hive-ink-*` stops) are in `ui/hive.css`: it is always drawn on ink. The
+ink that takes the page as Hive turns on (`.hive-flood`, decision 624) carries `.hive-ink` too: it
+is drawn before the page has Hive's tokens. Light Hive's wine accent is 1.71:1 from `--error`: a
+selection is a wash, never red words.
 
 ## Outside the tokens
 

@@ -158,19 +158,29 @@ No agent reads the library from its folder: it is where you keep and write skill
 
 Hive will be Symbiote's graph loop: an orchestrator with full access running a main agent, a
 researcher and a reviewer in every workspace. It is not built yet. Its switch is in **Settings**,
-under **This machine**, **Hive mode**, and turning it on asks first. For now it changes only the
-look: every page in ink and crimson, in both themes, and the S in crimson.
+under **This repository**, **Hive mode**, and turning it on asks first. For now it changes only
+the look: every page in ink and crimson, in both themes, and the S in crimson.
 
-Symbiote keeps the choice for you on this machine, in its settings folder beside `library.json`
-(see [The skill library](#the-skill-library)): `hive.json`. It is not in the project, so a commit
-never turns it on for everyone who clones the repository.
+Each repository has its own Hive mode. Symbiote keeps it in `symbiote/hive.json`, beside the
+reviews:
 
 ```json
 { "on": true, "since": "2026-10-30T18:00:00.000Z" }
 ```
 
-Every `symbiote view` and the nexus read it when they serve a page. A window already open takes a
-change on its next load.
+- **Every worktree of the repository shares it**: the file is in the main checkout's `symbiote/`.
+  Without a git user (`git config user.email`), or when `symbiote/` holds your project's own
+  files, it is in Symbiote's cache instead, as the reviews are.
+- **It is never committed**: `symbiote/.gitignore` keeps it out of git, and a `hive.json` that
+  git tracks reads as off. A commit never turns Hive on for everyone who clones the repository.
+- **The nexus's page never takes the look**: each of its tabs shows its own Symbiote's.
+
+A repository's `symbiote view` reads the file when it serves a page. Its other windows take a
+change on their next load.
+
+Before, Hive mode was one switch for the whole machine, in Symbiote's settings folder:
+`~/.config/symbiote/hive.json` on Linux. Symbiote no longer reads that file, and leaves it where
+it is. You can delete it.
 
 ## Files Symbiote skips, `.symbioteignore`
 
