@@ -104,7 +104,9 @@ async function isFolder(path: string): Promise<boolean> {
  * git process: its branch, or its commit when detached; nothing for anything else (reftable's
  * stub, a file that cannot be read). Null when the folder holds no `.git`: no repository.
  */
-async function checkoutOf(folder: string): Promise<Pick<Folder, 'branch' | 'detached'> | null> {
+export async function checkoutOf(
+  folder: string,
+): Promise<Pick<Folder, 'branch' | 'detached'> | null> {
   const dotGit = join(folder, '.git');
   let gitDir = dotGit;
   try {

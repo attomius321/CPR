@@ -136,7 +136,7 @@ test('shows the nexus in Symbiote’s window: its buttons, and a Symbiote framed
   expect(errors).toEqual([]);
 });
 
-test('opens a Symbiote from Folders in Symbiote’s window (NX2)', async () => {
+test('opens a Symbiote from the folders in Symbiote’s window (NX2)', async () => {
   const home = homeFolder(['beta']);
   const own = cacheFolder();
   const served = await startNexus(own.dir, home.dir);
@@ -150,7 +150,6 @@ test('opens a Symbiote from Folders in Symbiote’s window (NX2)', async () => {
     const page = await app.firstWindow();
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.locator('.nexus-tabs').getByRole('tab', { name: 'Folders' }).click();
     await page.locator('.nexus-folder-open', { hasText: 'projects' }).click();
     await page.getByRole('button', { name: 'Open Symbiote in beta' }).click();
     await expect(

@@ -1,5 +1,7 @@
 // The nexus page's pure part (NX1b): its tabs from each read of the running Symbiotes, the open
-// one in the address, and the words. The page's DOM is `main.ts`'s.
+// one in the address, the words, and (fix/nexus-pinned-symbiotes) Symbiotes' cards with the pins.
+// The page's DOM is `main.ts`'s.
+import type { Pin } from '../pins.js';
 import type { Symbiote } from '../symbiotes.js';
 import { FOLDERS } from './folders-tab.js';
 
@@ -53,11 +55,13 @@ export function hashOf(root: string | null): string {
   return root === null ? '' : `#${encodeURIComponent(root)}`;
 }
 
-/** The open tab from the address's hash: a Symbiote's folder, Folders, or null for the list. */
+/**
+ * The open tab from the address's hash: a Symbiote's folder, or null for Symbiotes, the list, with
+ * or without a folder browsed under it (`#folders:<path>`, Folders' address before decision 626).
+ */
 export function selectedFrom(hash: string): string | null {
   const text = hash.replace(/^#/, '');
-  if (text === '') return null;
-  if (text === FOLDERS || text.startsWith(`${FOLDERS}:`)) return FOLDERS;
+  if (text === '' || text === FOLDERS || text.startsWith(`${FOLDERS}:`)) return null;
   try {
     return decodeURIComponent(text);
   } catch {
@@ -99,19 +103,26 @@ export function sinceText(started: string, now: Date): string {
   return `since ${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
+/** A card on Symbiotes (decision 627): a running Symbiote, pinned or not, or a pinned repository. */
+export type SymbioteCard =
+  { kind: 'running'; tab: Tab & { url: string }; pinned: boolean } | { kind: 'pinned'; pin: Pin };
+
 /**
- * The folders the running Symbiotes are in, newest first, each once, three at most: where
- * Symbiotes' "Repositories in" looks for the next one to open (NX3, decision 552).
+ * Symbiotes' cards: the pinned repositories first, in the order pinned, each a running Symbiote's
+ * card while one serves it; then the other running Symbiotes, by name. A pinned folder, or a pin
+ * whose folder is gone, is a place (decision 628).
  */
-export function nearFolders(tabs: readonly Tab[]): string[] {
-  const near: string[] = [];
-  const newest = tabs
-    .filter((tab) => tab.url !== null)
-    .sort((a, b) => b.started.localeCompare(a.started));
-  for (const { root } of newest) {
-    const parent = root.slice(0, root.lastIndexOf('/')) || '/';
-    if (!near.includes(parent)) near.push(parent);
-    if (near.length === 3) break;
-  }
-  return near;
+export function symbiotesShown(tabs: readonly Tab[], pins: readonly Pin[]): SymbioteCard[] {
+  const running = tabs.filter((tab): tab is Tab & { url: string } => tab.url !== null);
+  const pinned = pins.filter((pin) => pin.repository);
+  const roots = new Set(pinned.map((pin) => pin.path));
+  return [
+    ...pinned.map((pin): SymbioteCard => {
+      const tab = running.find((t) => t.root === pin.path);
+      return tab ? { kind: 'running', tab, pinned: true } : { kind: 'pinned', pin };
+    }),
+    ...running
+      .filter((tab) => !roots.has(tab.root))
+      .map((tab): SymbioteCard => ({ kind: 'running', tab, pinned: false })),
+  ];
 }

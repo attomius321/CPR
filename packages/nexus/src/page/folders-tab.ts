@@ -1,18 +1,22 @@
-// The Folders tab's pure part (NX2b, decisions 539, 540): its place in the address, the crumbs of a
-// folder, what a typed folder is and the words; since NX3 a repository's card, the counts and the
-// arrows on a grid; since NX4 the pins' names and the current place. Its DOM is `folders-view.ts`'s.
+// The folders' pure part (NX2b, decisions 539, 540), under Symbiotes since decision 626: their place
+// in the address, the crumbs of a folder, what a typed folder is and the words; since NX3 a
+// repository's card, the counts and the arrows on a grid; since NX4 the pins' names. Their DOM is
+// `folders-view.ts`'s.
 import type { Folder, Place } from '../folders.js';
 import type { Pin } from '../pins.js';
 
-/** The Folders tab's key in the page's selection: a Symbiote's tab is its root, always absolute. */
+/**
+ * The folder browsed in the address, `#folders:<path>` (Folders' tab before decision 626): a
+ * Symbiote's tab is its root, always absolute.
+ */
 export const FOLDERS = 'folders';
 
-/** The address's hash for the Folders tab, with the folder shown. */
+/** The address's hash for Symbiotes with a folder browsed. */
 export function foldersHash(path: string | null): string {
   return path === null ? '#folders' : `#folders:${encodeURIComponent(path)}`;
 }
 
-/** The folder in the address's hash of the Folders tab; null for none (or another tab). */
+/** The folder browsed in the address's hash; null for none (or a Symbiote's tab). */
 export function folderFromHash(hash: string): string | null {
   const text = /^#folders:(.+)$/.exec(hash)?.[1];
   if (text === undefined) return null;
@@ -54,17 +58,9 @@ export function typedFolder(input: string, home: string): string | null {
 }
 
 /** What a repository has checked out (decision 555): its branch, the commit it is detached at, or null. */
-export function checkoutWords(folder: Folder): string | null {
+export function checkoutWords(folder: Pick<Folder, 'branch' | 'detached'>): string | null {
   if (folder.branch !== undefined) return folder.branch;
   return folder.detached === undefined ? null : `detached at ${folder.detached.slice(0, 7)}`;
-}
-
-/** The repositories of a listing that no Symbiote serves: Symbiotes' "Repositories in" (NX3). */
-export function idleRepositories(
-  folders: readonly Folder[],
-  running: ReadonlySet<string>,
-): Folder[] {
-  return folders.filter((folder) => folder.repository && !running.has(folder.path));
 }
 
 /** A listing's counts, at its card's head: "16 repositories · 30 folders". */
@@ -149,16 +145,11 @@ export function placesShown(places: readonly Place[], pins: readonly Pin[]): Pla
 }
 
 /**
- * The place or pin drawn as the current one: a pinned repository while its card is picked (decision
- * 619), else the folder listed.
+ * The pins drawn under the places: the folders, and the pins whose folder is gone. A pinned
+ * repository is a card among the Symbiotes (decision 628).
  */
-export function currentPlace(answer: {
-  path: string;
-  picked: string | null;
-  pinned: readonly Pin[];
-}): string {
-  const { picked } = answer;
-  return picked !== null && answer.pinned.some((pin) => pin.path === picked) ? picked : answer.path;
+export function pinnedPlaces(pins: readonly Pin[]): Pin[] {
+  return pins.filter((pin) => !pin.repository);
 }
 
 /** Whether the folder listed takes a pin: not home, the top or a drive, always places (decision 620). */

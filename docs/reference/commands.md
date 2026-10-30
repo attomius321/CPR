@@ -14,7 +14,7 @@ explains the terms this page uses: workspace, merger, verdict, Nucleus and the o
 | `symbiote merge <branch>` | Merges the commit that your review of `branch` approved, as **Merge into** does in the app, and prints each step. |
 | `symbiote mcp` | Gives an agent of yours Symbiote's tools. See [Symbiote's tools for your own agent](#symbiotes-tools-for-your-own-agent). |
 | `symbiote app install` | Adds Symbiote's window to your desktop's apps, on Linux and WSL. `symbiote app uninstall` removes it. |
-| `symbiote-nexus` | Opens Symbiote nexus: every `symbiote view` running on this machine, as tabs in one window, and **Folders**, to start one in any repository. It runs until you press Ctrl+C or close its window. Closing it stops no Symbiote, not even the ones it started. `./install.sh` adds it to `~/.local/bin`. |
+| `symbiote-nexus` | Opens Symbiote nexus: every `symbiote view` running on this machine, as tabs in one window, and your PC's folders under them, to start one in any repository. It runs until you press Ctrl+C or close its window. Closing it stops no Symbiote, not even the ones it started. `./install.sh` adds it to `~/.local/bin`. |
 
 `symbiote diff` and `symbiote view` compare `head` with the *merge base*: the last commit that
 `head` and `base` share. A pull request is compared the same way. To compare with `base` itself,
@@ -113,9 +113,9 @@ change, only n and [ work.
 | ] | In a workspace: hide or show the **Changes** panel |
 
 In Symbiote nexus, with the focus on its tabs, ← and → move to the previous or next tab, and Home
-and End to the first or the last. In **Folders**, the arrows move between the repositories and
-the folders by their place on the page. Enter opens a folder, or a Symbiote in a repository, and
-Backspace goes up a folder. In a Symbiote's tab, that Symbiote's keys work.
+and End to the first or the last. In the folders under **Symbiotes**, the arrows move between the
+repositories and the folders by their place on the page. Enter opens a folder, or a Symbiote in a
+repository, and Backspace goes up a folder. In a Symbiote's tab, that Symbiote's keys work.
 
 In a text box where you write a comment, a brief, a reply, a prompt or a commit's message,
 Ctrl+Enter saves, starts, sends or commits. On macOS, use Cmd instead of Ctrl.
