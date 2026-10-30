@@ -1,9 +1,8 @@
 // Hive's arrival (decision 632): as Hive mode turns on, the question's Hive Mind grows to the
 // middle of the window while a blackout closes on it from every edge; the look changes under the
 // cover, the Mind flares, and a boom from it tears the ink back to the edges. Then a streak of
-// light crosses the main area and the sidenav's tendrils rise; then all is still. The Mind and the
-// blackout are drawn here (`hive-art.ts`, `hive-draw.ts`), the streak is `hive.css`'s under
-// `data-hive-arriving`, the rise `HiveTendrils`'s.
+// light crosses the main area; then all is still. The Mind and the blackout are drawn here
+// (`hive-art.ts`, `hive-draw.ts`), the streak is `hive.css`'s under `data-hive-arriving`.
 import { arrivalScale, arrivalScene } from '../ui/hive-art.js';
 import { Painter, paint, readPalette } from '../ui/hive-draw.js';
 
@@ -48,7 +47,7 @@ export async function arrive(from: Origin, swap: () => void): Promise<void> {
         try {
           scene.step(Math.min(0.05, (now - last) / 1000));
           last = now;
-          paint(canvas, ctx, width, height, 'contain', scale, (c) => painter.arrival(c, scene));
+          paint(canvas, ctx, width, height, scale, (c) => painter.arrival(c, scene));
           if (scene.covered && !swapped) {
             // This frame covers the window: the look changes under it, shown with it.
             swapped = true;

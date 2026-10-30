@@ -155,7 +155,7 @@ icon (taskbar) stays.
 | 630 | The question's centre | **A Hive Mind: a honeycomb round a core that beats, the tendrils plugged into its cells and holding on once they grab, sparks of thought from the cells to the core** | the person: "make it look more like a Hive Mind"; "they should remain attached after the grabing" |
 | 631 | The question's motion (amends 615) | **The tendrils come out, draw back, strike and grab, then live while the dialog is open (30 frames a second, nothing after it closes); its backdrop has no blur; reduced motion: one still frame of the joined art** | the person: "never quite still"; with the blur any motion in the dialog took a whole core at 16–31 fps |
 | 632 | Turning it on (amends 624) | **The question's Hive Mind grows to the middle of the window and a blackout closes from the edges until only it is lit; the look changes under the cover; it flares and a boom from it throws the ink back; no tentacles; then the streak and the sidenav's rise; the canvas at most 0.9 megapixels; reduced motion: at once** | the person: "then boom, the new UI"; "Keep only the Hive mind, and the blackout animation. No tentacles there"; 61 fps at 2560×1440 in software |
-| 633 | The sidenav's tendrils | **The new drawing behind the rows; they rise as Hive arrives, then are still** | a slow idle cost 21 % of a core on every page against 4 % still |
+| 633 | The sidenav's tendrils (removed by [fix/remove-hive-tendrils-from-sidenav](#fix-no-tendrils-in-the-sidenav-fixremove-hive-tendrils-from-sidenav)) | **The new drawing behind the rows; they rise as Hive arrives, then are still** | a slow idle cost 21 % of a core on every page against 4 % still |
 
 **Not in V82 (later)**: Hive itself; the app's taskbar icon and the desktop start page; other
 open windows following a change at once.
@@ -399,3 +399,18 @@ darkening; a motion made of noise varies run to run (tests keep it in bounds).
 Not verified: the app's window itself (Electron is not installed here: Chromium with hardware
 acceleration off stood in for it), a GPU, WSLg's own display (a private Xvfb stood in for it).
 
+## Fix: no tendrils in the sidenav (fix/remove-hive-tendrils-from-sidenav)
+
+**Status:** built, ready for review (2026-10-31). Asked: "let's remove this tendrils from the
+sidenav. We dont need it". Decision 633 is withdrawn: with Hive on, the sidenav draws no canvas.
+Its light from above and the crimson glow at its foot stay; so do the question's tendrils, the Hive
+Mind and the arrival (decisions 629–632), which now ends with the streak.
+
+**As built:** `HiveTendrils` and its place in `Sidenav.tsx` removed, with what only it used:
+`sidenavScene`, `RISE_SECONDS`, `Painter.sidenav` and its webbing, `edgeAt`, `paint`'s `bottom`
+fit, and the CSS that placed it (`.hive-tendrils`, the sidenav's `isolation` and the workspaces'
+`position: relative`). 303 lines of source out (12 in), and the 25 lines of unit tests for the sidenav's scene.
+
+**Verification:** `e2e/hive.spec.ts` expects no canvas in the sidenav with Hive on (turned on,
+reloaded, reduced motion): red on `main` (3 tests, "expected 0, received 1"), green after. The
+test of the tendrils' place above Settings and the arrival's "they rise" step went with them.

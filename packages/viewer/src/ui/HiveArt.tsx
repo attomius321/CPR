@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { lessMotion } from '../shell/hive-arrival.js';
-import { ARRIVAL, JOIN_SECONDS, questionScene, sidenavScene, STILL_AT } from './hive-art.js';
+import { JOIN_SECONDS, questionScene, STILL_AT } from './hive-art.js';
 import { Painter, paint, readPalette } from './hive-draw.js';
 
 /**
@@ -46,9 +46,7 @@ export function HiveJoining() {
     const painter = new Painter(readPalette(canvas));
     const scene = questionScene();
     const draw = () =>
-      paint(canvas, ctx, scene.width, scene.height, 'contain', 1, (c) =>
-        painter.question(c, scene),
-      );
+      paint(canvas, ctx, scene.width, scene.height, 1, (c) => painter.question(c, scene));
     if (lessMotion()) {
       for (let t = 0; t < STILL_AT; t += 1 / 30) scene.step(1 / 30);
       draw();
@@ -65,49 +63,4 @@ export function HiveJoining() {
     );
   }, []);
   return <canvas ref={ref} className="hive-joining hive-art" aria-hidden="true" />;
-}
-
-/** As Hive arrives, the sidenav's tendrils rise once the boom has thrown the ink back. */
-const RISE_AFTER = ARRIVAL.hold + 0.25;
-
-/**
- * Hive mode's tendrils at the sidenav's foot (decision 633), behind its rows; decorative. Drawn
- * once (again on a resize); as Hive arrives (`data-hive-arriving`) they rise, then are still.
- */
-export function HiveTendrils() {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
-    const painter = new Painter(readPalette(canvas));
-    const rise = document.documentElement.dataset.hiveArriving !== undefined && !lessMotion();
-    const scene = sidenavScene({ rise });
-    const draw = () =>
-      paint(canvas, ctx, scene.width, scene.height, 'bottom', 1, (c) => painter.sidenav(c, scene));
-    const resized = new ResizeObserver(draw);
-    resized.observe(canvas);
-    if (!rise) {
-      scene.settle();
-      draw();
-      return () => resized.disconnect();
-    }
-    let wait = RISE_AFTER;
-    draw();
-    const stop = animate(
-      canvas,
-      (seconds) => {
-        if (wait > 0) wait -= seconds;
-        else scene.step(seconds);
-        draw();
-      },
-      () => 60,
-      () => wait > 0 || scene.moving,
-    );
-    return () => {
-      stop();
-      resized.disconnect();
-    };
-  }, []);
-  return <canvas ref={ref} className="hive-tendrils hive-art" aria-hidden="true" />;
 }

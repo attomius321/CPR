@@ -95,7 +95,7 @@ test('Hive mode: a danger to press, asked first, kept for the repository, its lo
   await expect(html(page)).not.toHaveAttribute('data-hive');
   expect(existsSync(record())).toBe(false);
 
-  // On: the look at once, the S crimson, the tendrils at the sidenav's foot; kept.
+  // On: the look at once, the S crimson, no tendrils in the sidenav; kept.
   await turnOn(page).click();
   await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
   await expect(question(page)).toBeHidden();
@@ -103,7 +103,7 @@ test('Hive mode: a danger to press, asked first, kept for the repository, its lo
   expect(await colour(page, 'body', 'backgroundColor')).toBe('rgb(7, 5, 6)');
   await expect(editor(page).getByRole('heading', { level: 2 })).toHaveText('Hive mode On');
   await expect(repository.getByRole('button', { name: 'Hive mode on' })).toBeVisible();
-  await expect(page.locator('.sidenav .hive-tendrils')).toBeAttached();
+  await expect(page.locator('.sidenav canvas')).toHaveCount(0);
   await expect(page.locator('.sidenav-brand img')).toHaveAttribute('src', /mark-hive/);
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /favicon-hive/);
   expect(JSON.parse(readFileSync(record(), 'utf8'))).toMatchObject({ on: true });
@@ -134,7 +134,6 @@ test('Hive mode: a danger to press, asked first, kept for the repository, its lo
   await expect(html(page)).not.toHaveAttribute('data-hive');
   await expect(question(page)).toBeHidden();
   expect(await colour(page, 'body', 'backgroundColor')).toBe('rgb(9, 11, 14)');
-  await expect(page.locator('.sidenav .hive-tendrils')).toHaveCount(0);
   await expect(page.locator('.sidenav-brand img')).not.toHaveAttribute('src', /mark-hive/);
   await page.reload();
   await expect(turnOn(page)).toBeVisible();
@@ -201,18 +200,7 @@ test('the tendrils grab the Hive Mind and live while the question is open, then 
   ).toBeGreaterThan(0.2);
 });
 
-test('the tendrils rise from above Settings: its row stays on plain ground', async ({ page }) => {
-  await serve();
-  await hivePage(page);
-  await turnOn(page).click();
-  await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
-  await expect(html(page)).toHaveAttribute('data-hive', 'on');
-  const tendrils = await page.locator('.sidenav .hive-tendrils').boundingBox();
-  const foot = await page.locator('.sidenav-foot').boundingBox();
-  expect(tendrils!.y + tendrils!.height).toBeLessThanOrEqual(foot!.y + 0.5);
-});
-
-/** The animations of Hive's arrival still running: the ink, the tendrils, the sheen. */
+/** The animations of Hive's arrival still running: the ink, the sheen. */
 const arriving = (page: Page) =>
   page.evaluate(
     () =>
@@ -222,7 +210,7 @@ const arriving = (page: Page) =>
         return (
           animation.playState !== 'finished' &&
           !!target &&
-          (!!target.closest('.hive-flood, .hive-tendrils') ||
+          (!!target.closest('.hive-flood') ||
             (target.matches('.shell-main') && !!effect.pseudoElement))
         );
       }).length,
@@ -263,10 +251,6 @@ test('turning on, the Hive Mind and a blackout cover the window, the look change
   expect(
     await page.evaluate(() => (window as unknown as { coveredAtSwap?: number }).coveredAtSwap),
   ).toBe(255);
-  // The sidenav's tendrils rise as it ends.
-  await expect(page.locator('.sidenav canvas.hive-tendrils[data-moving]')).toBeAttached({
-    timeout: 3_000,
-  });
   // Then still, within 3 s: the blackout gone, nothing of the arrival running.
   await expect(page.locator('.hive-flood')).toHaveCount(0, { timeout: 3_000 });
   await expect(html(page)).not.toHaveAttribute('data-hive-arriving', { timeout: 3_000 });
@@ -276,7 +260,7 @@ test('turning on, the Hive Mind and a blackout cover the window, the look change
   // Loaded with Hive on: still from the first paint.
   await page.reload();
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
-  await expect(page.locator('.sidenav canvas.hive-tendrils')).toBeAttached();
+  await expect(page.locator('.sidenav canvas')).toHaveCount(0);
   await expect(page.locator('[data-moving]')).toHaveCount(0);
   expect(await arriving(page)).toBe(0);
   await expect(page.locator('.hive-flood')).toHaveCount(0);
@@ -289,7 +273,7 @@ test('with reduced motion, Hive turns on at once: no ink, no growing', async ({ 
   await turnOn(page).click();
   await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
-  await expect(page.locator('.sidenav .hive-tendrils')).toBeAttached();
+  await expect(page.locator('.sidenav canvas')).toHaveCount(0);
   expect(await arriving(page)).toBe(0);
   await expect(page.locator('.hive-flood')).toHaveCount(0);
   await expect(page.locator('[data-moving]')).toHaveCount(0);

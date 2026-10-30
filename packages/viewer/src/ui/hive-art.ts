@@ -213,16 +213,6 @@ function shapeWidths(
   }
 }
 
-/** A tendril's edge at `s` of its length: `side` +1 one side, -1 the other. */
-export function edgeAt(rope: Rope, s: number, side: number): Point {
-  const i = clamp(Math.round(s * (rope.n - 1)), 1, rope.n - 2);
-  const tx = rope.px[i + 1]! - rope.px[i - 1]!;
-  const ty = rope.py[i + 1]! - rope.py[i - 1]!;
-  const l = Math.hypot(tx, ty) || 1;
-  const hw = rope.hw[i]! * side * 0.92;
-  return [rope.px[i]! + (-ty / l) * hw, rope.py[i]! + (tx / l) * hw];
-}
-
 // ---------- the Hive Mind ----------
 
 const SQ3 = Math.sqrt(3);
@@ -993,106 +983,6 @@ export function questionScene(): QuestionScene {
         for (const f of frees) f.step(h, t);
         for (const s of strands) s.step(h);
         mind.step(h, t);
-      }
-    },
-  };
-}
-
-// ---------- the sidenav ----------
-
-/** How long the sidenav's rise takes, from its start to still. */
-export const RISE_SECONDS = 2.2;
-
-export interface SidenavScene {
-  readonly width: number;
-  readonly height: number;
-  readonly tendrils: Free[];
-  readonly strands: Strand[];
-  readonly t: number;
-  /** Whether it still moves: rising, until it has settled. */
-  readonly moving: boolean;
-  step(dt: number): void;
-  /** Still: brings it to rest (its pose's noise held at one moment). */
-  settle(): void;
-}
-
-/**
- * The sidenav's foot (a 300 × 420 box, its bottom on the hairline over Settings, decision 633):
- * tendrils rising out of a pool of ink and curling, webbing and goo between their roots. Still, or
- * rising as Hive arrives.
- */
-export function sidenavScene({ rise }: { rise: boolean }): SidenavScene {
-  const width = 300;
-  const height = 420;
-  const specs = [
-    { x: 26, a: -84, L: 300, w: 34, curl: 3.0, bend: -0.35 },
-    { x: 86, a: -96, L: 210, w: 24, curl: -2.8, bend: 0.3, forks: true },
-    { x: 150, a: -90, L: 360, w: 40, curl: -3.4, bend: 0.3 },
-    { x: 214, a: -98, L: 250, w: 30, curl: 3.0, bend: -0.3 },
-    { x: 272, a: -86, L: 310, w: 32, curl: 3.2, bend: -0.35 },
-    { x: 116, a: -70, L: 140, w: 14, curl: 3.4, bend: 0.2, small: true },
-    { x: 242, a: -112, L: 125, w: 13, curl: -3.2, bend: -0.2, small: true },
-    { x: 56, a: -62, L: 140, w: 9, curl: 5, bend: 0.2, small: true },
-    { x: 182, a: -118, L: 150, w: 9, curl: -5, bend: 0, small: true },
-  ];
-  const tendrils = specs.map(
-    (s, i) =>
-      new Free({
-        root: [s.x, height + 26],
-        angle: (s.a * Math.PI) / 180,
-        length: s.L,
-        len0: rise ? s.L * 0.05 : s.L,
-        width: s.w * 0.85,
-        bend: s.bend,
-        curl: rise ? s.curl * 0.15 : s.curl,
-        curlRest: s.curl,
-        start: rise ? 0.05 + (s.small ? 0.2 : 0) + i * 0.06 : 0,
-        delay: s.small ? 0.3 : 0,
-        seed: 300 + i * 7,
-        events: false,
-        forks: !!s.forks,
-        sAmp: (s.small ? 0.25 : 0.4) * (i % 2 ? -1 : 1),
-        sPhase: i * 0.7,
-        n: s.small ? 18 : 26,
-        shadow: 2,
-        tip: 0.6,
-      }),
-  );
-  const strands: Strand[] = [];
-  for (let i = 0; i < 4; i++) {
-    strands.push(new Strand(tendrils[i]!, 0.22 + 0.05 * (i % 2), tendrils[i + 1]!, 0.2, 400 + i));
-    strands.push(new Strand(tendrils[i]!, 0.42, tendrils[i + 1]!, 0.38, 420 + i));
-  }
-  let t = 0;
-  // Still, the noise is held at one moment: the same frame each time.
-  const HELD = 3;
-  const tick = (h: number, at: number) => {
-    for (const f of tendrils) f.step(h, at);
-    for (const s of strands) s.step(h);
-  };
-  return {
-    width,
-    height,
-    tendrils,
-    strands,
-    get t() {
-      return t;
-    },
-    get moving() {
-      return rise && t + 1e-6 < RISE_SECONDS;
-    },
-    step(dt) {
-      const sub = Math.max(1, Math.ceil(dt / (1 / 120)));
-      const h = dt / sub;
-      for (let i = 0; i < sub; i++) {
-        t += h;
-        tick(h, rise ? t : HELD);
-      }
-    },
-    settle() {
-      for (let i = 0; i < 4 * 120; i++) {
-        t += 1 / 120;
-        tick(1 / 120, rise ? t : HELD);
       }
     },
   };

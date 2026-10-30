@@ -6,9 +6,7 @@ import {
   JOIN_SECONDS,
   noise,
   questionScene,
-  RISE_SECONDS,
   Rope,
-  sidenavScene,
   Spring,
   type Plug,
 } from '../src/ui/hive-art.js';
@@ -166,29 +164,6 @@ describe("The question's Hive Mind", () => {
     );
     expect(forms).toBeGreaterThan(3);
     expect(snaps).toBeGreaterThan(3);
-  });
-});
-
-// The sidenav (decision 633): the same tendrils, rising as Hive arrives, then still.
-describe("The sidenav's tendrils", () => {
-  it('draw the same still frame each time', () => {
-    const a = sidenavScene({ rise: false });
-    const b = sidenavScene({ rise: false });
-    a.settle();
-    b.settle();
-    expect([...a.tendrils[2]!.rope.px]).toEqual([...b.tendrils[2]!.rope.px]);
-    expect(a.moving).toBe(false);
-  });
-
-  it('rise from below, overshoot, then settle within the rise', () => {
-    const scene = sidenavScene({ rise: true });
-    const tallest = scene.tendrils.reduce((a, b) => (b.length > a.length ? b : a));
-    expect(tallest.len.x).toBeLessThan(tallest.length * 0.2);
-    let most = 0;
-    run(scene, RISE_SECONDS, () => (most = Math.max(most, tallest.len.x)));
-    expect(most).toBeGreaterThan(tallest.length * 1.03);
-    expect(Math.abs(tallest.len.x - tallest.length)).toBeLessThan(tallest.length * 0.02);
-    expect(scene.moving).toBe(false);
   });
 });
 
