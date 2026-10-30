@@ -504,18 +504,3 @@
   font-size: 0.9em;
   font-weight: normal;
 }
-
-/* Losing data: the error's colour (the style's danger). */
-.button.danger {
-  background: color-mix(in srgb, var(--error) 60%, transparent);
-  box-shadow: none;
-  color: #fff;
-}
-
-.button.danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--error) 75%, transparent);
-}
-
-:root[data-theme='light'] .button.danger {
-  background: var(--error);
-}

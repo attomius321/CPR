@@ -62,5 +62,7 @@
 @import './shell/AskBar.css';
 @import './shell/TitleBar.css';
 @import './shell/frame.css';
+/* Hive mode's look (V82): after every part it tints, at their specificity. */
+@import './ui/hive.css';
 /* Last: the first-time intro is over every page. */
 @import './intro/intro.css';

@@ -2922,6 +2922,121 @@ describe('/api/intro (V39)', () => {
   });
 });
 
+describe('/api/hive (V82)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const servers: ViewServer[] = [];
+  let on = false;
+  const hive = {
+    on: () => Promise.resolve(on),
+    set: (value: boolean) => {
+      on = value;
+      return Promise.resolve();
+    },
+  };
+  const repository = {
+    history: new Histories({
+      state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+      stream: () => Promise.resolve(),
+      details: () => Promise.resolve([]),
+    }),
+    status: () =>
+      Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+    refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+    checkout: () => Promise.reject(new Error('no')),
+    isCommit: () => Promise.resolve(true),
+    diffs: new Diffs(() => Promise.reject(new Error('no'))),
+    readFile: () => Promise.resolve(''),
+  };
+  beforeAll(() => writeFileSync(join(viewer, 'index.html'), '<html lang="en">viewer</html>'));
+  afterAll(async () => {
+    for (const server of servers) await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+  const start = async (options: Partial<Parameters<typeof startViewServer>[0]>) => {
+    const server = await startViewServer({ viewerDir: viewer, ...options });
+    servers.push(server);
+    return server;
+  };
+  const turn = (server: ViewServer, body: string, headers: Record<string, string> = {}) =>
+    fetch(new URL('/api/hive', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      body,
+    });
+  const page = async (server: ViewServer, path: string) =>
+    (await fetch(new URL(path, server.url))).text();
+
+  for (const mode of ['symbiote view', 'symbiote pr'] as const) {
+    it(`${mode}: answers whether it is on, and turns it on and off`, async () => {
+      on = false;
+      const server = await start(
+        mode === 'symbiote view'
+          ? { repository, hive }
+          : { graph, readSource: () => Promise.resolve(''), hive },
+      );
+      const first = await fetch(new URL('/api/hive', server.url));
+      expect(first.status).toBe(200);
+      expect(first.headers.get('cache-control')).toBe('no-store');
+      expect(await first.json()).toEqual({ on: false });
+      const turned = await turn(server, '{"on":true}');
+      expect(turned.status).toBe(200);
+      expect(await turned.json()).toEqual({ on: true });
+      expect(on).toBe(true);
+      expect(await (await turn(server, '{"on":false}')).json()).toEqual({ on: false });
+      expect(on).toBe(false);
+    });
+  }
+
+  it("marks every page's <html> while it is on, and none while off", async () => {
+    on = false;
+    const server = await start({ repository, hive });
+    expect(await page(server, '/')).toBe('<html lang="en">viewer</html>');
+    on = true;
+    for (const path of ['/', '/git', '/history', '/index.html']) {
+      expect(await page(server, path)).toBe('<html data-hive="on" lang="en">viewer</html>');
+    }
+  });
+
+  it('a record it cannot read leaves the page as it is', async () => {
+    const server = await start({
+      repository,
+      hive: { on: () => Promise.reject(new Error('EACCES')), set: () => Promise.resolve() },
+    });
+    expect(await page(server, '/')).toBe('<html lang="en">viewer</html>');
+  });
+
+  it('refuses writes other sites could send, other methods and a body without on', async () => {
+    on = false;
+    const server = await start({ repository, hive });
+    expect((await turn(server, '{"on":true}', { origin: 'https://attacker.example' })).status).toBe(
+      403,
+    );
+    expect((await turn(server, '{"on":true}', { 'x-symbiote': '' })).status).toBe(403);
+    expect((await turn(server, '{"on":"yes"}')).status).toBe(400);
+    expect((await turn(server, '{}')).status).toBe(400);
+    const put = await fetch(new URL('/api/hive', server.url), {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+    });
+    expect(put.status).toBe(405);
+    expect(on).toBe(false);
+  });
+
+  it('a record it cannot write: 500, and still off', async () => {
+    const server = await start({
+      repository,
+      hive: { on: () => Promise.resolve(false), set: () => Promise.reject(new Error('EACCES')) },
+    });
+    expect((await turn(server, '{"on":true}')).status).toBe(500);
+  });
+
+  it('is not there without a record', async () => {
+    const server = await start({ repository });
+    expect((await fetch(new URL('/api/hive', server.url))).status).toBe(404);
+  });
+});
+
 describe('symbiote view: terminals (V21)', () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);

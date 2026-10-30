@@ -25,6 +25,8 @@ export interface NexusServerOptions {
   scriptsDir: string;
   /** The viewer's build (`@symbiote/viewer/dist`): its stylesheet, fonts and images. */
   viewerDir: string;
+  /** Whether Hive mode is on (V82): its look on the page from the first paint. */
+  hive?: () => Promise<boolean>;
   log?: Logger;
 }
 
@@ -89,7 +91,15 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
     const path = url.pathname;
     if (req.method === 'POST' && WRITES.has(path)) return write(req, res, path);
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'not allowed');
-    if (path === '/') return send(res, 200, page, TYPES['.html']);
+    if (path === '/') {
+      const hive = (await options.hive?.().catch(() => false)) ?? false;
+      return send(
+        res,
+        200,
+        hive ? page.replace(/<html\b/, '<html data-hive="on"') : page,
+        TYPES['.html'],
+      );
+    }
     if (path === '/api/folders') return listFolders(res, url.searchParams.get('path'));
     if (path === '/api/symbiotes') {
       let symbiotes: Symbiote[];

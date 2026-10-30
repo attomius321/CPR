@@ -25,7 +25,9 @@ describe("Codex's mark", () => {
 
   it("is in OpenAI's own colours: white in the dark theme, black in the light", () => {
     expect(svg).toContain('fill="var(--openai)"');
-    expect(token(":root,\n:root[data-theme='dark']", '--openai')).toBe('#ffffff');
+    expect(
+      token(":root,\n:root[data-theme='dark'],\n:root[data-hive] .sidenav,\n.hive-ink", '--openai'),
+    ).toBe('#ffffff');
     expect(token(":root[data-theme='light']", '--openai')).toBe('#000000');
     expect(token("  :root[data-theme='system']", '--openai')).toBe('#000000');
   });

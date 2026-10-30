@@ -70,6 +70,7 @@ import { findingsReview, planFindings, postedMarkers } from './post-findings.js'
 import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ChangeFiles, type ReviewTarget } from './server.js';
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
+import { hiveRecord, type HiveRecord } from './hive.js';
 import { libraryService, type LibraryService } from './library.js';
 import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
@@ -603,6 +604,7 @@ async function serve(
     ...(review ? { review } : {}),
     open: vsCodeOpener(repo, ctx.env),
     intro: introOf(ctx),
+    hive: hiveOf(ctx),
     ...(ctx.log ? { log: ctx.log } : {}),
   });
   ctx.log?.log.info({ version, repo: repo.root, url: server.url }, 'serving one graph');
@@ -632,6 +634,11 @@ function changeFiles(repo: GitRepo): ChangeFiles {
 function introOf(ctx: CliContext): IntroRecord {
   const folder = symbioteConfigDir(ctx.env, process.platform, homedir());
   return introRecord(join(folder, 'intro.json'), { off: ctx.env.SYMBIOTE_INTRO === 'off' });
+}
+
+/** Hive mode's record (V82): per person, in Symbiote's config folder, as the intro's. */
+function hiveOf(ctx: CliContext): HiveRecord {
+  return hiveRecord(join(symbioteConfigDir(ctx.env, process.platform, homedir()), 'hive.json'));
 }
 
 function statsLine(graph: Graph): string {
@@ -818,6 +825,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     },
     open: vsCodeOpener(repo, ctx.env),
     intro: introOf(ctx),
+    hive: hiveOf(ctx),
     log,
     version,
   });

@@ -340,6 +340,22 @@ input[type='checkbox'][role='switch']:checked::after {
 }
 
 /* Backing out stays quiet (Cancel, Clear, Discard, Keep it): a ghost button, no colour. */
+/* Losing data (Git's deletes) or a dangerous switch (Hive mode, V82): the error's colour, the
+   style's danger. */
+.button.danger {
+  background: color-mix(in srgb, var(--error) 60%, transparent);
+  box-shadow: none;
+  color: #fff;
+}
+
+.button.danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--error) 75%, transparent);
+}
+
+:root[data-theme='light'] .button.danger {
+  background: var(--error);
+}
+
 .button.ghost {
   background: transparent;
   box-shadow: none;

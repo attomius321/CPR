@@ -4,7 +4,9 @@
 // favicon, packages/viewer/src/shell/favicon.png (64 px), both a rounded tile; the mark in the
 // pages, packages/viewer/src/ui/mark.png (64 px, 32 on screen), Start a workspace's,
 // packages/viewer/src/ui/mark-96.png (96 px, 48 on screen; V63), and the desktop start page's,
-// packages/desktop/start/mark.png (80 px, 40 on screen), all round.
+// packages/desktop/start/mark.png (80 px, 40 on screen), all round. Hive mode's (V82, decision
+// 616): the pages' marks and the favicon in crimson, the logo through a gradient map
+// (mark-hive.png, mark-hive-96.png, favicon-hive.png).
 // `node scripts/desktop/icon.mjs` (after `pnpm install`).
 import { writeFileSync } from 'node:fs';
 import { chromium } from '@playwright/test';
@@ -16,6 +18,9 @@ const outputs = [
   { size: 64, shape: 'round', file: at('packages/viewer/src/ui/mark.png') },
   { size: 96, shape: 'round', file: at('packages/viewer/src/ui/mark-96.png') },
   { size: 80, shape: 'round', file: at('packages/desktop/start/mark.png') },
+  { size: 64, shape: 'tile', file: at('packages/viewer/src/shell/favicon-hive.png'), hive: true },
+  { size: 64, shape: 'round', file: at('packages/viewer/src/ui/mark-hive.png'), hive: true },
+  { size: 96, shape: 'round', file: at('packages/viewer/src/ui/mark-hive-96.png'), hive: true },
 ];
 
 const browser = await chromium.launch();
@@ -30,9 +35,9 @@ await page.route(`${origin}/**`, (route) => {
 });
 await page.goto(`${origin}/`);
 
-for (const { size, shape, file } of outputs) {
+for (const { size, shape, file, hive = false } of outputs) {
   const png = await page.evaluate(
-    async ({ size, shape }) => {
+    async ({ size, shape, hive }) => {
       const { document } = globalThis;
       const logo = new globalThis.Image();
       logo.src = './logo.png';
@@ -71,6 +76,31 @@ for (const { size, shape, file } of outputs) {
       context.fillRect(0, 0, size, size);
       context.drawImage(from, margin, margin, inner, inner);
       context.restore();
+      // Hive's S (V82): each pixel's brightness through black, ink red, crimson, blush and white,
+      // so the gloss and its highlights stay; a bright channel counts as much as the light.
+      if (hive) {
+        const RAMP = [
+          [0, [0, 0, 0]],
+          [0.18, [22, 4, 7]],
+          [0.42, [110, 8, 26]],
+          [0.66, [200, 16, 46]],
+          [0.86, [255, 150, 160]],
+          [1, [255, 255, 255]],
+        ];
+        const image = context.getImageData(0, 0, size, size);
+        const pixels = image.data;
+        for (let i = 0; i < pixels.length; i += 4) {
+          const [r, g, b] = [pixels[i], pixels[i + 1], pixels[i + 2]];
+          const light =
+            (0.6 * Math.max(r, g, b) + 0.4 * (0.2126 * r + 0.7152 * g + 0.0722 * b)) / 255;
+          const k = RAMP.findIndex(([at]) => at >= light);
+          const [hi, top] = RAMP[Math.max(k, 1)];
+          const [lo, bottom] = RAMP[Math.max(k, 1) - 1];
+          const f = Math.min(1, Math.max(0, (light - lo) / (hi - lo)));
+          for (let c = 0; c < 3; c++) pixels[i + c] = bottom[c] + (top[c] - bottom[c]) * f;
+        }
+        context.putImageData(image, 0, 0);
+      }
       // The tile's lit rim, light from above, as the old icon's: it keeps the tile on a dark
       // taskbar. Too thin to show at 64 px.
       if (shape === 'tile' && size >= 256) {
@@ -92,7 +122,7 @@ for (const { size, shape, file } of outputs) {
       }
       return canvas.toDataURL('image/png');
     },
-    { size, shape },
+    { size, shape, hive },
   );
   writeFileSync(file, Buffer.from(png.slice(png.indexOf(',') + 1), 'base64'));
   console.log(`${file.pathname} (${size} px, ${shape})`);

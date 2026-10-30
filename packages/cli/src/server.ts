@@ -37,6 +37,7 @@ import {
   parsePageError,
   parseLocalReview,
   parseMergeChanges,
+  parseHiveChange,
   parseMergeId,
   parseMcpAnswer,
   parseMergeRequest,
@@ -74,6 +75,7 @@ import { MergeRefused, type Merger } from './merges.js';
 import { parsePromptChange, PromptRefused, type PromptSettingsService } from './prompts.js';
 import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';
+import { withHive, type HiveRecord } from './hive.js';
 import type { Histories } from './history.js';
 import {
   GIT_WRITES,
@@ -186,6 +188,8 @@ export interface ViewServerOptions {
   open?: (request: OpenRequest, worktree?: string) => Promise<OpenResult>;
   /** Enables `/api/intro` (V39): whether a person saw the first-time intro, for every page. */
   intro?: IntroRecord;
+  /** Enables `/api/hive` (V82): Hive mode, on every page from its first paint. */
+  hive?: HiveRecord;
   /**
    * Symbiote's logs (LG1): a line per request, and the pages' errors at `POST /api/logs`;
    * without it, nothing is written.
@@ -359,6 +363,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname === '/api/logs') return pageError(req, res);
     if (url.pathname === '/api/intro' && options.intro) return introApi(req, res, options.intro);
+    if (url.pathname === '/api/hive' && options.hive) return hiveApi(req, res, options.hive);
     if (repository) return repositoryRoute(req, res, url, repository);
     return serveSite(req, res, url, url.pathname, root);
   }
@@ -952,8 +957,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     return serveFile(res, path);
   }
 
-  /** Static viewer files, as the server started with them: nothing outside the viewer folder. */
-  function serveFile(res: ServerResponse, pathname: string): void {
+  /**
+   * Static viewer files, as the server started with them: nothing outside the viewer folder. The
+   * page marked for Hive mode's look while it is on (decision 612).
+   */
+  async function serveFile(res: ServerResponse, pathname: string): Promise<void> {
     let decoded: string;
     try {
       decoded = decodeURIComponent(pathname);
@@ -964,7 +972,16 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     const path = join(options.viewerDir, relative);
     const body = viewerFiles.get(path);
     if (!body) return send(res, 404, 'not found');
-    return send(res, 200, body, TYPES[extname(path)] ?? 'application/octet-stream');
+    const type = TYPES[extname(path)] ?? 'application/octet-stream';
+    if (relative === 'index.html' && (await hiveOn())) {
+      return send(res, 200, withHive(body.toString('utf8')), type);
+    }
+    return send(res, 200, body, type);
+  }
+
+  /** Whether Hive mode is on; a record that cannot be read is off. */
+  async function hiveOn(): Promise<boolean> {
+    return (await options.hive?.on().catch(() => false)) ?? false;
   }
 
   /** A diff's page: its graph once analyzed, its progress meanwhile. */
@@ -1257,6 +1274,21 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     await intro.markSeen();
     res.writeHead(204, { 'cache-control': 'no-store' });
     res.end();
+  }
+
+  /** `GET /api/hive`: `{ on }`; `POST { on }`: Hive mode turned on or off (V82). */
+  async function hiveApi(
+    req: IncomingMessage,
+    res: ServerResponse,
+    hive: HiveRecord,
+  ): Promise<void> {
+    if (req.method === 'GET') return json(res, 200, { on: await hive.on() });
+    return written(req, res, parseHiveChange, ({ on }) =>
+      answer(res, async () => {
+        await hive.set(on);
+        return { on };
+      }),
+    );
   }
 
   /**

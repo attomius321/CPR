@@ -17,6 +17,8 @@ import { setTheme, useTheme, type Theme } from '../shell/theme.js';
 import { setDetailsPlace, useDetailsPlace, type DetailsPlace } from '../history/details.js';
 import { startIntro } from '../intro/intro.js';
 import { LibraryPage } from './LibraryPage.js';
+import { HivePage } from './HivePage.js';
+import { useHive } from '../shell/hive.js';
 import {
   draftProblem,
   gitNote,
@@ -48,6 +50,7 @@ import {
   DocumentsIcon,
   FixIcon,
   FolderIcon,
+  HexagonIcon,
   MergeIcon,
   NucleusIcon,
   PlanIcon,
@@ -221,9 +224,11 @@ const ADVISOR: Record<Advising, AgentSettings> = {
 const APPEARANCE = 'appearance';
 /** The skill library (SK1): this machine's, for every repository, not the project's. */
 const LIBRARY = 'skill-library';
+/** Hive mode (V82): this person's on this machine, a danger to press. */
+const HIVE = 'hive-mode';
 const MACHINE_GROUP = 'This machine';
 const BROWSER_GROUP = 'This browser';
-type EntryKey = PromptKey | typeof LIBRARY | typeof APPEARANCE;
+type EntryKey = PromptKey | typeof LIBRARY | typeof APPEARANCE | typeof HIVE;
 
 /**
  * An entry's icon in the list (V81, decision 600), by its key (an agent's: its first prompt's);
@@ -248,6 +253,7 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   nucleus: NucleusIcon,
   scribe: SparklesIcon,
   [LIBRARY]: FolderIcon,
+  [HIVE]: HexagonIcon,
   [APPEARANCE]: AppearanceIcon,
 } satisfies Record<Exclude<EntryKey, 'library'>, () => ReactNode>;
 
@@ -260,11 +266,14 @@ const TINTS: Record<string, string> = {
   [BROWSER_GROUP]: 'browser',
 };
 
-/** An entry's icon on its group's tile, before its name; decorative. */
+/** An entry's icon on its group's tile, before its name (Hive mode's red); decorative. */
 function Tile({ entry }: { entry: EntryKey }) {
   const Drawn = ICONS[entry];
   return Drawn ? (
-    <span className="settings-tile" aria-hidden="true">
+    <span
+      className={entry === HIVE ? 'settings-tile hive-tile' : 'settings-tile'}
+      aria-hidden="true"
+    >
       <Drawn />
     </span>
   ) : null;
@@ -305,6 +314,7 @@ export function SettingsPage() {
   const [drafts, setDrafts] = useState<Partial<Record<PromptKey, string>>>({});
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  const hive = useHive();
 
   const load = useCallback(async () => {
     try {
@@ -323,7 +333,7 @@ export function SettingsPage() {
         ? promptGroups(read.prompts).flatMap((g) => g.entries.map((e) => e.key))
         : [];
       // Without prompts, Appearance opens first, as before the Skill library (SK1).
-      setOpen(promptOfUrl<EntryKey>(window.location.search, [...keys, APPEARANCE, LIBRARY]));
+      setOpen(promptOfUrl<EntryKey>(window.location.search, [...keys, APPEARANCE, LIBRARY, HIVE]));
     });
   }, [load]);
 
@@ -478,6 +488,17 @@ export function SettingsPage() {
                     <span className="settings-name">Skill library</span>
                   </button>
                 </li>
+                <li>
+                  <button
+                    type="button"
+                    aria-current={open === HIVE ? 'true' : undefined}
+                    onClick={() => show(HIVE)}
+                  >
+                    <Tile entry={HIVE} />
+                    <span className="settings-name">Hive mode</span>
+                    {hive && <span className="settings-mark hive-on">on</span>}
+                  </button>
+                </li>
               </ul>
             </section>
             <section aria-label={BROWSER_GROUP} data-tint={TINTS[BROWSER_GROUP]}>
@@ -498,6 +519,8 @@ export function SettingsPage() {
           </nav>
           {open === APPEARANCE ? (
             <AppearancePage onBack={back} />
+          ) : open === HIVE ? (
+            <HivePage onBack={back} />
           ) : open === LIBRARY ? (
             <LibraryPage onBack={back} />
           ) : current?.key === 'advisor' ? (
