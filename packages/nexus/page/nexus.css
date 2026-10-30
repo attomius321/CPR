@@ -328,6 +328,24 @@
   background: var(--selected);
 }
 
+/* On Folders a repository's card has its pin in its corner (NX4, decision 620), beside the card (a
+   button holds no button), as Symbiotes' Stop; the name keeps clear of it. */
+.nexus-repo-box {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+.nexus-repo-box > .nexus-repo {
+  padding-right: 40px;
+}
+
+.nexus-repo-pin {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+
 .nexus-repo-icon {
   grid-row: 1 / span 3;
   align-self: start;
@@ -472,7 +490,7 @@
 
 @media (min-width: 960px) {
   .nexus-folders-main {
-    grid-template-columns: 220px minmax(0, 1fr);
+    grid-template-columns: 260px minmax(0, 1fr);
     align-items: start;
   }
 
@@ -532,6 +550,82 @@
 .nexus-place[aria-current='true'] .icon {
   color: var(--accent);
   stroke-width: 2.25;
+}
+
+/* The pins (NX4, decisions 617–620): under the places, a hairline between, their head and count;
+   a pin's row is a place's, its unpin at its end. A gone folder's says "not found". */
+.nexus-pins {
+  border-top: 1px solid var(--line);
+}
+
+.nexus-pins > .nexus-group-head {
+  padding-top: 12px;
+}
+
+.nexus-pin {
+  position: relative;
+  display: grid;
+  min-width: 0;
+}
+
+/* The unpin at the row's end, as the sidenav's bin (V55): the row keeps its room, so its name and
+   marks never run under it, and its hover and current wash span the row as a place's do. */
+.nexus-pin > .nexus-place {
+  padding-right: 36px;
+}
+
+.nexus-unpin {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+}
+
+.nexus-place > .state-dot,
+.nexus-place > .nexus-pin-gone {
+  flex: none;
+  margin-left: auto;
+}
+
+.nexus-pin-gone {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 400;
+}
+
+.nexus-pins-none {
+  margin: 0;
+  padding: 6px var(--card-pad) 14px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* A pin's button: an outline to pin, filled in the accent once pinned (what is checked). A row's
+   unpin and a card's pin not pinned show on the row's or card's hover or keyboard focus, as the
+   sidenav's bin (V55): transparent, not hidden, so they keep their names and their place in the Tab
+   order; without hover (a touch screen) they always show. */
+.nexus-pinned {
+  color: var(--accent);
+}
+
+.nexus-pinned .icon {
+  fill: currentColor;
+}
+
+@media (hover: hover) {
+  .nexus-pin:not(:hover, :has(:focus-visible)) .nexus-unpin,
+  .nexus-repo-box:not(:hover, :has(:focus-visible)) .nexus-repo-pin:not(.nexus-pinned) {
+    opacity: 0;
+  }
+}
+
+.nexus-head-pin {
+  margin-left: auto;
+}
+
+.nexus-folders-counts + .nexus-head-pin {
+  margin-left: 0;
 }
 
 .nexus-go {

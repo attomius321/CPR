@@ -243,6 +243,7 @@ hosted.
 | [NX1](plan/nx1-nexus.md) | Symbiote nexus: every running `symbiote view` found, as tabs in one window or browser tab | ✅ | 519–527 | [journal](journal/nx1-nexus.md) |
 | [NX2](plan/nx2-open-from-folders.md) | Open a Symbiote from the nexus: this PC's folders, Open Symbiote, Stop and Start again | ✅ | 539–543 | [journal](journal/nx2-open-from-folders.md) |
 | [NX3](plan/nx3-nexus-look.md) | The nexus's own tabs apart from the Symbiotes', fuller pages, a repository the end of Folders | ✅ | 551–555 | [journal](journal/nx3-nexus-look.md) |
+| [NX4](plan/nx4-pinned-folders.md) | Pinned folders: the person's folders and repositories kept in Folders' places from one run to the next | ready for review | 617–620 | [journal](journal/nx4-pinned-folders.md) |
 
 ### Repository monitoring
 

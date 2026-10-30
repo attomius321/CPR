@@ -80,7 +80,10 @@ test.describe('Symbiote nexus: Folders', () => {
     await expect(cards(page)).toHaveText(['alphamainOpen Symbiote', 'betamainOpen Symbiote']);
     await expect(rows(page)).toHaveText(['notes']);
     await expect(page.locator('.nexus-folders-counts')).toHaveText('2 repositories · 1 folder');
-    await expect(page.locator('.nexus-group-head')).toHaveText(['Repositories2', 'Folders1']);
+    await expect(page.locator('.nexus-folders-card .nexus-group-head')).toHaveText([
+      'Repositories2',
+      'Folders1',
+    ]);
     expect(new URL(page.url()).hash).toBe(`#folders:${encodeURIComponent(home.projects)}`);
     await expect(page).toHaveTitle('Folders — Symbiote nexus');
 

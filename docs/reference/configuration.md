@@ -172,6 +172,20 @@ never turns it on for everyone who clones the repository.
 Every `symbiote view` and the nexus read it when they serve a page. A window already open takes a
 change on its next load.
 
+## The nexus's pinned folders
+
+The folders you pin in Symbiote nexus's **Folders** are kept in the same settings folder:
+`nexus.json`. Pins are kept for this machine, not for a project.
+
+```json
+{ "pinned": ["/home/you/projects", "/home/you/projects/Symbiote"] }
+```
+
+`pinned` lists full paths, in the order you pinned them. The nexus reads the file each time it lists
+a folder, so a pin made in one nexus window shows in another at its next listing. It writes the
+whole file at once, and keeps any other keys in it. A file it cannot read counts as no pins, and
+the next pin replaces it.
+
 ## Files Symbiote skips, `.symbioteignore`
 
 Symbiote lists changed files in these folders but does not analyze them, so they show no symbols

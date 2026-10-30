@@ -1,7 +1,8 @@
 // The Folders tab's pure part (NX2b, decisions 539, 540): its place in the address, the crumbs of a
 // folder, what a typed folder is and the words; since NX3 a repository's card, the counts and the
-// arrows on a grid. Its DOM is `folders-view.ts`'s.
+// arrows on a grid; since NX4 the pins' names and the current place. Its DOM is `folders-view.ts`'s.
 import type { Folder, Place } from '../folders.js';
+import type { Pin } from '../pins.js';
 
 /** The Folders tab's key in the page's selection: a Symbiote's tab is its root, always absolute. */
 export const FOLDERS = 'folders';
@@ -121,4 +122,46 @@ export function nextOnGrid(boxes: readonly Box[], at: number, key: string): numb
 /** The folders past the listing's cap. */
 export function moreText(more: number): string {
   return `and ${more.toLocaleString('en')} more ${more === 1 ? 'folder' : 'folders'}`;
+}
+
+/**
+ * Each pin's name in the places card (NX4): its folder's, and for two of one name their parent's
+ * too ("Symbiote · Symbiote.worktrees"), or the parent's path when those are alike as well.
+ */
+export function pinNames(pins: readonly Pin[]): string[] {
+  const parentOf = (path: string) => path.slice(0, path.lastIndexOf('/')) || '/';
+  const lastOf = (path: string) => path.split('/').filter(Boolean).at(-1) ?? '/';
+  const count = <T>(items: readonly T[], item: T) => items.filter((other) => other === item).length;
+  const names = pins.map((pin) => pin.name);
+  const near = pins.map((pin) => `${pin.name} · ${lastOf(parentOf(pin.path))}`);
+  return pins.map((pin, at) => {
+    const name = names[at] ?? pin.name;
+    if (count(names, name) === 1) return name;
+    const withParent = near[at] ?? name;
+    return count(near, withParent) === 1 ? withParent : `${pin.name} · ${parentOf(pin.path)}`;
+  });
+}
+
+/** The places the nexus found, but a running Symbiote's folder that is pinned: drawn as the pin. */
+export function placesShown(places: readonly Place[], pins: readonly Pin[]): Place[] {
+  const pinned = new Set(pins.map((pin) => pin.path));
+  return places.filter((place) => place.kind !== 'symbiotes' || !pinned.has(place.path));
+}
+
+/**
+ * The place or pin drawn as the current one: a pinned repository while its card is picked (decision
+ * 619), else the folder listed.
+ */
+export function currentPlace(answer: {
+  path: string;
+  picked: string | null;
+  pinned: readonly Pin[];
+}): string {
+  const { picked } = answer;
+  return picked !== null && answer.pinned.some((pin) => pin.path === picked) ? picked : answer.path;
+}
+
+/** Whether the folder listed takes a pin: not home, the top or a drive, always places (decision 620). */
+export function pinnable(answer: { path: string; places: readonly Place[] }): boolean {
+  return !answer.places.some((place) => place.kind !== 'symbiotes' && place.path === answer.path);
 }

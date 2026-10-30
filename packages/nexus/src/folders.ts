@@ -171,7 +171,7 @@ export async function folders(
 }
 
 /** `path` is `folder` or inside it. */
-function within(path: string, folder: string): boolean {
+export function within(path: string, folder: string): boolean {
   return path === folder || path.startsWith(folder.endsWith('/') ? folder : `${folder}/`);
 }
 

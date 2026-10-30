@@ -7,7 +7,8 @@ tab. It reads their records and their `/api/status`. Since NX2
 starts `symbiote view` in one and stops a running one (decision 543); it never writes inside a
 folder, nor into a Symbiote. NX3 (`docs/plan/nx3-nexus-look.md`) split the row into the nexus's
 own pages and the Symbiotes, made Symbiotes and Folders cards, and made a repository the end of
-Folders' way down.
+Folders' way down. NX4 (`docs/plan/nx4-pinned-folders.md`) keeps the person's pinned folders in
+Symbiote's settings folder and draws them under Folders' places.
 
 ## Where things are
 
@@ -16,11 +17,12 @@ Folders' way down.
 | `src/registry.ts` | The running servers' records, `<cache>/running/<pid>.json`: `announce`, `withdraw`, `readRecords` (MC1's `<cache>/views/*.json` too), the cache folder's rule. **`symbiote view` imports it** (`@symbiote/nexus/registry`): Node's modules only, nothing else of the nexus |
 | `src/symbiotes.ts` | Which records are live (their process, `/api/status` within 1 s), one per folder |
 | `src/folders.ts` | A folder's folders (no files, no hidden ones, 1,000 at most), repositories marked by their `.git` with their branch from `HEAD`, the places (home, the Symbiotes' folders, `/`, WSL's drives), a folder's repository root (`git rev-parse`); a folder inside a repository answers the folder holding it, the repository `picked` |
+| `src/pins.ts` | The pinned folders (NX4): `nexus.json` in Symbiote's settings folder (`configDir`, `src/hive.ts`), read with each listing, described (a repository by its `.git`, a gone folder `missing`), written one at a time through a file renamed into place; a pin refused inside a repository |
 | `src/start.ts` | Starting this checkout's `symbiote view --no-open` in a folder, detached (output in `<cache>/nexus/<pid>.log`), started once its record appears; stopping a live record's process by SIGTERM |
-| `src/server.ts` | The page, its scripts, the viewer's built assets, `GET /api/symbiotes`, `GET /api/folders`, `POST /api/symbiotes` (start) and `/api/symbiotes/stop`; its own hosts only |
+| `src/server.ts` | The page, its scripts, the viewer's built assets, `GET /api/symbiotes`, `GET /api/folders` (with the pins), `POST /api/symbiotes` (start), `/api/symbiotes/stop` and `/api/pinned`; its own hosts only |
 | `src/main.ts`, `src/bin.ts` | The command: options, the app's window or the browser, as `symbiote view` opens them |
 | `src/app-window.ts` | Starting the desktop app in its `--url` mode: a copy of `packages/cli/src/app.ts`'s (the CLI's modules load the engine), tested on the same cases |
-| `src/page/` | The page's scripts, compiled by `tsc` to `dist/page/` and served as they are: `tabs.ts` and `folders-tab.ts` (pure: the tabs from each read, the address, the crumbs, the words, the folders near the running Symbiotes, the arrows on a grid), `main.ts` (the DOM: the row's two groups, frames, Symbiotes' cards, Stop's question), `folders-view.ts` (the Folders tab's DOM), `cards.ts` (a repository's card, Folders' and Symbiotes'), `dom.ts` (elements and icons) |
+| `src/page/` | The page's scripts, compiled by `tsc` to `dist/page/` and served as they are: `tabs.ts` and `folders-tab.ts` (pure: the tabs from each read, the address, the crumbs, the words, the folders near the running Symbiotes, the arrows on a grid), `main.ts` (the DOM: the row's two groups, frames, Symbiotes' cards, Stop's question), `folders-view.ts` (the Folders tab's DOM, the pins under the places), `cards.ts` (a repository's card, Folders' with its pin and Symbiotes'), `dom.ts` (elements, icons, a pin's button) |
 | `page/` | `index.html` (the server fills in the viewer's stylesheet and font), `nexus.css` (layout only), `mark.png` (the viewer's `ui/mark-96.png`) |
 
 ## Rules
@@ -47,6 +49,11 @@ Folders' way down.
 - **A repository is the end of Folders' way down** (decision 554): its card opens its Symbiote,
   never its folders, and `GET /api/folders` never lists inside one (the holder, `picked`), but
   in a home kept in git.
+- **Pins are the person's** (NX4, decisions 617–620): kept in the settings folder, never in the
+  page's storage (a new port each run) nor the cache; a pin whose folder is gone stays, marked,
+  until the person unpins it. A pin's click shows its folder, or picks its repository in the folder
+  holding it: nothing starts but by Open Symbiote. Specs and tests keep their own settings folder
+  (`XDG_CONFIG_HOME`; `startNexus`' `config`), never the person's.
 - **A Symbiote the nexus starts outlives it** (decision 541): detached, its output in a file, not
   a pipe (a pipe breaks when the nexus ends). Specs stop such Symbiotes themselves
   (`stopRecorded` in `e2e/nexus.ts`).

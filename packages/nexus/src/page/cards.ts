@@ -1,8 +1,9 @@
 // A repository as a card (NX3, decisions 553–555), on Folders and under Symbiotes' running ones:
 // its icon, its name, what it has checked out, and what a click does. A repository is the end of
-// the way down: the whole card opens its Symbiote, or shows the one running; it never goes in.
+// the way down: the whole card opens its Symbiote, or shows the one running; it never goes in. On
+// Folders its corner holds its pin (NX4, decision 620), beside the card: a button holds no button.
 import type { Folder } from '../folders.js';
-import { BRANCH, el, FOLDER_GIT, icon } from './dom.js';
+import { BRANCH, el, FOLDER_GIT, icon, pinButton } from './dom.js';
 import { checkoutWords } from './folders-tab.js';
 
 export interface RepositoryCard {
@@ -13,9 +14,11 @@ export interface RepositoryCard {
   busy: boolean;
   /** Opens its Symbiote, or shows the one running. */
   act: () => void;
+  /** Folders' pin in its corner: whether it is pinned, and the click that pins or unpins it. */
+  pin?: { pinned: boolean; toggle: () => void };
 }
 
-export function repositoryCard({ folder, running, busy, act }: RepositoryCard): HTMLButtonElement {
+export function repositoryCard({ folder, running, busy, act, pin }: RepositoryCard): HTMLElement {
   const checkout = checkoutWords(folder);
   const card = el(
     'button',
@@ -41,5 +44,15 @@ export function repositoryCard({ folder, running, busy, act }: RepositoryCard): 
     ),
   );
   card.addEventListener('click', act);
-  return card;
+  if (!pin) return card;
+  return el(
+    'div',
+    { class: 'nexus-repo-box' },
+    card,
+    pinButton(
+      'nexus-repo-pin',
+      { name: folder.name, path: folder.path, pinned: pin.pinned },
+      pin.toggle,
+    ),
+  );
 }

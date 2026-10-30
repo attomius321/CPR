@@ -56,3 +56,31 @@ export const ARROW_UP = '<path d="m5 12 7-7 7 7" /><path d="M12 19V5" />';
 export const GRID =
   '<rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" />';
 export const CHEVRON_RIGHT = '<path d="m9 18 6-6-6-6" />';
+
+// NX4's, lucide's (ISC): pin.
+export const PIN =
+  '<path d="M12 17v5" /><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z" />';
+
+/**
+ * A pin's button (NX4, decision 620): an outline that pins `name`, filled in the accent once
+ * pinned, when it unpins. `kind`, its first class, tells the head's, a card's and a pin's row's
+ * apart when the focus is put back after a drawing.
+ */
+export function pinButton(
+  kind: string,
+  { name, path, pinned }: { name: string; path: string; pinned: boolean },
+  toggle: () => void,
+): HTMLButtonElement {
+  const button = el(
+    'button',
+    {
+      type: 'button',
+      class: pinned ? `${kind} icon-button nexus-pinned` : `${kind} icon-button`,
+      'aria-label': `${pinned ? 'Unpin' : 'Pin'} ${name}`,
+      'data-path': path,
+    },
+    icon(PIN, true),
+  );
+  button.addEventListener('click', toggle);
+  return button;
+}
