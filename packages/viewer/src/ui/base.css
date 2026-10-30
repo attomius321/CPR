@@ -88,6 +88,9 @@
   --phase-visual: #ec6fae;
   --phase-debug: #f2815a;
   --phase-git: #c08cff;
+  /* NU2: Nucleus's searches and pages, and its calls of Symbiote's tools. */
+  --phase-web: #d4c84a;
+  --phase-symbiote: #dc7cf0;
   --phase-wash: 16%;
   --shadow: rgb(0 0 0 / 50%);
   /* States every control shares (V31): the hover a wash of the text, the selection one of the
@@ -181,6 +184,8 @@
   --phase-visual: #bf3989;
   --phase-debug: #c2410c;
   --phase-git: #8a3fd1;
+  --phase-web: #6f6a00;
+  --phase-symbiote: #9c2fb8;
   --phase-wash: 12%;
   --shadow: rgb(11 18 32 / 14%);
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
@@ -261,6 +266,8 @@
     --phase-visual: #bf3989;
     --phase-debug: #c2410c;
     --phase-git: #8a3fd1;
+    --phase-web: #6f6a00;
+    --phase-symbiote: #9c2fb8;
     --phase-wash: 12%;
     --shadow: rgb(11 18 32 / 14%);
     --hover: color-mix(in srgb, var(--text) 5%, transparent);

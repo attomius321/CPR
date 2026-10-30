@@ -598,7 +598,7 @@ describe('liveActivity (V73)', () => {
   const live = (tools: ActivityEntry[], agent: WorkspaceAgentState, entries = prompt) => {
     const w = workspace({ agent });
     const events = activityEvents(w, thread(entries), tools, []);
-    return liveActivity(w, events, activityGroups(events, { agent, worktree: W }));
+    return liveActivity(w.agent, W, events, activityGroups(events, { agent, worktree: W }));
   };
 
   it('while it works: the call running, in the agent’s words, its command short, since its start', () => {

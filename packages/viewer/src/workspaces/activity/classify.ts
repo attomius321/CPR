@@ -8,7 +8,16 @@ import type { ActivityEntry } from '@symbiote/core';
  * testing (tests, checks, builds), looking at screenshots, or git's writes. A call that is none
  * (a task's update, a scratch file, a wait) takes its neighbours' phase.
  */
-export type WorkKind = 'explore' | 'implement' | 'docs' | 'test' | 'visual' | 'git';
+export type WorkKind =
+  | 'explore'
+  | 'implement'
+  | 'docs'
+  | 'test'
+  | 'visual'
+  | 'git'
+  /** Nucleus's (NU2): searching the web and reading pages; using Symbiote's tools. */
+  | 'web'
+  | 'symbiote';
 
 export const IMAGE = /\.(png|jpe?g|gif|webp|avif|bmp)$/i;
 const DOC = /\.(md|mdx|markdown|txt|rst|adoc)$/i;

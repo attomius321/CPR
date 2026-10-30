@@ -131,3 +131,9 @@
   display: flex;
   flex-direction: column;
 }
+
+/* NU2: its Activity tab before anything is recorded, or while it is read: a note in the card. */
+.nucleus-card .activity-empty {
+  margin: 0;
+  padding: var(--card-pad);
+}

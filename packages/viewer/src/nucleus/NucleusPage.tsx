@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
 import { NucleusIcon } from '../ui/icons.js';
@@ -11,6 +12,14 @@ import {
 } from './Conversation.js';
 import { tip } from '../ui/tip.js';
 import { formerText } from './page-agent.js';
+import { NucleusActivity } from './NucleusActivity.js';
+
+/** Nucleus's two views (NU2): its terminal, and what it did. */
+type View = 'terminal' | 'activity';
+
+/** `?activity` opens the Activity tab (NU2), as a workspace's does. */
+const viewOfUrl = (): View =>
+  new URLSearchParams(window.location.search).has('activity') ? 'activity' : 'terminal';
 
 const API = '/api/nucleus';
 
@@ -25,6 +34,13 @@ const API = '/api/nucleus';
  */
 export function NucleusPage() {
   const { nucleus: read } = useWorkspaces();
+  const [view, setView] = useState<View>(viewOfUrl);
+  const show = (next: View) => {
+    setView(next);
+    const url = new URL(window.location.href);
+    url.search = next === 'activity' ? '?activity' : '';
+    window.history.replaceState(window.history.state, '', url);
+  };
   const agent = usePageAgent(API, read);
   const former = formerText(read?.conversation ?? null, 'Nucleus');
   return (
@@ -67,9 +83,30 @@ export function NucleusPage() {
           {former}
         </p>
       )}
-      {/* The page's card (V61), in the page frame since V72: the terminal. */}
+      {/* The page's card (V61), in the page frame since V72: its terminal, and since NU2 what it
+          did, as line tabs on the card's head as a workspace's are. */}
       <div className="nucleus-card">
-        <PageAgentBody name="Nucleus" api={API} agent={agent} />
+        <div className="workspace-views" role="tablist" aria-label="Nucleus">
+          {(['terminal', 'activity'] as const).map((name) => (
+            <button
+              key={name}
+              type="button"
+              role="tab"
+              aria-selected={view === name}
+              className={view === name ? 'selected' : ''}
+              onClick={() => show(name)}
+            >
+              {name === 'terminal' ? 'Terminal' : 'Activity'}
+            </button>
+          ))}
+        </div>
+        {view === 'activity' ? (
+          <div className="workspace-activity">
+            <NucleusActivity read={read} />
+          </div>
+        ) : (
+          <PageAgentBody name="Nucleus" api={API} agent={agent} />
+        )}
       </div>
     </section>
   );

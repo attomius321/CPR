@@ -72,6 +72,9 @@ const PHASES = [
   '--phase-visual',
   '--phase-debug',
   '--phase-git',
+  // NU2: Nucleus's web and Symbiote's tools.
+  '--phase-web',
+  '--phase-symbiote',
 ];
 
 /** V81 (decision 601): Settings' groups' tints, `section[data-tint=…] { --tint: var(…) }`. */
@@ -196,6 +199,8 @@ describe('the tokens (V29b)', () => {
       '--phase-visual': '#ec6fae',
       '--phase-debug': '#f2815a',
       '--phase-git': '#c08cff',
+      '--phase-web': '#d4c84a',
+      '--phase-symbiote': '#dc7cf0',
       '--phase-wash': '16%',
     });
     expect(pick(light)).toEqual({
@@ -206,6 +211,8 @@ describe('the tokens (V29b)', () => {
       '--phase-visual': '#bf3989',
       '--phase-debug': '#c2410c',
       '--phase-git': '#8a3fd1',
+      '--phase-web': '#6f6a00',
+      '--phase-symbiote': '#9c2fb8',
       '--phase-wash': '12%',
     });
   });

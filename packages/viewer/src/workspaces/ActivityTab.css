@@ -34,6 +34,15 @@
   --phase: var(--phase-git);
 }
 
+/* NU2: Nucleus's web research and its calls of Symbiote's tools. */
+.phase-web {
+  --phase: var(--phase-web);
+}
+
+.phase-symbiote {
+  --phase: var(--phase-symbiote);
+}
+
 /* A group's tile (and the live strip's): its icon in the colour, on a wash of it over the ground. */
 .activity-tile {
   flex: none;
@@ -873,4 +882,27 @@
   .activity-raw details::details-content {
     transition: none;
   }
+}
+
+/* NU2: Nucleus's facts — the gate's refusal in the error's colour, the pages it read and a
+   search's results one a line, an answer's tokens quiet beside its words. */
+.activity-facts .tone-error {
+  color: var(--error);
+}
+
+.activity-facts .tone-muted,
+.activity-tokens {
+  color: var(--muted);
+}
+
+.activity-pages {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activity-pages code {
+  overflow-wrap: anywhere;
 }
