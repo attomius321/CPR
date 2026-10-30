@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/sk1-skill-library.md)
 
-**Status:** built, ready for review (2026-10-26), on branch `feature/skillbar-support` (the
+**Status:** built, merged into `main` on 2026-10-26, on branch `feature/skillbar-support` (the
 workspace's), `main` (V59) merged in; the plan confirmed by the person with four answers: the place
 is "a git repository, or a file path to a folder on the disk"; committing and pushing "should be a
 setting"; using the skills from other projects "for later"; "One skill repository or folder!".

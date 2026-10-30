@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v73-activity-timeline.md)
 
-**Status:** ready for review (2026-10-28), on branch `feature/workspace-activity` (a workspace's
+**Status:** merged into `main` on 2026-10-28 (built 2026-10-28), on branch `feature/workspace-activity` (a workspace's
 branch). Plan agreed by the person ("OK as you say"). Its "As built" and results below.
 
 **Problem** (asked: "The Activity tab currently renders a dense, flat list of events containing

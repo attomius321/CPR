@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v40-workspace-documents.md)
 
-**Status:** ready for review (2026-10-23), on branch `feature/providing-documents-on-workspace-ceation`
+**Status:** merged into `main` on 2026-10-24 (built 2026-10-23), on branch `feature/providing-documents-on-workspace-ceation`
 (a workspace started in Symbiote, from `main` at `bf0e717`); the plan's choices answered by the
 person. As built and results under "As built (V40)" below.
 

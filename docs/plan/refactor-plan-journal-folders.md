@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/refactor-plan-journal-folders.md)
 
-**Status:** ready for review (2026-10-24), on branch `refactor/journal-and-plan` (a workspace
+**Status:** merged into `main` on 2026-10-24 (built 2026-10-24), on branch `refactor/journal-and-plan` (a workspace
 started in Symbiote, from `main` at `ab9e352`; `main` at `86d9530` merged in). As built and
 results under "As built (the plan and the journal)" below.
 

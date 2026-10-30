@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v59-scout-waiting-mark.md)
 
-**Status:** ready for review (2026-10-26), on branch `feature/scout-waiting-for-you` (a
+**Status:** merged into `main` on 2026-10-26 (built 2026-10-26), on branch `feature/scout-waiting-for-you` (a
 workspace started in Symbiote, from `main` at `00d88e1`). The person OK'd the plan with "1. b 2.
 a 3. a. Go": Skills takes the same band when Scribe waits, a 1.2 s flash when it starts to wait,
 the window's title as it is. Built as planned, with the reads kept on while one waits; "As built"

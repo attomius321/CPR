@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v78-scout-scribe-terminals.md)
 
-**Status:** ready for review (2026-10-29), on branch `feature/remove-scout-in-page-settings` (a
+**Status:** merged into `main` on 2026-10-29 (built 2026-10-29), on branch `feature/remove-scout-in-page-settings` (a
 workspace started in Symbiote, from `main` at `61163d2`). The person OK'd the plan with three
 answers: no Agent row in Settings ("The agent choices are already in Settings"), Improve with
 Scribe types its text into the terminal, and no question box where no terminal runs ("it should

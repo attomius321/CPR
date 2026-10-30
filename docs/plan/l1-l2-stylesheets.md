@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/l1-l2-stylesheets.md)
 
-**Status:** planned (2026-10-24), on branch `feature/expand-graph-with-css-scss` (a workspace
+**Status:** merged into `main` on 2026-10-24 (planned 2026-10-24), on branch `feature/expand-graph-with-css-scss` (a workspace
 started in Symbiote, from `main` at `c4ff77a`). The person's OK on the first plan, with three
 answers: L1 **and** L2 on this branch, stylesheets read **by default**, and the workspace's own
 branch (not `milestone/l1-…`) — "this is how we will work from now on". Built (2026-10-24):

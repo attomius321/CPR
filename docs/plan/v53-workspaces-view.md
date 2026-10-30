@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v53-workspaces-view.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/workspaces-view-improvements` (a
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `feature/workspaces-view-improvements` (a
 workspace started in Symbiote, from `main` at `c136ee3`). The person OK'd the plan with their
 answers: "1. Recommended 2. The vendors colours 3. Recommended. OK" — read by the plan's three
 parts: the spinner as planned, the agents' marks in their vendors' colours, the kind chip as

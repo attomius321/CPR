@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/refactor-viewer-folders.md)
 
-**Status:** ready for review on branch `refactor/viewer-file-strcture-refactor` (a workspace
+**Status:** merged into `main` on 2026-10-23, on branch `refactor/viewer-file-strcture-refactor` (a workspace
 started in Symbiote, from `main` at `4b5952f`). As built and results under "As built (the
 viewer's files)" below.
 

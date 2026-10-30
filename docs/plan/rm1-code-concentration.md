@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/rm1-code-concentration.md)
 
-**Status:** ready for review (2026-10-24), on branch `feature/repo-monitoring` (a workspace
+**Status:** merged into `main` on 2026-10-24 (built 2026-10-24), on branch `feature/repo-monitoring` (a workspace
 started in Symbiote, from `main` at `561826d`); the plan and its three choices OK'd by the person
 ("1. Yes 2. current checkout ed HEAD 3. Good .. at the end, for RM2, i will create another feature
 that continue it. OK"). As built and results under "As built (RM1)" below.

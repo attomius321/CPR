@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v68-start-from-search.md)
 
-**Status:** ready for review (2026-10-27), on branch `feature/start-workspace-source-start-from`
+**Status:** merged into `main` on 2026-10-27 (built 2026-10-27), on branch `feature/start-workspace-source-start-from`
 (a workspace started in Symbiote, plan first; the person's OK given). Planned as V66 (decisions
 475–478), renumbered: `feature/history-feature` took V66 and `feature/review-merging-strategies`
 V67 meanwhile. Its "As built" and results below.

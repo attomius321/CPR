@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v49-start-page-look.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/improve-start-workspace-ui` (the
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `feature/improve-start-workspace-ui` (the
 workspace's); the plan confirmed by the person ("Yes"), Start kept in the head as proposed. "As
 built" and results at the end.
 

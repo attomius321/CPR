@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/mc2-mcp-suggest-settings.md)
 
-**Status:** ready for review (2026-10-29), on branch `feature/mcp-suggest-settings` (a workspace
+**Status:** merged into `main` on 2026-10-29 (built 2026-10-29), on branch `feature/mcp-suggest-settings` (a workspace
 started through Scout); planned the same day with the person's answers below. Its "As built" and
 results below.
 

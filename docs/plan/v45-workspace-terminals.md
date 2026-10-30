@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v45-workspace-terminals.md)
 
-**Status:** ready for review (2026-10-24), on branch `feature/workspace-multiple-terminal` (a
+**Status:** merged into `main` on 2026-10-24 (built 2026-10-24), on branch `feature/workspace-multiple-terminal` (a
 workspace started in Symbiote, from `main` at `c4ff77a`); the plan and its three choices OK'd by the
 person ("1. For the moment, just a shell. 2. For the moment Shell is ok. 3. Yes. OK"). As built
 and results under "As built (V45)" below.

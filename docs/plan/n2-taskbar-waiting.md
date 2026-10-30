@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/n2-taskbar-waiting.md)
 
-**Status:** ready for review (2026-10-27), on branch `feature/desktop-app-waiting-for-you`; plan
+**Status:** merged into `main` on 2026-10-27 (built 2026-10-27), on branch `feature/desktop-app-waiting-for-you`; plan
 agreed by the person ("1. Yes, everything. 2. Yes 3. Yes, blink is mandatory where it can do it.
 OK"). Its "As built" and results below.
 

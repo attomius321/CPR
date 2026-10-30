@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v39-first-time-intro.md)
 
-**Status:** ready for review (2026-10-23), on branch `feature/first-time-intro` (a workspace
+**Status:** merged into `main` on 2026-10-23 (built 2026-10-23), on branch `feature/first-time-intro` (a workspace
 started in Symbiote, from `main` at `c223db6`); the plan and its three choices OK'd by the person.
 As built and results under "As built (V39)" below.
 

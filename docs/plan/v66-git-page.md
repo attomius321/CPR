@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v66-git-page.md)
 
-**Status:** ready for review (2026-10-27), on branch `feature/history-feature` (a Symbiote
+**Status:** merged into `main` on 2026-10-27 (built 2026-10-27), on branch `feature/history-feature` (a Symbiote
 workspace). Its "As built" and results below.
 
 **Problem** (asked: "Need to extend the history features. Rename this page to Git." and "i also

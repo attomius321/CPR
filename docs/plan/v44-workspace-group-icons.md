@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v44-workspace-group-icons.md)
 
-**Status:** ready for review (2026-10-24), on branch `feature/workspaces-list-upgrades` (a
+**Status:** merged into `main` on 2026-10-24 (built 2026-10-24), on branch `feature/workspaces-list-upgrades` (a
 workspace started in Symbiote, from `main` at `ab9e352`); the plan and its two choices OK'd by the
 person ("Ok"). As built and results under "As built (V44)" below.
 

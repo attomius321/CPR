@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v48-workspace-activity.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/dynamic-agent-workspace-activity-status`
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `feature/dynamic-agent-workspace-activity-status`
 (a workspace started in Symbiote, from `main` at `94e1feb`); as built and results under "As built
 (V48)" below. The plan OK'd by the person with their answers
 ("1. Yes, the suggested groups by you 2. A slow pulse 3. Yes 4. Yes 5. Add now. OK"): the first

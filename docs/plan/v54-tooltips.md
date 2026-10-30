@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v54-tooltips.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/tooltips-revamp` (a workspace started
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `feature/tooltips-revamp` (a workspace started
 in Symbiote, from `main` at `da991b5`; `main` merged in at `e4da160`, with V55's two new `title`s
 moved over). The person OK'd the plan with "1. Yes 2. Yes 3. As you recommend": the style's
 inverted tip as previewed, a cut text's tip only when it is cut, and the state dots kept. Built

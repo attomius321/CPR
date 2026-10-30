@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v61-complete-revamp.md)
 
-**Status:** ready for review (2026-10-26), on branch `feature/complete-revamp` (a workspace started
+**Status:** merged into `main` on 2026-10-26 (built 2026-10-26), on branch `feature/complete-revamp` (a workspace started
 in Symbiote, from `main` at `3365699`). The person OK'd the plan with "go ahead": the four proposed
 decisions below stand, and a fifth (445) came in building. "As built" and results at the end.
 

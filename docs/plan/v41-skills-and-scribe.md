@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v41-skills-and-scribe.md)
 
-**Status:** built, ready for review (2026-10-24) on branch `feature/skill-creator`, a workspace
+**Status:** built, merged into `main` on 2026-10-24, on branch `feature/skill-creator`, a workspace
 started in Symbiote; plan confirmed by the person (name Scribe; Scribe writes in the checkout; the
 Codex link offered; personal skills left out). As built and results under "As built (V41)" below.
 

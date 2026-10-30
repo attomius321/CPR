@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v51-settings-look.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/settings-style` (the workspace's);
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `feature/settings-style` (the workspace's);
 the plan confirmed by the person ("OK"), with three answers: Skills follows Settings, the list as I
 see fit, Appearance in a section of its own rather than the head. "As built" and results at the
 end.
