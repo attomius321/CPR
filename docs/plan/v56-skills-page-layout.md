@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v56-skills-page-layout.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/skills-page-styling` (the
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `feature/skills-page-styling` (the
 workspace's); the plan confirmed by the person ("OK"), with two answers: the cards go, and the
 Monitor's head is fixed here. "As built" and results at the end.
 

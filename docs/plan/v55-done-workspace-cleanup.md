@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v55-done-workspace-cleanup.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/done-workspace` (a workspace started
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `feature/done-workspace` (a workspace started
 in Symbiote, from `main` at `da991b5`). The person OK'd the plan with "1. Yes, as you planned 2. Yes,
 if it is still merging, it should not be displayed. This should be forced from its view page 3.
 Yes. OK": the icon on hover and focus, the merge's action kept as Remove and offered on a card only

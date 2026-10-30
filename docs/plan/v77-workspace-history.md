@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v77-workspace-history.md)
 
-**Status:** ready for review (2026-10-29), on branch `feature/workspaces-history` (a workspace's
+**Status:** merged into `main` on 2026-10-29 (built 2026-10-29), on branch `feature/workspaces-history` (a workspace's
 branch). Plan agreed by the person, with History a page of its own under Monitor ("History should
 be a new page under Monitor!", then "Yes, keep the styling of the app."). V77, decisions
 561–567: `feature/remove-scout-in-page-settings` planned V77 too, five minutes later; for a while

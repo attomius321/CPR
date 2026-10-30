@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v80-scout-reads-worktrees.md)
 
-**Status:** built, ready for review (2026-10-29), on branch `feature/scout-reads-worktrees` (the
+**Status:** built, merged into `main` on 2026-10-29, on branch `feature/scout-reads-worktrees` (the
 workspace's), `main` (V77, V78, MC2) merged in; the plan confirmed by the person ("Do as you
 recommend. Go"). Replanned with the person after it was built: Codex's Scout confined too ("Like
 claude", decision 599 changed), and no throwaway copy for the real Scout run ("I don't like the

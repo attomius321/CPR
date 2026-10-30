@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nx3-nexus-look.md)
 
-**Status:** built (2026-10-28), ready for review, on branch `feature/nexus-improvements-v2` (a
+**Status:** built (2026-10-28), merged into `main` on 2026-10-29, on branch `feature/nexus-improvements-v2` (a
 workspace started in Symbiote). Planned and OK'd by the person the same day, with their answers
 (decisions 551–555, planned as 544–548); NX3a–d built. "As built" and results at the end.
 

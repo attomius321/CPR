@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v63-start-page-mockup.md)
 
-**Status:** ready for review (2026-10-27), on branch `feature/start-workspace-revamp` (the workspace's);
+**Status:** merged into `main` on 2026-10-27 (built 2026-10-27), on branch `feature/start-workspace-revamp` (the workspace's);
 the plan confirmed by the person, with four answers: the title's ✨ and the goal's link and page
 icons are left out, the primary keeps its dark words (decision 440), the title at Settings' size
 (V62), and the background's arcs are tried.

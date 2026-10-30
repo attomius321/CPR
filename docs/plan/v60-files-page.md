@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v60-files-page.md)
 
-**Status:** ready for review (2026-10-26), on branch `feature/simpler-reviewe` (a workspace
+**Status:** merged into `main` on 2026-10-26 (built 2026-10-26), on branch `feature/simpler-reviewe` (a workspace
 started in Symbiote, from `main` at `00d88e1`); the plan OK'd by the person ("Ok") with its three
 defaults: the pages named Files and Graph, unchanged lines commented on a branch review, every
 review opening on Files. Built as planned; "As built" and results at the end.

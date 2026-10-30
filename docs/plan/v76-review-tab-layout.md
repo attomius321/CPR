@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v76-review-tab-layout.md)
 
-**Status:** ready for review (2026-10-29), on branch `feature/review-merge-layout`. Its "As built"
+**Status:** merged into `main` on 2026-10-29 (built 2026-10-29), on branch `feature/review-merge-layout`. Its "As built"
 and results below.
 
 **Problem** (asked: "The review tab from reviewer page is ugly, the inputs are all around there,

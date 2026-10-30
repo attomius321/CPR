@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v69-merge-page-mockup.md)
 
-**Status:** ready for review (2026-10-27), on branch `feature/merger-page-revamp`. Its "As built"
+**Status:** merged into `main` on 2026-10-27 (built 2026-10-27), on branch `feature/merger-page-revamp`. Its "As built"
 and results below.
 
 **Problem** (asked: "Make like in the screenproof… but keep the current theme of the app", with a

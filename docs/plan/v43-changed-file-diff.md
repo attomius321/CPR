@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v43-changed-file-diff.md)
 
-**Status:** ready for review (2026-10-24), on branch `feature/agentic-terminal-view` (a workspace
+**Status:** merged into `main` on 2026-10-24 (built 2026-10-24), on branch `feature/agentic-terminal-view` (a workspace
 started in Symbiote, from `main` at `ab9e352`); the plan OK'd by the person ("Ok"), with VS Code's
 diff editor as what a click opens (their choice between it and a diff in Symbiote). As built and
 results under "As built (V43)" below.

@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/lg2-dashboard.md)
 
-**Status:** ready for review (2026-10-26), on branch `feature/grafana-dashboard` (a workspace
+**Status:** merged into `main` on 2026-10-26 (built 2026-10-26), on branch `feature/grafana-dashboard` (a workspace
 started in Symbiote, from `main` at `3365699`). Plan OK'd by the person ("1. Yes 2. Yes": the e2e
 fix in LG2, the requests in a section of their own). As built and results under "As built (LG2)"
 below.

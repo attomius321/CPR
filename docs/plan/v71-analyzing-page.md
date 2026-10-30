@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v71-analyzing-page.md)
 
-**Status:** ready for review (2026-10-27), on branch `feature/review-analyzing-loading`. Its "As
+**Status:** merged into `main` on 2026-10-28 (built 2026-10-27), on branch `feature/review-analyzing-loading`. Its "As
 built" and results below.
 
 **Problem** (asked: "The review analyzing loading page is old...adhere to the current style, and

@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nu1-nucleus.md)
 
-**Status:** ready for review (2026-10-29), on branch `feature/nucleus` (a workspace started in
+**Status:** merged into `main` on 2026-10-29 (built 2026-10-29), on branch `feature/nucleus` (a workspace started in
 Symbiote, from `main` at `3af5243`; `main` merged in at `eee7458` with MC2, at `596aa1c` with V79,
 and at `ef78106` with V80, its reads of the workspaces' worktrees). The person OK'd the plan with
 five answers: the network is "normal network access provided by the harness"; the Scout

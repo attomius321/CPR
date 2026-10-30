@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v67-merge-strategies.md)
 
-**Status:** ready for review (2026-10-27), on branch `feature/review-merging-strategies`. Its
+**Status:** merged into `main` on 2026-10-27 (built 2026-10-27), on branch `feature/review-merging-strategies`. Its
 "As built" and results below.
 
 **Problem** (asked: "I need more merging strategies… sometimes I would like that branch that I

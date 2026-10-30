@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v50-scout-terminal.md)
 
-**Status:** ready for review (2026-10-25), on branch `feature/scout-should-be-a-terminal` (a
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `feature/scout-should-be-a-terminal` (a
 workspace started in Symbiote, from `main` at `94e1feb`). The person OK'd starting once the plan was
 written ("After you plan, you have my blessing to start working"). Built as planned, with three
 changes found on the way; "As built" and results at the end.

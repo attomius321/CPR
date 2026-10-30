@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/refactor-readability.md)
 
-**Status:** ready for review (2026-10-25), on branch `refactor/codebase-refactoring-readability`
+**Status:** merged into `main` on 2026-10-25 (built 2026-10-25), on branch `refactor/codebase-refactoring-readability`
 (a workspace started in Symbiote, from `main` at `c137455`). As built and results under "As built
 (the CLI and the viewer)" below.
 

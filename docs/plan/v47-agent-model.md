@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v47-agent-model.md)
 
-**Status:** ready for review (2026-10-24), on branch `feature/workspace-agent-model` (a
+**Status:** merged into `main` on 2026-10-24 (built 2026-10-24), on branch `feature/workspace-agent-model` (a
 workspace started in Symbiote, from `main` at `f6e5408`; `main` merged in at `8dfdc6d`). The plan
 OK'd by the person with its three questions answered: "1. Yes, should be set from the Settings. 2.
 Should run in the background maybe ...every 24 hours or so..idk 3. Yes. Ok" — Scout, Scribe and

@@ -49,7 +49,7 @@ hosted.
 | [W1](plan/w1-multi-project.md) | Repositories with several projects | ✅ | 26–28 | [journal](journal/w1-multi-project.md) |
 | Fix | a doc-comment reference crashed the analysis | ✅ | | [journal](journal/fix-jsdoc-reference-crash.md) |
 | [E1](plan/e1-explained-changes.md) | Decisions and their ripples | measured | | [journal](journal/e1-explained-changes.md) |
-| [L1–L2](plan/l1-l2-stylesheets.md) | Stylesheets in the graph (CSS and SCSS), and the markup that uses them | ready for review | 299–312, 329–331 | [journal](journal/l1-l2-stylesheets.md) |
+| [L1–L2](plan/l1-l2-stylesheets.md) | Stylesheets in the graph (CSS and SCSS), and the markup that uses them | ✅ | 299–312, 329–331 | [journal](journal/l1-l2-stylesheets.md) |
 
 ### Framework plugins
 
@@ -81,7 +81,7 @@ hosted.
 | [V7](plan/v7-app-boundaries.md) | Apps in the graph | ✅ | 33–36 | [journal](journal/v7-app-boundaries.md) |
 | [V8](plan/v8-smooth-viewer.md) | A smooth viewer | ✅ | 37–41 | [journal](journal/v8-smooth-viewer.md) |
 | [V12](plan/v12-open-in-vscode.md) | Open in VS Code | ✅ | 60–64 | [journal](journal/v12-open-in-vscode.md) |
-| Fix | `open-pr.spec.ts`: two opens raced to VS Code's log; the spec waits for each | ready for review | | [journal](journal/fix-open-pr-spec-race.md) |
+| Fix | `open-pr.spec.ts`: two opens raced to VS Code's log; the spec waits for each | ✅ | | [journal](journal/fix-open-pr-spec-race.md) |
 
 ### History
 
@@ -98,8 +98,8 @@ hosted.
 | Fix | lanes-check and root commits | ✅ | | [journal](journal/fix-lanes-check-root-commits.md) |
 | [V23](plan/v23-branches-that-need-you.md) | Branches that need you, first | ✅ | 120–121 | [journal](journal/v23-branches-that-need-you.md) |
 | Fix | Compare mode's toggle stays put with wider fonts | ✅ | | [journal](journal/fix-compare-toggle-wrap.md) |
-| [V66](plan/v66-git-page.md) | Git: History renamed; a commit's details, changes staged and committed, branches and tags, fetch/pull/push, find a commit | ready for review | 475–484 | [journal](journal/v66-git-page.md) |
-| [V70](plan/v70-git-file-view.md) | Git: a commit's file shown in the rows' place; Open in VS Code (its diff) from the pane | ready for review | 498–501 | [journal](journal/v70-git-file-view.md) |
+| [V66](plan/v66-git-page.md) | Git: History renamed; a commit's details, changes staged and committed, branches and tags, fetch/pull/push, find a commit | ✅ | 475–484 | [journal](journal/v66-git-page.md) |
+| [V70](plan/v70-git-file-view.md) | Git: a commit's file shown in the rows' place; Open in VS Code (its diff) from the pane | ✅ | 498–501 | [journal](journal/v70-git-file-view.md) |
 
 ### Reviews
 
@@ -109,8 +109,8 @@ hosted.
 | [V16](plan/v16-finish-review.md) | Finish a review | ✅ | 76–81 | [journal](journal/v16-finish-review.md) |
 | Fix | a review's mark you can see on a badge | ✅ | | [journal](journal/fix-review-mark-visible.md) |
 | [V17](plan/v17-approve-means-merge.md) | Approve means "merge it" | ✅ | 82–87 | [journal](journal/v17-approve-means-merge.md) |
-| [V60](plan/v60-files-page.md) | A Files page in the review, the default: the changed files, a file's diff, comments on its lines | ready for review | 431–436 | [journal](journal/v60-files-page.md) |
-| [V76](plan/v76-review-tab-layout.md) | The Review tab in sections — comments, your review, the merge — and a Merge into that fits the sidebar; Files and Graph that stay put | ready for review | 557–560, 568 | [journal](journal/v76-review-tab-layout.md) |
+| [V60](plan/v60-files-page.md) | A Files page in the review, the default: the changed files, a file's diff, comments on its lines | ✅ | 431–436 | [journal](journal/v60-files-page.md) |
+| [V76](plan/v76-review-tab-layout.md) | The Review tab in sections — comments, your review, the merge — and a Merge into that fits the sidebar; Files and Graph that stay put | ✅ | 557–560, 568 | [journal](journal/v76-review-tab-layout.md) |
 
 ### Workspaces
 
@@ -130,29 +130,24 @@ hosted.
 | [V44](plan/v44-workspace-group-icons.md) | An icon for each group of workspaces | ✅ | 289 | [journal](journal/v44-workspace-group-icons.md) |
 | Fix | the start page named the plan Claude Code's token kept from login | ✅ | | [journal](journal/fix-workspace-start.md) |
 | [V43](plan/v43-changed-file-diff.md) | A changed file opens as its diff | ✅ | 285–288 | [journal](journal/v43-changed-file-diff.md) |
-| [V45](plan/v45-workspace-terminals.md) | More terminals in a workspace: shells in its worktree | ready for review | 294–298 | [journal](journal/v45-workspace-terminals.md) |
-| [V47](plan/v47-agent-model.md) | A model for a workspace's agent, from the agent's own list; Scout's, Scribe's and the merger's in Settings | ready for review | 336–343 | [journal](journal/v47-agent-model.md) |
-| [V43](plan/v43-changed-file-diff.md) | A changed file opens as its diff | ✅ | 285–288 | [journal](journal/v43-changed-file-diff.md) |
-| [V45](plan/v45-workspace-terminals.md) | More terminals in a workspace: shells in its worktree | ready for review | 294–298 | [journal](journal/v45-workspace-terminals.md) |
-| [V47](plan/v47-agent-model.md) | A model for a workspace's agent, from the agent's own list; Scout's, Scribe's and the merger's in Settings | ready for review | 336–343 | [journal](journal/v47-agent-model.md) |
-| Fix | a new file in a workspace's changes opens in VS Code as it is, not as a diff | ready for review | | [journal](journal/fix-workspaces-new-files.md) |
-| Fix | a workspace's agent is told its worktree and branch are ready, and to make no other | ready for review | | [journal](journal/fix-initial-workspace-bug.md) |
-| [V48](plan/v48-workspace-activity.md) | Workspaces that show what their agents are doing, and which wait for you | ready for review | 367–377 | [journal](journal/v48-workspace-activity.md) |
-| [V53](plan/v53-workspaces-view.md) | A working agent's spinner, its mark before what it does, every workspace's kind | ready for review | 394–396 | [journal](journal/v53-workspaces-view.md) |
-| Fix | a merge at work spins; the spinner a comet; Merging first in the sidenav | ready for review | | [journal](journal/fix-merging-status.md) |
-| [V55](plan/v55-done-workspace-cleanup.md) | A done workspace or a landed merge, removed from its card and its head | ready for review | 403–406 | [journal](journal/v55-done-workspace-cleanup.md) |
-| [V57](plan/v57-cleaning-up-card.md) | A card being cleaned up (or its merge removed): disabled, saying so, until it goes | ready for review | 411–414 | [journal](journal/v57-cleaning-up-card.md) |
-| Fix | Codex's mark is OpenAI's blossom, in OpenAI's white or black | ready for review | | [journal](journal/fix-codex-icon.md) |
+| [V45](plan/v45-workspace-terminals.md) | More terminals in a workspace: shells in its worktree | ✅ | 294–298 | [journal](journal/v45-workspace-terminals.md) |
+| [V47](plan/v47-agent-model.md) | A model for a workspace's agent, from the agent's own list; Scout's, Scribe's and the merger's in Settings | ✅ | 336–343 | [journal](journal/v47-agent-model.md) |
+| Fix | a new file in a workspace's changes opens in VS Code as it is, not as a diff | ✅ | | [journal](journal/fix-workspaces-new-files.md) |
+| Fix | a workspace's agent is told its worktree and branch are ready, and to make no other | ✅ | | [journal](journal/fix-initial-workspace-bug.md) |
+| [V48](plan/v48-workspace-activity.md) | Workspaces that show what their agents are doing, and which wait for you | ✅ | 367–377 | [journal](journal/v48-workspace-activity.md) |
+| [V53](plan/v53-workspaces-view.md) | A working agent's spinner, its mark before what it does, every workspace's kind | ✅ | 394–396 | [journal](journal/v53-workspaces-view.md) |
+| Fix | a merge at work spins; the spinner a comet; Merging first in the sidenav | ✅ | | [journal](journal/fix-merging-status.md) |
+| [V55](plan/v55-done-workspace-cleanup.md) | A done workspace or a landed merge, removed from its card and its head | ✅ | 403–406 | [journal](journal/v55-done-workspace-cleanup.md) |
+| [V57](plan/v57-cleaning-up-card.md) | A card being cleaned up (or its merge removed): disabled, saying so, until it goes | ✅ | 411–414 | [journal](journal/v57-cleaning-up-card.md) |
+| Fix | Codex's mark is OpenAI's blossom, in OpenAI's white or black | ✅ | | [journal](journal/fix-codex-icon.md) |
 | [V65](plan/v65-review-against.md) | A workspace reviewed against where it started, or a branch picked in it | ✅ | 471–474 | [journal](journal/v65-review-against.md) |
-| [V68](plan/v68-start-from-search.md) | Start from with a search: the branches narrowed as you type, picked with the keys | ready for review | 490–493 | [journal](journal/v68-start-from-search.md) |
-| [V73](plan/v73-activity-timeline.md) | The Activity tab as a timeline of phases: a live strip, groups that open to every event, the raw stream | ready for review | 513–518 | [journal](journal/v73-activity-timeline.md) |
-| [V74](plan/v74-activity-colours.md) | The Activity tab in colour: a phase's kind on a coloured tile on the rail, the conversation in bubbles | ready for review | 528–531 | [journal](journal/v74-activity-colours.md) |
+| [V68](plan/v68-start-from-search.md) | Start from with a search: the branches narrowed as you type, picked with the keys | ✅ | 490–493 | [journal](journal/v68-start-from-search.md) |
+| [V73](plan/v73-activity-timeline.md) | The Activity tab as a timeline of phases: a live strip, groups that open to every event, the raw stream | ✅ | 513–518 | [journal](journal/v73-activity-timeline.md) |
+| [V74](plan/v74-activity-colours.md) | The Activity tab in colour: a phase's kind on a coloured tile on the rail, the conversation in bubbles | ✅ | 528–531 | [journal](journal/v74-activity-colours.md) |
 | [V75](plan/v75-suggested-settings.md) | Suggested settings: a small model sizes the work and fills the Start page's model, effort and plan first | V75a, V75b, V75c ✅ | 544–550, 556 | [journal](journal/v75-suggested-settings.md) |
-| Fix | Suggest settings could not read the agents' models: `symbiote view` serves the pages it started with, not a newer build's on its older API | ready for review | | [journal](journal/fix-suggest-settings-models.md) |
-| [V77](plan/v77-workspace-history.md) | History: finished workspaces under Monitor, each with its activity, thread, brief and changes | ready for review | 561–567 | [journal](journal/v77-workspace-history.md) |
-| [V79](plan/v79-workspace-cards.md) | Workspace cards one can read: whole names, the state on its own lines, the facts as icons, cards apart; the sidenav 300 px | ready for review | 576–581, 585 | [journal](journal/v79-workspace-cards.md) |
-
-### Agents
+| Fix | Suggest settings could not read the agents' models: `symbiote view` serves the pages it started with, not a newer build's on its older API | ✅ | | [journal](journal/fix-suggest-settings-models.md) |
+| [V77](plan/v77-workspace-history.md) | History: finished workspaces under Monitor, each with its activity, thread, brief and changes | ✅ | 561–567 | [journal](journal/v77-workspace-history.md) |
+| [V79](plan/v79-workspace-cards.md) | Workspace cards one can read: whole names, the state on its own lines, the facts as icons, cards apart; the sidenav 300 px | ✅ | 576–581, 585 | [journal](journal/v79-workspace-cards.md) |
 
 ### Agents
 
@@ -169,21 +164,21 @@ hosted.
 | [V36](plan/v36-terminal-images.md) | Images in an agent's terminal | ✅ | 242–245 | [journal](journal/v36-terminal-images.md) |
 | [V38](plan/v38-terminal-links.md) | Paths and links in an agent's terminal | ✅ | 251–256 | [journal](journal/v38-terminal-links.md) |
 | [V41](plan/v41-skills-and-scribe.md) | Skills, and Scribe | ✅ | 271–278 | [journal](journal/v41-skills-and-scribe.md) |
-| Fix | Attach images beside a workspace's terminal: no drop reaches the window on WSL | ready for review | | [journal](journal/fix-drop-file-in-workspace.md) |
-| Fix | one Settings page per prebuilt agent (Merger, Scout, Scribe), under Prebuilt agents | ready for review | | [journal](journal/fix-scout-merger-scribe-settings.md) |
-| Fix | Scribe starts at the project's effort level (`scribe.effort`), set in Settings | ready for review | | [journal](journal/fix-scribe-effort-level.md) |
-| [MC1](plan/mc1-symbiote-mcp.md) | Symbiote's MCP: Scout as the person's assistant, from a workspace's start to its merge | ready for review | 358–365 | [journal](journal/mc1-symbiote-mcp.md) |
-| [V50](plan/v50-scout-terminal.md) | Scout is a terminal: opened with no question; the agent, model and effort in its head | ready for review | 383–385 | [journal](journal/v50-scout-terminal.md) |
-| [V52](plan/v52-scout-next-conversation.md) | Scout's head picks the next conversation: a choice starts nothing until New conversation | ready for review | 391–393 | [journal](journal/v52-scout-next-conversation.md) |
-| [V58](plan/v58-hermes-agent.md) | Hermes as a workspace's agent, in its terminal | ready for review | 415–421 | [journal](journal/v58-hermes-agent.md) |
-| Fix | Scout's head on one line: Effort and its stepper centred with the selects | ready for review | | [journal](journal/fix-scout-not-aligned.md) |
-| [SK1](plan/sk1-skill-library.md) | A skill library: a folder or repository of skills outside the project, on the Skills page and for Scribe; commits as set | ready for review | 426–430 | [journal](journal/sk1-skill-library.md) |
-| Fix | An agent's terminal fits its box: no scrollbars coming and going on Scribe's pane, no last row cut off | merged | | [journal](journal/fix-scribe-terminal-problem.md) |
-| Fix | `scout.spec.ts`: Scout's record read before Codex's start wrote it; the spec waits for it | ready for review | | [journal](journal/fix-scout-record-spec-race.md) |
-| [V78](plan/v78-scout-scribe-terminals.md) | Scout and Scribe are terminals: no choices on their pages, their model and effort set in Settings | ready for review | 569–572 | [journal](journal/v78-scout-scribe-terminals.md) |
-| [MC2](plan/mc2-mcp-suggest-settings.md) | `suggest_settings`: the advisor's proposal through Symbiote's MCP, before a start Scout makes | ready for review | 582–584 | [journal](journal/mc2-mcp-suggest-settings.md) |
-| [V80](plan/v80-scout-reads-worktrees.md) | Scout reads the workspaces' worktrees: their files and uncommitted changes, by its gate at each call; still read-only | ready for review | 596–599 | [journal](journal/v80-scout-reads-worktrees.md) |
-| [NU1](plan/nu1-nucleus.md) | Nucleus: Scout renamed, with the agents' web search and pages; its next steps planned | ready for review | 589–595 | [journal](journal/nu1-nucleus.md) |
+| Fix | Attach images beside a workspace's terminal: no drop reaches the window on WSL | ✅ | | [journal](journal/fix-drop-file-in-workspace.md) |
+| Fix | one Settings page per prebuilt agent (Merger, Scout, Scribe), under Prebuilt agents | ✅ | | [journal](journal/fix-scout-merger-scribe-settings.md) |
+| Fix | Scribe starts at the project's effort level (`scribe.effort`), set in Settings | ✅ | | [journal](journal/fix-scribe-effort-level.md) |
+| [MC1](plan/mc1-symbiote-mcp.md) | Symbiote's MCP: Scout as the person's assistant, from a workspace's start to its merge | ✅ | 358–365 | [journal](journal/mc1-symbiote-mcp.md) |
+| [V50](plan/v50-scout-terminal.md) | Scout is a terminal: opened with no question; the agent, model and effort in its head | ✅ | 383–385 | [journal](journal/v50-scout-terminal.md) |
+| [V52](plan/v52-scout-next-conversation.md) | Scout's head picks the next conversation: a choice starts nothing until New conversation | ✅ | 391–393 | [journal](journal/v52-scout-next-conversation.md) |
+| [V58](plan/v58-hermes-agent.md) | Hermes as a workspace's agent, in its terminal | ✅ | 415–421 | [journal](journal/v58-hermes-agent.md) |
+| Fix | Scout's head on one line: Effort and its stepper centred with the selects | ✅ | | [journal](journal/fix-scout-not-aligned.md) |
+| [SK1](plan/sk1-skill-library.md) | A skill library: a folder or repository of skills outside the project, on the Skills page and for Scribe; commits as set | ✅ | 426–430 | [journal](journal/sk1-skill-library.md) |
+| Fix | An agent's terminal fits its box: no scrollbars coming and going on Scribe's pane, no last row cut off | ✅ | | [journal](journal/fix-scribe-terminal-problem.md) |
+| Fix | `scout.spec.ts`: Scout's record read before Codex's start wrote it; the spec waits for it | ✅ | | [journal](journal/fix-scout-record-spec-race.md) |
+| [V78](plan/v78-scout-scribe-terminals.md) | Scout and Scribe are terminals: no choices on their pages, their model and effort set in Settings | ✅ | 569–572 | [journal](journal/v78-scout-scribe-terminals.md) |
+| [MC2](plan/mc2-mcp-suggest-settings.md) | `suggest_settings`: the advisor's proposal through Symbiote's MCP, before a start Scout makes | ✅ | 582–584 | [journal](journal/mc2-mcp-suggest-settings.md) |
+| [V80](plan/v80-scout-reads-worktrees.md) | Scout reads the workspaces' worktrees: their files and uncommitted changes, by its gate at each call; still read-only | ✅ | 596–599 | [journal](journal/v80-scout-reads-worktrees.md) |
+| [NU1](plan/nu1-nucleus.md) | Nucleus: Scout renamed, with the agents' web search and pages; its next steps planned | ✅ | 589–595 | [journal](journal/nu1-nucleus.md) |
 
 ### The merger
 
@@ -194,11 +189,11 @@ hosted.
 | Fix | Merge into names no branch; the dropdown does | ✅ | | [journal](journal/fix-merge-into-main-button.md) |
 | Chore | the merge page remake, built | ✅ | | [journal](journal/chore-lost-feature.md) |
 | Fix | a resolution's failed check is said, not taken for a wrong one; Check again | ✅ | | [journal](journal/fix-merger.md) |
-| [V46](plan/v46-merger-logs.md) | Merger logs: steps, the check's output and the agent's thinking live; a resolution's files; the merger's effort | ready for review | 313–319 | [journal](journal/v46-merger-logs.md) |
-| Fix | the merge page on a conflict: red for what is lost or doubled, amber for what the agent wrote; a question answered there | ready for review | | [journal](journal/fix-merge-viewer-on-conflict.md) |
-| Fix | a merge that failed or waits for you holds the next one into its target; Check again on a moved target merges again | ready for review | | [journal](journal/fix-merger-queue-wrong-behaviour.md) |
-| [V67](plan/v67-merge-strategies.md) | Merge strategies: a merge commit, or a fast-forward to the approved commit | ready for review | 485–489 | [journal](journal/v67-merge-strategies.md) |
-| [V69](plan/v69-merge-page-mockup.md) | The merge page as the person's mockup, in the theme: tinted chips with icons, the log a card filling the page, line tabs | ready for review | 494–497 | [journal](journal/v69-merge-page-mockup.md) |
+| [V46](plan/v46-merger-logs.md) | Merger logs: steps, the check's output and the agent's thinking live; a resolution's files; the merger's effort | ✅ | 313–319 | [journal](journal/v46-merger-logs.md) |
+| Fix | the merge page on a conflict: red for what is lost or doubled, amber for what the agent wrote; a question answered there | ✅ | | [journal](journal/fix-merge-viewer-on-conflict.md) |
+| Fix | a merge that failed or waits for you holds the next one into its target; Check again on a moved target merges again | ✅ | | [journal](journal/fix-merger-queue-wrong-behaviour.md) |
+| [V67](plan/v67-merge-strategies.md) | Merge strategies: a merge commit, or a fast-forward to the approved commit | ✅ | 485–489 | [journal](journal/v67-merge-strategies.md) |
+| [V69](plan/v69-merge-page-mockup.md) | The merge page as the person's mockup, in the theme: tinted chips with icons, the log a card filling the page, line tabs | ✅ | 494–497 | [journal](journal/v69-merge-page-mockup.md) |
 
 ### Shell and look
 
@@ -215,19 +210,19 @@ hosted.
 | [V39](plan/v39-first-time-intro.md) | A first-time intro | ✅ | 259–265 | [journal](journal/v39-first-time-intro.md) |
 | Fix | the intro's koi on a lost WebGL context: a blank tile for 5 s | ✅ | | [journal](journal/fix-intro-lost-context.md) |
 | [V42](plan/v42-koi.md) | Koi: colours from the intro | ✅ | 279–284 | [journal](journal/v42-koi.md) |
-| [V49](plan/v49-start-page-look.md) | Start a workspace: a centred page in two cards | ready for review | 378–382 | [journal](journal/v49-start-page-look.md) |
-| [V51](plan/v51-settings-look.md) | Settings and Skills: centred, in cards | ready for review | 386–390 | [journal](journal/v51-settings-look.md) |
-| [V56](plan/v56-skills-page-layout.md) | Skills: the page's own, the whole main area | ready for review | 407–410 | [journal](journal/v56-skills-page-layout.md) |
-| [V54](plan/v54-tooltips.md) | Tooltips drawn by Symbiote, one form per context | ready for review | 397–402 | [journal](journal/v54-tooltips.md) |
-| [V59](plan/v59-scout-waiting-mark.md) | Scout's and Scribe's links, whole, in Waiting for you's amber band while they wait | ready for review | 422–425 | [journal](journal/v59-scout-waiting-mark.md) |
-| [V61](plan/v61-complete-revamp.md) | The mockup's black theme on every page, the new S as the icon, text a step bigger | ready for review | 437–440, 445 | [journal](journal/v61-complete-revamp.md) |
-| [V62](plan/v62-settings-layout.md) | Settings as the person's mockup: two cards to the bottom, the page one card | ready for review | 446–450 | [journal](journal/v62-settings-layout.md) |
-| [V63](plan/v63-start-page-mockup.md) | Start a workspace as the person's mockup: the S in the head, kinds as tabs, the run as seven cards | ready for review | 451–457 | [journal](journal/v63-start-page-mockup.md) |
-| [V64](plan/v64-skills-page-mockup.md) | Skills as the person's mockup: Settings' head, a search, the text with line numbers and Markdown's colours, Checks a card, Open in VS Code | ready for review | 458–464 | [journal](journal/v64-skills-page-mockup.md) |
-| Feature | Settings at the sidenav's bottom, under the workspaces | ready for review | | [journal](journal/sidenav-settings-at-the-bottom.md) |
-| [V71](plan/v71-analyzing-page.md) | The analyzing page in the style: a card on the start page's arcs, the phases as steps, a review named | ready for review | 502–506 | [journal](journal/v71-analyzing-page.md) |
-| [V72](plan/v72-page-frame.md) | One page frame: every page the whole main area, one head, 16 px margins and gutters, the same insets inside cards | ready for review | 507–512 | [journal](journal/v72-page-frame.md) |
-| [V81](plan/v81-settings-list-icons.md) | Settings' list scanned: a lucide icon per entry, on a tile tinted by its group | ready for review | 600–603 | [journal](journal/v81-settings-list-icons.md) |
+| [V49](plan/v49-start-page-look.md) | Start a workspace: a centred page in two cards | ✅ | 378–382 | [journal](journal/v49-start-page-look.md) |
+| [V51](plan/v51-settings-look.md) | Settings and Skills: centred, in cards | ✅ | 386–390 | [journal](journal/v51-settings-look.md) |
+| [V56](plan/v56-skills-page-layout.md) | Skills: the page's own, the whole main area | ✅ | 407–410 | [journal](journal/v56-skills-page-layout.md) |
+| [V54](plan/v54-tooltips.md) | Tooltips drawn by Symbiote, one form per context | ✅ | 397–402 | [journal](journal/v54-tooltips.md) |
+| [V59](plan/v59-scout-waiting-mark.md) | Scout's and Scribe's links, whole, in Waiting for you's amber band while they wait | ✅ | 422–425 | [journal](journal/v59-scout-waiting-mark.md) |
+| [V61](plan/v61-complete-revamp.md) | The mockup's black theme on every page, the new S as the icon, text a step bigger | ✅ | 437–440, 445 | [journal](journal/v61-complete-revamp.md) |
+| [V62](plan/v62-settings-layout.md) | Settings as the person's mockup: two cards to the bottom, the page one card | ✅ | 446–450 | [journal](journal/v62-settings-layout.md) |
+| [V63](plan/v63-start-page-mockup.md) | Start a workspace as the person's mockup: the S in the head, kinds as tabs, the run as seven cards | ✅ | 451–457 | [journal](journal/v63-start-page-mockup.md) |
+| [V64](plan/v64-skills-page-mockup.md) | Skills as the person's mockup: Settings' head, a search, the text with line numbers and Markdown's colours, Checks a card, Open in VS Code | ✅ | 458–464 | [journal](journal/v64-skills-page-mockup.md) |
+| Feature | Settings at the sidenav's bottom, under the workspaces | ✅ | | [journal](journal/sidenav-settings-at-the-bottom.md) |
+| [V71](plan/v71-analyzing-page.md) | The analyzing page in the style: a card on the start page's arcs, the phases as steps, a review named | ✅ | 502–506 | [journal](journal/v71-analyzing-page.md) |
+| [V72](plan/v72-page-frame.md) | One page frame: every page the whole main area, one head, 16 px margins and gutters, the same insets inside cards | ✅ | 507–512 | [journal](journal/v72-page-frame.md) |
+| [V81](plan/v81-settings-list-icons.md) | Settings' list scanned: a lucide icon per entry, on a tile tinted by its group | ✅ | 600–603 | [journal](journal/v81-settings-list-icons.md) |
 
 ### Native window
 
@@ -236,30 +231,30 @@ hosted.
 | [N1](plan/n1-native-window.md) | A native window (Electron) | ✅ | 190–204 | [journal](journal/n1-native-window.md) |
 | [N1d](plan/n1d-rounded-window.md) | Rounded window corners | ✅ | 218–225 | [journal](journal/n1d-rounded-window.md) |
 | Fix | Symbiote's window opening maximized on WSLg took no clicks | ✅ | | [journal](journal/fix-wslg-open-maximized.md) |
-| Fix | The app shows a page as a browser does, under its title bar | ready for review | | [journal](journal/fix-title-bar-desktop.md) |
-| [N2](plan/n2-taskbar-waiting.md) | The taskbar's icon says something waits for you: an amber dot, a blink where the desktop has one | ready for review | 465–470 | [journal](journal/n2-taskbar-waiting.md) |
+| Fix | The app shows a page as a browser does, under its title bar | ✅ | | [journal](journal/fix-title-bar-desktop.md) |
+| [N2](plan/n2-taskbar-waiting.md) | The taskbar's icon says something waits for you: an amber dot, a blink where the desktop has one | ✅ | 465–470 | [journal](journal/n2-taskbar-waiting.md) |
 
 ### The nexus
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
-| [NX1](plan/nx1-nexus.md) | Symbiote nexus: every running `symbiote view` found, as tabs in one window or browser tab | ready for review | 519–527 | [journal](journal/nx1-nexus.md) |
-| [NX2](plan/nx2-open-from-folders.md) | Open a Symbiote from the nexus: this PC's folders, Open Symbiote, Stop and Start again | ready for review | 539–543 | [journal](journal/nx2-open-from-folders.md) |
-| [NX3](plan/nx3-nexus-look.md) | The nexus's own tabs apart from the Symbiotes', fuller pages, a repository the end of Folders | ready for review | 551–555 | [journal](journal/nx3-nexus-look.md) |
+| [NX1](plan/nx1-nexus.md) | Symbiote nexus: every running `symbiote view` found, as tabs in one window or browser tab | ✅ | 519–527 | [journal](journal/nx1-nexus.md) |
+| [NX2](plan/nx2-open-from-folders.md) | Open a Symbiote from the nexus: this PC's folders, Open Symbiote, Stop and Start again | ✅ | 539–543 | [journal](journal/nx2-open-from-folders.md) |
+| [NX3](plan/nx3-nexus-look.md) | The nexus's own tabs apart from the Symbiotes', fuller pages, a repository the end of Folders | ✅ | 551–555 | [journal](journal/nx3-nexus-look.md) |
 
 ### Repository monitoring
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
-| [RM1](plan/rm1-code-concentration.md) | Code concentration: where a repository's code is | ready for review | 320–328 | [journal](journal/rm1-code-concentration.md) |
-| [RM2](plan/rm2-monitor-styling.md) | The Monitor's look: long files in heat, the folder in view as the heading, a way back | ready for review | 332–335 | [journal](journal/rm2-monitor-styling.md) |
+| [RM1](plan/rm1-code-concentration.md) | Code concentration: where a repository's code is | ✅ | 320–328 | [journal](journal/rm1-code-concentration.md) |
+| [RM2](plan/rm2-monitor-styling.md) | The Monitor's look: long files in heat, the folder in view as the heading, a way back | ✅ | 332–335 | [journal](journal/rm2-monitor-styling.md) |
 
 ### Logs
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
-| [LG1](plan/lg1-logs.md) | Symbiote's logs: lines from every Symbiote process, uncaught errors kept, read by another app (Grafana, Loki) | ready for review | 349–357, 366 | [journal](journal/lg1-logs.md) |
-| [LG2](plan/lg2-dashboard.md) | A readable logs dashboard: at a glance, problems by level and kind, what Symbiote did, the server; the e2e tests' lines out of the person's folder | ready for review | 441–444 | [journal](journal/lg2-dashboard.md) |
+| [LG1](plan/lg1-logs.md) | Symbiote's logs: lines from every Symbiote process, uncaught errors kept, read by another app (Grafana, Loki) | ✅ | 349–357, 366 | [journal](journal/lg1-logs.md) |
+| [LG2](plan/lg2-dashboard.md) | A readable logs dashboard: at a glance, problems by level and kind, what Symbiote did, the server; the e2e tests' lines out of the person's folder | ✅ | 441–444 | [journal](journal/lg2-dashboard.md) |
 
 ### Docs and the repository
 
@@ -268,14 +263,14 @@ hosted.
 | Chore | Working rules for Claude Code | ✅ | | [journal](journal/chore-agent-guidance.md) |
 | Chore | README rewrite | ✅ | | [journal](journal/chore-update-readme.md) |
 | [V22](plan/roadmap.md) | Fixes: stale text outside the README | ✅ | | [journal](journal/v22-stale-text.md) |
-| Feature | README remade around workspaces; commands, configuration and review pages | ready for review | | [journal](journal/remake-readme.md) |
+| Feature | README remade around workspaces; commands, configuration and review pages | ✅ | | [journal](journal/remake-readme.md) |
 | Rename | Rename to Symbiote | ✅ | | [journal](journal/rename-to-symbiote.md) |
-| [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | ready for review | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
-| [Refactor](plan/refactor-readability.md) | The CLI's services and the viewer's pages in modules one can read | ready for review | 344–348 | [journal](journal/refactor-readability.md) |
-| [IN1](plan/in1-one-command-install.md) | Install in one command (`./install.sh`), with no native build: the agents' terminal prebuilt | ready for review | 532–538 | [journal](journal/in1-one-command-install.md) |
+| [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | ✅ | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
+| [Refactor](plan/refactor-readability.md) | The CLI's services and the viewer's pages in modules one can read | ✅ | 344–348 | [journal](journal/refactor-readability.md) |
+| [IN1](plan/in1-one-command-install.md) | Install in one command (`./install.sh`), with no native build: the agents' terminal prebuilt | ✅ | 532–538 | [journal](journal/in1-one-command-install.md) |
 
 ### Across the app
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
-| Fix | Security and bugs: saves at once, forge tokens, framing, agents' `--`, Scout's gate, cross-site GETs, 400 and 413 | ready for review | | [journal](journal/fix-security-and-bugs.md) |
+| Fix | Security and bugs: saves at once, forge tokens, framing, agents' `--`, Scout's gate, cross-site GETs, 400 and 413 | ✅ | | [journal](journal/fix-security-and-bugs.md) |

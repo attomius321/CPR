@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v58-hermes-agent.md)
 
-**Status:** ready for review (2026-10-26), on branch `feature/hermes-support` (a workspace started
+**Status:** merged into `main` on 2026-10-26 (built 2026-10-26), on branch `feature/hermes-support` (a workspace started
 in Symbiote, from `main` at `3c83dc6`); the person asked to build it with the plan's
 recommendations once written ("After the plan, execute with your recomandations"). Built as
 planned, with Stop recorded after the real run; "As built" and results at the end.

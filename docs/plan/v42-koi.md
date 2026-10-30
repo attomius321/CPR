@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v42-koi.md)
 
-**Status:** ready for review (2026-10-24), on branch `feature/ui-improvements-v2` (a workspace
+**Status:** merged into `main` on 2026-10-24 (built 2026-10-24), on branch `feature/ui-improvements-v2` (a workspace
 started in Symbiote, from `main` at `e380fef`); the plan and its three choices OK'd by the person
 ("1. Recommended 2. Recommended 3. Recommended. OK"). As built and results under "As built (V42)"
 below.
