@@ -74,8 +74,9 @@ export interface HistoryShape {
  */
 export interface HistoryRefs {
   version: string;
-  branches: (LocalBranch & { row: number | null })[];
-  remotes: (RemoteBranch & { row: number | null })[];
+  /** `hidden`: left out of the graph (decision 645), so its row is null unless HEAD lists it. */
+  branches: (LocalBranch & { row: number | null; hidden?: true })[];
+  remotes: (RemoteBranch & { row: number | null; hidden?: true })[];
 }
 
 // Never tags as tips: they bring release lines no branch reaches (CPython's take its graph from

@@ -71,6 +71,7 @@ import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ChangeFiles, type ReviewTarget } from './server.js';
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
 import { repositoryHive } from './hive.js';
+import { repositoryHiddenBranches } from './git-hidden.js';
 import { libraryService, type LibraryService } from './library.js';
 import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
@@ -735,6 +736,9 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     openFolder,
     terminals,
   });
+  // The branches hidden from Git's graph (decision 645): the listing, its search and the status's
+  // version all leave them out, so a version read by one fits the others.
+  const hidden = repositoryHiddenBranches(repo, cacheDir);
   const server = await startViewServer({
     port,
     viewerDir: viewerDir(ctx),
@@ -742,11 +746,11 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       name: basename(repo.root),
       history: new Histories(
         {
-          state: () => historyState(repo),
-          stream: (scope, onRows) => streamHistory(repo, scope, onRows),
+          state: async () => historyState(repo, await hidden.list()),
+          stream: async (scope, onRows) => streamHistory(repo, scope, onRows, await hidden.list()),
           details: (shas) => commitDetails(repo, shas),
           defaultBranch: () => defaultBranchTips(repo),
-          find: (scope, query) => findCommits(repo, scope, query),
+          find: async (scope, query) => findCommits(repo, scope, query, await hidden.list()),
         },
         {
           onListed: (_scope, rows, ms) => {
@@ -756,7 +760,10 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
           },
         },
       ),
-      status: async () => ({ ...(await historyState(repo)), ...(await workingState(repo)) }),
+      status: async () => ({
+        ...(await historyState(repo, await hidden.list())),
+        ...(await workingState(repo)),
+      }),
       refs: () => listRefs(repo),
       checkout: (target) => checkout(repo, target),
       isCommit: (sha) => isCommit(repo, sha),
@@ -773,6 +780,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
           (await repoWorkspaces.list()).workspaces.map((w) => w.branch),
         openFolder,
         revisions: join(cacheDir, 'state', repo.id, 'revisions'),
+        hidden,
       }),
       terminals,
       merges: merger(repo, cacheDir, {

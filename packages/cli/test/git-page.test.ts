@@ -92,6 +92,141 @@ describe('gitPage (V66)', () => {
   });
 });
 
+describe('parseGitWrite: more of git (decisions 636–645)', () => {
+  it("reads each new write's body", () => {
+    const sha = 'a'.repeat(40);
+    expect(parseGitWrite('operation', '{"end":"abort"}')).toEqual({
+      kind: 'operation',
+      end: 'abort',
+    });
+    expect(parseGitWrite('cherry-pick', `{"sha":"${sha}"}`)).toEqual({ kind: 'cherry-pick', sha });
+    expect(parseGitWrite('revert', `{"sha":"${sha}"}`)).toEqual({ kind: 'revert', sha });
+    expect(parseGitWrite('merge', '{"branch":"topic"}')).toEqual({
+      kind: 'merge',
+      branch: 'topic',
+    });
+    expect(parseGitWrite('rebase', '{"branch":"origin/main"}')).toEqual({
+      kind: 'rebase',
+      branch: 'origin/main',
+    });
+    expect(parseGitWrite('reset', `{"sha":"${sha}","mode":"soft"}`)).toEqual({
+      kind: 'reset',
+      sha,
+      mode: 'soft',
+    });
+    expect(parseGitWrite('discard', '{"path":"a.txt"}')).toEqual({
+      kind: 'discard',
+      path: 'a.txt',
+    });
+    expect(parseGitWrite('stash', '{"action":"push","message":"m"}')).toEqual({
+      kind: 'stash',
+      action: 'push',
+      message: 'm',
+    });
+    expect(parseGitWrite('stash', `{"action":"pop","sha":"${sha}"}`)).toEqual({
+      kind: 'stash',
+      action: 'pop',
+      sha,
+    });
+    expect(
+      parseGitWrite(
+        'lines',
+        '{"path":"a.txt","staged":true,"lines":[{"old":2},{"new":3}],"index":"index 1..2"}',
+      ),
+    ).toEqual({
+      kind: 'lines',
+      path: 'a.txt',
+      staged: true,
+      lines: [{ old: 2 }, { new: 3 }],
+      index: 'index 1..2',
+    });
+    expect(parseGitWrite('remote-branch', '{"action":"delete","name":"origin/x"}')).toEqual({
+      kind: 'remote-branch',
+      action: 'delete',
+      name: 'origin/x',
+    });
+    expect(parseGitWrite('hide', '{"ref":"refs/heads/x","hidden":true}')).toEqual({
+      kind: 'hide',
+      ref: 'refs/heads/x',
+      hidden: true,
+    });
+  });
+
+  it('refuses anything else', () => {
+    expect(() => parseGitWrite('operation', '{"end":"skip"}')).toThrow(BadGitWrite);
+    expect(() => parseGitWrite('reset', '{"sha":"a","mode":"hard"}')).toThrow(BadGitWrite);
+    expect(() => parseGitWrite('stash', '{"action":"clear"}')).toThrow(BadGitWrite);
+    expect(() => parseGitWrite('stash', '{"action":"drop"}')).toThrow(BadGitWrite);
+    expect(() =>
+      parseGitWrite('lines', '{"path":"a","staged":false,"lines":[{"old":"2"}],"index":""}'),
+    ).toThrow(BadGitWrite);
+    expect(() =>
+      parseGitWrite('lines', '{"path":"a","staged":false,"lines":[{}],"index":""}'),
+    ).toThrow(BadGitWrite);
+    expect(() => parseGitWrite('hide', '{"ref":"refs/tags/v1","hidden":true}')).toThrow(
+      BadGitWrite,
+    );
+    expect(() => parseGitWrite('remote-branch', '{"action":"rename","name":"origin/x"}')).toThrow(
+      BadGitWrite,
+    );
+  });
+});
+
+describe("gitPage's reads: a file's history and blame, stashes, a reset's count (decisions 639–643)", () => {
+  it('reads only files the commit or the checkout lists', async () => {
+    const repo = createRepo();
+    repos.push(repo);
+    repo.git('config', 'user.name', 'Symbiote Test');
+    repo.git('config', 'user.email', 'test@example.com');
+    repo.write({ 'a.txt': 'a\n', 'b.txt': 'b\n' });
+    const first = repo.commit('A');
+    repo.write({ 'a.txt': 'a2\n' });
+    const second = repo.commit('A again');
+    const page = gitPage(await openRepo(repo.root));
+    expect((await page.fileHistory('a.txt', second))?.map((c) => c.sha)).toEqual([second, first]);
+    expect(await page.fileHistory('b.txt', second)).toBeNull();
+    expect((await page.blame('a.txt', second))?.lines).toEqual([{ text: 'a2', sha: second }]);
+    expect(await page.blame('b.txt', second)).toBeNull();
+    repo.write({ 'b.txt': 'b2\n' });
+    expect((await page.blame('b.txt', null))?.lines).toEqual([{ text: 'b2', sha: null }]);
+    expect((await page.fileHistory('b.txt', null))?.map((c) => c.sha)).toEqual([first]);
+    expect(await page.blame('a.txt', null)).toBeNull();
+    expect(await page.leaving(first)).toBe(1);
+    expect(await page.stashes()).toEqual([]);
+  });
+
+  it('hides a listed branch and shows it again; refuses one not listed or checked out', async () => {
+    const repo = createRepo();
+    repos.push(repo);
+    repo.write({ 'a.txt': 'a\n' });
+    repo.commit('A');
+    repo.git('branch', 'wip');
+    let hidden: string[] = [];
+    const page = gitPage(await openRepo(repo.root), {
+      hidden: {
+        list: () => Promise.resolve(hidden),
+        set: (ref, on) => {
+          hidden = on ? [...hidden, ref] : hidden.filter((r) => r !== ref);
+          return Promise.resolve(hidden);
+        },
+      },
+    });
+    expect(await page.write({ kind: 'hide', ref: 'refs/heads/wip', hidden: true })).toEqual({
+      hidden: ['refs/heads/wip'],
+    });
+    expect(await page.hidden()).toEqual(['refs/heads/wip']);
+    await expect(
+      page.write({ kind: 'hide', ref: 'refs/heads/main', hidden: true }),
+    ).rejects.toThrow('main is checked out');
+    await expect(
+      page.write({ kind: 'hide', ref: 'refs/heads/nope', hidden: true }),
+    ).rejects.toThrow('no branch nope');
+    expect(await page.write({ kind: 'hide', ref: 'refs/heads/wip', hidden: false })).toEqual({
+      hidden: [],
+    });
+  });
+});
+
 describe('parseGitOpen (V70)', () => {
   it("reads a commit's file, or a change's on its side", () => {
     expect(parseGitOpen('{"sha":"abc","path":"a.txt"}')).toEqual({ sha: 'abc', path: 'a.txt' });

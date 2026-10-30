@@ -1163,10 +1163,21 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       ...remotes.map((r) => r.sha),
     ]);
     if (!rows) return send(res, 409, 'the history changed: list it again');
+    // Hidden from the graph (decision 645): said, so the panel can show them again.
+    const hidden = new Set((await repo.git?.hidden()) ?? []);
+    const mark = (ref: string) => (hidden.has(ref) ? { hidden: true as const } : {});
     const answer: HistoryRefs = {
       version,
-      branches: branches.map((b, i) => ({ ...b, row: rows[i] ?? null })),
-      remotes: remotes.map((r, i) => ({ ...r, row: rows[branches.length + i] ?? null })),
+      branches: branches.map((b, i) => ({
+        ...b,
+        row: rows[i] ?? null,
+        ...mark(`refs/heads/${b.name}`),
+      })),
+      remotes: remotes.map((r, i) => ({
+        ...r,
+        row: rows[branches.length + i] ?? null,
+        ...mark(`refs/remotes/${r.name}`),
+      })),
     };
     return json(res, 200, answer);
   }
@@ -1193,9 +1204,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
   /**
    * Git's page (V66): `GET` a commit (`commit`, `commit/lines`, `commit/file`), the changes
-   * (`changes`, `changes/lines`, `changes/file`), the branch's upstream (`sync`) and a search
-   * (`find`); `POST` a write (`stage`, `unstage`, `commit`, `branch`, `tag`, `fetch`, `pull`,
-   * `push`), refused in git's words with 409; `POST open`, a file's diff in VS Code (V70).
+   * (`changes`, `changes/lines`, `changes/file`), the branch's upstream (`sync`), a search
+   * (`find`), the stashes, a reset's count (`leaving`), a file's history and blame (`file/…`), the
+   * branches hidden; `POST` a write (`GIT_WRITES`), refused in git's words with 409; `POST open`,
+   * a file's diff in VS Code (V70).
    */
   async function gitApi(
     req: IncomingMessage,
@@ -1269,6 +1281,32 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           : send(res, 400, 'path');
       case 'sync':
         return json(res, 200, await page.sync());
+      case 'stashes':
+        return json(res, 200, await page.stashes());
+      case 'hidden':
+        return json(res, 200, { hidden: await page.hidden() });
+      case 'leaving':
+        if (!sha) return send(res, 400, 'sha needed');
+        try {
+          return json(res, 200, { count: await page.leaving(sha) });
+        } catch (error) {
+          if (error instanceof GitRefused) return send(res, 404, error.message);
+          throw error;
+        }
+      case 'file/history':
+      case 'file/blame': {
+        if (!path) return send(res, 400, 'path needed');
+        const at = sha ?? null;
+        try {
+          const answer = await (name === 'file/history'
+            ? page.fileHistory(path, at)
+            : page.blame(path, at));
+          return answer ? json(res, 200, answer) : send(res, 404, `${path} is not listed there`);
+        } catch (error) {
+          if (error instanceof GitRefused) return json(res, 409, { error: error.message });
+          throw error;
+        }
+      }
       case 'find': {
         const scope = historyScope(url);
         const version = param('version');
