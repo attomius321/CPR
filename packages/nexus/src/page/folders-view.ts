@@ -1,12 +1,35 @@
 // The Folders tab (NX2b, decisions 539, 540): this PC's folders, the repositories marked, and Open
 // Symbiote on each. Since NX3 (decisions 553–555) the places are a card at its left, a folder's
 // repositories cards (`cards.ts`) and its other folders rows in columns; a repository is the end of
-// the way down: its card opens its Symbiote, never its folders. Drawn in the viewer's classes (the
-// page head, a card and its head, its field); `nexus.css` lays out the rest.
+// the way down: its card opens its Symbiote, never its folders. Since NX4 (decisions 617–620) the
+// person's pins are under the places, pinned from the folder's head or a repository's card; a pin
+// shows its folder and starts nothing. Drawn in the viewer's classes (the page head, a card and its
+// head, its field); `nexus.css` lays out the rest.
 import type { Folder, FoldersAnswer, Place } from '../folders.js';
+import type { Pin, PinAnswer } from '../pins.js';
 import { repositoryCard } from './cards.js';
-import { ARROW_UP, CHEVRON_RIGHT, DRIVE, el, FOLDER, HOUSE, icon } from './dom.js';
-import { countsText, crumbsOf, moreText, nextOnGrid, typedFolder } from './folders-tab.js';
+import {
+  ARROW_UP,
+  CHEVRON_RIGHT,
+  DRIVE,
+  el,
+  FOLDER,
+  FOLDER_GIT,
+  HOUSE,
+  icon,
+  pinButton,
+} from './dom.js';
+import {
+  countsText,
+  crumbsOf,
+  currentPlace,
+  moreText,
+  nextOnGrid,
+  pinnable,
+  pinNames,
+  placesShown,
+  typedFolder,
+} from './folders-tab.js';
 
 export interface FoldersView {
   element: HTMLElement;
@@ -36,11 +59,14 @@ const PLACE_ICONS: Record<Place['kind'], string> = {
 
 const lastName = (path: string) => path.split('/').filter(Boolean).at(-1) ?? '/';
 
+/** What `GET /api/folders` answers: a listing, the places and the pins (NX4). */
+type Listed = FoldersAnswer & { pinned: Pin[] };
+
 /** What the arrows move between, in reading order: the repositories' cards, then the folders. */
 const ITEMS = '.nexus-repo, .nexus-folder-open';
 
 export function foldersView(deps: FoldersDeps): FoldersView {
-  let answer: FoldersAnswer | null = null;
+  let answer: Listed | null = null;
   let running: ReadonlySet<string> = new Set();
   /** What went wrong last: a folder not listed, or a Symbiote not started. */
   let error: string | null = null;
@@ -51,6 +77,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
   let drawn = '';
 
   const places = el('div', { class: 'nexus-places', role: 'group', 'aria-label': 'Places' });
+  const pins = el('section', { class: 'nexus-pins', 'aria-label': 'Pinned' });
   const field = el('input', {
     class: 'search-input',
     type: 'text',
@@ -97,6 +124,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
         { class: 'nexus-card nexus-places-card', 'aria-label': 'Places' },
         el('div', { class: 'card-head' }, el('h2', { class: 'nexus-card-title' }, 'Places')),
         places,
+        pins,
       ),
       el('div', { class: 'nexus-card nexus-folders-card' }, cardHead, body),
     ),
@@ -128,12 +156,12 @@ export function foldersView(deps: FoldersDeps): FoldersView {
   /** Lists `path` (null: where the tab opens); a folder not listed keeps the one shown. */
   async function list(path: string | null, { focus = false } = {}): Promise<void> {
     const mine = ++asked;
-    let next: FoldersAnswer | { error: string };
+    let next: Listed | { error: string };
     try {
       const query = path === null ? '' : `?path=${encodeURIComponent(path)}`;
       const res = await fetch(`/api/folders${query}`, { cache: 'no-store' });
       next = res.headers.get('content-type')?.includes('json')
-        ? ((await res.json()) as FoldersAnswer | { error: string })
+        ? ((await res.json()) as Listed | { error: string })
         : { error: `${res.status}: ${await res.text()}` };
     } catch (failure) {
       next = { error: `The folders could not be read: ${(failure as Error).message}` };
@@ -197,6 +225,80 @@ export function foldersView(deps: FoldersDeps): FoldersView {
     return button;
   }
 
+  /**
+   * A pin's row (decision 617): a place's, the repository's icon for one, a green dot while a
+   * Symbiote serves it, "not found" once its folder is gone; its unpin at its end. Its click shows
+   * it: a folder listed, a repository picked in the folder holding it; nothing starts (619).
+   */
+  function pinRow(pin: Pin, name: string, current: string | null): HTMLElement {
+    const here = pin.path === current;
+    const open = el(
+      'button',
+      {
+        type: 'button',
+        class: pin.missing ? 'nexus-place missing' : 'nexus-place',
+        'aria-current': here ? 'true' : false,
+        'data-path': pin.path,
+      },
+      icon(pin.repository ? FOLDER_GIT : FOLDER, true),
+      el('span', {}, name),
+      pin.missing
+        ? el('span', { class: 'nexus-pin-gone' }, 'not found')
+        : running.has(pin.path) &&
+            el('span', { class: 'state-dot nexus-live', role: 'img', 'aria-label': 'running' }),
+    );
+    open.addEventListener('click', () => void list(pin.path, { focus: true }));
+    return el(
+      'div',
+      { class: 'nexus-pin' },
+      open,
+      pinButton(
+        'nexus-unpin',
+        { name, path: pin.path, pinned: true },
+        () => void setPin(pin, false),
+      ),
+    );
+  }
+
+  const pinnedPaths = () => new Set((answer?.pinned ?? []).map((pin) => pin.path));
+
+  /**
+   * Pins or unpins a folder (decision 618): the pins the server answers are drawn. An unpin from
+   * its own row puts the focus on the next pin's row, or on the places.
+   */
+  async function setPin(folder: { name: string; path: string }, pinned: boolean): Promise<void> {
+    const fromRow = (document.activeElement as HTMLElement | null)?.classList.contains(
+      'nexus-unpin',
+    );
+    const at = (answer?.pinned ?? []).findIndex((pin) => pin.path === folder.path);
+    let next: PinAnswer;
+    try {
+      const res = await fetch('/api/pinned', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+        body: JSON.stringify({ path: folder.path, pinned }),
+      });
+      next = res.headers.get('content-type')?.includes('json')
+        ? ((await res.json()) as PinAnswer)
+        : { status: 400, error: `${res.status}: ${await res.text()}` };
+    } catch (failure) {
+      next = { status: 400, error: (failure as Error).message };
+    }
+    if ('error' in next) {
+      error = `${folder.name} was not ${pinned ? 'pinned' : 'unpinned'}: ${next.error}`;
+    } else if (answer) {
+      answer = { ...answer, pinned: next.pinned };
+      error = null;
+    }
+    draw(running);
+    if (fromRow && !pinned) {
+      const rows = [...pins.querySelectorAll<HTMLElement>('.nexus-place')];
+      (
+        rows[Math.min(at, rows.length - 1)] ?? places.querySelector<HTMLElement>('.nexus-place')
+      )?.focus();
+    }
+  }
+
   /** A folder that is no repository: a row, its way in. */
   function folderRow(folder: Folder): HTMLElement {
     const open = el(
@@ -213,13 +315,15 @@ export function foldersView(deps: FoldersDeps): FoldersView {
   /** A repository: a card, the end of the way down. */
   function repository(folder: Folder): HTMLElement {
     const live = running.has(folder.path);
+    const pinned = pinnedPaths().has(folder.path);
     const card = repositoryCard({
       folder,
       running: live,
       busy: starting.has(folder.path),
       act: () => (live ? deps.show(folder.path) : void start(folder.path)),
+      pin: { pinned, toggle: () => void setPin(folder, !pinned) },
     });
-    if (folder.path === answer?.picked) card.classList.add('picked');
+    if (folder.path === answer?.picked) card.querySelector('.nexus-repo')?.classList.add('picked');
     return card;
   }
 
@@ -235,7 +339,9 @@ export function foldersView(deps: FoldersDeps): FoldersView {
   function draw(next: ReadonlySet<string>): void {
     running = next;
     const marks = answer
-      ? answer.folders.map((folder) => folder.path).filter((path) => running.has(path))
+      ? [...answer.folders, ...answer.pinned]
+          .map((folder) => folder.path)
+          .filter((path) => running.has(path))
       : [];
     const key = JSON.stringify([answer, marks, error, [...starting]]);
     if (key === drawn) return;
@@ -245,8 +351,32 @@ export function foldersView(deps: FoldersDeps): FoldersView {
     const focused = active?.dataset.path;
     const focusedKind = active?.classList[0];
 
+    const current = answer ? currentPlace(answer) : null;
     places.replaceChildren(
-      ...(answer?.places ?? []).map((p) => placeButton(p, answer?.path ?? null)),
+      ...(answer ? placesShown(answer.places, answer.pinned) : []).map((p) =>
+        placeButton(p, current),
+      ),
+    );
+    const pinned = answer?.pinned ?? [];
+    const names = pinNames(pinned);
+    pins.replaceChildren(
+      el(
+        'h3',
+        { class: 'nexus-group-head' },
+        'Pinned',
+        pinned.length > 0 && el('span', { class: 'count' }, pinned.length.toLocaleString('en')),
+      ),
+      pinned.length > 0
+        ? el(
+            'div',
+            { class: 'nexus-places', role: 'group', 'aria-label': 'Pinned' },
+            ...pinned.map((pin, at) => pinRow(pin, names[at] ?? pin.name, current)),
+          )
+        : el(
+            'p',
+            { class: 'nexus-pins-none' },
+            'Pin a folder from its head, a repository from its card.',
+          ),
     );
     if (!answer) {
       cardHead.replaceChildren();
@@ -280,10 +410,20 @@ export function foldersView(deps: FoldersDeps): FoldersView {
       trail.append(link);
     });
     const counts = countsText(answer.folders);
+    const listed = { name: lastName(answer.path), path: answer.path };
+    const headPinned = pinnedPaths().has(answer.path);
     cardHead.replaceChildren(
-      up,
-      trail,
-      counts && el('span', { class: 'nexus-folders-counts' }, counts),
+      ...[
+        up,
+        trail,
+        counts ? el('span', { class: 'nexus-folders-counts' }, counts) : null,
+        // Home, the top and the drives are always places: no pin (decision 620).
+        pinnable(answer)
+          ? pinButton('nexus-head-pin', { ...listed, pinned: headPinned }, () => {
+              void setPin(listed, !headPinned);
+            })
+          : null,
+      ].filter((part) => part !== null),
     );
     const repositories = answer.folders.filter((folder) => folder.repository);
     const others = answer.folders.filter((folder) => !folder.repository);

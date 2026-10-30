@@ -10,8 +10,13 @@ import {
   idleRepositories,
   moreText,
   nextOnGrid,
+  pinnable,
+  pinNames,
+  placesShown,
+  currentPlace,
   typedFolder,
 } from '../src/page/folders-tab.js';
+import type { Pin } from '../src/pins.js';
 import { selectedFrom } from '../src/page/tabs.js';
 
 const places: Place[] = [
@@ -174,5 +179,59 @@ describe('the arrows on a grid of cards and rows', () => {
     expect(nextOnGrid(boxes, 4, 'End')).toBe(8);
     expect(nextOnGrid(boxes, 4, 'Enter')).toBeNull();
     expect(nextOnGrid([], 0, 'ArrowDown')).toBeNull();
+  });
+});
+
+describe('the pins in the places card (NX4, decisions 617–620)', () => {
+  const pin = (path: string, repository = false): Pin => ({
+    name: path.split('/').filter(Boolean).at(-1) ?? '/',
+    path,
+    repository,
+  });
+
+  it("names each pin by its folder; two of one name by their parent's too", () => {
+    expect(
+      pinNames([
+        pin('/home/me/projects'),
+        pin('/home/me/projects/Symbiote', true),
+        pin('/home/me/projects/Symbiote.worktrees/Symbiote', true),
+        pin('/mnt/c/Users/me/notes'),
+        pin('/home/me/notes'),
+        pin('/'),
+      ]),
+    ).toEqual([
+      'projects',
+      'Symbiote · projects',
+      'Symbiote · Symbiote.worktrees',
+      // Their parents share a name too: the parent's path.
+      'notes · /mnt/c/Users/me',
+      'notes · /home/me',
+      '/',
+    ]);
+  });
+
+  it("draws a running Symbiote's folder once: as the pin", () => {
+    expect(placesShown(places, [pin('/home/me/projects')])).toEqual([
+      { kind: 'home', name: 'Home', path: '/home/me' },
+      { kind: 'top', name: '/', path: '/' },
+      { kind: 'drive', name: 'C:', path: '/mnt/c' },
+    ]);
+    // Home, the top and the drives are always places, pinned or not.
+    expect(placesShown(places, [pin('/home/me'), pin('/'), pin('/mnt/c')])).toEqual(places);
+  });
+
+  it('is the picked repository when it is pinned, else the folder listed', () => {
+    const answer = { path: '/home/me/projects', picked: null, pinned: [pin('/home/me/projects')] };
+    expect(currentPlace(answer)).toBe('/home/me/projects');
+    const ky = pin('/home/me/projects/ky', true);
+    expect(currentPlace({ ...answer, picked: ky.path, pinned: [ky] })).toBe(ky.path);
+    // A repository picked that is not pinned: the folder holding it, as before.
+    expect(currentPlace({ ...answer, picked: ky.path, pinned: [] })).toBe('/home/me/projects');
+  });
+
+  it('pins any folder listed but home, the top and the drives: they are always places', () => {
+    expect(pinnable({ path: '/home/me/projects', places })).toBe(true);
+    expect(pinnable({ path: '/home/me/work', places })).toBe(true);
+    for (const path of ['/home/me', '/', '/mnt/c']) expect(pinnable({ path, places })).toBe(false);
   });
 });

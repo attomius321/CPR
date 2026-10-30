@@ -105,12 +105,19 @@ export function startView(repo: string, cache: string): Promise<Served> {
   );
 }
 
-/** `symbiote-nexus --no-open` on the spec's cache; `home` is its Folders tab's home (NX2). */
-export function startNexus(cache: string, home?: string): Promise<Served> {
+/**
+ * `symbiote-nexus --no-open` on the spec's cache; `home` is its Folders tab's home (NX2), `config`
+ * the settings folder its pins are kept in (NX4), else one of its own.
+ */
+export function startNexus(cache: string, home?: string, config?: string): Promise<Served> {
   return serve(
     [nexusBin, '--no-open'],
     tmpdir(),
-    { SYMBIOTE_CACHE_DIR: cache, ...(home ? { HOME: home } : {}) },
+    {
+      SYMBIOTE_CACHE_DIR: cache,
+      ...(home ? { HOME: home } : {}),
+      ...(config ? { XDG_CONFIG_HOME: config } : {}),
+    },
     /Symbiote nexus: (\S+)/,
   );
 }
