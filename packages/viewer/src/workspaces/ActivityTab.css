@@ -74,6 +74,12 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* Timeline and Raw events keep one line each on a phone's width; the counts give way (NU2). */
+.activity-bar .scopes {
+  flex: none;
+  white-space: nowrap;
+}
+
 .activity-counts {
   min-width: 0;
   overflow: hidden;
@@ -894,9 +900,9 @@
   color: var(--muted);
 }
 
-/* An answer's tokens and time, quiet on its title's line, cut short when it is narrow. */
+/* An answer's tokens and time, quiet on its title's line; when narrow they are cut, not the title. */
 .activity-tokens {
-  flex: 0 1 auto;
+  flex: 0 1000 auto;
   min-width: 0;
   overflow: hidden;
   color: var(--muted);

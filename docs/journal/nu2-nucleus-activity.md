@@ -54,4 +54,15 @@ answers with tokens. **Verification**: tests, e2e, the person's records, real ru
 - **Test times lose fractions in `Date.UTC`**: `Date.UTC(…, 13.3)` is 13 s, which tied a Confirm
   with its call in a test. The helper adds milliseconds instead.
 
-**Verification**: see the plan's Results.
+**Verification**: tests first, red for the right reason, then `pnpm check` 2,416 tests, build,
+e2e 346 of 346 and the nexus 15 of 15 (one earlier run failed `skills.spec.ts` once: its temp
+folder `symbiote-e2e-PMgITN` holds "git", so `getByRole('link', { name: 'Git' })` matched two
+links; it passed on its own run). The gate: 20.6 ms on `main`, 22.8 ms recording (60 runs × 3).
+The workspace tab: identical to `main`'s on the person's 50 recorded workspaces. Real runs with
+this branch's `symbiote view` in this worktree (`GIT_CONFIG_GLOBAL=/dev/null`, a job-local cache):
+Claude Code 2.1.314 in 41 s and Codex 0.163 in 22 s, every case of the brief on the tab, live and
+after a restart; screenshots 1440 and 390 px, dark and light, in the job's folder (not committed).
+
+Not verified: a running conversation picking up its recording at its next wake; Claude Code's
+compaction, `StopFailure` and `PermissionDenied` and a Codex compaction from a real run; the
+rotation on a real record; the desktop app; macOS and Windows.

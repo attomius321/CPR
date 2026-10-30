@@ -2,11 +2,12 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nu2-nucleus-activity.md)
 
-**Status:** in progress (2026-10-30), on branch `feature/nucleus-activity` (a workspace started in
-Symbiote, from `main` at `c88b237`). The person OK'd the plan with its three recommendations:
-the real runs keep their records in a cache of the job's own, as NU1's did (the person's live
-Nucleus conversation untouched); Codex's thread read every 2 s while it is active, its tokens from
-its session file; Web research and Symbiote as phases with colours of their own.
+**Status:** ready for review (2026-10-30), on branch `feature/nucleus-activity` (a workspace
+started in Symbiote, from `main` at `c88b237`; `main` merged in at `55314f3`, docs only). The
+person asked to start implementing with the plan's three recommendations: the real runs keep their
+records in a cache of the job's own, as NU1's did (the person's live Nucleus conversation
+untouched); Codex's thread read every 2 s while it is active, its tokens from its session file;
+Web research and Symbiote as phases with colours of their own. Its "As built" and results below.
 
 **Problem** (asked: "an Activity tab for Nucleus, built like a workspace's Activity tab … Right now
 what Nucleus does lives only in its terminal's scrollback", and "record everything possible").
@@ -190,3 +191,34 @@ environment and the shapes.
 - **The tab's place**: line tabs on the card's head, as a workspace's; the terminal's tab unmounts
   its terminal as a workspace's does. `nucleus.spec.ts`'s layout check now has the tabs at the
   card's top and the terminal under them.
+- **A paired call starts when Symbiote saw it, when that was earlier**: Codex's items are read
+  every 2 s, so a fast MCP call is first seen after it ended, after its own Confirm. Its start
+  is Symbiote's record of it.
+- **The bar's Timeline and Raw events keep one line each** at a phone's width (they wrapped at
+  390 px, in the workspace's tab as well).
+
+**Results.** Tests first, red for the right reason (the recorder's module missing, the settings
+without the activity file, `mcp.ts` without `record`, the page agent without `activity`), then:
+31 tests for the recorder (redaction, the gate's line, every hook event, the file's rotation and
+read, the hook in one process), 5 for Codex's thread, 4 for `mcp.ts`, 4 for the page agent and
+Codex's reads through the fake app server, 1 for the server, 19 for the viewer (events, pairing,
+groups, the live strip, words, the agent's state). e2e: `nucleus-activity.spec.ts`, 2 specs.
+
+| What | Result |
+|---|---|
+| The gate's cost, 60 runs × 3, `git log` | `main` 20.6 ms mean; recording 22.8 ms (+2.2 ms, ~11 %); this branch without `--activity` 21.5 ms. Medians of an earlier 50-run set: 20.7 and 22.4 ms |
+| The workspace's tab, the person's 50 recorded workspaces (17,719 tool lines) | `main`'s and this branch's 2,177 groups, their statuses, summaries, event words and colours identical |
+| Claude Code 2.1.314 as Nucleus (Sonnet, low), one message: a git read, `curl`, a search, a page, `overview`, `workspaces`, `start_workspace` | 41 s. 23 lines: the gate's decision on 8 calls (the `curl` refused with its reason), 7 search results, the page (200, 39,824 bytes), Symbiote's side paired with each MCP call, the Confirm declined after 1.2 s, the answer with 155K tokens in (80 % cached) and 603 out |
+| Codex 0.163 (its daemon 0.166) as Nucleus (low), the same message, after New conversation | 22 s. 17 lines of its own: both commands failed in Codex's sandbox launcher (`bwrap: execvp`, recorded with exit 1), the search and the page it opened, the MCP calls paired, the Confirm declined, the answer with 204K tokens in (78 % cached) and 559 out from its session file |
+| After `symbiote view` restarted | The same 53 lines (18.4 KB for both conversations) on the tab; none of this machine's secret-named values or token shapes in the file |
+| Screenshots, the real record: 1440 and 390 px, dark and light, closed, opened, raw | First group drawn in 138–155 ms; no horizontal overflow; no page errors |
+
+At the real runs' sizes a conversation of 7 calls takes about 9 KB: the tab's megabyte holds about
+110 such conversations, the 4 MB file about 450.
+
+**Not verified**: a conversation that already runs picking up its recording at its next wake (the
+settings file is rewritten then, as for V80's reach); Claude Code's compaction, `StopFailure` and
+`PermissionDenied` events and a Codex compaction from a real run (unit-tested from their schemas);
+the file's rotation at 4 MB on a real record; Codex's terminal's turns (read the same way as its
+messages from the page); the desktop app; macOS and Windows; the person's own Nucleus conversation
+(`b2c9b54b`), which records once `main` is built with NU2 and the session wakes.

@@ -396,6 +396,10 @@ function pairSymbiote(calls: readonly ToolCall[]): Set<ToolCall> {
     if (ours.filter((other) => !paired.has(other) && fits(other, only)).length !== 1) continue;
     only.symbiote = o;
     paired.add(o);
+    // Symbiote saw the call first (Codex's items are read every 2 s): it started then.
+    if (o.startedAt && only.startedAt && Date.parse(o.startedAt) < Date.parse(only.startedAt)) {
+      only.startedAt = o.startedAt;
+    }
   }
   return paired;
 }
@@ -559,7 +563,7 @@ export function nucleusEvents(lines: readonly NucleusActivityLine[]): ActivityEv
     if (kind) call.kind = kind;
     const line = (call.start ?? call.end) as ActivityEntry;
     const at = call.startedAt ?? call.endedAt;
-    add({ key: `call:${call.id}`, ...(at ? { at } : {}), kind: 'call', call }, line.at);
+    add({ key: `call:${call.id}`, ...(at ? { at } : {}), kind: 'call', call }, at ?? line.at);
   }
   return inOrder(events, sortTimes);
 }

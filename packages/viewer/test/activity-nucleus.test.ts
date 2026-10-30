@@ -210,6 +210,35 @@ describe('nucleusEvents (NU2)', () => {
     expect(calls(nucleusEvents(lines))).toMatchObject([{ id: 'mc1', symbiote: { id: 's1' } }]);
   });
 
+  it("a Codex item seen late starts when Symbiote's record of it does, before its Confirm", () => {
+    const item = { session: 'th', conversation: 'th', agent: 'codex' as const, id: 'mc9' };
+    const head = {
+      ...item,
+      tool: 'mcp',
+      subject: 'symbiote.start_workspace',
+      input: '{"kind":"fix"}',
+    };
+    const lines: NucleusActivityLine[] = [
+      ...symbiote('s9', 10, 'start_workspace', '{"kind":"fix"}'),
+      {
+        at: at(10.5),
+        kind: 'confirm',
+        ask: 'a9',
+        tool: 'start_workspace',
+        words: 'Start',
+        call: 's9',
+        stage: 'asked',
+        until: at(610),
+      },
+      // Read every 2 s: its start and end seen together, after the call ended.
+      { at: at(12), ...head, phase: 'start' },
+      { at: at(12), ...head, phase: 'end' },
+    ];
+    const events = nucleusEvents(lines);
+    expect(events.map((e) => e.kind)).toEqual(['call', 'confirm']);
+    expect(callOf(events, 'mc9').startedAt).toBe(at(10));
+  });
+
   it('a Confirm once, asked and ended, with the call that asked; a compaction once', () => {
     const confirm = events.find((e) => e.kind === 'confirm');
     expect(confirm).toMatchObject({
