@@ -4,6 +4,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { extname, isAbsolute, join } from 'node:path';
 import type { Logger } from '@symbiote/log';
 import type { FoldersAnswer } from './folders.js';
+import type { Pins } from './pins.js';
 import type { Starter } from './start.js';
 import type { Symbiote } from './symbiotes.js';
 
@@ -19,6 +20,8 @@ export interface NexusServerOptions {
   folders: (path: string | null) => Promise<FoldersAnswer>;
   /** Starting and stopping `symbiote view` (NX2). */
   starter: Starter;
+  /** The person's pinned folders (NX4): answered with each listing, written by the page. */
+  pins: Pins;
   /** The page's own files: `index.html`, `nexus.css`, `mark.png` (`packages/nexus/page`). */
   pageDir: string;
   /** The page's scripts, compiled (`dist/page`). */
@@ -50,8 +53,8 @@ const TYPES: Record<string, string> = {
 /** A file's name in a folder served: no folders, nothing hidden, nothing encoded. */
 const FILE_NAME = /^[\w-][\w.-]*$/;
 
-/** The routes that write: they start or stop a Symbiote (NX2, decision 543). */
-const WRITES = new Set(['/api/symbiotes', '/api/symbiotes/stop']);
+/** The routes that write: they start or stop a Symbiote (NX2, decision 543), or pin a folder (NX4). */
+const WRITES = new Set(['/api/symbiotes', '/api/symbiotes/stop', '/api/pinned']);
 
 /** The most a write's body may hold. */
 const BODY_LIMIT = 64 * 1024;
@@ -75,10 +78,11 @@ const FOLDER_ERRORS: Record<string, [number, string]> = {
 
 /**
  * The nexus's server (NX1): its page, in the viewer's own stylesheet (decision 523), the running
- * Symbiotes, and (NX2) this PC's folders and starting or stopping a Symbiote. It answers only its
- * own address, as the viewer's server does, since the lists name the person's folders; it sends
- * no CORS headers, so no other site reads them. It takes a write only as the viewer's server does
- * (decision 543): JSON, `x-symbiote: 1`, its own origin if one is sent.
+ * Symbiotes, (NX2) this PC's folders and starting or stopping a Symbiote, and (NX4) the person's
+ * pinned folders. It answers only its own address, as the viewer's server does, since the lists
+ * name the person's folders; it sends no CORS headers, so no other site reads them. It takes a
+ * write only as the viewer's server does (decision 543): JSON, `x-symbiote: 1`, its own origin if
+ * one is sent.
  */
 export async function startNexusServer(options: NexusServerOptions): Promise<NexusServer> {
   const page = renderPage(options.pageDir, options.viewerDir);
@@ -132,7 +136,8 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
       return sendJson(res, 400, { error: `Not an absolute path: ${path}` });
     }
     try {
-      return sendJson(res, 200, await options.folders(path));
+      const [answer, pinned] = await Promise.all([options.folders(path), options.pins.read()]);
+      return sendJson(res, 200, { ...answer, pinned });
     } catch (error) {
       const known = FOLDER_ERRORS[(error as NodeJS.ErrnoException).code ?? ''];
       if (!known) throw error;
@@ -149,6 +154,18 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
       if (typeof value?.folder !== 'string') return send(res, 400, 'expected { folder }');
       const answer = await options.starter.start(value.folder);
       return sendJson(res, 'error' in answer ? 422 : 200, answer);
+    }
+    if (path === '/api/pinned') {
+      if (typeof value?.path !== 'string' || typeof value.pinned !== 'boolean') {
+        return send(res, 400, 'expected { path, pinned }');
+      }
+      if (!isAbsolute(value.path)) {
+        return sendJson(res, 400, { error: `Not an absolute path: ${value.path}` });
+      }
+      const answer = await options.pins.set(value.path, value.pinned);
+      if ('error' in answer) return sendJson(res, answer.status, { error: answer.error });
+      options.log?.info({ path: value.path }, value.pinned ? 'folder pinned' : 'folder unpinned');
+      return sendJson(res, 200, answer);
     }
     if (typeof value?.root !== 'string') return send(res, 400, 'expected { root }');
     if (await options.starter.stop(value.root)) {

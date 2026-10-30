@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import type { FoldersAnswer } from '../src/folders.js';
+import type { Pin, PinAnswer, Pins } from '../src/pins.js';
 import { startNexusServer, type NexusServer } from '../src/server.js';
 import type { StartAnswer, Starter } from '../src/start.js';
 import type { Symbiote } from '../src/symbiotes.js';
@@ -41,6 +42,16 @@ let folders: (path: string | null) => Promise<FoldersAnswer> = (path) => {
   asked.push(`list ${path}`);
   return Promise.resolve(projects);
 };
+/** The pins (NX4): what the server answers with each listing, and what a write answers. */
+const pinned: Pin[] = [{ name: 'notes', path: '/home/me/notes', repository: false }];
+let pinAnswer: PinAnswer = { pinned };
+const pins: Pins = {
+  read: () => Promise.resolve(pinned),
+  set: (path, on) => {
+    asked.push(`${on ? 'pin' : 'unpin'} ${path}`);
+    return Promise.resolve(pinAnswer);
+  },
+};
 let startAnswer: StartAnswer = { symbiote: ky };
 let stopAnswer = true;
 const starter: Starter = {
@@ -77,6 +88,7 @@ beforeAll(async () => {
     symbiotes: () => listed(),
     folders: (path) => folders(path),
     starter,
+    pins,
     pageDir,
     scriptsDir,
     viewerDir,
@@ -223,7 +235,7 @@ describe('the nexus server', () => {
     ).toBe(200);
   });
 
-  it('answers only its own host, and writes only where it starts or stops a Symbiote', async () => {
+  it('answers only its own host, and writes only where it starts, stops or pins', async () => {
     const port = new URL(server.url).port;
     expect((await get('/', { host: `localhost:${port}` })).status).toBe(200);
     expect((await get('/', { host: `evil.example:${port}` })).status).toBe(421);
@@ -232,16 +244,17 @@ describe('the nexus server', () => {
     expect((await post('/', {})).status).toBe(405);
     expect((await get('/api/symbiotes', { method: 'PUT' })).status).toBe(405);
     expect((await get('/api/symbiotes/stop')).status).toBe(405);
+    expect((await get('/api/pinned')).status).toBe(405);
   });
 });
 
 describe("the nexus server: this PC's folders (NX2)", () => {
-  it('lists a folder, or where the Folders tab opens', async () => {
+  it('lists a folder, or where the Folders tab opens, with the pins (NX4)', async () => {
     asked.length = 0;
     const answer = await get(`/api/folders?path=${encodeURIComponent('/home/me/projects')}`);
     expect(answer).toMatchObject({ status: 200, cache: 'no-store' });
-    expect(JSON.parse(answer.body)).toEqual(projects);
-    expect(JSON.parse((await get('/api/folders')).body)).toEqual(projects);
+    expect(JSON.parse(answer.body)).toEqual({ ...projects, pinned });
+    expect(JSON.parse((await get('/api/folders')).body)).toEqual({ ...projects, pinned });
     expect(asked).toEqual(['list /home/me/projects', 'list null']);
   });
 
@@ -331,6 +344,47 @@ describe('the nexus server: starting and stopping a Symbiote (NX2)', () => {
   });
 });
 
+describe('the nexus server: pinning a folder (NX4, decision 618)', () => {
+  it('pins and unpins a folder, and answers with the pins', async () => {
+    asked.length = 0;
+    pinAnswer = { pinned };
+    const answer = await post('/api/pinned', { path: '/home/me/notes', pinned: true });
+    expect(answer).toMatchObject({ status: 200, cache: 'no-store' });
+    expect(JSON.parse(answer.body)).toEqual({ pinned });
+    expect((await post('/api/pinned', { path: '/home/me/notes', pinned: false })).status).toBe(200);
+    expect(asked).toEqual(['pin /home/me/notes', 'unpin /home/me/notes']);
+  });
+
+  it('says why a folder was not pinned', async () => {
+    pinAnswer = { status: 422, error: '/home/me/ky/src is inside the repository /home/me/ky' };
+    expect(await post('/api/pinned', { path: '/home/me/ky/src', pinned: true })).toMatchObject({
+      status: 422,
+      body: JSON.stringify({ error: '/home/me/ky/src is inside the repository /home/me/ky' }),
+    });
+    pinAnswer = { pinned };
+  });
+
+  it('takes a pin only from its own page, and only a path and whether it is pinned', async () => {
+    asked.length = 0;
+    const forbidden: Record<string, string>[] = [
+      { origin: 'http://evil.example' },
+      { 'x-symbiote': '' },
+    ];
+    for (const headers of forbidden) {
+      expect((await post('/api/pinned', { path: '/x', pinned: true }, headers)).status).toBe(403);
+    }
+    expect((await post('/api/pinned', '{not json')).status).toBe(400);
+    expect((await post('/api/pinned', { path: '/x' })).status).toBe(400);
+    expect((await post('/api/pinned', { path: 7, pinned: true })).status).toBe(400);
+    expect((await post('/api/pinned', { path: '/x', pinned: 'yes' })).status).toBe(400);
+    expect(await post('/api/pinned', { path: 'projects', pinned: true })).toMatchObject({
+      status: 400,
+      body: JSON.stringify({ error: 'Not an absolute path: projects' }),
+    });
+    expect(asked).toEqual([]);
+  });
+});
+
 describe('startNexusServer', () => {
   it('says to build the viewer when it is not built', async () => {
     await expect(
@@ -339,6 +393,7 @@ describe('startNexusServer', () => {
         symbiotes: () => Promise.resolve([]),
         folders: () => Promise.resolve(projects),
         starter,
+        pins,
         pageDir,
         scriptsDir,
         viewerDir: join(dir, 'nowhere'),
@@ -361,6 +416,7 @@ describe("the nexus's page in Hive mode (V82)", () => {
       symbiotes: () => listed(),
       folders: (path) => folders(path),
       starter,
+      pins,
       pageDir: hivePage,
       scriptsDir,
       viewerDir,
