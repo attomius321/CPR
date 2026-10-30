@@ -25,6 +25,7 @@ import {
   BranchNotMerged,
   GitRefused,
 } from '@symbiote/core';
+import type { NucleusActivityLine } from '@symbiote/core';
 import type { Review } from '@symbiote/forge';
 import type { CodeMap } from '@symbiote/monitor';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -40,6 +41,7 @@ import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
 import type { Workspaces } from '../src/workspaces.js';
 import { WorkspaceRefused } from '../src/workspace-record.js';
 import { MergeRefused, type Merger } from '../src/merges.js';
+import type { PageAgent } from '../src/page-agent.js';
 import { PromptRefused, type PromptSettingsService } from '../src/prompts.js';
 import { SkillRefused, type SkillOpen, type SkillsService } from '../src/skills.js';
 import { terminals as makeTerminals, type Pty, type SpawnPty } from '../src/terminal.js';
@@ -3383,6 +3385,12 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
       return Promise.resolve(entry);
     },
   } as unknown as Merger;
+  /** Nucleus's activity (NU2): what Symbiote records of its calls, and its read. */
+  const recorded: NucleusActivityLine[] = [];
+  const nucleus = {
+    record: (line: NucleusActivityLine) => void recorded.push(line),
+    activity: () => Promise.resolve({ lines: recorded, cut: false }),
+  } as unknown as PageAgent;
   let server: ViewServer;
 
   beforeAll(async () => {
@@ -3404,6 +3412,7 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
         diffs: new Diffs(() => Promise.reject(new Error('no'))),
         readFile: () => Promise.resolve(''),
         merges,
+        nucleus,
       },
     });
   });
@@ -3473,6 +3482,34 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
     const result = (await (await call).json()) as { result: { isError?: boolean } };
     expect(result.result.isError).toBeUndefined();
     expect(queued).toEqual([{ branch: 'feature/csv', into: 'main' }]);
+  });
+
+  it("records Nucleus's calls and their Confirms, and serves them (NU2)", async () => {
+    recorded.length = 0;
+    const call = post(
+      '/api/mcp',
+      {
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'tools/call',
+        params: { name: 'queue_merge', arguments: { branch: 'feature/csv' } },
+      },
+      { 'x-symbiote-caller': 'nucleus' },
+    );
+    await expect.poll(async () => (await asks()).length).toBe(1);
+    const [ask] = await asks();
+    await post('/api/mcp/answer', { id: ask?.id, yes: false });
+    await call;
+    expect(recorded.map((l) => ('kind' in l ? l.kind : l.phase))).toEqual([
+      'start',
+      'confirm',
+      'confirm',
+      'end',
+    ]);
+    expect(recorded[2]).toMatchObject({ answer: 'declined' });
+    const read = await get('/api/nucleus/activity');
+    expect(read.status).toBe(200);
+    expect(((await read.json()) as { lines: unknown[] }).lines).toHaveLength(4);
   });
 
   it('takes a bridge from before NU1, which says scout, for Nucleus (decision 590)', async () => {

@@ -39,10 +39,12 @@ interface Of {
   at: string;
   conversation?: string;
   agent?: AgentKind;
+  /** Codex's turn it belongs to. */
+  turn?: string;
 }
 
 /** A tool call's start or end (V73's fields), with what NU2 keeps besides. */
-export interface NucleusCall extends ActivityEntry, Omit<Of, 'at'> {
+export interface NucleusCall extends ActivityEntry, Omit<Of, 'at' | 'turn'> {
   /** Symbiote's own record of one of its tools' calls (`mcp.ts`), beside its agent's. */
   source?: 'symbiote';
   /** A start: the gate's decision (Claude Code). */

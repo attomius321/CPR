@@ -5,6 +5,7 @@ import type {
   LocalReview,
   McpCaller,
   MergeEntry,
+  NucleusActivityLine,
   SuggestRequest,
   WorkspaceRequest,
   WorkspaceSuggestion,
@@ -1134,5 +1135,103 @@ describe("Symbiote's MCP: waiting for a change (decision 364)", () => {
       isError: true,
       text: 'minutes: from 1 to 10',
     });
+  });
+});
+
+describe("Symbiote's MCP: Nucleus's calls recorded (NU2, decision 607)", () => {
+  const recorder = () => {
+    const lines: NucleusActivityLine[] = [];
+    return { lines, record: (line: NucleusActivityLine) => void lines.push(line) };
+  };
+  let clock = Date.parse('2026-10-30T10:00:00Z');
+  const now = () => new Date((clock += 1000));
+
+  it("a read: its arguments, its answer's start and its time", async () => {
+    const { services } = fakes();
+    const { lines, record } = recorder();
+    const mcp = server(services, { record, now });
+    await call(mcp, 'workspaces', { state: 'all' });
+    expect(lines).toEqual([
+      {
+        at: expect.any(String) as unknown,
+        session: 'symbiote',
+        id: expect.stringMatching(/^m1-/) as unknown,
+        tool: 'workspaces',
+        source: 'symbiote',
+        phase: 'start',
+        input: '{"state":"all"}',
+      },
+      {
+        at: expect.any(String) as unknown,
+        session: 'symbiote',
+        id: (lines[0] as { id?: string } | undefined)?.id,
+        tool: 'workspaces',
+        source: 'symbiote',
+        phase: 'end',
+        ms: 1000,
+        output: expect.stringContaining('"workspaces"') as unknown,
+      },
+    ]);
+  });
+
+  it('a Confirm: asked, its end, and what the yes did', async () => {
+    const { services } = fakes();
+    const { lines, record } = recorder();
+    const mcp = server(services, { record, now });
+    const pending = call(mcp, 'queue_merge', { branch: 'fix/a' });
+    const id = await askOf(mcp);
+    expect(lines.at(-1)).toEqual({
+      at: expect.any(String) as unknown,
+      kind: 'confirm',
+      ask: id,
+      tool: 'queue_merge',
+      words: `Merge fix/a at ${HEAD.slice(0, 7)} into main`,
+      call: expect.stringMatching(/^m1-/) as unknown,
+      stage: 'asked',
+      until: expect.any(String) as unknown,
+    });
+    await mcp.answer({ id, yes: true });
+    await pending;
+    expect(lines.map((l) => ('kind' in l ? `${l.kind}` : l.phase))).toEqual([
+      'start',
+      'confirm',
+      'confirm',
+      'end',
+    ]);
+    expect(lines[2]).toMatchObject({
+      kind: 'confirm',
+      ask: id,
+      stage: 'ended',
+      answer: 'confirmed',
+    });
+    expect(lines[3]).toMatchObject({
+      phase: 'end',
+      output: expect.stringContaining('queued') as unknown,
+    });
+  });
+
+  it('declined, and not answered in time', async () => {
+    const { services } = fakes({ merges: [entry()] });
+    const { lines, record } = recorder();
+    const mcp = server(services, { askMs: 40, record });
+    const declined = call(mcp, 'land_merge', { id: 'm1' });
+    await mcp.answer({ id: await askOf(mcp), yes: false });
+    await declined;
+    await call(mcp, 'land_merge', { id: 'm1' });
+    const ends = lines.filter((l) => 'kind' in l && l.kind === 'confirm' && l.stage === 'ended');
+    expect(ends.map((l) => ('answer' in l ? l.answer : ''))).toEqual(['declined', 'expired']);
+    const calls = lines.filter((l) => 'phase' in l && l.phase === 'end');
+    expect(calls).toMatchObject([
+      { failed: true, output: expect.stringContaining('The person declined') as unknown },
+      { failed: true, output: expect.stringContaining('No answer') as unknown },
+    ]);
+  });
+
+  it("records only Nucleus's calls", async () => {
+    const { services } = fakes();
+    const { lines, record } = recorder();
+    const mcp = server(services, { record });
+    await call(mcp, 'workspaces', {}, { via: 'mcp', client: 'claude-code' });
+    expect(lines).toEqual([]);
   });
 });

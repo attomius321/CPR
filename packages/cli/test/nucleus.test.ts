@@ -1937,3 +1937,108 @@ describe('Nucleus on the web (NU1, decisions 592–594)', () => {
     });
   });
 });
+
+describe("Nucleus's activity (NU2, decisions 604, 606)", () => {
+  const activityFile = (repo: TestRepo) => join(repo.root, 'symbiote', 'nucleus-activity.jsonl');
+  const linesOf = (repo: TestRepo) =>
+    readFileSync(activityFile(repo), 'utf8')
+      .trimEnd()
+      .split('\n')
+      .map((line) => JSON.parse(line) as Record<string, unknown>);
+
+  it('records a conversation opened and New conversation; reads them back', async () => {
+    const repo = fresh();
+    const { claude } = fakeClaude(repo.root);
+    repo.write({
+      'symbiote/config.json': '{ "nucleus": { "model": "opus", "effort": "high" } }\n',
+    });
+    const s = await service(repo, { claude });
+    await s.open({});
+    await s.renew();
+    expect(linesOf(repo)).toEqual([
+      {
+        at: NOW.toISOString(),
+        // Its session ID, as Claude Code's hooks name it.
+        conversation: 'session-9',
+        agent: 'claude',
+        kind: 'opened',
+      },
+      { at: NOW.toISOString(), conversation: 'session-9', agent: 'claude', kind: 'renewed' },
+    ]);
+    expect(await s.activity?.()).toEqual({
+      lines: linesOf(repo),
+      cut: false,
+    });
+  });
+
+  it("writes Symbiote's own lines through record, redacted", async () => {
+    const repo = fresh();
+    const s = await service(repo, {});
+    s.record?.({
+      at: NOW.toISOString(),
+      kind: 'prompt',
+      text: 'ghp_0123456789abcdefghijABCDEFGHIJ012345',
+    });
+    await expect.poll(() => existsSync(activityFile(repo))).toBe(true);
+    expect(linesOf(repo)).toEqual([{ at: NOW.toISOString(), kind: 'prompt', text: '[redacted]' }]);
+  });
+
+  it("reads Codex's thread while it works: its message, its calls, its answer, once each", async () => {
+    const repo = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    const s = await service(repo, { codex });
+    await s.ask({ text: 'What is new in Vite?' });
+    server.item('thread-1', {
+      type: 'webSearch',
+      id: 'ws1',
+      query: 'vite latest',
+      action: { type: 'search', query: 'vite latest' },
+    });
+    server.item('thread-1', {
+      type: 'mcpToolCall',
+      id: 'mc1',
+      server: 'symbiote',
+      tool: 'workspaces',
+      status: 'inProgress',
+      arguments: {},
+    });
+    await s.state();
+    await expect
+      .poll(() =>
+        existsSync(activityFile(repo))
+          ? linesOf(repo).map((l) => l.kind ?? `${String(l.tool)} ${String(l.phase)}`)
+          : [],
+      )
+      .toEqual(['opened', 'prompt', 'webSearch start', 'webSearch end', 'mcp start']);
+    server.item('thread-1', {
+      type: 'mcpToolCall',
+      id: 'mc1',
+      server: 'symbiote',
+      tool: 'workspaces',
+      status: 'completed',
+      arguments: {},
+      result: { content: [{ type: 'text', text: '{"workspaces":[]}' }] },
+      durationMs: 15,
+    });
+    server.reply('thread-1', 'Vite 8.');
+    await s.state();
+    await expect
+      .poll(() =>
+        linesOf(repo)
+          .slice(5)
+          .map((l) => l.kind ?? `${String(l.tool)} ${String(l.phase)}`),
+      )
+      .toEqual(['mcp end', 'report']);
+    expect(linesOf(repo).at(-1)).toMatchObject({
+      kind: 'report',
+      text: 'Vite 8.',
+      turn: expect.any(String) as unknown,
+    });
+    // Another `symbiote view` reading the same thread writes nothing it holds.
+    const again = await service(repo, { codex });
+    await again.state();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(linesOf(repo)).toHaveLength(7);
+  });
+});

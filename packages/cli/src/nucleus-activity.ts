@@ -94,7 +94,7 @@ const count = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.round(value) : undefined;
 
 /** A text's start, whole up to `max`, else cut at its last line break in it, said to be clipped. */
-function headOf(value: string, max = MAX_OUTPUT): { output?: string; clipped?: true } {
+export function headOf(value: string, max = MAX_OUTPUT): { output?: string; clipped?: true } {
   const whole = value.trimEnd();
   if (whole === '') return {};
   if (whole.length <= max) return { output: whole };
@@ -109,7 +109,7 @@ function answerText(response: unknown): string {
   const blocks = Array.isArray(response)
     ? response
     : Array.isArray((response as { content?: unknown } | null)?.content)
-      ? ((response as { content: unknown[] }).content)
+      ? (response as { content: unknown[] }).content
       : null;
   if (!blocks) return '';
   return blocks
@@ -184,10 +184,10 @@ export async function turnTokens(
   at: string,
 ): Promise<{ tokens?: TurnTokens; ms?: number }> {
   const { text: content } = await fileWindow(path, TRANSCRIPT_END);
-  const parsed = content.split('\n').flatMap((line) => {
+  const parsed = content.split('\n').flatMap((line): Record<string, unknown>[] => {
     try {
       const value = JSON.parse(line) as unknown;
-      return value && typeof value === 'object' ? [value] : [];
+      return value && typeof value === 'object' ? [value as Record<string, unknown>] : [];
     } catch {
       return [];
     }

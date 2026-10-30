@@ -391,6 +391,8 @@ describe('codexServer', () => {
         status: 'completed',
         startedAt: clock - 65,
         completedAt: clock - 60,
+        // Codex's own measure (NU2).
+        ms: 5000,
         prompts: ['Plan it'],
         report: '1. Plan',
         final: true,

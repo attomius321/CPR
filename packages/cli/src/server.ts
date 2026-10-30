@@ -331,6 +331,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         ...(options.version ? { version: options.version } : {}),
         url: () => address,
         exclusive,
+        // Nucleus's calls and their Confirms, in its activity (NU2, decision 607).
+        ...(repository.nucleus?.record ? { record: repository.nucleus.record } : {}),
       })
     : undefined;
   /** Terminals' output streams (V21), ended when the server closes. */
@@ -800,6 +802,9 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         answer(res, () => agent.terminal(request)),
       );
     }
+    // What Nucleus did (NU2): its activity file's newest megabyte.
+    const { activity } = agent;
+    if (url.pathname === `${api}/activity` && activity) return read(req, res, () => activity());
     if (url.pathname === `${api}/efforts`) return read(req, res, () => agent.efforts());
     if (url.pathname === `${api}/effort`) {
       return written(req, res, parseEffortChange, (change) =>
