@@ -1,0 +1,43 @@
+{
+  "number": 6022,
+  "title": "fix(from-json-schema): drop redundant inclusive bound for draft-04 exclusive ranges",
+  "body": "## What\n\n`fromJSONSchema` converts JSON Schema draft-04 boolean exclusive bounds correctly in *behaviour* but\nemits a redundant, contradictory second check. For `{ type: \"number\", minimum: 5, exclusiveMinimum: true }`\nthe converter applied **both** `.min(5)` (inclusive, `>= 5`) **and** `.gt(5)` (exclusive, `> 5`), leaving\nthe resulting schema with two number-range checks where one is dominated by the other. Same for\n`maximum` / `exclusiveMaximum: true`.\n\nThis change skips the inclusive `.min()` / `.max()` when the sibling exclusive flag is the boolean `true`,\nso only the exclusive bound is emitted.\n\n## Why\n\nIn draft-04, when `exclusiveMinimum` is the boolean `true`, the sibling `minimum` *becomes* the exclusive\nbound — it is not an independent inclusive constraint. Emitting `.min()` as well produces a schema whose\ninternal check list carries a duplicate, weaker bound. Validation output is unaffected (the exclusive\ncheck binds), so the duplication is invisible at the `.parse()` level and only shows up when inspecting\n`schema._zod.def.checks` or round-tripping the schema — which is why it is easy to miss in review.\n\n## Safety / blast radius\n\n- Internal converter behaviour only; no public API, signature, or exported-type change.\n- Behaviour-preserving for all valid inputs (the exclusive bound was already the binding constraint).\n- The **draft-07 numeric form** (`{ minimum: 3, exclusiveMinimum: 5 }`, where the two are legitimately\n  distinct independent bounds) is deliberately untouched — the guard only triggers on `=== true`.\n\n## Testing\n\n- Added `draft-04 boolean exclusive bounds do not emit a redundant inclusive bound` to\n  `from-json-schema.test.ts`, asserting both the validation behaviour (boundaries rejected, interior\n  accepted) and the structure (exactly `[greater_than 5 exclusive, less_than 10 exclusive]`).\n- Full file suite green from repo root: **146/146 tests pass, 0 type errors** (`vitest run`).\n",
+  "user": {
+    "login": "francisjohnjohnston-web",
+    "type": "User"
+  },
+  "baseSha": "bbc68f990c7e6a5e3f506c56fb04bd0279b9c9b5",
+  "headSha": "915e2cec021fc0e6ff7ab6ae3e28dc688f6329c8",
+  "mergedAt": "2026-08-17T01:02:42Z",
+  "mergeCommit": "73bacbbb6b83b49b679e141f73f2fd915a514911",
+  "commits": 4,
+  "reviews": [
+    {
+      "id": 4351560812,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "f9918ea8a3265c7538e6a8d7c1e4c93ceafd3c66",
+      "at": "2026-05-23T23:53:39Z",
+      "body": "> ✅ No new issues found.\n\n**Reviewed changes** — a tight, behavior-preserving fix to `fromJSONSchema` that drops the redundant inclusive bound the converter was emitting alongside the exclusive one for JSON Schema draft-04 boolean exclusive form.\n\n- **Guard draft-04 boolean exclusive on `minimum`/`maximum`** — in `from-json-schema.ts`, the inclusive `.min()`/`.max()` calls now skip when the sibling `exclusiveMinimum`/`exclusiveMaximum` is the boolean `true`. Strict `!== true` keeps draft-07 numeric form (`exclusiveMinimum: <number>`) on the existing path as an independent bound.\n- **Add a structural test** — `draft-04 boolean exclusive bounds do not emit a redundant inclusive bound` asserts both validation behavior (boundaries rejected, interior accepted) and the internal `_zod.def.checks` shape so a regression that reintroduces the duplicate would fail loudly. The structural assertion is the load-bearing one; parse-level behavior was already correct pre-fix because `.gt()` dominates `.min()`.\n\nThe `!== true` guard is the right shape: it covers draft-04 boolean `true` precisely without disturbing numeric draft-07 inputs, `undefined`, or the rare explicit `false`. Existing branches handling the numeric exclusive form and the boolean-to-exclusive promotion are untouched.\n\n<!--\nPullfrog review metadata — for any agent (or human-with-agent) reading this\nreview. Incorporate the fields below into your understanding of the context\nthis review was made in. The findings below were written against f9918ea8;\nif new commits have landed on pil-zod-jsonschema-exclusive-bounds since this\nreview was submitted, treat any specific bug, file, or line callout as\nPOTENTIALLY STALE — re-diff against f9918ea8 (or trigger a fresh review) and\nfactor commits past f9918ea8 into your understanding of the current state\nbefore acting on findings.\n\n- Mode: Review (initial)\n- Files reviewed: 2\n- Commits reviewed: 1\n- Base: main\n- Head: pil-zod-jsonschema-exclusive-bounds (f9918ea8)\n- Reviewed commits:\n  - f9918ea8 — fix(from-json-schema): drop redundant inclusive bound for draft-04 exclusive ranges\n- Prior pullfrog review: none\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/26346798951/job/77557915351) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6022#pullrequestreview-4351560812"
+    }
+  ],
+  "inline": [],
+  "comments": [
+    {
+      "id": 5310657830,
+      "user": {
+        "login": "colinhacks",
+        "type": "User"
+      },
+      "at": "2026-08-17T01:02:33Z",
+      "updated": "2026-08-17T01:02:33Z",
+      "body": "Merging this. Pushed two commits on top.\n\nThe first pins the issue count. The check-list assertion covers the internal shape, but the thing a user actually sees is that an out-of-range value reported two issues instead of one — `expect(schema.safeParse(4).error!.issues).toHaveLength(1)` is what regresses if this is ever undone. Also dropped the `as any`: `JSONSchema` already types `exclusiveMinimum` as `number | boolean`, so the draft-04 literal type-checks unaided.\n\nThe second unstacks the comment, since `check:comments` landed after you cut this branch and fails on the pair.\n\nOne correction worth recording, because the squash message says otherwise than the description here: the duplication is not invisible at the `.parse()` level, and it does not show up in round-tripping. It is the reverse. `toJSONSchema` output is byte-identical with and without this fix on all four targets — `exclusiveMinimum >= (minimum ?? -Infinity)` in the processor makes the redundant bound invisible to the exporter — so no JSON Schema validator ever sees a difference. Zod's own parse output is the only place it surfaces. The bounds also aren't contradictory: `>=5` and `>5` are both true of every value that trips them, and the weaker one never fires alone.\n\nGood investigation — the guard itself is right, and `!== true` is exactly the correct test to leave the draft-06+ numeric form alone. Thanks for looking into it 👍\n",
+      "url": "https://github.com/colinhacks/zod/pull/6022#issuecomment-5310657830"
+    }
+  ],
+  "citedBy": []
+}

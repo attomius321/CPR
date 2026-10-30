@@ -1,0 +1,107 @@
+{
+  "21338": {
+    "number": 21338,
+    "merge": "a5fc28a0beb7ee961a10b0314d3fd5b975e72f4a",
+    "candidates": []
+  },
+  "22523": {
+    "number": 22523,
+    "merge": "2992d17688c0ad43afc434da09f9aae9a9f6d996",
+    "candidates": []
+  },
+  "22893": {
+    "number": 22893,
+    "merge": "15332735fc284ff23cfd9e068252e130db2e9e79",
+    "candidates": [
+      {
+        "sha": "41ce76440ad1b1941394ea53210f520fb483c5ae",
+        "date": "2026-09-09T11:29:04-04:00",
+        "title": "[PM-42853] bugs with policies list fixes (#22931)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/web/src/app/admin-console/organizations/policies/policy-edit-definitions/require-sso.component.ts",
+          "apps/web/src/app/admin-console/organizations/policies/policy-edit-definitions/single-org.component.ts",
+          "bitwarden_license/bit-web/src/app/key-management/policies/session-timeout.component.ts"
+        ],
+        "symbols": []
+      }
+    ]
+  },
+  "22932": {
+    "number": 22932,
+    "merge": "30c8df9dc32c2df318307cf2aec22ac1f5dbbd11",
+    "candidates": [
+      {
+        "sha": "00885732a9171d3ab0e45a27749d098ce5bb7623",
+        "date": "2026-10-21T08:56:31-05:00",
+        "title": "[PM-45244] fix: Remove extra space between nested nav toggle and icon (#23975)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "libs/components/src/navigation/nav-item.component.html"
+        ],
+        "symbols": [
+          "libs/components/src/navigation/nav-item.component.html#(template)"
+        ]
+      },
+      {
+        "sha": "fbe3f47d098e15e128b443fd4041e2a7a25fa907",
+        "date": "2026-09-11T12:59:01-07:00",
+        "title": "fix(vault): [PM-43253] Show suspended organization icon in the side nav (#23082)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "libs/vault/src/components/vault-nav-section/vault-nav-section.component.html",
+          "libs/vault/src/components/vault-nav-section/vault-nav-section.component.ts"
+        ],
+        "symbols": [
+          "libs/vault/src/components/vault-nav-section/vault-nav-section.component.html#(template)",
+          "libs/vault/src/components/vault-nav-section/vault-nav-section.component.ts#VaultNavSectionComponent"
+        ]
+      }
+    ]
+  },
+  "23031": {
+    "number": 23031,
+    "merge": "a018a2170a071d885b7072ff2c3be1177f2987b6",
+    "candidates": [
+      {
+        "sha": "c6c5deb3e705d1ce0e3c4c49d563f40733f6a2e8",
+        "date": "2026-10-13T22:00:11+00:00",
+        "title": "Auth/PM-38259 - Desktop -  Fix account switch loop and add AccountSwitcherService (#23699)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/desktop/src/app/app.component.ts"
+        ],
+        "symbols": [
+          "apps/desktop/src/app/app.component.ts#AppComponent.ngOnInit"
+        ]
+      },
+      {
+        "sha": "fdc8b349e4b5e7e23cdc3296c37fdb55c240a1bb",
+        "date": "2026-10-08T21:32:35+00:00",
+        "title": "Auth/PM-44119 - SSO + MP Decryption - Deep linking fix (#23491)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "apps/web/src/app/oss-routing.module.ts"
+        ],
+        "symbols": [
+          "apps/web/src/app/oss-routing.module.ts#routes"
+        ]
+      }
+    ]
+  },
+  "23549": {
+    "number": 23549,
+    "merge": "0ceb6aed61228e70e237ebb61b18115ede0b80e4",
+    "candidates": []
+  }
+}

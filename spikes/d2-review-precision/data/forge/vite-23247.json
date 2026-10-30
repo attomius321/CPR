@@ -1,0 +1,31 @@
+{
+  "number": 23247,
+  "title": "test(bundled-dev): run hmr-ssr spec in bundled dev mode under test-serve-bundled",
+  "body": "1. Support running `hmr-ssr` test cases with bundled-dev flag\r\n2. Exclude the test case in bundled-dev exclude map",
+  "user": {
+    "login": "h-a-n-a",
+    "type": "User"
+  },
+  "baseSha": "7ec81e23008a8134a2ae326fe8f240375a799221",
+  "headSha": "f8da06cb91c53c245411f85cb068a2d4d5684fe1",
+  "mergedAt": "2026-08-19T11:55:56Z",
+  "mergeCommit": "bdfadefb207039bdb06d547da67dc81a92fe8750",
+  "commits": 2,
+  "reviews": [
+    {
+      "id": 4971756549,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "f8da06cb91c53c245411f85cb068a2d4d5684fe1",
+      "at": "2026-08-19T11:50:30Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23247#pullrequestreview-4971756549"
+    }
+  ],
+  "inline": [],
+  "comments": [],
+  "citedBy": []
+}

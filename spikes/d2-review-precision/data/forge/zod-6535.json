@@ -1,0 +1,589 @@
+{
+  "number": 6535,
+  "title": "fix(v4): enforce the six JSON Schema keywords fromJSONSchema silently dropped",
+  "body": "`fromJSONSchema` lists six validation keywords in `RECOGNIZED_KEYS` and silently drops them: `minProperties`, `maxProperties`, `uniqueItems`, `contains`, `minContains`, `maxContains`. A converted schema accepts data the source schema rejects, which is the worst failure mode for a validating converter — the file already throws for `not` and `if/then/else` rather than ignoring them.\n\n```ts\nconst schema = z.fromJSONSchema({ type: \"object\", minProperties: 1 });\nschema.safeParse({}).success; // main: true — now false\n```\n\nAll six are now enforced inside the converter, with no new public API — nothing to undo when the @zod/json push happens. The property counts fold into the pre-pipe guard that already enforces `propertyNames`, so they see the raw input: a key synthesized by a property `default` does not satisfy `minProperties`, and a dropped `__proto__` still counts, matching how JSON Schema validators see the instance. `uniqueItems` and the `contains` family run as checks on the converted array schema, with structural equality (two objects with the same entries in different key order are duplicates). Each keyword is also carried into metadata the way `propertyNames` already is, so `toJSONSchema` round-trips all of them.\n\nThe `uniqueItems`/`contains` issues are `code: \"custom\"` with explicit messages, since no built-in issue code describes a match count; explicit messages bypass error maps, which seems acceptable for an experimental converter. `contentEncoding`/`contentMediaType`/`contentSchema` already flow into metadata on main and needed no change.\n\nThree boundaries are deliberate rather than accidental. The keywords apply only under an explicit single `type`, matching how the converter already treats a typeless `minLength` or `minimum`; and on a union `type` like `[\"array\", \"null\"]` they are enforced but not carried into metadata, the same round-trip gap `propertyNames` has today. And because the guard sits on the input side of a pipe, a guard issue aborts before `minItems`/`maxItems` are reported, and `toJSONSchema` strips `default`/`examples` from the `io: \"input\"` document — the price of evaluating the keywords against the raw instance, which the `propertyNames` guard has paid since it shipped. All of these, plus re-emitting a carried `contains` that points into `$defs`, belong to the converter's existing contract and the future @zod/json work; each is pinned by a test so it reads as a decision.\n\nThe two cardinality issues carry an explicit English `message`. `origin: \"object\"` has no `Sizable` entry in any locale, so the structured pipeline renders \"expected object to be >=2\" — a value comparison rather than a count, wrong in all 62 locales. An accurate message in one language beats a misleading one in every language; giving the locales an `object` entry is the fix, and it belongs with the first-class checks rather than here.\n\n## Three axes\n\nMeasured against the merge-base with esbuild `--minify` and `gzip -9 -n` under `--conditions=@zod/source`:\n\n| axis | result |\n| --- | --- |\n| bundle, classic importing `fromJSONSchema` | 36,736 → 37,567 B gz (+831; raw +2,878) |\n| bundle, classic `z.object()` and `zod/mini` | +0 B — neither reaches the converter |\n| construction, guarded object | 12.6 → 20.9 µs, once per schema |\n| parse, guarded object | 0.03 → 0.07 µs |\n| parse, 10-element array | 0.30 µs plain, 1.39 µs `uniqueItems`, 0.71 µs `contains` |\n| retained per schema | 6.8 KB plain, 10.9 KB with the object guard, 9.9 KB with the array guard |\n\nThe whole cost is opt-in twice over: only a document that writes one of these keywords builds a guard, and only a bundle that imports `fromJSONSchema` carries the code. Machine load was elevated throughout, so the timings are ratios rather than absolutes; they held across two runs, and the memory figures were byte-identical.\n\nEverything lands in `from-json-schema.ts`, so mini pays nothing and classic bundles that never import `fromJSONSchema` are byte-identical; the cost lands only on its users.\n\nCloses #6463\n",
+  "user": {
+    "login": "colinhacks",
+    "type": "User"
+  },
+  "baseSha": "2ec972ecc5a8af8135ed072d2d5b5363c27bb46f",
+  "headSha": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+  "mergedAt": "2026-08-31T21:47:28Z",
+  "mergeCommit": "eca96871536603076bdd00b8779b947144133aa4",
+  "commits": 8,
+  "reviews": [
+    {
+      "id": 5070188542,
+      "user": {
+        "login": "copilot-pull-request-reviewer[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "30468abf9fbbc069ea4326c6dfe1f65e3c6bdaed",
+      "at": "2026-08-31T19:07:57Z",
+      "body": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit.",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5070188542"
+    },
+    {
+      "id": 5070280991,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "30468abf9fbbc069ea4326c6dfe1f65e3c6bdaed",
+      "at": "2026-08-31T19:18:58Z",
+      "body": "> [!IMPORTANT]\n> The four array keywords validate the parsed output instead of the raw instance, which lets `contains` accept an array the source schema rejects.\n\n**Reviewed changes** — the full diff of commit `30468ab`, which attaches enforcement to the six keywords `RECOGNIZED_KEYS` was consuming without effect.\n\n- **`checkPropertyNames` → `checkObjectGuards`** — the existing pre-pipe key guard now also enforces `minProperties`/`maxProperties`, pushing `too_small`/`too_big` with `origin: \"object\"`. Running ahead of the object parse is deliberate so the counts see the raw instance.\n- **`uniqueItems`** — a new `jsonDeepEqual` helper backs a post-parse check that reports each duplicate index against the first element it matches.\n- **`contains`/`minContains`/`maxContains`** — a post-parse check counts matching items and pushes `code: \"custom\"` issues with explicit messages; `minContains` defaults to 1, `maxContains` is unbounded when absent.\n- **Metadata carry** — all six are stashed into `extraMeta` the way `propertyNames` already was, gated on a single-string `type` and no `$ref`, so `toJSONSchema` re-emits them.\n- **Tests** — four cases covering property counts against raw input, composition with `propertyNames`, structural duplicates, and the `contains` bounds including `minContains: 0`.\n\nI confirmed the new checks cannot crash on a non-array input — `runChecks` skips checks once the payload has aborted, and `invalid_type` aborts — and that tuples built from `prefixItems` or a draft-7 `items` array are covered. `jsonDeepEqual` matches the spec's instance-equality definition. The full `from-json-schema` and `to-json-schema` suites pass in both the normal and compile-mode projects.\n\nOne thing I looked at and decided against raising as a finding: `contains` postdates draft-4 and `minContains`/`maxContains` postdate draft-7, so a strict reading says they should be inert in those dialects. The converter doesn't gate anything else that way either — a draft-4 document with `prefixItems` still builds a tuple — and ignoring a keyword the author explicitly wrote is the bug this PR is fixing. Leaving it ungated looks right.\n\n<!--\nPullfrog review metadata. These findings were written against 30468ab;\nif commits have landed on from-json-schema-guards since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: Review (initial)\n- Files reviewed: 2\n- Commits reviewed: 1\n- Base: main (68a609ac)\n- Head: from-json-schema-guards (30468ab)\n- Reviewed commits:\n  - 30468abf — fix(v4): enforce the six JSON Schema keywords fromJSONSchema silently dropped\n- Prior pullfrog review: none\n-->\n\n### ℹ️ The keywords are still dropped when `type` isn't a single string\n\nEnforcement only happens inside `convertBaseSchema`'s `object` and `array` cases, so `{ \"minProperties\": 1 }` with no `type` still converts to `z.any()` and accepts everything — the same silent drop the PR is closing, just one level up. This matches how typeless `minLength`, `minimum` and `pattern` already behave in this converter, so it may well be out of scope, but the PR's framing invites the question. Worth deciding explicitly rather than by omission, since `{\"minProperties\": 1}` as a bare `allOf`/`anyOf` branch is a common idiom for \"at least one key\".\n\nA smaller sibling: with `type: [\"array\", \"null\"]` the guards *do* apply, because each member is re-entered through `convertBaseSchema`, but the metadata carry is skipped since it tests `schema.type === \"array\"`. So those schemas validate correctly and then round-trip lossily.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Keywords are inert on typeless schemas and lossy on union-typed ones\n\n## Affected sites\n- `packages/zod/src/v4/classic/from-json-schema.ts:347-350` — `if (!type) return z.any()`, so a typeless schema never reaches the object/array cases where the six keywords are enforced.\n- `packages/zod/src/v4/classic/from-json-schema.ts:771-780` — the metadata carry tests `schema.type === \"object\"` / `=== \"array\"`, which is false when `type` is an array of names.\n\n## Verified\n- `fromJSONSchema({ uniqueItems: true }).safeParse([1, 1]).success` → `true` (not enforced).\n- `fromJSONSchema({ type: [\"array\", \"null\"], uniqueItems: true }).safeParse([1, 1]).success` → `false` (enforced), but `toJSONSchema` of it emits `{\"anyOf\":[{\"type\":\"array\",\"items\":{}},{\"type\":\"null\"}]}` with no `uniqueItems`.\n\n## Open questions for the human\n- Is the typeless case in scope for this PR, or is \"the converter only applies keywords under an explicit single `type`\" the documented contract? The pre-existing `propertyNames` carry has the identical union-typed blind spot, so fixing it here would be a separate, broader change.\n````\n\n</details>\n\n### ℹ️ Nitpicks\n\n- `packages/zod/src/v4/classic/from-json-schema.ts:665` — the `plural` arrow is constructed on every parse, before either branch that could use it, even though it's only needed to build a failure message. Hoisting it to module scope alongside `jsonDeepEqual` costs nothing and keeps the allocation off the parse path.\n- `packages/zod/src/v4/classic/from-json-schema.ts:777` — `uniqueItems: false` is carried into metadata and re-emitted even though it constrains nothing. Harmless, and arguably the right call for a lossless round-trip; noting it only so it reads as intentional.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix&review_id=5070280991) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix-approved&review_id=5070280991) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33428862487/job/99609025413) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5070280991"
+    },
+    {
+      "id": 5070339116,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "0ea26fadf243b522a396344df85f0762225ff092",
+      "at": "2026-08-31T19:26:12Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5070339116"
+    },
+    {
+      "id": 5070339495,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "0ea26fadf243b522a396344df85f0762225ff092",
+      "at": "2026-08-31T19:26:15Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5070339495"
+    },
+    {
+      "id": 5070387563,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "0ea26fadf243b522a396344df85f0762225ff092",
+      "at": "2026-08-31T19:31:48Z",
+      "body": "> ℹ️ The raw-instance fix is right. Two side effects of the pipe wrapper are worth a decision, neither a validation bug.\n\n**Reviewed changes** — commit `0ea26fa`, which reworks how the four array keywords are enforced and addresses both findings from the prior review.\n\n- **`checkArrayGuards`** — `uniqueItems` and the `contains` family moved out of post-parse `.check()` calls into a `z.transform(identity).check(...).pipe(arraySchema)` wrapper, mirroring `checkObjectGuards`. They now see the raw instance, so a `default` nested in `items` no longer synthesizes a `contains` match or collapses two distinct items into duplicates.\n- **Explicit messages on the property counts** — `too_small`/`too_big` now carry `Too small: expected object to have >=N properties`, working around `origin: \"object\"` having no entry in the locales' `Sizable` map.\n- **`plural` hoisted** to module scope alongside `jsonDeepEqual`, off the parse path.\n- **Regression test** at `from-json-schema.test.ts:1376` pinning both directions with a `default` inside `items` — it fails against the previous commit, which is the point.\n\nI re-ran the full `from-json-schema` and `to-json-schema` suites (789 tests, normal and compile-mode, no type errors) and checked that all four array conversion branches converge before the guard, that `minItems`/`maxItems` are applied inside those branches so nothing calls an array-only method on the resulting pipe, and that `toJSONSchema` still renders the array in both `io` modes. Both prior threads are resolved.\n\nThe remaining `contains`-carries-a-dangling-`$ref` thread is untouched by this commit and stays open.\n\n<!--\nPullfrog review metadata. These findings were written against 0ea26fa;\nif commits have landed on from-json-schema-guards since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 2\n- Commits reviewed: 2\n- Base: main\n- Head: from-json-schema-guards (0ea26fa)\n- Reviewed commits:\n  - 0ea26fad — fix: evaluate the array keywords on the raw instance, pre-pipe\n  - 30468abf — fix(v4): enforce the six JSON Schema keywords fromJSONSchema silently dropped\n- Prior pullfrog review: 30468ab (https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5070280991)\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix&review_id=5070387563) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix-approved&review_id=5070387563) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33430102659/job/99613120043) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5070387563"
+    },
+    {
+      "id": 5071012263,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "b58a9c50ca86d622eea65fe38c2742282e7c48ea",
+      "at": "2026-08-31T20:45:09Z",
+      "body": "> [!IMPORTANT]\n> The round-trip can emit invalid JSON Schema, and the new guard paths need contract and performance follow-up before merge.\n\n**Reviewed changes** I reviewed all four commits adding raw-input object and array guards, structural uniqueness, metadata round-tripping, and regression coverage.\n\n- **Object cardinality** Enforces `minProperties` and `maxProperties` before object parsing alongside `propertyNames`.\n- **Array constraints** Adds canonical structural equality for `uniqueItems` and match-count enforcement for `contains`/`minContains`/`maxContains`.\n- **Round-trip coverage** Carries the six enforced keywords through metadata and tests raw-input semantics, output shape, and guard ordering.\n\n<!--\nPullfrog review metadata. These findings were written against b58a9c50;\nif commits have landed on from-json-schema-guards since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: Review (initial)\n- Files reviewed: 2\n- Commits reviewed: 4\n- Base: main (2ec972ec)\n- Head: from-json-schema-guards (b58a9c50)\n- Reviewed commits:\n  - b58a9c50 — perf: detect uniqueItems duplicates by canonical key instead of pairwise\n  - 19483969 — test: pin the two side effects of the pre-pipe guards\n  - 0ea26fad — fix: evaluate the array keywords on the raw instance, pre-pipe\n  - 30468abf — fix(v4): enforce the six JSON Schema keywords fromJSONSchema silently dropped\n- Prior pullfrog review: none\n-->\n\n### ⚠️ The three-axis impact is not established\n\nThis adds per-schema wrappers and per-parse canonicalization and match walks under `packages/zod/src`, but the PR reports no runtime, retained-memory, or bundle measurements. Those numbers are required before merge, especially because importing `fromJSONSchema` now pulls in the canonicalizer even for schemas that do not use `uniqueItems`.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Measure runtime, memory, and bundle cost\n\n## Affected sites\n- packages/zod/src/v4/classic/from-json-schema.ts:164-326 — guarded schemas add a transform, check, pipe, closures, and per-parse collections\n- packages/zod/src/v4/classic/from-json-schema.ts:738-745 — array conversion attaches the new guard path\n\n## Required outcome\n- Report construction and parse measurements for representative object, `uniqueItems`, and `contains` schemas.\n- Report retained bytes per guarded schema.\n- Report minified and gzipped deltas for a classic fixture importing `fromJSONSchema` and for `zod/mini`, including any regressions.\n````\n\n</details>\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix&review_id=5071012263) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix-approved&review_id=5071012263) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33436616667/job/99634501793) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071012263"
+    },
+    {
+      "id": 5071177352,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "3244f5ab01a83f87b508da0e4bdb6198e7d9e52f",
+      "at": "2026-08-31T21:01:43Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071177352"
+    },
+    {
+      "id": 5071177837,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "3244f5ab01a83f87b508da0e4bdb6198e7d9e52f",
+      "at": "2026-08-31T21:01:46Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071177837"
+    },
+    {
+      "id": 5071207887,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "3244f5ab01a83f87b508da0e4bdb6198e7d9e52f",
+      "at": "2026-08-31T21:04:36Z",
+      "body": "> [!IMPORTANT]\n> The new `$ref` gate can silently drop valid constraints when annotation data happens to contain a `$ref` property.\n\n**Reviewed changes** — reviewed commit `3244f5a`, which short-circuits bounded `contains` scans and avoids carrying subschemas with references.\n\n- **Bounded `contains` scans** — Stopped scanning one match past `maxContains` and removed the no-longer-exact failure count.\n- **Reference-safe metadata carry** — Omitted raw `propertyNames` and `contains` metadata when the subschema appears to contain `$ref`.\n- **Regression coverage** — Added a `$defs` case confirming enforcement remains intact while dangling carried metadata is omitted.\n\n<!--\nPullfrog review metadata. These findings were written against 3244f5a;\nif commits have landed on from-json-schema-guards since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 2\n- Commits reviewed: 5\n- Base: main (2ec972e)\n- Head: from-json-schema-guards (3244f5a)\n- Reviewed commits:\n  - 3244f5a — fix: short-circuit the contains scan and drop carried subschemas that cannot resolve\n  - b58a9c5 — perf: detect uniqueItems duplicates by canonical key instead of pairwise\n  - 1948396 — test: pin the two side effects of the pre-pipe guards\n  - 0ea26fa — fix: evaluate the array keywords on the raw instance, pre-pipe\n  - 30468ab — fix(v4): enforce the six JSON Schema keywords fromJSONSchema silently dropped\n- Prior pullfrog review: b58a9c5 (https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071012263)\n-->\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix&review_id=5071207887) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix-approved&review_id=5071207887) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33438506129/job/99640700153) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071207887"
+    },
+    {
+      "id": 5071289112,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "f5a93a2db310926991978c1120246d7a331ac49c",
+      "at": "2026-08-31T21:12:57Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071289112"
+    },
+    {
+      "id": 5071291388,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "f5a93a2db310926991978c1120246d7a331ac49c",
+      "at": "2026-08-31T21:13:08Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071291388"
+    },
+    {
+      "id": 5071317100,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "f5a93a2db310926991978c1120246d7a331ac49c",
+      "at": "2026-08-31T21:15:45Z",
+      "body": "> [!IMPORTANT]\n> The new exclusion list fixes `$ref` inside the four built-in instance-value keywords, but unknown annotation values are still traversed as schemas. A valid `x-*` annotation containing a `$ref` property still causes `contains` to disappear on round-trip; the existing open thread remains the action item.\n\n**Reviewed changes** I reviewed commit `f5a93a2`, which narrows the `$ref` metadata scan.\n\n- **Skipped standard instance data** — Added `INSTANCE_KEYWORDS` so `default`, `const`, `enum`, and `examples` values are not mistaken for schema references.\n- **Pinned the original reproducer** — Added a regression case confirming that `default: { $ref: \"literal\" }` no longer suppresses carried `contains` metadata.\n\n<!--\nPullfrog review metadata. These findings were written against f5a93a2;\nif commits have landed on from-json-schema-guards since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 2\n- Commits reviewed: 6\n- Base: main (2ec972e)\n- Head: from-json-schema-guards (f5a93a2)\n- Reviewed commits:\n  - f5a93a2 — fix: do not read a $ref key inside instance data as a schema reference\n  - 3244f5a — fix: short-circuit the contains scan and drop carried subschemas that cannot resolve\n  - b58a9c5 — perf: detect uniqueItems duplicates by canonical key instead of pairwise\n  - 1948396 — test: pin the two side effects of the pre-pipe guards\n  - 0ea26fa — fix: evaluate the array keywords on the raw instance, pre-pipe\n  - 30468ab — fix(v4): enforce the six JSON Schema keywords fromJSONSchema silently dropped\n- Prior pullfrog review: 3244f5a (https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071207887)\n-->\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix it ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix&review_id=5071317100) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33439639652/job/99644426672) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071317100"
+    },
+    {
+      "id": 5071410514,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "a9c5a4749add1a3d3e0054533427e6e1f0068412",
+      "at": "2026-08-31T21:26:01Z",
+      "body": "> [!IMPORTANT]\n> The schema-position allowlist still misses a standard draft-7/draft-4 position, so some carried subschemas can emit dangling references.\n\n**Reviewed changes** — I reviewed commit `a9c5a47`, which narrows the carried-`$ref` scan to schema-valued keyword positions.\n\n- **Schema-position walker** — Replaced the instance-keyword denylist with explicit single-schema and schema-map allowlists, preserving `$ref`-shaped values under defaults and unknown annotations.\n- **Regression coverage** — Added an `x-note` annotation case that remains carried and a nested `items` reference case that remains suppressed.\n\n<!--\nPullfrog review metadata. These findings were written against a9c5a47;\nif commits have landed on from-json-schema-guards since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 2\n- Commits reviewed: 1\n- Base: main (2ec972e)\n- Head: from-json-schema-guards (a9c5a47)\n- Reviewed commits:\n  - a9c5a47 — fix: walk only schema positions when looking for a carried $ref\n- Prior pullfrog review: f5a93a2 (https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071317100)\n-->\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix&review_id=5071410514) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix-approved&review_id=5071410514) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33440653307/job/99647756169) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071410514"
+    },
+    {
+      "id": 5071463345,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "at": "2026-08-31T21:31:44Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071463345"
+    },
+    {
+      "id": 5071465041,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "at": "2026-08-31T21:31:56Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071465041"
+    },
+    {
+      "id": 5071504086,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "at": "2026-08-31T21:36:31Z",
+      "body": "> ℹ️ No new issues in this delta. The two unchanged open threads remain outstanding.\n\n**Reviewed changes** — I reviewed the commit adding legacy `dependencies` traversal to the carried-`$ref` walker.\n\n- **Mixed dependency forms** — Added `dependencies` to the schema-map positions so schema-valued entries are scanned while property-name arrays remain inert.\n- **Regression coverage** — Added cases proving a dependency schema with a root reference suppresses dangling metadata and an array-valued dependency still round-trips.\n\n<!--\nPullfrog review metadata. These findings were written against dd9e16c;\nif commits have landed on from-json-schema-guards since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 2\n- Commits reviewed: 1\n- Base: main (2ec972e)\n- Head: from-json-schema-guards (dd9e16c)\n- Reviewed commits:\n  - dd9e16c — fix: walk draft-7 dependencies when looking for a carried $ref\n- Prior pullfrog review: a9c5a47 (https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071410514)\n-->\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix it ➔](https://pullfrog.com/trigger/colinhacks/zod/6535?action=fix&review_id=5071504086) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33441499135/job/99650564209) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6535#pullrequestreview-5071504086"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3897606205,
+      "review": 5070280991,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 636,
+      "commit": "30468abf9fbbc069ea4326c6dfe1f65e3c6bdaed",
+      "originalCommit": "30468abf9fbbc069ea4326c6dfe1f65e3c6bdaed",
+      "at": "2026-08-31T19:18:57Z",
+      "body": "These two checks are appended to the converted array schema, so they run *after* the parse and see the parsed output rather than the instance — the exact hazard `checkObjectGuards` goes out of its way to avoid twenty lines up. A `default` on a property inside `items` is enough to break both directions, and the `contains` direction is a false accept.\n\n```ts\nconst items = { type: \"object\", properties: { a: { type: \"string\", default: \"x\" } } };\n\n// accepts [{}] — the default synthesizes the match. JSON Schema rejects: no item has `a`.\nz.fromJSONSchema({ type: \"array\", items, contains: { type: \"object\", properties: { a: { const: \"x\" } }, required: [\"a\"] } })\n  .safeParse([{}]).success; // true\n\n// rejects [{a:\"x\"}, {}] — both become {a:\"x\"}. JSON Schema accepts: two distinct items.\nz.fromJSONSchema({ type: \"array\", items, uniqueItems: true })\n  .safeParse([{ a: \"x\" }, {}]).success; // false\n```\n\n<details><summary>Technical details</summary>\n\n````markdown\n# `uniqueItems` and `contains` validate the parsed output, not the instance\n\n## Affected sites\n- `packages/zod/src/v4/classic/from-json-schema.ts:636-653` — the `uniqueItems` check reads `payload.value` after the array/tuple parse has applied defaults, so two items that differed in the instance can compare equal. False reject.\n- `packages/zod/src/v4/classic/from-json-schema.ts:656-683` — the `contains` check counts matches over the same post-parse value, so an item that did not satisfy `contains` in the instance can satisfy it after a default fills in the deciding property. False accept, which the PR description itself calls the worst failure mode for a validating converter.\n\n## Required outcome\nBoth keywords must be evaluated against the array as it was received, matching the raw-input rule the object guard already documents and the property-count tests already assert. Nested `default`s are the reachable trigger today; anything else that makes the parsed array differ from the instance has the same effect.\n\n## Suggested approach\nThe machinery is already in the file. `checkObjectGuards` wraps its subject as `z.transform(identity).check(...).pipe(objectSchema)` precisely so the check observes raw input; an array-side equivalent would do the same, with the `Array.isArray` early return standing in for the object type test. That also keeps both halves of the PR explaining themselves the same way instead of two mechanisms with opposite semantics.\n\nWorth a regression test with a `default` nested in `items` for each keyword — the four new tests all use item schemas that parse to themselves, so they pass either way.\n````\n\n</details>",
+      "diffHunk": "@@ -585,6 +632,55 @@ function convertBaseSchema(schema: JSONSchema.JSONSchema, ctx: ConversionContext\n         // No items specified - array of any\n         zodSchema = z.array(z.any());\n       }\n+\n+      if (schema.uniqueItems === true) {",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3897606205"
+    },
+    {
+      "id": 3897606215,
+      "review": 5070280991,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 777,
+      "commit": "b58a9c50ca86d622eea65fe38c2742282e7c48ea",
+      "originalCommit": "30468abf9fbbc069ea4326c6dfe1f65e3c6bdaed",
+      "at": "2026-08-31T19:18:57Z",
+      "body": "`extraMeta.contains` stores the raw subschema, and `toJSONSchema` flat-merges metadata without rewriting nested `$ref`s or extracting `$defs` for them, so a `contains` that points into `$defs` re-emits a reference the output document never defines:\n\n```ts\nz.toJSONSchema(z.fromJSONSchema({\n  type: \"array\",\n  contains: { $ref: \"#/$defs/Foo\" },\n  $defs: { Foo: { type: \"object\", properties: { id: { type: \"string\" } }, required: [\"id\"] } },\n}));\n// { type: \"array\", items: {}, contains: { $ref: \"#/$defs/Foo\" } }  — no $defs anywhere\n```\n\nEnforcement itself is correct here; only the round-tripped document is invalid. The pre-existing `propertyNames` carry reproduces this identically, so it isn't introduced by this PR — but `propertyNames` constrains key strings and is almost never a `$ref`, whereas `contains` is a full item schema where a `$ref` is the normal way to write it. Fine to leave for the `@zod/json` work if you'd rather not grow the carry here; flagging it so the choice is deliberate.",
+      "diffHunk": "@@ -671,6 +767,18 @@ function convertSchema(schema: JSONSchema.JSONSchema | boolean, ctx: ConversionC\n     extraMeta.propertyNames = schema.propertyNames;\n   }\n \n+  // Same carry for the other guard-enforced keywords.\n+  if (schema.type === \"object\" && schema.$ref === undefined) {\n+    for (const key of [\"minProperties\", \"maxProperties\"] as const) {\n+      if (schema[key] !== undefined) extraMeta[key] = schema[key];\n+    }\n+  }\n+  if (schema.type === \"array\" && schema.$ref === undefined) {\n+    for (const key of [\"uniqueItems\", \"contains\", \"minContains\", \"maxContains\"] as const) {",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3897606215"
+    },
+    {
+      "id": 3897606220,
+      "review": 5070280991,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 178,
+      "originalLine": 178,
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "originalCommit": "30468abf9fbbc069ea4326c6dfe1f65e3c6bdaed",
+      "at": "2026-08-31T19:18:57Z",
+      "body": "`origin: \"object\"` has no entry in the locales' `Sizable` map, so these fall to the non-sizable branch and render as a value comparison rather than a count: `\"Too small: expected object to be >=2\"` and `\"Too big: expected object to be <=3\"`. Compare the array equivalent, `\"Too small: expected array to have >=2 items\"`.\n\nAn explicit `message` on the two issues would fix it without touching the forty-odd locale files, and would be consistent with the explicit messages you already accepted for `uniqueItems`/`contains` in this PR.",
+      "diffHunk": "@@ -155,34 +155,76 @@ function resolveRef(ref: string, ctx: ConversionContext): JSONSchema.JSONSchema\n }\n \n /**\n- * Rejects every own key that fails `keySchema`, before `objectSchema` runs. The\n- * guard has to see the raw input: an object parse drops `__proto__` and can add\n- * keys from a property `default`, so its output is not the set of names the\n- * instance actually carried.\n+ * Enforces the keywords that constrain an object's own keys — `propertyNames`,\n+ * `minProperties`, `maxProperties` — before `objectSchema` runs. The guard has\n+ * to see the raw input: an object parse drops `__proto__` and can add keys from\n+ * a property `default`, so its output is not the set of names the instance\n+ * actually carried.\n  */\n-function checkPropertyNames(objectSchema: ZodType, keySchema: ZodType): ZodType {\n+function checkObjectGuards(\n+  objectSchema: ZodType,\n+  guards: { keySchema?: ZodType | undefined; minProperties?: number | undefined; maxProperties?: number | undefined }\n+): ZodType {\n   // An identity transform, not z.any(), so `toJSONSchema` reports the object on both the input and the output side of the pipe.\n   const guard = z\n     .transform((value: unknown) => value)\n     .check((payload) => {\n       const value = payload.value;\n       if (typeof value !== \"object\" || value === null || Array.isArray(value)) return;\n-      for (const key of Object.getOwnPropertyNames(value)) {\n-        const result = keySchema.safeParse(key);\n-        if (result.success) continue;\n+      const keys = Object.getOwnPropertyNames(value);\n+      if (guards.minProperties !== undefined && keys.length < guards.minProperties) {\n         payload.issues.push({\n-          code: \"invalid_key\",\n-          origin: \"record\",\n-          issues: result.error.issues,\n-          input: key,\n-          path: [key],\n+          origin: \"object\",\n+          code: \"too_small\",",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3897606220"
+    },
+    {
+      "id": 3897657728,
+      "review": 5070339116,
+      "replyTo": 3897606205,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 636,
+      "commit": "30468abf9fbbc069ea4326c6dfe1f65e3c6bdaed",
+      "originalCommit": "30468abf9fbbc069ea4326c6dfe1f65e3c6bdaed",
+      "at": "2026-08-31T19:26:12Z",
+      "body": "Addressed in `0ea26fad` — both keywords now run pre-pipe via `checkArrayGuards`, with a regression test using a `default` nested in `items`.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33430102659/job/99613120043) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -585,6 +632,55 @@ function convertBaseSchema(schema: JSONSchema.JSONSchema, ctx: ConversionContext\n         // No items specified - array of any\n         zodSchema = z.array(z.any());\n       }\n+\n+      if (schema.uniqueItems === true) {",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3897657728"
+    },
+    {
+      "id": 3897658058,
+      "review": 5070339495,
+      "replyTo": 3897606220,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 178,
+      "originalLine": 178,
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "originalCommit": "30468abf9fbbc069ea4326c6dfe1f65e3c6bdaed",
+      "at": "2026-08-31T19:26:15Z",
+      "body": "Addressed in `0ea26fad` — both issues now carry an explicit `message` naming the property count.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33430102659/job/99613120043) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -155,34 +155,76 @@ function resolveRef(ref: string, ctx: ConversionContext): JSONSchema.JSONSchema\n }\n \n /**\n- * Rejects every own key that fails `keySchema`, before `objectSchema` runs. The\n- * guard has to see the raw input: an object parse drops `__proto__` and can add\n- * keys from a property `default`, so its output is not the set of names the\n- * instance actually carried.\n+ * Enforces the keywords that constrain an object's own keys — `propertyNames`,\n+ * `minProperties`, `maxProperties` — before `objectSchema` runs. The guard has\n+ * to see the raw input: an object parse drops `__proto__` and can add keys from\n+ * a property `default`, so its output is not the set of names the instance\n+ * actually carried.\n  */\n-function checkPropertyNames(objectSchema: ZodType, keySchema: ZodType): ZodType {\n+function checkObjectGuards(\n+  objectSchema: ZodType,\n+  guards: { keySchema?: ZodType | undefined; minProperties?: number | undefined; maxProperties?: number | undefined }\n+): ZodType {\n   // An identity transform, not z.any(), so `toJSONSchema` reports the object on both the input and the output side of the pipe.\n   const guard = z\n     .transform((value: unknown) => value)\n     .check((payload) => {\n       const value = payload.value;\n       if (typeof value !== \"object\" || value === null || Array.isArray(value)) return;\n-      for (const key of Object.getOwnPropertyNames(value)) {\n-        const result = keySchema.safeParse(key);\n-        if (result.success) continue;\n+      const keys = Object.getOwnPropertyNames(value);\n+      if (guards.minProperties !== undefined && keys.length < guards.minProperties) {\n         payload.issues.push({\n-          code: \"invalid_key\",\n-          origin: \"record\",\n-          issues: result.error.issues,\n-          input: key,\n-          path: [key],\n+          origin: \"object\",\n+          code: \"too_small\",",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3897658058"
+    },
+    {
+      "id": 3897699475,
+      "review": 5070387563,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 786,
+      "originalLine": 705,
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "originalCommit": "0ea26fadf243b522a396344df85f0762225ff092",
+      "at": "2026-08-31T19:31:47Z",
+      "body": "Now that the guard sits on the input side of the pipe, a guard issue aborts before the array parses — so `minItems`/`maxItems` are no longer reported when a guard keyword also fails. Verified on `{type:\"array\", items:{type:\"integer\"}, minItems:3, uniqueItems:true}` with `[1,1]`: only the `custom` duplicate issue, no `too_small`. Under the old placement both surfaced, since `too_small` carries `continue: true`.\n\nRejection is unchanged, so this is diagnostics only — but it's the one case where the move is a strict loss rather than a swap, and nothing tests it.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# `minItems`/`maxItems` issues are swallowed when a guard keyword fails\n\n## Affected sites\n- `packages/zod/src/v4/classic/from-json-schema.ts:705-713` — the guard wraps the array schema, and `handlePipeResult` (`core/schemas.ts:4340`) aborts the pipe on any issue other than `unrecognized_keys`, so the right side never runs.\n- `packages/zod/src/v4/classic/from-json-schema.ts:691-696`, `:664-669`, `:679-684` — `minItems`/`maxItems` land on the array/tuple schema, i.e. on the suppressed side.\n\n## Verified\n- New: `{type:\"array\",items:{type:\"integer\"},minItems:3,uniqueItems:true}` on `[1,1]` → `[{code:\"custom\",path:[1]}]`.\n- Old placement, simulated as `z.array(z.int()).min(3).check(guard)` on `[1,1]` → `[{code:\"too_small\"},{code:\"custom\",path:[1]}]`.\n- Same for `maxItems`, and for the `prefixItems` tuple branch.\n- Element type errors flip the same way, but that direction is a swap: the old placement reported them and skipped the guard, so neither placement ever showed both.\n\n## Required outcome\nEither the length keywords co-report with the guard keywords again, or the precedence is accepted deliberately and pinned by a test so it doesn't read as an oversight.\n\n## Suggested approach\nFolding `minItems`/`maxItems` into `checkArrayGuards` would restore co-reporting — array length is identical before and after the item parse, so they're safe to evaluate on the raw instance. That does mean the length keywords take two different code paths depending on whether a guard keyword is present, which may not be worth it for a diagnostics-only difference; accepting and testing it is a reasonable answer too.\n````\n\n</details>",
+      "diffHunk": "@@ -585,6 +700,18 @@ function convertBaseSchema(schema: JSONSchema.JSONSchema, ctx: ConversionContext\n         // No items specified - array of any\n         zodSchema = z.array(z.any());\n       }\n+\n+      // minContains/maxContains only constrain anything when `contains` itself is present\n+      if (schema.uniqueItems === true || schema.contains !== undefined) {",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3897699475"
+    },
+    {
+      "id": 3897699487,
+      "review": 5070387563,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 374,
+      "originalLine": 293,
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "originalCommit": "0ea26fadf243b522a396344df85f0762225ff092",
+      "at": "2026-08-31T19:31:47Z",
+      "body": "The identity transform makes `isTransforming()` true for the whole schema, and `toJSONSchema` deletes `default` and `examples` from a transforming schema in `io: \"input\"` mode. So adding any guard keyword silently strips them from the input-mode document:\n\n```ts\nz.toJSONSchema(z.fromJSONSchema({ type: \"array\", uniqueItems: true, default: [] }), { io: \"input\" });\n// { type: \"array\", items: {}, uniqueItems: true }   — no `default`\n// drop `uniqueItems` from the source and `default` comes back\n```\n\nThis is a regression against `main` for `{type:\"object\", minProperties:1, default:{}}` too, which previously built no guard at all. Default (`io: \"output\"`) mode is unaffected.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# A guard keyword strips `default`/`examples` from the `io: \"input\"` document\n\n## Affected sites\n- `packages/zod/src/v4/classic/from-json-schema.ts:293` — `return guard.pipe(arraySchema)` puts a `$ZodTransform` on the pipe's `in` side.\n- `packages/zod/src/v4/classic/from-json-schema.ts:632-645` — same wrapper is now reached for `minProperties`/`maxProperties` alone, which on `main` produced a bare `ZodObject`.\n- `packages/zod/src/v4/core/to-json-schema.ts:276-280` — deletes `result.schema.default` and `.examples` when `isTransforming(schema)`; `isTransforming` follows a pipe to its transform `in`.\n\n## Verified\n- `{type:\"array\", uniqueItems:true, default:[], examples:[[1]]}` → `io:\"input\"` emits neither `default` nor `examples`; the same document without `uniqueItems` emits both.\n- `{type:\"object\", minProperties:1, default:{}, examples:[{a:1}]}` → identical loss, and identical to what `propertyNames` already did on `main`.\n- Nested under a parent object, `properties.xs.default` is dropped in input mode and present in output mode.\n- `io: \"output\"` is correct in every case; `pipeProcessor` resolves to `def.out` when `def.in` is a transform.\n\n## Required outcome\nA converted schema should emit the same annotations in input mode whether or not one of the six keywords is present. Failing that, the limitation should be a deliberate, recorded boundary like the other two in the PR description.\n\n## Open questions for the human\n- Is `io: \"input\"` fidelity in scope here, or does it belong with the `@zod/json` work alongside the `contains`/`$defs` gap? The `propertyNames` guard has had this since it shipped, so this PR widens the blast radius rather than creating the mechanism — but `minProperties` on a plain object is a much more ordinary document than `propertyNames`.\n- If it is in scope: re-applying `default`/`examples` onto the wrapper after `checkObjectGuards`/`checkArrayGuards` is the narrow fix; teaching `isTransforming` to see through an identity transform is the general one and is a `core/` change with its own three-axis cost.\n````\n\n</details>",
+      "diffHunk": "@@ -155,34 +155,144 @@ function resolveRef(ref: string, ctx: ConversionContext): JSONSchema.JSONSchema\n }\n \n /**\n- * Rejects every own key that fails `keySchema`, before `objectSchema` runs. The\n- * guard has to see the raw input: an object parse drops `__proto__` and can add\n- * keys from a property `default`, so its output is not the set of names the\n- * instance actually carried.\n+ * Enforces the keywords that constrain an object's own keys — `propertyNames`,\n+ * `minProperties`, `maxProperties` — before `objectSchema` runs. The guard has\n+ * to see the raw input: an object parse drops `__proto__` and can add keys from\n+ * a property `default`, so its output is not the set of names the instance\n+ * actually carried.\n  */\n-function checkPropertyNames(objectSchema: ZodType, keySchema: ZodType): ZodType {\n+function checkObjectGuards(\n+  objectSchema: ZodType,\n+  guards: { keySchema?: ZodType | undefined; minProperties?: number | undefined; maxProperties?: number | undefined }\n+): ZodType {\n   // An identity transform, not z.any(), so `toJSONSchema` reports the object on both the input and the output side of the pipe.\n   const guard = z\n     .transform((value: unknown) => value)\n     .check((payload) => {\n       const value = payload.value;\n       if (typeof value !== \"object\" || value === null || Array.isArray(value)) return;\n-      for (const key of Object.getOwnPropertyNames(value)) {\n-        const result = keySchema.safeParse(key);\n-        if (result.success) continue;\n+      const keys = Object.getOwnPropertyNames(value);\n+      if (guards.minProperties !== undefined && keys.length < guards.minProperties) {\n         payload.issues.push({\n-          code: \"invalid_key\",\n-          origin: \"record\",\n-          issues: result.error.issues,\n-          input: key,\n-          path: [key],\n+          origin: \"object\",\n+          code: \"too_small\",\n+          minimum: guards.minProperties,\n+          inclusive: true,\n+          message: `Too small: expected object to have >=${guards.minProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n           continue: true,\n         });\n       }\n+      if (guards.maxProperties !== undefined && keys.length > guards.maxProperties) {\n+        payload.issues.push({\n+          origin: \"object\",\n+          code: \"too_big\",\n+          maximum: guards.maxProperties,\n+          inclusive: true,\n+          message: `Too big: expected object to have <=${guards.maxProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n+          continue: true,\n+        });\n+      }\n+      if (guards.keySchema) {\n+        for (const key of keys) {\n+          const result = guards.keySchema.safeParse(key);\n+          if (result.success) continue;\n+          payload.issues.push({\n+            code: \"invalid_key\",\n+            origin: \"record\",\n+            issues: result.error.issues,\n+            input: key,\n+            path: [key],\n+            continue: true,\n+          });\n+        }\n+      }\n     });\n   return guard.pipe(objectSchema);\n }\n \n+// structural equality over JSON data, so two objects with the same entries in different key order are duplicates\n+function jsonDeepEqual(a: unknown, b: unknown): boolean {\n+  if (a === b) return true;\n+  if (typeof a !== \"object\" || typeof b !== \"object\" || a === null || b === null) return false;\n+  if (Array.isArray(a) || Array.isArray(b)) {\n+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;\n+    return a.every((item, i) => jsonDeepEqual(item, b[i]));\n+  }\n+  const keys = Object.keys(a);\n+  if (keys.length !== Object.keys(b).length) return false;\n+  return keys.every((k) => Object.prototype.hasOwnProperty.call(b, k) && jsonDeepEqual((a as any)[k], (b as any)[k]));\n+}\n+\n+function plural(n: number): string {\n+  return n === 1 ? \"element\" : \"elements\";\n+}\n+\n+/**\n+ * Enforces `uniqueItems` and the `contains` family before `arraySchema` runs, for the same reason\n+ * `checkObjectGuards` runs pre-pipe: an item parse can apply a nested `default`, so the parsed\n+ * array is not the instance the keywords are defined over.\n+ */\n+function checkArrayGuards(\n+  arraySchema: ZodType,\n+  guards: {\n+    uniqueItems?: boolean | undefined;\n+    containsSchema?: ZodType | undefined;\n+    minContains?: number | undefined;\n+    maxContains?: number | undefined;\n+  }\n+): ZodType {\n+  // An identity transform, not z.any(), so `toJSONSchema` reports the array on both the input and the output side of the pipe.\n+  const guard = z\n+    .transform((value: unknown) => value)\n+    .check((payload) => {\n+      const items = payload.value;\n+      if (!Array.isArray(items)) return;\n+      if (guards.uniqueItems === true) {\n+        outer: for (let i = 1; i < items.length; i++) {\n+          for (let j = 0; j < i; j++) {\n+            if (!jsonDeepEqual(items[i], items[j])) continue;\n+            payload.issues.push({\n+              code: \"custom\",\n+              message: `Array items must be unique: element at index ${i} duplicates the one at index ${j}`,\n+              input: items,\n+              path: [i],\n+              continue: true,\n+            });\n+            continue outer;\n+          }\n+        }\n+      }\n+      if (guards.containsSchema) {\n+        const minContains = guards.minContains ?? 1;\n+        let matches = 0;\n+        for (const item of items) {\n+          if (guards.containsSchema.safeParse(item).success) matches++;\n+        }\n+        if (matches < minContains) {\n+          payload.issues.push({\n+            code: \"custom\",\n+            message: `Array must contain at least ${minContains} matching ${plural(minContains)}; found ${matches}`,\n+            input: items,\n+            continue: true,\n+          });\n+        }\n+        if (guards.maxContains !== undefined && matches > guards.maxContains) {\n+          payload.issues.push({\n+            code: \"custom\",\n+            message: `Array must contain at most ${guards.maxContains} matching ${plural(guards.maxContains)}; found ${matches}`,\n+            input: items,\n+            continue: true,\n+          });\n+        }\n+      }\n+    });\n+  return guard.pipe(arraySchema);",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3897699487"
+    },
+    {
+      "id": 3898221259,
+      "review": 5071012263,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 181,
+      "originalLine": 181,
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "originalCommit": "b58a9c50ca86d622eea65fe38c2742282e7c48ea",
+      "at": "2026-08-31T20:45:08Z",
+      "body": "These standard `too_small`/`too_big` issues hard-code English, so per-parse, global, and locale error maps can never customize them because `finalizeIssue` takes `issue.message` first. Drop the explicit `message` on both object-cardinality issues so the normal structured-issue pipeline formats them.",
+      "diffHunk": "@@ -155,34 +155,177 @@ function resolveRef(ref: string, ctx: ConversionContext): JSONSchema.JSONSchema\n }\n \n /**\n- * Rejects every own key that fails `keySchema`, before `objectSchema` runs. The\n- * guard has to see the raw input: an object parse drops `__proto__` and can add\n- * keys from a property `default`, so its output is not the set of names the\n- * instance actually carried.\n+ * Enforces the keywords that constrain an object's own keys — `propertyNames`,\n+ * `minProperties`, `maxProperties` — before `objectSchema` runs. The guard has\n+ * to see the raw input: an object parse drops `__proto__` and can add keys from\n+ * a property `default`, so its output is not the set of names the instance\n+ * actually carried.\n  */\n-function checkPropertyNames(objectSchema: ZodType, keySchema: ZodType): ZodType {\n+function checkObjectGuards(\n+  objectSchema: ZodType,\n+  guards: { keySchema?: ZodType | undefined; minProperties?: number | undefined; maxProperties?: number | undefined }\n+): ZodType {\n   // An identity transform, not z.any(), so `toJSONSchema` reports the object on both the input and the output side of the pipe.\n   const guard = z\n     .transform((value: unknown) => value)\n     .check((payload) => {\n       const value = payload.value;\n       if (typeof value !== \"object\" || value === null || Array.isArray(value)) return;\n-      for (const key of Object.getOwnPropertyNames(value)) {\n-        const result = keySchema.safeParse(key);\n-        if (result.success) continue;\n+      const keys = Object.getOwnPropertyNames(value);\n+      if (guards.minProperties !== undefined && keys.length < guards.minProperties) {\n         payload.issues.push({\n-          code: \"invalid_key\",\n-          origin: \"record\",\n-          issues: result.error.issues,\n-          input: key,\n-          path: [key],\n+          origin: \"object\",\n+          code: \"too_small\",\n+          minimum: guards.minProperties,\n+          inclusive: true,\n+          message: `Too small: expected object to have >=${guards.minProperties} properties`,",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3898221259"
+    },
+    {
+      "id": 3898221264,
+      "review": 5071012263,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 303,
+      "commit": "b58a9c50ca86d622eea65fe38c2742282e7c48ea",
+      "originalCommit": "b58a9c50ca86d622eea65fe38c2742282e7c48ea",
+      "at": "2026-08-31T20:45:08Z",
+      "body": "Counting in full makes `contains` reparse every raw item even after the result is decided: without `maxContains`, reaching `minContains` proves success, while exceeding `maxContains` proves failure. Short-circuit those cases instead of paying for exact-count prose, which can nearly double validation work for large or expensive item schemas.",
+      "diffHunk": "@@ -155,34 +155,177 @@ function resolveRef(ref: string, ctx: ConversionContext): JSONSchema.JSONSchema\n }\n \n /**\n- * Rejects every own key that fails `keySchema`, before `objectSchema` runs. The\n- * guard has to see the raw input: an object parse drops `__proto__` and can add\n- * keys from a property `default`, so its output is not the set of names the\n- * instance actually carried.\n+ * Enforces the keywords that constrain an object's own keys — `propertyNames`,\n+ * `minProperties`, `maxProperties` — before `objectSchema` runs. The guard has\n+ * to see the raw input: an object parse drops `__proto__` and can add keys from\n+ * a property `default`, so its output is not the set of names the instance\n+ * actually carried.\n  */\n-function checkPropertyNames(objectSchema: ZodType, keySchema: ZodType): ZodType {\n+function checkObjectGuards(\n+  objectSchema: ZodType,\n+  guards: { keySchema?: ZodType | undefined; minProperties?: number | undefined; maxProperties?: number | undefined }\n+): ZodType {\n   // An identity transform, not z.any(), so `toJSONSchema` reports the object on both the input and the output side of the pipe.\n   const guard = z\n     .transform((value: unknown) => value)\n     .check((payload) => {\n       const value = payload.value;\n       if (typeof value !== \"object\" || value === null || Array.isArray(value)) return;\n-      for (const key of Object.getOwnPropertyNames(value)) {\n-        const result = keySchema.safeParse(key);\n-        if (result.success) continue;\n+      const keys = Object.getOwnPropertyNames(value);\n+      if (guards.minProperties !== undefined && keys.length < guards.minProperties) {\n         payload.issues.push({\n-          code: \"invalid_key\",\n-          origin: \"record\",\n-          issues: result.error.issues,\n-          input: key,\n-          path: [key],\n+          origin: \"object\",\n+          code: \"too_small\",\n+          minimum: guards.minProperties,\n+          inclusive: true,\n+          message: `Too small: expected object to have >=${guards.minProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n           continue: true,\n         });\n       }\n+      if (guards.maxProperties !== undefined && keys.length > guards.maxProperties) {\n+        payload.issues.push({\n+          origin: \"object\",\n+          code: \"too_big\",\n+          maximum: guards.maxProperties,\n+          inclusive: true,\n+          message: `Too big: expected object to have <=${guards.maxProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n+          continue: true,\n+        });\n+      }\n+      if (guards.keySchema) {\n+        for (const key of keys) {\n+          const result = guards.keySchema.safeParse(key);\n+          if (result.success) continue;\n+          payload.issues.push({\n+            code: \"invalid_key\",\n+            origin: \"record\",\n+            issues: result.error.issues,\n+            input: key,\n+            path: [key],\n+            continue: true,\n+          });\n+        }\n+      }\n     });\n   return guard.pipe(objectSchema);\n }\n \n+/**\n+ * An injective string for JSON data: two values share a key exactly when `uniqueItems` calls them\n+ * equal, so duplicate detection is a Map lookup rather than a pairwise walk. Strings and keys are\n+ * length-prefixed so no value can spell another one. `null` means \"never equal to anything\" — a\n+ * cycle or a NaN, neither of which JSON can express.\n+ */\n+function canonicalKey(value: unknown, seen: Set<object>): string | null {\n+  if (value === null) return \"z\";\n+  const type = typeof value;\n+  if (type !== \"object\") {\n+    if (type === \"number\" && Number.isNaN(value)) return null;\n+    const raw = String(value);\n+    return `${type[0]}${raw.length}:${raw}`;\n+  }\n+  if (seen.has(value as object)) return null;\n+  seen.add(value as object);\n+  try {\n+    if (Array.isArray(value)) {\n+      const parts: string[] = [];\n+      for (const item of value) {\n+        const key = canonicalKey(item, seen);\n+        if (key === null) return null;\n+        parts.push(key);\n+      }\n+      return `a${parts.length}:[${parts.join(\",\")}]`;\n+    }\n+    const keys = Object.keys(value as object).sort();\n+    const parts: string[] = [];\n+    for (const k of keys) {\n+      const key = canonicalKey((value as any)[k], seen);\n+      if (key === null) return null;\n+      parts.push(`${k.length}:${k}=${key}`);\n+    }\n+    return `o${parts.length}:{${parts.join(\",\")}}`;\n+  } finally {\n+    seen.delete(value as object);\n+  }\n+}\n+\n+function plural(n: number): string {\n+  return n === 1 ? \"element\" : \"elements\";\n+}\n+\n+/**\n+ * Enforces `uniqueItems` and the `contains` family before `arraySchema` runs, for the same reason\n+ * `checkObjectGuards` runs pre-pipe: an item parse can apply a nested `default`, so the parsed\n+ * array is not the instance the keywords are defined over. A guard issue aborts the pipe, so\n+ * `minItems`/`maxItems` are not also reported on the same parse — instance correctness is worth\n+ * more than co-reporting two issues.\n+ */\n+function checkArrayGuards(\n+  arraySchema: ZodType,\n+  guards: {\n+    uniqueItems?: boolean | undefined;\n+    containsSchema?: ZodType | undefined;\n+    minContains?: number | undefined;\n+    maxContains?: number | undefined;\n+  }\n+): ZodType {\n+  // An identity transform, not z.any(), so `toJSONSchema` reports the array on both the input and the output side of the pipe.\n+  const guard = z\n+    .transform((value: unknown) => value)\n+    .check((payload) => {\n+      const items = payload.value;\n+      if (!Array.isArray(items)) return;\n+      if (guards.uniqueItems === true) {\n+        const firstSeen = new Map<string, number>();\n+        for (let i = 0; i < items.length; i++) {\n+          const key = canonicalKey(items[i], new Set());\n+          if (key === null) continue;\n+          const first = firstSeen.get(key);\n+          if (first === undefined) {\n+            firstSeen.set(key, i);\n+            continue;\n+          }\n+          payload.issues.push({\n+            code: \"custom\",\n+            message: `Array items must be unique: element at index ${i} duplicates the one at index ${first}`,\n+            input: items,\n+            path: [i],\n+            continue: true,\n+          });\n+        }\n+      }\n+      if (guards.containsSchema) {\n+        const minContains = guards.minContains ?? 1;\n+        // counted in full rather than stopped at the ceiling, since the message names the exact number",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3898221264"
+    },
+    {
+      "id": 3898221274,
+      "review": 5071012263,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 891,
+      "originalLine": 842,
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "originalCommit": "b58a9c50ca86d622eea65fe38c2742282e7c48ea",
+      "at": "2026-08-31T20:45:08Z",
+      "body": "Copying the raw `contains` schema into metadata does not copy the root `$defs`, so a valid source with `contains: { $ref: \"#/$defs/Hit\" }` emits an unresolved reference and Ajv rejects the output. The emitted document must retain or rewrite referenced definitions, or avoid advertising a `contains` value it cannot make self-contained.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Preserve definitions referenced by `contains`\n\n## Affected sites\n- packages/zod/src/v4/classic/from-json-schema.ts:841-842 — raw source metadata is copied without its definition graph\n- packages/zod/src/v4/classic/tests/from-json-schema.test.ts — the round-trip tests only cover an inline `contains`\n\n## Required outcome\n- Every `$ref` emitted from carried `contains` metadata resolves in the generated document.\n- Add a regression case with root `$defs` and compile the emitted schema with Ajv, rather than asserting output shape alone.\n````\n\n</details>",
+      "diffHunk": "@@ -671,6 +831,18 @@ function convertSchema(schema: JSONSchema.JSONSchema | boolean, ctx: ConversionC\n     extraMeta.propertyNames = schema.propertyNames;\n   }\n \n+  // Same carry for the other guard-enforced keywords.\n+  if (schema.type === \"object\" && schema.$ref === undefined) {\n+    for (const key of [\"minProperties\", \"maxProperties\"] as const) {\n+      if (schema[key] !== undefined) extraMeta[key] = schema[key];\n+    }\n+  }\n+  if (schema.type === \"array\" && schema.$ref === undefined) {\n+    for (const key of [\"uniqueItems\", \"contains\", \"minContains\", \"maxContains\"] as const) {\n+      if (schema[key] !== undefined) extraMeta[key] = schema[key];",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3898221274"
+    },
+    {
+      "id": 3898349582,
+      "review": 5071177352,
+      "replyTo": 3897606215,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 777,
+      "commit": "b58a9c50ca86d622eea65fe38c2742282e7c48ea",
+      "originalCommit": "30468abf9fbbc069ea4326c6dfe1f65e3c6bdaed",
+      "at": "2026-08-31T21:01:43Z",
+      "body": "Addressed in `3244f5ab` by omitting carried subschemas that contain `$ref`.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33438506129/job/99640700153) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -671,6 +767,18 @@ function convertSchema(schema: JSONSchema.JSONSchema | boolean, ctx: ConversionC\n     extraMeta.propertyNames = schema.propertyNames;\n   }\n \n+  // Same carry for the other guard-enforced keywords.\n+  if (schema.type === \"object\" && schema.$ref === undefined) {\n+    for (const key of [\"minProperties\", \"maxProperties\"] as const) {\n+      if (schema[key] !== undefined) extraMeta[key] = schema[key];\n+    }\n+  }\n+  if (schema.type === \"array\" && schema.$ref === undefined) {\n+    for (const key of [\"uniqueItems\", \"contains\", \"minContains\", \"maxContains\"] as const) {",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3898349582"
+    },
+    {
+      "id": 3898349912,
+      "review": 5071177837,
+      "replyTo": 3898221274,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 891,
+      "originalLine": 842,
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "originalCommit": "b58a9c50ca86d622eea65fe38c2742282e7c48ea",
+      "at": "2026-08-31T21:01:46Z",
+      "body": "Addressed in `3244f5ab` by omitting carried subschemas that contain `$ref`.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33438506129/job/99640700153) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -671,6 +831,18 @@ function convertSchema(schema: JSONSchema.JSONSchema | boolean, ctx: ConversionC\n     extraMeta.propertyNames = schema.propertyNames;\n   }\n \n+  // Same carry for the other guard-enforced keywords.\n+  if (schema.type === \"object\" && schema.$ref === undefined) {\n+    for (const key of [\"minProperties\", \"maxProperties\"] as const) {\n+      if (schema[key] !== undefined) extraMeta[key] = schema[key];\n+    }\n+  }\n+  if (schema.type === \"array\" && schema.$ref === undefined) {\n+    for (const key of [\"uniqueItems\", \"contains\", \"minContains\", \"maxContains\"] as const) {\n+      if (schema[key] !== undefined) extraMeta[key] = schema[key];",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3898349912"
+    },
+    {
+      "id": 3898371035,
+      "review": 5071207887,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 260,
+      "commit": "3244f5ab01a83f87b508da0e4bdb6198e7d9e52f",
+      "originalCommit": "3244f5ab01a83f87b508da0e4bdb6198e7d9e52f",
+      "at": "2026-08-31T21:04:35Z",
+      "body": "`containsRef` descends into every object value, including instance-valued annotations, so `default: { $ref: \"literal\" }` is mistaken for a schema reference. That drops an otherwise valid `contains` or `propertyNames` constraint from the round-trip and broadens the emitted schema.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Reference-shaped annotation data drops constraints\n\n## Affected sites\n- `packages/zod/src/v4/classic/from-json-schema.ts:260` — the unrestricted `Object.values()` recursion treats `$ref` inside `default`, `const`, `enum`, or `examples` data as a schema keyword\n- `packages/zod/src/v4/classic/from-json-schema.ts:840-849` — the false positive suppresses the entire carried `propertyNames` or `contains` subschema\n\n## Required outcome\n- Omit metadata only for actual schema references that would become unresolved, without interpreting `$ref` properties inside instance-valued annotations as references.\n- Add a regression case such as `{ type: \"array\", contains: { type: \"integer\", default: { $ref: \"literal\" } } }`; the source and converted schema reject `[\"x\"]`, and the round-tripped schema must reject it too.\n\n## Suggested approach\nWalk only schema-valued keyword positions, or explicitly exclude instance-valued annotation keywords before recursing.\n````\n\n</details>",
+      "diffHunk": "@@ -155,34 +155,186 @@ function resolveRef(ref: string, ctx: ConversionContext): JSONSchema.JSONSchema\n }\n \n /**\n- * Rejects every own key that fails `keySchema`, before `objectSchema` runs. The\n- * guard has to see the raw input: an object parse drops `__proto__` and can add\n- * keys from a property `default`, so its output is not the set of names the\n- * instance actually carried.\n+ * Enforces the keywords that constrain an object's own keys — `propertyNames`,\n+ * `minProperties`, `maxProperties` — before `objectSchema` runs. The guard has\n+ * to see the raw input: an object parse drops `__proto__` and can add keys from\n+ * a property `default`, so its output is not the set of names the instance\n+ * actually carried.\n  */\n-function checkPropertyNames(objectSchema: ZodType, keySchema: ZodType): ZodType {\n+function checkObjectGuards(\n+  objectSchema: ZodType,\n+  guards: { keySchema?: ZodType | undefined; minProperties?: number | undefined; maxProperties?: number | undefined }\n+): ZodType {\n   // An identity transform, not z.any(), so `toJSONSchema` reports the object on both the input and the output side of the pipe.\n   const guard = z\n     .transform((value: unknown) => value)\n     .check((payload) => {\n       const value = payload.value;\n       if (typeof value !== \"object\" || value === null || Array.isArray(value)) return;\n-      for (const key of Object.getOwnPropertyNames(value)) {\n-        const result = keySchema.safeParse(key);\n-        if (result.success) continue;\n+      const keys = Object.getOwnPropertyNames(value);\n+      if (guards.minProperties !== undefined && keys.length < guards.minProperties) {\n         payload.issues.push({\n-          code: \"invalid_key\",\n-          origin: \"record\",\n-          issues: result.error.issues,\n-          input: key,\n-          path: [key],\n+          origin: \"object\",\n+          code: \"too_small\",\n+          minimum: guards.minProperties,\n+          inclusive: true,\n+          message: `Too small: expected object to have >=${guards.minProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n           continue: true,\n         });\n       }\n+      if (guards.maxProperties !== undefined && keys.length > guards.maxProperties) {\n+        payload.issues.push({\n+          origin: \"object\",\n+          code: \"too_big\",\n+          maximum: guards.maxProperties,\n+          inclusive: true,\n+          message: `Too big: expected object to have <=${guards.maxProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n+          continue: true,\n+        });\n+      }\n+      if (guards.keySchema) {\n+        for (const key of keys) {\n+          const result = guards.keySchema.safeParse(key);\n+          if (result.success) continue;\n+          payload.issues.push({\n+            code: \"invalid_key\",\n+            origin: \"record\",\n+            issues: result.error.issues,\n+            input: key,\n+            path: [key],\n+            continue: true,\n+          });\n+        }\n+      }\n     });\n   return guard.pipe(objectSchema);\n }\n \n+/**\n+ * An injective string for JSON data: two values share a key exactly when `uniqueItems` calls them\n+ * equal, so duplicate detection is a Map lookup rather than a pairwise walk. Strings and keys are\n+ * length-prefixed so no value can spell another one. `null` means \"never equal to anything\" — a\n+ * cycle or a NaN, neither of which JSON can express.\n+ */\n+function canonicalKey(value: unknown, seen: Set<object>): string | null {\n+  if (value === null) return \"z\";\n+  const type = typeof value;\n+  if (type !== \"object\") {\n+    if (type === \"number\" && Number.isNaN(value)) return null;\n+    const raw = String(value);\n+    return `${type[0]}${raw.length}:${raw}`;\n+  }\n+  if (seen.has(value as object)) return null;\n+  seen.add(value as object);\n+  try {\n+    if (Array.isArray(value)) {\n+      const parts: string[] = [];\n+      for (const item of value) {\n+        const key = canonicalKey(item, seen);\n+        if (key === null) return null;\n+        parts.push(key);\n+      }\n+      return `a${parts.length}:[${parts.join(\",\")}]`;\n+    }\n+    const keys = Object.keys(value as object).sort();\n+    const parts: string[] = [];\n+    for (const k of keys) {\n+      const key = canonicalKey((value as any)[k], seen);\n+      if (key === null) return null;\n+      parts.push(`${k.length}:${k}=${key}`);\n+    }\n+    return `o${parts.length}:{${parts.join(\",\")}}`;\n+  } finally {\n+    seen.delete(value as object);\n+  }\n+}\n+\n+// a carried subschema travels without the root `$defs` its `$ref`s point into\n+function containsRef(value: unknown): boolean {\n+  if (typeof value !== \"object\" || value === null) return false;\n+  if (!Array.isArray(value) && typeof (value as any).$ref === \"string\") return true;\n+  return Object.values(value).some(containsRef);",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3898371035"
+    },
+    {
+      "id": 3898432529,
+      "review": 5071289112,
+      "replyTo": 3897699487,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 374,
+      "originalLine": 293,
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "originalCommit": "0ea26fadf243b522a396344df85f0762225ff092",
+      "at": "2026-08-31T21:12:57Z",
+      "body": "Accepted and pinned by the regression coverage in `19483969`.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33439639652/job/99644426672) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -155,34 +155,144 @@ function resolveRef(ref: string, ctx: ConversionContext): JSONSchema.JSONSchema\n }\n \n /**\n- * Rejects every own key that fails `keySchema`, before `objectSchema` runs. The\n- * guard has to see the raw input: an object parse drops `__proto__` and can add\n- * keys from a property `default`, so its output is not the set of names the\n- * instance actually carried.\n+ * Enforces the keywords that constrain an object's own keys — `propertyNames`,\n+ * `minProperties`, `maxProperties` — before `objectSchema` runs. The guard has\n+ * to see the raw input: an object parse drops `__proto__` and can add keys from\n+ * a property `default`, so its output is not the set of names the instance\n+ * actually carried.\n  */\n-function checkPropertyNames(objectSchema: ZodType, keySchema: ZodType): ZodType {\n+function checkObjectGuards(\n+  objectSchema: ZodType,\n+  guards: { keySchema?: ZodType | undefined; minProperties?: number | undefined; maxProperties?: number | undefined }\n+): ZodType {\n   // An identity transform, not z.any(), so `toJSONSchema` reports the object on both the input and the output side of the pipe.\n   const guard = z\n     .transform((value: unknown) => value)\n     .check((payload) => {\n       const value = payload.value;\n       if (typeof value !== \"object\" || value === null || Array.isArray(value)) return;\n-      for (const key of Object.getOwnPropertyNames(value)) {\n-        const result = keySchema.safeParse(key);\n-        if (result.success) continue;\n+      const keys = Object.getOwnPropertyNames(value);\n+      if (guards.minProperties !== undefined && keys.length < guards.minProperties) {\n         payload.issues.push({\n-          code: \"invalid_key\",\n-          origin: \"record\",\n-          issues: result.error.issues,\n-          input: key,\n-          path: [key],\n+          origin: \"object\",\n+          code: \"too_small\",\n+          minimum: guards.minProperties,\n+          inclusive: true,\n+          message: `Too small: expected object to have >=${guards.minProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n           continue: true,\n         });\n       }\n+      if (guards.maxProperties !== undefined && keys.length > guards.maxProperties) {\n+        payload.issues.push({\n+          origin: \"object\",\n+          code: \"too_big\",\n+          maximum: guards.maxProperties,\n+          inclusive: true,\n+          message: `Too big: expected object to have <=${guards.maxProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n+          continue: true,\n+        });\n+      }\n+      if (guards.keySchema) {\n+        for (const key of keys) {\n+          const result = guards.keySchema.safeParse(key);\n+          if (result.success) continue;\n+          payload.issues.push({\n+            code: \"invalid_key\",\n+            origin: \"record\",\n+            issues: result.error.issues,\n+            input: key,\n+            path: [key],\n+            continue: true,\n+          });\n+        }\n+      }\n     });\n   return guard.pipe(objectSchema);\n }\n \n+// structural equality over JSON data, so two objects with the same entries in different key order are duplicates\n+function jsonDeepEqual(a: unknown, b: unknown): boolean {\n+  if (a === b) return true;\n+  if (typeof a !== \"object\" || typeof b !== \"object\" || a === null || b === null) return false;\n+  if (Array.isArray(a) || Array.isArray(b)) {\n+    if (!Array.isArray(a) || !Array.isArray(b) || a.length !== b.length) return false;\n+    return a.every((item, i) => jsonDeepEqual(item, b[i]));\n+  }\n+  const keys = Object.keys(a);\n+  if (keys.length !== Object.keys(b).length) return false;\n+  return keys.every((k) => Object.prototype.hasOwnProperty.call(b, k) && jsonDeepEqual((a as any)[k], (b as any)[k]));\n+}\n+\n+function plural(n: number): string {\n+  return n === 1 ? \"element\" : \"elements\";\n+}\n+\n+/**\n+ * Enforces `uniqueItems` and the `contains` family before `arraySchema` runs, for the same reason\n+ * `checkObjectGuards` runs pre-pipe: an item parse can apply a nested `default`, so the parsed\n+ * array is not the instance the keywords are defined over.\n+ */\n+function checkArrayGuards(\n+  arraySchema: ZodType,\n+  guards: {\n+    uniqueItems?: boolean | undefined;\n+    containsSchema?: ZodType | undefined;\n+    minContains?: number | undefined;\n+    maxContains?: number | undefined;\n+  }\n+): ZodType {\n+  // An identity transform, not z.any(), so `toJSONSchema` reports the array on both the input and the output side of the pipe.\n+  const guard = z\n+    .transform((value: unknown) => value)\n+    .check((payload) => {\n+      const items = payload.value;\n+      if (!Array.isArray(items)) return;\n+      if (guards.uniqueItems === true) {\n+        outer: for (let i = 1; i < items.length; i++) {\n+          for (let j = 0; j < i; j++) {\n+            if (!jsonDeepEqual(items[i], items[j])) continue;\n+            payload.issues.push({\n+              code: \"custom\",\n+              message: `Array items must be unique: element at index ${i} duplicates the one at index ${j}`,\n+              input: items,\n+              path: [i],\n+              continue: true,\n+            });\n+            continue outer;\n+          }\n+        }\n+      }\n+      if (guards.containsSchema) {\n+        const minContains = guards.minContains ?? 1;\n+        let matches = 0;\n+        for (const item of items) {\n+          if (guards.containsSchema.safeParse(item).success) matches++;\n+        }\n+        if (matches < minContains) {\n+          payload.issues.push({\n+            code: \"custom\",\n+            message: `Array must contain at least ${minContains} matching ${plural(minContains)}; found ${matches}`,\n+            input: items,\n+            continue: true,\n+          });\n+        }\n+        if (guards.maxContains !== undefined && matches > guards.maxContains) {\n+          payload.issues.push({\n+            code: \"custom\",\n+            message: `Array must contain at most ${guards.maxContains} matching ${plural(guards.maxContains)}; found ${matches}`,\n+            input: items,\n+            continue: true,\n+          });\n+        }\n+      }\n+    });\n+  return guard.pipe(arraySchema);",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3898432529"
+    },
+    {
+      "id": 3898434507,
+      "review": 5071291388,
+      "replyTo": 3897699475,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 786,
+      "originalLine": 705,
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "originalCommit": "0ea26fadf243b522a396344df85f0762225ff092",
+      "at": "2026-08-31T21:13:08Z",
+      "body": "Accepted and pinned by the regression coverage in `19483969`.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33439639652/job/99644426672) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -585,6 +700,18 @@ function convertBaseSchema(schema: JSONSchema.JSONSchema, ctx: ConversionContext\n         // No items specified - array of any\n         zodSchema = z.array(z.any());\n       }\n+\n+      // minContains/maxContains only constrain anything when `contains` itself is present\n+      if (schema.uniqueItems === true || schema.contains !== undefined) {",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3898434507"
+    },
+    {
+      "id": 3898524569,
+      "review": 5071410514,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 277,
+      "originalLine": 277,
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "originalCommit": "a9c5a4749add1a3d3e0054533427e6e1f0068412",
+      "at": "2026-08-31T21:26:01Z",
+      "body": "`dependencies` is a schema map in draft-7 and draft-4, but it is absent from this allowlist. A carried subschema with `dependencies: { a: { $ref: \"#/definitions/Hit\" } }` now passes `containsRef`, and `toJSONSchema` emits that `$ref` without the root `definitions`, leaving an invalid output document.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Walk schema-valued `dependencies` entries\n\n## Affected sites\n- `packages/zod/src/v4/classic/from-json-schema.ts:277` — `SCHEMA_MAP_KEYWORDS` omits draft-7/draft-4 `dependencies`, whose map values may be either property-name arrays or schemas.\n- `packages/zod/src/v4/classic/from-json-schema.ts:886` — the resulting false negative carries `contains` verbatim after its root definitions have been discarded.\n\n## Required outcome\n- Detect `$ref` inside schema-valued `dependencies` entries without treating array-valued property dependencies as schemas.\n- Add a draft-7 regression where the dependency schema references root `definitions` and confirm the dangling `contains` metadata is not emitted.\n\n## Suggested approach\n- Handle `dependencies` separately from the all-schema maps, recursing only into non-array values.\n````\n\n</details>",
+      "diffHunk": "@@ -155,34 +155,224 @@ function resolveRef(ref: string, ctx: ConversionContext): JSONSchema.JSONSchema\n }\n \n /**\n- * Rejects every own key that fails `keySchema`, before `objectSchema` runs. The\n- * guard has to see the raw input: an object parse drops `__proto__` and can add\n- * keys from a property `default`, so its output is not the set of names the\n- * instance actually carried.\n+ * Enforces the keywords that constrain an object's own keys — `propertyNames`,\n+ * `minProperties`, `maxProperties` — before `objectSchema` runs. The guard has\n+ * to see the raw input: an object parse drops `__proto__` and can add keys from\n+ * a property `default`, so its output is not the set of names the instance\n+ * actually carried.\n  */\n-function checkPropertyNames(objectSchema: ZodType, keySchema: ZodType): ZodType {\n+function checkObjectGuards(\n+  objectSchema: ZodType,\n+  guards: { keySchema?: ZodType | undefined; minProperties?: number | undefined; maxProperties?: number | undefined }\n+): ZodType {\n   // An identity transform, not z.any(), so `toJSONSchema` reports the object on both the input and the output side of the pipe.\n   const guard = z\n     .transform((value: unknown) => value)\n     .check((payload) => {\n       const value = payload.value;\n       if (typeof value !== \"object\" || value === null || Array.isArray(value)) return;\n-      for (const key of Object.getOwnPropertyNames(value)) {\n-        const result = keySchema.safeParse(key);\n-        if (result.success) continue;\n+      const keys = Object.getOwnPropertyNames(value);\n+      if (guards.minProperties !== undefined && keys.length < guards.minProperties) {\n         payload.issues.push({\n-          code: \"invalid_key\",\n-          origin: \"record\",\n-          issues: result.error.issues,\n-          input: key,\n-          path: [key],\n+          origin: \"object\",\n+          code: \"too_small\",\n+          minimum: guards.minProperties,\n+          inclusive: true,\n+          message: `Too small: expected object to have >=${guards.minProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n           continue: true,\n         });\n       }\n+      if (guards.maxProperties !== undefined && keys.length > guards.maxProperties) {\n+        payload.issues.push({\n+          origin: \"object\",\n+          code: \"too_big\",\n+          maximum: guards.maxProperties,\n+          inclusive: true,\n+          message: `Too big: expected object to have <=${guards.maxProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n+          continue: true,\n+        });\n+      }\n+      if (guards.keySchema) {\n+        for (const key of keys) {\n+          const result = guards.keySchema.safeParse(key);\n+          if (result.success) continue;\n+          payload.issues.push({\n+            code: \"invalid_key\",\n+            origin: \"record\",\n+            issues: result.error.issues,\n+            input: key,\n+            path: [key],\n+            continue: true,\n+          });\n+        }\n+      }\n     });\n   return guard.pipe(objectSchema);\n }\n \n+/**\n+ * An injective string for JSON data: two values share a key exactly when `uniqueItems` calls them\n+ * equal, so duplicate detection is a Map lookup rather than a pairwise walk. Strings and keys are\n+ * length-prefixed so no value can spell another one. `null` means \"never equal to anything\" — a\n+ * cycle or a NaN, neither of which JSON can express.\n+ */\n+function canonicalKey(value: unknown, seen: Set<object>): string | null {\n+  if (value === null) return \"z\";\n+  const type = typeof value;\n+  if (type !== \"object\") {\n+    if (type === \"number\" && Number.isNaN(value)) return null;\n+    const raw = String(value);\n+    return `${type[0]}${raw.length}:${raw}`;\n+  }\n+  if (seen.has(value as object)) return null;\n+  seen.add(value as object);\n+  try {\n+    if (Array.isArray(value)) {\n+      const parts: string[] = [];\n+      for (const item of value) {\n+        const key = canonicalKey(item, seen);\n+        if (key === null) return null;\n+        parts.push(key);\n+      }\n+      return `a${parts.length}:[${parts.join(\",\")}]`;\n+    }\n+    const keys = Object.keys(value as object).sort();\n+    const parts: string[] = [];\n+    for (const k of keys) {\n+      const key = canonicalKey((value as any)[k], seen);\n+      if (key === null) return null;\n+      parts.push(`${k.length}:${k}=${key}`);\n+    }\n+    return `o${parts.length}:{${parts.join(\",\")}}`;\n+  } finally {\n+    seen.delete(value as object);\n+  }\n+}\n+\n+// keywords whose value is a schema or an array of them\n+const SCHEMA_KEYWORDS = /*@__PURE__*/ new Set([\n+  \"items\",\n+  \"prefixItems\",\n+  \"additionalItems\",\n+  \"additionalProperties\",\n+  \"contains\",\n+  \"propertyNames\",\n+  \"not\",\n+  \"if\",\n+  \"then\",\n+  \"else\",\n+  \"allOf\",\n+  \"anyOf\",\n+  \"oneOf\",\n+  \"unevaluatedItems\",\n+  \"unevaluatedProperties\",\n+  \"contentSchema\",\n+]);\n+\n+// keywords whose value maps names to schemas\n+const SCHEMA_MAP_KEYWORDS = /*@__PURE__*/ new Set([",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3898524569"
+    },
+    {
+      "id": 3898564044,
+      "review": 5071463345,
+      "replyTo": 3898371035,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 260,
+      "commit": "3244f5ab01a83f87b508da0e4bdb6198e7d9e52f",
+      "originalCommit": "3244f5ab01a83f87b508da0e4bdb6198e7d9e52f",
+      "at": "2026-08-31T21:31:44Z",
+      "body": "Addressed in `a9c5a474` by walking only schema-valued keyword positions.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33441499135/job/99650564209) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -155,34 +155,186 @@ function resolveRef(ref: string, ctx: ConversionContext): JSONSchema.JSONSchema\n }\n \n /**\n- * Rejects every own key that fails `keySchema`, before `objectSchema` runs. The\n- * guard has to see the raw input: an object parse drops `__proto__` and can add\n- * keys from a property `default`, so its output is not the set of names the\n- * instance actually carried.\n+ * Enforces the keywords that constrain an object's own keys — `propertyNames`,\n+ * `minProperties`, `maxProperties` — before `objectSchema` runs. The guard has\n+ * to see the raw input: an object parse drops `__proto__` and can add keys from\n+ * a property `default`, so its output is not the set of names the instance\n+ * actually carried.\n  */\n-function checkPropertyNames(objectSchema: ZodType, keySchema: ZodType): ZodType {\n+function checkObjectGuards(\n+  objectSchema: ZodType,\n+  guards: { keySchema?: ZodType | undefined; minProperties?: number | undefined; maxProperties?: number | undefined }\n+): ZodType {\n   // An identity transform, not z.any(), so `toJSONSchema` reports the object on both the input and the output side of the pipe.\n   const guard = z\n     .transform((value: unknown) => value)\n     .check((payload) => {\n       const value = payload.value;\n       if (typeof value !== \"object\" || value === null || Array.isArray(value)) return;\n-      for (const key of Object.getOwnPropertyNames(value)) {\n-        const result = keySchema.safeParse(key);\n-        if (result.success) continue;\n+      const keys = Object.getOwnPropertyNames(value);\n+      if (guards.minProperties !== undefined && keys.length < guards.minProperties) {\n         payload.issues.push({\n-          code: \"invalid_key\",\n-          origin: \"record\",\n-          issues: result.error.issues,\n-          input: key,\n-          path: [key],\n+          origin: \"object\",\n+          code: \"too_small\",\n+          minimum: guards.minProperties,\n+          inclusive: true,\n+          message: `Too small: expected object to have >=${guards.minProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n           continue: true,\n         });\n       }\n+      if (guards.maxProperties !== undefined && keys.length > guards.maxProperties) {\n+        payload.issues.push({\n+          origin: \"object\",\n+          code: \"too_big\",\n+          maximum: guards.maxProperties,\n+          inclusive: true,\n+          message: `Too big: expected object to have <=${guards.maxProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n+          continue: true,\n+        });\n+      }\n+      if (guards.keySchema) {\n+        for (const key of keys) {\n+          const result = guards.keySchema.safeParse(key);\n+          if (result.success) continue;\n+          payload.issues.push({\n+            code: \"invalid_key\",\n+            origin: \"record\",\n+            issues: result.error.issues,\n+            input: key,\n+            path: [key],\n+            continue: true,\n+          });\n+        }\n+      }\n     });\n   return guard.pipe(objectSchema);\n }\n \n+/**\n+ * An injective string for JSON data: two values share a key exactly when `uniqueItems` calls them\n+ * equal, so duplicate detection is a Map lookup rather than a pairwise walk. Strings and keys are\n+ * length-prefixed so no value can spell another one. `null` means \"never equal to anything\" — a\n+ * cycle or a NaN, neither of which JSON can express.\n+ */\n+function canonicalKey(value: unknown, seen: Set<object>): string | null {\n+  if (value === null) return \"z\";\n+  const type = typeof value;\n+  if (type !== \"object\") {\n+    if (type === \"number\" && Number.isNaN(value)) return null;\n+    const raw = String(value);\n+    return `${type[0]}${raw.length}:${raw}`;\n+  }\n+  if (seen.has(value as object)) return null;\n+  seen.add(value as object);\n+  try {\n+    if (Array.isArray(value)) {\n+      const parts: string[] = [];\n+      for (const item of value) {\n+        const key = canonicalKey(item, seen);\n+        if (key === null) return null;\n+        parts.push(key);\n+      }\n+      return `a${parts.length}:[${parts.join(\",\")}]`;\n+    }\n+    const keys = Object.keys(value as object).sort();\n+    const parts: string[] = [];\n+    for (const k of keys) {\n+      const key = canonicalKey((value as any)[k], seen);\n+      if (key === null) return null;\n+      parts.push(`${k.length}:${k}=${key}`);\n+    }\n+    return `o${parts.length}:{${parts.join(\",\")}}`;\n+  } finally {\n+    seen.delete(value as object);\n+  }\n+}\n+\n+// a carried subschema travels without the root `$defs` its `$ref`s point into\n+function containsRef(value: unknown): boolean {\n+  if (typeof value !== \"object\" || value === null) return false;\n+  if (!Array.isArray(value) && typeof (value as any).$ref === \"string\") return true;\n+  return Object.values(value).some(containsRef);",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3898564044"
+    },
+    {
+      "id": 3898565375,
+      "review": 5071465041,
+      "replyTo": 3898524569,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 277,
+      "originalLine": 277,
+      "commit": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+      "originalCommit": "a9c5a4749add1a3d3e0054533427e6e1f0068412",
+      "at": "2026-08-31T21:31:56Z",
+      "body": "Addressed in `dd9e16cd` by traversing draft-7 `dependencies` values while leaving property-name arrays inert.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33441499135/job/99650564209) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -155,34 +155,224 @@ function resolveRef(ref: string, ctx: ConversionContext): JSONSchema.JSONSchema\n }\n \n /**\n- * Rejects every own key that fails `keySchema`, before `objectSchema` runs. The\n- * guard has to see the raw input: an object parse drops `__proto__` and can add\n- * keys from a property `default`, so its output is not the set of names the\n- * instance actually carried.\n+ * Enforces the keywords that constrain an object's own keys — `propertyNames`,\n+ * `minProperties`, `maxProperties` — before `objectSchema` runs. The guard has\n+ * to see the raw input: an object parse drops `__proto__` and can add keys from\n+ * a property `default`, so its output is not the set of names the instance\n+ * actually carried.\n  */\n-function checkPropertyNames(objectSchema: ZodType, keySchema: ZodType): ZodType {\n+function checkObjectGuards(\n+  objectSchema: ZodType,\n+  guards: { keySchema?: ZodType | undefined; minProperties?: number | undefined; maxProperties?: number | undefined }\n+): ZodType {\n   // An identity transform, not z.any(), so `toJSONSchema` reports the object on both the input and the output side of the pipe.\n   const guard = z\n     .transform((value: unknown) => value)\n     .check((payload) => {\n       const value = payload.value;\n       if (typeof value !== \"object\" || value === null || Array.isArray(value)) return;\n-      for (const key of Object.getOwnPropertyNames(value)) {\n-        const result = keySchema.safeParse(key);\n-        if (result.success) continue;\n+      const keys = Object.getOwnPropertyNames(value);\n+      if (guards.minProperties !== undefined && keys.length < guards.minProperties) {\n         payload.issues.push({\n-          code: \"invalid_key\",\n-          origin: \"record\",\n-          issues: result.error.issues,\n-          input: key,\n-          path: [key],\n+          origin: \"object\",\n+          code: \"too_small\",\n+          minimum: guards.minProperties,\n+          inclusive: true,\n+          message: `Too small: expected object to have >=${guards.minProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n           continue: true,\n         });\n       }\n+      if (guards.maxProperties !== undefined && keys.length > guards.maxProperties) {\n+        payload.issues.push({\n+          origin: \"object\",\n+          code: \"too_big\",\n+          maximum: guards.maxProperties,\n+          inclusive: true,\n+          message: `Too big: expected object to have <=${guards.maxProperties} properties`,\n+          input: value,\n+          inst: objectSchema,\n+          continue: true,\n+        });\n+      }\n+      if (guards.keySchema) {\n+        for (const key of keys) {\n+          const result = guards.keySchema.safeParse(key);\n+          if (result.success) continue;\n+          payload.issues.push({\n+            code: \"invalid_key\",\n+            origin: \"record\",\n+            issues: result.error.issues,\n+            input: key,\n+            path: [key],\n+            continue: true,\n+          });\n+        }\n+      }\n     });\n   return guard.pipe(objectSchema);\n }\n \n+/**\n+ * An injective string for JSON data: two values share a key exactly when `uniqueItems` calls them\n+ * equal, so duplicate detection is a Map lookup rather than a pairwise walk. Strings and keys are\n+ * length-prefixed so no value can spell another one. `null` means \"never equal to anything\" — a\n+ * cycle or a NaN, neither of which JSON can express.\n+ */\n+function canonicalKey(value: unknown, seen: Set<object>): string | null {\n+  if (value === null) return \"z\";\n+  const type = typeof value;\n+  if (type !== \"object\") {\n+    if (type === \"number\" && Number.isNaN(value)) return null;\n+    const raw = String(value);\n+    return `${type[0]}${raw.length}:${raw}`;\n+  }\n+  if (seen.has(value as object)) return null;\n+  seen.add(value as object);\n+  try {\n+    if (Array.isArray(value)) {\n+      const parts: string[] = [];\n+      for (const item of value) {\n+        const key = canonicalKey(item, seen);\n+        if (key === null) return null;\n+        parts.push(key);\n+      }\n+      return `a${parts.length}:[${parts.join(\",\")}]`;\n+    }\n+    const keys = Object.keys(value as object).sort();\n+    const parts: string[] = [];\n+    for (const k of keys) {\n+      const key = canonicalKey((value as any)[k], seen);\n+      if (key === null) return null;\n+      parts.push(`${k.length}:${k}=${key}`);\n+    }\n+    return `o${parts.length}:{${parts.join(\",\")}}`;\n+  } finally {\n+    seen.delete(value as object);\n+  }\n+}\n+\n+// keywords whose value is a schema or an array of them\n+const SCHEMA_KEYWORDS = /*@__PURE__*/ new Set([\n+  \"items\",\n+  \"prefixItems\",\n+  \"additionalItems\",\n+  \"additionalProperties\",\n+  \"contains\",\n+  \"propertyNames\",\n+  \"not\",\n+  \"if\",\n+  \"then\",\n+  \"else\",\n+  \"allOf\",\n+  \"anyOf\",\n+  \"oneOf\",\n+  \"unevaluatedItems\",\n+  \"unevaluatedProperties\",\n+  \"contentSchema\",\n+]);\n+\n+// keywords whose value maps names to schemas\n+const SCHEMA_MAP_KEYWORDS = /*@__PURE__*/ new Set([",
+      "url": "https://github.com/colinhacks/zod/pull/6535#discussion_r3898565375"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5483834931,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-31T20:04:17Z",
+      "updated": "2026-08-31T20:04:17Z",
+      "body": "**Your Claude subscription has hit its usage limit.** It resets at **10pm (UTC)**. Re-trigger Pullfrog after the reset, or add an `ANTHROPIC_API_KEY` repo secret — Pullfrog routes around an exhausted subscription automatically when one is present.\n\n[Add repo secret →](https://github.com/colinhacks/zod/settings/secrets/actions) · [Model settings →](https://pullfrog.com/console/colinhacks/zod) · [Setup docs →](https://docs.pullfrog.com/keys) · [Ask in Discord →](https://discord.gg/8y96raFg8e)\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Rerun failed job ➔](https://pullfrog.com/trigger/colinhacks/zod/33433945437?action=rerun) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33433945437) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6535#issuecomment-5483834931"
+    },
+    {
+      "id": 5483968374,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-31T20:15:00Z",
+      "updated": "2026-08-31T20:15:00Z",
+      "body": "**Your Claude subscription has hit its usage limit.** It resets at **10pm (UTC)**. Re-trigger Pullfrog after the reset, or add an `ANTHROPIC_API_KEY` repo secret — Pullfrog routes around an exhausted subscription automatically when one is present.\n\n[Add repo secret →](https://github.com/colinhacks/zod/settings/secrets/actions) · [Model settings →](https://pullfrog.com/console/colinhacks/zod) · [Setup docs →](https://docs.pullfrog.com/keys) · [Ask in Discord →](https://discord.gg/8y96raFg8e)\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Rerun failed job ➔](https://pullfrog.com/trigger/colinhacks/zod/33434934410?action=rerun) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33434934410) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6535#issuecomment-5483968374"
+    },
+    {
+      "id": 5484170841,
+      "user": {
+        "login": "colinhacks",
+        "type": "User"
+      },
+      "at": "2026-08-31T20:32:46Z",
+      "updated": "2026-08-31T20:32:46Z",
+      "body": "@pullfrog review",
+      "url": "https://github.com/colinhacks/zod/pull/6535#issuecomment-5484170841"
+    }
+  ],
+  "citedBy": [
+    {
+      "at": "2026-09-01T04:04:00Z",
+      "number": 6494,
+      "repo": "colinhacks/zod",
+      "pull": false,
+      "title": "fromJSONSchema silently ignores uniqueItems, contains, minContains and maxContains",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/issues/6494"
+    },
+    {
+      "at": "2026-09-01T16:54:40Z",
+      "number": 18068,
+      "repo": "payloadcms/payload",
+      "pull": true,
+      "title": "fix: replace ajv with zod for json field schema validation",
+      "state": "closed",
+      "url": "https://github.com/payloadcms/payload/pull/18068"
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "number": 23307,
+  "title": "fix(ssr): rewrite computed key of destructing parameter",
+  "body": "I think `AssignmentPattern` does not have to be special cased here. It is handled inside `handlePattern` now and we can rely on that instead. I think that's also better because it will handle recursive cases.\r\n\r\nfixes https://github.com/vitejs/vite/issues/23232\r\nclose https://github.com/vitejs/vite/pull/23233\r\nclose https://github.com/vitejs/vite/pull/23304\r\n\r\n---\r\n\r\n<sub>Stack created with <a href=\"https://github.com/github/gh-stack\">GitHub Stacks CLI</a> • <a href=\"https://gh.io/stacks-feedback\">Give Feedback 💬</a></sub>",
+  "user": {
+    "login": "sapphi-red",
+    "type": "User"
+  },
+  "baseSha": "7ec81e23008a8134a2ae326fe8f240375a799221",
+  "headSha": "21a4abd791f7513365038fae6356e60e70a833ac",
+  "mergedAt": "2026-08-20T03:53:30Z",
+  "mergeCommit": "9db0b61d4c9c7caad7ea1d9670b637faf2bb6c93",
+  "commits": 1,
+  "reviews": [],
+  "inline": [],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-19T11:09:31Z",
+      "number": 23308,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "test(ssr): add destructing assignment case for moduleRunnerTransform",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23308"
+    },
+    {
+      "at": "2026-08-21T00:18:45Z",
+      "number": 106,
+      "repo": "sudocarlos/tailrelay",
+      "pull": false,
+      "title": "chore: update Vite from 8.2.1 to 8.2.2",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/issues/106"
+    },
+    {
+      "at": "2026-10-22T21:06:33Z",
+      "number": 300,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm-dev）: bump the npm-minor-patch group across 3 directories with 2 updates",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/300"
+    }
+  ]
+}

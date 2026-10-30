@@ -1,0 +1,137 @@
+{
+  "number": 22789,
+  "title": "init runtime before autofill orchestrator",
+  "body": "## 🎟️ Tracking\r\n\r\nhttps://bitwarden.atlassian.net/browse/PM-26324\r\n\r\n## 📔 Objective\r\n\r\nThe extension reads MDM-managed environment URLs exactly once on install. There is a known race-condition in this logic. The read happens inside a 100ms setTimeout. If chrome.storage.managed is not yet populated when the timer fires, the URL is silently dropped.\r\n\r\nWe're working on a long term soluion for this on [PM-27719](https://bitwarden.atlassian.net/browse/PM-27719), but have gotten an influx of reports since the 2026.8.0 release last week indicating something got worse.\r\n\r\nhttps://github.com/bitwarden/clients/commit/8a418658bc4e874bc599877b69861fc3a4bbcc48 ([PM-40259](https://bitwarden.atlassian.net/browse/PM-40259)) added `autofillOrchestrator.init()` before `await runtimeBackground.init()` in `main.background.ts`. This is the only relevant change I can find from the last release that has any proximity to this bug. I'm thinking the addition of new steps before the setting is read is causing the race to trip more often.\r\n\r\nOn this commit I've simply moved the `autofillORchestrator.init()` call down one line, to see if this alleviates the new issues for customers.\r\n\r\n\r\n[PM-27719]: https://bitwarden.atlassian.net/browse/PM-27719?atlOrigin=eyJpIjoiNWRkNTljNzYxNjVmNDY3MDlhMDU5Y2ZhYzA5YTRkZjUiLCJwIjoiZ2l0aHViLWNvbS1KU1cifQ\r\n\r\n[PM-40259]: https://bitwarden.atlassian.net/browse/PM-40259?atlOrigin=eyJpIjoiNWRkNTljNzYxNjVmNDY3MDlhMDU5Y2ZhYzA5YTRkZjUiLCJwIjoiZ2l0aHViLWNvbS1KU1cifQ",
+  "user": {
+    "login": "addisonbeck",
+    "type": "User"
+  },
+  "baseSha": "9160a07a7b1d40696307ca22984418f41fbd7958",
+  "headSha": "e5c80baf0e1db9f09bb2b7835e883466e6dc02b7",
+  "mergedAt": "2026-09-14T16:42:35Z",
+  "mergeCommit": "26c25d3d4e9463714ffe30d2b6727615ba56dac9",
+  "commits": 1,
+  "reviews": [
+    {
+      "id": 5065967811,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "e5c80baf0e1db9f09bb2b7835e883466e6dc02b7",
+      "at": "2026-08-31T11:36:35Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22789#pullrequestreview-5065967811"
+    },
+    {
+      "id": 5065991502,
+      "user": {
+        "login": "addisonbeck",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "e5c80baf0e1db9f09bb2b7835e883466e6dc02b7",
+      "at": "2026-08-31T11:39:53Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22789#pullrequestreview-5065991502"
+    },
+    {
+      "id": 5080061708,
+      "user": {
+        "login": "blackwood",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "e5c80baf0e1db9f09bb2b7835e883466e6dc02b7",
+      "at": "2026-09-01T15:40:12Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22789#pullrequestreview-5080061708"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3894064507,
+      "review": 5065967811,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "apps/browser/src/background/main.background.ts",
+      "line": 1840,
+      "originalLine": 1840,
+      "commit": "e5c80baf0e1db9f09bb2b7835e883466e6dc02b7",
+      "originalCommit": "e5c80baf0e1db9f09bb2b7835e883466e6dc02b7",
+      "at": "2026-08-31T11:36:36Z",
+      "body": "❓ **QUESTION**: This reorder may not move the managed-URL read later — it arms the 100 ms timer marginally earlier.\n\n<details>\n<summary>Reasoning</summary>\n\n`runtimeBackground.init()` starts with `await this.checkOnInstalled()`, and `checkOnInstalled` only calls `setTimeout(..., 100)` and returns — it does not await the timer (`runtime.background.ts:514-540`). Everything else in `init()` (message-listener registration) is synchronous, so the whole call resolves within the same tick plus a microtask.\n\n`autofillOrchestrator.init()` is also synchronous (it only wires RxJS subscriptions). So the net effect of moving it below the `await` is that the 100 ms timer — and therefore `setUrlsToManagedEnvironment()` — is armed *sooner* by the sub-millisecond cost of `init()`, which is the opposite of the intended \"give `chrome.storage.managed` more time\".\n\nIf the 2026.8.0 regression is real, the added latency is more likely somewhere else in [PM-40259] — e.g. the reworked `DefaultAutofillLifecycleService.init()` (which now seeds live tabs and registers port listeners) or the extra work in `loadAutofillScriptsOnInstall`'s path — rather than the position of this one call.\n\nWorth confirming with a build before shipping, since a no-op fix here would burn a release cycle while customers keep hitting the race.\n</details>",
+      "diffHunk": "@@ -1836,8 +1836,8 @@ export default class MainBackground {\n     // injection, so the onConnect listener is registered before any frame\n     // connects.\n     this.autofillLifecycleService.init();\n-    this.autofillOrchestrator.init();\n     await this.runtimeBackground.init();\n+    this.autofillOrchestrator.init();",
+      "url": "https://github.com/bitwarden/clients/pull/22789#discussion_r3894064507"
+    },
+    {
+      "id": 3894084948,
+      "review": 5065991502,
+      "replyTo": 3894064507,
+      "user": {
+        "login": "addisonbeck",
+        "type": "User"
+      },
+      "path": "apps/browser/src/background/main.background.ts",
+      "line": 1840,
+      "originalLine": 1840,
+      "commit": "e5c80baf0e1db9f09bb2b7835e883466e6dc02b7",
+      "originalCommit": "e5c80baf0e1db9f09bb2b7835e883466e6dc02b7",
+      "at": "2026-08-31T11:39:53Z",
+      "body": "I am aware this doesn't fix the underlying race. I'm just trying to return to the pre 2026.8.0 success rate.",
+      "diffHunk": "@@ -1836,8 +1836,8 @@ export default class MainBackground {\n     // injection, so the onConnect listener is registered before any frame\n     // connects.\n     this.autofillLifecycleService.init();\n-    this.autofillOrchestrator.init();\n     await this.runtimeBackground.init();\n+    this.autofillOrchestrator.init();",
+      "url": "https://github.com/bitwarden/clients/pull/22789#discussion_r3894084948"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5459024644,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-29T00:03:50Z",
+      "updated": "2026-09-12T16:27:37Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/22789?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:white_check_mark: All modified and coverable lines are covered by tests.\n:white_check_mark: Project coverage is 55.02%. Comparing base ([`10c94ad`](https://app.codecov.io/gh/bitwarden/clients/commit/10c94add8aec11130a229860ace71ae3a20baaf4?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`e5c80ba`](https://app.codecov.io/gh/bitwarden/clients/commit/e5c80baf0e1db9f09bb2b7835e883466e6dc02b7?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:warning: Report is 182 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@            Coverage Diff             @@\n##             main   #22789      +/-   ##\n==========================================\n+ Coverage   54.84%   55.02%   +0.17%     \n==========================================\n  Files        4340     4345       +5     \n  Lines      138275   138541     +266     \n  Branches    21903    21965      +62     \n==========================================\n+ Hits        75834    76226     +392     \n+ Misses      56933    56773     -160     \n- Partials     5508     5542      +34     \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/22789?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/22789#issuecomment-5459024644"
+    },
+    {
+      "id": 5477659517,
+      "user": {
+        "login": "bw-ghapp[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-31T11:29:39Z",
+      "updated": "2026-08-31T11:29:39Z",
+      "body": "\n<!-- comment_tag: test-all -->\n#### Changes in this PR impact the Autofill experience of the browser client\n\n[BIT](https://github.com/bitwarden/browser-interactions-testing) has tested the core experience with these changes and <ins>the feature flag configuration used by `vault.bitwarden.com`</ins>.\n\n✅ Fortunately, [these BIT tests have passed](https://github.com/bitwarden/browser-interactions-testing/actions/runs/33386704825)! 🎉\n",
+      "url": "https://github.com/bitwarden/clients/pull/22789#issuecomment-5477659517"
+    },
+    {
+      "id": 5477663603,
+      "user": {
+        "login": "bw-ghapp[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-31T11:30:04Z",
+      "updated": "2026-08-31T11:30:04Z",
+      "body": "\n<!-- comment_tag: test-all-custom-flags -->\n#### Changes in this PR impact the Autofill experience of the browser client\n\n[BIT](https://github.com/bitwarden/browser-interactions-testing) has tested the core experience with these changes and <ins>all feature flags disabled</ins>.\n\n✅ Fortunately, [these BIT tests have passed](https://github.com/bitwarden/browser-interactions-testing/actions/runs/33386707110)! 🎉\n",
+      "url": "https://github.com/bitwarden/clients/pull/22789#issuecomment-5477663603"
+    },
+    {
+      "id": 5477703325,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-31T11:33:41Z",
+      "updated": "2026-08-31T11:37:01Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nThis PR moves a single synchronous `autofillOrchestrator.init()` call below `await this.runtimeBackground.init()` in `MainBackground.bootstrap()`, aiming to reduce the MDM managed-environment-URL race. I traced the init ordering against `AutofillOrchestrator.init()`, `DefaultAutofillLifecycleService.init()`, and `RuntimeBackground.init()`/`checkOnInstalled()` to check for dropped events and for the intended timing effect. No correctness or safety regression: the comment's invariant (lifecycle `onConnect` listener registered before script injection) still holds, and the gap the orchestrator subscription now opens is a microtask only, so no runtime message or page transition can be lost in it. One open question about whether the change actually achieves the intended timing shift.\n\n<details>\n<summary>Code Review Details</summary>\n\n- ❓ : Reorder likely does not delay the managed-URL read; the 100 ms timer is armed marginally earlier\n  - `apps/browser/src/background/main.background.ts:1840`\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/22789#issuecomment-5477703325"
+    }
+  ],
+  "citedBy": []
+}

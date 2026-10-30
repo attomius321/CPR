@@ -1,0 +1,46 @@
+{
+  "number": 23291,
+  "title": "fix(bundled-dev): handle lazy request error",
+  "body": "Sending lazy request with invalid args caused the process to exit. This PR adds error handling for that.",
+  "user": {
+    "login": "sapphi-red",
+    "type": "User"
+  },
+  "baseSha": "02cffa9e2d38d5d8f12e4043ee9d0f7abb1471e2",
+  "headSha": "9bfddfccf1e462a027c00d8947111a753e1b96d1",
+  "mergedAt": "2026-08-18T06:51:13Z",
+  "mergeCommit": "3ba026dade4af56df08815310d3458fa110f5c5c",
+  "commits": 1,
+  "reviews": [],
+  "inline": [],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-21T00:18:45Z",
+      "number": 106,
+      "repo": "sudocarlos/tailrelay",
+      "pull": false,
+      "title": "chore: update Vite from 8.2.1 to 8.2.2",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/issues/106"
+    },
+    {
+      "at": "2026-08-23T05:55:02Z",
+      "number": 301,
+      "repo": "ncaq/nix-templates",
+      "pull": true,
+      "title": "build(deps-dev): update dependency vite to v8.2.2",
+      "state": "closed",
+      "url": "https://github.com/ncaq/nix-templates/pull/301"
+    },
+    {
+      "at": "2026-10-22T21:06:33Z",
+      "number": 300,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm-dev）: bump the npm-minor-patch group across 3 directories with 2 updates",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/300"
+    }
+  ]
+}

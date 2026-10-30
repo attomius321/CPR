@@ -1,0 +1,50 @@
+{
+  "number": 23258,
+  "title": "refactor: use JSON import attributes instead of readFileSync in constants",
+  "body": "<!--\r\n- What is this PR solving? Write a clear and concise description.\r\n- Reference the issues it solves (e.g. `fixes #123`).\r\n- What other alternatives have you explored?\r\n- Are there any parts you think require more attention from reviewers?\r\n\r\nAlso, please make sure you do the following:\r\n\r\n- Read the Contributing Guidelines at https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md.\r\n- Check that there isn't already a PR that solves the problem the same way. If you find a duplicate, please help us review it.\r\n- Update the corresponding documentation if needed.\r\n- Include relevant tests that fail without this PR but pass with it. If the tests are not included, explain why.\r\n\r\nThank you for contributing to Vite!\r\n-->\r\nrefer to #23251\r\n\r\n|main|pr|\r\n|---|---|\r\n|<img width=\"2324\" height=\"514\" alt=\"image\" src=\"https://github.com/user-attachments/assets/7fb6f551-c8bc-4d5b-8831-8eaaf78314e3\" />|<img width=\"892\" height=\"558\" alt=\"image\" src=\"https://github.com/user-attachments/assets/d7beb6d2-8ddd-4a58-bb60-135453e25270\" />|",
+  "user": {
+    "login": "btea",
+    "type": "User"
+  },
+  "baseSha": "dcf88bd2ad2b1a8845f9029587cc8c825e382d42",
+  "headSha": "78543d94d95eb0e3995721c98c111f2a4edf7241",
+  "mergedAt": "2026-08-19T05:47:56Z",
+  "mergeCommit": "1d9fa392a43229241f80630236f8552ce8f7cd0f",
+  "commits": 1,
+  "reviews": [
+    {
+      "id": 4968793913,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "78543d94d95eb0e3995721c98c111f2a4edf7241",
+      "at": "2026-08-19T05:47:17Z",
+      "body": "Seems fine as long as we only build after we bump the version",
+      "url": "https://github.com/vitejs/vite/pull/23258#pullrequestreview-4968793913"
+    }
+  ],
+  "inline": [],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-21T00:18:45Z",
+      "number": 106,
+      "repo": "sudocarlos/tailrelay",
+      "pull": false,
+      "title": "chore: update Vite from 8.2.1 to 8.2.2",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/issues/106"
+    },
+    {
+      "at": "2026-10-22T21:06:33Z",
+      "number": 300,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm-dev）: bump the npm-minor-patch group across 3 directories with 2 updates",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/300"
+    }
+  ]
+}

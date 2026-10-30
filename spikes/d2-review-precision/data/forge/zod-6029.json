@@ -1,0 +1,60 @@
+{
+  "number": 6029,
+  "title": "feat: support `$ref` at root level in `toJSONSchema`",
+  "body": "Fixes #6026",
+  "user": {
+    "login": "dinwwwh",
+    "type": "User"
+  },
+  "baseSha": "b1077f05f85450cf53108714973bf7c8d9e3c35d",
+  "headSha": "01dde60f65cf1fefd5d0622484c2d07f7ad4da1e",
+  "mergedAt": "2026-08-17T19:02:21Z",
+  "mergeCommit": "3c9ca1d9bdc3c08939f2aa099158ee552c70ef80",
+  "commits": 3,
+  "reviews": [
+    {
+      "id": 4360048329,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "71a326ab0d6821560788ec3e6fae6545bf5f7ed4",
+      "at": "2026-05-26T02:42:10Z",
+      "body": "> ℹ️ Minor suggestion inline. Behavior change is intentional and aligns the root case with the documented contract.\n\n**Reviewed changes** — initial review of dinwwwh's fix for #6026, which makes `z.toJSONSchema` hoist a root schema with `meta({ id })` into `$defs` with a root-level `$ref`, instead of inlining the body and dropping the id.\n\n- **Hoist root schema with `id` into `$defs`** — in `extractDefs.makeURI`, the root branch now returns `{ defId, ref: \"#/$defs/<id>\" }` when `root.schema.id` is set, so `extractToDef` clones the body into `seen.def` and rewrites `seen.schema` to a `$ref` wrapper.\n- **Use the `$ref` wrapper as the root payload in `finalize`** — `Object.assign(result, root.defId ? root.schema : (root.def ?? root.schema))` keeps the old inline path for root-without-id and copies the `$ref` wrapper for root-with-id.\n- **Tests** — adds two new tests covering draft-2020-12 (`$defs`) and draft-07 (`definitions`), and rewrites the `\"top-level readonly\"` inline snapshot to reflect that `A` is now hoisted alongside `B` in the cyclic `A → B → A` case.\n\n<!--\nPullfrog review metadata.\n\n- Mode: Review (initial)\n- Files reviewed: 2\n- Commits reviewed: 1\n- Base: main (bbc68f9)\n- Head: dinwwwh/issue6026 (71a326a)\n- Reviewed commits:\n  - 71a326a — feat: support `$ref` at root level in `toJSONSchema`\n- Prior pullfrog review: none\n- Submitted at: 2026-05-26T02:40:00Z\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6029?action=fix&review_id=4360048329) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6029?action=fix-approved&review_id=4360048329) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/26429078780/job/77798409075) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6029#pullrequestreview-4360048329"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3300875322,
+      "review": 4360048329,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts",
+      "line": 2697,
+      "originalLine": 2502,
+      "commit": "01dde60f65cf1fefd5d0622484c2d07f7ad4da1e",
+      "originalCommit": "71a326ab0d6821560788ec3e6fae6545bf5f7ed4",
+      "at": "2026-05-26T02:42:09Z",
+      "body": "The surrounding file uses `toMatchInlineSnapshot` almost everywhere — converting just this case to `toEqual` loses the ability to regenerate it via `pnpm vitest run --update`. Suggest keeping the inline snapshot form here so the regeneration story stays uniform across the file. Same applies to the two new tests above at 2206 and 2228, where inline snapshots would match the surrounding style.",
+      "diffHunk": "@@ -2422,45 +2466,40 @@ test(\"top-level readonly\", () => {\n   // .meta({ id: \"B\" });\n \n   const result = z.toJSONSchema(A);\n-  expect(result).toMatchInlineSnapshot(`\n-    {\n-      \"$defs\": {\n-        \"B\": {\n-          \"additionalProperties\": false,\n-          \"properties\": {\n-            \"a\": {\n-              \"$ref\": \"#\",\n-            },\n-            \"name\": {\n-              \"type\": \"string\",\n-            },\n+  expect(result).toEqual({\n+    $schema: \"https://json-schema.org/draft/2020-12/schema\",\n+    $ref: \"#/$defs/A\",\n+    $defs: {\n+      A: {\n+        additionalProperties: false,\n+        properties: {\n+          b: {\n+            $ref: \"#/$defs/B\",\n+          },\n+          name: {\n+            type: \"string\",\n           },\n-          \"readOnly\": true,\n-          \"required\": [\n-            \"name\",\n-            \"a\",\n-          ],\n-          \"type\": \"object\",\n         },\n+        readOnly: true,\n+        required: [\"name\", \"b\"],\n+        type: \"object\",\n       },\n-      \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n-      \"additionalProperties\": false,\n-      \"properties\": {\n-        \"b\": {\n-          \"$ref\": \"#/$defs/B\",\n-        },\n-        \"name\": {\n-          \"type\": \"string\",\n+      B: {\n+        additionalProperties: false,\n+        properties: {\n+          a: {\n+            $ref: \"#/$defs/A\",\n+          },\n+          name: {\n+            type: \"string\",\n+          },\n         },\n+        readOnly: true,\n+        required: [\"name\", \"a\"],\n+        type: \"object\",\n       },\n-      \"readOnly\": true,\n-      \"required\": [\n-        \"name\",\n-        \"b\",\n-      ],\n-      \"type\": \"object\",\n-    }\n-  `);\n+    },\n+  });",
+      "url": "https://github.com/colinhacks/zod/pull/6029#discussion_r3300875322"
+    }
+  ],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-31T03:55:27Z",
+      "number": 1969,
+      "repo": "middleapi/orpc",
+      "pull": true,
+      "title": "chore: upgrade zod to 4.5.4 and drop the manual root $ref hoisting",
+      "state": "closed",
+      "url": "https://github.com/middleapi/orpc/pull/1969"
+    }
+  ]
+}

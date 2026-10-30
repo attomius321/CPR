@@ -1,0 +1,108 @@
+{
+  "number": 22932,
+  "title": "[PM-42525] Vault side nav query param preservation",
+  "body": "## 🎟️ Tracking\r\n\r\n[PM-42525](https://bitwarden.atlassian.net/browse/PM-42525)\r\n\r\n## 📔 Objective\r\n\r\nPreserve the existing query parameters when clicking on a currently active page in the side nav. Prevents clearing the query params unexpectedly. \r\n\r\nUIF Owned Change:\r\n- Adds a new `queryParamsHandling` input to `nav-base.component.ts` pass through to the underlying router link.\r\n\r\n## 📸 Screenshots\r\n\r\nRecording showing clicking the side nav for a page a user is already one persists and doesn't change/flash.\r\n\r\nhttps://github.com/user-attachments/assets/65972c51-bebb-42c4-a043-b933e350a0e1\r\n\r\n\r\n\n\n[PM-42525]: https://bitwarden.atlassian.net/browse/PM-42525?atlOrigin=eyJpIjoiNWRkNTljNzYxNjVmNDY3MDlhMDU5Y2ZhYzA5YTRkZjUiLCJwIjoiZ2l0aHViLWNvbS1KU1cifQ",
+  "user": {
+    "login": "shane-melton",
+    "type": "User"
+  },
+  "baseSha": "b5713fa6d8d57dcdccc3c3aa0ca0fb89fba7a9bc",
+  "headSha": "d022ef1e0d2795d197bbb14e4f9d42fb2014e7c4",
+  "mergedAt": "2026-09-04T16:20:09Z",
+  "mergeCommit": "30c8df9dc32c2df318307cf2aec22ac1f5dbbd11",
+  "commits": 3,
+  "reviews": [
+    {
+      "id": 5107219634,
+      "user": {
+        "login": "gbubemismith",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "65ba9f6d251a61c70d008bd9af16396779743fa7",
+      "at": "2026-09-03T21:58:03Z",
+      "body": "Changes look good ",
+      "url": "https://github.com/bitwarden/clients/pull/22932#pullrequestreview-5107219634"
+    },
+    {
+      "id": 5107944958,
+      "user": {
+        "login": "gbubemismith",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "d022ef1e0d2795d197bbb14e4f9d42fb2014e7c4",
+      "at": "2026-09-04T00:06:32Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22932#pullrequestreview-5107944958"
+    },
+    {
+      "id": 5115340429,
+      "user": {
+        "login": "willmartian",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "d022ef1e0d2795d197bbb14e4f9d42fb2014e7c4",
+      "at": "2026-09-04T16:10:12Z",
+      "body": "UIF changes LGTM",
+      "url": "https://github.com/bitwarden/clients/pull/22932#pullrequestreview-5115340429"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3929065277,
+      "review": 5107219634,
+      "replyTo": null,
+      "user": {
+        "login": "gbubemismith",
+        "type": "User"
+      },
+      "path": "libs/vault/src/components/vault-nav-section/vault-nav-section.component.spec.ts",
+      "line": 370,
+      "originalLine": 358,
+      "commit": "d022ef1e0d2795d197bbb14e4f9d42fb2014e7c4",
+      "originalCommit": "65ba9f6d251a61c70d008bd9af16396779743fa7",
+      "at": "2026-09-03T21:57:41Z",
+      "body": "Claude's comments are so funny",
+      "diffHunk": "@@ -318,4 +326,43 @@ describe(\"VaultNavSectionComponent\", () => {\n       expect(text).not.toContain(\"allItems\");\n     });\n   });\n+\n+  describe(\"clicking the entry for the page in view\", () => {\n+    // The table writes its filters and sort to the query string, so a link that dropped them would\n+    // reset the page the user is already looking at. PM-42525.\n+    const withFilters = \"/vault/org-a?vault.sort=name&vault.direction=asc\";\n+\n+    beforeEach(() => {\n+      viewModel$.next(withOrgs);\n+      fixture.detectChanges();\n+    });\n+\n+    it(\"leaves the page's query params in the URL\", async () => {\n+      await navigateTo(withFilters);\n+      const group = expandGroup(\"Acme corporation\");\n+\n+      await clickNavItem(group, \"allVaultItems\");\n+\n+      expect(TestBed.inject(Router).url).toBe(withFilters);\n+    });\n+\n+    it(\"carries no query params onto another entry's page\", async () => {\n+      await navigateTo(withFilters);\n+\n+      await clickNavItem(fixture.nativeElement, \"allItems\");\n+\n+      expect(TestBed.inject(Router).url).toBe(\"/vault\");\n+    });\n+\n+    it(\"navigates up from a drill-in rather than holding the entry's own page\", async () => {\n+      // Shared folders is left on the default subset match so it lights on its drill-ins too; the",
+      "url": "https://github.com/bitwarden/clients/pull/22932#discussion_r3929065277"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5530156159,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-03T18:17:47Z",
+      "updated": "2026-09-03T18:24:31Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nReviewed the new `queryParamsHandling` pass-through on `NavBaseComponent` and its forwarding through `nav-item`/`nav-group` templates, plus the vault side-nav consumers that opt into `\"preserve\"` only for the entry naming the page in view. Traced the active-entry matching in `VaultNavSectionComponent` and `VaultManageNavComponent`: `EXACT_PATH` prevents a Shared folders drill-in or a scoped vault route from being treated as the entry's own page, the reference comparison in `queryParamsHandling(route)` holds because `vaultRoutes`/`sharedFolderRoutes` memoize their arrays, and the `null` guard is load-bearing since `currentPageRoute()` can itself be `undefined`. Confirmed `\"preserve\"` is scoped to same-page clicks, so no filter or sort params leak across vault scopes, and the `selectArchive()` early return lands before the premium prompt so a re-click on the archive can't surface an upgrade dialog. The new `ariaCurrentValue` binding covers the gap where Archive renders as a button and gets no `routerLinkActive`, and both button branches of `nav-item.component.html` already read that input.\n\n<details>\n<summary>Code Review Details</summary>\n\nNo findings. The behavior changes are each covered by a test that fails without the corresponding fix, including the drill-in case where Shared folders stays a working link back up to its own page.\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/22932#issuecomment-5530156159"
+    },
+    {
+      "id": 5530356547,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-03T18:34:26Z",
+      "updated": "2026-09-04T00:02:20Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/22932?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:white_check_mark: All modified and coverable lines are covered by tests.\n:white_check_mark: Project coverage is 55.51%. Comparing base ([`b5713fa`](https://app.codecov.io/gh/bitwarden/clients/commit/b5713fa6d8d57dcdccc3c3aa0ca0fb89fba7a9bc?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`d022ef1`](https://app.codecov.io/gh/bitwarden/clients/commit/d022ef1e0d2795d197bbb14e4f9d42fb2014e7c4?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:white_check_mark: All tests successful. No failed tests found.\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@           Coverage Diff           @@\n##             main   #22932   +/-   ##\n=======================================\n  Coverage   55.51%   55.51%           \n=======================================\n  Files        4406     4407    +1     \n  Lines      140663   140675   +12     \n  Branches    22339    22342    +3     \n=======================================\n+ Hits        78090    78097    +7     \n- Misses      56877    56882    +5     \n  Partials     5696     5696           \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/22932?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/22932#issuecomment-5530356547"
+    },
+    {
+      "id": 5533595697,
+      "user": {
+        "login": "shane-melton",
+        "type": "User"
+      },
+      "at": "2026-09-03T23:46:43Z",
+      "updated": "2026-09-03T23:46:43Z",
+      "body": "@gbubemismith Had to fix a merge conflict with the new my items link you added today",
+      "url": "https://github.com/bitwarden/clients/pull/22932#issuecomment-5533595697"
+    }
+  ],
+  "citedBy": []
+}

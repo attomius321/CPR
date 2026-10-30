@@ -1,0 +1,688 @@
+{
+  "number": 6536,
+  "title": "feat(v4): make z.properties() a schema, and give z.instanceof() a .properties() method",
+  "body": "`z.properties(shape)` now constructs a real schema instead of an array of `z.property()` checks. It asserts the named properties in place and returns its input untouched — no new object, so prototypes, unlisted keys, and object identity survive. And because it's a schema, it finally infers. Follows up on #5912, which landed the check form; an array of checks can never narrow the type, and that was the reason to revisit it.\n\n```ts\nconst httpsUrl = z.instanceof(URL).properties({\n  protocol: z.literal(\"https:\"),\n  hostname: z.string().regex(z.regexes.domain),\n});\n\ntype HttpsUrl = z.infer<typeof httpsUrl>;\n// => URL & { protocol: \"https:\"; hostname: string }\n```\n\nWhat's in here:\n\n- **`$ZodProperties`**, a core schema that is also a check, the way `$ZodCustom` is. As a schema it is the type gate — an object or a function, never a primitive — reports every failing key, and parses cyclic input — it returns the input identity, so the input registers as its own memo entry. It has cases in `z.compile()` (both roles), `z.toJSONSchema()` (`type: \"object\"` + `properties` + `required`, no `additionalProperties`; a symbol key is reported unrepresentable, as `z.object()` does), the memoizer, and `visit`.\n- **The 4.5 spread still works.** The schema yields itself from `Symbol.iterator`, so `z.instanceof(URL).check(...z.properties({ ... }))` keeps compiling and running; TypeScript infers the spread element type from the iterator. The spread now reports every failing property instead of stopping at the first, since one check iterates the whole shape. One caveat: consumers on `target: es5` lose the spread form (spreading a non-array iterable requires ES2015); the schema forms work everywhere.\n- **`z.instanceof()` returns a dedicated `ZodInstanceOf` class** with a `.properties()` method that narrows and chains. `z.instanceof(URL).and(z.properties({ ... }))` narrows too — intersection returns the left value when both sides come back identical.\n- **As a check it asserts on whatever the base produced**, so `z.string().check(...z.properties({ length: z.number().min(3) }))` reads a string's length, exactly as `z.property()` does. The base has already typed the value there; standalone, this schema types it itself.\n- **The shape is asserted and its results discarded**, exactly as `z.property()` behaves — identity can't distinguish a transform from a nested object schema rebuilding its output, so there's no cheap honest detection. Both sides therefore infer the **input** type: an output-typed inference would lie for every entry whose output differs from its input (`z.properties({ a: z.string().default(\"x\") })` would claim `{ a: string }` and return `{}`). A plain schema has identical input and output, so the narrowing example above is unchanged.\n- `z.core._properties` changes signature from `(shape)` to `(Class, shape, params?)`, matching the other schema factories. The old form shipped 12 days ago in 4.5.0.\n- `when` is not settable on `z.properties()`. It gates a check inside the run loop, so it means nothing to a parsed schema, and honoring it in one role only would diverge silently.\n\nThree axes, measured against `main` at bf990216 (gzipped bytes; retained bytes per instance over 20k instances under `--expose-gc`; parse/construction as min-of-7 fixed-count rounds):\n\n| | main | this PR |\n|---|---|---|\n| parse: `z.instanceof(URL).check(...z.properties({...}))` | 140 ns | 140 ns |\n| construction: same schema | 7.9 µs | 9.2 µs (+16%; a real schema costs more to build than two plain check objects) |\n| construction: bare `z.instanceof(URL)` | 1.32 µs | 1.34 µs |\n| memory: `z.instanceof(URL)` | 2.0 KB | 2.0 KB |\n| memory: `z.properties()` (2 keys) | — | 3.0 KB |\n| bundle: `zod-object` / `zod-string` | 24949 / 20867 | 24977 (+28) / 20906 (+39) |\n| bundle: `zod-mini-object` / `-string` / `-boolean` | 4598 / 3497 / 3021 | 4611 (+13) / 3516 (+19) / 3036 (+15) |\n| bundle: instanceof + properties call site | 21470 | 21746 (+276) |\n\nThe flat +15–17 B on every bundle is the symbol-key loop added to `util.members`, which is what installs `Symbol.iterator` on the per-constructor prototype; the mini ceilings are re-measured against `main` and raised in this branch. Classic pays ~10 B more for the memoizer's shared reference predicate, which mini treeshakes. `dict-mode.ts` reports every instance `fast`.\n",
+  "user": {
+    "login": "colinhacks",
+    "type": "User"
+  },
+  "baseSha": "bf9902164b5396449540415c2221a24bc9fd0e22",
+  "headSha": "fbbe61757a8a31266ac16376c85b76e878d5a9e6",
+  "mergedAt": "2026-08-31T21:06:27Z",
+  "mergeCommit": "abfb38977dc28dc9993e3fa6a2ecc2f52a8d0c4c",
+  "commits": 7,
+  "reviews": [
+    {
+      "id": 5070231570,
+      "user": {
+        "login": "copilot-pull-request-reviewer[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T19:13:15Z",
+      "body": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit.",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5070231570"
+    },
+    {
+      "id": 5070383312,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T19:31:17Z",
+      "body": "> [!IMPORTANT]\n> The inferred output type is unsound — nothing is ever written back, so `.default()`, `.catch()` and type-changing `.transform()` inside the shape all produce values that contradict the declared type. Separately, the compiled fast path diverges from the interpreter in two ways, one of which silently returns different data inside a union.\n\nReviewed the full diff across all 16 files, then verified each finding by running it. The design is good — `$ZodProperties` as a dual schema/check mirroring `$ZodCustom` is the right shape for this, the `Symbol.iterator` compatibility hatch is neat, and the JSON Schema `required` logic matches `objectProcessor` exactly. Suite is green (7867 passed) and the raised bundle ceilings are accurate after a build.\n\nThree things below, plus two nits inline.\n\n### Child schemas run with an empty parse context\n\n`inst._zod.check` runs every shape child with a literal `{}` as its context. This is inherited verbatim from `$ZodCheckProperty`, so it isn't new code, but it becomes reachable at the top level for the first time now that `z.properties()` is a schema — which surfaces two behaviors:\n\n**Codecs run in the wrong direction.** The `direction: \"backward\"` flag lives on the context, so it's dropped:\n\n```ts\nconst codec = z.codec(z.string(), z.number(), { decode: Number, encode: String });\nz.encode(z.object({ a: codec }), { a: 5 });      // { a: \"5\" }\nz.encode(z.properties({ a: codec }), { a: 5 });  // throws: invalid_type, expected string\n```\n\n**Cyclic input overflows the stack.** `$ZodProperties` never calls `memo?.attach(inst)`, and the fresh `{}` wouldn't carry memo state anyway, so a cycle that `z.object()` handles fine blows up:\n\n```ts\nconst node: any = z.lazy(() => z.properties({ next: node.optional() }));\nconst a: any = {}; a.next = a;\nnode.safeParse(a);  // RangeError: Maximum call stack size exceeded\n```\n\nWorth noting the new `memoizer.ts` case does make `isRecursiveSchema()` correctly report `true` here — the detection is wired up, only the breaking isn't. Error maps and `reportInput` do still propagate, since `finalizeIssue` resolves against the outer context, so the blast radius is limited to these two.\n\nNot blocking on its own, but if `z.properties()` is going to be a first-class schema it should probably forward the context it was given.\n\n<!--\nMode: Review (initial)\nFiles reviewed: 16\nCommits reviewed: 1\nBase: main\nHead: properties-schema (374bd05)\nReviewed commits: 374bd057 — feat(v4): make z.properties() a schema, and give z.instanceof() a .properties() method\nPrior pullfrog review: none\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6536?action=fix&review_id=5070383312) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6536?action=fix-approved&review_id=5070383312) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33429351251/job/99610643161) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5070383312"
+    },
+    {
+      "id": 5070851315,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:26:10Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5070851315"
+    },
+    {
+      "id": 5070851689,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:26:13Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5070851689"
+    },
+    {
+      "id": 5070852052,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:26:16Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5070852052"
+    },
+    {
+      "id": 5070852436,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:26:19Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5070852436"
+    },
+    {
+      "id": 5070852864,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:26:22Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5070852864"
+    },
+    {
+      "id": 5070853316,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:26:25Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5070853316"
+    },
+    {
+      "id": 5070942141,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:36:29Z",
+      "body": "> [!IMPORTANT]\n> The latest commits resolve the prior review findings, but backward encoding is now type-inconsistent and callable cycles still overflow.\n\n**Reviewed changes** I reviewed the typing, compiler, context propagation, key handling, and cycle-support changes since the prior Pullfrog review.\n\n- **Corrected schema typing**: Switched standalone, intersection, and `ZodInstanceOf.properties()` inference to the asserted child input types.\n- **Unified compiler behavior**: Added nullish and symbol-key handling in both roles, and rejected custom `when` definitions consistently.\n- **Forwarded parse state**: Moved schema-role traversal into `parse`, passed its context to children, and registered identity outputs with the memoizer.\n- **Expanded representation handling**: Validated symbol keys at runtime and reported them as unrepresentable in JSON Schema.\n\n<!--\nPullfrog review metadata. These findings were written against 63b5b34;\nif commits have landed on properties-schema since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 16\n- Commits reviewed: 3\n- Base: main (2ec972e)\n- Head: properties-schema (63b5b34)\n- Reviewed commits:\n  - 63b5b34e — fix(v4): give z.properties cycle support, and stop two silent divergences\n  - 2e72a240 — fix(v4): close the review findings on z.properties\n  - 374bd057 — feat(v4): make z.properties() a schema, and give z.instanceof() a .properties() method\n- Prior pullfrog review: 374bd057 (https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5070383312)\n-->\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6536?action=fix&review_id=5070942141) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6536?action=fix-approved&review_id=5070942141) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33435722689/job/99631542163) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5070942141"
+    },
+    {
+      "id": 5071011163,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:45:01Z",
+      "body": "> [!IMPORTANT]\n> The follow-up commits resolve the earlier inference, compile-parity, symbol-key, and cycle findings, but three contract mismatches remain in JSON Schema emission and shape lifetime.\n\n**Reviewed changes** Reviewed all 16 changed files at `63b5b34`, including the two follow-up fixes layered on the new schema/check implementation.\n\n- **Dual schema/check API** — `z.properties()` now narrows as a standalone schema, remains spreadable as a check, and powers `z.instanceof().properties()`.\n- **Runtime and recursion** — property assertions preserve input identity, aggregate failures, support async parsing and symbols, and participate in memoized cyclic parsing.\n- **Compiler and JSON Schema** — both schema and check roles gain AOT cases, while the new processor emits object property constraints.\n- **Public surface and validation** — classic/mini exports, traversal, docs, focused tests, and bundle ceilings were updated together.\n\n<!--\nPullfrog review metadata. These findings were written against 63b5b34;\nif commits have landed on properties-schema since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: Review (initial)\n- Files reviewed: 16\n- Commits reviewed: 3\n- Base: main (2ec972e)\n- Head: properties-schema (63b5b34)\n- Reviewed commits:\n  - 374bd057 — feat(v4): make z.properties() a schema, and give z.instanceof() a .properties() method\n  - 2e72a240 — fix(v4): close the review findings on z.properties\n  - 63b5b34e — fix(v4): give z.properties cycle support, and stop two silent divergences\n- Prior pullfrog review: none\n-->\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6536?action=fix&review_id=5071011163) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6536?action=fix-approved&review_id=5071011163) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33436633436/job/99634554491) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5071011163"
+    },
+    {
+      "id": 5071055120,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "277e929293e9bb757409e089a1f57e8c2387d88d",
+      "at": "2026-08-31T20:50:33Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5071055120"
+    },
+    {
+      "id": 5071055528,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "277e929293e9bb757409e089a1f57e8c2387d88d",
+      "at": "2026-08-31T20:50:36Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5071055528"
+    },
+    {
+      "id": 5071128651,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "277e929293e9bb757409e089a1f57e8c2387d88d",
+      "at": "2026-08-31T20:57:43Z",
+      "body": "> ℹ️ The behavioral fixes are sound; one comment-style cleanup remains inline.\n\n**Reviewed changes** I reviewed the fixes since the prior Pullfrog review.\n\n- **Corrected encoding direction** — Kept discarded child assertions forward during encode without dropping shared parse state.\n- **Extended cycle tracking** — Recognized callable values consistently across memoizer lookup, allocation, and back-edge detection, with a callable-cycle regression.\n\n<!--\nPullfrog review metadata. These findings were written against 277e9292;\nif commits have landed on properties-schema since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 16\n- Commits reviewed: 4\n- Base: main (bec73bea)\n- Head: properties-schema (277e9292)\n- Reviewed commits:\n  - 277e9292 — fix(v4): keep z.properties forward while encoding, and track callable cycles\n  - 63b5b34e — fix(v4): give z.properties cycle support, and stop two silent divergences\n  - 2e72a240 — fix(v4): close the review findings on z.properties\n  - 374bd057 — feat(v4): make z.properties() a schema, and give z.instanceof() a .properties() method\n- Prior pullfrog review: 63b5b34e (https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5070942141)\n-->\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6536?action=fix&review_id=5071128651) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6536?action=fix-approved&review_id=5071128651) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33437336171/job/99636843931) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5071128651"
+    },
+    {
+      "id": 5071206881,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "fbbe61757a8a31266ac16376c85b76e878d5a9e6",
+      "at": "2026-08-31T21:04:30Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5071206881"
+    },
+    {
+      "id": 5071207365,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "fbbe61757a8a31266ac16376c85b76e878d5a9e6",
+      "at": "2026-08-31T21:04:33Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5071207365"
+    },
+    {
+      "id": 5071208030,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "fbbe61757a8a31266ac16376c85b76e878d5a9e6",
+      "at": "2026-08-31T21:04:36Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6536#pullrequestreview-5071208030"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3897695628,
+      "review": 5070383312,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/schemas.ts",
+      "line": null,
+      "originalLine": 4981,
+      "commit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T19:31:15Z",
+      "body": "The output side is typed as `$InferObjectOutput`, but `handlePropertiesResult` validates each child result and then discards it — nothing is ever written back to the input object. That's deliberate and documented (\"validated but never written back\"), but the type doesn't say so, and every shape entry whose output differs from its input now lies:\n\n```ts\nz.properties({ a: z.string().default(\"x\") }).parse({});\n// type: { a: string }   actual: {}          — no `a` key at all\n\nz.properties({ a: z.string().catch(\"fb\") }).parse({ a: 123 } as any);\n// type: { a: string }   actual: { a: 123 }  — a number\n\nz.properties({ a: z.string().transform((s) => s.length) }).parse({ a: \"hi\" });\n// type: { a: number }   actual: { a: \"hi\" }  — still a string\n```\n\nThis undercuts the PR's headline motivation. The existing test (`z.properties discards transformed output`) uses `z.string().transform(s => s.toUpperCase())`, a same-type transform, so it passes without exercising any of this.\n\nInferring the **input** side in both positions would be truthful for every case above, and it leaves the documented `URL & { protocol: \"https:\" }` example unchanged since plain schemas have identical input and output.",
+      "diffHunk": "@@ -4963,6 +4964,85 @@ function handleRefineResult(result: unknown, payload: ParsePayload, input: unkno\n   }\n }\n \n+////////////////////////////////////////\n+////////////////////////////////////////\n+//////////                    //////////\n+//////////  $ZodProperties    //////////\n+//////////                    //////////\n+////////////////////////////////////////\n+////////////////////////////////////////\n+export interface $ZodPropertiesDef<Shape extends $ZodShape = $ZodShape> extends $ZodTypeDef, checks.$ZodCheckDef {\n+  type: \"properties\";\n+  check: \"properties\";\n+  shape: Shape;\n+}\n+\n+export interface $ZodPropertiesInternals<Shape extends $ZodShape = $ZodShape>\n+  extends $ZodTypeInternals<$InferObjectOutput<Shape, {}>, $InferObjectInput<Shape, {}>>,",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3897695628"
+    },
+    {
+      "id": 3897695633,
+      "review": 5070383312,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/schemas.ts",
+      "line": null,
+      "originalLine": 2815,
+      "commit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T19:31:15Z",
+      "body": "Same unsoundness as `$ZodPropertiesInternals` — the intersected type should be the input side, since nothing is written back onto the instance:\n\n```ts\nclass Widget { tag?: string }\nconst W = z.instanceof(Widget).properties({ tag: z.string().default(\"none\") });\nconst w = W.parse(new Widget());\nw === input;  // true (identity preserved, as designed)\nw.tag;        // type: string   actual: undefined\n```\n\nAlso reachable through `.and()`.",
+      "diffHunk": "@@ -2785,14 +2806,35 @@ type ZodInstanceOfParams = core.Params<\n   core.$ZodIssueCustom,\n   \"type\" | \"check\" | \"checks\" | \"fn\" | \"abort\" | \"error\" | \"params\" | \"path\"\n >;\n+\n+// ZodInstanceOf\n+export interface ZodInstanceOf<T = unknown> extends ZodCustom<T, T> {\n+  properties<Shape extends core.$ZodShape>(\n+    shape: Shape,\n+    params?: string | core.$ZodPropertiesParams\n+  ): ZodInstanceOf<T & core.$InferObjectOutput<Shape, {}>>;",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3897695633"
+    },
+    {
+      "id": 3897695642,
+      "review": 5070383312,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/compile.ts",
+      "line": 607,
+      "originalLine": 593,
+      "commit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T19:31:15Z",
+      "body": "`generatePropertiesChecks` emits no null guard, so the compiled check role throws where the interpreter reports an issue:\n\n```ts\nconst s = z.any().check(...z.properties({ a: z.string() }));\ns.safeParse(null);             // { code: \"invalid_type\", path: [] }\nz.compile(s).safeParse(null);  // TypeError: Cannot read properties of null (reading 'a')\n```\n\nReproduces on `z.any()`, `z.unknown()`, `z.string().nullable()` and `z.unknown().optional()` bases. The divergence is **new** — pre-PR both sides threw, and the singular `z.property()` still throws on both. The schema-role case at line 1029 already writes the guard; moving it into the shared helper covers both roles (and lets you drop the duplicate below).\n\n```suggestion\n): void {\n  doc.write(`if (${accessor} == null) return INVALID;`);\n  for (const key of Object.keys(shape)) {\n    // cache the property read so a getter runs exactly once, matching the runtime\n    const inputVar = newVar(ctx);\n    doc.write(`const ${inputVar} = ${accessor}[${util.esc(key)}];`);\n    compileChild(doc, ctx, shape[key]!, inputVar, false);\n  }\n}\n```",
+      "diffHunk": "@@ -573,6 +577,21 @@ function generateMimeTypeCheck(\n   }\n }\n \n+// asserts each named property in place; children compile assert-only because z.properties never rebuilds its input\n+function generatePropertiesChecks(\n+  doc: Doc,\n+  ctx: CompileContext,\n+  shape: Record<string, SomeType>,\n+  accessor: string\n+): void {\n+  for (const key of Object.keys(shape)) {\n+    // cache the property read so a getter runs exactly once, matching the runtime\n+    const inputVar = newVar(ctx);\n+    doc.write(`const ${inputVar} = ${accessor}[${util.esc(key)}];`);\n+    compileChild(doc, ctx, shape[key]!, inputVar, false);\n+  }\n+}",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3897695642"
+    },
+    {
+      "id": 3897695662,
+      "review": 5070383312,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/compile.ts",
+      "line": 1045,
+      "originalLine": 1037,
+      "commit": "fbbe61757a8a31266ac16376c85b76e878d5a9e6",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T19:31:16Z",
+      "body": "This case never reads `def.when`. `$ZodPropertiesDef` extends `$ZodCheckDef` and `$ZodPropertiesParams` doesn't omit `when`, so `z.properties(shape, { when })` is a publicly typed call — and because `$ZodProperties` inserts itself into its own `checks` array, `runChecks` gates the shape assertion on `when` at runtime. `generateChecks` handles this correctly for the check role by throwing `ZodCompileUnsupportedError` (line 354); the schema role just runs the checks unconditionally.\n\nAt the top level that's masked by `compile()`'s whole-function fallback. Inside a union it isn't — each branch compiles to its own IIFE, so the wrong rejection is absorbed as \"branch failed\" and a later branch matches instead:\n\n```ts\nconst p = z.properties({ a: z.literal(\"x\") }, { when: () => false });\nconst s = z.union([p, z.object({ b: z.string() })]);\n\ns.safeParse({ a: \"wrong\", b: \"hello\" });\n// interpreted: { a: \"wrong\", b: \"hello\" }  (first branch, identity preserved)\nz.compile(s).safeParse({ a: \"wrong\", b: \"hello\" });\n// compiled:    { b: \"hello\" }              (second branch, `a` dropped)\n```\n\nBoth report success, with materially different data and no fallback. Either honor `when` here or throw `ZodCompileUnsupportedError` the way the check role does.",
+      "diffHunk": "@@ -1005,6 +1025,16 @@ function generateCheck(\n     case \"custom\":\n       typeAccessor = generateCustomCheck(doc, ctx, schema, accessor);\n       break;\n+    case \"properties\":\n+      doc.write(`if (${accessor} == null) return INVALID;`);\n+      generatePropertiesChecks(\n+        doc,\n+        ctx,\n+        (schema as $ZodProperties)._zod.def.shape as Record<string, SomeType>,\n+        accessor\n+      );\n+      typeAccessor = accessor;\n+      break;",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3897695662"
+    },
+    {
+      "id": 3897695672,
+      "review": 5070383312,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/schemas.ts",
+      "line": null,
+      "originalLine": 5018,
+      "commit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T19:31:16Z",
+      "body": "nit: `Object.keys` silently skips symbol-keyed shape entries, so they're never validated. The new `memoizer.ts` case in this same PR uses `Reflect.ownKeys`, and `z.object()` has validated symbol keys since #6448 — `Reflect.ownKeys(def.shape)` here would line all three up.",
+      "diffHunk": "@@ -4963,6 +4964,85 @@ function handleRefineResult(result: unknown, payload: ParsePayload, input: unkno\n   }\n }\n \n+////////////////////////////////////////\n+////////////////////////////////////////\n+//////////                    //////////\n+//////////  $ZodProperties    //////////\n+//////////                    //////////\n+////////////////////////////////////////\n+////////////////////////////////////////\n+export interface $ZodPropertiesDef<Shape extends $ZodShape = $ZodShape> extends $ZodTypeDef, checks.$ZodCheckDef {\n+  type: \"properties\";\n+  check: \"properties\";\n+  shape: Shape;\n+}\n+\n+export interface $ZodPropertiesInternals<Shape extends $ZodShape = $ZodShape>\n+  extends $ZodTypeInternals<$InferObjectOutput<Shape, {}>, $InferObjectInput<Shape, {}>>,\n+    checks.$ZodCheckInternals<$InferObjectOutput<Shape, {}>> {\n+  def: $ZodPropertiesDef<Shape>;\n+  isst: errors.$ZodIssueInvalidType;\n+  issc: errors.$ZodIssue;\n+}\n+\n+export interface $ZodProperties<Shape extends $ZodShape = $ZodShape> extends $ZodType {\n+  _zod: $ZodPropertiesInternals<Shape>;\n+  // yields the schema itself, so pre-4.6 `.check(...z.properties(shape))` spread call sites keep working\n+  [Symbol.iterator](): Iterator<this>;\n+}\n+\n+// asserts in place: the child result's value is discarded, matching z.property(), because a nested object or array schema rebuilds its output even when nothing transformed\n+function handlePropertiesResult(result: ParsePayload, payload: ParsePayload, key: string): void {\n+  if (result.issues.length) {\n+    payload.issues.push(...util.prefixIssues(key, result.issues));\n+  }\n+}\n+\n+export const $ZodProperties: core.$constructor<$ZodProperties> = /*@__PURE__*/ core.$constructor(\n+  \"$ZodProperties\",\n+  (inst, def) => {\n+    checks.$ZodCheck.init(inst, def);\n+    $ZodType.init(inst, def);\n+\n+    // the base init runs a dual schema/check instance as its own first check, so parse is only the type gate and the shape loop lives in check, like $ZodCustom\n+    inst._zod.parse = (payload, _) => {\n+      // property reads work on any non-nullish value (string length, class instances), so only null and undefined are rejected outright\n+      if (payload.value == null) {\n+        payload.issues.push({ expected: \"object\", code: \"invalid_type\", input: payload.value, inst });\n+      }\n+      return payload;\n+    };\n+\n+    let keys!: string[];\n+    inst._zod.check = (payload) => {\n+      keys ??= Object.keys(def.shape);",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3897695672"
+    },
+    {
+      "id": 3897695679,
+      "review": 5070383312,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/visit.ts",
+      "line": 161,
+      "originalLine": 162,
+      "commit": "fbbe61757a8a31266ac16376c85b76e878d5a9e6",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T19:31:16Z",
+      "body": "nit: this landed between the `// A leaf by choice: \\`parts\\` are regex fragments` comment and the `case \"template_literal\"` it describes. Moving the new case below `template_literal` keeps the comment attached to its subject.",
+      "diffHunk": "@@ -159,6 +159,17 @@ export function visit(schema: schemas.SomeType, fnOrHandlers: VisitFn | VisitHan\n         return clone(s, { ...rest, getter: () => run(original()) });\n       }\n       // A leaf by choice: `parts` are regex fragments, not data positions.\n+      case \"properties\": {",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3897695679"
+    },
+    {
+      "id": 3898082808,
+      "review": 5070851315,
+      "replyTo": 3897695633,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/schemas.ts",
+      "line": null,
+      "originalLine": 2815,
+      "commit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T20:26:10Z",
+      "body": "Addressed in 2e72a240.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33435722689/job/99631542163) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -2785,14 +2806,35 @@ type ZodInstanceOfParams = core.Params<\n   core.$ZodIssueCustom,\n   \"type\" | \"check\" | \"checks\" | \"fn\" | \"abort\" | \"error\" | \"params\" | \"path\"\n >;\n+\n+// ZodInstanceOf\n+export interface ZodInstanceOf<T = unknown> extends ZodCustom<T, T> {\n+  properties<Shape extends core.$ZodShape>(\n+    shape: Shape,\n+    params?: string | core.$ZodPropertiesParams\n+  ): ZodInstanceOf<T & core.$InferObjectOutput<Shape, {}>>;",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898082808"
+    },
+    {
+      "id": 3898083114,
+      "review": 5070851689,
+      "replyTo": 3897695679,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/visit.ts",
+      "line": 161,
+      "originalLine": 162,
+      "commit": "fbbe61757a8a31266ac16376c85b76e878d5a9e6",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T20:26:13Z",
+      "body": "Addressed in 2e72a240.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33435722689/job/99631542163) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -159,6 +159,17 @@ export function visit(schema: schemas.SomeType, fnOrHandlers: VisitFn | VisitHan\n         return clone(s, { ...rest, getter: () => run(original()) });\n       }\n       // A leaf by choice: `parts` are regex fragments, not data positions.\n+      case \"properties\": {",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898083114"
+    },
+    {
+      "id": 3898083446,
+      "review": 5070852052,
+      "replyTo": 3897695628,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/schemas.ts",
+      "line": null,
+      "originalLine": 4981,
+      "commit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T20:26:16Z",
+      "body": "Addressed in 2e72a240.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33435722689/job/99631542163) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -4963,6 +4964,85 @@ function handleRefineResult(result: unknown, payload: ParsePayload, input: unkno\n   }\n }\n \n+////////////////////////////////////////\n+////////////////////////////////////////\n+//////////                    //////////\n+//////////  $ZodProperties    //////////\n+//////////                    //////////\n+////////////////////////////////////////\n+////////////////////////////////////////\n+export interface $ZodPropertiesDef<Shape extends $ZodShape = $ZodShape> extends $ZodTypeDef, checks.$ZodCheckDef {\n+  type: \"properties\";\n+  check: \"properties\";\n+  shape: Shape;\n+}\n+\n+export interface $ZodPropertiesInternals<Shape extends $ZodShape = $ZodShape>\n+  extends $ZodTypeInternals<$InferObjectOutput<Shape, {}>, $InferObjectInput<Shape, {}>>,",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898083446"
+    },
+    {
+      "id": 3898083784,
+      "review": 5070852436,
+      "replyTo": 3897695642,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/compile.ts",
+      "line": 607,
+      "originalLine": 593,
+      "commit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T20:26:19Z",
+      "body": "Addressed in 2e72a240.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33435722689/job/99631542163) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -573,6 +577,21 @@ function generateMimeTypeCheck(\n   }\n }\n \n+// asserts each named property in place; children compile assert-only because z.properties never rebuilds its input\n+function generatePropertiesChecks(\n+  doc: Doc,\n+  ctx: CompileContext,\n+  shape: Record<string, SomeType>,\n+  accessor: string\n+): void {\n+  for (const key of Object.keys(shape)) {\n+    // cache the property read so a getter runs exactly once, matching the runtime\n+    const inputVar = newVar(ctx);\n+    doc.write(`const ${inputVar} = ${accessor}[${util.esc(key)}];`);\n+    compileChild(doc, ctx, shape[key]!, inputVar, false);\n+  }\n+}",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898083784"
+    },
+    {
+      "id": 3898084129,
+      "review": 5070852864,
+      "replyTo": 3897695672,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/schemas.ts",
+      "line": null,
+      "originalLine": 5018,
+      "commit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T20:26:22Z",
+      "body": "Addressed in 2e72a240.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33435722689/job/99631542163) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -4963,6 +4964,85 @@ function handleRefineResult(result: unknown, payload: ParsePayload, input: unkno\n   }\n }\n \n+////////////////////////////////////////\n+////////////////////////////////////////\n+//////////                    //////////\n+//////////  $ZodProperties    //////////\n+//////////                    //////////\n+////////////////////////////////////////\n+////////////////////////////////////////\n+export interface $ZodPropertiesDef<Shape extends $ZodShape = $ZodShape> extends $ZodTypeDef, checks.$ZodCheckDef {\n+  type: \"properties\";\n+  check: \"properties\";\n+  shape: Shape;\n+}\n+\n+export interface $ZodPropertiesInternals<Shape extends $ZodShape = $ZodShape>\n+  extends $ZodTypeInternals<$InferObjectOutput<Shape, {}>, $InferObjectInput<Shape, {}>>,\n+    checks.$ZodCheckInternals<$InferObjectOutput<Shape, {}>> {\n+  def: $ZodPropertiesDef<Shape>;\n+  isst: errors.$ZodIssueInvalidType;\n+  issc: errors.$ZodIssue;\n+}\n+\n+export interface $ZodProperties<Shape extends $ZodShape = $ZodShape> extends $ZodType {\n+  _zod: $ZodPropertiesInternals<Shape>;\n+  // yields the schema itself, so pre-4.6 `.check(...z.properties(shape))` spread call sites keep working\n+  [Symbol.iterator](): Iterator<this>;\n+}\n+\n+// asserts in place: the child result's value is discarded, matching z.property(), because a nested object or array schema rebuilds its output even when nothing transformed\n+function handlePropertiesResult(result: ParsePayload, payload: ParsePayload, key: string): void {\n+  if (result.issues.length) {\n+    payload.issues.push(...util.prefixIssues(key, result.issues));\n+  }\n+}\n+\n+export const $ZodProperties: core.$constructor<$ZodProperties> = /*@__PURE__*/ core.$constructor(\n+  \"$ZodProperties\",\n+  (inst, def) => {\n+    checks.$ZodCheck.init(inst, def);\n+    $ZodType.init(inst, def);\n+\n+    // the base init runs a dual schema/check instance as its own first check, so parse is only the type gate and the shape loop lives in check, like $ZodCustom\n+    inst._zod.parse = (payload, _) => {\n+      // property reads work on any non-nullish value (string length, class instances), so only null and undefined are rejected outright\n+      if (payload.value == null) {\n+        payload.issues.push({ expected: \"object\", code: \"invalid_type\", input: payload.value, inst });\n+      }\n+      return payload;\n+    };\n+\n+    let keys!: string[];\n+    inst._zod.check = (payload) => {\n+      keys ??= Object.keys(def.shape);",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898084129"
+    },
+    {
+      "id": 3898084495,
+      "review": 5070853316,
+      "replyTo": 3897695662,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/compile.ts",
+      "line": 1045,
+      "originalLine": 1037,
+      "commit": "fbbe61757a8a31266ac16376c85b76e878d5a9e6",
+      "originalCommit": "374bd057eeb657e9b815a6587447770b72609d9c",
+      "at": "2026-08-31T20:26:25Z",
+      "body": "Addressed in 63b5b34e.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33435722689/job/99631542163) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -1005,6 +1025,16 @@ function generateCheck(\n     case \"custom\":\n       typeAccessor = generateCustomCheck(doc, ctx, schema, accessor);\n       break;\n+    case \"properties\":\n+      doc.write(`if (${accessor} == null) return INVALID;`);\n+      generatePropertiesChecks(\n+        doc,\n+        ctx,\n+        (schema as $ZodProperties)._zod.def.shape as Record<string, SomeType>,\n+        accessor\n+      );\n+      typeAccessor = accessor;\n+      break;",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898084495"
+    },
+    {
+      "id": 3898159863,
+      "review": 5070942141,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/schemas.ts",
+      "line": null,
+      "originalLine": 5025,
+      "commit": "277e929293e9bb757409e089a1f57e8c2387d88d",
+      "originalCommit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:36:28Z",
+      "body": "Passing `ctx` through here makes backward encoding validate each discarded child in reverse, but `$ZodProperties` declares both sides from the child's input type. A type-correct encode now rejects or throws, while an `any`-cast child output can pass and be returned under the wrong declared type.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Keep property assertions forward during encode\n\n## Affected sites\n- packages/zod/src/v4/core/schemas.ts:4981 — both schema sides intentionally use `$InferObjectInput`\n- packages/zod/src/v4/core/schemas.ts:5025 — the outer backward direction reaches each child codec or transform\n- packages/zod/src/v4/core/schemas.ts:5048 — the check role still validates children forward, so the two public forms diverge\n\n## Required outcome\n- `z.encode(z.properties(shape), value)` must validate the declared input-side shape and return the same value\n- child traversal must retain the parse state needed for memoization and async handling without executing discarded transformations backward\n- add a regression using a codec with different input/output types and a type-changing transform\n\n## Suggested approach\n- pass a context that preserves parse state but treats child traversal as a forward assertion during backward encoding; do not restore the empty context\n````\n\n</details>",
+      "diffHunk": "@@ -4963,6 +4964,96 @@ function handleRefineResult(result: unknown, payload: ParsePayload, input: unkno\n   }\n }\n \n+////////////////////////////////////////\n+////////////////////////////////////////\n+//////////                    //////////\n+//////////  $ZodProperties    //////////\n+//////////                    //////////\n+////////////////////////////////////////\n+////////////////////////////////////////\n+export interface $ZodPropertiesDef<Shape extends $ZodShape = $ZodShape> extends $ZodTypeDef, checks.$ZodCheckDef {\n+  type: \"properties\";\n+  check: \"properties\";\n+  shape: Shape;\n+}\n+\n+// both sides infer the INPUT type: the shape is asserted and its results discarded, so a default, catch or transform inside it would make an output-typed inference a lie\n+export interface $ZodPropertiesInternals<Shape extends $ZodShape = $ZodShape>\n+  extends $ZodTypeInternals<$InferObjectInput<Shape, {}>, $InferObjectInput<Shape, {}>>,\n+    checks.$ZodCheckInternals<$InferObjectInput<Shape, {}>> {\n+  def: $ZodPropertiesDef<Shape>;\n+  isst: errors.$ZodIssueInvalidType;\n+  issc: errors.$ZodIssue;\n+}\n+\n+export interface $ZodProperties<Shape extends $ZodShape = $ZodShape> extends $ZodType {\n+  _zod: $ZodPropertiesInternals<Shape>;\n+  // yields the schema itself, so pre-4.6 `.check(...z.properties(shape))` spread call sites keep working\n+  [Symbol.iterator](): Iterator<this>;\n+}\n+\n+// asserts in place: the child result's value is discarded, matching z.property(), because a nested object or array schema rebuilds its output even when nothing transformed\n+function handlePropertiesResult(result: ParsePayload, payload: ParsePayload, key: string | symbol): void {\n+  if (result.issues.length) {\n+    payload.issues.push(...util.prefixIssues(key, result.issues));\n+  }\n+}\n+\n+export const $ZodProperties: core.$constructor<$ZodProperties> = /*@__PURE__*/ core.$constructor(\n+  \"$ZodProperties\",\n+  (inst, def) => {\n+    // $ZodType.init prepends an instance that already carries the $ZodCheck trait to its own `checks`, which would run the shape a second time and cost the parse context. Initializing the check trait after it keeps the schema role in `parse`, where the context arrives.\n+    $ZodType.init(inst, def);\n+    checks.$ZodCheck.init(inst, def);\n+\n+    const memo = core.globalConfig.memoizer;\n+    memo?.attach(inst);\n+\n+    let keys!: (string | symbol)[];\n+    const runShape = (payload: ParsePayload, ctx: ParseContextInternal): util.MaybeAsync<void> => {\n+      keys ??= Reflect.ownKeys(def.shape);\n+      const input = payload.value as any;\n+      // property reads work on any non-nullish value (a string's length, a class instance), so only null and undefined are rejected outright\n+      if (input == null) {\n+        payload.issues.push({ expected: \"object\", code: \"invalid_type\", input, inst });\n+        return undefined;\n+      }\n+      let proms: Promise<any>[] | undefined;\n+      for (const key of keys) {\n+        const result = (def.shape as Record<string | symbol, $ZodType>)[key]!._zod.run(\n+          { value: input[key], issues: [] },\n+          ctx",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898159863"
+    },
+    {
+      "id": 3898159869,
+      "review": 5070942141,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/schemas.ts",
+      "line": null,
+      "originalLine": 5040,
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "originalCommit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:36:28Z",
+      "body": "`z.properties()` accepts callable values, but this gate and the memoizer wrapper only recognize `typeof value === \"object\"`. A recursive callable such as `fn.self = fn` therefore still overflows despite the new cycle-support contract.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Track callable reference cycles\n\n## Affected sites\n- packages/zod/src/v4/core/schemas.ts:5040 — callable inputs never register an entry\n- packages/zod/src/v4/core/memoizer.ts:224 — callable inputs never take the bucket lookup path\n- packages/zod/src/v4/core/memoizer.ts:287 — callable back-edges are not recognized\n\n## Required outcome\n- recursive properties schemas must terminate for both object and callable reference values accepted by `z.properties()`\n- primitive behavior must remain unchanged\n- add a regression with a function whose asserted property points back to itself\n\n## Suggested approach\n- use the same reference-value predicate consistently for allocation, lookup, and back-edge detection\n````\n\n</details>",
+      "diffHunk": "@@ -4963,6 +4964,96 @@ function handleRefineResult(result: unknown, payload: ParsePayload, input: unkno\n   }\n }\n \n+////////////////////////////////////////\n+////////////////////////////////////////\n+//////////                    //////////\n+//////////  $ZodProperties    //////////\n+//////////                    //////////\n+////////////////////////////////////////\n+////////////////////////////////////////\n+export interface $ZodPropertiesDef<Shape extends $ZodShape = $ZodShape> extends $ZodTypeDef, checks.$ZodCheckDef {\n+  type: \"properties\";\n+  check: \"properties\";\n+  shape: Shape;\n+}\n+\n+// both sides infer the INPUT type: the shape is asserted and its results discarded, so a default, catch or transform inside it would make an output-typed inference a lie\n+export interface $ZodPropertiesInternals<Shape extends $ZodShape = $ZodShape>\n+  extends $ZodTypeInternals<$InferObjectInput<Shape, {}>, $InferObjectInput<Shape, {}>>,\n+    checks.$ZodCheckInternals<$InferObjectInput<Shape, {}>> {\n+  def: $ZodPropertiesDef<Shape>;\n+  isst: errors.$ZodIssueInvalidType;\n+  issc: errors.$ZodIssue;\n+}\n+\n+export interface $ZodProperties<Shape extends $ZodShape = $ZodShape> extends $ZodType {\n+  _zod: $ZodPropertiesInternals<Shape>;\n+  // yields the schema itself, so pre-4.6 `.check(...z.properties(shape))` spread call sites keep working\n+  [Symbol.iterator](): Iterator<this>;\n+}\n+\n+// asserts in place: the child result's value is discarded, matching z.property(), because a nested object or array schema rebuilds its output even when nothing transformed\n+function handlePropertiesResult(result: ParsePayload, payload: ParsePayload, key: string | symbol): void {\n+  if (result.issues.length) {\n+    payload.issues.push(...util.prefixIssues(key, result.issues));\n+  }\n+}\n+\n+export const $ZodProperties: core.$constructor<$ZodProperties> = /*@__PURE__*/ core.$constructor(\n+  \"$ZodProperties\",\n+  (inst, def) => {\n+    // $ZodType.init prepends an instance that already carries the $ZodCheck trait to its own `checks`, which would run the shape a second time and cost the parse context. Initializing the check trait after it keeps the schema role in `parse`, where the context arrives.\n+    $ZodType.init(inst, def);\n+    checks.$ZodCheck.init(inst, def);\n+\n+    const memo = core.globalConfig.memoizer;\n+    memo?.attach(inst);\n+\n+    let keys!: (string | symbol)[];\n+    const runShape = (payload: ParsePayload, ctx: ParseContextInternal): util.MaybeAsync<void> => {\n+      keys ??= Reflect.ownKeys(def.shape);\n+      const input = payload.value as any;\n+      // property reads work on any non-nullish value (a string's length, a class instance), so only null and undefined are rejected outright\n+      if (input == null) {\n+        payload.issues.push({ expected: \"object\", code: \"invalid_type\", input, inst });\n+        return undefined;\n+      }\n+      let proms: Promise<any>[] | undefined;\n+      for (const key of keys) {\n+        const result = (def.shape as Record<string | symbol, $ZodType>)[key]!._zod.run(\n+          { value: input[key], issues: [] },\n+          ctx\n+        );\n+        if (result instanceof Promise) {\n+          proms ??= [];\n+          proms.push(result.then((result) => handlePropertiesResult(result, payload, key)));\n+        } else {\n+          handlePropertiesResult(result, payload, key);\n+        }\n+      }\n+      if (proms) return Promise.all(proms).then(() => undefined);\n+      return undefined;\n+    };\n+\n+    inst._zod.parse = (payload, ctx) => {\n+      // the input is its own output here, so it registers as its own memo entry: a cycle re-entering this node hits the bucket instead of recursing forever\n+      if (memo && payload.value !== null && typeof payload.value === \"object\") {",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898159869"
+    },
+    {
+      "id": 3898220296,
+      "review": 5071011163,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/json-schema-processors.ts",
+      "line": 411,
+      "originalLine": 384,
+      "commit": "fbbe61757a8a31266ac16376c85b76e878d5a9e6",
+      "originalCommit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:45:00Z",
+      "body": "This `type` rejects values the schema explicitly accepts: `z.properties({ length: z.number().min(3) }).parse(\"abc\")` succeeds, but Ajv rejects `\"abc\"` against the emitted schema. Since JSON Schema `properties` cannot model arbitrary JavaScript property reads on primitives, either the runtime contract must be object-only or conversion must report this case as unrepresentable instead of emitting a narrower contract.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Primitive runtime inputs are missing from JSON Schema\n\n## Affected sites\n- `packages/zod/src/v4/core/schemas.ts:5016` — runtime rejects only `null` and `undefined`\n- `packages/zod/src/v4/core/json-schema-processors.ts:384` — emitted schema accepts only JSON objects\n- `packages/zod/src/v4/classic/tests/properties.test.ts:16` — the primitive-input behavior is explicitly pinned\n\n## Required outcome\n- `safeParse(value).success` and validation against `toJSONSchema()` must agree for every representable input class\n````\n\n</details>",
+      "diffHunk": "@@ -368,6 +368,38 @@ export const objectProcessor: Processor<schemas.$ZodObject> = (schema, ctx, _jso\n   }\n };\n \n+// asserts named properties in place and passes everything else through, so no additionalProperties constraint is emitted\n+export const propertiesProcessor: Processor<schemas.$ZodProperties> = (schema, ctx, _json, params) => {\n+  const json = _json as JSONSchema.ObjectSchema;\n+  const def = schema._zod.def;\n+\n+  // dropping a symbol key silently would emit a schema that asserts less than this one does\n+  if (\n+    Object.getOwnPropertySymbols(def.shape).length &&\n+    handleUnrepresentable(schema, ctx, json, params, \"Symbol keys cannot be represented in JSON Schema\")\n+  ) {\n+    return;\n+  }\n+\n+  json.type = \"object\";",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898220296"
+    },
+    {
+      "id": 3898220317,
+      "review": 5071011163,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/json-schema-processors.ts",
+      "line": null,
+      "originalLine": 398,
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "originalCommit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:45:00Z",
+      "body": "Output requiredness follows the child schema even though `z.properties()` discards the child's output: `z.properties({ a: z.string().default(\"x\") }).parse({})` returns `{}`, while its output JSON Schema marks `a` required and Ajv rejects `{}`. The emitted property schemas and optionality need to describe the asserted input-side contract in both I/O modes, or output-changing children need to be treated as unrepresentable.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Output JSON Schema describes values that are never returned\n\n## Affected sites\n- `packages/zod/src/v4/core/json-schema-processors.ts:390` — child processing inherits the global output mode\n- `packages/zod/src/v4/core/json-schema-processors.ts:398` — output optionality uses `optout`\n- `packages/zod/src/v4/core/schemas.ts:4995` — parsed child values are deliberately discarded\n\n## Required outcome\n- JSON Schema output mode must accept every value `z.properties()` can actually return, including absent defaulted properties\n- Property constraints must continue to describe the values the runtime validates rather than discarded transform/default output\n````\n\n</details>",
+      "diffHunk": "@@ -368,6 +368,38 @@ export const objectProcessor: Processor<schemas.$ZodObject> = (schema, ctx, _jso\n   }\n };\n \n+// asserts named properties in place and passes everything else through, so no additionalProperties constraint is emitted\n+export const propertiesProcessor: Processor<schemas.$ZodProperties> = (schema, ctx, _json, params) => {\n+  const json = _json as JSONSchema.ObjectSchema;\n+  const def = schema._zod.def;\n+\n+  // dropping a symbol key silently would emit a schema that asserts less than this one does\n+  if (\n+    Object.getOwnPropertySymbols(def.shape).length &&\n+    handleUnrepresentable(schema, ctx, json, params, \"Symbol keys cannot be represented in JSON Schema\")\n+  ) {\n+    return;\n+  }\n+\n+  json.type = \"object\";\n+  json.properties = {};\n+  for (const key in def.shape) {\n+    assignProp(\n+      json.properties,\n+      key,\n+      process(def.shape[key]!, ctx as any, {\n+        ...params,\n+        path: [...params.path, \"properties\", key],\n+      })\n+    );\n+  }\n+  const required = Object.keys(def.shape).filter((key) => {\n+    const field = def.shape[key]!;\n+    return ctx.io === \"input\" ? inputOptin(field) === undefined : field._zod.optout === undefined;",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898220317"
+    },
+    {
+      "id": 3898220341,
+      "review": 5071011163,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/schemas.ts",
+      "line": null,
+      "originalLine": 5023,
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "originalCommit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:45:00Z",
+      "body": "`keys` is cached separately while each schema is still read live from the caller's mutable shape. After one parse, deleting `shape.a` makes the next `safeParse()` throw `TypeError: Cannot read properties of undefined (reading '_zod')`, while adding a key is silently ignored; snapshot the keys and schema references together as the previous `Object.entries()` implementation and `z.object()` do.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Shape mutation corrupts the cached parse plan\n\n## Affected sites\n- `packages/zod/src/v4/core/schemas.ts:5014` — key names are frozen on first parse\n- `packages/zod/src/v4/core/schemas.ts:5023` — schema references remain live through `def.shape`\n- `packages/zod/src/v4/core/compile.ts:588` — compilation snapshots a different view of the same shape\n\n## Required outcome\n- A constructed schema must keep a coherent key-to-schema mapping across parses and compilation\n- Mutating the object originally passed as `shape` must not cause raw runtime exceptions or compiled/interpreted drift\n````\n\n</details>",
+      "diffHunk": "@@ -4963,6 +4964,96 @@ function handleRefineResult(result: unknown, payload: ParsePayload, input: unkno\n   }\n }\n \n+////////////////////////////////////////\n+////////////////////////////////////////\n+//////////                    //////////\n+//////////  $ZodProperties    //////////\n+//////////                    //////////\n+////////////////////////////////////////\n+////////////////////////////////////////\n+export interface $ZodPropertiesDef<Shape extends $ZodShape = $ZodShape> extends $ZodTypeDef, checks.$ZodCheckDef {\n+  type: \"properties\";\n+  check: \"properties\";\n+  shape: Shape;\n+}\n+\n+// both sides infer the INPUT type: the shape is asserted and its results discarded, so a default, catch or transform inside it would make an output-typed inference a lie\n+export interface $ZodPropertiesInternals<Shape extends $ZodShape = $ZodShape>\n+  extends $ZodTypeInternals<$InferObjectInput<Shape, {}>, $InferObjectInput<Shape, {}>>,\n+    checks.$ZodCheckInternals<$InferObjectInput<Shape, {}>> {\n+  def: $ZodPropertiesDef<Shape>;\n+  isst: errors.$ZodIssueInvalidType;\n+  issc: errors.$ZodIssue;\n+}\n+\n+export interface $ZodProperties<Shape extends $ZodShape = $ZodShape> extends $ZodType {\n+  _zod: $ZodPropertiesInternals<Shape>;\n+  // yields the schema itself, so pre-4.6 `.check(...z.properties(shape))` spread call sites keep working\n+  [Symbol.iterator](): Iterator<this>;\n+}\n+\n+// asserts in place: the child result's value is discarded, matching z.property(), because a nested object or array schema rebuilds its output even when nothing transformed\n+function handlePropertiesResult(result: ParsePayload, payload: ParsePayload, key: string | symbol): void {\n+  if (result.issues.length) {\n+    payload.issues.push(...util.prefixIssues(key, result.issues));\n+  }\n+}\n+\n+export const $ZodProperties: core.$constructor<$ZodProperties> = /*@__PURE__*/ core.$constructor(\n+  \"$ZodProperties\",\n+  (inst, def) => {\n+    // $ZodType.init prepends an instance that already carries the $ZodCheck trait to its own `checks`, which would run the shape a second time and cost the parse context. Initializing the check trait after it keeps the schema role in `parse`, where the context arrives.\n+    $ZodType.init(inst, def);\n+    checks.$ZodCheck.init(inst, def);\n+\n+    const memo = core.globalConfig.memoizer;\n+    memo?.attach(inst);\n+\n+    let keys!: (string | symbol)[];\n+    const runShape = (payload: ParsePayload, ctx: ParseContextInternal): util.MaybeAsync<void> => {\n+      keys ??= Reflect.ownKeys(def.shape);\n+      const input = payload.value as any;\n+      // property reads work on any non-nullish value (a string's length, a class instance), so only null and undefined are rejected outright\n+      if (input == null) {\n+        payload.issues.push({ expected: \"object\", code: \"invalid_type\", input, inst });\n+        return undefined;\n+      }\n+      let proms: Promise<any>[] | undefined;\n+      for (const key of keys) {\n+        const result = (def.shape as Record<string | symbol, $ZodType>)[key]!._zod.run(",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898220341"
+    },
+    {
+      "id": 3898257632,
+      "review": 5071055120,
+      "replyTo": 3898159869,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/schemas.ts",
+      "line": null,
+      "originalLine": 5040,
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "originalCommit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:50:33Z",
+      "body": "Addressed in 277e9292.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33437336171/job/99636843931) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -4963,6 +4964,96 @@ function handleRefineResult(result: unknown, payload: ParsePayload, input: unkno\n   }\n }\n \n+////////////////////////////////////////\n+////////////////////////////////////////\n+//////////                    //////////\n+//////////  $ZodProperties    //////////\n+//////////                    //////////\n+////////////////////////////////////////\n+////////////////////////////////////////\n+export interface $ZodPropertiesDef<Shape extends $ZodShape = $ZodShape> extends $ZodTypeDef, checks.$ZodCheckDef {\n+  type: \"properties\";\n+  check: \"properties\";\n+  shape: Shape;\n+}\n+\n+// both sides infer the INPUT type: the shape is asserted and its results discarded, so a default, catch or transform inside it would make an output-typed inference a lie\n+export interface $ZodPropertiesInternals<Shape extends $ZodShape = $ZodShape>\n+  extends $ZodTypeInternals<$InferObjectInput<Shape, {}>, $InferObjectInput<Shape, {}>>,\n+    checks.$ZodCheckInternals<$InferObjectInput<Shape, {}>> {\n+  def: $ZodPropertiesDef<Shape>;\n+  isst: errors.$ZodIssueInvalidType;\n+  issc: errors.$ZodIssue;\n+}\n+\n+export interface $ZodProperties<Shape extends $ZodShape = $ZodShape> extends $ZodType {\n+  _zod: $ZodPropertiesInternals<Shape>;\n+  // yields the schema itself, so pre-4.6 `.check(...z.properties(shape))` spread call sites keep working\n+  [Symbol.iterator](): Iterator<this>;\n+}\n+\n+// asserts in place: the child result's value is discarded, matching z.property(), because a nested object or array schema rebuilds its output even when nothing transformed\n+function handlePropertiesResult(result: ParsePayload, payload: ParsePayload, key: string | symbol): void {\n+  if (result.issues.length) {\n+    payload.issues.push(...util.prefixIssues(key, result.issues));\n+  }\n+}\n+\n+export const $ZodProperties: core.$constructor<$ZodProperties> = /*@__PURE__*/ core.$constructor(\n+  \"$ZodProperties\",\n+  (inst, def) => {\n+    // $ZodType.init prepends an instance that already carries the $ZodCheck trait to its own `checks`, which would run the shape a second time and cost the parse context. Initializing the check trait after it keeps the schema role in `parse`, where the context arrives.\n+    $ZodType.init(inst, def);\n+    checks.$ZodCheck.init(inst, def);\n+\n+    const memo = core.globalConfig.memoizer;\n+    memo?.attach(inst);\n+\n+    let keys!: (string | symbol)[];\n+    const runShape = (payload: ParsePayload, ctx: ParseContextInternal): util.MaybeAsync<void> => {\n+      keys ??= Reflect.ownKeys(def.shape);\n+      const input = payload.value as any;\n+      // property reads work on any non-nullish value (a string's length, a class instance), so only null and undefined are rejected outright\n+      if (input == null) {\n+        payload.issues.push({ expected: \"object\", code: \"invalid_type\", input, inst });\n+        return undefined;\n+      }\n+      let proms: Promise<any>[] | undefined;\n+      for (const key of keys) {\n+        const result = (def.shape as Record<string | symbol, $ZodType>)[key]!._zod.run(\n+          { value: input[key], issues: [] },\n+          ctx\n+        );\n+        if (result instanceof Promise) {\n+          proms ??= [];\n+          proms.push(result.then((result) => handlePropertiesResult(result, payload, key)));\n+        } else {\n+          handlePropertiesResult(result, payload, key);\n+        }\n+      }\n+      if (proms) return Promise.all(proms).then(() => undefined);\n+      return undefined;\n+    };\n+\n+    inst._zod.parse = (payload, ctx) => {\n+      // the input is its own output here, so it registers as its own memo entry: a cycle re-entering this node hits the bucket instead of recursing forever\n+      if (memo && payload.value !== null && typeof payload.value === \"object\") {",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898257632"
+    },
+    {
+      "id": 3898258049,
+      "review": 5071055528,
+      "replyTo": 3898159863,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/schemas.ts",
+      "line": null,
+      "originalLine": 5025,
+      "commit": "277e929293e9bb757409e089a1f57e8c2387d88d",
+      "originalCommit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T20:50:36Z",
+      "body": "Addressed in 277e9292.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33437336171/job/99636843931) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -4963,6 +4964,96 @@ function handleRefineResult(result: unknown, payload: ParsePayload, input: unkno\n   }\n }\n \n+////////////////////////////////////////\n+////////////////////////////////////////\n+//////////                    //////////\n+//////////  $ZodProperties    //////////\n+//////////                    //////////\n+////////////////////////////////////////\n+////////////////////////////////////////\n+export interface $ZodPropertiesDef<Shape extends $ZodShape = $ZodShape> extends $ZodTypeDef, checks.$ZodCheckDef {\n+  type: \"properties\";\n+  check: \"properties\";\n+  shape: Shape;\n+}\n+\n+// both sides infer the INPUT type: the shape is asserted and its results discarded, so a default, catch or transform inside it would make an output-typed inference a lie\n+export interface $ZodPropertiesInternals<Shape extends $ZodShape = $ZodShape>\n+  extends $ZodTypeInternals<$InferObjectInput<Shape, {}>, $InferObjectInput<Shape, {}>>,\n+    checks.$ZodCheckInternals<$InferObjectInput<Shape, {}>> {\n+  def: $ZodPropertiesDef<Shape>;\n+  isst: errors.$ZodIssueInvalidType;\n+  issc: errors.$ZodIssue;\n+}\n+\n+export interface $ZodProperties<Shape extends $ZodShape = $ZodShape> extends $ZodType {\n+  _zod: $ZodPropertiesInternals<Shape>;\n+  // yields the schema itself, so pre-4.6 `.check(...z.properties(shape))` spread call sites keep working\n+  [Symbol.iterator](): Iterator<this>;\n+}\n+\n+// asserts in place: the child result's value is discarded, matching z.property(), because a nested object or array schema rebuilds its output even when nothing transformed\n+function handlePropertiesResult(result: ParsePayload, payload: ParsePayload, key: string | symbol): void {\n+  if (result.issues.length) {\n+    payload.issues.push(...util.prefixIssues(key, result.issues));\n+  }\n+}\n+\n+export const $ZodProperties: core.$constructor<$ZodProperties> = /*@__PURE__*/ core.$constructor(\n+  \"$ZodProperties\",\n+  (inst, def) => {\n+    // $ZodType.init prepends an instance that already carries the $ZodCheck trait to its own `checks`, which would run the shape a second time and cost the parse context. Initializing the check trait after it keeps the schema role in `parse`, where the context arrives.\n+    $ZodType.init(inst, def);\n+    checks.$ZodCheck.init(inst, def);\n+\n+    const memo = core.globalConfig.memoizer;\n+    memo?.attach(inst);\n+\n+    let keys!: (string | symbol)[];\n+    const runShape = (payload: ParsePayload, ctx: ParseContextInternal): util.MaybeAsync<void> => {\n+      keys ??= Reflect.ownKeys(def.shape);\n+      const input = payload.value as any;\n+      // property reads work on any non-nullish value (a string's length, a class instance), so only null and undefined are rejected outright\n+      if (input == null) {\n+        payload.issues.push({ expected: \"object\", code: \"invalid_type\", input, inst });\n+        return undefined;\n+      }\n+      let proms: Promise<any>[] | undefined;\n+      for (const key of keys) {\n+        const result = (def.shape as Record<string | symbol, $ZodType>)[key]!._zod.run(\n+          { value: input[key], issues: [] },\n+          ctx",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898258049"
+    },
+    {
+      "id": 3898316051,
+      "review": 5071128651,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/memoizer.ts",
+      "line": null,
+      "originalLine": 30,
+      "commit": "277e929293e9bb757409e089a1f57e8c2387d88d",
+      "originalCommit": "277e929293e9bb757409e089a1f57e8c2387d88d",
+      "at": "2026-08-31T20:57:43Z",
+      "body": "This is two capitalized sentences with trailing periods, which conflicts with the repository’s one-clause lowercase comment rule. Please trim it to something like `// callables accepted by z.properties are reference nodes too`.",
+      "diffHunk": "@@ -27,6 +27,11 @@ type WithState = { [STATE]?: State };\n \n const NO_ISSUES: errors.$ZodRawIssue[] = [];\n \n+// A value a cycle can close through. `z.properties()` asserts on any non-nullish value, so a callable is one too; every other container rejects a function before it gets here.",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898316051"
+    },
+    {
+      "id": 3898370338,
+      "review": 5071206881,
+      "replyTo": 3898220317,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/json-schema-processors.ts",
+      "line": null,
+      "originalLine": 398,
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "originalCommit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T21:04:30Z",
+      "body": "Addressed in bfa281a by aligning output JSON Schema with the asserted input-side contract.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33439041412/job/99642497602) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -368,6 +368,38 @@ export const objectProcessor: Processor<schemas.$ZodObject> = (schema, ctx, _jso\n   }\n };\n \n+// asserts named properties in place and passes everything else through, so no additionalProperties constraint is emitted\n+export const propertiesProcessor: Processor<schemas.$ZodProperties> = (schema, ctx, _json, params) => {\n+  const json = _json as JSONSchema.ObjectSchema;\n+  const def = schema._zod.def;\n+\n+  // dropping a symbol key silently would emit a schema that asserts less than this one does\n+  if (\n+    Object.getOwnPropertySymbols(def.shape).length &&\n+    handleUnrepresentable(schema, ctx, json, params, \"Symbol keys cannot be represented in JSON Schema\")\n+  ) {\n+    return;\n+  }\n+\n+  json.type = \"object\";\n+  json.properties = {};\n+  for (const key in def.shape) {\n+    assignProp(\n+      json.properties,\n+      key,\n+      process(def.shape[key]!, ctx as any, {\n+        ...params,\n+        path: [...params.path, \"properties\", key],\n+      })\n+    );\n+  }\n+  const required = Object.keys(def.shape).filter((key) => {\n+    const field = def.shape[key]!;\n+    return ctx.io === \"input\" ? inputOptin(field) === undefined : field._zod.optout === undefined;",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898370338"
+    },
+    {
+      "id": 3898370696,
+      "review": 5071207365,
+      "replyTo": 3898220296,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/json-schema-processors.ts",
+      "line": 411,
+      "originalLine": 384,
+      "commit": "fbbe61757a8a31266ac16376c85b76e878d5a9e6",
+      "originalCommit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T21:04:33Z",
+      "body": "Addressed in bfa281a by making the standalone schema role reject primitive inputs.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33439041412/job/99642497602) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -368,6 +368,38 @@ export const objectProcessor: Processor<schemas.$ZodObject> = (schema, ctx, _jso\n   }\n };\n \n+// asserts named properties in place and passes everything else through, so no additionalProperties constraint is emitted\n+export const propertiesProcessor: Processor<schemas.$ZodProperties> = (schema, ctx, _json, params) => {\n+  const json = _json as JSONSchema.ObjectSchema;\n+  const def = schema._zod.def;\n+\n+  // dropping a symbol key silently would emit a schema that asserts less than this one does\n+  if (\n+    Object.getOwnPropertySymbols(def.shape).length &&\n+    handleUnrepresentable(schema, ctx, json, params, \"Symbol keys cannot be represented in JSON Schema\")\n+  ) {\n+    return;\n+  }\n+\n+  json.type = \"object\";",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898370696"
+    },
+    {
+      "id": 3898371158,
+      "review": 5071208030,
+      "replyTo": 3898220341,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/schemas.ts",
+      "line": null,
+      "originalLine": 5023,
+      "commit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "originalCommit": "63b5b34ea6aacf8d80aefc9d6d25b97126ea98ff",
+      "at": "2026-08-31T21:04:36Z",
+      "body": "Addressed in bfa281a by snapshotting each key and schema together.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33439041412/job/99642497602) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -4963,6 +4964,96 @@ function handleRefineResult(result: unknown, payload: ParsePayload, input: unkno\n   }\n }\n \n+////////////////////////////////////////\n+////////////////////////////////////////\n+//////////                    //////////\n+//////////  $ZodProperties    //////////\n+//////////                    //////////\n+////////////////////////////////////////\n+////////////////////////////////////////\n+export interface $ZodPropertiesDef<Shape extends $ZodShape = $ZodShape> extends $ZodTypeDef, checks.$ZodCheckDef {\n+  type: \"properties\";\n+  check: \"properties\";\n+  shape: Shape;\n+}\n+\n+// both sides infer the INPUT type: the shape is asserted and its results discarded, so a default, catch or transform inside it would make an output-typed inference a lie\n+export interface $ZodPropertiesInternals<Shape extends $ZodShape = $ZodShape>\n+  extends $ZodTypeInternals<$InferObjectInput<Shape, {}>, $InferObjectInput<Shape, {}>>,\n+    checks.$ZodCheckInternals<$InferObjectInput<Shape, {}>> {\n+  def: $ZodPropertiesDef<Shape>;\n+  isst: errors.$ZodIssueInvalidType;\n+  issc: errors.$ZodIssue;\n+}\n+\n+export interface $ZodProperties<Shape extends $ZodShape = $ZodShape> extends $ZodType {\n+  _zod: $ZodPropertiesInternals<Shape>;\n+  // yields the schema itself, so pre-4.6 `.check(...z.properties(shape))` spread call sites keep working\n+  [Symbol.iterator](): Iterator<this>;\n+}\n+\n+// asserts in place: the child result's value is discarded, matching z.property(), because a nested object or array schema rebuilds its output even when nothing transformed\n+function handlePropertiesResult(result: ParsePayload, payload: ParsePayload, key: string | symbol): void {\n+  if (result.issues.length) {\n+    payload.issues.push(...util.prefixIssues(key, result.issues));\n+  }\n+}\n+\n+export const $ZodProperties: core.$constructor<$ZodProperties> = /*@__PURE__*/ core.$constructor(\n+  \"$ZodProperties\",\n+  (inst, def) => {\n+    // $ZodType.init prepends an instance that already carries the $ZodCheck trait to its own `checks`, which would run the shape a second time and cost the parse context. Initializing the check trait after it keeps the schema role in `parse`, where the context arrives.\n+    $ZodType.init(inst, def);\n+    checks.$ZodCheck.init(inst, def);\n+\n+    const memo = core.globalConfig.memoizer;\n+    memo?.attach(inst);\n+\n+    let keys!: (string | symbol)[];\n+    const runShape = (payload: ParsePayload, ctx: ParseContextInternal): util.MaybeAsync<void> => {\n+      keys ??= Reflect.ownKeys(def.shape);\n+      const input = payload.value as any;\n+      // property reads work on any non-nullish value (a string's length, a class instance), so only null and undefined are rejected outright\n+      if (input == null) {\n+        payload.issues.push({ expected: \"object\", code: \"invalid_type\", input, inst });\n+        return undefined;\n+      }\n+      let proms: Promise<any>[] | undefined;\n+      for (const key of keys) {\n+        const result = (def.shape as Record<string | symbol, $ZodType>)[key]!._zod.run(",
+      "url": "https://github.com/colinhacks/zod/pull/6536#discussion_r3898371158"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5483448901,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-31T19:32:24Z",
+      "updated": "2026-08-31T19:32:24Z",
+      "body": "**Your Claude subscription has hit its usage limit.** It resets at **10pm (UTC)**. Re-trigger Pullfrog after the reset, or add an `ANTHROPIC_API_KEY` repo secret — Pullfrog routes around an exhausted subscription automatically when one is present.\n\n[Add repo secret →](https://github.com/colinhacks/zod/settings/secrets/actions) · [Model settings →](https://pullfrog.com/console/colinhacks/zod) · [Setup docs →](https://docs.pullfrog.com/keys) · [Ask in Discord →](https://discord.gg/8y96raFg8e)\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Rerun failed job ➔](https://pullfrog.com/trigger/colinhacks/zod/33429351251?action=rerun) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33429351251) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6536#issuecomment-5483448901"
+    },
+    {
+      "id": 5483879269,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-31T20:07:51Z",
+      "updated": "2026-08-31T20:07:51Z",
+      "body": "**Your Claude subscription has hit its usage limit.** It resets at **10pm (UTC)**. Re-trigger Pullfrog after the reset, or add an `ANTHROPIC_API_KEY` repo secret — Pullfrog routes around an exhausted subscription automatically when one is present.\n\n[Add repo secret →](https://github.com/colinhacks/zod/settings/secrets/actions) · [Model settings →](https://pullfrog.com/console/colinhacks/zod) · [Setup docs →](https://docs.pullfrog.com/keys) · [Ask in Discord →](https://discord.gg/8y96raFg8e)\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Rerun failed job ➔](https://pullfrog.com/trigger/colinhacks/zod/33434273710?action=rerun) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33434273710) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6536#issuecomment-5483879269"
+    },
+    {
+      "id": 5484171157,
+      "user": {
+        "login": "colinhacks",
+        "type": "User"
+      },
+      "at": "2026-08-31T20:32:47Z",
+      "updated": "2026-08-31T20:32:47Z",
+      "body": "@pullfrog review",
+      "url": "https://github.com/colinhacks/zod/pull/6536#issuecomment-5484171157"
+    }
+  ],
+  "citedBy": [
+    {
+      "at": "2026-08-31T23:34:56Z",
+      "number": 6543,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "fix(v4): release the parsed input once a failing safeParse builds its error",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6543"
+    },
+    {
+      "at": "2026-09-01T19:15:17Z",
+      "number": 6546,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "docs: Zod 4.6 announcement post",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6546"
+    },
+    {
+      "at": "2026-09-12T17:52:23Z",
+      "number": 6594,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "Make z.properties() a check again",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6594"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+# The agent's scores and what is built from them stay out of the branch until the person has
+# scored the blind sample (sample.md or the page), so the sample stays blind.
+data/scores.json
+data/causes.json
+results.md
+results.json

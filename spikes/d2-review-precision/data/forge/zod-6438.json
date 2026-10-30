@@ -1,0 +1,43 @@
+{
+  "number": 6438,
+  "title": "revert(core): drop the exactOptional parse prototype from #6432",
+  "body": "The parse override in `$ZodExactOptional` on main carries a hunk labelled `// OPTION B PROTOTYPE`, merged in #6432. It changes what an exact optional accepts, which #6432 is otherwise not about, and the full suite passes without it.\n\n```ts\nz.object({ a: z.exactOptional(z.undefined()) }).safeParse({ a: undefined }); // rejected on main\n```\n\nThat inner accepts only `undefined`, so the schema can never match when the key is present.\n\n| inner | `{ a: undefined }` on main | after this revert |\n| --- | --- | --- |\n| `z.string()` | rejected, `expected: \"nonoptional\"` | rejected, `expected: \"string\"` |\n| `z.coerce.string()` | rejected | accepted |\n| `z.any()`, `z.unknown()` | rejected | accepted |\n| `z.undefined()`, `z.literal(undefined)` | rejected | accepted |\n| `z.string().catch(\"c\")` | rejected | accepted |\n\nEach of those inners accepts `undefined` on its own, so an exact optional wrapping one has no basis to reject it. The rejections also replaced the specific type in the error with `nonoptional`.\n\nOnly that hunk is reverted. The `propValues` change from #6432 stays — an omittable slot still claims `undefined` at a discriminator lookup — along with its tests and the compile-side duplicate-value guard.\n\nThe absent-key half that the prototype also affected is handled in #6434, in the object layer, without touching what is accepted.\n\nRefs #6432.\n",
+  "user": {
+    "login": "colinhacks",
+    "type": "User"
+  },
+  "baseSha": "a38ab4a8699e33593749e971e805beba672941f4",
+  "headSha": "17a20f37d8328c9cbc2f902fe0c309807b524e63",
+  "mergedAt": "2026-08-19T14:51:33Z",
+  "mergeCommit": "11c9268b6025be7f2220ee83a1c3f28238a50b84",
+  "commits": 1,
+  "reviews": [
+    {
+      "id": 4973414603,
+      "user": {
+        "login": "copilot-pull-request-reviewer[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "17a20f37d8328c9cbc2f902fe0c309807b524e63",
+      "at": "2026-08-19T14:44:24Z",
+      "body": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit.",
+      "url": "https://github.com/colinhacks/zod/pull/6438#pullrequestreview-4973414603"
+    },
+    {
+      "id": 4973475115,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "17a20f37d8328c9cbc2f902fe0c309807b524e63",
+      "at": "2026-08-19T14:50:21Z",
+      "body": "> ✅ No new issues found.\n\n**Reviewed changes** — a single-hunk revert in `packages/zod/src/v4/core/schemas.ts`, checked against the #6432 commit it reverts, the surrounding object/tuple/compile parse paths, and the open follow-up #6434.\n\n- **Drops the `OPTION B PROTOTYPE` hunk from `$ZodExactOptional`** — the parse override goes back to a bare `def.innerType._zod.run(payload, ctx)` delegation. This is a byte-for-byte restoration of the pre-#6432 state, including the original `// Override parse to just delegate (no undefined handling)` comment; diffing against `a38ab4a8` confirms nothing else from that commit is touched.\n- **The override itself correctly stays** — `$ZodOptional.init` installs a parse that short-circuits on `undefined`, so an exact optional has to replace it to reach the inner at all.\n- **The rest of #6432 survives** — the `field.optin !== undefined` addition to `propValues` in `$ZodObject`, its discriminated-union test, and the compile-side duplicate-discriminator guard are all untouched, and the `an omittable discriminator claims undefined` test still passes.\n\nI ran both revisions to confirm the blast radius. Acceptance changes only for inners that themselves accept `undefined`, and the error for the common case gets *more* specific (`expected: \"string\"` instead of `expected: \"nonoptional\"`):\n\n| probe | `a38ab4a` | this PR |\n| --- | --- | --- |\n| `z.object({ a: z.string().exactOptional() }).parse({ a: undefined })` | `ERR nonoptional` | `ERR string` |\n| `z.object({ a: z.any().exactOptional() }).parse({ a: undefined })` | `ERR nonoptional` | accepted |\n| `z.exactOptional(z.any()).parse(undefined)` | `ERR nonoptional` | accepted |\n\nFull suite is green locally (7324 passed, 12 skipped); the only failures are the three `@zod/treeshaking` tests that need `pnpm build` first.\n\n<!--\nPullfrog review metadata. These findings were written against 17a20f37;\nif commits have landed on fix/revert-exactoptional-prototype since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: Review (initial)\n- Files reviewed: 1\n- Commits reviewed: 1\n- Base: main (a38ab4a8)\n- Head: fix/revert-exactoptional-prototype (17a20f37)\n- Reviewed commits:\n  - 17a20f37 — revert(core): drop the exactOptional parse prototype from #6432\n- Prior pullfrog review: none\n-->\n\n### ℹ️ Merging this before #6434 reopens the absent-key window on `main`\n\nThe prototype was doing a second thing the description only mentions in passing: it was incidentally masking #6236. With it gone, an absent key on a middle-rung inner materializes whatever that inner makes of `undefined` again — `z.object({ a: z.coerce.string().exactOptional() }).parse({})` goes from `{}` back to `{ a: \"undefined\" }`, `.catch(\"C\")` back to `{ a: \"C\" }`, and the tuple analog back to `[\"x\", \"undefined\"]`. That's the pre-#6432 behavior, not a new bug, and #6434 is the real fix — but nothing in the suite pins it in either direction, so the window is invisible to CI.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Absent-key behavior regresses between #6438 and #6434\n\n## Affected sites\n- `packages/zod/src/v4/core/schemas.ts:3746` — removing the prototype restores delegation, so an absent key runs the inner on `undefined` and `handlePropertyResult` assigns the result whenever it is not `undefined`.\n\n## Observed (both revisions run locally)\n| probe | `a38ab4a` | this PR |\n| --- | --- | --- |\n| `z.object({ a: z.coerce.string().exactOptional() }).parse({})` | `{}` | `{ a: \"undefined\" }` |\n| `z.object({ a: z.string().catch(\"C\").exactOptional() }).parse({})` | `{}` | `{ a: \"C\" }` |\n| `z.tuple([z.string(), z.coerce.string().exactOptional()]).parse([\"x\"])` | `[\"x\"]` | `[\"x\", \"undefined\"]` |\n\n## Required outcome\n- `main` should not ship a release in the state between this revert and #6434.\n\n## Notes\n- The dependency runs the other way too: #6434's new `optin-ladder.test.ts` cases pin `z.object({ a: z.coerce.string().exactOptional() }).parse({ a: undefined })` to `{ a: \"undefined\" }`, which only holds once this hunk is gone. So #6438 is a prerequisite for #6434, and #6434 closes the window it opens.\n- The full suite passes identically with and without the reverted hunk, which is how the prototype rode into `main` in #6432 unnoticed. #6434 adds the pins for both halves; if it stalls, that coverage gap stays open.\n````\n\n</details>\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/32265813040/job/96109932797) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6438#pullrequestreview-4973475115"
+    }
+  ],
+  "inline": [],
+  "comments": [],
+  "citedBy": []
+}

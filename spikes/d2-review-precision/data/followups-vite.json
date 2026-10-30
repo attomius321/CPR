@@ -1,0 +1,583 @@
+{
+  "23042": {
+    "number": 23042,
+    "merge": "a500deeb6f52d93ca501a0fc612a5392b939f2f5",
+    "candidates": []
+  },
+  "23080": {
+    "number": 23080,
+    "merge": "c2155fe4d5c8d25fba3a7366d367e3296ae669fa",
+    "candidates": [
+      {
+        "sha": "cfe917d67d279a13f20ae9449e3befa736b64b07",
+        "date": "2026-10-09T16:10:18+08:00",
+        "title": "fix(bundled-dev): ignore build.chunkImportMap (#23685)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "vitest.config.e2e.ts"
+        ],
+        "symbols": [
+          "vitest.config.e2e.ts#bundledDevExclude"
+        ]
+      },
+      {
+        "sha": "88c17415af221b3a13e778f4f2c0e907c8287baf",
+        "date": "2026-09-28T11:19:04+09:00",
+        "title": "fix(deps): update rolldown-related dependencies (#23602)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "vitest.config.e2e.ts"
+        ],
+        "symbols": [
+          "vitest.config.e2e.ts#bundledDevExclude"
+        ]
+      }
+    ]
+  },
+  "23135": {
+    "number": 23135,
+    "merge": "b4bf59686a7ac238929e91a6e1708c739b843a2f",
+    "candidates": [
+      {
+        "sha": "a711f1c6328ca7f59857ed99e32853cf49b19a15",
+        "date": "2026-10-22T13:25:23+09:00",
+        "title": "fix(ssr): convert external require against built-in modules to import for `ssr.target=webworker` (#23759)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/build.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "cfe917d67d279a13f20ae9449e3befa736b64b07",
+        "date": "2026-10-09T16:10:18+08:00",
+        "title": "fix(bundled-dev): ignore build.chunkImportMap (#23685)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/build.ts"
+        ],
+        "symbols": [
+          "packages/vite/src/node/build.ts#resolveBuildEnvironmentOptions"
+        ]
+      },
+      {
+        "sha": "bba3bb8beedd185948956e02667d450672632d79",
+        "date": "2026-09-30T15:20:41+09:00",
+        "title": "fix: merge `build.rolldownOptions.output.minify` correctly (#23536)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/build.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "4aba8d8720e82e4c5b694a4b7877755a3f84fc57",
+        "date": "2026-09-18T11:33:51+09:00",
+        "title": "fix: merge `build.rolldownOptions.output.comments` correctly (#23514)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/build.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "15f03073c915d6ffb9a1fda447ef66b02bf5cde8",
+        "date": "2026-08-06T21:37:09+09:00",
+        "title": "fix(build): make client chunkImportMap work with `sharedPlugins: true` (#23184)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/build.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "ef02435114c57d0422028f0e6987f3df8db72969",
+        "date": "2026-08-06T12:22:17+09:00",
+        "title": "docs(build): fix incomplete `@default` for build.minify (#23177)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/build.ts"
+        ],
+        "symbols": []
+      }
+    ]
+  },
+  "23147": {
+    "number": 23147,
+    "merge": "de041a79b05a0be965c874592fe2c1505bcd48df",
+    "candidates": [
+      {
+        "sha": "82e7aa0374a15e1c67594557ab5893c91578f897",
+        "date": "2026-10-23T17:34:05+09:00",
+        "title": "fix: respect `build.sourcemap` from environment (#23879)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/plugins/css.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "8d7623d9b5647714a5b20cbd787a5401ca846229",
+        "date": "2026-10-15T19:49:49+09:00",
+        "title": "fix(build): handle missing chunk import maps (#23777)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/plugins/css.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "50b382d31835b8b4bc8b6964738ac03146e44261",
+        "date": "2026-10-15T19:37:54+09:00",
+        "title": "fix(css): don't fail on a literal `%` in `url()` (#23676)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/plugins/css.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "cf52011c46409a4a45f3d74bba631b8f005c4bc9",
+        "date": "2026-10-08T15:51:30+09:00",
+        "title": "fix(css): resolve imported preprocessors from their file path with lightningcss (#23688)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/plugins/css.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "744269e5b2a155074910ddd275aecf2b83938496",
+        "date": "2026-09-29T19:19:13+09:00",
+        "title": "fix: pass queries to `renderBuiltUrl` (#23586)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/plugins/css.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "2804636ff608d105928009d274ffba7cfbe55340",
+        "date": "2026-08-19T13:39:43+08:00",
+        "title": "fix(css): don't pass empty targets to lightningcss (#23295)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/plugins/css.ts"
+        ],
+        "symbols": []
+      }
+    ]
+  },
+  "23172": {
+    "number": 23172,
+    "merge": "67a680767317f8e2cb28b6b0500192f993a567cf",
+    "candidates": [
+      {
+        "sha": "fa7146938b0ca703653c90c20907191a01c032ba",
+        "date": "2026-10-08T19:15:46+09:00",
+        "title": "fix(client): skip rewriting unchanged adopted styles (#23697)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/client/client.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "c3e06f92e969952466b4e2f5801e85e1e00cd905",
+        "date": "2026-10-06T12:44:03+09:00",
+        "title": "fix(server): store ids to `safeModulePaths` rather than URLs (#23656)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/plugins/importAnalysis.ts"
+        ],
+        "symbols": [
+          "packages/vite/src/node/plugins/importAnalysis.ts#importAnalysisPlugin"
+        ]
+      }
+    ]
+  },
+  "23207": {
+    "number": 23207,
+    "merge": "8fb76752836f61224d3095b502fa237b478a06b2",
+    "candidates": [
+      {
+        "sha": "cc9bc2131d471bb4d60364614b326ada3ca7d10d",
+        "date": "2026-10-27T16:59:41+09:00",
+        "title": "fix(optimizer): detect cache dir precisely (#23912)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "8e890e1ce438bfbc07ea4931ce332e40589940fa",
+        "date": "2026-10-21T14:40:21+09:00",
+        "title": "fix(optimizer): skip patches dir check for yarn.lock fallback (#23725)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a7d56967ef0050a09c0507e63a18164bc7a0d486",
+        "date": "2026-10-15T19:35:37+09:00",
+        "title": "fix(optimizer): skip patches dir hash for nub lockfile (#23761)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "f20609630faa93026924275115d1426fdc08629e",
+        "date": "2026-10-09T22:00:19+08:00",
+        "title": "fix(optimizer): fall back to yarn.lock for lockfile hash (#23667)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a2bd6fa897c35c8a691671a7d70061c1cdd5c688",
+        "date": "2026-09-29T16:16:50+09:00",
+        "title": "fix(optimizer): preserve excluded optional peer require fallbacks (#23600)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "c0f2fc607ee97ee4499337b04826420c00654065",
+        "date": "2026-08-18T16:24:25+08:00",
+        "title": "fix(vite): update outdated upstream file links in license comments (#23285)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/index.ts"
+        ],
+        "symbols": []
+      }
+    ]
+  },
+  "23247": {
+    "number": 23247,
+    "merge": "bdfadefb207039bdb06d547da67dc81a92fe8750",
+    "candidates": [
+      {
+        "sha": "cfe917d67d279a13f20ae9449e3befa736b64b07",
+        "date": "2026-10-09T16:10:18+08:00",
+        "title": "fix(bundled-dev): ignore build.chunkImportMap (#23685)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "vitest.config.e2e.ts"
+        ],
+        "symbols": [
+          "vitest.config.e2e.ts#bundledDevExclude"
+        ]
+      },
+      {
+        "sha": "88c17415af221b3a13e778f4f2c0e907c8287baf",
+        "date": "2026-09-28T11:19:04+09:00",
+        "title": "fix(deps): update rolldown-related dependencies (#23602)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "vitest.config.e2e.ts"
+        ],
+        "symbols": [
+          "vitest.config.e2e.ts#bundledDevExclude"
+        ]
+      }
+    ]
+  },
+  "23258": {
+    "number": 23258,
+    "merge": "1d9fa392a43229241f80630236f8552ce8f7cd0f",
+    "candidates": [
+      {
+        "sha": "bc598a6a8a6b7d6e157e9f19c16911cff8d2360c",
+        "date": "2026-09-25T17:08:45+09:00",
+        "title": "fix(bundled-dev): serve the rolldown runtime from the installed rolldown (#23568)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/constants.ts"
+        ],
+        "symbols": []
+      }
+    ]
+  },
+  "23291": {
+    "number": 23291,
+    "merge": "3ba026dade4af56df08815310d3458fa110f5c5c",
+    "candidates": [
+      {
+        "sha": "a6d43bc9e3464faa4d49f090e75e1ab334ffb7b0",
+        "date": "2026-09-03T17:03:27+09:00",
+        "title": "fix(bundled-dev): mark payload delivered on client report (#23373)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/server/middlewares/triggerLazyBundling.ts"
+        ],
+        "symbols": [
+          "packages/vite/src/node/server/middlewares/triggerLazyBundling.ts#triggerLazyBundlingMiddleware"
+        ]
+      }
+    ]
+  },
+  "23307": {
+    "number": 23307,
+    "merge": "9db0b61d4c9c7caad7ea1d9670b637faf2bb6c93",
+    "candidates": []
+  },
+  "23339": {
+    "number": 23339,
+    "merge": "8b3b4894afd98a8807ef985b601410d40b795d79",
+    "candidates": []
+  },
+  "23356": {
+    "number": 23356,
+    "merge": "8492422b8f110625a90c702f42f30784e8cf19dc",
+    "candidates": []
+  },
+  "23363": {
+    "number": 23363,
+    "merge": "bfdb22754f792e8f7e40b125659d79ab590d8a7b",
+    "candidates": []
+  },
+  "23372": {
+    "number": 23372,
+    "merge": "493cc7d43269860fe499a30980d729b0adc93d2c",
+    "candidates": []
+  },
+  "23543": {
+    "number": 23543,
+    "merge": "f155b62ceabbaaf71abbf59933968787e3961c56",
+    "candidates": [
+      {
+        "sha": "28e1710790ac5ef65ed5e84cbb20438bc3218f01",
+        "date": "2026-10-30T19:13:27+09:00",
+        "title": "fix(create-vite): keep TypeScript 6 when using ESLint (#23931)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/create-vite/src/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "46b91c5bf9c2901b8511c893bc3fc38b8bba6e4f",
+        "date": "2026-10-27T13:39:43+09:00",
+        "title": "fix(deps): update all non-major dependencies (#23896)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/create-vite/src/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "15c85ddae2bbbc3808d96a223a5a18a800883252",
+        "date": "2026-10-20T11:43:38+09:00",
+        "title": "fix(create-vite): use typescript v6 for now (#23841)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/create-vite/src/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "467f7ac3b8c7cca0b33290e7fd86f3fc79ce92cb",
+        "date": "2026-10-19T20:25:56+09:00",
+        "title": "fix(create-vite): use Vite for TanStack projects (#23838)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/create-vite/src/index.ts"
+        ],
+        "symbols": [
+          "packages/create-vite/src/index.ts#FRAMEWORKS"
+        ]
+      },
+      {
+        "sha": "77d8373510da1b26ce057eb2248e570b7f63fde9",
+        "date": "2026-10-19T16:24:13+09:00",
+        "title": "fix(deps): update all non-major dependencies (#23826)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/create-vite/src/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "8a4c19cfc035f2dd203f2fa6d00ab9256a5e77c9",
+        "date": "2026-10-07T08:23:00+00:00",
+        "title": "fix(deps): update all non-major dependencies (#23648)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/create-vite/src/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "e8990c4d6101dfaca2654ed8ab4d0574ee920248",
+        "date": "2026-09-24T17:05:03+09:00",
+        "title": "fix(deps): update all non-major dependencies (#23537)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/create-vite/src/index.ts"
+        ],
+        "symbols": []
+      }
+    ]
+  },
+  "23554": {
+    "number": 23554,
+    "merge": "af7cdf6964f124f58d66037e808fe687654948e2",
+    "candidates": []
+  },
+  "23566": {
+    "number": 23566,
+    "merge": "63567c73ac132e6384fef384e6b9f7e8d5a37fff",
+    "candidates": [
+      {
+        "sha": "cc9bc2131d471bb4d60364614b326ada3ca7d10d",
+        "date": "2026-10-27T16:59:41+09:00",
+        "title": "fix(optimizer): detect cache dir precisely (#23912)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "8e890e1ce438bfbc07ea4931ce332e40589940fa",
+        "date": "2026-10-21T14:40:21+09:00",
+        "title": "fix(optimizer): skip patches dir check for yarn.lock fallback (#23725)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a7d56967ef0050a09c0507e63a18164bc7a0d486",
+        "date": "2026-10-15T19:35:37+09:00",
+        "title": "fix(optimizer): skip patches dir hash for nub lockfile (#23761)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "f20609630faa93026924275115d1426fdc08629e",
+        "date": "2026-10-09T22:00:19+08:00",
+        "title": "fix(optimizer): fall back to yarn.lock for lockfile hash (#23667)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a2bd6fa897c35c8a691671a7d70061c1cdd5c688",
+        "date": "2026-09-29T16:16:50+09:00",
+        "title": "fix(optimizer): preserve excluded optional peer require fallbacks (#23600)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/index.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "5f894339d27882fedc86bf6b1076fa6d92e404f3",
+        "date": "2026-09-24T18:04:05+09:00",
+        "title": "fix(optimizer): resolve pending discovered dep processing on close before init (#23567)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/vite/src/node/optimizer/optimizer.ts"
+        ],
+        "symbols": [
+          "packages/vite/src/node/optimizer/optimizer.ts#createDepsOptimizer"
+        ]
+      }
+    ]
+  }
+}

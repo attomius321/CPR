@@ -1,0 +1,54 @@
+{
+  "number": 22649,
+  "title": "fix(login-decryption-options): [PM-42457] -…",
+  "body": "## 🎟️ Tracking\r\n\r\nhttps://bitwarden.atlassian.net/browse/PM-42457\r\n\r\n## 📔 Objective\r\n\r\nObserved failing here: https://github.com/bitwarden/clients/actions/runs/32513094663/attempts/2?pr=22567 and here: https://github.com/bitwarden/clients/actions/runs/32512713148/attempts/1\r\n\r\nFix the flakey test failing in CI. Through an hour working through this with claude I was **_not_** able to reproduce the same behavior we are seeing in CI locally via lots of test runs performed and tracking of output. There have been legitimate enhancements discovered, namely that an error could leak between the tests with how subscriptions were being handled and that has been resolved.\r\n\r\n## Observed failure\r\n\r\n```    \r\n==== Pulled from logs ====\r\n\r\n2026-08-21T18:23:02.5545318Z FAIL libs/auth tests libs/auth/src/angular/login-decryption-options/login-decryption-options.component.spec.ts (6.053 s)\r\n2026-08-21T18:23:02.5547959Z   ● LoginDecryptionOptionsComponent › shared unlock bootstrap on existing untrusted device › does not trust the device while the account remains locked\r\n2026-08-21T18:23:02.5549178Z \r\n2026-08-21T18:23:02.5549260Z \r\n2026-08-21T18:23:02.5549269Z \r\n2026-08-21T18:23:02.5549278Z \r\n```\r\n\r\nThe failure body was **empty** — verified byte-level (`od -c`) on the CI log: the `●` header is followed by four blank lines. No matcher diff, no stack, no console block. Both copies (inline and `Summary of all failing tests`) were empty. Reporters are stock `[\"default\", \"jest-junit\"]` (`jest.config.js:7`), so nothing stripped it.\r\n\r\n## Verified\r\n\r\n| # | Claim | How |\r\n|---|---|---|\r\n| 1 | The `not.toHaveBeenCalled()` matcher did not fire | A matcher failure always prints `Expected/Received`. Confirmed twice in this file (mutation check + fault injection both printed full output). |\r\n| 2 | The old Locked test could never fail | `filter(status === Unlocked)` vs stubbed `of(Locked)`; enum `Locked = 1`, `Unlocked = 2`. Mocks rebuilt per test. |\r\n| 3 | The new Locked test can fail | Mutation: inverting the filter to `!==` → `Expected 0 / Received 1`. |\r\n| 4 | New tests are deterministic (no macrotask flush) | 25 randomized-order runs green; `libs/auth` 289/289; `test:types` and lint clean. |\r\n| 5 | Cross-test leakage was real | Injected an `Error` rejection into the bare `.subscribe()` in a test placed first in the file. It failed **\"trusts the device and navigates to the vault\"** — six tests downstream. |\r\n| 6 | The new `afterEach` closes that leak | Firing the captured `destroyRef.onDestroy` callbacks stops a later `Unlocked` emission from reaching `trustDevice`; commenting the teardown out makes it fail. Both directions checked. |\r\n\r\n## Not established\r\n\r\n- **The CI failure was never reproduced locally.** 216 runs on pre-fix code — 36 plain/randomized, 180 with `--coverage` under 6-way CPU contention. All green. There is no before/after measurement on the actual symptom.\r\n- **The empty failure body is unexplained.** The leading hypothesis (out-of-band RxJS error attributed to the running test) was falsified: an injected `Error` fails a later test but prints message + full stack (5), and a non-`Error` rejection (`undefined`) fails nothing at all — jsdom logs `Error: Uncaught undefined` and the suite passes. Neither yields an empty body.\r\n- **Whether the cause is in this file.** A worker- or environment-level condition on the runner is not excluded; none of these changes would touch that.\r\n\r\n## Why confidence is low-to-moderate that the fixes in this pr solves what we are seeing in our CI\r\n\r\nModerate, not low, because:\r\n- 5 proves the leakage class is real and live, and 6 proves the teardown closes it.\r\n- The component-side `catchError` additions mean errors from those two subscriptions can no longer escape at all — fixed at the source, not relocated.\r\n- 2 / 3 mean the test was untrustworthy on its own terms regardless of the flake.\r\n\r\nNot higher, because:\r\n- Nothing was measured against the real symptom (never reproduced).\r\n- The falsified empty-body hypothesis means the actual mechanism is unidentified, so the fix cannot be shown to address it.\r\n\r\n## Caveat for reviewers\r\n\r\n**A green CI after this change is weak evidence of a fix.** The Locked test no longer yields a macrotask, so it is no longer a viable landing spot for a deferred throw. If something still raises one, the symptom relocates or disappears silently. \"It stopped failing\" will not distinguish *fixed* from *hidden*.\r\n\r\nTo convert silence into evidence, ship a detector that fails loudly with the error's `constructor.name`, own property names, `message`, and `stack` for anything reaching Jest's error path in this file.\r\n\r\n## Recommendation\r\n\r\nMerge on the merits of 2–6 — the test had no teeth and the leakage is real. Treat the CI flake as open until either it recurs (with instrumentation attached) or a detector-backed run goes green.\r\n\r\n## 📸 Screenshots\r\n\r\n<!-- Required for any UI changes; delete if not applicable. Use fixed width images for better display. -->\r\n",
+  "user": {
+    "login": "Patrick-Pimentel-Bitwarden",
+    "type": "User"
+  },
+  "baseSha": "5a6fa29da35892d762d0eff42f3c732927edc488",
+  "headSha": "31f7a7bc5a84a88467ff8330c19f6886dd222c0b",
+  "mergedAt": "2026-09-02T14:56:42Z",
+  "mergeCommit": "bcca0fd1abac554bdd8dde157d2dceb50f36b4ab",
+  "commits": 6,
+  "reviews": [
+    {
+      "id": 5021825456,
+      "user": {
+        "login": "ike-kottlowski",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "31f7a7bc5a84a88467ff8330c19f6886dd222c0b",
+      "at": "2026-08-25T17:16:53Z",
+      "body": "By catching the error state and surfacing it we are able to keep the subscribe alive, which should keep the test from failing intermittently.",
+      "url": "https://github.com/bitwarden/clients/pull/22649#pullrequestreview-5021825456"
+    }
+  ],
+  "inline": [],
+  "comments": [
+    {
+      "id": 5411654546,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-25T14:11:05Z",
+      "updated": "2026-08-31T17:37:29Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/22649?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:white_check_mark: All modified and coverable lines are covered by tests.\n:warning: Please [upload](https://docs.codecov.com/docs/codecov-uploader) report for BASE (`main@5a6fa29`). [Learn more](https://docs.codecov.io/docs/error-reference?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#section-missing-base-commit) about missing BASE report.\n:warning: Report is 1 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@           Coverage Diff           @@\n##             main   #22649   +/-   ##\n=======================================\n  Coverage        ?   55.17%           \n=======================================\n  Files           ?     4354           \n  Lines           ?   139184           \n  Branches        ?    22097           \n=======================================\n  Hits            ?    76799           \n  Misses          ?    56802           \n  Partials        ?     5583           \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/22649?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/22649#issuecomment-5411654546"
+    },
+    {
+      "id": 5412690176,
+      "user": {
+        "login": "Patrick-Pimentel-Bitwarden",
+        "type": "User"
+      },
+      "at": "2026-08-25T15:24:12Z",
+      "updated": "2026-08-25T15:24:12Z",
+      "body": "Already seeing some changes needed from local claude review. Pushing up some changes. ",
+      "url": "https://github.com/bitwarden/clients/pull/22649#issuecomment-5412690176"
+    }
+  ],
+  "citedBy": []
+}

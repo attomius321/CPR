@@ -1,0 +1,59 @@
+{
+  "number": 6394,
+  "title": "perf(v4): share default `when` closures across size/length checks",
+  "body": "Follow-up to the suggestion on #6351: pulling the shared `when` closures out as their own change, rebased onto current `main`, with nothing else from that branch.\n\n## What this does\n\nSix checks (`maxSize`, `minSize`, `sizeEquals`, `maxLength`, `minLength`, `lengthEquals`) each defined the same default `when` inline, so every check instance allocated its own copy of one of two identical closures:\n\n```ts\ninst._zod.def.when ??= (payload) => {\n  const val = payload.value;\n  return !util.nullish(val) && (val as any).length !== undefined;\n};\n```\n\nThey now share two module-level functions, `_whenHasSize` and `_whenHasLength`.\n\nThe payoff is per-instance memory rather than bundle size, in the same direction as #6318: one shared function instead of one closure per check instance. Retaining 200,000 `z.string().min(5)` schemas goes from 3,600.4 to 3,544.4 bytes per schema, a 56 byte drop that is stable across runs since it counts allocations rather than time.\n\nBundle size is not the argument here and does not improve; those numbers are in #6351.\n\n## Behaviour\n\nCheck instances now share one function reference where each previously held an identical closure. `def.when` stays user-overridable through the same `??=`, and nothing in the codebase or tests observes closure identity.\n",
+  "user": {
+    "login": "zirkelc",
+    "type": "User"
+  },
+  "baseSha": "3063993a3317ac8af7a244691b837fce3e53aa96",
+  "headSha": "cd41941a31afbc09d6510d45072bc00b4033b4e6",
+  "mergedAt": "2026-08-19T19:58:08Z",
+  "mergeCommit": "060bc9f3ec69bff2849f3cc7c17807b863f503b6",
+  "commits": 1,
+  "reviews": [
+    {
+      "id": 4953277142,
+      "user": {
+        "login": "wahajahmed010",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "cd41941a31afbc09d6510d45072bc00b4033b4e6",
+      "at": "2026-08-17T18:02:17Z",
+      "body": "Clean, well-scoped perf change. The two shared closures are pure and side-effect-free, the substitution is mechanical, and the rebased-only-this diff is exactly what was promised in the follow-up comment on #6351. Few small notes:\n\n**1. Correctness invariant**\n\n`util.nullish` is a fast check (probably `val == null` or similar) and the property access is the only branch. Hoisting the closure does not change observable behavior — both forms read `payload.value` once, do the nullish check, then the property access. Good.\n\n**2. Memory savings are real but small per-instance**\n\nEach inline arrow function captures the surrounding scope (in this case the module scope plus the `inst` argument via `inst._zod.def.when ??=`). Module-level hoisting removes the closure scope entirely. For a schema with one `z.string().max(10)` and one `z.string().min(1)` you'd save two allocations. The 200k-instance number in the description makes sense for batch validators (e.g. building a schema per row in a CSV pipeline). Reasonable motivation, not a hot path for most users but a clean win.\n\n**3. Minor: could one closure cover both?**\n\n`size` and `length` checks differ only in which property they read. A single closure with the property name passed in would technically be possible:\n\n```ts\nconst makeWhenHas = (prop: \"size\" | \"length\") => (payload) => {\n  const val = payload.value;\n  return !util.nullish(val) && (val as any)[prop] !== undefined;\n};\n```\n\nBut that costs an extra property access and breaks the equivalence with the original code. Two closures is the right call. The \"always-true ternary\" closure overhead in the original code is precisely what #6318 was about, and you are following that same pattern correctly. No change needed.\n\n**4. Suggestion: add a one-line benchmark**\n\nA `bench()` call in a test (if the repo has a benchmark suite) or even a 5-line standalone snippet showing the allocation count delta would make the perf claim verifiable. Not required for merge — the change is small and obviously correct — but a follow-up PR with `vitest bench` numbers would be a nice complement to the description.\n\nLGTM. Behavior is identical, scope is minimal, and the closure hoisting is a real, measurable win for users who construct many schema instances at runtime.\n",
+      "url": "https://github.com/colinhacks/zod/pull/6394#pullrequestreview-4953277142"
+    }
+  ],
+  "inline": [],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-13T07:16:52Z",
+      "number": 10,
+      "repo": "zirkelc/zod",
+      "pull": true,
+      "title": "perf(v4): share default `when` closures across size/length checks",
+      "state": "closed",
+      "url": "https://github.com/zirkelc/zod/pull/10"
+    },
+    {
+      "at": "2026-08-19T20:52:29Z",
+      "number": 6441,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "fix(v4): measure string length in Unicode code points",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6441"
+    },
+    {
+      "at": "2026-10-25T18:49:44Z",
+      "number": 2106,
+      "repo": "usekaneo/kaneo",
+      "pull": true,
+      "title": "fix(security): enforce authorization and harden outbound requests",
+      "state": "closed",
+      "url": "https://github.com/usekaneo/kaneo/pull/2106"
+    }
+  ]
+}

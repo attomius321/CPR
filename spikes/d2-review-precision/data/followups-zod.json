@@ -1,0 +1,1896 @@
+{
+  "6022": {
+    "number": 6022,
+    "merge": "73bacbbb6b83b49b679e141f73f2fd915a514911",
+    "candidates": [
+      {
+        "sha": "eca96871536603076bdd00b8779b947144133aa4",
+        "date": "2026-08-31T14:47:28-07:00",
+        "title": "fix(v4): enforce the six JSON Schema keywords fromJSONSchema silently dropped (#6535)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/from-json-schema.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/classic/from-json-schema.ts#convertBaseSchema"
+        ]
+      },
+      {
+        "sha": "d4108872383318e67c372eb7316244154ccda19b",
+        "date": "2026-08-24T10:21:13-07:00",
+        "title": "fix(v4): correct the date/time format keywords in both JSON Schema directions (#6452)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/from-json-schema.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/classic/from-json-schema.ts#convertBaseSchema"
+        ]
+      }
+    ]
+  },
+  "6029": {
+    "number": 6029,
+    "merge": "3c9ca1d9bdc3c08939f2aa099158ee552c70ef80",
+    "candidates": [
+      {
+        "sha": "413cce9a8c893bab2dccbe4200c84a7635bbe22f",
+        "date": "2026-09-12T10:59:30-07:00",
+        "title": "fix(v4): make z.properties() a check again (#6594)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "eab51ff3592b2d11d863f4ee4d5452f31a3de1b6",
+        "date": "2026-08-29T10:15:17-07:00",
+        "title": "fix(v4): emit record numeric keys as strings in toJSONSchema (#6497)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/to-json-schema.ts#finalize"
+        ]
+      },
+      {
+        "sha": "7b612b536d8bcb1dd160a705cc2d9a4109cb50b3",
+        "date": "2026-08-24T22:09:02-07:00",
+        "title": "fix(v4): fold an intersection of object schemas into one object (#6461)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/to-json-schema.ts#finalize"
+        ]
+      }
+    ]
+  },
+  "6053": {
+    "number": 6053,
+    "merge": "07b0c3d89736f37f022be99cc5e38f9572567595",
+    "candidates": [
+      {
+        "sha": "cc4cd4ee9c52fcaa10964e48cc144541e41a5ed9",
+        "date": "2026-09-13T11:47:12-07:00",
+        "title": "Revert \"Revert \"feat: add z.currencyCode() over a vendored ISO 4217 list, refreshed weekly by CI (#6595)\"\"",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "ca0229a404818290e6cdcfefcd7eb2d04bcbb543",
+        "date": "2026-09-13T11:31:42-07:00",
+        "title": "Revert \"feat: add z.currencyCode() over a vendored ISO 4217 list, refreshed weekly by CI (#6595)\"",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "413cce9a8c893bab2dccbe4200c84a7635bbe22f",
+        "date": "2026-09-12T10:59:30-07:00",
+        "title": "fix(v4): make z.properties() a check again (#6594)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/schemas.ts",
+          "packages/zod/src/v4/core/api.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "6f0483671e622d5d01a1e17f69af0825137c7830",
+        "date": "2026-09-07T10:29:45-07:00",
+        "title": "fix(v4): derive JSON Schema constraints by folding checks in the converter (#6554)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "cafbee4772ef481611fef6f5fb9ed9a1b9597069",
+        "date": "2026-08-31T18:54:11-07:00",
+        "title": "fix(v4): parse recursive schemas built by a factory (#6530)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "212b941791e7faae078e17645eb612824fd8f79a",
+        "date": "2026-08-28T12:28:41-07:00",
+        "title": "fix(v4): let a prototype method getter answer a bare call so vi.spyOn works (#6488)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a87ac3665f90144aecf8860030a59eb45a41a2eb",
+        "date": "2026-08-24T20:58:01-07:00",
+        "title": "fix(v4)!: distinguish number and bigint formats at the type level (#6052)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a0bfdb39d0c5fdc066189da8e9786ebf4d6f12b1",
+        "date": "2026-08-24T16:46:36-07:00",
+        "title": "chore: drop dead code in core and fix a stale deprecation message (#6012)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/api.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "d6ca12ae3e28b40392ec49323edc31a56a05ff3b",
+        "date": "2026-08-19T08:57:52-07:00",
+        "title": "fix(v4): infer recursive getter options in discriminatedUnion (#6422)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/schemas.ts",
+          "packages/zod/src/v4/core/api.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "45fdeda54fc610261f0d18acaf869f75d568487e",
+        "date": "2026-08-16T17:54:27-07:00",
+        "title": "fix(v4): refine optin into a three-rung ladder, retire the fallback payload flag (#6419)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/schemas.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodTransform"
+        ]
+      },
+      {
+        "sha": "e03d8587a16a4c635102b2415bc9dff6ee5f6ecf",
+        "date": "2026-08-16T17:49:32-07:00",
+        "title": "test(v4): cover why superRefine preserves an explicit nullish input",
+        "why": [
+          "mention"
+        ],
+        "files": []
+      }
+    ]
+  },
+  "6092": {
+    "number": 6092,
+    "merge": "69b6bb086ff11dc289d9a4e0321a2cbda9246c02",
+    "candidates": [
+      {
+        "sha": "cc4cd4ee9c52fcaa10964e48cc144541e41a5ed9",
+        "date": "2026-09-13T11:47:12-07:00",
+        "title": "Revert \"Revert \"feat: add z.currencyCode() over a vendored ISO 4217 list, refreshed weekly by CI (#6595)\"\"",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/locales/nn.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/locales/nn.ts#error"
+        ]
+      },
+      {
+        "sha": "ca0229a404818290e6cdcfefcd7eb2d04bcbb543",
+        "date": "2026-09-13T11:31:42-07:00",
+        "title": "Revert \"feat: add z.currencyCode() over a vendored ISO 4217 list, refreshed weekly by CI (#6595)\"",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/locales/nn.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/locales/nn.ts#error"
+        ]
+      },
+      {
+        "sha": "604464c306f26b21aa77425b3de97d3467d23ae0",
+        "date": "2026-08-16T19:54:50-07:00",
+        "title": "fix(locales): da/nn/no/sv called an IP address a range (#6430)",
+        "why": [
+          "mention",
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/locales/nn.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/locales/nn.ts#error"
+        ]
+      },
+      {
+        "sha": "7378e7cdb67429b4be9c88e93efbda2ea0e59fce",
+        "date": "2026-08-16T19:25:28-07:00",
+        "title": "fix(locales): backfill the mac and Sizable.map gaps, and pin dictionary parity (#6427)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/locales/nn.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/locales/nn.ts#error"
+        ]
+      },
+      {
+        "sha": "ccc1514404929ce5df69f3ceb105a8ddd1ebdc07",
+        "date": "2026-08-16T18:07:14-07:00",
+        "title": "fix(locales): add the credit_card key to the seven locales missing it (#6424)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/locales/nn.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/locales/nn.ts#error"
+        ]
+      }
+    ]
+  },
+  "6314": {
+    "number": 6314,
+    "merge": "81d9fc6cf47da97ad4ef2c43de02276fba249790",
+    "candidates": []
+  },
+  "6380": {
+    "number": 6380,
+    "merge": "bd6619c06d72f7829ee6ed14417ef1fd4d90ebcb",
+    "candidates": [
+      {
+        "sha": "413cce9a8c893bab2dccbe4200c84a7635bbe22f",
+        "date": "2026-09-12T10:59:30-07:00",
+        "title": "fix(v4): make z.properties() a check again (#6594)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts",
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "6f0483671e622d5d01a1e17f69af0825137c7830",
+        "date": "2026-09-07T10:29:45-07:00",
+        "title": "fix(v4): derive JSON Schema constraints by folding checks in the converter (#6554)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "eab51ff3592b2d11d863f4ee4d5452f31a3de1b6",
+        "date": "2026-08-29T10:15:17-07:00",
+        "title": "fix(v4): emit record numeric keys as strings in toJSONSchema (#6497)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts",
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaContext",
+          "packages/zod/src/v4/core/to-json-schema.ts#initializeContext",
+          "packages/zod/src/v4/core/to-json-schema.ts#finalize"
+        ]
+      },
+      {
+        "sha": "8d896186cadb6eac6327f46589eed8f8ca8ef26d",
+        "date": "2026-08-26T17:32:19-07:00",
+        "title": "fix(v4): stop emitting a multipleOf that JSON Schema rejects (#6468)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "7b612b536d8bcb1dd160a705cc2d9a4109cb50b3",
+        "date": "2026-08-24T22:09:02-07:00",
+        "title": "fix(v4): fold an intersection of object schemas into one object (#6461)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts",
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaContext",
+          "packages/zod/src/v4/core/to-json-schema.ts#initializeContext",
+          "packages/zod/src/v4/core/to-json-schema.ts#finalize"
+        ]
+      },
+      {
+        "sha": "a825c1b08c1e6ab4de83890bef053960fb8b814e",
+        "date": "2026-08-24T19:51:20-07:00",
+        "title": "fix(v4): empty enums and literals match nothing (#6459)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/json-schema-processors.ts#literalProcessor"
+        ]
+      },
+      {
+        "sha": "3a49696865f3347a70852b544b0274692a00ad15",
+        "date": "2026-08-24T18:37:04-07:00",
+        "title": "fix(v4): make record input keys optional when the value can fill them (#6460)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "d4108872383318e67c372eb7316244154ccda19b",
+        "date": "2026-08-24T10:21:13-07:00",
+        "title": "fix(v4): correct the date/time format keywords in both JSON Schema directions (#6452)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "45fdeda54fc610261f0d18acaf869f75d568487e",
+        "date": "2026-08-16T17:54:27-07:00",
+        "title": "fix(v4): refine optin into a three-rung ladder, retire the fallback payload flag (#6419)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "eb4682c930b9f3a9f4e721c99bfbad615bf1c766",
+        "date": "2026-08-16T15:44:29-07:00",
+        "title": "fix(json-schema): resolve tuple minItems past transform and catch in input mode (#6418)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "4d6b5cd3eb36e650fec0586bc085ed7263d43ef4",
+        "date": "2026-08-16T15:17:42-07:00",
+        "title": "fix(json-schema): route unrepresentable default values through `unrepresentable`",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "78b523f0e81c0f19939cd8ffeb945ebca76d1d2f",
+        "date": "2026-08-16T14:24:52-07:00",
+        "title": "fix(json-schema): keep preprocess object properties required in input mode (#6133)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "973b1b44e182ad2eeba50fb57e926c69df67cdb2",
+        "date": "2026-08-16T14:17:47-07:00",
+        "title": "fix(v4): strip output-typed catch values from the input JSON Schema (#6409)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "97edd70a8f0d34ec6f50e8255713d3d49a106e2c",
+        "date": "2026-08-13T16:59:20-07:00",
+        "title": "fix(toJSONSchema): constrain closed tuple length (#6194)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "bd18314c6d0e29a7890ecea73e206f8bbca54ec9",
+        "date": "2026-08-13T14:02:47-07:00",
+        "title": "fix: escape JSON Pointer reserved characters in toJSONSchema $ref (closes #6027) (#6144)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": []
+      }
+    ]
+  },
+  "6391": {
+    "number": 6391,
+    "merge": "fd0741065d65ca6a83a8eb095d306444002dd2e3",
+    "candidates": [
+      {
+        "sha": "413cce9a8c893bab2dccbe4200c84a7635bbe22f",
+        "date": "2026-09-12T10:59:30-07:00",
+        "title": "fix(v4): make z.properties() a check again (#6594)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts",
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "6f0483671e622d5d01a1e17f69af0825137c7830",
+        "date": "2026-09-07T10:29:45-07:00",
+        "title": "fix(v4): derive JSON Schema constraints by folding checks in the converter (#6554)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "eab51ff3592b2d11d863f4ee4d5452f31a3de1b6",
+        "date": "2026-08-29T10:15:17-07:00",
+        "title": "fix(v4): emit record numeric keys as strings in toJSONSchema (#6497)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts",
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/to-json-schema.ts#finalize"
+        ]
+      },
+      {
+        "sha": "62471c9088a048d2cce5d53ed29ece573d1879f6",
+        "date": "2026-08-28T10:08:49-07:00",
+        "title": "docs: Zod 4.5 announcement, z.compile() and memory posts (#6481)",
+        "why": [
+          "mention"
+        ],
+        "files": []
+      },
+      {
+        "sha": "8d896186cadb6eac6327f46589eed8f8ca8ef26d",
+        "date": "2026-08-26T17:32:19-07:00",
+        "title": "fix(v4): stop emitting a multipleOf that JSON Schema rejects (#6468)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "7b612b536d8bcb1dd160a705cc2d9a4109cb50b3",
+        "date": "2026-08-24T22:09:02-07:00",
+        "title": "fix(v4): fold an intersection of object schemas into one object (#6461)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts",
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/to-json-schema.ts#finalize"
+        ]
+      },
+      {
+        "sha": "a825c1b08c1e6ab4de83890bef053960fb8b814e",
+        "date": "2026-08-24T19:51:20-07:00",
+        "title": "fix(v4): empty enums and literals match nothing (#6459)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/json-schema-processors.ts#literalProcessor"
+        ]
+      },
+      {
+        "sha": "3a49696865f3347a70852b544b0274692a00ad15",
+        "date": "2026-08-24T18:37:04-07:00",
+        "title": "fix(v4): make record input keys optional when the value can fill them (#6460)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "d4108872383318e67c372eb7316244154ccda19b",
+        "date": "2026-08-24T10:21:13-07:00",
+        "title": "fix(v4): correct the date/time format keywords in both JSON Schema directions (#6452)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "45fdeda54fc610261f0d18acaf869f75d568487e",
+        "date": "2026-08-16T17:54:27-07:00",
+        "title": "fix(v4): refine optin into a three-rung ladder, retire the fallback payload flag (#6419)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "eb4682c930b9f3a9f4e721c99bfbad615bf1c766",
+        "date": "2026-08-16T15:44:29-07:00",
+        "title": "fix(json-schema): resolve tuple minItems past transform and catch in input mode (#6418)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "4d6b5cd3eb36e650fec0586bc085ed7263d43ef4",
+        "date": "2026-08-16T15:17:42-07:00",
+        "title": "fix(json-schema): route unrepresentable default values through `unrepresentable`",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "78b523f0e81c0f19939cd8ffeb945ebca76d1d2f",
+        "date": "2026-08-16T14:24:52-07:00",
+        "title": "fix(json-schema): keep preprocess object properties required in input mode (#6133)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "973b1b44e182ad2eeba50fb57e926c69df67cdb2",
+        "date": "2026-08-16T14:17:47-07:00",
+        "title": "fix(v4): strip output-typed catch values from the input JSON Schema (#6409)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "97edd70a8f0d34ec6f50e8255713d3d49a106e2c",
+        "date": "2026-08-13T16:59:20-07:00",
+        "title": "fix(toJSONSchema): constrain closed tuple length (#6194)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "bd18314c6d0e29a7890ecea73e206f8bbca54ec9",
+        "date": "2026-08-13T14:02:47-07:00",
+        "title": "fix: escape JSON Pointer reserved characters in toJSONSchema $ref (closes #6027) (#6144)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/to-json-schema.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "bd6619c06d72f7829ee6ed14417ef1fd4d90ebcb",
+        "date": "2026-08-13T11:44:53-07:00",
+        "title": "feat(json-schema): accept a function for `unrepresentable` (#6380)",
+        "why": [
+          "mention"
+        ],
+        "files": []
+      }
+    ]
+  },
+  "6394": {
+    "number": 6394,
+    "merge": "060bc9f3ec69bff2849f3cc7c17807b863f503b6",
+    "candidates": [
+      {
+        "sha": "c504186332c00ef0059b685e6b93c4cc09891c77",
+        "date": "2026-10-28T11:28:16-07:00",
+        "title": "fix(v4): forward a child's issues without spreading them into push() (#6701)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/checks.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "413cce9a8c893bab2dccbe4200c84a7635bbe22f",
+        "date": "2026-09-12T10:59:30-07:00",
+        "title": "fix(v4): make z.properties() a check again (#6594)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/checks.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "6f0483671e622d5d01a1e17f69af0825137c7830",
+        "date": "2026-09-07T10:29:45-07:00",
+        "title": "fix(v4): derive JSON Schema constraints by folding checks in the converter (#6554)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/checks.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/checks.ts#$ZodCheckMaxSize",
+          "packages/zod/src/v4/core/checks.ts#$ZodCheckMinSize",
+          "packages/zod/src/v4/core/checks.ts#$ZodCheckSizeEquals",
+          "packages/zod/src/v4/core/checks.ts#$ZodCheckMaxLength",
+          "packages/zod/src/v4/core/checks.ts#$ZodCheckMinLength",
+          "packages/zod/src/v4/core/checks.ts#$ZodCheckLengthEquals"
+        ]
+      },
+      {
+        "sha": "7a00236683c79000dbab0d92f6faf0b7fba39f59",
+        "date": "2026-09-02T13:45:59-07:00",
+        "title": "fix(v4): don't let format checks overwrite tighter min/max bounds (#6553)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/checks.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "97edaf7dc4055935514de69dbd646c2fbe78b0f6",
+        "date": "2026-08-25T17:07:59-07:00",
+        "title": "fix(v4): don't throw from safeParse on bigint multipleOf(0n) (#6466)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/checks.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a87ac3665f90144aecf8860030a59eb45a41a2eb",
+        "date": "2026-08-24T20:58:01-07:00",
+        "title": "fix(v4)!: distinguish number and bigint formats at the type level (#6052)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/checks.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "51a1368ad449ba0a4dc6e2822dfcbb5ec891700c",
+        "date": "2026-08-24T16:46:51-07:00",
+        "title": "fix(v4): let the includes(position) pattern match at or after the offset (#6024)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/checks.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "28e1ebd89d26147bacb164af988da6ed6de738d4",
+        "date": "2026-08-19T13:59:48-07:00",
+        "title": "fix(v4): measure string length in Unicode code points (#6441)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/checks.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/checks.ts#$ZodCheckMaxLength",
+          "packages/zod/src/v4/core/checks.ts#$ZodCheckMinLength",
+          "packages/zod/src/v4/core/checks.ts#$ZodCheckLengthEquals"
+        ]
+      }
+    ]
+  },
+  "6411": {
+    "number": 6411,
+    "merge": "6074828e5d134c34cd1fac9b067dbee74ecdc314",
+    "candidates": [
+      {
+        "sha": "eca96871536603076bdd00b8779b947144133aa4",
+        "date": "2026-08-31T14:47:28-07:00",
+        "title": "fix(v4): enforce the six JSON Schema keywords fromJSONSchema silently dropped (#6535)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/from-json-schema.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/classic/from-json-schema.ts#checkPropertyNames",
+          "packages/zod/src/v4/classic/from-json-schema.ts#convertBaseSchema",
+          "packages/zod/src/v4/classic/from-json-schema.ts#convertSchema"
+        ]
+      },
+      {
+        "sha": "d4108872383318e67c372eb7316244154ccda19b",
+        "date": "2026-08-24T10:21:13-07:00",
+        "title": "fix(v4): correct the date/time format keywords in both JSON Schema directions (#6452)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/from-json-schema.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/classic/from-json-schema.ts#convertBaseSchema"
+        ]
+      },
+      {
+        "sha": "73bacbbb6b83b49b679e141f73f2fd915a514911",
+        "date": "2026-08-16T18:02:42-07:00",
+        "title": "fix(from-json-schema): drop redundant inclusive bound for draft-04 exclusive ranges (#6022)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/from-json-schema.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/classic/from-json-schema.ts#convertBaseSchema"
+        ]
+      }
+    ]
+  },
+  "6438": {
+    "number": 6438,
+    "merge": "11c9268b6025be7f2220ee83a1c3f28238a50b84",
+    "candidates": [
+      {
+        "sha": "3a2080512f4bb43b22879968856d987aaccf6125",
+        "date": "2026-10-28T11:33:17-07:00",
+        "title": "fix(v4): match z.templateLiteral with string parts in linear time (#6706)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "c504186332c00ef0059b685e6b93c4cc09891c77",
+        "date": "2026-10-28T11:28:16-07:00",
+        "title": "fix(v4): forward a child's issues without spreading them into push() (#6701)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "7989d0743aa1c1966806adb497397a40dd6ba6ff",
+        "date": "2026-10-28T10:56:28-07:00",
+        "title": "fix(v4): check a size bound placed after a refinement, and on encode (#6698)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a4a049bf88bbcf442c0e3ad3028ca7bd2398297f",
+        "date": "2026-10-28T10:56:21-07:00",
+        "title": "fix(v4): reconcile intersection keys in linear time (#6697)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "586813ac93773ca781250553310e169736fb8caf",
+        "date": "2026-10-28T10:51:20-07:00",
+        "title": "fix(v4): write each async tuple rest element to its own index (#6702)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "680d19f7d1e042e55934209caeb79bc843b94f44",
+        "date": "2026-10-13T11:16:28-07:00",
+        "title": "fix(v4): report a union option that only checks rejected (#6662)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "311cd74b2765ff7c7b58add60e37c5a0ea7a1972",
+        "date": "2026-10-13T11:15:15-07:00",
+        "title": "fix(v4): run a record's key schema on an own __proto__ key (#6660)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a0ebf970f2d752e5f58527cd2942ff48be4f46bd",
+        "date": "2026-10-09T12:50:22-07:00",
+        "title": "fix(v4): check array, set and map size bounds before parsing elements (#6652)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a2ba4a67986a3e6b2b131be30084a2f460d9ea67",
+        "date": "2026-10-02T11:08:53-07:00",
+        "title": "fix(types): declare record output and input as members, not base type arguments (#6645)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "cc4cd4ee9c52fcaa10964e48cc144541e41a5ed9",
+        "date": "2026-09-13T11:47:12-07:00",
+        "title": "Revert \"Revert \"feat: add z.currencyCode() over a vendored ISO 4217 list, refreshed weekly by CI (#6595)\"\"",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "ca0229a404818290e6cdcfefcd7eb2d04bcbb543",
+        "date": "2026-09-13T11:31:42-07:00",
+        "title": "Revert \"feat: add z.currencyCode() over a vendored ISO 4217 list, refreshed weekly by CI (#6595)\"",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "413cce9a8c893bab2dccbe4200c84a7635bbe22f",
+        "date": "2026-09-12T10:59:30-07:00",
+        "title": "fix(v4): make z.properties() a check again (#6594)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "9446b5cc14c5bf137790f1f66abf602044871223",
+        "date": "2026-09-10T12:36:39-07:00",
+        "title": "fix: preserve undefined prefault outputs and object keys (#6587)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "b12aa523e7e2617c4296cccf9b24d6558ed23e95",
+        "date": "2026-09-09T12:20:34-07:00",
+        "title": "fix: preserve unique tags with defaulted discriminators (#6582)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "dd9c36fa2ddcee79f71d19f9635586c7b65ead86",
+        "date": "2026-09-09T12:20:01-07:00",
+        "title": "fix(v4): defer recursive object index inference (#6580)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "6f0483671e622d5d01a1e17f69af0825137c7830",
+        "date": "2026-09-07T10:29:45-07:00",
+        "title": "fix(v4): derive JSON Schema constraints by folding checks in the converter (#6554)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "cafbee4772ef481611fef6f5fb9ed9a1b9597069",
+        "date": "2026-08-31T18:54:11-07:00",
+        "title": "fix(v4): parse recursive schemas built by a factory (#6530)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "7ce3e77dfbca80bfa2ab3c73a84e0454570d7158",
+        "date": "2026-08-24T22:51:20-07:00",
+        "title": "fix(v4): run a wrapper's inner schema on its own payload (#6462)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "badf0b7894a4f777d41fcd7ed2433e5f8c9c23ea",
+        "date": "2026-08-24T21:03:07-07:00",
+        "title": "fix(v4): build the catch context from the input that failed (#6192)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a87ac3665f90144aecf8860030a59eb45a41a2eb",
+        "date": "2026-08-24T20:58:01-07:00",
+        "title": "fix(v4)!: distinguish number and bigint formats at the type level (#6052)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a825c1b08c1e6ab4de83890bef053960fb8b814e",
+        "date": "2026-08-24T19:51:20-07:00",
+        "title": "fix(v4): empty enums and literals match nothing (#6459)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "3a49696865f3347a70852b544b0274692a00ad15",
+        "date": "2026-08-24T18:37:04-07:00",
+        "title": "fix(v4): make record input keys optional when the value can fill them (#6460)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "d4108872383318e67c372eb7316244154ccda19b",
+        "date": "2026-08-24T10:21:13-07:00",
+        "title": "fix(v4): correct the date/time format keywords in both JSON Schema directions (#6452)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "6574e7842b1a030f6987c80c268d713767df8b06",
+        "date": "2026-08-20T07:42:03-07:00",
+        "title": "fix(v4): stop catch resurrecting issues an optional already resolved (#6440)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "830ba3147928b69fd80ef8e55341d4fd325b9c71",
+        "date": "2026-08-19T14:26:06-07:00",
+        "title": "fix(v4): validate the address, and return the string that was validated (#6442)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "87ffeb0f50d21881f64ed8926a5df8df6ff355e2",
+        "date": "2026-08-19T11:53:24-07:00",
+        "title": "fix(v4): an absent key on the middle rung supplies nothing (#6434)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "d6ca12ae3e28b40392ec49323edc31a56a05ff3b",
+        "date": "2026-08-19T08:57:52-07:00",
+        "title": "fix(v4): infer recursive getter options in discriminatedUnion (#6422)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      }
+    ]
+  },
+  "6471": {
+    "number": 6471,
+    "merge": "37b015017b17420e81e76555066bdfa39c24cdc5",
+    "candidates": [
+      {
+        "sha": "3a2080512f4bb43b22879968856d987aaccf6125",
+        "date": "2026-10-28T11:33:17-07:00",
+        "title": "fix(v4): match z.templateLiteral with string parts in linear time (#6706)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/compile.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "311cd74b2765ff7c7b58add60e37c5a0ea7a1972",
+        "date": "2026-10-13T11:15:15-07:00",
+        "title": "fix(v4): run a record's key schema on an own __proto__ key (#6660)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/compile.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a0ebf970f2d752e5f58527cd2942ff48be4f46bd",
+        "date": "2026-10-09T12:50:22-07:00",
+        "title": "fix(v4): check array, set and map size bounds before parsing elements (#6652)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/compile.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "413cce9a8c893bab2dccbe4200c84a7635bbe22f",
+        "date": "2026-09-12T10:59:30-07:00",
+        "title": "fix(v4): make z.properties() a check again (#6594)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/compile.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "9446b5cc14c5bf137790f1f66abf602044871223",
+        "date": "2026-09-10T12:36:39-07:00",
+        "title": "fix: preserve undefined prefault outputs and object keys (#6587)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/compile.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "0c483c58849fdb6445aea4f54b1bac6b57ab3d22",
+        "date": "2026-09-10T12:00:01-07:00",
+        "title": "docs: Zod 4.6 announcement post (#6546)",
+        "why": [
+          "mention"
+        ],
+        "files": []
+      },
+      {
+        "sha": "b12aa523e7e2617c4296cccf9b24d6558ed23e95",
+        "date": "2026-09-09T12:20:34-07:00",
+        "title": "fix: preserve unique tags with defaulted discriminators (#6582)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/compile.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "9782f87c69be3ceb0bbdae94fcc1c337bfc8618d",
+        "date": "2026-08-28T09:03:24-07:00",
+        "title": "perf(v4): validate without building the output, and keep schemas out of dictionary mode (#6480)",
+        "why": [
+          "mention"
+        ],
+        "files": []
+      }
+    ]
+  },
+  "6491": {
+    "number": 6491,
+    "merge": "8ce9e8d56b1f408c445db6f2d7542696c6d20326",
+    "candidates": [
+      {
+        "sha": "0c483c58849fdb6445aea4f54b1bac6b57ab3d22",
+        "date": "2026-09-10T12:00:01-07:00",
+        "title": "docs: Zod 4.6 announcement post (#6546)",
+        "why": [
+          "mention"
+        ],
+        "files": []
+      },
+      {
+        "sha": "2956c4c2fc5af83408368907e88a3bd20e8af12e",
+        "date": "2026-08-29T12:06:04-07:00",
+        "title": "chore(mini): sync @zod/mini to 4.5.4",
+        "why": [
+          "mention"
+        ],
+        "files": []
+      }
+    ]
+  },
+  "6534": {
+    "number": 6534,
+    "merge": "07c43e2a08f67082bd35c158d528d571a36094e0",
+    "candidates": [
+      {
+        "sha": "3a2080512f4bb43b22879968856d987aaccf6125",
+        "date": "2026-10-28T11:33:17-07:00",
+        "title": "fix(v4): match z.templateLiteral with string parts in linear time (#6706)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "c504186332c00ef0059b685e6b93c4cc09891c77",
+        "date": "2026-10-28T11:28:16-07:00",
+        "title": "fix(v4): forward a child's issues without spreading them into push() (#6701)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "7989d0743aa1c1966806adb497397a40dd6ba6ff",
+        "date": "2026-10-28T10:56:28-07:00",
+        "title": "fix(v4): check a size bound placed after a refinement, and on encode (#6698)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a4a049bf88bbcf442c0e3ad3028ca7bd2398297f",
+        "date": "2026-10-28T10:56:21-07:00",
+        "title": "fix(v4): reconcile intersection keys in linear time (#6697)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "586813ac93773ca781250553310e169736fb8caf",
+        "date": "2026-10-28T10:51:20-07:00",
+        "title": "fix(v4): write each async tuple rest element to its own index (#6702)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "680d19f7d1e042e55934209caeb79bc843b94f44",
+        "date": "2026-10-13T11:16:28-07:00",
+        "title": "fix(v4): report a union option that only checks rejected (#6662)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "311cd74b2765ff7c7b58add60e37c5a0ea7a1972",
+        "date": "2026-10-13T11:15:15-07:00",
+        "title": "fix(v4): run a record's key schema on an own __proto__ key (#6660)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a0ebf970f2d752e5f58527cd2942ff48be4f46bd",
+        "date": "2026-10-09T12:50:22-07:00",
+        "title": "fix(v4): check array, set and map size bounds before parsing elements (#6652)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a2ba4a67986a3e6b2b131be30084a2f460d9ea67",
+        "date": "2026-10-02T11:08:53-07:00",
+        "title": "fix(types): declare record output and input as members, not base type arguments (#6645)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "cc4cd4ee9c52fcaa10964e48cc144541e41a5ed9",
+        "date": "2026-09-13T11:47:12-07:00",
+        "title": "Revert \"Revert \"feat: add z.currencyCode() over a vendored ISO 4217 list, refreshed weekly by CI (#6595)\"\"",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "ca0229a404818290e6cdcfefcd7eb2d04bcbb543",
+        "date": "2026-09-13T11:31:42-07:00",
+        "title": "Revert \"feat: add z.currencyCode() over a vendored ISO 4217 list, refreshed weekly by CI (#6595)\"",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "413cce9a8c893bab2dccbe4200c84a7635bbe22f",
+        "date": "2026-09-12T10:59:30-07:00",
+        "title": "fix(v4): make z.properties() a check again (#6594)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts",
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "9446b5cc14c5bf137790f1f66abf602044871223",
+        "date": "2026-09-10T12:36:39-07:00",
+        "title": "fix: preserve undefined prefault outputs and object keys (#6587)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "b12aa523e7e2617c4296cccf9b24d6558ed23e95",
+        "date": "2026-09-09T12:20:34-07:00",
+        "title": "fix: preserve unique tags with defaulted discriminators (#6582)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "dd9c36fa2ddcee79f71d19f9635586c7b65ead86",
+        "date": "2026-09-09T12:20:01-07:00",
+        "title": "fix(v4): defer recursive object index inference (#6580)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "6f0483671e622d5d01a1e17f69af0825137c7830",
+        "date": "2026-09-07T10:29:45-07:00",
+        "title": "fix(v4): derive JSON Schema constraints by folding checks in the converter (#6554)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/json-schema-processors.ts",
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/json-schema-processors.ts#stringProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#recordProcessor",
+          "packages/zod/src/v4/core/schemas.ts#$ZodBase64",
+          "packages/zod/src/v4/core/schemas.ts#$ZodBase64URL"
+        ]
+      },
+      {
+        "sha": "cafbee4772ef481611fef6f5fb9ed9a1b9597069",
+        "date": "2026-08-31T18:54:11-07:00",
+        "title": "fix(v4): parse recursive schemas built by a factory (#6530)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      }
+    ]
+  },
+  "6535": {
+    "number": 6535,
+    "merge": "eca96871536603076bdd00b8779b947144133aa4",
+    "candidates": []
+  },
+  "6536": {
+    "number": 6536,
+    "merge": "abfb38977dc28dc9993e3fa6a2ecc2f52a8d0c4c",
+    "candidates": [
+      {
+        "sha": "b1f6ba06c5de0e600640917615e5df70fa73f060",
+        "date": "2026-10-28T11:38:18-07:00",
+        "title": "fix(v4): run nested checks when encoding a recursive schema (#6707)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/memoizer.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/memoizer.ts#memo"
+        ]
+      },
+      {
+        "sha": "3a2080512f4bb43b22879968856d987aaccf6125",
+        "date": "2026-10-28T11:33:17-07:00",
+        "title": "fix(v4): match z.templateLiteral with string parts in linear time (#6706)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/compile.ts",
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "1bd44af56281dc2908f17b4625076a892b4b7f83",
+        "date": "2026-10-28T11:28:20-07:00",
+        "title": "fix(v4): stop the memoizer copying every issue below each recursive node (#6705)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/memoizer.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/memoizer.ts#memo"
+        ]
+      },
+      {
+        "sha": "c504186332c00ef0059b685e6b93c4cc09891c77",
+        "date": "2026-10-28T11:28:16-07:00",
+        "title": "fix(v4): forward a child's issues without spreading them into push() (#6701)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts",
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "7989d0743aa1c1966806adb497397a40dd6ba6ff",
+        "date": "2026-10-28T10:56:28-07:00",
+        "title": "fix(v4): check a size bound placed after a refinement, and on encode (#6698)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts",
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a4a049bf88bbcf442c0e3ad3028ca7bd2398297f",
+        "date": "2026-10-28T10:56:21-07:00",
+        "title": "fix(v4): reconcile intersection keys in linear time (#6697)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "586813ac93773ca781250553310e169736fb8caf",
+        "date": "2026-10-28T10:51:20-07:00",
+        "title": "fix(v4): write each async tuple rest element to its own index (#6702)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "680d19f7d1e042e55934209caeb79bc843b94f44",
+        "date": "2026-10-13T11:16:28-07:00",
+        "title": "fix(v4): report a union option that only checks rejected (#6662)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "311cd74b2765ff7c7b58add60e37c5a0ea7a1972",
+        "date": "2026-10-13T11:15:15-07:00",
+        "title": "fix(v4): run a record's key schema on an own __proto__ key (#6660)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/compile.ts",
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a0ebf970f2d752e5f58527cd2942ff48be4f46bd",
+        "date": "2026-10-09T12:50:22-07:00",
+        "title": "fix(v4): check array, set and map size bounds before parsing elements (#6652)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/compile.ts",
+          "packages/zod/src/v4/core/schemas.ts",
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "a2ba4a67986a3e6b2b131be30084a2f460d9ea67",
+        "date": "2026-10-02T11:08:53-07:00",
+        "title": "fix(types): declare record output and input as members, not base type arguments (#6645)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "cc4cd4ee9c52fcaa10964e48cc144541e41a5ed9",
+        "date": "2026-09-13T11:47:12-07:00",
+        "title": "Revert \"Revert \"feat: add z.currencyCode() over a vendored ISO 4217 list, refreshed weekly by CI (#6595)\"\"",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/treeshake/bundle-size.test.ts",
+          "packages/zod/src/v4/classic/schemas.ts",
+          "packages/zod/src/v4/core/schemas.ts",
+          "packages/zod/src/v4/mini/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "ca0229a404818290e6cdcfefcd7eb2d04bcbb543",
+        "date": "2026-09-13T11:31:42-07:00",
+        "title": "Revert \"feat: add z.currencyCode() over a vendored ISO 4217 list, refreshed weekly by CI (#6595)\"",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/treeshake/bundle-size.test.ts",
+          "packages/zod/src/v4/classic/schemas.ts",
+          "packages/zod/src/v4/core/schemas.ts",
+          "packages/zod/src/v4/mini/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "413cce9a8c893bab2dccbe4200c84a7635bbe22f",
+        "date": "2026-09-12T10:59:30-07:00",
+        "title": "fix(v4): make z.properties() a check again (#6594)",
+        "why": [
+          "mention",
+          "fix"
+        ],
+        "files": [
+          "packages/treeshake/bundle-size.test.ts",
+          "packages/zod/src/v4/classic/schemas.ts",
+          "packages/zod/src/v4/core/api.ts",
+          "packages/zod/src/v4/core/compile.ts",
+          "packages/zod/src/v4/core/json-schema-processors.ts",
+          "packages/zod/src/v4/core/memoizer.ts",
+          "packages/zod/src/v4/core/schemas.ts",
+          "packages/zod/src/v4/core/to-json-schema.ts",
+          "packages/zod/src/v4/core/util.ts",
+          "packages/zod/src/v4/core/visit.ts",
+          "packages/zod/src/v4/mini/schemas.ts"
+        ],
+        "symbols": [
+          "packages/treeshake/bundle-size.test.ts#CEILINGS",
+          "packages/zod/src/v4/classic/schemas.ts#ZodProperties",
+          "packages/zod/src/v4/classic/schemas.ts#properties",
+          "packages/zod/src/v4/classic/schemas.ts#ZodInstanceOf",
+          "packages/zod/src/v4/core/api.ts#$ZodPropertiesParams",
+          "packages/zod/src/v4/core/api.ts#_properties",
+          "packages/zod/src/v4/core/compile.ts#SupportedCheck",
+          "packages/zod/src/v4/core/compile.ts#generateChecks",
+          "packages/zod/src/v4/core/compile.ts#generatePropertiesChecks",
+          "packages/zod/src/v4/core/compile.ts#SupportedSchemaType",
+          "packages/zod/src/v4/core/compile.ts#generateCheck",
+          "packages/zod/src/v4/core/json-schema-processors.ts#propertiesProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+          "packages/zod/src/v4/core/memoizer.ts#isRef",
+          "packages/zod/src/v4/core/memoizer.ts#isRecursive",
+          "packages/zod/src/v4/core/schemas.ts#$ZodTypeDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodTypes",
+          "packages/zod/src/v4/core/schemas.ts#$ZodPropertiesDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodPropertiesInternals",
+          "packages/zod/src/v4/core/schemas.ts#$ZodProperties",
+          "packages/zod/src/v4/core/schemas.ts#handlePropertiesResult",
+          "packages/zod/src/v4/core/to-json-schema.ts#isTransforming",
+          "packages/zod/src/v4/core/util.ts#members",
+          "packages/zod/src/v4/core/visit.ts#visit",
+          "packages/zod/src/v4/mini/schemas.ts#ZodMiniProperties",
+          "packages/zod/src/v4/mini/schemas.ts#properties"
+        ]
+      },
+      {
+        "sha": "9446b5cc14c5bf137790f1f66abf602044871223",
+        "date": "2026-09-10T12:36:39-07:00",
+        "title": "fix: preserve undefined prefault outputs and object keys (#6587)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/compile.ts",
+          "packages/zod/src/v4/core/schemas.ts",
+          "packages/zod/src/v4/mini/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "0c483c58849fdb6445aea4f54b1bac6b57ab3d22",
+        "date": "2026-09-10T12:00:01-07:00",
+        "title": "docs: Zod 4.6 announcement post (#6546)",
+        "why": [
+          "mention"
+        ],
+        "files": []
+      },
+      {
+        "sha": "b12aa523e7e2617c4296cccf9b24d6558ed23e95",
+        "date": "2026-09-09T12:20:34-07:00",
+        "title": "fix: preserve unique tags with defaulted discriminators (#6582)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/compile.ts",
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "dd9c36fa2ddcee79f71d19f9635586c7b65ead86",
+        "date": "2026-09-09T12:20:01-07:00",
+        "title": "fix(v4): defer recursive object index inference (#6580)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/schemas.ts"
+        ],
+        "symbols": []
+      },
+      {
+        "sha": "36f17960d1defca5d0896d9424f4e1059fbbf081",
+        "date": "2026-09-08T22:12:06-07:00",
+        "title": "fix(v4): stop the memoizer from pinning a finished parse (#6572)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/core/memoizer.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/memoizer.ts#memo"
+        ]
+      },
+      {
+        "sha": "6f0483671e622d5d01a1e17f69af0825137c7830",
+        "date": "2026-09-07T10:29:45-07:00",
+        "title": "fix(v4): derive JSON Schema constraints by folding checks in the converter (#6554)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/treeshake/bundle-size.test.ts",
+          "packages/zod/src/v4/classic/schemas.ts",
+          "packages/zod/src/v4/core/json-schema-processors.ts",
+          "packages/zod/src/v4/core/schemas.ts",
+          "packages/zod/src/v4/core/util.ts"
+        ],
+        "symbols": [
+          "packages/treeshake/bundle-size.test.ts#CEILINGS"
+        ]
+      },
+      {
+        "sha": "cafbee4772ef481611fef6f5fb9ed9a1b9597069",
+        "date": "2026-08-31T18:54:11-07:00",
+        "title": "fix(v4): parse recursive schemas built by a factory (#6530)",
+        "why": [
+          "fix"
+        ],
+        "files": [
+          "packages/zod/src/v4/classic/schemas.ts",
+          "packages/zod/src/v4/core/memoizer.ts",
+          "packages/zod/src/v4/core/schemas.ts",
+          "packages/zod/src/v4/core/util.ts",
+          "packages/zod/src/v4/mini/schemas.ts"
+        ],
+        "symbols": [
+          "packages/zod/src/v4/core/memoizer.ts#isRecursive",
+          "packages/zod/src/v4/core/memoizer.ts#memo"
+        ]
+      },
+      {
+        "sha": "68aca3dc402c59f5c4e30322e83028389e44b8b5",
+        "date": "2026-08-31T15:15:48-07:00",
+        "title": "docs: cover the 4.5 API surface that never made it into the reference",
+        "why": [
+          "mention"
+        ],
+        "files": []
+      }
+    ]
+  },
+  "6546": {
+    "number": 6546,
+    "merge": "0c483c58849fdb6445aea4f54b1bac6b57ab3d22",
+    "candidates": []
+  },
+  "6576": {
+    "number": 6576,
+    "merge": "f9465d4e6497f92fe85ef7118ea64d7f86c28676",
+    "candidates": []
+  }
+}

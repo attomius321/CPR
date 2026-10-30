@@ -1,0 +1,255 @@
+{
+  "number": 6380,
+  "title": "feat(json-schema): accept a function for `unrepresentable`",
+  "body": "Adds a function form to `unrepresentable`, so a caller can substitute a JSON Schema for a specific type while every other unrepresentable type still throws.\n\n```ts\nz.toJSONSchema(z.object({ createdAt: z.date(), id: z.bigint() }), {\n  unrepresentable: ({ zodSchema }) =>\n    zodSchema._zod.def.type === \"date\" ? { type: \"string\", format: \"date-time\" } : \"throw\",\n});\n// createdAt => { type: \"string\", format: \"date-time\" }\n// id        => throws \"BigInt cannot be represented in JSON Schema\"\n```\n\nReturn a JSON Schema to use in its place, `\"any\"` for the existing `unrepresentable: \"any\"` behavior at that site, or `\"throw\"`/`undefined` to throw the site's default error — so a handler with no `else` keeps the strict default, and \"I didn't handle this\" needs no inference. Throwing from the handler propagates, and the ctx carries `message`, which is the only way to tell apart two sites that share a `zodSchema` (an `undefined` member and a `bigint` member of the same literal both arrive as the literal).\n\n**This also reverts #6391.** That PR solved the same problem by deferring the unrepresentable error until after `override` ran, then inferring from what `override` touched whether the type had been handled. That inference proved fragile: it first counted any non-annotation key, which meant a routine OpenAPI override silently swallowed the error and emitted a schema with no type at all —\n\n```ts\nz.toJSONSchema(z.object({ when: z.date() }), {\n  target: \"openapi-3.0\",\n  override: (ctx) => { ctx.jsonSchema.nullable = true; },\n});\n// on #6391 => { when: { nullable: true } }   ← error swallowed\n```\n\n— and the fix for that (#6399) was another keyword list. An explicit return value needs no list: the handler says what it did. The revert and the feature ship together so `main` never sits in a half-migrated state.\n\nThe 14 sites that consulted `ctx.unrepresentable` now route through an exported `handleUnrepresentable` helper. At the two value-level sites — an `undefined` or `bigint` member of a literal, and a dynamic `.catch()` value — a returned schema replaces the whole node, since there's no coherent way to merge a schema into one member of an `enum`.\n\nCloses #5234\n",
+  "user": {
+    "login": "colinhacks",
+    "type": "User"
+  },
+  "baseSha": "9d20fdc3c37207fa3fe77c9524a3421f4399cbf6",
+  "headSha": "51e93234d83cbb5915b3d52942ecb01d039f5040",
+  "mergedAt": "2026-08-13T18:44:53Z",
+  "mergeCommit": "bd6619c06d72f7829ee6ed14417ef1fd4d90ebcb",
+  "commits": 5,
+  "reviews": [
+    {
+      "id": 4920023686,
+      "user": {
+        "login": "copilot-pull-request-reviewer[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "5d1943d904b0fbf1b810801eb4def254bac17103",
+      "at": "2026-08-12T18:46:43Z",
+      "body": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit.",
+      "url": "https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4920023686"
+    },
+    {
+      "id": 4920094466,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "5d1943d904b0fbf1b810801eb4def254bac17103",
+      "at": "2026-08-12T18:54:55Z",
+      "body": "> ℹ️ No regressions found — two suggestions on the new public surface, both cheaper to land before release than after.\n\n**Reviewed changes** — full read of the 4-file diff at `5d1943d`, plus the surrounding `toJSONSchema` pipeline (`process` → `extractDefs` → `finalize`) and the `override` docs section.\n\n- **`UnrepresentableHandler` type + `handleUnrepresentable` helper** — new exported symbols in `to-json-schema.ts`; `\"any\"` returns `false`, `\"throw\"`/`undefined` throws the site's default message, anything else is `Object.assign`ed into `json` and returns `true`.\n- **15 processor call sites rerouted** — `bigint`, `symbol`, `undefined`, `void`, `date`, `nan`, `custom`, `function`, `transform`, `map`, `set`, two inside `literalProcessor`, and the dynamic-`catch` path.\n- **Context widening** — `ToJSONSchemaContext.unrepresentable` accepts the unparameterized handler, with a cast in `initializeContext` to sidestep the `$ZodTypes` recursion.\n- **Docs + tests** — a new `### unrepresentable` subsection with two examples, and a ~160-line `describe(\"unrepresentable callback\")` block.\n\nTwo things I checked and found clean, so they don't need re-litigating: behavior for `\"throw\"` and `\"any\"` is unchanged at every one of the 15 sites (same throw points, same message strings, same `vals.length === 0/1/>1` branching in `literalProcessor` across all four targets), and a handler-returned schema survives `flattenRef`'s `delete`/`allOf` pruning and `$defs` extraction for `.optional()`, `.nullable()`, `.default()`, `.readonly()`, `.meta({id})`, `reused: \"ref\"`, `z.lazy` cycles, and the draft-07/draft-04/openapi-3.0 targets. `npx vitest run packages/zod/src/v4/classic/tests/to-json-schema.test.ts` is green with no type errors.\n\n<!--\nPullfrog review metadata. These findings were written against 5d1943d;\nif commits have landed on feat/unrepresentable-callback since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: Review (initial)\n- Files reviewed: 4\n- Commits reviewed: 1\n- Base: main (e7029aa)\n- Head: feat/unrepresentable-callback (5d1943d)\n- Reviewed commits:\n  - 5d1943d9 — feat(json-schema): accept a function for `unrepresentable`\n- Prior pullfrog review: none\n-->\n\n### ℹ️ The `override` docs section still routes users to the workaround this PR replaces\n\n`packages/docs/content/json-schema.mdx:350` (outside this diff's hunks) reads \"If you are trying to define custom behavior for an unrepresentable type, you'll need to set the `unrepresentable: \"any\"` alongside `override`\" — and the example immediately below it is the `z.date()` → `{ type: \"string\", format: \"date-time\" }` case, which is now exactly the motivating example for the new handler. Anyone who lands on `#override` from a search will still be taught the two-step workaround.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# `### override` docs section predates the handler\n\n## Affected sites\n- `packages/docs/content/json-schema.mdx:350` — asserts unrepresentable types always throw before `override` runs, and names `unrepresentable: \"any\"` as the only escape hatch\n- `packages/docs/content/json-schema.mdx:352-364` — the `z.date()` → date-time example, now duplicated by the new handler example at `:246-252`\n\n## Required outcome\n- A reader arriving at `#override` learns that a handler is the direct way to represent an unrepresentable type, and that `override` remains the tool for mutating an *already-representable* schema.\n\n## Suggested approach (optional)\n- Keep the `\"any\"` + `override` example (it is still valid and still the way to blanket-erase), but add a sentence pointing at [`unrepresentable`](#unrepresentable) for per-type substitution.\n````\n\n</details>\n\n### ℹ️ Nitpicks\n\n- `packages/docs/content/json-schema.mdx:244` — \"It's called once per unrepresentable schema\" isn't literally true. `.describe()` and `.meta()` produce a `util.clone()` with `_zod.parent` set, and `process()` walks the parent chain, so `z.date().describe(\"x\")` invokes the handler twice (the first return value wins). A literal with two unrepresentable members also invokes it twice. `override` double-fires on the same input, so this is consistent plumbing rather than a defect — but the docs sentence promises more than it delivers, and a handler with side effects (counters, logging) will notice. Softening to \"called for each unrepresentable schema encountered\" would be accurate.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6380?action=fix&review_id=4920094466) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6380?action=fix-approved&review_id=4920094466) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31629348210/job/94223843572) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4920094466"
+    },
+    {
+      "id": 4920106198,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "19f886d4beeec73b1d9acdd82c6787754f871ca2",
+      "at": "2026-08-12T18:56:19Z",
+      "body": "> ℹ️ Nothing new to flag in `19f886d`. The two suggestions from the previous review are still open.\n\n**Reviewed changes** — incremental pass over `5d1943d..19f886d`, one commit touching one file.\n\n- **Explicit return type on the deprecated `unrepresentable` getter** — `packages/zod/src/v4/core/json-schema-generator.ts:60` now annotates `ToJSONSchemaContext[\"unrepresentable\"]` instead of relying on inference.\n\nThe reasoning in the comment checks out: `UnrepresentableHandler` isn't a named import in `json-schema-generator.ts`, so the inferred getter type forced `tsc` to synthesize an inline `import(\"./to-json-schema.js\")` in the `.d.cts` — the FalseCJS shape `packages/resolution/attw.test.ts` guards against. `ToJSONSchemaContext` *is* already imported as a type there, so the indexed access resolves through the existing import. I built the package to confirm: `v4/core/json-schema-generator.d.cts:39` emits `get unrepresentable(): ToJSONSchemaContext[\"unrepresentable\"];` with no inline `import()`. The annotation is also exactly `typeof this.ctx.unrepresentable`, so nothing narrows or widens. Purely a declaration-emit fix.\n\n<!--\nPullfrog review metadata. These findings were written against 19f886d;\nif commits have landed on feat/unrepresentable-callback since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 5\n- Commits reviewed: 2\n- Base: main (e7029aa)\n- Head: feat/unrepresentable-callback (19f886d)\n- Reviewed commits:\n  - 19f886d4 — fix(json-schema): annotate the deprecated `unrepresentable` getter\n- Prior pullfrog review: 5d1943d (https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4920094466)\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix it ➔](https://pullfrog.com/trigger/colinhacks/zod/6380?action=fix&review_id=4920106198) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31629348210/job/94223843572) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4920106198"
+    },
+    {
+      "id": 4920163740,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "78e55931a99e215ca7f303266ee52df9f94ae967",
+      "at": "2026-08-12T19:02:56Z",
+      "body": "> ℹ️ Nothing new to flag in `78e5593` — test-only, and both tests are real. The two suggestions from the initial review are still open.\n\n**Reviewed changes** — incremental pass over `19f886d..78e5593`, one commit touching only `to-json-schema.test.ts`.\n\n* **Shared `dateToString` handler** — a `z.core.ToJSONSchemaParams[\"unrepresentable\"]`-typed const declared inside the `describe`, reused by both new tests.\n* **OpenAPI 3.0 coverage** — `z.object({ start: z.date() })` under `target: \"openapi-3.0\"` emits `{ type: \"string\", format: \"date-time\" }`, checked against `validateOpenAPI30Schema`.\n* **`$defs` extraction coverage** — `z.date().meta({ id: \"When\" })` used twice lands the handler's schema in `$defs.When` with both properties as `$ref`s.\n\nI spent the pass on whether the OpenAPI assertion can actually fail, since `validateOpenAPI30Schema` unconditionally *returns* `true` and `.resolves.toBe(true)` reads tautological. It can: on `!res.valid` the helper calls `console.error`, and `scripts/fail-on-console.ts` (wired in via the root config's `setupFiles`) swaps `console.error` for a thrower, so the promise rejects instead. I confirmed the validator discriminates — `valid: false` for `{ type: [\"string\", \"null\"] }` and for a stray `$schema` key, `valid: true` for `{ type: \"string\", format: \"date-time\" }`. The new test also `await`s the helper, unlike the seven pre-existing floating call sites in this file, so a failure surfaces inside the test rather than as a stray unhandled rejection. The `$defs` test pins the exact `$ref`/`$defs` shape via inline snapshot, which is the assertion that would actually break if `Object.assign(json, result)` stopped surviving `extractDefs`. Full file is green — 184 tests, no type errors.\n\nNeither open thread is addressed by this commit, as expected for a test-only change: `UnrepresentableHandler`'s ctx is still `{ zodSchema, path }` with no `message`, and `json-schema.mdx` still doesn't mention that a schema-returning handler drops the representable members of a mixed literal. The `### override` section at `json-schema.mdx:350` also still names `unrepresentable: \"any\"` as the only escape hatch.\n\n<!--\nPullfrog review metadata. These findings were written against 78e5593;\nif commits have landed on feat/unrepresentable-callback since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 5\n- Commits reviewed: 3\n- Base: main (9c540db)\n- Head: feat/unrepresentable-callback (78e5593)\n- Reviewed commits:\n  - 78e5593 — test(json-schema): cover the `unrepresentable` handler under openapi-3.0 and $defs\n  - 19f886d — fix(json-schema): annotate the deprecated `unrepresentable` getter\n  - 5d1943d — feat(json-schema): accept a function for `unrepresentable`\n- Prior pullfrog review: 19f886d (https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4920106198)\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix it ➔](https://pullfrog.com/trigger/colinhacks/zod/6380?action=fix&review_id=4920163740) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31630350509/job/94227226244) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4920163740"
+    },
+    {
+      "id": 4923703644,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "1cc5e809740f62657ea5f7cf82ea9008d8eebd99",
+      "at": "2026-08-13T05:28:53Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4923703644"
+    },
+    {
+      "id": 4923703856,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "1cc5e809740f62657ea5f7cf82ea9008d8eebd99",
+      "at": "2026-08-13T05:28:56Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4923703856"
+    },
+    {
+      "id": 4923707578,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "1cc5e809740f62657ea5f7cf82ea9008d8eebd99",
+      "at": "2026-08-13T05:29:48Z",
+      "body": "> ℹ️ Both open threads are addressed by `1cc5e80` and resolved. One docs question inline.\n\n**Reviewed changes** — incremental pass over `78e5593..1cc5e80`, one commit touching `to-json-schema.ts`, `json-schema.mdx`, and `to-json-schema.test.ts`.\n\n*   **Added `message` to the handler ctx** — `UnrepresentableHandler` is now `{ zodSchema, path, message }`, and `handleUnrepresentable` threads its own `message` argument straight through at `to-json-schema.ts:169`. Purely additive; the `\"throw\"`/`\"any\"`/`undefined` branches are byte-identical.\n*   **Documented the two sharp edges** — `json-schema.mdx:265` explains that the two `literalProcessor` sites share a `zodSchema`, and `:267` explains that a returned schema replaces the whole literal and drops `\"a\"` from `z.literal([\"a\", 1n])`.\n*   **Rerouted the `override` section** — `json-schema.mdx:355` now points at [`unrepresentable`](#unrepresentable) for per-type substitution and keeps `\"any\"` + `override` as the blanket-erase path.\n*   **Softened the once-per-schema claim** — `json-schema.mdx:245` now reads \"called for each unrepresentable schema encountered\", which matches the `.describe()`/`.meta()` double-fire.\n*   **Added a `message` test** — `to-json-schema.test.ts:3252` runs `z.literal([undefined, 1n, \"a\"])` through a collecting handler and pins both exact message strings plus the resulting `enum: [1, \"a\"]`.\n\nThe new test can genuinely fail: without `message` on the ctx the collected strings become `literal: undefined` and the `toEqual` breaks, and the inline snapshot independently pins that returning `\"any\"` from both literal sites still yields the pre-PR `enum`. Full file green — 186 tests, no type errors. The `message` values are unique per site across all 14 call sites, so the discriminator the docs promise actually holds.\n\n### ℹ️ Nitpicks\n\n*   `packages/zod/src/v4/core/to-json-schema.ts:42` — the `JSONSchemaGeneratorParams.unrepresentable` JSDoc still says \"called once per unrepresentable schema\", the exact phrasing this commit corrected in `json-schema.mdx:245`. That's the copy that shows on hover in an editor, so it's the more-read of the two.\n\n<!--\nPullfrog review metadata. These findings were written against 1cc5e80;\nif commits have landed on feat/unrepresentable-callback since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 5\n- Commits reviewed: 4\n- Base: main (9c540db)\n- Head: feat/unrepresentable-callback (1cc5e80)\n- Reviewed commits:\n  - 1cc5e80 — feat(json-schema): pass the default message to the unrepresentable handler\n  - 78e5593 — test(json-schema): cover the `unrepresentable` handler under openapi-3.0 and $defs\n  - 19f886d — fix(json-schema): annotate the deprecated `unrepresentable` getter\n  - 5d1943d — feat(json-schema): accept a function for `unrepresentable`\n- Prior pullfrog review: 78e5593 (https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4920163740)\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6380?action=fix&review_id=4923707578) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6380?action=fix-approved&review_id=4923707578) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31670318902/job/94353398571) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4923707578"
+    },
+    {
+      "id": 4923751848,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "f19847f5ca94d3e41b6a8a82e55d161edabe959e",
+      "at": "2026-08-13T05:39:23Z",
+      "body": "> ℹ️ No PR-side change since `0d01e08` — this push is a rebase. `main` moved underneath it, and one merge is now the odd one out.\n\n**Reviewed changes** — the four commits were rewritten (`5d1943d`/`19f886d`/`78e5593`/`0d01e08` → `8940440`/`5275a0e`/`98a1fdf`/`f19847f`) with identical subjects, and the merge-base moved `9c540db` → `81d9fc6`.\n\n*   **Rebased onto a `main` that hardened this exact file** — `to-json-schema.ts` gained a module-local `assignProps` and swapped three merges to it (the `process` metadata copy, and two in `finalize`), while `json-schema-processors.ts` gained `assignProp` for `patternProperties` plus a `!def.partial` guard on record `required`.\n*   **Nothing on the PR side moved** — `git diff-tree 0d01e08 f19847f` restricted to the five PR files returns only those upstream hunks. `json-schema.mdx`, `json-schema-generator.ts`, and the `unrepresentable callback` describe block are byte-identical to what was reviewed at `1cc5e80`.\n\nI spent the pass on whether the new base invalidates anything the earlier reviews signed off on, since the rebase touched the same two files and the same merge machinery that carries a handler-returned schema through `$defs` extraction. It doesn't — `assignProps` copies own enumerable keys (symbols included) via `defineProperty`, so `flattenRef`'s `delete`/`allOf` branches and `extractDefs` behave exactly as before, and the file is green at 192 tests with no type errors. What did change is convention, flagged inline. The `json-schema.mdx:265` thread from the previous review is still open, as expected for a rebase.\n\n<!--\nPullfrog review metadata. These findings were written against f19847f;\nif commits have landed on feat/unrepresentable-callback since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 5\n- Commits reviewed: 4\n- Base: main (81d9fc6)\n- Head: feat/unrepresentable-callback (f19847f)\n- Reviewed commits:\n  - f19847f — feat(json-schema): pass the default message to the unrepresentable handler\n  - 98a1fdf — test(json-schema): cover the `unrepresentable` handler under openapi-3.0 and $defs\n  - 5275a0e — fix(json-schema): annotate the deprecated `unrepresentable` getter\n  - 8940440 — feat(json-schema): accept a function for `unrepresentable`\n- Prior pullfrog review: 1cc5e80 (https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4923707578)\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6380?action=fix&review_id=4923751848) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6380?action=fix-approved&review_id=4923751848) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31670762898/job/94354720432) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4923751848"
+    },
+    {
+      "id": 4930498390,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "51e93234d83cbb5915b3d52942ecb01d039f5040",
+      "at": "2026-08-13T18:43:39Z",
+      "body": "> ℹ️ No PR-side change since `f19847f` — this push is a rebase plus the #6391 revert. The revert is exact; one open follow-up PR is stranded by it.\n\n**Reviewed changes** — incremental pass over `f19847f..51e9323`. `main` moved underneath the branch and now contains #6391, so the branch was rebased and gained a commit that reverts it.\n\n*   **Rebased onto a `main` that had merged #6391** — merge-base moved `81d9fc6` → `9d20fdc`, picking up #6318 (the prototype-methods memory refactor), #5967, and #6391 itself. The four existing commits were rewritten with identical subjects.\n*   **Added `aebe2d4b`, reverting #6391** — removes `Seen.unrepresentable`, `ANNOTATION_KEYS`, `structuralSnapshot`, the deferred-throw block in `finalize`, #6391's 163-line test block, and its docs edits. Commit count went 4 → 5.\n*   **Rewrote the PR body** to explain that the feature and the revert ship together so `main` never sits in a half-migrated state, using the `nullable`-swallows-the-error case as the motivation.\n\nI spent the pass on whether the revert is exact and whether pulling it out of `main` costs anything. `git diff-tree f19847f 51e9323` restricted to all five PR files returns **empty** — and since `f19847f` was based on a `main` without #6391, that makes the tree exactly pre-#6391 plus the handler feature. That's a stronger proof of exactness than reading the revert hunk by hunk. `git show --stat fd074106` lists four files, all inside this PR's five, and nothing anywhere in `packages/` still references the removed machinery. #6391's processors diff was purely the mechanical `ctx.unrepresentable === \"throw\"` → `handleUnrepresentable(...)` swap, so no drive-by fix leaves with it. It was also never released — no version bump between `fd074106` and `HEAD`, no tag contains it, `versions.ts` still reads `4.4.3` — so the `handleUnrepresentable` signature change and the removal of `Seen.unrepresentable` never reach npm.\n\nThe coverage the revert deletes isn't a gap. #6391's tests all exercised the deferred mechanic, and under the restored eager throw the `$defs`-extracted case is no longer a distinct path — the throw happens during `process` traversal, before `finalize` and `extractDefs` ever run. On the new base the full suite is green at **3970 tests across 344 files with no type errors**, `pnpm build` emits `get unrepresentable(): ToJSONSchemaContext[\"unrepresentable\"];` with no inline `import()` in the `.d.cts`, and `attw.test.ts` passes.\n\nBoth open threads (`to-json-schema.ts:184`, `json-schema.mdx:265`) are untouched, as expected for a push that doesn't move the PR-side tree.\n\n<!--\nPullfrog review metadata. These findings were written against 51e9323;\nif commits have landed on feat/unrepresentable-callback since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 5\n- Commits reviewed: 5\n- Base: main (9d20fdc3)\n- Head: feat/unrepresentable-callback (51e9323)\n- Reviewed commits:\n  - 51e9323 — feat(json-schema): pass the default message to the unrepresentable handler\n  - 1a5f23a — test(json-schema): cover the `unrepresentable` handler under openapi-3.0 and $defs\n  - cd33bf2 — fix(json-schema): annotate the deprecated `unrepresentable` getter\n  - 1c3e56f — feat(json-schema): accept a function for `unrepresentable`\n  - aebe2d4 — Revert \"feat(json-schema): run `override` before the unrepresentable error (#6391)\"\n- Prior pullfrog review: f19847f (https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4923751848)\n-->\n\n### ℹ️ #6399 is still open against the heuristic this PR deletes\n\n#6399 is open against `main` and consists entirely of the keyword-list refinement to #6391's \"did `override` handle it?\" detection — restricting suppression to `type`, `$ref`, `enum`, `const` and combinators. `aebe2d4b` removes `structuralSnapshot` and `ANNOTATION_KEYS` outright, so once this lands #6399 has nothing left to fix and won't apply.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# #6399 becomes unmergeable once #6380 lands\n\n## Affected sites\n- PR #6399 (`fix/unrepresentable-override-detection`, base `main`, open, not draft) — refines the detection heuristic in `packages/zod/src/v4/core/to-json-schema.ts` that `aebe2d4b` deletes\n- `packages/zod/src/v4/core/to-json-schema.ts` — `ANNOTATION_KEYS` and `structuralSnapshot` removed by the revert; the `finalize` post-`override` check they fed is removed with them\n\n## Required outcome\n- After #6380 merges, no open PR is left pointing at removed code, and the reasoning for abandoning the heuristic is recorded where a reader of #6399 will find it.\n\n## Suggested approach (optional)\n- Close #6399 with a note that #6380 supersedes it: an explicit handler return value replaces the keyword list entirely, so the follow-up refinement no longer has a subject. The PR body of #6380 already makes this argument and is the natural thing to link.\n\n## Open questions for the human (optional)\n- #5234 is currently closed by #6391's merge and is also claimed by this PR, so it stays closed either way — worth confirming that's the intended end state rather than reopening it alongside the revert.\n````\n\n</details>\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix it ➔](https://pullfrog.com/trigger/colinhacks/zod/6380?action=fix&review_id=4930498390) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31731399287/job/94552518429) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6380#pullrequestreview-4930498390"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3769424890,
+      "review": 4920094466,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/to-json-schema.ts",
+      "line": 33,
+      "originalLine": 22,
+      "commit": "51e93234d83cbb5915b3d52942ecb01d039f5040",
+      "originalCommit": "5d1943d904b0fbf1b810801eb4def254bac17103",
+      "at": "2026-08-12T18:54:54Z",
+      "body": "The handler ctx has no way to identify *which* unrepresentable site fired. Both `literalProcessor` calls pass a schema whose `def.type` is `\"literal\"`, so a handler can't distinguish the ``Literal `undefined``` case from the `BigInt literals` case, and the docs' own \"report unrepresentable types in your own words\" example has to reconstruct wording rather than wrap Zod's. Passing the default `message` through is additive and backwards-compatible later, but it's a lot cheaper to include now than to bolt on after this ships.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# `UnrepresentableHandler` ctx omits the default error message\n\n## Affected sites\n- `packages/zod/src/v4/core/to-json-schema.ts:20-23` — `UnrepresentableHandler` ctx is `{ zodSchema, path }`\n- `packages/zod/src/v4/core/to-json-schema.ts:166` — call site builds that object\n- `packages/zod/src/v4/core/json-schema-processors.ts:160,164` — two distinct messages, same `zodSchema`, indistinguishable to the handler\n- `packages/zod/src/v4/core/json-schema-processors.ts:503` — dynamic-catch message is likewise unreachable from the handler\n\n## Required outcome\n- A handler can tell apart the two `literal` sites, and can re-throw or wrap Zod's default wording without hardcoding a copy of it.\n\n## Suggested approach (optional)\n- Add `message: string` to the ctx object and thread `message` into the call at `to-json-schema.ts:166`. No behavior change; the docs example becomes `throw new Error(`${message} (at /${path.join(\"/\")})`)`.\n````\n\n</details>",
+      "diffHunk": "@@ -12,6 +12,16 @@ export type Processor<T extends schemas.$ZodType = schemas.$ZodType> = (\n   params: ProcessParams\n ) => void;\n \n+/**\n+ * Called for each schema that has no JSON Schema equivalent. Return a JSON Schema to use in its\n+ * place, `\"any\"` to fall back to the `unrepresentable: \"any\"` behavior, or `\"throw\"`/`undefined` to\n+ * throw the default error. Throwing from the handler propagates, so custom errors work too.\n+ */\n+export type UnrepresentableHandler<T extends schemas.$ZodType = schemas.$ZodType> = (ctx: {\n+  zodSchema: T;\n+  path: (string | number)[];",
+      "url": "https://github.com/colinhacks/zod/pull/6380#discussion_r3769424890"
+    },
+    {
+      "id": 3769424902,
+      "review": 4920094466,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/json-schema-processors.ts",
+      "line": 161,
+      "originalLine": 161,
+      "commit": "51e93234d83cbb5915b3d52942ecb01d039f5040",
+      "originalCommit": "5d1943d904b0fbf1b810801eb4def254bac17103",
+      "at": "2026-08-12T18:54:54Z",
+      "body": "Worth a line in the docs: when a handler returns a schema for a mixed literal, the representable members are silently dropped. `z.literal([\"a\", 1n])` yields just the handler's schema — `\"a\"` is gone, and there's no diagnostic. The design rationale in the PR description is sound and the test at `to-json-schema.test.ts:3285` pins it, but a user writing a bigint→`{ type: \"integer\" }` handler will hit this without warning, and `json-schema.mdx` currently says nothing about it.",
+      "diffHunk": "@@ -160,22 +151,19 @@ export const enumProcessor: Processor<schemas.$ZodEnum> = (schema, _ctx, json, _\n   json.enum = values;\n };\n \n-export const literalProcessor: Processor<schemas.$ZodLiteral> = (schema, ctx, json, _params) => {\n+export const literalProcessor: Processor<schemas.$ZodLiteral> = (schema, ctx, json, params) => {\n   const def = schema._zod.def as schemas.$ZodLiteralDef<any>;\n   const vals: (string | number | boolean | null)[] = [];\n   for (const val of def.values) {\n     if (val === undefined) {\n-      if (ctx.unrepresentable === \"throw\") {\n-        throw new Error(\"Literal `undefined` cannot be represented in JSON Schema\");\n-      } else {\n-        // do not add to vals\n-      }\n+      // a custom schema replaces the whole literal, so there is nothing left to accumulate\n+      if (handleUnrepresentable(schema, ctx, json, params, \"Literal `undefined` cannot be represented in JSON Schema\"))\n+        return;",
+      "url": "https://github.com/colinhacks/zod/pull/6380#discussion_r3769424902"
+    },
+    {
+      "id": 3772662796,
+      "review": 4923703644,
+      "replyTo": 3769424890,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/to-json-schema.ts",
+      "line": 33,
+      "originalLine": 22,
+      "commit": "51e93234d83cbb5915b3d52942ecb01d039f5040",
+      "originalCommit": "5d1943d904b0fbf1b810801eb4def254bac17103",
+      "at": "2026-08-13T05:28:53Z",
+      "body": "Addressed in `1cc5e80` — `message` is now on the handler ctx and threaded through `handleUnrepresentable`.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31670318902/job/94353398571) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -12,6 +12,16 @@ export type Processor<T extends schemas.$ZodType = schemas.$ZodType> = (\n   params: ProcessParams\n ) => void;\n \n+/**\n+ * Called for each schema that has no JSON Schema equivalent. Return a JSON Schema to use in its\n+ * place, `\"any\"` to fall back to the `unrepresentable: \"any\"` behavior, or `\"throw\"`/`undefined` to\n+ * throw the default error. Throwing from the handler propagates, so custom errors work too.\n+ */\n+export type UnrepresentableHandler<T extends schemas.$ZodType = schemas.$ZodType> = (ctx: {\n+  zodSchema: T;\n+  path: (string | number)[];",
+      "url": "https://github.com/colinhacks/zod/pull/6380#discussion_r3772662796"
+    },
+    {
+      "id": 3772662959,
+      "review": 4923703856,
+      "replyTo": 3769424902,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/json-schema-processors.ts",
+      "line": 161,
+      "originalLine": 161,
+      "commit": "51e93234d83cbb5915b3d52942ecb01d039f5040",
+      "originalCommit": "5d1943d904b0fbf1b810801eb4def254bac17103",
+      "at": "2026-08-13T05:28:56Z",
+      "body": "Addressed in `1cc5e80` — `json-schema.mdx:267` now documents the mixed-literal member loss.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31670318902/job/94353398571) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -160,22 +151,19 @@ export const enumProcessor: Processor<schemas.$ZodEnum> = (schema, _ctx, json, _\n   json.enum = values;\n };\n \n-export const literalProcessor: Processor<schemas.$ZodLiteral> = (schema, ctx, json, _params) => {\n+export const literalProcessor: Processor<schemas.$ZodLiteral> = (schema, ctx, json, params) => {\n   const def = schema._zod.def as schemas.$ZodLiteralDef<any>;\n   const vals: (string | number | boolean | null)[] = [];\n   for (const val of def.values) {\n     if (val === undefined) {\n-      if (ctx.unrepresentable === \"throw\") {\n-        throw new Error(\"Literal `undefined` cannot be represented in JSON Schema\");\n-      } else {\n-        // do not add to vals\n-      }\n+      // a custom schema replaces the whole literal, so there is nothing left to accumulate\n+      if (handleUnrepresentable(schema, ctx, json, params, \"Literal `undefined` cannot be represented in JSON Schema\"))\n+        return;",
+      "url": "https://github.com/colinhacks/zod/pull/6380#discussion_r3772662959"
+    },
+    {
+      "id": 3772666563,
+      "review": 4923707578,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/docs/content/json-schema.mdx",
+      "line": 265,
+      "originalLine": 265,
+      "commit": "51e93234d83cbb5915b3d52942ecb01d039f5040",
+      "originalCommit": "1cc5e809740f62657ea5f7cf82ea9008d8eebd99",
+      "at": "2026-08-13T05:29:48Z",
+      "body": "Two *sites* share a `zodSchema`, not two schemas — as written the sentence is circular. Worth deciding separately whether this makes the message strings semver-relevant: a handler that branches on `\"BigInt literals cannot be represented in JSON Schema\"` silently stops matching if that wording is ever touched, and this is the only place the docs endorse doing so. A stable `code`/`reason` on the ctx would be additive later, so it's a docs-wording call today rather than an API one.",
+      "diffHunk": "@@ -233,6 +241,31 @@ You can change this behavior by setting the `unrepresentable` option to `\"any\"`.\n z.toJSONSchema(z.bigint(), { unrepresentable: \"any\" });\n // => {}\n ```\n+\n+To decide case by case, pass a function instead. It's called for each unrepresentable schema encountered. Return a JSON Schema to use in its place, `\"any\"`, or `\"throw\"` (the default when you return nothing).\n+\n+```ts\n+z.toJSONSchema(z.object({ createdAt: z.date(), id: z.bigint() }), {\n+  unrepresentable: ({ zodSchema }) =>\n+    zodSchema._zod.def.type === \"date\" ? { type: \"string\", format: \"date-time\" } : \"throw\",\n+});\n+// => throws Error (BigInt cannot be represented in JSON Schema)\n+```\n+\n+The handler also receives the `path` of the schema and the `message` Zod would have thrown, and any error it throws propagates, so you can report unrepresentable types in your own words.\n+\n+```ts\n+z.toJSONSchema(schema, {\n+  unrepresentable: ({ path, message }) => {\n+    throw new Error(`${message} (at /${path.join(\"/\")})`);\n+  },\n+});\n+```\n+\n+Two schemas can share a `zodSchema` but not a `message` — an `undefined` member and a `bigint` member of the same literal both arrive as the literal — so branch on `message` to tell those apart.",
+      "url": "https://github.com/colinhacks/zod/pull/6380#discussion_r3772666563"
+    },
+    {
+      "id": 3772704397,
+      "review": 4923751848,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/to-json-schema.ts",
+      "line": 184,
+      "originalLine": 184,
+      "commit": "51e93234d83cbb5915b3d52942ecb01d039f5040",
+      "originalCommit": "f19847f5ca94d3e41b6a8a82e55d161edabe959e",
+      "at": "2026-08-13T05:39:23Z",
+      "body": "The rebase turned this into the last `Object.assign` merge in the file — `81d9fc6` converted the other three to the `__proto__`-safe `assignProps` — and it's the one merging a *user-supplied* object. Confirmed empirically: a handler returning `JSON.parse('{\"type\":\"string\",\"__proto__\":{…}}')` silently loses the `__proto__` key, while the same fragment through `{ metadata: registry }` round-trips. No pollution escapes (`finalize` rebuilds onto a fresh object), so this is a silent key drop rather than a vulnerability. I applied the one-word swap locally: 192 tests green, no type errors.\n\n```suggestion\n  assignProps(json, result);\n```",
+      "diffHunk": "@@ -148,6 +163,28 @@ export function initializeContext(params: JSONSchemaGeneratorParams): ToJSONSche\n   };\n }\n \n+/**\n+ * Applies the `unrepresentable` setting at a site that has no JSON Schema equivalent. Throws\n+ * `message` unless the setting (or the handler's return value) says otherwise. Returns `true` if a\n+ * custom JSON Schema was written into `json`, in which case the caller must not write its own.\n+ */\n+export function handleUnrepresentable(\n+  schema: schemas.$ZodType,\n+  ctx: ToJSONSchemaContext,\n+  json: JSONSchema.BaseSchema,\n+  params: ProcessParams,\n+  message: string\n+): boolean {\n+  const result =\n+    typeof ctx.unrepresentable === \"function\"\n+      ? ctx.unrepresentable({ zodSchema: schema, path: params.path, message })\n+      : ctx.unrepresentable;\n+  if (result === \"any\") return false;\n+  if (result === undefined || result === \"throw\") throw new Error(message);\n+  Object.assign(json, result);",
+      "url": "https://github.com/colinhacks/zod/pull/6380#discussion_r3772704397"
+    }
+  ],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-13T05:21:48Z",
+      "number": 6391,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "feat(json-schema): run `override` before the unrepresentable error",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6391"
+    },
+    {
+      "at": "2026-08-13T21:40:48Z",
+      "number": 6399,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "fix(json-schema): require a form-defining keyword to suppress the unrepresentable error",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6399"
+    }
+  ]
+}

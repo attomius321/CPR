@@ -1,0 +1,129 @@
+{
+  "number": 6391,
+  "title": "feat(json-schema): run `override` before the unrepresentable error",
+  "body": "An alternative to #6380 for the same issue. Rather than teaching `unrepresentable` a callback, this lets `override` run first, so it can represent the types it cares about and everything else still throws.\n\nToday, representing one unrepresentable type means setting `unrepresentable: \"any\"` and losing the error for all of them — `z.date()` becomes a date-time string only by also letting `z.map()`, `z.symbol()` and the rest silently become `{}`. The docs currently tell you to do exactly that.\n\n```ts\nz.toJSONSchema(z.object({ when: z.date(), id: z.bigint() }), {\n  // no `unrepresentable: \"any\"` needed\n  override: (ctx) => {\n    const def = ctx.zodSchema._zod.def;\n    if (def.type === \"date\") {\n      ctx.jsonSchema.type = \"string\";\n      ctx.jsonSchema.format = \"date-time\";\n    }\n  },\n});\n// when => { type: \"string\", format: \"date-time\" }\n// id   => throws \"BigInt cannot be represented in JSON Schema\"\n```\n\nThe old ordering wasn't deliberate. `override` has run in the emit phase since the first Zod 4 commit because it needs the flattened schema, while the unrepresentable checks throw during traversal — nothing depended on the throw landing first. Moving `override` earlier isn't an option (it would see an empty object), so instead the throw is deferred: `unrepresentable: \"throw\"` records the message on the seen entry, and `finalize` throws it after `override` runs.\n\n\"Handled\" means `override` changed a non-annotation key on that node. Both halves of that are load-bearing:\n\n- Requiring a **non-annotation** key stops a blanket `override` that adds a `description` to everything from silently disabling every unrepresentable error.\n- Requiring a **change** keeps the value-level cases throwing. Those nodes already have a JSON Schema form of their own — a dynamic `.catch()` node is still a `string`, and `z.literal([undefined, \"a\"])` still carries `\"a\"` — so they can't be recognized by shape alone.\n\nI tried each half on its own first; each one breaks one of those two groups, and the tests here cover both.\n\nBehavior changes worth flagging: the error now surfaces after traversal instead of during it, so with both a cycle and an unrepresentable type the cycle error wins, and when several types are unrepresentable the reported one follows emit order rather than traversal order. `unrepresentable: \"any\"` and the default strict behavior are otherwise unchanged.\n\nCloses #5234\n",
+  "user": {
+    "login": "colinhacks",
+    "type": "User"
+  },
+  "baseSha": "2715c12e76cf022d7dbdeb5852c09fddfe91a481",
+  "headSha": "7f6a296cfb02e848d0888af7cee8ed5b5518f170",
+  "mergedAt": "2026-08-13T05:46:44Z",
+  "mergeCommit": "fd0741065d65ca6a83a8eb095d306444002dd2e3",
+  "commits": 2,
+  "reviews": [
+    {
+      "id": 4923672927,
+      "user": {
+        "login": "copilot-pull-request-reviewer[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "708cecb7b05c2a3b3c074d3160ce8c388e532536",
+      "at": "2026-08-13T05:21:52Z",
+      "body": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit.",
+      "url": "https://github.com/colinhacks/zod/pull/6391#pullrequestreview-4923672927"
+    },
+    {
+      "id": 4923715030,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "708cecb7b05c2a3b3c074d3160ce8c388e532536",
+      "at": "2026-08-13T05:31:33Z",
+      "body": "> [!IMPORTANT]\n> The \"did `override` handle it?\" heuristic is a denylist of annotation keys, so any blanket `override` that writes a key outside that list silently disables every unrepresentable error. The docs' own canonical `override` example is one of them.\n\n**Reviewed changes** — full read of the single commit `708cecb7` across all 4 files, plus the surrounding `finalize`/`extractDefs`/`process` machinery and the registry and `JSONSchemaGenerator` entry points. I ran the three JSON-Schema suites (508 tests, all pass) and probed the new behavior directly with `pnpm dev`.\n\n- **Deferred throw** — `handleUnrepresentable()` records the message on the `Seen` entry instead of throwing during traversal; `finalize` throws it after `override` runs.\n- **Processor cleanup** — all 11 inline `if (ctx.unrepresentable === \"throw\") throw` sites in `json-schema-processors.ts` collapse to one helper call.\n- **\"Handled\" detection** — `structuralSnapshot()` JSON-stringifies the node minus `ANNOTATION_KEYS` before and after `override`; an unchanged snapshot rethrows.\n- **Docs** — drops the \"set `unrepresentable: \\\"any\\\"` alongside `override`\" instruction and cross-links `#unrepresentable` ↔ `#override`.\n- **Tests** — a 6-test `describe` block covering nesting, `$defs` extraction, annotations-don't-count, value-level cases, `unrepresentable: \"any\"`, and OpenAPI 3.0.\n\nI verified the happy path holds through object properties, array items, record values, union options, tuple positions, `optional` / `nullable` (including openapi-3.0) / `default` / `refine` wrappers, `reused: \"ref\"`, `.meta({ id })` → `$defs`, `io: \"input\"`, and the registry overload. That part is solid.\n\n<!--\nPullfrog review metadata. These findings were written against 708cecb;\nif commits have landed on feat/override-before-unrepresentable since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: Review (initial)\n- Files reviewed: 4\n- Commits reviewed: 1\n- Base: main (81d9fc6)\n- Head: feat/override-before-unrepresentable (708cecb)\n- Reviewed commits:\n  - 708cecb — feat(json-schema): run `override` before the unrepresentable error\n- Prior pullfrog review: none\n-->\n\n### ℹ️ There's no way for `override` to say \"an empty schema is the right representation for this type\"\n\nAn untouched unrepresentable node's JSON Schema already *is* `{}`, so \"I looked at this and `{}` is correct\" is indistinguishable from \"I did nothing\" and always throws. That means there's still no per-type equivalent of `unrepresentable: \"any\"` — a user who wants `z.date()` → `{}` but `z.bigint()` → throw has to fall back to the global flag and lose both errors, which is the exact problem this PR is solving for the represent-it case. Worth deciding whether that's an accepted limitation or something the design should leave room for.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# No opt-in-to-`any` path through `override`\n\n## Affected sites\n- `packages/zod/src/v4/core/to-json-schema.ts:503` — the throw fires whenever the structural snapshot is unchanged, and `{}` → `{}` is unchanged by construction.\n\n## Required outcome\n- Either document that `override` can only *represent* an unrepresentable type (never waive it), or give the callback a way to signal \"leave this as `{}`\".\n\n## Open questions for the human\n- Is a per-type waiver in scope for this PR at all, or is it deliberately left to `unrepresentable: \"any\"`?\n````\n\n</details>\n\n### ℹ️ `JSONSchemaGenerator.process()` no longer throws on unrepresentable types\n\nThe deprecated `JSONSchemaGenerator` class (exported from `v4/core/index.ts`) splits `process()` and `emit()` into separate public methods sharing one context. Since the throw moved into `finalize`, `gen.process(z.bigint())` now returns `{}` silently where it previously threw; the error only appears if `emit()` is subsequently called. Confirmed empirically. Low blast radius given the deprecation, but it's an unguarded behavior change — no test in the diff touches the class.\n\n### ℹ️ Nitpicks\n\n- `packages/zod/src/v4/core/to-json-schema.ts:398` — `structuralSnapshot`'s `JSON.stringify` is unguarded, unlike `finalize`'s own `JSON.parse(JSON.stringify(result))` at line 566. An `override` that writes a bigint onto an unrepresentable node (`ctx.jsonSchema.const = 10n`) now surfaces a raw `TypeError: Do not know how to serialize a BigInt`; the same override on a representable node still gives Zod's `\"Error converting schema to JSON.\"`.\n- `packages/zod/src/v4/core/to-json-schema.ts:395` — `_prefault` is vestigial in `ANNOTATION_KEYS`; `process()` unconditionally does `delete result.schema._prefault` at line 234, so it can never reach `structuralSnapshot`.\n- `packages/docs/content/json-schema.mdx:237` — missing blank line before the `### cycles` heading that follows.\n- The PR body flags that `cycles: \"throw\"` now wins over the unrepresentable error. The duplicate-`id` error in `extractDefs` moved ahead of it for the same reason and isn't mentioned — `z.toJSONSchema(z.object({ a: A, b: B, c: z.bigint() }))` with `A`/`B` sharing an id now reports the duplicate id.\n- `packages/zod/src/v4/classic/tests/to-json-schema.test.ts:3328` — `await expect(validateOpenAPI30Schema(jsonSchema)).resolves.toBe(true)` can't fail; the helper returns `true` unconditionally and only `console.error`s on invalidity. The inline snapshot above it is the load-bearing assertion. Matches the file's existing convention, so take it or leave it.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6391?action=fix&review_id=4923715030) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6391?action=fix-approved&review_id=4923715030) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31670065482/job/94352680812) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6391#pullrequestreview-4923715030"
+    },
+    {
+      "id": 4923718854,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "bfc35306118dec2456b6e83820bade272ae38d90",
+      "at": "2026-08-13T05:32:26Z",
+      "body": "> ℹ️ Incremental pass over `bfc3530` only — test-only, nothing new to flag. The findings from my [previous review](https://github.com/colinhacks/zod/pull/6391#pullrequestreview-4923715030) still stand.\n\n**Reviewed changes** — `bfc35306` (\"test(json-schema): cover unrepresentable types behind schema-cloning wrappers\"), the only commit added since my review of `708cecb7`.\n\n- **New `applies through wrappers that clone the schema` test** — covers `.describe()`, which sets `_zod.parent` so the date node is visited twice and both `Seen` entries record a message, plus the `z.optional(z.date())` ref-flattening path.\n\nAll four assertions are load-bearing: the two snapshots pin the merged result rather than absorbing it, `z.bigint().describe(\"x\")` confirms `.describe()`'s `description` doesn't waive the error through the parent chain, and `z.date().describe(\"x\")` with no `override` confirms the deferred throw still fires. Verified green locally.\n\n<!--\nPullfrog review metadata. These findings were written against bfc3530;\nif commits have landed on feat/override-before-unrepresentable since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 4\n- Commits reviewed: 2\n- Base: main (81d9fc6)\n- Head: feat/override-before-unrepresentable (bfc3530)\n- Reviewed commits:\n  - bfc3530 — test(json-schema): cover unrepresentable types behind schema-cloning wrappers\n- Prior pullfrog review: 708cecb (https://github.com/colinhacks/zod/pull/6391#pullrequestreview-4923715030)\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix it ➔](https://pullfrog.com/trigger/colinhacks/zod/6391?action=fix&review_id=4923718854) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31670065482/job/94352680812) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6391#pullrequestreview-4923718854"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3772672907,
+      "review": 4923715030,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/to-json-schema.ts",
+      "line": 505,
+      "originalLine": 505,
+      "commit": "7f6a296cfb02e848d0888af7cee8ed5b5518f170",
+      "originalCommit": "708cecb7b05c2a3b3c074d3160ce8c388e532536",
+      "at": "2026-08-13T05:31:32Z",
+      "body": "`ANNOTATION_KEYS` is a denylist, so *any* key outside it counts as \"gave this node a form\" — including keys that carry no schema semantics at all. A blanket `override` that stamps a vendor extension on every node therefore suppresses every unrepresentable error and emits nonsense instead:\n\n```ts\nz.toJSONSchema(z.object({ id: z.bigint() }), {\n  override: (ctx) => { ctx.jsonSchema.whatever = \"sup\"; },\n});\n// => { properties: { id: { whatever: \"sup\" } }, ... }   no throw\n```\n\nThat callback is verbatim the canonical `override` example in the docs (`json-schema.mdx:319`). `x-*` extensions and OpenAPI 3.0's singular `example` behave the same way, which is a realistic pattern for anyone stamping provenance metadata across a schema. Inverting to a positive list of form-defining keywords (`type`, `enum`, `const`, `$ref`, `format`, `anyOf`/`oneOf`/`allOf`/`not`, `items`/`prefixItems`, `properties`, ...) would close it while keeping both halves of the current rule.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Denylist-based \"handled\" detection lets unrelated keys waive the unrepresentable error\n\n## Affected sites\n- `packages/zod/src/v4/core/to-json-schema.ts:384-396` — `ANNOTATION_KEYS` enumerates annotations; everything else is implicitly treated as structural.\n- `packages/zod/src/v4/core/to-json-schema.ts:398-404` — `structuralSnapshot` copies every non-listed key.\n- `packages/zod/src/v4/core/to-json-schema.ts:503-505` — the throw is skipped whenever that snapshot differs.\n\n## Reproductions (all currently return without throwing)\n```ts\nz.toJSONSchema(z.bigint(), { override: (ctx) => { ctx.jsonSchema.whatever = \"sup\"; } });\nz.toJSONSchema(z.bigint(), { override: (ctx) => { ctx.jsonSchema[\"x-zod-type\"] = ctx.zodSchema._zod.def.type; } });\nz.toJSONSchema(z.bigint(), { target: \"openapi-3.0\", override: (ctx) => { ctx.jsonSchema.example = 5; } });\n```\nThe first is the docs' own `override` example. Existing users with such an override lose the unrepresentable safety net silently on upgrade.\n\n## Required outcome\n- Only a change that actually gives the node a JSON Schema *form* should waive the error. Adding a key with no schema semantics must not.\n- Both existing guarantees must survive: annotations alone don't count, and value-level cases (dynamic `.catch()`, `z.literal([undefined, \"a\"])`) still throw even though their node already has a `type`/`const`.\n\n## Suggested approach\n- Replace `ANNOTATION_KEYS` with a positive `FORM_KEYS` set and snapshot only those keys. The value-level cases keep throwing because their form keys are unchanged by a no-op override, and the date example keeps working because it writes `type` and `format`.\n- Whichever way it lands, add a test for a blanket structural override (e.g. `x-*`) asserting the error still throws — the current `annotations alone do not count` test only exercises `description`, which happens to be listed.\n````\n\n</details>",
+      "diffHunk": "@@ -451,11 +486,23 @@ export function finalize<T extends schemas.$ZodType>(\n     }\n \n     // execute overrides\n+    // Snapshot the structural (non-annotation) half so we can tell whether `override` actually\n+    // gave this node a JSON Schema form.\n+    const before = seen.unrepresentable !== undefined ? structuralSnapshot(schema) : \"\";\n+\n     ctx.override({\n       zodSchema: zodSchema as schemas.$ZodTypes,\n       jsonSchema: schema,\n       path: seen.path ?? [],\n     });\n+\n+    // An unrepresentable node survives only if `override` changed something structural about it.\n+    // Annotations don't count, so a blanket `description` override can't silently disable every\n+    // unrepresentable error; and requiring a *change* keeps value-level cases (an `undefined`\n+    // literal member, a dynamic `.catch()`) throwing even though their node already has a form.\n+    if (seen.unrepresentable !== undefined && structuralSnapshot(schema) === before) {\n+      throw new Error(seen.unrepresentable);\n+    }",
+      "url": "https://github.com/colinhacks/zod/pull/6391#discussion_r3772672907"
+    },
+    {
+      "id": 3772672912,
+      "review": 4923715030,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/docs/content/json-schema.mdx",
+      "line": 339,
+      "originalLine": 339,
+      "commit": "7f6a296cfb02e848d0888af7cee8ed5b5518f170",
+      "originalCommit": "708cecb7b05c2a3b3c074d3160ce8c388e532536",
+      "at": "2026-08-13T05:31:32Z",
+      "body": "This states only half the rule and is currently falsifiable: `description` is suppressed because it's in the hardcoded annotation list, but `ctx.jsonSchema.whatever = \"sup\"` — the example three sections up at line 319 — does suppress the error on every unrepresentable type. Once the detection is settled, spell out what actually counts as handling a node rather than framing it as \"annotations don't count\", so users can predict it.",
+      "diffHunk": "@@ -335,6 +336,21 @@ const result = z.toJSONSchema(z.date(), {\n });\n ```\n \n+Any unrepresentable type your `override` doesn't give a JSON Schema still throws. Annotations don't count as handling one — adding a `description` to every schema won't suppress the error.",
+      "url": "https://github.com/colinhacks/zod/pull/6391#discussion_r3772672912"
+    }
+  ],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-13T06:56:54Z",
+      "number": 9,
+      "repo": "zirkelc/zod",
+      "pull": true,
+      "title": "refactor(json-schema): collapse unrepresentable-type processors into a factory",
+      "state": "closed",
+      "url": "https://github.com/zirkelc/zod/pull/9"
+    },
+    {
+      "at": "2026-08-13T07:16:39Z",
+      "number": 6393,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "refactor(json-schema): collapse unrepresentable-type processors into a factory",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6393"
+    },
+    {
+      "at": "2026-08-13T16:28:39Z",
+      "number": 6399,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "fix(json-schema): require a form-defining keyword to suppress the unrepresentable error",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6399"
+    },
+    {
+      "at": "2026-08-13T18:34:05Z",
+      "number": 6380,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "feat(json-schema): accept a function for `unrepresentable`",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6380"
+    }
+  ]
+}

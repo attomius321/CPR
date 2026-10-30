@@ -1,0 +1,196 @@
+{
+  "number": 21338,
+  "title": "[PM-39190] [PM-19354] fix(generator): restore catch-all website-name option",
+  "body": "## 🎟️ Tracking\r\n\r\nFixes https://github.com/bitwarden/clients/issues/13899\r\n\r\n[Bitwarden internal tracking](https://bitwarden.atlassian.net/browse/PM-39190)\r\n\r\n## 📔 Objective\r\n\r\nThis PR restores the missing **Website name** option for catch-all email username generation in the new generator UI.\r\n\r\n## 📸 Screenshots\r\n\r\n<img width=\"802\" height=\"651\" alt=\"Screenshot 2026-09-03 at 07 53 19\" src=\"https://github.com/user-attachments/assets/f534cbda-5db2-4a33-84c1-feba682ce954\" />\r\n\r\n\r\n<img width=\"802\" height=\"651\" alt=\"Screenshot 2026-09-03 at 07 53 25\" src=\"https://github.com/user-attachments/assets/838e16c5-0244-4a3c-a6fe-bf1d9a73859d\" />\r\n",
+  "user": {
+    "login": "esteve",
+    "type": "User"
+  },
+  "baseSha": "1f4354747f3b8ebfdbe437b05366a61bb9b406ec",
+  "headSha": "acde54bd119754408a792d1cce9f4627c165116e",
+  "mergedAt": "2026-09-08T17:19:29Z",
+  "mergeCommit": "a5fc28a0beb7ee961a10b0314d3fd5b975e72f4a",
+  "commits": 3,
+  "reviews": [
+    {
+      "id": 5102791594,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "acde54bd119754408a792d1cce9f4627c165116e",
+      "at": "2026-09-03T13:52:48Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/21338#pullrequestreview-5102791594"
+    }
+  ],
+  "inline": [],
+  "comments": [
+    {
+      "id": 4730875582,
+      "user": {
+        "login": "CLAassistant",
+        "type": "User"
+      },
+      "at": "2026-06-17T13:41:33Z",
+      "updated": "2026-06-17T13:46:50Z",
+      "body": "[![CLA assistant check](https://cla-assistant.io/pull/badge/signed)](https://cla-assistant.io/bitwarden/clients?pullRequest=21338) <br/>All committers have signed the CLA.",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-4730875582"
+    },
+    {
+      "id": 4730880190,
+      "user": {
+        "login": "bitwarden-bot",
+        "type": "User"
+      },
+      "at": "2026-06-17T13:42:05Z",
+      "updated": "2026-06-17T13:42:05Z",
+      "body": "Thank you for your contribution! We've added this to our internal tracking system for review.\nID: PM-39190\nLink: https://bitwarden.atlassian.net/browse/PM-39190\n\nDetails on our contribution process can be found here: https://contributing.bitwarden.com/contributing/pull-requests/community-pr-process.",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-4730880190"
+    },
+    {
+      "id": 4731399479,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "at": "2026-06-17T14:23:01Z",
+      "updated": "2026-06-17T14:23:01Z",
+      "body": "Thanks @esteve for taking initiative to resolve this. The first step in our [community PR review process](https://contributing.bitwarden.com/contributing/pull-requests/community-pr-process/#product-assessment) is assessment by our internal product team. I've also messaged the team directly because I think it's important to restore this functionality, provided it aligns with any future work they may have planned for generator functionality. \r\n\r\nI'll reach out to you here when I have any updates. Thanks again for your contribution. ",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-4731399479"
+    },
+    {
+      "id": 4731521431,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "at": "2026-06-17T14:31:23Z",
+      "updated": "2026-06-17T15:06:39Z",
+      "body": "~~@esteve One thing I notice when comparing the proposed changes against our current production extension is that no \"Generator History\"  is shown. Additionally, it looks like the selector component at top of the extension view has been replaced with some sort of navigable view. I expect our product team to ask about these changes, and if the restored functionality might be able to be better integrated into our current design. I've attached a comparison below to better explain the changes I am seeing.~~\r\n\r\n<img width=\"1085\" height=\"688\" alt=\"Screenshot 2026-06-17 at 07 14 50\" src=\"https://github.com/user-attachments/assets/7453dc01-441d-4892-b061-c439815d3b24\" />\r\n",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-4731521431"
+    },
+    {
+      "id": 4731594436,
+      "user": {
+        "login": "esteve",
+        "type": "User"
+      },
+      "at": "2026-06-17T14:36:20Z",
+      "updated": "2026-06-17T14:36:20Z",
+      "body": "@harr1424 thanks for the feedback. However, this is what I see on the Firefox extension without my changes, it looks quite different from yours, it doesn't have the generator history nor the lower section:\r\n\r\n<img width=\"670\" height=\"817\" alt=\"image\" src=\"https://github.com/user-attachments/assets/6cbc3008-ab3b-4db0-8d04-59491b329d8e\" />\r\n",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-4731594436"
+    },
+    {
+      "id": 4731613067,
+      "user": {
+        "login": "esteve",
+        "type": "User"
+      },
+      "at": "2026-06-17T14:37:37Z",
+      "updated": "2026-06-17T14:37:37Z",
+      "body": "This is the version of the extension I'm using, I downloaded it from addons.mozilla.org\r\n\r\n<img width=\"670\" height=\"817\" alt=\"image\" src=\"https://github.com/user-attachments/assets/59fdc33d-f2b9-4c6d-8601-9def18bbc8c1\" />\r\n",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-4731613067"
+    },
+    {
+      "id": 4731982998,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "at": "2026-06-17T15:04:05Z",
+      "updated": "2026-06-17T15:04:05Z",
+      "body": "My apologies @esteve as I made an assumption you were using the Generator tab to demonstrate this. When attempting to generate a username from within a vault item, I do see the same design you are showing. ",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-4731982998"
+    },
+    {
+      "id": 4732011622,
+      "user": {
+        "login": "djsmith85",
+        "type": "User"
+      },
+      "at": "2026-06-17T15:06:15Z",
+      "updated": "2026-06-17T15:24:53Z",
+      "body": "@harr1424: I think @esteve is showing the inline username generator from within a login item.\r\n\r\nI remember that during the migration of the forwarders into the newer generator framework the website option got removed. \r\n\r\n[PM-16948](https://bitwarden.atlassian.net/browse/PM-16948) and the parent epic + child-tickets have more information relating to website on plus-address and catch-all.\r\n\r\n\r\n\r\n[PM-16948]: https://bitwarden.atlassian.net/browse/PM-16948?atlOrigin=eyJpIjoiNWRkNTljNzYxNjVmNDY3MDlhMDU5Y2ZhYzA5YTRkZjUiLCJwIjoiZ2l0aHViLWNvbS1KU1cifQ",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-4732011622"
+    },
+    {
+      "id": 5484956228,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "at": "2026-08-31T21:35:18Z",
+      "updated": "2026-08-31T21:35:18Z",
+      "body": "Hi @esteve thanks for your patience regarding this PR. The team has received approval from our internal product teams to move forward with this change, with one adjustment requested: \r\n\r\nWould you be willing to adjust the radio buttons such that they are stacked vertically, by making use of [this component](https://components.bitwarden.com/?path=/docs/component-library-form-radio-button--docs#block)? ",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-5484956228"
+    },
+    {
+      "id": 5525108103,
+      "user": {
+        "login": "esteve",
+        "type": "User"
+      },
+      "at": "2026-09-03T11:36:14Z",
+      "updated": "2026-09-03T11:36:14Z",
+      "body": "@harr1424 sure! I've pushed https://github.com/bitwarden/clients/pull/21338/commits/eda4fba44a1229c452c1fdcace580f6491f2374e with that change, let me know if that's all. Thanks.",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-5525108103"
+    },
+    {
+      "id": 5526952399,
+      "user": {
+        "login": "esteve",
+        "type": "User"
+      },
+      "at": "2026-09-03T14:02:07Z",
+      "updated": "2026-09-03T14:02:07Z",
+      "body": "@harr1424 I've just rebased this PR on top of main so that there's no need to merge from main and to keep the history clean.",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-5526952399"
+    },
+    {
+      "id": 5527919420,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-03T15:19:02Z",
+      "updated": "2026-09-08T17:14:18Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/21338?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:x: Patch coverage is `85.71429%` with `1 line` in your changes missing coverage. Please review.\n:white_check_mark: Project coverage is 55.66%. Comparing base ([`1f43547`](https://app.codecov.io/gh/bitwarden/clients/commit/1f4354747f3b8ebfdbe437b05366a61bb9b406ec?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`acde54b`](https://app.codecov.io/gh/bitwarden/clients/commit/acde54bd119754408a792d1cce9f4627c165116e?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:white_check_mark: All tests successful. No failed tests found.\n\n| [Files with missing lines](https://app.codecov.io/gh/bitwarden/clients/pull/21338?dropdown=coverage&src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) | Patch % | Lines |\n|---|---|---|\n| [...ools/generator/core/src/engine/email-randomizer.ts](https://app.codecov.io/gh/bitwarden/clients/pull/21338?src=pr&el=tree&filepath=libs%2Ftools%2Fgenerator%2Fcore%2Fsrc%2Fengine%2Femail-randomizer.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-bGlicy90b29scy9nZW5lcmF0b3IvY29yZS9zcmMvZW5naW5lL2VtYWlsLXJhbmRvbWl6ZXIudHM=) | 85.71% | [0 Missing and 1 partial :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/21338?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@           Coverage Diff           @@\n##             main   #21338   +/-   ##\n=======================================\n  Coverage   55.66%   55.66%           \n=======================================\n  Files        4420     4420           \n  Lines      141279   141286    +7     \n  Branches    22464    22466    +2     \n=======================================\n+ Hits        78641    78646    +5     \n- Misses      56917    56918    +1     \n- Partials     5721     5722    +1     \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/21338?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-5527919420"
+    },
+    {
+      "id": 5589436790,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "at": "2026-09-08T17:48:39Z",
+      "updated": "2026-09-08T17:48:39Z",
+      "body": "@esteve thank you for your contribution! This will be included in our next extension release, scheduled for 10/15. ",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-5589436790"
+    },
+    {
+      "id": 5590604253,
+      "user": {
+        "login": "esteve",
+        "type": "User"
+      },
+      "at": "2026-09-08T19:25:06Z",
+      "updated": "2026-09-08T19:25:06Z",
+      "body": "@harr1424 awesome, thank you!",
+      "url": "https://github.com/bitwarden/clients/pull/21338#issuecomment-5590604253"
+    }
+  ],
+  "citedBy": [
+    {
+      "at": "2026-06-17T13:42:18Z",
+      "number": 13899,
+      "repo": "bitwarden/clients",
+      "pull": false,
+      "title": "New extension UI missing the “website name” option for catch-all email username generator",
+      "state": "closed",
+      "url": "https://github.com/bitwarden/clients/issues/13899"
+    }
+  ]
+}

@@ -1,0 +1,77 @@
+{
+  "number": 6576,
+  "title": "docs: reconcile the sponsor listings with active sponsorships",
+  "body": "Brings both sponsor listings in line with the active GitHub sponsorships.\n\nRemoved from zod.dev, none of them sponsoring. Cancellation dates come from the sponsor activity feed; the active list is the ground truth, because a cancellation on its own doesn't mean churn — CodeRabbit and Storyblok both cancelled and re-subscribed on annual terms.\n\n| Tier | Sponsor | Cancelled |\n| --- | --- | --- |\n| Gold | Neon | 2026-07-05 |\n| Gold | Stainless | 2026-06-20 |\n| Silver | Crypto Jobs List | 2026-09-08 |\n| Silver | Nitric | 2026-09-08 |\n| Silver | Cerbos | 2026-09-05 |\n| Silver | Plain | 2026-07-21 |\n| Silver | Ferry Health | 2026-06-01 |\n| Silver | Sanity | never recurring — two one-time payments, last 2026-01-26 |\n| Bronze | Clipboard | 2026-04-30 |\n\nThe other two commits:\n\n- **Trigger.dev joins Platinum.** They opened a $999/mo sponsorship on 2026-09-08, having lapsed in 2024 and been pruned from Silver in 7391be88. That price is the platinum point — CodeRabbit was on it when added to the tier in c6a0ca3d, and the tiers below are $499 (Neon and Stainless, both Gold) and $249 (PropelAuth, 9thCO, Subtotal, all Silver). Uses their GitHub org mark, since they publish no light/dark wordmark pair.\n- **The Zod 3 roster is 19 entries out of date.** `v3.zod.dev` serves `packages/docs-v3/home.md`, and it still advertised Courier, LibLab, Retool, Speakeasy, Infisical, Val Town, Encore, Replay, Numeric, Marcato Partners, Interval, Seasoned and Bamboo Creative alongside the nine above — its entire Gold tier was inactive. All 19 are gone. Zernio joins Gold so the tier isn't empty, Subtotal and 9thCO join Silver, Convex and n8n join Bronze, and Trigger.dev moves to Platinum. The two English pages now list the same sponsors at the same tiers, except that Route4Me stays on the Zod 3 page — they sponsor actively but have never been on the current one. Every kept entry's markup is untouched; only the row grouping is regenerated.\n\nTwo that look cancelled but aren't, and stay: Zernio has no GitHub Sponsors record at all, so it bills through the other channel; Cybozu points its logo at the `cybozu-sponsorship` account while the active sponsorship sits under `cybozu`.\n\nGold on zod.dev is down to one entry, so its grid stays single-column below two sponsors and the last cell drops its right border. Otherwise the lone card strands a divider down the middle.\n\nThe Korean and Chinese Zod 3 pages keep their own, older rosters. The Korean one still lists Clerk as Platinum and the Chinese one lists Astro and Trip, so they are snapshots of a different era rather than maintained listings.\n\nOne thing worth watching: CodeRabbit dropped from $999 to $499 in May and has a pending change dated 2026-09-04. Every other pending change in the feed was followed by a cancellation within a month.\n",
+  "user": {
+    "login": "colinhacks",
+    "type": "User"
+  },
+  "baseSha": "36f17960d1defca5d0896d9424f4e1059fbbf081",
+  "headSha": "d91af26dadc090597507a96ad0ca85618bc207ae",
+  "mergedAt": "2026-09-09T16:00:26Z",
+  "mergeCommit": "f9465d4e6497f92fe85ef7118ea64d7f86c28676",
+  "commits": 3,
+  "reviews": [
+    {
+      "id": 5150088502,
+      "user": {
+        "login": "copilot-pull-request-reviewer[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "c77ab8780045f7785904ac9ded843c59f9dcf189",
+      "at": "2026-09-09T05:24:01Z",
+      "body": "### 🟢 Approval recommended\n\nThe changes are straightforward content updates plus a small, self-contained layout tweak with no remaining references to the removed sponsors in `packages/docs`.\n\n<details>\n<summary>Pull request overview</summary>\n\nUpdates the docs sponsor tier components to reflect the current active sponsor list by removing lapsed entries, and tweaks the Gold tier layout so a single remaining sponsor doesn’t render as an awkward two-column grid.\n\n**Changes:**\n- Removed lapsed Silver and Bronze sponsors from their respective `companies` lists.\n- Removed lapsed Gold sponsors and made the Gold grid responsive to the number of entries (only enabling 2 columns when there’s more than 1).\n- Adjusted Gold card border classes so the last card won’t render a right border.\n</details>\n\n<details>\n<summary>File summaries</summary>\n\n| File | Description |\r\n| ---- | ----------- |\r\n| packages/docs/components/silver.tsx | Removes several lapsed Silver sponsors from the rendered list |\r\n| packages/docs/components/gold.tsx | Removes Neon/Stainless and makes the Gold grid conditional on company count for better single-sponsor layout |\r\n| packages/docs/components/bronze.tsx | Removes Clipboard from the Bronze sponsor list |\n</details>\n\n<details>\n<summary>Review details</summary>\n\n- **Files reviewed:** 3/3 changed files\n- **Comments generated:** 0\n- **Review effort level:** Lite\n</details>\n\n---\n\n💡 <a href=\"/colinhacks/zod/new/main?filename=.github/skills/code-review/SKILL.md\" class=\"Link--inTextBlock\" target=\"_blank\" rel=\"noopener noreferrer\">Add a `code-review` agent skill</a> or configure MCP servers for context-aware, tailored reviews. <a href=\"https://docs.github.com/copilot/how-tos/use-copilot-agents/request-a-code-review/use-code-review?tool=webui#mcp-servers-and-agent-skills\" class=\"Link--inTextBlock\" target=\"_blank\" rel=\"noopener noreferrer\">Learn more in the docs.</a>",
+      "url": "https://github.com/colinhacks/zod/pull/6576#pullrequestreview-5150088502"
+    },
+    {
+      "id": 5150141834,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "c77ab8780045f7785904ac9ded843c59f9dcf189",
+      "at": "2026-09-09T05:32:03Z",
+      "body": "> [!IMPORTANT]\n> The current-site prune is correct, but the deployed Zod 3 site still advertises six sponsors this PR identifies as inactive.\n\n**Reviewed changes** I reviewed the complete sponsor-tier diff and its deployed documentation context at `c77ab878`.\n\n- **Sponsor roster** — Removes Clipboard from Bronze, Neon and Stainless from Gold, and six inactive Silver sponsors; the removals match the audit in the PR body.\n- **Gold layout** — Keeps the lone remaining Gold card in one column and removes its stranded right border.\n\n<!--\nPullfrog review metadata. These findings were written against c77ab878;\nif commits have landed on docs-sponsor-prune-2026-09 since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: Review (initial)\n- Files reviewed: 3\n- Commits reviewed: 1\n- Base: main (36f17960)\n- Head: docs-sponsor-prune-2026-09 (c77ab878)\n- Reviewed commits:\n  - c77ab878 — docs: prune lapsed sponsors from the gold, silver and bronze tiers\n- Prior pullfrog review: none\n-->\n\n### ⚠️ The deployed Zod 3 sponsor roster remains stale\n\nThe live `v3.zod.dev` homepage still lists Neon, Stainless, Nitric, Cerbos, CryptoJobsList, and Plain, even though this audit removes them from the current docs. The Korean Zod 3 page also retains five of those entries, so merging now leaves publicly served sponsor pages contradicting the active-sponsorship list.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Prune the deployed Zod 3 sponsor pages too\n\n## Affected sites\n\n- [`packages/docs-v3/home.md:250`](https://github.com/colinhacks/zod/blob/c77ab8780045f7785904ac9ded843c59f9dcf189/packages/docs-v3/home.md#L250-L373) — the deployed Docsify homepage contains all six stale entries\n- [`packages/docs-v3/README_KO.md:235`](https://github.com/colinhacks/zod/blob/c77ab8780045f7785904ac9ded843c59f9dcf189/packages/docs-v3/README_KO.md#L235-L357) — the Korean page repeats all except Nitric\n- [`packages/docs-v3/index.html:287`](https://github.com/colinhacks/zod/blob/c77ab8780045f7785904ac9ded843c59f9dcf189/packages/docs-v3/index.html#L287) — configures `home.md` as the live homepage\n\n## Required outcome\n\n- Remove the same inactive sponsors from the deployed Zod 3 sponsor tables, or explicitly document why that live site intentionally preserves a historical sponsor roster.\n````\n\n</details>\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix it ➔](https://pullfrog.com/trigger/colinhacks/zod/6576?action=fix&review_id=5150141834) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/34314481973/job/102347725971) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6576#pullrequestreview-5150141834"
+    },
+    {
+      "id": 5156400615,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "fc42265d2c06f2d7ea80f71d47fc5579bf7f3301",
+      "at": "2026-09-09T15:26:15Z",
+      "body": "> [!IMPORTANT]\n> The deployed English Zod 3 roster still does not match the audited current roster.\n\n**Reviewed changes** I reviewed the two follow-up commits since the prior Pullfrog review and rechecked the complete five-file sponsor diff.\n\n- **Platinum tier:** Added Trigger.dev to the current and Zod 3 English sponsor listings.\n- **Zod 3 roster:** Removed the inactive English entries, added Zernio to Gold, and regrouped the retained table cells.\n\n<!--\nPullfrog review metadata. These findings were written against fc42265d;\nif commits have landed on docs-sponsor-prune-2026-09 since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 5\n- Commits reviewed: 3\n- Base: main (36f17960)\n- Head: docs-sponsor-prune-2026-09 (fc42265d)\n- Reviewed commits:\n  - fc42265d — docs(v3): bring the Zod 3 sponsor roster in line with active sponsorships\n  - b9f0741b — docs: add Trigger.dev to the platinum tier\n  - c77ab878 — docs: prune lapsed sponsors from the gold, silver and bronze tiers\n- Prior pullfrog review: c77ab878 (https://github.com/colinhacks/zod/pull/6576#pullrequestreview-5150141834)\n-->\n\n### ⚠️ The English sponsor rosters still disagree\n\nThe new Zod 3 table omits Subtotal and 9thCO from Silver and Convex and n8n from Bronze, although all four remain in the audited current roster. It also retains Route4Me only on the Zod 3 page, so the two public English listings still cannot both represent the active sponsorships described in the PR.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Reconcile the English sponsor memberships\n\n## Affected sites\n- `packages/docs-v3/home.md:250` — the updated Silver table lacks Subtotal and 9thCO\n- `packages/docs-v3/home.md:302` — the updated Bronze table lacks Convex and n8n but retains Route4Me\n- `packages/docs/components/silver.tsx:3` — the current Silver roster includes Subtotal and 9thCO\n- `packages/docs/components/bronze.tsx:3` — the current Bronze roster includes Convex and n8n but not Route4Me\n\n## Required outcome\n- Make the two English sponsor rosters agree on active membership and tier, or document each intentional placement difference in the PR.\n\n## Open questions for the human\n- Is Route4Me still active through a non-GitHub channel, or should it be removed from the Zod 3 page?\n````\n\n</details>\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix it ➔](https://pullfrog.com/trigger/colinhacks/zod/6576?action=fix&review_id=5156400615) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/34369546915/job/102526929322) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6576#pullrequestreview-5156400615"
+    },
+    {
+      "id": 5156479879,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "d91af26dadc090597507a96ad0ca85618bc207ae",
+      "at": "2026-09-09T15:33:32Z",
+      "body": "> ✅ No new issues found.\n\n**Reviewed changes** I reviewed the roster reconciliation added since the prior Pullfrog review and rechecked the complete five-file sponsor diff.\n\n- **Zod 3 Silver tier** — Added Subtotal and 9thCO so the English Zod 3 roster matches the current docs.\n- **Zod 3 Bronze tier** — Added Convex and n8n while preserving the documented Route4Me exception.\n\n<!--\nPullfrog review metadata. These findings were written against d91af26d;\nif commits have landed on docs-sponsor-prune-2026-09 since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 5\n- Commits reviewed: 3\n- Base: main (36f17960)\n- Head: docs-sponsor-prune-2026-09 (d91af26d)\n- Reviewed commits:\n  - d91af26d — docs(v3): bring the Zod 3 sponsor roster in line with active sponsorships\n  - b9f0741b — docs: add Trigger.dev to the platinum tier\n  - c77ab878 — docs: prune lapsed sponsors from the gold, silver and bronze tiers\n- Prior pullfrog review: fc42265d (https://github.com/colinhacks/zod/pull/6576#pullrequestreview-5156400615)\n-->\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/34370565155/job/102530426533) ｜ Using `GPT Sol` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6576#pullrequestreview-5156479879"
+    }
+  ],
+  "inline": [],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-09-09T16:23:57Z",
+      "number": 6579,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "docs: reconcile the sponsor listings against every active sponsorship",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6579"
+    }
+  ]
+}

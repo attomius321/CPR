@@ -1,0 +1,71 @@
+{
+  "number": 23207,
+  "title": "fix(optimizer): close custom extension analysis bundles",
+  "body": "## What’s happening?\r\n\r\nWhen Vite analyzes a dependency matched by `optimizeDeps.extensions`, it creates a temporary Rolldown build to inspect its exports.\r\n\r\nVite calls `build.generate()`, parses the generated output, and returns without closing that build.\r\n\r\nA regression using an optimizer-only Rolldown plugin shows the mismatch:\r\n\r\n```text\r\nbundle starts: 2\r\nbundle closes: 1\r\n```\r\n\r\nOne build is used for custom-extension export analysis and another for the dependency prebundle. The export-analysis build remains open.\r\n\r\n## What changes?\r\n\r\nWrap the export-analysis step in `try/finally` and call `await build.close()` in the `finally` block.\r\n\r\nThis closes the temporary build after successful analysis and when generation or parsing throws.\r\n\r\n## Tests\r\n\r\nAdded `customExtensionBundleClose.spec.ts`, which uses a dependency with a `.notjs` extension and counts Rolldown `buildStart` and `closeBundle` calls.\r\n\r\nThe regression verifies that every started build is closed.\r\n\r\n```sh\r\npnpm test-unit packages/vite/src/node/__tests__/optimizer/customExtensionBundleClose.spec.ts\r\n```",
+  "user": {
+    "login": "teamleaderleo",
+    "type": "User"
+  },
+  "baseSha": "57fea001d154e7dd8d5d74d3082731f1dcfd31be",
+  "headSha": "0fea04474872257d8bf91d2e7587657dc7f77924",
+  "mergedAt": "2026-08-11T02:50:07Z",
+  "mergeCommit": "8fb76752836f61224d3095b502fa237b478a06b2",
+  "commits": 1,
+  "reviews": [
+    {
+      "id": 4890311779,
+      "user": {
+        "login": "btea",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "0fea04474872257d8bf91d2e7587657dc7f77924",
+      "at": "2026-08-09T02:04:39Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23207#pullrequestreview-4890311779"
+    }
+  ],
+  "inline": [],
+  "comments": [
+    {
+      "id": 5248442246,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "at": "2026-08-11T02:50:13Z",
+      "updated": "2026-08-11T02:50:13Z",
+      "body": "Nice catch. Thanks!",
+      "url": "https://github.com/vitejs/vite/pull/23207#issuecomment-5248442246"
+    }
+  ],
+  "citedBy": [
+    {
+      "at": "2026-08-11T09:41:55Z",
+      "number": 23231,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "test(define): close rolldown bundler after generate",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23231"
+    },
+    {
+      "at": "2026-08-21T00:18:45Z",
+      "number": 106,
+      "repo": "sudocarlos/tailrelay",
+      "pull": false,
+      "title": "chore: update Vite from 8.2.1 to 8.2.2",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/issues/106"
+    },
+    {
+      "at": "2026-10-22T21:06:33Z",
+      "number": 300,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm-dev）: bump the npm-minor-patch group across 3 directories with 2 updates",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/300"
+    }
+  ]
+}

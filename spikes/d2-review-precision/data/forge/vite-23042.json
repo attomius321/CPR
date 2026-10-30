@@ -1,0 +1,261 @@
+{
+  "number": 23042,
+  "title": "feat(cli): support naming the CPU profile via --profile [name]",
+  "body": "closes #23032\r\ncloses #23033\r\n\r\n`bin/vite.js` has always consumed the token after `--profile` as a value, but then discarded it: the profiler is started unconditionally and no code ever read the value. This made commands like `vite --profile my-app` silently drop `my-app`.\r\n\r\nThis PR gives the consumed value its intended meaning: `vite --profile <name>` (or `--profile=<name>`) writes the profile to `<name>.cpuprofile` instead of `vite-profile-0.cpuprofile`. Both forms are supported and the next token is consumed exactly like cac handles the other optional-value flags such as `--sourcemap [output]` and `--open [path]`, so there is no breaking change: the token was already consumed before, it just had no effect. A bare `--profile` (at the end of the command or followed by another flag) keeps the current default naming. When the profiler is stopped and restarted multiple times in dev with the `p` shortcut, later dumps get a counter suffix (`<name>-1.cpuprofile`, `<name>-2.cpuprofile`), matching the numbering of the default name.\r\n\r\nThe flag is now also declared in cac, so it finally shows up in `vite --help` like the other bin-preparsed flags (`--debug`, `--filter`), and `profile` is stripped in `cleanGlobalCLIOptions` so a `--no-profile` value cannot leak into sub-configs. Docs are synced in `docs/guide/cli.md` and the troubleshooting guide.\r\n\r\nNo test is included: `bin/vite.js` has no existing test coverage. Verified manually that `vite build --profile=myname <root>` and `vite build --profile myname <root>` both build `<root>` and write `myname.cpuprofile`, that a bare `--profile` still writes `vite-profile-0.cpuprofile`, and that `--profile [name]` appears in `vite --help`.",
+  "user": {
+    "login": "shulaoda",
+    "type": "User"
+  },
+  "baseSha": "2ad9ec262a7bd8e30788df537eb217abe9af82ab",
+  "headSha": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+  "mergedAt": "2026-08-21T09:07:57Z",
+  "mergeCommit": "a500deeb6f52d93ca501a0fc612a5392b939f2f5",
+  "commits": 3,
+  "reviews": [
+    {
+      "id": 4783475603,
+      "user": {
+        "login": "btea",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-07-27T13:21:04Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23042#pullrequestreview-4783475603"
+    },
+    {
+      "id": 4792932063,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-07-28T01:30:42Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23042#pullrequestreview-4792932063"
+    },
+    {
+      "id": 4792933716,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-07-28T01:31:06Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23042#pullrequestreview-4792933716"
+    },
+    {
+      "id": 4796804130,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-07-28T11:39:20Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23042#pullrequestreview-4796804130"
+    },
+    {
+      "id": 4893202878,
+      "user": {
+        "login": "btea",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-08-10T01:54:16Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23042#pullrequestreview-4893202878"
+    },
+    {
+      "id": 4902445895,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-08-11T02:15:16Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23042#pullrequestreview-4902445895"
+    },
+    {
+      "id": 4957663884,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-08-18T05:53:09Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23042#pullrequestreview-4957663884"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3654284454,
+      "review": 4783475603,
+      "replyTo": null,
+      "user": {
+        "login": "btea",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/cli.ts",
+      "line": 86,
+      "originalLine": 86,
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "originalCommit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-07-27T03:51:33Z",
+      "body": "The user-provided profile name might contain invalid characters, causing a write crash. Let's use a try-catch block as a fallback, reverting to the default value on error.",
+      "diffHunk": "@@ -74,9 +75,14 @@ export const stopProfiler = (\n     profileSession!.post('Profiler.stop', (err, { profile }) => {\n       // Write profile to disk, upload, etc.\n       if (!err) {\n-        const outPath = path.resolve(\n-          `./vite-profile-${profileCount++}.cpuprofile`,\n-        )\n+        const name = global.__vite_profile_name\n+        const count = profileCount++\n+        const fileName = name\n+          ? count === 0\n+            ? name\n+            : `${name}-${count}`\n+          : `vite-profile-${count}`\n+        const outPath = path.resolve(`./${fileName}.cpuprofile`)\n         fs.writeFileSync(outPath, JSON.stringify(profile))",
+      "url": "https://github.com/vitejs/vite/pull/23042#discussion_r3654284454"
+    },
+    {
+      "id": 3662109599,
+      "review": 4792933716,
+      "replyTo": 3654284454,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/cli.ts",
+      "line": 86,
+      "originalLine": 86,
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "originalCommit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-07-28T01:31:06Z",
+      "body": "I think it's fine without handling this since this is user-provided input.",
+      "diffHunk": "@@ -74,9 +75,14 @@ export const stopProfiler = (\n     profileSession!.post('Profiler.stop', (err, { profile }) => {\n       // Write profile to disk, upload, etc.\n       if (!err) {\n-        const outPath = path.resolve(\n-          `./vite-profile-${profileCount++}.cpuprofile`,\n-        )\n+        const name = global.__vite_profile_name\n+        const count = profileCount++\n+        const fileName = name\n+          ? count === 0\n+            ? name\n+            : `${name}-${count}`\n+          : `vite-profile-${count}`\n+        const outPath = path.resolve(`./${fileName}.cpuprofile`)\n         fs.writeFileSync(outPath, JSON.stringify(profile))",
+      "url": "https://github.com/vitejs/vite/pull/23042#discussion_r3662109599"
+    },
+    {
+      "id": 3746084637,
+      "review": 4893202878,
+      "replyTo": null,
+      "user": {
+        "login": "btea",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/cli.ts",
+      "line": 84,
+      "originalLine": 84,
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "originalCommit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-08-10T01:54:12Z",
+      "body": "Wouldn't it be better to keep the naming rules consistent with the default naming method?\n```ts\nconst name = global.__vite_profile_name ?? 'vite-profile'                   \nconst fileName = `${name}-${profileCount++}`\n```",
+      "diffHunk": "@@ -74,9 +75,14 @@ export const stopProfiler = (\n     profileSession!.post('Profiler.stop', (err, { profile }) => {\n       // Write profile to disk, upload, etc.\n       if (!err) {\n-        const outPath = path.resolve(\n-          `./vite-profile-${profileCount++}.cpuprofile`,\n-        )\n+        const name = global.__vite_profile_name\n+        const count = profileCount++\n+        const fileName = name\n+          ? count === 0\n+            ? name\n+            : `${name}-${count}`\n+          : `vite-profile-${count}`",
+      "url": "https://github.com/vitejs/vite/pull/23042#discussion_r3746084637"
+    },
+    {
+      "id": 3754802452,
+      "review": 4902445895,
+      "replyTo": 3746084637,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/cli.ts",
+      "line": 84,
+      "originalLine": 84,
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "originalCommit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-08-11T02:15:16Z",
+      "body": "I don't really have a hard preference here, but I suppose it does make the behaviour more consistent if a custom name is given or not.",
+      "diffHunk": "@@ -74,9 +75,14 @@ export const stopProfiler = (\n     profileSession!.post('Profiler.stop', (err, { profile }) => {\n       // Write profile to disk, upload, etc.\n       if (!err) {\n-        const outPath = path.resolve(\n-          `./vite-profile-${profileCount++}.cpuprofile`,\n-        )\n+        const name = global.__vite_profile_name\n+        const count = profileCount++\n+        const fileName = name\n+          ? count === 0\n+            ? name\n+            : `${name}-${count}`\n+          : `vite-profile-${count}`",
+      "url": "https://github.com/vitejs/vite/pull/23042#discussion_r3754802452"
+    },
+    {
+      "id": 3801385219,
+      "review": 4957663884,
+      "replyTo": 3746084637,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/cli.ts",
+      "line": 84,
+      "originalLine": 84,
+      "commit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "originalCommit": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+      "at": "2026-08-18T05:53:09Z",
+      "body": "I think it's better to keep the name as-is for `count === 0` so that it's easier when `mv`ing or other interactions in CLI. If we were to make it consistent, I think it's better to change `vite-profile-0.cpuprofile` to `vite-profile.cpuprofile`.",
+      "diffHunk": "@@ -74,9 +75,14 @@ export const stopProfiler = (\n     profileSession!.post('Profiler.stop', (err, { profile }) => {\n       // Write profile to disk, upload, etc.\n       if (!err) {\n-        const outPath = path.resolve(\n-          `./vite-profile-${profileCount++}.cpuprofile`,\n-        )\n+        const name = global.__vite_profile_name\n+        const count = profileCount++\n+        const fileName = name\n+          ? count === 0\n+            ? name\n+            : `${name}-${count}`\n+          : `vite-profile-${count}`",
+      "url": "https://github.com/vitejs/vite/pull/23042#discussion_r3801385219"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5067710799,
+      "user": {
+        "login": "btea",
+        "type": "User"
+      },
+      "at": "2026-07-24T08:21:00Z",
+      "updated": "2026-07-24T08:21:00Z",
+      "body": "If we want to add new features, we need to synchronize the information in the documentation.\r\nhttps://github.com/vitejs/vite/blob/2ad9ec262a7bd8e30788df537eb217abe9af82ab/docs/guide/cli.md?plain=1#L30",
+      "url": "https://github.com/vitejs/vite/pull/23042#issuecomment-5067710799"
+    }
+  ],
+  "citedBy": [
+    {
+      "at": "2026-07-24T08:12:57Z",
+      "number": 23033,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "fix: don't swallow the positional argument after `--profile`",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23033"
+    },
+    {
+      "at": "2026-09-02T08:27:09Z",
+      "number": 23415,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "release: v8.3.0-beta.1",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23415"
+    },
+    {
+      "at": "2026-09-02T08:36:57Z",
+      "number": 23416,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "release: v8.3.0-beta.0",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23416"
+    },
+    {
+      "at": "2026-09-15T13:43:58Z",
+      "number": 23490,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "feat(cli): omit `-0` suffix from the first profile file name",
+      "state": "open",
+      "url": "https://github.com/vitejs/vite/pull/23490"
+    },
+    {
+      "at": "2026-09-16T03:10:45Z",
+      "number": 130,
+      "repo": "sudocarlos/tailrelay",
+      "pull": false,
+      "title": "chore: update Vite from 8.2.2 to 8.3.0",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/issues/130"
+    },
+    {
+      "at": "2026-09-16T03:23:27Z",
+      "number": 132,
+      "repo": "sudocarlos/tailrelay",
+      "pull": true,
+      "title": "chore: update Vite from 8.2.2 to 8.3.0",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/pull/132"
+    }
+  ]
+}

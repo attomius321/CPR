@@ -1,0 +1,348 @@
+{
+  "number": 6491,
+  "title": "feat(mini): publish Zod Mini as the standalone @zod/mini package",
+  "body": "Publishes Zod Mini as a standalone package, `@zod/mini`, from a new `packages/mini` workspace package. It is a thin re-export of `zod/mini` with `zod` as a peer dependency, so with the peer range satisfied a schema built with `@zod/mini` is the host install's `zod` schema: one declaration tree for TypeScript, one class identity at runtime.\n\nVersioning: `@zod/mini` ships in lockstep with `zod` (`4.5.3` now) and its peer floor is the minor it shipped with (`^4.5.0`). The semver check enforces both, so a release bump fails pre-commit unless `packages/mini/package.json` moves with it.\n\nPackaging follows zod's zshy layout with a single `types` condition, which keeps a CJS-typed consumer and an ESM app on the same declaration files (the #4422 / vercel/ai#7431 failure class). The resolution suite runs ATTW against the built package, and the integration fixtures type-check `@zod/mini` under `bundler`, `nodenext` and `node16` CJS with `skipLibCheck: false`.\n\nRelease: the workflow publishes `./packages/mini` as its last step, after zod's tag, GitHub release and JSR publish, so a failed mini publish cannot cost zod any of those. The step runs unconditionally because the publish action is a no-op when the version already exists; that is how the first publish, `4.5.3`, happens on this merge without bumping zod. A `workflow_dispatch` input, `mini_version`, publishes the scoped package alone at an x.y.z that zod already shipped, with the peer floor set to that minor, so `4.5.0` through `4.5.2` can be back-published with provenance under the same trusted publisher (`gh workflow run release.yml -f mini_version=4.5.2`). Those go out under a `backfill` dist-tag, since npm refuses a bare publish below `latest`; the tag is removed by hand afterwards. Prerelease tags are out of scope for `@zod/mini`: the version check skips it on a zod prerelease and refuses a prerelease publish of the scoped package itself. There is no JSR publish for `@zod/mini`; JSR consumers reach the same API through `@zod/zod`'s `./mini` export.\n\nBefore merging: `@zod/mini` already exists on npm (`4.0.0-beta.*` from the 4.0 beta period, `latest` pointing at `4.0.0-beta.0`), so the trusted publisher for this repo's release workflow has to be configured for it on npmjs.com; the publish step fails otherwise. The `latest` tag moves to `4.5.3` on the first publish; the deprecation message on the old betas stays until it is cleared or replaced by hand.\n\nRefs #4371.\n",
+  "user": {
+    "login": "colinhacks",
+    "type": "User"
+  },
+  "baseSha": "1a16102a494b03ce1df7b80b663ae2df465f419e",
+  "headSha": "6e17b6fbd9a57953f36161daa648615590929566",
+  "mergedAt": "2026-08-29T19:04:13Z",
+  "mergeCommit": "8ce9e8d56b1f408c445db6f2d7542696c6d20326",
+  "commits": 5,
+  "reviews": [
+    {
+      "id": 5054958040,
+      "user": {
+        "login": "copilot-pull-request-reviewer[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "at": "2026-08-28T20:46:40Z",
+      "body": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit.",
+      "url": "https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5054958040"
+    },
+    {
+      "id": 5055017215,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "at": "2026-08-28T20:56:17Z",
+      "body": "> [!IMPORTANT]\n> The package itself is clean, but two things in the release machinery need a look before this merges: the new publish steps sit upstream of the tag/release/JSR steps in a way that isn't recoverable by re-running, and the peer range the version check enforces is unsatisfiable on any prerelease.\n\n**Reviewed changes** — the full diff on `89aedde`, plus a local build and run of the affected suites.\n\n- **New `packages/mini` workspace package** — `@zod/mini@4.5.1`, source is a single `export * from \"zod/mini\"`, `zod` as a peer at `^4.5.0`. zshy layout copied from `packages/zod/package.json`, including the deliberate single `types` condition.\n- **Release workflow** — `packages/mini/package.json` added to `on.push.paths`, a mini `prepublishOnly` step, and an unconditional `publish_mini` step with a registry liveness poll.\n- **Version enforcement** — `scripts/check-versions.ts` gains a block pinning mini's version to `versions.ts` and its peer to `^{major}.{minor}.0`.\n- **Resolution and integration coverage** — an `attw --pack` case for `@zod/mini`, a `z9` import in the resolution fixture, and `mini.ts` / `mini-cjs-test.cts` type-check fixtures under `bundler`, `nodenext` and `node16` CJS with `skipLibCheck: false`.\n\nVerified locally: `pnpm build` emits exactly the four expected files and leaves the tree clean; `packages/mini`, `@zod/integration test:built` and `@zod/resolution test:all` all pass, with the new attw snapshot matching. On the bundle axis the re-export is free — an esbuild `--minify --format=esm` bundle of the same schema is **byte-identical** through `zod/mini` and through `@zod/mini` (12532 raw / 4453 gzip), under default conditions and under `@zod/source`.\n\n<!--\nPullfrog review metadata. These findings were written against 89aedde;\nif commits have landed on mini-package since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: Review (initial)\n- Files reviewed: 21\n- Commits reviewed: 1\n- Base: main (6c932fc)\n- Head: mini-package (89aedde)\n- Reviewed commits:\n  - 89aedde — feat(mini): publish Zod Mini as the standalone @zod/mini package\n- Prior pullfrog review: none\n-->\n\n### ⚠️ The documented release procedure now fails at pre-commit\n\n`CLAUDE.md` says three files must be bumped together and gives a `git add` line naming exactly those three. This PR makes it four — `check-versions.ts` now also requires `packages/mini/package.json` to carry the new version and a matching peer floor, and `pnpm check:semver` runs in `.husky/pre-commit`. Following the written procedure verbatim on the next release will abort the commit.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Release procedure in CLAUDE.md is stale after the mini version check\n\n## Affected sites\n- `CLAUDE.md:87` — \"Three files must be bumped together\"; now four.\n- `CLAUDE.md:90-91` — the bulleted file list omits `packages/mini/package.json`.\n- `CLAUDE.md:100` — the `git add` command omits `packages/mini/package.json`, so the staged commit fails `pnpm check:semver` in `.husky/pre-commit`.\n\n## Required outcome\n- The \"Cutting a release\" section names every file `scripts/check-versions.ts` validates, including the mini `version` and the `peerDependencies.zod` floor, and the `git add` example stages all of them.\n\n## Open questions for the human\n- Should the peer floor be bumped on every minor, or only when mini actually starts depending on something new in that minor? The check currently forces the former.\n````\n\n</details>\n\n### ℹ️ The one-identity guarantee holds only while the host's `zod` satisfies the peer range\n\nThe \"one class identity at runtime\" claim is really \"one identity *provided the installed `zod` satisfies `^4.x.0`*\". When it doesn't — a host pinned to `zod@4.4.x` adding `@zod/mini@4.5.1`, say — pnpm and npm both auto-install peers by default and will happily resolve a second `zod` copy for the scoped package rather than fail. The symptom is a `ZodMiniObject` that isn't the app's `ZodMiniObject`, which is a rough thing to debug from the error message.\n\nThis is the normal cost of peer dependencies and the design is still the right one — bundling a second copy would be strictly worse. Worth knowing that no test can catch it, though: every fixture resolves both packages through `workspace:*`, which always links one physical directory, so the suite only ever exercises the aligned case.\n\n### ℹ️ Nitpicks\n\n- `packages/mini/package.json` has `funding` but not the `support.backing.npm-funding` block that `packages/zod/package.json` carries. Cheap parity item for a package otherwise modeled on zod's exactly.\n- `@zod/mini` gets no `jsr.json`, and the workflow's `jsr publish` step still covers only `./packages/zod`. Probably intentional since JSR consumers reach the same API through `zod/mini`, but it's not stated anywhere.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6491?action=fix&review_id=5055017215) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6491?action=fix-approved&review_id=5055017215) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33209678694/job/98979543257) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5055017215"
+    },
+    {
+      "id": 5055100589,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "261c284967868bc349ee156e6d686345e771f1c9",
+      "at": "2026-08-28T21:09:11Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5055100589"
+    },
+    {
+      "id": 5055101267,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "261c284967868bc349ee156e6d686345e771f1c9",
+      "at": "2026-08-28T21:09:17Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5055101267"
+    },
+    {
+      "id": 5055101829,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "261c284967868bc349ee156e6d686345e771f1c9",
+      "at": "2026-08-28T21:09:23Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5055101829"
+    },
+    {
+      "id": 5055110693,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "261c284967868bc349ee156e6d686345e771f1c9",
+      "at": "2026-08-28T21:10:31Z",
+      "body": "> ℹ️ Both prior findings are genuinely fixed — one stale line in the release docs is all that's left.\n\n**Reviewed changes** — the delta from `89aedde` to `261c284`, plus a local install, build and run of the affected suites.\n\n*   **Mini publish moved to the end of the release job** — `publish_mini` and its liveness poll now sit after `pnpm jsr publish` rather than ahead of the changelog / release / JSR steps.\n*   **Prerelease handling in `check-versions.ts` inverted** — instead of enforcing a caret peer range no prerelease can satisfy, the non-`latest` path now rejects a `@zod/mini` publish outright and skips the mini block entirely for zod's own prereleases.\n*   **Resolution fixtures completed** — `src/index.cts` and `src/index.mts` pick up `@zod/mini` alongside `src/index.ts`.\n*   **Release docs updated** — `AGENTS.md` now says four files, stages `packages/mini/package.json`, and describes the new publish ordering.\n*   **`support.backing.npm-funding`** added to `packages/mini/package.json` for parity with `packages/zod`.\n\nVerified locally on `261c284`: `pnpm build` succeeds and leaves the tree clean; `@zod/resolution test:all` passes **with** the new `.cts`/`.mts` imports, including the `tsc` leg under `module: NodeNext` with `skipLibCheck: false`; `@zod/integration test:built` and `packages/mini` both pass. I also probed the new guard directly — pnpm does set `npm_package_name` for a script run inside `packages/mini`, so `check-versions.ts:67` actually fires rather than silently passing.\n\nOn the ordering fix I traced the re-run explicitly, since that was the crux of the original finding: zod's publish no-ops the second time, so `steps.publish.outputs.type` is empty and the gated steps *skip* rather than fail. A skip doesn't trip the implicit `success()`, so `publish_mini` still runs. The first mini publish failing because the npm trusted publisher isn't configured yet now costs a red run and a re-run, not zod's tag.\n\n### ℹ️ Nothing enforces the mini version during a beta cycle\n\nWorth stating out loud rather than fixing: on the non-`latest` path `packages/mini/package.json` is now read at all only to reject a mini publish, so a stale mini version can sit in the tree untouched through a whole prerelease cycle. That's the intended trade — the alternative was blocking zod's betas on mini — and the final stable bump does catch it, since every call site resolves `tag` to `\"latest\"` and re-applies the strict check. No action needed; noting it so the next person doesn't read the skip as an oversight.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Mini version is unvalidated on the prerelease path\n\n## Affected sites\n- `scripts/check-versions.ts:66-70` — the `tag !== \"latest\"` branch never reads `packages/mini/package.json` unless the invoking package is `@zod/mini` itself.\n\n## Why this is safe today\nAll three call sites resolve `tag` to `\"latest\"`: the pre-commit hook runs the script bare, and both `prepublishOnly` steps in `release.yml` are plain `pnpm run` invocations — `JS-DevTools/npm-publish` publishes through the registry API and never sets `npm_config_tag`. The prerelease branch is reachable only from a hand-typed `pnpm publish --tag beta`.\n\n## Required outcome\n- None. Recorded so the skip is not mistaken for a gap later.\n````\n\n</details>\n\n### ℹ️ Nitpicks\n\n*   `AGENTS.md:100` still reads `# Bump all three files to the new x.y.z` directly above the `git add` line this commit extended to four paths.\n\n<!--\nPullfrog review metadata. These findings were written against 261c284;\nif commits have landed on mini-package since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 24\n- Commits reviewed: 2\n- Base: main (6c932fc)\n- Head: mini-package (261c284)\n- Reviewed commits:\n  - 261c284 — fix(mini): publish @zod/mini last and skip its version check on prereleases\n  - 89aedde — feat(mini): publish Zod Mini as the standalone @zod/mini package\n- Prior pullfrog review: 89aedde (https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5055017215)\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6491?action=fix&review_id=5055110693) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6491?action=fix-approved&review_id=5055110693) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33210794623/job/98983252718) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5055110693"
+    },
+    {
+      "id": 5055132082,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "8ad97a56f660841a11e1a12dac6c8f2eb7af3992",
+      "at": "2026-08-28T21:13:41Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5055132082"
+    },
+    {
+      "id": 5058737578,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "c9f6a1e4c8c1667649f30095eca197cdfa5d6803",
+      "at": "2026-08-29T17:34:20Z",
+      "body": "> [!IMPORTANT]\n> The new `backpublish_mini` job can't do the thing it was added to do. `npm publish` with no `--tag` is refused outright once a higher version is on the registry, so every back-publish in the stated plan (`4.5.0`–`4.5.2`, dispatched after `4.5.3` goes live on merge) fails at the publish step.\n\n**Reviewed changes** — the delta from the prior pullfrog review (`8ad97a5`, since rebased away) to `c9f6a1e`, plus the rebase onto `main` at `4.5.3`. I re-read the full diff and verified the two load-bearing external contracts against upstream source.\n\n- **Rebased onto `4.5.3` and synced the scoped package** — `packages/mini/package.json` moves `4.5.1` → `4.5.3`, matching `versions.ts`; `pnpm check:semver` passes and prints both lines.\n- **New `workflow_dispatch` back-publish job** — `backpublish_mini` takes a `mini_version` input, validates it as `x.y.z`, confirms `zod@{version}` exists on npm, rewrites `version` and `peerDependencies.zod` with `npm pkg set`, builds, and publishes with provenance and the lockstep `prepublishOnly` deliberately skipped.\n- **Existing release jobs gated on `push`** — `test-node`, `lint`, `check-circular` and `build_and_publish` all carry `if: github.event_name == 'push'`, so a dispatch runs only the scoped-package job.\n- **Release docs extended** — `AGENTS.md` gains the `gh workflow run release.yml -f mini_version=4.5.2` recipe and describes the new publish ordering.\n\nThe job's mechanics otherwise hold up. `npm pkg set` runs after `pnpm install` but nothing downstream re-validates the lockfile, and zshy rewrites only `exports` / `main` / `module` / `types` on the manifest — it does not clobber the version or peer floor just written. `BASH_REMATCH` survives the intervening `curl` in the same `run:` block, and skipping `prepublishOnly` here is correct, since `check-versions.ts` compares against `versions.ts` at HEAD and would reject an older version by design.\n\n<!--\nPullfrog review metadata. These findings were written against c9f6a1e;\nif commits have landed on mini-package since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 24\n- Commits reviewed: 4\n- Base: main (1a16102)\n- Head: mini-package (c9f6a1e)\n- Reviewed commits:\n  - c9f6a1e — ci: sync @zod/mini to 4.5.3 and add a workflow_dispatch back-publish for the scoped package\n  - 74b0d8d — docs: count four files in the release procedure comment\n  - 8583e2c — fix(mini): publish @zod/mini last and skip its version check on prereleases\n  - e1fe66b — feat(mini): publish Zod Mini as the standalone @zod/mini package\n- Prior pullfrog review: 8ad97a5, rebased away (https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5055110693)\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6491?action=fix&review_id=5058737578) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6491?action=fix-approved&review_id=5058737578) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33265584439/job/99134949691) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5058737578"
+    },
+    {
+      "id": 5058752473,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "6e17b6fbd9a57953f36161daa648615590929566",
+      "at": "2026-08-29T17:41:04Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5058752473"
+    },
+    {
+      "id": 5058754621,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "6e17b6fbd9a57953f36161daa648615590929566",
+      "at": "2026-08-29T17:42:19Z",
+      "body": "> ✅ No new issues found. The one open finding is fixed, and I verified the fix end-to-end against upstream source rather than taking the suggestion on faith.\n\n**Reviewed changes** — the delta from `c9f6a1e` to `6e17b6f`, which is three lines: `tag: backfill` on the back-publish step plus the two places that document it.\n\n- **`backpublish_mini` publishes under a `backfill` dist-tag** — `release.yml:244` sets an explicit non-default tag, so npm's implicit-`latest` guard no longer refuses a version below `latest`.\n- **Cleanup documented at both the call site and the procedure** — the `release.yml:237` comment and the new `AGENTS.md:114` paragraph both name `npm dist-tag rm @zod/mini backfill`.\n\nI re-checked the two contracts this depends on, since the second one is the failure mode a naive tag fix would have introduced. npm's guard is `if (highestVersionIsGreater && isDefaultTag)`, and `isDefaultTag` is true precisely when `--tag` was omitted — so `backfill` clears the guard while leaving `latest` on the newest version, which `tag: latest` would not have done.\n\nThe more interesting question was whether the action would quietly *skip* instead of publishing, since the very next step is gated on `steps.publish_mini.outputs.type`. It does not. `JS-DevTools/npm-publish@v4` runs a single `npm view <name> dist-tags versions --json` and compares `versions` — the full published list, not `latest` — for uniqueness, while `oldVersion` is looked up under the tag you asked for. For a never-published `4.5.2` with no `backfill` tag yet that resolves to `type = INITIAL`, so the publish fires and the liveness poll runs. Once `backfill` does point somewhere, the default `strategy` is `all`, which yields `different` rather than skipping; the strict `semverGreaterThan` branch only picks the release-type label. The `4.5.0`–`4.5.2` backfill works as described in the PR body.\n\nNothing else in the delta. The only thing still standing between this and a green release run is the external one already noted in the PR body — the npm trusted publisher for `@zod/mini` has to be configured before `publish_mini` can succeed.\n\n<!--\nPullfrog review metadata. These findings were written against 6e17b6f;\nif commits have landed on mini-package since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 24\n- Commits reviewed: 5\n- Base: main\n- Head: mini-package (6e17b6f)\n- Reviewed commits:\n  - 6e17b6fb — ci: back-publish @zod/mini under a backfill dist-tag\n  - c9f6a1e4 — ci: sync @zod/mini to 4.5.3 and add a workflow_dispatch back-publish for the scoped package\n  - 74b0d8d9 — docs: count four files in the release procedure comment\n  - 8583e2c0 — fix(mini): publish @zod/mini last and skip its version check on prereleases\n  - e1fe66b3 — feat(mini): publish Zod Mini as the standalone @zod/mini package\n- Prior pullfrog review: c9f6a1e (https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5058737578)\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33266066355/job/99136236242) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6491#pullrequestreview-5058754621"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3883985440,
+      "review": 5055017215,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": ".github/workflows/release.yml",
+      "line": null,
+      "originalLine": 132,
+      "commit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "originalCommit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "at": "2026-08-28T20:56:16Z",
+      "body": "These two steps sit between zod's liveness check and the changelog / `gh release create` / `jsr publish` steps, all of which are gated on `steps.publish.outputs.type` rather than on job success. If the mini publish fails — and the PR body notes the trusted publisher isn't configured yet, so it will — the job aborts with zod already on npm and no `v<version>` tag, no GitHub release, and no JSR publish. Re-running doesn't fix it: the zod publish is a no-op the second time, so `outputs.type` is empty and those steps skip permanently.\n\nMoving this block below the `jsr publish` step keeps it unconditional and preserves the ordering the comment on line 188 is protecting.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Mini publish is ordered ahead of the steps that record the zod release\n\n## Affected sites\n- `.github/workflows/release.yml:131-152` — `publish_mini` and \"Verify @zod/mini is live on npm\" inserted after the zod liveness check.\n- `.github/workflows/release.yml:154,161,174` — `Configure changelog`, `Generate changelog`, `Create release`, each `if: steps.publish.outputs.type`.\n- `.github/workflows/release.yml:189` — `jsr publish`, same gate, carrying the comment \"last so a jsr outage can't cost the tag\".\n\n## Why re-running does not recover\nGitHub Actions gives every step an implicit `if: success()`, so a failure in `publish_mini` or its 40x15s poll skips everything below it. On a re-run, `JS-DevTools/npm-publish` sees the zod version already on the registry and emits an empty `outputs.type` — the exact no-op semantics this PR relies on for the mini step. Every downstream step is gated on that value, so the tag, the GitHub release and the JSR publish are skipped for good and have to be produced by hand.\n\n## Required outcome\n- A failure to publish `@zod/mini` must not prevent a successfully-published `zod` from getting its git tag, GitHub release and JSR publish.\n- The mini publish stays unconditional, so the first `4.5.1` publish still rides on this merge.\n\n## Suggested approach\n- Move the `publish_mini` step and its liveness check to the end of the job, after `jsr publish`. That step aborts on a dirty tree, so keeping the publish action below it also avoids any interaction with that constraint.\n````\n\n</details>",
+      "diffHunk": "@@ -125,6 +128,29 @@ jobs:\n           echo \"zod@$VERSION is not on the registry after 10 minutes; stopping before the GitHub release and the JSR publish\"\n           exit 1\n \n+      # @zod/mini ships in lockstep with zod and is a no-op when its version is already on the registry, so it runs unconditionally: the first release of the scoped package rides on a merge that does not bump zod itself\n+      - id: publish_mini",
+      "url": "https://github.com/colinhacks/zod/pull/6491#discussion_r3883985440"
+    },
+    {
+      "id": 3883985447,
+      "review": 5055017215,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "scripts/check-versions.ts",
+      "line": null,
+      "originalLine": 69,
+      "commit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "originalCommit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "at": "2026-08-28T20:56:16Z",
+      "body": "`expectedMiniPeer` is computed unconditionally, so it never carries a prerelease tag even though the version check right below it has a dedicated `tag !== \"latest\"` branch. A prerelease only satisfies a range when a comparator shares its exact `major.minor.patch` *and* carries a prerelease tag itself, so `zod@4.5.1-beta.0` does not satisfy `^4.5.0` — verified with `semver.satisfies`, false even under `includePrerelease`. Publishing `@zod/mini` under a `beta` tag would ship a peer range that the zod beta released alongside it cannot satisfy.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Prerelease publishes of @zod/mini get an unsatisfiable peer range\n\n## Affected sites\n- `scripts/check-versions.ts:69` — `expectedMiniPeer = ^${version.major}.${version.minor}.0`, no prerelease branch.\n- `scripts/check-versions.ts:70` — `isMiniVersionValid` allows a prerelease mini version via `startsWith`, so the two halves of the check disagree about whether prereleases are supported.\n\n## Evidence\n```\nsemver.satisfies(\"4.6.0-beta.1\", \"^4.6.0\")                          // false\nsemver.satisfies(\"4.6.0-beta.1\", \"^4.6.0\", {includePrerelease:true}) // false\n```\nReachable through `pnpm publish --tag beta` from `packages/mini`, which runs `prepublishOnly` with `npm_config_tag=beta`. zod does run beta cycles — the `4.0.0-beta.*` versions already sitting on `@zod/mini` are from one.\n\n## Required outcome\n- On a prerelease publish, the enforced peer range is one the zod prerelease shipping in the same cycle actually satisfies.\n- The version check and the peer check agree on whether prereleases are a supported path at all; if they aren't, the prerelease branch should reject rather than pass with a range nothing can match.\n\n## Open questions for the human\n- Is publishing `@zod/mini` on a prerelease tag in scope? If it isn't, the simpler fix is to fail the mini check outright when `npm_config_tag !== \"latest\"`.\n````\n\n</details>",
+      "diffHunk": "@@ -61,3 +61,18 @@ if (!isPackageJsonValid || !isJsrJsonValid) {\n     console.log(`✅ Versions match: ${packageJsonVersion} starts with ${versionsVersion}`);\n   }\n }\n+\n+// @zod/mini ships in lockstep with zod and its peer floor is the minor it shipped with\n+const miniPackageJson = JSON.parse(readFileSync(join(__dirname, \"..\", \"packages\", \"mini\", \"package.json\"), \"utf8\"));\n+const miniVersion = miniPackageJson.version as string;\n+const miniPeer = miniPackageJson.peerDependencies?.zod as string | undefined;\n+const expectedMiniPeer = `^${version.major}.${version.minor}.0`;",
+      "url": "https://github.com/colinhacks/zod/pull/6491#discussion_r3883985447"
+    },
+    {
+      "id": 3883985455,
+      "review": 5055017215,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/resolution/src/index.ts",
+      "line": 20,
+      "originalLine": 20,
+      "commit": "6e17b6fbd9a57953f36161daa648615590929566",
+      "originalCommit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "at": "2026-08-28T20:56:16Z",
+      "body": "`src/index.cts` and `src/index.mts` enumerate the same entrypoints for the native `.cts`/`.mts` tsc-emit leg but didn't pick up `@zod/mini`. The runtime paths are genuinely covered elsewhere (zshy's `dist/index.cjs` exercises `require(\"@zod/mini\")`, and the new integration fixture covers the CJS type path), so this is consistency rather than a hole — but those two files exist precisely to list every way to import zod, and there's now one more.",
+      "diffHunk": "@@ -16,6 +17,7 @@ console.log(z5.string().parse(\"Hello, world!\"));\n console.log(z6.string().parse(\"Hello, world!\"));\n console.log(z7.string().parse(\"Hello, world!\"));\n console.log(z8.string().parse(\"Hello, world!\"));\n+console.log(z9.string().parse(\"Hello, world!\"));",
+      "url": "https://github.com/colinhacks/zod/pull/6491#discussion_r3883985455"
+    },
+    {
+      "id": 3884053722,
+      "review": 5055100589,
+      "replyTo": 3883985440,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": ".github/workflows/release.yml",
+      "line": null,
+      "originalLine": 132,
+      "commit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "originalCommit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "at": "2026-08-28T21:09:11Z",
+      "body": "Addressed in 261c284 — the block now sits after `jsr publish`, and I traced the re-run: zod's publish no-ops so the gated steps skip rather than fail, leaving `success()` true and `publish_mini` reachable.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33210794623/job/98983252718) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -125,6 +128,29 @@ jobs:\n           echo \"zod@$VERSION is not on the registry after 10 minutes; stopping before the GitHub release and the JSR publish\"\n           exit 1\n \n+      # @zod/mini ships in lockstep with zod and is a no-op when its version is already on the registry, so it runs unconditionally: the first release of the scoped package rides on a merge that does not bump zod itself\n+      - id: publish_mini",
+      "url": "https://github.com/colinhacks/zod/pull/6491#discussion_r3884053722"
+    },
+    {
+      "id": 3884054267,
+      "review": 5055101267,
+      "replyTo": 3883985455,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/resolution/src/index.ts",
+      "line": 20,
+      "originalLine": 20,
+      "commit": "6e17b6fbd9a57953f36161daa648615590929566",
+      "originalCommit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "at": "2026-08-28T21:09:17Z",
+      "body": "Addressed in 261c284 — both `src/index.cts` and `src/index.mts` now import `@zod/mini`, and `@zod/resolution test:all` passes with them.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33210794623/job/98983252718) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -16,6 +17,7 @@ console.log(z5.string().parse(\"Hello, world!\"));\n console.log(z6.string().parse(\"Hello, world!\"));\n console.log(z7.string().parse(\"Hello, world!\"));\n console.log(z8.string().parse(\"Hello, world!\"));\n+console.log(z9.string().parse(\"Hello, world!\"));",
+      "url": "https://github.com/colinhacks/zod/pull/6491#discussion_r3884054267"
+    },
+    {
+      "id": 3884054798,
+      "review": 5055101829,
+      "replyTo": 3883985447,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "scripts/check-versions.ts",
+      "line": null,
+      "originalLine": 69,
+      "commit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "originalCommit": "89aeddeff84fe661107705b66164f5b1c60c5b70",
+      "at": "2026-08-28T21:09:23Z",
+      "body": "Addressed in 261c284 — the prerelease path now rejects a `@zod/mini` publish outright rather than enforcing an unsatisfiable range, and I confirmed pnpm does set `npm_package_name` so the guard fires.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33210794623/job/98983252718) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -61,3 +61,18 @@ if (!isPackageJsonValid || !isJsrJsonValid) {\n     console.log(`✅ Versions match: ${packageJsonVersion} starts with ${versionsVersion}`);\n   }\n }\n+\n+// @zod/mini ships in lockstep with zod and its peer floor is the minor it shipped with\n+const miniPackageJson = JSON.parse(readFileSync(join(__dirname, \"..\", \"packages\", \"mini\", \"package.json\"), \"utf8\"));\n+const miniVersion = miniPackageJson.version as string;\n+const miniPeer = miniPackageJson.peerDependencies?.zod as string | undefined;\n+const expectedMiniPeer = `^${version.major}.${version.minor}.0`;",
+      "url": "https://github.com/colinhacks/zod/pull/6491#discussion_r3884054798"
+    },
+    {
+      "id": 3884061280,
+      "review": 5055110693,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "AGENTS.md",
+      "line": 101,
+      "originalLine": 101,
+      "commit": "6e17b6fbd9a57953f36161daa648615590929566",
+      "originalCommit": "261c284967868bc349ee156e6d686345e771f1c9",
+      "at": "2026-08-28T21:10:30Z",
+      "body": "The prose above now says four files, but the comment on the line directly above this one still says `# Bump all three files to the new x.y.z`. Slightly more than a count fix, too — mini also needs its `peerDependencies.zod` floor moved on a minor, which isn't \"the new x.y.z\".",
+      "diffHunk": "@@ -97,12 +98,12 @@ Procedure:\n git checkout main && git pull\n \n # Bump all three files to the new x.y.z, then:\n-git add packages/zod/package.json packages/zod/jsr.json packages/zod/src/v4/core/versions.ts\n+git add packages/zod/package.json packages/zod/jsr.json packages/zod/src/v4/core/versions.ts packages/mini/package.json",
+      "url": "https://github.com/colinhacks/zod/pull/6491#discussion_r3884061280"
+    },
+    {
+      "id": 3884078626,
+      "review": 5055132082,
+      "replyTo": 3884061280,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "AGENTS.md",
+      "line": 101,
+      "originalLine": 101,
+      "commit": "6e17b6fbd9a57953f36161daa648615590929566",
+      "originalCommit": "261c284967868bc349ee156e6d686345e771f1c9",
+      "at": "2026-08-28T21:13:40Z",
+      "body": "Addressed in 8ad97a56 — the comment now says four files and calls out the peer floor.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33211519243/job/98985605612) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -97,12 +98,12 @@ Procedure:\n git checkout main && git pull\n \n # Bump all three files to the new x.y.z, then:\n-git add packages/zod/package.json packages/zod/jsr.json packages/zod/src/v4/core/versions.ts\n+git add packages/zod/package.json packages/zod/jsr.json packages/zod/src/v4/core/versions.ts packages/mini/package.json",
+      "url": "https://github.com/colinhacks/zod/pull/6491#discussion_r3884078626"
+    },
+    {
+      "id": 3887223898,
+      "review": 5058737578,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": ".github/workflows/release.yml",
+      "line": 245,
+      "originalLine": 244,
+      "commit": "6e17b6fbd9a57953f36161daa648615590929566",
+      "originalCommit": "c9f6a1e4c8c1667649f30095eca197cdfa5d6803",
+      "at": "2026-08-29T17:34:19Z",
+      "body": "This step passes no `tag`, and `JS-DevTools/npm-publish` only appends `--tag` when the input is explicitly set (`if (!tag.isDefault)` in its `getPublishArguments`). So the runner executes a bare `npm publish`, and npm ≥11 refuses that when something higher is already on the registry: `Cannot implicitly apply the \"latest\" tag because previously published version 4.5.3 is higher than the new version 4.5.2. You must specify a tag using --tag.` The `npm install -g npm@latest` step two above guarantees that npm version, so every back-publish in the plan hard-fails here — and `tag: latest` is the wrong fix, since it bypasses the guard and drags `latest` backwards to the oldest version published.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# `backpublish_mini` cannot publish a version older than what is already live\n\n## Affected sites\n- `.github/workflows/release.yml:238-244` — the `publish_mini` step in `backpublish_mini` sets `provenance`, `ignore-scripts` and `package`, but no `tag`.\n\n## Evidence\n- `JS-DevTools/npm-publish@v4`, `src/compare-and-publish/get-arguments.ts`: `if (!tag.isDefault) { publishArguments.push(\"--tag\", tag.value); }` — an unset `tag` input means the flag is never emitted.\n- npm CLI `lib/commands/publish.js`: `if (highestVersionIsGreater && isDefaultTag) { throw new Error('Cannot implicitly apply the \"latest\" tag because previously published version ...') }`. `isDefaultTag` is true precisely when `--tag` was omitted.\n- Ordering makes this unavoidable: merging this PR adds `packages/mini/package.json` to `on.push.paths`, so `4.5.3` publishes on merge. There is no window in which `4.5.0`–`4.5.2` could be dispatched before a higher version exists.\n\n## Required outcome\n- A back-publish of an `x.y.z` older than the current `latest` completes, without moving the `latest` dist-tag off the newest version.\n\n## Suggested approach\n- Set an explicit non-`latest` `tag` on this step. Any fixed value works (`backfill`, `previous`); it satisfies npm's `isDefaultTag` check and leaves `latest` alone.\n- The tag persists on the registry afterwards, so clear it once the backfill is done: `npm dist-tag rm @zod/mini backfill`.\n- Do not set `tag: latest` — that flips `isDefaultTag` to false, skips npm's protection entirely, and points `@zod/mini@latest` at whichever old version was published last.\n````\n\n</details>\n\n```suggestion\n        with:\n          provenance: true\n          ignore-scripts: true\n          tag: backfill\n          package: ./packages/mini\n```",
+      "diffHunk": "@@ -163,3 +177,83 @@ jobs:\n       - run: pnpm jsr publish --allow-slow-types # --dry-run\n         if: ${{ steps.publish.outputs.type }}\n         working-directory: ./packages/zod\n+\n+      # @zod/mini ships in lockstep with zod and is a no-op when its version is already on the registry, so it runs unconditionally (the first release of the scoped package rides on a merge that does not bump zod itself) and last, so a failed mini publish cannot cost zod its tag, GitHub release or JSR publish\n+      - id: publish_mini\n+        name: Publish @zod/mini to NPM\n+        uses: JS-DevTools/npm-publish@v4\n+        with:\n+          provenance: true\n+          package: ./packages/mini\n+\n+      - name: Verify @zod/mini is live on npm\n+        if: ${{ steps.publish_mini.outputs.type }}\n+        env:\n+          VERSION: ${{ steps.publish_mini.outputs.version }}\n+        run: |\n+          for i in $(seq 1 40); do\n+            if curl -sf \"https://registry.npmjs.org/@zod%2fmini/$VERSION\" > /dev/null; then\n+              echo \"@zod/mini@$VERSION is live\"\n+              exit 0\n+            fi\n+            sleep 15\n+          done\n+          echo \"@zod/mini@$VERSION is not on the registry after 10 minutes\"\n+          exit 1\n+\n+  backpublish_mini:\n+    if: github.event_name == 'workflow_dispatch'\n+    runs-on: ubuntu-latest\n+    permissions:\n+      contents: read\n+      id-token: write\n+    steps:\n+      - uses: actions/checkout@v7\n+      - uses: actions/setup-node@v7\n+        with:\n+          node-version: \"latest\"\n+          registry-url: https://registry.npmjs.org/\n+      - name: Upgrade npm to latest (required for trusted publishing >=11.5.1)\n+        run: npm install -g npm@latest\n+      - uses: pnpm/action-setup@v6\n+      - run: pnpm install\n+      - name: Set the @zod/mini version and peer floor\n+        env:\n+          VERSION: ${{ inputs.mini_version }}\n+        working-directory: ./packages/mini\n+        run: |\n+          if ! [[ \"$VERSION\" =~ ^([0-9]+)\\.([0-9]+)\\.[0-9]+$ ]]; then\n+            echo \"mini_version must be x.y.z, got '$VERSION'\"\n+            exit 1\n+          fi\n+          if ! curl -sf \"https://registry.npmjs.org/zod/$VERSION\" > /dev/null; then\n+            echo \"zod@$VERSION is not on npm; @zod/mini only ships versions zod shipped\"\n+            exit 1\n+          fi\n+          npm pkg set version=\"$VERSION\" peerDependencies.zod=\"^${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.0\"\n+          cat package.json\n+      - run: pnpm build\n+\n+      # the lockstep check in prepublishOnly is deliberately skipped: this version is older than versions.ts by design\n+      - id: publish_mini\n+        name: Publish @zod/mini to NPM\n+        uses: JS-DevTools/npm-publish@v4\n+        with:\n+          provenance: true\n+          ignore-scripts: true\n+          package: ./packages/mini",
+      "url": "https://github.com/colinhacks/zod/pull/6491#discussion_r3887223898"
+    },
+    {
+      "id": 3887237592,
+      "review": 5058752473,
+      "replyTo": 3887223898,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": ".github/workflows/release.yml",
+      "line": 245,
+      "originalLine": 244,
+      "commit": "6e17b6fbd9a57953f36161daa648615590929566",
+      "originalCommit": "c9f6a1e4c8c1667649f30095eca197cdfa5d6803",
+      "at": "2026-08-29T17:41:04Z",
+      "body": "Addressed in 6e17b6fb — `tag: backfill` is set on the step, and the cleanup command is documented in the comment and in `AGENTS.md`.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33266066355/job/99136236242) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -163,3 +177,83 @@ jobs:\n       - run: pnpm jsr publish --allow-slow-types # --dry-run\n         if: ${{ steps.publish.outputs.type }}\n         working-directory: ./packages/zod\n+\n+      # @zod/mini ships in lockstep with zod and is a no-op when its version is already on the registry, so it runs unconditionally (the first release of the scoped package rides on a merge that does not bump zod itself) and last, so a failed mini publish cannot cost zod its tag, GitHub release or JSR publish\n+      - id: publish_mini\n+        name: Publish @zod/mini to NPM\n+        uses: JS-DevTools/npm-publish@v4\n+        with:\n+          provenance: true\n+          package: ./packages/mini\n+\n+      - name: Verify @zod/mini is live on npm\n+        if: ${{ steps.publish_mini.outputs.type }}\n+        env:\n+          VERSION: ${{ steps.publish_mini.outputs.version }}\n+        run: |\n+          for i in $(seq 1 40); do\n+            if curl -sf \"https://registry.npmjs.org/@zod%2fmini/$VERSION\" > /dev/null; then\n+              echo \"@zod/mini@$VERSION is live\"\n+              exit 0\n+            fi\n+            sleep 15\n+          done\n+          echo \"@zod/mini@$VERSION is not on the registry after 10 minutes\"\n+          exit 1\n+\n+  backpublish_mini:\n+    if: github.event_name == 'workflow_dispatch'\n+    runs-on: ubuntu-latest\n+    permissions:\n+      contents: read\n+      id-token: write\n+    steps:\n+      - uses: actions/checkout@v7\n+      - uses: actions/setup-node@v7\n+        with:\n+          node-version: \"latest\"\n+          registry-url: https://registry.npmjs.org/\n+      - name: Upgrade npm to latest (required for trusted publishing >=11.5.1)\n+        run: npm install -g npm@latest\n+      - uses: pnpm/action-setup@v6\n+      - run: pnpm install\n+      - name: Set the @zod/mini version and peer floor\n+        env:\n+          VERSION: ${{ inputs.mini_version }}\n+        working-directory: ./packages/mini\n+        run: |\n+          if ! [[ \"$VERSION\" =~ ^([0-9]+)\\.([0-9]+)\\.[0-9]+$ ]]; then\n+            echo \"mini_version must be x.y.z, got '$VERSION'\"\n+            exit 1\n+          fi\n+          if ! curl -sf \"https://registry.npmjs.org/zod/$VERSION\" > /dev/null; then\n+            echo \"zod@$VERSION is not on npm; @zod/mini only ships versions zod shipped\"\n+            exit 1\n+          fi\n+          npm pkg set version=\"$VERSION\" peerDependencies.zod=\"^${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.0\"\n+          cat package.json\n+      - run: pnpm build\n+\n+      # the lockstep check in prepublishOnly is deliberately skipped: this version is older than versions.ts by design\n+      - id: publish_mini\n+        name: Publish @zod/mini to NPM\n+        uses: JS-DevTools/npm-publish@v4\n+        with:\n+          provenance: true\n+          ignore-scripts: true\n+          package: ./packages/mini",
+      "url": "https://github.com/colinhacks/zod/pull/6491#discussion_r3887237592"
+    }
+  ],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-29T19:15:59Z",
+      "number": 6507,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "ci: check zod and @zod/mini lockstep on npm after every publish",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6507"
+    },
+    {
+      "at": "2026-08-29T20:27:35Z",
+      "number": 6510,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "ci: publish @zod/mini to JSR in lockstep with npm",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6510"
+    },
+    {
+      "at": "2026-09-09T02:26:31Z",
+      "number": 6546,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "docs: Zod 4.6 announcement post",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6546"
+    }
+  ]
+}

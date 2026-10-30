@@ -2,9 +2,12 @@
 
 [Index](../PLAN.md) · [Journal](../journal/d2-review-precision.md)
 
-**Status:** planned (2026-10-31), on branch `spike/review-precision`; plan agreed with the person
-(projects: the agent's choice; a GitHub token from the person; the sample as a page and as a file;
-the bar for a number to sell, below). A spike: the detectors do not change here.
+**Status:** measured, waiting for the person's blind sample (2026-10-31), on branch
+`spike/review-precision`. Plan agreed with the person (projects: the agent's choice; a GitHub token
+from the person; the sample as a page and as a file; the bar for a number to sell, below). The 51
+runs, the GitHub data and the agent's scores of 97 findings and 119 AI comments are done; the
+scores stay out of the branch until the person has scored the sample (`spikes/d2-review-precision/
+sample.md`). A spike: the detectors do not change here.
 
 **Question** (asked: "On real merged pull requests of open-source TypeScript projects, how many of
 Symbiote's findings would a maintainer call right and worth reading?"). The North Star says

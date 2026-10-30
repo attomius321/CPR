@@ -1,0 +1,66 @@
+{
+  "number": 22938,
+  "title": "[CL-1312] Add accordion auto height option",
+  "body": "## 🎟️ Tracking\r\n\r\n<!-- Paste the link to the Jira or GitHub issue or otherwise describe / point to where this change is coming from. -->\r\n[CL-1312](https://bitwarden.atlassian.net/browse/CL-1312)\r\n\r\n## 📔 Objective\r\n\r\n<!-- Describe what the purpose of this PR is, for example what bug you're fixing or new feature you're adding. -->\r\nAdd ability to opt-out of the accordion's max-height by exposing an auto height mode option.\r\n\r\n## 📸 Screenshots\r\n\r\n<!-- Required for any UI changes; delete if not applicable. Use fixed width images for better display. -->\r\n\r\n| With max height | Without max height |\r\n|--------|--------|\r\n| Cell | Cell | \r\n| <img width=\"1027\" height=\"769\" alt=\"Screenshot 2026-09-03 at 3 52 11 PM\" src=\"https://github.com/user-attachments/assets/ccef5836-414b-428e-bed9-4618287f0bf6\" /> | <img width=\"1027\" height=\"769\" alt=\"Screenshot 2026-09-03 at 3 52 15 PM\" src=\"https://github.com/user-attachments/assets/9d7b6e0f-4e5a-4c39-bde8-6edb884b6e57\" /> |\r\n\r\n\r\n\r\n\r\n[CL-1312]: https://bitwarden.atlassian.net/browse/CL-1312?atlOrigin=eyJpIjoiNWRkNTljNzYxNjVmNDY3MDlhMDU5Y2ZhYzA5YTRkZjUiLCJwIjoiZ2l0aHViLWNvbS1KU1cifQ",
+  "user": {
+    "login": "vleague2",
+    "type": "User"
+  },
+  "baseSha": "75a3eb891f376af4bcd9a9b5d3cb0699530cd12f",
+  "headSha": "7b286e8d45d2d728464c3b12dcf2e3aaa154c69a",
+  "mergedAt": "2026-09-14T20:55:40Z",
+  "mergeCommit": "19ab04d14c28b9b4b8ad283a4afb8db292679473",
+  "commits": 3,
+  "reviews": [
+    {
+      "id": 5113844537,
+      "user": {
+        "login": "BryanCunningham",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "7b286e8d45d2d728464c3b12dcf2e3aaa154c69a",
+      "at": "2026-09-04T13:57:05Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22938#pullrequestreview-5113844537"
+    },
+    {
+      "id": 5115647825,
+      "user": {
+        "login": "willmartian",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "7b286e8d45d2d728464c3b12dcf2e3aaa154c69a",
+      "at": "2026-09-04T16:39:47Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22938#pullrequestreview-5115647825"
+    }
+  ],
+  "inline": [],
+  "comments": [
+    {
+      "id": 5531434356,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-03T20:05:24Z",
+      "updated": "2026-09-14T20:56:06Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/22938?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:white_check_mark: All modified and coverable lines are covered by tests.\n:white_check_mark: Project coverage is 55.87%. Comparing base ([`75a3eb8`](https://app.codecov.io/gh/bitwarden/clients/commit/75a3eb891f376af4bcd9a9b5d3cb0699530cd12f?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`7b286e8`](https://app.codecov.io/gh/bitwarden/clients/commit/7b286e8d45d2d728464c3b12dcf2e3aaa154c69a?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:warning: Report is 1 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@            Coverage Diff             @@\n##             main   #22938      +/-   ##\n==========================================\n- Coverage   55.87%   55.87%   -0.01%     \n==========================================\n  Files        4485     4485              \n  Lines      141389   141394       +5     \n  Branches    22568    22568              \n==========================================\n+ Hits        79006    79007       +1     \n- Misses      56588    56592       +4     \n  Partials     5795     5795              \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/22938?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/22938#issuecomment-5531434356"
+    },
+    {
+      "id": 5543511849,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-04T16:30:02Z",
+      "updated": "2026-09-04T16:32:01Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nReviewed a component-library change that adds a `height` input (`\"constrained\" | \"auto\"`) to `bit-accordion`, replacing the hardcoded `tw-max-h-80 tw-overflow-y-auto` on the content panel with conditional class bindings. The default is `\"constrained\"`, so the three existing consumers (`onboarding.component.html`, `shared-folder-card-grid.component.html`, and the accordion stories) keep their current rendering — this is additive and non-breaking. Both Tailwind classes appear as literal strings in the template, so the JIT scanner still emits them, and `tw-min-h-0` is retained so the grid-rows collapse animation continues to work. The MDX documents the trade-off that `height=\"auto\"` does not scroll, and a matching `AutoHeight` story follows the existing `render`-only story pattern in this file.\n\n<details>\n<summary>Code Review Details</summary>\n\nNo findings.\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/22938#issuecomment-5543511849"
+    }
+  ],
+  "citedBy": []
+}

@@ -1,0 +1,182 @@
+{
+  "number": 22893,
+  "title": "[PM-42854] bugs with policies drawers",
+  "body": "## 🎟️ Tracking\r\n\r\nhttps://bitwarden.atlassian.net/browse/PM-42854\r\n\r\n## 📔 Objective\r\n\r\nFixes up copies on Policies Drawers for VFO 1 Terminology\r\n\r\n## 📸 Screenshots\r\n\r\n\r\n<img width=\"1024\" height=\"532\" alt=\"image\" src=\"https://github.com/user-attachments/assets/c0f4cd0a-a7c9-45e3-ac85-956d5d667741\" />\r\n<img width=\"1024\" height=\"538\" alt=\"image\" src=\"https://github.com/user-attachments/assets/a254b9e9-5721-4a02-bd8b-93eb2b037587\" />\r\n<img width=\"1024\" height=\"535\" alt=\"image\" src=\"https://github.com/user-attachments/assets/ee0652c3-2238-47d0-8ac0-9dec55814f01\" />\r\n<img width=\"511\" height=\"829\" alt=\"image\" src=\"https://github.com/user-attachments/assets/9f20d0cf-c746-4c25-842f-4e397cfeb082\" />\r\n<img width=\"510\" height=\"835\" alt=\"image\" src=\"https://github.com/user-attachments/assets/356b1cab-40b1-44fc-a53b-bbbc1a27e473\" />\r\n<img width=\"513\" height=\"823\" alt=\"image\" src=\"https://github.com/user-attachments/assets/134ec851-b62d-41c9-991f-448720e88cf2\" />\r\n",
+  "user": {
+    "login": "JaredScar",
+    "type": "User"
+  },
+  "baseSha": "f2385300f06a33d3f3140fd0abf8ef3e6bb75329",
+  "headSha": "47e648a87cdeaaeaddd71c982639d435e39c2eea",
+  "mergedAt": "2026-09-07T16:31:09Z",
+  "mergeCommit": "15332735fc284ff23cfd9e068252e130db2e9e79",
+  "commits": 11,
+  "reviews": [
+    {
+      "id": 5093859030,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "912b0326802fec5b909621e640621813e19818e8",
+      "at": "2026-09-02T19:00:22Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22893#pullrequestreview-5093859030"
+    },
+    {
+      "id": 5094078377,
+      "user": {
+        "login": "mzieniukbw",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "912b0326802fec5b909621e640621813e19818e8",
+      "at": "2026-09-02T19:24:10Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22893#pullrequestreview-5094078377"
+    },
+    {
+      "id": 5114203280,
+      "user": {
+        "login": "JimmyVo16",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "f31a46f39007907176b742eae9957e8a8a0d823c",
+      "at": "2026-09-04T14:29:47Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22893#pullrequestreview-5114203280"
+    },
+    {
+      "id": 5115219087,
+      "user": {
+        "login": "JimmyVo16",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "b01536c8a4f2e21bac752e10b74813214f63bffc",
+      "at": "2026-09-04T15:59:19Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22893#pullrequestreview-5115219087"
+    },
+    {
+      "id": 5116756035,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "b711aae0a1d0e6751090a8b506cc69f18eb7d1f2",
+      "at": "2026-09-04T18:46:48Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22893#pullrequestreview-5116756035"
+    },
+    {
+      "id": 5117872041,
+      "user": {
+        "login": "JimmyVo16",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "47e648a87cdeaaeaddd71c982639d435e39c2eea",
+      "at": "2026-09-04T21:08:54Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22893#pullrequestreview-5117872041"
+    },
+    {
+      "id": 5127747591,
+      "user": {
+        "login": "quexten",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "47e648a87cdeaaeaddd71c982639d435e39c2eea",
+      "at": "2026-09-07T03:13:22Z",
+      "body": "Confirmed that since @mzieniukbw 's last approving review no relevant KM code changed, so re-approving.",
+      "url": "https://github.com/bitwarden/clients/pull/22893#pullrequestreview-5127747591"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3917623705,
+      "review": 5093859030,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "apps/web/src/locales/en/messages.json",
+      "line": null,
+      "originalLine": 9569,
+      "commit": "912b0326802fec5b909621e640621813e19818e8",
+      "originalCommit": "912b0326802fec5b909621e640621813e19818e8",
+      "at": "2026-09-02T19:00:22Z",
+      "body": "♻️ **DEBT**: These VFO1 variants now duplicate their legacy strings verbatim — consider reusing the legacy keys instead.\n\n<details>\n<summary>Details and fix</summary>\n\n`automaticAppLoginWithSSODescListVfo1` is now byte-identical to `automaticAppLoginWithSSODescV2`, and `freeFamiliesSponsorshipDescVfo1` (line 14918) is identical to `freeFamiliesSponsorshipPolicyDescV2`. Duplicated `en` strings are translated twice in Crowdin and can silently drift apart on a later copy edit.\n\nWhen the VFO1 copy matches the legacy copy, existing definitions point the VFO1 property at the legacy key rather than duplicating the message — e.g. `uri-match-default.component.ts` uses `drawerDescriptionVfo1 = \"uriMatchDetectionPolicyDescV2\"` and `two-factor-authentication.component.ts` uses `drawerDescriptionVfo1 = \"twoStepLoginPolicyDescV2\"`.\n\nHere the simplest equivalent is to drop `descriptionVfo1`/`drawerDescriptionVfo1` from `AutomaticAppLoginPolicy`, drop `descriptionVfo1` from `FreeFamiliesSponsorshipPolicy`, and delete the two now-redundant keys — the `?? policy.description` fallback in `policyDescriptionKeys`/`policyDrawerDescriptionKeys` renders the same copy.\n</details>",
+      "diffHunk": "@@ -9562,7 +9566,7 @@\n     \"message\": \"When users launch an app from your identity provider, their login details will be automatically filled and submitted, creating a one-click, secure login.\"\n   },\n   \"automaticAppLoginWithSSODescListVfo1\": {\n-    \"message\": \"Login forms will automatically be filled and submitted for apps launched from your configured identity provider.\",\n+    \"message\": \"When users launch an app from your identity provider, their login details will be automatically filled and submitted, creating a one-click, secure login.\",",
+      "url": "https://github.com/bitwarden/clients/pull/22893#discussion_r3917623705"
+    },
+    {
+      "id": 3937012067,
+      "review": 5116756035,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "bitwarden_license/bit-web/src/app/billing/policies/free-families-sponsorship.component.ts",
+      "line": 12,
+      "originalLine": 12,
+      "commit": "96a733a3b36b3dbb5c5030288b335ffb04b28b33",
+      "originalCommit": "b711aae0a1d0e6751090a8b506cc69f18eb7d1f2",
+      "at": "2026-09-04T18:46:48Z",
+      "body": "❓ **QUESTION**: Dropping `descriptionVfo1` reverts the VFO1 list copy and orphans `freeFamiliesSponsorshipDescVfo1` — intended?\n\n<details>\n<summary>Details</summary>\n\nThe last commit removes `descriptionVfo1 = \"freeFamiliesSponsorshipDescVfo1\"`, which exists on `main`. Two effects:\n\n1. `policyDescriptionKeys` falls back to `description`, so with the VFO1 flag on the policies list now shows \"Do not allow members to redeem a Families plan sponsored by your organization.\" instead of \"Remove the option for members to redeem a free Families plan.\" The row title still uses `nameVfo1`, so title and description end up on different copy tracks.\n2. `freeFamiliesSponsorshipDescVfo1` is left in `apps/web/src/locales/en/messages.json:14924` with no remaining code reference — Crowdin will keep translating a dead string. Elsewhere in this PR the reference and the key were removed together (`automaticAppLoginWithSSODescListVfo1`).\n\nIf the sibling terminology PR owns this policy's copy, ignore this. Otherwise either restore the property or delete the now-unused `en` key.\n</details>",
+      "diffHunk": "@@ -10,7 +10,6 @@ export class FreeFamiliesSponsorshipPolicy extends BasePolicyEditDefinition {\n   nameVfo1 = \"freeFamiliesSponsorshipTitleVfo1\";\n   drawerNameVfo1 = \"freeFamiliesSponsorshipPolicyTitleV2Vfo1\";\n   description = \"freeFamiliesSponsorshipPolicyDescV2\";",
+      "url": "https://github.com/bitwarden/clients/pull/22893#discussion_r3937012067"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5514747768,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-02T18:56:18Z",
+      "updated": "2026-09-04T20:18:44Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nReviewed the VFO1 terminology copy fixes for the policy drawers: the new `hideWarningVfo1` flag on `BasePolicyEditDefinition` and its use in `PolicyEditDrawerComponent.warningKeys`, the drawer description repointing for Require SSO and Automatic app login, the Session timeout prerequisite callout moving from the component template into `prerequisiteKey`/`prerequisiteKeyVfo1`, and the removal of `requireSsoPolicyDescV2Vfo1` from the `en` locale. Verified every referenced key exists in `apps/web/src/locales/en/messages.json` and that the removed key has no remaining code references — the leftovers in non-`en` locales are Crowdin-managed and correctly untouched. Confirmed `SessionTimeoutPolicy` registers no custom `editDialogComponent`, so it always opens through `PolicyEditDrawerComponent`, which renders the prerequisite callout above the policy form in the same `@else` branch the old template callout occupied; `CalloutComponent` is no longer referenced by `session-timeout.component.html` and no spec asserts on it. Hiding the Single organization member warning under VFO1 does not drop the substantive detail, since the drawer description for that policy (`singleOrgPolicyDescV2Vfo1`) already states that non-compliant members have access revoked and that owners/admins are exempt, and `MultiStepPolicyEditDialogComponent` never renders `warningKey`, so the new flag has no unhandled second render path.\n\n<details>\n<summary>Code Review Details</summary>\n\nNo new findings.\n\n`Vfo1TerminologyService` was already reachable from this component through the impure `Vfo1I18nPipe`, so injecting it directly adds no new DI requirement for existing tests or stories, and the signal read inside the `warningKeys` getter is evaluated in the template's reactive context, so the callout still resolves correctly once the feature flag emits.\n\nThe two existing threads on this PR are resolved and outdated — the `free-families-sponsorship.component.ts` and `automaticAppLoginWithSSODescListVfo1` concerns they raised are no longer part of this diff.\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/22893#issuecomment-5514747768"
+    },
+    {
+      "id": 5514919309,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-02T19:09:55Z",
+      "updated": "2026-09-07T16:31:40Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/22893?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:x: Patch coverage is `33.33333%` with `6 lines` in your changes missing coverage. Please review.\n:white_check_mark: Project coverage is 55.59%. Comparing base ([`f238530`](https://app.codecov.io/gh/bitwarden/clients/commit/f2385300f06a33d3f3140fd0abf8ef3e6bb75329?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`47e648a`](https://app.codecov.io/gh/bitwarden/clients/commit/47e648a87cdeaaeaddd71c982639d435e39c2eea?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:warning: Report is 8 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n| [Files with missing lines](https://app.codecov.io/gh/bitwarden/clients/pull/22893?dropdown=coverage&src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) | Patch % | Lines |\n|---|---|---|\n| [...nizations/policies/policy-edit-drawer.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22893?src=pr&el=tree&filepath=apps%2Fweb%2Fsrc%2Fapp%2Fadmin-console%2Forganizations%2Fpolicies%2Fpolicy-edit-drawer.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy93ZWIvc3JjL2FwcC9hZG1pbi1jb25zb2xlL29yZ2FuaXphdGlvbnMvcG9saWNpZXMvcG9saWN5LWVkaXQtZHJhd2VyLmNvbXBvbmVudC50cw==) | 25.00% | [3 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22893?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [...y-management/policies/session-timeout.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22893?src=pr&el=tree&filepath=bitwarden_license%2Fbit-web%2Fsrc%2Fapp%2Fkey-management%2Fpolicies%2Fsession-timeout.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-Yml0d2FyZGVuX2xpY2Vuc2UvYml0LXdlYi9zcmMvYXBwL2tleS1tYW5hZ2VtZW50L3BvbGljaWVzL3Nlc3Npb24tdGltZW91dC5jb21wb25lbnQudHM=) | 0.00% | [2 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22893?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [...-edit-definitions/automatic-app-login.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22893?src=pr&el=tree&filepath=bitwarden_license%2Fbit-web%2Fsrc%2Fapp%2Fadmin-console%2Fpolicies%2Fpolicy-edit-definitions%2Fautomatic-app-login.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-Yml0d2FyZGVuX2xpY2Vuc2UvYml0LXdlYi9zcmMvYXBwL2FkbWluLWNvbnNvbGUvcG9saWNpZXMvcG9saWN5LWVkaXQtZGVmaW5pdGlvbnMvYXV0b21hdGljLWFwcC1sb2dpbi5jb21wb25lbnQudHM=) | 0.00% | [1 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22893?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@            Coverage Diff             @@\n##             main   #22893      +/-   ##\n==========================================\n- Coverage   55.60%   55.59%   -0.01%     \n==========================================\n  Files        4411     4411              \n  Lines      140888   140894       +6     \n  Branches    22380    22381       +1     \n==========================================\n  Hits        78334    78334              \n- Misses      56854    56860       +6     \n  Partials     5700     5700              \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/22893?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/22893#issuecomment-5514919309"
+    }
+  ],
+  "citedBy": [
+    {
+      "at": "2026-09-07T17:30:49Z",
+      "number": 23044,
+      "repo": "bitwarden/clients",
+      "pull": true,
+      "title": "[PM-42854] bugs with policies drawers for RC",
+      "state": "closed",
+      "url": "https://github.com/bitwarden/clients/pull/23044"
+    },
+    {
+      "at": "2026-09-08T14:50:54Z",
+      "number": 23042,
+      "repo": "bitwarden/clients",
+      "pull": true,
+      "title": "[PM-42853] bugs with policies list fixes for RC",
+      "state": "closed",
+      "url": "https://github.com/bitwarden/clients/pull/23042"
+    }
+  ]
+}
