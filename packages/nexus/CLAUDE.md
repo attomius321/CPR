@@ -22,7 +22,7 @@ Symbiote's settings folder and draws them under Folders' places.
 | `src/server.ts` | The page, its scripts, the viewer's built assets, `GET /api/symbiotes`, `GET /api/folders` (with the pins), `POST /api/symbiotes` (start), `/api/symbiotes/stop` and `/api/pinned`; its own hosts only |
 | `src/main.ts`, `src/bin.ts` | The command: options, the app's window or the browser, as `symbiote view` opens them |
 | `src/app-window.ts` | Starting the desktop app in its `--url` mode: a copy of `packages/cli/src/app.ts`'s (the CLI's modules load the engine), tested on the same cases |
-| `src/page/` | The page's scripts, compiled by `tsc` to `dist/page/` and served as they are: `tabs.ts` and `folders-tab.ts` (pure: the tabs from each read, the address, the crumbs, the words, the folders near the running Symbiotes, the arrows on a grid), `main.ts` (the DOM: the row's two groups, frames, Symbiotes' cards, Stop's question), `folders-view.ts` (the Folders tab's DOM, the pins under the places), `cards.ts` (a repository's card, Folders' with its pin and Symbiotes'), `dom.ts` (elements, icons, a pin's button) |
+| `src/page/` | The page's scripts, compiled by `tsc` to `dist/page/` and served as they are: `tabs.ts` and `folders-tab.ts` (pure: the tabs from each read, the address, the crumbs, the words, the folders near the running Symbiotes, the arrows on a grid), `reach.ts` (when a frame gets its address: once this browser reaches the Symbiote), `main.ts` (the DOM: the row's two groups, frames, Symbiotes' cards, Stop's question), `folders-view.ts` (the Folders tab's DOM, the pins under the places), `cards.ts` (a repository's card, Folders' with its pin and Symbiotes'), `dom.ts` (elements, icons, a pin's button) |
 | `page/` | `index.html` (the server fills in the viewer's stylesheet and font), `nexus.css` (layout only), `mark.png` (the viewer's `ui/mark-96.png`) |
 
 ## Rules
@@ -38,6 +38,10 @@ Symbiote's settings folder and draws them under Folders' places.
 - **A frame per opened Symbiote, kept** (decision 521): hidden, never reloaded, until its
   Symbiote stops (unloaded) or serves on another port (moved). The nexus's own selection is in
   the hash by `replaceState`: no history entry.
+- **A frame gets its address once the page's browser reaches it** (decision 625), asked every
+  500 ms for 10 s at most. The nexus's server reaches a Symbiote from inside WSL as it listens; a
+  browser on Windows reaches the port up to ~0.9 s later, and a frame refused once stays on the
+  error page. Never set a frame's `src` directly: go through `address()`.
 - **Symbiote's window is the desktop app's `--url` mode, untouched** (decision 524). Its preload
   is the top page's only: a framed viewer draws as in a browser.
 - **Writes as the viewer's server takes them** (decision 543): JSON, `x-symbiote: 1`, its own

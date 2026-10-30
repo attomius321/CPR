@@ -22,6 +22,7 @@ import {
 } from './dom.js';
 import { checkoutWords, folderFromHash, foldersHash } from './folders-tab.js';
 import { foldersView } from './folders-view.js';
+import { browserReach, reached } from './reach.js';
 import {
   changesText,
   checkoutText,
@@ -445,7 +446,7 @@ function show(): void {
       frames.delete(root);
     } else if (frame.dataset.url !== its.url) {
       frame.dataset.url = its.url;
-      frame.src = its.url;
+      void address(frame, its.url);
     }
   }
   if (tab?.url) {
@@ -453,7 +454,6 @@ function show(): void {
     if (!frames.has(tab.root)) {
       const frame = el('iframe', {
         class: 'nexus-frame',
-        src: tab.url,
         title: tab.name,
         'data-url': tab.url,
         // Copy SHA, an image pasted into a terminal: the clipboard, as in a tab of its own.
@@ -461,6 +461,7 @@ function show(): void {
       });
       frames.set(tab.root, frame);
       framesBox.append(frame);
+      void address(frame, tab.url);
     }
   }
   for (const [root, frame] of frames) frame.hidden = root !== selected;
@@ -475,6 +476,16 @@ function show(): void {
     stopped.replaceChildren();
   }
   document.title = titleOf(tab);
+}
+
+/**
+ * Gives a frame its Symbiote's address once this browser reaches it (decision 625): a browser on
+ * Windows reaches a new port of WSL's late, and a frame refused once stays refused. A frame
+ * unloaded or moved meanwhile is left as it is.
+ */
+async function address(frame: HTMLIFrameElement, url: string): Promise<void> {
+  await reached(url, browserReach);
+  if (frame.isConnected && frame.dataset.url === url) frame.src = url;
 }
 
 function render(): void {
