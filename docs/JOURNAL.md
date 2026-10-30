@@ -323,3 +323,4 @@ merge commit.
 - 2026-10-30 [V81 — Settings: icons in the list](journal/v81-settings-list-icons.md)
 - 2026-10-30 [NU2 spike — what Nucleus's agents give to record](journal/nu2-nucleus-activity.md)
 - 2026-10-30 [NU2 — Nucleus's Activity tab: everything it does, recorded](journal/nu2-nucleus-activity.md)
+- 2026-10-30 [V82 mockups — two looks tried on the running viewer](journal/v82-hive-mode.md)
