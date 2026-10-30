@@ -1,0 +1,120 @@
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 0, "shownMs": 4325}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 0, "shownMs": 4712}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 0, "shownMs": 5045}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 0, "shownMs": null, "arrivedMs": 5002}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 0, "shownMs": 1888}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 1, "shownMs": 311}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 1, "shownMs": 4662}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 1, "shownMs": 4945}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 1, "shownMs": null, "arrivedMs": 4799}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 1, "shownMs": 1596}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 2, "shownMs": 4295}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 2, "shownMs": 4576}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 2, "shownMs": 4732}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 2, "shownMs": null, "arrivedMs": 4693}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 2, "shownMs": 785}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 3, "shownMs": 3757}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 3, "shownMs": 4581}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 3, "shownMs": 4692}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 3, "shownMs": null, "arrivedMs": 4674}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 3, "shownMs": 114}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 4, "shownMs": 3088}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 4, "shownMs": 4562}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 4, "shownMs": 4700}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 4, "shownMs": null, "arrivedMs": 4654}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 4, "shownMs": 476}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 5, "shownMs": 1399}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 5, "shownMs": 4583}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 5, "shownMs": 4689}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 5, "shownMs": null, "arrivedMs": 4655}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 5, "shownMs": 856}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 6, "shownMs": 4804}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 6, "shownMs": 4565}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 6, "shownMs": 4697}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 6, "shownMs": null, "arrivedMs": 4663}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 6, "shownMs": 184}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 7, "shownMs": 4178}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 7, "shownMs": 4566}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 7, "shownMs": 4684}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 7, "shownMs": null, "arrivedMs": 4647}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 7, "shownMs": 1531}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": false, "trial": 0, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 0, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": false, "trial": 0, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": false, "trial": 0, "shownMs": null, "arrivedMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": false, "trial": 0, "shownMs": 765}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": false, "trial": 1, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 1, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": false, "trial": 1, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": false, "trial": 1, "shownMs": null, "arrivedMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": false, "trial": 1, "shownMs": 1472}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": false, "trial": 2, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 2, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": false, "trial": 2, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": false, "trial": 2, "shownMs": null, "arrivedMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": false, "trial": 2, "shownMs": 174}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "agent state", "live": false, "trial": 3, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 3, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "commit (person)", "live": false, "trial": 3, "shownMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "review", "live": false, "trial": 3, "shownMs": null, "arrivedMs": null}
+{"mode": "off", "ping": "off", "test": "delay", "kind": "ask", "live": false, "trial": 3, "shownMs": 763}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 0, "shownMs": 143}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 0, "shownMs": 132}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 0, "shownMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 0, "shownMs": null, "arrivedMs": 131}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 0, "shownMs": 86}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 1, "shownMs": 149}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 1, "shownMs": 141}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 1, "shownMs": 292}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 1, "shownMs": null, "arrivedMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 1, "shownMs": 54}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 2, "shownMs": 136}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 2, "shownMs": 145}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 2, "shownMs": 221}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 2, "shownMs": null, "arrivedMs": 11121}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 2, "shownMs": 77}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 3, "shownMs": 144}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 3, "shownMs": 153}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 3, "shownMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 3, "shownMs": null, "arrivedMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 3, "shownMs": 56}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 4, "shownMs": 128}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 4, "shownMs": 145}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 4, "shownMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 4, "shownMs": null, "arrivedMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 4, "shownMs": 75}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 5, "shownMs": 133}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 5, "shownMs": 192}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 5, "shownMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 5, "shownMs": null, "arrivedMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 5, "shownMs": 55}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 6, "shownMs": 139}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 6, "shownMs": 167}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 6, "shownMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 6, "shownMs": null, "arrivedMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 6, "shownMs": 79}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 7, "shownMs": 145}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 7, "shownMs": 148}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 7, "shownMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 7, "shownMs": null, "arrivedMs": 17295}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 7, "shownMs": 76}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": false, "trial": 0, "shownMs": 175}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 0, "shownMs": 156}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": false, "trial": 0, "shownMs": 98}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": false, "trial": 0, "shownMs": null, "arrivedMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": false, "trial": 0, "shownMs": 55}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": false, "trial": 1, "shownMs": 148}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 1, "shownMs": 165}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": false, "trial": 1, "shownMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": false, "trial": 1, "shownMs": null, "arrivedMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": false, "trial": 1, "shownMs": 119}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": false, "trial": 2, "shownMs": 212}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 2, "shownMs": 254}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": false, "trial": 2, "shownMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": false, "trial": 2, "shownMs": null, "arrivedMs": 19184}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": false, "trial": 2, "shownMs": 52}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "agent state", "live": false, "trial": 3, "shownMs": 137}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 3, "shownMs": 157}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": false, "trial": 3, "shownMs": null}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "review", "live": false, "trial": 3, "shownMs": null, "arrivedMs": 11605}
+{"mode": "both", "ping": "netflush", "test": "delay", "kind": "ask", "live": false, "trial": 3, "shownMs": 71}

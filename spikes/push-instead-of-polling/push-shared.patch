@@ -1,0 +1,136 @@
+diff --git a/packages/viewer/src/workspaces/push.ts b/packages/viewer/src/workspaces/push.ts
+index 6961d75..7df035e 100644
+--- a/packages/viewer/src/workspaces/push.ts
++++ b/packages/viewer/src/workspaces/push.ts
+@@ -1,44 +1,55 @@
+-// SPIKE: the shell's state as the server pushes it (`/api/events`): one stream per page, the whole
+-// state on each connect, then the parts that changed. Unavailable (404, `?poll`): polling as today.
++// SPIKE: the shell's state as the server pushes it (`/api/events`), ONE stream per browser: the
++// tab holding a Web Lock for this server opens it and relays each event to the other tabs over a
++// BroadcastChannel; when that tab closes, the lock (and the stream) passes to another. A tab that
++// joins asks the holder for the whole state. Unavailable (404, `?poll`): polling as today.
+ 
+ export type Status = 'streaming' | 'reconnecting' | 'unavailable';
+ export type Parts = Record<string, unknown>;
+ type Listener = (parts: Parts, whole: boolean) => void;
+ type StatusListener = (status: Status) => void;
++type Message =
++  | { kind: 'state' | 'change'; parts: Parts }
++  | { kind: 'status'; status: Status }
++  | { kind: 'hello' };
+ 
+ const listeners = new Set<Listener>();
+ const statusListeners = new Set<StatusListener>();
+ let source: EventSource | null = null;
+ let status: Status | null = null;
++let channel: BroadcastChannel | null = null;
++let leader = false;
++let started = false;
++/** The holder's whole state, kept to answer a tab that joins. */
++let whole: Parts = {};
+ 
+ export const pushStatus = (): Status | null => status;
+ 
+-function setStatus(next: Status): void {
++function setStatus(next: Status, relay = true): void {
++  if (relay && leader) channel?.postMessage({ kind: 'status', status: next } satisfies Message);
+   if (status === next) return;
+   status = next;
+   for (const listener of statusListeners) listener(next);
+ }
+ 
++function deliver(parts: Parts, isWhole: boolean, relay: boolean): void {
++  whole = isWhole ? { ...parts } : { ...whole, ...parts };
++  if (relay && leader) channel?.postMessage({ kind: isWhole ? 'state' : 'change', parts } satisfies Message);
++  for (const listener of listeners) listener(parts, isWhole);
++}
++
+ function open(): void {
+-  if (typeof EventSource === 'undefined' || new URLSearchParams(location.search).has('poll')) {
+-    setStatus('unavailable');
+-    return;
+-  }
+   const es = new EventSource('/api/events');
+   source = es;
+   let opened = false;
+   es.addEventListener('state', (e) => {
+     opened = true;
+     setStatus('streaming');
+-    const { parts } = JSON.parse((e as MessageEvent<string>).data) as { parts: Parts };
+-    for (const listener of listeners) listener(parts, true);
++    deliver((JSON.parse((e as MessageEvent<string>).data) as { parts: Parts }).parts, true, true);
+   });
+   es.addEventListener('change', (e) => {
+-    const { parts } = JSON.parse((e as MessageEvent<string>).data) as { parts: Parts };
+-    for (const listener of listeners) listener(parts, false);
++    deliver((JSON.parse((e as MessageEvent<string>).data) as { parts: Parts }).parts, false, true);
+   });
+   es.onerror = () => {
+-    // A 404 or another type closes it for good; a lost connection is tried again (`retry`).
+     if (es.readyState === EventSource.CLOSED) {
+       source = null;
+       setStatus(opened ? 'reconnecting' : 'unavailable');
+@@ -47,19 +58,55 @@ function open(): void {
+   };
+ }
+ 
+-/** Listens to the pushed state; the stream opens with the first listener and closes with the last. */
++function begin(): void {
++  started = true;
++  if (typeof EventSource === 'undefined' || new URLSearchParams(location.search).has('poll')) {
++    setStatus('unavailable', false);
++    return;
++  }
++  const locks = (navigator as Navigator & { locks?: LockManager }).locks;
++  if (!locks || typeof BroadcastChannel === 'undefined') {
++    leader = true;
++    open();
++    return;
++  }
++  channel = new BroadcastChannel(`symbiote-push:${location.host}`);
++  channel.onmessage = (e: MessageEvent<Message>) => {
++    const m = e.data;
++    if (m.kind === 'hello') {
++      if (leader && status === 'streaming') channel?.postMessage({ kind: 'state', parts: whole } satisfies Message);
++      return;
++    }
++    if (leader) return;
++    if (m.kind === 'status') setStatus(m.status, false);
++    else {
++      if (m.kind === 'state') setStatus('streaming', false);
++      deliver(m.parts, m.kind === 'state', false);
++    }
++  };
++  // Held until the tab closes: then the next tab waiting for it opens the stream.
++  void locks.request(`symbiote-push:${location.host}`, () => {
++    leader = true;
++    open();
++    return new Promise<void>(() => {});
++  });
++  channel.postMessage({ kind: 'hello' } satisfies Message);
++}
++
++/** Listens to the pushed state; the stream (or the relay) starts with the first listener. */
+ export function subscribe(listener: Listener, onStatus: StatusListener): () => void {
+   listeners.add(listener);
+   statusListeners.add(onStatus);
+-  if (!source && status !== 'unavailable') open();
+-  else if (status) onStatus(status);
++  if (!started) begin();
++  else if (status) {
++    onStatus(status);
++    if (status === 'streaming') listener(whole, true);
++  }
+   return () => {
+     listeners.delete(listener);
+     statusListeners.delete(onStatus);
+-    if (listeners.size === 0) {
+-      source?.close();
+-      source = null;
+-      if (status !== 'unavailable') status = null;
+-    }
+   };
+ }
++
++// Never closed while the page lives: the stream is the page's, as the lock is (a spike's choice).
++void source;

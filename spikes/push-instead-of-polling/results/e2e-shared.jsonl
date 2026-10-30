@@ -1,0 +1,9 @@
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 2, "status": 200, "ms": 30, "streams": 1, "variant": "one stream per browser"}
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 3, "status": 200, "ms": 36, "streams": 1, "variant": "one stream per browser"}
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 4, "status": 200, "ms": 36, "streams": 1, "variant": "one stream per browser"}
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 5, "status": 200, "ms": 24, "streams": 1, "variant": "one stream per browser"}
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 6, "status": 200, "ms": 31, "streams": 1, "variant": "one stream per browser"}
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 7, "status": 200, "ms": 28, "streams": 1, "variant": "one stream per browser"}
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 8, "status": 200, "ms": 43, "streams": 1, "variant": "one stream per browser"}
+{"mode": "both", "ping": "netflush", "test": "tabs share", "round": "all tabs", "tabs": 8, "shownMs": [242, 252, 247, 239, 241, 239, 244, 245], "streams": 1, "variant": "one stream per browser"}
+{"mode": "both", "ping": "netflush", "test": "tabs share", "round": "after the first tab closed", "tabs": 7, "shownMs": [135, 134, 134, 134, 134, 134, 134], "streams": 1, "variant": "one stream per browser"}

@@ -1,0 +1,275 @@
+{"mode": "off", "ping": "off", "test": "cost", "phase": "live (one agent working)", "requestsPerMin": 90, "kbPerMin": 97.7, "streamKbPerMin": 0, "byPath": {"/api/nucleus": 12, "/api/scribe": 12, "/api/reviews": 12, "/api/workspaces": 12, "/api/mcp/asks": 30, "/api/merges": 11, "/api/usage": 1}, "serverReads": {}, "cpuOwnMsPerMin": 430, "cpuChildrenMsPerMin": 670, "commitsPerMin": 16, "renderedPerMin": 1186}
+{"mode": "off", "ping": "off", "test": "cost", "phase": "idle (no agent working)", "requestsPerMin": 31, "kbPerMin": 26.2, "streamKbPerMin": 0, "byPath": {"/api/mcp/asks": 30, "/api/usage": 1}, "serverReads": {}, "cpuOwnMsPerMin": 40, "cpuChildrenMsPerMin": 0, "commitsPerMin": 4, "renderedPerMin": 10}
+{"mode": "off", "ping": "off", "test": "tabs", "tabs": 2, "status": 200, "ms": 21, "streams": 0}
+{"mode": "off", "ping": "off", "test": "tabs", "tabs": 3, "status": 200, "ms": 18, "streams": 0}
+{"mode": "off", "ping": "off", "test": "tabs", "tabs": 4, "status": 200, "ms": 20, "streams": 0}
+{"mode": "off", "ping": "off", "test": "tabs", "tabs": 5, "status": 200, "ms": 21, "streams": 0}
+{"mode": "off", "ping": "off", "test": "tabs", "tabs": 6, "status": 200, "ms": 21, "streams": 0}
+{"mode": "off", "ping": "off", "test": "tabs", "tabs": 7, "status": 200, "ms": 20, "streams": 0}
+{"mode": "off", "ping": "off", "test": "tabs", "tabs": 8, "status": 200, "ms": 22, "streams": 0}
+{"mode": "both", "ping": "netflush", "test": "cost", "phase": "live (one agent working)", "requestsPerMin": 1, "kbPerMin": 0.9, "streamKbPerMin": 0.01, "byPath": {"/api/usage": 1}, "serverReads": {"workspaces": 1, "reviews": 1, "merges": 1, "nucleus": 1, "scribe": 1, "asks": 1}, "cpuOwnMsPerMin": 40, "cpuChildrenMsPerMin": 70, "commitsPerMin": 4, "renderedPerMin": 10}
+{"mode": "both", "ping": "netflush", "test": "cost", "phase": "idle (no agent working)", "requestsPerMin": 1, "kbPerMin": 2.3, "streamKbPerMin": 1.45, "byPath": {"/api/usage": 1}, "serverReads": {"workspaces": 1, "reviews": 1, "merges": 1, "nucleus": 1, "scribe": 1, "asks": 1}, "cpuOwnMsPerMin": 80, "cpuChildrenMsPerMin": 70, "commitsPerMin": 6, "renderedPerMin": 208}
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 2, "status": 200, "ms": 37, "streams": 2}
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 3, "status": 200, "ms": 24, "streams": 3}
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 4, "status": 200, "ms": 25, "streams": 4}
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 5, "status": 200, "ms": 24, "streams": 5}
+{"mode": "both", "ping": "netflush", "test": "tabs", "tabs": 6, "status": "stalled 8 s", "ms": 8011, "streams": 6}
+{"mode": "off", "ping": "off", "test": "burst", "hooksMs": 1236, "shownAfterLastMs": 789, "arrivals": 4, "pageAgentEqualsFresh": true}
+{"mode": "off", "ping": "off", "test": "server stopped 20 s", "shownAfterResumeMs": 81}
+{"mode": "off", "ping": "off", "test": "restart, same port", "downMs": 3357, "changeShownMs": 3693, "wholeStateAgain": 0, "failingShown": 0}
+{"mode": "off", "ping": "off", "test": "page frozen 20 s", "shownAfterThawMs": 2}
+{"mode": "off", "ping": "off", "test": "minimized browser", "visibility": "visible", "arrivedWhileHiddenMs": null, "shownAfterRestoreMs": null}
+{"mode": "off", "ping": "off", "test": "app window minimized", "visibility": "visible", "arrivedWhileMinimizedMs": null}
+{"mode": "off", "ping": "off", "test": "hidden frames", "visibility": ["top:visible", "f0:visible", "f1:visible", "f2:visible"], "requestsPerMinByFrame": {"f0": 91, "f1": 91, "f2": 91}, "streams": 0}
+{"mode": "both", "ping": "netflush", "test": "burst", "hooksMs": 1218, "shownAfterLastMs": 80, "arrivals": 8, "pageAgentEqualsFresh": true, "triggers": 577, "runs": 26, "pushes": 8}
+{"mode": "both", "ping": "netflush", "test": "dropped stream", "trial": 0, "shownMs": 1094, "wholeStateAgain": 1}
+{"mode": "both", "ping": "netflush", "test": "dropped stream", "trial": 1, "shownMs": 1098, "wholeStateAgain": 1}
+{"mode": "both", "ping": "netflush", "test": "dropped stream", "trial": 2, "shownMs": 1100, "wholeStateAgain": 1}
+{"mode": "both", "ping": "netflush", "test": "dropped stream", "trial": 3, "shownMs": 1093, "wholeStateAgain": 1}
+{"mode": "both", "ping": "netflush", "test": "dropped stream", "trial": 4, "shownMs": 1092, "wholeStateAgain": 1}
+{"mode": "both", "ping": "netflush", "test": "server stopped 20 s", "shownAfterResumeMs": 95}
+{"mode": "both", "ping": "netflush", "test": "restart, same port", "downMs": 3355, "changeShownMs": 748, "wholeStateAgain": 1, "failingShown": 0}
+{"mode": "both", "ping": "netflush", "test": "page frozen 20 s", "shownAfterThawMs": 3}
+{"mode": "both", "ping": "netflush", "test": "minimized browser", "visibility": "visible", "arrivedWhileHiddenMs": 132, "shownAfterRestoreMs": 3}
+{"mode": "both", "ping": "netflush", "test": "app window minimized", "visibility": "visible", "arrivedWhileMinimizedMs": 124}
+{"mode": "both", "ping": "netflush", "test": "hidden frames", "visibility": ["top:visible", "f0:visible", "f1:visible", "f2:visible"], "requestsPerMinByFrame": {"f0": 1, "f1": 1, "f2": 1}, "streams": 4}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 0, "shownMs": 134}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 0, "shownMs": 158}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 0, "shownMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 0, "shownMs": null, "arrivedMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 0, "shownMs": 95}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 1, "shownMs": 149}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 1, "shownMs": 118}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 1, "shownMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 1, "shownMs": null, "arrivedMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 1, "shownMs": 56}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 2, "shownMs": 151}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 2, "shownMs": 167}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 2, "shownMs": 208}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 2, "shownMs": null, "arrivedMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 2, "shownMs": 84}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 3, "shownMs": 160}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 3, "shownMs": 115}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 3, "shownMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 3, "shownMs": null, "arrivedMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 3, "shownMs": 86}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 4, "shownMs": 153}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 4, "shownMs": 174}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 4, "shownMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 4, "shownMs": null, "arrivedMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 4, "shownMs": 88}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 5, "shownMs": 173}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 5, "shownMs": 186}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 5, "shownMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 5, "shownMs": null, "arrivedMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 5, "shownMs": 83}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 6, "shownMs": 156}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 6, "shownMs": 168}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 6, "shownMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 6, "shownMs": null, "arrivedMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 6, "shownMs": 77}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": true, "trial": 7, "shownMs": 157}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 7, "shownMs": 160}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": true, "trial": 7, "shownMs": 1370}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": true, "trial": 7, "shownMs": null, "arrivedMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": true, "trial": 7, "shownMs": 60}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": false, "trial": 0, "shownMs": 152}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 0, "shownMs": 159}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": false, "trial": 0, "shownMs": 290}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": false, "trial": 0, "shownMs": null, "arrivedMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": false, "trial": 0, "shownMs": 77}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": false, "trial": 1, "shownMs": 156}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 1, "shownMs": 169}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": false, "trial": 1, "shownMs": 12589}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": false, "trial": 1, "shownMs": null, "arrivedMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": false, "trial": 1, "shownMs": 57}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": false, "trial": 2, "shownMs": 149}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 2, "shownMs": 158}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": false, "trial": 2, "shownMs": 277}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": false, "trial": 2, "shownMs": null, "arrivedMs": 16950}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": false, "trial": 2, "shownMs": 79}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "agent state", "live": false, "trial": 3, "shownMs": 155}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 3, "shownMs": 167}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "commit (person)", "live": false, "trial": 3, "shownMs": null}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "review", "live": false, "trial": 3, "shownMs": null, "arrivedMs": 19899}
+{"mode": "ping", "ping": "netflush", "test": "delay", "kind": "ask", "live": false, "trial": 3, "shownMs": 90}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 0, "shownMs": 157}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 0, "shownMs": 151}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 0, "shownMs": 146}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 0, "shownMs": null, "arrivedMs": 131}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 0, "shownMs": 95}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 1, "shownMs": 152}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 1, "shownMs": 180}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 1, "shownMs": 144}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 1, "shownMs": null, "arrivedMs": 128}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 1, "shownMs": 57}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 2, "shownMs": 158}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 2, "shownMs": 143}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 2, "shownMs": 159}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 2, "shownMs": null, "arrivedMs": 140}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 2, "shownMs": 55}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 3, "shownMs": 148}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 3, "shownMs": 142}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 3, "shownMs": 152}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 3, "shownMs": null, "arrivedMs": 134}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 3, "shownMs": 90}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 4, "shownMs": 162}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 4, "shownMs": 149}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 4, "shownMs": 146}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 4, "shownMs": null, "arrivedMs": 136}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 4, "shownMs": 59}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 5, "shownMs": 147}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 5, "shownMs": 157}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 5, "shownMs": 142}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 5, "shownMs": null, "arrivedMs": 133}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 5, "shownMs": 56}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 6, "shownMs": 150}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 6, "shownMs": 148}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 6, "shownMs": 160}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 6, "shownMs": null, "arrivedMs": 140}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 6, "shownMs": 84}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": true, "trial": 7, "shownMs": 144}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": true, "trial": 7, "shownMs": 139}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": true, "trial": 7, "shownMs": 198}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": true, "trial": 7, "shownMs": null, "arrivedMs": 132}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": true, "trial": 7, "shownMs": 56}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": false, "trial": 0, "shownMs": 144}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 0, "shownMs": 141}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": false, "trial": 0, "shownMs": 145}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": false, "trial": 0, "shownMs": null, "arrivedMs": 131}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": false, "trial": 0, "shownMs": 58}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": false, "trial": 1, "shownMs": 162}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 1, "shownMs": 142}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": false, "trial": 1, "shownMs": 139}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": false, "trial": 1, "shownMs": null, "arrivedMs": 132}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": false, "trial": 1, "shownMs": 81}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": false, "trial": 2, "shownMs": 152}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 2, "shownMs": 168}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": false, "trial": 2, "shownMs": 135}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": false, "trial": 2, "shownMs": null, "arrivedMs": 134}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": false, "trial": 2, "shownMs": 53}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "agent state", "live": false, "trial": 3, "shownMs": 147}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (agent)", "live": false, "trial": 3, "shownMs": 145}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "commit (person)", "live": false, "trial": 3, "shownMs": 138}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "review", "live": false, "trial": 3, "shownMs": null, "arrivedMs": 153}
+{"mode": "watch", "ping": "off", "test": "delay", "kind": "ask", "live": false, "trial": 3, "shownMs": 54}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":true,"trial":0,"shownMs":146}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":true,"trial":0,"shownMs":167}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":true,"trial":0,"shownMs":134}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":true,"trial":0,"shownMs":null,"arrivedMs":130}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":true,"trial":0,"shownMs":94}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":true,"trial":1,"shownMs":147}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":true,"trial":1,"shownMs":146}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":true,"trial":1,"shownMs":135}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":true,"trial":1,"shownMs":null,"arrivedMs":151}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":true,"trial":1,"shownMs":57}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":true,"trial":2,"shownMs":143}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":true,"trial":2,"shownMs":168}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":true,"trial":2,"shownMs":138}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":true,"trial":2,"shownMs":null,"arrivedMs":119}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":true,"trial":2,"shownMs":52}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":true,"trial":3,"shownMs":140}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":true,"trial":3,"shownMs":166}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":true,"trial":3,"shownMs":127}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":true,"trial":3,"shownMs":null,"arrivedMs":124}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":true,"trial":3,"shownMs":76}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":true,"trial":4,"shownMs":165}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":true,"trial":4,"shownMs":153}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":true,"trial":4,"shownMs":153}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":true,"trial":4,"shownMs":null,"arrivedMs":136}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":true,"trial":4,"shownMs":54}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":true,"trial":5,"shownMs":200}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":true,"trial":5,"shownMs":176}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":true,"trial":5,"shownMs":172}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":true,"trial":5,"shownMs":null,"arrivedMs":155}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":true,"trial":5,"shownMs":61}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":true,"trial":6,"shownMs":216}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":true,"trial":6,"shownMs":151}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":true,"trial":6,"shownMs":187}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":true,"trial":6,"shownMs":null,"arrivedMs":135}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":true,"trial":6,"shownMs":82}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":true,"trial":7,"shownMs":161}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":true,"trial":7,"shownMs":154}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":true,"trial":7,"shownMs":149}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":true,"trial":7,"shownMs":null,"arrivedMs":128}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":true,"trial":7,"shownMs":61}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":false,"trial":0,"shownMs":154}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":false,"trial":0,"shownMs":173}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":false,"trial":0,"shownMs":185}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":false,"trial":0,"shownMs":null,"arrivedMs":115}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":false,"trial":0,"shownMs":57}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":false,"trial":1,"shownMs":121}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":false,"trial":1,"shownMs":144}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":false,"trial":1,"shownMs":119}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":false,"trial":1,"shownMs":null,"arrivedMs":102}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":false,"trial":1,"shownMs":66}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":false,"trial":2,"shownMs":123}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":false,"trial":2,"shownMs":153}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":false,"trial":2,"shownMs":118}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":false,"trial":2,"shownMs":null,"arrivedMs":106}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":false,"trial":2,"shownMs":50}
+{"mode":"both","ping":"netflush","test":"delay","kind":"agent state","live":false,"trial":3,"shownMs":124}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (agent)","live":false,"trial":3,"shownMs":144}
+{"mode":"both","ping":"netflush","test":"delay","kind":"commit (person)","live":false,"trial":3,"shownMs":117}
+{"mode":"both","ping":"netflush","test":"delay","kind":"review","live":false,"trial":3,"shownMs":null,"arrivedMs":108}
+{"mode":"both","ping":"netflush","test":"delay","kind":"ask","live":false,"trial":3,"shownMs":47}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":true,"trial":0,"shownMs":3512}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":true,"trial":0,"shownMs":4502}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":true,"trial":0,"shownMs":2572}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":true,"trial":0,"shownMs":null,"arrivedMs":2173}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":true,"trial":0,"shownMs":1670}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":true,"trial":1,"shownMs":4840}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":true,"trial":1,"shownMs":2036}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":true,"trial":1,"shownMs":2633}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":true,"trial":1,"shownMs":null,"arrivedMs":2438}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":true,"trial":1,"shownMs":609}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":true,"trial":2,"shownMs":2621}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":true,"trial":2,"shownMs":836}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":true,"trial":2,"shownMs":4983}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":true,"trial":2,"shownMs":null,"arrivedMs":1785}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":true,"trial":2,"shownMs":847}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":true,"trial":3,"shownMs":1754}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":true,"trial":3,"shownMs":1689}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":true,"trial":3,"shownMs":4088}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":true,"trial":3,"shownMs":null,"arrivedMs":4049}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":true,"trial":3,"shownMs":314}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":true,"trial":4,"shownMs":2487}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":true,"trial":4,"shownMs":2958}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":true,"trial":4,"shownMs":4521}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":true,"trial":4,"shownMs":null,"arrivedMs":1982}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":true,"trial":4,"shownMs":720}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":true,"trial":5,"shownMs":795}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":true,"trial":5,"shownMs":1852}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":true,"trial":5,"shownMs":3901}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":true,"trial":5,"shownMs":null,"arrivedMs":921}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":true,"trial":5,"shownMs":1730}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":true,"trial":6,"shownMs":1522}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":true,"trial":6,"shownMs":949}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":true,"trial":6,"shownMs":4782}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":true,"trial":6,"shownMs":null,"arrivedMs":2563}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":true,"trial":6,"shownMs":790}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":true,"trial":7,"shownMs":4232}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":true,"trial":7,"shownMs":3001}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":true,"trial":7,"shownMs":4389}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":true,"trial":7,"shownMs":null,"arrivedMs":3887}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":true,"trial":7,"shownMs":989}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":false,"trial":0,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":false,"trial":0,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":false,"trial":0,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":false,"trial":0,"shownMs":null,"arrivedMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":false,"trial":0,"shownMs":1529}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":false,"trial":1,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":false,"trial":1,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":false,"trial":1,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":false,"trial":1,"shownMs":null,"arrivedMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":false,"trial":1,"shownMs":1195}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":false,"trial":2,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":false,"trial":2,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":false,"trial":2,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":false,"trial":2,"shownMs":null,"arrivedMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":false,"trial":2,"shownMs":1734}
+{"mode":"off","ping":"off","test":"delay","kind":"agent state","live":false,"trial":3,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (agent)","live":false,"trial":3,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"commit (person)","live":false,"trial":3,"shownMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"review","live":false,"trial":3,"shownMs":null,"arrivedMs":null}
+{"mode":"off","ping":"off","test":"delay","kind":"ask","live":false,"trial":3,"shownMs":1939}

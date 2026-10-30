@@ -1,0 +1,7 @@
+{"mode":"both","test":"background tab 30 s","visibility":"visible","arrivedWhileHiddenMs":null,"shownWhileHidden":true,"shownAfterFrontMs":6,"ticks":324}
+{"mode":"both","test":"tab really hidden 40 s","visibility":"hidden","hiddenSeconds":40,"arrivalsWhileHidden":1,"firstWithTheChangeAt":1793393256962,"arrivedMs":122}
+{"mode":"off","test":"tab really hidden 40 s","visibility":"hidden","hiddenSeconds":40,"arrivalsWhileHidden":0,"firstWithTheChangeAt":null,"arrivedMs":null}
+{"mode":"both","test":"app window hidden 20 s","visibility":"visible","arrivedWhileHiddenMs":null,"shownWhileHidden":true}
+{"mode":"both","test":"page frozen 20 s (checked)","ticksWhileFrozen":200,"arrivedAfterThawMs":null,"shownAfterThawMs":5}
+{"mode":"off","test":"app window hidden 20 s","visibility":"visible","arrivedWhileHiddenMs":null,"shownWhileHidden":true}
+{"mode":"off","test":"page frozen 20 s (checked)","ticksWhileFrozen":201,"arrivedAfterThawMs":null,"shownAfterThawMs":3}
