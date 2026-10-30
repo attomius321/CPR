@@ -106,8 +106,9 @@ export function startView(repo: string, cache: string): Promise<Served> {
 }
 
 /**
- * `symbiote-nexus --no-open` on the spec's cache; `home` is its Folders tab's home (NX2), `config`
- * the settings folder its pins are kept in (NX4), else one of its own.
+ * `symbiote-nexus --no-open` on the spec's cache; `home` is the home its folders start from (NX2),
+ * `config` the settings folder its pins are kept in (NX4), else ones of its own: Symbiotes lists a
+ * folder as it opens (decision 626), never the person's.
  */
 export function startNexus(cache: string, home?: string, config?: string): Promise<Served> {
   return serve(
@@ -115,7 +116,7 @@ export function startNexus(cache: string, home?: string, config?: string): Promi
     tmpdir(),
     {
       SYMBIOTE_CACHE_DIR: cache,
-      ...(home ? { HOME: home } : {}),
+      HOME: home ?? realpathSync(mkdtempSync(join(tmpdir(), 'symbiote-e2e-nexus-home-'))),
       ...(config ? { XDG_CONFIG_HOME: config } : {}),
     },
     /Symbiote nexus: (\S+)/,

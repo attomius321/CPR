@@ -1,31 +1,22 @@
-// The Folders tab (NX2b, decisions 539, 540): this PC's folders, the repositories marked, and Open
-// Symbiote on each. Since NX3 (decisions 553–555) the places are a card at its left, a folder's
-// repositories cards (`cards.ts`) and its other folders rows in columns; a repository is the end of
-// the way down: its card opens its Symbiote, never its folders. Since NX4 (decisions 617–620) the
-// person's pins are under the places, pinned from the folder's head or a repository's card; a pin
-// shows its folder and starts nothing. Drawn in the viewer's classes (the page head, a card and its
-// head, its field); `nexus.css` lays out the rest.
+// This PC's folders (NX2b, decisions 539, 540): the repositories marked, and Open Symbiote on each.
+// Since NX3 (decisions 553–555) the places are a card at its left, a folder's repositories cards
+// (`cards.ts`) and its other folders rows in columns; a repository is the end of the way down: its
+// card opens its Symbiote, never its folders. Since NX4 (decisions 617–620) the person pins a folder
+// from its head and a repository from its card. Since fix/nexus-pinned-symbiotes (decisions
+// 626–628) it is drawn under Symbiotes' cards, its field in their page's head; the pinned folders
+// are under the places, the pinned repositories among the Symbiotes (`main.ts`). Drawn in the
+// viewer's classes (a card and its head, its field); `nexus.css` lays out the rest.
 import type { Folder, FoldersAnswer, Place } from '../folders.js';
 import type { Pin, PinAnswer } from '../pins.js';
 import { repositoryCard } from './cards.js';
-import {
-  ARROW_UP,
-  CHEVRON_RIGHT,
-  DRIVE,
-  el,
-  FOLDER,
-  FOLDER_GIT,
-  HOUSE,
-  icon,
-  pinButton,
-} from './dom.js';
+import { ARROW_UP, CHEVRON_RIGHT, DRIVE, el, FOLDER, HOUSE, icon, pinButton } from './dom.js';
 import {
   countsText,
   crumbsOf,
-  currentPlace,
   moreText,
   nextOnGrid,
   pinnable,
+  pinnedPlaces,
   pinNames,
   placesShown,
   typedFolder,
@@ -33,12 +24,18 @@ import {
 
 export interface FoldersView {
   element: HTMLElement;
-  /** Shows a folder (null: where the tab opens), unless it is the one shown. */
+  /** Go to folder: its field, in Symbiotes' page head. */
+  go: HTMLElement;
+  /** Shows a folder (null: where the folders open), unless it is the one shown. */
   open(path: string | null): void;
   /** Draws again, the running Symbiotes' roots marked (each read of the page's). */
   draw(running: ReadonlySet<string>): void;
   /** The folder shown; null before the first listing. */
   readonly path: string | null;
+  /** The pins, in the order pinned, as the last listing or pin answered; null before either. */
+  readonly pinned: readonly Pin[] | null;
+  /** Pins or unpins a folder (decision 618): null once done, else why not. */
+  setPin(folder: { name: string; path: string }, pinned: boolean): Promise<string | null>;
 }
 
 export interface FoldersDeps {
@@ -46,8 +43,13 @@ export interface FoldersDeps {
   start(folder: string): Promise<string | null>;
   /** Opens the tab of the Symbiote serving `root`. */
   show(root: string): void;
-  /** The folder shown changed: the address keeps it. */
-  moved(path: string): void;
+  /**
+   * The folder shown changed: the address keeps it; null when it is where the folders open, no
+   * folder asked for.
+   */
+  moved(path: string | null): void;
+  /** The pins changed: Symbiotes' cards are drawn again. */
+  pinsChanged(): void;
 }
 
 const PLACE_ICONS: Record<Place['kind'], string> = {
@@ -67,6 +69,8 @@ const ITEMS = '.nexus-repo, .nexus-folder-open';
 
 export function foldersView(deps: FoldersDeps): FoldersView {
   let answer: Listed | null = null;
+  /** The pins: the last listing's, or the last pin's answer. */
+  let pinnedNow: Pin[] | null = null;
   let running: ReadonlySet<string> = new Set();
   /** What went wrong last: a folder not listed, or a Symbiote not started. */
   let error: string | null = null;
@@ -103,31 +107,15 @@ export function foldersView(deps: FoldersDeps): FoldersView {
   const body = el('div', { class: 'nexus-folders-body' });
   const element = el(
     'section',
-    { class: 'nexus-folders', role: 'tabpanel', 'aria-label': 'Folders', hidden: true },
+    { class: 'nexus-folders', 'aria-label': 'Folders' },
     el(
-      'header',
-      { class: 'page-head' },
-      el('span', { class: 'page-icon', 'aria-hidden': 'true' }, icon(FOLDER, true)),
-      el(
-        'div',
-        { class: 'page-title' },
-        el('div', { class: 'page-name-line' }, el('h1', {}, 'Folders')),
-        el('div', { class: 'page-line' }, 'Open a Symbiote in any repository on this PC'),
-      ),
-      el('div', { class: 'page-actions' }, go),
+      'nav',
+      { class: 'nexus-card nexus-places-card', 'aria-label': 'Places' },
+      el('div', { class: 'card-head' }, el('h2', { class: 'nexus-card-title' }, 'Places')),
+      places,
+      pins,
     ),
-    el(
-      'div',
-      { class: 'nexus-folders-main' },
-      el(
-        'nav',
-        { class: 'nexus-card nexus-places-card', 'aria-label': 'Places' },
-        el('div', { class: 'card-head' }, el('h2', { class: 'nexus-card-title' }, 'Places')),
-        places,
-        pins,
-      ),
-      el('div', { class: 'nexus-card nexus-folders-card' }, cardHead, body),
-    ),
+    el('div', { class: 'nexus-card nexus-folders-card' }, cardHead, body),
   );
 
   // The cards and rows by the keys: the arrows by their place on the page, Backspace up a folder
@@ -181,7 +169,8 @@ export function foldersView(deps: FoldersDeps): FoldersView {
     answer = next;
     error = null;
     field.value = '';
-    deps.moved(next.path);
+    takePins(next.pinned);
+    deps.moved(path === null ? null : next.path);
     draw(running);
     // A repository asked for (decision 554): its card, in the folder holding it. Else the first
     // card or row, or Up in a folder without any: the keys stay in the tab.
@@ -226,9 +215,8 @@ export function foldersView(deps: FoldersDeps): FoldersView {
   }
 
   /**
-   * A pin's row (decision 617): a place's, the repository's icon for one, a green dot while a
-   * Symbiote serves it, "not found" once its folder is gone; its unpin at its end. Its click shows
-   * it: a folder listed, a repository picked in the folder holding it; nothing starts (619).
+   * A pinned folder's row (decisions 617, 628): a place's, "not found" once its folder is gone; its
+   * unpin at its end. Its click lists it (619).
    */
   function pinRow(pin: Pin, name: string, current: string | null): HTMLElement {
     const here = pin.path === current;
@@ -240,12 +228,9 @@ export function foldersView(deps: FoldersDeps): FoldersView {
         'aria-current': here ? 'true' : false,
         'data-path': pin.path,
       },
-      icon(pin.repository ? FOLDER_GIT : FOLDER, true),
+      icon(FOLDER, true),
       el('span', {}, name),
-      pin.missing
-        ? el('span', { class: 'nexus-pin-gone' }, 'not found')
-        : running.has(pin.path) &&
-            el('span', { class: 'state-dot nexus-live', role: 'img', 'aria-label': 'running' }),
+      pin.missing && el('span', { class: 'nexus-pin-gone' }, 'not found'),
     );
     open.addEventListener('click', () => void list(pin.path, { focus: true }));
     return el(
@@ -255,22 +240,26 @@ export function foldersView(deps: FoldersDeps): FoldersView {
       pinButton(
         'nexus-unpin',
         { name, path: pin.path, pinned: true },
-        () => void setPin(pin, false),
+        () => void pinHere(pin, false),
       ),
     );
   }
 
-  const pinnedPaths = () => new Set((answer?.pinned ?? []).map((pin) => pin.path));
+  const pinnedPaths = () => new Set((pinnedNow ?? []).map((pin) => pin.path));
 
-  /**
-   * Pins or unpins a folder (decision 618): the pins the server answers are drawn. An unpin from
-   * its own row puts the focus on the next pin's row, or on the places.
-   */
-  async function setPin(folder: { name: string; path: string }, pinned: boolean): Promise<void> {
-    const fromRow = (document.activeElement as HTMLElement | null)?.classList.contains(
-      'nexus-unpin',
-    );
-    const at = (answer?.pinned ?? []).findIndex((pin) => pin.path === folder.path);
+  /** The pins as the server answered them, Symbiotes' cards told when they changed. */
+  function takePins(next: Pin[]): void {
+    const changed = JSON.stringify(next) !== JSON.stringify(pinnedNow);
+    pinnedNow = next;
+    if (answer) answer = { ...answer, pinned: next };
+    if (changed) deps.pinsChanged();
+  }
+
+  /** Pins or unpins a folder (decision 618): the pins the server answers are kept. */
+  async function setPin(
+    folder: { name: string; path: string },
+    pinned: boolean,
+  ): Promise<string | null> {
     let next: PinAnswer;
     try {
       const res = await fetch('/api/pinned', {
@@ -284,14 +273,26 @@ export function foldersView(deps: FoldersDeps): FoldersView {
     } catch (failure) {
       next = { status: 400, error: (failure as Error).message };
     }
-    if ('error' in next) {
-      error = `${folder.name} was not ${pinned ? 'pinned' : 'unpinned'}: ${next.error}`;
-    } else if (answer) {
-      answer = { ...answer, pinned: next.pinned };
-      error = null;
-    }
+    if ('error' in next)
+      return `${folder.name} was not ${pinned ? 'pinned' : 'unpinned'}: ${next.error}`;
+    takePins(next.pinned);
     draw(running);
-    if (fromRow && !pinned) {
+    return null;
+  }
+
+  /**
+   * A pin or an unpin from the folders: what went wrong is said in the folder's card. An unpin from
+   * its own row puts the focus on the next pin's row, or on the places.
+   */
+  async function pinHere(folder: { name: string; path: string }, pinned: boolean): Promise<void> {
+    const fromRow = (document.activeElement as HTMLElement | null)?.classList.contains(
+      'nexus-unpin',
+    );
+    const at = pinnedPlaces(pinnedNow ?? []).findIndex((pin) => pin.path === folder.path);
+    const why = await setPin(folder, pinned);
+    error = why;
+    draw(running);
+    if (fromRow && !pinned && why === null) {
       const rows = [...pins.querySelectorAll<HTMLElement>('.nexus-place')];
       (
         rows[Math.min(at, rows.length - 1)] ?? places.querySelector<HTMLElement>('.nexus-place')
@@ -321,7 +322,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
       running: live,
       busy: starting.has(folder.path),
       act: () => (live ? deps.show(folder.path) : void start(folder.path)),
-      pin: { pinned, toggle: () => void setPin(folder, !pinned) },
+      pin: { pinned, toggle: () => void pinHere(folder, !pinned) },
     });
     if (folder.path === answer?.picked) card.querySelector('.nexus-repo')?.classList.add('picked');
     return card;
@@ -339,11 +340,9 @@ export function foldersView(deps: FoldersDeps): FoldersView {
   function draw(next: ReadonlySet<string>): void {
     running = next;
     const marks = answer
-      ? [...answer.folders, ...answer.pinned]
-          .map((folder) => folder.path)
-          .filter((path) => running.has(path))
+      ? answer.folders.map((folder) => folder.path).filter((path) => running.has(path))
       : [];
-    const key = JSON.stringify([answer, marks, error, [...starting]]);
+    const key = JSON.stringify([answer, pinnedNow, marks, error, [...starting]]);
     if (key === drawn) return;
     drawn = key;
     // Focus stays on what had it (a place, a card or a row), drawn again.
@@ -351,14 +350,15 @@ export function foldersView(deps: FoldersDeps): FoldersView {
     const focused = active?.dataset.path;
     const focusedKind = active?.classList[0];
 
-    const current = answer ? currentPlace(answer) : null;
+    const current = answer?.path ?? null;
+    // The pinned folders under the places (decision 628); a hint while nothing is pinned, nothing
+    // while only repositories are: they are among the Symbiotes.
+    const pinned = pinnedPlaces(pinnedNow ?? []);
     places.replaceChildren(
-      ...(answer ? placesShown(answer.places, answer.pinned) : []).map((p) =>
-        placeButton(p, current),
-      ),
+      ...(answer ? placesShown(answer.places, pinned) : []).map((p) => placeButton(p, current)),
     );
-    const pinned = answer?.pinned ?? [];
     const names = pinNames(pinned);
+    pins.hidden = pinned.length === 0 && (pinnedNow ?? []).length > 0;
     pins.replaceChildren(
       el(
         'h3',
@@ -420,7 +420,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
         // Home, the top and the drives are always places: no pin (decision 620).
         pinnable(answer)
           ? pinButton('nexus-head-pin', { ...listed, pinned: headPinned }, () => {
-              void setPin(listed, !headPinned);
+              void pinHere(listed, !headPinned);
             })
           : null,
       ].filter((part) => part !== null),
@@ -462,6 +462,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
 
   return {
     element,
+    go,
     open(path) {
       if (answer !== null && (path === null || path === answer.path)) return;
       // The first listing is on its way: each read of the page's would ask again.
@@ -472,5 +473,9 @@ export function foldersView(deps: FoldersDeps): FoldersView {
     get path() {
       return answer?.path ?? null;
     },
+    get pinned() {
+      return pinnedNow;
+    },
+    setPin,
   };
 }

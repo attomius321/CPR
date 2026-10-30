@@ -5,19 +5,16 @@ import {
   countsText,
   crumbsOf,
   folderFromHash,
-  FOLDERS,
   foldersHash,
-  idleRepositories,
   moreText,
   nextOnGrid,
   pinnable,
+  pinnedPlaces,
   pinNames,
   placesShown,
-  currentPlace,
   typedFolder,
 } from '../src/page/folders-tab.js';
 import type { Pin } from '../src/pins.js';
-import { selectedFrom } from '../src/page/tabs.js';
 
 const places: Place[] = [
   { kind: 'home', name: 'Home', path: '/home/me' },
@@ -26,7 +23,7 @@ const places: Place[] = [
   { kind: 'drive', name: 'C:', path: '/mnt/c' },
 ];
 
-describe('the Folders tab in the address', () => {
+describe('the folder browsed, in the address', () => {
   it('is #folders, with the folder shown', () => {
     expect(foldersHash(null)).toBe('#folders');
     expect(foldersHash('/home/me/my projects')).toBe('#folders:%2Fhome%2Fme%2Fmy%20projects');
@@ -34,13 +31,6 @@ describe('the Folders tab in the address', () => {
     expect(folderFromHash('#folders')).toBeNull();
     expect(folderFromHash('#folders:%E0%A4%A')).toBeNull();
     expect(folderFromHash('#%2Fhome%2Fme%2Fky')).toBeNull();
-  });
-
-  it("selects the Folders tab, apart from a Symbiote's, whose root is always absolute", () => {
-    expect(selectedFrom('#folders')).toBe(FOLDERS);
-    expect(selectedFrom('#folders:%2Fhome%2Fme')).toBe(FOLDERS);
-    expect(selectedFrom('#%2Fhome%2Fme%2Fky')).toBe('/home/me/ky');
-    expect(FOLDERS.startsWith('/')).toBe(false);
   });
 });
 
@@ -107,13 +97,10 @@ describe("a repository's card (NX3)", () => {
     expect(checkoutWords(folder('odd', { repository: true }))).toBeNull();
   });
 
-  it('is offered under the running Symbiotes when none serves it', () => {
-    const listed = [
-      folder('ky', { repository: true }),
-      folder('notes'),
-      folder('zod', { repository: true }),
-    ];
-    expect(idleRepositories(listed, new Set(['/home/me/projects/zod']))).toEqual([listed[0]]);
+  it('says what a pinned repository has checked out, as a listed one (decision 627)', () => {
+    const pinned: Pin = { name: 'ky', path: '/home/me/ky', repository: true, branch: 'main' };
+    expect(checkoutWords(pinned)).toBe('main');
+    expect(checkoutWords({ ...pinned, branch: undefined })).toBeNull();
   });
 });
 
@@ -220,13 +207,11 @@ describe('the pins in the places card (NX4, decisions 617–620)', () => {
     expect(placesShown(places, [pin('/home/me'), pin('/'), pin('/mnt/c')])).toEqual(places);
   });
 
-  it('is the picked repository when it is pinned, else the folder listed', () => {
-    const answer = { path: '/home/me/projects', picked: null, pinned: [pin('/home/me/projects')] };
-    expect(currentPlace(answer)).toBe('/home/me/projects');
-    const ky = pin('/home/me/projects/ky', true);
-    expect(currentPlace({ ...answer, picked: ky.path, pinned: [ky] })).toBe(ky.path);
-    // A repository picked that is not pinned: the folder holding it, as before.
-    expect(currentPlace({ ...answer, picked: ky.path, pinned: [] })).toBe('/home/me/projects');
+  it('keeps the pinned folders, and the pins gone, as places; a pinned repository is a Symbiote (decision 628)', () => {
+    const gone: Pin = { ...pin('/home/me/old'), missing: true };
+    expect(
+      pinnedPlaces([pin('/home/me/projects'), pin('/home/me/projects/ky', true), gone]),
+    ).toEqual([pin('/home/me/projects'), gone]);
   });
 
   it('pins any folder listed but home, the top and the drives: they are always places', () => {

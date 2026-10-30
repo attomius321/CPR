@@ -4,13 +4,14 @@ import {
   checkoutText,
   closeTab,
   hashOf,
-  nearFolders,
   nextTabs,
   selectedFrom,
   sinceText,
+  symbiotesShown,
   titleOf,
   type Tab,
 } from '../src/page/tabs.js';
+import type { Pin } from '../src/pins.js';
 import type { Symbiote } from '../src/symbiotes.js';
 
 const listed = (name: string, over: Partial<Symbiote> = {}): Symbiote => ({
@@ -93,6 +94,11 @@ describe('the address', () => {
     expect(selectedFrom('#')).toBeNull();
     expect(selectedFrom('#%E0%A4%A')).toBeNull();
   });
+
+  it('is Symbiotes for a folder browsed, and for an old Folders tab address (decision 626)', () => {
+    expect(selectedFrom('#folders')).toBeNull();
+    expect(selectedFrom('#folders:%2Fhome%2Fme%2Fprojects')).toBeNull();
+  });
 });
 
 describe('words', () => {
@@ -123,21 +129,44 @@ describe('words', () => {
   });
 });
 
-describe('nearFolders', () => {
-  it('is the folders the running Symbiotes are in, newest first, each once, three at most (NX3)', () => {
-    const at = (root: string, started: string, url: string | null = 'http://127.0.0.1:1/') =>
-      tab(listed(root.split('/').at(-1) ?? root, { root, started }), url);
+describe('symbiotesShown', () => {
+  const pin = (path: string, over: Partial<Pin> = {}): Pin => ({
+    name: path.split('/').at(-1) ?? path,
+    path,
+    repository: true,
+    ...over,
+  });
+
+  it('is the pinned repositories first, in the order pinned, then the other running ones (decision 627)', () => {
+    const ky = tab(listed('ky'));
+    const zod = tab(listed('zod'));
+    const gone = tab(listed('gone'), null);
+    const api = pin('/home/me/api', { branch: 'main' });
+    const stopped = pin('/home/me/gone');
     expect(
-      nearFolders([
-        at('/home/me/projects/ky', '2026-10-28T10:00:00.000Z'),
-        at('/home/me/projects/zod', '2026-10-28T12:00:00.000Z'),
-        at('/home/me/work/api', '2026-10-28T11:00:00.000Z'),
-        at('/srv/old/gone', '2026-10-28T13:00:00.000Z', null),
-        at('/home/me/repo', '2026-10-28T09:00:00.000Z'),
-        at('/x', '2026-10-28T08:00:00.000Z'),
-      ]),
-    ).toEqual(['/home/me/projects', '/home/me/work', '/home/me']);
-    expect(nearFolders([at('/x', '2026-10-28T08:00:00.000Z')])).toEqual(['/']);
-    expect(nearFolders([])).toEqual([]);
+      symbiotesShown(
+        [gone, ky, zod],
+        [
+          pin('/home/me/zod'),
+          // A folder is a place, and a pin whose folder is gone is drawn there (decision 628).
+          pin('/home/me/projects', { repository: false }),
+          api,
+          pin('/home/me/old', { repository: false, missing: true }),
+          stopped,
+        ],
+      ),
+    ).toEqual([
+      { kind: 'running', tab: zod, pinned: true },
+      { kind: 'pinned', pin: api },
+      // Its tab is open but it stopped: a pin with none running.
+      { kind: 'pinned', pin: stopped },
+      { kind: 'running', tab: ky, pinned: false },
+    ]);
+  });
+
+  it('is the running ones alone without a pin, and nothing with none', () => {
+    const ky = tab(listed('ky'));
+    expect(symbiotesShown([ky], [])).toEqual([{ kind: 'running', tab: ky, pinned: false }]);
+    expect(symbiotesShown([], [])).toEqual([]);
   });
 });
