@@ -1,15 +1,16 @@
 // The person's pinned folders (NX4, decisions 617–619): kept in Symbiote's settings folder, beside
 // `hive.json`, from one run of the nexus to the next (each run serves on a new port, so a page's
-// own storage starts empty). Folders draws them in its places card; pinning starts nothing.
+// own storage starts empty). A pinned repository is a card among the Symbiotes, a pinned folder a
+// place (fix/nexus-pinned-symbiotes, decisions 627, 628); pinning starts nothing.
 import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
-import { basename, dirname, isAbsolute, join, resolve } from 'node:path';
-import { repositoryRoot, within } from './folders.js';
+import { basename, dirname, isAbsolute, resolve } from 'node:path';
+import { checkoutOf, repositoryRoot, within, type Folder } from './folders.js';
 
 /** The file in Symbiote's settings folder (`configDir`) that keeps the nexus's own choices. */
 export const PINS_FILE = 'nexus.json';
 
-/** A pinned folder, as Folders draws it. */
-export interface Pin {
+/** A pinned folder, as the page draws it: a repository's with what it has checked out. */
+export interface Pin extends Pick<Folder, 'branch' | 'detached'> {
   name: string;
   path: string;
   /** It holds a `.git` folder or file, as a listing marks a repository. */
@@ -59,7 +60,10 @@ export async function writePinned(file: string, paths: readonly string[]): Promi
   await rename(temp, file);
 }
 
-/** Each pinned path as Folders draws it: its name, a repository or not, gone or not. */
+/**
+ * Each pinned path as the page draws it: its name, gone or not, a repository or not and, for one,
+ * what it has checked out, read from its `HEAD` as a listing reads it (decision 555).
+ */
 export function describePins(paths: readonly string[]): Promise<Pin[]> {
   return Promise.all(
     paths.map(async (path): Promise<Pin> => {
@@ -69,11 +73,8 @@ export function describePins(paths: readonly string[]): Promise<Pin[]> {
         () => false,
       );
       if (!folder) return { name, path, repository: false, missing: true };
-      const repository = await stat(join(path, '.git')).then(
-        () => true,
-        () => false,
-      );
-      return { name, path, repository };
+      const checkout = await checkoutOf(path);
+      return { name, path, repository: checkout !== null, ...checkout };
     }),
   );
 }

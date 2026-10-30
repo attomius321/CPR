@@ -69,29 +69,31 @@ machine as a tab of one window, and starts new ones in any repository on your PC
 symbiote-nexus
 ```
 
-The row at the top has two groups, with a line between them. On the left are the nexus's own
-pages, **Symbiotes** and **Folders**, each with an icon. After the line, each tab is one Symbiote,
-with a dot for its state: green while it runs, an empty ring once it stopped. A Symbiote's tab shows
-it as its own window would. A Symbiote you opened stays loaded while you look at another, so
-switching back is instant. A `symbiote view` started in a terminal gets its tab within 2 seconds.
+The row at the top has two groups, with a line between them. On the left is the nexus's own page,
+**Symbiotes**, with its icon. After the line, each tab is one Symbiote, with a dot for its state:
+green while it runs, an empty ring once it stopped. A Symbiote's tab shows it as its own window
+would. A Symbiote you opened stays loaded while you look at another, so switching back is instant.
+A `symbiote view` started in a terminal gets its tab within 2 seconds.
 
-**Symbiotes** shows each running Symbiote as a card, with its folder, branch and changed files.
-Under them, **Repositories in** lists the other repositories in the folders your Symbiotes are in:
-click one to open a Symbiote there.
+**Symbiotes** shows your Symbiotes as cards: the ones you pinned first, in the order you pinned
+them, then the other running ones. A running Symbiote's card shows its folder, branch and changed
+files; click it to open its tab. A pinned repository with no Symbiote running shows its branch and
+**Open Symbiote**: click it to start one. Nothing starts on its own. To pin a Symbiote, or unpin
+it, use the pin in its card's corner; it shows when you point at the card.
 
-**Folders** shows your PC's folders, one folder at a time. Its repositories come first, as cards
-that show the checked-out branch. The other folders follow as rows; click one to go into it. A
-repository is as far as you go: clicking it opens a Symbiote there, or shows the one already
-running. A path inside a repository shows the folder that holds it, with the repository picked.
-The places are on the left: your home folder, the folders your Symbiotes are in, `/`, and on WSL
-the Windows drives (`C:`). To go to any folder, hidden ones included, type its path in **Go to
-folder** and press Enter.
+Under the cards are your PC's folders, one folder at a time, starting in the folder of the newest
+running Symbiote, or in your home folder. A folder's repositories come first, as cards that show
+the checked-out branch. The other folders follow as rows; click one to go into it. A repository is
+as far as you go: clicking it opens a Symbiote there, or shows the one already running. A path
+inside a repository shows the folder that holds it, with the repository picked. The places are on
+the left: your home folder, the folders your Symbiotes are in, `/`, and on WSL the Windows drives
+(`C:`). To go to any folder, hidden ones included, type its path in **Go to folder**, at the top
+right, and press Enter.
 
-To keep a folder at hand, pin it: the pin at the right of the folder's head, or, for a repository,
-the pin in its card's corner. Pinned folders are listed under **Pinned**, below the places, and stay
-there the next time you open the nexus. Clicking one shows it; a pinned repository is shown picked
-in the folder that holds it, and its Symbiote starts only when you open it. A pinned folder that was
-moved or deleted stays marked "not found" until you unpin it with the pin at the end of its row.
+To keep a folder at hand, pin it with the pin at the right of the folder's head. Pinned folders are
+listed under **Pinned**, below the places, and stay there the next time you open the nexus. A
+repository you pin from its card's corner joins the Symbiotes' cards instead. A pinned folder that
+was moved or deleted stays marked "not found" until you unpin it with the pin at the end of its row.
 
 Closing the nexus stops no Symbiote, not even the ones it started, so their agents keep working.
 To stop a Symbiote, click the stop button on its card in **Symbiotes**, then **Stop**.

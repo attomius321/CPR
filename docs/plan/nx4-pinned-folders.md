@@ -216,3 +216,95 @@ Not verified: macOS and Windows outside WSL; the person's own window on WSLg (Xv
 nexuses pinning in the same few milliseconds (the last write wins: not tested); the person's real
 settings folder (never written: every test and screenshot had its own); a reader test of the
 README's paragraph by a fresh reader.
+
+## Fix: pinned Symbiotes on Symbiotes, the folders under them (fix/nexus-pinned-symbiotes)
+
+**Problem** (2026-10-30, the person: "I would like to see the pinned Symbiotes in Symbiotes tab of
+nexus...Also i don't like the Folders...Put them in Symbiotes page. It is redundant"). From their
+settings folder and logs, read only:
+
+| What | Before the fix |
+|---|---|
+| The person's pins (`nexus.json`) | Two repositories, `~/projects/Starknet` and `~/projects/Symbiote`; `projects` pinned and unpinned twice within 1.5 s |
+| Symbiotes the nexus started on 2026-10-30 | 9: Symbiote 7, Starknet 2, the two pinned |
+| Where a pin shows | Only Folders' places card, as a row; Symbiotes shows none |
+| Symbiotes' "Repositories in projects" | The repositories of the folder Folders opens on (the newest running Symbiote's): the same cards twice |
+
+**Decisions 626–628** (planned, and OK'd by the person: "Go for it"):
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 626 | Where the folders are | **Under Symbiotes' cards, on the nexus's one page: the row's own group is Symbiotes alone; Go to folder in its head; "Repositories in", Show in Folders and Open a folder go. `#folders:<path>` lists that folder under Symbiotes, and is its address once the person goes to one** | "It is redundant": Folders opened on the folder "Repositories in" showed; old addresses keep working |
+| 627 | What a pinned repository is | **A card among the Symbiotes, first, in the order pinned, then the other running ones by name: a running one's card as before (its tab, Stop); one not running with its branch, read from its `HEAD`, and Open Symbiote, a click its start. Every card has its pin in its corner** | The person pins repositories to start them: all 9 starts of the day were the two pinned. Decision 619 kept: nothing starts by itself or by a pin |
+| 628 | What a pinned folder is | **A place, under Pinned in the places card, as NX4 drew it; so is a pin whose folder is gone. A pinned repository is not listed there** | A folder is where the person goes, not a Symbiote to open |
+
+```
+ ▦ Symbiotes 2 │ ● Symbiote main  ● ky main
+ [S] Symbiotes                              [ Go to folder: /path or ~/path ]
+     2 running on this machine
+ ┌──────────────────── 📌 ■ ┐ ┌────────────────────── 📌 ┐ ┌──────────── ■ ┐
+ │ ● Symbiote               │ │ ○ Starknet                │ │ ● ky          │
+ │ ⑂ main · 3 files · 19:40 │ │ ⑂ main · Open Symbiote    │ │ ⑂ main · …    │
+ └──────────────────────────┘ └───────────────────────────┘ └───────────────┘
+ ┌ Places ─────┐ ┌ ↑ Home / projects        16 repositories · 30 folders 📌 ┐
+ │ ⌂ Home  …   │ │ Repositories 16 …   Folders 30 …                         │
+ │ Pinned 1    │ │                                                          │
+ │ ▭ worktrees │ │                                                          │
+ └─────────────┘ └──────────────────────────────────────────────────────────┘
+```
+
+- **`src/page/main.ts`**: the row without Folders; Symbiotes' head (the S, the count, Go to folder),
+  what went wrong, the cards, then the folders' section. Only the line and the cards are drawn
+  again: the folders keep their state and focus. A card's focus (its open, its pin, Stop) is kept
+  across a drawing by its kind and path, or moves to the card in its place when it left.
+- **`src/page/tabs.ts`**: `symbiotesShown(tabs, pins)`, the cards in order; `selectedFrom` reads
+  `#folders…` as Symbiotes. `nearFolders` went with "Repositories in".
+- **`src/page/folders-view.ts`**: a section, not a tab: no page head, its field handed to
+  Symbiotes'. It keeps the pins from each listing and pin, tells the page when they change, and
+  pins for Symbiotes' cards (`setPin`). The address names a folder only once the person asked for
+  one (a place, a row, a crumb, a typed path, a pin): a listing where the folders open (`null`)
+  leaves Symbiotes' address empty.
+- **`src/page/folders-tab.ts`**: `pinnedPlaces`; `idleRepositories` and `currentPlace` went (no
+  pinned repository is a row any more).
+- **`src/pins.ts`**: a pinned repository's checkout, read as a listing reads it (`checkoutOf`,
+  exported from `src/folders.ts`).
+
+**As built**: as planned, with these differences:
+
+- **The places' Pinned shows only while a folder is pinned, or nothing is**. With pinned
+  repositories only, as the person has, its hint ("Pin a folder from its head, a repository from
+  its card.") would stand under the places for good.
+- **A pinned folder's row has no green dot**: a running Symbiote's folder is a repository's, and
+  a repository is never such a row.
+- **The specs' nexus gets a home of its own by default** (`startNexus`): Symbiotes lists a folder
+  as it opens, and a spec without one would have listed the person's home.
+- **`main` moved under the branch**: fix/first-time-symbiote-from-nexus (decision 625, the frames'
+  `address()`) was merged first; merged into this branch without a conflict, its spec passing as
+  it is on the one page.
+
+**Results.**
+
+- Tests first, red before: 5 unit tests (`selectedFrom` of `#folders…`, `symbiotesShown` twice,
+  `pinnedPlaces`, a pinned repository's checkout: the function missing, or `folders` for null, or
+  no `branch`) and 8 e2e specs on main's build (`pins.spec.ts`' 4: a pinned repository among the
+  Symbiotes, kept from one nexus to the next and started only by its card; a running Symbiote
+  pinned from its card, first; a pinned folder under the places; a gone pin; and `nexus.spec.ts`'
+  4 that drew the row with Folders or "Repositories in").
+- After: the nexus's unit tests 111 → 113 (4 went with `nearFolders`, `idleRepositories`,
+  `currentPlace` and Folders' selection; 6 new); `pnpm check` passes (2,477 tests, main 2,475);
+  `pnpm build`. The nexus's e2e, 20 specs, pass (main 19; `pins.spec.ts` 3 → 4), the 3 in
+  Symbiote's window under Xvfb among them. `pnpm test:e2e`: the viewer's 352 specs ran, 351
+  passed; `workspaces.spec.ts:458` (a card's chip, a box read null) failed under 16 workers and
+  passed 3 times of 3 alone. This branch changes nothing in `packages/viewer`.
+- `git diff --stat main`: `packages/nexus`, the docs and the README. No analysis change: no
+  regression-check.
+- A pinned repository's branch, read with the pins (built `pins.js`, five runs after a warm-up):
+  the person's two pins 0.3–1.0 ms; five (two repositories, three folders, one on `/mnt/c`)
+  0.9–1.2 ms, 4.6 ms the first run. NX4 measured 0.6–0.7 ms for five without it.
+- Screenshots at 1×, dark and light, 1440 and 800 px (16): two pinned (one running, one not) and
+  one running Symbiote with a pinned folder and a gone pin; a running card's pin on hover; nothing
+  running, nothing pinned.
+
+Not verified: macOS and Windows outside WSL; the person's own window on WSLg (Xvfb only); a
+pinned repository on `/mnt/c` started from its card (git over 9p); a reader test of the README's
+section by a fresh reader.

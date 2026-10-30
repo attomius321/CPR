@@ -10,9 +10,10 @@ import {
   type Served,
 } from './nexus.js';
 
-// The Folders tab (NX2): this PC's folders, a Symbiote opened in one, stopped and started again,
-// with real `symbiote view`s started by the nexus, on a home and a cache of the spec's own. Since
-// NX3 a folder's repositories are cards, the end of the way down, and its other folders rows.
+// This PC's folders (NX2): a Symbiote opened in one, stopped and started again, with real
+// `symbiote view`s started by the nexus, on a home and a cache of the spec's own. Since NX3 a
+// folder's repositories are cards, the end of the way down, and its other folders rows; since
+// fix/nexus-pinned-symbiotes (decision 626) they are under the Symbiotes, on one page.
 
 function pageErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -33,7 +34,7 @@ const card = (page: Page, name: string) =>
   cards(page).filter({ has: page.locator('.nexus-repo-name', { hasText: name }) });
 const shown = (page: Page) => page.locator('.nexus-crumbs [aria-current="page"]');
 
-test.describe('Symbiote nexus: Folders', () => {
+test.describe('Symbiote nexus: folders', () => {
   const cleanup: (() => unknown)[] = [];
   test.afterEach(async () => {
     for (const step of cleanup.splice(0).reverse()) await step();
@@ -64,10 +65,10 @@ test.describe('Symbiote nexus: Folders', () => {
     const { home, cache } = setUp();
     const served = await nexus(cache, home.dir);
     await page.goto(served.url);
-    await tab(page, 'Folders').click();
 
-    // No Symbiote runs: home.
-    await expect(page.locator('.nexus-folders h1')).toHaveText('Folders');
+    // No Symbiote runs: home, under the Symbiotes.
+    await expect(page.locator('.nexus-home h1')).toHaveText('Symbiotes');
+    await expect(page.locator('.nexus-folders h1')).toHaveCount(0);
     await expect(shown(page)).toHaveText('Home');
     await expect(rows(page)).toHaveText(['projects']);
     await expect(page.locator('.nexus-place').first()).toHaveText('Home');
@@ -85,7 +86,7 @@ test.describe('Symbiote nexus: Folders', () => {
       'Folders1',
     ]);
     expect(new URL(page.url()).hash).toBe(`#folders:${encodeURIComponent(home.projects)}`);
-    await expect(page).toHaveTitle('Folders — Symbiote nexus');
+    await expect(page).toHaveTitle('Symbiote nexus');
 
     // A repository's card opens its Symbiote, never its folders: its tab, its Git page.
     await card(page, 'alpha').click();
@@ -93,8 +94,9 @@ test.describe('Symbiote nexus: Folders', () => {
     await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
     expect(recorded(cache)).toHaveLength(1);
 
-    // Back in Folders, where it was: alpha runs; its card shows its tab.
-    await tab(page, 'Folders').click();
+    // Back on Symbiotes, the folder where it was: alpha runs; its card shows its tab.
+    await tab(page, /^Symbiotes/).click();
+    expect(new URL(page.url()).hash).toBe(`#folders:${encodeURIComponent(home.projects)}`);
     await expect(shown(page)).toHaveText('projects');
     await expect(card(page, 'alpha')).toHaveText('alphamainRunning · Show');
     await page.getByRole('button', { name: 'Show alpha' }).click();
@@ -181,7 +183,7 @@ test.describe('Symbiote nexus: Folders', () => {
     await expect(page.locator('.nexus-folders-error')).toHaveText('Type a full path: /… or ~/…');
 
     await page.reload();
-    await expect(tab(page, 'Folders')).toHaveAttribute('aria-selected', 'true');
+    await expect(tab(page, /^Symbiotes/)).toHaveAttribute('aria-selected', 'true');
     await expect(shown(page)).toHaveText('notes');
     expect(errors).toEqual([]);
   });
@@ -197,7 +199,7 @@ test.describe('Symbiote nexus: Folders', () => {
     await expect(page.locator('.nexus-folders-error')).toHaveText(
       `broken did not open: symbiote: not inside a git working tree: ${join(home.projects, 'broken')}`,
     );
-    await expect(tab(page, 'Folders')).toHaveAttribute('aria-selected', 'true');
+    await expect(tab(page, /^Symbiotes/)).toHaveAttribute('aria-selected', 'true');
     expect(recorded(cache)).toEqual([]);
     expect(errors).toEqual([]);
   });
@@ -234,6 +236,39 @@ test.describe('Symbiote nexus: Folders', () => {
     await expect(tab(page, /^alpha/)).toHaveText('alphamain');
     await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
     expect(recorded(cache)).toHaveLength(1);
+    expect(errors).toEqual([]);
+  });
+
+  test('frames a Symbiote once this browser reaches it, as WSL forwards a new port late', async ({
+    page,
+  }) => {
+    const errors = pageErrors(page);
+    const { home, cache } = setUp();
+    const served = await nexus(cache, home.dir);
+    // A browser on Windows reaches a WSL port only once WSL forwards it, 18–858 ms after the
+    // Symbiote listens (fix/first-time-symbiote-from-nexus): each Symbiote's address is refused
+    // here for a second from the first request to it.
+    const own = new URL(served.url).origin;
+    const firstAsked = new Map<string, number>();
+    await page.route(/^http:\/\/127\.0\.0\.1:\d+\//, (route) => {
+      const { origin } = new URL(route.request().url());
+      if (origin === own) return route.continue();
+      const since = firstAsked.get(origin) ?? Date.now();
+      firstAsked.set(origin, since);
+      return Date.now() - since < 1000 ? route.abort('connectionrefused') : route.continue();
+    });
+    await page.goto(`${served.url}#folders:${encodeURIComponent(home.projects)}`);
+    await page.getByRole('button', { name: 'Open Symbiote in alpha' }).click();
+    await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
+
+    // Started again, on another port: framed once that one answers too.
+    await tab(page, /^Symbiotes/).click();
+    await page.getByRole('button', { name: 'Stop alpha' }).click();
+    await page.getByRole('button', { name: 'Stop', exact: true }).click();
+    await tab(page, /^alpha/).click();
+    await page.getByRole('button', { name: 'Start again' }).click();
+    await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
+    expect(firstAsked.size).toBe(2);
     expect(errors).toEqual([]);
   });
 

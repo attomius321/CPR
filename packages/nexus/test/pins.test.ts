@@ -84,6 +84,38 @@ describe('describePins', () => {
   });
 });
 
+describe("a pinned repository's checkout (decision 627)", () => {
+  it('is read from its HEAD, as a listing reads it: a branch, a detached commit, or none', async () => {
+    const root = tree('checkout', ['ky+', 'redis+', 'odd+', 'worktree', 'notes']);
+    writeFileSync(join(root, 'ky', '.git', 'HEAD'), 'ref: refs/heads/feature/x\n');
+    const commit = 'c5031f43a7eaa0d96311746acf759ee6d6acb053';
+    writeFileSync(join(root, 'redis', '.git', 'HEAD'), `${commit}\n`);
+    // A worktree's `.git` file names its folder: its HEAD is there.
+    mkdirSync(join(root, 'odd', '.git', 'worktrees', 'w'), { recursive: true });
+    writeFileSync(join(root, 'odd', '.git', 'worktrees', 'w', 'HEAD'), 'ref: refs/heads/fix/y\n');
+    writeFileSync(
+      join(root, 'worktree', '.git'),
+      `gitdir: ${join(root, 'odd', '.git', 'worktrees', 'w')}\n`,
+    );
+    expect(
+      await describePins([
+        join(root, 'ky'),
+        join(root, 'redis'),
+        join(root, 'odd'),
+        join(root, 'worktree'),
+        join(root, 'notes'),
+      ]),
+    ).toEqual([
+      { name: 'ky', path: join(root, 'ky'), repository: true, branch: 'feature/x' },
+      { name: 'redis', path: join(root, 'redis'), repository: true, detached: commit },
+      // An empty `.git` folder: a repository with no branch to say.
+      { name: 'odd', path: join(root, 'odd'), repository: true },
+      { name: 'worktree', path: join(root, 'worktree'), repository: true, branch: 'fix/y' },
+      { name: 'notes', path: join(root, 'notes'), repository: false },
+    ]);
+  });
+});
+
 describe('pins (NX4, decisions 617–619)', () => {
   it('pins a folder once, in the order pinned, and unpins it; the file keeps them', async () => {
     const root = tree('order', ['a', 'b+', 'c']);
