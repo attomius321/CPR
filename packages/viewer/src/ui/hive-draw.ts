@@ -467,16 +467,19 @@ export class Painter {
       });
       ctx.clip(still);
     }
+    const fit = ctx.getTransform();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.drawImage(picture, 0, 0);
-    ctx.restore();
-    const reach = mind.reach * scene.mindScale;
+    ctx.setTransform(fit);
+    // The traces surge as the Mind flares, on the tiles still shut only.
     if (view.heat > 0) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = view.heat;
       traces(1);
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
+    }
+    ctx.restore();
+    const reach = mind.reach * scene.mindScale;
+    if (view.heat > 0) {
       const g = ctx.createRadialGradient(mx, my, 0, mx, my, reach * 1.6);
       g.addColorStop(0, `rgba(${this.spec},${alpha(0.85 * view.heat)})`);
       g.addColorStop(0.18, `rgba(${this.heat},${alpha(0.7 * view.heat)})`);
