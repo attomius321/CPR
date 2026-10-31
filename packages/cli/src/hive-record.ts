@@ -275,6 +275,7 @@ export function hiveSummary(record: HiveFile, on: boolean): WorkspaceHive {
       : {}),
     ...(record.note ? { note: record.note } : {}),
     ...(!on && waits ? { paused: true as const } : {}),
+    ...(!on ? { off: true as const } : {}),
   };
 }
 

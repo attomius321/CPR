@@ -204,6 +204,11 @@ export interface WorkspaceHive {
   note?: string;
   /** Hive is off: the step waits for it (decision 655). */
   paused?: true;
+  /**
+   * Hive is off, whatever the step (HV3): landing is the person's as for any workspace, from its
+   * review, not by Land.
+   */
+  off?: true;
 }
 
 /**

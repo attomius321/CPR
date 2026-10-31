@@ -107,10 +107,10 @@ test('Hive drives a workspace: the check, its failure sent back, Hive off and on
   await expect.poll(sent, { timeout: 20_000 }).toHaveLength(2);
   expect(sent()[1]).toContain('Hive was turned off');
 
-  // The fix: the check passes, and landing is asked of the person.
+  // The fix: the check passes, the running reviewer (HV3) finds nothing, and landing is asked.
   symbiote.commit(BRANCH, 'fixed.txt', 'yes\n', 'Fix');
   symbiote.report(BRANCH, 'Done: fixed.txt.');
-  await expect(card(page)).toContainText('Checked: review and land it', { timeout: 20_000 });
+  await expect(card(page)).toContainText('Checked and reviewed: land it', { timeout: 20_000 });
   expect(record()).toMatchObject({ step: 'landing', round: 2 });
   expect(sent()).toHaveLength(2);
 });
@@ -127,8 +127,10 @@ test("Settings lists Hive's prompts only while Hive is on", async ({ page }) => 
   await expect(group.getByRole('button')).toHaveText([
     'Start',
     'Check failed',
+    'Defects proven',
     'Not committed',
     'Resume',
+    'Reviewer',
   ]);
   await group.getByRole('button', { name: 'Check failed' }).click();
   await expect(

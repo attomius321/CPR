@@ -41,6 +41,7 @@
 @import './workspaces/WorkspaceMark.css';
 @import './workspaces/Workspace.css';
 @import './workspaces/ActivityTab.css';
+@import './workspaces/HiveReviewTab.css';
 /* After Workspace.css and ActivityTab.css: a thread's report is `.thread-text.markdown`, an
    activity's `.activity-detail.markdown`, and `.markdown` sets their white-space. */
 @import './ui/markdown.css';

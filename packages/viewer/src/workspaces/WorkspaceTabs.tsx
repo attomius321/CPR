@@ -1,5 +1,6 @@
 // A workspace's tabs (V21, V29a, V45): the agent's (its terminal, its thread, its activity since
-// V48, its brief), then its shells, each with a close button, and a new shell's button.
+// V48, its brief; a Hive workspace's Review, HV3), then its shells, each with a close button, and a
+// new shell's button.
 import type { RefObject } from 'react';
 import type { WorkspaceAgentState, WorkspaceShell } from '@symbiote/core';
 import { CloseIcon, PlusIcon } from '../ui/icons.js';
@@ -7,7 +8,7 @@ import { MAX_SHELLS, shellName } from './shells.js';
 import { terminalHint } from './workspaces.js';
 import { tip } from '../ui/tip.js';
 
-export type View = 'terminal' | 'thread' | 'activity' | 'brief' | 'shell';
+export type View = 'terminal' | 'thread' | 'activity' | 'brief' | 'review' | 'shell';
 /** The agent's own tabs: a shell's is picked by its number. */
 export type AgentView = Exclude<View, 'shell'>;
 
@@ -16,6 +17,7 @@ const TAB_NAMES: Record<AgentView, string> = {
   thread: 'Thread',
   activity: 'Activity',
   brief: 'Brief',
+  review: 'Review',
 };
 
 /** The strip of a workspace's tabs: `view` picked, a shell's by its number. */

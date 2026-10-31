@@ -1091,18 +1091,19 @@ describe("Hive's running reviewer (HV3)", () => {
     const tab = hiveWorkspace(s.git, cache, {
       hive: s.hive,
       reviews: {
-        resolve: async (branch) => ({
-          info: {
-            branch,
-            ref: branch,
-            base: 'base',
-            head: gitIn(worktree, 'rev-parse', 'HEAD'),
-            reviewed: null,
-            since: null,
-            into: 'main',
-          },
-          pair: {} as Awaited<ReturnType<BranchReviews['resolve']>>['pair'],
-        }),
+        resolve: (branch) =>
+          Promise.resolve({
+            info: {
+              branch,
+              ref: branch,
+              base: 'base',
+              head: gitIn(worktree, 'rev-parse', 'HEAD'),
+              reviewed: null,
+              since: null,
+              into: 'main',
+            },
+            pair: {} as Awaited<ReturnType<BranchReviews['resolve']>>['pair'],
+          }),
         finish,
       },
       merges: {

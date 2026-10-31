@@ -1,5 +1,6 @@
 // Workspaces started from the commits page (V18): pure helpers for the start page and the
 // line the page shows after Start.
+import { landingWords } from './hive-rounds.js';
 import { COMMAND_TOOLS, shownCommand } from './activity/classify.js';
 import type {
   AgentEfforts,
@@ -446,11 +447,16 @@ export function workspaceNext(
     if (hive.paused && agent.state !== 'working') {
       if (hive.step === 'checking')
         return stopped('Hive off: paused before the check', '·', 'idle');
+      if (hive.step === 'reviewing')
+        return stopped('Hive off: paused before the review', '·', 'idle');
       if (hive.step === 'writing') return stopped('Hive off: paused', '·', 'idle');
     }
     // The round is the card's fact (2/3).
     if (!hive.paused && hive.step === 'checking') {
       return { ...next('working', 'Hive: running the check', '⚙', 'working'), hive: true };
+    }
+    if (!hive.paused && hive.step === 'reviewing') {
+      return { ...next('working', 'Hive: reviewing', '⚙', 'working'), hive: true };
     }
     if (!hive.paused && hive.step === 'writing' && finished) {
       return { ...next('working', 'Hive: reading its turn', '⚙', 'working'), hive: true };
@@ -497,6 +503,12 @@ export function workspaceNext(
   }
   // Commits to look at: the review says what is next.
   const toReview = (text: string) => next('review', text, '●', 'ready');
+  // Landing asked in Hive mode (HV3, decision 681): no review of the person's, Land in its Review
+  // tab; once pressed, the merge queue has it.
+  if (hive?.step === 'landing' && !hive.off) {
+    const approved = review?.verdict?.event === 'approve' && review.verdict.head === workspace.tip;
+    return toReview(approved ? 'Landing: in the merge queue' : landingWords(hive));
+  }
   const since = review?.refs.find((r) => r.name === workspace.branch)?.since ?? 0;
   if (since > 0) return toReview(`${plural(since, 'commit')} since your review: review again`);
   const verdict = review?.verdict?.head === workspace.tip ? review.verdict : undefined;
@@ -506,7 +518,7 @@ export function workspaceNext(
   }
   if (verdict?.event === 'comment') return toReview('Commented: send it to the agent');
   if (review) return toReview('Review in progress');
-  // Landing asked by Hive (HV2): its check passed, or none was found to run.
+  // Landing asked by Hive, Hive off since (HV2): the person's review, as for any workspace.
   if (hive?.step === 'landing') {
     return toReview(
       hive.note ? 'No check ran: review, check and land it' : 'Checked: review and land it',

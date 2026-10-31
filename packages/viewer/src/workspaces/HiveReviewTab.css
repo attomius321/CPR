@@ -1,0 +1,143 @@
+/* A Hive workspace's Review tab (HV3, decision 681): Hive's rounds, newest first, a hairline
+   between them; each check and running review a step, its findings rows on a faint wash; Land at
+   the head's right. */
+.workspace-body > .hive-review {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: var(--card-pad);
+  overflow: auto;
+}
+
+.hive-review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hive-now {
+  margin: 0;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.hive-land {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.hive-land-said {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.hive-land-said.error,
+.hive-line.error {
+  color: var(--error);
+}
+
+.hive-round {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.hive-round h2 {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 600;
+}
+
+.hive-step {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hive-step-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.hive-step-facts {
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-variant-numeric: tabular-nums;
+}
+
+.hive-line {
+  margin: 0;
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+.hive-why {
+  color: var(--muted);
+}
+
+.hive-defect,
+.hive-test {
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.hive-findings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hive-finding {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.hive-more > summary {
+  width: fit-content;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.hive-more > summary:hover {
+  color: var(--text);
+}
+
+.hive-more pre {
+  max-height: 360px;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--bg);
+  font: var(--size-small) / 1.5 var(--mono);
+  white-space: pre;
+}
+
+.hive-ran {
+  margin: 6px 0 0;
+  font-size: var(--size-small);
+  white-space: pre-wrap;
+}
+
+/* A state: approved, a check passed. */
+.hive-ok {
+  --badge: var(--added);
+}
