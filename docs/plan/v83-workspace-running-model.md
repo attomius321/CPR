@@ -204,7 +204,14 @@ person's running view (`main`'s build, 5 workspaces) takes 196 ms (median of 5):
 was mid-turn, and the first read's 2 MB found it. Codex adds no request (its `thread/read` was
 made already).
 
-Tests: `pnpm check` 2,550 unit tests; e2e: the viewer's 363 (V44's guard of a card's icons now leaves out the model row's, as it does the facts'), the nexus's 20. Not verified: a Codex workspace through Symbiote's list with the real Codex (its
+Tests, after `main` was merged in (`82cbd6c`): `pnpm check` 2,547 unit tests; e2e the viewer's
+364 and the nexus's 20 (V44's guard of a card's icons now leaves out the model row's, as it does
+the facts'). Three earlier full runs, with another workspace's suite running beside them (load
+14–16), each failed one to three tests, each different and each passing alone: a review's draft
+(V16), a merge's spinner, the shell's keys, V83's first tip (made to hover again until it shows),
+and twice V79's kind-chip test. That one fails on `main`'s build too, at the same line: run 20
+times 8 at once, 3 of 60 on `main`, 5 of 60 on the branch; it measures the kind chip as the
+starting card gives way. Not verified: a Codex workspace through Symbiote's list with the real Codex (its
 `thread/read` measured alone; the fake answers as it did); Codex by `exec` and Hermes, unchanged
 (4 of 120 records); a session from before V83 picking the path up at its next prompt, with the
 person's build (the hook's code is the same for both events, tested on each).

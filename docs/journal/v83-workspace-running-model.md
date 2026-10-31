@@ -76,12 +76,19 @@ card's state is one line, cut at its end, its tip whole. The model named from it
   the real head had 470 px free beside a 40-letter title.
 - **Naming in the list would have run Claude Code**: V47's kept list is read again at the next use
   after a failed read, every 5 s from the list. The ID's pattern gives the same names.
+- **A tip needs a hover the page did not redraw**: under load, the workspace's page was drawn again
+  under a still pointer right after the start, and V83's first tip never showed. The test hovers
+  again until the tip says its words (`expectTip`).
+- **Full runs beside another workspace's suite flake** (load 14–16): three runs failed one to three
+  tests each, all different, all passing alone. V79's kind-chip test failed in two: it measures
+  the chip as the starting card gives way, and fails on `main`'s build too (3 of 60 on `main`, 5
+  of 60 on the branch, 20 runs 8 at once). Left for a fix of its own.
 
 **Verification**: 7 unit tests and 2 e2e tests red for the right reason (no chip; the state 40 px
 for a long command), then green. `look.spec.ts`'s V79 card height updated knowingly (140 → 164).
 `shell.spec.ts`'s V44 guard (no icon on a card but an action's and the facts') leaves out the
-model row's icon, a fact too. `pnpm check` 2,550 unit tests; e2e: the viewer's 363, the nexus's
-20. Screenshots at 1440 × 900, 1×, dark and light, of every page with the sidenav over the
+model row's icon, a fact too. After `main` was merged in: `pnpm check` 2,547 unit tests; e2e the
+viewer's 364, the nexus's 20. Screenshots at 1440 × 900, 1×, dark and light, of every page with the sidenav over the
 person's list (their 4 live transcripts read by the branch's reader), the folded rail, a 264 px
 sidenav and the 390 px drawer. Cost on the person's 114 transcripts: 0.08–0.10 ms a poll
 unchanged, 0.35–0.41 ms grown, 1.24 ms (7.68 cold) the first read; the list's request 196 ms.
