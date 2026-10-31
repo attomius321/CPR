@@ -1,9 +1,9 @@
 // D2: the answer's numbers, from the data the other scripts wrote. Prints Markdown tables and
 // writes results.md (every pull request, finding, AI comment and score) and results.json.
-// Usage: node spikes/d2-review-precision/summarize.mjs [--answers <answers.json>]
-//   --answers: the person's sample scores, { "<sample id>": "worth" | "noise" | "wrong" }, for the
-//   agreement table; where they scored an item, their score is the one counted.
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+// Usage: node spikes/d2-review-precision/summarize.mjs [--answers data/person-answers.json]
+//   --answers: the person's sample scores ({ answers: { "<sample id>": { choice } } }), for the
+//   agreement table and a second view in which their score is the one counted where they gave one.
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -13,44 +13,14 @@ const read = (f) => JSON.parse(readFileSync(join(here, 'data', f), 'utf8'));
 const { values } = parseArgs({ options: { answers: { type: 'string' } } });
 const PROJECTS = ['zod', 'vite', 'bitwarden'];
 const AI = /^(pullfrog\[bot\]|claude\[bot\]|copilot-pull-request-reviewer\[bot\]|Copilot|graphite-app\[bot\]|github-code-quality\[bot\])$/;
+const LABELS = ['worth', 'noise', 'wrong'];
 const scores = read('scores.json');
 const causes = read('causes.json');
 const sample = existsSync(join(here, 'data', 'sample.json')) ? read('sample.json') : [];
-const person = values.answers ? JSON.parse(readFileSync(values.answers, 'utf8')) : {};
+const person = values.answers
+  ? Object.fromEntries(Object.entries(JSON.parse(readFileSync(values.answers, 'utf8')).answers).map(([id, a]) => [id, a.choice]))
+  : {};
 const personByKey = Object.fromEntries(sample.filter((s) => person[s.id]).map((s) => [s.key, person[s.id]]));
-/** The score counted: the person's where they gave one, else the agent's. */
-const counted = (key) => personByKey[key] ?? scores[key]?.score;
-
-const prs = [];
-for (const project of PROJECTS) {
-  for (const run of read(`runs-${project}.json`)) {
-    const forge = read(`forge/${project}-${run.number}.json`);
-    prs.push({
-      project,
-      number: run.number,
-      url: run.url,
-      title: run.subject,
-      ms: run.ms,
-      error: run.error ?? null,
-      findings: (run.findings ?? []).map((f) => ({
-        key: f.key,
-        rule: f.rule,
-        severity: f.severity,
-        message: f.message,
-        score: counted(f.key),
-        agent: scores[f.key]?.score,
-        why: scores[f.key]?.why,
-        cause: causes[f.key] ?? null,
-      })),
-      ai: forge.inline
-        .filter((c) => AI.test(c.user.login) && !c.replyTo)
-        .map((c) => {
-          const key = `ai:${project}#${run.number}/${c.id}`;
-          return { key, reviewer: c.user.login, url: c.url, score: counted(key), agent: scores[key]?.score, why: scores[key]?.why, cause: causes[key] ?? null };
-        }),
-    });
-  }
-}
 
 // Wilson 95 % interval, in percent.
 function wilson(k, n) {
@@ -63,110 +33,197 @@ function wilson(k, n) {
   return `${Math.round((100 * (c - r)) / d)}–${Math.round((100 * (c + r)) / d)}`;
 }
 const pct = (k, n) => (n === 0 ? '–' : `${Math.round((100 * k) / n)} %`);
-function row(label, items) {
-  const n = items.length;
-  const k = (s) => items.filter((i) => i.score === s).length;
-  const show = (s) => (n >= 10 ? `${k(s)} (${pct(k(s), n)}, ${wilson(k(s), n)})` : `${k(s)}`);
-  return `| ${label} | ${n} | ${show('worth')} | ${show('noise')} | ${show('wrong')} |`;
-}
 const header = '| | Items | Right and worth reading | Right but noise | Wrong |\n|---|---|---|---|---|';
-const findings = prs.flatMap((p) => p.findings.map((f) => ({ ...f, project: p.project })));
-const posted = findings.filter((f) => f.severity !== 'info');
-const comments = prs.flatMap((p) => p.ai.map((c) => ({ ...c, project: p.project })));
-const out = [];
 
-out.push('### Symbiote findings by kind (shares with 95 % Wilson intervals; counts only under 10)', '', header);
-for (const rule of ['removed-still-referenced', 'orphan-added', 'signature-changed', 'exported-api-changed']) {
-  out.push(row(`\`${rule}\` (all)`, findings.filter((f) => f.rule === rule)));
-  out.push(row(`\`${rule}\` (warning, posted)`, posted.filter((f) => f.rule === rule)));
-}
-out.push(row('**All findings** (what the viewer lists)', findings));
-out.push(row('**Warnings** (what the Action posts by default)', posted));
-out.push('', '### By project', '', header);
-for (const project of PROJECTS) {
-  out.push(row(`${project}: all`, findings.filter((f) => f.project === project)));
-  out.push(row(`${project}: warnings`, posted.filter((f) => f.project === project)));
-}
-
-const analyzed = prs.filter((p) => !p.error);
-const per = (list) => {
-  const counts = analyzed.map((p) => list(p).length);
-  const total = counts.reduce((a, b) => a + b, 0);
-  return { mean: (total / analyzed.length).toFixed(1), max: Math.max(...counts), none: counts.filter((c) => c === 0).length, total };
-};
-const all = per((p) => p.findings);
-const warn = per((p) => p.findings.filter((f) => f.severity !== 'info'));
-const worthAll = findings.filter((f) => f.score === 'worth').length;
-const worthWarn = posted.filter((f) => f.score === 'worth').length;
-const prsWithWorth = analyzed.filter((p) => p.findings.some((f) => f.score === 'worth')).length;
-out.push(
-  '',
-  '### Per pull request',
-  '',
-  '| | Mean | Most | Pull requests with none | Read per one worth reading |',
-  '|---|---|---|---|---|',
-  `| All findings | ${all.mean} | ${all.max} | ${all.none} of ${analyzed.length} (${pct(all.none, analyzed.length)}) | ${worthAll ? (all.total / worthAll).toFixed(1) : '∞'} |`,
-  `| Warnings | ${warn.mean} | ${warn.max} | ${warn.none} of ${analyzed.length} (${pct(warn.none, analyzed.length)}) | ${worthWarn ? (warn.total / worthWarn).toFixed(1) : '∞'} |`,
-  '',
-  `Pull requests with at least one finding worth reading: ${prsWithWorth} of ${analyzed.length}. Analysis time per pull request: ${PROJECTS.map((p) => {
-    const ms = analyzed.filter((r) => r.project === p).map((r) => r.ms).sort((a, b) => a - b);
-    return `${p} ${(ms[0] / 1000).toFixed(1)}–${(ms.at(-1) / 1000).toFixed(1)} s (median ${(ms[Math.floor(ms.length / 2)] / 1000).toFixed(1)} s)`;
-  }).join(', ')}.`,
-);
-
-out.push('', '### Why findings were wrong or noise', '', '| Cause | Wrong | Noise |', '|---|---|---|');
-const causeCount = {};
-for (const f of findings.filter((x) => x.score !== 'worth')) {
-  const c = (causeCount[f.cause ?? '(not tagged)'] ??= { wrong: 0, noise: 0 });
-  c[f.score] += 1;
-}
-for (const [cause, c] of Object.entries(causeCount).sort((a, b) => b[1].wrong + b[1].noise - (a[1].wrong + a[1].noise))) {
-  out.push(`| ${cause} | ${c.wrong} | ${c.noise} |`);
+/** Every analyzed pull request with its findings and AI comments; `score` is the agent's, or with
+ * `personCounts` the person's where they scored the item. */
+function pullRequests(personCounts) {
+  const score = (key) => (personCounts ? (personByKey[key] ?? scores[key]?.score) : scores[key]?.score);
+  const prs = [];
+  for (const project of PROJECTS) {
+    for (const run of read(`runs-${project}.json`)) {
+      const forge = read(`forge/${project}-${run.number}.json`);
+      prs.push({
+        project,
+        number: run.number,
+        url: run.url,
+        title: run.subject,
+        ms: run.ms,
+        error: run.error ?? null,
+        findings: (run.findings ?? []).map((f) => ({
+          key: f.key,
+          rule: f.rule,
+          severity: f.severity,
+          message: f.message,
+          score: score(f.key),
+          agent: scores[f.key]?.score,
+          ...(personByKey[f.key] ? { person: personByKey[f.key] } : {}),
+          why: scores[f.key]?.why,
+          cause: causes[f.key] ?? null,
+        })),
+        ai: forge.inline
+          .filter((c) => AI.test(c.user.login) && !c.replyTo)
+          .map((c) => {
+            const key = `ai:${project}#${run.number}/${c.id}`;
+            return {
+              key,
+              reviewer: c.user.login,
+              url: c.url,
+              score: score(key),
+              agent: scores[key]?.score,
+              ...(personByKey[key] ? { person: personByKey[key] } : {}),
+              why: scores[key]?.why,
+              cause: causes[key] ?? null,
+            };
+          }),
+      });
+    }
+  }
+  return prs;
 }
 
-out.push('', '### AI reviewers (top-level inline comments)', '', header);
-for (const reviewer of [...new Set(comments.map((c) => c.reviewer))].sort()) {
-  out.push(row(`${reviewer} (${[...new Set(comments.filter((c) => c.reviewer === reviewer).map((c) => c.project))].join(', ')})`, comments.filter((c) => c.reviewer === reviewer)));
-}
-out.push(row('**All AI comments**', comments));
-out.push('', '### Side by side, on the same pull requests', '', '| Project | Pull requests | Symbiote findings: worth / noise / wrong | Symbiote warnings: worth / noise / wrong | AI comments: worth / noise / wrong | Pull requests with an AI comment |', '|---|---|---|---|---|---|');
-const triple = (items) => `${items.length}: ${['worth', 'noise', 'wrong'].map((s) => items.filter((i) => i.score === s).length).join(' / ')}`;
-for (const project of PROJECTS) {
-  const ps = analyzed.filter((p) => p.project === project);
-  out.push(`| ${project} | ${ps.length} | ${triple(ps.flatMap((p) => p.findings))} | ${triple(ps.flatMap((p) => p.findings.filter((f) => f.severity !== 'info')))} | ${triple(ps.flatMap((p) => p.ai))} | ${ps.filter((p) => p.ai.length).length} |`);
+/** The tables for one view. */
+function tables(prs, level) {
+  const h = '#'.repeat(level);
+  const out = [];
+  const row = (label, items) => {
+    const n = items.length;
+    const k = (s) => items.filter((i) => i.score === s).length;
+    const show = (s) => (n >= 10 ? `${k(s)} (${pct(k(s), n)}, ${wilson(k(s), n)})` : `${k(s)}`);
+    return `| ${label} | ${n} | ${show('worth')} | ${show('noise')} | ${show('wrong')} |`;
+  };
+  const findings = prs.flatMap((p) => p.findings.map((f) => ({ ...f, project: p.project })));
+  const posted = findings.filter((f) => f.severity !== 'info');
+  const comments = prs.flatMap((p) => p.ai.map((c) => ({ ...c, project: p.project })));
+
+  out.push(`${h} Symbiote findings by kind (shares with 95 % Wilson intervals; counts only under 10)`, '', header);
+  for (const rule of ['removed-still-referenced', 'orphan-added', 'signature-changed', 'exported-api-changed']) {
+    out.push(row(`\`${rule}\` (all)`, findings.filter((f) => f.rule === rule)));
+    out.push(row(`\`${rule}\` (warning, posted)`, posted.filter((f) => f.rule === rule)));
+  }
+  out.push(row('**All findings** (what the viewer lists)', findings));
+  out.push(row('**Warnings** (what the Action posts by default)', posted));
+  out.push('', `${h} By project`, '', header);
+  for (const project of PROJECTS) {
+    out.push(row(`${project}: all`, findings.filter((f) => f.project === project)));
+    out.push(row(`${project}: warnings`, posted.filter((f) => f.project === project)));
+  }
+
+  const analyzed = prs.filter((p) => !p.error);
+  const per = (list) => {
+    const counts = analyzed.map((p) => list(p).length);
+    const total = counts.reduce((a, b) => a + b, 0);
+    return { mean: (total / analyzed.length).toFixed(1), max: Math.max(...counts), none: counts.filter((c) => c === 0).length, total };
+  };
+  const all = per((p) => p.findings);
+  const warn = per((p) => p.findings.filter((f) => f.severity !== 'info'));
+  const worthAll = findings.filter((f) => f.score === 'worth').length;
+  const worthWarn = posted.filter((f) => f.score === 'worth').length;
+  const prsWithWorth = analyzed.filter((p) => p.findings.some((f) => f.score === 'worth')).length;
+  out.push(
+    '',
+    `${h} Per pull request`,
+    '',
+    '| | Mean | Most | Pull requests with none | Read per one worth reading |',
+    '|---|---|---|---|---|',
+    `| All findings | ${all.mean} | ${all.max} | ${all.none} of ${analyzed.length} (${pct(all.none, analyzed.length)}) | ${worthAll ? (all.total / worthAll).toFixed(1) : '∞'} |`,
+    `| Warnings | ${warn.mean} | ${warn.max} | ${warn.none} of ${analyzed.length} (${pct(warn.none, analyzed.length)}) | ${worthWarn ? (warn.total / worthWarn).toFixed(1) : '∞'} |`,
+    '',
+    `Pull requests with at least one finding worth reading: ${prsWithWorth} of ${analyzed.length}. Analysis time per pull request: ${PROJECTS.map((p) => {
+      const ms = analyzed.filter((r) => r.project === p).map((r) => r.ms).sort((a, b) => a - b);
+      return `${p} ${(ms[0] / 1000).toFixed(1)}–${(ms.at(-1) / 1000).toFixed(1)} s (median ${(ms[Math.floor(ms.length / 2)] / 1000).toFixed(1)} s)`;
+    }).join(', ')}.`,
+  );
+
+  out.push('', `${h} Why findings were wrong or noise`, '', '| Cause | Wrong | Noise |', '|---|---|---|');
+  const causeCount = {};
+  for (const f of findings.filter((x) => x.score !== 'worth')) {
+    const c = (causeCount[f.cause ?? '(not tagged)'] ??= { wrong: 0, noise: 0 });
+    c[f.score] += 1;
+  }
+  for (const [cause, c] of Object.entries(causeCount).sort((a, b) => b[1].wrong + b[1].noise - (a[1].wrong + a[1].noise))) {
+    out.push(`| ${cause} | ${c.wrong} | ${c.noise} |`);
+  }
+
+  out.push('', `${h} AI reviewers (top-level inline comments)`, '', header);
+  for (const reviewer of [...new Set(comments.map((c) => c.reviewer))].sort()) {
+    const mine = comments.filter((c) => c.reviewer === reviewer);
+    out.push(row(`${reviewer} (${[...new Set(mine.map((c) => c.project))].join(', ')})`, mine));
+  }
+  out.push(row('**All AI comments**', comments));
+  out.push(
+    '',
+    `${h} Side by side, on the same pull requests`,
+    '',
+    '| Project | Pull requests | Symbiote findings: worth / noise / wrong | Symbiote warnings: worth / noise / wrong | AI comments: worth / noise / wrong | Pull requests with an AI comment |',
+    '|---|---|---|---|---|---|',
+  );
+  const triple = (items) => `${items.length}: ${LABELS.map((s) => items.filter((i) => i.score === s).length).join(' / ')}`;
+  for (const project of PROJECTS) {
+    const ps = analyzed.filter((p) => p.project === project);
+    out.push(
+      `| ${project} | ${ps.length} | ${triple(ps.flatMap((p) => p.findings))} | ${triple(ps.flatMap((p) => p.findings.filter((f) => f.severity !== 'info')))} | ${triple(ps.flatMap((p) => p.ai))} | ${ps.filter((p) => p.ai.length).length} |`,
+    );
+  }
+  return out;
 }
 
+const prs = pullRequests(false);
+const out = ['## The agent\'s scores', '', ...tables(prs, 3)];
 if (Object.keys(person).length > 0) {
   const pairs = sample.filter((s) => person[s.id]).map((s) => ({ ...s, agent: scores[s.key].score, person: person[s.id] }));
-  const agree = pairs.filter((p) => p.agent === p.person).length;
-  const labels = ['worth', 'noise', 'wrong'];
-  const po = agree / pairs.length;
-  const pe = labels.reduce((a, l) => a + (pairs.filter((p) => p.agent === l).length / pairs.length) * (pairs.filter((p) => p.person === l).length / pairs.length), 0);
-  const kappa = (po - pe) / (1 - pe);
-  const wrongAgree = pairs.filter((p) => (p.agent === 'wrong') === (p.person === 'wrong')).length;
-  out.push('', '### Agreement with the person\'s blind sample', '', `Scored by the person: ${pairs.length} of ${sample.length}. Same score: ${agree} (${pct(agree, pairs.length)}); Cohen's κ ${kappa.toFixed(2)}. Wrong against the rest: ${wrongAgree} of ${pairs.length} (${pct(wrongAgree, pairs.length)}).`, '', '| Agent \\ Person | worth | noise | wrong |', '|---|---|---|---|');
-  for (const a of labels) out.push(`| ${a} | ${labels.map((p) => pairs.filter((x) => x.agent === a && x.person === p).length).join(' | ')} |`);
-  out.push('', 'Disagreements:', '', ...pairs.filter((p) => p.agent !== p.person).map((p) => `- ${p.id} \`${p.key}\`: agent ${p.agent}, person ${p.person}`));
+  const agreement = (list) => {
+    const n = list.length;
+    const agree = list.filter((p) => p.agent === p.person).length;
+    const pe = LABELS.reduce((a, l) => a + (list.filter((p) => p.agent === l).length / n) * (list.filter((p) => p.person === l).length / n), 0);
+    const kappa = pe === 1 ? NaN : (agree / n - pe) / (1 - pe);
+    const wrong = list.filter((p) => (p.agent === 'wrong') === (p.person === 'wrong')).length;
+    return `| ${n} | ${agree} (${pct(agree, n)}) | ${Number.isNaN(kappa) ? '–' : kappa.toFixed(2)} | ${wrong} (${pct(wrong, n)}) |`;
+  };
+  out.push(
+    '',
+    "## Agreement with the person's blind sample",
+    '',
+    '| Items | Same score | Cohen\'s κ | Same on "wrong" vs the rest |',
+    '|---|---|---|---|',
+    agreement(pairs),
+    `| Symbiote findings only: ${agreement(pairs.filter((p) => p.source === 'symbiote')).slice(2)}`,
+    `| AI comments only: ${agreement(pairs.filter((p) => p.source === 'ai')).slice(2)}`,
+    '',
+    '| Agent \\ Person | worth | noise | wrong |',
+    '|---|---|---|---|',
+    ...LABELS.map((a) => `| ${a} | ${LABELS.map((p) => pairs.filter((x) => x.agent === a && x.person === p).length).join(' | ')} |`),
+    '',
+    '| Item | Key | Agent | Person |',
+    '|---|---|---|---|',
+    ...pairs.map((p) => `| ${p.id} | \`${p.key}\` | ${p.agent} | ${p.person}${p.agent === p.person ? '' : ' ≠'} |`),
+    '',
+    "## With the person's scores counted where they gave one (the plan's rule)",
+    '',
+    ...tables(pullRequests(true), 3),
+  );
 }
 
-const tables = out.join('\n');
-console.log(tables);
+const tablesText = out.join('\n');
+console.log(tablesText);
 const list = prs.flatMap((p) => [
   '',
   `### ${p.project} [#${p.number}](${p.url}) — ${p.title.replace(/\s*\(#\d+\)\s*$/, '')}`,
   '',
   p.error ? `Error: ${p.error.split('\n')[0]}` : `${p.findings.length} finding(s), ${p.ai.length} AI comment(s); analyzed in ${(p.ms / 1000).toFixed(1)} s.`,
-  ...p.findings.map((f) => `- \`${f.key}\` **${f.score}** · ${f.severity} \`${f.rule}\` — ${f.message.replace(/\|/g, '\\|')}\n  - ${f.why}`),
-  ...p.ai.map((c) => `- [\`${c.key}\`](${c.url}) **${c.score}** · ${c.reviewer}\n  - ${c.why}`),
+  ...p.findings.map(
+    (f) => `- \`${f.key}\` **${f.agent}**${f.person ? ` (person: ${f.person})` : ''} · ${f.severity} \`${f.rule}\` — ${f.message.replace(/\|/g, '\\|')}\n  - ${f.why}`,
+  ),
+  ...p.ai.map((c) => `- [\`${c.key}\`](${c.url}) **${c.agent}**${c.person ? ` (person: ${c.person})` : ''} · ${c.reviewer}\n  - ${c.why}`),
 ]);
 writeFileSync(
   join(here, 'results.md'),
   [
     '# D2 — results',
     '',
-    'Generated by `summarize.mjs` from `data/` (selection, runs, GitHub data, scores, causes, follow-ups). Scores: **worth** = right and worth reading, **noise** = right but noise, **wrong**. Where the person scored an item in the blind sample, their score is the one counted.',
+    'Generated by `summarize.mjs` from `data/` (selection, runs, GitHub data, scores, causes, the person\'s answers). Scores: **worth** = right and worth reading, **noise** = right but noise, **wrong**. Bold is the agent\'s score; the person\'s follows where they scored the item. Question 3 (later fixes) is in `data/q3.json`.',
     '',
-    tables,
+    tablesText,
     '',
     '## Every pull request',
     ...list,

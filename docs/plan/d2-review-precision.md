@@ -2,12 +2,19 @@
 
 [Index](../PLAN.md) · [Journal](../journal/d2-review-precision.md)
 
-**Status:** measured, waiting for the person's blind sample (2026-10-31), on branch
-`spike/review-precision`. Plan agreed with the person (projects: the agent's choice; a GitHub token
-from the person; the sample as a page and as a file; the bar for a number to sell, below). The 51
-runs, the GitHub data and the agent's scores of 97 findings and 119 AI comments are done; the
-scores stay out of the branch until the person has scored the sample (`spikes/d2-review-precision/
-sample.md`). A spike: the detectors do not change here.
+**Status:** measured (2026-10-31), on branch `spike/review-precision`; the person's blind sample
+is in and does not confirm the agent's scores (agreement 20 %). A spike: the detectors do not
+change here. Data, scripts and every score: `spikes/d2-review-precision/` (`results.md`).
+
+**Answer: not yet.** On 51 merged pull requests Symbiote made 97 findings (36 warnings, which the
+GitHub Action posts). By the agent's scores, 3 of the 36 warnings (8 %) are right and worth reading
+and 29 (81 %) are wrong; even read literally, 7 (19 %) say something false. No finding pointed at
+any of the 4 later fixes or reverts; the AI reviewers on the same pull requests pointed at 3, and
+by the agent's scores 85 of their 119 comments (71 %) are right and worth reading. The person's
+blind sample agreed with the agent on 7 of 35 items (κ 0.02) and called all 22 sampled findings
+worth reading, so neither set of scores is validated. The agreed bar (≥ 30 posted findings, ≤ 10 %
+wrong, ≥ 80 % agreement) is not met. Fix first: `orphan-added` on framework conventions and
+`exported-api-changed` on unpublished packages (Results).
 
 **Question** (asked: "On real merged pull requests of open-source TypeScript projects, how many of
 Symbiote's findings would a maintainer call right and worth reading?"). The North Star says
@@ -120,3 +127,143 @@ they commented on, beside Symbiote's on the same pull requests. GitHub's API: ab
 
 **Not in D2**: changing a detector (what to change is listed); heads before the last push; recall
 beyond the follow-up fixes found.
+
+## As built (D2)
+
+- **Population** (from fresh clones on 2026-10-31): zod 217 merged, 27 changing no file Symbiote
+  reads, 190 drawn from (the plan's 167 came from an older clone); vite 197 merged, 24 by
+  automation, 51 with no file Symbiote reads, 122 drawn from; Bitwarden 633 merged, 87 by
+  automation, 63 with no file Symbiote reads, 483 drawn from. zod's 95 first-parent commits without
+  a number are direct pushes. The stopping rule was not needed: 97 findings.
+- **Dependencies**: zod declares `packageManager: nub@0.8.3`, which pnpm refuses, and a `workspaces`
+  field: installed through a temporary `pnpm-workspace.yaml`, the clone restored after.
+- **AI comments scored**: the 119 top-level inline comments. Review summaries were not scored
+  (pullfrog's review bodies, Copilot's overviews, of which 4 of 11 say it was "unable to review"
+  for quota, Bitwarden's Claude summary comment, edited on each push). The thread (author replies,
+  later commits of the pull request) was part of each comment's evidence.
+- **"Wrong" as applied**: a finding is wrong when what it tells the reviewer is false, including
+  the risk a warning implies ("3 of 4 users not updated" where none needs an update). Read literally
+  instead, 9 of the 31 wrong findings stay wrong (Results, sensitivity).
+- **Sample**: 35 items (22 findings by kind and severity, 13 AI comments by reviewer), on a scoring
+  page and in `sample.md`; the agent's scores stayed out of the branch until it was scored.
+
+## Results
+
+**1. Per kind.** Agent's scores; the second column counts the person's score where they gave one
+(the plan's rule: 22 findings, all "worth"). Shares only from 10 items up; 95 % intervals in
+`results.md`.
+
+| Kind | Findings (warnings) | Agent: worth / noise / wrong | Person counted: worth / noise / wrong |
+|---|---|---|---|
+| `removed-still-referenced` | 0 | – | – |
+| `orphan-added` | 16 (12) | 1 / 3 / 12 | 6 / 2 / 8 |
+| `signature-changed` | 75 (18) | 2 / 59 / 14 | 14 / 52 / 9 |
+| `exported-api-changed` | 6 (6) | 0 / 1 / 5 | 5 / 0 / 1 |
+| **All findings** | 97 | 3 (3 %) / 63 (65 %) / 31 (32 %) | 25 (26 %) / 54 (56 %) / 18 (19 %) |
+| **Warnings** (the Action posts) | 36 | 3 (8 %) / 4 (11 %) / 29 (81 %) | 18 (50 %) / 2 (6 %) / 16 (44 %) |
+
+By project (agent): zod 43 findings, 0 worth reading; vite 2, both noise; Bitwarden 52, 3 worth
+reading. The 3: `ImportSourceSelectOrgComponent` added with no route (Bitwarden #23031, wired two
+days later by #23198), and the two shared-unlock listeners left ignoring the new lock and unlock
+`source` (#22539; the author's stacked #22540 made them read it).
+
+Why the agent scored findings wrong (31) or noise (63):
+
+| Cause | Wrong | Noise |
+|---|---|---|
+| `signature-changed` info: every user was updated in the pull request | | 24 |
+| `signature-changed` info: only parameter names changed (`_json` → `json`) | | 23 |
+| `orphan-added`: a Storybook story (named export of `*.stories.ts`) | 6 | |
+| `signature-changed`: the users only name the type, not the member that changed | 5 | |
+| `exported-api-changed`: `@bitwarden/vault` at version 0.0.0 treated as published | 4 | |
+| `orphan-added`: an Angular `effect()` field | 3 | |
+| `signature-changed`: a key or enum member added or removed; users name others | 4 | |
+| `signature-changed`: a compatible change, or users that need nothing | | 7 |
+| `signature-changed`: the same call sites repeated on each override | | 3 |
+| `orphan-added`: a member used by its component's inline `template` | 2 | |
+| `signature-changed`: void → Promise, the template binding ignores the result | 2 | |
+| `signature-changed`: a parameter widened (string → PropertyKey) called breaking | 2 | |
+| `exported-api-changed`: a return narrowed to a subtype called breaking | 1 | |
+| `signature-changed`: only `export` added | 1 | |
+| `orphan-added`: re-exported as `export { default as nn } from` | 1 | |
+| other noise (tests only, a default export loaded by convention, an announced API change) | | 6 |
+
+**Sensitivity.** Read literally (a finding is wrong only when its sentence is false), 9 findings
+stay wrong, 7 of them warnings (19 %): the 4 `@bitwarden/vault` and the `z.instanceof` "may break
+code outside the repo", and the 2 inline-template members "nothing references it". The bar is
+≤ 10 %.
+
+**2. Per pull request.** 1.9 findings on average, 22 at most (Bitwarden #22539, moving
+`LockService`), none on 32 of 51 (63 %). Warnings: 0.7 on average, 10 at most (#22260), none on 40
+of 51 (78 %). A reviewer reads 12 warnings (32 findings) to meet one worth reading by the agent's
+scores, 2.0 (3.9) with the person's counted. Analysis: zod 5.9–10.6 s, vite 1.3–5.6 s, Bitwarden
+17.7–31.8 s a pull request, no errors.
+
+**3. A real bug.** Of 202 later commits checked (reverts, citations, fix commits touching the
+pull request's files), 61 change a pull request's symbols or cite it; read by hand, 4 fix or undo
+what a sampled pull request did (`data/q3.json`). No Symbiote finding pointed at any of them:
+
+| Pull request | Later commit | AI reviewer | Symbiote |
+|---|---|---|---|
+| Bitwarden #22260 | #23227, 3 days later: "uncheck select-all after clearing a capped selection" | claude[bot] described this bug on the final head, unanswered | none of 13 findings |
+| zod #6391 | reverted the next day inside #6380 | pullfrog named the design's flaw (a denylist lets any key waive the error) | 12 findings: renames, a compatible member |
+| zod #6536 | #6594, 12 days later: "make z.properties() a check again … a trap with transforms" | pullfrog named the trap (output typed from children whose output is discarded) | flagged that `z.properties` changed, not why |
+| zod #6092 | #6430: a wrong noun in the new `nn` locale | none | none |
+
+**4. AI reviewers, on the same pull requests** (top-level inline comments; agent's scores):
+
+| Reviewer | Comments | Worth / noise / wrong |
+|---|---|---|
+| claude[bot] (Bitwarden, 9 pull requests) | 51 | 40 (78 %) / 10 / 1 |
+| pullfrog[bot] (zod, 11 pull requests) | 54 | 43 (80 %) / 11 / 0 |
+| github-code-quality[bot] (Bitwarden) | 12 | 1 / 11 / 0 |
+| Graphite (vite), Copilot (zod) | 1 + 1 | 1 / 1 / 0 |
+| **All** | 119 | 85 (71 %) / 33 (28 %) / 1 (1 %) |
+
+Their noise is mostly repeats (15) and comment or style tidying (13); the one wrong comment
+suggested a copy change that caused a regression its next comment caught. Authors acted on most:
+the commented lines changed before merge for 82 of 119, often with "Confirmed and fixed". Not
+like for like: AI comments are made during review on earlier heads; Symbiote ran only on the final
+heads, where review fixes have already landed.
+
+**Agreement with the person's blind sample.** 7 of 35 the same (20 %), Cohen's κ 0.02; on the 22
+findings 0 of 22, on the 13 AI comments 7 of 13. The person scored 33 "worth", 2 "noise", 0
+"wrong"; the page saved the 35 answers within 65 seconds (1.5 s apart), last item first, with no
+notes. Where the agent scored a sampled finding wrong (13), the evidence is in `results.md`, for
+example a Storybook story reported as unused and `hide(key: string → PropertyKey)` reported as a
+breaking change.
+
+**5. What to fix or silence first**, by how many posted warnings each removes in this sample:
+
+1. `orphan-added` (11 of 12 posted warnings wrong): treat named exports of `*.stories.*` as used
+   (Storybook's Component Story Format); in the Angular plugin, fields initialized with `effect()`
+   and members read by an inline `template:`. These three leave the one warning worth reading.
+2. `signature-changed` warnings (13 of 18 wrong): count a user as not updated only when it uses
+   the changed part — reads the changed member, uses the return value, names the removed key or
+   enum member; widening a parameter type and adding `export` are compatible; report a call site
+   once, on the declaration it resolves to.
+3. `exported-api-changed` (5 of 6 wrong): a workspace package at version 0.0.0 is not published;
+   a return type narrowed to a subtype is compatible.
+4. Silence, or fold into one line per pull request, the `info` notes that every user was updated
+   (24) and changes of parameter names only (23).
+
+Projection, not measured: with 1–3 the 36 warnings of this sample would be 4 (3 worth reading,
+1 noise), or 2 if the stricter user rule also drops the two shared-unlock listeners, which ignore
+the new argument — precise, and silent on 48 or more of 51 pull requests.
+
+**One number to sell with: not yet.** By the agent's scores 8 % of posted warnings are worth
+reading; read literally, 19 % are still false; and the person's sample did not confirm the agent's
+scores. The precise, sellable finding on this data is not Symbiote's yet; the AI reviewers' comments
+on the same pull requests were mostly right and acted on.
+
+**Not verified**
+
+- The agent's scores beyond the sample: the sample neither confirmed nor refuted them (65 seconds
+  for 35 items). A re-score of the 22 findings with a note each, or by a maintainer of one of these
+  projects, would.
+- Three AI comments posted on final heads with no answer were judged by reading, not running
+  (Bitwarden #22260 `4007570178`, later confirmed by #23227; #22789 `3894064507`; zod #6411
+  `3780549741`).
+- Symbiote on the earlier heads the AI reviewers commented on, where `removed-still-referenced`
+  could fire; recall beyond the 4 follow-ups; the AI reviewers' summary comments.
+
