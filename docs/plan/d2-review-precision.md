@@ -256,6 +256,12 @@ reading; read literally, 19 % are still false; and the person's sample did not c
 scores. The precise, sellable finding on this data is not Symbiote's yet; the AI reviewers' comments
 on the same pull requests were mostly right and acted on.
 
+**Next** (proposed, not started): [D3 — True warnings](d3-true-warnings.md) fixes the causes above
+and checks them on D2's 51 pull requests and a fresh, blind holdout;
+[D2b — Findings at review time](d2b-review-time-findings.md) runs Symbiote on the 68 heads the AI
+reviewers commented on, to decide whether findings help during review at all or should become
+evidence for an AI reviewer instead.
+
 **Not verified**
 
 - The agent's scores beyond the sample: the sample neither confirmed nor refuted them (65 seconds
