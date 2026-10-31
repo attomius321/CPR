@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v85-hive-honeycomb-compact.md)
 
-**Status:** planned (2026-10-31), on branch `feature/hive-honeycomb-background` (a Hive workspace
-started in Symbiote, from `main` at `cd1956a`). The person approved the plan with its
+**Status:** built, ready for review (2026-10-31), on branch `feature/hive-honeycomb-background` (a
+Hive workspace started in Symbiote, from `main` at `cd1956a`). Its "As built" and results below. The person approved the plan with its
 recommendations ("Good, go for it") after three rounds of mockups: a white light sidenav, then
 smaller type, then VS Code's density.
 
@@ -156,3 +156,43 @@ its type; the title bar's 38 px (the window's own).
 
 **Not in V85**: a moving background; translucent cards; the graph's density; the title bar's
 height; Claude desktop's measures.
+
+## As built (V85)
+
+- **Light Hive's outlines are 13 %, not 16 %** (704): at 16 % the `--context` state was 2.88:1 on a
+  line's pixel (`#f6d9de`); 13 % (`#f8e0e4`) keeps it at 3.04 and `--faint` at 3.42. The tokens test
+  found it; the person chose 16 % on a mockup.
+- **The comb's colours are opaque tokens** in `ui/base.css`'s Hive blocks (`--hive-comb-ground`,
+  `--hive-comb-line`: the lamp's 12 % over the ink is `#280609`), so the contrast test reads them
+  as backgrounds.
+- **Two shells**: a diff's page has its own (`diff/DiffShell.tsx`); the layer is in both. In the
+  app on Linux, `#root`'s rounded ground (`frame.css`) is clear in Hive and the layer takes the
+  corners. A merge's sticky head, opaque so its log scrolls under it, takes the comb's ground.
+- **Height tokens by step, not by role** (710–712): `--height-row` 22, `--height-control` 26,
+  `--height-tall` 28, `--height-tab` 30, `--height-bar` 34, `--height-top` 40, each the step below
+  V72's 28/32/36/40/44/52 px; 48 px heads are `--card-head`. A sidenav entry is 28 px
+  (`--height-tall`), not the 26 planned: it was 36. Squares' widths moved with their heights.
+- **The terminal's 14 px is `TERMINAL_FONT_SIZE`** in `workspaces/terminal.ts` (xterm takes a
+  number), not a `--size-term` token.
+- **The guard refuses 28 to 56 px** (714): a guard on every px height refused the arcs, panes and
+  editors' heights too. The title bar's 38 px stays the window's.
+- **Padding inside the heads**: 4 px round a 26 px control in a 35 px head (the heads had 8); the
+  page's head lines 20 and 16 px (they were 22, 2 and 20); chips on a head's second line 16 px; a
+  merge's head chips 20 px; a workspace's tabs 4 px over 30 px tabs, 10 px each side.
+
+**Results.**
+
+| What | `main` (`cd1956a`) | V85 |
+|---|---|---|
+| The hand-over: the shutter's line pixels on the honeycomb's (a trace-free strip, 1440 × 900) | — | 143 of 143 |
+| First contentful paint of `/git`, Hive on, median of 15, two runs | 80, 84 ms | 84, 84 ms |
+| The same, Hive off | 76 ms | 76 ms |
+| The first commit row, Hive on (after a poll: an upper bound), two runs | 167, 173 ms | 171, 186 ms |
+| The arrival at 2560 × 1440, 3 runs | 59.5–60 fps; a 33 ms frame in 1 of 3 | 59–59.5 fps; a 33 ms frame in 3 of 3 |
+| Body text, a control, a row, a card's head | 15, 32, 28, 48 px | 13, 26, 22, 35 px |
+
+The arrival's one long frame in each run is likely the frame the honeycomb mounts in, under the
+full cover. Tests: `hive-comb.test.ts` (5), the tokens' contrast on the comb and the density
+tokens and guard, `hive.spec.ts` (the hand-over, a resize, a reload, a diff's page, the narrow
+drawer, off, light, reduced motion), 16 e2e checks moved to the tokens; `pnpm check` 2,653 tests;
+`pnpm test:e2e` 372 viewer and 20 nexus tests.

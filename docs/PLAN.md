@@ -268,7 +268,7 @@ HV4. The milestones toward this North Star are HV4–HV7, in the order they are 
 | [Fix](plan/v82-hive-mode.md#fix-no-tendrils-in-the-sidenav-fixremove-hive-tendrils-from-sidenav) | No Hive tendrils in the sidenav (633 withdrawn) | ready for review | | [journal](journal/fix-remove-hive-tendrils-from-sidenav.md) |
 | [Feature](plan/v82-hive-mode.md#feature-hives-question-a-circuit-featurehive-mode-dialog-prompt) | Hive's question as a circuit board: traces route into a machined Hive Mind; turning on as a hex shutter; the Swarm kept for later | ready for review | 665–667, 673 | [journal](journal/v82-hive-mode.md) |
 | [Feature](plan/v82-hive-mode.md#feature-alpha-ceph-nucleus-in-hive-mode-featurealpha-ceph-hive-name) | Alpha Ceph: Nucleus's name and icon while Hive is on — the Hive Mind as its icon, the name in its prompt and gate; Hive off as before | built, ready for review | 682–687 | [journal](journal/v82-hive-mode.md) |
-| [V85](plan/v85-hive-honeycomb-compact.md) | Hive's honeycomb stays as the app's background after the arrival; every page compact like VS Code (13 px body, 26 px controls, 22 px rows) | planned | 701–715 | [journal](journal/v85-hive-honeycomb-compact.md) |
+| [V85](plan/v85-hive-honeycomb-compact.md) | Hive's honeycomb stays as the app's background after the arrival; every page compact like VS Code (13 px body, 26 px controls, 22 px rows) | built, ready for review | 701–715 | [journal](journal/v85-hive-honeycomb-compact.md) |
 
 ### Native window
 
