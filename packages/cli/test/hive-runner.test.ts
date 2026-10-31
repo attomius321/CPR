@@ -296,6 +296,13 @@ describe('Hive, on', () => {
       'landing',
       'landed',
     ]);
+    // Each event's time is its own: a field named `at` in what it says never replaces it.
+    const lines = readFileSync(hiveEventsPath(s.where, 'feature/one'), 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as { at: string; kind: string; commit?: string });
+    for (const line of lines) expect(line.at).toMatch(/^\d{4}-\d\d-\d\dT/);
+    expect(lines.find((line) => line.kind === 'check-started')?.commit).toBe(tip);
   });
 
   it('sends a failed check to the writer round by round, and stops for the person at the cap', async () => {

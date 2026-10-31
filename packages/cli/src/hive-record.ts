@@ -156,7 +156,7 @@ export async function readHives(where: ReviewPlace): Promise<HiveFile[]> {
   return list.sort((a, b) => a.started.localeCompare(b.started));
 }
 
-/** Appends one event to a Hive workspace's events. */
+/** Appends one event to a Hive workspace's events: its time and kind first, never replaced. */
 export async function hiveEvent(
   where: ReviewPlace,
   branch: string,
@@ -165,8 +165,9 @@ export async function hiveEvent(
   data: Record<string, unknown> = {},
 ): Promise<void> {
   const path = hiveEventsPath(where, branch);
+  const said = Object.entries(data).filter(([key]) => key !== 'at' && key !== 'kind');
   await mkdir(dirname(path), { recursive: true });
-  await appendFile(path, `${JSON.stringify({ at, kind, ...data })}\n`);
+  await appendFile(path, `${JSON.stringify({ at, kind, ...Object.fromEntries(said) })}\n`);
 }
 
 /** A record as a workspace's card reads it (HV2); `paused` while Hive is off. */

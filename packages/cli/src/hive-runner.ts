@@ -341,7 +341,7 @@ export function hiveRunner(
       if (command === commands[0]) {
         await event(where, record.branch, 'check-started', {
           round: record.round,
-          at: tip,
+          commit: tip,
           commands,
         });
       }
@@ -427,7 +427,7 @@ export function hiveRunner(
         check: undefined,
       },
       'rounds-again',
-      { at },
+      { prompt: at },
     );
   }
 
