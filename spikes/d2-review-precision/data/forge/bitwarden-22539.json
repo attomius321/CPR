@@ -1,0 +1,526 @@
+{
+  "number": 22539,
+  "title": "chore(lock): Move LockService into libs/unlock and add lock/unlock source tracking",
+  "body": "## 🎟️ Tracking\r\nhttps://bitwarden.atlassian.net/browse/PM-41447\r\n\r\n## 📔 Objective\r\nWe need unlock and lock source tracking to prevent an instant re-lock caused by shared unlock. To do so, the callers of lock / unlock need to provide a lock source. In the case of unlock, this is done in the unlock service. In the case of lock, this is provided by the callers (vault timeout, manual UI lock, shared unlock).\r\n\r\nThis also in the same step moves the lock service to KM ownership, because auth does not own lock / unlock, and it was only owned by auth for historical reasons.\r\n\r\nNote that the move of the service, and the addition of the lock source are combined into one PR to have fewer review round-trips, since these often touch the same files.\r\n\r\n## 📸 Screenshots\r\n\r\nN/A — no UI changes.\r\n",
+  "user": {
+    "login": "quexten",
+    "type": "User"
+  },
+  "baseSha": "3ad4a68c2147eee962fc01248eb41b684d092bda",
+  "headSha": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+  "mergedAt": "2026-08-21T14:44:27Z",
+  "mergeCommit": "3be299bbd41737c1ee384a2729bb7c31bd387148",
+  "commits": 2,
+  "reviews": [
+    {
+      "id": 4980698458,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:39:50Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4980698458"
+    },
+    {
+      "id": 4980698961,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:39:54Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4980698961"
+    },
+    {
+      "id": 4980703327,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:40:28Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4980703327"
+    },
+    {
+      "id": 4980703415,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:40:29Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4980703415"
+    },
+    {
+      "id": 4980745738,
+      "user": {
+        "login": "quexten",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:45:18Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4980745738"
+    },
+    {
+      "id": 4980754701,
+      "user": {
+        "login": "quexten",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:46:24Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4980754701"
+    },
+    {
+      "id": 4980756368,
+      "user": {
+        "login": "quexten",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:46:34Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4980756368"
+    },
+    {
+      "id": 4983172030,
+      "user": {
+        "login": "BryanCunningham",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T13:23:27Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4983172030"
+    },
+    {
+      "id": 4983689727,
+      "user": {
+        "login": "kdenney",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T14:16:02Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4983689727"
+    },
+    {
+      "id": 4983787628,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T14:25:06Z",
+      "body": "Vault ✅ ",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4983787628"
+    },
+    {
+      "id": 4984763974,
+      "user": {
+        "login": "Banrion",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T15:52:28Z",
+      "body": "✅ DIRT files",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4984763974"
+    },
+    {
+      "id": 4985192167,
+      "user": {
+        "login": "jrmccannon",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T16:40:34Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4985192167"
+    },
+    {
+      "id": 4986274867,
+      "user": {
+        "login": "JaredSnider-Bitwarden",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T18:49:38Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4986274867"
+    },
+    {
+      "id": 4986289432,
+      "user": {
+        "login": "JaredSnider-Bitwarden",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T18:51:57Z",
+      "body": "Love the new lock source introduction + KM taking ownership of lock! Thank you! Just 1 question about another file move 👇 ",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4986289432"
+    },
+    {
+      "id": 4986469151,
+      "user": {
+        "login": "djsmith85",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T19:13:11Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4986469151"
+    },
+    {
+      "id": 4990287365,
+      "user": {
+        "login": "eligrubb",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-21T06:23:58Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4990287365"
+    },
+    {
+      "id": 4994009274,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "at": "2026-08-21T13:58:21Z",
+      "body": "Vault x2 ✅ ",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4994009274"
+    },
+    {
+      "id": 4994010224,
+      "user": {
+        "login": "jrmccannon",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "at": "2026-08-21T13:58:26Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4994010224"
+    },
+    {
+      "id": 4994022038,
+      "user": {
+        "login": "Banrion",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "at": "2026-08-21T13:59:23Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4994022038"
+    },
+    {
+      "id": 4994031633,
+      "user": {
+        "login": "BryanCunningham",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "at": "2026-08-21T14:00:09Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4994031633"
+    },
+    {
+      "id": 4994095921,
+      "user": {
+        "login": "dani-garcia",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "at": "2026-08-21T14:05:26Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4994095921"
+    },
+    {
+      "id": 4994099664,
+      "user": {
+        "login": "JaredSnider-Bitwarden",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "at": "2026-08-21T14:05:45Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4994099664"
+    },
+    {
+      "id": 4994417720,
+      "user": {
+        "login": "kdenney",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "at": "2026-08-21T14:36:11Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4994417720"
+    },
+    {
+      "id": 4994482874,
+      "user": {
+        "login": "eligrubb",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "at": "2026-08-21T14:44:02Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#pullrequestreview-4994482874"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3819935651,
+      "review": 4980698458,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "libs/unlock/src/unlock-source.enum.ts",
+      "line": 20,
+      "originalLine": 20,
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "originalCommit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:39:50Z",
+      "body": "⚠️ **IMPORTANT**: `UnlockSource.SharedUnlock` is never emitted — shared-unlock unlocks are reported as `Manual`.\n\n<details>\n<summary>Details and fix</summary>\n\n`JsSharedUnlockDriver.unlock_user` (`libs/common/src/key-management/shared-unlock/shared-unlock-driver.ts:52`) unlocks via `unlockService.unlockWithDecryptedUserKey(...)`, and `DefaultUnlockService.unlockWithDecryptedUserKey` hardcodes `UnlockSource.Manual` (`libs/unlock/src/default-unlock.service.ts:172`). So every `registerOnUnlockAction` listener sees `Manual`, including the follower/leader callbacks that re-broadcast `ManualUnlock` back to the SDK — the exact echo this source tracking is meant to let listeners filter out.\n\nTwo options:\n- Let the shared-unlock driver pass its source (e.g. an extra param on `unlockWithDecryptedUserKey`, or a dedicated entry point) so the value is actually produced.\n- If wiring is deliberately deferred, add the same \"nothing reports this yet\" note used for `Auto` so consumers don't branch on a value that can never arrive.\n\nThe lock direction is already handled correctly (`LockSource.SharedUnlock` at `shared-unlock-driver.ts:44`), which makes the unlock direction look like an oversight rather than a deliberate deferral.\n</details>",
+      "diffHunk": "@@ -0,0 +1,22 @@\n+/**\n+ * What caused an unlock. Handed to every callback registered through\n+ * {@link UnlockService.registerOnUnlockAction} so a listener can tell the unlocks it caused itself\n+ * apart from the ones it should react to.\n+ */\n+export const UnlockSource = Object.freeze({\n+  /**\n+   * The user unlocked this device themselves — master password, PIN, biometrics, key connector,\n+   * PRF, or logging in with another device.\n+   */\n+  Manual: \"manual\",\n+  /**\n+   * The vault was restored from the never-lock key rather than unlocked by anyone.\n+   *\n+   * Nothing reports this yet: the never-lock restore in `UserAutoUnlockKeyService` sets the user key\n+   * directly instead of going through `UnlockService`.\n+   */\n+  Auto: \"auto\",\n+  /** Another device unlocked this one over the shared unlock protocol. */\n+  SharedUnlock: \"sharedUnlock\",",
+      "url": "https://github.com/bitwarden/clients/pull/22539#discussion_r3819935651"
+    },
+    {
+      "id": 3819936085,
+      "review": 4980698961,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "libs/unlock/src/lock.service.ts",
+      "line": 3,
+      "originalLine": 3,
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "originalCommit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:39:54Z",
+      "body": "♻️ **DEBT**: This introduces a package-level cycle between `@bitwarden/unlock` and `@bitwarden/auth`.\n\n<details>\n<summary>Details and fix</summary>\n\n`@bitwarden/auth` already depends on `@bitwarden/unlock` (e.g. `libs/auth/src/common/login-strategies/password-login.strategy.ts:26`, `libs/auth/src/common/services/login-strategies/login-strategy.service.ts:40` import `UnlockService`). With this move, `@bitwarden/unlock` now imports back into `@bitwarden/auth/common` for `LogoutService`.\n\nIt compiles today because `LogoutService` is only used as a type here, so the import is elided — but nothing prevents the next value-level import from making it a real runtime cycle. `libs/unlock` has no entry in the \"Bandaids for keeping existing circular dependencies from getting worse and new ones from being created\" block in `eslint.config.mjs`, so the boundary check that would flag this for a KM-owned lib (`KEY_MANAGEMENT_FORBIDDEN_PACKAGES` lists `@bitwarden/auth`) doesn't apply here.\n\nWorth either relocating the `LogoutService` abstraction out of `@bitwarden/auth/common`, or adding an explicit `libs/unlock/src/**/*.ts` boundary entry documenting that this one import is the accepted exception.\n</details>",
+      "diffHunk": "@@ -1,51 +1,57 @@\n import { combineLatest, filter, firstValueFrom, map, timeout } from \"rxjs\";\n \n+import { LogoutService } from \"@bitwarden/auth/common\";",
+      "url": "https://github.com/bitwarden/clients/pull/22539#discussion_r3819936085"
+    },
+    {
+      "id": 3819939713,
+      "review": 4980703327,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "libs/unlock/src/unlock-source.enum.ts",
+      "line": 20,
+      "originalLine": 20,
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "originalCommit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:40:28Z",
+      "body": "⚠️ **IMPORTANT**: `UnlockSource.SharedUnlock` is never emitted — shared-unlock unlocks are reported as `Manual`.\n\n<details>\n<summary>Details and fix</summary>\n\n`JsSharedUnlockDriver.unlock_user` (`libs/common/src/key-management/shared-unlock/shared-unlock-driver.ts:52`) unlocks via `unlockService.unlockWithDecryptedUserKey(...)`, and `DefaultUnlockService.unlockWithDecryptedUserKey` hardcodes `UnlockSource.Manual` (`libs/unlock/src/default-unlock.service.ts:172`). So every `registerOnUnlockAction` listener sees `Manual`, including the follower/leader callbacks that re-broadcast `ManualUnlock` back to the SDK — the exact echo this source tracking is meant to let listeners filter out.\n\nTwo options:\n- Let the shared-unlock driver pass its source (e.g. an overload/param on `unlockWithDecryptedUserKey`, or a dedicated entry point) so the value is actually produced.\n- If wiring is deliberately deferred, add the same \"nothing reports this yet\" note used for `Auto` so consumers don't branch on a value that can never arrive.\n\nThe lock direction is already handled correctly (`LockSource.SharedUnlock` at `shared-unlock-driver.ts:44`), which makes the unlock direction look like an oversight rather than a deliberate deferral.\n</details>",
+      "diffHunk": "@@ -0,0 +1,22 @@\n+/**\n+ * What caused an unlock. Handed to every callback registered through\n+ * {@link UnlockService.registerOnUnlockAction} so a listener can tell the unlocks it caused itself\n+ * apart from the ones it should react to.\n+ */\n+export const UnlockSource = Object.freeze({\n+  /**\n+   * The user unlocked this device themselves — master password, PIN, biometrics, key connector,\n+   * PRF, or logging in with another device.\n+   */\n+  Manual: \"manual\",\n+  /**\n+   * The vault was restored from the never-lock key rather than unlocked by anyone.\n+   *\n+   * Nothing reports this yet: the never-lock restore in `UserAutoUnlockKeyService` sets the user key\n+   * directly instead of going through `UnlockService`.\n+   */\n+  Auto: \"auto\",\n+  /** Another device unlocked this one over the shared unlock protocol. */\n+  SharedUnlock: \"sharedUnlock\",",
+      "url": "https://github.com/bitwarden/clients/pull/22539#discussion_r3819939713"
+    },
+    {
+      "id": 3819939771,
+      "review": 4980703415,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "libs/unlock/src/lock.service.ts",
+      "line": 3,
+      "originalLine": 3,
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "originalCommit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:40:29Z",
+      "body": "♻️ **DEBT**: This introduces a package-level cycle between `@bitwarden/unlock` and `@bitwarden/auth`.\n\n<details>\n<summary>Details and fix</summary>\n\n`@bitwarden/auth` already depends on `@bitwarden/unlock` (e.g. `libs/auth/src/common/login-strategies/password-login.strategy.ts:26`, `libs/auth/src/common/services/login-strategies/login-strategy.service.ts:40` import `UnlockService`). With this move, `@bitwarden/unlock` now imports back into `@bitwarden/auth/common` for `LogoutService`.\n\nIt compiles today because `LogoutService` is only used as a type here, so the import is elided — but nothing prevents the next value-level import from making it a real runtime cycle. `libs/unlock` has no entry in the \"Bandaids for keeping existing circular dependencies from getting worse and new ones from being created\" block in `eslint.config.mjs`, so the boundary check that would flag this for a KM-owned lib (`KEY_MANAGEMENT_FORBIDDEN_PACKAGES` lists `@bitwarden/auth`) doesn't apply.\n\nWorth either relocating the `LogoutService` abstraction out of `@bitwarden/auth/common`, or adding an explicit `libs/unlock/src/**/*.ts` boundary entry documenting that this one import is the accepted exception.\n</details>",
+      "diffHunk": "@@ -1,51 +1,57 @@\n import { combineLatest, filter, firstValueFrom, map, timeout } from \"rxjs\";\n \n+import { LogoutService } from \"@bitwarden/auth/common\";",
+      "url": "https://github.com/bitwarden/clients/pull/22539#discussion_r3819939771"
+    },
+    {
+      "id": 3819974090,
+      "review": 4980745738,
+      "replyTo": 3819935651,
+      "user": {
+        "login": "quexten",
+        "type": "User"
+      },
+      "path": "libs/unlock/src/unlock-source.enum.ts",
+      "line": 20,
+      "originalLine": 20,
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "originalCommit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:45:17Z",
+      "body": "Follow-up PR.",
+      "diffHunk": "@@ -0,0 +1,22 @@\n+/**\n+ * What caused an unlock. Handed to every callback registered through\n+ * {@link UnlockService.registerOnUnlockAction} so a listener can tell the unlocks it caused itself\n+ * apart from the ones it should react to.\n+ */\n+export const UnlockSource = Object.freeze({\n+  /**\n+   * The user unlocked this device themselves — master password, PIN, biometrics, key connector,\n+   * PRF, or logging in with another device.\n+   */\n+  Manual: \"manual\",\n+  /**\n+   * The vault was restored from the never-lock key rather than unlocked by anyone.\n+   *\n+   * Nothing reports this yet: the never-lock restore in `UserAutoUnlockKeyService` sets the user key\n+   * directly instead of going through `UnlockService`.\n+   */\n+  Auto: \"auto\",\n+  /** Another device unlocked this one over the shared unlock protocol. */\n+  SharedUnlock: \"sharedUnlock\",",
+      "url": "https://github.com/bitwarden/clients/pull/22539#discussion_r3819974090"
+    },
+    {
+      "id": 3819981185,
+      "review": 4980754701,
+      "replyTo": 3819939771,
+      "user": {
+        "login": "quexten",
+        "type": "User"
+      },
+      "path": "libs/unlock/src/lock.service.ts",
+      "line": 3,
+      "originalLine": 3,
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "originalCommit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:46:23Z",
+      "body": "This is accepted from my side for now. I think the long term fix here is to split out logout into a separate feature rather than there being a big auth module. cc @JaredSnider-Bitwarden ",
+      "diffHunk": "@@ -1,51 +1,57 @@\n import { combineLatest, filter, firstValueFrom, map, timeout } from \"rxjs\";\n \n+import { LogoutService } from \"@bitwarden/auth/common\";",
+      "url": "https://github.com/bitwarden/clients/pull/22539#discussion_r3819981185"
+    },
+    {
+      "id": 3819982196,
+      "review": 4980756368,
+      "replyTo": 3819939713,
+      "user": {
+        "login": "quexten",
+        "type": "User"
+      },
+      "path": "libs/unlock/src/unlock-source.enum.ts",
+      "line": 20,
+      "originalLine": 20,
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "originalCommit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T08:46:33Z",
+      "body": "Follow-up PR.",
+      "diffHunk": "@@ -0,0 +1,22 @@\n+/**\n+ * What caused an unlock. Handed to every callback registered through\n+ * {@link UnlockService.registerOnUnlockAction} so a listener can tell the unlocks it caused itself\n+ * apart from the ones it should react to.\n+ */\n+export const UnlockSource = Object.freeze({\n+  /**\n+   * The user unlocked this device themselves — master password, PIN, biometrics, key connector,\n+   * PRF, or logging in with another device.\n+   */\n+  Manual: \"manual\",\n+  /**\n+   * The vault was restored from the never-lock key rather than unlocked by anyone.\n+   *\n+   * Nothing reports this yet: the never-lock restore in `UserAutoUnlockKeyService` sets the user key\n+   * directly instead of going through `UnlockService`.\n+   */\n+  Auto: \"auto\",\n+  /** Another device unlocked this one over the shared unlock protocol. */\n+  SharedUnlock: \"sharedUnlock\",",
+      "url": "https://github.com/bitwarden/clients/pull/22539#discussion_r3819982196"
+    },
+    {
+      "id": 3824432087,
+      "review": 4986274867,
+      "replyTo": 3819939771,
+      "user": {
+        "login": "JaredSnider-Bitwarden",
+        "type": "User"
+      },
+      "path": "libs/unlock/src/lock.service.ts",
+      "line": 3,
+      "originalLine": 3,
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "originalCommit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T18:49:37Z",
+      "body": "Yes, concur. One day we will make more progress decomposing `libs/auth`. ",
+      "diffHunk": "@@ -1,51 +1,57 @@\n import { combineLatest, filter, firstValueFrom, map, timeout } from \"rxjs\";\n \n+import { LogoutService } from \"@bitwarden/auth/common\";",
+      "url": "https://github.com/bitwarden/clients/pull/22539#discussion_r3824432087"
+    },
+    {
+      "id": 3824442941,
+      "review": 4986289432,
+      "replyTo": null,
+      "user": {
+        "login": "JaredSnider-Bitwarden",
+        "type": "User"
+      },
+      "path": "libs/unlock/src/foreground-lock.service.ts",
+      "line": 1,
+      "originalLine": 1,
+      "commit": "ea11cf7540c0b3595f860ba6f27ae0272bd5e28d",
+      "originalCommit": "49426cc1153bbd53b6043a61ffb624c98e6db057",
+      "at": "2026-08-20T18:51:11Z",
+      "body": "❓ : Should this move to KM ownership as well? ",
+      "diffHunk": "",
+      "url": "https://github.com/bitwarden/clients/pull/22539#discussion_r3824442941"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5353443462,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-20T08:34:54Z",
+      "updated": "2026-08-20T08:40:30Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nReviewed the relocation of `LockService`/`DefaultLockService` from `@bitwarden/auth/common` into `@bitwarden/unlock` and the addition of `LockSource`/`UnlockSource` plumbing across browser, desktop, web, and CLI call sites. Call-site sources look correctly assigned (manual UI/commands → `Manual`, vault timeout and idle → `VaultTimeout`, shared-unlock driver → `SharedUnlock`), the browser foreground/background message contract carries `source` end-to-end, and the constructor-dependency removals (`SearchService`, `InternalMasterPasswordServiceAbstraction`) match every construction site and DI `deps` array. Both new source objects follow ADR-0025 (frozen const object plus derived type), and the moved spec was updated in step with the signature changes.\n\n<details>\n<summary>Code Review Details</summary>\n\n- ⚠️ : `UnlockSource.SharedUnlock` is never emitted — the shared-unlock driver unlocks through `unlockWithDecryptedUserKey`, which hardcodes `Manual`\n  - `libs/unlock/src/unlock-source.enum.ts:20`\n- ♻️ : New package-level cycle between `@bitwarden/unlock` and `@bitwarden/auth`, with no boundary rule covering `libs/unlock`\n  - `libs/unlock/src/lock.service.ts:3`\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/22539#issuecomment-5353443462"
+    },
+    {
+      "id": 5353490952,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-20T08:39:36Z",
+      "updated": "2026-08-21T13:39:45Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/22539?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:x: Patch coverage is `51.61290%` with `30 lines` in your changes missing coverage. Please review.\n:white_check_mark: Project coverage is 54.34%. Comparing base ([`3ad4a68`](https://app.codecov.io/gh/bitwarden/clients/commit/3ad4a68c2147eee962fc01248eb41b684d092bda?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`ea11cf7`](https://app.codecov.io/gh/bitwarden/clients/commit/ea11cf7540c0b3595f860ba6f27ae0272bd5e28d?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:warning: Report is 1 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n| [Files with missing lines](https://app.codecov.io/gh/bitwarden/clients/pull/22539?dropdown=coverage&src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) | Patch % | Lines |\n|---|---|---|\n| [...up/account-switching/account-switcher.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&filepath=apps%2Fbrowser%2Fsrc%2Fauth%2Fpopup%2Faccount-switching%2Faccount-switcher.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy9icm93c2VyL3NyYy9hdXRoL3BvcHVwL2FjY291bnQtc3dpdGNoaW5nL2FjY291bnQtc3dpdGNoZXIuY29tcG9uZW50LnRz) | 0.00% | [4 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [libs/unlock/src/foreground-lock.service.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&filepath=libs%2Funlock%2Fsrc%2Fforeground-lock.service.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-bGlicy91bmxvY2svc3JjL2ZvcmVncm91bmQtbG9jay5zZXJ2aWNlLnRz) | 33.33% | [4 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [apps/browser/src/background/runtime.background.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&filepath=apps%2Fbrowser%2Fsrc%2Fbackground%2Fruntime.background.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy9icm93c2VyL3NyYy9iYWNrZ3JvdW5kL3J1bnRpbWUuYmFja2dyb3VuZC50cw==) | 25.00% | [3 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [apps/cli/src/auth/commands/lock.command.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&filepath=apps%2Fcli%2Fsrc%2Fauth%2Fcommands%2Flock.command.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy9jbGkvc3JjL2F1dGgvY29tbWFuZHMvbG9jay5jb21tYW5kLnRz) | 0.00% | [2 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [apps/desktop/src/app/app.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&filepath=apps%2Fdesktop%2Fsrc%2Fapp%2Fapp.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy9kZXNrdG9wL3NyYy9hcHAvYXBwLmNvbXBvbmVudC50cw==) | 33.33% | [2 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [apps/web/src/app/app.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&filepath=apps%2Fweb%2Fsrc%2Fapp%2Fapp.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy93ZWIvc3JjL2FwcC9hcHAuY29tcG9uZW50LnRz) | 0.00% | [2 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [...y-management/shared-unlock/shared-unlock-driver.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&filepath=libs%2Fcommon%2Fsrc%2Fkey-management%2Fshared-unlock%2Fshared-unlock-driver.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-bGlicy9jb21tb24vc3JjL2tleS1tYW5hZ2VtZW50L3NoYXJlZC11bmxvY2svc2hhcmVkLXVubG9jay1kcml2ZXIudHM=) | 0.00% | [2 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [libs/unlock/src/default-unlock.service.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&filepath=libs%2Funlock%2Fsrc%2Fdefault-unlock.service.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-bGlicy91bmxvY2svc3JjL2RlZmF1bHQtdW5sb2NrLnNlcnZpY2UudHM=) | 80.00% | [2 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [.../auth/popup/settings/account-security.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&filepath=apps%2Fbrowser%2Fsrc%2Fauth%2Fpopup%2Fsettings%2Faccount-security.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy9icm93c2VyL3NyYy9hdXRoL3BvcHVwL3NldHRpbmdzL2FjY291bnQtc2VjdXJpdHkuY29tcG9uZW50LnRz) | 50.00% | [1 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [...rowser/src/auth/services/extension-lock.service.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&filepath=apps%2Fbrowser%2Fsrc%2Fauth%2Fservices%2Fextension-lock.service.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy9icm93c2VyL3NyYy9hdXRoL3NlcnZpY2VzL2V4dGVuc2lvbi1sb2NrLnNlcnZpY2UudHM=) | 50.00% | [1 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| ... and [7 more](https://app.codecov.io/gh/bitwarden/clients/pull/22539?src=pr&el=tree-more&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) | |\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@           Coverage Diff           @@\n##             main   #22539   +/-   ##\n=======================================\n  Coverage   54.34%   54.34%           \n=======================================\n  Files        4319     4321    +2     \n  Lines      137379   137392   +13     \n  Branches    21749    21749           \n=======================================\n+ Hits        74652    74669   +17     \n+ Misses      57298    57293    -5     \n- Partials     5429     5430    +1     \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/22539?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/22539#issuecomment-5353490952"
+    },
+    {
+      "id": 5370423099,
+      "user": {
+        "login": "quexten",
+        "type": "User"
+      },
+      "at": "2026-08-21T13:32:03Z",
+      "updated": "2026-08-21T13:32:03Z",
+      "body": "Sadly a merge conflict accumulated :( \r\n\r\nI have addressed @jareds feedback after the merge conflict was fixed, but this needs another round.",
+      "url": "https://github.com/bitwarden/clients/pull/22539#issuecomment-5370423099"
+    },
+    {
+      "id": 5370506951,
+      "user": {
+        "login": "bw-ghapp[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-21T13:40:03Z",
+      "updated": "2026-08-21T13:40:03Z",
+      "body": "\n<!-- comment_tag: test-all-custom-flags -->\n#### Changes in this PR impact the Autofill experience of the browser client\n\n[BIT](https://github.com/bitwarden/browser-interactions-testing) has tested the core experience with these changes and <ins>all feature flags disabled</ins>.\n\n✅ Fortunately, [these BIT tests have passed](https://github.com/bitwarden/browser-interactions-testing/actions/runs/32487470922)! 🎉\n",
+      "url": "https://github.com/bitwarden/clients/pull/22539#issuecomment-5370506951"
+    },
+    {
+      "id": 5370516872,
+      "user": {
+        "login": "bw-ghapp[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-21T13:40:57Z",
+      "updated": "2026-08-21T13:40:57Z",
+      "body": "\n<!-- comment_tag: test-all -->\n#### Changes in this PR impact the Autofill experience of the browser client\n\n[BIT](https://github.com/bitwarden/browser-interactions-testing) has tested the core experience with these changes and <ins>the feature flag configuration used by `vault.bitwarden.com`</ins>.\n\n✅ Fortunately, [these BIT tests have passed](https://github.com/bitwarden/browser-interactions-testing/actions/runs/32487468169)! 🎉\n",
+      "url": "https://github.com/bitwarden/clients/pull/22539#issuecomment-5370516872"
+    }
+  ],
+  "citedBy": []
+}

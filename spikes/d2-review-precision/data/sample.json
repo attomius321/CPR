@@ -1,0 +1,713 @@
+[
+  {
+    "id": "s01",
+    "key": "ai:zod#6491/3883985447",
+    "source": "ai",
+    "label": "Review comment · pullfrog[bot]",
+    "project": "zod",
+    "number": 6491,
+    "url": "https://github.com/colinhacks/zod/pull/6491",
+    "title": "feat(mini): publish Zod Mini as the standalone @zod/mini package (#6491)",
+    "claim": "`expectedMiniPeer` is computed unconditionally, so it never carries a prerelease tag even though the version check right below it has a dedicated `tag !== \"latest\"` branch. A prerelease only satisfies a range when a comparator shares its exact `major.minor.patch` *and* carries a prerelease tag itself, so `zod@4.5.1-beta.0` does not satisfy `^4.5.0` — verified with `semver.satisfies`, false even under `includePrerelease`. Publishing `@zod/mini` under a `beta` tag would ship a peer range that the zod beta released alongside it cannot satisfy.\n\nTechnical details\n\n````markdown\n# Prerelease publishes of @zod/mini get an unsatisfiable peer range\n\n## Affected sites\n- `scripts/check-versions.ts:69` — `expectedMiniPeer = ^${version.major}.${version.minor}.0`, no prerelease branch.\n- `scripts/check-versions.ts:70` — `isMiniVersionValid` allows a prerelease mini version via `startsWith`, so the two halves of the check disagree about whether prereleases are supported.\n\n## Evidence\n```\nsemver.satisfies(\"4.6.0-beta.1\", \"^4.6.0\")                          // false\nsemver.satisfies(\"4.6.0-beta.1\", \"^4.6.0\", {includePrerelease:true}) // false\n```\nReachable through `pnpm publish --tag beta` from `packages/mini`, which runs `prepublishOnly` with `npm_config_tag=beta`. zod does run beta cycles — the `4.0.0-beta.*` versions already sitting on `@zod/mini` are from one.\n\n## Required outcome\n- On a prerelease publish, the enforced peer range is one the zod prerelease shipping in the same cycle actually satisfies.\n- The version check and the peer check agree on whether prereleases are a supported path at all; if they aren't, the prerelease branch should reject rather than pass with a range nothing can match.\n\n## Open questions for the human\n- Is publishing `@zod/mini` on a prerelease tag in scope? If it isn't, the simpler fix is to fail the mini check outright when `npm_config_tag !== \"latest\"`.\n````\n\n",
+    "code": "scripts/check-versions.ts:69 (commented on 89aeddeff8)\n   }\n }\n+\n+// @zod/mini ships in lockstep with zod and its peer floor is the minor it shipped with\n+const miniPackageJson = JSON.parse(readFileSync(join(__dirname, \"..\", \"packages\", \"mini\", \"package.json\"), \"utf8\"));\n+const miniVersion = miniPackageJson.version as string;\n+const miniPeer = miniPackageJson.peerDependencies?.zod as string | undefined;\n+const expectedMiniPeer = `^${version.major}.${version.minor}.0`;",
+    "thread": [
+      "pullfrog[bot]: Addressed in 261c284 — the prerelease path now rejects a `@zod/mini` publish outright rather than enforcing an unsatisfiable range, and I confirmed pnpm does set `npm_package_name` so the guard fires."
+    ],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/colinhacks/zod/pull/6491#discussion_r3883985447"
+      ]
+    ]
+  },
+  {
+    "id": "s02",
+    "key": "ai:bitwarden#22260/3898308757",
+    "source": "ai",
+    "label": "Review comment · github-code-quality[bot]",
+    "project": "bitwarden",
+    "number": 22260,
+    "url": "https://github.com/bitwarden/clients/pull/22260",
+    "title": "[PM-40320] feat: Add bulk action support to shared VaultItemsTableComponent (#22260)",
+    "claim": "## Implicit operand conversion\n\nThis expression will be implicitly converted from undefined to number.",
+    "code": "libs/vault/src/components/vault-items-table/vault-items-table.component.spec.ts:1554 (commented on 84127539fb)\n+\n+      expect(selectionModel().allSelected()).toBe(false);\n+      expect(selectionModel().indeterminate()).toBe(true);\n+    });\n+\n+    /** The partial header still clears, so the cap can't strand it — see `toggleAll`. */\n+    it(\"clears from the partial header at the cap\", () => {\n+      const many = Array.from({ length: MAX_SELECTION_COUNT + 25 }, (_, i) =>",
+    "thread": [],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/bitwarden/clients/pull/22260#discussion_r3898308757"
+      ]
+    ]
+  },
+  {
+    "id": "s03",
+    "key": "ai:bitwarden#22539/3819936085",
+    "source": "ai",
+    "label": "Review comment · claude[bot]",
+    "project": "bitwarden",
+    "number": 22539,
+    "url": "https://github.com/bitwarden/clients/pull/22539",
+    "title": "chore(lock): Move LockService into libs/unlock and add lock/unlock source tracking (#22539)",
+    "claim": "♻️ **DEBT**: This introduces a package-level cycle between `@bitwarden/unlock` and `@bitwarden/auth`.\n\n\nDetails and fix\n\n`@bitwarden/auth` already depends on `@bitwarden/unlock` (e.g. `libs/auth/src/common/login-strategies/password-login.strategy.ts:26`, `libs/auth/src/common/services/login-strategies/login-strategy.service.ts:40` import `UnlockService`). With this move, `@bitwarden/unlock` now imports back into `@bitwarden/auth/common` for `LogoutService`.\n\nIt compiles today because `LogoutService` is only used as a type here, so the import is elided — but nothing prevents the next value-level import from making it a real runtime cycle. `libs/unlock` has no entry in the \"Bandaids for keeping existing circular dependencies from getting worse and new ones from being created\" block in `eslint.config.mjs`, so the boundary check that would flag this for a KM-owned lib (`KEY_MANAGEMENT_FORBIDDEN_PACKAGES` lists `@bitwarden/auth`) doesn't apply here.\n\nWorth either relocating the `LogoutService` abstraction out of `@bitwarden/auth/common`, or adding an explicit `libs/unlock/src/**/*.ts` boundary entry documenting that this one import is the accepted exception.\n",
+    "code": "libs/unlock/src/lock.service.ts:3 (commented on 49426cc115)\n@@ -1,51 +1,57 @@\n import { combineLatest, filter, firstValueFrom, map, timeout } from \"rxjs\";\n \n+import { LogoutService } from \"@bitwarden/auth/common\";",
+    "thread": [],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/bitwarden/clients/pull/22539#discussion_r3819936085"
+      ]
+    ]
+  },
+  {
+    "id": "s04",
+    "key": "ai:bitwarden#22893/3917623705",
+    "source": "ai",
+    "label": "Review comment · claude[bot]",
+    "project": "bitwarden",
+    "number": 22893,
+    "url": "https://github.com/bitwarden/clients/pull/22893",
+    "title": "[PM-42854] bugs with policies drawers (#22893)",
+    "claim": "♻️ **DEBT**: These VFO1 variants now duplicate their legacy strings verbatim — consider reusing the legacy keys instead.\n\n\nDetails and fix\n\n`automaticAppLoginWithSSODescListVfo1` is now byte-identical to `automaticAppLoginWithSSODescV2`, and `freeFamiliesSponsorshipDescVfo1` (line 14918) is identical to `freeFamiliesSponsorshipPolicyDescV2`. Duplicated `en` strings are translated twice in Crowdin and can silently drift apart on a later copy edit.\n\nWhen the VFO1 copy matches the legacy copy, existing definitions point the VFO1 property at the legacy key rather than duplicating the message — e.g. `uri-match-default.component.ts` uses `drawerDescriptionVfo1 = \"uriMatchDetectionPolicyDescV2\"` and `two-factor-authentication.component.ts` uses `drawerDescriptionVfo1 = \"twoStepLoginPolicyDescV2\"`.\n\nHere the simplest equivalent is to drop `descriptionVfo1`/`drawerDescriptionVfo1` from `AutomaticAppLoginPolicy`, drop `descriptionVfo1` from `FreeFamiliesSponsorshipPolicy`, and delete the two now-redundant keys — the `?? policy.description` fallback in `policyDescriptionKeys`/`policyDrawerDescriptionKeys` renders the same copy.\n",
+    "code": "apps/web/src/locales/en/messages.json:9569 (commented on 912b032680)\n@@ -9562,7 +9566,7 @@\n     \"message\": \"When users launch an app from your identity provider, their login details will be automatically filled and submitted, creating a one-click, secure login.\"\n   },\n   \"automaticAppLoginWithSSODescListVfo1\": {\n-    \"message\": \"Login forms will automatically be filled and submitted for apps launched from your configured identity provider.\",\n+    \"message\": \"When users launch an app from your identity provider, their login details will be automatically filled and submitted, creating a one-click, secure login.\",",
+    "thread": [],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/bitwarden/clients/pull/22893#discussion_r3917623705"
+      ]
+    ]
+  },
+  {
+    "id": "s05",
+    "key": "ai:zod#6546/3909002345",
+    "source": "ai",
+    "label": "Review comment · pullfrog[bot]",
+    "project": "zod",
+    "number": 6546,
+    "url": "https://github.com/colinhacks/zod/pull/6546",
+    "title": "docs: Zod 4.6 announcement post (#6546)",
+    "claim": "The linked harness does not actually benchmark this pair together: plain and compiled targets run in separate timing blocks, and each operation keeps an independent best-of-15 minimum. Please either add an interleaved cross-mode measurement and regenerate this chart, or remove the cross-mode `32x` claim.\n\nTechnical details\n\n````markdown\n# Cross-mode ratio is not paired\n\n## Affected sites\n- packages/docs/content/blog/zod-4-6.mdx:88-94 — publishes a ratio between compiled validation and plain parsing\n- packages/bench/validate-vs-safeparse.ts:154-160 — selects independent minima for the two operations\n- packages/bench/validate-vs-safeparse.ts:182-221 — creates plain and compiled targets separately, then measures each target to completion\n\n## Required outcome\n- Derive the chart from plain `.safeParse().success` and compiled `z.validate()` calls alternated within the same rounds, or omit the cross-mode comparison.\n````\n\n",
+    "code": "packages/docs/content/blog/zod-4-6.mdx:88 (commented on 0860cedcfb)\n+<ThemedImage\n+  lightSrc=\"/blog/validate-compiled-invalid-light.svg\"\n+  darkSrc=\"/blog/validate-compiled-invalid-dark.svg\"\n+  alt=\"Time per call on invalid input, schemas compiled with z.compile(), safeParse().success as a gray bar with z.validate() as a blue bar inside it: a union of 3 objects 32 ns (35.6x faster), an array of 10 strings 22 ns (23.6x), a 3-element tuple 27 ns (17.5x), a 5-key object 20 ns (16.9x), a discriminated union of 3 22 ns (14.6x), z.string() 18 ns (15.5x), z.number() 18 ns (15.1x), z.boolean() 18 ns (14.8x); up to 35.6x faster\"\n+  caption={<>Time per call on invalid input, compiled with z.compile() — lower is better (<a href=\"https://github.com/colinhacks/zod/blob/main/packages/bench/validate-vs-safeparse.ts\">benchmark</a>)</>}\n+/>\n+\n+That chart compares two compiled calls. Against a plain, uncompiled `.safeParse().success` — the upgrade most callers are actually making — it is up to 32x faster.",
+    "thread": [
+      "pullfrog[bot]: Addressed in c95f148 by removing the cross-mode comparison."
+    ],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/colinhacks/zod/pull/6546#discussion_r3909002345"
+      ]
+    ]
+  },
+  {
+    "id": "s06",
+    "key": "ai:bitwarden#22260/3846092008",
+    "source": "ai",
+    "label": "Review comment · claude[bot]",
+    "project": "bitwarden",
+    "number": 22260,
+    "url": "https://github.com/bitwarden/clients/pull/22260",
+    "title": "[PM-40320] feat: Add bulk action support to shared VaultItemsTableComponent (#22260)",
+    "claim": "❌ **CRITICAL**: The web host on this PR's base renders this table without providing `VaultBatchBarService`, so the vault route will throw `NullInjectorError`.\n\n\nDetails and fix\n\nThe PR description notes \"No consumer exists on this base\" — that held while this was stacked on `vault/pm-40312/...`, but the base is now `main` and PM-40312 has landed, so a consumer does exist:\n\n- `apps/web/src/app/vault/individual-vault/vault-next.component.html:8` renders `<vault-items-table>`\n- `apps/web/src/app/vault/individual-vault/vault-next.component.ts:75-78` provides only `DefaultCipherFormConfigService` and `WebVaultItemActionsService`\n\n`VaultBatchBarService` is `@Injectable()` with no `providedIn`, and nothing in the ancestor chain provides it — `vault.module.ts` and `vault-routing.module.ts` declare no providers, and the only web providers are the legacy `individual-vault/vault.component.ts:186` and `admin-console/organizations/collections/vault.component.ts:141`, neither of which is an ancestor of `VaultNextComponent` (it is a top-level route component). With `FeatureFlag.VFO1Foundation` on, constructing the table throws `NG0201: No provider for VaultBatchBarService` and the page fails to render.\n\nCI will not catch this: `vault-next.component.spec.ts:201-211` replaces the table with `NO_ERRORS_SCHEMA`.\n\nDesktop is unaffected — `apps/desktop/src/vault/app/vault-v3/vault.component.ts:163` provides the service above `app-vault-list-table`.\n\nTwo ways out:\n\n1. Wire the host in this PR — provide `VaultBatchBarService` in `VaultNextComponent` along with the collaborators it injects that are not root-provided (`RoutedVaultFilterService`, `RoutedVaultFilterBridgeService`, `ASSIGN_COLLECTIONS_DIALOG`, `BULK_DELETE_DIALOG`), and render `<bit-vault-batch-action />` as the class docs now require.\n2. Inject with `{ optional: true }` and no-op both effects when it is absent, so a host without a batch bar keeps working.\n",
+    "code": "libs/vault/src/components/vault-items-table/vault-items-table.component.ts:243 (commented on f69db57f42)\n export class VaultItemsTableComponent<C extends CipherViewLike> {\n   private readonly i18nService = inject(I18nService);\n \n+  /**\n+   * The batch bar's selection state, bridged to the table's own in {@link bridgeSelection}. A\n+   * required collaborator the host provides — see the class docs.\n+   */\n+  private readonly batchBarService = inject<VaultBatchBarService<C>>(VaultBatchBarService);",
+    "thread": [
+      "jaasen-livefront: Fixed in https://github.com/bitwarden/clients/commit/e85193687c5d29810822f9b992bef0e5b96def95"
+    ],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/bitwarden/clients/pull/22260#discussion_r3846092008"
+      ]
+    ]
+  },
+  {
+    "id": "s07",
+    "key": "ai:bitwarden#22260/3898308738",
+    "source": "ai",
+    "label": "Review comment · github-code-quality[bot]",
+    "project": "bitwarden",
+    "number": 22260,
+    "url": "https://github.com/bitwarden/clients/pull/22260",
+    "title": "[PM-40320] feat: Add bulk action support to shared VaultItemsTableComponent (#22260)",
+    "claim": "## Implicit operand conversion\n\nThis expression will be implicitly converted from undefined to number.",
+    "code": "libs/vault/src/components/vault-items-table/vault-items-table.component.spec.ts:1519 (commented on 84127539fb)\n+\n+    /**\n+     * Bulk actions turn each selected item into per-cipher permission checks and request payloads,\n+     * so select-all over a very large vault is capped rather than unbounded — matching the cap the\n+     * legacy vault-items component applies.\n+     */\n+    it(\"caps the selection itself at MAX_SELECTION_COUNT\", () => {\n+      const many = Array.from({ length: MAX_SELECTION_COUNT + 25 }, (_, i) =>",
+    "thread": [],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/bitwarden/clients/pull/22260#discussion_r3898308738"
+      ]
+    ]
+  },
+  {
+    "id": "s08",
+    "key": "zod#6380/f2",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · signature-changed",
+    "project": "zod",
+    "number": 6380,
+    "url": "https://github.com/colinhacks/zod/pull/6380",
+    "title": "feat(json-schema): accept a function for `unrepresentable` (#6380)",
+    "claim": "Seen changed its signature; 3 of 4 users not updated: JSONSchemaGenerator.seen, extractDefs, process",
+    "code": "Change to packages/zod/src/v4/core/to-json-schema.ts#Seen:\n@@ -9,8 +9,6 @@ export interface Seen {\n   /** Cycle path */\n   cycle?: (string | number)[] | undefined;\n   isParent?: boolean | undefined;\n-  /** Deferred `unrepresentable: \"throw\"` error, thrown after `override` gets a chance to handle it */\n-  unrepresentable?: string | undefined;\n   /** Schema to inherit JSON Schema properties from (set by processor for wrappers) */\n   ref?: schemas.$ZodType | null;\n   /** JSON Schema property path for this schema */\n\n\nUsed by packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.seen (unchanged):\npackages/zod/src/v4/core/json-schema-generator.ts:80\n  }\n  /** @deprecated Access via ctx instead */\n  get seen(): Map<schemas.$ZodType, Seen> {\n    return this.ctx.seen;\n  }\n\nUsed by packages/zod/src/v4/core/to-json-schema.ts#extractDefs (unchanged):\npackages/zod/src/v4/core/to-json-schema.ts:293\n  // returns a ref to the schema\n  // defId will be empty if the ref points to an external schema (or #)\n  const makeURI = (entry: [schemas.$ZodType<unknown, unknown>, Seen]): { ref: string; defId?: string } => {\n    // comparing the seen objects because sometimes\n    // multiple schemas map to the same seen object.\npackages/zod/src/v4/core/to-json-schema.ts:328\n  // stored cached version in `def` property\n  // remove all properties, set $ref\n  const extractToDef = (entry: [schemas.$ZodType<unknown, unknown>, Seen]): void => {\n    // if the schema is already a reference, do not extract it\n    if (entry[1].schema.$ref) {\n\nUsed by packages/zod/src/v4/core/to-json-schema.ts#process (unchanged):\npackages/zod/src/v4/core/to-json-schema.ts:211\n\n  // initialize\n  const result: Seen = { schema: {}, count: 1, cycle: undefined, path: _params.path };\n  ctx.seen.set(schema, result);\n\n\nUsed by packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaContext (modified):\npackages/zod/src/v4/core/to-json-schema.ts:124\n  io: \"input\" | \"output\";\n  counter: number;\n  seen: Map<schemas.$ZodType, Seen>;\n  cycles: \"ref\" | \"throw\";\n  reused: \"ref\" | \"inline\";",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/colinhacks/zod/blob/51e93234d83cbb5915b3d52942ecb01d039f5040/packages/zod/src/v4/core/to-json-schema.ts#L93-L108"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/colinhacks/zod/blob/9d20fdc3c37207fa3fe77c9524a3421f4399cbf6/packages/zod/src/v4/core/to-json-schema.ts#L79-L96"
+      ]
+    ]
+  },
+  {
+    "id": "s09",
+    "key": "ai:zod#6411/3780549741",
+    "source": "ai",
+    "label": "Review comment · pullfrog[bot]",
+    "project": "zod",
+    "number": 6411,
+    "url": "https://github.com/colinhacks/zod/pull/6411",
+    "title": "fix(v4): make fromJSONSchema propertyNames compose with the other object keywords (#6411)",
+    "claim": "With the `required` fallback gone, `additionalSchema` has exactly one consumer left (line 462), inside the `else` that only runs when `patternProperties` is absent — but it is still computed unconditionally. That turns a previously-lazy conversion into an eager one, so a schema whose `additionalProperties` was harmlessly ignored can now throw during conversion.\n\nTechnical details\n\n````markdown\n# Hoisted `additionalSchema` converts a subschema the branch never uses\n\n## Affected sites\n- `packages/zod/src/v4/classic/from-json-schema.ts:408-411` — computed before the `patternProperties` / `else` split.\n- `packages/zod/src/v4/classic/from-json-schema.ts:462-464` — the only remaining read.\n\n## Reproduction\n```ts\nfromJSONSchema({\n  type: \"object\",\n  patternProperties: { \"^S_\": { type: \"string\" } },\n  additionalProperties: { not: { type: \"string\" } },\n});\n// throws: not is not supported in Zod (except { not: {} } for never)\n// on main this converts fine — additionalProperties is ignored when\n// patternProperties is present, so it was never converted\n```\n`convertSchema` also mutates `ctx` (refs, registry), so the eager call has side effects for a schema that is then discarded.\n\n## Required outcome\n`additionalProperties` is converted only on the path that consumes it, restoring the previous behavior for the `patternProperties` combination.\n\n## Suggested approach (optional)\nDelete lines 408-411 and put the conversion back inline at line 464: `zodSchema = objectSchema.catchall(convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx));`, with the guard at 462 back to `typeof schema.additionalProperties === \"object\"`.\n````\n\n",
+    "code": "packages/zod/src/v4/classic/from-json-schema.ts:411 (commented on 9bf1a422b9)\n@@ -375,34 +405,18 @@ function convertBaseSchema(schema: JSONSchema.JSONSchema, ctx: ConversionContext\n       const properties = schema.properties || {};\n       const requiredSet = new Set(schema.required || []);\n \n+      const additionalSchema =\n+        typeof schema.additionalProperties === \"object\"\n+          ? convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx)\n+          : undefined;",
+    "thread": [],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/colinhacks/zod/pull/6411#discussion_r3780549741"
+      ]
+    ]
+  },
+  {
+    "id": "s10",
+    "key": "bitwarden#22260/f2",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · exported-api-changed",
+    "project": "bitwarden",
+    "number": 22260,
+    "url": "https://github.com/bitwarden/clients/pull/22260",
+    "title": "[PM-40320] feat: Add bulk action support to shared VaultItemsTableComponent (#22260)",
+    "claim": "VaultBatchBarService.clear was removed from the package's public API",
+    "code": "Change to libs/vault/src/services/vault-batch-bar.service.ts#VaultBatchBarService.clear:\n@@ -1,4 +0,0 @@\n-  clear(): void {\n-    this.selection.clear();\n-    this._cleared$.next();\n-  }\n",
+    "links": [
+      [
+        "the symbol at base",
+        "https://github.com/bitwarden/clients/blob/26c25d3d4e9463714ffe30d2b6727615ba56dac9/libs/vault/src/services/vault-batch-bar.service.ts#L395-L398"
+      ]
+    ]
+  },
+  {
+    "id": "s11",
+    "key": "ai:bitwarden#22260/3961657801",
+    "source": "ai",
+    "label": "Review comment · claude[bot]",
+    "project": "bitwarden",
+    "number": 22260,
+    "url": "https://github.com/bitwarden/clients/pull/22260",
+    "title": "[PM-40320] feat: Add bulk action support to shared VaultItemsTableComponent (#22260)",
+    "claim": "⚠️ **IMPORTANT**: Finding 1: The bar renders without the `PM37785_VaultBatchBar` gate the other three hosts apply.\n\n\nDetails and fix\n\n`VaultBatchActionComponent` does not self-gate — its constructor attaches the portal unconditionally, and `bit-bulk-actions-bar` reveals itself purely on `effectiveCount() > 0`. `barVisible()` (flag ∧ count) is never read by the component. So with `PM37785_VaultBatchBar` off, checking a row on this page shows a fully functional bulk bar.\n\nEvery other call site gates it:\n\n- `apps/web/src/app/vault/individual-vault/vault.component.html:109`\n- `apps/web/src/app/admin-console/organizations/collections/vault.component.html:164`\n- `apps/desktop/src/vault/app/vault-v3/vault.component.html:88`\n\nFix: wrap it the same way, e.g. a `vaultBatchBarFeatureFlag` signal on the component, or `@if (batchBarService.enabled())` since the service already exposes `enabled`.\n\n",
+    "code": "apps/web/src/app/vault/individual-vault/vault-next.component.html:72 (commented on 2229c0e9bb)\n@@ -68,3 +68,5 @@\n     }\n   </div>\n </vault-items-table>\n+\n+<bit-vault-batch-action />",
+    "thread": [],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/bitwarden/clients/pull/22260#discussion_r3961657801"
+      ]
+    ]
+  },
+  {
+    "id": "s12",
+    "key": "zod#6380/f8",
+    "source": "symbiote",
+    "label": "Symbiote finding · info · signature-changed",
+    "project": "zod",
+    "number": 6380,
+    "url": "https://github.com/colinhacks/zod/pull/6380",
+    "title": "feat(json-schema): accept a function for `unrepresentable` (#6380)",
+    "claim": "literalProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+    "code": "Change to packages/zod/src/v4/core/json-schema-processors.ts#literalProcessor:\n@@ -1,11 +1,15 @@\n-export const literalProcessor: Processor<schemas.$ZodLiteral> = (schema, ctx, json, _params) => {\n+export const literalProcessor: Processor<schemas.$ZodLiteral> = (schema, ctx, json, params) => {\n   const def = schema._zod.def as schemas.$ZodLiteralDef<any>;\n   const vals: (string | number | boolean | null)[] = [];\n   for (const val of def.values) {\n     if (val === undefined) {\n-      handleUnrepresentable(schema, ctx, \"Literal `undefined` cannot be represented in JSON Schema\");\n+      // a custom schema replaces the whole literal, so there is nothing left to accumulate\n+      if (handleUnrepresentable(schema, ctx, json, params, \"Literal `undefined` cannot be represented in JSON Schema\"))\n+        return;\n+      // otherwise do not add to vals\n     } else if (typeof val === \"bigint\") {\n-      handleUnrepresentable(schema, ctx, \"BigInt literals cannot be represented in JSON Schema\");\n+      if (handleUnrepresentable(schema, ctx, json, params, \"BigInt literals cannot be represented in JSON Schema\"))\n+        return;\n       vals.push(Number(val));\n     } else {\n       vals.push(val);\n\n\nUsed by packages/zod/src/v4/classic/schemas.ts#ZodLiteral (unchanged):\npackages/zod/src/v4/classic/schemas.ts:2092\n  core.$ZodLiteral.init(inst, def);\n  ZodType.init(inst, def);\n  inst._zod.processJSONSchema = (ctx, json, params) => processors.literalProcessor(inst, ctx, json, params);\n  inst.values = new Set(def.values);\n  Object.defineProperty(inst, \"value\", {\n\nUsed by packages/zod/src/v4/core/json-schema-processors.ts#allProcessors (unchanged):\npackages/zod/src/v4/core/json-schema-processors.ts:563\n  date: dateProcessor,\n  enum: enumProcessor,\n  literal: literalProcessor,\n  nan: nanProcessor,\n  template_literal: templateLiteralProcessor,",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/colinhacks/zod/blob/51e93234d83cbb5915b3d52942ecb01d039f5040/packages/zod/src/v4/core/json-schema-processors.ts#L154-L188"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/colinhacks/zod/blob/9d20fdc3c37207fa3fe77c9524a3421f4399cbf6/packages/zod/src/v4/core/json-schema-processors.ts#L154-L184"
+      ]
+    ]
+  },
+  {
+    "id": "s13",
+    "key": "zod#6536/f10",
+    "source": "symbiote",
+    "label": "Symbiote finding · info · signature-changed",
+    "project": "zod",
+    "number": 6536,
+    "url": "https://github.com/colinhacks/zod/pull/6536",
+    "title": "feat(v4): make z.properties() a schema, and give z.instanceof() a .properties() method (#6536)",
+    "claim": "SupportedSchemaType changed its signature; its only user was updated",
+    "code": "Change to packages/zod/src/v4/core/compile.ts#SupportedSchemaType:\n@@ -34,5 +34,6 @@ type SupportedSchemaType =\n   | \"lazy\"\n   | \"pipe\"\n   | \"custom\"\n+  | \"properties\"\n   | \"transform\"\n   | \"catch\";\n\n\nUsed by packages/zod/src/v4/core/compile.ts#generateCheck (modified):\npackages/zod/src/v4/core/compile.ts:917\n): string | null {\n  const def = schema._zod.def;\n  const type = def.type as SupportedSchemaType;\n\n  // A coercing schema would compile to the bare type test and reject what it should convert; inside a union that reads as a rejected branch, so refuse at codegen.",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/colinhacks/zod/blob/fbbe61757a8a31266ac16376c85b76e878d5a9e6/packages/zod/src/v4/core/compile.ts#L861-L899"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/colinhacks/zod/blob/bf9902164b5396449540415c2221a24bc9fd0e22/packages/zod/src/v4/core/compile.ts#L828-L865"
+      ]
+    ]
+  },
+  {
+    "id": "s14",
+    "key": "bitwarden#23031/f5",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · signature-changed",
+    "project": "bitwarden",
+    "number": 23031,
+    "url": "https://github.com/bitwarden/clients/pull/23031",
+    "title": "[PM-43141] Introduce new import source component  (#23031)",
+    "claim": "DefaultFeatureFlagValue changed its signature; 4 of 4 users not updated: DefaultFeatureFlagValueType, getFeatureFlagValue, FEATURE_FLAG_CATALOG, StorybookConfigService.valueFor · 1 test user, 1 not updated",
+    "code": "Change to libs/common/src/enums/feature-flag.enum.ts#DefaultFeatureFlagValue:\n@@ -21,6 +21,7 @@ export const DefaultFeatureFlagValue = {\n   /* Tools */\n   [FeatureFlag.SendControls]: FALSE,\n   [FeatureFlag.Pm30110SdkSendsApi]: FALSE,\n+  [FeatureFlag.ImportUpgrade]: FALSE,\n   [FeatureFlag.PM34203TemporaryItemSharing]: FALSE,\n \n   /* DIRT */\n\n\nUsed by libs/common/src/enums/feature-flag.enum.ts#DefaultFeatureFlagValueType (unchanged):\nlibs/common/src/enums/feature-flag.enum.ts:261\n} satisfies Record<FeatureFlag, AllowedFeatureFlagTypes>;\n\nexport type DefaultFeatureFlagValueType = typeof DefaultFeatureFlagValue;\n\nexport type FeatureFlagValueType<Flag extends FeatureFlag> = DefaultFeatureFlagValueType[Flag];\n\nUsed by libs/common/src/enums/feature-flag.enum.ts#getFeatureFlagValue (unchanged):\nlibs/common/src/enums/feature-flag.enum.ts:270\n) {\n  if (serverConfig?.featureStates == null || serverConfig.featureStates[flag] == null) {\n    return DefaultFeatureFlagValue[flag];\n  }\n\n\nUsed by libs/storybook/src/addons/feature-flags/config.ts#FEATURE_FLAG_CATALOG (unchanged):\nlibs/storybook/src/addons/feature-flags/config.ts:63\n */\nexport const FEATURE_FLAG_CATALOG: FeatureFlagOption[] = Object.entries(FeatureFlag)\n  .filter(([, value]) => typeof DefaultFeatureFlagValue[value as FeatureFlag] === \"boolean\")\n  .map(([name, value]) => ({ name, value: value as string }))\n  .sort((a, b) => a.name.localeCompare(b.name));\n\nUsed by libs/storybook/src/addons/feature-flags/config.ts#StorybookConfigService.valueFor (unchanged):\nlibs/storybook/src/addons/feature-flags/config.ts:52\n    // Cast needed because indexing by a generic `Flag` widens to the union of\n    // all flag value types rather than narrowing to `FeatureFlagValueType<Flag>`.\n    return DefaultFeatureFlagValue[key] as FeatureFlagValueType<Flag>;\n  }\n}\n\nUsed by libs/common/src/enums/feature-flag.enum.spec.ts#(module) (unchanged):\nlibs/common/src/enums/feature-flag.enum.spec.ts:9\ndescribe(\"getFeatureFlagValue\", () => {\n  const testFlag = Object.values(FeatureFlag)[0];\n  const testFlagDefaultValue = DefaultFeatureFlagValue[testFlag];\n\n  it(\"returns default flag value when serverConfig is null\", () => {",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/bitwarden/clients/blob/7fe51403f5906908ff81a88f3b3682e2238a46e0/libs/common/src/enums/feature-flag.enum.ts#L146-L259"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/bitwarden/clients/blob/ab3611ca2a960a17e7cdf07bcac98d24aa50a61a/libs/common/src/enums/feature-flag.enum.ts#L145-L257"
+      ]
+    ]
+  },
+  {
+    "id": "s15",
+    "key": "zod#6536/f2",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · exported-api-changed",
+    "project": "zod",
+    "number": 6536,
+    "url": "https://github.com/colinhacks/zod/pull/6536",
+    "title": "feat(v4): make z.properties() a schema, and give z.instanceof() a .properties() method (#6536)",
+    "claim": "_properties is no longer exported from the package entry",
+    "code": "Change to packages/zod/src/v4/core/api.ts#_properties:\n@@ -1,7 +1,12 @@\n export function _properties<Shape extends schemas.$ZodShape>(\n-  shape: Shape\n-): checks.$ZodCheckProperty<{ -readonly [k in keyof Shape]: util.Widen<core.input<Shape[k]>> }>[] {\n-  return Object.entries(shape).map(\n-    ([property, schema]) => new checks.$ZodCheckProperty({ check: \"property\", property, schema })\n-  ) as any;\n+  Class: util.SchemaClass<schemas.$ZodProperties>,\n+  shape: Shape,\n+  params?: string | $ZodPropertiesParams\n+): schemas.$ZodProperties<Shape> {\n+  return new Class({\n+    type: \"properties\",\n+    check: \"properties\",\n+    shape,\n+    ...util.normalizeParams(params),\n+  }) as any;\n }\n",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/colinhacks/zod/blob/fbbe61757a8a31266ac16376c85b76e878d5a9e6/packages/zod/src/v4/core/api.ts#L1133-L1144"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/colinhacks/zod/blob/bf9902164b5396449540415c2221a24bc9fd0e22/packages/zod/src/v4/core/api.ts#L1131-L1137"
+      ]
+    ]
+  },
+  {
+    "id": "s16",
+    "key": "bitwarden#23031/f4",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · signature-changed",
+    "project": "bitwarden",
+    "number": 23031,
+    "url": "https://github.com/bitwarden/clients/pull/23031",
+    "title": "[PM-43141] Introduce new import source component  (#23031)",
+    "claim": "DesktopLayoutComponent.openImport changed its signature; 1 of 1 user not updated: desktop-layout.component.html · 1 test user",
+    "code": "Change to apps/desktop/src/app/layout/desktop-layout.component.ts#DesktopLayoutComponent.openImport:\n@@ -1,3 +1,7 @@\n-  protected openImport() {\n+  protected async openImport() {\n+    if (await this.configService.getFeatureFlag(FeatureFlag.ImportUpgrade)) {\n+      await this.router.navigate([\"/import\"]);\n+      return;\n+    }\n     this.dialogService.open(ImportDesktopComponent);\n   }\n\n\nUsed by apps/desktop/src/app/layout/desktop-layout.component.html#(template) (unchanged):\napps/desktop/src/app/layout/desktop-layout.component.html:34\n\n      <bit-nav-item icon=\"bwi-generate\" [text]=\"'generator' | i18n\" (click)=\"openGenerator()\" />\n      <bit-nav-item icon=\"bwi-import\" [text]=\"'importNoun' | i18n\" (click)=\"openImport()\" />\n      <bit-nav-item icon=\"bwi-download\" [text]=\"'exportNoun' | i18n\" (click)=\"openExport()\" />\n    }\n\nUsed by apps/desktop/src/app/layout/desktop-layout.component.spec.ts#(module) (unchanged):\napps/desktop/src/app/layout/desktop-layout.component.spec.ts:231\n      jest.spyOn(router, \"navigate\");\n\n      await component[\"openImport\"]();\n\n      expect(dialogService.open).toHaveBeenCalledWith(ImportDesktopComponent);\napps/desktop/src/app/layout/desktop-layout.component.spec.ts:244\n      jest.spyOn(router, \"navigate\").mockResolvedValue(true);\n\n      await component[\"openImport\"]();\n\n      expect(router.navigate).toHaveBeenCalledWith([\"/import\"]);",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/bitwarden/clients/blob/7fe51403f5906908ff81a88f3b3682e2238a46e0/apps/desktop/src/app/layout/desktop-layout.component.ts#L61-L67"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/bitwarden/clients/blob/ab3611ca2a960a17e7cdf07bcac98d24aa50a61a/apps/desktop/src/app/layout/desktop-layout.component.ts#L60-L62"
+      ]
+    ]
+  },
+  {
+    "id": "s17",
+    "key": "zod#6391/f9",
+    "source": "symbiote",
+    "label": "Symbiote finding · info · signature-changed",
+    "project": "zod",
+    "number": 6391,
+    "url": "https://github.com/colinhacks/zod/pull/6391",
+    "title": "feat(json-schema): run `override` before the unrepresentable error (#6391)",
+    "claim": "transformProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+    "code": "Change to packages/zod/src/v4/core/json-schema-processors.ts#transformProcessor:\n@@ -1,5 +1,3 @@\n-export const transformProcessor: Processor<schemas.$ZodTransform> = (_schema, ctx, _json, _params) => {\n-  if (ctx.unrepresentable === \"throw\") {\n-    throw new Error(\"Transforms cannot be represented in JSON Schema\");\n-  }\n+export const transformProcessor: Processor<schemas.$ZodTransform> = (schema, ctx, _json, _params) => {\n+  handleUnrepresentable(schema, ctx, \"Transforms cannot be represented in JSON Schema\");\n };\n\n\nUsed by packages/zod/src/v4/classic/schemas.ts#ZodTransform (unchanged):\npackages/zod/src/v4/classic/schemas.ts:2085\n    core.$ZodTransform.init(inst, def);\n    ZodType.init(inst, def);\n    inst._zod.processJSONSchema = (ctx, json, params) => processors.transformProcessor(inst, ctx, json, params);\n\n    inst._zod.parse = (payload, _ctx) => {\n\nUsed by packages/zod/src/v4/core/json-schema-processors.ts#allProcessors (unchanged):\npackages/zod/src/v4/core/json-schema-processors.ts:566\n  custom: customProcessor,\n  function: functionProcessor,\n  transform: transformProcessor,\n  map: mapProcessor,\n  set: setProcessor,",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/colinhacks/zod/blob/7f6a296cfb02e848d0888af7cee8ed5b5518f170/packages/zod/src/v4/core/json-schema-processors.ts#L234-L236"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/colinhacks/zod/blob/2715c12e76cf022d7dbdeb5852c09fddfe91a481/packages/zod/src/v4/core/json-schema-processors.ts#L256-L260"
+      ]
+    ]
+  },
+  {
+    "id": "s18",
+    "key": "zod#6491/f1",
+    "source": "symbiote",
+    "label": "Symbiote finding · info · orphan-added",
+    "project": "zod",
+    "number": 6491,
+    "url": "https://github.com/colinhacks/zod/pull/6491",
+    "title": "feat(mini): publish Zod Mini as the standalone @zod/mini package (#6491)",
+    "claim": "default is a new default export nothing imports (loaded by convention?)",
+    "code": "Change to packages/mini/vitest.config.ts#default:\n@@ -0,0 +1,13 @@\n+export default mergeConfig(\n+  rootConfig,\n+  defineProject({\n+    resolve: {\n+      conditions: [\"@zod/source\", \"default\"],\n+    },\n+    test: {\n+      typecheck: {\n+        tsconfig: \"./tsconfig.json\",\n+      },\n+    },\n+  })\n+);\n",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/colinhacks/zod/blob/6e17b6fbd9a57953f36161daa648615590929566/packages/mini/vitest.config.ts#L4-L16"
+      ]
+    ]
+  },
+  {
+    "id": "s19",
+    "key": "bitwarden#22260/f4",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · exported-api-changed",
+    "project": "bitwarden",
+    "number": 22260,
+    "url": "https://github.com/bitwarden/clients/pull/22260",
+    "title": "[PM-40320] feat: Add bulk action support to shared VaultItemsTableComponent (#22260)",
+    "claim": "VaultBatchBarService.selected is public API and its new signature may break code outside the repo",
+    "code": "Change to libs/vault/src/services/vault-batch-bar.service.ts#VaultBatchBarService.selected:\n@@ -1,4 +1,3 @@\n-  readonly selected = computed(() => {\n-    this.selectionChanged();\n-    return this.selection.selected;\n-  });\n+  readonly selected = computed<readonly VaultItem<C>[]>(\n+    () => this.source()?.selected() ?? this.defaultSelection(),\n+  );\n",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/bitwarden/clients/blob/1ec98fd26666cca5820728cf4c5c4352d17699d7/libs/vault/src/services/vault-batch-bar.service.ts#L219-L221"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/bitwarden/clients/blob/26c25d3d4e9463714ffe30d2b6727615ba56dac9/libs/vault/src/services/vault-batch-bar.service.ts#L159-L162"
+      ]
+    ]
+  },
+  {
+    "id": "s20",
+    "key": "zod#6391/f3",
+    "source": "symbiote",
+    "label": "Symbiote finding · info · signature-changed",
+    "project": "zod",
+    "number": 6391,
+    "url": "https://github.com/colinhacks/zod/pull/6391",
+    "title": "feat(json-schema): run `override` before the unrepresentable error (#6391)",
+    "claim": "dateProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+    "code": "Change to packages/zod/src/v4/core/json-schema-processors.ts#dateProcessor:\n@@ -1,5 +1,3 @@\n-export const dateProcessor: Processor<schemas.$ZodDate> = (_schema, ctx, _json, _params) => {\n-  if (ctx.unrepresentable === \"throw\") {\n-    throw new Error(\"Date cannot be represented in JSON Schema\");\n-  }\n+export const dateProcessor: Processor<schemas.$ZodDate> = (schema, ctx, _json, _params) => {\n+  handleUnrepresentable(schema, ctx, \"Date cannot be represented in JSON Schema\");\n };\n\n\nUsed by packages/zod/src/v4/classic/schemas.ts#ZodDate (unchanged):\npackages/zod/src/v4/classic/schemas.ts:1377\n  core.$ZodDate.init(inst, def);\n  ZodType.init(inst, def);\n  inst._zod.processJSONSchema = (ctx, json, params) => processors.dateProcessor(inst, ctx, json, params);\n\n  inst.min = (value, params) => inst.check(checks.gte(value, params));\n\nUsed by packages/zod/src/v4/core/json-schema-processors.ts#allProcessors (unchanged):\npackages/zod/src/v4/core/json-schema-processors.ts:557\n  any: anyProcessor,\n  unknown: unknownProcessor,\n  date: dateProcessor,\n  enum: enumProcessor,\n  literal: literalProcessor,",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/colinhacks/zod/blob/7f6a296cfb02e848d0888af7cee8ed5b5518f170/packages/zod/src/v4/core/json-schema-processors.ts#L141-L143"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/colinhacks/zod/blob/2715c12e76cf022d7dbdeb5852c09fddfe91a481/packages/zod/src/v4/core/json-schema-processors.ts#L148-L152"
+      ]
+    ]
+  },
+  {
+    "id": "s21",
+    "key": "zod#6536/f8",
+    "source": "symbiote",
+    "label": "Symbiote finding · info · signature-changed",
+    "project": "zod",
+    "number": 6536,
+    "url": "https://github.com/colinhacks/zod/pull/6536",
+    "title": "feat(v4): make z.properties() a schema, and give z.instanceof() a .properties() method (#6536)",
+    "claim": "_properties changed its signature; all 2 users were updated",
+    "code": "Change to packages/zod/src/v4/core/api.ts#_properties:\n@@ -1,7 +1,12 @@\n export function _properties<Shape extends schemas.$ZodShape>(\n-  shape: Shape\n-): checks.$ZodCheckProperty<{ -readonly [k in keyof Shape]: util.Widen<core.input<Shape[k]>> }>[] {\n-  return Object.entries(shape).map(\n-    ([property, schema]) => new checks.$ZodCheckProperty({ check: \"property\", property, schema })\n-  ) as any;\n+  Class: util.SchemaClass<schemas.$ZodProperties>,\n+  shape: Shape,\n+  params?: string | $ZodPropertiesParams\n+): schemas.$ZodProperties<Shape> {\n+  return new Class({\n+    type: \"properties\",\n+    check: \"properties\",\n+    shape,\n+    ...util.normalizeParams(params),\n+  }) as any;\n }\n\n\nUsed by packages/zod/src/v4/classic/schemas.ts#properties (added):\npackages/zod/src/v4/classic/schemas.ts:2765\n  params?: string | core.$ZodPropertiesParams\n): ZodProperties<Shape> {\n  return core._properties(ZodProperties, shape, params) as any;\n}\n\n\nUsed by packages/zod/src/v4/mini/schemas.ts#properties (added):\npackages/zod/src/v4/mini/schemas.ts:1868\n  params?: string | core.$ZodPropertiesParams\n): ZodMiniProperties<Shape> {\n  return core._properties(ZodMiniProperties, shape, params) as any;\n}\n",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/colinhacks/zod/blob/fbbe61757a8a31266ac16376c85b76e878d5a9e6/packages/zod/src/v4/core/api.ts#L1133-L1144"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/colinhacks/zod/blob/bf9902164b5396449540415c2221a24bc9fd0e22/packages/zod/src/v4/core/api.ts#L1131-L1137"
+      ]
+    ]
+  },
+  {
+    "id": "s22",
+    "key": "bitwarden#22535/f1",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · orphan-added",
+    "project": "bitwarden",
+    "number": 22535,
+    "url": "https://github.com/bitwarden/clients/pull/22535",
+    "title": "[PM-40851] Render the shared folder grid on the desktop vault view (#22535)",
+    "claim": "SingleColumnCollapsed is new and nothing references it",
+    "code": "Change to libs/vault/src/components/shared-folder-card-grid/shared-folder-card-grid.component.stories.ts#SingleColumnCollapsed:\n@@ -0,0 +1,8 @@\n+export const SingleColumnCollapsed: Story = {\n+  decorators: [\n+    componentWrapperDecorator((story) => `<div class=\"${NARROWEST_WRAPPER}\">${story}</div>`),\n+  ],\n+  args: {\n+    collections: MANY_FOLDERS,\n+  },\n+};\n",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/bitwarden/clients/blob/265d5c1293c832f433b18998b10e36759f4fe5af/libs/vault/src/components/shared-folder-card-grid/shared-folder-card-grid.component.stories.ts#L191-L198"
+      ]
+    ]
+  },
+  {
+    "id": "s23",
+    "key": "bitwarden#22260/f10",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · orphan-added",
+    "project": "bitwarden",
+    "number": 22260,
+    "url": "https://github.com/bitwarden/clients/pull/22260",
+    "title": "[PM-40320] feat: Add bulk action support to shared VaultItemsTableComponent (#22260)",
+    "claim": "StoryLayoutFooterComponent.footerPortal is new and nothing references it",
+    "code": "Change to libs/vault/src/components/vault-items-table/vault-items-table.stories.ts#StoryLayoutFooterComponent.footerPortal:\n@@ -0,0 +1 @@\n+  protected readonly footerPortal = inject(LayoutFooterService).portal;\n",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/bitwarden/clients/blob/1ec98fd26666cca5820728cf4c5c4352d17699d7/libs/vault/src/components/vault-items-table/vault-items-table.stories.ts#L69-L69"
+      ]
+    ]
+  },
+  {
+    "id": "s24",
+    "key": "bitwarden#22260/f1",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · exported-api-changed",
+    "project": "bitwarden",
+    "number": 22260,
+    "url": "https://github.com/bitwarden/clients/pull/22260",
+    "title": "[PM-40320] feat: Add bulk action support to shared VaultItemsTableComponent (#22260)",
+    "claim": "VaultItemsTableComponent.clearSelection was removed from the package's public API",
+    "code": "Change to libs/vault/src/components/vault-items-table/vault-items-table.component.ts#VaultItemsTableComponent.clearSelection:\n@@ -1,3 +0,0 @@\n-  clearSelection(): void {\n-    this.tableComponent()?.selectionModel()?.clear();\n-  }\n",
+    "links": [
+      [
+        "the symbol at base",
+        "https://github.com/bitwarden/clients/blob/26c25d3d4e9463714ffe30d2b6727615ba56dac9/libs/vault/src/components/vault-items-table/vault-items-table.component.ts#L727-L729"
+      ]
+    ]
+  },
+  {
+    "id": "s25",
+    "key": "bitwarden#22539/f9",
+    "source": "symbiote",
+    "label": "Symbiote finding · info · signature-changed",
+    "project": "bitwarden",
+    "number": 22539,
+    "url": "https://github.com/bitwarden/clients/pull/22539",
+    "title": "chore(lock): Move LockService into libs/unlock and add lock/unlock source tracking (#22539)",
+    "claim": "DefaultUnlockService.runOnUnlockSideEffects changed its signature; its only user was updated",
+    "code": "Change to libs/unlock/src/default-unlock.service.ts#DefaultUnlockService.runOnUnlockSideEffects:\n@@ -1,6 +1,7 @@\n   private async runOnUnlockSideEffects(\n     userId: UserId,\n     client: Ref<PasswordManagerClient>,\n+    source: UnlockSource,\n   ): Promise<void> {\n     const userKey = SymmetricCryptoKey.fromString(\n       await client.value.crypto().get_user_encryption_key(),\n@@ -14,6 +15,6 @@\n     await this.stateProvider.setUserState(USER_EVER_HAD_USER_KEY, true, userId);\n \n     for (const action of this.onUnlockActions) {\n-      await action(userId, userKey);\n+      await action(userId, userKey, source);\n     }\n   }\n\n\nUsed by libs/unlock/src/default-unlock.service.ts#DefaultUnlockService.unlockWithMethod (modified):\nlibs/unlock/src/default-unlock.service.ts:232\n          });\n\n          await this.runOnUnlockSideEffects(userId, ref, source);\n        }),\n      ),",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/bitwarden/clients/blob/ea11cf7540c0b3595f860ba6f27ae0272bd5e28d/libs/unlock/src/default-unlock.service.ts#L309-L328"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/bitwarden/clients/blob/3ad4a68c2147eee962fc01248eb41b684d092bda/libs/unlock/src/default-unlock.service.ts#L275-L293"
+      ]
+    ]
+  },
+  {
+    "id": "s26",
+    "key": "bitwarden#22539/f3",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · signature-changed",
+    "project": "bitwarden",
+    "number": 22539,
+    "url": "https://github.com/bitwarden/clients/pull/22539",
+    "title": "chore(lock): Move LockService into libs/unlock and add lock/unlock source tracking (#22539)",
+    "claim": "DefaultLockService.registerOnLockAction changed its signature; 2 of 2 users not updated: DefaultSharedUnlockFollowerService.start, DefaultSharedUnlockLeaderService.start",
+    "code": "Change to libs/unlock/src/lock.service.ts#DefaultLockService.registerOnLockAction:\n@@ -1,3 +1,3 @@\n-  registerOnLockAction(action: (userId: UserId) => Promise<void>): void {\n+  registerOnLockAction(action: (userId: UserId, source: LockSource) => Promise<void>): void {\n     this.onLockActions.push(action);\n   }\n\n\nUsed by libs/common/src/key-management/shared-unlock/default-shared-unlock-follower.service.ts#DefaultSharedUnlockFollowerService.start (unchanged):\nlibs/common/src/key-management/shared-unlock/default-shared-unlock-follower.service.ts:57\n    await this.follower.start();\n\n    this.lockService.registerOnLockAction(async (userId) => {\n      if (!(await this.enabled(userId))) {\n        return;\n\nUsed by libs/common/src/key-management/shared-unlock/default-shared-unlock-leader.service.ts#DefaultSharedUnlockLeaderService.start (unchanged):\nlibs/common/src/key-management/shared-unlock/default-shared-unlock-leader.service.ts:56\n    this.leader = SharedUnlockLeader.try_new(this.ipcService.client, sharedUnlockDriver);\n    await this.leader.start();\n    this.lockService.registerOnLockAction(async (userId) => {\n      if (!(await this.enabled(userId))) {\n        return;",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/bitwarden/clients/blob/ea11cf7540c0b3595f860ba6f27ae0272bd5e28d/libs/unlock/src/lock.service.ts#L64-L66"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/bitwarden/clients/blob/3ad4a68c2147eee962fc01248eb41b684d092bda/libs/auth/src/common/services/accounts/lock.service.ts#L58-L60"
+      ]
+    ]
+  },
+  {
+    "id": "s27",
+    "key": "bitwarden#22523/f1",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · orphan-added",
+    "project": "bitwarden",
+    "number": 22523,
+    "url": "https://github.com/bitwarden/clients/pull/22523",
+    "title": "[CL-1248] Add FAB button component to vault (#22523)",
+    "claim": "Default is new and nothing references it",
+    "code": "Change to libs/vault/src/components/fab/fab.stories.ts#Default:\n@@ -0,0 +1,8 @@\n+export const Default: Story = {\n+  render: (args) => ({\n+    props: args,\n+    template: /*html*/ `\n+      <button type=\"button\" ${formatArgsForCodeSnippet<VaultFabComponent>(args)}></button>\n+    `,\n+  }),\n+};\n",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/bitwarden/clients/blob/ebf711e5d7556603cd189935c2fbffd96db754d6/libs/vault/src/components/fab/fab.stories.ts#L40-L47"
+      ]
+    ]
+  },
+  {
+    "id": "s28",
+    "key": "ai:zod#6546/3908837566",
+    "source": "ai",
+    "label": "Review comment · pullfrog[bot]",
+    "project": "zod",
+    "number": 6546,
+    "url": "https://github.com/colinhacks/zod/pull/6546",
+    "title": "docs: Zod 4.6 announcement post (#6546)",
+    "claim": "The exported type is spelled `ZodInstanceOf`, so `ZodInstanceof` names a symbol that does not exist. Please use the correct casing here, or refer to `z.instanceof()` if the constructor name is not intended to be part of the API.",
+    "code": "packages/docs/content/blog/zod-4-6.mdx:35 (commented on f4bafcff93)\n+```ts\n+const responseLike = z.properties({ status: z.number().min(200).max(299) });\n+\n+responseLike.parse(new Response(\"ok\", { status: 200 }));  // ✅ a real Response\n+responseLike.parse({ status: 204 });                      // ✅ a plain object\n+```\n+\n+A corresponding `.properties()` method has been added to `ZodInstanceof`.",
+    "thread": [
+      "pullfrog[bot]: Addressed in a7406aa."
+    ],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/colinhacks/zod/pull/6546#discussion_r3908837566"
+      ]
+    ]
+  },
+  {
+    "id": "s29",
+    "key": "ai:bitwarden#22260/3961659018",
+    "source": "ai",
+    "label": "Review comment · claude[bot]",
+    "project": "bitwarden",
+    "number": 22260,
+    "url": "https://github.com/bitwarden/clients/pull/22260",
+    "title": "[PM-40320] feat: Add bulk action support to shared VaultItemsTableComponent (#22260)",
+    "claim": "♻️ **DEBT**: Finding 2: Clearance keys on the selection count rather than on the bar actually being up, so it reserves 53px where no bar mounts.\n\n\nDetails and fix\n\nDesktop provides `VaultBatchBarService` unconditionally (`apps/desktop/.../vault-v3/vault.component.ts:181`) but gates `<bit-vault-batch-action />` on `PM37785_VaultBatchBar && PM37785_DesktopVaultBatchBar`. With VFO1 on and the desktop flag off, checking a row here adds 53px of empty space under the table with no bar to fill it.\n\nThe existing hosts key their clearance on bar visibility, not raw count:\n\n- `apps/web/src/app/vault/components/vault-items/vault-items.component.html:5` — `batchBarService?.barVisible() ? …`\n- `apps/desktop/src/vault/app/vault-v3/vault-list.component.html:19` — `barVisible() ? …`\n\nSwitching to `this.batchBarService?.barVisible()` matches that convention and covers the shared flag. The desktop-only flag still isn't visible to a shared component, so if that combination needs to be exact, an input from the host would be the complete fix.\n\n",
+    "code": "libs/vault/src/components/vault-items-table/vault-items-table.component.ts:258 (commented on 2229c0e9bb)\n+  });\n+\n   protected readonly filterNamespace = VAULT_FILTER_NAMESPACE;\n   protected readonly filterKeys = VAULT_FILTER_KEYS;\n \n+  /** Bottom margin held while the bulk-actions bar is up. */\n+  protected readonly bulkBarClearance = computed(() =>\n+    (this.batchBarService?.selectedCount() ?? 0) > 0 ? BULK_BAR_CLEARANCE : 0,",
+    "thread": [],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/bitwarden/clients/pull/22260#discussion_r3961659018"
+      ]
+    ]
+  },
+  {
+    "id": "s30",
+    "key": "ai:zod#6546/3907549089",
+    "source": "ai",
+    "label": "Review comment · Copilot",
+    "project": "zod",
+    "number": 6546,
+    "url": "https://github.com/colinhacks/zod/pull/6546",
+    "title": "docs: Zod 4.6 announcement post (#6546)",
+    "claim": "add the missing em dash and fix grammar so this bullet matches the other “at a glance” items\n\nThis issue also appears on line 55 of the same file.",
+    "code": "packages/docs/content/blog/zod-4-6.mdx:22 (commented on d8119b80ce)\n+\n+At a glance:\n+\n+- [`z.properties()`](#zproperties) — now a schema that infers, with a `.properties()` method on `z.instanceof()`\n+- [`@zod/mini`](#zodmini) — Zod Mini, published as its own package\n+- [Faster failures](#faster-failures) — up to 4.7x on the failure path when you only check `success`\n+- [Less memory per schema](#less-memory-per-schema) — up to 17% on top of the 9x reduction in Zod 4.5\n+- [Recursive schemas built by a factory](#recursive-schemas-built-by-a-factory) no longer crash",
+    "thread": [],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/colinhacks/zod/pull/6546#discussion_r3907549089"
+      ]
+    ]
+  },
+  {
+    "id": "s31",
+    "key": "ai:zod#6029/3300875322",
+    "source": "ai",
+    "label": "Review comment · pullfrog[bot]",
+    "project": "zod",
+    "number": 6029,
+    "url": "https://github.com/colinhacks/zod/pull/6029",
+    "title": "feat(json-schema): emit a root $ref when the root schema has an id (#6029)",
+    "claim": "The surrounding file uses `toMatchInlineSnapshot` almost everywhere — converting just this case to `toEqual` loses the ability to regenerate it via `pnpm vitest run --update`. Suggest keeping the inline snapshot form here so the regeneration story stays uniform across the file. Same applies to the two new tests above at 2206 and 2228, where inline snapshots would match the surrounding style.",
+    "code": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts:2502 (commented on 71a326ab0d)\n-        \"name\",\n-        \"b\",\n-      ],\n-      \"type\": \"object\",\n-    }\n-  `);\n+    },\n+  });",
+    "thread": [],
+    "links": [
+      [
+        "the comment on GitHub",
+        "https://github.com/colinhacks/zod/pull/6029#discussion_r3300875322"
+      ]
+    ]
+  },
+  {
+    "id": "s32",
+    "key": "zod#6380/f3",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · signature-changed",
+    "project": "zod",
+    "number": 6380,
+    "url": "https://github.com/colinhacks/zod/pull/6380",
+    "title": "feat(json-schema): accept a function for `unrepresentable` (#6380)",
+    "claim": "ToJSONSchemaContext changed its signature; 6 of 10 users not updated: JSONSchemaGenerator.constructor, JSONSchemaGenerator.ctx, _$ZodTypeInternals, Processor, extractDefs and 1 more",
+    "code": "Change to packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaContext:\n@@ -2,7 +2,8 @@ export interface ToJSONSchemaContext {\n   processors: Record<string, Processor>;\n   metadataRegistry: $ZodRegistry<Record<string, any>>;\n   target: \"draft-04\" | \"draft-07\" | \"draft-2020-12\" | \"openapi-3.0\" | ({} & string);\n-  unrepresentable: \"throw\" | \"any\";\n+  // must be schemas.$ZodType to prevent recursive type resolution error\n+  unrepresentable: \"throw\" | \"any\" | UnrepresentableHandler;\n   override: (ctx: {\n     // must be schemas.$ZodType to prevent recursive type resolution error\n     zodSchema: schemas.$ZodType;\n\n\nUsed by packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.constructor (unchanged):\npackages/zod/src/v4/core/json-schema-generator.ts:86\n  constructor(params?: JSONSchemaGeneratorConstructorParams) {\n    // Normalize target for internal context\n    let normalizedTarget: ToJSONSchemaContext[\"target\"] = params?.target ?? \"draft-2020-12\";\n    if (normalizedTarget === \"draft-4\") normalizedTarget = \"draft-04\";\n    if (normalizedTarget === \"draft-7\") normalizedTarget = \"draft-07\";\n\nUsed by packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.ctx (unchanged):\npackages/zod/src/v4/core/json-schema-generator.ts:49\n */\nexport class JSONSchemaGenerator {\n  private ctx: ToJSONSchemaContext;\n\n  /** @deprecated Access via ctx instead */\n\nUsed by packages/zod/src/v4/core/schemas.ts#_$ZodTypeInternals (unchanged):\npackages/zod/src/v4/core/schemas.ts:158\n  /** @internal Subject to change, not a public API. */\n  processJSONSchema?:\n    | ((ctx: ToJSONSchemaContext, json: JSONSchema.BaseSchema, params: ProcessParams) => void)\n    | undefined;\n\n\nUsed by packages/zod/src/v4/core/to-json-schema.ts#Processor (unchanged):\npackages/zod/src/v4/core/to-json-schema.ts:21\nexport type Processor<T extends schemas.$ZodType = schemas.$ZodType> = (\n  schema: T,\n  ctx: ToJSONSchemaContext,\n  json: JSONSchema.BaseSchema,\n  params: ProcessParams\n\nUsed by packages/zod/src/v4/core/to-json-schema.ts#extractDefs (unchanged):\npackages/zod/src/v4/core/to-json-schema.ts:267\n\nexport function extractDefs<T extends schemas.$ZodType>(\n  ctx: ToJSONSchemaContext,\n  schema: T\n  // params: EmitParams\n\nUsed by packages/zod/src/v4/core/to-json-schema.ts#process (unchanged):\npackages/zod/src/v4/core/to-json-schema.ts:190\nexport function process<T extends schemas.$ZodType>(\n  schema: T,\n  ctx: ToJSONSchemaContext,\n  _params: ProcessParams = { path: [], schemaPath: [] }\n): JSONSchema.BaseSchema {",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/colinhacks/zod/blob/51e93234d83cbb5915b3d52942ecb01d039f5040/packages/zod/src/v4/core/to-json-schema.ts#L110-L134"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/colinhacks/zod/blob/9d20fdc3c37207fa3fe77c9524a3421f4399cbf6/packages/zod/src/v4/core/to-json-schema.ts#L98-L121"
+      ]
+    ]
+  },
+  {
+    "id": "s33",
+    "key": "zod#6536/f5",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · signature-changed",
+    "project": "zod",
+    "number": 6536,
+    "url": "https://github.com/colinhacks/zod/pull/6536",
+    "title": "feat(v4): make z.properties() a schema, and give z.instanceof() a .properties() method (#6536)",
+    "claim": "hide changed its signature; 2 of 2 users not updated: ZodType, $ZodType",
+    "code": "Change to packages/zod/src/v4/core/util.ts#hide:\n@@ -1,3 +1,3 @@\n-export function hide<T>(inst: object, key: string, value: T): T {\n+export function hide<T>(inst: object, key: PropertyKey, value: T): T {\n   return own(inst, key, value, false);\n }\n\n\nUsed by packages/zod/src/v4/classic/schemas.ts#ZodType (unchanged):\npackages/zod/src/v4/classic/schemas.ts:283\n    // Overrides core's `~standard` to add `jsonSchema`. Must stay a prototype entry: redefining it per instance demotes instances to dictionary mode.\n    get \"~standard\"(): ZodType[\"~standard\"] {\n      return util.hide(this, \"~standard\", {\n        ...core.standardProps(this),\n        jsonSchema: {\n\nUsed by packages/zod/src/v4/core/schemas.ts#$ZodType (unchanged):\npackages/zod/src/v4/core/schemas.ts:327\n    // Wrappers extend this by installing a richer factory over it; reading it eagerly would defeat the laziness.\n    get \"~standard\"(): StandardSchemaV1.Props<any, any> {\n      return util.hide(this, \"~standard\", standardProps(this));\n    },\n    set \"~standard\"(value: StandardSchemaV1.Props<any, any>) {",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/colinhacks/zod/blob/fbbe61757a8a31266ac16376c85b76e878d5a9e6/packages/zod/src/v4/core/util.ts#L1142-L1144"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/colinhacks/zod/blob/bf9902164b5396449540415c2221a24bc9fd0e22/packages/zod/src/v4/core/util.ts#L1138-L1140"
+      ]
+    ]
+  },
+  {
+    "id": "s34",
+    "key": "zod#6536/f1",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · exported-api-changed",
+    "project": "zod",
+    "number": 6536,
+    "url": "https://github.com/colinhacks/zod/pull/6536",
+    "title": "feat(v4): make z.properties() a schema, and give z.instanceof() a .properties() method (#6536)",
+    "claim": "_instanceof is public API and its new signature may break code outside the repo",
+    "code": "Change to packages/zod/src/v4/classic/schemas.ts#_instanceof:\n@@ -1,11 +1,11 @@\n function _instanceof<T extends typeof util.Class>(\n   cls: T,\n   params: ZodInstanceOfParams = {}\n-): ZodCustom<InstanceType<T>, InstanceType<T>> {\n-  const inst = new ZodCustom({\n+): ZodInstanceOf<InstanceType<T>> {\n+  const inst = new ZodInstanceOf({\n     type: \"custom\",\n     check: \"custom\",\n-    fn: (data) => data instanceof cls,\n+    fn: (data: unknown) => data instanceof cls,\n     abort: true,\n     ...(util.normalizeParams(params) as any),\n   });\n",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/colinhacks/zod/blob/fbbe61757a8a31266ac16376c85b76e878d5a9e6/packages/zod/src/v4/classic/schemas.ts#L2831-L2856"
+      ],
+      [
+        "the symbol at base",
+        "https://github.com/colinhacks/zod/blob/bf9902164b5396449540415c2221a24bc9fd0e22/packages/zod/src/v4/classic/schemas.ts#L2788-L2813"
+      ]
+    ]
+  },
+  {
+    "id": "s35",
+    "key": "bitwarden#22260/f9",
+    "source": "symbiote",
+    "label": "Symbiote finding · warning · orphan-added",
+    "project": "bitwarden",
+    "number": 22260,
+    "url": "https://github.com/bitwarden/clients/pull/22260",
+    "title": "[PM-40320] feat: Add bulk action support to shared VaultItemsTableComponent (#22260)",
+    "claim": "VaultItemsTableComponent.keepSelectionOnRows is new and nothing references it",
+    "code": "Change to libs/vault/src/components/vault-items-table/vault-items-table.component.ts#VaultItemsTableComponent.keepSelectionOnRows:\n@@ -0,0 +1,8 @@\n+  private readonly keepSelectionOnRows = effect(() => {\n+    const rows = this.sortedCiphers();\n+    const model = this.tableComponent()?.selectionModel();\n+    if (model == null) {\n+      return;\n+    }\n+    untracked(() => this.reconcileSelection(model, rows));\n+  });\n",
+    "links": [
+      [
+        "the symbol at head",
+        "https://github.com/bitwarden/clients/blob/1ec98fd26666cca5820728cf4c5c4352d17699d7/libs/vault/src/components/vault-items-table/vault-items-table.component.ts#L784-L791"
+      ]
+    ]
+  }
+]

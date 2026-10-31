@@ -1,0 +1,84 @@
+{
+  "number": 6092,
+  "title": "feat(locales): add Norwegian Nynorsk (nn) locale",
+  "body": "Adds a Norwegian **Nynorsk** (`nn`) locale for Zod v4 error messages.\r\n\r\nZod already ships a generic Norwegian (`no`, in practice Bokmål); this adds Nynorsk as a separate written standard (variants are encouraged per the locale-contribution guide). The file mirrors `no.ts` exactly in structure — only the message text is changed to Nynorsk — and `nn` is exported from `index.ts` alphabetically (between `nl` and `no`).\r\n\r\nAI disclosure: the translation was produced with AI assistance (Claude) and reviewed by me, a native Norwegian speaker. Note: I'm more fluent in Bokmål than in Nynorsk, so a Nynorsk reviewer's pass on wording would be welcome.\r\n\r\nI wasn't able to run the full `pnpm test` suite locally — happy to fix anything CI flags.",
+  "user": {
+    "login": "arvindfroi",
+    "type": "User"
+  },
+  "baseSha": "912f0f51b0ced654d0069741e7160834dca742ee",
+  "headSha": "0962c96970f88ba9a230281b851fe614c9b9dc97",
+  "mergedAt": "2026-08-16T23:01:14Z",
+  "mergeCommit": "69b6bb086ff11dc289d9a4e0321a2cbda9246c02",
+  "commits": 4,
+  "reviews": [
+    {
+      "id": 4499343127,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "cf7ff84dbfd87136151792454272c4dbbd2d7d92",
+      "at": "2026-06-15T16:45:46Z",
+      "body": "> [!IMPORTANT]\n> The locale file itself looks correct, but `jsr.json` and the docs list are not updated — the locale won't be importable via JSR subpath exports and won't appear in the locale reference table.\n\n**Reviewed changes** — Adds a Norwegian Nynorsk (`nn`) locale mirroring the existing Bokmål (`no.ts`) structure, with translated error message strings and an `index.ts` barrel export.\n\n- **Add `packages/zod/src/v4/locales/nn.ts`** — full locale file with `Sizable`, `FormatDictionary`, `TypeDictionary`, and all switch cases translated to Nynorsk.\n- **Add `export { default as nn }` to `locales/index.ts`** — correctly placed alphabetically between `nl` and `no`.\n\n<!--\nPullfrog review metadata — for any agent (or human-with-agent) reading this\nreview. Incorporate the fields below into your understanding of the context\nthis review was made in. The findings below were written against\ncf7ff84; if new commits have landed on arvindfroi-patch-1 since this review\nwas submitted, treat any specific bug, file, or line callout as POTENTIALLY\nSTALE — re-diff against cf7ff84 (or trigger a fresh review) and\nfactor commits past cf7ff84 into your understanding of the current\nstate before acting on findings.\n\n- Mode: Review (initial)\n- Files reviewed: 2\n- Commits reviewed: 1\n- Base: main\n- Head: arvindfroi-patch-1 (cf7ff84)\n- Reviewed commits:\n  - cf7ff84 — feat(locales): add Norwegian Nynorsk (nn) locale\n- Prior pullfrog review: none\n- Submitted at: 2026-06-15T00:00:00Z\n-->\n\n### ⚠️ Missing `jsr.json` and docs entries for `nn`\n\nThe new locale file exists in the source tree and is exported from `index.ts`, but it isn't registered in `jsr.json`'s subpath exports or listed in `packages/docs/content/error-customization.mdx`'s locale reference table. Without the `jsr.json` entry the locale won't be importable via JSR (`\"zod/v4/locales/nn\"`). Without the docs entry it's invisible in the official locale list.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Missing jsr.json and docs entries for nn\n\n## Affected sites\n- `packages/zod/jsr.json:47-48` — `\"./v4/locales/nn\"` entry missing between `\"./v4/locales/nl\"` and `\"./v4/locales/no\"`.\n- `packages/docs/content/error-customization.mdx:377-378` — `nn` locale doc entry missing between `nl` and `no`.\n\n## Required outcome\n- Add `\"./v4/locales/nn\": \"./src/v4/locales/nn.ts\"` to `jsr.json` between the `nl` and `no` lines (alphabetical).\n- Add `- \\`nn\\` — Norwegian Nynorsk` to the locale list in `error-customization.mdx` between the `nl` and `no` entries (alphabetical).\n````\n\n</details>\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix it ➔](https://pullfrog.com/trigger/colinhacks/zod/6092?action=fix&review_id=4499343127) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/27561617066/job/81474828276) ｜ Using `DeepSeek Pro` (free via [Pullfrog for OSS](https://pullfrog.com/for-oss)) ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6092#pullrequestreview-4499343127"
+    },
+    {
+      "id": 4499719540,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "52d4529cf3354f65ce8577219ae16b5f2a50bdf6",
+      "at": "2026-06-15T17:44:25Z",
+      "body": "**Reviewed changes** — commit 52d4529c adds the missing `jsr.json` subpath export for `nn`, addressing one of the two integration gaps flagged in the prior review.\n\n- **Add `\"./v4/locales/nn\"` subpath export to `jsr.json`** — placed correctly between `nl` and `no`.\n\n`error-customization.mdx` still lacks an `nn` locale entry between `nl` and `no`, as noted in the prior review.\n\n<!--\nPullfrog review metadata — for any agent (or human-with-agent) reading this\nreview. Incorporate the fields below into your understanding of the context\nthis review was made in. The findings below were written against\n52d4529c; if new commits have landed on arvindfroi-patch-1 since this review\nwas submitted, treat any specific bug, file, or line callout as POTENTIALLY\nSTALE — re-diff against 52d4529c (or trigger a fresh review) and factor\ncommits past 52d4529c into your understanding of the current state before\nacting on findings.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 3\n- Commits reviewed: 2\n- Base: main (912f0f5)\n- Head: arvindfroi-patch-1 (52d4529c)\n- Reviewed commits:\n  - 52d4529c — Register nn locale in jsr.json subpath exports\n  - cf7ff84d — feat(locales): add Norwegian Nynorsk (nn) locale\n- Prior pullfrog review: cf7ff84d (https://github.com/colinhacks/zod/pull/6092#pullrequestreview-4499343127)\n- Submitted at: 2026-06-15T18:00:00Z\n-->\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix it ➔](https://pullfrog.com/trigger/colinhacks/zod/6092?action=fix&review_id=4499719540) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/27564797522/job/81485855098) ｜ Using `DeepSeek Pro` (free via [Pullfrog for OSS](https://pullfrog.com/for-oss)) ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6092#pullrequestreview-4499719540"
+    },
+    {
+      "id": 4499733097,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "e5ca2a43bc5c92b551db8facfeda92b2119063f1",
+      "at": "2026-06-15T17:46:11Z",
+      "body": "**Reviewed changes** — commit e5ca2a43 adds the missing `nn` docs entry in `error-customization.mdx`, addressing the second integration gap from the prior review. An accidental frontmatter corruption was introduced alongside it.\n\n- **Add `nn` to docs locale list** — placed correctly between `nl` and `no`.\n- **Frontmatter `---` changed to `—---`** — the opening YAML delimiter was replaced with an em-dash-prefixed variant, which will break frontmatter parsing.\n\n<!--\nPullfrog review metadata — for any agent (or human-with-agent) reading this\nreview. Incorporate the fields below into your understanding of the context\nthis review was made in. The findings below were written against\ne5ca2a43b; if new commits have landed on arvindfroi-patch-1 since this review\nwas submitted, treat any specific bug, file, or line callout as POTENTIALLY\nSTALE — re-diff against e5ca2a43b (or trigger a fresh review) and factor\ncommits past e5ca2a43b into your understanding of the current state before\nacting on findings.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 4\n- Commits reviewed: 3\n- Base: main (912f0f5)\n- Head: arvindfroi-patch-1 (e5ca2a43b)\n- Reviewed commits:\n  - e5ca2a43 — Add nn (Norwegian Nynorsk) to docs locale list\n  - 52d4529c — Register nn locale in jsr.json subpath exports\n  - cf7ff84d — feat(locales): add Norwegian Nynorsk (nn) locale\n- Prior pullfrog review: 52d4529c (https://github.com/colinhacks/zod/pull/6092#pullrequestreview-4499719540)\n- Submitted at: 2026-06-15T18:00:00Z\n-->\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6092?action=fix&review_id=4499733097) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6092?action=fix-approved&review_id=4499733097) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/27564797522/job/81485855098) ｜ Using `DeepSeek Pro` (free via [Pullfrog for OSS](https://pullfrog.com/for-oss)) ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6092#pullrequestreview-4499733097"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3415435782,
+      "review": 4499733097,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/docs/content/error-customization.mdx",
+      "line": null,
+      "originalLine": 1,
+      "commit": "e5ca2a43bc5c92b551db8facfeda92b2119063f1",
+      "originalCommit": "e5ca2a43bc5c92b551db8facfeda92b2119063f1",
+      "at": "2026-06-15T17:46:10Z",
+      "body": "⚠️ The frontmatter opening delimiter was changed from `---` to `—---` (em dash + hyphens). MDX/YAML frontmatter parsers require exactly `---` as the delimiter — an em dash won't be recognized, which will break metadata extraction and potentially page rendering.\n\nRevert line 1 back to `---` (three hyphens, no em dash).",
+      "diffHunk": "@@ -1,4 +1,4 @@\n----\n+—---",
+      "url": "https://github.com/colinhacks/zod/pull/6092#discussion_r3415435782"
+    }
+  ],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-17T02:52:10Z",
+      "number": 6430,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "fix(locales): da/nn/no/sv called an IP address a range",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6430"
+    }
+  ]
+}

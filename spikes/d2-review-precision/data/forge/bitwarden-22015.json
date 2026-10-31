@@ -1,0 +1,98 @@
+{
+  "number": 22015,
+  "title": "[PM-40693] Hide copy button on file Sends",
+  "body": "## 🎟️ Tracking\r\n\r\n<!-- Paste the link to the Jira or GitHub issue or otherwise describe / point to where this change is coming from. -->\r\nhttps://bitwarden.atlassian.net/browse/PM-40693\r\n\r\n## 📔 Objective\r\n\r\n<!-- Describe what the purpose of this PR is, for example what bug you're fixing or new feature you're adding. -->\r\nThis PR fixes a bug where the \"Make a Copy\" button was incorrectly displayed for File Sends, which can't be copied. It also fixes two unrelated bugs, one that would incorrectly show the \"Send is Disabled\" banner after the \"Make a Copy\" button was pressed on the browser extension, and one that would prevent the \"Make a Copy\" button from properly re-initializing the Send edit drawer on web.",
+  "user": {
+    "login": "mcamirault",
+    "type": "User"
+  },
+  "baseSha": "0e21707b8ac5b3fa5428793bac55551d2aabefac",
+  "headSha": "c8822895568f0e927a56fc7d87d009a6e75ab9b1",
+  "mergedAt": "2026-08-04T15:13:47Z",
+  "mergeCommit": "fce56c7651a5da291a740621316a518aa94af6a3",
+  "commits": 5,
+  "reviews": [
+    {
+      "id": 4768426207,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "468961513dd3abdeaa4cbd41071a7e86797ad1f4",
+      "at": "2026-07-23T21:42:04Z",
+      "body": "It took me a while to grasp these code changes, but mostly because the PR title led me to believe we were hiding the copy button on disabled file Sends only. I hope it's OK I've updated the title to better reflect we are disabling the copy button on file Sends all-together, since they can't be copied (this was conveyed in the PR description, my fault for not reading it). \n\n❓ Would it make sense to add test coverage? Or would this only be testing the mock capabilities of Jest? ",
+      "url": "https://github.com/bitwarden/clients/pull/22015#pullrequestreview-4768426207"
+    },
+    {
+      "id": 4788239773,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "90f0ce3c54b43f2e276147f3bb6c45d3101091b8",
+      "at": "2026-07-27T14:42:18Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22015#pullrequestreview-4788239773"
+    },
+    {
+      "id": 4855367808,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "95e1d059fe4691732f9020c37c64812f7c4e47f8",
+      "at": "2026-08-04T14:08:11Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22015#pullrequestreview-4855367808"
+    },
+    {
+      "id": 4855917591,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "c8822895568f0e927a56fc7d87d009a6e75ab9b1",
+      "at": "2026-08-04T14:59:26Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22015#pullrequestreview-4855917591"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3713241959,
+      "review": 4855367808,
+      "replyTo": null,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "path": "apps/browser/src/tools/popup/send-v2/add-edit/send-add-edit.component.ts",
+      "line": null,
+      "originalLine": 240,
+      "commit": "95e1d059fe4691732f9020c37c64812f7c4e47f8",
+      "originalCommit": "95e1d059fe4691732f9020c37c64812f7c4e47f8",
+      "at": "2026-08-04T14:04:02Z",
+      "body": ">(if Text Sends aren't allowed we'd have to turn the copy into a File Send)\n\nThis comment almost implies we might do this, I would re-word it to state more plainly that if text Sends are disallowed by policy we just won't allow a copy operation. \n\nIf you agree, I would also update the comment in the other file. ",
+      "diffHunk": "@@ -235,24 +235,29 @@ export class SendAddEditComponent {\n       const sendDisabledReason = await this.sendPolicyService.sendDisabledReason(\n         this.config.originalSend,\n       );\n+      // We can make a copy of a disabled Send only if two conditions are met\n+      // 1. The Send doesn't violate the SendType restriction of the policy (if Text\n+      // Sends aren't allowed we'd have to turn the copy into a File Send)",
+      "url": "https://github.com/bitwarden/clients/pull/22015#discussion_r3713241959"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5061776956,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-07-23T18:09:46Z",
+      "updated": "2026-08-04T14:55:20Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/22015?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:x: Patch coverage is `0%` with `8 lines` in your changes missing coverage. Please review.\n:white_check_mark: Project coverage is 52.81%. Comparing base ([`72afb7d`](https://app.codecov.io/gh/bitwarden/clients/commit/72afb7d55687c783de218b7d834e7ae237bf1564?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`c882289`](https://app.codecov.io/gh/bitwarden/clients/commit/c8822895568f0e927a56fc7d87d009a6e75ab9b1?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:warning: Report is 101 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n| [Files with missing lines](https://app.codecov.io/gh/bitwarden/clients/pull/22015?dropdown=coverage&src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) | Patch % | Lines |\n|---|---|---|\n| [.../popup/send-v2/add-edit/send-add-edit.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22015?src=pr&el=tree&filepath=apps%2Fbrowser%2Fsrc%2Ftools%2Fpopup%2Fsend-v2%2Fadd-edit%2Fsend-add-edit.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy9icm93c2VyL3NyYy90b29scy9wb3B1cC9zZW5kLXYyL2FkZC1lZGl0L3NlbmQtYWRkLWVkaXQuY29tcG9uZW50LnRz) | 0.00% | [4 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22015?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [...-ui/src/add-edit/send-add-edit-dialog.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22015?src=pr&el=tree&filepath=libs%2Ftools%2Fsend%2Fsend-ui%2Fsrc%2Fadd-edit%2Fsend-add-edit-dialog.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-bGlicy90b29scy9zZW5kL3NlbmQtdWkvc3JjL2FkZC1lZGl0L3NlbmQtYWRkLWVkaXQtZGlhbG9nLmNvbXBvbmVudC50cw==) | 0.00% | [4 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22015?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@            Coverage Diff             @@\n##             main   #22015      +/-   ##\n==========================================\n+ Coverage   52.21%   52.81%   +0.59%     \n==========================================\n  Files        4168     4221      +53     \n  Lines      131861   133619    +1758     \n  Branches    20753    21021     +268     \n==========================================\n+ Hits        68853    70567    +1714     \n+ Misses      57940    57907      -33     \n- Partials     5068     5145      +77     \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/22015?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/22015#issuecomment-5061776956"
+    }
+  ],
+  "citedBy": []
+}

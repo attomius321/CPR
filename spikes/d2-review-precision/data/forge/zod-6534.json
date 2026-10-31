@@ -1,0 +1,111 @@
+{
+  "number": 6534,
+  "title": "Keep the runtime base64 regexes linear so composed parse paths cannot overflow",
+  "body": "Fixes the finding from the #6528 review: `z.templateLiteral([\"id-\", z.base64url()]).safeParse` threw `RangeError: Maximum call stack size exceeded` on multi-megabyte input. The quantified block forms (`(?:[...]{4})*`) recurse per block in V8's regex engine, so ~8M chars overflows the stack. `z.base64()` and `z.base64url()` were already mitigated internally, but template literals compose member `def.pattern`s and test them on every parse.\n\nThe split, reworked per review: the public `z.regexes.base64` and `z.regexes.base64url` keep their strict shipped semantics and are untouched. The lax linear forms (`/^[0-9a-zA-Z+/]*={0,2}$/`, `/^[A-Za-z0-9_-]*$/`) live module-local in `schemas.ts` and become `def.pattern` for the two formats — parse validation is unchanged because `isValidBase64`/`isValidBase64URL` enforce the length rules. The JSON Schema emitter swaps the lax patterns back to the strict exports by reference, at both consumer sites: `stringProcessor`'s `pattern`/`allOf` and `recordProcessor`'s `patternProperties` (the review caught that `z.looseRecord(z.base64url(), …)` would otherwise emit the lax key — now pinned by a test). `toJSONSchema(z.base64url())` still emits the length-aware pattern from #6527; its snapshot and agreement tests pass unchanged, and `base64` gains the symmetric agreement test. `templateLiteralProcessor` is deliberately left lax: its emitted pattern then agrees with the (length-lax) composed parse.\n\nThis also fixes a second bug the overflow investigation surfaced: `regexes.base64`'s leading `^$|` alternation leaked through template-literal composition, so on `main` `z.templateLiteral([\"id-\", z.base64()])` accepts `\"AAAA\"` with the prefix dropped and rejects the valid `\"id-AAAA\"`. Both directions are now pinned by a test. Composed base64url segments are length-lax again (`\"id-A\"` passes), as before #6527 — block length can't be meaningfully enforced mid-composition.\n\nVerified with a controlled repro: on `main` the template-literal paths throw on 10MB input; on this branch they parse cleanly, and the big-input test now exercises them. Direct use of the strict `z.regexes.*` exports on multi-MB strings can still overflow — that's inherent to their quantified shape and out of scope here.\n\nAxes: parse-path validator code is unchanged; template-literal parses get a simpler regex. Memory unchanged. Bundle, measured against `origin/main` with esbuild + gzip -9 on the treeshake fixtures: classic +47 B (classic retains the JSON Schema processors unconditionally via `processJSONSchema`), mini −2 B (mini shakes them until `toJSONSchema` is used).\n",
+  "user": {
+    "login": "colinhacks",
+    "type": "User"
+  },
+  "baseSha": "68a609ac9b9516e6fe84e3558f17ce16b1032bef",
+  "headSha": "13bb1a6e74acd346f5fdfe1001534c509ff46999",
+  "mergedAt": "2026-08-31T20:01:18Z",
+  "mergeCommit": "07c43e2a08f67082bd35c158d528d571a36094e0",
+  "commits": 2,
+  "reviews": [
+    {
+      "id": 5070180631,
+      "user": {
+        "login": "copilot-pull-request-reviewer[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "c199d32ccd7f3f7faf485ec065f4bef3f5b82db4",
+      "at": "2026-08-31T19:06:59Z",
+      "body": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit.",
+      "url": "https://github.com/colinhacks/zod/pull/6534#pullrequestreview-5070180631"
+    },
+    {
+      "id": 5070267311,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "c199d32ccd7f3f7faf485ec065f4bef3f5b82db4",
+      "at": "2026-08-31T19:17:27Z",
+      "body": "> [!IMPORTANT]\n> The identity-keyed pattern swap is applied in `stringProcessor` but not in `recordProcessor`, so `z.looseRecord(z.base64(), …)` now emits a `patternProperties` key that disagrees with parse — the same class of bug #6527 fixed. Details inline.\n\n**Reviewed changes** — full diff at `c199d32c`, plus the surrounding `regexes.*` / `bag.patterns` consumers, the JSON Schema processors, and a measured before/after of parse behavior, emitted patterns and bundle size.\n\n- **Runtime regexes go linear** — `regexes.base64` becomes `/^[0-9a-zA-Z+/]*={0,2}$/` and `regexes.base64url` becomes `/^[A-Za-z0-9_-]*$/`, removing the quantified block forms that overflow V8's regex stack at ~8M chars.\n- **Exact patterns move to the JSON Schema emitter** — a module-level `Map<RegExp, RegExp>` keyed by object identity, swapped in at `stringProcessor`'s `patternList`.\n- **`isValidBase64URL` de-duplicates** — the private `base64urlCharset` added by #6527 is deleted in favor of `regexes.base64url`, whose source is now byte-identical. No behavior change.\n- **Big-input test extended** — the exported regexes and template-literal composition are now exercised on 10MB input; those four lines throw `RangeError` on `main`, so the test genuinely fails without the fix.\n\nConfirmed the core claim: `z.base64()` / `z.base64url()` parse is untouched (`def.pattern` is never tested for these formats, and `PATTERN_IS_COMPLETE` excludes them so AOT hoists the validator too), `z.hash(alg, { enc: \"base64\" })` resolves its own `md5_base64`-style regexes and is unaffected, and the four relevant test files pass. Worth noting the change also fixes a pre-existing bug it doesn't mention: on `main` the composed template-literal source for `[\"id-\", z.base64()]` was `^id-$|^(?:[0-9a-zA-Z+/]{4})*…$`, whose top-level alternation leaked past its own segment, so `.parse(\"AAAA\")` matched with the `id-` prefix dropped entirely.\n\n<!--\nPullfrog review metadata. These findings were written against c199d32;\nif commits have landed on fix-base64-pattern-overflow since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: Review (initial)\n- Files reviewed: 4\n- Commits reviewed: 1\n- Base: main (68a609a)\n- Head: fix-base64-pattern-overflow (c199d32)\n- Reviewed commits:\n  - c199d32c — fix: keep the runtime base64 regexes linear so composed parse paths cannot overflow\n- Prior pullfrog review: none\n-->\n\n### ⚠️ `z.regexes.base64` silently stops validating base64 structure for external consumers\n\n`z.regexes` is documented public API (`api.mdx` shows `z.string().regex(z.regexes.X)`), and `regexes.base64` has been strict in every released version. After this change `z.regexes.base64.test` flips `false` → `true` for `\"A\"`, `\"AA\"`, `\"AAA\"`, `\"AAAAA\"`, `\"=\"`, `\"==\"`, `\"A=\"` and `\"AAAA==\"` — anyone using it directly loses length and padding validation entirely, with no deprecation or release note. (`regexes.base64url` is not affected by this: it was already `/^[A-Za-z0-9_-]*$/` before the unreleased #6527, so that half is a revert, not a regression.)\n\nThe bundle argument doesn't force the choice, either — see the section below.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# `z.regexes.base64` loses its structural guarantees\n\n## Affected sites\n- `packages/zod/src/v4/core/regexes.ts:83` — public export weakened from the block-structured form to a charset-only form.\n\n## Required outcome\n- Either `z.regexes.base64` keeps the semantics it has shipped with, or the weakening is stated explicitly in the PR body and release notes as a breaking change to a public export.\n\n## Suggested approach (optional)\n- Invert the indirection instead of weakening the export: keep `regexes.base64` strict and public, add a module-local lax pattern used only for `def.pattern`, and key `exactPatterns` the other way (lax → `regexes.base64`).\n- This should shake identically on `zod/mini`, since the strict export would then be referenced only from `json-schema-processors.ts`, which mini drops unless `toJSONSchema` is called. Worth measuring before committing to it — I did not measure this variant.\n\n## Open questions for the human\n- Is `z.regexes.base64` considered stable enough that a silent widening needs a release note, or is `z.base64()` the only contract that matters here?\n````\n\n</details>\n\n### ℹ️ The pattern map is not actually behind `toJSONSchema` in classic\n\nThe PR body says \"the pattern map lives behind `toJSONSchema`, so shaking bundlers drop it for users who never call it\". That holds for `zod/mini`, but not for classic: `classic/schemas.ts` imports `* as processors` at the top and all 42 constructors unconditionally assign `inst._zod.processJSONSchema = (…) => processors.XProcessor(…)`, so `json-schema-processors.ts` is reachable from every classic bundle whether or not `toJSONSchema` is used.\n\nMeasured with esbuild (`bundle`, `minify`, `--conditions=@zod/source`) + gzip -9: classic pays **+67 raw / +42–46 gz unconditionally**, and a classic fixture that only uses `z.base64()` now also carries the base64url exact pattern it never references. Mini is genuinely unaffected (0, or −53 raw on a `z.base64()` fixture) unless `toJSONSchema` is called, in which case it is +140 raw / +75 gz rather than +2. The quoted numbers are roughly reproducible; it's the \"opt-in\" framing that isn't.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Bundle cost of `exactPatterns` is unconditional on classic\n\n## Affected sites\n- `packages/zod/src/v4/core/json-schema-processors.ts:32-36` — new module-level `Map`.\n- `packages/zod/src/v4/classic/schemas.ts:4` and the 42 `processors.*Processor` closures — the reason the module is never shaken from classic.\n\n## Required outcome\n- The PR body's bundle rationale should match what classic actually pays, so the tradeoff against the public-export weakening above is judged on real numbers.\n\n## Suggested approach (optional)\n- No code change strictly required — ~45 B gz on classic is a defensible price. But since classic pays for both regex forms regardless, the bundle axis is not a reason to prefer weakening `z.regexes.base64` over keeping it strict.\n````\n\n</details>\n\n### ℹ️ Nitpicks\n\n- `packages/zod/src/v4/core/json-schema-processors.ts:32` and `packages/zod/src/v4/classic/tests/string.test.ts:296` are long capitalized multi-clause sentences. `CLAUDE.md` asks for \"one lowercase sentence fragment, one clause, no trailing period\" — the deleted `// charset only — the quantified regexes.base64url overflows…` was closer to the house register.\n- There's a `\"base64url pattern agrees with parse\"` test but no symmetric one for `base64`. Now that the emitted pattern for both formats reaches `toJSONSchema` through an indirection, the `base64` half is pinned only by an inline snapshot of the string, not by agreement with `safeParse`.\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6534?action=fix&review_id=5070267311) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6534?action=fix-approved&review_id=5070267311) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33428772876/job/99608730327) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6534#pullrequestreview-5070267311"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3897593489,
+      "review": 5070267311,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/json-schema-processors.ts",
+      "line": null,
+      "originalLine": 57,
+      "commit": "c199d32ccd7f3f7faf485ec065f4bef3f5b82db4",
+      "originalCommit": "c199d32ccd7f3f7faf485ec065f4bef3f5b82db4",
+      "at": "2026-08-31T19:17:25Z",
+      "body": "`stringProcessor` isn't the only consumer of `bag.patterns` — `recordProcessor`'s loose branch writes `pattern.source` straight into `patternProperties` with no `exactPatterns` lookup, so the swap misses it.\n\nMeasured on this branch: `z.looseRecord(z.base64(), z.number())` emits `patternProperties` keyed on `^[0-9a-zA-Z+/]*={0,2}$`, which matches `\"A\"`. Zod's loose record accepts `{ A: \"not-a-number\" }` (key isn't valid base64, so it's skipped), while the emitted schema requires that value to be a number — an external validator rejects input zod accepts. On `main` the emitted key was the exact pattern and didn't match `\"A\"`, so this is the `pattern`/parse disagreement #6527 removed, reintroduced through a different processor.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# `exactPatterns` swap misses `recordProcessor`\n\n## Affected sites\n- `packages/zod/src/v4/core/json-schema-processors.ts:583` — `assignProp(json.patternProperties, pattern.source, valueSchema)` uses the raw (now lax) runtime regex.\n- `packages/zod/src/v4/core/json-schema-processors.ts:57` — the only site currently applying the swap.\n\n## Required outcome\n- Every emitted JSON Schema construct derived from `bag.patterns` uses the exact block-structured form, not just `stringProcessor`'s `pattern` / `allOf`.\n- A test pins it, so a future consumer of `bag.patterns` doesn't silently regress. `z.looseRecord(z.base64(), z.number())` currently has no coverage — `to-json-schema.test.ts`'s `patternProperties` tests all use `.regex(...)` keys.\n\n## Suggested approach (optional)\n- Hoist a one-liner next to the map and use it at both sites:\n\n```ts\nconst exactPattern = (p: RegExp): RegExp => exactPatterns.get(p) ?? p;\n```\n\n- `stringProcessor`: `[...patterns].map(exactPattern)`; `recordProcessor`: `assignProp(json.patternProperties, exactPattern(pattern).source, valueSchema)`.\n\n## Open questions for the human\n- `templateLiteralProcessor` also reads a composed `_zod.pattern` and is deliberately left lax, which is correct — its emitted pattern then agrees with the (now length-lax) template-literal parse. Worth a line in the PR body so the asymmetry with `recordProcessor` is intentional on the record and not just on the template literal.\n````\n\n</details>",
+      "diffHunk": "@@ -48,7 +54,7 @@ export const stringProcessor: Processor<schemas.$ZodString> = (schema, ctx, _jso\n   }\n   if (contentEncoding) json.contentEncoding = contentEncoding;\n   if (patterns && patterns.size > 0) {\n-    const patternList = [...patterns];\n+    const patternList = [...patterns].map((p) => exactPatterns.get(p) ?? p);",
+      "url": "https://github.com/colinhacks/zod/pull/6534#discussion_r3897593489"
+    },
+    {
+      "id": 3897593515,
+      "review": 5070267311,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/regexes.ts",
+      "line": null,
+      "originalLine": 82,
+      "commit": "c199d32ccd7f3f7faf485ec065f4bef3f5b82db4",
+      "originalCommit": "c199d32ccd7f3f7faf485ec065f4bef3f5b82db4",
+      "at": "2026-08-31T19:17:26Z",
+      "body": "Nit, house style: this is three capitalized sentences on one line. Trimming to the constraint that actually explains the code keeps it in register — the JSON Schema half is already documented next to `exactPatterns`, and the `isValidBase64` half is documented at the validator.\n\n```suggestion\n// linear on purpose: the quantified block forms overflow the regex stack on multi-MB input, and these run on parse paths\n```",
+      "diffHunk": "@@ -79,9 +79,9 @@ export const cidrv4: RegExp =\n export const cidrv6: RegExp =\n   /^(([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:))\\/(12[0-8]|1[01][0-9]|[1-9]?[0-9])$/;\n \n-// https://stackoverflow.com/questions/7860392/determine-if-string-is-in-base64-using-javascript\n-export const base64: RegExp = /^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$/;\n-export const base64url: RegExp = /^(?:[A-Za-z0-9_-]{4})*(?:[A-Za-z0-9_-]{2,3})?$/;\n+// Linear-time on purpose: the block-structured quantified forms overflow the regex stack on multi-MB input, and these regexes run on parse paths — template literals compose them, and `z.regexes` exports them. Length rules are enforced by `isValidBase64`/`isValidBase64URL`; `toJSONSchema` emits the exact block-structured patterns instead.",
+      "url": "https://github.com/colinhacks/zod/pull/6534#discussion_r3897593515"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5483451409,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-31T19:32:36Z",
+      "updated": "2026-08-31T19:32:36Z",
+      "body": "**Your Claude subscription has hit its usage limit.** It resets at **10pm (UTC)**. Re-trigger Pullfrog after the reset, or add an `ANTHROPIC_API_KEY` repo secret — Pullfrog routes around an exhausted subscription automatically when one is present.\n\n[Add repo secret →](https://github.com/colinhacks/zod/settings/secrets/actions) · [Model settings →](https://pullfrog.com/console/colinhacks/zod) · [Setup docs →](https://docs.pullfrog.com/keys) · [Ask in Discord →](https://discord.gg/8y96raFg8e)\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Rerun failed job ➔](https://pullfrog.com/trigger/colinhacks/zod/33430330793?action=rerun) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33430330793) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6534#issuecomment-5483451409"
+    }
+  ],
+  "citedBy": [
+    {
+      "at": "2026-09-10T16:58:09Z",
+      "number": 118,
+      "repo": "nx-solutions-ug/chronova-mcp",
+      "pull": true,
+      "title": "chore(deps): update dependency zod to v4.6.1",
+      "state": "closed",
+      "url": "https://github.com/nx-solutions-ug/chronova-mcp/pull/118"
+    },
+    {
+      "at": "2026-09-22T22:18:55Z",
+      "number": 6624,
+      "repo": "colinhacks/zod",
+      "pull": false,
+      "title": "Avoid decoded-string allocation in z.base64() validation for large inputs",
+      "state": "open",
+      "url": "https://github.com/colinhacks/zod/issues/6624"
+    }
+  ]
+}

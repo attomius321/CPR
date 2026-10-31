@@ -1,0 +1,54 @@
+{
+  "number": 23367,
+  "title": "[PM-43971] Hide callout if link is already configured",
+  "body": "## 🎟️ Tracking\r\nhttps://bitwarden.atlassian.net/browse/PM-43971\r\n<!-- Paste the link to the Jira or GitHub issue or otherwise describe / point to where this change is coming from. -->\r\n\r\n## 📔 Objective\r\ndon't show invite link callout if the feature has already been configured by an admin.\r\n<!-- Describe what the purpose of this PR is, for example what bug you're fixing or new feature you're adding. -->\r\n\r\n## 📸 Screenshots\r\n\r\n<!-- Required for any UI changes; delete if not applicable. Use fixed width images for better display. -->\r\n",
+  "user": {
+    "login": "BTreston",
+    "type": "User"
+  },
+  "baseSha": "35dd5748ec79f88e553436d355f9763dd59a0974",
+  "headSha": "31bf94a0390f4852235601108a42a23e74c7103f",
+  "mergedAt": "2026-09-23T16:08:07Z",
+  "mergeCommit": "9edb8189d9277f155e59b7d95266d6b047c8bd66",
+  "commits": 1,
+  "reviews": [
+    {
+      "id": 5293073249,
+      "user": {
+        "login": "jrmccannon",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "31bf94a0390f4852235601108a42a23e74c7103f",
+      "at": "2026-09-23T15:28:57Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23367#pullrequestreview-5293073249"
+    }
+  ],
+  "inline": [],
+  "comments": [
+    {
+      "id": 5783926364,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-22T20:49:09Z",
+      "updated": "2026-09-22T20:52:39Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nThis bugfix adds an existing-invite-link check to `InviteLinkCalloutService.showIfEligible()` so the callout is skipped (and permanently dismissed) for organizations an admin has already configured, plus unit tests for the service branch and for the `ByLinkTabComponent` guided-tour guard. The new check is correctly ordered after the permission, feature-flag, and dismissal short-circuits, so it adds no extra request for users who already dismissed the callout. `OrganizationInviteLinkService` is registered in `jslib-services.module.ts` root providers, so the new `inject()` in this `providedIn: \"root\"` service resolves, and `DefaultOrganizationInviteLinkService.inviteLink$` already treats a 404 as \"no link\", which keeps the common no-link path working. Web tests, typecheck, and lint pass on CI; the failing `Rust deny` jobs are unrelated to this diff, which touches no Rust.\n\n<details>\n<summary>Code Review Details</summary>\n\nNo findings met the threshold for an inline comment.\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/23367#issuecomment-5783926364"
+    },
+    {
+      "id": 5784183723,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-22T21:07:58Z",
+      "updated": "2026-09-22T21:07:58Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/23367?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:white_check_mark: All modified and coverable lines are covered by tests.\n:white_check_mark: Project coverage is 56.71%. Comparing base ([`83f53f6`](https://app.codecov.io/gh/bitwarden/clients/commit/83f53f6a2bd3484720f6bd36817c88316996a55b?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`31bf94a`](https://app.codecov.io/gh/bitwarden/clients/commit/31bf94a0390f4852235601108a42a23e74c7103f?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:warning: Report is 8 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@            Coverage Diff             @@\n##             main   #23367      +/-   ##\n==========================================\n+ Coverage   56.65%   56.71%   +0.05%     \n==========================================\n  Files        4542     4543       +1     \n  Lines      143655   143753      +98     \n  Branches    22969    22988      +19     \n==========================================\n+ Hits        81389    81529     +140     \n+ Misses      56300    56247      -53     \n- Partials     5966     5977      +11     \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/23367?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/23367#issuecomment-5784183723"
+    }
+  ],
+  "citedBy": []
+}

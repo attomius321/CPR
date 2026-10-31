@@ -1,0 +1,77 @@
+{
+  "number": 23135,
+  "title": "fix: don't mutate the user config when resolving the lib entry from the top-level `input`",
+  "body": "Fixes #23134",
+  "user": {
+    "login": "shulaoda",
+    "type": "User"
+  },
+  "baseSha": "e6b6b167afa0a80548829d1f24a0712f9194389a",
+  "headSha": "b73b54124c2d578233006fa9f65460c1df8d4a50",
+  "mergedAt": "2026-08-03T03:10:20Z",
+  "mergeCommit": "b4bf59686a7ac238929e91a6e1708c739b843a2f",
+  "commits": 2,
+  "reviews": [
+    {
+      "id": 4840521624,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "b73b54124c2d578233006fa9f65460c1df8d4a50",
+      "at": "2026-08-03T03:02:31Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23135#pullrequestreview-4840521624"
+    }
+  ],
+  "inline": [],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-07T02:47:15Z",
+      "number": 94,
+      "repo": "sudocarlos/tailrelay",
+      "pull": false,
+      "title": "chore: update Vite from 8.2.0 to 8.2.1",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/issues/94"
+    },
+    {
+      "at": "2026-08-09T17:06:15Z",
+      "number": 444,
+      "repo": "ncaq/www.ncaq.net",
+      "pull": true,
+      "title": "build(deps-dev): update dependency vite to v8.2.1",
+      "state": "closed",
+      "url": "https://github.com/ncaq/www.ncaq.net/pull/444"
+    },
+    {
+      "at": "2026-10-22T20:31:55Z",
+      "number": 241,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm）: bump vite from 8.2.0 to 8.2.1 in /web/server",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/241"
+    },
+    {
+      "at": "2026-10-22T20:32:22Z",
+      "number": 248,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm）: bump vite from 8.2.0 to 8.2.1 in /web/client",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/248"
+    },
+    {
+      "at": "2026-10-22T21:04:31Z",
+      "number": 264,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm-dev）: bump vite from 7.3.1 to 8.2.1 in /desktop/frontend",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/264"
+    }
+  ]
+}

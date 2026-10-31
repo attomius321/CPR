@@ -1,0 +1,866 @@
+{
+  "ai:bitwarden#22260/3846092008": {
+    "score": "worth",
+    "why": "Real crash: the web host did not provide VaultBatchBarService (NullInjectorError with VFO1 on); the author fixed it (e85193687c)."
+  },
+  "ai:bitwarden#22260/3846093317": {
+    "score": "worth",
+    "why": "Real duplicate writer of the selection on desktop; fixed (e85193687c)."
+  },
+  "ai:bitwarden#22260/3846182241": {
+    "score": "worth",
+    "why": "Real: the Clear button cleared the CDK model, not the registered source; at the merged head the bar binds (clear)=\"service.clearSelection()\" (vault-batch-action.component.html:9)."
+  },
+  "ai:bitwarden#22260/3846183287": {
+    "score": "worth",
+    "why": "Real invariant break (capping a projection left rows checked); author: \"Confirmed and fixed in 731618c8d6\"."
+  },
+  "ai:bitwarden#22260/3846735576": {
+    "score": "noise",
+    "why": "Right (a superseded duplicate JSDoc block); fixed, but comment tidying only."
+  },
+  "ai:bitwarden#22260/3846837065": {
+    "score": "worth",
+    "why": "Real inert select-all at the cap; author reproduced it and fixed it (e512d3f61e)."
+  },
+  "ai:bitwarden#22260/3846962704": {
+    "score": "worth",
+    "why": "Real checkbox/model divergence at the cap; author reproduced it in the DOM and fixed it (31b2c090bf)."
+  },
+  "ai:bitwarden#22260/3846963359": {
+    "score": "worth",
+    "why": "Real regression in indeterminate state; author: \"my error in the previous commit\", fixed (31b2c090bf)."
+  },
+  "ai:bitwarden#22260/3847739030": {
+    "score": "worth",
+    "why": "Real: capped select-all took rows in filter order, not display order; fixed (57cd56a25a)."
+  },
+  "ai:bitwarden#22260/3848052811": {
+    "score": "noise",
+    "why": "Right (stranded JSDoc after a split); fixed, but comment tidying only."
+  },
+  "ai:bitwarden#22260/3848114989": {
+    "score": "worth",
+    "why": "Right: an exported API with no consumer; author agreed and dropped it (187a67cabb)."
+  },
+  "ai:bitwarden#22260/3848115732": {
+    "score": "worth",
+    "why": "Right: the spec asserted raw template text instead of the binding; fixed (187a67cabb)."
+  },
+  "ai:bitwarden#22260/3866271916": {
+    "score": "worth",
+    "why": "Real: the bar could not see the trash scope, so trash bulk actions were wrong; fixed (336f04c9f7)."
+  },
+  "ai:bitwarden#22260/3866273435": {
+    "score": "worth",
+    "why": "Real: selection survived a scope change; fixed (336f04c9f7)."
+  },
+  "ai:bitwarden#22260/3867331425": {
+    "score": "worth",
+    "why": "Right: a redundant second clear; removed (336f04c9f7)."
+  },
+  "ai:bitwarden#22260/3867617644": {
+    "score": "worth",
+    "why": "Right: desktop reserved space for a bar it never renders; fixed (d4507967944)."
+  },
+  "ai:bitwarden#22260/3876328672": {
+    "score": "worth",
+    "why": "Right: clearSelection() had no caller left and a stale doc; fixed (018a2b62a3)."
+  },
+  "ai:bitwarden#22260/3876570432": {
+    "score": "worth",
+    "why": "Right: the scope key omitted the drilled-into shared folder; the author called it out of scope and handed it to another developer for a later pull request."
+  },
+  "ai:bitwarden#22260/3876571105": {
+    "score": "noise",
+    "why": "Right (orphaned, stale JSDoc in a spec); fixed, but comment tidying only."
+  },
+  "ai:bitwarden#22260/3898308738": {
+    "score": "worth",
+    "why": "Right: `MAX_SELECTION_COUNT + 25` was undefined + 25 at 84127539fb because of the wrong import that claude[bot] reported as 3898357360; the suite did not compile."
+  },
+  "ai:bitwarden#22260/3898308750": {
+    "score": "noise",
+    "why": "The same implicit-conversion alert as 3898308738, repeated on the next four tests with the same line."
+  },
+  "ai:bitwarden#22260/3898308757": {
+    "score": "noise",
+    "why": "The same implicit-conversion alert as 3898308738, repeated on the next four tests with the same line."
+  },
+  "ai:bitwarden#22260/3898308767": {
+    "score": "noise",
+    "why": "The same implicit-conversion alert as 3898308738, repeated on the next four tests with the same line."
+  },
+  "ai:bitwarden#22260/3898308782": {
+    "score": "noise",
+    "why": "The same implicit-conversion alert as 3898308738, repeated on the next four tests with the same line."
+  },
+  "ai:bitwarden#22260/3898357360": {
+    "score": "worth",
+    "why": "Real: MAX_SELECTION_COUNT imported from the wrong module, the suite did not compile; fixed (64478e29fe)."
+  },
+  "ai:bitwarden#22260/3929821017": {
+    "score": "noise",
+    "why": "Right (a JSDoc sentence cut off); fixed, but comment tidying only."
+  },
+  "ai:bitwarden#22260/3929928690": {
+    "score": "worth",
+    "why": "Real: a cipher re-decrypt blanked checkboxes while the bar kept the old selection; addressed (be10357c0c)."
+  },
+  "ai:bitwarden#22260/3930090855": {
+    "score": "worth",
+    "why": "Right: a flag gate left behind after its thread said removed; fixed (1677b6b06a)."
+  },
+  "ai:bitwarden#22260/3936384673": {
+    "score": "worth",
+    "why": "Right: clearance keyed off the flag-gated barVisible(); addressed (6fb2d6b528)."
+  },
+  "ai:bitwarden#22260/3936385668": {
+    "score": "worth",
+    "why": "Right: configService had no reader after the flag removal; fixed (fb3bbff564)."
+  },
+  "ai:bitwarden#22260/3937119260": {
+    "score": "worth",
+    "why": "Right: the legacy web vault padded 7.5rem for a bar that never renders; resolved (4fcf05f62b)."
+  },
+  "ai:bitwarden#22260/3937433543": {
+    "score": "worth",
+    "why": "Right: re-adding the flag term broke three specs; fixed (0ed7e1d5f6)."
+  },
+  "ai:bitwarden#22260/3937434937": {
+    "score": "worth",
+    "why": "Right: `number | undefined > 0` fails the strict check; fixed (0ed7e1d5f6)."
+  },
+  "ai:bitwarden#22260/3937773600": {
+    "score": "worth",
+    "why": "Factually right and still so at the merged head: vault-next.component.html renders <bit-vault-batch-action /> with no PM37785_VaultBatchBar gate while the other three hosts gate it. No reply; whether the VFO1 page is meant to skip the rollout flag is not stated."
+  },
+  "ai:bitwarden#22260/3937774588": {
+    "score": "worth",
+    "why": "Right and unchanged at the merged head: bulkBarClearance keys on selectedCount() (vault-items-table.component.ts:258) while desktop mounts the bar behind two flags, so it can pad for a bar that is not there. No reply."
+  },
+  "ai:bitwarden#22260/3961657801": {
+    "score": "noise",
+    "why": "A repeat of 3937773600 (\"Finding 1\") on a later push; the same point read twice."
+  },
+  "ai:bitwarden#22260/3961659018": {
+    "score": "noise",
+    "why": "A repeat of 3937774588 (\"Finding 2\") on a later push."
+  },
+  "ai:bitwarden#22260/3983828394": {
+    "score": "worth",
+    "why": "Right: `readonly sorted` is public on an exported design-system component (table-v2.component.ts:751 at head) with only internal readers; the author had accepted the same argument for selectedOutOfScope. Not acted on."
+  },
+  "ai:bitwarden#22260/4007570178": {
+    "score": "worth",
+    "why": "Posted on the final head, not answered. The mechanism (Angular skips an unchanged [checked] write after the browser toggles the box) matches the row-checkbox bug the author confirmed in 31b2c090bf; not verified by running."
+  },
+  "ai:bitwarden#22287/3737761946": {
+    "score": "worth",
+    "why": "Real: restoring hidden fields by array index wipes or swaps secrets when fields move; at the merged head they are restored by name (edit.command.ts:134-158)."
+  },
+  "ai:bitwarden#22287/3737762778": {
+    "score": "worth",
+    "why": "Real: the restore overwrote explicit new values; the merged head restores only when the incoming value is null (edit.command.ts:147-150)."
+  },
+  "ai:bitwarden#22523/3807625378": {
+    "score": "noise",
+    "why": "Factually right (no loading spinner although the FAB provides ButtonLikeAbstraction), but the author left it out on purpose (\"The vault team doesn't need it\")."
+  },
+  "ai:bitwarden#22523/3807625643": {
+    "score": "worth",
+    "why": "Right: unrelated package-lock.json churn; the author reverted it (e6e5069)."
+  },
+  "ai:bitwarden#22523/3813970497": {
+    "score": "noise",
+    "why": "Factually right (disabled no longer reaches BaseButtonDirective), but the author: \"we will never need a disabled state for that use case\"."
+  },
+  "ai:bitwarden#22539/3819935651": {
+    "score": "worth",
+    "why": "Right: UnlockSource.SharedUnlock is never emitted, so shared-unlock listeners cannot filter their own echo; the author: \"Follow-up PR.\""
+  },
+  "ai:bitwarden#22539/3819936085": {
+    "score": "noise",
+    "why": "The same comment as 3819939771 (package cycle), posted twice."
+  },
+  "ai:bitwarden#22539/3819939713": {
+    "score": "noise",
+    "why": "The same comment as 3819935651, posted twice."
+  },
+  "ai:bitwarden#22539/3819939771": {
+    "score": "worth",
+    "why": "Right: a package-level cycle @bitwarden/unlock ↔ @bitwarden/auth; two maintainers accepted it as known debt (\"One day we will make more progress decomposing libs/auth\")."
+  },
+  "ai:bitwarden#22789/3894064507": {
+    "score": "worth",
+    "why": "Plausible and unrefuted: the reorder arms the 100 ms managed-URL timer sooner, not later, so it may not do what the commit intends. The author answered that it targets the pre-2026.8.0 success rate, not the race. Not verified by running."
+  },
+  "ai:bitwarden#22893/3917623705": {
+    "score": "wrong",
+    "why": "It said both VFO1 keys duplicate legacy copy and that the `?? policy.description` fallback \"renders the same copy\". For FreeFamiliesSponsorship it does not (description ≠ the V2 text); the author followed it, claude[bot] itself flagged the regression next (3937012067), and the merged head restores descriptionVfo1."
+  },
+  "ai:bitwarden#22893/3937012067": {
+    "score": "worth",
+    "why": "Real: dropping descriptionVfo1 reverted the VFO1 list copy and orphaned a key; the merged head restores it (free-families-sponsorship.component.ts:13)."
+  },
+  "ai:bitwarden#23031/3944612518": {
+    "score": "noise",
+    "why": "GitHub code quality: superfluous arguments to a functional route guard in its spec. Literally true (the guard ignores route/state), but calling a CanActivateFn with (route, state) is the convention; nothing to act on, and repeated 7 times."
+  },
+  "ai:bitwarden#23031/3944612524": {
+    "score": "noise",
+    "why": "GitHub code quality: superfluous arguments to a functional route guard in its spec. Literally true (the guard ignores route/state), but calling a CanActivateFn with (route, state) is the convention; nothing to act on, and repeated 7 times."
+  },
+  "ai:bitwarden#23031/3944612527": {
+    "score": "noise",
+    "why": "GitHub code quality: superfluous arguments to a functional route guard in its spec. Literally true (the guard ignores route/state), but calling a CanActivateFn with (route, state) is the convention; nothing to act on, and repeated 7 times."
+  },
+  "ai:bitwarden#23031/3944612531": {
+    "score": "noise",
+    "why": "GitHub code quality: superfluous arguments to a functional route guard in its spec. Literally true (the guard ignores route/state), but calling a CanActivateFn with (route, state) is the convention; nothing to act on, and repeated 7 times."
+  },
+  "ai:bitwarden#23031/3944612535": {
+    "score": "noise",
+    "why": "GitHub code quality: superfluous arguments to a functional route guard in its spec. Literally true (the guard ignores route/state), but calling a CanActivateFn with (route, state) is the convention; nothing to act on, and repeated 7 times."
+  },
+  "ai:bitwarden#23031/3944612538": {
+    "score": "noise",
+    "why": "GitHub code quality: superfluous arguments to a functional route guard in its spec. Literally true (the guard ignores route/state), but calling a CanActivateFn with (route, state) is the convention; nothing to act on, and repeated 7 times."
+  },
+  "ai:bitwarden#23031/3944612542": {
+    "score": "noise",
+    "why": "GitHub code quality: superfluous arguments to a functional route guard in its spec. Literally true (the guard ignores route/state), but calling a CanActivateFn with (route, state) is the convention; nothing to act on, and repeated 7 times."
+  },
+  "ai:bitwarden#23031/3974535840": {
+    "score": "worth",
+    "why": "Right: the LogMeOnce mark is a 64×64 PNG in an <svg>, unlike the vector siblings; the lines changed before merge (and a reviewer pointed at the SVG pull request)."
+  },
+  "ai:bitwarden#23031/3974536395": {
+    "score": "worth",
+    "why": "Right: ParamMap.get() returns null, so the `=== undefined` branch was unreachable; the merged head uses `== null` (import-source-select-org.component.ts)."
+  },
+  "ai:bitwarden#23197/4066795919": {
+    "score": "worth",
+    "why": "Right: a third import entry point still linked /import directly; the author answered with a fix commit (41c6517ffd)."
+  },
+  "ai:bitwarden#23564/4139182378": {
+    "score": "worth",
+    "why": "Right: the removed legacy branch handled `unavailable`; fixed (661a72d90c)."
+  },
+  "ai:bitwarden#23564/4139182700": {
+    "score": "worth",
+    "why": "Right: the flag removal orphaned legacy request types and API methods; removed (7f7abc2a91)."
+  },
+  "ai:vite#23566/4091290366": {
+    "score": "worth",
+    "why": "Right: if optimizeExplicitEnvironmentDeps() throws, initState stays 'initializing' and init() never retries. The maintainer agreed (\"I think this should be fixed\") but left it because the bug predates the pull request."
+  },
+  "ai:zod#6029/3300875322": {
+    "score": "noise",
+    "why": "A style preference (keep toMatchInlineSnapshot instead of toEqual); not acted on."
+  },
+  "ai:zod#6092/3415435782": {
+    "score": "worth",
+    "why": "Real: the frontmatter delimiter had become an em dash plus hyphens, which breaks MDX frontmatter; the merged head has `---` again."
+  },
+  "ai:zod#6380/3769424890": {
+    "score": "worth",
+    "why": "Right: the handler could not tell which unrepresentable site fired; `message` was added to the handler ctx (1cc5e80)."
+  },
+  "ai:zod#6380/3769424902": {
+    "score": "worth",
+    "why": "Right: mixed literals silently lose their representable members under a handler; documented (json-schema.mdx:267, 1cc5e80)."
+  },
+  "ai:zod#6380/3772666563": {
+    "score": "noise",
+    "why": "A docs-wording point (\"two sites, not two schemas\") and a semver musing; not acted on."
+  },
+  "ai:zod#6380/3772704397": {
+    "score": "worth",
+    "why": "Right and still on main: the handler result is merged with Object.assign (to-json-schema.ts:208 on main), the only merge of user-supplied JSON that is not __proto__-safe, so a `__proto__` key is silently dropped. Minor; not acted on."
+  },
+  "ai:zod#6391/3772672907": {
+    "score": "worth",
+    "why": "Right: the denylist ANNOTATION_KEYS lets any unrelated key (the docs' own override example) waive the unrepresentable error. The deferred-throw design of #6391 was reverted the next day inside #6380."
+  },
+  "ai:zod#6391/3772672912": {
+    "score": "worth",
+    "why": "Right: the docs stated a rule their own example falsifies (json-schema.mdx:339 vs :319); same root as 3772672907."
+  },
+  "ai:zod#6411/3780468181": {
+    "score": "worth",
+    "why": "Real: `key in shape` is true for Object.prototype names, so required [\"constructor\"] was never enforced; the fallback loop was dropped (9bf1a42) and the gap noted in the body."
+  },
+  "ai:zod#6411/3780468196": {
+    "score": "worth",
+    "why": "Real: `propertyNames: false` was emitted but never enforced; fixed with `!== undefined && !== true` and a test (9bf1a42)."
+  },
+  "ai:zod#6411/3780549738": {
+    "score": "worth",
+    "why": "Right: the identity transform made guarded objects optional-on-input and unencodable; it is gone from the merged head (from-json-schema.ts has no `z.transform((value: unknown) => value)`)."
+  },
+  "ai:zod#6411/3780549741": {
+    "score": "worth",
+    "why": "Plausible regression with a concrete reproduction: additionalSchema is converted before the patternProperties split, eagerly (from-json-schema.ts:432 at the merged head, unchanged). Not acted on; not verified by running."
+  },
+  "ai:zod#6471/3865039308": {
+    "score": "worth",
+    "why": "Real: isValidAsync ran the compiled fast path on async parses, so compiling a schema changed the answer; fixed with a failing-first test (55bcff0c)."
+  },
+  "ai:zod#6471/3865039332": {
+    "score": "noise",
+    "why": "Factually right (z.isValid(z.string().catch(\"x\"), 42) narrows 42 to string), but the maintainer declined: the looseness predates the pull request and the predicate is still right."
+  },
+  "ai:zod#6471/3867836036": {
+    "score": "noise",
+    "why": "Right (the comment named `__fastpass`, the code `bag.fastpass`); fixed, but comment tidying only."
+  },
+  "ai:zod#6491/3883985440": {
+    "score": "worth",
+    "why": "Real release-workflow bug: a failing mini publish would leave zod published with no tag, release or JSR publish, and re-runs skip them; moved (261c284)."
+  },
+  "ai:zod#6491/3883985447": {
+    "score": "worth",
+    "why": "Real: a prerelease @zod/mini would ship an unsatisfiable peer range; the prerelease path now rejects it (261c284)."
+  },
+  "ai:zod#6491/3883985455": {
+    "score": "worth",
+    "why": "Right: the resolution tests list every way to import zod and missed @zod/mini; added (261c284)."
+  },
+  "ai:zod#6491/3884061280": {
+    "score": "noise",
+    "why": "Right (a comment said three files, now four); fixed, but comment tidying only."
+  },
+  "ai:zod#6491/3887223898": {
+    "score": "worth",
+    "why": "Real: a back-publish with no tag fails on npm ≥ 11; `tag: backfill` was set (6e17b6fb)."
+  },
+  "ai:zod#6534/3897593489": {
+    "score": "worth",
+    "why": "Right: recordProcessor wrote the lax runtime regex into patternProperties, so the emitted schema rejected input zod accepts; fixed before merge (the merged head writes `exactPattern(pattern).source`, json-schema-processors.ts:585)."
+  },
+  "ai:zod#6534/3897593515": {
+    "score": "noise",
+    "why": "A house-style nit on a comment."
+  },
+  "ai:zod#6535/3897606205": {
+    "score": "worth",
+    "why": "Real: uniqueItems/contains checks ran on parsed output, so a nested default produced a false accept; moved pre-pipe with a regression test (0ea26fad)."
+  },
+  "ai:zod#6535/3897606215": {
+    "score": "worth",
+    "why": "Right: a carried `contains` with a $defs reference round-trips to an invalid document; fixed by omitting carried subschemas with $ref (3244f5ab)."
+  },
+  "ai:zod#6535/3897606220": {
+    "score": "worth",
+    "why": "Right: object cardinality issues rendered as value comparisons; explicit messages added (0ea26fad)."
+  },
+  "ai:zod#6535/3897699475": {
+    "score": "worth",
+    "why": "Right: the move dropped minItems/maxItems issues when a guard also fails; accepted and pinned by a regression test (19483969)."
+  },
+  "ai:zod#6535/3897699487": {
+    "score": "worth",
+    "why": "Right: guard keywords strip `default` and `examples` in io: \"input\" mode, a regression for minProperties; accepted and pinned (19483969)."
+  },
+  "ai:zod#6535/3898221259": {
+    "score": "noise",
+    "why": "Technically right (explicit messages bypass error maps), but it reverses the bot's own earlier advice (3897606220) that the author had followed; not acted on."
+  },
+  "ai:zod#6535/3898221264": {
+    "score": "worth",
+    "why": "Right: contains counted every item after the result was decided; the lines changed before merge."
+  },
+  "ai:zod#6535/3898221274": {
+    "score": "noise",
+    "why": "The same $defs point as 3897606215, raised again; both closed by 3244f5ab."
+  },
+  "ai:zod#6535/3898371035": {
+    "score": "worth",
+    "why": "Real: containsRef treated `default: { $ref: … }` as a schema reference and dropped valid constraints; fixed (a9c5a474)."
+  },
+  "ai:zod#6535/3898524569": {
+    "score": "worth",
+    "why": "Real: draft-7 `dependencies` missing from the walk; fixed (dd9e16cd)."
+  },
+  "ai:zod#6536/3897695628": {
+    "score": "worth",
+    "why": "Real type unsoundness: z.properties typed its output from children whose output is discarded (default, catch, transform); fixed (2e72a240)."
+  },
+  "ai:zod#6536/3897695633": {
+    "score": "worth",
+    "why": "Same unsoundness at z.instanceof().properties() (a separate site); fixed (2e72a240)."
+  },
+  "ai:zod#6536/3897695642": {
+    "score": "worth",
+    "why": "Real: the compiled check role threw a TypeError on null where the interpreter reports an issue; fixed (2e72a240)."
+  },
+  "ai:zod#6536/3897695662": {
+    "score": "worth",
+    "why": "Real: the schema role ignored `when`, giving wrong union results; fixed (63b5b34e)."
+  },
+  "ai:zod#6536/3897695672": {
+    "score": "worth",
+    "why": "Right: Object.keys skipped symbol-keyed shape entries while z.object validates them; fixed (2e72a240)."
+  },
+  "ai:zod#6536/3897695679": {
+    "score": "noise",
+    "why": "A nit on where a case sits relative to a comment."
+  },
+  "ai:zod#6536/3898159863": {
+    "score": "worth",
+    "why": "Right: backward encoding validated discarded children against the wrong side; fixed (277e9292)."
+  },
+  "ai:zod#6536/3898159869": {
+    "score": "worth",
+    "why": "Right: recursive callables still overflowed despite the cycle contract; fixed (277e9292)."
+  },
+  "ai:zod#6536/3898220296": {
+    "score": "worth",
+    "why": "Right: the emitted JSON Schema `type` rejected primitives the runtime accepted; the schema role now rejects primitives (bfa281a)."
+  },
+  "ai:zod#6536/3898220317": {
+    "score": "worth",
+    "why": "Right: output JSON Schema marked defaulted children required though output is the input; aligned (bfa281a)."
+  },
+  "ai:zod#6536/3898220341": {
+    "score": "worth",
+    "why": "Real: cached keys with live schema reads made a mutated shape throw; snapshotted together (bfa281a)."
+  },
+  "ai:zod#6536/3898316051": {
+    "score": "noise",
+    "why": "A comment-style nit (one lowercase clause)."
+  },
+  "ai:zod#6546/3907549089": {
+    "score": "noise",
+    "why": "Copilot: a grammar and em-dash nit in a blog post."
+  },
+  "ai:zod#6546/3908390129": {
+    "score": "worth",
+    "why": "Right: the blog's compiled valid-input bound did not match the harness; corrected (21261ee2)."
+  },
+  "ai:zod#6546/3908660636": {
+    "score": "noise",
+    "why": "Right (an unused <Callout> import after a rewrite); removed, but tidying only."
+  },
+  "ai:zod#6546/3908837566": {
+    "score": "worth",
+    "why": "Right: the post named `ZodInstanceof`, which does not exist (ZodInstanceOf); fixed (a7406aa)."
+  },
+  "ai:zod#6546/3909002345": {
+    "score": "worth",
+    "why": "Right: the 32x cross-mode claim was not measured by the harness; removed (c95f148)."
+  },
+  "ai:zod#6546/3963803690": {
+    "score": "worth",
+    "why": "Right: the shown Object.keys() results omitted `def` and `type`; fixed (a063c017)."
+  },
+  "ai:zod#6546/3963803693": {
+    "score": "worth",
+    "why": "Right: the post promised value parity that order-dependent chains break; fixed (a063c017)."
+  },
+  "ai:zod#6546/3963846657": {
+    "score": "worth",
+    "why": "Right: z.validate() shipped in 4.5 (#6547), not 4.6; the lines changed before merge."
+  },
+  "ai:zod#6546/3964088558": {
+    "score": "worth",
+    "why": "Right: @zod/mini shipped in 4.5.3; re-dated (2b879799)."
+  },
+  "ai:zod#6546/3970591121": {
+    "score": "worth",
+    "why": "Right: a fourth observable surface (issue.pattern) was missing from an exhaustive count; fixed (a096b34)."
+  },
+  "ai:zod#6546/3971306397": {
+    "score": "worth",
+    "why": "Real: the example's generated guard returned input unchanged, so Fast.parse no longer matched Player.parse; fixed (5cc3549)."
+  },
+  "bitwarden#21338/f1": {
+    "score": "noise",
+    "why": "True: the form group gains a `catchallType` control and ngOnInit is untouched, but ngOnInit loads and saves the whole group generically (`patchValue(s)`, `settings as CatchallGenerationOptions`, catchall-settings.component.ts:88/97), so the new control round-trips with no change."
+  },
+  "bitwarden#22260/f1": {
+    "score": "wrong",
+    "why": "libs/vault is the workspace package @bitwarden/vault at version 0.0.0 with no publish step: an internal library of the monorepo, so there is no 'code outside the repo' to break. The rule counts any package.json without `\"private\": true` as published. Inside the repo the removal compiles (the pull request funnels every clear through clearSelection on the service)."
+  },
+  "bitwarden#22260/f2": {
+    "score": "wrong",
+    "why": "Same as f1: @bitwarden/vault 0.0.0 is internal to the monorepo; VaultBatchBarService.clear has no users outside the repo. The pull request body explains the replacement (registerSelection, clearSelection)."
+  },
+  "bitwarden#22260/f3": {
+    "score": "wrong",
+    "why": "Same as f1: @bitwarden/vault 0.0.0 is internal; cleared$ has no users outside the repo."
+  },
+  "bitwarden#22260/f4": {
+    "score": "wrong",
+    "why": "Same as f1: @bitwarden/vault 0.0.0 is internal. The new `selected` (computed<readonly VaultItem<C>[]>, vault-batch-bar.service.ts) also keeps working for every in-repo reader (.some/.filter/.length)."
+  },
+  "bitwarden#22260/f5": {
+    "score": "wrong",
+    "why": "`private readonly clearSelectionOnScopeChange = effect(…)` (vault-next.component.ts): an Angular effect runs because the field initializer creates it; nothing is meant to name it. Not dead code."
+  },
+  "bitwarden#22260/f6": {
+    "score": "wrong",
+    "why": "`private readonly configureBatchBar = effect(…)`: an Angular effect, run by its creation; not dead code."
+  },
+  "bitwarden#22260/f7": {
+    "score": "wrong",
+    "why": "`SelectableCapped` is a Storybook story (named export of libs/components/src/table/v2/table-v2.stories.ts), loaded by Storybook."
+  },
+  "bitwarden#22260/f8": {
+    "score": "wrong",
+    "why": "footerPortal is used by the component's own inline template: `template: '<ng-template [cdkPortalOutlet]=\"footerPortal()\">'` (vault-batch-action.component.spec.ts:18)."
+  },
+  "bitwarden#22260/f9": {
+    "score": "wrong",
+    "why": "`private readonly keepSelectionOnRows = effect(…)` (vault-items-table.component.ts): an Angular effect, run by its creation; not dead code."
+  },
+  "bitwarden#22260/f10": {
+    "score": "wrong",
+    "why": "footerPortal is used by the component's inline template `[cdkPortalOutlet]=\"footerPortal()\"` (vault-items-table.stories.ts:66)."
+  },
+  "bitwarden#22260/f11": {
+    "score": "noise",
+    "why": "True: TableSelectionConfig gains the optional `max`; the untouched user SelectionConfig is an Omit alias (table-v2.component.ts:88) and follows it."
+  },
+  "bitwarden#22260/f12": {
+    "score": "noise",
+    "why": "True: VaultBatchBarConfig gains two optional members; its untouched users (config signal, defaultConfig, setConfig, the spec's makeConfig) keep compiling."
+  },
+  "bitwarden#22260/f13": {
+    "score": "noise",
+    "why": "True that `selected` changed (now from a registered source, typed readonly) and 8 computeds reading it are untouched, but they only call .some/.filter/.length and follow the new source by design (the body explains the inversion). Nothing to update."
+  },
+  "bitwarden#22523/f1": {
+    "score": "wrong",
+    "why": "`Default` is a Storybook story (a named export of libs/vault/src/components/fab/fab.stories.ts). Storybook loads every named export of a *.stories.ts file (Component Story Format), so it is used; the warning reads it as dead code."
+  },
+  "bitwarden#22523/f2": {
+    "score": "noise",
+    "why": "True and hedged correctly: the default export of fab.stories.ts is Storybook's meta, loaded by convention."
+  },
+  "bitwarden#22535/f1": {
+    "score": "wrong",
+    "why": "`SingleColumnCollapsed` is a Storybook story (named export of shared-folder-card-grid.component.stories.ts), loaded by Storybook."
+  },
+  "bitwarden#22539/f1": {
+    "score": "noise",
+    "why": "Duplicate of f5: the same two call sites (they call through the abstract UnlockService) reported again on the implementation DefaultUnlockService.registerOnUnlockAction."
+  },
+  "bitwarden#22539/f2": {
+    "score": "noise",
+    "why": "Duplicate of f4: the same two shared-unlock call sites reported again on the override ForegroundLockService.registerOnLockAction (an empty foreground stub)."
+  },
+  "bitwarden#22539/f3": {
+    "score": "noise",
+    "why": "Duplicate of f4: the same two shared-unlock call sites reported again on the override DefaultLockService.registerOnLockAction."
+  },
+  "bitwarden#22539/f4": {
+    "score": "worth",
+    "why": "True: the callback now receives a LockSource, and the two shared-unlock listeners (default-shared-unlock-follower.service.ts:57, leader :56) still register `async (userId) =>`. Nothing breaks (a callback may ignore extra arguments), but the source exists so a listener \"can tell the locks it caused itself apart\" (lock-source.enum.ts on main) — exactly these listeners. The author's stacked pull request #22540 (merged six days later) changed them to `async (userId, source) =>`. A reviewer would want this named."
+  },
+  "bitwarden#22539/f5": {
+    "score": "worth",
+    "why": "True: UnlockService.registerOnUnlockAction's callback gains an UnlockSource and the two shared-unlock listeners (follower :69, leader :68) ignore it; they are the consumers the source was added for, and #22540 updated them six days later. Worth naming even though nothing breaks."
+  },
+  "bitwarden#22539/f6": {
+    "score": "noise",
+    "why": "True: ExtensionLockService constructor lost two dependencies; its only user was updated. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f7": {
+    "score": "noise",
+    "why": "True: runPlatformOnLockActions gained `source`; its only user (super call chain) was updated. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f8": {
+    "score": "noise",
+    "why": "True: the onUnlockActions array type gained `source`; both users updated. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f9": {
+    "score": "noise",
+    "why": "True: runOnUnlockSideEffects gained `source`; its only caller passes it. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f10": {
+    "score": "noise",
+    "why": "True: unlockWithMethod gained `source`; all 6 callers pass it. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f11": {
+    "score": "noise",
+    "why": "True: ForegroundLockService.lock gained `source`; all 12 callers pass it. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f12": {
+    "score": "noise",
+    "why": "True: ForegroundLockService.lockAll gained `source`; all 3 callers pass it. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f13": {
+    "score": "noise",
+    "why": "True: LOCK_ALL command payload gained `source`; its only sender was updated. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f14": {
+    "score": "noise",
+    "why": "True: LOCK_USER command payload gained `source`; its only sender was updated. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f15": {
+    "score": "noise",
+    "why": "True: DefaultLockService constructor lost two dependencies; both users (and the test) updated. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f16": {
+    "score": "noise",
+    "why": "True: DefaultLockService.lock gained `source`; all 13 callers pass it. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f17": {
+    "score": "noise",
+    "why": "True: DefaultLockService.lockAll gained `source`; all 3 callers pass it. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f18": {
+    "score": "noise",
+    "why": "True: the onLockActions array type gained `source`; both users updated. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f19": {
+    "score": "noise",
+    "why": "True: DefaultLockService.runPlatformOnLockActions gained `source`; both callers pass it. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f20": {
+    "score": "noise",
+    "why": "True: LockService.lock gained `source`; all 15 callers pass it. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f21": {
+    "score": "noise",
+    "why": "True: LockService.lockAll gained `source`; all 5 callers pass it. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22539/f22": {
+    "score": "noise",
+    "why": "True: LockService.runPlatformOnLockActions gained `source`; all 4 users updated. A confirmation with nothing to act on; the reviewer reads those call sites in the diff anyway."
+  },
+  "bitwarden#22932/f1": {
+    "score": "wrong",
+    "why": "The only change to EXACT_PATH is `export` added (libs/vault/src/routing/exact-path.ts: `const` → `export const`, same type and value). Adding an export cannot affect VaultNavSectionComponent.exactRouteOptions (vault-nav-section.component.ts:60), which reads it as before; 'compatibility unknown' and the warning are false."
+  },
+  "bitwarden#22938/f1": {
+    "score": "wrong",
+    "why": "`AutoHeight` is a Storybook story (named export of libs/components/src/accordion/accordion.stories.ts), loaded by Storybook; not dead code."
+  },
+  "bitwarden#23031/f1": {
+    "score": "worth",
+    "why": "True at the pull request's head: ImportSourceSelectOrgComponent (apps/web/src/app/tools/import/import-source-select-org.component.ts) is not named by any route or template (git grep at refs/pr/23031). The body says only Tools-owned files are in this pull request; the route came two days later in #23198 ('Point AC owned component to new import UI/UX', organization-settings.routes.ts). A reviewer should confirm that follow-up exists — borderline with noise because the split is deliberate."
+  },
+  "bitwarden#23031/f2": {
+    "score": "wrong",
+    "why": "`Default` is a Storybook story (named export of import-source-select.stories.ts), loaded by Storybook; not dead code."
+  },
+  "bitwarden#23031/f3": {
+    "score": "wrong",
+    "why": "`SecondStep` is a Storybook story (named export of import-source-select.stories.ts), loaded by Storybook; not dead code."
+  },
+  "bitwarden#23031/f4": {
+    "score": "wrong",
+    "why": "openImport became `async` (returns a Promise instead of void). Its only production user is the template's `(click)=\"openImport()\"` (desktop-layout.component.html:34), which ignores the return value and needs no change; the spec awaits it already. 'Breaking … not updated' is a false alarm."
+  },
+  "bitwarden#23031/f5": {
+    "score": "wrong",
+    "why": "DefaultFeatureFlagValue gains one key (ImportUpgrade: FALSE). Its users are generic: a typeof alias (:261), lookups by flag (:270, storybook config.ts:52) and a catalog built from Object.entries (config.ts:63). None needs an update; adding a flag default is the standard pattern."
+  },
+  "bitwarden#23031/f6": {
+    "score": "noise",
+    "why": "True and hedged correctly: the default export of import-source-select.stories.ts is Storybook's meta, loaded by convention."
+  },
+  "bitwarden#23031/f7": {
+    "score": "wrong",
+    "why": "FeatureFlag is an enum that gained a member; 'code that creates it must add them' does not apply to an enum (nothing creates one), and the 349 untouched users each name one existing member (e.g. FeatureFlag.VFO1Foundation). The one map that must list every flag, DefaultFeatureFlagValue (`satisfies Record<FeatureFlag, …>`), was updated."
+  },
+  "bitwarden#23197/f1": {
+    "score": "wrong",
+    "why": "openImport became `async … Promise<void>`; its only user is the template binding `(onImport)=\"openImport()\"` (vault.component.html:73), which ignores the return value. Nothing to update; the warning is a false alarm. (The TODO in the new code about dropped org/collection scope is real, but this finding does not point at it.)"
+  },
+  "bitwarden#23367/f1": {
+    "score": "noise",
+    "why": "True: the spec helper createComponent gained an optional `showCoachMarks` option and only tests use it (it lives in by-link-tab.component.spec.ts). Nothing to check."
+  },
+  "bitwarden#23564/f1": {
+    "score": "wrong",
+    "why": "DefaultFeatureFlagValue loses the removed flag's default. Its users are generic (typeof alias :255, lookup by flag :264, storybook catalog from Object.entries config.ts:63, valueFor :52); none names the removed flag or needs an update."
+  },
+  "bitwarden#23564/f2": {
+    "score": "wrong",
+    "why": "FeatureFlag loses the member PM28191CipherAdminOpsToSdk (the point of the pull request: remove a flag). The 366 'not updated' users each name a different member (e.g. FeatureFlag.VFO1Foundation, current-account.component.ts:47) and are unaffected; the flag's own users were removed in the pull request, or it would not compile."
+  },
+  "vite#23042/f1": {
+    "score": "noise",
+    "why": "True: GlobalCLIOptions gains the optional `profile`, and both users in cli.ts were updated in the pull request."
+  },
+  "vite#23566/f1": {
+    "score": "noise",
+    "why": "True: DepsOptimizer gains the required `initState`, and both places that create one were updated (createDepsOptimizer optimizer.ts:59, createExplicitDepsOptimizer :756). The 5 untouched users only receive a DepsOptimizer (resolve.ts:535/700/858, environment.ts:49/60) and need nothing. The message itself says only creators must change, so nothing to check."
+  },
+  "zod#6092/f1": {
+    "score": "wrong",
+    "why": "The same pull request re-exports it: packages/zod/src/v4/locales/index.ts:33 `export { default as nn } from \"./nn.js\";` (public as z.locales.nn). 'Nothing imports' is false: a `export { default as X } from` re-export is not counted."
+  },
+  "zod#6380/f1": {
+    "score": "wrong",
+    "why": "The options property `unrepresentable` is widened (\"throw\" | \"any\" → also a handler function); widening an input option cannot break callers. The 3 'not updated' users are type aliases: EmitParams picks cycles/reused/external (json-schema-generator.ts:20, not the changed member), JSONSchemaGeneratorConstructorParams and ToJSONSchemaParams (to-json-schema.ts:79) pick/omit other keys and simply follow the widening. Nothing to update; 'breaking' is wrong for an input type."
+  },
+  "zod#6380/f2": {
+    "score": "wrong",
+    "why": "Seen loses the optional `unrepresentable` member. The 3 untouched users (JSONSchemaGenerator.seen getter json-schema-generator.ts:80, extractDefs to-json-schema.ts:293/328, process :211) only name the type; none reads `.unrepresentable` (git grep at head: the only reads are in handleUnrepresentable, which was rewritten). No listed user can break."
+  },
+  "zod#6380/f3": {
+    "score": "wrong",
+    "why": "ToJSONSchemaContext.unrepresentable is widened by a handler. The only code that reads it is handleUnrepresentable (to-json-schema.ts:179, updated). The untouched users are type annotations (Processor :21, _$ZodTypeInternals schemas.ts:158, ctx property) and the constructor, which only copies the option in (json-schema-generator.ts:94). The deprecated getter JSONSchemaGenerator.unrepresentable (json-schema-generator.ts:61) passes the wider type through, but nothing in the repo breaks."
+  },
+  "zod#6380/f4": {
+    "score": "noise",
+    "why": "Only parameter names changed (`_json, _params` → `json, params`); the declared type `Processor<$ZodBigInt>` is the same. 'Compatible, users keep working' is true and says nothing a reviewer needs."
+  },
+  "zod#6380/f5": {
+    "score": "noise",
+    "why": "Only parameter names changed (`_json, _params` → `json, params`); the declared type `Processor<$ZodCustom>` is the same."
+  },
+  "zod#6380/f6": {
+    "score": "noise",
+    "why": "Only parameter names changed (`_json, _params` → `json, params`); the declared type `Processor<$ZodDate>` is the same."
+  },
+  "zod#6380/f7": {
+    "score": "noise",
+    "why": "Only parameter names changed (`_json, _params` → `json, params`); the declared type `Processor<$ZodFunction>` is the same."
+  },
+  "zod#6380/f8": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_params` → `params`); the declared type `Processor<$ZodLiteral>` is the same. The body change (early return when the handler replaced the schema) is what matters, and this finding does not point at it."
+  },
+  "zod#6380/f9": {
+    "score": "noise",
+    "why": "Only parameter names changed (`_json, _params` → `json, params`); the declared type `Processor<$ZodMap>` is the same."
+  },
+  "zod#6380/f10": {
+    "score": "noise",
+    "why": "Only parameter names changed (`_json, _params` → `json, params`); the declared type `Processor<$ZodNaN>` is the same."
+  },
+  "zod#6380/f11": {
+    "score": "noise",
+    "why": "Only parameter names changed (`_json, _params` → `json, params`); the declared type `Processor<$ZodSet>` is the same."
+  },
+  "zod#6380/f12": {
+    "score": "noise",
+    "why": "Only parameter names changed (`_json, _params` → `json, params`); the declared type `Processor<$ZodSymbol>` is the same."
+  },
+  "zod#6380/f13": {
+    "score": "noise",
+    "why": "Only parameter names changed (`_json, _params` → `json, params`); the declared type `Processor<$ZodTransform>` is the same."
+  },
+  "zod#6380/f14": {
+    "score": "noise",
+    "why": "Only parameter names changed (`_json, _params` → `json, params`); the declared type `Processor<$ZodUndefined>` is the same."
+  },
+  "zod#6380/f15": {
+    "score": "noise",
+    "why": "Only parameter names changed (`_json, _params` → `json, params`); the declared type `Processor<$ZodVoid>` is the same."
+  },
+  "zod#6380/f16": {
+    "score": "noise",
+    "why": "True: handleUnrepresentable gained json and params and returns boolean, and all 13 callers (the processors) pass them. A confirmation with nothing to act on; the reviewer reads the processors anyway."
+  },
+  "zod#6391/f1": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_schema` → `schema`); the declared type `Processor<$ZodBigInt>` is the same."
+  },
+  "zod#6391/f2": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_schema` → `schema`); the declared type `Processor<$ZodCustom>` is the same."
+  },
+  "zod#6391/f3": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_schema` → `schema`); the declared type `Processor<$ZodDate>` is the same."
+  },
+  "zod#6391/f4": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_schema` → `schema`); the declared type `Processor<$ZodFunction>` is the same."
+  },
+  "zod#6391/f5": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_schema` → `schema`); the declared type `Processor<$ZodMap>` is the same."
+  },
+  "zod#6391/f6": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_schema` → `schema`); the declared type `Processor<$ZodNaN>` is the same."
+  },
+  "zod#6391/f7": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_schema` → `schema`); the declared type `Processor<$ZodSet>` is the same."
+  },
+  "zod#6391/f8": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_schema` → `schema`); the declared type `Processor<$ZodSymbol>` is the same."
+  },
+  "zod#6391/f9": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_schema` → `schema`); the declared type `Processor<$ZodTransform>` is the same."
+  },
+  "zod#6391/f10": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_schema` → `schema`); the declared type `Processor<$ZodUndefined>` is the same."
+  },
+  "zod#6391/f11": {
+    "score": "noise",
+    "why": "Only a parameter name changed (`_schema` → `schema`); the declared type `Processor<$ZodVoid>` is the same."
+  },
+  "zod#6391/f12": {
+    "score": "noise",
+    "why": "True: Seen gains an optional `unrepresentable` member (to-json-schema.ts), so its 4 users (type annotations, process's object literal at :187) keep compiling. Nothing to act on."
+  },
+  "zod#6491/f1": {
+    "score": "noise",
+    "why": "True: packages/mini/vitest.config.ts's default export is loaded by Vitest by convention, as the message guesses. Nothing to act on."
+  },
+  "zod#6534/f1": {
+    "score": "noise",
+    "why": "True: base64urlCharset became `export const …: RegExp` (exported, annotated); the untouched user isValidBase64URL only calls `.test()` (schemas.ts:1061), which works the same. Nothing to check."
+  },
+  "zod#6536/f1": {
+    "score": "wrong",
+    "why": "z.instanceof's return type goes from ZodCustom<T, T> to ZodInstanceOf<T>, and `interface ZodInstanceOf<T> extends ZodCustom<T, T>` (classic/schemas.ts:2812): a narrower return type, so existing callers keep compiling. 'May break code outside the repo' is false; the new .properties() method is what the title announces."
+  },
+  "zod#6536/f2": {
+    "score": "noise",
+    "why": "Right in substance: in base the entry's `z.properties` was `_properties` (classic/checks.ts:24 `_properties as properties`); in head z.properties is a new function returning a schema (classic/schemas.ts), so `_properties` is no longer exported under that name — a breaking change for z.properties users. But the title announces it ('make z.properties() a schema'), and `_properties` itself is still public as z.core._properties, so the message names it confusingly. Nothing a reviewer learns."
+  },
+  "zod#6536/f3": {
+    "score": "wrong",
+    "why": "$ZodTypeDef.type gains \"properties\". The 44 'not updated' users are mostly `interface $ZodXDef extends $ZodTypeDef { type: \"x\" }` (schemas.ts:1595), which narrow `type` and are unaffected, and readers of other members (withChecks reads [\"checks\"], in-out.ts:11). The places that dispatch on the type were updated (propertiesProcessor registered at json-schema-processors.ts:807, visit.ts case \"properties\"). No listed user needs a change."
+  },
+  "zod#6536/f4": {
+    "score": "wrong",
+    "why": "$ZodTypes gains $ZodProperties. The untouched users are aliases (ZodFirstPartySchemaTypes compat.ts:11, SchemaOfKind visit.ts:13), a cast (recordProcessor :622), a handler parameter type (JSONSchemaGeneratorParams) and generic code (process, finalize) that dispatches through the processors table, which was updated (:807). Nothing needs an update."
+  },
+  "zod#6536/f5": {
+    "score": "wrong",
+    "why": "hide's `key` parameter is widened from string to PropertyKey (util.ts): every existing call still type-checks, so the change is compatible, not breaking. Both 'not updated' users pass string keys (classic/schemas.ts:283, core/schemas.ts:327)."
+  },
+  "zod#6536/f6": {
+    "score": "wrong",
+    "why": "own's `key` parameter is widened from string to PropertyKey: compatible for every caller. The 3 'not updated' users pass string keys (classic/schemas.ts:292/311, core/schemas.ts:330, mini/schemas.ts:60) and are unaffected."
+  },
+  "zod#6536/f7": {
+    "score": "noise",
+    "why": "True that only tests use z.instanceof in the repo (15 test users). Since the new return type extends the old one they keep working; nothing to check."
+  },
+  "zod#6536/f8": {
+    "score": "noise",
+    "why": "True: _properties now takes the schema class and returns a schema; both users are the new properties() functions of classic and mini, added in the same pull request."
+  },
+  "zod#6536/f9": {
+    "score": "noise",
+    "why": "True: the SupportedCheck union gains $ZodProperties and its only user, generateChecks (compile.ts:345), was updated in the pull request."
+  },
+  "zod#6536/f10": {
+    "score": "noise",
+    "why": "True: SupportedSchemaType gains \"properties\" and its only user, generateCheck (compile.ts:917), was updated."
+  },
+  "zod#6536/f11": {
+    "score": "noise",
+    "why": "True: isTransforming became exported; the untouched user process (to-json-schema.ts:276) calls it as before."
+  },
+  "zod#6536/f12": {
+    "score": "noise",
+    "why": "True: defineBound's key is widened to PropertyKey (compatible, though the data says breaking) and its only user `members` was updated to pass symbols (util.ts:1131)."
+  }
+}

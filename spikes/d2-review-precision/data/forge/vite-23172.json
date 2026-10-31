@@ -1,0 +1,387 @@
+{
+  "number": 23172,
+  "title": "refactor: remove HmrUrl concept",
+  "body": "This PR removes the \"HmrUrl\" concept.\r\n\r\nThere were three \"Url\" concept in Vite:\r\n\r\n- \"ModuleUrl\"\r\n  - the URL used in the module graph.\r\n  - does not replace `\\0`\r\n  - does not have base\r\n  - Example: `\\0virtual:foo`\r\n- \"BrowserUrl\"\r\n  - the URL used by the browser\r\n  - replaces `\\0`\r\n  - has base\r\n  - Example: `/base/@id/__x00__virtual:foo?t=123`\r\n- \"HmrUrl\"\r\n  - the URL used in the HMR client.\r\n  - replaces `\\0`\r\n  - does not have base\r\n  - Example: `/@id/__x00__virtual:foo`\r\n\r\nIt is confusing to have three kinds of representation. I think the HmrUrl is not needed as well.\r\n\r\n---\r\n\r\n<sub>Stack created with <a href=\"https://github.com/github/gh-stack\">GitHub Stacks CLI</a> • <a href=\"https://gh.io/stacks-feedback\">Give Feedback 💬</a></sub>",
+  "user": {
+    "login": "sapphi-red",
+    "type": "User"
+  },
+  "baseSha": "616296895bd135386d35069a479a5f188c7de298",
+  "headSha": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+  "mergedAt": "2026-08-21T09:07:38Z",
+  "mergeCommit": "67a680767317f8e2cb28b6b0500192f993a567cf",
+  "commits": 3,
+  "reviews": [
+    {
+      "id": 4863110459,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:55:31Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23172#pullrequestreview-4863110459"
+    },
+    {
+      "id": 4879642616,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-07T03:16:48Z",
+      "body": "I like this refactor. Let's try this in the next minor and hope it doesn't break many people.",
+      "url": "https://github.com/vitejs/vite/pull/23172#pullrequestreview-4879642616"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3719550697,
+      "review": 4863110459,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/client/client.ts",
+      "line": 160,
+      "originalLine": 160,
+      "commit": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+      "originalCommit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:42:22Z",
+      "body": "`acceptedPath` is now \"moduleUrl\" so wrapId is needed to convert to \"browserUrl\".",
+      "diffHunk": "@@ -152,10 +157,11 @@ const hmrClient = new HMRClient(\n     isWithinCircularImport,\n   }) {\n     const [acceptedPathWithoutQuery, query] = acceptedPath.split(`?`)\n+    const browserPath = wrapIdIfNeeded(acceptedPathWithoutQuery)",
+      "url": "https://github.com/vitejs/vite/pull/23172#discussion_r3719550697"
+    },
+    {
+      "id": 3719556893,
+      "review": 4863110459,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/module-runner/hmrHandler.ts",
+      "line": 24,
+      "originalLine": 24,
+      "commit": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+      "originalCommit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:43:25Z",
+      "body": "HmrClient received \"moduleUrl\" (Url without `/@id/`). `acceptedPath` and `path` is now \"moduleUrl\" (was \"HmrUrl\") so `unwrapId` is no longer needed.",
+      "diffHunk": "@@ -19,9 +19,6 @@ export function createHMRHandlerForRunner(\n         await Promise.all(\n           payload.updates.map(async (update): Promise<void> => {\n             if (update.type === 'js-update') {\n-              // runner always caches modules by their full path without /@id/ prefix\n-              update.acceptedPath = unwrapId(update.acceptedPath)\n-              update.path = unwrapId(update.path)",
+      "url": "https://github.com/vitejs/vite/pull/23172#discussion_r3719556893"
+    },
+    {
+      "id": 3719561759,
+      "review": 4863110459,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/plugins/importAnalysis.ts",
+      "line": 684,
+      "originalLine": 684,
+      "commit": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+      "originalCommit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:44:11Z",
+      "body": "A simple rename here. This is/was a \"moduleUrl\" because `unwrapId` is called.",
+      "diffHunk": "@@ -682,10 +681,11 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {\n \n             // record for HMR import chain analysis\n             // make sure to unwrap and normalize away base\n-            const hmrUrl = unwrapId(stripBase(url, base))\n-            const isLocalImport = !isExternalUrl(hmrUrl) && !isDataUrl(hmrUrl)\n+            const moduleUrl = unwrapId(stripBase(url, base))",
+      "url": "https://github.com/vitejs/vite/pull/23172#discussion_r3719561759"
+    },
+    {
+      "id": 3719568711,
+      "review": 4863110459,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/plugins/importAnalysis.ts",
+      "line": 792,
+      "originalLine": 792,
+      "commit": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+      "originalCommit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:45:18Z",
+      "body": "HotContext now receives \"moduleUrl\" similarly to `acceptedPath` and `path`.",
+      "diffHunk": "@@ -789,7 +789,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {\n         str().prepend(\n           `import { createHotContext as __vite__createHotContext } from \"${clientPublicPath}\";` +\n             `import.meta.hot = __vite__createHotContext(${JSON.stringify(\n-              normalizeHmrUrl(importerModule.url),\n+              importerModule.url,",
+      "url": "https://github.com/vitejs/vite/pull/23172#discussion_r3719568711"
+    },
+    {
+      "id": 3719583261,
+      "review": 4863110459,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/plugins/importAnalysis.ts",
+      "line": 831,
+      "originalLine": 831,
+      "commit": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+      "originalCommit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:47:30Z",
+      "body": "The `acceptPath` of `import.meta.hot.accept(acceptPath)` now receives \"moduleUrl\", similarly to `path` and `acceptPath`. This is not a breaking change because this `acceptPath` argument is always rewritten by this import-analysis plugin.",
+      "diffHunk": "@@ -827,8 +827,7 @@ export function importAnalysisPlugin(config: ResolvedConfig): Plugin {\n           })\n         }\n         normalizedAcceptedUrls.add(normalized)\n-        const hmrAccept = normalizeHmrUrl(normalized)\n-        str().overwrite(start, end, JSON.stringify(hmrAccept), {",
+      "url": "https://github.com/vitejs/vite/pull/23172#discussion_r3719583261"
+    },
+    {
+      "id": 3719586774,
+      "review": 4863110459,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/server/environment.ts",
+      "line": null,
+      "originalLine": 179,
+      "commit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "originalCommit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:47:49Z",
+      "body": "`path` sent from the client is now \"moduleUrl\" instead of \"HmrUrl\".",
+      "diffHunk": "@@ -176,7 +176,7 @@ export class DevEnvironment extends BaseEnvironment {\n       ({ path, message, firstInvalidatedBy }, client) => {\n         this.invalidateModule(\n           {\n-            path: unwrapId(path),\n+            path,",
+      "url": "https://github.com/vitejs/vite/pull/23172#discussion_r3719586774"
+    },
+    {
+      "id": 3719596301,
+      "review": 4863110459,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/server/hmr.ts",
+      "line": 723,
+      "originalLine": 723,
+      "commit": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+      "originalCommit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:49:04Z",
+      "body": "`firstInvalidatedBy` was \"HmrUrl\" (as it was sent from the client), but now it's \"ModuleUrl\".",
+      "diffHunk": "@@ -719,8 +719,7 @@ export function updateModules(\n     if (\n       firstInvalidatedBy &&\n       boundaries.some(\n-        ({ acceptedVia }) =>\n-          normalizeHmrUrl(acceptedVia.url) === firstInvalidatedBy,",
+      "url": "https://github.com/vitejs/vite/pull/23172#discussion_r3719596301"
+    },
+    {
+      "id": 3719598886,
+      "review": 4863110459,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/server/hmr.ts",
+      "line": 735,
+      "originalLine": 735,
+      "commit": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+      "originalCommit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:49:27Z",
+      "body": "`path` and `acceptedPath` is now \"moduleUrl\" instead of \"HmrUrl\".",
+      "diffHunk": "@@ -732,8 +731,8 @@ export function updateModules(\n         ({ boundary, acceptedVia, isWithinCircularImport }) => ({\n           type: `${boundary.type}-update` as const,\n           timestamp,\n-          path: normalizeHmrUrl(boundary.url),\n-          acceptedPath: normalizeHmrUrl(acceptedVia.url),\n+          path: boundary.url,\n+          acceptedPath: acceptedVia.url,",
+      "url": "https://github.com/vitejs/vite/pull/23172#discussion_r3719598886"
+    },
+    {
+      "id": 3719602449,
+      "review": 4863110459,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/server/hmr.ts",
+      "line": 1127,
+      "originalLine": 1127,
+      "commit": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+      "originalCommit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:50:02Z",
+      "body": "This conversion happens on the client side when importing a module (i.e. when \"moduleUrl\" is converted to \"browserUrl\").",
+      "diffHunk": "@@ -1124,13 +1123,6 @@ export function lexAcceptedHmrExports(\n   return urls.size > 0\n }\n \n-export function normalizeHmrUrl(url: string): string {",
+      "url": "https://github.com/vitejs/vite/pull/23172#discussion_r3719602449"
+    },
+    {
+      "id": 3719605799,
+      "review": 4863110459,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/server/transformRequest.ts",
+      "line": 495,
+      "originalLine": 495,
+      "commit": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+      "originalCommit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:50:33Z",
+      "body": "This is a simple rename. This is/was a \"moduleUrl\" because `unwrapId` is called.",
+      "diffHunk": "@@ -491,15 +491,15 @@ async function handleModuleSoftInvalidation(\n       }\n \n       const urlWithoutTimestamp = removeTimestampQuery(rawUrl)\n-      // hmrUrl must be derived the same way as importAnalysis\n-      const hmrUrl = unwrapId(\n+      // moduleUrl must be derived the same way as importAnalysis\n+      const moduleUrl = unwrapId(",
+      "url": "https://github.com/vitejs/vite/pull/23172#discussion_r3719605799"
+    },
+    {
+      "id": 3719635593,
+      "review": 4863110459,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/types/customEvent.d.ts",
+      "line": 1,
+      "originalLine": 1,
+      "commit": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+      "originalCommit": "5399f523c6fa566d1b57a41a9b031252fb215b49",
+      "at": "2026-08-05T09:55:29Z",
+      "body": "As noted in this file and `hmrPayload.d.ts`, technically these fields will have slightly different behavior. But I assume this won't be a huge problem.",
+      "diffHunk": "",
+      "url": "https://github.com/vitejs/vite/pull/23172#discussion_r3719635593"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5190309413,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "at": "2026-08-05T09:56:10Z",
+      "updated": "2026-08-05T09:56:10Z",
+      "body": "/ecosystem-ci run",
+      "url": "https://github.com/vitejs/vite/pull/23172#issuecomment-5190309413"
+    },
+    {
+      "id": 5190318783,
+      "user": {
+        "login": "pkg-pr-new[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-05T09:57:12Z",
+      "updated": "2026-08-05T09:57:12Z",
+      "body": "\n[Open in StackBlitz](https://pkg.pr.new/template/2e15b4ea-28a5-4b6c-b642-157e8d1afc78)\n\n\n<details><summary><b>@vitejs/plugin-legacy</b></summary><p>\n\n  ```\n  pnpm add https://pkg.pr.new/@vitejs/plugin-legacy@23172 -D\n  ```\n  \n\n  ```\n  npm i https://pkg.pr.new/@vitejs/plugin-legacy@23172 -D\n  ```\n  \n\n  ```\n  yarn add https://pkg.pr.new/@vitejs/plugin-legacy@23172.tgz -D\n  ```\n  \n</p></details>\n      \n    \n\n<details><summary><b>vite</b></summary><p>\n\n  ```\n  pnpm add https://pkg.pr.new/vite@23172 -D\n  ```\n  \n\n  ```\n  npm i https://pkg.pr.new/vite@23172 -D\n  ```\n  \n\n  ```\n  yarn add https://pkg.pr.new/vite@23172.tgz -D\n  ```\n  \n</p></details>\n      \n    \n\n_commit: <a href=\"https://github.com/vitejs/vite/runs/92271178388\"><code>5399f52</code></a>_\n",
+      "url": "https://github.com/vitejs/vite/pull/23172#issuecomment-5190318783"
+    },
+    {
+      "id": 5190606624,
+      "user": {
+        "login": "vite-ecosystem-ci[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-05T10:28:08Z",
+      "updated": "2026-08-05T10:28:08Z",
+      "body": "\n📝 Ran ecosystem CI on [`94cf41f`](https://github.com/vitejs/vite/pull/23172/commits/94cf41f7f98a16076a9a25cdeac8e17adcc1cb21): [Open](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504)\n\n| suite | result | [latest scheduled](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30985451349) |\n|-------|--------|----------------|\n| react-router | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267040) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30985451349/job/92239036974) |\n| sveltekit | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267048) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30985451349/job/92239036950) |\n| qwik | :stop_button: [cancelled](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267057) | :stop_button: [cancelled](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30985451349/job/92239036987) |\n| storybook | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267071) | :white_check_mark: [success](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30985451349/job/92239036975) |\n| tanstack-start | :stop_button: [cancelled](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267073) | :stop_button: [cancelled](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30985451349/job/92239036988) |\n| vitest | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267078) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30985451349/job/92239037085) |\n| astro | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267095) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30985451349/job/92239036925) |\n\n:white_check_mark: [vite-plugin-react](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267049), [module-federation](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267058), [marko](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267061), [analogjs](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267064), [vite-plugin-pwa](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267067), [vite-plugin-svelte](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267074), [unocss](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267102), [laravel](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267114), [vite-setup-catalogue](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267118), [vite-plugin-cloudflare](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267119), [vitepress](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267123), [vite-plugin-vue](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267124), [vuepress](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267126), [vite-plugin-rsc](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267127), [vite-environment-examples](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267138), [quasar](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267141), [waku](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267146), [vike](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267287), [nuxt](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/30995422504/job/92271267347)\n",
+      "url": "https://github.com/vitejs/vite/pull/23172#issuecomment-5190606624"
+    },
+    {
+      "id": 5190974689,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "at": "2026-08-05T11:08:49Z",
+      "updated": "2026-08-05T11:08:49Z",
+      "body": "^ storybook failure seems unrelated",
+      "url": "https://github.com/vitejs/vite/pull/23172#issuecomment-5190974689"
+    }
+  ],
+  "citedBy": [
+    {
+      "at": "2026-09-02T08:27:09Z",
+      "number": 23415,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "release: v8.3.0-beta.1",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23415"
+    },
+    {
+      "at": "2026-09-02T08:36:57Z",
+      "number": 23416,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "release: v8.3.0-beta.0",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23416"
+    },
+    {
+      "at": "2026-09-07T10:11:10Z",
+      "number": 23448,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "chore: remove unnecessary comment",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23448"
+    },
+    {
+      "at": "2026-09-11T03:21:02Z",
+      "number": 5331,
+      "repo": "unocss/unocss",
+      "pull": false,
+      "title": "[vite] Global CSS HMR stops updating with Vite 8.3",
+      "state": "closed",
+      "url": "https://github.com/unocss/unocss/issues/5331"
+    },
+    {
+      "at": "2026-09-11T22:01:54Z",
+      "number": 5335,
+      "repo": "unocss/unocss",
+      "pull": true,
+      "title": "fix(vite)!: drive global HMR through Vite's hotUpdate hook, drop Vite 5 support",
+      "state": "open",
+      "url": "https://github.com/unocss/unocss/pull/5335"
+    },
+    {
+      "at": "2026-09-15T22:20:19Z",
+      "number": 5346,
+      "repo": "unocss/unocss",
+      "pull": false,
+      "title": "Global mode HMR broken on Vite >= 8.3: non-breaking hotfix for 66.x by sending updates in both path formats",
+      "state": "closed",
+      "url": "https://github.com/unocss/unocss/issues/5346"
+    },
+    {
+      "at": "2026-09-15T22:24:46Z",
+      "number": 5347,
+      "repo": "unocss/unocss",
+      "pull": true,
+      "title": "fix(vite): repair global mode HMR on Vite >= 8.3 by sending updates in both path formats",
+      "state": "closed",
+      "url": "https://github.com/unocss/unocss/pull/5347"
+    },
+    {
+      "at": "2026-09-16T03:10:45Z",
+      "number": 130,
+      "repo": "sudocarlos/tailrelay",
+      "pull": false,
+      "title": "chore: update Vite from 8.2.2 to 8.3.0",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/issues/130"
+    },
+    {
+      "at": "2026-09-16T03:23:27Z",
+      "number": 132,
+      "repo": "sudocarlos/tailrelay",
+      "pull": true,
+      "title": "chore: update Vite from 8.2.2 to 8.3.0",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/pull/132"
+    },
+    {
+      "at": "2026-09-19T11:53:50Z",
+      "number": 454,
+      "repo": "ncaq/www.ncaq.net",
+      "pull": true,
+      "title": "build(deps-dev): update dependency vite to v8.3.0",
+      "state": "closed",
+      "url": "https://github.com/ncaq/www.ncaq.net/pull/454"
+    },
+    {
+      "at": "2026-10-16T09:56:15Z",
+      "number": 23790,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "refactor(dev): share ModuleURL and BrowserURL conversions",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23790"
+    }
+  ]
+}

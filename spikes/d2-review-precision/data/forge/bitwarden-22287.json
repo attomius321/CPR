@@ -1,0 +1,127 @@
+{
+  "number": 22287,
+  "title": "[PM-41691] Fix issue where edit item, hidden passwords wipes password, TOTP",
+  "body": "## 🎟️ Tracking\r\n\r\nhttps://bitwarden.atlassian.net/browse/PM-41691\r\n\r\n## 📔 Objective\r\n\r\nFixes bug QA found where edit item, hidden passwords would then wipe password and TOTP fields\r\n",
+  "user": {
+    "login": "JaredScar",
+    "type": "User"
+  },
+  "baseSha": "e0cc44fae46384f2c254d10630cac7259550168d",
+  "headSha": "8b31c78655a6ed0a088c3cc541d064292b494ca0",
+  "mergedAt": "2026-08-10T20:48:32Z",
+  "mergeCommit": "acfcc87999bd2ecec2c4a15ef8363590096f2192",
+  "commits": 2,
+  "reviews": [
+    {
+      "id": 4885355170,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "fc478b9d4d014eacf16e341ba5a29dfa464f6dfa",
+      "at": "2026-08-07T17:57:29Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22287#pullrequestreview-4885355170"
+    },
+    {
+      "id": 4885356180,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "fc478b9d4d014eacf16e341ba5a29dfa464f6dfa",
+      "at": "2026-08-07T17:57:37Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22287#pullrequestreview-4885356180"
+    },
+    {
+      "id": 4885882548,
+      "user": {
+        "login": "BTreston",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "fc478b9d4d014eacf16e341ba5a29dfa464f6dfa",
+      "at": "2026-08-07T19:14:29Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22287#pullrequestreview-4885882548"
+    },
+    {
+      "id": 4897521336,
+      "user": {
+        "login": "BTreston",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "8b31c78655a6ed0a088c3cc541d064292b494ca0",
+      "at": "2026-08-10T14:01:23Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22287#pullrequestreview-4897521336"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3737761946,
+      "review": 4885355170,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "apps/cli/src/commands/edit.command.ts",
+      "line": null,
+      "originalLine": 145,
+      "commit": "fc478b9d4d014eacf16e341ba5a29dfa464f6dfa",
+      "originalCommit": "fc478b9d4d014eacf16e341ba5a29dfa464f6dfa",
+      "at": "2026-08-07T17:57:29Z",
+      "body": "⚠️ **IMPORTANT**: Hidden field values are restored by array index, so adding, removing, or reordering fields still wipes them — or copies a secret into the wrong field.\n\n<details>\n<summary>Details and fix</summary>\n\n`originalHiddenFieldValues` is indexed against the *original* field array, but after `CipherExport.toView` the array comes from the request, where the positions may differ:\n\n- Original `[Text \"note\", Hidden \"secret\"]`, user deletes `\"note\"` → incoming `[Hidden \"secret\" (null)]`. Index 0 in the original was a Text field (`undefined`), so no restore happens and the hidden value is wiped — the original bug.\n- Original `[Hidden \"a\"=1, Hidden \"b\"=2]`, user reorders → `\"b\"` receives `1` and `\"a\"` receives `2`. Two hidden values are silently swapped, and the user cannot see the corruption.\n\nMatching by name and only restoring when the incoming value was redacted avoids both:\n\n```ts\nconst originalHiddenFieldValues = new Map<string, string>(\n  (cipherView.fields ?? [])\n    .filter((f) => f.type === FieldType.Hidden)\n    .map((f) => [f.name, f.value]),\n);\n\ncipherView = CipherExport.toView(req, cipherView);\n\nif (!canViewPassword) {\n  cipherView.fields?.forEach((field) => {\n    if (\n      field.type === FieldType.Hidden &&\n      field.value == null &&\n      originalHiddenFieldValues.has(field.name)\n    ) {\n      field.value = originalHiddenFieldValues.get(field.name);\n    }\n  });\n}\n```\n\n</details>",
+      "diffHunk": "@@ -117,8 +118,33 @@ export class EditCommand {\n     if (cipherView.isDeleted) {\n       return Response.badRequest(\"You may not edit a deleted item. Use the restore command first.\");\n     }\n+\n+    // Users without permission to view passwords never receive the real login password/TOTP or\n+    // hidden field values from `bw get`/`bw list` (they're redacted to `null`, matching how the\n+    // web/browser/desktop clients disable those fields for editing). If those redacted `null`s\n+    // are round-tripped back through `bw edit`, preserve the real, already-decrypted values\n+    // instead of letting them be overwritten and lost. See PM-16160/PM-33526.\n+    const canViewPassword = cipherView.viewPassword;\n+    const originalLoginPassword = cipherView.login?.password;\n+    const originalLoginTotp = cipherView.login?.totp;\n+    const originalHiddenFieldValues = (cipherView.fields ?? []).map((f) =>\n+      f.type === FieldType.Hidden ? f.value : undefined,\n+    );\n+\n     cipherView = CipherExport.toView(req, cipherView);\n \n+    if (!canViewPassword) {\n+      if (cipherView.login != null) {\n+        cipherView.login.password = originalLoginPassword;\n+        cipherView.login.totp = originalLoginTotp;\n+      }\n+      cipherView.fields?.forEach((field, i) => {\n+        if (field.type === FieldType.Hidden && originalHiddenFieldValues[i] !== undefined) {\n+          field.value = originalHiddenFieldValues[i];\n+        }\n+      });",
+      "url": "https://github.com/bitwarden/clients/pull/22287#discussion_r3737761946"
+    },
+    {
+      "id": 3737762778,
+      "review": 4885356180,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "apps/cli/src/commands/edit.command.ts",
+      "line": 153,
+      "originalLine": 140,
+      "commit": "8b31c78655a6ed0a088c3cc541d064292b494ca0",
+      "originalCommit": "fc478b9d4d014eacf16e341ba5a29dfa464f6dfa",
+      "at": "2026-08-07T17:57:37Z",
+      "body": "❓ **QUESTION**: The restore is unconditional, so an explicitly supplied password/TOTP is silently discarded rather than rejected — is that the intended behavior?\n\n<details>\n<summary>Details</summary>\n\nThe comment above describes handling round-tripped redacted `null`s, but this also overwrites non-null values the caller deliberately set. A user with edit-but-not-view permission who submits `login.password: \"new-value\"` (e.g. a rotation script) gets `success` back with the old password still stored and no indication the change was dropped.\n\nGuarding on the redacted marker keeps the previous behavior for explicit writes while still fixing the bug:\n\n```ts\nif (cipherView.login.password == null) {\n  cipherView.login.password = originalLoginPassword;\n}\n```\n\nIf the intent is instead to match the web/browser clients, which disable these inputs entirely for `viewPassword === false`, returning `Response.badRequest(...)` when a non-null value is supplied would make the rejection visible instead of silent.\n\n</details>",
+      "diffHunk": "@@ -117,8 +118,33 @@ export class EditCommand {\n     if (cipherView.isDeleted) {\n       return Response.badRequest(\"You may not edit a deleted item. Use the restore command first.\");\n     }\n+\n+    // Users without permission to view passwords never receive the real login password/TOTP or\n+    // hidden field values from `bw get`/`bw list` (they're redacted to `null`, matching how the\n+    // web/browser/desktop clients disable those fields for editing). If those redacted `null`s\n+    // are round-tripped back through `bw edit`, preserve the real, already-decrypted values\n+    // instead of letting them be overwritten and lost. See PM-16160/PM-33526.\n+    const canViewPassword = cipherView.viewPassword;\n+    const originalLoginPassword = cipherView.login?.password;\n+    const originalLoginTotp = cipherView.login?.totp;\n+    const originalHiddenFieldValues = (cipherView.fields ?? []).map((f) =>\n+      f.type === FieldType.Hidden ? f.value : undefined,\n+    );\n+\n     cipherView = CipherExport.toView(req, cipherView);\n \n+    if (!canViewPassword) {\n+      if (cipherView.login != null) {\n+        cipherView.login.password = originalLoginPassword;\n+        cipherView.login.totp = originalLoginTotp;\n+      }",
+      "url": "https://github.com/bitwarden/clients/pull/22287#discussion_r3737762778"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5220362546,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-07T17:54:45Z",
+      "updated": "2026-08-07T19:31:09Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nRe-reviewed the CLI `edit item` fix that preserves login password, TOTP, and hidden custom field values when a user without `viewPassword` permission round-trips a redacted item back through `bw edit`. The write path now correctly mirrors the existing redaction in `apps/cli/src/vault/models/cipher.response.ts` and `login.response.ts` (PM-16160 / PM-33526), and no decrypted data is logged or returned to a caller that could not already see it. Both findings from the previous review are resolved: hidden field values are now keyed by field name with FIFO ordering for duplicate names instead of by array position, and password/TOTP/hidden restores are guarded on a `null` value so an explicitly supplied value is a deliberate write and is left alone. Test coverage exercises the redacted round trip, the remove-and-reorder case, and the explicit-write case.\n\n<details>\n<summary>Code Review Details</summary>\n\nNo findings.\n\nVerified during this pass:\n\n- `CipherExport.toView` leaves `view.login` and `view.fields` untouched when `req.login` / `req.fields` are omitted, so the restore block is a no-op on partial requests.\n- `CipherView.viewPassword` defaults to `true`, so users with view permission are unaffected by the new block.\n- `passwordHistory` is redacted to `undefined` in the response and is therefore retained from the decrypted view on round trip — no additional handling needed.\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/22287#issuecomment-5220362546"
+    },
+    {
+      "id": 5220483936,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-07T18:07:34Z",
+      "updated": "2026-08-07T19:41:32Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/22287?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:x: Patch coverage is `86.36364%` with `3 lines` in your changes missing coverage. Please review.\n:white_check_mark: Project coverage is 53.28%. Comparing base ([`e0cc44f`](https://app.codecov.io/gh/bitwarden/clients/commit/e0cc44fae46384f2c254d10630cac7259550168d?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`8b31c78`](https://app.codecov.io/gh/bitwarden/clients/commit/8b31c78655a6ed0a088c3cc541d064292b494ca0?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:warning: Report is 3 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n| [Files with missing lines](https://app.codecov.io/gh/bitwarden/clients/pull/22287?dropdown=coverage&src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) | Patch % | Lines |\n|---|---|---|\n| [apps/cli/src/commands/edit.command.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22287?src=pr&el=tree&filepath=apps%2Fcli%2Fsrc%2Fcommands%2Fedit.command.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy9jbGkvc3JjL2NvbW1hbmRzL2VkaXQuY29tbWFuZC50cw==) | 86.36% | [0 Missing and 3 partials :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22287?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@            Coverage Diff             @@\n##             main   #22287      +/-   ##\n==========================================\n+ Coverage   53.12%   53.28%   +0.15%     \n==========================================\n  Files        4235     4242       +7     \n  Lines      134218   134525     +307     \n  Branches    21125    21186      +61     \n==========================================\n+ Hits        71304    71680     +376     \n+ Misses      57746    57616     -130     \n- Partials     5168     5229      +61     \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/22287?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/22287#issuecomment-5220483936"
+    }
+  ],
+  "citedBy": []
+}

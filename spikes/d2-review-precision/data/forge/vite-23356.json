@@ -1,0 +1,158 @@
+{
+  "number": 23356,
+  "title": "fix: resolve the actual package root in findNearestMainPackageData for nested package.json",
+  "body": "<!--\r\n- What is this PR solving? Write a clear and concise description.\r\n- Reference the issues it solves (e.g. `fixes #123`).\r\n- What other alternatives have you explored?\r\n- Are there any parts you think require more attention from reviewers?\r\n\r\nAlso, please make sure you do the following:\r\n\r\n- Read the Contributing Guidelines at https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md.\r\n- Check that there isn't already a PR that solves the problem the same way. If you find a duplicate, please help us review it. If you've solved it in a different way, clarify what is different and link the other PRs in the PR description.\r\n- Update the corresponding documentation if needed.\r\n- Include relevant tests that fail without this PR but pass with it. If the tests are not included, explain why.\r\n\r\nIf you have used AI:\r\n\r\n- Read the AI Policy at https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md#ai-policy.\r\n- Keep the PR description and discussion concise. Use your own words, do not let AI write for you.\r\n- Disclose and describe how you have reviewed its code, e.g. the thought process and decisions that lead to the final code.\r\n\r\nThank you for contributing to Vite!\r\n-->\r\nfix #23355",
+  "user": {
+    "login": "btea",
+    "type": "User"
+  },
+  "baseSha": "493cc7d43269860fe499a30980d729b0adc93d2c",
+  "headSha": "51d9e0cd639464c02ea5fa324984f80948f40923",
+  "mergedAt": "2026-09-04T10:13:10Z",
+  "mergeCommit": "8492422b8f110625a90c702f42f30784e8cf19dc",
+  "commits": 7,
+  "reviews": [
+    {
+      "id": 5014789539,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "b8668fe7db98264f07dff2a443a340157190dc3f",
+      "at": "2026-08-25T03:54:58Z",
+      "body": "We use `findNearestMainPackageData` in many places to get a dependency's main package.json, so I don't think fixing only in the license plugin is right here.\n\nWe could put the fix directly in the `findNearestMainPackageData`, but will need to consider the possible breaking change of this in some setups, eg local workspace packages without version somehow.\n\nBut also, is putting the name in a nested package.json correct? Maybe it's harmless but worth checking if this is covered by the spec.",
+      "url": "https://github.com/vitejs/vite/pull/23356#pullrequestreview-5014789539"
+    },
+    {
+      "id": 5100587363,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "51d9e0cd639464c02ea5fa324984f80948f40923",
+      "at": "2026-09-03T10:09:33Z",
+      "body": "Amazing work 👍 This looks great to me. There probably will be inconsistencies for linked workspace packages since they don't have `node_modules`, but I think it's fine and we're detecting the best we can here.\n\nI think we should also update the PR title to reflect the core changes and should be good to merge for the beta.",
+      "url": "https://github.com/vitejs/vite/pull/23356#pullrequestreview-5100587363"
+    }
+  ],
+  "inline": [],
+  "comments": [
+    {
+      "id": 5405972423,
+      "user": {
+        "login": "btea",
+        "type": "User"
+      },
+      "at": "2026-08-25T05:30:16Z",
+      "updated": "2026-08-25T05:30:16Z",
+      "body": "> We use `findNearestMainPackageData` in many places to get a dependency's main package.json, so I don't think fixing only in the license plugin is right here.\r\n> \r\n> We could put the fix directly in the `findNearestMainPackageData`, but will need to consider the possible breaking change of this in some setups, eg local workspace packages without version somehow.\r\n\r\nYes, we use `findNearestMainPackageData` in multiple places, so to avoid causing unpredictable damage, I only handled the license call separately.\r\n> But also, is putting the name in a nested package.json correct? Maybe it's harmless but worth checking if this is covered by the spec.\r\n\r\nA nested package.json starts a new package scope, but Node only reads type/main/exports/imports from it—name only matters to Node for self-reference via exports, which markers don't have. So a nested name is a community convention with no spec-defined semantics, making name + version a fair heuristic for the real package root.\r\n\r\nhttps://nodejs.org/api/packages.html#introduction\r\nhttps://nodejs.org/api/packages.html#nodejs-packagejson-field-definitions\r\nhttps://nodejs.org/api/packages.html#name",
+      "url": "https://github.com/vitejs/vite/pull/23356#issuecomment-5405972423"
+    },
+    {
+      "id": 5407938572,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "at": "2026-08-25T08:57:15Z",
+      "updated": "2026-08-25T08:57:15Z",
+      "body": "Node only reads type/main for nested package.json from https://github.com/nodejs/node/issues/58827. I also tested and pnpm seems to allow workspace packages without version to be linked, e.g. via `\"pkg-a\": \"workspace:*\"`.\r\n\r\nSo if we want to check both name + version, I think this might affect some workspace setups. Also, name + version doesn't necessarily match the root if you encounter packages [like these](https://npmx.dev/package-code/preact/v/10.29.8/devtools%2Fpackage.json) (don't know why they publish that way).\r\n\r\nSo I think the solution to this comes down to tradeoffs. Checking by `name` before works ok-ish but in this case isn't always correct. Maybe the only sure way is to check the path for patterns like `node_modules/{pkg}/package.json`, but this could be problematic for yarn pnp, might need to check if `pnpapi` have any utils to help.\r\n\r\nI'd prefer investigating if we can fix for `findNearestMainPackageData` directly instead of only the license. I don't think it's very urgent to get the license case fixed first. But this work might be a bit more involved.\r\n\r\n",
+      "url": "https://github.com/vitejs/vite/pull/23356#issuecomment-5407938572"
+    },
+    {
+      "id": 5412005443,
+      "user": {
+        "login": "btea",
+        "type": "User"
+      },
+      "at": "2026-08-25T14:35:11Z",
+      "updated": "2026-08-25T14:35:11Z",
+      "body": "That makes sense. Let's verify and proceed step by step.",
+      "url": "https://github.com/vitejs/vite/pull/23356#issuecomment-5412005443"
+    },
+    {
+      "id": 5420057881,
+      "user": {
+        "login": "btea",
+        "type": "User"
+      },
+      "at": "2026-08-26T03:14:15Z",
+      "updated": "2026-08-26T03:14:15Z",
+      "body": "/ecosystem-ci run",
+      "url": "https://github.com/vitejs/vite/pull/23356#issuecomment-5420057881"
+    },
+    {
+      "id": 5420064336,
+      "user": {
+        "login": "pkg-pr-new[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-26T03:15:10Z",
+      "updated": "2026-08-27T13:27:51Z",
+      "body": "\n[Open in StackBlitz](https://pkg.pr.new/template/08624395-3226-41bc-880a-f581519d2436)\n\n\n<details><summary><b>@vitejs/plugin-legacy</b></summary><p>\n\n  ```\n  pnpm add https://pkg.pr.new/@vitejs/plugin-legacy@23356 -D\n  ```\n  \n\n  ```\n  npm i https://pkg.pr.new/@vitejs/plugin-legacy@23356 -D\n  ```\n  \n\n  ```\n  yarn add https://pkg.pr.new/@vitejs/plugin-legacy@23356.tgz -D\n  ```\n  \n</p></details>\n      \n    \n\n<details><summary><b>vite</b></summary><p>\n\n  ```\n  pnpm add https://pkg.pr.new/vite@23356 -D\n  ```\n  \n\n  ```\n  npm i https://pkg.pr.new/vite@23356 -D\n  ```\n  \n\n  ```\n  yarn add https://pkg.pr.new/vite@23356.tgz -D\n  ```\n  \n</p></details>\n      \n    \n\n_commit: <a href=\"https://github.com/vitejs/vite/runs/98533504546\"><code>51d9e0c</code></a>_\n",
+      "url": "https://github.com/vitejs/vite/pull/23356#issuecomment-5420064336"
+    },
+    {
+      "id": 5420274067,
+      "user": {
+        "login": "vite-ecosystem-ci[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-26T03:43:37Z",
+      "updated": "2026-08-26T03:43:37Z",
+      "body": "\n📝 Ran ecosystem CI on [`df9641e`](https://github.com/vitejs/vite/pull/23356/commits/df9641ec9864e40c994acf8edf6597b24cf29bcb): [Open](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875)\n\n| suite | result | [latest scheduled](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32693769091) |\n|-------|--------|----------------|\n| react-router | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243389) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32693769091/job/97332021860) |\n| sveltekit | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243423) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32693769091/job/97332021820) |\n| vite-environment-examples | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243445) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32693769091/job/97332021796) |\n| vite-plugin-rsc | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243489) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32693769091/job/97332021995) |\n| qwik | :white_check_mark: [success](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243514) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32693769091/job/97332021851) |\n| storybook | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243525) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32693769091/job/97332021734) |\n| vitest | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243561) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32693769091/job/97332021979) |\n| waku | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243606) | :x: [failure](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32693769091/job/97332021888) |\n\n:white_check_mark: [nitro](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243388), [analogjs](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243396), [astro](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243415), [laravel](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243441), [marko](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243451), [vike](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243459), [quasar](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243466), [vite-plugin-pwa](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243493), [module-federation](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243497), [unocss](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243506), [vite-setup-catalogue](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243519), [tanstack-start](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243521), [vite-plugin-vue](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243527), [nuxt](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243529), [vite-plugin-svelte](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243535), [vite-plugin-cloudflare](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243545), [vinext](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243549), [vitepress](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243576), [vuepress](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243577), [vite-plugin-react](https://github.com/vitejs/vite-ecosystem-ci/actions/runs/32925761875/job/98048243582)\n",
+      "url": "https://github.com/vitejs/vite/pull/23356#issuecomment-5420274067"
+    },
+    {
+      "id": 5524711130,
+      "user": {
+        "login": "btea",
+        "type": "User"
+      },
+      "at": "2026-09-03T11:02:05Z",
+      "updated": "2026-09-03T11:02:05Z",
+      "body": "I've updated the title, but I'm not sure if it's a perfect match. If you have a more accurate description, you can edit it directly. 🚀 ",
+      "url": "https://github.com/vitejs/vite/pull/23356#issuecomment-5524711130"
+    }
+  ],
+  "citedBy": [
+    {
+      "at": "2026-08-26T06:30:39Z",
+      "number": 23370,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "revert: narrow semantic-pull-request triggers",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23370"
+    },
+    {
+      "at": "2026-09-07T11:24:36Z",
+      "number": 23449,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "release: v8.3.0-beta.1",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23449"
+    },
+    {
+      "at": "2026-09-16T03:10:45Z",
+      "number": 130,
+      "repo": "sudocarlos/tailrelay",
+      "pull": false,
+      "title": "chore: update Vite from 8.2.2 to 8.3.0",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/issues/130"
+    },
+    {
+      "at": "2026-09-16T03:23:27Z",
+      "number": 132,
+      "repo": "sudocarlos/tailrelay",
+      "pull": true,
+      "title": "chore: update Vite from 8.2.2 to 8.3.0",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/pull/132"
+    }
+  ]
+}

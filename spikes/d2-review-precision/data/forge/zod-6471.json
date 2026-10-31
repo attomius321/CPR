@@ -1,0 +1,240 @@
+{
+  "number": 6471,
+  "title": "feat(v4): add z.isValid and z.isValidAsync",
+  "body": "Adds `z.isValid(schema, value)` and `z.isValidAsync(schema, value)`: standalone boolean validation, exported from Zod, Zod Mini, and Zod Core. The return type is a guard on the schema's input type, which stays sound under transforms.\n\n```ts\nz.isValid(z.string(), \"hi\"); // true, and narrows to string\nz.isValid(Player, { username: 42 }); // false — no ZodError is ever built\n```\n\nOn a [compiled schema](https://zod.dev/compile), `isValid` answers directly from the compiled fast path: `compile()` stashes the fast-path function and the runtime fallback on `_zod.bag` (the same caching spot `getDiscriminatedOption` uses), and the fallback call carries the compiler's fallback flag, so user callbacks keep the existing at-most-twice bound on invalid input. The parse module mirrors the compiler's registry sentinels via `Symbol.for` rather than importing it, so nothing new is retained in bundles that don't use it.\n\nThe motivation is boolean-only validation on hot paths — accepting or rejecting input without needing the parsed value — which is also the contract of the assert categories in cross-library benchmarks.\n\nThree axes, measured on the moltar fixture with an interleaved min-of-rounds harness (ratios are the meaningful part; the machine was loaded):\n\n| | ops/sec |\n| --- | --- |\n| `z.isValid`, compiled schema | 45.3M |\n| `compiled.safeParse().success` | 52.1M |\n| `z.isValid`, uncompiled | 12.5M |\n| uncompiled `safeParse().success` | ~9.8M |\n\nAn earlier draft stored the fast-path references as properties on the wrapped `run` function; custom properties push function objects into slow storage and it measured 28M. Moving them to the bag recovered fast-mode reads.\n\nBundle: 0 bytes on every treeshake fixture — the two `Symbol.for` mirrors needed `@__PURE__` annotations, without which the mini fixtures grew 2 gzipped bytes; `bundle-size.test.ts` ceilings are unchanged. Memory: two bag entries on compiled schemas only; `instance-footprint.test.ts` is unchanged.\n\nDocs get a short section under parsing in `basics.mdx`.\n",
+  "user": {
+    "login": "colinhacks",
+    "type": "User"
+  },
+  "baseSha": "749f545233d7035250620b92e4fc1afcc1bc2f99",
+  "headSha": "edb071ac447c9d8586f0be84c8be4c961267bbd3",
+  "mergedAt": "2026-08-27T05:36:17Z",
+  "mergeCommit": "37b015017b17420e81e76555066bdfa39c24cdc5",
+  "commits": 3,
+  "reviews": [
+    {
+      "id": 5033015934,
+      "user": {
+        "login": "copilot-pull-request-reviewer[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "93e41c103078afee266b27c4621fe25eb938a6ec",
+      "at": "2026-08-26T16:58:56Z",
+      "body": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit.",
+      "url": "https://github.com/colinhacks/zod/pull/6471#pullrequestreview-5033015934"
+    },
+    {
+      "id": 5033140793,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "93e41c103078afee266b27c4621fe25eb938a6ec",
+      "at": "2026-08-26T17:14:17Z",
+      "body": "> [!IMPORTANT]\n> `isValidAsync` answers from the compiled fast path, which the compiler deliberately skips for async parses. On a compiled schema it rejects with `$ZodAsyncError` where `safeParseAsync` resolves `true`.\n\n**Reviewed changes** — full read of the 7-file diff at `93e41c1`, plus the AOT compiler and parse entry points it hooks into. Every finding and every dismissal below was reproduced by running code, not inferred.\n\n- **`z.isValid` / `z.isValidAsync`** — standalone boolean validation in `core/parse.ts`, returning a type predicate on `core.input<T>`, re-exported from Zod, Zod Mini and Zod Core.\n- **Compiled fast-path shortcut** — `compile()` stashes `fastpass` and `fallbackRun` on `_zod.bag`; both functions call the generated fast path directly, bypassing the `wrapped` run function, and fall back through the runtime with the compiler's `FALLBACK_FLAG` set to hold user callbacks to at most two invocations.\n- **Sentinel mirroring** — `core/parse.ts` re-derives the compiler's two sentinels via `Symbol.for` instead of importing it, keeping the compiler out of bundles that never use it.\n- **Global-mode shim** — `zod/compile`'s post-processor copies the same two bag entries onto each instance it compiles.\n- **Tests and docs** — `is-valid.test.ts` covering classic and mini, plus a short section under parsing in `basics.mdx`.\n\nThings I went after and found clean, so they don't need re-litigating: sync `isValid` has no divergence from `safeParse().success` (`compiled.safeParse` already calls `fast(data)` directly via `installCompiledUserMethods`, so this is pre-existing surface that `compile-differential.test.ts` covers, and every compiler escape hatch fails closed to `INVALID`); no stale-bag aliasing, since `util.clone` builds a fresh instance with a fresh `bag`; nothing iterates or spreads `bag` generically, so the two function entries can't leak into `toJSONSchema` output; the 0-byte bundle claim holds on the treeshake fixtures, and `@__PURE__` on `Symbol.for` is both load-bearing and safe here. Global AOT mode is covered too — desyncing the `COMPILE_FALLBACK` mirror string fails only the `compile-mode` project, which makes that `toBeLessThanOrEqual(2)` assertion load-bearing rather than theatre.\n\n<!--\nPullfrog review metadata. These findings were written against 93e41c1;\nif commits have landed on isvalid since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: Review (initial)\n- Files reviewed: 7\n- Commits reviewed: 1\n- Base: main (43f729d)\n- Head: isvalid (93e41c1)\n- Reviewed commits:\n  - 93e41c10 — feat(v4): add z.isValid and z.isValidAsync\n- Prior pullfrog review: none\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6471?action=fix&review_id=5033140793) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6471?action=fix-approved&review_id=5033140793) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/32991540903/job/98250006266) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6471#pullrequestreview-5033140793"
+    },
+    {
+      "id": 5036254588,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "55bcff0cb910234b141064c67fa324e336c95d9a",
+      "at": "2026-08-27T00:43:24Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6471#pullrequestreview-5036254588"
+    },
+    {
+      "id": 5036260082,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "55bcff0cb910234b141064c67fa324e336c95d9a",
+      "at": "2026-08-27T00:44:43Z",
+      "body": "> ℹ️ The async fast-path issue is fixed correctly and the new test is load-bearing. One comment nit inline.\n\n**Reviewed changes** — the delta since `93e41c1` is a single commit that removes the compiled fast-path branch from `isValidAsync` and adds a regression test for it.\n\n- **Dropped the `fastpass` branch from `isValidAsync`** — it now always calls `schema._zod.run` with `ctx.async = true`, which the compiled `wrapped` run function bails on before ever reaching the generated code, so a compiled schema routes through the runtime exactly like `safeParseAsync` does.\n- **Added a compiled-async regression test** — `z.compile(z.string().refine((s) => Promise.resolve(...)))` is the shape that slips past the compiler's syntactic `isAsyncFunction` probe and codegens a `throwAsync()`, so it is precisely the case that used to reject.\n- **Noted the reasoning in a comment** above `isValidAsync`.\n\nThe new assertion is not theatre: restoring the previous body makes `is-valid.test.ts:46` fail in both the `zod` and the `compile-mode` project with `Encountered Promise during synchronous parse`, so global AOT mode is covered too.\n\nI also went looking for any *remaining* divergence between `z.isValidAsync(s, v)` and `(await s.safeParseAsync(v)).success` and found none — checked uncompiled async refinements, `z.compile()` on both sync and promise-returning-refine schemas, global `zod/compile` mode with compilable and non-compilable schemas, `z.catch`, `z.success` over a failing async inner, forward-direction codecs, self-referential `z.lazy`, `.pipe()` with an async transform, `.superRefine` pushing issues asynchronously, and a caller-supplied context carrying `direction: \"backward\"`, `skipChecks` and extra keys. Skipping issue finalization can't matter either — `finalizeIssue` only formats messages and paths, it never changes the length of the issue list.\n\n<!--\nPullfrog review metadata. These findings were written against 55bcff0c;\nif commits have landed on isvalid since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 7\n- Commits reviewed: 2\n- Base: main (43f729db)\n- Head: isvalid (55bcff0c)\n- Reviewed commits:\n  - 55bcff0c — fix(v4): keep isValidAsync off the compiled fast path\n  - 93e41c10 — feat(v4): add z.isValid and z.isValidAsync\n- Prior pullfrog review: 93e41c1 (https://github.com/colinhacks/zod/pull/6471#pullrequestreview-5033140793)\n-->\n\n### ℹ️ Nitpicks\n\n- `core/parse.ts:152` — the new comment is accurate but reads as one long clause; splitting the \"why\" (`isAsyncFunction` is syntactic) from the \"what\" would make it easier to scan. Entirely optional.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6471?action=fix&review_id=5036260082) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6471?action=fix-approved&review_id=5036260082) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33027456394/job/98372034982) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6471#pullrequestreview-5036260082"
+    },
+    {
+      "id": 5036278193,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "9894a3163adb0bbf889203caa48198f406f9822b",
+      "at": "2026-08-27T00:47:52Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6471#pullrequestreview-5036278193"
+    },
+    {
+      "id": 5037509833,
+      "user": {
+        "login": "colinhacks",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "9894a3163adb0bbf889203caa48198f406f9822b",
+      "at": "2026-08-27T05:27:21Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6471#pullrequestreview-5037509833"
+    },
+    {
+      "id": 5037548474,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "edb071ac447c9d8586f0be84c8be4c961267bbd3",
+      "at": "2026-08-27T05:35:11Z",
+      "body": "> ✅ No new issues found.\n\n**Reviewed changes** — the delta since `9894a316` is a rebase and nothing else. `git range-diff 9894a316~3..9894a316 edb071ac~3..edb071ac` reports all three commits `=`, so the PR's own content is byte-for-byte what was already reviewed. That made the question for this run whether it still holds against the new base, since the rebase pulled in a commit that lands in the same subsystem.\n\n* **Rebased onto `749f545`** — picks up #6468, a docs commit, and #6464 (`perf(v4): close the fastpass bindings into the compiled parser`). The last one is the reason this needed a real look rather than a rubber stamp.\n* **The `fastpass` name is not a collision** — #6464's `fastpass` is a local inside `$ZodObjectJIT`'s generator; this PR's is a `_zod.bag` property written by the AOT `compile()`. Separate objects, and #6464 touched only `core/doc.ts` and `core/schemas.ts`, never `core/compile.ts` or `core/parse.ts`.\n* **`compileFastpass` is unaffected** — it still builds its doc with `new Doc([\"input\"])`, and #6464 only added an *optional* second `closed` argument defaulting to `{}`. The `(input) => output | INVALID` contract that `isValid` reads off the bag is intact.\n* **Green on the new base**, run rather than assumed: `is-valid.test.ts` 18/18 across the `zod`, `compile-mode` and typecheck projects; all four compile suites 696/696 across both projects; `instance-footprint.test.ts` 7/7; and `bundle-size.test.ts` 4/4 after a build, so the 0-byte claim survives #6464's own `−22` gzipped shift on classic object.\n\nWith the input-type guard thread declined, nothing is left open on my side.\n\n<!--\nPullfrog review metadata. These findings were written against edb071ac;\nif commits have landed on isvalid since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 7\n- Commits reviewed: 3\n- Base: main (749f5452)\n- Head: isvalid (edb071ac)\n- Reviewed commits:\n  - edb071ac — chore: name the bag entry correctly in the compile comment\n  - 491f9583 — fix(v4): keep isValidAsync off the compiled fast path\n  - d77d438b — feat(v4): add z.isValid and z.isValidAsync\n- Note: force-push between 9894a316 and edb071ac was a pure rebase; range-diff\n  reports all three commits identical (93e41c10→d77d438b, 55bcff0c→491f9583,\n  9894a316→edb071ac).\n- Prior pullfrog review: 9894a316 (https://github.com/colinhacks/zod/pull/6471#pullrequestreview-5036278193)\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33042699010/job/98419661862) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6471#pullrequestreview-5037548474"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3865039308,
+      "review": 5033140793,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/parse.ts",
+      "line": null,
+      "originalLine": 163,
+      "commit": "93e41c103078afee266b27c4621fe25eb938a6ec",
+      "originalCommit": "93e41c103078afee266b27c4621fe25eb938a6ec",
+      "at": "2026-08-26T17:14:16Z",
+      "body": "`compile()` deliberately keeps async parses off the fast path — `wrapped` bails on `ctx.async` before touching it, and the JSDoc says so. The reason is that `isAsyncFunction` is syntactic, so `.refine((s) => Promise.resolve(...))` compiles fine and the generated code calls `throwAsync()`. Consulting `fastpass` here reintroduces exactly that: `z.isValidAsync(z.compile(schema), \"abc\")` rejects with `$ZodAsyncError` where both `compiled.safeParseAsync(\"abc\")` and `z.isValidAsync(schema, \"abc\")` resolve `true`, so merely compiling a schema changes the answer.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# `isValidAsync` bypasses the compiler's async guard\n\n## Affected sites\n- `packages/zod/src/v4/core/parse.ts:155-159` — the `bag.fastpass && bag.fallbackRun` branch runs the generated fast path even though the caller asked for an async parse.\n- `packages/zod/src/v4/core/compile.ts:114-122` — `wrapped` returns `originalRun(payload, ctx)` whenever `ctx.async` is set; `packages/zod/src/v4/core/compile.ts:91-92` documents this as the contract (\"Backward (encode), async, and `skipChecks` paths bypass the fast path\").\n- `packages/zod/src/v4/core/compile.ts:1989` — `isAsyncFunction` only detects syntactically `async` functions, so a plain arrow returning a promise reaches codegen and emits `throwAsync()`.\n\n## Reproduction\n\n```ts\nconst s = z.string().refine((v) => Promise.resolve(v.length > 1));\nconst c = z.compile(s);\n\nawait z.isValidAsync(s, \"abc\");        // true\nawait c.safeParseAsync(\"abc\");         // { success: true }\nawait z.isValidAsync(c, \"abc\");        // rejects: $ZodAsyncError\n```\n\nReproduces identically under global mode (`import \"zod/compile\"`), where the shim populates the same two bag entries.\n\n## Required outcome\n- `isValidAsync` must agree with `safeParseAsync` on a compiled schema.\n- No test currently covers async on a compiled schema; `is-valid.test.ts:38-44` only exercises the uncompiled path.\n\n## Suggested approach\nDrop the fast-path branch from `isValidAsync` and always go through `schema._zod.run`. The compiled wrapper already routes async to the runtime, so nothing is lost — a compiled schema does not get the fast path for `safeParseAsync` today either.\n````\n\n</details>\n\n```suggestion\n  const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: true } : { async: true };\n  let result: unknown = schema._zod.run({ value, issues: [] }, ctx);\n```",
+      "diffHunk": "@@ -105,6 +105,66 @@ export const _safeParseAsync: (_Err: $ZodErrorClass) => $SafeParseAsync = (_Err)\n \n export const safeParseAsync: $SafeParseAsync = /* @__PURE__*/ _safeParseAsync(errors.$ZodRealError);\n \n+// registry mirrors of the compiler's sentinels, so this module never imports the compiler\n+const COMPILE_INVALID = /* @__PURE__ */ Symbol.for(\"zod.compile.invalid\");\n+const COMPILE_FALLBACK = /* @__PURE__ */ Symbol.for(\"zod.compile.fallback\");\n+\n+interface CompiledBag {\n+  fastpass?: (input: unknown) => unknown;\n+  fallbackRun?: (payload: schemas.ParsePayload, ctx: schemas.ParseContextInternal) => unknown;\n+}\n+\n+export type $IsValid = <T extends schemas.$ZodType>(\n+  schema: T,\n+  value: unknown,\n+  _ctx?: schemas.ParseContext<errors.$ZodIssue>\n+) => value is core.input<T>;\n+\n+export const isValid: $IsValid = ((\n+  schema: schemas.$ZodType,\n+  value: unknown,\n+  _ctx?: schemas.ParseContext<errors.$ZodIssue>\n+): boolean => {\n+  const bag = schema._zod.bag as CompiledBag;\n+  let result: unknown;\n+  if (bag.fastpass && bag.fallbackRun) {\n+    if (bag.fastpass(value) !== COMPILE_INVALID) return true;\n+    const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: false } : { async: false };\n+    // skip nested fast paths on the fallback, so user callbacks keep the at-most-twice bound\n+    (ctx as Record<symbol, unknown>)[COMPILE_FALLBACK] = true;\n+    result = bag.fallbackRun({ value, issues: [] }, ctx);\n+  } else {\n+    const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: false } : { async: false };\n+    result = schema._zod.run({ value, issues: [] }, ctx);\n+  }\n+  if (result instanceof Promise) {\n+    throw new core.$ZodAsyncError();\n+  }\n+  return (result as schemas.ParsePayload).issues.length === 0;\n+}) as $IsValid;\n+\n+export type $IsValidAsync = <T extends schemas.$ZodType>(\n+  schema: T,\n+  value: unknown,\n+  _ctx?: schemas.ParseContext<errors.$ZodIssue>\n+) => Promise<boolean>;\n+\n+export const isValidAsync: $IsValidAsync = async (schema, value, _ctx) => {\n+  const bag = schema._zod.bag as CompiledBag;\n+  let result: unknown;\n+  if (bag.fastpass && bag.fallbackRun) {\n+    if (bag.fastpass(value) !== COMPILE_INVALID) return true;\n+    const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: true } : { async: true };\n+    (ctx as Record<symbol, unknown>)[COMPILE_FALLBACK] = true;\n+    result = bag.fallbackRun({ value, issues: [] }, ctx);\n+  } else {\n+    const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: true } : { async: true };\n+    result = schema._zod.run({ value, issues: [] }, ctx);\n+  }",
+      "url": "https://github.com/colinhacks/zod/pull/6471#discussion_r3865039308"
+    },
+    {
+      "id": 3865039332,
+      "review": 5033140793,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/parse.ts",
+      "line": 121,
+      "originalLine": 121,
+      "commit": "edb071ac447c9d8586f0be84c8be4c961267bbd3",
+      "originalCommit": "93e41c103078afee266b27c4621fe25eb938a6ec",
+      "at": "2026-08-26T17:14:17Z",
+      "body": "`core.input<T>` is a declaration, not something the forward parse enforces, so this predicate can narrow a value to a type it doesn't have. `z.isValid(z.string().catch(\"x\"), 42)` returns `true` and narrows `42` to `string`; same for `z.custom<string>()` and `z.preprocess((v: string) => Number(v), z.number())`. Worth a caveat here and on the `basics.mdx` sentence, which currently states the guarantee unconditionally.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# The input-type guard is unsound where `input<T>` is declared rather than validated\n\n## Affected sites\n- `packages/zod/src/v4/core/parse.ts:117-121` — `$IsValid` returns `value is core.input<T>` with no caveat.\n- `packages/docs/content/basics.mdx:131` — \"acts as a type guard on the schema's input type\", stated unconditionally.\n\n## Confirmed cases\nEach returns `true` at runtime AND narrows statically (verified with `expectTypeOf` under the repo's vitest typecheck project):\n\n| schema | value | `input<T>` |\n| --- | --- | --- |\n| `z.string().catch(\"x\")` | `42` | `string` |\n| `z.custom<string>()` | `42` | `string` |\n| `z.transform((s: string) => s.length)` | `42` | `string` |\n| `z.preprocess((v: string) => Number(v), z.number())` | `42` | `string` |\n| `z.string().default(\"x\").nonoptional()` | `undefined` | `string` |\n| `z.string().brand<\"UserId\", \"in\">()` | `\"abc\"` | `string & $brand<\"UserId\">` |\n\nThe `transform` case propagates through composition — `z.object({ a: z.transform((s: string) => s.length) })` accepts `{ a: 42 }` and narrows it to `{ a: string }`.\n\nVerified sound (correctly return `false`): `success`, `optional`, `default`/`prefault` alone, `readonly`, `lazy`, `coerce.*`, `instanceof`, `intersection`, `record`, `codec`, `templateLiteral`, `exactOptional`, and `custom` with a predicate.\n\n## Required outcome\n- A reader should not come away believing the narrowing is validation-backed for every schema.\n\n## Open questions for the human\n- Is a documented caveat enough, or is it worth constraining the predicate? There is no obviously better return type — `catch` and `custom` are genuinely \"trust the declaration\" schemas — so a note on both the JSDoc and the docs paragraph seems like the proportionate fix. Worth noting this looseness pre-dates the PR; `isValid` is just the first API that turns `input<T>` into a control-flow narrowing, which is what makes it visible.\n````\n\n</details>",
+      "diffHunk": "@@ -105,6 +105,66 @@ export const _safeParseAsync: (_Err: $ZodErrorClass) => $SafeParseAsync = (_Err)\n \n export const safeParseAsync: $SafeParseAsync = /* @__PURE__*/ _safeParseAsync(errors.$ZodRealError);\n \n+// registry mirrors of the compiler's sentinels, so this module never imports the compiler\n+const COMPILE_INVALID = /* @__PURE__ */ Symbol.for(\"zod.compile.invalid\");\n+const COMPILE_FALLBACK = /* @__PURE__ */ Symbol.for(\"zod.compile.fallback\");\n+\n+interface CompiledBag {\n+  fastpass?: (input: unknown) => unknown;\n+  fallbackRun?: (payload: schemas.ParsePayload, ctx: schemas.ParseContextInternal) => unknown;\n+}\n+\n+export type $IsValid = <T extends schemas.$ZodType>(\n+  schema: T,\n+  value: unknown,\n+  _ctx?: schemas.ParseContext<errors.$ZodIssue>\n+) => value is core.input<T>;",
+      "url": "https://github.com/colinhacks/zod/pull/6471#discussion_r3865039332"
+    },
+    {
+      "id": 3867830748,
+      "review": 5036254588,
+      "replyTo": 3865039308,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/parse.ts",
+      "line": null,
+      "originalLine": 163,
+      "commit": "93e41c103078afee266b27c4621fe25eb938a6ec",
+      "originalCommit": "93e41c103078afee266b27c4621fe25eb938a6ec",
+      "at": "2026-08-27T00:43:23Z",
+      "body": "Addressed in 55bcff0c — verified the new `is-valid.test.ts` assertion fails against the pre-fix code in both the `zod` and `compile-mode` projects.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33027456394/job/98372034982) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -105,6 +105,66 @@ export const _safeParseAsync: (_Err: $ZodErrorClass) => $SafeParseAsync = (_Err)\n \n export const safeParseAsync: $SafeParseAsync = /* @__PURE__*/ _safeParseAsync(errors.$ZodRealError);\n \n+// registry mirrors of the compiler's sentinels, so this module never imports the compiler\n+const COMPILE_INVALID = /* @__PURE__ */ Symbol.for(\"zod.compile.invalid\");\n+const COMPILE_FALLBACK = /* @__PURE__ */ Symbol.for(\"zod.compile.fallback\");\n+\n+interface CompiledBag {\n+  fastpass?: (input: unknown) => unknown;\n+  fallbackRun?: (payload: schemas.ParsePayload, ctx: schemas.ParseContextInternal) => unknown;\n+}\n+\n+export type $IsValid = <T extends schemas.$ZodType>(\n+  schema: T,\n+  value: unknown,\n+  _ctx?: schemas.ParseContext<errors.$ZodIssue>\n+) => value is core.input<T>;\n+\n+export const isValid: $IsValid = ((\n+  schema: schemas.$ZodType,\n+  value: unknown,\n+  _ctx?: schemas.ParseContext<errors.$ZodIssue>\n+): boolean => {\n+  const bag = schema._zod.bag as CompiledBag;\n+  let result: unknown;\n+  if (bag.fastpass && bag.fallbackRun) {\n+    if (bag.fastpass(value) !== COMPILE_INVALID) return true;\n+    const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: false } : { async: false };\n+    // skip nested fast paths on the fallback, so user callbacks keep the at-most-twice bound\n+    (ctx as Record<symbol, unknown>)[COMPILE_FALLBACK] = true;\n+    result = bag.fallbackRun({ value, issues: [] }, ctx);\n+  } else {\n+    const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: false } : { async: false };\n+    result = schema._zod.run({ value, issues: [] }, ctx);\n+  }\n+  if (result instanceof Promise) {\n+    throw new core.$ZodAsyncError();\n+  }\n+  return (result as schemas.ParsePayload).issues.length === 0;\n+}) as $IsValid;\n+\n+export type $IsValidAsync = <T extends schemas.$ZodType>(\n+  schema: T,\n+  value: unknown,\n+  _ctx?: schemas.ParseContext<errors.$ZodIssue>\n+) => Promise<boolean>;\n+\n+export const isValidAsync: $IsValidAsync = async (schema, value, _ctx) => {\n+  const bag = schema._zod.bag as CompiledBag;\n+  let result: unknown;\n+  if (bag.fastpass && bag.fallbackRun) {\n+    if (bag.fastpass(value) !== COMPILE_INVALID) return true;\n+    const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: true } : { async: true };\n+    (ctx as Record<symbol, unknown>)[COMPILE_FALLBACK] = true;\n+    result = bag.fallbackRun({ value, issues: [] }, ctx);\n+  } else {\n+    const ctx: schemas.ParseContextInternal = _ctx ? { ..._ctx, async: true } : { async: true };\n+    result = schema._zod.run({ value, issues: [] }, ctx);\n+  }",
+      "url": "https://github.com/colinhacks/zod/pull/6471#discussion_r3867830748"
+    },
+    {
+      "id": 3867836036,
+      "review": 5036260082,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/compile.ts",
+      "line": null,
+      "originalLine": 138,
+      "commit": "55bcff0cb910234b141064c67fa324e336c95d9a",
+      "originalCommit": "55bcff0cb910234b141064c67fa324e336c95d9a",
+      "at": "2026-08-27T00:44:42Z",
+      "body": "The comment calls the bag entry `__fastpass`, but line 140 writes `bag.fastpass` — no underscores. The `__` prefix belongs to `__originalRun`, which is a property on the wrapper function rather than on the bag, so the name here doesn't grep to anything.\n\n```suggestion\n  // Let later compiles of (or through) this run unwrap to the true runtime — both the global shim and repeated z.compile calls rely on this. The bag's fastpass lets the standalone isValid skip the payload and wrapper on the happy path.\n```",
+      "diffHunk": "@@ -135,8 +135,10 @@ export function compile<T extends SomeType>(schema: T): T {\n     if (ctx) (ctx as Record<symbol, unknown>)[FALLBACK_FLAG] = true;\n     return originalRun(payload, ctx);\n   };\n-  // Let later compiles of (or through) this run unwrap to the true runtime — both the global shim and repeated z.compile calls rely on this.\n+  // Let later compiles of (or through) this run unwrap to the true runtime — both the global shim and repeated z.compile calls rely on this. __fastpass lets the standalone isValid skip the payload and wrapper on the happy path.",
+      "url": "https://github.com/colinhacks/zod/pull/6471#discussion_r3867836036"
+    },
+    {
+      "id": 3867850030,
+      "review": 5036278193,
+      "replyTo": 3867836036,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/core/compile.ts",
+      "line": null,
+      "originalLine": 138,
+      "commit": "55bcff0cb910234b141064c67fa324e336c95d9a",
+      "originalCommit": "55bcff0cb910234b141064c67fa324e336c95d9a",
+      "at": "2026-08-27T00:47:52Z",
+      "body": "Addressed in 9894a31 — the comment now names `bag.fastpass`.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/33027946343/job/98373588958) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -135,8 +135,10 @@ export function compile<T extends SomeType>(schema: T): T {\n     if (ctx) (ctx as Record<symbol, unknown>)[FALLBACK_FLAG] = true;\n     return originalRun(payload, ctx);\n   };\n-  // Let later compiles of (or through) this run unwrap to the true runtime — both the global shim and repeated z.compile calls rely on this.\n+  // Let later compiles of (or through) this run unwrap to the true runtime — both the global shim and repeated z.compile calls rely on this. __fastpass lets the standalone isValid skip the payload and wrapper on the happy path.",
+      "url": "https://github.com/colinhacks/zod/pull/6471#discussion_r3867850030"
+    },
+    {
+      "id": 3868968140,
+      "review": 5037509833,
+      "replyTo": 3865039332,
+      "user": {
+        "login": "colinhacks",
+        "type": "User"
+      },
+      "path": "packages/zod/src/v4/core/parse.ts",
+      "line": 121,
+      "originalLine": 121,
+      "commit": "edb071ac447c9d8586f0be84c8be4c961267bbd3",
+      "originalCommit": "93e41c103078afee266b27c4621fe25eb938a6ec",
+      "at": "2026-08-27T05:27:21Z",
+      "body": "Declining this one. The input type has always trusted the declaration for `catch`, `custom` and `transform`, so the looseness predates this PR, and it's still the right predicate for a guard. Leaving the docs sentence as-is.\n",
+      "diffHunk": "@@ -105,6 +105,66 @@ export const _safeParseAsync: (_Err: $ZodErrorClass) => $SafeParseAsync = (_Err)\n \n export const safeParseAsync: $SafeParseAsync = /* @__PURE__*/ _safeParseAsync(errors.$ZodRealError);\n \n+// registry mirrors of the compiler's sentinels, so this module never imports the compiler\n+const COMPILE_INVALID = /* @__PURE__ */ Symbol.for(\"zod.compile.invalid\");\n+const COMPILE_FALLBACK = /* @__PURE__ */ Symbol.for(\"zod.compile.fallback\");\n+\n+interface CompiledBag {\n+  fastpass?: (input: unknown) => unknown;\n+  fallbackRun?: (payload: schemas.ParsePayload, ctx: schemas.ParseContextInternal) => unknown;\n+}\n+\n+export type $IsValid = <T extends schemas.$ZodType>(\n+  schema: T,\n+  value: unknown,\n+  _ctx?: schemas.ParseContext<errors.$ZodIssue>\n+) => value is core.input<T>;",
+      "url": "https://github.com/colinhacks/zod/pull/6471#discussion_r3868968140"
+    }
+  ],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-28T05:26:17Z",
+      "number": 6480,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "perf(v4): validate without building the output, and keep schemas out of dictionary mode",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6480"
+    },
+    {
+      "at": "2026-09-01T01:22:05Z",
+      "number": 5,
+      "repo": "fpcMotif/fenchem-lp",
+      "pull": false,
+      "title": "Upgrade zod 4.4.3 → 4.5.4, audit the six breaking changes, and reject z.compile() on measured evidence",
+      "state": "open",
+      "url": "https://github.com/fpcMotif/fenchem-lp/issues/5"
+    },
+    {
+      "at": "2026-09-09T01:45:17Z",
+      "number": 6546,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "docs: Zod 4.6 announcement post",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6546"
+    }
+  ]
+}

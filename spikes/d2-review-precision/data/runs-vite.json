@@ -1,0 +1,717 @@
+[
+  {
+    "project": "vite",
+    "position": 0,
+    "number": 23247,
+    "url": "https://github.com/vitejs/vite/pull/23247",
+    "subject": "test(bundled-dev): run hmr-ssr spec in bundled dev mode under test-serve-bundled (#23247)",
+    "author": "andrew",
+    "merged": "2026-08-19T11:55:56+00:00",
+    "merge": "bdfadefb207039bdb06d547da67dc81a92fe8750",
+    "head": "f8da06cb91c53c245411f85cb068a2d4d5684fe1",
+    "summary": "bdfadefb207039bdb06d547da67dc81a92fe8750^1 (8413052) → refs/pr/23247 (f8da06c), merge-base 7ec81e2\n2 files changed · 1 symbol changed: 1 modified\n\nM  playground/hmr-ssr/__tests__/hmr-ssr.spec.ts  (ignored)\nM  vitest.config.e2e.ts\n     ~ variable    bundledDevExclude  (body)  · used by 1\n",
+    "mergeBase": "7ec81e23008a8134a2ae326fe8f240375a799221",
+    "files": 2,
+    "stats": {
+      "filesChanged": 2,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 1
+      },
+      "edges": 1,
+      "durationMs": 4892
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 5164
+  },
+  {
+    "project": "vite",
+    "position": 1,
+    "number": 23543,
+    "url": "https://github.com/vitejs/vite/pull/23543",
+    "subject": "fix(create-vite): add router only options for tanstack router/start (#23543)",
+    "author": "Ciarán Curley",
+    "merged": "2026-09-23T14:52:57+08:00",
+    "merge": "f155b62ceabbaaf71abbf59933968787e3961c56",
+    "head": "f14e0ea80addce9f7c768df20b974c54838b8ffc",
+    "summary": "f155b62ceabbaaf71abbf59933968787e3961c56^1 (af7cdf6) → refs/pr/23543 (f14e0ea), merge-base 1544bb1\n1 file changed · 1 symbol changed: 1 modified\n\nM  packages/create-vite/src/index.ts\n     ~ variable    FRAMEWORKS  (body)  · used by 2\n",
+    "mergeBase": "1544bb1b7ac92f775e9d0dea97954c99cc6cbd43",
+    "files": 1,
+    "stats": {
+      "filesChanged": 1,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 4
+      },
+      "edges": 4,
+      "durationMs": 4482
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 4746
+  },
+  {
+    "project": "vite",
+    "position": 2,
+    "number": 23307,
+    "url": "https://github.com/vitejs/vite/pull/23307",
+    "subject": "fix(ssr): rewrite computed key of destructing parameter (#23307)",
+    "author": "翠",
+    "merged": "2026-08-20T12:53:30+09:00",
+    "merge": "9db0b61d4c9c7caad7ea1d9670b637faf2bb6c93",
+    "head": "21a4abd791f7513365038fae6356e60e70a833ac",
+    "summary": "9db0b61d4c9c7caad7ea1d9670b637faf2bb6c93^1 (1fb8afe) → refs/pr/23307 (21a4abd), merge-base 7ec81e2\n2 files changed · 1 symbol changed: 1 modified\n\nM  packages/vite/src/node/ssr/__tests__/ssrTransform.spec.ts\nM  packages/vite/src/node/ssr/ssrTransform.ts\n     ~ function    walk  (body)  · used by 1\n",
+    "mergeBase": "7ec81e23008a8134a2ae326fe8f240375a799221",
+    "files": 2,
+    "stats": {
+      "filesChanged": 2,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 42
+      },
+      "edges": 42,
+      "durationMs": 3958
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 4214
+  },
+  {
+    "project": "vite",
+    "position": 3,
+    "number": 23258,
+    "url": "https://github.com/vitejs/vite/pull/23258",
+    "subject": "refactor: use JSON import attributes instead of readFileSync in constants (#23258)",
+    "author": "btea",
+    "merged": "2026-08-19T13:47:55+08:00",
+    "merge": "1d9fa392a43229241f80630236f8552ce8f7cd0f",
+    "head": "78543d94d95eb0e3995721c98c111f2a4edf7241",
+    "summary": "1d9fa392a43229241f80630236f8552ce8f7cd0f^1 (2804636) → refs/pr/23258 (78543d9), merge-base dcf88bd\n1 file changed · 1 symbol changed: 1 removed\n\nM  packages/vite/src/node/constants.ts\n     - variable    version  · used by 1\n",
+    "mergeBase": "dcf88bd2ad2b1a8845f9029587cc8c825e382d42",
+    "files": 1,
+    "stats": {
+      "filesChanged": 1,
+      "symbols": {
+        "added": 0,
+        "removed": 1,
+        "modified": 0,
+        "context": 3
+      },
+      "edges": 3,
+      "durationMs": 4096
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 4389
+  },
+  {
+    "project": "vite",
+    "position": 4,
+    "number": 23363,
+    "url": "https://github.com/vitejs/vite/pull/23363",
+    "subject": "docs: update development tools list (#23363)",
+    "author": "btea",
+    "merged": "2026-08-26T17:06:27+09:00",
+    "merge": "bfdb22754f792e8f7e40b125659d79ab590d8a7b",
+    "head": "f59576789172e07b4b3d04ce8a0280354177c491",
+    "summary": "bfdb22754f792e8f7e40b125659d79ab590d8a7b^1 (cd810de) → refs/pr/23363 (f595767), merge-base c32e784\n1 file changed · 1 symbol changed: 1 modified\n\nM  docs/_data/acknowledgements.data.ts\n     ~ variable    devToolNames  (body)  · used by 1\n",
+    "mergeBase": "c32e784c95b51f7969cebc7522a5037f14fb6606",
+    "files": 1,
+    "stats": {
+      "filesChanged": 1,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 1
+      },
+      "edges": 1,
+      "durationMs": 4056
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 4354
+  },
+  {
+    "project": "vite",
+    "position": 5,
+    "number": 23147,
+    "url": "https://github.com/vitejs/vite/pull/23147",
+    "subject": "fix(css): don't re-run lightningcss visitor during minify (fix #23146) (#23147)",
+    "author": "Lazizbek Ergashev",
+    "merged": "2026-08-06T21:38:08+09:00",
+    "merge": "de041a79b05a0be965c874592fe2c1505bcd48df",
+    "head": "dd949569c0b4ce85e4878381ea238275d9dcb701",
+    "summary": "de041a79b05a0be965c874592fe2c1505bcd48df^1 (15f0307) → refs/pr/23147 (dd94956), merge-base 89620f0\n4 files changed · 1 symbol changed: 1 modified\n\nM  packages/vite/src/node/plugins/css.ts\n     ~ function    minifyCSS  (body)  · used by 2\nM  playground/css-lightningcss/__tests__/css-lightningcss.spec.ts  (ignored)\nM  playground/css-lightningcss/minify.css  (ignored)\nM  playground/css-lightningcss/vite.config.js  (ignored)\n",
+    "mergeBase": "89620f09afcfef6b35e7bb8660132ab5b4d0cd3b",
+    "files": 4,
+    "stats": {
+      "filesChanged": 4,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 20
+      },
+      "edges": 20,
+      "durationMs": 5290
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 5560
+  },
+  {
+    "project": "vite",
+    "position": 6,
+    "number": 23356,
+    "url": "https://github.com/vitejs/vite/pull/23356",
+    "subject": "fix: resolve the actual package root in findNearestMainPackageData for nested package.json (#23356)",
+    "author": "btea",
+    "merged": "2026-09-04T18:13:10+08:00",
+    "merge": "8492422b8f110625a90c702f42f30784e8cf19dc",
+    "head": "51d9e0cd639464c02ea5fa324984f80948f40923",
+    "summary": "8492422b8f110625a90c702f42f30784e8cf19dc^1 (12e709c) → refs/pr/23356 (51d9e0c), merge-base 493cc7d\n12 files changed · 5 symbols changed: 4 added, 1 modified\n\nA  packages/vite/src/node/__tests__/packages.spec.ts\n     + variable    tempDir  · used by 2\n     + function    createFixtures  · used by 1\n     + variable    projectManifest  · used by 1\nM  packages/vite/src/node/__tests__/plugins/__snapshots__/license.spec.ts.snap  (ignored)\nA  packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/devtools/index.js  (ignored)\nA  packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/devtools/package.json  (ignored)\nA  packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/esm/index.js  (ignored)\nA  packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/build/esm/package.json  (ignored)\nA  packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/license  (ignored)\nA  packages/vite/src/node/__tests__/plugins/fixtures/license/dep-license-type-marker/package.json  (ignored)\nM  packages/vite/src/node/__tests__/plugins/fixtures/license/index.html  (ignored)\nM  packages/vite/src/node/__tests__/plugins/fixtures/license/package.json  (ignored)\nM  packages/vite/src/node/packages.ts\n     + function    isNodeModulesPackageRoot  · used by 1\n     ~ function    findNearestMainPackageData  (body)  · used by 5\nM  pnpm-lock.yaml\n",
+    "mergeBase": "493cc7d43269860fe499a30980d729b0adc93d2c",
+    "files": 12,
+    "stats": {
+      "filesChanged": 12,
+      "symbols": {
+        "added": 4,
+        "removed": 0,
+        "modified": 1,
+        "context": 19
+      },
+      "edges": 28,
+      "durationMs": 4693
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 4950
+  },
+  {
+    "project": "vite",
+    "position": 7,
+    "number": 23291,
+    "url": "https://github.com/vitejs/vite/pull/23291",
+    "subject": "fix(bundled-dev): handle lazy request error (#23291)",
+    "author": "翠",
+    "merged": "2026-08-18T15:51:12+09:00",
+    "merge": "3ba026dade4af56df08815310d3458fa110f5c5c",
+    "head": "9bfddfccf1e462a027c00d8947111a753e1b96d1",
+    "summary": "3ba026dade4af56df08815310d3458fa110f5c5c^1 (02cffa9) → refs/pr/23291 (9bfddfc), merge-base 02cffa9\n2 files changed · 1 symbol changed: 1 modified\n\nM  packages/vite/src/node/server/middlewares/triggerLazyBundling.ts\n     ~ function    triggerLazyBundlingMiddleware  (body)  · used by 1\nM  playground/hmr-full-bundle-mode/__tests__/hmr-full-bundle-mode.spec.ts  (ignored)\n",
+    "mergeBase": "02cffa9e2d38d5d8f12e4043ee9d0f7abb1471e2",
+    "files": 2,
+    "stats": {
+      "filesChanged": 2,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 9
+      },
+      "edges": 9,
+      "durationMs": 3506
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 3783
+  },
+  {
+    "project": "vite",
+    "position": 8,
+    "number": 23135,
+    "url": "https://github.com/vitejs/vite/pull/23135",
+    "subject": "fix: don't mutate the user config when resolving the lib entry from the top-level `input` (#23135)",
+    "author": "Jerry Zhao",
+    "merged": "2026-08-03T12:10:20+09:00",
+    "merge": "b4bf59686a7ac238929e91a6e1708c739b843a2f",
+    "head": "b73b54124c2d578233006fa9f65460c1df8d4a50",
+    "summary": "b4bf59686a7ac238929e91a6e1708c739b843a2f^1 (1331b0b) → refs/pr/23135 (b73b541), merge-base e6b6b16\n2 files changed · 1 symbol changed: 1 modified\n\nM  packages/vite/src/node/__tests__/build.spec.ts\nM  packages/vite/src/node/build.ts\n     ~ function    resolveBuildEnvironmentOptions  (body)  · used by 2\n",
+    "mergeBase": "e6b6b167afa0a80548829d1f24a0712f9194389a",
+    "files": 2,
+    "stats": {
+      "filesChanged": 2,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 12
+      },
+      "edges": 12,
+      "durationMs": 3980
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 4239
+  },
+  {
+    "project": "vite",
+    "position": 9,
+    "number": 23080,
+    "url": "https://github.com/vitejs/vite/pull/23080",
+    "subject": "test(bundled-dev): enable sourcemap playgrounds (#23080)",
+    "author": "andrew",
+    "merged": "2026-08-06T20:24:34+09:00",
+    "merge": "c2155fe4d5c8d25fba3a7366d367e3296ae669fa",
+    "head": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+    "summary": "c2155fe4d5c8d25fba3a7366d367e3296ae669fa^1 (ef02435) → refs/pr/23080 (4ca08c8), merge-base ad55e34\n11 files changed · 1 symbol changed: 1 modified\n\nM  packages/vite/src/node/server/__tests__/pluginContainer.spec.ts\nM  playground/css-sourcemap/__tests__/css-sourcemap.spec.ts  (ignored)\nM  playground/css-sourcemap/__tests__/lightningcss/lightningcss.spec.ts  (ignored)\nM  playground/js-sourcemap/__tests__/js-sourcemap.spec.ts  (ignored)\nM  playground/js-sourcemap/index.html  (ignored)\nM  playground/js-sourcemap/vite.config.js  (ignored)\nD  playground/js-sourcemap/zoo-with-sourcemap-plugin.ts  (ignored)\nD  playground/js-sourcemap/zoo.js  (ignored)\nM  playground/test-utils.ts  (ignored)\nM  playground/worker/__tests__/iife/worker-iife.spec.ts  (ignored)\nM  vitest.config.e2e.ts\n     ~ variable    bundledDevExclude  (body)  · used by 1\n",
+    "mergeBase": "ad55e344217ad86c1572567e10ba5f40002a13a3",
+    "files": 11,
+    "stats": {
+      "filesChanged": 11,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 1
+      },
+      "edges": 1,
+      "durationMs": 3437
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 3725
+  },
+  {
+    "project": "vite",
+    "position": 10,
+    "number": 23566,
+    "url": "https://github.com/vitejs/vite/pull/23566",
+    "subject": "chore(optimizer): add debug log when waiting for dep before init (#23566)",
+    "author": "翠",
+    "merged": "2026-09-24T17:17:31+09:00",
+    "merge": "63567c73ac132e6384fef384e6b9f7e8d5a37fff",
+    "head": "e0cc2455febb8db83de59e705429294e6ee2b44b",
+    "summary": "63567c73ac132e6384fef384e6b9f7e8d5a37fff^1 (e8990c4) → refs/pr/23566 (e0cc245), merge-base f155b62\n3 files changed · 4 symbols changed: 4 modified\n\nFindings\n  ℹ signature-changed  packages/vite/src/node/optimizer/index.ts#DepsOptimizer\n      DepsOptimizer gained required members; code that creates it must add them (7 users, 5 untouched)\n\nM  packages/vite/src/node/optimizer/index.ts\n     ~ interface   DepsOptimizer  (signature)  · used by 7\nM  packages/vite/src/node/optimizer/optimizer.ts\n     ~ function    createDepsOptimizer  (body)  · used by 1\n     ~ function    createExplicitDepsOptimizer  (body)  · used by 1\nM  packages/vite/src/node/plugins/optimizedDeps.ts\n     ~ function    optimizedDepsPlugin  (body)  · used by 1\n",
+    "mergeBase": "f155b62ceabbaaf71abbf59933968787e3961c56",
+    "files": 3,
+    "stats": {
+      "filesChanged": 3,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 4,
+        "context": 60
+      },
+      "edges": 76,
+      "durationMs": 3849
+    },
+    "warnings": [],
+    "findings": [
+      {
+        "key": "vite#23566/f1",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/vite/src/node/optimizer/index.ts#DepsOptimizer",
+        "related": [
+          "packages/vite/src/node/plugins/resolve.ts#ensureVersionQuery",
+          "packages/vite/src/node/plugins/resolve.ts#tryNodeResolve",
+          "packages/vite/src/node/plugins/resolve.ts#tryOptimizedResolve",
+          "packages/vite/src/node/server/environment.ts#DevEnvironment.depsOptimizer",
+          "packages/vite/src/node/server/environment.ts#DevEnvironmentContext",
+          "packages/vite/src/node/optimizer/optimizer.ts#createDepsOptimizer",
+          "packages/vite/src/node/optimizer/optimizer.ts#createExplicitDepsOptimizer"
+        ],
+        "message": "DepsOptimizer gained required members; code that creates it must add them (7 users, 5 untouched)",
+        "data": {
+          "callers": 7,
+          "updated": 2,
+          "untouched": 5,
+          "untouchedElsewhere": 5,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "additive"
+        },
+        "id": "f1",
+        "node": {
+          "id": "packages/vite/src/node/optimizer/index.ts#DepsOptimizer",
+          "kind": "interface",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/vite/src/node/optimizer/index.ts",
+            "lines": [
+              58,
+              73
+            ],
+            "signature": "interface DepsOptimizer"
+          },
+          "head": {
+            "file": "packages/vite/src/node/optimizer/index.ts",
+            "lines": [
+              58,
+              74
+            ],
+            "signature": "interface DepsOptimizer"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/vite/src/node/plugins/resolve.ts#ensureVersionQuery",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": false,
+            "head": {
+              "file": "packages/vite/src/node/plugins/resolve.ts",
+              "lines": [
+                531,
+                557
+              ],
+              "signature": "ensureVersionQuery(resolved: string, id: string, options: InternalResolveOptions, depsOptimizer?: DepsOptimizer): string"
+            }
+          },
+          {
+            "id": "packages/vite/src/node/plugins/resolve.ts#tryNodeResolve",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/vite/src/node/plugins/resolve.ts",
+              "lines": [
+                696,
+                855
+              ],
+              "signature": "tryNodeResolve(id: string, importer: string | null | undefined, options: InternalResolveOptions, depsOptimizer?: DepsOptimizer, externalize?: boolean): PartialResolvedId | undefined"
+            }
+          },
+          {
+            "id": "packages/vite/src/node/plugins/resolve.ts#tryOptimizedResolve",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/vite/src/node/plugins/resolve.ts",
+              "lines": [
+                857,
+                910
+              ],
+              "signature": "async tryOptimizedResolve(depsOptimizer: DepsOptimizer, id: string, importer?: string, preserveSymlinks?: boolean, packageCache?: PackageCache): Promise<string | undefined>"
+            }
+          },
+          {
+            "id": "packages/vite/src/node/server/environment.ts#DevEnvironment.depsOptimizer",
+            "kind": "property",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/vite/src/node/server/environment.ts",
+              "lines": [
+                60,
+                60
+              ],
+              "signature": "depsOptimizer?: DepsOptimizer"
+            }
+          },
+          {
+            "id": "packages/vite/src/node/server/environment.ts#DevEnvironmentContext",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/vite/src/node/server/environment.ts",
+              "lines": [
+                42,
+                54
+              ],
+              "signature": "interface DevEnvironmentContext"
+            }
+          },
+          {
+            "id": "packages/vite/src/node/optimizer/optimizer.ts#createDepsOptimizer",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/vite/src/node/optimizer/optimizer.ts",
+              "lines": [
+                40,
+                751
+              ],
+              "signature": "createDepsOptimizer(environment: DevEnvironment): DepsOptimizer"
+            },
+            "head": {
+              "file": "packages/vite/src/node/optimizer/optimizer.ts",
+              "lines": [
+                40,
+                751
+              ],
+              "signature": "createDepsOptimizer(environment: DevEnvironment): DepsOptimizer"
+            }
+          },
+          {
+            "id": "packages/vite/src/node/optimizer/optimizer.ts#createExplicitDepsOptimizer",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/vite/src/node/optimizer/optimizer.ts",
+              "lines": [
+                753,
+                786
+              ],
+              "signature": "createExplicitDepsOptimizer(environment: DevEnvironment): DepsOptimizer"
+            },
+            "head": {
+              "file": "packages/vite/src/node/optimizer/optimizer.ts",
+              "lines": [
+                753,
+                787
+              ],
+              "signature": "createExplicitDepsOptimizer(environment: DevEnvironment): DepsOptimizer"
+            }
+          }
+        ]
+      }
+    ],
+    "ms": 4133
+  },
+  {
+    "project": "vite",
+    "position": 11,
+    "number": 23339,
+    "url": "https://github.com/vitejs/vite/pull/23339",
+    "subject": "test(css): fix css async order (#23339)",
+    "author": "翠",
+    "merged": "2026-08-24T11:38:43+09:00",
+    "merge": "8b3b4894afd98a8807ef985b601410d40b795d79",
+    "head": "55e665d0556b9a5e1d5fdd46c68c1752bfc8b45f",
+    "summary": "8b3b4894afd98a8807ef985b601410d40b795d79^1 (5fdfd26) → refs/pr/23339 (55e665d), merge-base 5fdfd26\n1 file changed · 0 symbols changed\n\nM  playground/css/async/async-3.js  (ignored)\n",
+    "mergeBase": "5fdfd26ed10ffd08928a8d13b71650f3444221ca",
+    "files": 1,
+    "stats": {
+      "filesChanged": 1,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 0,
+        "context": 0
+      },
+      "edges": 0,
+      "durationMs": 1017
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 1251
+  },
+  {
+    "project": "vite",
+    "position": 12,
+    "number": 23042,
+    "url": "https://github.com/vitejs/vite/pull/23042",
+    "subject": "feat(cli): support naming the CPU profile via --profile [name] (#23042)",
+    "author": "Jerry Zhao",
+    "merged": "2026-08-21T18:07:57+09:00",
+    "merge": "a500deeb6f52d93ca501a0fc612a5392b939f2f5",
+    "head": "1e2496d8ab428bcf5815a263fa703fc38cf908d1",
+    "summary": "a500deeb6f52d93ca501a0fc612a5392b939f2f5^1 (67a6807) → refs/pr/23042 (1e2496d), merge-base 2ad9ec2\n5 files changed · 4 symbols changed: 4 modified\n\nFindings\n  ℹ signature-changed  packages/vite/src/node/cli.ts#GlobalCLIOptions\n      GlobalCLIOptions changed its signature compatibly; existing users keep working (2 users, 0 untouched)\n\nM  docs/guide/cli.md\nM  docs/guide/troubleshooting.md\nM  packages/vite/bin/vite.js\n     ~ variable    profileIndex  (body)  · used by 1\nM  packages/vite/src/node/cli.ts\n     ~ interface   GlobalCLIOptions  (signature)  · used by 2\n     ~ function    stopProfiler  (body)  · used by 1\n     ~ function    cleanGlobalCLIOptions  (body)  · used by 1\nM  packages/vite/src/types/shims.d.ts\n",
+    "mergeBase": "2ad9ec262a7bd8e30788df537eb217abe9af82ab",
+    "files": 5,
+    "stats": {
+      "filesChanged": 5,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 4,
+        "context": 17
+      },
+      "edges": 20,
+      "durationMs": 4627
+    },
+    "warnings": [],
+    "findings": [
+      {
+        "key": "vite#23042/f1",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/vite/src/node/cli.ts#GlobalCLIOptions",
+        "related": [
+          "packages/vite/src/node/cli.ts#(module)",
+          "packages/vite/src/node/cli.ts#cleanGlobalCLIOptions"
+        ],
+        "message": "GlobalCLIOptions changed its signature compatibly; existing users keep working (2 users, 0 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 2,
+          "untouched": 0,
+          "untouchedElsewhere": 0,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f1",
+        "node": {
+          "id": "packages/vite/src/node/cli.ts#GlobalCLIOptions",
+          "kind": "interface",
+          "status": "modified",
+          "exported": false,
+          "base": {
+            "file": "packages/vite/src/node/cli.ts",
+            "lines": [
+              39,
+              56
+            ],
+            "signature": "interface GlobalCLIOptions"
+          },
+          "head": {
+            "file": "packages/vite/src/node/cli.ts",
+            "lines": [
+              39,
+              57
+            ],
+            "signature": "interface GlobalCLIOptions"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/vite/src/node/cli.ts#(module)",
+            "kind": "module",
+            "status": "unchanged",
+            "exported": false
+          },
+          {
+            "id": "packages/vite/src/node/cli.ts#cleanGlobalCLIOptions",
+            "kind": "function",
+            "status": "modified",
+            "exported": false,
+            "base": {
+              "file": "packages/vite/src/node/cli.ts",
+              "lines": [
+                105,
+                142
+              ],
+              "signature": "cleanGlobalCLIOptions<Options extends GlobalCLIOptions>(options: Options): Omit<Options, keyof GlobalCLIOptions>"
+            },
+            "head": {
+              "file": "packages/vite/src/node/cli.ts",
+              "lines": [
+                111,
+                149
+              ],
+              "signature": "cleanGlobalCLIOptions<Options extends GlobalCLIOptions>(options: Options): Omit<Options, keyof GlobalCLIOptions>"
+            }
+          }
+        ]
+      }
+    ],
+    "ms": 4889
+  },
+  {
+    "project": "vite",
+    "position": 13,
+    "number": 23207,
+    "url": "https://github.com/vitejs/vite/pull/23207",
+    "subject": "fix(optimizer): close custom extension analysis bundles (#23207)",
+    "author": "Leo",
+    "merged": "2026-08-11T10:50:06+08:00",
+    "merge": "8fb76752836f61224d3095b502fa237b478a06b2",
+    "head": "0fea04474872257d8bf91d2e7587657dc7f77924",
+    "summary": "8fb76752836f61224d3095b502fa237b478a06b2^1 (a0cfcf7) → refs/pr/23207 (0fea044), merge-base 57fea00\n2 files changed · 3 symbols changed: 2 added, 1 modified\n\nA  packages/vite/src/node/__tests__/optimizer/customExtensionBundleClose.spec.ts\n     + variable    servers  · used by 1\n     + variable    root  · used by 1\nM  packages/vite/src/node/optimizer/index.ts\n     ~ function    extractExportsData  (body)  · used by 4\n",
+    "mergeBase": "57fea001d154e7dd8d5d74d3082731f1dcfd31be",
+    "files": 2,
+    "stats": {
+      "filesChanged": 2,
+      "symbols": {
+        "added": 2,
+        "removed": 0,
+        "modified": 1,
+        "context": 28
+      },
+      "edges": 30,
+      "durationMs": 4176
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 4441
+  },
+  {
+    "project": "vite",
+    "position": 14,
+    "number": 23172,
+    "url": "https://github.com/vitejs/vite/pull/23172",
+    "subject": "refactor: remove HmrUrl concept (#23172)",
+    "author": "翠",
+    "merged": "2026-08-21T18:07:38+09:00",
+    "merge": "67a680767317f8e2cb28b6b0500192f993a567cf",
+    "head": "796cd47ba8c13e3ad08ce573f52f81e113ffc6af",
+    "summary": "67a680767317f8e2cb28b6b0500192f993a567cf^1 (6162968) → refs/pr/23172 (796cd47), merge-base 6162968\n7 files changed · 7 symbols changed: 1 added, 1 removed, 5 modified\n\nM  packages/vite/src/client/client.ts\n     + function    wrapIdIfNeeded  · used by 1\n     ~ variable    hmrClient  (body)  · used by 2\nM  packages/vite/src/module-runner/hmrHandler.ts\n     ~ function    createHMRHandlerForRunner  (body)  · used by 1\nM  packages/vite/src/node/plugins/importAnalysis.ts\n     ~ function    importAnalysisPlugin  (body)  · used by 1\nM  packages/vite/src/node/server/hmr.ts\n     ~ function    updateModules  (body)  · used by 4\n     - function    normalizeHmrUrl  · used by 2\nM  packages/vite/src/node/server/transformRequest.ts\n     ~ function    handleModuleSoftInvalidation  (body)  · used by 1\nM  packages/vite/types/customEvent.d.ts\nM  packages/vite/types/hmrPayload.d.ts\n",
+    "mergeBase": "616296895bd135386d35069a479a5f188c7de298",
+    "files": 7,
+    "stats": {
+      "filesChanged": 7,
+      "symbols": {
+        "added": 1,
+        "removed": 1,
+        "modified": 5,
+        "context": 163
+      },
+      "edges": 200,
+      "durationMs": 4799
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 5093
+  },
+  {
+    "project": "vite",
+    "position": 15,
+    "number": 23554,
+    "url": "https://github.com/vitejs/vite/pull/23554",
+    "subject": "refactor: replace `find` with `some` (#23554)",
+    "author": "btea",
+    "merged": "2026-09-23T14:51:13+08:00",
+    "merge": "af7cdf6964f124f58d66037e808fe687654948e2",
+    "head": "6b76b95244b5ab3e94d919ce3705d8cd0fb6fef7",
+    "summary": "af7cdf6964f124f58d66037e808fe687654948e2^1 (1544bb1) → refs/pr/23554 (6b76b95), merge-base e9078f8\n1 file changed · 1 symbol changed: 1 modified\n\nM  packages/vite/src/node/plugins/preAlias.ts\n     ~ function    preAliasPlugin  (body)  · used by 1\n",
+    "mergeBase": "e9078f865cdff6bed77cd729214a7e2868f126b5",
+    "files": 1,
+    "stats": {
+      "filesChanged": 1,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 22
+      },
+      "edges": 22,
+      "durationMs": 3671
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 3945
+  },
+  {
+    "project": "vite",
+    "position": 16,
+    "number": 23372,
+    "url": "https://github.com/vitejs/vite/pull/23372",
+    "subject": "chore: remove useless files (#23372)",
+    "author": "btea",
+    "merged": "2026-08-26T17:13:26+09:00",
+    "merge": "493cc7d43269860fe499a30980d729b0adc93d2c",
+    "head": "5f2b3d7a4d0ef05f9fd5fb8788b016845d7b90f5",
+    "summary": "493cc7d43269860fe499a30980d729b0adc93d2c^1 (90d08f0) → refs/pr/23372 (5f2b3d7), merge-base cd810de\n3 files changed · 0 symbols changed\n\nD  docs/.vitepress/inlined-scripts/banner.d.ts\nD  docs/.vitepress/inlined-scripts/banner.js\nD  docs/.vitepress/theme/components/SponsorBanner.vue\n",
+    "mergeBase": "cd810de10e32c670f0af5036b1ca6aca6c91cbd6",
+    "files": 3,
+    "stats": {
+      "filesChanged": 3,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 0,
+        "context": 0
+      },
+      "edges": 0,
+      "durationMs": 2809
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 3080
+  }
+]
