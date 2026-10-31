@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test, type Locator, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page, type Route } from '@playwright/test';
 import { serveCommits, type RunningCommits } from './symbiote.js';
 
 // Checking out from the commits page (V11). Each test gets its own repository: checkouts change
@@ -43,14 +43,40 @@ const choose = async (page: Page, subject: string, name: string) => {
 const names = (entries: Locator) =>
   entries.evaluateAll((items) => items.map((item) => item.getAttribute('aria-label')));
 
-test('offers what each row can check out, in a submenu', async ({ page }) => {
+test("a row's menu opens without waiting for the branch reviews (fix/git-right-click-on-commit)", async ({
+  page,
+}) => {
+  // The menu read every branch review before it opened: 1.5 s with 113 reviewed branches. Its
+  // Review entry is gone, and the menu opens while a read of the reviews is still held here.
   await page.goto(`${symbiote.url}git`);
-  // The menu holds "Check out" (and "Review", V15: the row has a branch); targets open on hover.
-  // Near the row's left end, with room on the right for the submenu.
+  await expect(row(page, 'Try a wobble')).toBeVisible();
+  const held: Route[] = [];
+  await page.route('**/api/reviews', (route) => {
+    held.push(route);
+  });
   await row(page, 'Try a wobble').click({ button: 'right', position: { x: 120, y: 10 } });
   await expect(page.getByRole('menuitem')).toHaveText([
     'Check out',
-    'Review',
+    'Start a workspace here',
+    'New branch here…',
+    'New tag here…',
+    'Cherry-pick onto main…',
+    'Revert…',
+    'Reset main to here…',
+    'Merge into main',
+    'Rebase main onto',
+  ]);
+  await page.unroute('**/api/reviews');
+  for (const route of held) await route.continue();
+});
+
+test('offers what each row can check out, in a submenu', async ({ page }) => {
+  await page.goto(`${symbiote.url}git`);
+  // The menu holds "Check out"; targets open on hover. Near the row's left end, with room on the
+  // right for the submenu.
+  await row(page, 'Try a wobble').click({ button: 'right', position: { x: 120, y: 10 } });
+  await expect(page.getByRole('menuitem')).toHaveText([
+    'Check out',
     'Start a workspace here',
     'New branch here…',
     'New tag here…',
