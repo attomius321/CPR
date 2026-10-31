@@ -6,9 +6,10 @@
 // decision 239), and opens it in a terminal. Since V50 a conversation can start with no question,
 // its instructions its system prompt and its terminal taking the first.
 import { readFile, rm } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import {
   EFFORT_LEVEL,
+  mainWorktree,
   MODEL_ID,
   type AgentEfforts,
   type AgentKind,
@@ -48,6 +49,8 @@ import {
 } from './agent-levels.js';
 import { writeFileWhole } from './file-write.js';
 import { appendActivity, readNucleusActivity, rotateActivity } from './nucleus-activity.js';
+import { exportActivity, type ActivityExport, type ExportFormat } from './activity-export.js';
+import { secretsOf } from './nucleus-record.js';
 import { codexLines, rolloutTokens, seenOf } from './nucleus-codex.js';
 
 /** Longest question: it goes on Claude Code's command line with Nucleus's prompt (8,000 at most). */
@@ -204,6 +207,14 @@ export interface PageAgent {
   setModel(change: ModelChange): Promise<AgentLevels>;
   /** What it did (NU2, decision 604): its activity file's newest megabyte; Nucleus's only. */
   activity?: () => Promise<NucleusActivity>;
+  /**
+   * What it did, taken out (V84): both its activity files whole, as Markdown or JSON Lines,
+   * redacted; `maxBytes` as a workspace's export takes it. Nucleus's only.
+   */
+  exportActivity?: (
+    format: ExportFormat,
+    options?: { maxBytes?: number },
+  ) => Promise<ActivityExport>;
   /** Records a line of Symbiote's own (its tools, a Confirm), redacted; Nucleus's only. */
   record?: (line: NucleusActivityLine) => void;
   /**
@@ -1023,10 +1034,29 @@ export function pageAgent(
     return readNucleusActivity(folder(where));
   }
 
+  /** Its activity taken out (V84): both files whole, after what is being written. */
+  async function exportOwn(
+    format: ExportFormat,
+    { maxBytes }: { maxBytes?: number } = {},
+  ): Promise<ActivityExport> {
+    const where = await place();
+    await writing;
+    const { lines } = await readNucleusActivity(folder(where), Number.MAX_SAFE_INTEGER);
+    return exportActivity(
+      { of: 'nucleus', repository: basename(mainWorktree(repo)), lines },
+      format,
+      { now: now(), secrets: secretsOf(env), ...(maxBytes ? { maxBytes } : {}) },
+    );
+  }
+
   return {
     state,
     ...(spec.activity
-      ? { activity, record: (line: NucleusActivityLine) => void write([line]) }
+      ? {
+          activity,
+          exportActivity: exportOwn,
+          record: (line: NucleusActivityLine) => void write([line]),
+        }
       : {}),
 
     async close() {

@@ -12,6 +12,7 @@ explains the terms this page uses: workspace, merger, verdict, Nucleus and the o
 | `symbiote diff <base> [head]` | Compares `head` (default `HEAD`) with `base` and prints the changed symbols and the findings. |
 | `symbiote pr [<number>]` | Opens a GitHub pull request or a GitLab merge request for review. `symbiote mr` is the same command. |
 | `symbiote merge <branch>` | Merges the commit that your review of `branch` approved, as **Merge into** does in the app, and prints each step. |
+| `symbiote activity [<branch>]` | Prints a workspace's activity as one Markdown file, as its **Activity** tab shows it, for you or an agent to read. Without a branch, the checked-out branch's workspace: an agent runs it in its worktree. With `--nucleus`, Nucleus's activity. No running `symbiote view` is needed. See [An exported activity](#an-exported-activity). |
 | `symbiote mcp` | Gives an agent of yours Symbiote's tools. See [Symbiote's tools for your own agent](#symbiotes-tools-for-your-own-agent). |
 | `symbiote app install` | Adds Symbiote's window to your desktop's apps, on Linux and WSL. `symbiote app uninstall` removes it. |
 | `symbiote-nexus` | Opens Symbiote nexus: every `symbiote view` running on this machine, as tabs in one window, and your PC's folders under them, to start one in any repository. It runs until you press Ctrl+C or close its window. Closing it stops no Symbiote, not even the ones it started. `./install.sh` adds it to `~/.local/bin`. |
@@ -49,12 +50,44 @@ M  src/math.ts
 
 The [review guide](../guide/review-and-ci.md#findings) explains each finding.
 
+## An exported activity
+
+**Export**, on any **Activity** tab, `symbiote activity` and the `activity` tool give the same
+file. It holds the whole record, not only the newest megabyte that the tab reads. Values of your
+environment variables named like secrets, and tokens by their shape, are replaced with
+`[redacted]`.
+
+The Markdown file starts with front matter: the branch, the agent, its model and effort, the
+first and last times, the time zone, the counts (messages, calls, failed calls, commits), and
+`complete: false` with a `missing` list when part of the activity could not be read, for
+example calls made before Symbiote recorded them. The brief follows, then the timeline, a
+heading for each day:
+
+- Symbiote's prompt, your messages, the agent's reports and questions, and the review's verdict
+  are headings, with their text quoted in full.
+- Each call is one line: its time, the tool, what it worked on, its exit code and how long it
+  took. A failed call has its command and the end of its output under it.
+- Sessions starting and ending, and commits, are lines at their times.
+- Nucleus's file has a heading for each conversation. It also shows what its gate refused, the
+  pages it read, a search's results, Symbiote's record of each tool call, and each **Confirm**
+  with your answer.
+
+With `--format jsonl` (**Download JSON Lines**), the file is one JSON object a line: a header
+(`"record": "export"`), then every line as Symbiote recorded it, oldest first. Each line's
+`record` names where it came from: `workspace`, `thread`, `tool`, `commit`, `verdict` or
+`nucleus`. Use it with a script, for example `jq`.
+
+The `activity` tool gives the Markdown, with the newest messages that fit in 60 KB. The file
+says how many it left out, and `symbiote activity` gives all of it.
+
 ## Options
 
 | Option | Commands | What it does |
 |---|---|---|
 | `--json` | diff, pr | Prints the graph JSON instead of the summary. The [graph schema](../graph-schema.md) describes it. |
-| `--out <file>` | diff, pr | Also writes the graph JSON to a file. |
+| `--out <file>` | diff, pr, activity | Also writes the graph JSON to a file. `activity` writes its export to the file instead, and prints the file's path. |
+| `--format <format>` | activity | `markdown` (default) or `jsonl`. |
+| `--nucleus` | activity | Exports Nucleus's activity instead of a workspace's. |
 | `--codequality <file>` | diff, pr | Also writes the findings as a GitLab Code Quality report. |
 | `--fail-on <level>` | diff, pr | Exits with 1 if a finding is at or above the level you give: `error`, `warning` or `info`. |
 | `--since <rev>` | diff, view, pr | Marks each changed symbol as new, updated or the same as in an earlier head of the change, for example before a push or a rebase. |
@@ -149,6 +182,7 @@ agent finds on your `PATH`. If `symbiote` is only an alias, write the full comma
 |---|---|---|
 | `overview` | What needs you: workspaces that wait or are ready, merges that wait | |
 | `workspaces`, `workspace`, `thread` | The workspaces; one workspace with its brief, its worktree's folder, commits and files; its agent's thread | |
+| `activity` | A workspace's activity (or, with `nucleus: true`, Nucleus's) as [an exported activity](#an-exported-activity): its newest messages within 60 KB | |
 | `start_options`, `start_workspace` | What a start takes here; a start. Its **Confirm** names the model and the effort it starts with | Yes, to start |
 | `suggest_settings` | Suggested settings for a brief, as **Suggest settings** on the Start page: a model, an effort level, plan first and why. It runs one turn of the agent's small model and starts nothing | |
 | `reply`, `stop_agent`, `restart_agent` | Send a message to a workspace's agent; stop it; start it again | Yes, to start again |

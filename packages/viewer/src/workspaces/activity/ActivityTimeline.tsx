@@ -1,5 +1,5 @@
 // The Activity tab's timeline (V73; shared with Nucleus's since NU2): the bar (phases and calls,
-// or lines recorded; Timeline or Raw events), the live strip, the groups on the rail with a day's
+// or lines recorded; Export, V84; Timeline or Raw events), the live strip, the groups on the rail with a day's
 // row where the day changes, or the raw stream. Groups keep their keys, so an open one stays open;
 // those a read adds fade in; the view follows the end while it is there.
 import {
@@ -17,6 +17,7 @@ import type { LiveActivity } from './live.js';
 import { GroupRow } from './GroupRow.js';
 import { LiveStrip } from './LiveStrip.js';
 import { RawStream } from './RawStream.js';
+import { ExportMenu } from './ExportMenu.js';
 
 /** How near the end counts as at it: the view follows new rows only from there. */
 const END_PX = 24;
@@ -52,6 +53,7 @@ export function ActivityTimeline({
   ready,
   cut,
   after,
+  exportFrom,
 }: {
   events: readonly ActivityEvent[];
   groups: readonly ActivityGroup[];
@@ -66,6 +68,8 @@ export function ActivityTimeline({
   cut?: boolean;
   /** A note after the rows. */
   after?: ReactNode;
+  /** Where this activity is exported (V84), without its format; no Export without it. */
+  exportFrom?: string;
 }) {
   const [mode, setMode] = useState<Mode>('timeline');
   const [open, setOpen] = useState<ReadonlySet<string>>(() => new Set());
@@ -120,21 +124,24 @@ export function ActivityTimeline({
             ? plural(lines.length, 'line recorded', 'lines recorded')
             : `${plural(phases.length, 'phase', 'phases')} · ${plural(calls, 'call', 'calls')}`}
         </span>
-        <span className="scopes" role="group" aria-label="Show">
-          {(['timeline', 'raw'] as const).map((choice) => (
-            <button
-              key={choice}
-              type="button"
-              className={mode === choice ? 'scope active' : 'scope'}
-              aria-pressed={mode === choice}
-              onClick={() => {
-                atEnd.current = true;
-                setMode(choice);
-              }}
-            >
-              {choice === 'timeline' ? 'Timeline' : 'Raw events'}
-            </button>
-          ))}
+        <span className="activity-bar-end">
+          {exportFrom && <ExportMenu from={exportFrom} />}
+          <span className="scopes" role="group" aria-label="Show">
+            {(['timeline', 'raw'] as const).map((choice) => (
+              <button
+                key={choice}
+                type="button"
+                className={mode === choice ? 'scope active' : 'scope'}
+                aria-pressed={mode === choice}
+                onClick={() => {
+                  atEnd.current = true;
+                  setMode(choice);
+                }}
+              >
+                {choice === 'timeline' ? 'Timeline' : 'Raw events'}
+              </button>
+            ))}
+          </span>
         </span>
       </div>
       {live && <LiveStrip live={live} />}

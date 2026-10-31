@@ -80,6 +80,42 @@
   white-space: nowrap;
 }
 
+/* Export (V84) before Timeline and Raw events; its menu under it, at its right. */
+.activity-bar-end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.activity-export-button {
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
+/* Its menu opens from its left edge: Timeline and Raw events are at its right. */
+.activity-export .more-menu {
+  right: auto;
+  left: 0;
+}
+
+/* On a phone's width, the icon alone; its word stays its name. */
+@media (max-width: 520px) {
+  .activity-export-button {
+    width: 32px;
+    padding: 0;
+  }
+
+  .activity-export-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
 .activity-counts {
   min-width: 0;
   overflow: hidden;

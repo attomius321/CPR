@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
@@ -182,6 +182,16 @@ test('History, under Monitor: the cleaned-up workspaces, the picked one read onl
   await expect(picked(page, OLD).locator('.thread')).toContainText('Scout now starts at the set');
   await picked(page, OLD).getByRole('tab', { name: 'Activity' }).click();
   await expect(picked(page, OLD).locator('.activity-counts')).toContainText('1 call');
+  // Exported from History too (V84): its record says when it finished.
+  await picked(page, OLD).getByRole('button', { name: 'Export' }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('menuitem', { name: 'Download Markdown' }).click(),
+  ]);
+  const exported = readFileSync(await download.path(), 'utf8');
+  expect(exported).toContain(`branch: "${OLD}"`);
+  expect(exported).toMatch(/\nfinished: "/);
+  expect(exported).toContain('calls: 1');
 
   // A finished workspace's old address moves here.
   await page.goto(`${symbiote.url}?branch=${encodeURIComponent(HALF)}`);

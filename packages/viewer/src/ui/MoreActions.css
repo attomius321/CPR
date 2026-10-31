@@ -29,8 +29,24 @@
   cursor: pointer;
 }
 
+/* A link in a menu (V84: a download) is drawn as its buttons are. */
+.more-menu a {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--text);
+  font-size: var(--size-small);
+  font-weight: 450;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
 .more-menu button:hover,
-.more-menu button:focus-visible {
+.more-menu button:focus-visible,
+.more-menu a:hover,
+.more-menu a:focus-visible {
   outline: none;
   background: var(--menu-hover);
 }

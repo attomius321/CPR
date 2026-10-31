@@ -154,6 +154,22 @@ test('records a conversation and shows it on the Activity tab, live and after a 
   await page.goto(`${url}nucleus?activity`);
   await expect(tab(page, 'Activity')).toHaveAttribute('aria-selected', 'true');
   await shown();
+
+  // Exported as a workspace's is (V84): its message, the gate's refusal, the Confirm declined.
+  await nucleusPage(page).getByRole('button', { name: 'Export' }).click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('menuitem', { name: 'Download Markdown' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^activity-.+-nucleus-\d{4}-\d{2}-\d{2}\.md$/);
+  const text = readFileSync(await download.path(), 'utf8');
+  expect(text).toMatch(/^---\nsymbiote-activity: 1\nof: nucleus\n/);
+  expect(text).toContain('> What changed lately?');
+  expect(text).toMatch(
+    /Bash · `curl -sS https:\/\/example\.com` · \*\*refused by its gate\*\*: .*curl: only git runs/,
+  );
+  expect(text).toContain('Symbiote · `start_workspace` · declined by the person');
+  expect(text).toContain('Confirm declined after');
 });
 
 test('says nothing is recorded yet, and the terminal is one tab away', async ({ page }) => {

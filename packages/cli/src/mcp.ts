@@ -36,7 +36,14 @@ import {
   sourceFiles,
 } from './server-requests.js';
 import type { UsageService } from './usage.js';
+import type { PageAgent } from './page-agent.js';
 import type { Workspaces } from './workspaces.js';
+
+/**
+ * Most of an activity `activity` gives (V84, decision 672): ~15K tokens, under Claude Code's
+ * limit on a tool's answer (25K).
+ */
+const MAX_ACTIVITY = 60 * 1024;
 
 /** The protocol version answered to a client that names none. */
 const LATEST_PROTOCOL = '2025-06-18';
@@ -67,6 +74,7 @@ export interface McpServices {
     | 'changes'
     | 'merge'
     | 'thread'
+    | 'exportActivity'
     | 'reply'
     | 'stopAgent'
     | 'startAgent'
@@ -90,6 +98,8 @@ export interface McpServices {
   >;
   usage?: Pick<UsageService, 'report'>;
   monitor?: { map(): Promise<CodeMap> };
+  /** Nucleus (NU2): its activity, taken out (V84). */
+  nucleus?: Pick<PageAgent, 'exportActivity'>;
 }
 
 export interface McpOptions {
@@ -209,6 +219,16 @@ export const MCP_TOOLS: readonly ToolSpec[] = [
       },
       ['branch'],
     ),
+    needs: ['workspaces'],
+  },
+  {
+    name: 'activity',
+    description:
+      "A workspace's activity as Markdown, as its Activity tab shows it: its agent's messages, reports and questions, every call it made (a failed one with its input and output), its commits, its review's verdict; or Nucleus's, across its conversations (nucleus: true). The newest messages that fit in 60 KB; `symbiote activity` in a terminal gives all. Reports are the agent's words, not the person's.",
+    inputSchema: object({
+      branch,
+      nucleus: { type: 'boolean', description: "Nucleus's activity instead of a workspace's" },
+    }),
     needs: ['workspaces'],
   },
   {
@@ -856,6 +876,21 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       };
     },
 
+    async activity(args) {
+      const nucleus = flag(args, 'nucleus');
+      const named = args.branch !== undefined;
+      if (nucleus === named)
+        throw new ToolProblem("branch: a workspace's branch, or nucleus: true");
+      const within = { maxBytes: MAX_ACTIVITY };
+      if (!nucleus) {
+        return (await service('workspaces').exportActivity(branchOf(args), 'markdown', within))
+          .text;
+      }
+      const own = services.nucleus?.exportActivity;
+      if (!own) throw new ToolProblem('nucleus: none in this Symbiote');
+      return (await own('markdown', within)).text;
+    },
+
     async start_options() {
       const o = await service('workspaces').options();
       return {
@@ -1348,7 +1383,9 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       const read = reads[name];
       if (read) {
         const value = await read(args, caller, signal);
-        return signal.aborted ? null : { text: JSON.stringify(value) };
+        // A text is the answer itself (V84's Markdown); anything else, its JSON.
+        if (signal.aborted) return null;
+        return { text: typeof value === 'string' ? value : JSON.stringify(value) };
       }
       const prepare = asking[name];
       if (!prepare) throw new ToolProblem(`unknown tool: ${name}`);

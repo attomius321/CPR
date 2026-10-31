@@ -27,6 +27,7 @@ import {
 import type { Review } from '@symbiote/forge';
 import { silentLog, type Log } from '@symbiote/log';
 import type { CodeMap } from '@symbiote/monitor';
+import { EXPORT_FORMATS, type ActivityExport, type ExportFormat } from './activity-export.js';
 import { pairKey, type Diffs, type Pair } from './diffs.js';
 import {
   count,
@@ -740,6 +741,15 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/workspaces/activity') {
       return ofBranch(req, res, url, (branch) => workspaces.tools(branch));
     }
+    // Its activity taken out (V84): a file to save.
+    if (url.pathname === '/api/workspaces/activity/export') {
+      if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+      const branch = url.searchParams.get('branch');
+      if (!branch) return send(res, 400, "branch: a workspace's branch");
+      const format = exportFormat(url);
+      if (!format) return send(res, 400, FORMAT_WORDS);
+      return exported(res, () => workspaces.exportActivity(branch, format));
+    }
     if (url.pathname === '/api/workspaces/reply') {
       return written(req, res, parseWorkspaceReply, (request) =>
         oneAtATime(res, 'a message is being sent', () => workspaces.reply(request)),
@@ -809,8 +819,15 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       );
     }
     // What Nucleus did (NU2): its activity file's newest megabyte.
-    const { activity } = agent;
+    const { activity, exportActivity } = agent;
     if (url.pathname === `${api}/activity` && activity) return read(req, res, () => activity());
+    // Taken out (V84): a file to save.
+    if (url.pathname === `${api}/activity/export` && exportActivity) {
+      if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+      const format = exportFormat(url);
+      if (!format) return send(res, 400, FORMAT_WORDS);
+      return exported(res, () => exportActivity(format));
+    }
     if (url.pathname === `${api}/efforts`) return read(req, res, () => agent.efforts());
     if (url.pathname === `${api}/effort`) {
       return written(req, res, parseEffortChange, (change) =>
@@ -1658,8 +1675,26 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
 
   /** The answer, or a workspace's, a merge's or a setting's refusal with its status and words. */
   async function answer(res: ServerResponse, task: () => Promise<unknown>): Promise<void> {
+    return refusals(res, async () => json(res, 200, await task()));
+  }
+
+  /** An activity taken out (V84), as a file to save: its type, its name, never cached. */
+  async function exported(res: ServerResponse, task: () => Promise<ActivityExport>): Promise<void> {
+    return refusals(res, async () => {
+      const { text, name, type } = await task();
+      res.writeHead(200, {
+        'content-type': type,
+        'content-disposition': `attachment; filename="${name}"`,
+        'cache-control': 'no-store',
+      });
+      res.end(text);
+    });
+  }
+
+  /** `send`, or a workspace's, a merge's or a setting's refusal with its status and words. */
+  async function refusals(res: ServerResponse, send: () => Promise<void>): Promise<void> {
     try {
-      return json(res, 200, await task());
+      return await send();
     } catch (error) {
       if (
         error instanceof WorkspaceRefused ||
@@ -1947,6 +1982,13 @@ function fromThisMachine(referer: string | undefined): boolean {
     return false;
   }
 }
+
+/** An export's format from `?format=` (V84): Markdown when none is asked; null for another. */
+function exportFormat(url: URL): ExportFormat | null {
+  const asked = url.searchParams.get('format') ?? 'markdown';
+  return (EXPORT_FORMATS as readonly string[]).includes(asked) ? (asked as ExportFormat) : null;
+}
+const FORMAT_WORDS = `format: ${EXPORT_FORMATS.join(' or ')}`;
 
 function json(res: ServerResponse, status: number, value: unknown): void {
   send(res, status, JSON.stringify(value), TYPES['.json']);
