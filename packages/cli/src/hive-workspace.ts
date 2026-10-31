@@ -5,9 +5,10 @@
 // is sent to the writer, which Hive would read as the person taking over.
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { GitRepo, MergeEntry, WorkspaceHiveDetail } from '@symbiote/core';
+import type { GitRepo, HiveLogRead, MergeEntry, WorkspaceHiveDetail } from '@symbiote/core';
 import type { HiveRecord } from './hive.js';
-import { hiveTestsDir, readHive, type HiveFile } from './hive-record.js';
+import { hiveLive, hiveLogs, isHiveLogId } from './hive-live.js';
+import { hiveTestsDir, readHive, readHives, type HiveFile } from './hive-record.js';
 import type { Merger } from './merges.js';
 import { reviewPlace, type BranchReviews } from './reviews.js';
 import { WorkspaceRefused } from './workspace-record.js';
@@ -20,7 +21,23 @@ export interface HiveWorkspace {
   test(branch: string, round: number, path: string): Promise<string | null>;
   /** Land: the checked and reviewed commit approved for the person, and queued. */
   land(branch: string): Promise<MergeEntry>;
+  /**
+   * A check's or a review's log from byte `from` (decision 695); null when its record names no
+   * such log.
+   */
+  log(branch: string, id: string, from: number): Promise<HiveLogRead | null>;
 }
+
+/** The logs a record names: its checks' and reviews', and the run in progress. */
+const logsOf = (record: HiveFile) =>
+  new Set(
+    [
+      ...record.checks.map((c) => c.log),
+      ...record.reviews.map((r) => r.log),
+      record.check?.log,
+      record.review?.log,
+    ].filter((id): id is string => id !== undefined),
+  );
 
 /** The Review tab's service of `repo`'s Hive workspaces. */
 export function hiveWorkspace(
@@ -51,16 +68,20 @@ export function hiveWorkspace(
       const record = await recordOf(branch);
       if (!record) return null;
       const where = await reviewPlace(repo, cacheDir);
+      const on = await hive.on().catch(() => false);
+      // What runs now (decision 697), while Hive is on.
+      const live = on ? await hiveLive(where, record, () => readHives(where)) : undefined;
       return {
         branch: record.branch,
         step: record.step,
         round: record.round,
         rounds: record.rounds,
-        on: await hive.on().catch(() => false),
+        on,
         ...(record.checked ? { checked: record.checked } : {}),
         ...(record.note ? { note: record.note } : {}),
         checks: record.checks,
         reviews: record.reviews,
+        ...(live ? { live } : {}),
         tests: join(hiveTestsDir(where, branch, 1), '..'),
       };
     },
@@ -70,6 +91,12 @@ export function hiveWorkspace(
       if (!record || !keptFiles(record, round).has(path)) return null;
       const where = await reviewPlace(repo, cacheDir);
       return readFile(join(hiveTestsDir(where, branch, round), path), 'utf8').catch(() => null);
+    },
+
+    async log(branch, id, from) {
+      const record = await recordOf(branch);
+      if (!record || !isHiveLogId(id) || !logsOf(record).has(id)) return null;
+      return hiveLogs(await reviewPlace(repo, cacheDir), branch).read(id, from);
     },
 
     async land(branch) {

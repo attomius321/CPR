@@ -19,6 +19,7 @@ import {
   reviewPrompt,
   rerunVerdict,
   reviewerSettingsService,
+  reviewerEvents,
 } from '../src/hive-review.js';
 import type { ClaudeCode } from '../src/claude-code.js';
 import { runGroup } from '../src/programs.js';
@@ -328,5 +329,37 @@ describe("Settings' Reviewer (decision 680)", () => {
     await settings.setEffort({ effort: null });
     expect(readReviewerConfig(root)).toEqual({});
     await expect(settings.setModel({ model: 'gpt-6' })).rejects.toThrow(/lists no model gpt-6/);
+  });
+});
+
+describe("the reviewer's events for its log (decision 696)", () => {
+  it('its words and thinking come whole, then its calls, a command as typed and a path short', () => {
+    const line = JSON.stringify({
+      type: 'assistant',
+      message: {
+        content: [
+          { type: 'thinking', thinking: 'The parser first.' },
+          { type: 'text', text: 'I will run the tests.' },
+          { type: 'tool_use', name: 'Bash', input: { command: 'pnpm vitest run a.test.ts\nmore' } },
+          { type: 'tool_use', name: 'Read', input: { file_path: '/copy/src/a.ts' } },
+        ],
+      },
+    });
+    expect(reviewerEvents(line, '/copy')).toEqual([
+      { think: 'The parser first.\n' },
+      { say: 'I will run the tests.\n' },
+      { tool: 'Bash', input: 'pnpm vitest run a.test.ts' },
+      { tool: 'Read', input: 'src/a.ts' },
+    ]);
+    expect(reviewerEvents('not json', '/copy')).toEqual([]);
+    expect(
+      reviewerEvents(
+        JSON.stringify({
+          type: 'user',
+          message: { content: [{ type: 'tool_result', content: 'a\nb\n' }] },
+        }),
+        '/copy',
+      ),
+    ).toEqual([{ result: '2 lines' }]);
   });
 });

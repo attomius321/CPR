@@ -190,19 +190,28 @@ export type MergeAgentEvent =
  * starts, what it writes, an agent's event, the step ends, or the entry runs again and why. `at`
  * is when, in ms.
  */
-export type MergeLogLine = { at: number } & (
-  | { step: MergeStep; title: string }
+export type MergeLogLine = LogLine<MergeStep>;
+
+/**
+ * A line of a log of steps (V46a; Hive's runs since decision 695), its steps of type `S`: a step
+ * starts, what it writes, an agent's event, the step ends, or it runs again and why.
+ */
+export type LogLine<S extends string> = { at: number } & (
+  | { step: S; title: string }
   | { out: string }
   | { agent: MergeAgentEvent }
   | { end: { ok: boolean; ms: number } }
   | { run: string }
 );
 
-/** Lines of a merge's log from a byte offset, and the offset to read on from. */
-export interface MergeLogRead {
-  lines: MergeLogLine[];
+/** Lines of a log from a byte offset, and the offset to read on from. */
+export interface LogRead<S extends string> {
+  lines: LogLine<S>[];
   next: number;
 }
+
+/** Lines of a merge's log from a byte offset, and the offset to read on from. */
+export type MergeLogRead = LogRead<MergeStep>;
 
 /** `POST /api/merges`. */
 export interface MergeRequest {

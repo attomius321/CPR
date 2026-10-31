@@ -12,12 +12,25 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import { openRepo, type GitRepo, type MergeEntry, type Verdict } from '@symbiote/core';
+import {
+  openRepo,
+  type GitRepo,
+  type HiveLogLine,
+  type MergeEntry,
+  type Verdict,
+} from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { repositoryHive, type HiveRecord } from '../src/hive.js';
 import { hiveRunner, type HiveRunner } from '../src/hive-runner.js';
-import { hiveEventsPath, hiveTestsDir, readHive, writeHive } from '../src/hive-record.js';
+import { hiveLogPath } from '../src/hive-live.js';
+import {
+  hiveEventsPath,
+  hiveSummary,
+  hiveTestsDir,
+  readHive,
+  writeHive,
+} from '../src/hive-record.js';
 import type { Confine } from '../src/hive-review.js';
 import { hiveWorkspace } from '../src/hive-workspace.js';
 import type { Merger } from '../src/merges.js';
@@ -167,6 +180,10 @@ interface ReviewerAnswer {
   cost?: number;
   /** Milliseconds before it answers: Hive off, a message or a killed runner meanwhile. */
   sleep?: number;
+  /** Lines of its stream it prints at once, before it waits (Hive's live progress). */
+  stream?: unknown[];
+  /** A file it waits for before it answers. */
+  gate?: string;
   stderr?: string;
   exit?: number;
 }
@@ -216,7 +233,10 @@ process.stdin.on('end', () => {
     console.log(JSON.stringify({ type: 'system', subtype: 'init', model: 'claude-fake' }));
     console.log(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, total_cost_usd: a.cost === undefined ? 0.5 : a.cost, result: JSON.stringify(out), structured_output: out }));
   };
-  if (a.sleep) setTimeout(answer, a.sleep);
+  for (const line of a.stream || []) console.log(JSON.stringify(line));
+  const wait = () => (fs.existsSync(a.gate) ? answer() : setTimeout(wait, 50));
+  if (a.gate) wait();
+  else if (a.sleep) setTimeout(answer, a.sleep);
   else answer();
 });
 `,
@@ -1179,6 +1199,318 @@ describe("Hive's running reviewer (HV3)", () => {
       model: 'sonnet',
       effort: 'medium',
     });
+  });
+});
+
+describe("Hive's live progress", () => {
+  /** A command that says it waits, waits for `name`'s file in `gates`, then says it went on. */
+  const waitFor = (gates: string, name: string) =>
+    `echo waiting-${name}; while [ ! -f ${gates}/${name} ]; do sleep 0.05; done; echo after-${name}`;
+  const gatesDir = () => {
+    const dir = join(cache, 'gates');
+    mkdirSync(dir, { recursive: true });
+    return dir;
+  };
+  const open = (gates: string, name: string) => writeFileSync(join(gates, name), '');
+  const logLines = (file: string) =>
+    readFileSync(file, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => JSON.parse(line) as HiveLogLine);
+  /** The Review tab's service, with nothing to land. */
+  const tabOf = (s: Setup) =>
+    hiveWorkspace(s.git, cache, {
+      hive: s.hive,
+      reviews: {
+        resolve: () => Promise.reject(new Error('not landed here')),
+        finish: () => Promise.reject(new Error('not landed here')),
+      },
+      merges: {
+        targets: () => Promise.reject(new Error('not landed here')),
+        enqueue: () => Promise.reject(new Error('not landed here')),
+      },
+    });
+  const card = async (s: Setup, branch: string) =>
+    (await s.service.list()).workspaces.find((w) => w.branch === branch)?.hive;
+
+  it("records the check's commands, the one running and since when, and streams its output to its log", async () => {
+    const gates = gatesDir();
+    const commands = ['echo one', waitFor(gates, 'two'), 'echo three'];
+    const repo = repository(commands);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/live');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'l.txt': 'l\n' } });
+    await runner.tick();
+    await until(
+      async () => (await readHive(s.where, 'feature/live'))?.check?.step === 1,
+      'the second command',
+    );
+    const check = (await readHive(s.where, 'feature/live'))?.check;
+    expect(check).toMatchObject({ commands, step: 1, done: [{ ok: true }] });
+    expect(check?.done?.[0]?.ms).toBeGreaterThanOrEqual(0);
+    // The check's own start, not its command's.
+    expect(Date.parse(check?.since ?? '')).toBeGreaterThan(Date.parse(check?.started ?? ''));
+    expect(check?.log).toMatch(/^[\w-]+$/);
+    // Its log, as it comes: the first command and its end, the second and what it said so far.
+    const file = hiveLogPath(s.where, 'feature/live', check?.log ?? '');
+    await until(() => readFileSync(file, 'utf8').includes('waiting-two'), 'the output');
+    const running = logLines(file);
+    expect(running.flatMap((l) => ('step' in l ? [[l.step, l.title]] : []))).toEqual([
+      ['check', 'echo one'],
+      ['check', commands[1]],
+    ]);
+    expect(running.filter((l) => 'end' in l)).toHaveLength(1);
+    expect(running.some((l) => 'out' in l && l.out.includes('one'))).toBe(true);
+    // The card and the Review tab read it: no expected time on a first check.
+    const live = {
+      kind: 'check',
+      started: check?.started,
+      commands,
+      step: 1,
+      since: check?.since,
+      log: check?.log,
+    };
+    const listed = await card(s, 'feature/live');
+    expect(listed?.live).toMatchObject(live);
+    expect(listed?.live).not.toHaveProperty('expected');
+    expect((await tabOf(s).detail('feature/live'))?.live).toMatchObject(live);
+
+    open(gates, 'two');
+    await runner.idle();
+    const after = await readHive(s.where, 'feature/live');
+    expect(after?.check).toBeUndefined();
+    expect(after?.checks[0]).toMatchObject({
+      ok: true,
+      started: check?.started,
+      commands,
+      steps: commands.map((command) => ({ command, ok: true })),
+      log: check?.log,
+    });
+    const ended = logLines(file);
+    expect(ended.filter((l) => 'end' in l)).toHaveLength(3);
+    expect(readFileSync(file, 'utf8')).toContain('after-two');
+    expect(readFileSync(file, 'utf8')).toContain('three');
+    // Nothing runs once landing is asked.
+    expect((await card(s, 'feature/live'))?.live).toBeUndefined();
+    // The tab reads the logs its record names, and no other file.
+    const tab = tabOf(s);
+    expect((await tab.log('feature/live', check?.log ?? '', 0))?.lines).toEqual(ended);
+    expect(await tab.log('feature/live', 'not-a-log', 0)).toBeNull();
+    expect(await tab.log('feature/live', '../../workspaces/feature/live', 0)).toBeNull();
+    expect(await tab.log('feature/other', check?.log ?? '', 0)).toBeNull();
+  });
+
+  it('a failed command ends the check: its steps up to it, the rest not run', async () => {
+    const repo = repository(['echo fine', 'echo broken; exit 3', 'echo never']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/broken');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'b.txt': 'b\n' } });
+    await runner.tick();
+    await runner.idle();
+    const check = (await readHive(s.where, 'feature/broken'))?.checks[0];
+    expect(check).toMatchObject({
+      ok: false,
+      failed: 'echo broken; exit 3',
+      steps: [
+        { command: 'echo fine', ok: true },
+        { command: 'echo broken; exit 3', ok: false },
+      ],
+    });
+    const lines = logLines(hiveLogPath(s.where, 'feature/broken', check?.log ?? ''));
+    expect(lines.flatMap((l) => ('end' in l ? [l.end.ok] : []))).toEqual([true, false]);
+  });
+
+  it('the expected time: the last passing check of the same commands in the repository, never a guess', async () => {
+    const gates = gatesDir();
+    const commands = [waitFor(gates, 'a')];
+    const repo = repository(commands);
+    const s = await setup(repo);
+    await s.turn(true);
+    const runner = s.runner();
+    const checking = async (branch: string) => {
+      const worktree = await s.start(branch);
+      await s.fake.endTurn(worktree, { files: { [`${branch.split('/')[1]}.txt`]: 'x\n' } });
+      await runner.tick();
+      await until(
+        async () => (await readHive(s.where, branch))?.check?.step === 0,
+        `${branch}'s check`,
+      );
+    };
+
+    // A first check of one command: its one step, elapsed only.
+    await checking('feature/first');
+    const first = await card(s, 'feature/first');
+    expect(first?.live).toMatchObject({ kind: 'check', commands, step: 0, done: [] });
+    expect(first?.live).not.toHaveProperty('expected');
+    open(gates, 'a');
+    await runner.idle();
+    const passed = (await readHive(s.where, 'feature/first'))?.checks[0];
+    expect(passed).toMatchObject({ ok: true, steps: [{ command: commands[0], ok: true }] });
+
+    // The next check of the same commands, in another workspace: that check's times.
+    rmSync(join(gates, 'a'));
+    await checking('feature/second');
+    expect((await card(s, 'feature/second'))?.live).toMatchObject({
+      expected: { ms: passed?.ms, steps: [passed?.steps?.[0]?.ms] },
+    });
+    open(gates, 'a');
+    await runner.idle();
+
+    // Other commands: none of the checks before ran them. A record from before (no commands)
+    // never counts.
+    setChecks(repo, [waitFor(gates, 'b'), 'true']);
+    await writeHive(s.where, {
+      branch: 'feature/old',
+      step: 'landing',
+      round: 1,
+      rounds: 3,
+      since: '2026-10-30T10:00:00.000Z',
+      started: '2026-10-30T10:00:00.000Z',
+      checks: [{ round: 1, at: 'abc', ok: true, ms: 420_000 }],
+      reviews: [],
+    });
+    await checking('feature/third');
+    expect((await card(s, 'feature/third'))?.live).not.toHaveProperty('expected');
+    open(gates, 'b');
+    await runner.idle();
+  }, 20_000);
+
+  it('no check set or found: Hive reviews without one, and the card says so while it does', async () => {
+    const repo = repository([]);
+    writeFileSync(join(repo.root, 'symbiote', 'config.json'), '{}\n');
+    const s = await setup(repo);
+    await s.turn(true);
+    const gate = join(cache, 'review-gate');
+    s.reviewer.answers([{ gate }]);
+    const worktree = await s.start('feature/nocheck');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'n.txt': 'n\n' } });
+    await runner.tick();
+    await until(
+      async () => (await card(s, 'feature/nocheck'))?.live?.kind === 'review',
+      'the review',
+    );
+    const listed = await card(s, 'feature/nocheck');
+    expect(listed).toMatchObject({ step: 'reviewing' });
+    expect(listed?.note).toMatch(/no check/);
+    expect(listed?.check).toBeUndefined();
+    writeFileSync(gate, '');
+    await runner.idle();
+  });
+
+  it("the running review: its log as it comes, what it runs now from the reviewer's stream", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const gate = join(cache, 'review-gate');
+    s.reviewer.answers([
+      {
+        gate,
+        stream: [
+          { type: 'system', subtype: 'init', model: 'claude-fake', claude_code_version: '9.9' },
+          {
+            type: 'assistant',
+            message: {
+              content: [
+                { type: 'tool_use', name: 'Bash', input: { command: 'pnpm vitest run x.test.ts' } },
+              ],
+            },
+          },
+        ],
+      },
+    ]);
+    const worktree = await s.start('feature/reviewing');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'r.txt': 'r\n' } });
+    await runner.tick();
+    await until(async () => {
+      const live = (await card(s, 'feature/reviewing'))?.live;
+      return live?.kind === 'review' && live.doing !== undefined;
+    }, "the reviewer's call");
+    const record = await readHive(s.where, 'feature/reviewing');
+    const live = (await card(s, 'feature/reviewing'))?.live;
+    expect(live).toMatchObject({
+      kind: 'review',
+      started: record?.review?.started,
+      log: record?.review?.log,
+      phase: 'review',
+      doing: 'Bash: pnpm vitest run x.test.ts',
+    });
+    expect((await tabOf(s).detail('feature/reviewing'))?.live).toMatchObject({
+      kind: 'review',
+      doing: 'Bash: pnpm vitest run x.test.ts',
+    });
+    const file = hiveLogPath(s.where, 'feature/reviewing', record?.review?.log ?? '');
+    expect(logLines(file)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ step: 'review', title: 'The reviewer' }),
+        expect.objectContaining({ agent: { start: 'Claude Code 9.9 · claude-fake' } }),
+        expect.objectContaining({ agent: { tool: 'Bash', input: 'pnpm vitest run x.test.ts' } }),
+      ]),
+    );
+
+    writeFileSync(gate, '');
+    await runner.idle();
+    const after = await readHive(s.where, 'feature/reviewing');
+    expect(after?.reviews[0]).toMatchObject({ verdict: 'approved', log: record?.review?.log });
+    expect(logLines(file).flatMap((l) => ('end' in l ? [l.end.ok] : []))).toEqual([true]);
+    expect((await card(s, 'feature/reviewing'))?.live).toBeUndefined();
+  });
+
+  it("the check's write at each command keeps what was written meanwhile (decision 694)", async () => {
+    const gates = gatesDir();
+    const repo = repository([waitFor(gates, 'one'), waitFor(gates, 'two')]);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/meanwhile');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'm.txt': 'm\n' } });
+    await runner.tick();
+    await until(
+      async () => (await readHive(s.where, 'feature/meanwhile'))?.check?.step === 0,
+      'the first command',
+    );
+    // Another write while the first command runs (the tick's, say).
+    const read = await readHive(s.where, 'feature/meanwhile');
+    if (!read) throw new Error('no record');
+    await writeHive(s.where, { ...read, note: 'written meanwhile' });
+    open(gates, 'one');
+    await until(
+      async () => (await readHive(s.where, 'feature/meanwhile'))?.check?.step === 1,
+      'the second command',
+    );
+    expect((await readHive(s.where, 'feature/meanwhile'))?.note).toBe('written meanwhile');
+    open(gates, 'two');
+    await runner.idle();
+  });
+
+  it('Hive off: the card shows nothing running', () => {
+    const at = '2026-10-31T10:00:00.000Z';
+    const record = {
+      branch: 'feature/x',
+      step: 'checking' as const,
+      round: 1,
+      rounds: 3,
+      since: at,
+      started: at,
+      check: { pid: 1, started: at, at: 'abc', commands: ['true'], step: 0, since: at, done: [] },
+      checks: [],
+      reviews: [],
+    };
+    const live = {
+      kind: 'check' as const,
+      started: at,
+      commands: ['true'],
+      step: 0,
+      since: at,
+      done: [],
+    };
+    expect(hiveSummary(record, true, live).live).toEqual(live);
+    expect(hiveSummary(record, false, live)).not.toHaveProperty('live');
   });
 });
 

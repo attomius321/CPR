@@ -4,7 +4,15 @@
 // stop, Hive off or a killed `symbiote view` left: the writer's session and git hold the rest.
 import { appendFile, mkdir, readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative } from 'node:path';
-import type { HiveCheck, HiveFinding, HiveReview, HiveStep, WorkspaceHive } from '@symbiote/core';
+import type {
+  HiveCheck,
+  HiveCheckStep,
+  HiveFinding,
+  HiveLive,
+  HiveReview,
+  HiveStep,
+  WorkspaceHive,
+} from '@symbiote/core';
 import { writeFileWhole } from './file-write.js';
 import { sortKeys, type ReviewPlace } from './reviews.js';
 import { symbioteFolder, workspacePath } from './workspace-record.js';
@@ -38,8 +46,20 @@ export interface HiveFile {
   started: string;
   /** Hive off stopped its writer mid-turn, or its check (decision 655). */
   interrupted?: true;
-  /** The check running: its process group's leader, from when, on which commit. */
-  check?: { pid: number; started: string; at: string };
+  /**
+   * The check running: its process group's leader, from when, on which commit; since decision
+   * 693 its commands, the index of the one running and since when, those ended, and its log.
+   */
+  check?: {
+    pid: number;
+    started: string;
+    at: string;
+    commands?: string[];
+    step?: number;
+    since?: string;
+    done?: { ok: boolean; ms: number }[];
+    log?: string;
+  };
   checks: HiveCheck[];
   /**
    * The commit the last check passed on: the one the running review is of (HV3), and the one
@@ -50,7 +70,7 @@ export interface HiveFile {
    * The running review (HV3): its process group's leader now (the install, the reviewer or a
    * rerun), from when, on which commit. Its copies are in Symbiote's cache, by branch.
    */
-  review?: { pid: number; started: string; at: string };
+  review?: { pid: number; started: string; at: string; log?: string };
   reviews: HiveReview[];
   message?: HiveMessage;
   /** Why it stopped for the person; that no check was found. */
@@ -101,6 +121,26 @@ export const hiveLockPath = (where: ReviewPlace) => join(hiveDir(where), 'runner
 const text = (x: unknown) => (typeof x === 'string' ? x : '');
 const count = (x: unknown) => (typeof x === 'number' && Number.isInteger(x) && x > 0 ? x : 0);
 
+const texts = (x: unknown) =>
+  Array.isArray(x) ? x.filter((t): t is string => typeof t === 'string' && t !== '') : [];
+const ms = (x: unknown) => (typeof x === 'number' && x >= 0 ? x : 0);
+
+/** A command's end: how it went and how long it took. */
+function endOf(value: unknown): { ok: boolean; ms: number } | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  return typeof v.ok === 'boolean' ? { ok: v.ok, ms: ms(v.ms) } : null;
+}
+
+function stepOf(value: unknown): HiveCheckStep | null {
+  const end = endOf(value);
+  const command = text((value as Record<string, unknown> | null)?.command);
+  return end && command ? { command, ...end } : null;
+}
+
+const ends = (x: unknown) =>
+  Array.isArray(x) ? x.map(endOf).filter((e): e is { ok: boolean; ms: number } => e !== null) : [];
+
 function checkOf(value: unknown): HiveCheck | null {
   if (!value || typeof value !== 'object') return null;
   const v = value as Record<string, unknown>;
@@ -109,14 +149,30 @@ function checkOf(value: unknown): HiveCheck | null {
     round: count(v.round),
     at: text(v.at),
     ok: v.ok,
-    ms: typeof v.ms === 'number' && v.ms >= 0 ? v.ms : 0,
+    ms: ms(v.ms),
     ...(text(v.failed) ? { failed: text(v.failed) } : {}),
     ...(text(v.output) ? { output: text(v.output) } : {}),
+    ...(text(v.started) ? { started: text(v.started) } : {}),
+    ...(Array.isArray(v.commands) ? { commands: texts(v.commands) } : {}),
+    ...(Array.isArray(v.steps)
+      ? { steps: v.steps.map(stepOf).filter((s): s is HiveCheckStep => s !== null) }
+      : {}),
+    ...(text(v.log) ? { log: text(v.log) } : {}),
   };
 }
 
-const texts = (x: unknown) =>
-  Array.isArray(x) ? x.filter((t): t is string => typeof t === 'string' && t !== '') : [];
+/** The running check's fields of decision 693, when they are there. */
+function runningCheck(v: Record<string, unknown>) {
+  return {
+    ...(Array.isArray(v.commands) ? { commands: texts(v.commands) } : {}),
+    ...(typeof v.step === 'number' && Number.isInteger(v.step) && v.step >= 0
+      ? { step: v.step }
+      : {}),
+    ...(text(v.since) ? { since: text(v.since) } : {}),
+    ...(Array.isArray(v.done) ? { done: ends(v.done) } : {}),
+    ...(text(v.log) ? { log: text(v.log) } : {}),
+  };
+}
 
 function findingOf(value: unknown): HiveFinding | null {
   if (!value || typeof value !== 'object') return null;
@@ -153,6 +209,7 @@ function reviewOf(value: unknown): HiveReview | null {
     findings: Array.isArray(v.findings)
       ? v.findings.map(findingOf).filter((f): f is HiveFinding => f !== null)
       : [],
+    ...(text(v.log) ? { log: text(v.log) } : {}),
   };
 }
 
@@ -175,7 +232,14 @@ export function parseHive(value: unknown): HiveFile | null {
     started: text(v.started) || text(v.since),
     ...(v.interrupted === true ? { interrupted: true as const } : {}),
     ...(running && count(running.pid)
-      ? { check: { pid: count(running.pid), started: text(running.started), at: text(running.at) } }
+      ? {
+          check: {
+            pid: count(running.pid),
+            started: text(running.started),
+            at: text(running.at),
+            ...runningCheck(running),
+          },
+        }
       : {}),
     checks: Array.isArray(v.checks)
       ? v.checks.map(checkOf).filter((c): c is HiveCheck => c !== null)
@@ -187,6 +251,7 @@ export function parseHive(value: unknown): HiveFile | null {
             pid: count(reviewing.pid),
             started: text(reviewing.started),
             at: text(reviewing.at),
+            ...(text(reviewing.log) ? { log: text(reviewing.log) } : {}),
           },
         }
       : {}),
@@ -253,8 +318,11 @@ export async function hiveEvent(
   await appendFile(path, `${JSON.stringify({ at, kind, ...Object.fromEntries(said) })}\n`);
 }
 
-/** A record as a workspace's card reads it (HV2, HV3); `paused` while Hive is off. */
-export function hiveSummary(record: HiveFile, on: boolean): WorkspaceHive {
+/**
+ * A record as a workspace's card reads it (HV2, HV3); `paused` while Hive is off; what runs now
+ * (`live`, decision 697) only while Hive is on.
+ */
+export function hiveSummary(record: HiveFile, on: boolean, live?: HiveLive): WorkspaceHive {
   const check = record.checks.at(-1);
   const review = record.reviews.at(-1);
   const waits = ['writing', 'checking', 'reviewing'].includes(record.step);
@@ -274,6 +342,7 @@ export function hiveSummary(record: HiveFile, on: boolean): WorkspaceHive {
         }
       : {}),
     ...(record.note ? { note: record.note } : {}),
+    ...(on && live ? { live } : {}),
     ...(!on && waits ? { paused: true as const } : {}),
     ...(!on ? { off: true as const } : {}),
   };

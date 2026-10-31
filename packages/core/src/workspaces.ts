@@ -3,6 +3,7 @@
 import type { VerdictEvent } from './git/branches.js';
 import type { FileChangeStatus } from './git/changed-files.js';
 import type { McpVia } from './mcp.js';
+import type { LogLine, LogRead } from './merges.js';
 
 /** How a workspace's agent is doing, as the commits page shows it. */
 export type AgentStateName =
@@ -175,6 +176,15 @@ export interface HiveReview {
   model?: string;
   effort?: string;
   findings: HiveFinding[];
+  /** Its log beside Hive's record (decision 695): its id, absent when nothing was written. */
+  log?: string;
+}
+
+/** One command of a check Hive ran, as it ended (decision 693). */
+export interface HiveCheckStep {
+  command: string;
+  ok: boolean;
+  ms: number;
 }
 
 /** A check Hive ran on a workspace's branch (decision 654). */
@@ -188,7 +198,59 @@ export interface HiveCheck {
   failed?: string;
   /** The last lines of its output. */
   output?: string;
+  /**
+   * Since decision 693: when it started, the repository's check commands it ran, each one that
+   * ran and how it ended, and its log beside Hive's record (decision 695).
+   */
+  started?: string;
+  commands?: string[];
+  steps?: HiveCheckStep[];
+  log?: string;
 }
+
+/**
+ * A step of a Hive run's log (decision 695): one of the check's commands; in a running review, an
+ * install command in its copy, the reviewer, a finding's rerun.
+ */
+export type HiveLogStep = 'check' | 'install' | 'review' | 'rerun';
+
+/** A line of a Hive run's log, in the merge log's format (V46a). */
+export type HiveLogLine = LogLine<HiveLogStep>;
+
+/** `GET /api/workspaces/hive/log`'s lines from a byte offset, and the offset to read on from. */
+export type HiveLogRead = LogRead<HiveLogStep>;
+
+/**
+ * What Hive runs now on a workspace (decisions 693, 697), while Hive is on: the check — its
+ * commands, the one running and since when, those ended, and the time of the last passing check
+ * of the same commands in the repository, when there is one — or the running review — what it
+ * runs now and the reviewer's last tool call, from its log.
+ */
+export type HiveLive =
+  | {
+      kind: 'check';
+      started: string;
+      commands: string[];
+      /** The index of the command running, and since when. */
+      step: number;
+      since: string;
+      /** The commands ended, in order. */
+      done: { ok: boolean; ms: number }[];
+      log?: string;
+      /** The last passing check of the same commands: its time and each command's. */
+      expected?: { ms: number; steps: number[] };
+    }
+  | {
+      kind: 'review';
+      started: string;
+      log?: string;
+      /** What it runs now, from its log: an install, the reviewer, a rerun; its title, since when. */
+      phase?: HiveLogStep;
+      title?: string;
+      since?: string;
+      /** The reviewer's last tool call: "Bash: pnpm vitest run …". */
+      doing?: string;
+    };
 
 /** A workspace Hive drives, as its card reads it (HV2). */
 export interface WorkspaceHive {
@@ -202,6 +264,8 @@ export interface WorkspaceHive {
   review?: Pick<HiveReview, 'round' | 'at' | 'verdict'> & { kept: number };
   /** Why it stopped for the person, or what it landed without (no check found). */
   note?: string;
+  /** What it runs now, while Hive is on and checks or reviews (decision 697). */
+  live?: HiveLive;
   /** Hive is off: the step waits for it (decision 655). */
   paused?: true;
   /**
@@ -227,6 +291,8 @@ export interface WorkspaceHiveDetail {
   note?: string;
   checks: HiveCheck[];
   reviews: HiveReview[];
+  /** What it runs now, while Hive is on and checks or reviews (decision 697). */
+  live?: HiveLive;
   /** Where the kept findings' tests are, beside Hive's record (`r<round>/<path>` below it). */
   tests: string;
 }
