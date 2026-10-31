@@ -98,7 +98,10 @@ export type RunCheck = (
   onOutput?: (chunk: string) => void,
 ) => Promise<{ code: number | null; output: string }>;
 
-/** A check may take long (this repository's check, build and e2e: about 2.5 min). */
+/**
+ * A check may take long (this repository's install, check, build and e2e: about 6.5 min, measured
+ * at 396 s on 2026-10-31).
+ */
 const CHECK_TIMEOUT_MS = 60 * 60_000;
 
 /** The shell's run of a command, its output and errors together, as a terminal shows them. */
