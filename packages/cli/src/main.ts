@@ -71,6 +71,7 @@ import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ChangeFiles, type ReviewTarget } from './server.js';
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
 import { repositoryHive } from './hive.js';
+import { hiveRunner } from './hive-runner.js';
 import { repositoryHiddenBranches } from './git-hidden.js';
 import { libraryService, type LibraryService } from './library.js';
 import { terminals as agentTerminals } from './terminal.js';
@@ -728,6 +729,9 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   const library = libraryOf(ctx);
   // One Claude Code for workspaces, Nucleus (V35) and Scribe (V41): one read of its sessions every 2 s.
   const claudeOf = agentFinder(repo.root, ctx.env, cacheDir);
+  // Hive mode (V82): this repository's switch; while it is on, every workspace started is Hive's
+  // and its runner drives it (HV2).
+  const hive = repositoryHive(repo, cacheDir);
   const repoWorkspaces = workspaces(repo, cacheDir, {
     claude: claudeOf,
     codex: codexOf,
@@ -735,6 +739,12 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     env: ctx.env,
     openFolder,
     terminals,
+    hive: () => hive.on(),
+  });
+  const hiveRun = hiveRunner(repo, cacheDir, {
+    hive,
+    workspaces: repoWorkspaces,
+    log: log.log,
   });
   // The branches hidden from Git's graph (decision 645): the listing, its search and the status's
   // version all leave them out, so a version read by one fits the others.
@@ -828,10 +838,18 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     },
     open: vsCodeOpener(repo, ctx.env),
     intro: introOf(ctx),
-    hive: repositoryHive(repo, cacheDir),
+    // Settings' switch: the runner told at once (HV2), another process's change read at its tick.
+    hive: {
+      on: () => hive.on(),
+      set: async (on) => {
+        await hive.set(on);
+        hiveRun.switched(on);
+      },
+    },
     log,
     version,
   });
+  hiveRun.start();
   // Where Symbiote's MCP bridge finds this server (MC1): Nucleus's, and `symbiote mcp`'s.
   const viewRecord = viewFile(cacheDir, repo.commonDir);
   const started = new Date().toISOString();
@@ -879,6 +897,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   } finally {
     await removeViewRecord(viewRecord, process.pid);
     await withdraw(cacheDir, process.pid);
+    // Its checks stop with it; their steps run them again at the next start (decision 655).
+    await hiveRun.close();
   }
   diffs.close();
   await server.close();

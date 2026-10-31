@@ -1627,6 +1627,7 @@ describe('symbiote view: workspaces (V18)', () => {
   const workspaces: Workspaces = {
     options: () => Promise.resolve(options),
     list: () => Promise.resolve({ workspaces: [summary], place: 'repository' }),
+    summaryOf: () => Promise.resolve(summary),
     history: () => Promise.resolve({ workspaces: [ended], place: 'repository' }),
     finished: (branch) =>
       branch === 'feature/old'

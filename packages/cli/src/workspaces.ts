@@ -61,7 +61,16 @@ import {
   type WorkKind,
 } from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
-import { PromptRefused, readPrompts, writeConfig } from './prompts.js';
+import { fillPrompt, PromptRefused, readPrompts, writeConfig } from './prompts.js';
+import {
+  firstRecord,
+  hiveEvent,
+  hiveSummary,
+  HIVE_ROUNDS,
+  readHive,
+  writeHive,
+} from './hive-record.js';
+import { projectCheck } from './merges.js';
 import {
   ADVISING_AGENTS,
   advise,
@@ -387,6 +396,11 @@ export interface Workspaces {
   /** Sends a message to its agent: continues its session with the text (V18c). */
   reply(request: WorkspaceReply): Promise<WorkspaceReplied>;
   /**
+   * One workspace as the list shows it (HV2: what Hive's runner reads of a turn); null when it has
+   * no record, or was cleaned up.
+   */
+  summaryOf(branch: string): Promise<WorkspaceSummary | null>;
+  /**
    * Opens its agent's newest session in a terminal (V21): `claude attach <id>` in its worktree,
    * where a stopped session continues, with no turn; for Codex on its app server, `codex resume
    * <thread> --remote <address> -C <worktree>` (V27b); for Hermes, the terminal it runs in, else
@@ -439,6 +453,7 @@ export function workspaces(
     node = process.execPath,
     terminals,
     advisor,
+    hive,
   }: {
     /** Finds Claude Code (once a start or a list needs it); null when it is not installed. */
     claude: () => Promise<ClaudeCode | null>;
@@ -458,8 +473,14 @@ export function workspaces(
     terminals?: Terminals;
     /** How the advisor's agent is run (V75): the programs' own, unless a test gives others. */
     advisor?: { run?: Run; runInput?: RunWithInput };
+    /**
+     * Whether Hive mode is on (HV2): a start then is Hive's (`hive: true`, the `{hive}` line, its
+     * record). Without it, as before Hive.
+     */
+    hive?: () => Promise<boolean>;
   },
 ): Workspaces {
+  const hiveOn = async () => (await hive?.().catch(() => false)) ?? false;
   /** Where reviews and workspaces are kept; `symbiote/features/` moved first (V25), or noted when
    * left. */
   const place = async (): Promise<ReviewPlace> => {
@@ -591,7 +612,29 @@ export function workspaces(
       ...(acted ? { lastAction: acted } : {}),
       ...(workspace.via ? { via: workspace.via } : {}),
       ...(activity ? { activity } : {}),
+      ...(workspace.hive ? await hiveOf(where, workspace.branch) : {}),
     };
+  }
+
+  /** Where Hive is with a workspace it drives (HV2), as its card reads it; none without a record. */
+  async function hiveOf(where: ReviewPlace, branch: string) {
+    const record = await readHive(where, branch);
+    return record ? { hive: hiveSummary(record, await hiveOn()) } : {};
+  }
+
+  /**
+   * What `{hive}` becomes for a workspace Hive drives (HV2): Hive's start text with the check it
+   * will run, from the commit the workspace started at.
+   */
+  async function hiveText(workspace: WorkspaceFile): Promise<string | undefined> {
+    if (!workspace.hive) return undefined;
+    const check = await projectCheck(repo, root, workspace.base).catch(() => null);
+    return fillPrompt(readPrompts(root).text['hive.start'], {
+      check: check
+        ? check.commands.map((command) => `\`${command}\``).join(', then ')
+        : 'none is set or found, so the person checks it',
+      rounds: String(HIVE_ROUNDS),
+    });
   }
 
   /**
@@ -641,6 +684,7 @@ export function workspaces(
         agents: where.agents,
         into: await defaultBranch(repo, await listRefs(repo)),
         documents: documentsDir(where, workspace.branch),
+        ...(workspace.hive ? { hive: await hiveText(workspace) } : {}),
       },
       readPrompts(root).text,
     );
@@ -1233,11 +1277,29 @@ export function workspaces(
       if (request.agent !== undefined && !AGENT_KINDS.includes(request.agent)) {
         throw new WorkspaceRefused(`unknown agent: ${String(request.agent)}`, 400);
       }
+      // Hive drives Claude Code only (HV2, decision 658): every start while it is on is Hive's.
+      const hiving = await hiveOn();
+      if (hiving && request.agent !== undefined && request.agent !== 'claude') {
+        throw new WorkspaceRefused(
+          'Hive drives Claude Code only: pick Claude Code, or turn Hive off',
+          409,
+        );
+      }
       const permissionMode = request.permissionMode ?? config().permissionMode;
       if (!PERMISSION_MODES.includes(permissionMode)) {
         throw new WorkspaceRefused(`unknown permission mode: ${String(permissionMode)}`, 400);
       }
-      const agent = request.agent ? await found(request.agent) : await defaultAgent();
+      const agent = hiving
+        ? await found('claude')
+        : request.agent
+          ? await found(request.agent)
+          : await defaultAgent();
+      if (hiving && !agent) {
+        throw new WorkspaceRefused(
+          'Hive drives Claude Code, which is not installed: claude on PATH, or set SYMBIOTE_CLAUDE',
+          409,
+        );
+      }
       if (request.agent && !agent) {
         throw new WorkspaceRefused(`${AGENT_NAMES[request.agent]} is not installed`, 409);
       }
@@ -1292,9 +1354,15 @@ export function workspaces(
         ...(base.from ? { from: base.from } : {}),
         planFirst: request.planFirst,
         ...(request.via ? { via: request.via } : {}),
+        ...(hiving ? { hive: true as const } : {}),
         worktree: folder,
       };
       await prepareSymbioteFolder(where, { text: readPrompts(root).text.reviews });
+      // Hive's record before its writer starts (decision 652): its first turn from now on.
+      if (hiving) {
+        await writeHive(where, firstRecord(workspace.branch, workspace.created));
+        await hiveEvent(where, workspace.branch, workspace.created, 'started');
+      }
       // After the folder's .gitignore: the documents are never seen by git (V40).
       if (documents.length > 0) workspace.documents = await placeDocuments(papers, documents);
       const prompt = await launch(where, workspace, agent, permissionMode, { effort, model });
@@ -1800,6 +1868,16 @@ export function workspaces(
         workspace: await summary(where, workspace, refs, await trunkOf(refs), sessions),
         ...(copy ? { copy } : {}),
       };
+    },
+
+    async summaryOf(branch) {
+      const where = await place();
+      const workspace = await readRecord(where, branch).catch(() => null);
+      if (!workspace || workspace.finished) return null;
+      const refs = await listRefs(repo);
+      const agent = workspace.agent?.kind === 'claude' ? await claude() : null;
+      const sessions = agent ? await agent.sessions() : null;
+      return summary(where, workspace, refs, await trunkOf(refs), sessions);
     },
 
     async clean({ branch, unmerged }) {

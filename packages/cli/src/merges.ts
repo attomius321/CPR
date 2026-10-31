@@ -125,6 +125,31 @@ export function readMergeConfig(root: string): MergeConfig {
 
 const configFile = (root: string) => CONFIG_FILES.find((name) => existsSync(join(root, name)));
 
+/**
+ * The project's check (V26a): `merge.checks` in the config at `root`, else the command guessed from
+ * the commit `at` (V24b), a package script after its package manager's install. The merger runs
+ * it on a merge, Hive on a workspace's tip (HV2, decision 654); null when there is none.
+ */
+export async function projectCheck(
+  repo: GitRepo,
+  root: string,
+  at: string,
+): Promise<Pick<MergeCheckRun, 'commands' | 'source'> | null> {
+  const { checks } = readMergeConfig(root);
+  if (checks) return { commands: checks, source: `${configFile(root)} (merge.checks)` };
+  const guess = await guessCheck(await treeAt(repo, at));
+  if (!guess) return null;
+  // A package script needs the dependencies, which Symbiote's worktree does not have at first.
+  if (guess.source.startsWith('package.json')) {
+    const manager = guess.command.split(' ')[0] ?? 'npm';
+    return {
+      commands: [`${manager} install`, guess.command],
+      source: `${guess.source}, after an install`,
+    };
+  }
+  return { commands: [guess.command], source: guess.source };
+}
+
 const isStrategy = (value: unknown): value is MergeStrategy =>
   (MERGE_STRATEGIES as readonly unknown[]).includes(value);
 
@@ -425,26 +450,6 @@ export function merger(
   }
 
   /**
-   * The check of a merge: `merge.checks`, else the command guessed from `into`'s tip (V24b), a
-   * package script after its package manager's install.
-   */
-  async function checkOf(base: string): Promise<Pick<MergeCheckRun, 'commands' | 'source'> | null> {
-    const { checks } = readMergeConfig(root);
-    if (checks) return { commands: checks, source: `${configFile(root)} (merge.checks)` };
-    const guess = await guessCheck(await treeAt(repo, base));
-    if (!guess) return null;
-    // A package script needs the dependencies, which Symbiote's worktree does not have at first.
-    if (guess.source.startsWith('package.json')) {
-      const manager = guess.command.split(' ')[0] ?? 'npm';
-      return {
-        commands: [`${manager} install`, guess.command],
-        source: `${guess.source}, after an install`,
-      };
-    }
-    return { commands: [guess.command], source: guess.source };
-  }
-
-  /**
    * Merges, checks and, when the check passed, lands one entry, always on `into`'s tip as it is
    * now: a merge checked again whose target moved since is merged again.
    */
@@ -572,7 +577,7 @@ export function merger(
    */
   async function checkMerge(id: string, base: string, merged: string, resolved: boolean) {
     const log = logs.of(id);
-    const check = await checkOf(base);
+    const check = await projectCheck(repo, root, base);
     if (!check) {
       const message = resolved
         ? 'no check to run: review the resolution, then Approve lands it'

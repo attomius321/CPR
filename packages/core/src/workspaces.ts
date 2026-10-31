@@ -109,6 +109,39 @@ export interface CheckGuess {
   source: string;
 }
 
+/**
+ * Where Hive is with a workspace it drives (HV2, decision 653): its writer's turn, the check
+ * Symbiote runs, landing asked of the person; `stuck` at the round cap; `landed` once merged.
+ */
+export type HiveStep = 'writing' | 'checking' | 'landing' | 'stuck' | 'landed';
+
+/** A check Hive ran on a workspace's branch (decision 654). */
+export interface HiveCheck {
+  round: number;
+  /** The commit it ran on. */
+  at: string;
+  ok: boolean;
+  ms: number;
+  /** The command that failed. */
+  failed?: string;
+  /** The last lines of its output. */
+  output?: string;
+}
+
+/** A workspace Hive drives, as its card reads it (HV2). */
+export interface WorkspaceHive {
+  step: HiveStep;
+  /** The writer's round, and how many before Hive stops for the person. */
+  round: number;
+  rounds: number;
+  /** Hive's last check. */
+  check?: HiveCheck;
+  /** Why it stopped for the person, or what it landed without (no check found). */
+  note?: string;
+  /** Hive is off: the step waits for it (decision 655). */
+  paused?: true;
+}
+
 /** A workspace and its agent, for the commits page. */
 export interface WorkspaceSummary {
   branch: string;
@@ -148,6 +181,8 @@ export interface WorkspaceSummary {
   activity?: WorkspaceActivity;
   /** When it was cleaned up (V77): History shows it, read only. */
   finished?: string;
+  /** Started while Hive was on (HV2): where Hive is with it. */
+  hive?: WorkspaceHive;
 }
 
 /**
