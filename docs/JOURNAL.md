@@ -349,3 +349,4 @@ merge commit.
 - 2026-10-31 [V84 spike — where activity is kept, and which format reads](journal/v84-activity-export.md)
 - 2026-10-31 [V84 — Export activity, built](journal/v84-activity-export.md)
 - 2026-10-31 [HV3 plan — the running reviewer on Symbiote's own pieces](journal/hv3-running-reviewer.md)
+- 2026-10-31 [HV3 — the running reviewer, built](journal/hv3-running-reviewer.md)

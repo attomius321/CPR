@@ -40,6 +40,8 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `merge.agent` | `agent.kind`, else Claude Code, else Codex | The agent that resolves conflicts: `claude` or `codex`. |
 | `merge.model` | `sonnet` for Claude Code, else the agent's own | The model the merger runs on. |
 | `merge.effort` | the agent's own | The effort level the merger runs at, if its model takes one. |
+| `hive.reviewer.model` | `opus` | The model [Hive's running reviewer](#the-running-reviewer) is asked on. |
+| `hive.reviewer.effort` | `high` | The effort level the running reviewer is asked at, if its model takes it. |
 | `prompts` | Symbiote's text | The text Symbiote gives its agents. See [Prompts](#prompts). |
 
 To pick a model or an effort level from the agent's own list, use **Settings** rather than
@@ -100,8 +102,10 @@ and leaves any other brace as text:
 | `library` | What `{library}` becomes in Scribe's prompt when a [skill library](#the-skill-library) is set. Without a library, the line that holds `{library}` is left out | `{folder}` (required), `{skills}` |
 | `hive.start` | What `{hive}` becomes in the first prompt of a workspace [Hive](#hive-mode) drives. Without Hive, the line that holds `{hive}` is left out; a start prompt without `{hive}` gets it at its end | `{check}`, `{rounds}` |
 | `hive.check` | What Hive sends the agent when the check fails | `{output}` (required), `{command}`, `{branch}`, `{at}`, `{round}`, `{rounds}` |
+| `hive.review` | What Hive sends the agent when the [running reviewer](#the-running-reviewer) proved defects: each defect, its test's command and files, and the last lines of Symbiote's rerun | `{findings}` (required), `{count}`, `{branch}`, `{at}`, `{round}`, `{rounds}`, `{folder}` |
 | `hive.commit` | What Hive sends the agent when it ended a turn with files not committed, or no commit | `{what}`, `{branch}` |
 | `hive.resume` | What Hive sends an agent it stopped, once Hive is on again | none |
+| `hive.reviewer` | The running reviewer's instructions, its system prompt. Symbiote adds the answer it reads after them, which you cannot change. In Settings it is the **Reviewer** page, with its model and effort | none |
 
 Settings lists Hive's prompts, in a group of their own, only while Hive is on. Settings lists what
 each placeholder stands for. Symbiote ignores a prompt it cannot use, uses its
@@ -111,7 +115,8 @@ cases:
 - It is neither text nor a list of lines.
 - It lacks a required placeholder.
 - It is too long. The limits are 8,000 characters for a start prompt and for Nucleus's and Scribe's,
-  1,000 for `plan.*`, `documents`, `verdict.*` and `hive.*`, and 20,000 for `reviews` and `merger`.
+  1,000 for `plan.*`, `documents`, `verdict.*` and `hive.*`, and 20,000 for `reviews`, `merger`
+  and `hive.reviewer`.
 
 Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, Nucleus cannot edit
 files or run any command but git's read commands, and its starts, verdicts, merges and clean-ups
@@ -162,8 +167,8 @@ No agent reads the library from its folder: it is where you keep and write skill
 ## Hive mode
 
 In Hive mode, Symbiote drives the workspaces you start: their agent works the brief, Symbiote
-runs the project's check after each of its turns and sends the agent what fails, then asks you to
-land the workspace. Its switch is in **Settings**, under **This repository**, **Hive mode**, and
+runs the project's check after each of its turns, a reviewer runs the change and proves defects
+with failing tests, Symbiote sends the agent what fails, then asks you to land the workspace. Its switch is in **Settings**, under **This repository**, **Hive mode**, and
 turning it on asks first. While Hive is on, every page is in ink and crimson, in both themes, and
 the S is crimson.
 
@@ -187,32 +192,75 @@ no other agent, and Nucleus's starts are Hive's too.
    worktree, on the branch's last commit. If the agent left files uncommitted, or made no commit,
    Symbiote asks it to commit instead. A spike that ends without commits goes straight to you.
 3. **A failed check goes back to the agent**: the command and its last 60 lines. That is the next
-   round. After 3 rounds, Hive stops and the card says why.
-4. **A passed check asks you to land it.** The card says **Checked: review and land it**. Review
-   the branch, approve it, and merge it with **Merge into**, as for any workspace. Once it is
-   merged, Hive is done with it.
+   round.
+4. **A passed check is reviewed** by the [running reviewer](#the-running-reviewer), on the same
+   commit. Defects it proves go back to the agent as failing tests: the agent adds each test and
+   makes it pass, or says in one line why a test is wrong. That is the next round too.
+5. **After 3 rounds**, Hive stops and the card says why.
+6. **A check that passed and a review that found nothing ask you to land it.** The card says
+   **Checked and reviewed: land it**. Press **Land** in the workspace's head: Symbiote approves
+   that commit for you and merges it through the merge queue, as **Merge into** does. In Hive mode there is no review of yours to finish first. Once it is merged, Hive is done
+   with it.
 
 The card shows the workspace's round (a hexagon and `2/3`). While the agent works or waits for
 you, the card says so as for any workspace. Hive never lands, pushes or deletes work: those stay
 yours. A message you send the agent while Hive waits for you starts its rounds again.
+
+The workspace's **Review** tab shows what Hive did, round by round: each check, each review with
+its model, time and cost, and each finding, proven or dropped, with its test and Symbiote's rerun.
+
+### The running reviewer
+
+After the check passes, Symbiote reviews the commit with a fresh Claude Code (`claude -p`) that has
+none of the agent's context:
+
+- **In a throwaway copy**: a clone of the repository at that commit in Symbiote's cache, with no
+  remote and branches of its own, its dependencies installed by the check's install command.
+  Nothing done there reaches the branch, the repository or a remote. The copy is deleted when the
+  review ends, whatever the end.
+- **Told** the brief, the branch's change, the check's result and, from round 2, the defects the
+  last round proved and the agent's report.
+- **Confined**: Claude Code's sandbox runs every command it runs, writing only in its copy and the
+  temporary folder, with no network but its own. Edits outside the copy are refused, and nothing is
+  asked. It reads none of your settings files or the project's: no hooks, plugins or MCP servers.
+- **Reporting only proven defects**: each with a test of its own, the command that runs it, and the
+  test's name.
+- **Checked by Symbiote**: each test runs again in a fresh copy of the commit with only its files
+  added, under bubblewrap (writes in the copy only, no network). A defect is kept only when its test
+  fails there and the output names the test.
+
+It is asked on Opus at high effort unless Settings' **Reviewer** page (in the Hive group) says
+otherwise. One review takes minutes and, by Claude Code's own count, about as much as the agent's
+work on the goal; it stops after 30 minutes or $5. Its output is kept in Symbiote's cache,
+`hive-reviews/`.
+
+If the review cannot run, Hive asks you to land the workspace with a note, and the card says
+**Not reviewed: look, then land it**:
+
+- **Claude Code's sandbox is not available.** On Linux it needs `bubblewrap` and `socat`
+  (`sudo apt install bubblewrap socat`); there is none on Windows.
+- **There is no bubblewrap.** Symbiote's own rerun needs it, so reviews run on Linux only.
+- **The reviewer gave no answer twice** on the same commit.
 
 Hive runs the agent in the permission mode you pick on the Start page. An agent that asks for a
 permission waits for you.
 
 ### Hive off and on
 
-- **Turning Hive off** stops every Hive agent that works or waits, and any check Hive runs. Each
-  workspace keeps its step. Its card says **Hive off: paused**. You can still talk to the agent:
+- **Turning Hive off** stops every Hive agent that works or waits, and any check or review Hive
+  runs; a review's copies are deleted. Each workspace keeps its step. Its card says **Hive off: paused**. You can still talk to the agent:
   Hive does nothing while it is off.
 - **Turning Hive on again** goes on from each step. An agent Hive stopped is told it was
-  interrupted and continues. A check runs again from its start. An agent whose turn went on while
+  interrupted and continues. A check runs again from its start, and a review from a new copy. An agent whose turn went on while
   Hive was off is checked when its turn ends.
-- **Stopping `symbiote view`** with Hive on stops its checks and nothing else: agents keep
-  working. The next `symbiote view` goes on from each step, and stops a check a killed one left
-  running.
+- **Stopping `symbiote view`** with Hive on stops its checks and reviews and nothing else: agents
+  keep working. The next `symbiote view` goes on from each step, and stops a check or a reviewer
+  a killed one left running.
 
 One `symbiote view` drives a repository's Hive at a time. Another one of the same repository
 shows the cards and drives nothing, until the first one stops.
+
+With Hive off, a workspace Hive drove is reviewed and landed as any other, from its review.
 
 ### Where Hive keeps its state
 
@@ -240,8 +288,10 @@ A workspace Hive drives has `"hive": true` in its record. Hive writes its step i
 { "branch": "feature/halve", "step": "landing", "round": 2, "rounds": 3, "checked": "4f1c…" }
 ```
 
-The steps are `writing` (the agent's turn), `checking`, `landing` (asked of you), `stuck` (after 3
-rounds) and `landed`. The record also keeps each check's result and the last lines of its output.
+The steps are `writing` (the agent's turn), `checking`, `reviewing`, `landing` (asked of you),
+`stuck` (after 3 rounds) and `landed`. The record also keeps each check's result and the last lines
+of its output, and each review with its findings. The tests of the defects a review proved are kept
+in `symbiote/hive/<branch>/r<round>/`, where the agent reads them.
 `symbiote/hive/runner.lock` names the process that drives the repository.
 
 Before, Hive mode was one switch for the whole machine, in Symbiote's settings folder:

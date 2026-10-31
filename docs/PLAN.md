@@ -190,7 +190,7 @@ hosted.
 | [NU2](plan/nu2-nucleus-activity.md) | Nucleus's Activity tab: its messages, calls, the gate's decisions, Symbiote's tools and Confirms, recorded across conversations | ready for review | 604–610 | [journal](journal/nu2-nucleus-activity.md) |
 | [HV1](plan/hv1-hive-graph.md) | Spike: Hive's agentic graph — a runner of Symbiote's own; a graph of workspaces against one agent (no gain, twice the cost); a reviewer that runs code (4 of 4 defects) | measured | 646–651 | [journal](journal/hv1-hive-graph.md) |
 | [HV2](plan/hv2-hive-runner.md) | Hive's runner and record: workspaces started while Hive is on are driven to landing asked — the writer's turns, the check, its failures sent back; Hive off stops them, on or a restart resumes | built, ready for review | 652–658 | [journal](journal/hv2-hive-runner.md) |
-| [HV3](plan/hv3-running-reviewer.md) | Hive's running reviewer: after a passing check, a clean-context Claude Code in a throwaway copy proves defects with failing tests, which Symbiote reruns and sends the writer; the workspace's Review tab and Land in place of a human review | planned | 674–681 | [journal](journal/hv3-running-reviewer.md) |
+| [HV3](plan/hv3-running-reviewer.md) | Hive's running reviewer: after a passing check, a clean-context Claude Code in a throwaway copy proves defects with failing tests, which Symbiote reruns and sends the writer; the workspace's Review tab and Land in place of a human review | built, real runs waiting | 674–681 | [journal](journal/hv3-running-reviewer.md) |
 
 ### The merger
 

@@ -26,7 +26,7 @@ const enc = encodeURIComponent;
 
 /**
  * Land (HV3): the commit Hive checked and reviewed approved for the person and queued into its
- * target, as Merge into does. The head's primary and the Review tab's.
+ * target, as Merge into does. The workspace head's primary in Hive mode, seen from every tab.
  */
 export function LandButton({
   branch,
@@ -193,7 +193,7 @@ function ReviewRow({ branch, review }: { branch: string; review: HiveReview }) {
   );
 }
 
-/** The Review tab of a workspace Hive drives: its rounds, newest first, and Land when asked. */
+/** The Review tab of a workspace Hive drives: its rounds, newest first, and what Land approves. */
 export function HiveReviewTab({ branch, version }: { branch: string; version: unknown }) {
   const [detail, setDetail] = useState<WorkspaceHiveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -233,7 +233,6 @@ export function HiveReviewTab({ branch, version }: { branch: string; version: un
     <div className="hive-review">
       <div className="hive-review-head">
         <p className="hive-now">{stepWords(detail)}</p>
-        {asked && <LandButton branch={branch} />}
       </div>
       {asked && detail.checked && (
         <p className="hive-line hive-asked">

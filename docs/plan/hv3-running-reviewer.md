@@ -2,9 +2,12 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv3-running-reviewer.md)
 
-**Status:** planned (2026-10-31), on branch `feature/hv3-running-reviewer` (the workspace's, from
-`main` at `c84fa98`). The person's answers to the plan's five questions: 1–4 as recommended; 5, a
-Review tab of the workspace's own, "In hive mode, there will be no more human review process".
+**Status:** built, real runs waiting for the person (2026-10-31), on branch
+`feature/hv3-running-reviewer` (the workspace's, from `main` at `c84fa98`). The person's answers to
+the plan's five questions: 1–4 as recommended; 5, a Review tab of the workspace's own, "In hive
+mode, there will be no more human review process". Not yet run: the real reviewer and the real
+Hive run, which need `socat` (Claude Code's sandbox) and the scratch repository trusted in Claude
+Code (see Results).
 
 **Problem** (the brief: "Build HV3, the next Hive milestone … the running reviewer (decisions 648,
 650)"). HV2's loop asks the person to land a workspace once the project's check passes. Nothing
@@ -208,3 +211,58 @@ only).
 
 **Not in HV3 (later)**: Codex as the reviewer; a live view of the reviewer's session (its stream is
 kept); resuming an interrupted review; the graph (HV4); usage pacing (HV5).
+
+## As built (HV3)
+
+- **No settings file but Symbiote's** (decision 676): `--setting-sources ""`, not
+  `project,local`. Measured with a scratch repository: with the project's settings, its
+  `.claude/settings.json` hooks run, outside the sandbox, from the branch the writer wrote; with
+  none, they do not, and CLAUDE.md is not loaded either ("NONE" for its code word). The reviewer's
+  prompt tells it to read the project's instructions itself. Its settings also turn every hook off
+  (`disableAllHooks`).
+- **Each review in a folder of its own**, under the branch's in the cache: a killed runner's review,
+  still finishing in its process, would otherwise delete the copy of the review that replaced it
+  (the killed-runner test). A new runner removes the branch's whole folder before it reviews.
+- **Symbiote's rerun is confined by bubblewrap, which it calls itself** (`--ro-bind / /`, the copy
+  bound writable, a private `/tmp`, `--unshare-net`, `--die-with-parent`). Claude Code's sandbox has
+  no command of its own for another program's commands. So reviews run on Linux only; macOS's
+  `sandbox-exec` is not built (it could not be checked here). Without bubblewrap, no reviewer starts
+  and landing is asked with a note.
+- **Claude Code refuses to start without its sandbox**: with `failIfUnavailable`, 2.1.316 here
+  says "sandbox required but unavailable: … socat not installed". Symbiote reads that line: the
+  review is `unavailable`, landing is asked with the note "not reviewed: Claude Code's sandbox is
+  not available: …".
+- **Land is the head's primary only.** It was planned in the Review tab too; with both, the page had
+  two primaries for one action. The tab says what Land approves. The head's branch-review button is
+  gone for a Hive workspace while Hive is on (the summary's new `off` says when it is off).
+- **The test's name is a substring of the rerun's output.** A one-letter name matched "No test files
+  found" by chance (a unit test caught it); the reviewer is asked for the name as its runner prints
+  it. A short name stays a weak guard: the writer's one-line rejection is the next.
+- **A failed review runs again at the next look**, on the same round and commit; the second failure
+  asks landing with "the running review failed twice: …; review it yourself".
+- **The reviewer's settings in Settings** say Symbiote's defaults: the model "Symbiote's default
+  (Opus 5.5)", the level "Symbiote's default (high)".
+
+**Results** (so far).
+
+- **Measured first**: a `--shared` clone of this repository at a commit plus an offline
+  `pnpm install --frozen-lockfile`, 0.3 s together (pnpm's store hard-links); `--json-schema`'s
+  answer is the stream-json result's `structured_output`; `--max-budget-usd` is accepted; a vitest
+  rerun under bubblewrap 0.5 s, a write to `$HOME` refused, no network (`curl` exit 6).
+- **Tests**: `hive-runner.test.ts` 24 (11 HV3: a proven defect to the writer and its fix approved;
+  dropped findings — passed on the rerun, output not naming the test, exit 127, a file not in the
+  copy, a path with `..`; a failing check with no review and the cap after proven defects; Hive off
+  mid-review and on; a killed runner's orphaned reviewer; the person's message mid-review; two
+  failures; no sandbox; no confinement; the project's model; the Review tab and Land), and HV2's
+  13 with the review step; `hive-review.test.ts` 14 (the rerun's verdict, files, arguments,
+  settings, prompt, the message's room, bubblewrap for real, the Reviewer's settings); prompts 30;
+  the viewer's settings 11, card words and the rounds' words. `pnpm check`: 2,625 tests.
+- **e2e**: `hive-review.spec.ts` (the suite's fake Claude Code as writer and reviewer, the rerun
+  under bubblewrap): a defect proven reaches the writer, the tab shows it, the fix is approved,
+  Land merges it into `main` and Hive records `landed`; Settings' Reviewer. With `hive-loop.spec.ts`
+  and the Settings, Workspaces and Hive specs: 75 passed.
+- **Screenshots** (1440×900 and 820×900, dark and light, Hive on): the Review tab with a proven and
+  a dropped finding, the landing asked, Settings' Reviewer and Hive mode.
+- **Not verified yet**: Claude Code's sandbox running a reviewer (here `socat` is missing); a real
+  reviewer on a planted defect; the real Hive run (Verification 6's scratch repository is ready,
+  waiting to be trusted in Claude Code); macOS and Windows (no review there).
