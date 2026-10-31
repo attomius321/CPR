@@ -173,6 +173,16 @@ function fakes(
           uncommitted: { count: 0, listed: [] },
         }),
       merge: () => Promise.resolve({ into: 'main', clean: true }),
+      exportActivity: (branch: string, format: string, options?: { maxBytes?: number }) => {
+        calls.push(['exportActivity', branch, format, options]);
+        return branch === 'none/x'
+          ? Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404))
+          : Promise.resolve({
+              text: `---\nof: workspace\n---\n\n# Activity: ${branch}\n`,
+              name: 'activity.md',
+              type: 'text/markdown; charset=utf-8',
+            });
+      },
       thread: (branch: string) =>
         Promise.resolve({
           recorded: true,
@@ -470,6 +480,7 @@ describe("Symbiote's MCP: the protocol (MC1, decision 359)", () => {
       'workspaces',
       'workspace',
       'thread',
+      'activity',
       'start_options',
       'suggest_settings',
       'start_workspace',
@@ -621,6 +632,49 @@ describe("Symbiote's MCP: what it reads", () => {
       isError: true,
       text: 'last: a count from 1 to 100',
     });
+  });
+
+  it("gives a workspace's activity as Markdown, within 60 KB (V84, decision 672)", async () => {
+    const { services, calls } = fakes();
+    const mcp = server(services);
+    const read = await call(mcp, 'activity', { branch: 'fix/a' });
+    // The Markdown itself, not a JSON string of it.
+    expect(read.text).toBe('---\nof: workspace\n---\n\n# Activity: fix/a\n');
+    expect(calls).toContainEqual(['exportActivity', 'fix/a', 'markdown', { maxBytes: 60 * 1024 }]);
+    expect(await call(mcp, 'activity', { branch: 'none/x' })).toMatchObject({
+      isError: true,
+      text: 'no workspace none/x',
+    });
+    expect(await call(mcp, 'activity', {})).toMatchObject({
+      isError: true,
+      text: "branch: a workspace's branch, or nucleus: true",
+    });
+    expect(await call(mcp, 'activity', { branch: 'fix/a', nucleus: true })).toMatchObject({
+      isError: true,
+      text: "branch: a workspace's branch, or nucleus: true",
+    });
+  });
+
+  it("gives Nucleus's activity when it has one (V84)", async () => {
+    const { services } = fakes();
+    const without = await call(server(services), 'activity', { nucleus: true });
+    expect(without).toMatchObject({ isError: true, text: 'nucleus: none in this Symbiote' });
+    const asked: unknown[] = [];
+    const mcp = server({
+      ...services,
+      nucleus: {
+        exportActivity: (format, options) => {
+          asked.push([format, options]);
+          return Promise.resolve({
+            text: '# Activity: Nucleus\n',
+            name: 'a.md',
+            type: 'text/markdown',
+          });
+        },
+      },
+    });
+    expect((await call(mcp, 'activity', { nucleus: true })).text).toBe('# Activity: Nucleus\n');
+    expect(asked).toEqual([['markdown', { maxBytes: 60 * 1024 }]]);
   });
 
   it("checks its arguments, and gives a service's refusal in its words", async () => {
