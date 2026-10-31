@@ -2,14 +2,23 @@
 // sessions and hooks act as the real one's (a prompt recorded as a turn starts, a report as it
 // ends) and the project's real check, run as a shell would.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { openRepo, type GitRepo } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { repositoryHive, type HiveRecord } from '../src/hive.js';
 import { hiveRunner, type HiveRunner } from '../src/hive-runner.js';
-import { hiveEventsPath, readHive, writeHive } from '../src/hive-record.js';
+import { hiveEventsPath, hiveTestsDir, readHive, writeHive } from '../src/hive-record.js';
+import type { Confine } from '../src/hive-review.js';
 import { reviewPlace, type ReviewPlace } from '../src/reviews.js';
 import { recordEvent } from '../src/thread.js';
 import {
@@ -145,6 +154,92 @@ function fakeClaude(symbiote: string, now: () => Date) {
   return { claude, listed, start, resume, stop, sessions, sessionIn, endTurn };
 }
 
+/** One run of the fake reviewer: the files it writes in its copy, then its answer or its failure. */
+interface ReviewerAnswer {
+  write?: Record<string, string>;
+  answer?: {
+    summary: string;
+    ran: string;
+    findings: { defect: string; test: string; command: string; files: string[] }[];
+  };
+  cost?: number;
+  /** Milliseconds before it answers: Hive off, a message or a killed runner meanwhile. */
+  sleep?: number;
+  stderr?: string;
+  exit?: number;
+}
+
+/** A run of the fake reviewer, as it recorded itself. */
+interface ReviewerCall {
+  args: string[];
+  cwd: string;
+  input: string;
+  pid: number;
+}
+
+/**
+ * A fake Claude Code as Hive's running reviewer (HV3): a real program, run as `claude -p` is, that
+ * answers each run with the next of its answers (the last again when none is left; an approval
+ * when none was given) in `stream-json`, after writing its files into its copy. It records its
+ * arguments, folder, prompt and pid.
+ */
+function fakeReviewer(dir: string) {
+  mkdirSync(dir, { recursive: true });
+  const script = join(dir, 'claude');
+  writeFileSync(
+    script,
+    `#!/usr/bin/env node
+const fs = require('node:fs');
+const path = require('node:path');
+const dir = ${JSON.stringify(dir)};
+let input = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', (chunk) => (input += chunk));
+process.stdin.on('end', () => {
+  const count = path.join(dir, 'count');
+  const n = Number(fs.existsSync(count) ? fs.readFileSync(count, 'utf8') : '0');
+  fs.writeFileSync(count, String(n + 1));
+  const file = path.join(dir, 'answers.json');
+  const answers = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : [];
+  const a = answers[Math.min(n, answers.length - 1)] || {};
+  fs.appendFileSync(path.join(dir, 'calls.jsonl'), JSON.stringify({ args: process.argv.slice(2), cwd: process.cwd(), input, pid: process.pid }) + '\\n');
+  for (const [name, text] of Object.entries(a.write || {})) {
+    fs.mkdirSync(path.dirname(name), { recursive: true });
+    fs.writeFileSync(name, text);
+  }
+  const answer = () => {
+    if (a.stderr) process.stderr.write(a.stderr + '\\n');
+    if (a.exit) process.exit(a.exit);
+    const out = a.answer || { summary: 'Nothing found.', ran: 'Its tests.', findings: [] };
+    console.log(JSON.stringify({ type: 'system', subtype: 'init', model: 'claude-fake' }));
+    console.log(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, total_cost_usd: a.cost === undefined ? 0.5 : a.cost, result: JSON.stringify(out), structured_output: out }));
+  };
+  if (a.sleep) setTimeout(answer, a.sleep);
+  else answer();
+});
+`,
+  );
+  chmodSync(script, 0o755);
+  return {
+    script,
+    answers(list: ReviewerAnswer[]) {
+      writeFileSync(join(dir, 'answers.json'), JSON.stringify(list));
+    },
+    calls(): ReviewerCall[] {
+      const file = join(dir, 'calls.jsonl');
+      return existsSync(file)
+        ? readFileSync(file, 'utf8')
+            .split('\n')
+            .filter(Boolean)
+            .map((line) => JSON.parse(line) as ReviewerCall)
+        : [];
+    },
+  };
+}
+
+/** A rerun as the tests run it: unconfined (bubblewrap's own command is tested apart). */
+const unconfined: Confine = (command) => command;
+
 /** Git in a worktree, as the writer (its own name: the repository has none). */
 const gitIn = (cwd: string, ...args: string[]) =>
   execFileSync('git', ['-c', 'user.name=Writer', '-c', 'user.email=writer@example.com', ...args], {
@@ -179,6 +274,9 @@ interface Setup {
   hive: HiveRecord;
   service: Workspaces;
   fake: ReturnType<typeof fakeClaude>;
+  reviewer: ReturnType<typeof fakeReviewer>;
+  /** Where the reviews' copies are, in Symbiote's cache. */
+  copies: string;
   now: () => Date;
   runner: (options?: { pid?: number }) => HiveRunner;
   /** Turns Hive on or off as Settings does: the record, then this process's runner told. */
@@ -186,12 +284,16 @@ interface Setup {
   start: (branch: string, more?: { planFirst?: boolean; kind?: 'spike' }) => Promise<string>;
 }
 
-async function setup(repo: TestRepo): Promise<Setup> {
+async function setup(
+  repo: TestRepo,
+  { confine = unconfined }: { confine?: Confine | null } = {},
+): Promise<Setup> {
   const git = await openRepo(repo.root);
   const now = clock();
   const where = await reviewPlace(git, cache);
   const hive = repositoryHive(git, cache, { now });
   const fake = fakeClaude(symbioteFolder(where), now);
+  const reviewer = fakeReviewer(join(cache, 'fake-reviewer'));
   const service = workspaces(git, cache, {
     claude: () => Promise.resolve(fake.claude),
     now,
@@ -207,6 +309,10 @@ async function setup(repo: TestRepo): Promise<Setup> {
       now,
       interval: 0,
       ...(pid ? { pid } : {}),
+      reviewer: {
+        claude: () => Promise.resolve(reviewer.script),
+        confine: () => Promise.resolve(confine),
+      },
     });
     runners.push(made);
     return made;
@@ -217,6 +323,8 @@ async function setup(repo: TestRepo): Promise<Setup> {
     hive,
     service,
     fake,
+    reviewer,
+    copies: join(cache, 'worktrees', git.id, 'hive-review'),
     now,
     runner,
     async turn(on, made) {
@@ -276,6 +384,8 @@ describe('Hive, on', () => {
     const landing = await readHive(s.where, 'feature/one');
     expect(landing).toMatchObject({ step: 'landing', round: 1, checked: tip });
     expect(landing?.checks).toMatchObject([{ round: 1, at: tip, ok: true }]);
+    // The running reviewer (HV3) found nothing on the commit the check passed on.
+    expect(landing?.reviews).toMatchObject([{ round: 1, at: tip, verdict: 'approved' }]);
     // The card reads it: landing asked, Hive on.
     const listed = (await s.service.list()).workspaces[0];
     expect(listed?.hive).toMatchObject({ step: 'landing', round: 1, rounds: 3 });
@@ -293,6 +403,9 @@ describe('Hive, on', () => {
       'turn-ended',
       'check-started',
       'check',
+      'reviewing',
+      'review-started',
+      'review',
       'landing',
       'landed',
     ]);
@@ -522,6 +635,9 @@ describe('Hive off, on again, a killed runner', () => {
       'on',
       'check-started',
       'check',
+      'reviewing',
+      'review-started',
+      'review',
       'landing',
     ]);
   });
@@ -578,6 +694,402 @@ describe('Hive off, on again, a killed runner', () => {
   });
 });
 
+/** A test the fake reviewer writes: it fails, naming itself, while one.txt does not say one. */
+const ONE_TEST =
+  'grep -qx one one.txt && echo "PASS one says one" || { echo "FAIL one says one"; exit 1; }\n';
+const ONE_FINDING = {
+  defect: 'one.txt says uno, not one',
+  test: 'one says one',
+  command: 'sh test/one.test.sh',
+  files: ['test/one.test.sh'],
+};
+
+/** The reviews' copies left in Symbiote's cache: none once a review ended. */
+const copiesLeft = (copies: string) =>
+  existsSync(copies) ? readdirSync(copies, { recursive: true }) : [];
+
+describe("Hive's running reviewer (HV3)", () => {
+  it('a defect proven by a failing test reaches the writer; its fix passes the next review; landing asked', async () => {
+    const repo = repository(['test -f one.txt']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/one');
+    s.reviewer.answers([
+      {
+        write: { 'test/one.test.sh': ONE_TEST },
+        answer: { summary: 'one.txt says uno.', ran: 'test/one.test.sh', findings: [ONE_FINDING] },
+        cost: 0.75,
+      },
+      { answer: { summary: 'Fixed.', ran: 'test/one.test.sh passes.', findings: [] } },
+    ]);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'one.txt': 'uno\n' } });
+    await runner.tick();
+    await runner.idle();
+    const first = gitIn(worktree, 'rev-parse', 'HEAD');
+
+    // It ran in a clone of the commit the check passed on, with Symbiote's settings only.
+    const [call] = s.reviewer.calls();
+    if (!call) throw new Error('no review');
+    expect(call.cwd).not.toBe(worktree);
+    expect(call.cwd.startsWith(s.copies)).toBe(true);
+    expect(call.args.slice(0, 1)).toEqual(['-p']);
+    const arg = (name: string) => call.args[call.args.indexOf(name) + 1];
+    expect(arg('--model')).toBe('opus');
+    expect(arg('--effort')).toBe('high');
+    expect(arg('--setting-sources')).toBe('');
+    expect(arg('--permission-mode')).toBe('dontAsk');
+    expect(call.args).toEqual(
+      expect.arrayContaining(['--strict-mcp-config', '--no-session-persistence']),
+    );
+    expect(call.input).toContain('Write feature/one.');
+    expect(call.input).toContain('+uno');
+    expect(call.input).toContain("Symbiote's check passed on");
+
+    await runner.tick();
+    const record = await readHive(s.where, 'feature/one');
+    expect(record).toMatchObject({ step: 'writing', round: 2 });
+    expect(record?.reviews).toMatchObject([
+      {
+        round: 1,
+        at: first,
+        verdict: 'changes',
+        cost: 0.75,
+        model: 'opus',
+        effort: 'high',
+        findings: [{ ...ONE_FINDING, kept: true, code: 1 }],
+      },
+    ]);
+    expect(record?.reviews[0]?.findings[0]?.output).toContain('FAIL one says one');
+    // The writer got the failing test, kept beside Hive's record.
+    const text = s.fake.resume.mock.calls.at(-1)?.[0].text ?? '';
+    expect(text).toContain('proved 1 defect with failing tests');
+    expect(text).toContain('one.txt says uno, not one');
+    expect(text).toContain('`sh test/one.test.sh`');
+    expect(text).toContain('grep -qx one one.txt');
+    expect(text).toContain('FAIL one says one');
+    const kept = join(hiveTestsDir(s.where, 'feature/one', 1), 'test', 'one.test.sh');
+    expect(readFileSync(kept, 'utf8')).toBe(ONE_TEST);
+    expect(copiesLeft(s.copies)).toEqual([]);
+    expect((await s.service.list()).workspaces[0]?.hive?.review).toEqual({
+      round: 1,
+      at: first,
+      verdict: 'changes',
+      kept: 1,
+    });
+
+    // The writer adds the test and makes it pass: the check, then a review that approves.
+    await s.fake.endTurn(worktree, { files: { 'one.txt': 'one\n', 'test/one.test.sh': ONE_TEST } });
+    await runner.tick();
+    await runner.idle();
+    const second = s.reviewer.calls()[1];
+    expect(second?.input).toContain('In round 1, a reviewer proved these defects');
+    expect(second?.input).toContain('one.txt says uno, not one');
+    expect(second?.input).toContain("The writer's report of its turn since");
+    const tip = gitIn(worktree, 'rev-parse', 'HEAD');
+    const landing = await readHive(s.where, 'feature/one');
+    expect(landing).toMatchObject({ step: 'landing', round: 2, checked: tip });
+    expect(landing?.reviews.map((r) => [r.round, r.verdict])).toEqual([
+      [1, 'changes'],
+      [2, 'approved'],
+    ]);
+    expect(copiesLeft(s.copies)).toEqual([]);
+    expect(events(s.where, 'feature/one')).toEqual([
+      'started',
+      'turn-ended',
+      'check-started',
+      'check',
+      'reviewing',
+      'review-started',
+      'review',
+      'message',
+      'sent',
+      'turn-ended',
+      'check-started',
+      'check',
+      'reviewing',
+      'review-started',
+      'review',
+      'landing',
+    ]);
+  });
+
+  it("drops a finding whose test passes on Symbiote's rerun, or does not name it, or has no file in the copy", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/drop');
+    s.reviewer.answers([
+      {
+        write: {
+          'test/pass.sh': 'echo "PASS it is fine"\n',
+          'test/other.sh': 'echo "something else"; exit 1\n',
+          'test/gone.sh': 'exit 127\n',
+        },
+        answer: {
+          summary: 'Three suspicions.',
+          ran: 'Three tests.',
+          findings: [
+            {
+              defect: 'a',
+              test: 'it is fine',
+              command: 'sh test/pass.sh',
+              files: ['test/pass.sh'],
+            },
+            { defect: 'b', test: 'named', command: 'sh test/other.sh', files: ['test/other.sh'] },
+            { defect: 'c', test: 'gone', command: 'sh test/gone.sh', files: ['test/gone.sh'] },
+            { defect: 'd', test: 'x', command: 'sh test/missing.sh', files: ['test/missing.sh'] },
+            { defect: 'e', test: 'y', command: 'sh ../out.sh', files: ['../out.sh'] },
+          ],
+        },
+      },
+    ]);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'a.txt': 'a\n' } });
+    await runner.tick();
+    await runner.idle();
+    const record = await readHive(s.where, 'feature/drop');
+    // Nothing proven: landing asked, nothing sent to the writer.
+    expect(record).toMatchObject({ step: 'landing', round: 1 });
+    expect(s.fake.resume).not.toHaveBeenCalled();
+    const review = record?.reviews[0];
+    expect(review?.verdict).toBe('approved');
+    expect(review?.findings.map((f) => [f.defect, f.kept, f.why])).toEqual([
+      ['a', false, "its test passed on Symbiote's rerun"],
+      ['b', false, 'its command failed, but its output does not name "named"'],
+      ['c', false, 'its command could not run (exit 127)'],
+      ['d', false, 'test/missing.sh is not in the copy'],
+      ['e', false, '../out.sh holds ".."'],
+    ]);
+    expect(existsSync(hiveTestsDir(s.where, 'feature/drop', 1))).toBe(false);
+    expect(copiesLeft(s.copies)).toEqual([]);
+  });
+
+  it('a failing check goes back without a review; defects proven in the last round stop for the person', async () => {
+    const repo = repository(['test -f one.txt']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/cap');
+    s.reviewer.answers([
+      {
+        write: { 'test/one.test.sh': ONE_TEST },
+        answer: { summary: 'Still uno.', ran: 'test/one.test.sh', findings: [ONE_FINDING] },
+      },
+    ]);
+    const runner = s.runner();
+    // Round 1: the check fails, and no review runs.
+    await s.fake.endTurn(worktree, { files: { 'two.txt': '2\n' } });
+    await runner.tick();
+    await runner.idle();
+    await runner.tick();
+    expect(await readHive(s.where, 'feature/cap')).toMatchObject({ step: 'writing', round: 2 });
+    expect(s.reviewer.calls()).toEqual([]);
+    // Rounds 2 and 3: the check passes, the reviewer proves the defect each time.
+    for (const round of [2, 3]) {
+      await s.fake.endTurn(worktree, { files: { 'one.txt': `uno ${round}\n` } });
+      await runner.tick();
+      await runner.idle();
+      await runner.tick();
+    }
+    const stuck = await readHive(s.where, 'feature/cap');
+    expect(stuck).toMatchObject({ step: 'stuck', round: 3 });
+    expect(stuck?.note).toBe('the reviewer proved defects in 3 rounds');
+    expect(stuck?.reviews.map((r) => [r.round, r.verdict])).toEqual([
+      [2, 'changes'],
+      [3, 'changes'],
+    ]);
+    expect(s.reviewer.calls()).toHaveLength(2);
+    expect(copiesLeft(s.copies)).toEqual([]);
+  });
+
+  it('Hive off mid-review stops the reviewer and keeps the step; on again, a new review runs', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/off');
+    s.reviewer.answers([{ sleep: 30_000 }, {}]);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'o.txt': 'o\n' } });
+    await runner.tick();
+    await until(() => s.reviewer.calls().length === 1, 'the reviewer');
+    await until(
+      async () => (await readHive(s.where, 'feature/off'))?.review !== undefined,
+      'the review in the record',
+    );
+    const pid = s.reviewer.calls()[0]?.pid ?? 0;
+    expect((await readHive(s.where, 'feature/off'))?.review?.pid).toBe(pid);
+    expect(alive(pid)).toBe(true);
+    expect((await s.service.list()).workspaces[0]?.hive?.step).toBe('reviewing');
+
+    await s.turn(false, runner);
+    await runner.tick();
+    await until(() => !alive(pid), 'the reviewer to be stopped');
+    await runner.idle();
+    const off = await readHive(s.where, 'feature/off');
+    expect(off).toMatchObject({ step: 'reviewing', interrupted: true, reviews: [] });
+    expect(off?.review).toBeUndefined();
+    expect(copiesLeft(s.copies)).toEqual([]);
+    expect((await s.service.list()).workspaces[0]?.hive?.paused).toBe(true);
+
+    await s.turn(true, runner);
+    await runner.tick();
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/off')).toMatchObject({
+      step: 'landing',
+      reviews: [{ round: 1, verdict: 'approved' }],
+    });
+    expect(s.reviewer.calls()).toHaveLength(2);
+    expect(events(s.where, 'feature/off').slice(-7)).toEqual([
+      'review-started',
+      'off',
+      'review-stopped',
+      'on',
+      'review-started',
+      'review',
+      'landing',
+    ]);
+    expect(copiesLeft(s.copies)).toEqual([]);
+  });
+
+  it('a killed runner: the next ends its orphaned reviewer, removes its copy and reviews again', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/orphan');
+    s.reviewer.answers([{ sleep: 30_000 }, {}]);
+    const first = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'o.txt': 'o\n' } });
+    await first.tick();
+    await until(
+      async () => (await readHive(s.where, 'feature/orphan'))?.review !== undefined,
+      'the review in the record',
+    );
+    await until(() => s.reviewer.calls().length === 1, 'the reviewer');
+    const pid = s.reviewer.calls()[0]?.pid ?? 0;
+    expect((await readHive(s.where, 'feature/orphan'))?.review?.pid).toBe(pid);
+    first.abandon();
+    expect(alive(pid)).toBe(true);
+
+    const next = s.runner();
+    await next.tick();
+    await until(() => !alive(pid), 'the orphan to be ended');
+    await next.idle();
+    expect(await readHive(s.where, 'feature/orphan')).toMatchObject({
+      step: 'landing',
+      reviews: [{ round: 1, verdict: 'approved' }],
+    });
+    expect(events(s.where, 'feature/orphan')).toContain('orphan-killed');
+    await until(() => copiesLeft(s.copies).length === 0, 'the copies to be removed');
+  });
+
+  it("the person's message mid-review stops it, and the rounds start again", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/mine');
+    s.reviewer.answers([{ sleep: 30_000 }]);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'm.txt': 'm\n' } });
+    await runner.tick();
+    await until(() => s.reviewer.calls().length === 1, 'the reviewer');
+    const pid = s.reviewer.calls()[0]?.pid ?? 0;
+    await s.service.reply({ branch: 'feature/mine', text: 'I take it from here.' });
+    await runner.tick();
+    await until(() => !alive(pid), 'the reviewer to be stopped');
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/mine')).toMatchObject({
+      step: 'writing',
+      round: 1,
+      reviews: [],
+    });
+    expect(copiesLeft(s.copies)).toEqual([]);
+  });
+
+  it('a reviewer that fails twice on a commit: landing asked, with a note', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/fails');
+    s.reviewer.answers([{ exit: 1, stderr: 'API Error: overloaded' }]);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'f.txt': 'f\n' } });
+    await runner.tick();
+    await runner.idle();
+    // The first failure: the review runs again at the next look.
+    expect((await readHive(s.where, 'feature/fails'))?.step).toBe('reviewing');
+    await runner.tick();
+    await runner.idle();
+    const record = await readHive(s.where, 'feature/fails');
+    expect(record?.step).toBe('landing');
+    expect(record?.reviews.map((r) => r.verdict)).toEqual(['failed', 'failed']);
+    expect(record?.reviews[1]?.error).toMatch(/API Error: overloaded/);
+    expect(record?.note).toMatch(/^the running review failed twice: .*review it yourself$/);
+    expect(s.fake.resume).not.toHaveBeenCalled();
+  });
+
+  it("without Claude Code's sandbox nothing is reviewed: landing asked, with a note", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/nosandbox');
+    s.reviewer.answers([
+      {
+        exit: 1,
+        stderr:
+          'Error: sandbox required but unavailable: sandbox is enabled but dependencies are missing: socat not installed · install missing tools (e.g. apt install bubblewrap socat)',
+      },
+    ]);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'n.txt': 'n\n' } });
+    await runner.tick();
+    await runner.idle();
+    const record = await readHive(s.where, 'feature/nosandbox');
+    expect(record?.step).toBe('landing');
+    expect(record?.reviews.map((r) => r.verdict)).toEqual(['unavailable']);
+    expect(record?.note).toMatch(
+      /^not reviewed: Claude Code's sandbox is not available: .*socat not installed/,
+    );
+    expect(s.reviewer.calls()).toHaveLength(1);
+  });
+
+  it('without a way to confine the rerun, no reviewer is started', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo, { confine: null });
+    await s.turn(true);
+    const worktree = await s.start('feature/noconfine');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'c.txt': 'c\n' } });
+    await runner.tick();
+    await runner.idle();
+    const record = await readHive(s.where, 'feature/noconfine');
+    expect(record?.step).toBe('landing');
+    expect(record?.note).toMatch(/^not reviewed: .*bubblewrap/);
+    expect(s.reviewer.calls()).toEqual([]);
+  });
+
+  it("asks the reviewer on the project's model and level", async () => {
+    const repo = repository(['true']);
+    writeFileSync(
+      join(repo.root, 'symbiote', 'config.json'),
+      `${JSON.stringify({ merge: { checks: ['true'] }, hive: { reviewer: { model: 'sonnet', effort: 'medium' } } })}\n`,
+    );
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/sonnet');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 's.txt': 's\n' } });
+    await runner.tick();
+    await runner.idle();
+    const call = s.reviewer.calls()[0];
+    expect(call?.args[call.args.indexOf('--model') + 1]).toBe('sonnet');
+    expect(call?.args[call.args.indexOf('--effort') + 1]).toBe('medium');
+    expect((await readHive(s.where, 'feature/sonnet'))?.reviews[0]).toMatchObject({
+      model: 'sonnet',
+      effort: 'medium',
+    });
+  });
+});
+
 describe('Hive off = main', () => {
   it('a start is as without Hive: its record and prompt, nothing under symbiote/hive, no agent call', async () => {
     const repo = repository(['true']);
@@ -619,6 +1131,9 @@ describe('Hive off = main', () => {
     await runner.idle();
     expect(s.fake.sessions.mock.calls.length).toBe(before);
     expect(existsSync(join(symbioteFolder(s.where), 'hive'))).toBe(false);
+    // No running reviewer, no copy (HV3).
+    expect(s.reviewer.calls()).toEqual([]);
+    expect(existsSync(s.copies)).toBe(false);
     // Off, the switch is read once; after that only its file's time is, until it is written.
     expect(on).toHaveBeenCalledTimes(1);
     await s.hive.set(true);

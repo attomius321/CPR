@@ -320,6 +320,8 @@ export {
   type WorkspaceStart,
   type WorkspaceSummary,
   type HiveCheck,
+  type HiveFinding,
+  type HiveReview,
   type HiveStep,
   type WorkspaceHive,
   type WorkspaceShell,

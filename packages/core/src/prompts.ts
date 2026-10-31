@@ -35,7 +35,11 @@ export type PromptKey =
   /** What Hive sends the writer when it ended a turn with work not committed, or none (HV2). */
   | 'hive.commit'
   /** What Hive sends a writer it stopped, once Hive is on again (HV2). */
-  | 'hive.resume';
+  | 'hive.resume'
+  /** What Hive sends the writer with the tests its running reviewer proved defects with (HV3). */
+  | 'hive.review'
+  /** The running reviewer's instructions, its appended system prompt (HV3). */
+  | 'hive.reviewer';
 
 /** Every prompt, in the Settings page's order. */
 export const PROMPT_KEYS: readonly PromptKey[] = [
@@ -59,8 +63,10 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'library',
   'hive.start',
   'hive.check',
+  'hive.review',
   'hive.commit',
   'hive.resume',
+  'hive.reviewer',
 ];
 
 /** A name a prompt may hold as `{name}`, replaced by what it stands for when it is used. */

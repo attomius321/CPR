@@ -140,15 +140,15 @@ export interface GroupRun {
   kill(graceMs?: number): void;
 }
 
-/** Starts a command in a process group of its own, `runShell`'s way. */
-export type RunGroup = (command: string, cwd: string) => GroupRun;
+/** Starts a command in a process group of its own, `runShell`'s way; 60 minutes at most by default. */
+export type RunGroup = (command: string, cwd: string, options?: { timeoutMs?: number }) => GroupRun;
 
 /**
  * Runs a command through the shell in a process group of its own (HV2, decision 654): Hive's
  * check, which Hive off or a resume after a killed `symbiote view` ends whole, its children
  * (`pnpm`, `vitest`, a browser) with it. The output's end is kept, as `runShell` keeps it.
  */
-export const runGroup: RunGroup = (command, cwd) => {
+export const runGroup: RunGroup = (command, cwd, { timeoutMs = CHECK_TIMEOUT_MS } = {}) => {
   let output = '';
   const child = spawn(command, {
     cwd,
@@ -165,7 +165,7 @@ export const runGroup: RunGroup = (command, cwd) => {
         killGroup(child.pid ?? 0, 'SIGKILL');
     }, graceMs).unref();
   };
-  const timer = setTimeout(() => kill(), CHECK_TIMEOUT_MS);
+  const timer = setTimeout(() => kill(), timeoutMs);
   const keep = (chunk: string) => {
     output += chunk;
     if (output.length > 1_000_000) output = output.slice(-200_000);
@@ -182,6 +182,80 @@ export const runGroup: RunGroup = (command, cwd) => {
       resolve({ code, output });
     });
   });
+  return { pid: child.pid, done, kill };
+};
+
+/** A program running in a process group of its own, its output and errors apart (HV3). */
+export interface ProgramGroupRun {
+  pid: number | undefined;
+  /** Its exit code (null when it could not start, or was killed), its output and its errors. */
+  done: Promise<{ code: number | null; stdout: string; stderr: string }>;
+  /** Ends the whole group: SIGTERM, then SIGKILL after `graceMs`. */
+  kill(graceMs?: number): void;
+}
+
+/**
+ * Starts a program, without a shell, in a process group of its own, with `input` on its stdin and
+ * each line of its stdout to `onLine` as it comes: Hive's running reviewer (HV3, decision 676),
+ * which Hive off or a new runner after a killed `symbiote view` ends whole.
+ */
+export type SpawnGroup = (
+  program: string,
+  args: readonly string[],
+  options: {
+    cwd: string;
+    input: string;
+    timeoutMs: number;
+    onLine?: (line: string) => void;
+    env?: NodeJS.ProcessEnv;
+  },
+) => ProgramGroupRun;
+
+export const spawnGroup: SpawnGroup = (program, args, { cwd, input, timeoutMs, onLine, env }) => {
+  let stdout = '';
+  let stderr = '';
+  let line = '';
+  const child = spawn(program, [...args], {
+    cwd,
+    detached: true,
+    stdio: ['pipe', 'pipe', 'pipe'],
+    windowsHide: true,
+    ...(env ? { env } : {}),
+  });
+  const kill = (graceMs = 3_000) => {
+    if (child.pid === undefined) return;
+    killGroup(child.pid, 'SIGTERM');
+    setTimeout(() => {
+      if (child.exitCode === null && child.signalCode === null)
+        killGroup(child.pid ?? 0, 'SIGKILL');
+    }, graceMs).unref();
+  };
+  const timer = setTimeout(() => kill(), timeoutMs);
+  child.stdout.setEncoding('utf8').on('data', (chunk: string) => {
+    stdout += chunk;
+    if (stdout.length > 4_000_000) stdout = stdout.slice(-1_000_000);
+    if (!onLine) return;
+    const lines = (line + chunk).split('\n');
+    line = lines.pop() ?? '';
+    for (const each of lines) onLine(each);
+  });
+  child.stderr.setEncoding('utf8').on('data', (chunk: string) => {
+    stderr += chunk;
+    if (stderr.length > 1_000_000) stderr = stderr.slice(-200_000);
+  });
+  const done = new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve) => {
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      resolve({ code: null, stdout, stderr: `${stderr}${error.message}\n` });
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      if (line !== '') onLine?.(line);
+      resolve({ code, stdout, stderr });
+    });
+  });
+  child.stdin.on('error', () => undefined);
+  child.stdin.end(input);
   return { pid: child.pid, done, kill };
 };
 
