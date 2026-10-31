@@ -136,17 +136,24 @@ function worktreeProblem(folder: string, worktrees: () => readonly string[]): st
 export interface GateOptions {
   reach?: NucleusReach;
   web?: boolean;
+  /** The name the conversation started under when not Nucleus (Alpha Ceph, decision 678). */
+  name?: string;
 }
 
 /**
- * The gate's options from its arguments: the checkout and the records folder (V80), and `--web`
- * when the conversation was started with the web (NU1). A settings file written before NU1, or
+ * The gate's options from its arguments: the checkout and the records folder (V80), `--web`
+ * when the conversation was started with the web (NU1), and `--name=` when it was started under
+ * another name than Nucleus's (Alpha Ceph, decision 678). A settings file written before NU1, or
  * with `nucleus.web` false, gives no web; one written before V80, no reach.
  */
 export function gateOptions(args: readonly string[]): GateOptions {
   const reach = nucleusReach(args);
-  return { ...(reach ? { reach } : {}), web: args.includes('--web') };
+  const name = args.find((arg) => arg.startsWith(NAME_ARG))?.slice(NAME_ARG.length);
+  return { ...(reach ? { reach } : {}), web: args.includes('--web'), ...(name ? { name } : {}) };
 }
+
+/** The gate's argument naming the conversation (decision 678): `--name=Alpha Ceph`. */
+export const NAME_ARG = '--name=';
 
 /** Claude Code's tools on the web (NU1): a search at Anthropic, a page read by GET from here. */
 const WEB = ['WebSearch', 'WebFetch'];
@@ -386,11 +393,13 @@ function ownOptions(
  * [--no-pager] <command> …` for the commands in `READ_COMMANDS`, no option that writes or runs a
  * program, optionally piped into `head`, `tail`, `wc` or `grep`. With `worktrees` (Nucleus's, V80):
  * also `-C <a workspace's worktree>`, where `git diff` is refused (it rewrites the index), and
- * `diff-index` and `--no-optional-locks status`, here and there.
+ * `diff-index` and `--no-optional-locks status`, here and there. `who` runs them: Nucleus, or the
+ * name its conversation started under (decision 678).
  */
 export function gitReadProblem(
   command: string,
   worktrees?: () => readonly string[],
+  who = 'Nucleus',
 ): string | null {
   const stages = stagesOf(command);
   if (typeof stages === 'string') return stages;
@@ -407,7 +416,7 @@ export function gitReadProblem(
       : `git ${name}: none of git's own options but --no-pager`;
   }
   if (!(worktrees ? NUCLEUS_COMMANDS : READ_COMMANDS).has(name)) {
-    return `git ${name} is not one of git's read commands Nucleus runs`;
+    return `git ${name} is not one of git's read commands ${who} runs`;
   }
   if (name === 'status' && !own.quiet) {
     return 'git status only as git --no-optional-locks status: without it git rewrites the index';
@@ -462,7 +471,7 @@ function readDecision(
  */
 export function gateDecision(
   input: unknown,
-  { reach, web = false }: GateOptions = {},
+  { reach, web = false, name: who = 'Nucleus' }: GateOptions = {},
 ): GateDecision {
   if (!input || typeof input !== 'object') return null;
   const v = input as { hook_event_name?: unknown; tool_name?: unknown; tool_input?: unknown };
@@ -474,17 +483,17 @@ export function gateDecision(
     const command = (v.tool_input as { command?: unknown } | null)?.command;
     const problem =
       typeof command === 'string'
-        ? gitReadProblem(command.trim(), reach?.worktrees)
+        ? gitReadProblem(command.trim(), reach?.worktrees, who)
         : 'no command given';
     if (problem === null) return { allow: true };
     return {
       allow: false,
       reason: reach
-        ? "Nucleus runs only git's read commands (git log, show, blame, diff, shortlog, grep, " +
+        ? `${who} runs only git's read commands (git log, show, blame, diff, shortlog, grep, ` +
           'rev-parse, merge-base, ls-files, ls-tree, diff-index, and status with ' +
           "--no-optional-locks), one at a time, here or with -C <a workspace's worktree>, piped " +
           `into head, tail, wc or grep at most: ${problem}. Read, Grep and Glob read files.`
-        : "Nucleus runs only git's read commands (git log, show, blame, diff, shortlog, grep, " +
+        : `${who} runs only git's read commands (git log, show, blame, diff, shortlog, grep, ` +
           'rev-parse, merge-base, ls-files, ls-tree), one at a time, piped into head, tail, wc or ' +
           `grep at most: ${problem}. Read, Grep and Glob read files.`,
     };
@@ -495,19 +504,19 @@ export function gateDecision(
     }
     return {
       allow: false,
-      reason: `Nucleus acts only through Symbiote's tools (${SYMBIOTE_TOOLS}…), not ${v.tool_name}.`,
+      reason: `${who} acts only through Symbiote's tools (${SYMBIOTE_TOOLS}…), not ${v.tool_name}.`,
     };
   }
   if (WEB.includes(v.tool_name)) {
     if (web) return { allow: true, reason: 'the web, as its agent reads it (NU1)' };
     return {
       allow: false,
-      reason: `Nucleus has no web in this conversation (${v.tool_name}): nucleus.web is false in symbiote/config.json, or the conversation started before Nucleus had it. A new conversation takes the setting.`,
+      reason: `${who} has no web in this conversation (${v.tool_name}): nucleus.web is false in symbiote/config.json, or the conversation started before ${who} had it. A new conversation takes the setting.`,
     };
   }
   return {
     allow: false,
-    reason: `Nucleus changes no file: it reads files (Read, Grep, Glob) and git's history, and acts only through Symbiote's tools (${v.tool_name}).`,
+    reason: `${who} changes no file: it reads files (Read, Grep, Glob) and git's history, and acts only through Symbiote's tools (${v.tool_name}).`,
   };
 }
 

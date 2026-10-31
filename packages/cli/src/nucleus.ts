@@ -5,7 +5,7 @@
 // its only way to act: workspaces, reviews, merges, the asked ones on the person's Confirm. Since
 // V50 its conversation starts with no question, its instructions its system prompt.
 import { fileURLToPath } from 'node:url';
-import type { GitRepo } from '@symbiote/core';
+import { NUCLEUS_NAMES, type GitRepo } from '@symbiote/core';
 import {
   pageAgent,
   type PageAgent,
@@ -13,12 +13,15 @@ import {
   type PageAgentSpec,
 } from './page-agent.js';
 import { NUCLEUS_ACTIVITY } from './nucleus-activity.js';
-import { openWorktrees } from './nucleus-gate.js';
-import { fillPrompt, readPrompts } from './prompts.js';
+import { NAME_ARG, openWorktrees } from './nucleus-gate.js';
+import { nucleusInstructions, readPrompts } from './prompts.js';
 import { workspacesDir } from './workspace-record.js';
 import { readWorkspaceConfig } from './workspaces.js';
 
-/** The name Nucleus's session and thread are given: how a new one is told from the person's. */
+/**
+ * The name Nucleus's session and thread are given: how a new one is told from the person's. Kept
+ * in Hive mode (decision 674), so a session started either way is found.
+ */
 export const NUCLEUS_NAME = 'Nucleus';
 
 /** The record's first key: what it is, for anyone who opens it. */
@@ -41,17 +44,26 @@ const webOn = (root: string) => readWorkspaceConfig(root).nucleusWeb !== false;
  */
 const NUCLEUS: PageAgentSpec = {
   name: NUCLEUS_NAME,
+  // Alpha Ceph while Hive mode is on (decision 674).
+  hiveName: NUCLEUS_NAMES.hive,
   about: NUCLEUS_ABOUT,
   record: 'nucleus.json',
   settings: 'nucleus-settings.json',
   tools: (root) => (webOn(root) ? [...READS, ...WEB] : READS),
   permissionMode: 'dontAsk',
   // No `folders`, which Codex would write: its gate opens the worktrees at each call (V80); the web
-  // a flag after them (NU1).
-  gateArgs: (root, where) => [root, workspacesDir(where), ...(webOn(root) ? ['--web'] : [])],
+  // a flag after them (NU1),
+  // and its name when not Nucleus's (decision 678).
+  gateArgs: (root, where, name) => [
+    root,
+    workspacesDir(where),
+    ...(webOn(root) ? ['--web'] : []),
+    ...(name === NUCLEUS_NAME ? [] : [`${NAME_ARG}${name}`]),
+  ],
   prompt: (_root, text) => text,
-  // A project's text from before V50 may still hold {question}: filled with nothing.
-  instructions: (root) => fillPrompt(readPrompts(root).text.nucleus, { question: '' }).trimEnd(),
+  // Its name filled in, or told at the end (decision 677); a project's text from before V50 may
+  // still hold {question}: filled with nothing.
+  instructions: (root, name) => nucleusInstructions(readPrompts(root).text.nucleus, name),
   codex: (root) => ({ cwd: root, writes: false }),
   // As its gate opens them to Claude Code: the checkout and the open workspaces' worktrees.
   codexReads: (root, where) => [root, ...openWorktrees(root, workspacesDir(where))],

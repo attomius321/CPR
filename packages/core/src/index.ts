@@ -271,6 +271,7 @@ export {
   type PageAgentStateName,
   type PageAgentTerminalRequest,
 } from './page-agent.js';
+export { NUCLEUS_NAMES, nucleusName, type NucleusName, type NucleusNames } from './nucleus-name.js';
 export type { McpAnswer, McpAsk, McpAsks, McpCaller, McpVia } from './mcp.js';
 export type {
   ConfirmStage,

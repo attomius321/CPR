@@ -167,7 +167,8 @@ export function gateHook(
   const file = activityArg(args);
   const event = (input as { hook_event_name?: unknown } | null)?.hook_event_name;
   if (file && event !== 'PreToolUse') return null;
-  const decision = gateDecision(input, gateOptions(args));
+  const options = gateOptions(args);
+  const decision = gateDecision(input, options);
   if (file) {
     try {
       const line = gateLine(input, decision, at, checkoutOf(args, input));
@@ -176,7 +177,7 @@ export function gateHook(
       // The call goes on unrecorded.
     }
   }
-  return hookOutput(decision);
+  return hookOutput(decision, options.name);
 }
 
 /** The checkout paths are written from: the gate's first argument, else the hook's `cwd`. */

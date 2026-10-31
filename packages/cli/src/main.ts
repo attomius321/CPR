@@ -805,12 +805,14 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         levels: levelsFinder(claudeOf, codexOf),
         models: modelsFinder(claudeOf, codexOf),
       }),
-      settings: promptSettingsService(repo),
+      // Nucleus is Alpha Ceph while Hive mode is on (decision 674): its prompt's about too.
+      settings: promptSettingsService(repo, { hive: () => hive.on() }),
       nucleus: nucleus(repo, cacheDir, {
         claude: claudeOf,
         codex: codexOf,
         env: ctx.env,
         terminals,
+        hive: () => hive.on(),
       }),
       skills: skillsService(repo, {
         codexInstalled: async () => (await codexOf()) !== null,
