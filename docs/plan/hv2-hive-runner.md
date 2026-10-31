@@ -4,8 +4,8 @@
 
 **Status:** built, ready for review (2026-10-31), on branch `feature/hv2-hive-runner` (the
 workspace's, from `main` at `6250957`); the person's OK on the plan ("Ok, go for it"), with the
-recommended answers to its five questions. The real run reached round 2's check, where the person
-turned Hive off (see Results).
+recommended answers to its five questions. The real run went from its start to landing asked, in 3
+rounds, through a killed `symbiote view` and a Hive off and on (see Results).
 
 **Problem** (the brief: "Build HV2, the first Hive milestone the HV1 spike proposed"). Hive mode
 (V82) is a switch and a look: `symbiote/hive.json` turns on the ink and crimson and nothing else.
@@ -264,17 +264,25 @@ Codex in any Hive role.
   | 09:57:41 | The writer's turn ended: it ran the whole e2e itself (381 of 381 passed, 5.4 min), judged the two flaky under load (load average about 9) and made no commit. Its commit still ahead, Hive ran the check again |
   | 10:00:12 | The person turned Hive off from their own `symbiote view` (`main`'s build) |
   | 10:00:14 | The runner killed the check (2.5 s later, its next look) and kept the step: `checking`, `interrupted`; the card "Hive off: paused before the check" |
+  | 10:15:19 | The person turned Hive on again (asked first): the runner ran round 2's check again |
+  | 10:22:04 | It failed after 405 s on one e2e test, `intro.spec.ts:52` (the intro's animation timed against the wall clock), under a 15-minute load average of 11; round 3 sent 2 s later |
+  | 10:30:54 | The writer's turn ended: the intro spec 5 times (45 of 45) and the whole check (448 s) passed for it; no change, no commit. Hive checked again |
+  | 10:37:56 | The check passed (422 s): **landing asked**, the card "Checked: review and land it", ⬡ 3/3 |
+  | 10:38:24 | Hive turned off again; the view stopped with Ctrl+C, its lock released |
 
-  Landing was not asked: the run stopped at round 2's check because Hive was turned off, and was
-  not turned on again without the person. The runner used 8 s of CPU in 23.6 minutes and 144 MB.
+  The runner used 22 s of CPU in 54 minutes, 174 MB. Another workspace ran its own Playwright
+  suite during rounds 2 and 3 (load average up to 22).
 - **Each round runs the check twice**: the writer runs it before it ends a turn (its prompt and
   the project's instructions say so), then Symbiote does. Here that is about 6.5 minutes each.
-- **A flaky check costs a round**: round 2 was spent on two tests that pass alone. The writer's
-  answer (run them again, change nothing) and Hive's rule (a turn that ends with commits ahead is
-  checked) were enough to try again without a change.
-- **Not verified**: landing asked on a real run (stopped by Hive off, above); landed after a real
-  merge; a writer stopped mid-turn by a real Hive off (the writer was between turns at 10:00); a
-  real stuck workspace. Each is covered by the tests with the fakes.
+- **A flaky check costs rounds**: rounds 1 and 2 failed on e2e tests the change cannot reach (a
+  different test each time; all pass alone and in the writer's own full runs). The writer's answer
+  (run them again, change nothing) and Hive's rule (a turn that ends with commits ahead is checked)
+  tried again without a change, and round 3 passed. Under a busy machine the last round was near:
+  one more flaky run would have stopped it for the person.
+- **Not verified**: landed after a real merge (the workspace waits for the person); a writer
+  stopped mid-turn by a real Hive off (the writer was between turns at 10:00); a real stuck
+  workspace. Each is covered by the tests with the fakes.
 - **A second `symbiote view` rewrites `symbiote/claude-settings.json`** with its own build's hook
   path; the person's view writes its own back at its next list. Both record the same thread.
-
+- **A check run again says why.** The real run's events went `off`, `check-stopped`, then a bare
+  `check-started` when Hive came on again; an `on` event comes first now (`cc38a36`).

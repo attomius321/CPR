@@ -57,10 +57,13 @@ goes on from there. Decisions 652–658.
 - **Each round runs the check twice.** The writer runs it before it ends its turn (its prompt and
   the project's instructions say so), then Symbiote does: about 6.5 minutes each in this
   repository.
-- **A flaky check costs a round.** Round 1 failed on two e2e tests of 361 the change cannot reach
-  (`intro.spec.ts`'s lost WebGL context, `merges.spec.ts`'s conflict), under a load average of
-  about 9. The writer ran the whole e2e again (381 of 381), changed nothing and ended its turn;
-  its commit still ahead, Hive checked again. No rule of Hive's was needed for it.
+- **A flaky check costs rounds.** Round 1 failed on two e2e tests of 361 the change cannot reach
+  (`intro.spec.ts`'s lost WebGL context, `merges.spec.ts`'s conflict), round 2 on a third
+  (`intro.spec.ts:52`, the intro's animation timed against the wall clock), under load averages
+  of 9 to 22 while another workspace ran its own Playwright suite. Each time the writer ran them
+  again (381 of 381; the intro spec 45 of 45), changed nothing and ended its turn; its commit still
+  ahead, Hive checked again, and round 3 passed. One more flaky run would have stopped it for the
+  person: a check that is flaky under load spends Hive's rounds.
 - **A second `symbiote view` rewrites `symbiote/claude-settings.json`** with its own hook's path;
   the person's view writes its own back at its next list. Both hooks record the same thread.
 
@@ -83,8 +86,14 @@ its own; a chore correcting the "about 2.5 min" above `CHECK_TIMEOUT_MS`):
 - 10:00:12 the person turned Hive off from their own view. 2.5 s later the runner killed the
   check and kept the step (`checking`, `interrupted`); the card said "Hive off: paused before the
   check".
-- The runner used 8 s of CPU in 23.6 minutes, 144 MB.
+- 10:15:19 the person turned Hive on again (asked first): round 2's check ran again, failed on
+  `intro.spec.ts:52` (405 s), round 3 sent. 10:30:54 the writer's turn ended with no change.
+- 10:37:56 round 3's check passed (422 s): landing asked; the card "Checked: review and land it",
+  ⬡ 3/3. Hive off again at 10:38:24, the view stopped, its lock released.
+- The runner used 22 s of CPU in 54 minutes, 174 MB. The second view rewrote
+  `symbiote/claude-settings.json` with its hook's path; the person's view had written its own back
+  by 10:38:15.
 
-Not verified: landing asked at the end of a real run (Hive was turned off at round 2's check and
-not turned on again without the person); a real merge to `landed`; a writer stopped mid-turn by a
-real Hive off; a real stuck workspace. The tests cover each with the fakes.
+Not verified: a real merge to `landed` (the workspace `chore/check-timeout-comment` waits for the
+person: land it or clean it up); a writer stopped mid-turn by a real Hive off; a real stuck
+workspace. The tests cover each with the fakes.
