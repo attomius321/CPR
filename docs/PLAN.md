@@ -153,6 +153,7 @@ hosted.
 | Fix | Suggest settings could not read the agents' models: `symbiote view` serves the pages it started with, not a newer build's on its older API | ✅ | | [journal](journal/fix-suggest-settings-models.md) |
 | [V77](plan/v77-workspace-history.md) | History: finished workspaces under Monitor, each with its activity, thread, brief and changes | ✅ | 561–567 | [journal](journal/v77-workspace-history.md) |
 | [V79](plan/v79-workspace-cards.md) | Workspace cards one can read: whole names, the state on its own lines, the facts as icons, cards apart; the sidenav 300 px | ✅ | 576–581, 585 | [journal](journal/v79-workspace-cards.md) |
+| [V84](plan/v84-activity-export.md) | Export activity: a workspace's or Nucleus's as Markdown (or JSON Lines), from the tab, `symbiote activity` or the MCP | planned | 668–672 | [journal](journal/v84-activity-export.md) |
 
 ### Agents
 

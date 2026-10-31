@@ -338,3 +338,4 @@ merge commit.
 - 2026-10-31 [Fix — Nucleus's and Scribe's activity finished before a close (nucleus.test.ts ENOTEMPTY)](journal/fix-git-page-feature-extend.md)
 - 2026-10-31 [HV1 spike — Hive's graph against one agent: no gain at twice the cost; a reviewer that runs code catches what a read-only one approves](journal/hv1-hive-graph.md)
 - 2026-10-31 [D2 spike — findings precision on 51 merged pull requests](journal/d2-review-precision.md)
+- 2026-10-31 [V84 spike — where activity is kept, and which format reads](journal/v84-activity-export.md)
