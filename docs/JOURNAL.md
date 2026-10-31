@@ -338,3 +338,5 @@ merge commit.
 - 2026-10-31 [Fix — Nucleus's and Scribe's activity finished before a close (nucleus.test.ts ENOTEMPTY)](journal/fix-git-page-feature-extend.md)
 - 2026-10-31 [HV1 spike — Hive's graph against one agent: no gain at twice the cost; a reviewer that runs code catches what a read-only one approves](journal/hv1-hive-graph.md)
 - 2026-10-31 [V83 spike — where Symbiote can read what an agent runs on](journal/v83-workspace-running-model.md)
+- 2026-10-31 [V83a — what runs, read back from the session](journal/v83-workspace-running-model.md)
+- 2026-10-31 [V83b — the head's chip, the card's row, one line of state](journal/v83-workspace-running-model.md)

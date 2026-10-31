@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v83-workspace-running-model.md)
 
-**Status:** planned (2026-10-31), on branch `feature/workspace-running-agent-model-and` (a
-workspace started in Symbiote, from `main` at `6250957`); not started. The person OK'd the plan
+**Status:** built (2026-10-31), on branch `feature/workspace-running-agent-model-and` (a
+workspace started in Symbiote, from `main` at `6250957`; `main` merged in at `82cbd6c`); ready
+for review. V83a–b built; "As built" and results at the end. The person OK'd the plan
 with their answers to its three questions: "1. On the head and each sidenav card. Also, in the
 sidenav card, keep the agent action one line only..right now the card keeps growing and
 shrinking, and on hover, the tooltip expand the agent action message. 2. Recommended 3. Not now."
@@ -148,11 +149,62 @@ What causes it:
 |---|---|---|---|
 | 659 | Where does Symbiote learn what an agent runs on? | **Claude Code: its transcript's newest answer, at the path its hooks give; Codex on its server: its thread's `model` and `reasoningEffort`; else what it started with** | 110 of 110 transcripts have both; no hook carries the level; Codex's thread says its current settings |
 | 660 | When is a transcript read? | **By the list, only when it grew: its last 64 KB; a window with no answer keeps the last read; 2 MB once when nothing was read** | At rest the answer is within 14 KB of the end; a tool's result can be 1.36 MB; the list polls every 5 s |
-| 661 | How is a model named? | **The agent's list when in hand, else the ID's pattern, else the ID** | Transcripts say `claude-opus-5-5`, which Claude Code's list (`opus`, `claude-opus-4-6`…) does not |
+| 661 | How is a model named? | **From its ID's pattern, in the viewer; else the ID** (planned: the agent's list when in hand, then the pattern) | Transcripts say `claude-opus-5-5`, which Claude Code's list (`opus`, `claude-opus-4-6`…) does not; the pattern gives the list's names, and reading the list from the list would run Claude Code at every poll after a failed read |
 | 662 | Where is it shown? | **A chip after the kind in the head; a row of its own on every card** | The person's choice; in the facts' row it would wrap on some cards and when the merge check loads |
-| 663 | A card's state? | **One line, then "…"; its tip says it whole** (V79's two lines, decision 577) | The person: "the card keeps growing and shrinking" |
+| 663 | A card's state? | **One line, cut with "…" at its end; its tip says it whole** (V79's two lines, decision 577) | The person: "the card keeps growing and shrinking"; a cut at a word left "Running mkdir -p…" and the line's end empty |
 | 664 | The level in words or a meter? | **Words: "xhigh effort"** | The person's choice 2; the Brief tab's words |
 
 **Not in V83 (later)**: changing the model or the level from the head; Nucleus's and Scribe's heads
 reading their transcripts (the person's choice 3); History's pages; Hermes's and `codex exec`'s own
 records of what they ran on.
+
+## As built (V83)
+
+- **What is read, as planned** (decision 659). The real run first (Claude Code 2.1.316, a scratch
+  folder): a turn on `haiku` at `low`, then `/model sonnet` and `/effort medium` typed, then a
+  turn. The transcript's next answer said `claude-sonnet-5-5` at `medium`. The commands write a
+  `system` `local_command` line, not an answer: a change shows from the next answer, as the risks
+  said. Real Codex 0.163, no turn spent: a thread started on `gpt-5.6-luna` at `low` read back
+  both; one started with nothing read back the configured `gpt-6-luna` at `medium`.
+- **`runsOn`, not `running`**: `WorkspaceAgentState.runsOn: { model?, effort?, at? }` with the
+  agent's own IDs. A field named `running` read as a yes or no.
+- **Named from the ID, in the viewer** (decision 661, changed): `modelName` builds the name from
+  the ID's pattern, else gives the ID; the agent's list is not read. Reading it from the list
+  would run Claude Code at every poll after a failed read (V47 tries a failed read again at its
+  next use). The pattern gives the list's name for every full ID the list has.
+- **The icon is the Start page's Model icon** (lucide's cpu), not the agent's mark: a working
+  card's state already starts with the mark. The agent's name is in the tip.
+- **A Codex level unset**: the thread says the configured one (the real run), so the model's list
+  is not read for it.
+- **A card's state is cut at its end** (`nowrap` and an ellipsis), not by `-webkit-line-clamp: 1`.
+  The clamp broke at the last word that fit: "Running mkdir -p…" with the rest of the line empty,
+  a path being one long word.
+- **The head's chip gives way before the title** (`flex-shrink: 100`, its icon at least): at
+  390 px it left the title 5 letters ("worksp…"). At 1440 px it is whole beside a 40-letter title.
+- **Tests changed knowingly**: the fake app server answers a thread's model and level as real
+  Codex does, so two V27a tests now see the configured `gpt-6-luna` at `medium`; `look.spec.ts`'s
+  V79 card is 164 px (140), its fifth row.
+
+**Results.**
+
+| What | Before (`main`) | V83 |
+|---|---|---|
+| The person's 4 live Claude Code workspaces with a transcript (read by V83's reader) | the Brief tab: "Started with Claude Code at xhigh effort", the model named for 1 of 4 | head and card: "Opus 5.5 · xhigh effort", 4 of 4, read from their newest answers |
+| A working card at 300 px, the mock of the person's list and a Codex card | 140 px, 160 px when a long command takes two lines of state | 164 px, whatever its agent runs |
+| The head at 1440 px, a 40-letter title | — | the title whole, the chip whole (169 px) |
+| The head at 390 px | — | the title "workspace running agen…", the chip its icon |
+| A model row at a 264 px sidenav | — | one line, none cut |
+
+Cost, per Claude Code workspace and poll of the list, on the person's 114 workspace transcripts
+(`packages/cli/dist`, median, two runs): a transcript unchanged 0.08–0.10 ms (a `stat`); grown,
+its last 64 KB read and parsed 0.35–0.41 ms (at most 1.89); the first read, up to 2 MB, 1.24 ms
+with the files in the page cache, 7.68 ms without (at most 15.04). The list's request on the
+person's running view (`main`'s build, 5 workspaces) takes 196 ms (median of 5): V83 adds about
+0.2 % when every transcript grew. The last 64 KB held the newest answer in 113 of 114; the other
+was mid-turn, and the first read's 2 MB found it. Codex adds no request (its `thread/read` was
+made already).
+
+Tests: `pnpm check` 2,550 unit tests; e2e: the viewer's 363 (V44's guard of a card's icons now leaves out the model row's, as it does the facts'), the nexus's 20. Not verified: a Codex workspace through Symbiote's list with the real Codex (its
+`thread/read` measured alone; the fake answers as it did); Codex by `exec` and Hermes, unchanged
+(4 of 120 records); a session from before V83 picking the path up at its next prompt, with the
+person's build (the hook's code is the same for both events, tested on each).

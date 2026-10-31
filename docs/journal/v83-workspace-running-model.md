@@ -33,3 +33,59 @@ generated app-server schema, and the running `symbiote view` (a screenshot of a 
 
 Not measured yet: whether the transcript follows `/model` and `/effort` typed mid-session, and from
 which answer (one `/effort` in all the person's transcripts): the build's first step.
+
+## V83a — what runs, read back from the session (2026-10-31, branch `feature/workspace-running-agent-model-and`)
+
+The list says what each workspace's agent runs on (`agent.runsOn`), beside how it started.
+Claude Code: its transcript's newest main answer, at the `transcript_path` Symbiote's hook now
+keeps on a start and a prompt. The list reads it only when it grew: its last 64 KB, 2 MB the first
+time. Codex on its app server: its thread's `model` and `reasoningEffort`. Decisions 659–660.
+
+**Learned**:
+- **Settle it with one real run first**, as V47 did: a scratch session on `haiku` at `low`, then
+  `/model sonnet` and `/effort medium`, then a turn. The next answer said `claude-sonnet-5-5` at
+  `medium`. The commands write a `system` `local_command` line ("Set model to `Sonnet 5.5`"), not
+  an answer. In `-p` a typed `/model` lasts only for that process ("for this session only"): one
+  process over stream-json was needed to see it.
+- **Claude Code 2.1.316's Stop hook now carries `effort: {level}`**, undocumented; SessionStart
+  carried no `model` on `startup` here. Only `transcript_path` is on every hook.
+- **Real Codex answers a thread's settings without a turn**: `thread/start` then `thread/read`
+  gave the model and level given, else the configured `gpt-6-luna` at `medium`. The probe left two
+  archived, empty threads in `~/.codex/archived_sessions`: not deleted, Codex indexes them.
+- **A request's own `config` hid the fake server's**: the fake's `thread/start` handler names its
+  parameter `config`, so the configured model read as undefined. The first read test caught it.
+- **A comment before a union's first member**: Prettier hoists it and indents the whole union
+  again. On another member it stays put.
+
+**Verification**: 16 tests red for the right reason (no transcript kept, no model read), then
+green; the CLI's 1,180 tests.
+
+## V83b — the head's chip, the card's row, one line of state (2026-10-31, branch `feature/workspace-running-agent-model-and`)
+
+The head says what its agent runs on in a chip after its kind; every card in a row of its own. A
+card's state is one line, cut at its end, its tip whole. The model named from its ID. Decisions
+661–664.
+
+**Learned**:
+- **`-webkit-line-clamp: 1` cuts at a word**: "Running mkdir -p…" and the rest of the line empty,
+  a path being one long word. `white-space: nowrap` with an ellipsis fills the line.
+- **A chip beside a title must give way first**: at 390 px the chip kept its 169 px and left the
+  title "worksp…". With `flex-shrink: 100` the title keeps its room and the chip its icon.
+- **The scratch view's errors are not the head's**: over a mocked list, the view's "no workspace
+  …" filled the actions and the chip shrank to its icon at 1440 px. Hidden for the screenshots;
+  the real head had 470 px free beside a 40-letter title.
+- **Naming in the list would have run Claude Code**: V47's kept list is read again at the next use
+  after a failed read, every 5 s from the list. The ID's pattern gives the same names.
+
+**Verification**: 7 unit tests and 2 e2e tests red for the right reason (no chip; the state 40 px
+for a long command), then green. `look.spec.ts`'s V79 card height updated knowingly (140 → 164).
+`shell.spec.ts`'s V44 guard (no icon on a card but an action's and the facts') leaves out the
+model row's icon, a fact too. `pnpm check` 2,550 unit tests; e2e: the viewer's 363, the nexus's
+20. Screenshots at 1440 × 900, 1×, dark and light, of every page with the sidenav over the
+person's list (their 4 live transcripts read by the branch's reader), the folded rail, a 264 px
+sidenav and the 390 px drawer. Cost on the person's 114 transcripts: 0.08–0.10 ms a poll
+unchanged, 0.35–0.41 ms grown, 1.24 ms (7.68 cold) the first read; the list's request 196 ms.
+
+Not verified: a Codex workspace through the list with the real Codex; Codex by `exec` and Hermes
+(unchanged); a session from before V83 taking the path at its next prompt, with the person's
+build.

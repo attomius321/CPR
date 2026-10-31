@@ -214,8 +214,10 @@ The sidenav lists your workspaces in groups, by what each one needs from you:
 | **Done** | Merged workspaces, ready to clean up |
 
 Each card shows the workspace's title and how long it has been in its state, what its agent is
-doing or what comes next, its kind, its facts and its branch. The facts are its commits, its files
-not committed and whether it merges cleanly; hover one to read it in words. A waiting card has
+doing or what comes next, its kind, its facts, the model and effort its agent runs on, and its
+branch. What the agent is doing takes one line; hover it to read it whole. The facts are its
+commits, its files not committed and whether it merges cleanly; hover one to read it in words. A
+waiting card has
 **Respond**, which opens the agent's terminal. When Nucleus or Scribe waits
 for you, its page's link turns amber like this group and says **Waits**.
 
@@ -227,7 +229,13 @@ so, KDE and XFCE among them. On WSL the taskbar shows the dot but cannot blink.
 
 ### Work with the agent
 
-Click a workspace to open it. Its page has four tabs:
+Click a workspace to open it. Its head shows the model and effort its agent runs on, such as
+**Opus 5.5 · xhigh effort**. Symbiote reads them from the agent's session: Claude Code's latest
+answer, or Codex's thread. If you change them in the terminal (`/model`, `/effort`), the head
+follows from the agent's next answer. Hover it to see how the agent started. Until the agent
+answers, it shows the model and effort it started with.
+
+Its page has four tabs:
 
 - **Terminal**: the agent's own terminal, as Claude Code, Codex or Hermes draws it. Answer
   questions and permission prompts here, as you would in your own terminal. Leaving the tab does
