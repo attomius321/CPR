@@ -1,8 +1,22 @@
 // The checkout's uncommitted changes in Git's pane (V66c): the commit box, the staged files and
-// the rest, each staged or unstaged whole; a file clicked shows in the rows' place (V70).
+// the rest, each staged or unstaged whole; a file clicked shows in the rows' place (V70). An
+// operation in progress continued or aborted (decision 636), the changes stashed (639), a file's
+// changes discarded (641).
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import type { LineCount, WorkingChanges, WorkingFile } from '@symbiote/core';
-import { commit, fetchChangesLines, stage, unstage } from './git-api.js';
+import {
+  commit,
+  discard,
+  endOperation,
+  fetchChangesLines,
+  stage,
+  stash,
+  unstage,
+} from './git-api.js';
+import { operationWords, stoppedNotice } from './actions.js';
+import type { After, Ask } from './AskDialog.js';
+import type { Notice } from '../shell/shell-context.js';
+import { ResetIcon } from '../ui/icons.js';
 import {
   changesSummary,
   commitProblem,
@@ -50,6 +64,8 @@ export function ChangesDetails({
   onOpen,
   onChanges,
   onCommitted,
+  onAsk,
+  onDone,
 }: {
   changes: WorkingChanges;
   read: ChangesRead;
@@ -61,6 +77,10 @@ export function ChangesDetails({
   onChanges: (next: WorkingChanges) => void;
   /** A commit was made: the page lists again. */
   onCommitted: (sha: string, amend: boolean) => void;
+  /** A write asked first: Abort, Stash, Discard. */
+  onAsk: (ask: Ask) => void;
+  /** A write done here (Continue): the status bar's words, and how the page lists. */
+  onDone: (notice: Notice, after: After) => void;
 }) {
   const [message, setMessage] = useState('');
   const [amend, setAmend] = useState(false);
@@ -76,6 +96,81 @@ export function ChangesDetails({
       .finally(() => setBusy(false));
   };
   const problem = commitProblem(message, changes.staged.length, amend);
+  const operation = changes.operation ? operationWords(changes.operation) : null;
+  const goOn = () => {
+    setBusy(true);
+    setError(null);
+    endOperation('continue')
+      .then((result) =>
+        onDone(stoppedNotice(result, `Continued the ${changes.operation}`), 'afresh'),
+      )
+      .catch((e: unknown) => setError((e as Error).message))
+      .finally(() => setBusy(false));
+  };
+  const askAbort = () =>
+    onAsk(
+      changes.operation === 'bisect'
+        ? {
+            title: 'Stop bisecting?',
+            note: 'HEAD goes back to where the bisect started; what it found so far is forgotten.',
+            verb: 'Stop',
+            danger: true,
+            run: async () => {
+              await endOperation('abort');
+              return { text: 'Stopped bisecting' };
+            },
+            after: 'afresh',
+          }
+        : {
+            title: `Abort the ${changes.operation}?`,
+            note: 'The branch goes back to where it was before it started; the conflicts resolved so far are lost.',
+            verb: 'Abort',
+            danger: true,
+            run: async () => {
+              await endOperation('abort');
+              return { text: `Aborted the ${changes.operation}` };
+            },
+            after: 'afresh',
+          },
+    );
+  const askStash = () =>
+    onAsk({
+      title: 'Stash the changes?',
+      note: 'Every change, staged or not, new files too, is put aside and the checkout is as HEAD; the stash is listed under the branches, to apply or pop later.',
+      verb: 'Stash',
+      field: { label: 'Message (optional)', placeholder: 'What these changes are' },
+      run: async ({ text }) => {
+        await stash(text);
+        return { text: text.trim() ? `Stashed: ${text.trim()}` : 'Stashed the changes' };
+      },
+      after: 'changes',
+    });
+  const askDiscard = (file: WorkingFile) =>
+    onAsk(
+      file.status === 'untracked'
+        ? {
+            title: `Delete ${file.path}?`,
+            note: 'It was never committed: once deleted, git has no copy of it.',
+            verb: 'Delete',
+            danger: true,
+            run: async () => {
+              onChanges(await discard(file.path));
+              return { text: `Deleted ${file.path}` };
+            },
+            after: 'changes',
+          }
+        : {
+            title: `Discard the changes to ${file.path}?`,
+            note: 'The file goes back as it is staged (or as HEAD has it): the changes not staged are lost.',
+            verb: 'Discard',
+            danger: true,
+            run: async () => {
+              onChanges(await discard(file.path));
+              return { text: `Discarded the changes to ${file.path}` };
+            },
+            after: 'changes',
+          },
+    );
   const submit = () => {
     if (problem || busy) return;
     setBusy(true);
@@ -110,6 +205,22 @@ export function ChangesDetails({
               current={current}
               onOpen={() => onOpen(current ? null : { path: file.path, staged: isStaged })}
             />
+            {!isStaged && file.status !== 'conflicted' && (
+              <button
+                type="button"
+                className="icon-button git-file-action"
+                disabled={busy}
+                aria-label={`${file.status === 'untracked' ? 'Delete' : 'Discard the changes to'} ${file.path}`}
+                {...tip(
+                  file.status === 'untracked'
+                    ? 'Delete the new file: asks first'
+                    : 'Discard its changes not staged: asks first',
+                )}
+                onClick={() => askDiscard(file)}
+              >
+                <ResetIcon />
+              </button>
+            )}
             <button
               type="button"
               className="icon-button git-file-action"
@@ -131,13 +242,37 @@ export function ChangesDetails({
       <header className="git-details-head">
         <h2 className="git-details-title">Uncommitted changes</h2>
         <span className="muted git-details-summary">{changesSummary(changes)}</span>
+        {changes.staged.length + changes.unstaged.length > 0 && !changes.operation && (
+          <button
+            type="button"
+            className="button ghost git-stash"
+            disabled={busy}
+            {...tip('Put every change aside, new files too: asks first')}
+            onClick={askStash}
+          >
+            Stash…
+          </button>
+        )}
       </header>
       <div className="git-details-body">
-        {changes.operation && (
-          <p className="git-details-note" role="status">
-            A {changes.operation} is in progress: resolve the conflicted files, stage them, then
-            commit.
-          </p>
+        {operation && (
+          <div className="git-operation" role="status">
+            <p className="git-operation-title">{operation.title}</p>
+            <p className="git-operation-note">
+              Resolve the conflicted files and stage them
+              {operation.continues ? `, then Continue: ${operation.continues.toLowerCase()}.` : '.'}
+            </p>
+            <div className="git-operation-buttons">
+              {operation.continues && (
+                <button type="button" className="button" disabled={busy} onClick={goOn}>
+                  Continue
+                </button>
+              )}
+              <button type="button" className="button ghost" disabled={busy} onClick={askAbort}>
+                {changes.operation === 'bisect' ? 'Stop bisecting…' : 'Abort…'}
+              </button>
+            </div>
+          </div>
         )}
         <form
           className="git-commit"

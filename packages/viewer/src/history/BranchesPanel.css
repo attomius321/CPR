@@ -185,3 +185,23 @@
   flex: none;
   margin: 0 8px 0 0;
 }
+
+/* A branch hidden from the graph (decision 645): a quiet chip after its name. */
+.branches-hidden {
+  flex: none;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: 18px;
+}
+
+/* The stashes, at the panel's foot under a hairline (decision 639): the branches scroll above
+   them; many stashes scroll in their own third. A click opens a stash's menu. */
+.branches-stashes {
+  flex: none;
+  max-height: 33%;
+}

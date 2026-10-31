@@ -142,3 +142,20 @@ describe('branchTree', () => {
     expect(local(firstly(['alpha', 'old'], 'L'))).toEqual(['alpha', 'old']);
   });
 });
+
+describe('branchTree: hidden branches (decision 645)', () => {
+  it('carries which branches are hidden from the graph, local and remote', () => {
+    const refs: HistoryRefs = {
+      ...REFS,
+      branches: REFS.branches.map((b) =>
+        b.name === 'wip' ? { ...b, row: null, hidden: true } : b,
+      ),
+      remotes: REFS.remotes.map((r) =>
+        r.name === 'origin/topic' ? { ...r, row: null, hidden: true } : r,
+      ),
+    };
+    const entries = branchTree(refs, { current: 'main', filter: '', toggled: new Set() });
+    const hidden = entries.flatMap((e) => (e.kind === 'branch' && e.hidden ? [e.name] : []));
+    expect(hidden).toEqual(['wip', 'origin/topic']);
+  });
+});

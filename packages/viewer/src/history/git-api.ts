@@ -1,10 +1,19 @@
 // Git's page's calls to `symbiote view` (V66): a commit's details, the checkout's changes, the
-// branch's upstream, a search, and git's writes. Absolute, as History's are (`/api/git/…`).
+// branch's upstream, a search, and git's writes; since fix/git-page-feature-extend the stashes,
+// a file's history and blame, and the writes of decisions 636–645. Absolute, as History's are
+// (`/api/git/…`).
 import type {
   CommitInfo,
+  FileBlame,
+  FileCommit,
   HistoryScope,
   LineCount,
+  LinePick,
+  OperationEnd,
   PullMode,
+  ResetMode,
+  StashEntry,
+  Stoppable,
   SyncState,
   WorkingChanges,
 } from '@symbiote/core';
@@ -49,6 +58,27 @@ export const fetchChangeFile = (path: string, staged: boolean) =>
   diffText('changes/file', { path, ...(staged ? { staged: '1' } : {}) });
 
 export const fetchSync = () => read<SyncState>('sync');
+export const fetchStashes = () => read<StashEntry[]>('stashes');
+/** The commits a reset to `sha` takes off the branch. */
+export const fetchLeaving = async (sha: string) =>
+  (await read<{ count: number }>('leaving', { sha })).count;
+/** A file's commits from commit `sha` down, or from HEAD for an uncommitted one (null). */
+export const fetchFileHistory = (path: string, sha: string | null) =>
+  read<FileCommit[]>('file/history', { path, ...(sha ? { sha } : {}) });
+/** A file's blame at commit `sha`, or in the checkout (null); git's refusal in its words. */
+export async function fetchBlame(path: string, sha: string | null): Promise<FileBlame> {
+  const query = new URLSearchParams({ path, ...(sha ? { sha } : {}) });
+  const response = await fetch(`${API}/file/blame?${query}`);
+  if (response.ok) return (await response.json()) as FileBlame;
+  const text = await response.text();
+  let said = text;
+  try {
+    said = (JSON.parse(text) as { error?: string }).error ?? text;
+  } catch {
+    // A plain-text answer (404).
+  }
+  throw new Error(said);
+}
 
 /** The rows a search finds in a listing; null when the listing is stale (409). */
 export async function findRows(
@@ -98,6 +128,24 @@ export const deleteTag = (name: string) => write<object>('tag', { action: 'delet
 export const fetchRemotes = () => write<object>('fetch');
 export const pull = (mode: PullMode) => write<{ stopped?: string }>('pull', { mode });
 export const push = () => write<{ upstream: string; set?: true }>('push');
+
+export const endOperation = (end: OperationEnd) => write<Stoppable>('operation', { end });
+export const cherryPick = (sha: string) => write<Stoppable>('cherry-pick', { sha });
+export const revert = (sha: string) => write<Stoppable>('revert', { sha });
+export const merge = (branch: string) => write<Stoppable>('merge', { branch });
+export const rebase = (branch: string) => write<Stoppable>('rebase', { branch });
+export const reset = (sha: string, mode: ResetMode) => write<object>('reset', { sha, mode });
+export const discard = (path: string) => write<WorkingChanges>('discard', { path });
+export const stash = (message: string) => write<object>('stash', { action: 'push', message });
+export const unstash = (sha: string, action: 'apply' | 'pop' | 'drop') =>
+  write<Stoppable>('stash', { action, sha });
+/** Stages (`staged` false) or unstages the lines picked, from the diff whose `index` line was read. */
+export const stageLines = (path: string, staged: boolean, lines: LinePick[], index: string) =>
+  write<WorkingChanges>('lines', { path, staged, lines, index });
+export const deleteRemoteBranch = (name: string) =>
+  write<object>('remote-branch', { action: 'delete', name });
+export const hideBranch = (ref: string, hidden: boolean) =>
+  write<{ hidden: string[] }>('hide', { ref, hidden });
 
 /** Opens a file's diff in VS Code (V70): one of a commit's files, or an uncommitted one on its side. */
 export const openDiff = (file: { path: string } & ({ sha: string } | { staged: boolean })) =>

@@ -7,16 +7,17 @@ import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-
 import { codexServer, readProfile } from '../src/app-server.js';
 import { codexFolders, type Codex } from '../src/codex.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';
-import { NUCLEUS_NAME, nucleus } from '../src/nucleus.js';
+import { NUCLEUS_NAME, nucleus as nucleusAgent } from '../src/nucleus.js';
 import {
   findPageAgentSession,
   newPageAgentSession,
   PageAgentRefused,
   pageAgentSettings,
   pageAgentState,
+  type PageAgent,
 } from '../src/page-agent.js';
 import { libraryService, type LibraryService } from '../src/library.js';
-import { scribe, scribePrompt } from '../src/scribe.js';
+import { scribe as scribeAgent, scribePrompt } from '../src/scribe.js';
 import { viewFile } from '../src/mcp-bridge.js';
 import { gateDecision, nucleusReach } from '../src/nucleus-gate.js';
 import type { Terminals } from '../src/terminal.js';
@@ -27,6 +28,17 @@ import { fakeAppServer, type FakeAppServer } from './fake-app-server.js';
 const repos: TestRepo[] = [];
 const folders: string[] = [];
 const closers: (() => Promise<void>)[] = [];
+/**
+ * Every Nucleus and Scribe a test made: closed first, so no read of Codex's thread writes into a
+ * repository while it is removed (ENOTEMPTY).
+ */
+const agents: PageAgent[] = [];
+const made = <T extends PageAgent>(agent: T): T => {
+  agents.push(agent);
+  return agent;
+};
+const nucleus = (...args: Parameters<typeof nucleusAgent>) => made(nucleusAgent(...args));
+const scribe = (...args: Parameters<typeof scribeAgent>) => made(scribeAgent(...args));
 let cache: string;
 beforeEach(() => {
   vi.stubEnv('GIT_CONFIG_GLOBAL', '/dev/null');
@@ -35,6 +47,7 @@ beforeEach(() => {
   folders.push(cache);
 });
 afterEach(async () => {
+  for (const agent of agents.splice(0)) await agent.close?.();
   for (const close of closers.splice(0)) await close();
   for (const repo of repos.splice(0)) repo.cleanup();
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
@@ -1981,6 +1994,30 @@ describe("Nucleus's activity (NU2, decisions 604, 606)", () => {
     });
     await expect.poll(() => existsSync(activityFile(repo))).toBe(true);
     expect(linesOf(repo)).toEqual([{ at: NOW.toISOString(), kind: 'prompt', text: '[redacted]' }]);
+  });
+
+  it("close stops reading Codex's thread and waits for the activity being written", async () => {
+    // A cleanup that removed the repository while a read of the thread was being written failed
+    // with ENOTEMPTY (V82's journal, then again): nothing may write after close.
+    const repo = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    const s = await service(repo, { codex });
+    // A turn that runs: its thread read again every 2 s.
+    await s.ask({ text: 'What is new in Vite?' });
+    await s.state();
+    await s.close!();
+    const written = readFileSync(activityFile(repo), 'utf8');
+    expect(written).toContain('What is new in Vite?');
+    server.item('thread-1', {
+      type: 'webSearch',
+      id: 'ws1',
+      query: 'vite latest',
+      action: { type: 'search', query: 'vite latest' },
+    });
+    await s.state();
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(readFileSync(activityFile(repo), 'utf8')).toBe(written);
   });
 
   it("reads Codex's thread while it works: its message, its calls, its answer, once each", async () => {

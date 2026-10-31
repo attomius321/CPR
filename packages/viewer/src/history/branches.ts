@@ -20,6 +20,8 @@ export type PanelEntry =
       ahead?: number;
       behind?: number;
       gone?: boolean;
+      /** Hidden from the graph (decision 645): its menu shows it again. */
+      hidden?: boolean;
     };
 
 export interface TreeOptions {
@@ -35,7 +37,7 @@ export interface TreeOptions {
 
 interface Folder {
   folders: Map<string, Folder>;
-  branches: { label: string; name: string; row: number | null }[];
+  branches: { label: string; name: string; row: number | null; hidden?: boolean }[];
   count: number;
 }
 
@@ -80,6 +82,7 @@ export function branchTree(refs: HistoryRefs, options: TreeOptions): PanelEntry[
         ...(b.ahead === undefined ? {} : { ahead: b.ahead }),
         ...(b.behind === undefined ? {} : { behind: b.behind }),
         ...(b.gone ? { gone: true } : {}),
+        ...(b.hidden ? { hidden: true } : {}),
       });
     }
   }
@@ -100,7 +103,12 @@ export function branchTree(refs: HistoryRefs, options: TreeOptions): PanelEntry[
       folder = next;
       folder.count++;
     }
-    folder.branches.push({ label, name: r.name, row: r.row });
+    folder.branches.push({
+      label,
+      name: r.name,
+      row: r.row,
+      ...(r.hidden ? { hidden: true } : {}),
+    });
   }
   if (root.count === 0) return entries;
   entries.push({ kind: 'section', key: 'remotes', label: 'Remotes', count: root.count });
@@ -121,6 +129,7 @@ export function branchTree(refs: HistoryRefs, options: TreeOptions): PanelEntry[
         depth,
         row: b.row,
         current: false,
+        ...(b.hidden ? { hidden: true } : {}),
       });
     }
   };

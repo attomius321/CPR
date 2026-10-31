@@ -25,7 +25,7 @@ import {
   BranchNotMerged,
   GitRefused,
 } from '@symbiote/core';
-import type { NucleusActivityLine } from '@symbiote/core';
+import type { HistoryRefs, NucleusActivityLine } from '@symbiote/core';
 import type { Review } from '@symbiote/forge';
 import type { CodeMap } from '@symbiote/monitor';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -696,6 +696,28 @@ describe('symbiote view: commits and diffs', () => {
     changesLines: () => Promise.resolve({ staged: [], unstaged: [] }),
     changeFile: (path, staged) => Promise.resolve(path === 'a.ts' && !staged ? 'diff a.ts' : null),
     sync: () => Promise.resolve({ branch: 'main', ahead: 1, behind: 0, remotes: ['origin'] }),
+    stashes: () =>
+      Promise.resolve([
+        {
+          sha: 'e'.repeat(40),
+          message: 'Halfway',
+          branch: 'main',
+          date: '2026-10-31T10:00:00+00:00',
+        },
+      ]),
+    leaving: (sha) =>
+      sha === B ? Promise.resolve(1) : Promise.reject(new GitRefused(`no commit ${sha}`)),
+    fileHistory: (path) =>
+      Promise.resolve(
+        path === 'a.ts'
+          ? [{ sha: C, subject: 'c', author: 'Ada', date: '2026-10-31T10:00:00+00:00', path }]
+          : null,
+      ),
+    blame: (path, sha) =>
+      path === 'bin.png'
+        ? Promise.reject(new GitRefused('cannot blame a binary file'))
+        : Promise.resolve(path === 'a.ts' ? { lines: [{ text: 'a', sha }], commits: {} } : null),
+    hidden: () => Promise.resolve(['refs/remotes/origin/gone']),
     open: (request) => {
       gitOpens.push(request);
       if (request.path === 'b.ts')
@@ -850,7 +872,7 @@ describe('symbiote view: commits and diffs', () => {
       403,
     );
     expect((await post('/api/git/stage', { paths: 'a.ts' })).status).toBe(400);
-    expect((await post('/api/git/reset', {})).status).toBe(404);
+    expect((await post('/api/git/force-push', {})).status).toBe(404);
     expect((await get('/api/git/stage')).status).toBe(405);
     const pushed = await post('/api/git/push', {});
     expect(pushed.status).toBe(409);
@@ -862,6 +884,40 @@ describe('symbiote view: commits and diffs', () => {
       only: 2,
     });
     expect(gitWrites).toHaveLength(3);
+  });
+
+  it("reads the stashes, a reset's count, a file's history and blame, the hidden branches (decisions 639–645)", async () => {
+    expect(JSON.parse((await get('/api/git/stashes')).body)).toMatchObject([
+      { message: 'Halfway' },
+    ]);
+    expect(JSON.parse((await get(`/api/git/leaving?sha=${B}`)).body)).toEqual({ count: 1 });
+    expect((await get(`/api/git/leaving?sha=${'f'.repeat(40)}`)).status).toBe(404);
+    expect((await get('/api/git/leaving')).status).toBe(400);
+    expect(JSON.parse((await get(`/api/git/file/history?path=a.ts&sha=${C}`)).body)).toMatchObject([
+      { sha: C, path: 'a.ts' },
+    ]);
+    expect((await get('/api/git/file/history?path=b.ts')).status).toBe(404);
+    expect(JSON.parse((await get(`/api/git/file/blame?path=a.ts&sha=${C}`)).body)).toEqual({
+      lines: [{ text: 'a', sha: C }],
+      commits: {},
+    });
+    expect(JSON.parse((await get('/api/git/file/blame?path=a.ts')).body)).toEqual({
+      lines: [{ text: 'a', sha: null }],
+      commits: {},
+    });
+    expect((await get('/api/git/file/blame')).status).toBe(400);
+    const binary = await get('/api/git/file/blame?path=bin.png');
+    expect(binary.status).toBe(409);
+    expect(JSON.parse(binary.body)).toEqual({ error: 'cannot blame a binary file' });
+    expect(JSON.parse((await get('/api/git/hidden')).body)).toEqual({
+      hidden: ['refs/remotes/origin/gone'],
+    });
+    const listed = JSON.parse((await get('/api/history')).body) as { version: string };
+    const refs = JSON.parse(
+      (await get(`/api/history/refs?scope=all&version=${listed.version}`)).body,
+    ) as HistoryRefs;
+    expect(refs.remotes[0]).toMatchObject({ name: 'origin/gone', hidden: true });
+    expect(refs.branches[0]).not.toHaveProperty('hidden');
   });
 
   it("opens a file's diff in VS Code from the page only, saying why not (V70)", async () => {
@@ -972,12 +1028,31 @@ describe('symbiote view: commits and diffs', () => {
       version: listed.version,
       branches: [{ name: 'main', sha: C, row: 0 }],
       remotes: [
-        { name: 'origin/gone', remote: 'origin', branch: 'gone', sha: 'f'.repeat(40), row: null },
+        {
+          name: 'origin/gone',
+          remote: 'origin',
+          branch: 'gone',
+          sha: 'f'.repeat(40),
+          row: null,
+          hidden: true,
+        },
       ],
     });
     expect((await get('/api/history/refs')).status).toBe(400);
     expect((await get('/api/history/refs?scope=all&version=old')).status).toBe(409);
     expect((await post('/api/history/refs', {})).status).toBe(405);
+  });
+
+  it("finds commits' rows in a listing by SHA, null for one it does not list (decision 634)", async () => {
+    const listed = JSON.parse((await get('/api/history')).body) as { version: string };
+    const answer = await get(
+      `/api/history/rows?scope=all&version=${listed.version}&sha=${C}&sha=${'e'.repeat(40)}`,
+    );
+    expect(answer.status).toBe(200);
+    expect(JSON.parse(answer.body)).toEqual({ rows: [0, null] });
+    expect((await get(`/api/history/rows?scope=all&version=${listed.version}`)).status).toBe(400);
+    expect((await get(`/api/history/rows?scope=all&version=old&sha=${C}`)).status).toBe(409);
+    expect((await post('/api/history/rows', {})).status).toBe(405);
   });
 
   it("checks out what the page asks for; git's refusals are 409, unknown targets 400", async () => {
@@ -3430,6 +3505,48 @@ describe('symbiote view: terminals (V21)', () => {
     // The stream ended: reading it to the end returns.
     const reader = body.getReader();
     while (!(await reader.read()).done);
+  });
+
+  it("waits for Nucleus's and Scribe's activity being written when it closes", async () => {
+    const closed: string[] = [];
+    const agent = (name: string): PageAgent => {
+      const no = () => Promise.reject(new Error('not asked'));
+      return {
+        state: no,
+        ask: no,
+        open: no,
+        renew: no,
+        terminal: no,
+        efforts: no,
+        setEffort: no,
+        setModel: no,
+        close: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          closed.push(name);
+        },
+      };
+    };
+    const other = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        nucleus: agent('nucleus'),
+        scribe: agent('scribe'),
+      },
+    });
+    await other.close();
+    expect(closed.sort()).toEqual(['nucleus', 'scribe']);
   });
 });
 

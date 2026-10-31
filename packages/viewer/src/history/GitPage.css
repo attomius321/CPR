@@ -318,10 +318,33 @@
   white-space: nowrap;
 }
 
-/* Beside the pane the card is narrow: the pane's row has the status's letter; the side stays. */
+/* Beside the pane the card is narrow: the pane's row has the status's letter; the side stays.
+   With Diff, History and Blame in the head too, Open in VS Code is its icon, the folder (the path
+   is in the tip) and the lines (the pane's row has them) go, the gaps close up and the name gives
+   way last, cut. */
 @container git-rows (max-width: 640px) {
-  .git-shown-words {
+  .git-shown-words,
+  .git-shown-folder,
+  .git-shown-head .changes-lines,
+  .git-open-words,
+  .git-shown-tail .open-editor kbd {
     display: none;
+  }
+
+  .git-shown-head,
+  .git-shown-tail {
+    gap: 8px;
+  }
+
+  .git-shown-name {
+    flex: 0 1 auto;
+    min-width: 3ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .git-shown-views .scope {
+    padding: 0 8px;
   }
 }
 
@@ -503,4 +526,207 @@
   color: var(--muted);
   font-size: 0.9em;
   font-weight: normal;
+}
+
+/* ---- more of git (fix/git-page-feature-extend, decisions 636–645) ---------------------- */
+
+/* Stash…, at the uncommitted pane head's right. */
+.git-stash {
+  margin-left: auto;
+}
+
+/* A merge, rebase or the like in progress: what it is, Continue and Abort (636). A state: the
+   note's amber tint. */
+.git-operation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--modified) 40%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--modified) 10%, transparent);
+}
+
+.git-operation-title {
+  margin: 0;
+  font-weight: 600;
+}
+
+.git-operation-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.git-operation-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+/* The asked write's dialog: a count read as it opens, a choice of ways. */
+.git-ask-more {
+  margin-top: -4px;
+  font-weight: 500;
+}
+
+.git-ask-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.git-ask-choices legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+
+/* The shown file's Diff, History and Blame: the segmented control, small. */
+.git-shown-views .scope {
+  height: 24px;
+  padding: 0 10px;
+}
+
+/* Lines picked in an uncommitted file's diff (642): how many, and Stage them. */
+.git-picks {
+  position: sticky;
+  top: -12px;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: -12px -16px 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--side);
+  font-size: var(--size-small);
+}
+
+.git-picks-error {
+  white-space: pre-wrap;
+}
+
+/* A hunk's own Stage, over its first changed line. */
+.git-hunk {
+  padding: 2px 8px;
+  border-top: 1px solid var(--line);
+  background: var(--side);
+  font: var(--size-caption) / 1.6 var(--sans);
+}
+
+.git-hunk:first-child {
+  border-top: 0;
+}
+
+/* A changed line's mark picks it: a button drawn as the mark. */
+.git-pick {
+  padding: 0;
+  border: 0;
+  background: inherit;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.git-pick:hover {
+  color: var(--text);
+}
+
+.git-pick[aria-pressed='true'] {
+  background: var(--primary);
+  color: var(--primary-text);
+}
+
+.git-diff .row.picked {
+  outline: 1px solid var(--selected-line);
+  outline-offset: -1px;
+}
+
+/* A file's commits (643): a row each, the one shown marked. */
+.git-file-history {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.git-file-commit {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.git-file-commit:hover {
+  background: var(--hover);
+}
+
+.git-file-commit.current {
+  background: var(--selected);
+}
+
+.git-file-sha {
+  flex: none;
+  color: var(--muted);
+  font: var(--size-small) var(--mono);
+}
+
+.git-file-subject {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-file-meta {
+  flex: none;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  white-space: nowrap;
+}
+
+/* Each line's commit (643), named on the first line of its run. */
+.git-blame .git-blame-row {
+  grid-template-columns: minmax(10em, 18em) 3.2em minmax(0, 1fr);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.git-blame-row.first {
+  border-top: 1px solid var(--line);
+}
+
+.git-blame-row.first:first-child {
+  border-top: 0;
+}
+
+.git-blame-who {
+  overflow: hidden;
+  padding: 0 8px;
+  color: var(--muted);
+  font: var(--size-caption) / 1.95 var(--sans);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.git-blame-commit {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

@@ -206,6 +206,11 @@ export interface PageAgent {
   activity?: () => Promise<NucleusActivity>;
   /** Records a line of Symbiote's own (its tools, a Confirm), redacted; Nucleus's only. */
   record?: (line: NucleusActivityLine) => void;
+  /**
+   * Stops reading Codex's thread for the activity and waits for what is being written: the server
+   * closing, a test before it removes the repository (fix/git-page-feature-extend).
+   */
+  close?: () => Promise<void>;
 }
 
 /** The young generation the recording gate starts with, in MB (NU2). */
@@ -463,6 +468,9 @@ export function pageAgent(
   let watching: string | undefined;
   const changed = new Map<string, number>();
   let wake: (() => void) | undefined;
+  /** The loop reading it, while one runs; none starts once closed (`close`). */
+  let watched: Promise<void> | undefined;
+  let closed = false;
 
   /** One read of Codex's thread for the activity: what is new written; whether a turn runs. */
   async function codexPass(where: ReviewPlace, thread: string): Promise<boolean> {
@@ -488,7 +496,7 @@ export function pageAgent(
    * 2 s while a turn runs; a read asked while it is read again comes sooner.
    */
   function watchCodex(where: ReviewPlace, thread: string, status: string, updatedAt: number) {
-    if (!spec.activity) return;
+    if (!spec.activity || closed) return;
     if (watching === thread) {
       wake?.();
       return;
@@ -496,9 +504,9 @@ export function pageAgent(
     if (status !== 'active' && changed.get(thread) === updatedAt) return;
     changed.set(thread, updatedAt);
     watching = thread;
-    void (async () => {
+    watched = (async () => {
       try {
-        while (await codexPass(where, thread)) {
+        while (!closed && (await codexPass(where, thread))) {
           await new Promise<void>((resolve) => {
             const timer = setTimeout(resolve, CODEX_EVERY_MS);
             timer.unref();
@@ -1020,6 +1028,14 @@ export function pageAgent(
     ...(spec.activity
       ? { activity, record: (line: NucleusActivityLine) => void write([line]) }
       : {}),
+
+    async close() {
+      closed = true;
+      // A loop waiting its 2 s goes on at once, and ends.
+      wake?.();
+      await watched;
+      await writing;
+    },
 
     async ask({ text, agent, effort, model }) {
       if (text.trim() === '') throw new PageAgentRefused('a question cannot be empty', 400);

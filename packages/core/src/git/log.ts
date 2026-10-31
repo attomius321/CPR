@@ -74,8 +74,9 @@ export interface HistoryShape {
  */
 export interface HistoryRefs {
   version: string;
-  branches: (LocalBranch & { row: number | null })[];
-  remotes: (RemoteBranch & { row: number | null })[];
+  /** `hidden`: left out of the graph (decision 645), so its row is null unless HEAD lists it. */
+  branches: (LocalBranch & { row: number | null; hidden?: true })[];
+  remotes: (RemoteBranch & { row: number | null; hidden?: true })[];
 }
 
 // Never tags as tips: they bring release lines no branch reaches (CPython's take its graph from
@@ -85,6 +86,20 @@ const TIPS: Record<HistoryScope, readonly string[]> = {
   all: ['HEAD', '--branches', '--remotes'],
   current: ['HEAD'],
 };
+
+/**
+ * A scope's tips, the branches hidden on Git's page left out of every branch (decision 645):
+ * `hidden` holds full refs (`refs/heads/x`, `refs/remotes/origin/x`), given to `--exclude`
+ * relative to `--branches` and `--remotes` as git asks. HEAD is listed whatever is hidden.
+ */
+function tipsOf(scope: HistoryScope, hidden: readonly string[]): readonly string[] {
+  if (scope === 'current' || hidden.length === 0) return TIPS[scope];
+  const under = (prefix: string) =>
+    hidden
+      .filter((ref) => ref.startsWith(prefix))
+      .map((ref) => `--exclude=${ref.slice(prefix.length)}`);
+  return ['HEAD', ...under('refs/heads/'), '--branches', ...under('refs/remotes/'), '--remotes'];
+}
 
 // Fields end with US (0x1f) and records with NUL; the subject comes last, so a subject holding
 // either separator is still read whole (`-z` ends each record with NUL).
@@ -142,6 +157,7 @@ export async function streamHistory(
   repo: GitRepo,
   scope: HistoryScope,
   onRows: (rows: HistoryRow[]) => void,
+  hidden: readonly string[] = [],
 ): Promise<void> {
   let rest = '';
   const take = (text: string) => {
@@ -153,7 +169,7 @@ export async function streamHistory(
   try {
     await gitStream(
       repo.root,
-      ['log', '--topo-order', '-z', '--format=%H%x1f%P', ...TIPS[scope], '--'],
+      ['log', '--topo-order', '-z', '--format=%H%x1f%P', ...tipsOf(scope, hidden), '--'],
       (chunk) => take(rest + chunk),
     );
   } catch (error) {
@@ -173,6 +189,7 @@ export async function findCommits(
   repo: GitRepo,
   scope: HistoryScope,
   query: string,
+  hidden: readonly string[] = [],
 ): Promise<string[]> {
   const words = query.trim();
   if (words === '') return [];
@@ -183,7 +200,7 @@ export async function findCommits(
       '--regexp-ignore-case',
       '--fixed-strings',
       `${by}=${words}`,
-      ...TIPS[scope],
+      ...tipsOf(scope, hidden),
       '--',
     ]).catch(async (error: unknown) => {
       if (error instanceof GitError && !(await hasHead(repo))) return '';
@@ -219,8 +236,14 @@ export async function commitDetails(repo: GitRepo, shas: readonly string[]): Pro
   );
 }
 
-/** The branch checked out, HEAD, and a version that changes when HEAD or a branch moves. */
-export async function historyState(repo: GitRepo): Promise<HistoryState> {
+/**
+ * The branch checked out, HEAD, and a version that changes when HEAD or a branch moves, or when
+ * the branches `hidden` change (decision 645): a listing with other tips.
+ */
+export async function historyState(
+  repo: GitRepo,
+  hidden: readonly string[] = [],
+): Promise<HistoryState> {
   const [branch, head, refs] = await Promise.all([
     currentBranch(repo),
     headCommit(repo),
@@ -232,7 +255,9 @@ export async function historyState(repo: GitRepo): Promise<HistoryState> {
     ]),
   ]);
   const version = createHash('sha1')
-    .update(`${branch ?? ''}\n${head ?? ''}\n${refs}`)
+    .update(
+      `${branch ?? ''}\n${head ?? ''}\n${refs}${hidden.length > 0 ? `\nhidden ${hidden.join(' ')}` : ''}`,
+    )
     .digest('hex')
     .slice(0, 12);
   return { branch, head, version };

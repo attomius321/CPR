@@ -50,6 +50,20 @@ export async function fetchBranches(scope: HistoryScope, version: string): Promi
   return (await response.json()) as HistoryRefs;
 }
 
+/** The rows of commits in a listing, by SHA; null for one it does not list (decision 634). */
+export async function fetchRowsOf(
+  scope: HistoryScope,
+  version: string,
+  shas: readonly string[],
+): Promise<(number | null)[]> {
+  const query = new URLSearchParams({ scope, version });
+  for (const sha of shas) query.append('sha', sha);
+  const response = await fetch(`${API_ROOT}api/history/rows?${query}`);
+  if (response.status === 409) throw new StaleHistory();
+  if (!response.ok) throw new Error(await response.text());
+  return ((await response.json()) as { rows: (number | null)[] }).rows;
+}
+
 export async function fetchJson<T>(path: string): Promise<T> {
   const response = await fetch(`${API_ROOT}${path}`);
   if (!response.ok) throw new Error(await response.text());
