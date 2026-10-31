@@ -75,3 +75,32 @@ Not verified: a push `--delete` to a remote that asks for credentials (the tests
 repository); a rebase that stops more than once (core continues one that stops once); line
 staging on a file with Windows line ends or no newline at its end; the desktop app (the page is
 the browser's); macOS and Windows.
+
+## Fix — Nucleus's and Scribe's activity finished before a close (2026-10-31, branch `fix/git-page-feature-extend`)
+
+The person pasted a `pnpm check` failure: `nucleus.test.ts` › "confines Codex's Nucleus like
+Claude Code's…", `ENOTEMPTY` in the repository's cleanup (`rmSync`, `git-repo.ts:64`). V82's
+journal met the same one on 2026-10-30 and reran it. Not this branch's code: no file under
+Nucleus, Codex, the page agent or the test helper differs from `main`.
+
+**Learned**:
+- **A loop nobody waited for wrote into the repository.** A Codex Nucleus reads its thread for
+  the activity (decision 606) in a loop started with `void`, every 2 s while a turn runs, and
+  appends what it reads to `symbiote/nucleus-activity.jsonl` (with `symbiote/.gitignore` first).
+  A test ended, its cleanup removed the folder's files, a write made one again, and the last
+  `rmdir` found it: `ENOTEMPTY`. Nothing could wait for that loop, nor stop it.
+- **It does not come on demand**: 0 of 15 runs alone and 0 of 18 under load (six copies at
+  once) before the change. The cause is from reading the code, and the test below holds it.
+
+**The change**: a page agent has `close()` (optional in `PageAgent`): no new read of Codex's
+thread starts, a loop waiting its 2 s goes on at once and ends, and it waits for the activity
+being written. The view server's `close()` waits for Nucleus's and Scribe's, so a `symbiote view`
+that stops no longer cuts a line being written; `nucleus.test.ts` closes every Nucleus and Scribe
+it made before it removes folders.
+
+**Verification**: tests first: "close stops reading Codex's thread and waits for the activity
+being written" (red: `s.close is not a function`), and the server waiting for them when it closes
+(red: `[]`, the server closed at once); both green after. `nucleus.test.ts` and `server.test.ts`
+185 passed; `pnpm check` 2,527 unit tests; the stress loop again 0 of 18. Not verified: the
+failure itself never came here, before or after, so its absence after the change proves little
+on its own.

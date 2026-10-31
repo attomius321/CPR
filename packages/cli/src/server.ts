@@ -1906,12 +1906,14 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   address = `http://127.0.0.1:${port}/`;
   return {
     url: address,
-    close: () => {
+    close: async () => {
       // A held call or wait would keep its connection, and the server, open.
       mcp?.close();
       // Open streams would keep the server from closing: the terminals end them.
       repository?.terminals?.closeAll();
       for (const stream of streams) stream.end();
+      // Nucleus's and Scribe's reads of Codex stop, and what they write finishes.
+      await Promise.all([repository?.nucleus?.close?.(), repository?.scribe?.close?.()]);
       return new Promise<void>((resolve) => server.close(() => resolve()));
     },
   };

@@ -3506,6 +3506,48 @@ describe('symbiote view: terminals (V21)', () => {
     const reader = body.getReader();
     while (!(await reader.read()).done);
   });
+
+  it("waits for Nucleus's and Scribe's activity being written when it closes", async () => {
+    const closed: string[] = [];
+    const agent = (name: string): PageAgent => {
+      const no = () => Promise.reject(new Error('not asked'));
+      return {
+        state: no,
+        ask: no,
+        open: no,
+        renew: no,
+        terminal: no,
+        efforts: no,
+        setEffort: no,
+        setModel: no,
+        close: async () => {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          closed.push(name);
+        },
+      };
+    };
+    const other = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        nucleus: agent('nucleus'),
+        scribe: agent('scribe'),
+      },
+    });
+    await other.close();
+    expect(closed.sort()).toEqual(['nucleus', 'scribe']);
+  });
 });
 
 describe('stateDir', () => {
