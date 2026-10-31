@@ -4,11 +4,11 @@ import {
   arrivalScale,
   arrivalScene,
   JOIN_SECONDS,
+  Mind,
   noise,
   questionScene,
-  Rope,
-  Spring,
-  type Plug,
+  type QuestionScene,
+  type Trace,
 } from '../src/ui/hive-art.js';
 
 /** Steps a scene by `seconds` at `fps`, calling `each` after every step. */
@@ -19,16 +19,194 @@ function run(scene: { step(dt: number): void }, seconds: number, each?: () => vo
   }
 }
 
-/** How far a plugged tendril's tip is from the wall of the cell it holds. */
-const gap = (plug: Plug) =>
-  Math.hypot(
-    plug.rope.px[plug.rope.n - 1]! - plug.anchor[0],
-    plug.rope.py[plug.rope.n - 1]! - plug.anchor[1],
-  );
+/** Times from `a` to `b`, `fps` a second. */
+const times = (a: number, b: number, fps = 30) =>
+  Array.from({ length: Math.round((b - a) * fps) + 1 }, (_, i) => a + i / fps);
 
-// Hive tentacles (decision 629): ropes of points following a living pose, springs and noise.
-describe("Hive's tendrils", () => {
-  it('move on noise that is smooth and bounded', () => {
+/** Whether a segment runs at a multiple of 45°. */
+const octilinear = ([x0, y0]: readonly number[], [x1, y1]: readonly number[]) => {
+  const dx = Math.abs(x1! - x0!);
+  const dy = Math.abs(y1! - y0!);
+  return dx < 1e-6 || dy < 1e-6 || Math.abs(dx - dy) < 1e-6;
+};
+
+// The machined Hive Mind (decision 666): plates in a honeycomb round a core.
+describe("Hive's Mind", () => {
+  it('is a honeycomb of 19 cells round its core, each with a way in to it', () => {
+    const mind = new Mind(260, 64);
+    expect(mind.cells).toHaveLength(19);
+    const core = mind.cells[mind.core]!;
+    expect([core.x, core.y]).toEqual([260, 64]);
+    for (const [i, a] of mind.cells.entries()) {
+      for (const b of mind.cells.slice(i + 1)) {
+        expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(mind.r * Math.sqrt(3) * 0.99);
+      }
+      const path = mind.pathToCore(i);
+      expect(path.at(-1)).toBe(mind.core);
+      path.slice(1).forEach((cell, k) => {
+        const from = mind.cells[path[k]!]!;
+        const to = mind.cells[cell]!;
+        expect(to.ring).toBe(from.ring - 1);
+        expect(Math.hypot(to.x - from.x, to.y - from.y)).toBeCloseTo(mind.r * Math.sqrt(3), 6);
+      });
+    }
+  });
+
+  it('boots each cell with a flicker, the core first, every one on by the end of the join', () => {
+    const { mind } = questionScene();
+    const core = mind.cells[mind.core]!;
+    for (const [i, cell] of mind.cells.entries()) {
+      if (i !== mind.core) expect(cell.boot).toBeGreaterThan(core.boot);
+      expect(mind.on(i, cell.boot - 0.01)).toBe(0);
+      const first = times(cell.boot, cell.boot + 0.2, 240).map((t) => mind.on(i, t));
+      // It goes dark again before it holds.
+      expect(Math.min(...first.slice(first.indexOf(1)))).toBeLessThan(0.2);
+      expect(cell.boot + 0.3).toBeLessThan(JOIN_SECONDS);
+      for (const t of times(JOIN_SECONDS, 60, 4)) expect(mind.on(i, t)).toBe(1);
+    }
+  });
+
+  it('lights the cell a signal reaches, then each cell in to the core, the core last', () => {
+    const mind = new Mind(0, 0);
+    const outer = mind.cells.findIndex((c) => c.ring === 2);
+    mind.feed({ cell: outer, strength: 1, arrivals: (a, b) => (a <= 1 && 1 <= b ? [1] : []) });
+    for (const i of mind.cells.keys()) expect(mind.energy(i, 0.99)).toBe(0);
+    const path = mind.pathToCore(outer);
+    // Each lights at its moment, later the farther in: its brightest moment, in steps of 1 ms.
+    const peaks = path.map((cell) => {
+      let best = 0;
+      let when = 0;
+      for (const t of times(0.95, 1.6, 1000)) {
+        const e = mind.energy(cell, t);
+        if (e > best) [best, when] = [e, t];
+      }
+      expect(best).toBeGreaterThan(0.4);
+      return when;
+    });
+    for (let k = 1; k < peaks.length; k++) expect(peaks[k]).toBeGreaterThan(peaks[k - 1]!);
+    expect(path.at(-1)).toBe(mind.core);
+    // Cells off the signal's way stay dark.
+    const off = mind.cells.findIndex((_, i) => !path.includes(i));
+    expect(mind.energy(off, 1.2)).toBe(0);
+  });
+});
+
+// The question's circuit board (decision 665).
+describe("The question's circuit", () => {
+  const port = (scene: QuestionScene, trace: Trace) => {
+    const cell = scene.mind.cells[trace.cell]!;
+    return [cell.x + (trace.side * scene.mind.r * Math.sqrt(3)) / 2, cell.y] as const;
+  };
+
+  it('routes ten traces, five a side, at 0° and 45° only, from beyond its side to its own cell', () => {
+    const scene = questionScene();
+    expect(scene.traces).toHaveLength(10);
+    for (const side of [-1, 1]) expect(scene.traces.filter((t) => t.side === side)).toHaveLength(5);
+    expect(new Set(scene.traces.map((t) => t.cell)).size).toBe(10);
+    for (const trace of [...scene.traces, ...scene.stubs]) {
+      trace.points.slice(1).forEach((p, k) => expect(octilinear(trace.points[k]!, p)).toBe(true));
+      for (const [, y] of trace.points) {
+        expect(y).toBeGreaterThanOrEqual(0);
+        expect(y).toBeLessThanOrEqual(scene.height);
+      }
+      expect(trace.arcs.at(-1)).toBeCloseTo(trace.length, 9);
+    }
+    for (const trace of scene.traces) {
+      const [x0] = trace.points[0]!;
+      expect(trace.side < 0 ? x0 <= 0 : x0 >= scene.width).toBe(true);
+      const cell = scene.mind.cells[trace.cell]!;
+      expect(cell.ring).toBe(2);
+      expect((cell.x - scene.mind.cx) * trace.side).toBeGreaterThan(0);
+      const [px, py] = trace.points.at(-1)!;
+      const [ex, ey] = port(scene, trace);
+      expect(Math.hypot(px - ex, py - ey)).toBeLessThan(1e-6);
+    }
+  });
+
+  it('draws each line from its edge, whole by the end of the join, and never undraws it', () => {
+    const scene = questionScene();
+    for (const line of [...scene.traces, ...scene.stubs]) {
+      expect(scene.drawn(line, 0)).toBe(0);
+      let last = 0;
+      for (const t of times(0, 30)) {
+        const drawn = scene.drawn(line, t);
+        expect(drawn).toBeGreaterThanOrEqual(last);
+        last = drawn;
+      }
+      expect(scene.drawn(line, JOIN_SECONDS)).toBe(1);
+    }
+  });
+
+  it('lights the cell each trace lands on', () => {
+    const scene = questionScene();
+    for (const trace of scene.traces) {
+      const before = scene.mind.energy(trace.cell, trace.landed - 0.02);
+      expect(scene.mind.energy(trace.cell, trace.landed + 0.02)).toBeGreaterThan(before + 0.5);
+    }
+  });
+
+  it('runs packets in and orders out once joined, none before, still an hour later', () => {
+    const scene = questionScene();
+    for (const t of times(0, JOIN_SECONDS)) {
+      for (const trace of scene.traces) {
+        expect(scene.packets(trace, t)).toEqual([]);
+        expect(scene.orders(trace, t)).toEqual([]);
+      }
+    }
+    for (const trace of scene.traces) {
+      let packets = 0;
+      let orders = 0;
+      for (const t of times(JOIN_SECONDS, JOIN_SECONDS + 60)) {
+        const now = scene.packets(trace, t);
+        const later = scene.packets(trace, t + 1 / 30);
+        // A packet starts at the edge (its head) and moves in, one at a time per trace here.
+        if (now.length === 0 && later.length > 0 && later[0]! < 20) packets++;
+        if (scene.orders(trace, t).length === 0 && scene.orders(trace, t + 1 / 30).length > 0)
+          orders++;
+        for (const s of [...now, ...scene.orders(trace, t)]) {
+          expect(s).toBeGreaterThan(-30);
+          expect(s).toBeLessThan(trace.length + 30);
+        }
+      }
+      expect(packets).toBeGreaterThan(15);
+      expect(orders).toBeGreaterThan(3);
+      // A packet arriving lights the cell.
+      const arrive = trace.packets.at(0) + trace.length / trace.speed;
+      expect(scene.mind.energy(trace.cell, arrive + 0.02)).toBeGreaterThan(
+        scene.mind.energy(trace.cell, arrive - 0.02) + 0.4,
+      );
+    }
+    // An hour open: still running.
+    const hour = times(3600, 3610).flatMap((t) =>
+      scene.traces.flatMap((tr) => scene.packets(tr, t)),
+    );
+    expect(hour.length).toBeGreaterThan(50);
+    expect(hour.every(Number.isFinite)).toBe(true);
+  });
+
+  it('gives the same state at the same time, whatever came before', () => {
+    const scene = questionScene();
+    const state = (t: number) =>
+      JSON.stringify([
+        scene.mind.cells.map((_, i) => [scene.mind.energy(i, t), scene.mind.on(i, t)]),
+        scene.mind.breath(t),
+        scene.traces.map((tr) => [scene.drawn(tr, t), scene.packets(tr, t), scene.orders(tr, t)]),
+      ]);
+    const a = state(30.5);
+    state(1.2);
+    state(400);
+    expect(state(30.5)).toBe(a);
+    expect(questionScene().traces.map((tr) => questionScene().packets(tr, 30.5))).toEqual(
+      scene.traces.map((tr) => scene.packets(tr, 30.5)),
+    );
+  });
+});
+
+// Turning on (decision 632): the question's Mind grows to the middle, a blackout closes on it.
+describe("Hive's arrival", () => {
+  const at: [number, number] = [720, 373];
+
+  it('has a liquid edge that moves on noise, smooth and bounded', () => {
     let last = noise(0, 3);
     for (let x = 0; x < 50; x += 0.001) {
       const n = noise(x, 3);
@@ -38,142 +216,11 @@ describe("Hive's tendrils", () => {
     }
   });
 
-  it('reach with springs that overshoot, then settle', () => {
-    const spring = new Spring(0, 10, 0.3);
-    spring.to = 1;
-    let most = 0;
-    run(spring, 3, () => (most = Math.max(most, spring.x)));
-    expect(most).toBeGreaterThan(1.1);
-    expect(Math.abs(spring.x - 1)).toBeLessThan(0.01);
-  });
-
-  it('trail at the tip: a rope follows its pose, its end last', () => {
-    const rope = new Rope(10);
-    for (let i = 0; i < 10; i++) {
-      rope.tx[i] = 0;
-      rope.ty[i] = -i * 10;
-    }
-    rope.step(1 / 60, 8, 0.4, 0, false);
-    for (let i = 0; i < 10; i++) rope.tx[i] = i * 10;
-    rope.step(1 / 60, 8, 0.4, 0, false);
-    // Moved toward the new pose, the tip less than the middle.
-    expect(rope.px[5]).toBeGreaterThan(0);
-    expect(rope.px[9]! / 90).toBeLessThan(rope.px[5]! / 50);
-    for (let k = 0; k < 180; k++) rope.step(1 / 60, 8, 0.4, 0, false);
-    expect(rope.px[9]).toBeCloseTo(90, 0);
-  });
-
-  it('stay finite and near their box for minutes of the question', () => {
-    const scene = questionScene();
-    run(scene, 180, undefined, 30);
-    for (const rope of [...scene.plugs, ...scene.frees].map((t) => t.rope)) {
-      for (let i = 0; i < rope.n; i++) {
-        expect(Number.isFinite(rope.px[i]) && Number.isFinite(rope.py[i])).toBe(true);
-        expect(rope.px[i]).toBeGreaterThan(-200);
-        expect(rope.px[i]).toBeLessThan(scene.width + 200);
-        expect(rope.hw[i]).toBeGreaterThan(0);
-      }
-    }
-  });
-
-  it('swell and pinch along their length, and thin toward the tip', () => {
-    // A plain taper bends one way all along; a swelling or a pinch turns its bend the other way.
-    const turns = (widths: number[]) => {
-      let count = 0;
-      let last = 0;
-      for (let i = 1; i < widths.length - 1; i++) {
-        const bend = widths[i + 1]! - 2 * widths[i]! + widths[i - 1]!;
-        if (Math.abs(bend) < 0.08) continue;
-        if (last && Math.sign(bend) !== last) count++;
-        last = Math.sign(bend);
-      }
-      return count;
-    };
-    for (const seconds of [1.5, 3, 8]) {
-      const scene = questionScene();
-      run(scene, seconds);
-      for (const { rope } of [...scene.plugs, ...scene.frees]) {
-        const widths = [...rope.hw];
-        expect(turns(widths)).toBeGreaterThan(0);
-        expect(widths.at(-1)).toBeLessThan(widths[0]!);
-      }
-    }
-  });
-});
-
-// The question (decisions 630, 631): tendrils strike, grab the Hive Mind's cells and hold.
-describe("The question's Hive Mind", () => {
-  it('is a honeycomb whose every cell reaches the core', () => {
-    const { mind } = questionScene();
-    expect(mind.cells.length).toBeGreaterThan(12);
-    for (const [i, a] of mind.cells.entries()) {
-      for (const b of mind.cells.slice(i + 1)) {
-        expect(Math.hypot(a.x - b.x, a.y - b.y)).toBeGreaterThan(mind.r * Math.sqrt(3) * 0.99);
-      }
-      const path = mind.pathToCore(i);
-      expect(mind.cells[path.at(-1)!]!.core).toBe(true);
-    }
-  });
-
-  it('is grabbed by every tendril within the join, and none lets go', () => {
-    const scene = questionScene();
-    run(scene, JOIN_SECONDS);
-    expect(scene.plugs.length).toBeGreaterThan(5);
-    for (const plug of scene.plugs) expect(plug.grabbed).toBe(true);
-    let worst = 0;
-    run(scene, 20, () => {
-      for (const plug of scene.plugs) {
-        expect(plug.grabbed).toBe(true);
-        worst = Math.max(worst, gap(plug));
-      }
-    });
-    // Pushed into its cell now and then, never pulled out of it.
-    expect(worst).toBeLessThan(scene.mind.r * 0.6);
-    for (const plug of scene.plugs) {
-      const out = Math.hypot(plug.anchor[0] - scene.mind.cx, plug.anchor[1] - scene.mind.cy);
-      const tip = Math.hypot(
-        plug.rope.px[plug.rope.n - 1]! - scene.mind.cx,
-        plug.rope.py[plug.rope.n - 1]! - scene.mind.cy,
-      );
-      expect(tip).toBeLessThanOrEqual(out + 0.5);
-    }
-  });
-
-  it('is woken by the grabs: its cells light and sparks run to its core', () => {
-    const scene = questionScene();
-    expect(scene.mind.wake).toBe(0);
-    let sparks = 0;
-    run(scene, JOIN_SECONDS, () => (sparks = Math.max(sparks, scene.mind.sparks.length)));
-    expect(scene.mind.wake).toBe(1);
-    expect(sparks).toBeGreaterThan(0);
-  });
-
-  it('lives while open: goo strands form between tendrils and snap', () => {
-    const scene = questionScene();
-    let forms = 0;
-    let snaps = 0;
-    const before = scene.strands.map((s) => s.bridged);
-    run(scene, 12, () =>
-      scene.strands.forEach((s, i) => {
-        if (s.bridged !== before[i]) {
-          if (s.bridged) forms++;
-          else snaps++;
-          before[i] = s.bridged;
-        }
-      }),
-    );
-    expect(forms).toBeGreaterThan(3);
-    expect(snaps).toBeGreaterThan(3);
-  });
-});
-
-// Turning on (decision 632): the question's Mind grows to the middle, a blackout closes on it.
-describe("Hive's arrival", () => {
-  const at: [number, number] = [720, 373];
-
-  it("grows the question's Mind to the middle of the window", () => {
+  it("grows the question's Mind, awake, to the middle of the window", () => {
     const scene = arrivalScene({ width: 1440, height: 900, at, scale: 1 });
     expect(scene.mindScale).toBeCloseTo(1, 5);
+    expect(scene.mind.cells).toHaveLength(19);
+    for (const i of scene.mind.cells.keys()) expect(scene.mind.on(i, 0)).toBe(1);
     run(scene, ARRIVAL.cover);
     const size = scene.mindScale * scene.mind.reach;
     expect(size).toBeGreaterThan(900 * 0.17);

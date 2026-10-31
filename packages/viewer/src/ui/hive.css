@@ -42,22 +42,21 @@
     );
 }
 
-/* The tendrils' and the Hive Mind's colours (decision 629, Carnage's red and black), read once by
-   `hive-draw.ts` for each canvas: the question's and the arrival's. */
+/* The art's colours (decisions 665, 666): the Hive Mind's gunmetal and glass, the board's lamps,
+   read once by `hive-draw.ts` for each canvas: the question's and the arrival's. */
 .hive-art {
   --art-ink: #0b0102;
-  --art-lit: #6e0a19;
-  --art-env: #ff8a96;
-  --art-rim: #e8243a;
-  --art-spec: #ffd8de;
-  --art-glow: #eb2028;
-  --art-cell-hot: #ff8250;
-  --art-core-hot: #ffb478;
-  --art-chamber: #160204;
-  --art-thought: #ff826e;
-  --art-wall: #170306;
-  --art-wall-lit: #45101a;
-  --art-wall-deep: #050101;
+  --art-glow: #e81c2c;
+  --art-lamp: #ff283e;
+  --art-lamp-hot: #ff8c98;
+  --art-spec: #ffe2e6;
+  --art-heat: #ff8250;
+  --art-metal-lit: #3b2f34;
+  --art-metal: #1e1619;
+  --art-metal-deep: #0c0809;
+  --art-bevel: #d6bac2;
+  --art-glass: #050102;
+  --art-board: #0a0304;
 }
 
 /* --- Hive's arrival (decision 632): the Mind and the blackout, then the light; then still --- */
