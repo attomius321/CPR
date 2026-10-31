@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv2-hive-runner.md)
 
-**Status:** planned (2026-10-31), on branch `feature/hv2-hive-runner` (the workspace's, from `main`
-at `6250957`); the person's OK on the plan ("Ok, go for it"), with the recommended answers to its
-five questions.
+**Status:** built, ready for review (2026-10-31), on branch `feature/hv2-hive-runner` (the
+workspace's, from `main` at `6250957`); the person's OK on the plan ("Ok, go for it"), with the
+recommended answers to its five questions. The real run reached round 2's check, where the person
+turned Hive off (see Results).
 
 **Problem** (the brief: "Build HV2, the first Hive milestone the HV1 spike proposed"). Hive mode
 (V82) is a switch and a look: `symbiote/hive.json` turns on the ink and crimson and nothing else.
@@ -235,3 +236,45 @@ Codex in any Hive role.
 - **Start with Hive on** offers Claude Code only, and says what Hive does; the request is refused
   for Codex and Hermes by the server as well (409).
 - **The Hive mode page and its question** say what Hive does now, in place of "not built yet".
+- **An event's time is its own.** The real run's first `check-started` event read
+  `"at": "72ed10b…"`: its data's `at` (the commit) replaced the event's time. The data says
+  `commit` and `prompt` now, and `hiveEvent` keeps its `at` and `kind` whatever the data holds
+  (fixed on the branch, `311e0ec`, with a test).
+
+**Results.**
+
+- **Tests**: `hive-runner.test.ts` 13 (the happy path to landing, then landed; the cap; work not
+  committed; a spike; plan first; Codex refused; a lost message sent once; Hive off mid-turn and
+  mid-check, then on; a turn the person finished while Hive was off; a killed runner's orphaned
+  check; the lock; Hive off = `main`); prompts 4; the viewer's card words and facts 4, Settings'
+  Hive group 1. The 48 start prompts recorded from `main` before V28 still match byte for byte.
+  `pnpm check`: 2,549 tests. e2e: 363 viewer and 20 nexus passed (before the last card fix; the
+  Hive, Settings and Start specs, 42, after it); `hive-loop.spec.ts` green 3 runs in a row.
+- **The real run** (this branch's `symbiote view` on the main checkout, a cache of its own; a chore
+  to correct the stale "about 2.5 min" above `CHECK_TIMEOUT_MS`; Claude Code in `auto`):
+
+  | Time (UTC) | What happened |
+  |---|---|
+  | 09:41:47 | Started: `hive: true`, Hive's record at `writing`, round 1 |
+  | 09:43:39 | The writer's turn ended (1 min 52 s), one commit, `72ed10b`: the check started |
+  | about 09:44:42 | `symbiote view` killed with SIGKILL during `pnpm check`; its check's group outlived it, its lock left behind |
+  | 09:44:45 | The view started again; at 09:44:46, the lock taken over, the orphaned group (pid 61464) killed, the check run again |
+  | 09:51:32 | The check failed after 406 s: 2 e2e tests of 361 (`intro.spec.ts`'s lost WebGL context, `merges.spec.ts`'s conflict), not touched by the change |
+  | 09:51:34 | Its command and last lines sent to the writer: round 2 (2 s after the check) |
+  | 09:57:41 | The writer's turn ended: it ran the whole e2e itself (381 of 381 passed, 5.4 min), judged the two flaky under load (load average about 9) and made no commit. Its commit still ahead, Hive ran the check again |
+  | 10:00:12 | The person turned Hive off from their own `symbiote view` (`main`'s build) |
+  | 10:00:14 | The runner killed the check (2.5 s later, its next look) and kept the step: `checking`, `interrupted`; the card "Hive off: paused before the check" |
+
+  Landing was not asked: the run stopped at round 2's check because Hive was turned off, and was
+  not turned on again without the person. The runner used 8 s of CPU in 23.6 minutes and 144 MB.
+- **Each round runs the check twice**: the writer runs it before it ends a turn (its prompt and
+  the project's instructions say so), then Symbiote does. Here that is about 6.5 minutes each.
+- **A flaky check costs a round**: round 2 was spent on two tests that pass alone. The writer's
+  answer (run them again, change nothing) and Hive's rule (a turn that ends with commits ahead is
+  checked) were enough to try again without a change.
+- **Not verified**: landing asked on a real run (stopped by Hive off, above); landed after a real
+  merge; a writer stopped mid-turn by a real Hive off (the writer was between turns at 10:00); a
+  real stuck workspace. Each is covered by the tests with the fakes.
+- **A second `symbiote view` rewrites `symbiote/claude-settings.json`** with its own build's hook
+  path; the person's view writes its own back at its next list. Both record the same thread.
+

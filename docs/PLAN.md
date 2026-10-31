@@ -182,7 +182,7 @@ hosted.
 | [NU1](plan/nu1-nucleus.md) | Nucleus: Scout renamed, with the agents' web search and pages; its next steps planned | ✅ | 589–595 | [journal](journal/nu1-nucleus.md) |
 | [NU2](plan/nu2-nucleus-activity.md) | Nucleus's Activity tab: its messages, calls, the gate's decisions, Symbiote's tools and Confirms, recorded across conversations | ready for review | 604–610 | [journal](journal/nu2-nucleus-activity.md) |
 | [HV1](plan/hv1-hive-graph.md) | Spike: Hive's agentic graph — a runner of Symbiote's own; a graph of workspaces against one agent (no gain, twice the cost); a reviewer that runs code (4 of 4 defects) | measured | 646–651 | [journal](journal/hv1-hive-graph.md) |
-| [HV2](plan/hv2-hive-runner.md) | Hive's runner and record: workspaces started while Hive is on are driven to landing asked — the writer's turns, the check, its failures sent back; Hive off stops them, on or a restart resumes | planned | 652–658 | [journal](journal/hv2-hive-runner.md) |
+| [HV2](plan/hv2-hive-runner.md) | Hive's runner and record: workspaces started while Hive is on are driven to landing asked — the writer's turns, the check, its failures sent back; Hive off stops them, on or a restart resumes | built, ready for review | 652–658 | [journal](journal/hv2-hive-runner.md) |
 
 ### The merger
 

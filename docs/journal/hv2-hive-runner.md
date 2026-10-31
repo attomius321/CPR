@@ -51,3 +51,40 @@ goes on from there. Decisions 652–658.
   "Hive: running the check" got Claude's mark until `WorkspaceNext.hive` left it out.
 - **The e2e fake records a stop before Hive writes the record**: the spec polls the record, not
   the stop.
+- **A field named `at` in an event's data replaced its time.** The real run's first
+  `check-started` read `"at": "72ed10b…"`. The data says `commit` now, and `hiveEvent` keeps its
+  own `at` and `kind`; the happy-path test reads every event's time.
+- **Each round runs the check twice.** The writer runs it before it ends its turn (its prompt and
+  the project's instructions say so), then Symbiote does: about 6.5 minutes each in this
+  repository.
+- **A flaky check costs a round.** Round 1 failed on two e2e tests of 361 the change cannot reach
+  (`intro.spec.ts`'s lost WebGL context, `merges.spec.ts`'s conflict), under a load average of
+  about 9. The writer ran the whole e2e again (381 of 381), changed nothing and ended its turn;
+  its commit still ahead, Hive checked again. No rule of Hive's was needed for it.
+- **A second `symbiote view` rewrites `symbiote/claude-settings.json`** with its own hook's path;
+  the person's view writes its own back at its next list. Both hooks record the same thread.
+
+**Verification**: tests first, red for the right reason (the modules missing, then each
+assertion): `hive-runner.test.ts` 13, prompts 4, the viewer's card words and facts 4, Settings'
+Hive group 1; the 48 start prompts recorded from `main` before V28 unchanged. `pnpm check`: 2,549
+tests. e2e: 363 viewer and 20 nexus passed; after the last card fix, the Hive, Settings and Start
+specs (42) passed; `hive-loop.spec.ts` green 3 runs in a row. Screenshots at 1440×900, both
+themes, Hive on and off: the sidenav's cards in every Hive step, Start, Settings' Hive mode page
+and Hive group.
+
+The real run, in this repository (this branch's `symbiote view` on the main checkout, a cache of
+its own; a chore correcting the "about 2.5 min" above `CHECK_TIMEOUT_MS`):
+- 09:41:47 started; 09:43:39 the writer's first turn ended (one commit) and the check started.
+- About 09:44:42 the view was killed with SIGKILL during `pnpm check`. Its check outlived it, with
+  the lock. Started again at 09:44:45, the new view took the lock, killed the orphaned group (pid
+  61464, nothing of it left) and ran the check again.
+- 09:51:32 the check failed (406 s, the two flaky e2e tests); 2 s later its last lines reached the
+  writer as round 2. 09:57:41 the writer's turn ended with no new commit; Hive checked again.
+- 10:00:12 the person turned Hive off from their own view. 2.5 s later the runner killed the
+  check and kept the step (`checking`, `interrupted`); the card said "Hive off: paused before the
+  check".
+- The runner used 8 s of CPU in 23.6 minutes, 144 MB.
+
+Not verified: landing asked at the end of a real run (Hive was turned off at round 2's check and
+not turned on again without the person); a real merge to `landed`; a writer stopped mid-turn by a
+real Hive off; a real stuck workspace. The tests cover each with the fakes.
