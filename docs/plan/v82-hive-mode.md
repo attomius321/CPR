@@ -599,7 +599,7 @@ turning on or off; the page shows a note when they differ (686). `NUCLEUS_NAME` 
 the session's name, how a new session is told from the person's.
 
 **Out of scope**: the id and files; exports (V84) keep "Nucleus", the record's name; the nexus's
-tabs (they show the page's title as it is); what Nucleus may do in Hive mode (HV4).
+tabs (they show the page's title as it is); what Nucleus may do in Hive mode (HV7).
 
 **Verification**:
 

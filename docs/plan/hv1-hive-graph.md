@@ -309,14 +309,18 @@ workspace can't hold it.
 
 ## Milestones
 
-Proposed, in this order. Each one is worth having before the next.
+Proposed, in this order. Each one is worth having before the next. HV2 and HV3 are built. Since
+[Hive's North Star](#chore-hives-north-star-chorehive-north-star) (decisions 688–692), the
+milestones after HV3 are numbered in the order they are built: HV4 autonomous landing, HV5 usage
+pacing, HV6 a more rigorous measurement (a spike), HV7 the graph, with Alpha Ceph orchestrating.
+Their rows are in the [index](../PLAN.md#agents); the graph proposed here as HV4 is HV7.
 
 | # | Milestone | Output |
 |---|---|---|
 | HV2 | Hive's runner and record | A goal becomes one workspace started by Symbiote (`workspaces.start`), its writer's session, the check, landing asked; `symbiote/hive/<goal>.json`; Hive off stops every agent; a restart resumes at the step |
 | HV3 | The running reviewer | A throwaway worktree, a clean-context session that proves defects with failing tests, Symbiote rerunning them, the tests sent with `reply`, rounds and the cap; the findings and their tests in the workspace's Review tab; Codex as an option for another vendor |
-| HV4 | The graph | The orchestrator's split with structured output and the ledgers, dependents from the parent's approved branch, merges in order through the merge queue, conflicts to the merger, stalls and new plans, a page that shows the graph. Only once a real goal shows one workspace is not enough |
 | HV5 | Usage pacing and models | Usage read before every start, a pause until the window resets, each role's model and effort in Settings |
+| HV7 (was HV4) | The graph | The orchestrator's split with structured output and the ledgers, dependents from the parent's approved branch, merges in order through the merge queue, conflicts to the merger, stalls and new plans, a page that shows the graph. Only once a real goal shows one workspace is not enough |
 
 ## Not verified
 
@@ -351,4 +355,40 @@ All proposed by this spike, for the person to confirm when HV2 is planned.
 | 648 | Who verifies a workspace's work | **A reviewer that runs code in a throwaway copy and reports only defects its failing tests show, which Symbiote reruns; the check stays the last word; no read-only reviewer** | Read-only: 0 of 4 defects, 12 approvals of 12; running: 4 of 4, none of 9 failing tests wrong, fixed in one round |
 | 649 | How many workspaces a goal gets | **One by default; the orchestrator splits only along real dependencies or large independent parts; a dependent starts from its parent's approved branch; merges in dependency order** | On three goals the graph cost 1.8–2.2× and took 1.7–2.0× as long for the same results |
 | 650 | Which agents a workspace has | **The writer and the running reviewer, each a session Symbiote shows and can stop; no researcher agent** | Subagents can't be shown, stopped or given another vendor; researchers cost $0.05–0.10 each with no measured effect |
-| 651 | Gates and limits | **Landing on `main`, pushing and deleting unmerged work stay the person's; 3 rounds, 2 new plans, 2 merges of `main` before the person; usage read before each agent starts; Hive off stops every agent and keeps the step** | The brief's proposals, run in the prototype; landing was approved automatically only for this measurement |
+| 651 | Gates and limits | **Landing on `main`, pushing and deleting unmerged work stay the person's; 3 rounds, 2 new plans, 2 merges of `main` before the person; usage read before each agent starts; Hive off stops every agent and keeps the step** | The brief's proposals, run in the prototype; landing was approved automatically only for this measurement. For Hive mode, replaced by 689 and 690; normal mode keeps every gate |
+
+## Chore: Hive's North Star (chore/hive-north-star)
+
+**Status:** ready for review (2026-10-31), on branch `chore/hive-north-star` (from `main` at
+`d40cde5`). Docs only.
+
+**Why.** Symbiote's North Star was one: review decisions, not lines, with the person deciding. Hive
+already runs without the person: HV2 and HV3 drive a workspace through the writer, the check and
+the running reviewer, and only Land waits for the person (decision 681). The person (2026-10-31):
+"Symbiote normal mode north star is ok, keeping the human in the loop. But Hive mode, it should be
+a fully autonomous machine, with agent graphs, loops", and "the mode splitting should be clear for
+the agents". So `docs/PLAN.md` now states two North Stars, and `CLAUDE.md` says which of its rules
+are which mode's.
+
+**Changed:**
+
+- `docs/PLAN.md`: the North Star as two, normal mode's word for word as before; the rows of
+  HV4–HV7 in the Agents section, in the order they are built.
+- `CLAUDE.md`: the North Star line names both modes; "Two modes" says which rules hold where.
+- This plan: the Milestones table points to the new rows; 651's row says what replaces it in Hive
+  mode; the decisions below. HV2's, HV3's and V82's plans name the graph HV7.
+
+**Not changed:** code, prompts and the viewer's text. The text that says landing is the person's
+(Settings' Hive page, README, `configuration.md`, the agents' prompts) is listed in HV4's row and
+changes when HV4 is built. Decision 119 (`design.md`, "the North Star is unchanged") is left as
+dated history. The `milestone` skill's "ask before merging" is normal mode's and is left as it is.
+
+### Decisions
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 688 | Symbiote's modes | **Two, set per repository. Normal mode (Hive off), human-centric: "Review decisions, not lines", its three questions and tie-breakers, unchanged. Hive mode (Hive on), fully autonomous: goals in, verified work landed; its tie-breakers: proven beats claimed, stopping beats guessing, recorded beats silent, within limits beats faster** | The person: normal mode keeps the human in the loop; Hive mode "should be a fully autonomous machine"; "the mode splitting should be clear for the agents" |
+| 689 | Who Hive waits for | **No one: in Hive mode no step waits for the person, landing included. This replaces 651's gates for Hive mode only; normal mode keeps every gate. Until HV4 is built, Land stays the person's press (681). A workspace at a cap or stuck stops and records why; it does not ask** | Fully autonomous, with no person in the loop; "stopping beats guessing" |
+| 690 | Hive's hard limits | **Hive off stops every agent and check and keeps the step (655); the round caps: 3 rounds a workspace, 2 new plans, 2 merges of `main` (651); a usage or budget cap (HV5). Hive pushes only a workspace's branch to `origin`, never `main`, for now; it never force-pushes and never deletes unmerged work** | The person's answers (2026-10-31): hard limits stay; "push only on the workspace branch, for now"; force-pushing and deleting unmerged work cannot be undone |
+| 691 | When the graph comes | **649 stands: one workspace a goal by default. The graph (HV7) comes only after HV6, a more rigorous measurement on large real goals, shows a gain** | HV1: on three small goals the graph cost 1.8–2.2× and took 1.7–2.0× as long for the same results |
+| 692 | Who orchestrates | **Alpha Ceph, Nucleus's name in Hive mode (682), becomes Hive's orchestrator in HV7: it splits a goal and drives its workspaces** | The person: "Alpha Ceph will become the orchestrator" |

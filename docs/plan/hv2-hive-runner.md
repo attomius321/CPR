@@ -33,7 +33,7 @@ keeps the step; Hive on again, or a restarted `symbiote view`, resumes at that s
 branch's slashes as folders, as the workspace records). Beside the workspace records, in the main
 checkout's `symbiote/` (git-ignored, decision 621's place) or in Symbiote's cache where the reviews
 are kept. Written whole after each step (`writeFileWhole`). In HV2 a goal is one workspace
-(decision 649), so the goal is named by its branch; HV4's goals of several workspaces get names of
+(decision 649), so the goal is named by its branch; HV7's goals of several workspaces get names of
 their own.
 
 ```json
@@ -191,7 +191,7 @@ as `{documents}` does (V40).
 built; 647 is made concrete by 652; 649, one workspace a goal, holds; 651's gates (landing, pushing,
 deleting unmerged work stay the person's) and its 3-round cap hold. 648 and 650's running reviewer
 come in HV3 (the person's answer to question 1); usage read before each start in HV5; new plans and
-merges of `main` in HV4.
+merges of `main` in HV7.
 
 **Decisions**:
 
@@ -206,7 +206,7 @@ merges of `main` in HV4.
 | 658 | Which agents Hive drives | **Claude Code only; a start that picks Codex or Hermes while Hive is on is refused (409); the writer in the permission mode picked, no `bypassPermissions`** | The brief: Claude only for now; "every workspace started while Hive is on" stays true; the person's answers to questions 2 and 4 |
 
 **Not in HV2 (later)**: the running reviewer and its Settings (HV3, Opus at high effort by
-default); the graph, new plans and merges of `main` (HV4); usage read before each start (HV5);
+default); the graph, new plans and merges of `main` (HV7); usage read before each start (HV5);
 Codex in any Hive role.
 
 ## As built (HV2)

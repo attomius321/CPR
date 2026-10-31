@@ -15,8 +15,29 @@ framework templates) and the calls between them, with findings on the risky part
   the folders.
 - Graph JSON contract: `docs/graph-schema.md`.
 
-**North Star: review decisions, not lines.** When trading off: precise beats complete (a wrong
-finding costs more trust than a missing one), explainable beats clever, local and fast beats hosted.
+**Two modes, two North Stars** (`docs/PLAN.md`, decision 688).
+
+- **Normal mode, human-centric: review decisions, not lines.** When trading off: precise beats
+  complete (a wrong finding costs more trust than a missing one), explainable beats clever, local
+  and fast beats hosted.
+- **Hive mode, fully autonomous: goals in, verified work landed.** Symbiote drives a workspace
+  through the writer, the check and the running reviewer, and lands it, with no person in the
+  loop. When trading off: proven beats claimed, stopping beats guessing, recorded beats silent,
+  within limits beats faster.
+
+### Which rules are which mode's
+
+- **Normal mode** (Hive off, or a workspace started before Hive was on): every rule in this file
+  holds. The person decides: ask before merging into `main`, and wait for their OK where asked.
+- **Hive mode** (a workspace started while Hive is on): Symbiote drives it. Its start prompt and
+  Hive's messages say what to do, and they win over normal mode's rules. Hive decides landing, not
+  "ask the user before merging into `main`" (today: Land on its Review tab, decision 681, until
+  HV4). From HV4, Hive pushes only the workspace's branch, never `main` (decision 690); you do
+  not push, merge or switch branches yourself. Commit everything before you end a turn; when
+  stuck, stop and say why.
+- **Both modes**: the code, tests, verification and docs rules; commit messages; honest reports;
+  never commit to `main` directly; never force-push or delete unmerged work (in normal mode, only
+  when the person asks).
 
 ## Repository map
 
@@ -107,12 +128,13 @@ unless the change says otherwise — prove it with the comparisons.
   implement, verify, record in `docs/journal/`.
 - One branch per milestone: `milestone/<id>-<slug>` (e.g. `milestone/v7-app-boundaries`); fixes on
   `fix/<slug>` from `main`; docs and tooling on `chore/<slug>`. Never commit to `main` directly.
-- IMPORTANT: **ask the user before merging into `main`.** An Approve in Symbiote, when the user asks
-  you to act on the review (`symbiote-review` skill), is that yes. Then merge with `--no-ff`
-  ("Merge <ID>: …"), verify `main` (`pnpm check`, build, e2e), push, and add a
-  "Docs: <ID> merged" commit.
+- IMPORTANT: **ask the user before merging into `main`** (normal mode; in a Hive workspace, Hive
+  decides landing). An Approve in Symbiote, when the user asks you to act on the review
+  (`symbiote-review` skill), is that yes. Then merge with `--no-ff` ("Merge <ID>: …"), verify
+  `main` (`pnpm check`, build, e2e), push, and add a "Docs: <ID> merged" commit.
 - Do not open pull requests unless asked. Commit and push as you go
-  (`git push -u origin <branch>`); a session ends with everything pushed.
+  (`git push -u origin <branch>`); a session ends with everything pushed. In a Hive workspace,
+  commit and do not push (from HV4, Hive pushes the branch).
 - Commit messages: subject `<ID>: <what changed>` (or `Fix: …`, `Docs: …`, `Plan <ID>: …`), a body
   that explains why and gives measured results, then the attribution trailers the session provides.
 - Report results honestly: say what was not verified; numbers over adjectives.
