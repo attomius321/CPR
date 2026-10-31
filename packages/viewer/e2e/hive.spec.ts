@@ -7,7 +7,7 @@ import { serveCommits, type RunningCommits } from './symbiote.js';
 
 // Hive mode (V82): a dangerous switch in Settings, asked before it turns on, kept per repository in
 // its `symbiote/` (decision 621), and the ink and crimson look on every page while it is on, from
-// the first paint; the Hive Mind and a blackout take the page as it turns on (decision 632).
+// the first paint; the Hive Mind and a hex shutter take the page as it turns on (decision 673).
 let symbiote: RunningCommits | undefined;
 let other: RunningCommits | undefined;
 let config: string;
@@ -163,7 +163,7 @@ test('light: the content stays white, the sidenav goes ink; the question is ink 
 const pixels = (page: Page, selector: string) =>
   page.locator(selector).evaluate((canvas: HTMLCanvasElement) => canvas.toDataURL());
 
-test('the tendrils grab the Hive Mind and live while the question is open, then stop; with reduced motion, one still frame', async ({
+test('the circuit routes into the Hive Mind and lives while the question is open, then stops; with reduced motion, one still frame', async ({
   page,
 }) => {
   await serve();
@@ -171,7 +171,7 @@ test('the tendrils grab the Hive Mind and live while the question is open, then 
   await turnOn(page).click();
   const art = question(page).locator('canvas.hive-joining');
   await expect(art).toBeVisible();
-  // Still moving long after the join: the idle (decision 631).
+  // Still moving long after the join: packets and orders (decisions 631, 665).
   await page.waitForTimeout(2_500);
   await expect(art).toHaveAttribute('data-moving', '');
   const a = await pixels(page, '.hive-joining');
@@ -189,15 +189,23 @@ test('the tendrils grab the Hive Mind and live while the question is open, then 
   const still = await pixels(page, '.hive-joining');
   await page.waitForTimeout(400);
   expect(await pixels(page, '.hive-joining')).toBe(still);
-  // The joined art, drawn once: not a blank canvas.
-  expect(
-    await art.evaluate((canvas: HTMLCanvasElement) => {
-      const { data } = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
-      let drawn = 0;
-      for (let i = 3; i < data.length; i += 4) if (data[i]! > 200) drawn++;
-      return drawn / (data.length / 4);
-    }),
-  ).toBeGreaterThan(0.2);
+  // The joined board, drawn once: the Mind solid in the middle, traces reaching both edges.
+  const board = await art.evaluate((canvas: HTMLCanvasElement) => {
+    const { width, height } = canvas;
+    const { data } = canvas.getContext('2d')!.getImageData(0, 0, width, height);
+    const at = (x: number, y: number) => data[(y * width + x) * 4 + 3]!;
+    const column = (x: number) =>
+      Math.max(...Array.from({ length: height }, (_, y) => at(Math.round(x), y)));
+    return {
+      mind: at(Math.round(width / 2), Math.round(height / 2)),
+      left: column(width * 0.03),
+      right: column(width * 0.97),
+    };
+  });
+  expect(board.mind).toBe(255);
+  // Over the sides' shade alone (about 105 there), a trace makes about 200.
+  expect(board.left).toBeGreaterThan(160);
+  expect(board.right).toBeGreaterThan(160);
 });
 
 /** The animations of Hive's arrival still running: the ink, the sheen. */
@@ -216,14 +224,14 @@ const arriving = (page: Page) =>
       }).length,
   );
 
-test('turning on, the Hive Mind and a blackout cover the window, the look changes under it, then all is still', async ({
+test('turning on, the Hive Mind and a hex shutter cover the window, the look changes under it, then all is still', async ({
   page,
 }) => {
   await serve();
   await hivePage(page);
   await turnOn(page).click();
   await expect(question(page).locator('canvas.hive-joining')).toBeVisible();
-  // When the look changes, read the blackout's canvas: every sampled pixel opaque.
+  // When the look changes, read the shutter's canvas: every sampled pixel opaque.
   await page.evaluate(() => {
     const w = window as unknown as { coveredAtSwap?: number | null };
     w.coveredAtSwap = null;
@@ -251,7 +259,7 @@ test('turning on, the Hive Mind and a blackout cover the window, the look change
   expect(
     await page.evaluate(() => (window as unknown as { coveredAtSwap?: number }).coveredAtSwap),
   ).toBe(255);
-  // Then still, within 3 s: the blackout gone, nothing of the arrival running.
+  // Then still, within 3 s: the shutter gone, nothing of the arrival running.
   await expect(page.locator('.hive-flood')).toHaveCount(0, { timeout: 3_000 });
   await expect(html(page)).not.toHaveAttribute('data-hive-arriving', { timeout: 3_000 });
   await expect(page.locator('[data-moving]')).toHaveCount(0, { timeout: 3_000 });

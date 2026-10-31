@@ -33,9 +33,10 @@ function animate(
 }
 
 /**
- * The Hive question's head (decisions 630, 631): tendrils strike, grab the Hive Mind's cells and
- * hold, then live while the dialog is open: 60 frames a second for the join, 30 after, nothing
- * once it closes. With reduced motion, the joined art drawn once.
+ * The Hive question's head (decisions 665, 666): a circuit board whose traces route in and land on
+ * the Hive Mind as it boots, then carry packets in and orders out while the dialog is open: 60
+ * frames a second for the join, 30 after, nothing once it closes. With reduced motion, the joined
+ * board drawn once.
  */
 export function HiveJoining() {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -45,20 +46,20 @@ export function HiveJoining() {
     if (!canvas || !ctx) return;
     const painter = new Painter(readPalette(canvas));
     const scene = questionScene();
-    const draw = () =>
-      paint(canvas, ctx, scene.width, scene.height, 1, (c) => painter.question(c, scene));
+    const draw = (t: number) =>
+      paint(canvas, ctx, scene.width, scene.height, 1, (c) => painter.question(c, scene, t));
     if (lessMotion()) {
-      for (let t = 0; t < STILL_AT; t += 1 / 30) scene.step(1 / 30);
-      draw();
+      draw(STILL_AT);
       return;
     }
+    let t = 0;
     return animate(
       canvas,
       (seconds) => {
-        scene.step(seconds);
-        draw();
+        t += seconds;
+        draw(t);
       },
-      () => (scene.t < JOIN_SECONDS ? 60 : 30),
+      () => (t < JOIN_SECONDS ? 60 : 30),
       () => true,
     );
   }, []);

@@ -235,6 +235,7 @@ hosted.
 | [Fix](plan/v82-hive-mode.md#fix-hive-per-repository-fixhive-per-symbiote) | Hive mode per repository, never on the nexus; Settings readable under the tendrils; the ink takes the page as it turns on | ready for review | 621–624 | [journal](journal/v82-hive-mode.md) |
 | [Feature](plan/v82-hive-mode.md#feature-hive-tentacles-featurehive-tentacles) | Hive's tendrils alive: Carnage's red and black in the question and the sidenav, a Hive Mind they grab and hold, turning on as the Mind and a blackout, then a boom | ready for review | 629–633 | [journal](journal/v82-hive-mode.md) |
 | [Fix](plan/v82-hive-mode.md#fix-no-tendrils-in-the-sidenav-fixremove-hive-tendrils-from-sidenav) | No Hive tendrils in the sidenav (633 withdrawn) | ready for review | | [journal](journal/fix-remove-hive-tendrils-from-sidenav.md) |
+| [Feature](plan/v82-hive-mode.md#feature-hives-question-a-circuit-featurehive-mode-dialog-prompt) | Hive's question as a circuit board: traces route into a machined Hive Mind; turning on as a hex shutter; the Swarm kept for later | ready for review | 665–667, 673 | [journal](journal/v82-hive-mode.md) |
 
 ### Native window
 

@@ -1,18 +1,25 @@
-// Hive mode's living tendrils (V82, decisions 629–633): ropes of points that follow a pose with
-// under-damped springs and noise, goo strands between them, the Hive Mind they grab, and turning
-// on as that Mind and a blackout. Pure: positions and widths, stepped in seconds; `hive-draw.ts`
-// draws them on a canvas, `HiveArt.tsx` and `shell/hive-arrival.ts` run them.
+// Hive mode's art (V82; decisions 665–666, 673): a machined Hive Mind, the question's circuit
+// board whose traces route into it, and turning on as that Mind under a closing hex shutter.
+// Pure: the question's every state is a function of the time since it opened; the arrival is
+// stepped. `hive-draw.ts` draws them on a canvas; `HiveArt.tsx` and `shell/hive-arrival.ts` run
+// them.
 
 export type Point = readonly [number, number];
 
-const TAU = Math.PI * 2;
 const clamp = (x: number, a: number, b: number) => (x < a ? a : x > b ? b : x);
-const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+const SQ3 = Math.sqrt(3);
+
 /** 0 below `a`, 1 above `b`, smooth between. */
 export function smooth(a: number, b: number, x: number): number {
   if (b <= a) return x >= a ? 1 : 0;
   const t = clamp((x - a) / (b - a), 0, 1);
   return t * t * (3 - 2 * t);
+}
+
+/** Slow, then fast, then slow: 0 to 1 over [0, 1]. */
+export function easeInOut(x: number): number {
+  const t = clamp(x, 0, 1);
+  return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
 /** A number in [0, 1) for an integer and a seed. */
@@ -21,30 +28,6 @@ export function hash(i: number, seed: number): number {
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   h ^= h >>> 16;
   return (h >>> 0) / 4294967296;
-}
-
-/** Smooth value noise in [-1, 1]: the same `x` and `seed` give the same value. */
-export function noise(x: number, seed: number): number {
-  const i = Math.floor(x);
-  const f = x - i;
-  const u = f * f * f * (f * (f * 6 - 15) + 10);
-  const a = hash(i, seed);
-  return (a + (hash(i + 1, seed) - a) * u) * 2 - 1;
-}
-
-/** Two octaves of noise: slow sway with a little faster detail. */
-export const fbm = (x: number, seed: number) =>
-  noise(x, seed) * 0.62 + noise(x * 2.07 + 13.1, seed + 101) * 0.38;
-
-/** A seeded random sequence in [0, 1). */
-export function rng(seed: number): () => number {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
 }
 
 /** A damped spring toward `to`: under-damped (`z` < 1), it overshoots and settles. */
@@ -66,924 +49,485 @@ export class Spring {
   }
 }
 
-/** Carnage's motion (decision 629): quick and red, fluid rather than twitchy. */
-export const MOTION = {
-  /** Each point's spring toward its pose, and the tension between neighbours. */
-  w: 10,
-  z: 0.3,
-  tension: 420,
-  sway: 7,
-  swayRate: 0.42,
-  wave: 1.15,
-  waveRate: 0.6,
-  /** A free tendril's length, and a strike's progress. */
-  reachW: 12,
-  reachZ: 0.28,
-  strikeW: 9,
-  strikeZ: 0.27,
-  twitch: 0.25,
-  twitchRate: 1.1,
-  taper: 1.3,
-  lumps: 0.26,
-  lumpCount: 3,
-  lumpSpeed: 1.6,
-  pulseEvery: 1.4,
-  pulseK: 0.32,
-  pulseSpeed: 1.3,
-  forkEvery: 3.2,
-  /** Goo: forms under `formGap` px apart, snaps past `snapGap`. */
-  formGap: 9,
-  snapGap: 19,
-  strandThick: 0.5,
-  strandCool: 0.7,
-  breathRate: 0.42,
-  beat: 0.6,
-  coreKick: 1.1,
-  sparkSpeed: 3.2,
-  thinkEvery: 1.9,
-} as const;
+/** Departures on a seeded timetable: one in each `gap` from `from`, at a seeded place in it. */
+export interface Timetable {
+  /** When the `k`-th leaves (from 0). */
+  at(k: number): number;
+  /** Every departure in [a, b], earliest first. */
+  between(a: number, b: number): number[];
+}
 
-// ---------- ropes ----------
-
-/**
- * A tendril's body: `n` points from its root, each following its target (the pose) with a spring,
- * softer toward the tip so the tip trails; a tension between neighbours carries waves down it.
- */
-export class Rope {
-  readonly n: number;
-  readonly px: Float64Array;
-  readonly py: Float64Array;
-  readonly vx: Float64Array;
-  readonly vy: Float64Array;
-  readonly tx: Float64Array;
-  readonly ty: Float64Array;
-  /** Half the width at each point. */
-  readonly hw: Float64Array;
-  private started = false;
-  constructor(n: number) {
-    this.n = n;
-    this.px = new Float64Array(n);
-    this.py = new Float64Array(n);
-    this.vx = new Float64Array(n);
-    this.vy = new Float64Array(n);
-    this.tx = new Float64Array(n);
-    this.ty = new Float64Array(n);
-    this.hw = new Float64Array(n).fill(0.5);
-  }
-  /** One step: the root (and the tip if `pinTip`) on their targets, the rest springing to them. */
-  step(dt: number, w: number, z: number, tension: number, pinTip: boolean): void {
-    const { n, px, py, vx, vy, tx, ty } = this;
-    if (!this.started) {
-      px.set(tx);
-      py.set(ty);
-      this.started = true;
-      return;
-    }
-    for (let i = 0; i < n; i++) {
-      if (i === 0 || (pinTip && i === n - 1)) {
-        px[i] = tx[i]!;
-        py[i] = ty[i]!;
-        vx[i] = vy[i] = 0;
-        continue;
+/** A timetable with no end: an hour on is as cheap to read as a second. */
+export function timetable(seed: number, from: number, gap: number): Timetable {
+  // Each in the middle 70 % of its slot: never two at once, never more than 1.7 gaps apart.
+  const at = (k: number) => from + (k + 0.15 + 0.7 * hash(k, seed)) * gap;
+  return {
+    at,
+    between(a, b) {
+      const out: number[] = [];
+      for (let k = Math.max(0, Math.floor((a - from) / gap) - 1); ; k++) {
+        const t = at(k);
+        if (t > b) return out;
+        if (t >= a) out.push(t);
       }
-      const wi = w * (1 - (0.45 * i) / (n - 1));
-      const j = i < n - 1 ? i + 1 : i;
-      const ax =
-        wi * wi * (tx[i]! - px[i]!) -
-        2 * z * wi * vx[i]! +
-        tension * (px[i - 1]! + px[j]! - 2 * px[i]!);
-      const ay =
-        wi * wi * (ty[i]! - py[i]!) -
-        2 * z * wi * vy[i]! +
-        tension * (py[i - 1]! + py[j]! - 2 * py[i]!);
-      vx[i] = vx[i]! + ax * dt;
-      vy[i] = vy[i]! + ay * dt;
-    }
-    for (let i = 1; i < n; i++) {
-      if (pinTip && i === n - 1) continue;
-      px[i] = px[i]! + vx[i]! * dt;
-      py[i] = py[i]! + vy[i]! * dt;
-    }
-  }
-  /** How much the segment at `i` is stretched beyond its pose (1: as posed). */
-  stretch(i: number): number {
-    const j = Math.min(i + 1, this.n - 1);
-    const k = Math.max(j - 1, 0);
-    const a = Math.hypot(this.px[j]! - this.px[k]!, this.py[j]! - this.py[k]!);
-    const b = Math.hypot(this.tx[j]! - this.tx[k]!, this.ty[j]! - this.ty[k]!) || 1e-3;
-    return a / b;
-  }
-}
-
-/** A bulge running along a tendril toward its tip, `s` its place (0–1). */
-interface Pulse {
-  s: number;
-  k: number;
-  done?: boolean;
-}
-
-/** The width along a tendril: swelling and pinching, lumps that crawl, pulses, thinner stretched. */
-function shapeWidths(
-  rope: Rope,
-  base: number,
-  tip: number,
-  t: number,
-  seed: number,
-  taper: number,
-  pulses: readonly Pulse[],
-  extra?: (s: number) => number,
-): void {
-  const { n } = rope;
-  const m = MOTION;
-  for (let i = 0; i < n; i++) {
-    const s = i / (n - 1);
-    let w = tip + (base - tip) * Math.pow(1 - s, taper);
-    w *=
-      1 +
-      m.lumps *
-        Math.sin(s * m.lumpCount * Math.PI + seed * 1.7 + t * m.lumpSpeed) *
-        (0.75 + 0.25 * noise(s * 3 + t * 0.2, seed + 3)) +
-      m.lumps * 0.6 * noise(s * 6 - t * m.lumpSpeed * 0.6, seed + 9);
-    for (const p of pulses) {
-      const d = (s - p.s) / 0.075;
-      w *= 1 + p.k * Math.exp(-d * d);
-    }
-    if (extra) w += extra(s);
-    rope.hw[i] = Math.max(0.3, w / Math.sqrt(clamp(rope.stretch(i), 0.7, 1.8)) / 2);
-  }
+    },
+  };
 }
 
 // ---------- the Hive Mind ----------
 
-const SQ3 = Math.sqrt(3);
+/** A signal's step from a cell to the next one in, in seconds. */
+export const HOP = 0.075;
+/** How long a cell glows after a signal, in seconds. */
+const GLOW_FOR = 1.6;
+/** A cell switching on: a fluorescent stutter, then on. */
+const FLICKER = [1, 0.15, 0.9, 0, 0.55, 1, 0.35, 1];
 
-/** A cell of the comb: its centre, how lit it is, and a seed for its unevenness. */
 export interface MindCell {
-  x: number;
-  y: number;
-  core: boolean;
-  energy: number;
-  seed: number;
+  /** Its axial place (a point up). */
+  readonly q: number;
+  readonly r: number;
+  /** 0 the core, 1 round it, 2 the outer ring. */
+  readonly ring: number;
+  readonly x: number;
+  readonly y: number;
+  /** When it switches on, and how long its flicker lasts. */
+  boot: number;
+  flicker: number;
 }
 
-/** A spark of thought running from cell to cell along `path`, `u` how far (in cells). */
-export interface Spark {
-  path: number[];
-  u: number;
-  speed: number;
+/** Signals reaching a cell: how strongly, and when they arrive between `a` and `b`. */
+export interface Feed {
+  readonly cell: number;
+  readonly strength: number;
+  arrivals(a: number, b: number): number[];
 }
-
-/** The comb's cells, by axial place (a point up), and the outer ones the tendrils grab. */
-const CELLS: readonly Point[] = [
-  [0, 0],
-  [1, 0],
-  [1, -1],
-  [0, -1],
-  [-1, 0],
-  [-1, 1],
-  [0, 1],
-  [-2, 0],
-  [-2, 1],
-  [-1, -1],
-  [2, 0],
-  [1, 1],
-  [2, -1],
-  [0, -2],
-  [-1, 2],
-  [2, -2],
-];
-const GRABBED = {
-  left: [
-    [-1, -1],
-    [-2, 0],
-    [-2, 1],
-    [-1, 2],
-  ],
-  right: [
-    [2, -2],
-    [2, -1],
-    [2, 0],
-    [1, 1],
-  ],
-} as const;
 
 /**
- * The Hive Mind (decision 630): a honeycomb round a core that breathes and beats; a cell grabbed or
- * fed lights up and may send a spark of thought to the core, which kicks.
+ * The Hive Mind (decision 666): 19 machined cells in a honeycomb round a core. Each switches on at
+ * its moment; a signal reaching a cell lights it, then each cell in to the core, `HOP` apart.
  */
 export class Mind {
   readonly cx: number;
   readonly cy: number;
   /** A cell's circumradius. */
   readonly r: number;
-  readonly cells: MindCell[];
-  readonly links: [number, number][] = [];
-  sparks: Spark[] = [];
-  /** 0 asleep, 1 awake: the grabs wake it. */
-  wake = 0;
-  breath = 0;
-  private readonly coreKick = new Spring(0, 9, 0.35);
-  private readonly rand = rng(77);
-  private nextThought = 1.2;
-  constructor(cx: number, cy: number, r = 11.5) {
+  readonly cells: MindCell[] = [];
+  /** The core's index. */
+  readonly core: number;
+  /** When it wakes, from and to: the chambers' glow at rest, from none to full. */
+  wake: readonly [number, number] = [-2, -1];
+  private readonly feeds: { feed: Feed; path: number[] }[] = [];
+  constructor(cx: number, cy: number, r = 11) {
     this.cx = cx;
     this.cy = cy;
     this.r = r;
-    this.cells = CELLS.map(([q, s], i) => ({
-      x: cx + r * SQ3 * (q + s / 2),
-      y: cy + r * 1.5 * s,
-      core: q === 0 && s === 0,
-      energy: 0,
-      seed: i * 13 + 5,
-    }));
-    this.cells.forEach((a, i) =>
-      this.cells.forEach((b, j) => {
-        if (j > i && Math.hypot(a.x - b.x, a.y - b.y) < r * SQ3 * 1.05) this.links.push([i, j]);
-      }),
-    );
+    for (let q = -2; q <= 2; q++) {
+      for (let s = -2; s <= 2; s++) {
+        if (Math.abs(q + s) > 2) continue;
+        this.cells.push({
+          q,
+          r: s,
+          ring: Math.max(Math.abs(q), Math.abs(s), Math.abs(q + s)),
+          x: cx + r * SQ3 * (q + s / 2),
+          y: cy + r * 1.5 * s,
+          boot: -Infinity,
+          flicker: 0.22,
+        });
+      }
+    }
+    this.core = this.cellAt(0, 0);
   }
   /** How far its outermost cell's wall is from its centre. */
   get reach(): number {
     return Math.max(...this.cells.map((c) => Math.hypot(c.x - this.cx, c.y - this.cy))) + this.r;
   }
-  cellAt(q: number, s: number): number {
-    return CELLS.findIndex(([a, b]) => a === q && b === s);
+  cellAt(q: number, r: number): number {
+    return this.cells.findIndex((c) => c.q === q && c.r === r);
   }
-  neighbours(i: number): number[] {
-    return this.links.filter(([a, b]) => a === i || b === i).map(([a, b]) => (a === i ? b : a));
-  }
-  /** The cells from `from` to the core, each a neighbour nearer to it. */
+  /** The cells from `from` to the core, each a neighbour one ring in (nearer the middle row). */
   pathToCore(from: number): number[] {
     const path = [from];
-    const far = (i: number) => {
-      const c = this.cells[i]!;
-      return Math.hypot(c.x - this.cx, c.y - this.cy);
-    };
-    let at = from;
-    for (let k = 0; k < 6 && !this.cells[at]!.core; k++) {
-      const next = this.neighbours(at).sort((a, b) => far(a) - far(b))[0];
-      if (next === undefined) break;
-      path.push(next);
-      at = next;
+    let at = this.cells[from];
+    while (at && at.ring > 0) {
+      const here = at;
+      const next = this.cells
+        .map((cell, i) => ({ cell, i }))
+        .filter(
+          ({ cell }) =>
+            cell.ring === here.ring - 1 &&
+            Math.hypot(cell.x - here.x, cell.y - here.y) < this.r * SQ3 * 1.05,
+        )
+        .sort(
+          (a, b) => Math.abs(a.cell.y - this.cy) - Math.abs(b.cell.y - this.cy) || a.i - b.i,
+        )[0];
+      if (!next) break;
+      path.push(next.i);
+      at = next.cell;
     }
     return path;
   }
-  /** Lights a cell; `to`: a spark to the core, to a neighbour, or none. */
-  fire(cell: number, to: 'core' | 'near' | 'none' = 'core'): void {
-    const c = this.cells[cell];
-    if (!c) return;
-    c.energy = Math.min(1.4, c.energy + 0.9);
-    if (to === 'none') return;
-    const near = this.neighbours(cell);
-    const path =
-      to === 'core'
-        ? this.pathToCore(cell)
-        : [cell, near[Math.floor(this.rand() * near.length)] ?? cell];
-    if (path.length > 1 && path[0] !== path[1]) {
-      this.sparks.push({ path, u: 0, speed: MOTION.sparkSpeed * (0.8 + 0.4 * this.rand()) });
-    }
+  /** Signals from now on: each lights its cell, then the cells in to the core. */
+  feed(feed: Feed): void {
+    this.feeds.push({ feed, path: this.pathToCore(feed.cell) });
   }
-  step(dt: number, t: number): void {
-    const m = MOTION;
-    for (const c of this.cells) c.energy *= Math.exp(-dt * 2.2);
-    this.coreKick.step(dt);
-    // Breathing, uneven, and a beat twice like a heart's.
-    const slow = fbm(t * m.breathRate, 5) * 0.5 + 0.5;
-    const beat = Math.pow(
-      Math.max(0, Math.sin(t * m.breathRate * TAU * 1.13 + fbm(t * 0.3, 8) * 2)),
-      3,
-    );
-    this.breath = clamp(0.35 + 0.4 * slow + 0.35 * beat * m.beat + this.coreKick.x, 0, 1.6);
-    for (const s of this.sparks) {
-      s.u += dt * s.speed;
-      if (s.u >= s.path.length - 1) {
-        const end = this.cells[s.path.at(-1)!]!;
-        end.energy = Math.min(1.4, end.energy + 0.5);
-        if (end.core) this.coreKick.v += m.coreKick;
+  /** How lit cell `i` is at `t` by the signals that reached it: 0 when none, about 1 at a peak. */
+  energy(i: number, t: number): number {
+    let e = 0;
+    for (const { feed, path } of this.feeds) {
+      const depth = path.indexOf(i);
+      if (depth < 0) continue;
+      const delay = depth * HOP;
+      const strength = feed.strength * 0.8 ** depth;
+      for (const at of feed.arrivals(t - delay - GLOW_FOR, t - delay)) {
+        e += strength * Math.exp(-(t - at - delay) * 4.2);
       }
     }
-    this.sparks = this.sparks.filter((s) => s.u < s.path.length - 1);
-    // Thoughts of its own, now and then.
-    if (this.wake > 0.6 && t > this.nextThought) {
-      this.nextThought = t + m.thinkEvery * (0.4 + this.rand());
-      this.fire(Math.floor(this.rand() * this.cells.length), this.rand() < 0.5 ? 'core' : 'near');
-    }
+    return e;
   }
-}
-
-// ---------- tendrils ----------
-
-interface PlugSpec {
-  root: Point;
-  /** The way it leaves its root. */
-  dir: Point;
-  anchor: Point;
-  /** Into the cell, from outside. */
-  inward: Point;
-  cell: number;
-  width: number;
-  tipW: number;
-  taper: number;
-  /** When it strikes; it comes out 0.42 s before. */
-  start: number;
-  cock: number;
-  swing: Point;
-  s1: number;
-  s2: number;
-  seed: number;
-}
-
-/**
- * A tendril that grabs a cell (decision 630): it comes out of the ink, draws back, strikes in an
- * arc, pushes into its cell and grabs, its foot spreading round the wall; then it holds, swaying,
- * with pulses running down it into the Mind.
- */
-export class Plug {
-  readonly rope = new Rope(24);
-  readonly root: Point;
-  readonly dir: Point;
-  readonly anchor: Point;
-  readonly inward: Point;
-  readonly cell: number;
-  readonly width: number;
-  readonly tipW: number;
-  readonly seed: number;
-  /** The strike's progress: 0 its start, 1 at the cell. */
-  readonly q = new Spring(-0.35, MOTION.strikeW, MOTION.strikeZ);
-  /** The foot, spread once it grabs. */
-  readonly splay = new Spring(0, 15, 0.3);
-  grabbed = false;
-  alive = false;
-  pulses: Pulse[] = [];
-  private nextPulse: number;
-  private readonly spec: PlugSpec;
-  constructor(spec: PlugSpec) {
-    this.spec = spec;
-    this.root = spec.root;
-    this.dir = spec.dir;
-    this.anchor = spec.anchor;
-    this.inward = spec.inward;
-    this.cell = spec.cell;
-    this.width = spec.width;
-    this.tipW = spec.tipW;
-    this.seed = spec.seed;
-    this.nextPulse = spec.start + 1.2 + spec.seed * 0.137;
+  /** Whether cell `i` is on at `t`: 0 before it boots, a flicker, then 1. */
+  on(i: number, t: number): number {
+    const cell = this.cells[i];
+    if (!cell) return 0;
+    const u = t - cell.boot;
+    if (u <= 0) return 0;
+    if (u >= cell.flicker) return 1;
+    return FLICKER[Math.floor((u / cell.flicker) * FLICKER.length)] ?? 1;
   }
-  private tipTarget(q: number): Point {
-    const { root, dir, anchor, inward, cock, swing } = this.spec;
-    const q0x = root[0] + dir[0] * 40;
-    const q0y = root[1] + dir[1] * 40 + cock;
-    if (q < 0) return [q0x + dir[0] * q * 130, q0y + dir[1] * q * 130 + cock * q * 1.2];
-    if (q <= 1) {
-      // The tip swings in out of line: a strike, not a line drawn.
-      const sx = (q0x + anchor[0]) / 2 + swing[0];
-      const sy = (q0y + anchor[1]) / 2 + swing[1];
-      const u = 1 - q;
-      return [
-        u * u * q0x + 2 * u * q * sx + q * q * anchor[0],
-        u * u * q0y + 2 * u * q * sy + q * q * anchor[1],
-      ];
-    }
-    const into =
-      0.075 * Math.tanh((q - 1) / 0.075) * Math.hypot(anchor[0] - q0x, anchor[1] - q0y) * 0.35;
-    return [anchor[0] + inward[0] * into, anchor[1] + inward[1] * into];
+  /** How awake it is at `t`, 0–1: its chambers' glow at rest. */
+  awake(t: number): number {
+    return smooth(this.wake[0], this.wake[1], t);
   }
-  step(dt: number, t: number, mind: Mind): void {
-    const m = MOTION;
-    const { start } = this.spec;
-    // Out of the ink, drawn back, then the strike; once it has hold it keeps it.
-    if (t >= start - 0.42 && t < start - 0.12) this.q.to = 0;
-    else if (t >= start - 0.12 && t < start) this.q.to = -0.08;
-    else if (t >= start) this.q.to = 1;
-    this.q.w = t < start - 0.12 ? 9 : m.strikeW;
-    this.q.step(dt);
-    if (this.grabbed && this.q.x < 1) {
-      this.q.x = 1;
-      this.q.v = Math.max(0, this.q.v);
-    }
-    this.splay.step(dt);
-    this.alive = t >= start - 0.42;
-    if (!this.grabbed && this.q.x > 0.985) {
-      this.grabbed = true;
-      this.q.x = Math.max(this.q.x, 1);
-      this.splay.v += 9;
-      mind.fire(this.cell);
-      mind.wake = Math.min(1, mind.wake + 0.22);
-    }
-    // Pulses run down it into the Mind.
-    if (this.grabbed && t > this.nextPulse) {
-      this.nextPulse = t + m.pulseEvery * (0.45 + 1.1 * hash(Math.floor(t * 7), this.seed + 2));
-      this.pulses.push({ s: 0, k: m.pulseK * (0.7 + 0.6 * hash(Math.floor(t * 3), this.seed)) });
-    }
-    for (const p of this.pulses) {
-      p.s += dt * m.pulseSpeed;
-      if (p.s >= 1 && !p.done) {
-        p.done = true;
-        mind.fire(this.cell, hash(Math.floor(t * 13), this.seed) < 0.45 ? 'core' : 'none');
-      }
-    }
-    this.pulses = this.pulses.filter((p) => p.s < 1.15);
-    this.pose(t);
-    // While it strikes the whole arm moves with its tip; once it holds, it softens and lives.
-    const striking = !this.grabbed && t >= start - 0.12;
-    this.rope.step(dt, m.w * (striking ? 3.2 : 1.4), striking ? 0.6 : m.z, m.tension, true);
-    const foot = this.splay.x;
-    shapeWidths(
-      this.rope,
-      this.width,
-      this.tipW,
-      t,
-      this.seed,
-      this.spec.taper,
-      this.pulses,
-      (s) => Math.pow(smooth(0.82, 1, s), 2) * foot * this.tipW * 1.6,
+  /** The core's light at `t`: a slow breath, uneven, kicked by the signals that reach it. */
+  breath(t: number): number {
+    return (
+      0.5 +
+      0.18 * Math.sin(t * 2.3) +
+      0.1 * Math.sin(t * 5.1 + 1) +
+      0.45 * this.energy(this.core, t)
     );
   }
-  /** Its pose: a curve from the root to the tip, swaying, a ripple running down it. */
-  private pose(t: number): void {
-    const m = MOTION;
-    const { root, dir, inward, s1, s2 } = this.spec;
-    const [tipx, tipy] = this.tipTarget(this.q.x);
-    const [rx, ry] = root;
-    const [ix, iy] = inward;
-    const d = Math.hypot(tipx - rx, tipy - ry);
-    const bow1 = m.sway * 2.2 * fbm(t * m.swayRate + this.seed, this.seed);
-    const bow2 = m.sway * 1.6 * fbm(t * m.swayRate * 1.3 + 4 + this.seed, this.seed + 5);
-    const twitch =
-      m.twitch *
-      m.sway *
-      2 *
-      noise(t * m.twitchRate * 6, this.seed + 9) *
-      smooth(0.55, 0.85, noise(t * m.twitchRate, this.seed + 11));
-    // A short stub is a plain hook; the S of a long one fades in as it grows.
-    const grown = smooth(40, 170, d);
-    const bend = (bow1 + twitch + s1) * grown;
-    const c1x = rx + dir[0] * d * 0.42 - dir[1] * bend;
-    const c1y = ry + dir[1] * d * 0.42 + dir[0] * bend;
-    const c2x = tipx - ix * d * 0.36 - iy * (bow2 + s2) * grown;
-    const c2y = tipy - iy * d * 0.36 + ix * (bow2 + s2) * grown;
-    const { rope } = this;
-    for (let j = 0; j < rope.n; j++) {
-      const s = j / (rope.n - 1);
-      const u = 1 - s;
-      const wave =
-        m.wave *
-        m.sway *
-        fbm(t * m.waveRate * 3 - s * 2.4, this.seed + 21) *
-        Math.sin(Math.PI * s) *
-        (this.grabbed ? 1 : 0.4);
-      rope.tx[j] =
-        u * u * u * rx +
-        3 * u * u * s * c1x +
-        3 * u * s * s * c2x +
-        s * s * s * tipx -
-        iy * wave * 0.3;
-      rope.ty[j] =
-        u * u * u * ry + 3 * u * u * s * c1y + 3 * u * s * s * c2y + s * s * s * tipy + wave;
-    }
-  }
-  /** One side of the grip: goo spreading round the cell's wall from the tip, into `out`. */
-  foot(side: -1 | 1, out: Rope): number {
-    const n = 7;
-    const last = this.rope.n - 1;
-    const x = this.rope.px[last]!;
-    const y = this.rope.py[last]!;
-    const [ix, iy] = this.inward;
-    const f = clamp(this.splay.x, 0, 1.4);
-    for (let k = 0; k < n; k++) {
-      const s = k / (n - 1);
-      const a = side * (0.9 + 1.4 * s);
-      const dx = -(ix * Math.cos(a) - iy * Math.sin(a));
-      const dy = -(ix * Math.sin(a) + iy * Math.cos(a));
-      const len = s * this.tipW * 1.5 * f;
-      out.px[k] = x + ix * this.tipW * 0.2 + dx * len;
-      out.py[k] = y + iy * this.tipW * 0.2 + dy * len;
-      out.hw[k] = Math.max(0.35, this.tipW * 0.42 * (1 - s * 0.8) * Math.min(1, f));
-    }
-    return n;
-  }
 }
 
-interface FreeSpec {
-  root: Point;
-  /** The angle it leaves its root at, in radians. */
-  angle: number;
-  length: number;
-  /** Its length to begin with; 0 by default. */
-  len0?: number;
-  width: number;
-  tip?: number;
-  bend?: number;
-  /** Its curl now, and once it has reached. */
-  curl: number;
-  curlRest: number;
-  /** An S along it: its size in radians and its phase. */
-  sAmp?: number;
-  sPhase?: number;
-  start: number;
-  /** How late it follows the noise: the small ones trail the big ones. */
-  delay: number;
-  seed: number;
-  /** Reaches and forks of its own now and then. */
-  events: boolean;
-  forks?: boolean;
-  n?: number;
-  shadow?: number;
-}
-
-/** A free tendril (decision 629): it grows from its root, reaches, curls, forks and joins again. */
-export class Free {
-  readonly rope: Rope;
-  /** Its second branch, when it forks. */
-  readonly branch: Rope | null;
-  readonly root: Point;
-  readonly length: number;
-  readonly width: number;
-  readonly seed: number;
-  readonly shadow: number;
-  readonly len: Spring;
-  readonly curl: Spring;
-  readonly fork = new Spring(0, 7, 0.45);
-  alive = false;
-  private reached = false;
-  private curlAt = 0;
-  private backAt = 0;
-  private joinAt = 0;
-  private nextReach: number;
-  private nextFork: number;
-  private readonly spec: FreeSpec;
-  constructor(spec: FreeSpec) {
-    this.spec = spec;
-    const n = spec.n ?? 22;
-    this.rope = new Rope(n);
-    this.branch = spec.forks ? new Rope(n) : null;
-    this.root = spec.root;
-    this.length = spec.length;
-    this.width = spec.width;
-    this.seed = spec.seed;
-    this.shadow = spec.shadow ?? 2.5;
-    this.len = new Spring(spec.len0 ?? 0, MOTION.reachW, MOTION.reachZ);
-    this.curl = new Spring(spec.curl, 6, 0.5);
-    this.nextReach = spec.start + 1.5 + (spec.seed % 5) * 0.6;
-    this.nextFork = spec.start + MOTION.forkEvery * (0.5 + (spec.seed % 3) / 3);
-  }
-  /** Its pose along its length: an angle that bends, curls to the tip and ripples. */
-  private pose(rope: Rope, t: number, side: number): void {
-    const m = MOTION;
-    const { spec } = this;
-    const n = rope.n;
-    const seg = Math.max(0.5, this.len.x) / (n - 1);
-    const tt = t - spec.delay;
-    let a = spec.angle + m.sway * 0.018 * fbm(tt * m.swayRate + this.seed, this.seed);
-    let x = spec.root[0];
-    let y = spec.root[1];
-    const twitch =
-      m.twitch *
-      0.9 *
-      noise(tt * m.twitchRate * 5, this.seed + 9) *
-      smooth(0.5, 0.85, noise(tt * m.twitchRate, this.seed + 11));
-    const fk = this.fork.x;
-    for (let k = 0; k < n; k++) {
-      const s = k / (n - 1);
-      rope.tx[k] = x;
-      rope.ty[k] = y;
-      a +=
-        ((spec.bend ?? 0) +
-          this.curl.x * 3 * s * s +
-          m.wave * 1.1 * fbm(tt * m.waveRate * 2.2 - s * 2.1, this.seed + 21) * (0.3 + s) * 1.6 +
-          twitch * s * 3) /
-        (n - 1);
-      // Forked: each branch turns away past the fork and back toward the other at the tip.
-      const f = side ? side * fk * (0.6 * smooth(0.45, 0.59, s) - 0.42 * smooth(0.68, 1, s)) : 0;
-      const g =
-        (spec.sAmp ?? 0) * Math.sin(Math.PI * 1.4 * s + (spec.sPhase ?? 0)) * smooth(0, 0.3, s);
-      x += Math.cos(a + f + g) * seg;
-      y += Math.sin(a + f + g) * seg;
-    }
-  }
-  step(dt: number, t: number): void {
-    const { spec } = this;
-    this.alive = t >= spec.start;
-    if (!this.alive) return;
-    if (!this.reached) {
-      this.len.to = this.length;
-      this.reached = true;
-      this.curlAt = t + 0.25;
-    }
-    if (this.curlAt && t > this.curlAt) {
-      this.curl.to = spec.curlRest;
-      this.curlAt = 0;
-    }
-    if (spec.events && t > this.nextReach) {
-      // A reach: it lunges a little further, straightening, then comes back.
-      this.nextReach = t + (2 + 3.5 * hash(Math.floor(t * 9), this.seed)) * 0.55;
-      this.len.to = this.length * (1.12 + 0.18 * hash(Math.floor(t * 5), this.seed + 1));
-      this.backAt = t + 0.28;
-      this.curl.to = spec.curlRest * 0.6;
-    }
-    if (this.backAt && t > this.backAt) {
-      this.len.to = this.length;
-      this.curl.to = spec.curlRest;
-      this.backAt = 0;
-    }
-    if (this.branch && spec.events && t > this.nextFork) {
-      this.nextFork = t + MOTION.forkEvery * (0.6 + 0.8 * hash(Math.floor(t * 4), this.seed + 3));
-      this.fork.to = 1;
-      this.joinAt = t + 1.4 + 1.2 * hash(Math.floor(t * 6), this.seed + 4);
-    }
-    if (this.joinAt && t > this.joinAt) {
-      this.fork.to = 0;
-      this.joinAt = 0;
-    }
-    this.len.step(dt);
-    this.curl.step(dt);
-    this.fork.step(dt);
-    const m = MOTION;
-    const tip = spec.tip ?? 0.7;
-    this.pose(this.rope, t, this.branch ? -1 : 0);
-    this.rope.step(dt, m.w, m.z, m.tension, false);
-    shapeWidths(this.rope, this.width, tip, t, this.seed, m.taper, []);
-    if (this.branch) {
-      this.pose(this.branch, t, 1);
-      this.branch.step(dt, m.w, m.z, m.tension, false);
-      shapeWidths(this.branch, this.width, tip, t, this.seed + 1, m.taper, []);
-      // Forked, each branch is thinner beyond the fork.
-      const fk = clamp(this.fork.x, 0, 1);
-      for (const r of [this.rope, this.branch]) {
-        for (let i = 0; i < r.n; i++)
-          r.hw[i] = r.hw[i]! * (1 - 0.32 * fk * smooth(0.4, 0.6, i / (r.n - 1)));
-      }
-    }
-  }
-}
-
-/** Something with a rope that a strand can hang from. */
-interface Holder {
-  readonly rope: Rope;
-  readonly alive: boolean;
-}
-
-/** One half of a snapped strand, pulling back into its tendril. */
-export interface Stub {
-  rope: Rope;
-  s: number;
-  spring: Spring;
-  dx: number;
-  dy: number;
-  w: number;
-}
-
-/**
- * Goo between two tendrils (decision 629): it forms where they come close, thins as they part,
- * snaps, and each half pulls back into its tendril.
- */
-export class Strand {
-  readonly a: Holder;
-  readonly b: Holder;
-  readonly sa: number;
-  readonly sb: number;
-  readonly seed: number;
-  bridged = false;
-  /** The gap it formed across, and how thick it was then. */
-  len0 = 0;
-  thick = 0;
-  stubs: Stub[] = [];
-  private cool = 0;
-  constructor(a: Holder, sa: number, b: Holder, sb: number, seed: number) {
-    this.a = a;
-    this.sa = sa;
-    this.b = b;
-    this.sb = sb;
-    this.seed = seed;
-  }
-  /** Where it hangs on each tendril: the points and their half widths. */
-  ends(): [number, number, number, number, number, number] {
-    const ra = this.a.rope;
-    const rb = this.b.rope;
-    const ia = Math.round(this.sa * (ra.n - 1));
-    const ib = Math.round(this.sb * (rb.n - 1));
-    return [ra.px[ia]!, ra.py[ia]!, ra.hw[ia]!, rb.px[ib]!, rb.py[ib]!, rb.hw[ib]!];
-  }
-  step(dt: number): void {
-    const m = MOTION;
-    const [ax, ay, ah, bx, by, bh] = this.ends();
-    const d = Math.hypot(bx - ax, by - ay) || 1;
-    const gap = d - ah - bh;
-    this.cool -= dt;
-    const alive = this.a.alive && this.b.alive;
-    if (!this.bridged) {
-      if (this.cool <= 0 && gap < m.formGap && alive) {
-        this.bridged = true;
-        this.len0 = Math.max(gap, 1);
-        this.thick = Math.min(ah, bh) * m.strandThick;
-      }
-    } else if (gap > m.snapGap || !alive) {
-      this.bridged = false;
-      this.cool = m.strandCool * (0.6 + 0.8 * hash(Math.floor(this.seed + gap), this.seed));
-      for (const [x, y, ox, oy, holder, s] of [
-        [ax, ay, bx, by, this.a, this.sa],
-        [bx, by, ax, ay, this.b, this.sb],
-      ] as const) {
-        const spring = new Spring(gap / 2 + 4, 16, 0.32);
-        spring.to = 0;
-        this.stubs.push({
-          rope: holder.rope,
-          s,
-          spring,
-          dx: (ox - x) / d,
-          dy: (oy - y) / d,
-          w: this.thick * 0.7,
-        });
-      }
-    }
-    for (const stub of this.stubs) stub.spring.step(dt);
-    this.stubs = this.stubs.filter((s) => s.spring.x > 0.4 || Math.abs(s.spring.v) > 2);
-  }
-  /** The bridge as a rope into `out` (thick at its feet, thin in the middle), its points' count. */
-  bridge(t: number, out: Rope): number {
-    const [ax, ay, ah, bx, by, bh] = this.ends();
-    const d = Math.hypot(bx - ax, by - ay) || 1;
-    const gap = Math.max(d - ah - bh, 0.1);
-    const thin = clamp(Math.pow(this.len0 / gap, 0.9), 0.08, 1.2);
-    const n = 11;
-    const sag = (gap * 0.18 + 2) * (0.6 + 0.4 * noise(t * 0.7, this.seed));
-    const nx = -(by - ay) / d;
-    const ny = (bx - ax) / d;
-    for (let i = 0; i < n; i++) {
-      const s = i / (n - 1);
-      const bow = Math.sin(s * Math.PI) * sag;
-      out.px[i] = lerp(ax, bx, s) + nx * bow * 0.4;
-      out.py[i] = lerp(ay, by, s) + ny * bow * 0.4 + bow * 0.6;
-      out.hw[i] = Math.max(
-        0.35,
-        this.thick * (thin * 0.55 + Math.pow(Math.abs(2 * s - 1), 2.2) * 0.85),
-      );
-    }
-    return n;
-  }
-  /** A snapped half as a rope into `out`, its points' count. */
-  static stub(stub: Stub, out: Rope): number {
-    const r = stub.rope;
-    const i = Math.round(stub.s * (r.n - 1));
-    const len = Math.max(0, stub.spring.x) + r.hw[i]!;
-    const n = 6;
-    for (let k = 0; k < n; k++) {
-      const s = k / (n - 1);
-      out.px[k] = r.px[i]! + stub.dx * len * s;
-      out.py[k] = r.py[i]! + stub.dy * len * s + s * s * 2;
-      out.hw[k] = Math.max(0.35, lerp(stub.w * 1.6, stub.w * 0.8, s));
-    }
-    return n;
-  }
-}
-
-// ---------- the question ----------
+// ---------- the question: a circuit board ----------
 
 /** How long the question's join takes: drawn at 60 frames a second until then, 30 after. */
-export const JOIN_SECONDS = 1.6;
+export const JOIN_SECONDS = 2;
 /** The moment its still frame shows, with reduced motion: joined and settled. */
 export const STILL_AT = 3;
+/** A packet's lit tail, in px. */
+export const TAIL = 18;
+/** The targeting ring's radius round the Mind (a cell's circumradius 11). */
+export const RING = 51;
+/** When packets start running in, and orders out. */
+const PACKETS_FROM = 1.8;
+const ORDERS_FROM = 3;
+
+/** A route at 0° and 45°: its corners and the arc length at each. */
+export interface Path {
+  readonly points: readonly Point[];
+  readonly arcs: readonly number[];
+  readonly length: number;
+}
+
+/** A line on the question's board, and when it is drawn in. */
+export interface Line extends Path {
+  readonly start: number;
+  /** When it is whole: a trace lands on its cell then. */
+  readonly landed: number;
+}
+
+/** A trace from the board's edge to a cell of the Mind, and the signals it carries. */
+export interface Trace extends Line {
+  readonly side: -1 | 1;
+  readonly cell: number;
+  /** Packets in to the Mind and orders out from it, by when each leaves. */
+  readonly packets: Timetable;
+  readonly orders: Timetable;
+  /** A packet's speed in px a second (orders go at 0.8 of it). */
+  readonly speed: number;
+}
 
 export interface QuestionScene {
   readonly width: number;
   readonly height: number;
   readonly mind: Mind;
-  readonly plugs: Plug[];
-  readonly frees: Free[];
-  readonly strands: Strand[];
-  /** Where the tendrils leave each side's ink, for the ink at the edges. */
-  readonly roots: { left: number[]; right: number[] };
-  readonly t: number;
-  step(dt: number): void;
+  readonly traces: readonly Trace[];
+  /** Thin lines that end in a via, between the traces. */
+  readonly stubs: readonly Line[];
+  /** The honeycomb etched into the board: its cells' centres and their radius. */
+  readonly etch: { readonly centres: readonly Point[]; readonly r: number };
+  /** The targeting ring's radius round the Mind. */
+  readonly ring: number;
+  /** How much of `line` is drawn at `t`, 0–1. */
+  drawn(line: Line, t: number): number;
+  /** The packets on `trace` at `t`: their heads' arc lengths from its edge. */
+  packets(trace: Trace, t: number): number[];
+  /** The orders on `trace` at `t`, running out: their heads' arc lengths from its edge. */
+  orders(trace: Trace, t: number): number[];
 }
 
 /**
- * The question's head (a 520 × 128 box, decisions 630–631): tendrils from both sides and over the
- * top corners grab the Hive Mind's outer cells and hold; smaller ones trail them, curl and fork;
- * goo between neighbours.
+ * The traces' corners, the edge first, to the Mind's outer cells (axial places) on each side; each
+ * ends at its cell's port. Every run is at 0° or 45°.
+ */
+const ROUTES: readonly { side: -1 | 1; cell: Point; route: Point[] }[] = [
+  {
+    side: -1,
+    cell: [0, -2],
+    route: [
+      [-4, 6],
+      [60, 6],
+      [74, 20],
+      [176, 20],
+      [187, 31],
+    ],
+  },
+  {
+    side: -1,
+    cell: [-1, -1],
+    route: [
+      [-4, 36],
+      [120, 36],
+      [131.5, 47.5],
+    ],
+  },
+  {
+    side: -1,
+    cell: [-2, 0],
+    route: [
+      [-4, 58],
+      [40, 58],
+      [46, 64],
+    ],
+  },
+  {
+    side: -1,
+    cell: [-2, 1],
+    route: [
+      [-4, 92],
+      [120, 92],
+      [131.5, 80.5],
+    ],
+  },
+  {
+    side: -1,
+    cell: [-2, 2],
+    route: [
+      [-4, 122],
+      [60, 122],
+      [74, 108],
+      [176, 108],
+      [187, 97],
+    ],
+  },
+  {
+    side: 1,
+    cell: [2, -2],
+    route: [
+      [524, 10],
+      [452, 10],
+      [431, 31],
+    ],
+  },
+  {
+    side: 1,
+    cell: [2, -1],
+    route: [
+      [524, 40],
+      [380, 40],
+      [372.5, 47.5],
+    ],
+  },
+  {
+    side: 1,
+    cell: [2, 0],
+    route: [
+      [524, 68],
+      [470, 68],
+      [466, 64],
+    ],
+  },
+  {
+    side: 1,
+    cell: [1, 1],
+    route: [
+      [524, 96],
+      [400, 96],
+      [384.5, 80.5],
+    ],
+  },
+  {
+    side: 1,
+    cell: [0, 2],
+    route: [
+      [524, 118],
+      [452, 118],
+      [431, 97],
+    ],
+  },
+];
+
+const STUBS: readonly Point[][] = [
+  [
+    [-4, 14],
+    [40, 14],
+  ],
+  [
+    [-4, 48],
+    [76, 48],
+  ],
+  [
+    [-4, 78],
+    [54, 78],
+    [62, 70],
+    [96, 70],
+  ],
+  [
+    [-4, 112],
+    [36, 112],
+  ],
+  [
+    [150, 64],
+    [160, 74],
+    [192, 74],
+  ],
+  [
+    [524, 24],
+    [470, 24],
+  ],
+  [
+    [524, 54],
+    [430, 54],
+  ],
+  [
+    [524, 82],
+    [486, 82],
+  ],
+  [
+    [524, 108],
+    [470, 108],
+  ],
+  [
+    [360, 64],
+    [350, 54],
+    [328, 54],
+  ],
+];
+
+/** The arc length at each of `points`. */
+function arcsOf(points: readonly Point[]): number[] {
+  const arcs = [0];
+  for (let i = 1; i < points.length; i++) {
+    const [x0, y0] = points[i - 1]!;
+    const [x1, y1] = points[i]!;
+    arcs.push(arcs[i - 1]! + Math.hypot(x1 - x0, y1 - y0));
+  }
+  return arcs;
+}
+
+/** The point at arc length `s` along a line and its direction: [x, y, dx, dy]. */
+export function pointAt(
+  points: readonly Point[],
+  arcs: readonly number[],
+  s: number,
+): [number, number, number, number] {
+  const length = arcs.at(-1) ?? 0;
+  const at = clamp(s, 0, length);
+  let i = 1;
+  while (i < points.length - 1 && arcs[i]! < at) i++;
+  const [x0, y0] = points[i - 1] ?? [0, 0];
+  const [x1, y1] = points[i] ?? [x0, y0];
+  const span = arcs[i]! - arcs[i - 1]! || 1;
+  const f = (at - arcs[i - 1]!) / span;
+  const d = Math.hypot(x1 - x0, y1 - y0) || 1;
+  return [x0 + (x1 - x0) * f, y0 + (y1 - y0) * f, (x1 - x0) / d, (y1 - y0) / d];
+}
+
+/**
+ * The question's head (a 520 × 128 box, decision 665): a circuit board whose ten traces route in
+ * from both edges and land on the Hive Mind's outer cells, which boot round the core; then packets
+ * run in and orders run out while it is open.
  */
 export function questionScene(): QuestionScene {
   const width = 520;
   const height = 128;
-  const cx = 260;
-  const cy = 64;
-  const mind = new Mind(cx, cy);
-  const plugs: Plug[] = [];
-  const frees: Free[] = [];
-  const strands: Strand[] = [];
-  const roots = { left: [] as number[], right: [] as number[] };
-  const plugW = [30, 18, 34, 20];
-  for (const side of ['left', 'right'] as const) {
-    const sgn = side === 'left' ? 1 : -1;
-    const cells = GRABBED[side]
-      .map(([q, s]) => mind.cellAt(q, s))
-      .sort((a, b) => mind.cells[a]!.y - mind.cells[b]!.y);
-    cells.forEach((cell, k) => {
-      const m = mind.cells[cell]!;
-      const ox0 = m.x - cx;
-      const oy0 = m.y - cy;
-      const ol = Math.hypot(ox0, oy0) || 1;
-      // Into the cell from outside, a little more from the side it is reached from.
-      let ox = ox0 / ol - sgn * 0.6;
-      let oy = oy0 / ol;
-      const l2 = Math.hypot(ox, oy) || 1;
-      ox /= l2;
-      oy /= l2;
-      // The first comes over the top edge near the corner, the rest from the side, uneven.
-      const fromTop = k === 0;
-      const y = fromTop
-        ? -10
-        : lerp(40, 116, (k - 1) / (cells.length - 2)) +
-          (side === 'right' ? 7 : -5) * (k % 2 ? 1 : -1);
-      const x = fromTop ? (side === 'left' ? 46 : width - 46) : side === 'left' ? -4 : width + 4;
-      if (!fromTop) roots[side].push(y);
-      const mid = k - (cells.length - 1) / 2;
-      const dl = Math.hypot(0.55, 0.83);
-      const w = plugW[k % plugW.length]!;
-      plugs.push(
-        new Plug({
-          root: [x, y],
-          dir: fromTop ? [(sgn * 0.55) / dl, 0.83 / dl] : [sgn, 0],
-          anchor: [m.x + (ox0 / ol) * mind.r * 1.12, m.y + (oy0 / ol) * mind.r * 1.12],
-          inward: [-ox, -oy],
-          cell,
-          width: w,
-          tipW: w * 0.32,
-          taper: 1.05,
-          start: 0.5 + [0.12, 0, 0.24, 0.3][k % 4]! + (side === 'right' ? 0.07 : 0),
-          cock: (mid === 0 ? -sgn : Math.sign(mid)) * 16,
-          swing: [0, (mid === 0 ? -sgn : Math.sign(mid)) * 46],
-          s1: (k % 2 ? -1 : 1) * (28 + 8 * (k % 3)),
-          s2: (k % 2 ? 1 : -1) * (14 + 5 * (k % 2)) * sgn,
-          seed: (side === 'left' ? 10 : 40) + k * 3,
-        }),
-      );
+  const mind = new Mind(260, 64);
+  mind.wake = [0.6, 1.5];
+  for (const [i, cell] of mind.cells.entries()) {
+    if (i === mind.core) {
+      cell.boot = 0.08;
+      cell.flicker = 0.3;
+    } else cell.boot = 0.85 + cell.ring * 0.08 + hash(i, 4) * 0.25;
+  }
+  // Drawn in from the edges in turn, left and right alternating.
+  const order = [0, 5, 1, 6, 2, 7, 3, 8, 4, 9];
+  const traces = ROUTES.map(({ side, cell: [q, r], route }, k): Trace => {
+    const cell = mind.cellAt(q, r);
+    const c = mind.cells[cell]!;
+    const points: Point[] = [...route, [c.x + (side * mind.r * SQ3) / 2, c.y]];
+    const arcs = arcsOf(points);
+    const length = arcs.at(-1)!;
+    const start = 0.12 + order.indexOf(k) * 0.075;
+    const seed = 11 + k * 7;
+    return {
+      points,
+      arcs,
+      length,
+      start,
+      landed: start + 0.62 + 0.0011 * length,
+      side,
+      cell,
+      packets: timetable(seed, PACKETS_FROM, 2.2),
+      orders: timetable(seed + 3, ORDERS_FROM, 6.5),
+      speed: 230,
+    };
+  });
+  for (const trace of traces) {
+    const { landed, packets, length, speed } = trace;
+    const travel = length / speed;
+    mind.feed({
+      cell: trace.cell,
+      strength: 1.1,
+      arrivals: (a, b) => (a <= landed && landed <= b ? [landed] : []),
     });
-    // Smaller ones trail the big ones, never plugged: they reach, curl and fork.
-    for (let k = 0; k < 2; k++) {
-      const low = k === 1;
-      const y = low ? 90 : 38;
-      roots[side].push(y);
-      frees.push(
-        new Free({
-          root: [side === 'left' ? -2 : width + 2, y],
-          angle: side === 'left' ? (low ? 0.22 : -0.22) : Math.PI + (low ? -0.22 : 0.22),
-          length: 118,
-          width: 11,
-          curl: 0.3 * sgn * (low ? 1 : -1),
-          curlRest: 3.6 * sgn * (low ? -1 : 1),
-          start: 0.78 + k * 0.14,
-          delay: 0.35,
-          seed: (side === 'left' ? 70 : 90) + k,
-          events: true,
-          forks: k === 0,
-          n: 22,
-          tip: 0.5,
-        }),
-      );
+    mind.feed({
+      cell: trace.cell,
+      strength: 0.85,
+      arrivals: (a, b) => packets.between(a - travel, b - travel).map((t) => t + travel),
+    });
+  }
+  const stubs = STUBS.map((points, k): Line => {
+    const arcs = arcsOf(points);
+    const start = 0.3 + 0.06 * k;
+    return { points, arcs, length: arcs.at(-1)!, start, landed: start + 0.45 };
+  });
+  const etchR = 13;
+  const centres: Point[] = [];
+  for (let r = -4; r <= 4; r++) {
+    for (let q = -14; q <= 14; q++) {
+      centres.push([mind.cx + etchR * SQ3 * (q + r / 2), mind.cy + etchR * 1.5 * r]);
     }
   }
-  // Goo between neighbouring plugs where they crowd, and from the small ones to the big.
-  for (const left of [true, false]) {
-    const group = plugs.filter((p) => p.root[0] < cx === left);
-    for (let k = 0; k < group.length - 1; k++) {
-      for (const [sa, sb, seed] of [
-        [0.8, 0.82, 200],
-        [0.55, 0.58, 220],
-        [0.3, 0.32, 240],
-      ] as const) {
-        strands.push(new Strand(group[k]!, sa, group[k + 1]!, sb, seed + k));
-      }
-    }
-  }
-  for (const free of frees) {
-    const near = plugs
-      .filter((p) => p.root[0] < cx === free.root[0] < cx && p.root[1] > 0)
-      .sort((a, b) => Math.abs(a.root[1] - free.root[1]) - Math.abs(b.root[1] - free.root[1]))[0];
-    if (near) strands.push(new Strand(free, 0.4, near, 0.3, 260 + free.seed));
-  }
-  let t = 0;
   return {
     width,
     height,
     mind,
-    plugs,
-    frees,
-    strands,
-    roots,
-    get t() {
-      return t;
+    traces,
+    stubs,
+    etch: { centres, r: etchR - 0.5 },
+    ring: RING,
+    drawn: (line, t) => easeInOut((t - line.start) / (line.landed - line.start)),
+    packets(trace, t) {
+      const { speed, length } = trace;
+      return trace.packets.between(t - (length + TAIL) / speed, t).map((t0) => (t - t0) * speed);
     },
-    step(dt) {
-      const sub = Math.max(1, Math.ceil(dt / (1 / 120)));
-      const h = dt / sub;
-      for (let i = 0; i < sub; i++) {
-        t += h;
-        for (const p of plugs) p.step(h, t, mind);
-        for (const f of frees) f.step(h, t);
-        for (const s of strands) s.step(h);
-        mind.step(h, t);
-      }
+    orders(trace, t) {
+      const speed = trace.speed * 0.8;
+      const { length } = trace;
+      return trace.orders
+        .between(t - (length + TAIL) / speed, t)
+        .map((t0) => length - (t - t0) * speed);
     },
   };
 }
@@ -995,15 +539,14 @@ export const ARRIVAL = { cover: 1.0, hold: 0.16, boom: 0.62, end: 1.9 } as const
 
 /** What the arrival shows at its moment, for the drawing. */
 export interface ArrivalView {
-  /** The blackout's open middle round the Mind, its two radii; 0 once covered. */
+  /** The shutter's open middle round the Mind, its two radii; 0 once covered. */
   holeX: number;
   holeY: number;
   /** The Mind flaring, 0–1. */
   heat: number;
-  /** The boom: 0 before, 1 done; the tear's radius from the Mind; the ink pushed out. */
+  /** The boom: 0 before, 1 done; how far from the Mind the shutter is open. */
   boom: number;
   tear: number;
-  push: number;
 }
 
 export interface ArrivalScene {
@@ -1013,18 +556,58 @@ export interface ArrivalScene {
   readonly mind: Mind;
   /** The Mind's size: the question's at first, a fifth of the window once grown. */
   readonly mindScale: number;
+  /** The targeting ring's radius once grown: where the traces end. */
+  readonly ringRadius: number;
+  /** The shutter's hex tiles (a point up) over the whole window: centres and radius. */
+  readonly tiles: { readonly centres: readonly Point[]; readonly r: number };
+  /** Traces from every edge of the window to the grown ring. */
+  readonly traces: readonly Path[];
   readonly t: number;
   /** A frame drawn now covers the whole window: the look may change under it. */
   readonly covered: boolean;
   readonly done: boolean;
   view(): ArrivalView;
+  /** How shut tile `i` is now: 0 open, 1 shut. */
+  shut(i: number): number;
+  /** How much of `trace` is drawn now, 0–1: from its edge to the closing shutter's front. */
+  reached(trace: Path): number;
   step(dt: number): void;
 }
 
+/** From `from` to `to` at 0° and 45°: straight along `major`, across at 45°, straight again. */
+function octilinear(from: Point, to: Point, major: 'x' | 'y', bend: number): Path {
+  const [x0, y0] = from;
+  const [x1, y1] = to;
+  const sx = Math.sign(x1 - x0);
+  const sy = Math.sign(y1 - y0);
+  const ax = Math.abs(x1 - x0);
+  const ay = Math.abs(y1 - y0);
+  let corners: Point[];
+  if (major === 'x') {
+    const a = Math.max(0, ax - ay) * bend;
+    corners =
+      ax >= ay
+        ? [from, [x0 + sx * a, y0], [x0 + sx * (a + ay), y1], to]
+        : [from, [x1, y0 + sy * ax], to];
+  } else {
+    const a = Math.max(0, ay - ax) * bend;
+    corners =
+      ay >= ax
+        ? [from, [x0, y0 + sy * a], [x1, y0 + sy * (a + ax)], to]
+        : [from, [x0 + sx * ay, y1], to];
+  }
+  const points = corners.filter(
+    ([x, y], i) => i === 0 || Math.hypot(x - corners[i - 1]![0], y - corners[i - 1]![1]) > 1e-9,
+  );
+  const arcs = arcsOf(points);
+  return { points, arcs, length: arcs.at(-1)! };
+}
+
 /**
- * Turning on: the question's Hive Mind (at `at`, `scale` its size there) grows to the middle of a
- * `width` × `height` window while a blackout closes on it from every edge; covered, it flares, and
- * a boom from it tears the ink back to the edges. No tentacles.
+ * Turning on (decisions 632, 673): the question's Hive Mind (at `at`, `scale` its size there),
+ * awake and thinking, grows to a fifth of the `width` × `height` window while a shutter of hex
+ * tiles closes on it from every edge and traces route across the tiles into its ring; covered, it
+ * flares; then the tiles open from the Mind out to the edges.
  */
 export function arrivalScene({
   width,
@@ -1039,7 +622,12 @@ export function arrivalScene({
 }): ArrivalScene {
   const [mx, my] = at;
   const mind = new Mind(0, 0);
-  mind.wake = 1;
+  // Thoughts of its own as it grows: signals from its outer cells in to the core.
+  mind.cells.forEach((cell, i) => {
+    if (cell.ring !== 2 || i % 3) return;
+    const times = timetable(500 + i, 0, 0.6);
+    mind.feed({ cell: i, strength: 0.9, arrivals: (a, b) => times.between(a, b) });
+  });
   const grown = Math.max(scale, (0.2 * Math.min(width, height)) / mind.reach);
   const grow = new Spring(scale, 7.5, 0.48);
   const farthest = Math.max(
@@ -1048,14 +636,83 @@ export function arrivalScene({
     Math.hypot(mx, height - my),
     Math.hypot(width - mx, height - my),
   );
+
+  // The shutter: a honeycomb centred on the Mind, every point of the window in a tile.
+  const r = Math.max(16, Math.min(width, height) / 26);
+  const centres: Point[] = [];
+  for (let s = Math.floor((-2 * r - my) / (1.5 * r)); s * 1.5 * r + my <= height + 2 * r; s++) {
+    const q0 = Math.floor((-2 * r - mx) / (r * SQ3) - s / 2);
+    for (let q = q0; mx + r * SQ3 * (q + s / 2) <= width + 2 * r; q++) {
+      const x = mx + r * SQ3 * (q + s / 2);
+      const y = my + 1.5 * r * s;
+      if (x >= -r && x <= width + r && y >= -r && y <= height + r) centres.push([x, y]);
+    }
+  }
+  // A tile shuts over this far past the front (in the hole's radii), and opens over 1.6 tiles.
+  const band = (1.6 * r) / (Math.min(width, height) / 2);
+  const opening = 1.6 * r;
+
+  // Traces: seven from each side, three from the top and the bottom, into the grown ring.
+  const ringRadius = RING * grown;
+  const traces: Path[] = [];
+  for (const side of [-1, 1]) {
+    for (let k = 0; k < 7; k++) {
+      const y = (height * (k + 0.5)) / 7 + (hash(k, side > 0 ? 61 : 67) - 0.5) * (height / 20);
+      const phi = (((k - 3) / 3) * 55 * Math.PI) / 180;
+      const to: Point = [mx + side * ringRadius * Math.cos(phi), my + ringRadius * Math.sin(phi)];
+      traces.push(
+        octilinear([side < 0 ? -4 : width + 4, y], to, 'x', 0.3 + 0.4 * hash(k, 71 + side)),
+      );
+    }
+    for (let j = 0; j < 3; j++) {
+      const x = mx + (j - 1) * width * 0.16 + (hash(j, 81 + side) - 0.5) * (width / 30);
+      const psi = ((j - 1) * 28 * Math.PI) / 180;
+      const to: Point = [mx + ringRadius * Math.sin(psi), my + side * ringRadius * Math.cos(psi)];
+      traces.push(
+        octilinear([x, side < 0 ? -4 : height + 4], to, 'y', 0.3 + 0.4 * hash(j, 91 + side)),
+      );
+    }
+  }
+
   const T = ARRIVAL;
   let t = 0;
   const boomAt = () => clamp((t - T.cover - T.hold) / T.boom, 0, 1);
+  let seen: { t: number; view: ArrivalView } | null = null;
+  const view = (): ArrivalView => {
+    if (seen?.t === t) return seen.view;
+    const p = clamp(t / T.cover, 0, 1);
+    // Even from the first moment, closing to the Mind's middle by the cover.
+    const close = 1 - Math.pow(1 - Math.pow(p, 1.35), 1.6);
+    const end = mind.reach * grow.x * 0.55;
+    const holeX =
+      t >= T.cover ? 0 : end + (Math.max(mx, width - mx) * 1.5 + 40 - end) * (1 - close);
+    const holeY =
+      t >= T.cover ? 0 : end + (Math.max(my, height - my) * 1.5 + 40 - end) * (1 - close);
+    const b = boomAt();
+    const e = 1 - Math.pow(1 - b, 2.6);
+    seen = {
+      t,
+      view: {
+        holeX,
+        holeY,
+        heat: smooth(T.cover, T.cover + T.hold, t) * (1 - smooth(0, 0.4, b)),
+        boom: b,
+        tear: b > 0 ? farthest * 1.25 * e + 2 : 0,
+      },
+    };
+    return seen.view;
+  };
+  /** How far past the front a point is, in the hole's radii: 0 on it, below 0 inside. */
+  const past = (x: number, y: number, v: ArrivalView) =>
+    Math.sqrt(((x - mx) / v.holeX) ** 2 + ((y - my) / v.holeY) ** 2) - 1;
   return {
     width,
     height,
     at,
     mind,
+    ringRadius,
+    tiles: { centres, r },
+    traces,
     get mindScale() {
       return grow.x;
     },
@@ -1068,26 +725,21 @@ export function arrivalScene({
     get done() {
       return t >= T.end;
     },
-    view() {
-      const p = clamp(t / T.cover, 0, 1);
-      // Even from the first moment, closing to the Mind's middle by the cover.
-      const close = 1 - Math.pow(1 - Math.pow(p, 1.35), 1.6);
-      const end = mind.reach * grow.x * 0.55;
-      const holeX =
-        t >= T.cover ? 0 : end + (Math.max(mx, width - mx) * 1.5 + 40 - end) * (1 - close);
-      const holeY =
-        t >= T.cover ? 0 : end + (Math.max(my, height - my) * 1.5 + 40 - end) * (1 - close);
-      const b = boomAt();
-      const e = 1 - Math.pow(1 - b, 2.6);
-      return {
-        holeX,
-        holeY,
-        heat: smooth(T.cover, T.cover + T.hold, t) * (1 - smooth(0, 0.4, b)),
-        boom: b,
-        tear: b > 0 ? farthest * 1.25 * e + 2 : 0,
-        push:
-          1 + 0.22 * e + 0.012 * Math.sin((t - T.cover) * 18) * (1 - b) * (t >= T.cover ? 1 : 0),
-      };
+    view,
+    shut(i) {
+      const [x, y] = centres[i] ?? [mx, my];
+      const v = view();
+      if (t < T.cover) return clamp(past(x, y, v) / band, 0, 1);
+      return 1 - clamp((v.tear - Math.hypot(x - mx, y - my)) / opening, 0, 1);
+    },
+    reached(trace) {
+      if (t >= T.cover) return 1;
+      const v = view();
+      for (let s = 0; s < trace.length; s += 3) {
+        const [x, y] = pointAt(trace.points, trace.arcs, s);
+        if (past(x, y, v) <= 0) return s / trace.length;
+      }
+      return 1;
     },
     step(dt) {
       const sub = Math.max(1, Math.ceil(dt / (1 / 90)));
@@ -1097,7 +749,6 @@ export function arrivalScene({
         if (t > T.cover + 0.05) continue;
         if (t > 0.04) grow.to = grown;
         grow.step(h);
-        mind.step(h, t);
       }
     },
   };

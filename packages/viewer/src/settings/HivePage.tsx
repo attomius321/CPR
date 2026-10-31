@@ -19,7 +19,7 @@ export function HivePage({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      // The question's Hive Mind grows from its middle as the blackout closes (decision 632).
+      // The question's Hive Mind grows from its middle as the shutter closes (decision 673).
       const art = document.querySelector('.hive-joining')?.getBoundingClientRect();
       await setHive(next, {
         ...(art
@@ -107,7 +107,8 @@ export function HivePage({ onBack }: { onBack: () => void }) {
 
 /**
  * Turning Hive mode on asks first (decision 615), in Hive's own look whatever the theme and the
- * mode: tendrils grab the Hive Mind over the question and live while it is open (decision 631).
+ * mode: a circuit routes into the Hive Mind over the question and lives while it is open
+ * (decision 665).
  * Cancel is focused; Escape and a click beside the dialog cancel.
  */
 function HiveQuestion({
