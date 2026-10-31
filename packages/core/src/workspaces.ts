@@ -206,6 +206,26 @@ export interface WorkspaceHive {
   paused?: true;
 }
 
+/**
+ * `GET /api/workspaces/hive?branch=` (HV3, decision 681): what Hive did with a workspace, for its
+ * Review tab: each round's check and running review, and whether Land is asked.
+ */
+export interface WorkspaceHiveDetail {
+  branch: string;
+  step: HiveStep;
+  round: number;
+  rounds: number;
+  /** Hive mode, now: Land only while it is on. */
+  on: boolean;
+  /** The commit checked and reviewed: the one Land approves. */
+  checked?: string;
+  note?: string;
+  checks: HiveCheck[];
+  reviews: HiveReview[];
+  /** Where the kept findings' tests are, beside Hive's record (`r<round>/<path>` below it). */
+  tests: string;
+}
+
 /** A workspace and its agent, for the commits page. */
 export interface WorkspaceSummary {
   branch: string;

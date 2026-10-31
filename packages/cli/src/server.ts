@@ -78,6 +78,7 @@ import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';
 import { withHive, type HiveRecord } from './hive.js';
 import type { ReviewerSettings } from './hive-review.js';
+import type { HiveWorkspace } from './hive-workspace.js';
 import type { Histories } from './history.js';
 import {
   GIT_WRITES,
@@ -149,6 +150,11 @@ export interface RepositoryOptions {
   terminals?: Terminals;
   /** Symbiote's merger (V26): approved branches merged, checked and landed: `/api/merges…`. */
   merges?: Merger;
+  /**
+   * A Hive workspace's Review tab (HV3): its rounds, a kept test's text, Land
+   * (`/api/workspaces/hive…`).
+   */
+  hiveWorkspace?: HiveWorkspace;
   /** Every agent's prompts (V28): `/api/settings/prompts`. */
   settings?: PromptSettingsService;
   /**
@@ -504,6 +510,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/start') return serveSite(req, res, url, '/', undefined);
       // History, the finished workspaces (V77), a page of the shell's.
       if (url.pathname === '/workspace-history') return serveSite(req, res, url, '/', undefined);
+      const hiveTab = repository.hiveWorkspace;
+      if (hiveTab && url.pathname.startsWith('/api/workspaces/hive')) {
+        return hiveRoute(req, res, url, hiveTab);
+      }
       if (url.pathname.startsWith('/api/workspaces'))
         return workspacesRoute(req, res, url, workspaces);
     }
@@ -652,6 +662,36 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       ...(client ? { client } : {}),
       ...(folder ? { folder: folder.slice(0, 1000) } : {}),
     };
+  }
+
+  /** `/api/workspaces/hive…` (HV3): a Hive workspace's Review tab, its kept tests, Land. */
+  async function hiveRoute(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    hiveTab: HiveWorkspace,
+  ): Promise<void> {
+    if (url.pathname === '/api/workspaces/hive') {
+      return ofBranch(req, res, url, async (branch) => {
+        const detail = await hiveTab.detail(branch);
+        if (!detail) throw new WorkspaceRefused(`Hive does not drive ${branch}`, 404);
+        return detail;
+      });
+    }
+    if (url.pathname === '/api/workspaces/hive/test') {
+      const round = Number(url.searchParams.get('round'));
+      const path = url.searchParams.get('path') ?? '';
+      return ofBranch(req, res, url, async (branch) => {
+        const text = await hiveTab.test(branch, round, path);
+        if (text === null)
+          throw new WorkspaceRefused(`no kept test ${path} in round ${round}`, 404);
+        return { text };
+      });
+    }
+    if (url.pathname === '/api/workspaces/hive/land') {
+      return onBranch(req, res, (branch) => answer(res, () => hiveTab.land(branch)));
+    }
+    return send(res, 404, 'not found');
   }
 
   /** `/api/workspaces…` (V18): the list and a start, each workspace's reads and writes. */

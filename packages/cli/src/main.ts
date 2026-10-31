@@ -74,6 +74,7 @@ import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
 import { repositoryHive } from './hive.js';
 import { hiveRunner } from './hive-runner.js';
 import { findConfinement, reviewerSettingsService } from './hive-review.js';
+import { hiveWorkspace } from './hive-workspace.js';
 import { repositoryHiddenBranches } from './git-hidden.js';
 import { libraryService, type LibraryService } from './library.js';
 import { terminals as agentTerminals } from './terminal.js';
@@ -758,6 +759,15 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     },
     log: log.log,
   });
+  // Branch reviews (V15) and the merger (V26): the review pages', and Land's in a Hive workspace's
+  // Review tab (HV3).
+  const repoReviews = branchReviews(repo, cacheDir);
+  const repoMerges = merger(repo, cacheDir, {
+    onChange: mergeStates(log.log),
+    mergerAgent: mergerFinder(repo.root, ctx.env),
+    levels: levelsFinder(claudeOf, codexOf),
+    models: modelsFinder(claudeOf, codexOf),
+  });
   // The branches hidden from Git's graph (decision 645): the listing, its search and the status's
   // version all leave them out, so a version read by one fits the others.
   const hidden = repositoryHiddenBranches(repo, cacheDir);
@@ -793,7 +803,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       readFile: (sha, path) => readFileAtRevision(repo, sha, path),
       files: changeFiles(repo),
       state: (graph) => fileStateStore(stateDir(cacheDir, repo.id, graph)),
-      reviews: branchReviews(repo, cacheDir),
+      reviews: repoReviews,
       workspaces: repoWorkspaces,
       // Git's page (V66): a workspace's branch is renamed or deleted with its workspace only; a
       // file's diff opens in VS Code with the workspaces' copies (V70).
@@ -805,11 +815,11 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         hidden,
       }),
       terminals,
-      merges: merger(repo, cacheDir, {
-        onChange: mergeStates(log.log),
-        mergerAgent: mergerFinder(repo.root, ctx.env),
-        levels: levelsFinder(claudeOf, codexOf),
-        models: modelsFinder(claudeOf, codexOf),
+      merges: repoMerges,
+      hiveWorkspace: hiveWorkspace(repo, cacheDir, {
+        hive,
+        reviews: repoReviews,
+        merges: repoMerges,
       }),
       settings: promptSettingsService(repo),
       nucleus: nucleus(repo, cacheDir, {

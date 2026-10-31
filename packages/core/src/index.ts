@@ -324,6 +324,7 @@ export {
   type HiveReview,
   type HiveStep,
   type WorkspaceHive,
+  type WorkspaceHiveDetail,
   type WorkspaceShell,
   type WorkspaceShells,
   type WorkspaceTerminalOpened,
