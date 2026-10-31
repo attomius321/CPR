@@ -31,7 +31,6 @@ import {
   type Notice,
   type Shell as ShellApi,
 } from './shell-context.js';
-import { HiveComb } from './HiveComb.js';
 import { CARD_NAMES, DrawerStrip, Sidenav, useSidenavWidth } from './Sidenav.js';
 import { StatusBar } from './StatusBar.js';
 import { AskBar } from './AskBar.js';
@@ -246,7 +245,6 @@ export function Shell({ repo }: { repo?: string | undefined }) {
         className={`shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}${sidenav.resizing ? ' resizing' : ''}`}
         style={sidenav.style}
       >
-        <HiveComb />
         {desktop && <TitleBar />}
         <DrawerStrip open={drawer} onToggle={() => setDrawer((open) => !open)} />
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={flashed} />

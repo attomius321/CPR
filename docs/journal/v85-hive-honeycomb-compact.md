@@ -89,3 +89,28 @@ themes, Hive on and off.
 Not verified: the app's own window (its rounded corners over the honeycomb), a GPU, WSLg's display;
 the graph's pan with Hive on (`measure.mjs` serves the bare page, without the shell); a workspace's
 and a merge's page in screenshots (their frames measured by `page-frame.spec.ts` only).
+
+## V85 — Hive's running review, round 1 (2026-10-31, branch `feature/hive-honeycomb-background`)
+
+The reviewer proved three defects at `e8d986c` with failing tests; two are fixed, their tests kept
+in `e2e/hive-comb.spec.ts`, the third left out.
+
+**Learned**:
+- **A head that paints its own ground hides the comb**: the Monitor's (`.monitor-bar`,
+  `background: var(--bg)` in `HistoryPage.css`) was an opaque band in both themes; the audit's
+  screenshots showed it and nobody looked for it. It clears in Hive as a diff's head does; every
+  other `PageHead` was checked: none paints one.
+- **A commit's review is a new document**: Git opens it with `window.location.assign`, so the
+  lattice the arrival laid, held by the module, was gone, and the layer's unmount (leaving `Shell`
+  for `DiffShell`) forgot it too. The honeycomb jumped from the question's art (y 375.6) to the
+  window's middle (y 450) and stayed there. The lattice is kept per tab in `sessionStorage` now,
+  forgotten when Hive turns off; the layer is mounted once at the root. A reload keeps the
+  arrival's tiles too (`hive.spec.ts` changed: only a new tab centres on its window).
+- **Left out: "Hive off: every page as on main, 15 px body"**: it holds the brief's first words;
+  the person asked afterwards for VS Code's type and density on every page ("we should change
+  everything to look more professional like VSCode … tweak the density also") and approved the
+  plan that applies it in both modes (decisions 708–715).
+
+**Verification**: the reviewer's two tests red at `e8d986c` (the Monitor's head `rgb(7, 5, 6)` and
+white; the review's lattice at y 450), green after; `pnpm check` 2,653 tests; `pnpm test:e2e` 374
+viewer and 20 nexus tests.

@@ -165,9 +165,16 @@ height; Claude desktop's measures.
 - **The comb's colours are opaque tokens** in `ui/base.css`'s Hive blocks (`--hive-comb-ground`,
   `--hive-comb-line`: the lamp's 12 % over the ink is `#280609`), so the contrast test reads them
   as backgrounds.
-- **Two shells**: a diff's page has its own (`diff/DiffShell.tsx`); the layer is in both. In the
-  app on Linux, `#root`'s rounded ground (`frame.css`) is clear in Hive and the layer takes the
-  corners. A merge's sticky head, opaque so its log scrolls under it, takes the comb's ground.
+- **One layer at the root, its lattice kept for the tab** (706, round 1 of Hive's review): the
+  layer is mounted once in `main.tsx`, not in the shells (a diff's page has its own,
+  `diff/DiffShell.tsx`, and states outside it while it loads). A commit's review is a new document
+  (`window.location.assign`), so the lattice is kept in `sessionStorage`: a review, a page back
+  and a reload draw the arrival's tiles; a new tab with Hive on centres on its window; Hive off
+  forgets it. Before, opening a review moved the honeycomb from the question's art (y 375.6) to the
+  window's middle (y 450). In the app on Linux, `#root`'s rounded ground (`frame.css`) is clear in
+  Hive and the layer takes the corners. The heads that paint their own ground clear over it (a
+  diff's, the Monitor's: round 1 found the Monitor's, `rgb(7, 5, 6)` over the comb); a merge's
+  sticky head, opaque so its log scrolls under it, takes the comb's ground.
 - **Height tokens by step, not by role** (710–712): `--height-row` 22, `--height-control` 26,
   `--height-tall` 28, `--height-tab` 30, `--height-bar` 34, `--height-top` 40, each the step below
   V72's 28/32/36/40/44/52 px; 48 px heads are `--card-head`. A sidenav entry is 28 px

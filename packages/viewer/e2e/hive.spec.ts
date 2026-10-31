@@ -292,7 +292,7 @@ test('turning on, the Hive Mind and a hex shutter cover the window, the look cha
 });
 
 // V85 (decisions 701–707): the arrival's honeycomb stays behind the page, on the shutter's tiles.
-test("the honeycomb stays behind the page after the arrival, on the shutter's tiles; from the first render after a reload; gone when off", async ({
+test("the honeycomb stays behind the page after the arrival, on the shutter's tiles, after a reload too; a new tab's centred; gone when off", async ({
   page,
 }) => {
   await serve();
@@ -342,7 +342,7 @@ test("the honeycomb stays behind the page after the arrival, on the shutter's ti
   await expect(comb(page)).toHaveAttribute('width', String(size.width + 400));
   expect(await lattice(page)).toEqual(laid);
 
-  // A reload: there with the first render, centred on the window.
+  // A reload: there with the first render, still on the arrival's tiles (kept for the tab).
   await page.setViewportSize(size);
   await page.addInitScript(() => {
     const w = window as unknown as { combAtFirstRender?: boolean };
@@ -359,16 +359,24 @@ test("the honeycomb stays behind the page after the arrival, on the shutter's ti
       () => (window as unknown as { combAtFirstRender?: boolean }).combAtFirstRender,
     ),
   ).toBe(true);
-  expect(await lattice(page)).toEqual({
+  expect(await lattice(page)).toEqual(laid);
+  // A new tab, Hive already on: centred on the window, the arrival's own rule without a question.
+  const other = await page.context().newPage();
+  await other.goto(`${symbiote!.url}git`);
+  await expect(comb(other)).toBeAttached();
+  expect(await lattice(other)).toEqual({
     x: size.width / 2,
     y: size.height / 2,
     r: Math.max(16, Math.min(size.width, size.height) / 26),
   });
+  await other.close();
 
   // A diff's page has a shell of its own: the honeycomb there too, its head clear over it.
   await page.getByRole('button', { name: 'Review this commit' }).click();
   await expect(page).toHaveURL(/\/diff\//);
   await expect(comb(page)).toBeAttached();
+  // The honeycomb is there from the page's first render, before the diff's head: wait for it.
+  await expect(page.locator('.app > .bar')).toBeVisible({ timeout: 15_000 });
   expect(await colour(page, '.app > .bar', 'backgroundColor')).toBe('rgba(0, 0, 0, 0)');
   await page.goto(`${symbiote!.url}git`);
 
@@ -385,6 +393,8 @@ test("the honeycomb stays behind the page after the arrival, on the shutter's ti
   await expect(html(page)).not.toHaveAttribute('data-hive');
   await expect(comb(page)).toHaveCount(0);
   expect(await colour(page, '.sidenav', 'backgroundColor')).toBe('rgb(13, 16, 21)');
+  // The tab forgets the arrival's tiles: the next turn-on lays its own.
+  expect(await page.evaluate(() => sessionStorage.getItem('symbiote.viewer.hive-comb'))).toBeNull();
 });
 
 test('with reduced motion, Hive turns on at once: no ink, no growing', async ({ page }) => {

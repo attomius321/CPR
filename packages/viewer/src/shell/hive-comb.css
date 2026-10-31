@@ -19,10 +19,12 @@
   stroke-width: 1px;
 }
 
-/* The ground clear over it: the sidenav (its gloss stays, `ui/hive.css`), a diff's head, and the
-   app's own frame on Linux, whose rounded corners the honeycomb takes. */
+/* The ground clear over it: the sidenav (its gloss stays, `ui/hive.css`), the pages' heads that
+   paint their own (a diff's, the Monitor's), and the app's own frame on Linux, whose rounded corners
+   the honeycomb takes. */
 :root[data-hive] .sidenav,
 :root[data-hive] .shell-main > .app > .bar,
+:root[data-hive] .monitor-bar,
 :root[data-hive][data-frame='own'] #root {
   background-color: transparent;
 }
