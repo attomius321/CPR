@@ -389,7 +389,8 @@ export function hiveRunner(
         round: String(ran.round),
         rounds: String(after.rounds),
       },
-      (rounds) => `the check failed ${plural(rounds, 'time')}: \`${failedCommand ?? ''}\``,
+      // The card's words: plain text, no Markdown.
+      (rounds) => `the check failed ${plural(rounds, 'time')}: ${failedCommand ?? ''}`,
     );
   }
 

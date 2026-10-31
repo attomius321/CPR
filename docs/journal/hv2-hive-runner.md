@@ -22,3 +22,32 @@ pid lock. The person answered the plan's five questions as recommended.
   Running it in the workspace's worktree saves an install a round.
 - **Decisions up to 651 are taken**, on `main`, every branch and every worktree; HV2 and 652–658
   were free.
+
+## HV2 — Hive's runner and record, built (2026-10-31, branch `feature/hv2-hive-runner`)
+
+A workspace started while Hive is on is Hive's: `hive: true`, its step in
+`symbiote/hive/<branch>.json`, a `{hive}` line in its first prompt. `symbiote view`'s runner reads
+its writer's turns from the session list and the hooks' thread, runs the project's check in the
+worktree after each, sends failures back with `reply` for up to 3 rounds, and asks the person to
+land it. Hive off stops Hive's writers and checks and keeps each step; on again, or a new runner,
+goes on from there. Decisions 652–658.
+
+**Learned**:
+- **A turn's end needs Hive's own message in the thread first.** Right after Hive sends a message,
+  the session still reads as finished and the last report is the turn before's. A turn counts only
+  once the thread's last prompt is at least as new as the step's start; the tests' fake writes that
+  prompt from its hooks, as Claude Code does.
+- **A killed check is no result** (HV1's trap again): a check stopped by Hive off, a message, or the
+  view closing records nothing and keeps the step; only a check that ran to its end is a round.
+- **Hive off must stop what works then, not at every look.** The person may talk to a Hive
+  workspace's agent while Hive is off; stopping every live writer at each tick would cut those
+  turns. The writers working when Hive turns off are stopped once (a failed stop retried).
+- **Hive off could have cost two git runs every 10 s** (`reviewPlace`, and `ls-files` for a tracked
+  `hive.json`). A runner that never saw Hive on now `stat`s `hive.json` and reads the switch only
+  when the file changed; `POST /api/hive` tells it at once.
+- **Card text is not Markdown**: the stuck note first quoted the command in backticks, which the
+  card showed as they were. The card's words are plain; the message to the agent keeps its code.
+- **Hive's words are Symbiote's**: a working card puts the agent's mark before what the agent does;
+  "Hive: running the check" got Claude's mark until `WorkspaceNext.hive` left it out.
+- **The e2e fake records a stop before Hive writes the record**: the spec polls the record, not
+  the stop.

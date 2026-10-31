@@ -62,6 +62,7 @@ import {
   type DocumentEntry,
 } from './documents.js';
 import { StartAgent } from './StartAgent.js';
+import { useHive } from '../shell/hive.js';
 import { StartCard } from './StartCard.js';
 import { StartDocuments } from './StartDocuments.js';
 import { StartFrom } from './StartFrom.js';
@@ -239,8 +240,12 @@ function StartForm({
   // Without a branch there is a row's commit: the page shows no form otherwise.
   const base: { sha: string; from?: string } =
     picked && !(onCommit && at) ? { sha: picked.sha, from: picked.name } : { sha: at ?? '' };
-  const agent =
-    options.agents.find((a) => a.kind === (run.agent ?? options.agents[0]?.kind)) ?? null;
+  // Hive drives Claude Code only (HV2, decision 658): while it is on, the one agent offered.
+  const hive = useHive();
+  const offered = hive ? options.agents.filter((a) => a.kind === 'claude') : options.agents;
+  const agent = hive
+    ? (offered[0] ?? null)
+    : (options.agents.find((a) => a.kind === (run.agent ?? options.agents[0]?.kind)) ?? null);
   const mode: PermissionMode =
     run.permissionMode ??
     options.agents.find((a) => a.kind === 'claude')?.permissionMode ??
@@ -720,7 +725,8 @@ function StartForm({
               onClose={suggestion.close}
             />
             <StartAgent
-              agents={options.agents}
+              agents={offered}
+              hive={hive}
               agent={agent}
               run={run}
               mode={mode}

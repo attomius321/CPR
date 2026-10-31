@@ -5,9 +5,9 @@ import { DangerIcon } from '../ui/icons.js';
 import { SettingsCard } from './SettingsCard.js';
 
 /**
- * Hive mode (V82, decision 613): the planned graph loop's switch, a danger to press. What Hive
- * will do, in the error's tint, and a danger button that asks first; off is the safe way and does
- * not ask. Kept for this repository, out of git (decision 621); for now it changes only the look.
+ * Hive mode (V82, decision 613): Hive's switch, a danger to press. What Hive does (HV2), in the
+ * error's tint, and a danger button that asks first; off is the safe way and does not ask. Kept
+ * for this repository, out of git (decision 621).
  */
 export function HivePage({ onBack }: { onBack: () => void }) {
   const on = useHive();
@@ -58,10 +58,12 @@ export function HivePage({ onBack }: { onBack: () => void }) {
       <div className="hive-warning" role="note">
         <DangerIcon />
         <p>
-          <strong>Hive runs agents with full access to this machine.</strong>
-          Hive is the graph loop: an orchestrator with full access runs a main agent, a researcher
-          and a reviewer in every workspace, without asking you first. Hive is not built yet:
-          turning it on now changes only Symbiote&apos;s look.
+          <strong>Hive runs agents and the project&apos;s check without asking you first.</strong>
+          Every workspace you start while Hive is on is Hive&apos;s: its Claude Code agent works the
+          brief; after each turn Symbiote runs the check in its worktree and sends the agent what
+          fails, for up to 3 rounds; then it asks you to review and land the workspace. Turning Hive
+          off stops Hive&apos;s agents and checks; turning it on again continues where they stopped.
+          Landing, pushing and deleting work stay yours.
         </p>
       </div>
       <div className="hive-control">
@@ -145,8 +147,9 @@ function HiveQuestion({
           Turn on Hive mode?
         </h2>
         <p id="hive-detail">
-          Hive will run agents with full access to this machine, without asking you first. It is not
-          built yet: for now only Symbiote&apos;s look changes.
+          Hive will start your workspaces&apos; agents again and run the project&apos;s check
+          without asking you first. Every workspace you start while it is on is Hive&apos;s;
+          landing, pushing and deleting work stay yours.
         </p>
         <div className="dialog-buttons">
           <button type="button" className="button danger" disabled={busy} onClick={onTurnOn}>

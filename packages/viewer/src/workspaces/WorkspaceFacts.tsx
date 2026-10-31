@@ -12,6 +12,7 @@ import {
   CodexMark,
   CommitIcon,
   HermesMark,
+  HexagonIcon,
   MergeIcon,
   PencilIcon,
 } from '../ui/icons.js';
@@ -60,8 +61,8 @@ export function WorkspaceState({
 }) {
   const merge = useMergeCheck(workspace, withFacts);
   const said = next.doing ?? next.text;
-  // Only while it works is the line the agent's action; the rest is Symbiote's to say.
-  const agent = next.group === 'working' ? (workspace.agent.kind ?? 'claude') : null;
+  // Only while it works is the line the agent's action; the rest is Symbiote's to say, Hive's too.
+  const agent = next.group === 'working' && !next.hive ? (workspace.agent.kind ?? 'claude') : null;
   const facts = withFacts ? workspaceFacts(workspace, merge).map((fact) => fact.words) : [];
   const text = [said, ...facts].join(' · ');
   return (
@@ -82,6 +83,7 @@ export function WorkspaceState({
 }
 
 const FACT_ICONS: Record<WorkspaceFact['kind'], () => ReactNode> = {
+  hive: HexagonIcon,
   commits: CommitIcon,
   changed: PencilIcon,
   gone: AlertIcon,

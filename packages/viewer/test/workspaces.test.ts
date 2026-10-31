@@ -3,6 +3,7 @@ import type {
   BranchReviewSummary,
   WorkspaceAgentState,
   WorkspaceStart,
+  WorkspaceHive,
   WorkspaceSummary,
   WorkspaceThread,
   ThreadEntry,
@@ -733,6 +734,84 @@ describe('cleanableOnCard (V55)', () => {
   });
 });
 
+describe('workspaceNext for a workspace Hive drives (HV2)', () => {
+  const next = (f: Partial<WorkspaceSummary>, r?: Partial<BranchReviewSummary>) => {
+    const { group, text, chip } = workspaceNext(summary(f), r ? review(r) : undefined);
+    return { group, text, mark: chip.mark };
+  };
+  const hive = (over: Partial<WorkspaceHive> = {}): WorkspaceHive => ({
+    step: 'writing',
+    round: 1,
+    rounds: 3,
+    ...over,
+  });
+  const ready = { agent: { state: 'ready' as const, kind: 'claude' as const }, ahead: 2 };
+
+  it("says Hive's step while Hive works, and the writer's own states otherwise", () => {
+    // The writer at work, or waiting on the person: as any workspace.
+    expect(next({ hive: hive() })).toEqual({ group: 'working', text: 'Working', mark: '⚙' });
+    expect(next({ hive: hive(), agent: { state: 'plan-ready', kind: 'claude' } }).text).toBe(
+      'Plan ready: read it and answer',
+    );
+    // Its turn ended: Hive's to act on, not the person's to review.
+    expect(next({ ...ready, hive: hive() })).toEqual({
+      group: 'working',
+      text: 'Hive: reading its turn',
+      mark: '⚙',
+    });
+    // The round is the card's fact (2/3), not its words.
+    expect(next({ ...ready, hive: hive({ step: 'checking', round: 2 }) })).toEqual({
+      group: 'working',
+      text: 'Hive: running the check',
+      mark: '⚙',
+    });
+    // Hive's words are Symbiote's: no agent's mark before them; the writer's are its agent's.
+    expect(workspaceNext(summary({ ...ready, hive: hive({ step: 'checking' }) })).hive).toBe(true);
+    expect(workspaceNext(summary({ hive: hive() })).hive).toBeUndefined();
+  });
+
+  it('asks the person to land it once checked, and says why Hive stopped', () => {
+    const checked = hive({ step: 'landing', check: { round: 1, at: TIP, ok: true, ms: 1 } });
+    expect(next({ ...ready, hive: checked })).toEqual({
+      group: 'review',
+      text: 'Checked: review and land it',
+      mark: '●',
+    });
+    // A review in progress or a verdict says what is next, as for any workspace.
+    expect(next({ ...ready, hive: checked }, { verdict: verdict('approve') }).text).toBe(
+      'Approved: ask your agent to merge it',
+    );
+    expect(
+      next({ ...ready, hive: hive({ step: 'landing', note: 'no check is set or found' }) }).text,
+    ).toBe('No check ran: review, check and land it');
+    expect(
+      next({
+        ...ready,
+        hive: hive({ step: 'stuck', round: 3, note: 'the check failed 3 times: pnpm check' }),
+      }),
+    ).toEqual({
+      group: 'waiting',
+      text: 'Hive stopped: the check failed 3 times: pnpm check',
+      mark: '?',
+    });
+  });
+
+  it('says Hive off has paused it, unless the person goes on with the writer', () => {
+    const stopped = { agent: { state: 'stopped' as const, kind: 'claude' as const } };
+    expect(next({ ...stopped, hive: hive({ paused: true }) })).toEqual({
+      group: 'stopped',
+      text: 'Hive off: paused',
+      mark: '·',
+    });
+    expect(next({ ...ready, hive: hive({ step: 'checking', paused: true }) })).toEqual({
+      group: 'stopped',
+      text: 'Hive off: paused before the check',
+      mark: '·',
+    });
+    expect(next({ hive: hive({ paused: true }) }).text).toBe('Working');
+  });
+});
+
 describe('workspaceFacts (V79)', () => {
   const facts = (
     over: Partial<WorkspaceSummary>,
@@ -769,6 +848,19 @@ describe('workspaceFacts (V79)', () => {
     });
     // A check git could not make says nothing.
     expect(facts({ ahead: 2 }, { into: 'main', error: 'no merge base' })).toHaveLength(1);
+  });
+
+  it('says first that Hive drives it, and its round (HV2)', () => {
+    expect(facts({ hive: { step: 'writing', round: 2, rounds: 3 } })[0]).toEqual({
+      kind: 'hive',
+      shown: '2/3',
+      words: 'Hive drives it: round 2 of 3',
+    });
+    expect(facts({ hive: { step: 'writing', round: 1, rounds: 3, paused: true } })[0]).toEqual({
+      kind: 'hive',
+      shown: 'off',
+      words: 'Hive is off: its step waits',
+    });
   });
 });
 

@@ -207,3 +207,31 @@ merges of `main` in HV4.
 **Not in HV2 (later)**: the running reviewer and its Settings (HV3, Opus at high effort by
 default); the graph, new plans and merges of `main` (HV4); usage read before each start (HV5);
 Codex in any Hive role.
+
+## As built (HV2)
+
+- **The runner reads, the workspaces act.** `hive-runner.ts` asks `workspaces.ts` for one
+  workspace's summary (`summaryOf`, new: the list's `summary` for one branch), and sends and stops
+  through `reply` and `stopAgent`, so Hive's messages take the person's path (an idle live session
+  stopped, then resumed; a turn at work refused and tried again at the next tick).
+- **Messages in the tick, checks beside it.** A message is sent inside the tick that decides it;
+  only a check runs in the background, one per workspace, watched each tick for a message that
+  stops it (the person took over).
+- **Hive off stops what works at that moment, once.** Stopping every live Hive writer at each tick
+  while Hive is off would stop the person's own turns (they may talk to the agent while Hive is
+  off). Hive off marks the writers working or waiting when it turns off, stops them (a failed stop
+  is tried again at the next tick), and then does nothing until Hive is on again.
+- **Hive off costs a `stat`.** A runner that never saw Hive on reads `hive.json`'s time every 10 s
+  and reads the switch (two git runs) only when the file changed; `POST /api/hive` tells it at
+  once. Measured by test: off, three ticks read the switch once and list no session.
+- **A spike that ends without commits goes to the person** with no check: its answer is its report,
+  and its start prompt says to commit nothing.
+- **The card's words** (`workspaceNext`): "Hive: reading its turn" in the seconds between a turn's
+  end and Hive's next look, so the card never says "Ready for review" for a turn Hive has not read;
+  "Hive: running the check" without the round, which the facts give (a hexagon and `2/3`, or `off`)
+  — the planned "(round 2 of 3)" wrapped on the 300 px sidenav; no agent's mark before Hive's
+  words; a review or a verdict at `landing` says what is next as for any workspace; the stuck note
+  in plain words (the card is not Markdown).
+- **Start with Hive on** offers Claude Code only, and says what Hive does; the request is refused
+  for Codex and Hermes by the server as well (409).
+- **The Hive mode page and its question** say what Hive does now, in place of "not built yet".

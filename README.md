@@ -399,7 +399,8 @@ The sidenav also opens these pages. Each has a key.
   prompt; the model and effort of the merger, Nucleus and Scribe (set only here: their pages have no
   such choices); the **Skill library** (its folder,
   or a repository to clone, and who commits its changes); **Hive mode** (this repository's switch
-  for Hive, not built yet: for now an ink and crimson look; see
+  for Hive: while it is on, Symbiote runs the check after each turn of a workspace's agent, sends
+  it the failures, then asks you to land the workspace; see
   [configuration](docs/reference/configuration.md#hive-mode)); and **Appearance** (dark, light or
   your system's, and whether Git's commit details show on the right or below the commits).
 
@@ -427,8 +428,8 @@ plugins for Angular and Qwik, and CSS and SCSS. Every command and option is in t
 ## What Symbiote writes and sends
 
 In your repository, Symbiote keeps its files in the `symbiote/` folder: workspace records,
-reviews, the agents' threads and activity, documents, the settings of the agents it starts, and
-whether Hive mode is on.
+reviews, the agents' threads and activity, documents, the settings of the agents it starts,
+whether Hive mode is on, and where Hive is with each workspace it drives.
 An agent's activity holds each command it ran, whole up to 8 KB, and the last 2 KB of its output
 or error. Nucleus's activity, `symbiote/nucleus-activity.jsonl`, also keeps the first 2 KB of a
 page it read or a tool's answer; values of your environment variables named like secrets, and
