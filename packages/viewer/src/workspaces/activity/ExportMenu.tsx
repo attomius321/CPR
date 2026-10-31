@@ -77,7 +77,9 @@ export function ExportMenu({ from }: { from: string }) {
         onClick={() => setOpen((o) => !o)}
       >
         {said === 'Copied' ? <CheckIcon /> : <DownloadIcon />}
-        <span aria-live="polite">{said ?? 'Export'}</span>
+        <span className="activity-export-label" aria-live="polite">
+          {said ?? 'Export'}
+        </span>
       </button>
       {open && (
         <div className="more-menu" role="menu" aria-label="Export">
