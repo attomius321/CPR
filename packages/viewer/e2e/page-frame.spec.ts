@@ -5,7 +5,7 @@ import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // One page frame (V72, decisions 507–509): every page of the shell and a review takes the whole
 // main area; its head is one box, its title at one x, its cards from one y; the cards 16 px from
-// the area's sides and bottom and 16 apart, at any window size. Before V72 there were three
+// the area's sides and bottom and 16 apart (12 and 8 since V85), at any window size. Before V72 there were three
 // frames (8, 16 and 24 px), Start a workspace and Settings were centred at 1,312 and 1,400 px, and
 // the titles stood anywhere from x 16 to 80.
 let symbiote: RunningWorkspaces;
@@ -22,12 +22,16 @@ test.afterEach(() => {
 });
 
 const POLL = { timeout: 15_000 };
-const PAD = 16;
-const GAP = 16;
-/** The head: 16 px, its two lines (44 px), 16 px. */
-const CARDS_FROM = 76;
-/** The page's icon in a 32 px square 16 px in, 12 px before the title. */
-const TITLE_AT = 60;
+// V85 (decision 713): VS Code's tighter frame, from the tokens (16, 16, 44, 48 before).
+const PAD = 12;
+const GAP = 8;
+/** The head: 12 px, its two lines (36 px), 12 px. */
+const CARDS_FROM = 60;
+/** The page's icon in a 26 px square 12 px in, 12 px before the title. */
+const TITLE_AT = 50;
+/** A card's head (`--card-head`) and its first word: the card's 1 px edge, then `--card-pad`. */
+const HEAD = 35;
+const INSET = 13;
 const SIZES = [
   [1440, 900],
   [1920, 1080],
@@ -123,7 +127,7 @@ async function expectPage(
   }
 }
 
-test("the shell's pages: the whole main area, one head, cards 16 px from its edges and 16 apart", async ({
+test("the shell's pages: the whole main area, one head, cards 12 px from its edges and 8 apart", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -182,8 +186,8 @@ test("a workspace, its review's two views and its merge: the same frame", async 
   const at = `?branch=${encodeURIComponent(branch)}`;
   await expectPage(page, 'A workspace', at, ['.workspace-main', '.changes']);
   const tabs = await head(page, '.workspace-main', '.workspace-views', 'text');
-  expect.soft(tabs?.height, "A workspace: its tabs' height").toBe(48);
-  expect.soft(Math.round(tabs?.inset ?? 0), 'A workspace: its first tab').toBe(17);
+  expect.soft(tabs?.height, "A workspace: its tabs' height").toBe(HEAD);
+  expect.soft(Math.round(tabs?.inset ?? 0), 'A workspace: its first tab').toBe(INSET);
 
   // Its review: Files and Graph start and end at the same places (the Graph's bar wrapped at
   // 1440 and its legend sat under its card).
@@ -193,14 +197,14 @@ test("a workspace, its review's two views and its merge: the same frame", async 
   await panel.getByRole('button', { name: 'Review', exact: true }).click();
   await expect(page.locator('.file-view')).toBeVisible(POLL);
   const review = new URL(page.url()).pathname.slice(1);
-  // Their cards' heads (V72e): 48 px, the first word 16 px in.
+  // Their cards' heads (V72e): `HEAD`, the first word `INSET` in.
   for (const [name, card, part] of [
     ['A review: Files', '.files-side', '.tabs'],
     ['A review: Files', '.file-view', '.file-head'],
   ] as const) {
     const got = await head(page, card, part, 'text');
-    expect.soft(got?.height, `${name}: ${part}'s height`).toBe(48);
-    expect.soft(Math.round(got?.inset ?? 0), `${name}: ${part}'s first word`).toBe(17);
+    expect.soft(got?.height, `${name}: ${part}'s height`).toBe(HEAD);
+    expect.soft(Math.round(got?.inset ?? 0), `${name}: ${part}'s first word`).toBe(INSET);
   }
   await expectPage(page, 'A review: Files', review, ['.files-side', '.file-view']);
   await expectPage(page, 'A review: Graph', `${review}?view=graph`, [
@@ -287,8 +291,8 @@ function rhythm(page: Page, fields: string) {
 
 // V72e (decision 508): inside the cards, one inset and one head — before it, a card's head was 40,
 // 41, 48 or 64 px and its words 12 to 24 px in — and one form rhythm (a label 5, 9 or 13 px over
-// its field, 13 or 21 px to the next).
-test('inside the cards: heads 48 px, their words or controls 16 px in; a label 8 px over its field, 20 to the next', async ({
+// its field, 13 or 21 px to the next). V85: 35 px heads, 12 px in, a label 4 px over, 14 to the next.
+test('inside the cards: heads 35 px, their words or controls 12 px in; a label 4 px over its field, 14 to the next', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces({ terminal: false });
@@ -308,9 +312,9 @@ test('inside the cards: heads 48 px, their words or controls 16 px in; a label 8
     await page.goto(`${symbiote.url}${path}`);
     await expect(page.locator(`${card} ${part}`).first()).toBeVisible(POLL);
     const got = await head(page, card, part, first);
-    near(`${name}: ${part}'s height`, got?.height, 48);
-    // The card's 1 px edge, then 16 px.
-    near(`${name}: ${part}'s first ${first === 'text' ? 'word' : 'control'}`, got?.inset, 17);
+    near(`${name}: ${part}'s height`, got?.height, HEAD);
+    // The card's 1 px edge, then `--card-pad`.
+    near(`${name}: ${part}'s first ${first === 'text' ? 'word' : 'control'}`, got?.inset, INSET);
   }
 
   // Forms: the brief, a new skill, a dialog (Nucleus's question went in V78: it is a terminal).
@@ -323,8 +327,8 @@ test('inside the cards: heads 48 px, their words or controls 16 px in; a label 8
     await expect(page.locator(fields).first()).toBeVisible(POLL);
     const gaps = await rhythm(page, fields);
     gaps.forEach(({ over, next }, i) => {
-      near(`${name}: field ${i + 1}'s label over it`, over, 8);
-      if (next !== null) near(`${name}: field ${i + 1} to the next label`, next, 20);
+      near(`${name}: field ${i + 1}'s label over it`, over, 4);
+      if (next !== null) near(`${name}: field ${i + 1} to the next label`, next, 14);
     });
   }
   await page.goto(`${symbiote.url}git`);
@@ -336,10 +340,10 @@ test('inside the cards: heads 48 px, their words or controls 16 px in; a label 8
   const dialog = await rhythm(page, '.dialog .git-field');
   expect(dialog.length).toBeGreaterThan(0);
   dialog.forEach(({ over, next }, i) => {
-    near(`A dialog: field ${i + 1}'s label over it`, over, 8);
-    if (next !== null) near(`A dialog: field ${i + 1} to the next label`, next, 20);
+    near(`A dialog: field ${i + 1}'s label over it`, over, 4);
+    if (next !== null) near(`A dialog: field ${i + 1} to the next label`, next, 14);
   });
   const box = await page.locator('.dialog').boundingBox();
   const heading = await page.locator('.dialog h2').boundingBox();
-  near("A dialog's heading in", (heading?.x ?? 0) - (box?.x ?? 0), 17);
+  near("A dialog's heading in", (heading?.x ?? 0) - (box?.x ?? 0), INSET);
 });

@@ -54,7 +54,7 @@ p.merge-control {
 
 .review-merge .merge-control select {
   width: 100%;
-  height: 32px;
+  height: var(--height-control);
 }
 
 .review-merge .merge-control-target {

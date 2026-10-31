@@ -108,9 +108,9 @@ test("goes to a branch's tip anywhere in the history, and flashes it", async ({ 
   await expect(cursorSubject(page)).toHaveText('Deep feature');
   await expect(page.locator('.commit.cursor')).toBeInViewport();
   await expect(page.locator('.commit.cursor')).toHaveClass(/flash/);
-  // Its row is far below the first block of rows the page had.
+  // Its row is far below the first block of rows the page had (rows 22 px since V85).
   const top = await page.locator('.commit.cursor').evaluate((row) => parseInt(row.style.top));
-  expect(top / 32).toBeGreaterThan(200);
+  expect(top / 22).toBeGreaterThan(200);
   // c and r work on it as on any row.
   await page.keyboard.press('c');
   await expect(page.getByRole('menuitem', { name: /origin\/feature\/deep/ })).toBeVisible();

@@ -8,7 +8,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 12px;
-  min-height: 36px;
+  min-height: var(--height-tall);
   padding: 4px 12px 4px 16px;
   border-bottom: 1px solid var(--line);
   background: color-mix(in srgb, var(--warning) 8%, var(--side));

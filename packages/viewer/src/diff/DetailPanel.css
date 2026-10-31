@@ -47,7 +47,7 @@
 
 .panel-file {
   color: var(--muted);
-  font: var(--size-small) var(--mono);
+  font: var(--size-code) var(--mono);
   word-break: break-all;
 }
 
@@ -68,8 +68,8 @@
   align-items: center;
   justify-content: center;
   align-self: flex-start;
-  width: 28px;
-  height: 28px;
+  width: var(--height-row);
+  height: var(--height-row);
   border: 0;
   border-radius: 8px;
   background: none;
@@ -110,7 +110,7 @@
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--bg);
-  font: var(--size-small)/1.5 var(--mono);
+  font: var(--size-code)/1.5 var(--mono);
 }
 
 .code-rows {
@@ -216,7 +216,7 @@
 /* A symbol's name as a link: as code. */
 .neighbours .link,
 .finding .link {
-  font: var(--size-small) var(--mono);
+  font: var(--size-code) var(--mono);
 }
 
 .panel-actions {
@@ -226,7 +226,7 @@
 }
 
 .review {
-  height: 28px;
+  height: var(--height-row);
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;

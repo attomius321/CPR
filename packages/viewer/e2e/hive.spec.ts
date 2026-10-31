@@ -365,6 +365,13 @@ test("the honeycomb stays behind the page after the arrival, on the shutter's ti
     r: Math.max(16, Math.min(size.width, size.height) / 26),
   });
 
+  // A diff's page has a shell of its own: the honeycomb there too, its head clear over it.
+  await page.getByRole('button', { name: 'Review this commit' }).click();
+  await expect(page).toHaveURL(/\/diff\//);
+  await expect(comb(page)).toBeAttached();
+  expect(await colour(page, '.app > .bar', 'backgroundColor')).toBe('rgba(0, 0, 0, 0)');
+  await page.goto(`${symbiote!.url}git`);
+
   // Narrow: the drawer over the page stays opaque.
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole('button', { name: 'Open the sidenav' }).click();

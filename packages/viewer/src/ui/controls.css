@@ -106,7 +106,7 @@ textarea[rows='7'] {
 select,
 .start-from-field {
   appearance: none;
-  height: 32px;
+  height: var(--height-control);
   padding: 0 28px 0 10px;
   background-image: var(--chevron);
   background-position: right 8px center;
@@ -122,7 +122,7 @@ select:disabled {
 
 /* Beside a 28 px button. */
 .merge-control select {
-  height: 28px;
+  height: var(--height-row);
 }
 
 select option {
@@ -313,7 +313,7 @@ input[type='checkbox'][role='switch']:checked::after {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: var(--height-control);
   padding: 0 14px;
   border: 1px solid transparent;
   border-radius: 8px;

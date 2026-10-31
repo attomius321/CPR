@@ -185,14 +185,14 @@
   display: flex;
   gap: 2px;
   min-height: var(--card-head);
-  padding: 7px calc(var(--card-pad) - 14px) 0;
+  padding: 4px calc(var(--card-pad) - 10px) 0;
   border-bottom: 1px solid var(--line);
   background: var(--side);
 }
 
 .workspace-views button {
-  height: 40px;
-  padding: 0 14px;
+  height: var(--height-tab);
+  padding: 0 10px;
   border: 0;
   border-radius: 8px 8px 0 0;
   background: none;
@@ -301,8 +301,8 @@
 }
 
 .workspace-views .shell-new {
-  width: 32px;
-  height: 32px;
+  width: var(--height-control);
+  height: var(--height-control);
   padding: 0;
   border-radius: 8px;
 }
@@ -364,8 +364,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--height-row);
+  height: var(--height-row);
   border-radius: 8px;
   background: var(--raised);
   color: var(--text);
@@ -519,7 +519,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 48px;
+  min-height: var(--card-head);
   margin: 0 var(--page-pad) var(--page-gap);
   padding: 7px 8px 7px var(--card-pad);
   border: 1px solid color-mix(in srgb, var(--strip-tone) 30%, transparent);

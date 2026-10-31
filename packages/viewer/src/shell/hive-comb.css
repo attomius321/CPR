@@ -31,6 +31,11 @@
   border-radius: 10px;
 }
 
+/* A merge's head stays while its log scrolls under it: opaque, the honeycomb's ground. */
+:root[data-hive] .merge-view .merge-row-head {
+  background: var(--hive-comb-ground);
+}
+
 /* Narrow, the sidenav is a drawer over the page: opaque. */
 @media (max-width: 899px) {
   :root[data-hive] .shell.drawer-open .sidenav {

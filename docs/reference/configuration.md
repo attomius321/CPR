@@ -170,17 +170,20 @@ In Hive mode, Symbiote drives the workspaces you start: their agent works the br
 runs the project's check after each of its turns, a reviewer runs the change and proves defects
 with failing tests, Symbiote sends the agent what fails, then asks you to land the workspace. Its switch is in **Settings**, under **This repository**, **Hive mode**, and
 turning it on asks first. While Hive is on, every page is in ink and crimson, in both themes, and
-the S is crimson.
+the S is crimson. A honeycomb fills the background behind the pages and the sidenav: ink with faint
+crimson outlines in the dark theme, white with pale crimson outlines in the light one. Cards, menus,
+dialogs, the graph and the terminals keep their own ground.
 
 While Hive is on, Nucleus is called **Alpha Ceph**, on every page and in its own words, and its icon
 is the Hive Mind. Its records and files keep the name `nucleus`. A conversation keeps the name it
 started with: its page says so until **New conversation**, which starts one under the current
 name.
 
-The question shows tendrils that grab a Hive Mind and keep moving while it is open. Turning Hive on,
-the Mind grows to the middle of the window, a blackout closes on it, and the new look appears after
-a burst from the Mind. If your system asks for reduced motion, the question shows one still picture
-and the look changes at once.
+The question shows traces that route into a Hive Mind and keep moving while it is open. Turning Hive
+on, the Mind grows to the middle of the window, a shutter of hex tiles closes on it, and the tiles
+open from the Mind onto the new look; the honeycomb they leave is the background above. If your
+system asks for reduced motion, the question shows one still picture and the look and the
+honeycomb appear at once.
 
 ### What Hive does with a workspace
 

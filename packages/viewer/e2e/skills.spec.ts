@@ -242,20 +242,21 @@ test('uses the whole main area: the list at its left, the skill to its right and
     if (!main || !l || !e || !card || !checks || !heading || !icon || !add) {
       throw new Error('no box');
     }
-    expect(Math.abs(l.x - main.x - 16)).toBeLessThanOrEqual(1);
+    // The page frame's tokens (V85): 12 px from the main area's edges, cards 8 apart.
+    expect(Math.abs(l.x - main.x - 12)).toBeLessThanOrEqual(1);
     expect(Math.round(l.width)).toBe(280);
-    expect(Math.abs(card.x - (l.x + l.width) - 16)).toBeLessThanOrEqual(1);
-    expect(Math.abs(e.x + e.width - (main.x + main.width - 16))).toBeLessThanOrEqual(1);
-    expect(Math.abs(e.y + e.height - (main.y + main.height - 16))).toBeLessThanOrEqual(1);
+    expect(Math.abs(card.x - (l.x + l.width) - 8)).toBeLessThanOrEqual(1);
+    expect(Math.abs(e.x + e.width - (main.x + main.width - 12))).toBeLessThanOrEqual(1);
+    expect(Math.abs(e.y + e.height - (main.y + main.height - 12))).toBeLessThanOrEqual(1);
     // The head as Settings': its icon over the list's edge, New skill over the skill's.
     expect(Math.abs(icon.x - l.x)).toBeLessThanOrEqual(1);
     expect(heading.x).toBeGreaterThan(icon.x + icon.width);
     expect(Math.abs(add.x + add.width - (e.x + e.width))).toBeLessThanOrEqual(1);
     if (width >= 1920) {
-      expect(checks.x).toBeGreaterThanOrEqual(card.x + card.width + 15);
+      expect(checks.x).toBeGreaterThanOrEqual(card.x + card.width + 7);
       expect(Math.abs(checks.y - card.y)).toBeLessThanOrEqual(1);
     } else {
-      expect(checks.y).toBeGreaterThanOrEqual(card.y + card.height + 15);
+      expect(checks.y).toBeGreaterThanOrEqual(card.y + card.height + 7);
     }
   }
   // None of Settings' rules.
@@ -534,10 +535,10 @@ test("Scribe's terminal fills the pane: to the main area's right and bottom edge
     const l = await list(page).boundingBox();
     const box = await terminal.boundingBox();
     if (!main || !l || !box) throw new Error('no box');
-    // To the pane card's edges, 16 px in from the main area's (V72; 24 since V64) and inside its
-    // 1 px border.
-    expect(Math.abs(box.x + box.width - (main.x + main.width - 17))).toBeLessThanOrEqual(1);
-    expect(Math.abs(box.y + box.height - (main.y + main.height - 17))).toBeLessThanOrEqual(1);
+    // To the pane card's edges, `--page-pad` in from the main area's (16 in V72, 12 since V85) and
+    // inside its 1 px border.
+    expect(Math.abs(box.x + box.width - (main.x + main.width - 13))).toBeLessThanOrEqual(1);
+    expect(Math.abs(box.y + box.height - (main.y + main.height - 13))).toBeLessThanOrEqual(1);
     expect(box.width).toBeGreaterThanOrEqual(main.width - l.width - 68);
   }
 });

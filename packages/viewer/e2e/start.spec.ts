@@ -188,8 +188,9 @@ test('the whole main area at any width, the head over the cards; the run as rows
     if (!area || !b || !r) throw new Error('no box');
     const left = b.x - area.x;
     const right = area.x + area.width - (r.x + r.width);
-    expect(Math.abs(left - 16)).toBeLessThanOrEqual(1);
-    expect(Math.abs(right - 16)).toBeLessThanOrEqual(1);
+    // The page frame's `--page-pad`: 12 px since V85.
+    expect(Math.abs(left - 12)).toBeLessThanOrEqual(1);
+    expect(Math.abs(right - 12)).toBeLessThanOrEqual(1);
     // Right under the head, on a tall window too (V49 lowered the cards by up to 240 px).
     expect(Math.abs(b.y - area.y)).toBeLessThanOrEqual(1);
     // The head's contents in the cards' width: the S over the brief, Start over the run.
@@ -259,15 +260,16 @@ test("as the person's mockup: the S and a line in the head, the kinds as tabs, t
   await expect(start(page)).toContainText('Let the agent propose a plan before making changes.');
   await expect(start(page)).toContainText('Add context files, docs, mockups, or requirements.');
 
-  // The mockup's proportion, 821 : 470, over the whole area (V72); the run 16 px from the brief.
+  // The mockup's proportion, 821 : 470, over the whole area (V72); the run `--page-gap` (8 px since
+  // V85) from the brief, both `--page-pad` (12) from the area's sides.
   const area = await page.locator('.start-body').boundingBox();
   const b = await page.locator('.start-brief').boundingBox();
   const r = await page.locator('.start-run').boundingBox();
   if (!area || !b || !r) throw new Error('no box');
-  expect(Math.abs(b.x - area.x - 16)).toBeLessThanOrEqual(1);
-  expect(Math.abs(area.x + area.width - r.x - r.width - 16)).toBeLessThanOrEqual(1);
+  expect(Math.abs(b.x - area.x - 12)).toBeLessThanOrEqual(1);
+  expect(Math.abs(area.x + area.width - r.x - r.width - 12)).toBeLessThanOrEqual(1);
   expect(Math.abs(r.width / b.width - 470 / 821)).toBeLessThan(0.01);
-  expect(Math.abs(r.x - (b.x + b.width) - 16)).toBeLessThanOrEqual(1);
+  expect(Math.abs(r.x - (b.x + b.width) - 8)).toBeLessThanOrEqual(1);
 });
 
 test("the goal's tools: the brief's length against its limit, a Markdown preview, files for the documents", async ({

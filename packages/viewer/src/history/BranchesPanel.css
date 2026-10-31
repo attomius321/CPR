@@ -15,7 +15,7 @@
 /* As tall as History's toolbar beside it (48 px with the list's line). */
 .branches-filter {
   flex: none;
-  height: 32px;
+  height: var(--height-control);
   margin: 8px 8px 7px;
   padding: 0 10px;
   font-size: var(--size-small);
@@ -136,7 +136,7 @@
 
 .branches-toggle {
   display: none;
-  height: 28px;
+  height: var(--height-row);
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;

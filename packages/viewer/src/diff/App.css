@@ -16,6 +16,15 @@
   font-size: var(--size-small);
 }
 
+/* The change's chips on the head's second line, its 16 px (V85: the head two lines, 36 px). */
+.bar .page-line :is(.chip, .badge) {
+  line-height: 16px;
+}
+
+.bar .page-line .badge {
+  line-height: 14px;
+}
+
 /* The head's line: how it stands against the last review, then the commits compared and what
    changed. */
 .diff-facts {

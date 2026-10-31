@@ -411,15 +411,17 @@ describe('the geometry is the style’s (V31c)', () => {
 
 describe('the type scale (V32)', () => {
   // V29b's dense 13 px body, with 10–11 px captions, was too small to read: one step up (V32).
-  // V61: still too small for the person's eyes, another pixel each; nothing under 13 px but
-  // uppercase labels and one-glyph marks.
-  it('is two steps above V29b’s, 15 px for the body', () => {
+  // V61: still too small for the person's eyes, another pixel each. V85 (decisions 708, 709): the
+  // person asked for VS Code's look, its 13 px body and its density; nothing under 11 px; code 13,
+  // a terminal 14.
+  it("is VS Code's: 13 px for the body, code 13", () => {
     expect(Object.fromEntries([...base].filter(([name]) => name.startsWith('--size-')))).toEqual({
-      '--size-caps': '12px',
-      '--size-caption': '13px',
-      '--size-small': '14px',
-      '--size-body': '15px',
-      '--size-title': '17px',
+      '--size-caps': '11px',
+      '--size-caption': '11px',
+      '--size-small': '12px',
+      '--size-body': '13px',
+      '--size-title': '16px',
+      '--size-code': '13px',
     });
   });
 
@@ -459,6 +461,58 @@ describe('the type scale (V32)', () => {
   it('names only sizes it has', () => {
     const used = new Set([...css.matchAll(/var\((--size-[a-z]+)\)/g)].map((m) => m[1]!));
     expect([...used].filter((name) => !base.has(name))).toEqual([]);
+  });
+});
+
+// V85 (decisions 710–714): VS Code's density. Controls, rows and heads take their heights from
+// the tokens, a step below V72's; the page frame's tokens tighter.
+describe('the density (V85)', () => {
+  it("is VS Code's: 26 px controls, 22 px rows, 35 px card heads, 12 px margins", () => {
+    const pick = (names: string[]) => Object.fromEntries(names.map((n) => [n, base.get(n)]));
+    expect(
+      pick([
+        '--height-row',
+        '--height-control',
+        '--height-tall',
+        '--height-tab',
+        '--height-bar',
+        '--height-top',
+        '--card-head',
+        '--page-head',
+        '--page-pad',
+        '--page-gap',
+        '--card-pad',
+        '--field-label-gap',
+        '--field-gap',
+      ]),
+    ).toEqual({
+      '--height-row': '22px',
+      '--height-control': '26px',
+      '--height-tall': '28px',
+      '--height-tab': '30px',
+      '--height-bar': '34px',
+      '--height-top': '40px',
+      '--card-head': '35px',
+      '--page-head': '36px',
+      '--page-pad': '12px',
+      '--page-gap': '8px',
+      '--card-pad': '12px',
+      '--field-label-gap': '4px',
+      '--field-gap': '14px',
+    });
+  });
+
+  it("takes a control's, a row's or a bar's height (28 to 56 px) from a token, but the window title bar's", () => {
+    const off = rules
+      .filter(
+        (rule) => !rule.selector.includes('.titlebar') && !rule.selector.includes('.app.alone'),
+      )
+      .flatMap((rule) =>
+        [...rule.body.matchAll(/(?:^|[\s;])((?:min-|max-)?height):\s*(\d+)px/g)]
+          .filter((m) => Number(m[2]) >= 28 && Number(m[2]) <= 56)
+          .map((m) => `${rule.selector.split('\n')[0]}: ${m[1]}: ${m[2]}px`),
+      );
+    expect(off).toEqual([]);
   });
 });
 

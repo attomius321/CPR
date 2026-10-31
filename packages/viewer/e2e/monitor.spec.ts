@@ -247,8 +247,8 @@ test('goes back up: the Back button, Escape once nothing is picked, and Backspac
 
 // V56: the head is History's strip, its title 16 px in and its commit 12 px from the right (it
 // borrowed `.settings-bar`, whose padding is defined only on Settings' page: 0 px). V72 (decision
-// 509): the page frame's head — its icon, the title at x 60, the commit its line under the title;
-// what counts and the colour its actions, 16 px from the right.
+// 509): the page frame's head — its icon, the title at x 50 (60 before V85), the commit its line
+// under the title; what counts and the colour its actions, `--page-pad` from the right.
 test("the head: the frame's, the commit under the title, what counts at the right", async ({
   page,
 }) => {
@@ -259,8 +259,8 @@ test("the head: the frame's, the commit under the title, what counts at the righ
   const commit = await page.locator('.monitor-commit').boundingBox();
   const colour = await page.locator('.monitor-colour').boundingBox();
   if (!main || !title || !commit || !colour) throw new Error('no box');
-  expect(Math.round(title.x - main.x)).toBe(60);
-  expect(Math.round(commit.x - main.x)).toBe(60);
+  expect(Math.round(title.x - main.x)).toBe(50);
+  expect(Math.round(commit.x - main.x)).toBe(50);
   expect(commit.y).toBeGreaterThanOrEqual(title.y + title.height);
-  expect(Math.round(main.x + main.width - (colour.x + colour.width))).toBe(16);
+  expect(Math.round(main.x + main.width - (colour.x + colour.width))).toBe(12);
 });

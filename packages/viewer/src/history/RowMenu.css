@@ -16,7 +16,7 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  min-height: 28px;
+  min-height: var(--height-row);
   padding: 4px 8px;
   border: 0;
   border-radius: 8px;

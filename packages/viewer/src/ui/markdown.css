@@ -51,7 +51,7 @@
   border-radius: 4px;
   background: color-mix(in srgb, var(--text) 8%, transparent);
   font-family: var(--mono);
-  font-size: var(--size-small);
+  font-size: var(--size-code);
 }
 
 .markdown pre {

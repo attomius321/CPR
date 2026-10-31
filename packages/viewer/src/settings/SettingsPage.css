@@ -95,7 +95,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 32px;
+  min-height: var(--height-control);
   padding: 0 8px;
   border: 0;
   border-radius: 8px;
@@ -212,7 +212,7 @@
   align-items: center;
   gap: 8px 12px;
   min-height: var(--card-head);
-  padding: 8px var(--card-pad);
+  padding: 4px var(--card-pad);
   border-bottom: 1px solid var(--line);
 }
 
@@ -330,7 +330,7 @@ p.settings-section.settings-about {
   align-items: center;
   column-gap: 12px;
   row-gap: 4px;
-  min-height: 32px;
+  min-height: var(--height-control);
   margin: 0;
   padding: 10px 0;
   border-top: 1px solid var(--line);
@@ -423,7 +423,7 @@ p.settings-section.settings-about {
   border-radius: 8px;
   background: var(--bg);
   border: 1px solid var(--line);
-  font: var(--size-small)/1.45 var(--mono);
+  font: var(--size-code)/1.45 var(--mono);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -513,7 +513,7 @@ p.settings-section.settings-about {
   box-sizing: border-box;
   width: 100%;
   max-width: 560px;
-  height: 32px;
+  height: var(--height-control);
   padding: 0 10px;
 }
 

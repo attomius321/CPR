@@ -484,7 +484,7 @@ test("the Review tab in sections at the sidebar's width; Merge into's dropdowns 
   const pad = await tab.evaluate((el) =>
     parseFloat(getComputedStyle(el).getPropertyValue('--card-pad')),
   );
-  expect(pad).toBe(16);
+  expect(pad).toBe(12);
   expect(await tab.evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
   for (const control of [t, h]) {
     expect(control.x + control.width).toBeLessThanOrEqual(area.x + area.width - pad + 0.5);

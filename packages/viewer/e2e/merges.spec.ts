@@ -715,11 +715,12 @@ test("the person's mockup: the head's chips with their icons, the log a card dow
   await expect(names.nth(0)).toHaveCSS('font-weight', '500');
   await expect(names.nth(1)).toHaveCSS('font-weight', '400');
 
-  // The log is a card, its edge a hairline, down to 16 px above the page's end at any height.
+  // The log is a card, its edge a hairline, down to `--page-pad` (12 px since V85) above the
+  // page's end at any height.
   await expect(entry.locator('.merge-terminal')).toHaveCSS('border-top-width', '1px');
   for (const height of [900, 700]) {
     await page.setViewportSize({ width: 1440, height });
-    await expect.poll(() => underLog(page), { message: `at 1440×${height}` }).toBe(16);
+    await expect.poll(() => underLog(page), { message: `at 1440×${height}` }).toBe(12);
   }
 });
 
@@ -737,5 +738,5 @@ test("a resolution: its state's icon, Files and Log as line tabs, the log down t
   await log.click();
   expect(await tabLine(log)).toBe('3px');
   expect(await tabLine(files)).toBe('auto');
-  await expect.poll(() => underLog(page)).toBe(16);
+  await expect.poll(() => underLog(page)).toBe(12);
 });

@@ -3,6 +3,7 @@ import { hrefOf, type Route } from '../shell/pages.js';
 import { ShellContext, type Notice, type Shell } from '../shell/shell-context.js';
 import { DrawerStrip, Sidenav, useSidenavWidth } from '../shell/Sidenav.js';
 import { desktop } from '../shell/desktop.js';
+import { HiveComb } from '../shell/HiveComb.js';
 import { StatusBar } from '../shell/StatusBar.js';
 import { AskBar } from '../shell/AskBar.js';
 import { TitleBar } from '../shell/TitleBar.js';
@@ -96,6 +97,7 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
         className={`shell diff-shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}${sidenav.resizing ? ' resizing' : ''}`}
         style={sidenav.style}
       >
+        <HiveComb />
         {desktop && <TitleBar />}
         <DrawerStrip open={drawer} onToggle={() => setDrawer((open) => !open)} />
         <Sidenav repo={repo} folded={folded} onFold={fold} flashed={null} />
