@@ -27,6 +27,7 @@ import {
   type AgentEfforts,
   type AgentKind,
   type AgentModels,
+  type AgentRunsOn,
   type AgentOption,
   type BranchMerge,
   type CheckGuess,
@@ -98,6 +99,7 @@ import {
 } from './claude-code.js';
 import type { CodexThread } from './app-server.js';
 import { activityOf, serverActivity } from './workspace-activity.js';
+import { codexRunsOn, transcriptOf, transcriptReader } from './workspace-running.js';
 import { MAX_BRIEF, workKinds } from './workspace-brief.js';
 import { onServer, workspaceCodex } from './workspace-codex.js';
 import { hermesEntries, hermesTools, type Hermes, type HermesSession } from './hermes.js';
@@ -470,6 +472,8 @@ export function workspaces(
     return { ...where, note: where.note ? `${where.note} ${left}` : left };
   };
   const config = () => readWorkspaceConfig(root);
+  /** What Claude Code's transcripts say their agents run on (V83), read again when they grow. */
+  const transcripts = transcriptReader();
   const viaCodex = workspaceCodex({ codex, now, env });
   const viaHermes = workspaceHermes({ hermes, terminals, env, now });
 
@@ -521,6 +525,7 @@ export function workspaces(
     let agent: WorkspaceAgentState;
     let acted: string | undefined;
     let activity: WorkspaceActivity | undefined;
+    let runsOn: AgentRunsOn | null = null;
     if (onServer(workspace)) {
       // Its last two turns: the one that runs, and the answer before it.
       const { read, address } = await viaCodex.readServer(workspace, {
@@ -532,6 +537,7 @@ export function workspaces(
         (read instanceof Error ? undefined : serverLastAction(read)) ?? workspace.agent?.started;
       if (!(read instanceof Error)) {
         activity = serverActivity(await runningTurn(workspace, read), agent, workspace.worktree);
+        runsOn = codexRunsOn(read);
       }
     } else if (workspace.agent?.kind === 'hermes') {
       // From its session (decision 416): its messages, and its tools while it works.
@@ -562,9 +568,13 @@ export function workspaces(
           ? await readActivityEnd(symbioteFolder(where), workspace.branch)
           : null;
       activity = activityOf(thread, agent, tools);
+      // What it runs on (V83): Claude Code's newest answer, in the transcript its hooks named.
+      const transcript = workspace.agent?.kind === 'codex' ? undefined : transcriptOf(thread);
+      if (transcript) runsOn = await transcripts.runsOn(transcript);
     }
     if (workspace.agent?.effort) agent = { ...agent, effort: workspace.agent.effort };
     if (workspace.agent?.model) agent = { ...agent, model: workspace.agent.model };
+    if (runsOn) agent = { ...agent, runsOn };
     return {
       branch: workspace.branch,
       ...(workspace.kind ? { kind: workspace.kind } : {}),

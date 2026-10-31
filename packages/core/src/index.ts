@@ -292,6 +292,7 @@ export {
   type AgentEfforts,
   type AgentModel,
   type AgentModels,
+  type AgentRunsOn,
   type AgentOption,
   type DefaultModel,
   type BriefPart,

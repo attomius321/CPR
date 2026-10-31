@@ -103,16 +103,20 @@ export function threadEntry(input: unknown, at: string): ThreadEntry | null {
   const session = text(v.session_id);
   if (!session) return null;
   const head = { at, session };
+  // Where the list reads what the agent runs on (V83): kept on a start and on each prompt, so a
+  // session that ran before V83 gives it at its next prompt.
+  const transcript = text(v.transcript_path);
+  const kept = transcript ? { transcript } : {};
   switch (v.hook_event_name) {
     case 'SessionStart':
-      return { ...head, kind: 'start', source: text(v.source) ?? 'startup' };
+      return { ...head, kind: 'start', source: text(v.source) ?? 'startup', ...kept };
     case 'SessionEnd': {
       const reason = text(v.reason);
       return { ...head, kind: 'end', ...(reason ? { reason } : {}) };
     }
     case 'UserPromptSubmit': {
       const prompt = text(v.prompt);
-      return prompt ? { ...head, kind: 'prompt', text: prompt } : null;
+      return prompt ? { ...head, kind: 'prompt', text: prompt, ...kept } : null;
     }
     case 'Stop': {
       const report = text(v.last_assistant_message);

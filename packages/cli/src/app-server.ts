@@ -195,6 +195,12 @@ export interface CodexThread {
   path?: string;
   /** What an active thread waits on: an approval, or the person's input. */
   waiting?: 'approval' | 'input';
+  /**
+   * What it runs on (V83), as the thread says it: "Current configured … when loaded, otherwise the
+   * latest persisted" (Codex 0.163); absent when it says none.
+   */
+  model?: string;
+  effort?: string;
   /** Its newest turns, oldest first. */
   turns: CodexTurn[];
 }
@@ -347,6 +353,16 @@ const seconds = (value: unknown): number | undefined =>
 
 const level = (value: unknown): string | undefined =>
   typeof value === 'string' && EFFORT_LEVEL.test(value) ? value : undefined;
+
+/** What a thread says it runs on (V83): its `model` and `reasoningEffort`, when they read as such. */
+function modelOf(thread: Record<string, unknown>): Pick<CodexThread, 'model' | 'effort'> {
+  const model = text(thread.model);
+  const effort = level(thread.reasoningEffort);
+  return {
+    ...(model && MODEL_ID.test(model) ? { model } : {}),
+    ...(effort ? { effort } : {}),
+  };
+}
 
 /**
  * A model's effort levels (V30b): the configured model's, else the one `model/list` marks as the
@@ -854,6 +870,7 @@ export function codexServer(
           updatedAt: seconds(v.updatedAt) ?? 0,
           ...statusOf(v.status),
           ...(text(v.path) ? { path: v.path as string } : {}),
+          ...modelOf(v),
           turns: (listed.data ?? [])
             .map((turn) => turnOf(turn, items === 'full'))
             .filter((turn): turn is CodexTurn => turn !== null)

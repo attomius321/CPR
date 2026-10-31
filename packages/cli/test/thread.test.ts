@@ -42,6 +42,8 @@ const input = (event: string, kind = '') => {
 };
 const AT = '2026-10-15T09:00:00.000Z';
 const SESSION = 'b2a132c3-a35e-4d33-b865-edf03a395372';
+/** Where Claude Code wrote that session's transcript, as its hooks say (`transcript_path`). */
+const TRANSCRIPT = `/home/ada/.claude/projects/-work-app-worktrees-feature-x/${SESSION}.jsonl`;
 
 describe('threadEntry', () => {
   it("turns each hook's input into a thread entry", () => {
@@ -50,6 +52,7 @@ describe('threadEntry', () => {
       session: SESSION,
       kind: 'start',
       source: 'startup',
+      transcript: TRANSCRIPT,
     });
     expect(threadEntry(input('SessionEnd'), AT)).toMatchObject({ kind: 'end', reason: 'other' });
     expect(threadEntry(input('UserPromptSubmit'), AT)).toMatchObject({
@@ -88,6 +91,29 @@ describe('threadEntry', () => {
       kind: 'asks',
       tool: 'AskUserQuestion',
     });
+  });
+
+  it("keeps the session's transcript on a start and a prompt, where the list reads what it runs on (V83)", () => {
+    expect(threadEntry(input('UserPromptSubmit'), AT)).toMatchObject({
+      kind: 'prompt',
+      transcript: TRANSCRIPT,
+    });
+    // Every other entry is a message or a wait: none of them carries it.
+    for (const [event, kind] of [
+      ['Stop', ''],
+      ['SessionEnd', ''],
+      ['Notification', 'permission_prompt'],
+      ['PermissionRequest', 'Edit'],
+    ] as const) {
+      expect(threadEntry(input(event, kind), AT)).not.toHaveProperty('transcript');
+    }
+    // A hook without one, or with something else: none kept.
+    const without = { ...input('UserPromptSubmit') };
+    delete without.transcript_path;
+    expect(threadEntry(without, AT)).not.toHaveProperty('transcript');
+    expect(
+      threadEntry({ ...input('UserPromptSubmit'), transcript_path: 42 }, AT),
+    ).not.toHaveProperty('transcript');
   });
 
   it('cuts a long input at 4 KB and ignores anything that is not a known event', () => {
