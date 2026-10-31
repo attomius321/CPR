@@ -2,12 +2,11 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv3-running-reviewer.md)
 
-**Status:** built, real runs waiting for the person (2026-10-31), on branch
+**Status:** built, the real reviewer run, the real Hive run waiting for the person (2026-10-31), on branch
 `feature/hv3-running-reviewer` (the workspace's, from `main` at `c84fa98`). The person's answers to
 the plan's five questions: 1–4 as recommended; 5, a Review tab of the workspace's own, "In hive
-mode, there will be no more human review process". Not yet run: the real reviewer and the real
-Hive run, which need `socat` (Claude Code's sandbox) and the scratch repository trusted in Claude
-Code (see Results).
+mode, there will be no more human review process". Not yet run: the real Hive run, which needs the
+scratch repository trusted in Claude Code (see Results).
 
 **Problem** (the brief: "Build HV3, the next Hive milestone … the running reviewer (decisions 648,
 650)"). HV2's loop asks the person to land a workspace once the project's check passes. Nothing
@@ -270,8 +269,19 @@ kept); resuming an interrupted review; the graph (HV4); usage pacing (HV5).
   suite: 368 of 369 passed, `hive-loop.spec.ts` failing once on a race of the fake's (a resume
   logged before its hook ran; see the journal), fixed in both Hive specs: 12 of 12, each 3 times.
   Nexus: 20 passed.
+- **The real reviewer** (`scripts/hive/reviewer-probe.mjs`, Opus at high, Claude Code's sandbox
+  with `socat` on `PATH`, Symbiote's rerun under bubblewrap) on a clone of this repository, a brief
+  for `elapsedWords(ms)` ("round to the nearest second first; under 60 seconds '12 s', from 60
+  seconds on minutes and seconds"), the change's own test passing on both branches:
+
+  | Branch | Verdict | Time | Cost | What it did |
+  |---|---|---|---|---|
+  | planted defect (`ms < 60_000` before rounding) | 1 defect proven, kept | 15 s | $0.14 | wrote `elapsed-rounding.test.ts` (59 600 ms reads "1 min"); Symbiote's rerun failed it, exit 1, naming the test |
+  | correct | approved | 13 s | $0.09 | 8 edge cases of its own (59 499, 59 500, 119 600 ms…) passed; deleted them, said what it ran |
+
+  Both copies were removed; the install in each clone took under a second.
 - **Screenshots** (1440×900 and 820×900, dark and light, Hive on): the Review tab with a proven and
   a dropped finding, the landing asked, Settings' Reviewer and Hive mode.
-- **Not verified yet**: Claude Code's sandbox running a reviewer (here `socat` is missing); a real
-  reviewer on a planted defect; the real Hive run (Verification 6's scratch repository is ready,
-  waiting to be trusted in Claude Code); macOS and Windows (no review there).
+- **Not verified yet**: the real Hive run (Verification 6's scratch repository is ready, waiting to
+  be trusted in Claude Code); macOS and Windows (no review there). `socat` is not installed on this
+  machine (its `sudo` needs a terminal): the runs above put Ubuntu's package, unpacked, on `PATH`.

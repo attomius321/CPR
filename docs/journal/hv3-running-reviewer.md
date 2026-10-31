@@ -67,3 +67,29 @@ Settings' Reviewer and Hive mode, dark and light, 1440 and 820 px wide.
 
 Not verified yet: a real reviewer (Claude Code's sandbox needs `socat`, missing here) and the real
 Hive run; macOS and Windows, where nothing is reviewed.
+
+## HV3 — the real reviewer, on a planted defect and a correct change (2026-10-31, branch `feature/hv3-running-reviewer`)
+
+`sudo apt install socat` needs a terminal for its password, which a `!` command has none of:
+Ubuntu's package, fetched with `apt download` and unpacked in `/tmp`, put on `PATH` for the runs.
+With it, Claude Code's sandbox starts. A Haiku run with the reviewer's settings showed that `dontAsk`
+refused a whole command line reaching outside its folder before it ran; with `Bash` allowed it ran
+sandboxed, the write outside "Read-only file system", the network refused. The reviewer now allows
+every command, in the sandbox.
+
+Then `scripts/hive/reviewer-probe.mjs` on a clone of this repository, with a brief for
+`elapsedWords(ms)` and the change's own test passing on both branches:
+
+- **Planted defect** (the form picked before rounding): proven in 15 s for $0.14. Its test,
+  `elapsed-rounding.test.ts`, expects 59 600 ms to read "1 min"; Symbiote's rerun failed it and kept
+  the finding.
+- **Correct change**: approved in 13 s for $0.09, after 8 edge cases of its own passed (deleted, as
+  told, and named in what it ran).
+
+**Learned**:
+- **A small change reviews in seconds, not minutes**: HV1's 1.5–6 min were whole goals; this was
+  one function, on Symbiote's own repository and install.
+- **Its test name is vitest's full name** (`file > describe > it`), which the rerun's output prints
+  whole: the name guard held on a real runner.
+
+Not verified: the real Hive run, waiting for the scratch repository to be trusted.
