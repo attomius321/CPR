@@ -226,6 +226,16 @@ const more = async (page: Page, branch: string, name: string) => {
   await panel(page, branch).getByRole('button', { name: 'More actions' }).click();
   await panel(page, branch).getByRole('menuitem', { name, exact: true }).click();
 };
+/**
+ * Hovers `target` until its tip says `text` (V83): a head or a card drawn again under a pointer
+ * that does not move gets no hover, so no tip; the pointer leaves and comes back.
+ */
+const expectTip = async (page: Page, target: Locator, text: string) =>
+  expect(async () => {
+    await page.mouse.move(0, 0);
+    await target.hover();
+    await expect(page.getByRole('tooltip')).toContainText(text, { timeout: 1500 });
+  }).toPass(POLL);
 const startFrom = async (page: Page, what: string) => {
   await page.getByRole('link', { name: 'Start a workspace' }).click();
   await fillWork(page, what);
@@ -521,8 +531,7 @@ test('the head and every card say what its agent runs on: as it started, then as
   // Before it answers: how it started, said as that.
   await expect(chip).toHaveText(/^Default model · /);
   await expect(line).toHaveText(/^Default model · /);
-  await chip.hover();
-  await expect(page.getByRole('tooltip')).toContainText('What it runs on shows once it answers');
+  await expectTip(page, chip, 'What it runs on shows once it answers');
   // In the head after its kind; on the card a row of its own, after the facts, before the branch.
   await expect(
     panel(page, branch).locator('.workspace-top .page-name-line .kind-tag + .runs-on'),
@@ -553,10 +562,7 @@ test('the head and every card say what its agent runs on: as it started, then as
   });
   await expect(chip).toHaveText('Sonnet 5.5 · low effort', POLL);
   await expect(line).toHaveText('Sonnet 5.5 · low effort');
-  await line.hover();
-  await expect(page.getByRole('tooltip')).toContainText(
-    'Claude Code runs on Sonnet 5.5 (claude-sonnet-5-5) at low effort',
-  );
+  await expectTip(page, line, 'Claude Code runs on Sonnet 5.5 (claude-sonnet-5-5) at low effort');
   // `/model opus` and `/effort xhigh` typed in its terminal: from its next answer.
   appendFileSync(transcript, answer('claude-opus-5-5', 'xhigh'));
   await expect(chip).toHaveText('Opus 5.5 · xhigh effort', POLL);
@@ -592,8 +598,7 @@ test("a card's state is one line, all of it in its tip: the card keeps its heigh
     await state.evaluate((p) => [p.scrollWidth > p.clientWidth, getComputedStyle(p).textOverflow]),
   ).toEqual([true, 'ellipsis']);
   expect((await row.boundingBox())!.height).toBe(before);
-  await state.hover();
-  await expect(page.getByRole('tooltip')).toContainText(command);
+  await expectTip(page, state, command);
 });
 
 test('an agent that starts waiting while you are elsewhere: one line in the status bar, and Open (V48)', async ({
