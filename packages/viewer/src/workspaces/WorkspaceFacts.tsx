@@ -18,6 +18,7 @@ import {
   PencilIcon,
 } from '../ui/icons.js';
 import { longAge, useNow } from './clock.js';
+import { HiveNowLine } from './HiveNow.js';
 import {
   AGENT_NAMES,
   runsOnWords,
@@ -63,6 +64,8 @@ export function WorkspaceState({
 }) {
   const merge = useMergeCheck(workspace, withFacts);
   const said = next.doing ?? next.text;
+  // Hive at work (decision 699): what it runs now, ticking, in place of its step's words.
+  const live = next.hive && workspace.hive?.live ? workspace.hive : null;
   // Only while it works is the line the agent's action; the rest is Symbiote's to say, Hive's too.
   const agent = next.group === 'working' && !next.hive ? (workspace.agent.kind ?? 'claude') : null;
   const facts = withFacts ? workspaceFacts(workspace, merge).map((fact) => fact.words) : [];
@@ -76,7 +79,7 @@ export function WorkspaceState({
       ) : (
         agent && <ClaudeMark />
       )}
-      <strong>{said}</strong>
+      <strong>{live ? <HiveNowLine hive={live} /> : said}</strong>
       {facts.map((fact) => (
         <span key={fact}> · {fact}</span>
       ))}
@@ -154,7 +157,8 @@ export function StateDot({ row: { next } }: { row: WorkspaceRow }) {
  */
 export function StateAge({ workspace }: { workspace: WorkspaceSummary }) {
   const now = useNow();
-  const since = workspace.activity?.since;
+  // Hive at work: how long its check or review has run (decision 699).
+  const since = workspace.hive?.live?.started ?? workspace.activity?.since;
   if (!since) {
     return (
       <time className="commit-date" dateTime={workspace.created}>
@@ -173,7 +177,8 @@ export function StateAge({ workspace }: { workspace: WorkspaceSummary }) {
 export function StateFor({ workspace }: { workspace: WorkspaceSummary }) {
   const now = useNow();
   const since = workspace.activity?.since;
-  if (!since) return null;
+  // Hive at work: its line says its time, ticking (`HiveNowLine`).
+  if (!since || workspace.hive?.live) return null;
   return (
     <time className="state-for" dateTime={since}>
       {/* Kept by the flex line, which drops a leading space. */}

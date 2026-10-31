@@ -8,7 +8,10 @@ function said(row: WorkspaceRow, before: WorkspaceRow): string | null {
   const name = workspaceName(row.workspace);
   const { next } = row;
   if (next.group === 'waiting') return `${name} waits for you: ${next.blocked ?? next.text}`;
-  if (next.group === 'review' && before.next.group === 'working') {
+  if (
+    next.group === 'review' &&
+    (before.next.group === 'working' || before.next.group === 'hive')
+  ) {
     return `${name} finished: ${next.text}`;
   }
   // A failure; a stop the person asked for needs no word.

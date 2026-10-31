@@ -482,6 +482,117 @@ button.workspace-about {
   --group-tone: var(--moved);
 }
 
+/* Hive at work (decision 698): its own card, as Waiting for you's, in Hive's crimson, on the
+   etched hexagons of its arrival's shutter; a streak of light crosses them every few seconds, as
+   over Hive's pages (ui/hive.css). The hexagons are a mask over a layer of the crimson: they take
+   the theme's. */
+.sidenav .group-hive {
+  --group-tone: var(--hive-red, var(--removed));
+  --hive-cells: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='45'%3E%3Cpath d='M13 0L26 7.5L26 22.5L13 30L0 22.5L0 7.5Z M13 30L13 45' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
+
+  position: relative;
+  isolation: isolate;
+  margin: 10px 0 4px;
+  padding: 0 0 6px;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--group-tone) 35%, transparent);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--group-tone) 5%, transparent);
+}
+
+.sidenav .group-hive::before,
+.sidenav .group-hive::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  mask: var(--hive-cells) 0 0 / 26px 45px repeat;
+}
+
+/* The cells, etched. */
+.sidenav .group-hive::before {
+  background: color-mix(in srgb, var(--group-tone) 16%, transparent);
+}
+
+/* The streak: a band of light lights the cells it crosses. */
+.sidenav .group-hive::after {
+  background: linear-gradient(
+    112deg,
+    transparent 42%,
+    color-mix(in srgb, var(--group-tone) 70%, transparent) 50%,
+    transparent 58%
+  );
+  background-size: 300% 100%;
+  animation: hive-cells-streak 5s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+@keyframes hive-cells-streak {
+  from {
+    background-position: 100% 0;
+  }
+
+  60%,
+  to {
+    background-position: 0% 0;
+  }
+}
+
+.sidenav .group-hive h3 {
+  margin: 10px 8px 8px 13px;
+  color: var(--text);
+}
+
+.sidenav .group-hive .workspace-row {
+  margin: 0 6px;
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+}
+
+.sidenav .group-hive .workspace-row + .workspace-row {
+  margin-top: 6px;
+}
+
+.sidenav .group-hive .workspace-row:not(.picked):hover {
+  background: color-mix(in srgb, var(--bg) 55%, transparent);
+}
+
+.sidenav .group-hive .workspace-row.picked {
+  background: color-mix(in srgb, var(--group-tone) 18%, var(--bg));
+}
+
+/* What Hive runs now (decision 699): its step and time, then the command or the reviewer's call,
+   each on its line, cut at its end; the time's figures do not jump as they tick. */
+.sidenav .hive-live {
+  min-width: 0;
+}
+
+.sidenav .hive-live-head strong {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.hive-live-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.sidenav .hive-live-detail {
+  margin: 2px 0 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidenav .hive-live-detail.command {
+  font-family: var(--mono);
+}
+
+/* On the folded rail, under the dot: how long Hive's run has lasted. Only there. */
+.hive-rail-time {
+  display: none;
+}
+
 .sidenav .group-done {
   --group-tone: var(--added);
 }
@@ -702,6 +813,12 @@ button.workspace-about {
   --dot: var(--moved);
 }
 
+/* Hive at work (decision 698): the working spinner, in Hive's crimson. */
+.state-dot.tone-hive {
+  --dot: var(--hive-red, var(--removed));
+}
+
+.state-dot.tone-hive,
 .state-dot.tone-working,
 .state-dot.tone-starting,
 .state-dot.tone-cleaning,
@@ -709,6 +826,7 @@ button.workspace-about {
   background: transparent;
 }
 
+.state-dot.tone-hive::after,
 .state-dot.tone-working::after,
 .state-dot.tone-starting::after,
 .state-dot.tone-cleaning::after,
@@ -766,6 +884,12 @@ button.workspace-about {
 /* Without motion, the spinner holds still: a comet, its own shape beside waiting's halo and
    stopped's ring; its head at the top right, as Loader2's gap, not a "C" beside the name. */
 @media (prefers-reduced-motion: reduce) {
+  .sidenav .group-hive::after {
+    animation: none;
+    opacity: 0;
+  }
+
+  .state-dot.tone-hive::after,
   .state-dot.tone-working::after,
   .state-dot.tone-starting::after,
   .state-dot.tone-cleaning::after,
@@ -958,6 +1082,34 @@ button.workspace-about {
 
   .sidenav.rail .group-waiting .workspace-row {
     margin: 0 2px;
+  }
+
+  /* Hive at work, folded: its band and hexagons kept, each card its dot and its time under it
+     (decision 699); its tip says the rest. */
+  .sidenav.rail .group-hive {
+    margin: 6px 0 2px;
+  }
+
+  .sidenav.rail .group-hive h3 {
+    margin: 8px 4px 2px;
+  }
+
+  .sidenav.rail .group-hive .workspace-row {
+    margin: 0 2px;
+  }
+
+  .sidenav.rail .group-hive .workspace-head {
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .sidenav.rail .hive-rail-time {
+    display: block;
+    color: var(--text);
+    font-size: var(--size-caption);
+    line-height: 16px;
+    font-variant-numeric: tabular-nums;
   }
 
   .sidenav.rail .workspace-row {

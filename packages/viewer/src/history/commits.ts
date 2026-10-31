@@ -292,6 +292,7 @@ const URGENCY: readonly AgentChip['tone'][] = [
   'waiting',
   'ready',
   'idle',
+  'hive',
   'working',
   'done',
 ];
@@ -307,13 +308,15 @@ function foldedMark(folded: readonly Badge[]): (AgentChip & { href: string }) | 
     .map((b) => b.agent as AgentChip & { href: string })
     .sort((a, b) => URGENCY.indexOf(a.tone) - URGENCY.indexOf(b.tone))[0];
   if (!first) return undefined;
-  const needs = marked.filter((b) => !['working', 'done'].includes(b.agent?.tone ?? '')).length;
+  const needs = marked.filter(
+    (b) => !['working', 'hive', 'done'].includes(b.agent?.tone ?? ''),
+  ).length;
   const state =
     needs === 1
       ? 'one needs you'
       : needs > 1
         ? `${needs} need you`
-        : first.tone === 'working'
+        : first.tone === 'working' || first.tone === 'hive'
           ? 'working'
           : 'done';
   return {

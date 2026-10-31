@@ -1,0 +1,252 @@
+import { useEffect, useRef, useState } from 'react';
+import type { IMarker, Terminal } from '@xterm/xterm';
+import type { LogLine, LogRead } from '@symbiote/core';
+import {
+  isCommand,
+  logText,
+  NO_TEXT,
+  stepName,
+  stepRuns,
+  type LogState,
+  type LogStep,
+  type StepMark,
+} from './merge-log.js';
+import { duration } from './merges.js';
+import { aboutWords } from './hive-live.js';
+import { TERMINAL_FONT, TERMINAL_FONT_SIZE, TERMINAL_THEME } from './terminal.js';
+
+/** A broken stream is opened again after this, from where it was. */
+const RECONNECT_MS = 2_000;
+
+/** Each mark's tone, as the merge's label colours it. */
+const TONES: Record<StepMark, string> = {
+  running: 'merge-tone-wait',
+  passed: 'merge-tone-done',
+  failed: 'merge-tone-bad',
+  stopped: 'merge-tone-you',
+  waiting: '',
+  'not-run': '',
+};
+
+const WORDS: Record<StepMark, string> = {
+  running: 'running',
+  passed: 'passed',
+  failed: 'failed',
+  stopped: 'stopped',
+  waiting: 'waiting',
+  'not-run': 'not run',
+};
+
+/**
+ * A log of steps (V46a, decisions 314 and 316; Hive's runs since decision 700): its steps with
+ * their marks and times, and beside them everything they wrote, in a read-only terminal (xterm.js,
+ * the agent terminal's chunk and colours) that follows the end unless scrolled up; a new run brings
+ * it back to the end (fix/merge-viewer-on-conflict). A click on a step scrolls to its heading. The
+ * lines come from `source(from)`, server-sent as they are written; `onLogged` says the first
+ * arrived. `empty`: nothing is drawn while no line came (a merge with no log once it no longer
+ * runs).
+ */
+export function StepLog({
+  id,
+  source,
+  state,
+  label = 'Its log',
+  className = '',
+  waitingWords = 'Waiting for its turn',
+  hidden = false,
+  onLogged,
+  live = state.running,
+}: {
+  /** The log's identity: a new one is read from its start. */
+  id: string;
+  /** Its stream's address from byte `from`. */
+  source: (from: number) => string;
+  state: LogState;
+  label?: string;
+  className?: string;
+  /** What its steps say before any came. */
+  waitingWords?: string;
+  /** Kept, streaming, while another view is shown (V46c). */
+  hidden?: boolean;
+  onLogged?: () => void;
+  /** Lines may still come (a merge queued): its box is kept while none did. */
+  live?: boolean;
+}) {
+  const [lines, setLines] = useState<LogLine<string>[]>([]);
+  const [now, setNow] = useState(() => Date.now());
+  const box = useRef<HTMLDivElement>(null);
+  const shown = useRef<{ term: Terminal | null; markers: (IMarker | undefined)[] }>({
+    term: null,
+    markers: [],
+  });
+  const told = useRef(onLogged);
+  told.current = onLogged;
+
+  useEffect(() => {
+    // Another log: its lines alone.
+    setLines([]);
+    let gone = false;
+    let events: EventSource | null = null;
+    let retry: ReturnType<typeof setTimeout> | undefined;
+    let observer: ResizeObserver | null = null;
+    let next = 0;
+    let state = NO_TEXT;
+    // What arrived before the terminal loaded: written once it has.
+    let waiting: { text: string; heading: boolean }[] | null = [];
+    const write = (text: string, heading: boolean) => {
+      const term = shown.current.term;
+      if (!term) {
+        waiting?.push({ text, heading });
+        return;
+      }
+      // Once parsed, the heading is the line above the cursor.
+      term.write(
+        text,
+        heading ? () => shown.current.markers.push(term.registerMarker(-1)) : undefined,
+      );
+    };
+    // Lines came before: a run among the lines after them is a new one.
+    let begun = false;
+    const connect = () => {
+      events = new EventSource(source(next));
+      events.addEventListener('lines', (event) => {
+        const read = JSON.parse((event as MessageEvent<string>).data) as LogRead<string>;
+        next = read.next;
+        for (const line of read.lines) {
+          const made = logText(line, state);
+          state = made.state;
+          if (made.text !== '') write(made.text, made.heading === true);
+          // Scrolled up in the last run, the person would not see this one start.
+          if (begun && 'run' in line) {
+            shown.current.term?.write('', () => shown.current.term?.scrollToBottom());
+          }
+        }
+        if (read.lines.length > 0) {
+          begun = true;
+          setLines((all) => [...all, ...read.lines]);
+          told.current?.();
+        }
+      });
+      events.addEventListener('gone', () => events?.close());
+      events.onerror = () => {
+        events?.close();
+        if (!gone) retry = setTimeout(connect, RECONNECT_MS);
+      };
+    };
+    connect();
+
+    void (async () => {
+      const [{ Terminal }, { FitAddon }] = await Promise.all([
+        import('@xterm/xterm'),
+        import('@xterm/addon-fit'),
+        import('@xterm/xterm/css/xterm.css'),
+        // Its cell is measured from the font it is given: loaded first.
+        document.fonts.load(`${TERMINAL_FONT_SIZE}px ${TERMINAL_FONT}`),
+      ]);
+      const element = box.current;
+      if (gone || !element) return;
+      const term = new Terminal({
+        theme: TERMINAL_THEME,
+        fontFamily: TERMINAL_FONT,
+        fontSize: TERMINAL_FONT_SIZE,
+        disableStdin: true,
+        cursorBlink: false,
+        convertEol: true,
+        scrollback: 10_000,
+      });
+      const fit = new FitAddon();
+      term.loadAddon(fit);
+      term.open(element);
+      fit.fit();
+      // Nothing is typed here: no cursor.
+      term.write('\x1b[?25l');
+      shown.current.term = term;
+      for (const { text, heading } of waiting ?? []) write(text, heading);
+      waiting = null;
+      observer = new ResizeObserver(() => fit.fit());
+      observer.observe(element);
+    })();
+
+    return () => {
+      gone = true;
+      events?.close();
+      clearTimeout(retry);
+      observer?.disconnect();
+      shown.current.term?.dispose();
+      shown.current = { term: null, markers: [] };
+    };
+    // A new log is read again from its start; its address is the id's.
+  }, [id]);
+
+  const runs = stepRuns(lines, state);
+  const running = runs.some((run) => run.steps.some((s) => s.mark === 'running'));
+  useEffect(() => {
+    if (!running) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [running]);
+
+  const scrollTo = (index: number) => {
+    const { term, markers } = shown.current;
+    const marker = markers[index];
+    if (term && marker && marker.line >= 0) term.scrollToLine(marker.line);
+  };
+  const timeOf = (step: LogStep) =>
+    step.mark === 'running' && step.at !== undefined
+      ? `${duration(Math.max(0, now - step.at))}${step.about !== undefined ? ` of ${aboutWords(step.about)}` : ''}`
+      : step.ms !== undefined
+        ? duration(step.ms)
+        : step.mark === 'passed' || step.mark === 'failed'
+          ? ''
+          : step.mark === 'waiting' && step.about !== undefined
+            ? aboutWords(step.about)
+            : WORDS[step.mark];
+
+  const empty = lines.length === 0 && !live;
+  return (
+    <section
+      className={`merge-log${className ? ` ${className}` : ''}${empty ? ' empty' : ''}`}
+      aria-label={label}
+      hidden={hidden}
+    >
+      <ol className="merge-steps" aria-label="Its steps">
+        {runs.flatMap((run, r) => [
+          ...(runs.length > 1
+            ? [
+                <li key={`run ${r}`} className="merge-steps-run">
+                  {r === 0 ? 'Run 1' : `Run ${r + 1} · ${run.why ?? ''}`}
+                </li>,
+              ]
+            : []),
+          ...run.steps.map((step, i) => {
+            const time = timeOf(step);
+            const name = stepName(step);
+            return (
+              <li key={`${r} ${i}`}>
+                <button
+                  type="button"
+                  className={`merge-step mark-${step.mark} ${TONES[step.mark]}`}
+                  aria-label={`${name}: ${WORDS[step.mark]}${step.ms !== undefined || step.mark === 'running' ? `, ${time}` : ''}`}
+                  disabled={step.index === undefined}
+                  onClick={() => step.index !== undefined && scrollTo(step.index)}
+                >
+                  <span className="merge-step-dot" aria-hidden="true" />
+                  <span
+                    className={`merge-step-name${isCommand(step) ? ' merge-step-command' : ''}`}
+                  >
+                    {name}
+                  </span>
+                  <span className="merge-step-time">{time}</span>
+                </button>
+              </li>
+            );
+          }),
+        ])}
+        {runs.length === 0 && <li className="merge-steps-run">{waitingWords}</li>}
+      </ol>
+      <div className="merge-terminal" role="log" aria-label="What it wrote">
+        <div ref={box} className="merge-terminal-fit" />
+      </div>
+    </section>
+  );
+}

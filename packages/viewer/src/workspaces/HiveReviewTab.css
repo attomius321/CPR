@@ -141,3 +141,68 @@
 .hive-ok {
   --badge: var(--added);
 }
+
+/* What Hive runs now (decision 700): its words ticking, then its steps beside its log, as a
+   merge's log is drawn, at a height of its own in the tab's scrolling column. */
+.hive-running-words {
+  margin: 0;
+  font-size: var(--size-body);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.hive-review .merge-log.hive-log {
+  flex: none;
+  height: 440px;
+}
+
+.hive-kept-log .merge-log.hive-log {
+  margin-top: 8px;
+}
+
+/* A check's commands, each with how it ended and its time (decision 693). */
+.hive-check-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.hive-check-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.hive-check-steps code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hive-check-mark {
+  display: inline-flex;
+  flex: none;
+}
+
+.hive-check-mark .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.hive-check-steps .passed .hive-check-mark {
+  color: var(--added);
+}
+
+.hive-check-steps .failed .hive-check-mark {
+  color: var(--removed);
+}
+
+@media (max-width: 699px) {
+  .hive-review .merge-log.hive-log {
+    height: auto;
+  }
+}

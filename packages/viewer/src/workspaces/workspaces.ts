@@ -392,12 +392,13 @@ export function startedNotice({ workspace, prompt }: WorkspaceStart): {
  * What a workspace needs from the person (V18b), the sidenav's groups: its agent waits for an
  * answer, its work is to look at, its agent does not run, works, or it is merged (V48).
  */
-export type WorkspaceGroup = 'waiting' | 'review' | 'stopped' | 'working' | 'done';
+/** Where a workspace's card is listed (V48); Hive at work a group of its own (decision 698). */
+export type WorkspaceGroup = 'waiting' | 'review' | 'stopped' | 'hive' | 'working' | 'done';
 
 /** A workspace's mark on its branch's badges and in the workspaces view. */
 export interface AgentChip {
   mark: string;
-  tone: 'working' | 'waiting' | 'ready' | 'failed' | 'idle' | 'done';
+  tone: 'working' | 'hive' | 'waiting' | 'ready' | 'failed' | 'idle' | 'done';
   title: string;
 }
 
@@ -457,15 +458,16 @@ export function workspaceNext(
         return stopped('Hive off: paused before the review', '·', 'idle');
       if (hive.step === 'writing') return stopped('Hive off: paused', '·', 'idle');
     }
-    // The round is the card's fact (2/3).
+    // Hive at work, a state of its own (decision 698); the round is the card's fact (2/3), what
+    // runs now its own line (`HiveNow`).
     if (!hive.paused && hive.step === 'checking') {
-      return { ...next('working', 'Hive: running the check', '⚙', 'working'), hive: true };
+      return { ...next('hive', 'Hive: running the check', '⚙', 'hive'), hive: true };
     }
     if (!hive.paused && hive.step === 'reviewing') {
-      return { ...next('working', 'Hive: reviewing', '⚙', 'working'), hive: true };
+      return { ...next('hive', 'Hive: reviewing', '⚙', 'hive'), hive: true };
     }
     if (!hive.paused && hive.step === 'writing' && finished) {
-      return { ...next('working', 'Hive: reading its turn', '⚙', 'working'), hive: true };
+      return { ...next('hive', 'Hive: reading its turn', '⚙', 'hive'), hive: true };
     }
     if (hive.step === 'stuck' && agent.state !== 'working') {
       return waits(`Hive stopped: ${hive.note ?? 'it needs you'}`);
@@ -646,6 +648,7 @@ export interface WorkspaceGroups {
   waiting: WorkspaceRow[];
   review: WorkspaceRow[];
   stopped: WorkspaceRow[];
+  hive: WorkspaceRow[];
   working: WorkspaceRow[];
   done: WorkspaceRow[];
 }
@@ -655,7 +658,14 @@ export function workspaceGroups(
   workspaces: readonly WorkspaceSummary[],
   reviews: BranchReviewList | null,
 ): WorkspaceGroups {
-  const groups: WorkspaceGroups = { waiting: [], review: [], stopped: [], working: [], done: [] };
+  const groups: WorkspaceGroups = {
+    waiting: [],
+    review: [],
+    stopped: [],
+    hive: [],
+    working: [],
+    done: [],
+  };
   for (const workspace of workspaces) {
     const review = reviews?.reviews.find((r) => r.branch === workspace.branch);
     const next = workspaceNext(workspace, review);
@@ -672,6 +682,7 @@ export const allRows = (groups: WorkspaceGroups): WorkspaceRow[] => [
   ...groups.waiting,
   ...groups.review,
   ...groups.stopped,
+  ...groups.hive,
   ...groups.working,
   ...groups.done,
 ];

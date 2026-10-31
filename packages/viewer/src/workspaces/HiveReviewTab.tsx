@@ -5,11 +5,15 @@ import { useEffect, useState } from 'react';
 import type {
   HiveCheck,
   HiveFinding,
+  HiveLive,
   HiveReview,
   MergeEntry,
   WorkspaceHiveDetail,
 } from '@symbiote/core';
 import { getJson, postJson } from '../ui/http.js';
+import { CheckIcon, CloseIcon } from '../ui/icons.js';
+import { HiveNowLine } from './HiveNow.js';
+import { StepLog } from './StepLog.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
 import {
   checkWords,
@@ -62,8 +66,81 @@ export function LandButton({
   );
 }
 
+/** A Hive run's log (decision 700): `/api/workspaces/hive/log`, streamed as a merge's is. */
+const logSource = (branch: string, log: string) => (from: number) =>
+  `/api/workspaces/hive/log?branch=${enc(branch)}&log=${enc(log)}&from=${from}`;
+
+/**
+ * What Hive runs now (decision 700): its words, ticking, then the run's steps — each of the
+ * check's commands done, running or waiting; a review's installs, the reviewer and its reruns —
+ * and its log as it comes.
+ */
+function NowSection({
+  branch,
+  live,
+  note,
+}: {
+  branch: string;
+  live: HiveLive;
+  note: string | undefined;
+}) {
+  const check = live.kind === 'check';
+  return (
+    <section className="hive-round hive-running" aria-label="Now">
+      <h2>Now</h2>
+      <p className="hive-running-words" role="status">
+        <HiveNowLine hive={{ live, ...(note ? { note } : {}) }} />
+      </p>
+      {live.log && (
+        <StepLog
+          // A new run's log is a new view: its steps and terminal start empty.
+          key={live.log}
+          id={live.log}
+          source={logSource(branch, live.log)}
+          state={
+            check
+              ? {
+                  running: true,
+                  checking: true,
+                  commands: live.commands,
+                  ...(live.expected ? { expected: live.expected.steps } : {}),
+                }
+              : { running: true, checking: false }
+          }
+          label={check ? 'The check, now' : 'The running review, now'}
+          className="hive-log"
+          waitingWords={check ? 'Starting the check' : 'Starting the review'}
+        />
+      )}
+    </section>
+  );
+}
+
+/** A finished run's kept log (decision 695), read when it is opened. */
+function KeptLog({ branch, log, label }: { branch: string; log: string; label: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details
+      className="hive-more hive-kept-log"
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary>Its log</summary>
+      {open && (
+        <StepLog
+          id={log}
+          source={logSource(branch, log)}
+          state={{ running: false, checking: false }}
+          label={label}
+          className="hive-log"
+          waitingWords="Reading its log…"
+        />
+      )}
+    </details>
+  );
+}
+
 /** A check of a round: passed or failed, on which commit, its failing command and last lines. */
-function CheckRow({ check }: { check: HiveCheck }) {
+function CheckRow({ branch, check }: { branch: string; check: HiveCheck }) {
   return (
     <div className="hive-step" aria-label={`Check, round ${check.round}`}>
       <div className="hive-step-head">
@@ -79,11 +156,27 @@ function CheckRow({ check }: { check: HiveCheck }) {
           <code>{check.failed}</code> failed
         </p>
       )}
-      {check.output && !check.ok && (
+      {check.steps && check.steps.length > 0 && (
+        <ul className="hive-check-steps" aria-label="Its commands">
+          {check.steps.map((step, i) => (
+            <li key={i} className={step.ok ? 'passed' : 'failed'}>
+              <span className="hive-check-mark" aria-label={step.ok ? 'passed' : 'failed'}>
+                {step.ok ? <CheckIcon /> : <CloseIcon />}
+              </span>
+              <code>{step.command}</code>
+              <span className="hive-step-facts">{durationWords(step.ms)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+      {check.output && !check.ok && !check.log && (
         <details className="hive-more">
           <summary>Its last lines</summary>
           <pre>{check.output}</pre>
         </details>
+      )}
+      {check.log && (
+        <KeptLog branch={branch} log={check.log} label={`The check of round ${check.round}`} />
       )}
     </div>
   );
@@ -182,6 +275,13 @@ function ReviewRow({ branch, review }: { branch: string; review: HiveReview }) {
           <p className="hive-ran">{review.ran}</p>
         </details>
       )}
+      {review.log && (
+        <KeptLog
+          branch={branch}
+          log={review.log}
+          label={`The running review of round ${review.round}`}
+        />
+      )}
       {review.findings.length > 0 && (
         <ul className="hive-findings" aria-label="Findings">
           {review.findings.map((finding, i) => (
@@ -243,14 +343,15 @@ export function HiveReviewTab({ branch, version }: { branch: string; version: un
           , and queues it to merge.
         </p>
       )}
-      {rounds.length === 0 && (
+      {detail.live && <NowSection branch={branch} live={detail.live} note={detail.note} />}
+      {rounds.length === 0 && !detail.live && (
         <p className="hint">Hive checks and reviews the branch once the writer ends a turn.</p>
       )}
       {rounds.map((round) => (
         <section key={round.round} className="hive-round" aria-label={`Round ${round.round}`}>
           <h2>Round {round.round}</h2>
           {round.checks.map((check, i) => (
-            <CheckRow key={`c${i}`} check={check} />
+            <CheckRow key={`c${i}`} branch={branch} check={check} />
           ))}
           {round.reviews.map((review, i) => (
             <ReviewRow key={`r${i}`} branch={branch} review={review} />

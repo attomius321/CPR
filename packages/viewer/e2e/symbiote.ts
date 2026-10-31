@@ -628,7 +628,13 @@ export interface RunningWorkspaces extends Running {
    * writes in its copy and its answer (none left: it approves).
    */
   reviewAnswers(
-    answers: { write?: Record<string, string>; answer?: Record<string, unknown> }[],
+    answers: {
+      write?: Record<string, string>;
+      answer?: Record<string, unknown>;
+      /** Lines of its stream it prints first; a file it waits for before it answers. */
+      stream?: unknown[];
+      gate?: string;
+    }[],
   ): void;
   /** Each running reviewer's run: its arguments, its prompt and its folder. */
   reviewCalls(): { args: string[]; input: string; cwd: string }[];
@@ -786,6 +792,9 @@ if (args.includes('--json-schema') && args[args.indexOf('--json-schema') + 1].in
     writeFileSync(name, text);
   }
   const out = a.answer || { summary: 'Nothing found.', ran: 'Its tests.', findings: [] };
+  // Its stream so far (Hive's live progress), then it holds until its gate's file is there.
+  for (const line of a.stream || []) process.stdout.write(JSON.stringify(line) + '\\n');
+  while (a.gate && !existsSync(a.gate)) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 50);
   process.stdout.write(JSON.stringify({ type: 'system', subtype: 'init', model: 'claude-fake' }) + '\\n');
   process.stdout.write(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, total_cost_usd: 0.42, result: JSON.stringify(out), structured_output: out }) + '\\n');
   process.exit(0);

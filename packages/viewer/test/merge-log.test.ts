@@ -1,10 +1,17 @@
-import type { MergeAgentEvent, MergeEntry, MergeLogLine } from '@symbiote/core';
+import type {
+  HiveLogLine,
+  MergeAgentEvent,
+  MergeEntry,
+  MergeLogLine,
+  MergeStep,
+} from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   logRuns,
   logText,
   NO_TEXT,
   stepName,
+  stepRuns,
   type LogStep,
   type TextState,
 } from '../src/workspaces/merge-log.js';
@@ -22,7 +29,7 @@ const entry = (fields: Partial<MergeEntry> = {}): MergeEntry => ({
 });
 
 let at = 1000;
-const step = (kind: LogStep['step'], title: string): MergeLogLine => ({
+const step = (kind: MergeStep, title: string): MergeLogLine => ({
   at: (at += 10),
   step: kind,
   title,
@@ -240,5 +247,52 @@ describe("the merger agent's process in the terminal (V46b)", () => {
     expect(textOf([agent({ note: 'its thinking is not shown' })])).toBe(
       '\x1b[2mits thinking is not shown\x1b[0m\n',
     );
+  });
+});
+
+describe("a Hive run's steps, from its log (decision 700)", () => {
+  const hive = (line: Omit<HiveLogLine, 'at'>): HiveLogLine =>
+    ({ at: (at += 10), ...line }) as HiveLogLine;
+  const commands = ['pnpm install', 'pnpm check', 'pnpm build'];
+
+  it("a running check: its commands done, running, waiting with the last check's times", () => {
+    const lines = [
+      hive({ step: 'check', title: 'pnpm install' }),
+      hive({ end: { ok: true, ms: 20_000 } }),
+      hive({ step: 'check', title: 'pnpm check' }),
+    ];
+    const [only] = stepRuns(lines, {
+      running: true,
+      checking: true,
+      commands,
+      expected: [21_000, 70_000, 60_000],
+    });
+    expect(only?.steps.map((s) => [stepName(s), s.mark, s.about])).toEqual([
+      ['pnpm install', 'passed', 21_000],
+      ['pnpm check', 'running', 70_000],
+      ['pnpm build', 'waiting', 60_000],
+    ]);
+    // A first check: no times to wait against.
+    const [first] = stepRuns(lines, { running: true, checking: true, commands });
+    expect(first?.steps.map((s) => s.about)).toEqual([undefined, undefined, undefined]);
+  });
+
+  it('a review: its installs, the reviewer, its reruns; one stopped by Hive off', () => {
+    const lines = [
+      hive({ step: 'install', title: 'pnpm install' }),
+      hive({ end: { ok: true, ms: 9_000 } }),
+      hive({ step: 'review', title: 'The reviewer' }),
+      hive({ agent: { tool: 'Bash', input: 'pnpm vitest run' } }),
+      hive({ end: { ok: true, ms: 60_000 } }),
+      hive({ step: 'rerun', title: 'parses a BOM' }),
+    ];
+    const [running] = stepRuns(lines, { running: true, checking: false });
+    expect(marks(running?.steps ?? [])).toEqual([
+      'pnpm install passed 9000',
+      'The reviewer passed 60000',
+      'Rerun: parses a BOM running',
+    ]);
+    const [stopped] = stepRuns(lines, { running: false, checking: false });
+    expect(stopped?.steps.at(-1)?.mark).toBe('stopped');
   });
 });
