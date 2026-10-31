@@ -47,7 +47,9 @@ MCP's `activity` and Export on the three Activity tabs.
 the right reason); the services' tests and the e2e after their code. `pnpm check` (179 files,
 2,550 tests); the 10 activity e2e specs; the person's 124 records and Nucleus's file exported from
 a scratch copy (sizes, structure, front matter, secrets: the plan's results); screenshots at 1440
-and 390 px, dark and light.
+and 390 px, dark and light. `pnpm test:e2e`: `mcp.spec.ts` counted 24 tools (now 25); on the
+merged tree two timed waits failed under load and passed alone (the plan's results); the nexus's
+20 pass.
 
 Not verified: a running Codex workspace on its app server and a running Hermes workspace; the
 desktop app's download and Copy; Firefox and Safari; a fresh agent reading an export.

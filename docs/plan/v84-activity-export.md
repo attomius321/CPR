@@ -194,7 +194,12 @@ routes (404), the command (unknown command) and the MCP tool (unknown tool); the
 and the e2e were written after their code. 12 tests for the export, 3 for the workspace service,
 1 for Nucleus's, the routes in `server.test.ts`, 5 for the command, 2 for the MCP tool; e2e: the
 workspace's tab (both downloads, their names and contents, the clipboard), Nucleus's and
-History's. `pnpm check`: 179 files, 2,550 tests.
+History's. `pnpm check`: 179 files, 2,550 tests (2,547 after `main` was merged in). `pnpm
+test:e2e`, 363 viewer tests: the first run failed one, `mcp.spec.ts`'s count of Symbiote's tools
+(24, now 25 with `activity`; fixed); the second, on the merged tree, failed two timed waits under
+the machine's load (`merges.spec.ts:56`, a resolution in 5 s; `nucleus.spec.ts:437`, a record read
+after New conversation), paths this branch does not change: `merges`, `nucleus` and `mcp` specs
+then passed alone, 26 of 26. The nexus's 20 pass.
 
 | What | Result |
 |---|---|
