@@ -37,10 +37,9 @@
    (decisions 437–440): near-black neutrals, the chrome a step lighter, the primary and the accent
    the new S's violet. Text, muted and the accent at least 4.5:1 on the four backgrounds, states,
    edges and the focus ring 3:1 (test/tokens.test.ts). Lines only separate regions: hairlines.
-   Hive mode (V82) gives light's sidenav and its own dialog the whole dark set, Hive's over it. */
+   Hive mode (V82) gives its own dialog the whole dark set, Hive's over it. */
 :root,
 :root[data-theme='dark'],
-:root[data-hive] .sidenav,
 .hive-ink {
   --bg: #090b0e;
   --side: #0d1015;
@@ -318,10 +317,9 @@
 /* Hive mode (V82, decision 614): while it is on (`data-hive`, written by the server), ink and
    crimson over each theme, glossy; "like Venom, but not that much". Only surfaces, words and the
    accents change: states, lanes, kinds of work and type are the theme's. The same contrast rules
-   (test/tokens.test.ts). Dark Hive is also light Hive's sidenav (the ink at the edge) and the Hive
-   dialog's, whatever the theme (decision 615). */
+   (test/tokens.test.ts). Dark Hive is also the Hive dialog's, whatever the theme (decision 615);
+   light Hive's sidenav is light since V85 (decision 704). */
 :root[data-hive]:not([data-theme='light']),
-:root[data-hive] .sidenav,
 .hive-ink {
   --bg: #070506;
   --side: #0d090a;
@@ -358,6 +356,10 @@
   --hive-sheen: rgb(255 255 255 / 4%);
   --hive-streak: rgb(255 255 255 / 2.4%);
   --hive-glow: rgb(200 16 46 / 9%);
+  /* The honeycomb behind the page (V85, decision 701): the arrival's ink, its etched outlines the
+     lamp's crimson at 12 % over it, opaque. */
+  --hive-comb-ground: #0b0102;
+  --hive-comb-line: #280609;
 }
 
 /* Light Hive: the content stays white and readable, the crimson the primary, wine the accent. */
@@ -393,6 +395,10 @@
   --hive-sheen: rgb(18 10 12 / 2.5%);
   --hive-streak: rgb(18 10 12 / 1.4%);
   --hive-glow: rgb(200 16 46 / 5%);
+  /* White, the crimson's outlines at 13 % over it, opaque (decision 704): the most that keeps
+     the states 3:1 on a line (16 % left `--context` at 2.88). */
+  --hive-comb-ground: #ffffff;
+  --hive-comb-line: #f8e0e4;
 }
 
 @media (prefers-color-scheme: light) {
@@ -428,6 +434,8 @@
     --hive-sheen: rgb(18 10 12 / 2.5%);
     --hive-streak: rgb(18 10 12 / 1.4%);
     --hive-glow: rgb(200 16 46 / 5%);
+    --hive-comb-ground: #ffffff;
+    --hive-comb-line: #f8e0e4;
   }
 }
 

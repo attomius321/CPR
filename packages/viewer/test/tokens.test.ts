@@ -28,8 +28,8 @@ function tokens(selector: string): Map<string, string> {
 
 /** What both themes share: the fonts. */
 const base = tokens(':root');
-// V82: light Hive's sidenav and Hive's dialog take the whole dark set, Hive's over it.
-const dark = tokens(":root,\n:root[data-theme='dark'],\n:root[data-hive] .sidenav,\n.hive-ink");
+// V82: Hive's dialog takes the whole dark set, Hive's over it (light Hive's sidenav too until V85).
+const dark = tokens(":root,\n:root[data-theme='dark'],\n.hive-ink");
 const light = tokens(":root[data-theme='light']");
 const systemLight = tokens("  :root[data-theme='system']");
 
@@ -488,11 +488,10 @@ describe('the fonts (V29b, decision 180)', () => {
 });
 
 // V82 (decisions 614, 615): Hive mode's ink and crimson, over each theme while it is on. Its blocks
-// name only what changes; light Hive's sidenav and the Hive dialog take dark Hive's.
+// name only what changes; the Hive dialog takes dark Hive's (light Hive's sidenav is light since
+// V85, decision 704).
 describe('Hive mode (V82)', () => {
-  const hiveDark = tokens(
-    ":root[data-hive]:not([data-theme='light']),\n:root[data-hive] .sidenav,\n.hive-ink",
-  );
+  const hiveDark = tokens(":root[data-hive]:not([data-theme='light']),\n.hive-ink");
   const hiveLight = tokens(":root[data-hive][data-theme='light']");
   const hiveSystemLight = tokens("  :root[data-hive][data-theme='system']");
   const hive = {
@@ -554,6 +553,14 @@ describe('Hive mode (V82)', () => {
         );
         expect(under(theme, ['--edge'], ['--bg', '--side', '--panel'], 3)).toEqual([]);
         expect(under(theme, LANES, ['--bg', '--raised'], 3)).toEqual([]);
+      });
+
+      // V85 (decisions 701, 704): the honeycomb behind the page; words over a line's pixel too.
+      it("keeps words readable on the honeycomb's ground and on its lines", () => {
+        const comb = ['--hive-comb-ground', '--hive-comb-line'];
+        expect(comb.filter((t) => !theme.has(t))).toEqual([]);
+        expect(under(theme, TEXT, comb, 4.5)).toEqual([]);
+        expect(under(theme, [...STATES, '--focus', '--faint'], comb, 3)).toEqual([]);
       });
 
       it('separates regions with lines that show', () => {
