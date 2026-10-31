@@ -206,10 +206,10 @@ only).
 | 678 | What a finding needs | **Symbiote reruns each test in a fresh copy of the tip with only its files added, confined as the reviewer; kept only when it exits non-zero (not 126/127, not timed out) and its output names the test; dropped findings kept with why** | HV1: the rerun is what makes the reviewer precise; a broken test file must not read as a defect |
 | 679 | What the writer gets | **`hive.review`: each kept finding's defect, test, command, files and output; the tests kept beside the record; add them or reject one in a line; the next review sees the last findings and the writer's report** | HV1's round trip fixed every proven defect in one round; a rejection needs an answer, not the same test again |
 | 680 | The reviewer's settings | **`hive.reviewer.model` / `hive.reviewer.effort`, default Opus at high, in a Reviewer entry listed only in Hive mode; prompts `hive.reviewer` and `hive.review` in the Hive group; the answer's format Symbiote's** | The person's answers (HV2's planning): Opus high, configurable, Hive's settings only in Hive mode |
-| 681 | Where the person sees it and lands | **A Review tab on a Hive workspace's page (checks, reviews, findings, tests) with Land: an approval of the checked and reviewed commit recorded for the person and queued through the merge queue; no branch review asked in Hive mode** | The person's answer to question 5: "In hive mode, there will be no more human review process" |
+| 681 | Where the person sees it and lands | **A Review tab on a Hive workspace's page (checks, reviews, findings, tests) with Land: an approval of the checked and reviewed commit recorded for the person and queued through the merge queue; no branch review asked in Hive mode** (Land without the person in HV4: decision 689) | The person's answer to question 5: "In hive mode, there will be no more human review process" |
 
 **Not in HV3 (later)**: Codex as the reviewer; a live view of the reviewer's session (its stream is
-kept); resuming an interrupted review; the graph (HV4); usage pacing (HV5).
+kept); resuming an interrupted review; the graph (HV7); usage pacing (HV5).
 
 ## As built (HV3)
 

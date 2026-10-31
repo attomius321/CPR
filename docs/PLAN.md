@@ -6,6 +6,11 @@
 
 ## North Star
 
+Symbiote has two modes, set per repository (Settings, **Hive mode**). Each has its own North Star
+and tie-breakers (decision 688).
+
+### Normal mode: human-centric
+
 **Review decisions, not lines.** Every feature must help a reviewer answer, faster than
 reading the diff:
 
@@ -16,6 +21,23 @@ reading the diff:
 Tie-breakers when trading off: precise beats complete (a wrong finding costs more trust than a
 missing one), explainable beats clever (every finding links to code), local and fast beats
 hosted.
+
+### Hive mode: fully autonomous
+
+**Goals in, verified work landed.** Symbiote drives each workspace through its loops (the writer,
+the check, the running reviewer) and lands it. Later it splits a goal into a graph of workspaces,
+with Alpha Ceph orchestrating. No step waits for a person (decision 689). Every step is recorded
+and explainable, and Hive off stops everything (decision 690).
+
+Tie-breakers when trading off:
+
+- **Proven beats claimed**: a defect or a pass is a test that ran.
+- **Stopping beats guessing**: when stuck, stop and record why.
+- **Recorded beats silent**: every step, and why it was taken, is in the workspace's record.
+- **Within limits beats faster**: Hive off, the round caps and the usage or budget cap hold.
+
+Today a Hive workspace still waits for the person's Land on its Review tab (decision 681), until
+HV4. The milestones toward this North Star are HV4–HV7, in the order they are built (Agents, below).
 
 ## How the plan is kept
 
@@ -191,6 +213,11 @@ hosted.
 | [HV1](plan/hv1-hive-graph.md) | Spike: Hive's agentic graph — a runner of Symbiote's own; a graph of workspaces against one agent (no gain, twice the cost); a reviewer that runs code (4 of 4 defects) | measured | 646–651 | [journal](journal/hv1-hive-graph.md) |
 | [HV2](plan/hv2-hive-runner.md) | Hive's runner and record: workspaces started while Hive is on are driven to landing asked — the writer's turns, the check, its failures sent back; Hive off stops them, on or a restart resumes | built, ready for review | 652–658 | [journal](journal/hv2-hive-runner.md) |
 | [HV3](plan/hv3-running-reviewer.md) | Hive's running reviewer: after a passing check, a clean-context Claude Code in a throwaway copy proves defects with failing tests, which Symbiote reruns and sends the writer; the workspace's Review tab and Land in place of a human review | built, ready for review | 674–681 | [journal](journal/hv3-running-reviewer.md) |
+| [Chore](plan/hv1-hive-graph.md#chore-hives-north-star-chorehive-north-star) | Hive's North Star: two modes, normal (human-centric) and Hive (fully autonomous); Hive's hard limits; the Hive milestones in the order they are built | ready for review | 688–692 | [journal](journal/chore-hive-north-star.md) |
+| HV4 | Autonomous landing: a Hive workspace whose check and running review pass on one commit lands with no person; Hive pushes its branch to `origin`, never `main` (690). Text that says landing is the person's changes with it: `HivePage.tsx:61–65`, `:150–153`; README's Hive part; `configuration.md`'s Hive mode; `prompts.ts` (`symbiote/AGENTS.md` at `:80`, `{hive}`, Nucleus's and Alpha Ceph's start prompt) | planned | | |
+| HV5 | Usage pacing: usage read before every agent starts, a pause until the window resets, a usage or budget cap; required before Hive runs unattended | planned | | |
+| HV6 | Spike: a more rigorous measurement of a graph of workspaces against one agent, on large real goals (649, 691) | planned | | |
+| HV7 | The graph: Alpha Ceph splits a goal into workspaces and orchestrates them, merges in order, stalls and new plans; only if HV6 shows a gain (691, 692) | planned | | |
 
 ### The merger
 
