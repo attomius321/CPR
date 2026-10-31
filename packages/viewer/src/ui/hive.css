@@ -59,9 +59,9 @@
   --art-board: #0a0304;
 }
 
-/* --- Hive's arrival (decision 632): the Mind and the blackout, then the light; then still --- */
+/* --- Hive's arrival (decision 673): the Mind and a hex shutter, then the light; then still --- */
 
-/* The blackout over the whole window, the question's too, under the window's edge (frame.css,
+/* The shutter over the whole window, the question's too, under the window's edge (frame.css,
    100); drawn at most 0.9 megapixels and stretched. */
 .hive-flood {
   position: fixed;

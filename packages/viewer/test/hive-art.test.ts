@@ -5,7 +5,6 @@ import {
   arrivalScene,
   JOIN_SECONDS,
   Mind,
-  noise,
   questionScene,
   type QuestionScene,
   type Trace,
@@ -202,19 +201,16 @@ describe("The question's circuit", () => {
   });
 });
 
-// Turning on (decision 632): the question's Mind grows to the middle, a blackout closes on it.
+// Turning on (decisions 632, 673): the question's Mind grows to the middle while a honeycomb
+// shutter closes on it and traces route into it; covered, it flares; the shutter opens from it.
 describe("Hive's arrival", () => {
   const at: [number, number] = [720, 373];
-
-  it('has a liquid edge that moves on noise, smooth and bounded', () => {
-    let last = noise(0, 3);
-    for (let x = 0; x < 50; x += 0.001) {
-      const n = noise(x, 3);
-      expect(Math.abs(n)).toBeLessThanOrEqual(1);
-      expect(Math.abs(n - last)).toBeLessThan(0.01);
-      last = n;
-    }
-  });
+  const windows = [
+    [1440, 900],
+    [2560, 1440],
+    [800, 600],
+    [700, 1000],
+  ] as const;
 
   it("grows the question's Mind, awake, to the middle of the window", () => {
     const scene = arrivalScene({ width: 1440, height: 900, at, scale: 1 });
@@ -227,10 +223,10 @@ describe("Hive's arrival", () => {
     expect(size).toBeLessThan(900 * 0.23);
   });
 
-  it('closes the blackout from every edge onto the Mind, and is covered by its end', () => {
+  it('closes from every edge onto the Mind, and is covered by its end', () => {
     const scene = arrivalScene({ width: 1440, height: 900, at, scale: 1 });
     let last = Infinity;
-    // Before the blackout closes, the window's corners and its middle are still open.
+    // Before it closes, the window's corners and its middle are still open.
     const first = scene.view();
     expect(first.holeX).toBeGreaterThan(Math.hypot(720, 450));
     run(scene, ARRIVAL.cover - 0.02, () => {
@@ -249,6 +245,96 @@ describe("Hive's arrival", () => {
     expect(scene.view().tear).toBeGreaterThan(0);
     run(scene, ARRIVAL.end);
     expect(scene.done).toBe(true);
+  });
+
+  it('has a shutter of hex tiles that covers the whole window', () => {
+    for (const [width, height] of windows) {
+      const scene = arrivalScene({ width, height, at: [width / 2, height / 2.4], scale: 1 });
+      const { centres, r } = scene.tiles;
+      expect(centres.length).toBeLessThan(800);
+      for (let x = 0; x <= width; x += width / 40) {
+        for (let y = 0; y <= height; y += height / 40) {
+          const nearest = Math.min(...centres.map(([cx, cy]) => Math.hypot(cx - x, cy - y)));
+          // Every point of the window in a tile: within r of its nearest tile's centre.
+          expect(nearest).toBeLessThanOrEqual(r + 1e-6);
+        }
+      }
+    }
+  });
+
+  it('shuts its tiles from the edges in, never one back open, all shut once covered', () => {
+    const scene = arrivalScene({ width: 1440, height: 900, at, scale: 1 });
+    const { centres } = scene.tiles;
+    let last = centres.map((_, i) => scene.shut(i));
+    expect(Math.max(...last)).toBe(0);
+    const firstShut = centres.map(() => Infinity);
+    run(scene, ARRIVAL.cover - 0.02, () => {
+      const now = centres.map((_, i) => scene.shut(i));
+      now.forEach((s, i) => {
+        expect(s).toBeGreaterThanOrEqual(last[i]! - 1e-9);
+        if (s > 0 && firstShut[i] === Infinity) firstShut[i] = scene.t;
+      });
+      last = now;
+    });
+    // A corner's tile before the one under the Mind.
+    const corner = centres.findIndex(([x, y]) => Math.hypot(x, y) < scene.tiles.r * 2);
+    const middle = centres.findIndex(([x, y]) => Math.hypot(x - at[0], y - at[1]) < scene.tiles.r);
+    expect(firstShut[corner]).toBeLessThan(firstShut[middle]!);
+    run(scene, 0.04);
+    expect(scene.covered).toBe(true);
+    for (const i of centres.keys()) expect(scene.shut(i)).toBe(1);
+  });
+
+  it('opens its tiles from the Mind out at the boom, and none is left by its end', () => {
+    const scene = arrivalScene({ width: 1440, height: 900, at, scale: 1 });
+    run(scene, ARRIVAL.cover + ARRIVAL.hold);
+    const { centres } = scene.tiles;
+    let last = centres.map((_, i) => scene.shut(i));
+    const firstOpen = centres.map(() => Infinity);
+    run(scene, ARRIVAL.boom + 0.1, () => {
+      const now = centres.map((_, i) => scene.shut(i));
+      now.forEach((s, i) => {
+        expect(s).toBeLessThanOrEqual(last[i]! + 1e-9);
+        if (s < 1 && firstOpen[i] === Infinity) firstOpen[i] = scene.t;
+      });
+      last = now;
+    });
+    const far = (i: number) => Math.hypot(centres[i]![0] - at[0], centres[i]![1] - at[1]);
+    const order = [...centres.keys()].sort((a, b) => far(a) - far(b));
+    expect(firstOpen[order[0]!]).toBeLessThan(firstOpen[order.at(-1)!]!);
+    run(scene, ARRIVAL.end);
+    expect(scene.done).toBe(true);
+    for (const i of centres.keys()) expect(scene.shut(i)).toBe(0);
+  });
+
+  it('routes traces at 0° and 45° from every edge onto the grown ring, drawn as the shutter closes', () => {
+    for (const [width, height] of windows) {
+      const mid: [number, number] = [width / 2, height / 2.4];
+      const scene = arrivalScene({ width, height, at: mid, scale: 1 });
+      expect(scene.traces.length).toBeGreaterThanOrEqual(16);
+      const edges = new Set<string>();
+      for (const trace of scene.traces) {
+        trace.points.slice(1).forEach((p, k) => expect(octilinear(trace.points[k]!, p)).toBe(true));
+        const [x0, y0] = trace.points[0]!;
+        if (x0 <= 0) edges.add('left');
+        if (x0 >= width) edges.add('right');
+        if (y0 <= 0) edges.add('top');
+        if (y0 >= height) edges.add('bottom');
+        expect(x0 <= 0 || x0 >= width || y0 <= 0 || y0 >= height).toBe(true);
+        const [x1, y1] = trace.points.at(-1)!;
+        expect(Math.hypot(x1 - mid[0], y1 - mid[1])).toBeCloseTo(scene.ringRadius, 6);
+      }
+      expect([...edges].sort()).toEqual(['bottom', 'left', 'right', 'top']);
+      let last = scene.traces.map((tr) => scene.reached(tr));
+      expect(Math.max(...last)).toBe(0);
+      run(scene, ARRIVAL.cover - 0.02, () => {
+        const now = scene.traces.map((tr) => scene.reached(tr));
+        now.forEach((r, i) => expect(r).toBeGreaterThanOrEqual(last[i]! - 1e-9));
+        last = now;
+      });
+      run(scene, 0.04);
+      for (const trace of scene.traces) expect(scene.reached(trace)).toBe(1);
+    }
   });
 
   it('keeps its canvas under 0.9 megapixels', () => {

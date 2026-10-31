@@ -1,8 +1,8 @@
 // Hive mode (V82): kept for this repository by its `symbiote view` (decision 621), and written on
 // <html> as `data-hive` with the page (decision 612), so the look is there from the first paint.
 // This module reads it, turns it on or off from Settings, and keeps the tab's icon in step
-// (decision 616). On, the Hive Mind and a blackout take the page (decision 632, `hive-arrival.ts`);
-// off, a short fade.
+// (decision 616). On, the Hive Mind and a hex shutter take the page (decision 673,
+// `hive-arrival.ts`); off, a short fade.
 import { useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 import { postJson } from '../ui/http.js';
@@ -36,7 +36,7 @@ function show(on: boolean, then?: () => void): void {
 
 /**
  * Turns Hive mode on or off for this repository's pages; the look follows once it is kept, and
- * `then` runs as it changes (the question closing under the blackout). On, the Hive Mind grows
+ * `then` runs as it changes (the question closing under the shutter). On, the Hive Mind grows
  * from `from` (the question's; the window's middle without one); off, the page fades. Resolves once
  * the look has changed; the arrival goes on to its end.
  */

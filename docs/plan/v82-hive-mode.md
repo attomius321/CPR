@@ -11,8 +11,8 @@ icon to match this style" (decision 616). Merged into `main` (6cd7fc0). Then
 `fix/hive-per-symbiote`, merged. Then [Hive tentacles](#feature-hive-tentacles-featurehive-tentacles)
 (decisions 629–633), on `feature/hive-tentacles`: built, ready for review, after the person's OK
 ("Go") on the third round of candidates. Then [Hive's question, a circuit](#feature-hives-question-a-circuit-featurehive-mode-dialog-prompt)
-(decisions 665–667), on `feature/hive-mode-dialog-prompt`: planned, the person's pick of three
-candidates ("the circuit board one, i love it").
+(decisions 665–667 and 673), on `feature/hive-mode-dialog-prompt`: the person's pick of three candidates
+("the circuit board one, i love it"), and turning on in the same style.
 
 **Problem** (asked: "Add a Hive mode setting to Settings. Its control must look dangerous to
 press… While Hive mode is on, the whole interface takes a subtle Venom look"). Hive is the planned
@@ -159,8 +159,9 @@ icon (taskbar) stays.
 | 632 | Turning it on (amends 624) | **The question's Hive Mind grows to the middle of the window and a blackout closes from the edges until only it is lit; the look changes under the cover; it flares and a boom from it throws the ink back; no tentacles; then the streak and the sidenav's rise; the canvas at most 0.9 megapixels; reduced motion: at once** | the person: "then boom, the new UI"; "Keep only the Hive mind, and the blackout animation. No tentacles there"; 61 fps at 2560×1440 in software |
 | 633 | The sidenav's tendrils (removed by [fix/remove-hive-tendrils-from-sidenav](#fix-no-tendrils-in-the-sidenav-fixremove-hive-tendrils-from-sidenav)) | **The new drawing behind the rows; they rise as Hive arrives, then are still** | a slow idle cost 21 % of a core on every page against 4 % still |
 | 665 | The question's art (replaces 629 and 631's tendrils) | **A circuit board: ten traces at 0° and 45° from both edges to the Hive Mind's outer cells, stubs and vias between them, a honeycomb etched behind; drawn in from the edge with a bright head, landing on pads; packets run in and orders run out while the dialog is open. Every state a function of time; the run as 631 (60 frames a second for the join, 30 after, nothing once closed, one still frame with reduced motion)** | the person: "The tentacles… does not really fit the context… more like the Hive mind style, more futuristic, robotic", then, of three candidates filmed in the dialog, "the circuit board one, i love it" |
-| 666 | The Hive Mind (replaces 630's comb) | **Machined: 19 gunmetal plates in a honeycomb, bevels lit from the upper left, dark-glass chambers lit crimson from within, a white-hot core lens; the cells boot with a flicker; a signal lights its cell, then each cell in to the core; a targeting ring round it in the question. The same Mind grows in the arrival (632's blackout and boom unchanged)** | one Mind for the question and the arrival; the person did not ask for the blackout to change |
+| 666 | The Hive Mind (replaces 630's comb) | **Machined: 19 gunmetal plates in a honeycomb, bevels lit from the upper left, dark-glass chambers lit crimson from within, a white-hot core lens; the cells boot with a flicker; a signal lights its cell, then each cell in to the core; a targeting ring round it in the question. The same Mind grows in the arrival** | one Mind for the question and the arrival |
 | 667 | The other candidates | **The Swarm (drones docking on the Mind's lattice) kept for later: its prototype and film in `spikes/hive-question-candidates/`; the Conduits only there** | the person: "keep the comb idea for the future… we'll do something with that" |
+| 673 | Turning it on (amends 632) | **A hex shutter in place of the blackout: the window's honeycomb of tiles shuts from the edges onto the growing Mind, the front's edges lit; traces at 0° and 45° route across the shut tiles from every edge into the grown targeting ring; covered at 1.0 s (every pixel ink, the look changes under it); the Mind flares and the traces surge; the tiles open from the Mind out to the edges, their edges lit, a ring of light ahead; still by 1.9 s; the canvas at most 0.9 megapixels; reduced motion: at once** | the person: "Turning Hive on animation should be in the Circuit style" |
 
 **Not in V82 (later)**: Hive itself; the app's taskbar icon and the desktop start page; other
 open windows following a change at once.
@@ -431,10 +432,11 @@ grab a glossy comb. Hive is the graph loop of agents and an orchestrator; the ar
 creature, not a machine.
 
 **Goal**: the question's head as a machine in Hive's ink and crimson: traces that route the agents
-into a machined Hive Mind, alive while the dialog is open. **Unchanged**: the dialog (its words,
-buttons, focus, Escape, ink and crimson in both themes), the art's 520 × 128 place faded at its
-lower edge, its run (decision 631), the arrival's blackout, boom and streak (632), Hive's look on
-the pages, the mark.
+into a machined Hive Mind, alive while the dialog is open; turning on in the same style (asked
+after the plan: "Turning Hive on animation should be in the Circuit style"). **Unchanged**: the
+dialog (its words, buttons, focus, Escape, ink and crimson in both themes), the art's 520 × 128
+place faded at its lower edge, its run (decision 631), the arrival's timing and the streak after it
+(632), Hive's look on the pages, the mark.
 
 **How it was chosen.** A throwaway prototype drew three candidates in place of today's art in this
 branch's `symbiote view` (a scratch repository), 1440×900 at 1×, both themes: A, Circuit (traces on
@@ -467,8 +469,16 @@ It is drawn the same in the question and in the arrival.
   stepped); the signals' timetables are seeded slots, so an hour open is as cheap as a second.
   `JOIN_SECONDS` becomes 2 (the last trace lands at about 1.7 s, its cell lit by 1.9).
 
-**Turning on** (decision 632 amended by 666): the arrival's Mind is the new one, fully booted, a few
-signals of its own as it grows; the blackout, the flare, the boom and the streak as they are.
+**Turning on** (decision 673, amends 632; the same times): the arrival's Mind is the new one, fully
+booted, a few signals of its own as it grows, its targeting ring with it. The blackout becomes a
+shutter: the window's honeycomb of hex tiles (a tile's radius a 26th of the window's shorter side,
+at least 16 px), centred on the Mind, shuts from the edges in as the old blackout's front passed
+(each tile growing over about 1.6 tiles of the front, its edges lit while it does). Twenty traces,
+seven from each side and three from the top and the bottom, route at 0° and 45° across the shut
+tiles to the grown ring, drawn up to the front with a bright head. Covered at 1.0 s: every pixel
+ink, the look changes under it, the window kept as one picture. The Mind flares and the traces
+surge (0.16 s); then the tiles open from the Mind out (0.62 s), the picture seen only through the
+tiles still shut, their edges lit, a ring of light ahead; then the streak, as now.
 
 **Measured on the prototype** (the question open 10 s, every browser process, hardware acceleration
 off, two runs): today's tendrils 17 and 18 % of a core, the circuit 13 and 18 %, a still question 3 %;

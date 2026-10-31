@@ -7,7 +7,7 @@ import { serveCommits, type RunningCommits } from './symbiote.js';
 
 // Hive mode (V82): a dangerous switch in Settings, asked before it turns on, kept per repository in
 // its `symbiote/` (decision 621), and the ink and crimson look on every page while it is on, from
-// the first paint; the Hive Mind and a blackout take the page as it turns on (decision 632).
+// the first paint; the Hive Mind and a hex shutter take the page as it turns on (decision 673).
 let symbiote: RunningCommits | undefined;
 let other: RunningCommits | undefined;
 let config: string;
@@ -224,14 +224,14 @@ const arriving = (page: Page) =>
       }).length,
   );
 
-test('turning on, the Hive Mind and a blackout cover the window, the look changes under it, then all is still', async ({
+test('turning on, the Hive Mind and a hex shutter cover the window, the look changes under it, then all is still', async ({
   page,
 }) => {
   await serve();
   await hivePage(page);
   await turnOn(page).click();
   await expect(question(page).locator('canvas.hive-joining')).toBeVisible();
-  // When the look changes, read the blackout's canvas: every sampled pixel opaque.
+  // When the look changes, read the shutter's canvas: every sampled pixel opaque.
   await page.evaluate(() => {
     const w = window as unknown as { coveredAtSwap?: number | null };
     w.coveredAtSwap = null;
@@ -259,7 +259,7 @@ test('turning on, the Hive Mind and a blackout cover the window, the look change
   expect(
     await page.evaluate(() => (window as unknown as { coveredAtSwap?: number }).coveredAtSwap),
   ).toBe(255);
-  // Then still, within 3 s: the blackout gone, nothing of the arrival running.
+  // Then still, within 3 s: the shutter gone, nothing of the arrival running.
   await expect(page.locator('.hive-flood')).toHaveCount(0, { timeout: 3_000 });
   await expect(html(page)).not.toHaveAttribute('data-hive-arriving', { timeout: 3_000 });
   await expect(page.locator('[data-moving]')).toHaveCount(0, { timeout: 3_000 });

@@ -19,7 +19,7 @@ export function HivePage({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      // The question's Hive Mind grows from its middle as the blackout closes (decision 632).
+      // The question's Hive Mind grows from its middle as the shutter closes (decision 673).
       const art = document.querySelector('.hive-joining')?.getBoundingClientRect();
       await setHive(next, {
         ...(art

@@ -1,14 +1,14 @@
-// Hive mode's art drawn on a canvas (V82; decisions 632, 665–666): the machined Hive Mind, its
+// Hive mode's art drawn on a canvas (V82; decisions 665–666, 673): the machined Hive Mind, its
 // plates lit from the upper left like the pages' sheen and its chambers lit crimson from within;
-// the question's circuit board; the arrival's blackout and boom. The colours are `hive.css`'s
-// (`.hive-art`), read once.
+// the question's circuit board; the arrival's hex shutter and its traces. The colours are
+// `hive.css`'s (`.hive-art`), read once.
 import {
   ARRIVAL,
-  noise,
   pointAt,
+  RING,
   TAIL,
   type ArrivalScene,
-  type Line,
+  type Path,
   type Mind,
   type QuestionScene,
   type Trace,
@@ -78,7 +78,7 @@ function hexagon(x: number, y: number, r: number, path = new Path2D(), turn = 0)
 }
 
 /** The part of a line from arc length `a` to `b`, added to the current path. */
-function span(ctx: CanvasRenderingContext2D, line: Line, a: number, b: number): void {
+function span(ctx: CanvasRenderingContext2D, line: Path, a: number, b: number): void {
   const [x0, y0] = pointAt(line.points, line.arcs, a);
   ctx.moveTo(x0, y0);
   line.points.forEach(([x, y], i) => {
@@ -365,155 +365,163 @@ export class Painter {
   }
 
   /**
-   * Turning on: the blackout closing on the Mind, its rim crimson and wet; covered, the window as
-   * one picture taken once (pushed out by the shockwave), the Mind's heat, then the tear from it,
-   * its ring of light and a flash.
+   * Turning on (decision 673): the hex tiles shut from the edges, the front's edges lit, traces
+   * drawn across them to the closing front, the Mind and its ring on top. Covered, the window is
+   * one picture taken once; the Mind flares and the traces surge; then the tiles open from the
+   * Mind out, the picture seen only through the tiles still shut, a ring of light ahead of them.
    */
   arrival(ctx: CanvasRenderingContext2D, scene: ArrivalScene): void {
-    const { width, height, mind } = scene;
+    const { width, height, mind, tiles } = scene;
     const [mx, my] = scene.at;
-    const span = Math.max(width, height);
+    const extent = Math.max(width, height);
     const view = scene.view();
     const t = scene.t;
+    const line = Math.max(1.5, Math.min(width, height) / 520);
     const drawMind = () => {
       ctx.save();
       ctx.translate(mx, my);
       ctx.scale(scene.mindScale, scene.mindScale);
+      this.ring(ctx, 0, 0, RING, t, Math.min(1, Math.max(0, (t - 0.05) / 0.5)));
       this.mind(ctx, mind, t);
       ctx.restore();
     };
+    const traces = (surge: number) => {
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (const trace of scene.traces) {
+        const reached = scene.reached(trace);
+        if (reached <= 0) continue;
+        const head = reached * trace.length;
+        ctx.beginPath();
+        span(ctx, trace, 0, head);
+        ctx.strokeStyle = `rgba(${this.glow},${alpha(0.14 + 0.3 * surge)})`;
+        ctx.lineWidth = line * 3;
+        ctx.stroke();
+        const lit = surge > 0 ? this.lampHot : this.lamp;
+        ctx.strokeStyle = `rgba(${lit},${alpha(0.6 + 0.4 * surge)})`;
+        ctx.lineWidth = line;
+        ctx.stroke();
+        if (reached < 1) {
+          const [x, y] = pointAt(trace.points, trace.arcs, head);
+          this.spot(ctx, x, y, line * 7, this.spec, 0.95, this.lamp, 0.6);
+        }
+      }
+    };
     if (t < ARRIVAL.cover) {
-      const rim = blackout(mx, my, view.holeX, view.holeY, 0.16, 9, t);
+      // The shut tiles, a little larger so they meet; the front's popping in, edges lit.
+      const shut = new Path2D();
+      const etched = new Path2D();
+      const front = [new Path2D(), new Path2D(), new Path2D()];
+      tiles.centres.forEach(([x, y], i) => {
+        const s = scene.shut(i);
+        if (s <= 0) return;
+        if (s >= 1) {
+          hexagon(x, y, tiles.r + 0.75, shut);
+          hexagon(x, y, tiles.r - 1.5, etched);
+          return;
+        }
+        const grown = outCubic(s);
+        hexagon(x, y, (tiles.r + 0.75) * grown, shut);
+        hexagon(x, y, (tiles.r - 1.5) * grown, front[Math.min(2, Math.floor(s * 3))]);
+      });
       ctx.fillStyle = this.palette.ink;
-      ctx.beginPath();
-      ctx.rect(-10, -10, width + 20, height + 20);
-      trace(ctx, rim);
-      ctx.fill('evenodd');
-      this.lip(ctx, rim, 0, span);
+      ctx.fill(shut);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = `rgba(${this.lamp},0.12)`;
+      ctx.stroke(etched);
+      ctx.lineWidth = line;
+      front.forEach((path, k) => {
+        ctx.strokeStyle = `rgba(${k ? this.lamp : this.lampHot},${alpha(0.85 - 0.25 * k)})`;
+        ctx.stroke(path);
+      });
+      traces(0);
       drawMind();
       return;
     }
     if (!this.covered) {
+      // The first covered frame: every pixel ink, so the look may change under it.
       ctx.fillStyle = this.palette.ink;
       ctx.fillRect(-10, -10, width + 20, height + 20);
+      const etched = new Path2D();
+      for (const [x, y] of tiles.centres) hexagon(x, y, tiles.r - 1.5, etched);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = `rgba(${this.lamp},0.12)`;
+      ctx.stroke(etched);
+      traces(0);
       drawMind();
       this.covered = document.createElement('canvas');
       this.covered.width = ctx.canvas.width;
       this.covered.height = ctx.canvas.height;
       this.covered.getContext('2d')?.drawImage(ctx.canvas, 0, 0);
-    } else {
-      const m = ctx.getTransform();
-      const k = view.push;
-      const dx = m.a * mx + m.e;
-      const dy = m.d * my + m.f;
-      ctx.save();
-      ctx.setTransform(k, 0, 0, k, dx - dx * k, dy - dy * k);
-      ctx.drawImage(this.covered, 0, 0);
-      ctx.restore();
+      return;
     }
+    const picture = this.covered;
+    const opened = view.boom > 0;
+    // The picture, seen through the tiles still shut (all of them until the boom).
+    ctx.save();
+    if (opened) {
+      const still = new Path2D();
+      tiles.centres.forEach(([x, y], i) => {
+        const s = scene.shut(i);
+        if (s > 0) hexagon(x, y, (tiles.r + 0.75) * (s >= 1 ? 1 : outCubic(s)), still);
+      });
+      ctx.clip(still);
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(picture, 0, 0);
+    ctx.restore();
     const reach = mind.reach * scene.mindScale;
     if (view.heat > 0) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = view.heat;
+      traces(1);
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
       const g = ctx.createRadialGradient(mx, my, 0, mx, my, reach * 1.6);
-      g.addColorStop(0, `rgba(${this.spec},${(0.85 * view.heat).toFixed(3)})`);
-      g.addColorStop(0.18, `rgba(${this.heat},${(0.7 * view.heat).toFixed(3)})`);
-      g.addColorStop(0.55, `rgba(${this.glow},${(0.35 * view.heat).toFixed(3)})`);
+      g.addColorStop(0, `rgba(${this.spec},${alpha(0.85 * view.heat)})`);
+      g.addColorStop(0.18, `rgba(${this.heat},${alpha(0.7 * view.heat)})`);
+      g.addColorStop(0.55, `rgba(${this.glow},${alpha(0.35 * view.heat)})`);
       g.addColorStop(1, `rgba(${this.glow},0)`);
       ctx.fillStyle = g;
       ctx.fillRect(mx - reach * 1.7, my - reach * 1.7, reach * 3.4, reach * 3.4);
     }
-    if (view.boom <= 0) return;
-    const e = 1 - Math.pow(1 - view.boom, 2.6);
-    const tear = blackout(mx, my, view.tear, view.tear, 0.08 + 0.24 * e, 19, t * 3);
-    ctx.save();
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    trace(ctx, tear);
-    ctx.fill();
-    ctx.restore();
-    this.lip(ctx, tear, 1 - view.boom, span);
-    // The shockwave: a ring of crimson light ahead of the tear, over the new look.
-    const ring = view.tear * 1.08 + span * 0.02;
+    if (!opened) return;
+    // The tiles opening: their edges lit, white at the front.
+    const edges = [new Path2D(), new Path2D()];
+    tiles.centres.forEach(([x, y], i) => {
+      const s = scene.shut(i);
+      if (s <= 0 || s >= 1) return;
+      hexagon(x, y, (tiles.r - 1.5) * outCubic(s), edges[s < 0.5 ? 0 : 1]);
+    });
+    ctx.lineWidth = line * 1.5;
+    ctx.strokeStyle = `rgba(${this.spec},${alpha(0.9 * (1 - view.boom))})`;
+    ctx.stroke(edges[0]!);
+    ctx.strokeStyle = `rgba(${this.lamp},${alpha(0.9 * (1 - view.boom))})`;
+    ctx.stroke(edges[1]!);
+    // A ring of crimson light ahead of the opening, over the new look.
+    const ring = view.tear * 1.02 + extent * 0.02;
     const g = ctx.createRadialGradient(
       mx,
       my,
-      Math.max(0, ring - span * 0.05),
+      Math.max(0, ring - extent * 0.05),
       mx,
       my,
-      ring + span * 0.02,
+      ring + extent * 0.02,
     );
     g.addColorStop(0, `rgba(${this.glow},0)`);
-    g.addColorStop(0.7, `rgba(${this.heat},${((1 - view.boom) * 0.55).toFixed(3)})`);
+    g.addColorStop(0.7, `rgba(${this.heat},${alpha((1 - view.boom) * 0.45)})`);
     g.addColorStop(1, `rgba(${this.glow},0)`);
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, width, height);
     const flash = Math.max(0, 1 - view.boom * 3);
     if (flash > 0) {
       const f = ctx.createRadialGradient(mx, my, 0, mx, my, view.tear * 0.9 + 1);
-      f.addColorStop(0, `rgba(${this.spec},${(0.35 * flash).toFixed(3)})`);
+      f.addColorStop(0, `rgba(${this.spec},${alpha(0.35 * flash)})`);
       f.addColorStop(1, `rgba(${this.glow},0)`);
       ctx.fillStyle = f;
       ctx.fillRect(0, 0, width, height);
     }
   }
-
-  /** The ink's rolled edge: crimson on its shadowed side, a white catch where it faces the light. */
-  private lip(
-    ctx: CanvasRenderingContext2D,
-    points: readonly (readonly [number, number, number])[],
-    hot: number,
-    span: number,
-  ): void {
-    const w = Math.max(2, span * 0.006);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = `rgba(${this.glow},${(0.45 + 0.45 * hot).toFixed(3)})`;
-    ctx.lineWidth = w * (1 + hot * 2);
-    ctx.beginPath();
-    trace(ctx, points);
-    ctx.stroke();
-    ctx.strokeStyle = `rgba(${this.spec},${(0.5 + 0.35 * hot).toFixed(3)})`;
-    ctx.lineWidth = w * 0.45;
-    ctx.beginPath();
-    let open = false;
-    for (const [x, y, a] of points) {
-      // The hole's edge on its lower right faces the light from the upper left.
-      const lit = Math.cos(a - Math.atan2(0.8, 0.5)) > 0.5;
-      if (lit && !open) ctx.moveTo(x, y);
-      else if (lit) ctx.lineTo(x, y);
-      open = lit;
-    }
-    ctx.stroke();
-  }
-}
-
-/** An uneven loop of liquid edge round (cx, cy): points and their angles. */
-function blackout(
-  cx: number,
-  cy: number,
-  rx: number,
-  ry: number,
-  wobble: number,
-  seed: number,
-  t: number,
-): [number, number, number][] {
-  const n = 120;
-  return Array.from({ length: n + 1 }, (_, j) => {
-    const a = (j / n) * TAU;
-    const m = j % n;
-    const f =
-      1 +
-      wobble * (0.6 * noise(m * 0.21 + t * 0.8, seed) + 0.4 * noise(m * 0.55 - t * 1.3, seed + 1));
-    return [cx + Math.cos(a) * rx * f, cy + Math.sin(a) * ry * f, a];
-  });
-}
-
-function trace(
-  ctx: CanvasRenderingContext2D,
-  points: readonly (readonly [number, number, number])[],
-): void {
-  points.forEach(([x, y], j) => (j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
-  ctx.closePath();
 }
 
 /**

@@ -1,7 +1,8 @@
-// Hive mode's art (V82; decisions 632, 665–666): a machined Hive Mind, the question's circuit
-// board whose traces route into it, and turning on as that Mind and a blackout. Pure: the
-// question's every state is a function of the time since it opened; the arrival is stepped.
-// `hive-draw.ts` draws them on a canvas, `HiveArt.tsx` and `shell/hive-arrival.ts` run them.
+// Hive mode's art (V82; decisions 665–666, 673): a machined Hive Mind, the question's circuit
+// board whose traces route into it, and turning on as that Mind under a closing hex shutter.
+// Pure: the question's every state is a function of the time since it opened; the arrival is
+// stepped. `hive-draw.ts` draws them on a canvas; `HiveArt.tsx` and `shell/hive-arrival.ts` run
+// them.
 
 export type Point = readonly [number, number];
 
@@ -27,15 +28,6 @@ export function hash(i: number, seed: number): number {
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   h ^= h >>> 16;
   return (h >>> 0) / 4294967296;
-}
-
-/** Smooth value noise in [-1, 1]: the same `x` and `seed` give the same value. */
-export function noise(x: number, seed: number): number {
-  const i = Math.floor(x);
-  const f = x - i;
-  const u = f * f * f * (f * (f * 6 - 15) + 10);
-  const a = hash(i, seed);
-  return (a + (hash(i + 1, seed) - a) * u) * 2 - 1;
 }
 
 /** A damped spring toward `to`: under-damped (`z` < 1), it overshoots and settles. */
@@ -179,7 +171,7 @@ export class Mind {
   feed(feed: Feed): void {
     this.feeds.push({ feed, path: this.pathToCore(feed.cell) });
   }
-  /** How lit cell `i` is at `t` by the signals that reached it: 0 when none, about 1 at one's peak. */
+  /** How lit cell `i` is at `t` by the signals that reached it: 0 when none, about 1 at a peak. */
   energy(i: number, t: number): number {
     let e = 0;
     for (const { feed, path } of this.feeds) {
@@ -225,15 +217,21 @@ export const JOIN_SECONDS = 2;
 export const STILL_AT = 3;
 /** A packet's lit tail, in px. */
 export const TAIL = 18;
+/** The targeting ring's radius round the Mind (a cell's circumradius 11). */
+export const RING = 51;
 /** When packets start running in, and orders out. */
 const PACKETS_FROM = 1.8;
 const ORDERS_FROM = 3;
 
-/** A line on the board: its corners, the arc length at each, and when it is drawn in. */
-export interface Line {
+/** A route at 0° and 45°: its corners and the arc length at each. */
+export interface Path {
   readonly points: readonly Point[];
   readonly arcs: readonly number[];
   readonly length: number;
+}
+
+/** A line on the question's board, and when it is drawn in. */
+export interface Line extends Path {
   readonly start: number;
   /** When it is whole: a trace lands on its cell then. */
   readonly landed: number;
@@ -518,7 +516,7 @@ export function questionScene(): QuestionScene {
     traces,
     stubs,
     etch: { centres, r: etchR - 0.5 },
-    ring: 51,
+    ring: RING,
     drawn: (line, t) => easeInOut((t - line.start) / (line.landed - line.start)),
     packets(trace, t) {
       const { speed, length } = trace;
@@ -541,15 +539,14 @@ export const ARRIVAL = { cover: 1.0, hold: 0.16, boom: 0.62, end: 1.9 } as const
 
 /** What the arrival shows at its moment, for the drawing. */
 export interface ArrivalView {
-  /** The blackout's open middle round the Mind, its two radii; 0 once covered. */
+  /** The shutter's open middle round the Mind, its two radii; 0 once covered. */
   holeX: number;
   holeY: number;
   /** The Mind flaring, 0–1. */
   heat: number;
-  /** The boom: 0 before, 1 done; the tear's radius from the Mind; the ink pushed out. */
+  /** The boom: 0 before, 1 done; how far from the Mind the shutter is open. */
   boom: number;
   tear: number;
-  push: number;
 }
 
 export interface ArrivalScene {
@@ -559,18 +556,58 @@ export interface ArrivalScene {
   readonly mind: Mind;
   /** The Mind's size: the question's at first, a fifth of the window once grown. */
   readonly mindScale: number;
+  /** The targeting ring's radius once grown: where the traces end. */
+  readonly ringRadius: number;
+  /** The shutter's hex tiles (a point up) over the whole window: centres and radius. */
+  readonly tiles: { readonly centres: readonly Point[]; readonly r: number };
+  /** Traces from every edge of the window to the grown ring. */
+  readonly traces: readonly Path[];
   readonly t: number;
   /** A frame drawn now covers the whole window: the look may change under it. */
   readonly covered: boolean;
   readonly done: boolean;
   view(): ArrivalView;
+  /** How shut tile `i` is now: 0 open, 1 shut. */
+  shut(i: number): number;
+  /** How much of `trace` is drawn now, 0–1: from its edge to the closing shutter's front. */
+  reached(trace: Path): number;
   step(dt: number): void;
 }
 
+/** From `from` to `to` at 0° and 45°: straight along `major`, across at 45°, straight again. */
+function octilinear(from: Point, to: Point, major: 'x' | 'y', bend: number): Path {
+  const [x0, y0] = from;
+  const [x1, y1] = to;
+  const sx = Math.sign(x1 - x0);
+  const sy = Math.sign(y1 - y0);
+  const ax = Math.abs(x1 - x0);
+  const ay = Math.abs(y1 - y0);
+  let corners: Point[];
+  if (major === 'x') {
+    const a = Math.max(0, ax - ay) * bend;
+    corners =
+      ax >= ay
+        ? [from, [x0 + sx * a, y0], [x0 + sx * (a + ay), y1], to]
+        : [from, [x1, y0 + sy * ax], to];
+  } else {
+    const a = Math.max(0, ay - ax) * bend;
+    corners =
+      ay >= ax
+        ? [from, [x0, y0 + sy * a], [x1, y0 + sy * (a + ax)], to]
+        : [from, [x0 + sx * ay, y1], to];
+  }
+  const points = corners.filter(
+    ([x, y], i) => i === 0 || Math.hypot(x - corners[i - 1]![0], y - corners[i - 1]![1]) > 1e-9,
+  );
+  const arcs = arcsOf(points);
+  return { points, arcs, length: arcs.at(-1)! };
+}
+
 /**
- * Turning on: the question's Hive Mind (at `at`, `scale` its size there), awake and thinking,
- * grows to the middle of a `width` × `height` window while a blackout closes on it from every
- * edge; covered, it flares, and a boom from it tears the ink back to the edges.
+ * Turning on (decisions 632, 673): the question's Hive Mind (at `at`, `scale` its size there),
+ * awake and thinking, grows to a fifth of the `width` × `height` window while a shutter of hex
+ * tiles closes on it from every edge and traces route across the tiles into its ring; covered, it
+ * flares; then the tiles open from the Mind out to the edges.
  */
 export function arrivalScene({
   width,
@@ -599,14 +636,83 @@ export function arrivalScene({
     Math.hypot(mx, height - my),
     Math.hypot(width - mx, height - my),
   );
+
+  // The shutter: a honeycomb centred on the Mind, every point of the window in a tile.
+  const r = Math.max(16, Math.min(width, height) / 26);
+  const centres: Point[] = [];
+  for (let s = Math.floor((-2 * r - my) / (1.5 * r)); s * 1.5 * r + my <= height + 2 * r; s++) {
+    const q0 = Math.floor((-2 * r - mx) / (r * SQ3) - s / 2);
+    for (let q = q0; mx + r * SQ3 * (q + s / 2) <= width + 2 * r; q++) {
+      const x = mx + r * SQ3 * (q + s / 2);
+      const y = my + 1.5 * r * s;
+      if (x >= -r && x <= width + r && y >= -r && y <= height + r) centres.push([x, y]);
+    }
+  }
+  // A tile shuts over this far past the front (in the hole's radii), and opens over 1.6 tiles.
+  const band = (1.6 * r) / (Math.min(width, height) / 2);
+  const opening = 1.6 * r;
+
+  // Traces: seven from each side, three from the top and the bottom, into the grown ring.
+  const ringRadius = RING * grown;
+  const traces: Path[] = [];
+  for (const side of [-1, 1]) {
+    for (let k = 0; k < 7; k++) {
+      const y = (height * (k + 0.5)) / 7 + (hash(k, side > 0 ? 61 : 67) - 0.5) * (height / 20);
+      const phi = (((k - 3) / 3) * 55 * Math.PI) / 180;
+      const to: Point = [mx + side * ringRadius * Math.cos(phi), my + ringRadius * Math.sin(phi)];
+      traces.push(
+        octilinear([side < 0 ? -4 : width + 4, y], to, 'x', 0.3 + 0.4 * hash(k, 71 + side)),
+      );
+    }
+    for (let j = 0; j < 3; j++) {
+      const x = mx + (j - 1) * width * 0.16 + (hash(j, 81 + side) - 0.5) * (width / 30);
+      const psi = ((j - 1) * 28 * Math.PI) / 180;
+      const to: Point = [mx + ringRadius * Math.sin(psi), my + side * ringRadius * Math.cos(psi)];
+      traces.push(
+        octilinear([x, side < 0 ? -4 : height + 4], to, 'y', 0.3 + 0.4 * hash(j, 91 + side)),
+      );
+    }
+  }
+
   const T = ARRIVAL;
   let t = 0;
   const boomAt = () => clamp((t - T.cover - T.hold) / T.boom, 0, 1);
+  let seen: { t: number; view: ArrivalView } | null = null;
+  const view = (): ArrivalView => {
+    if (seen?.t === t) return seen.view;
+    const p = clamp(t / T.cover, 0, 1);
+    // Even from the first moment, closing to the Mind's middle by the cover.
+    const close = 1 - Math.pow(1 - Math.pow(p, 1.35), 1.6);
+    const end = mind.reach * grow.x * 0.55;
+    const holeX =
+      t >= T.cover ? 0 : end + (Math.max(mx, width - mx) * 1.5 + 40 - end) * (1 - close);
+    const holeY =
+      t >= T.cover ? 0 : end + (Math.max(my, height - my) * 1.5 + 40 - end) * (1 - close);
+    const b = boomAt();
+    const e = 1 - Math.pow(1 - b, 2.6);
+    seen = {
+      t,
+      view: {
+        holeX,
+        holeY,
+        heat: smooth(T.cover, T.cover + T.hold, t) * (1 - smooth(0, 0.4, b)),
+        boom: b,
+        tear: b > 0 ? farthest * 1.25 * e + 2 : 0,
+      },
+    };
+    return seen.view;
+  };
+  /** How far past the front a point is, in the hole's radii: 0 on it, below 0 inside. */
+  const past = (x: number, y: number, v: ArrivalView) =>
+    Math.sqrt(((x - mx) / v.holeX) ** 2 + ((y - my) / v.holeY) ** 2) - 1;
   return {
     width,
     height,
     at,
     mind,
+    ringRadius,
+    tiles: { centres, r },
+    traces,
     get mindScale() {
       return grow.x;
     },
@@ -619,26 +725,21 @@ export function arrivalScene({
     get done() {
       return t >= T.end;
     },
-    view() {
-      const p = clamp(t / T.cover, 0, 1);
-      // Even from the first moment, closing to the Mind's middle by the cover.
-      const close = 1 - Math.pow(1 - Math.pow(p, 1.35), 1.6);
-      const end = mind.reach * grow.x * 0.55;
-      const holeX =
-        t >= T.cover ? 0 : end + (Math.max(mx, width - mx) * 1.5 + 40 - end) * (1 - close);
-      const holeY =
-        t >= T.cover ? 0 : end + (Math.max(my, height - my) * 1.5 + 40 - end) * (1 - close);
-      const b = boomAt();
-      const e = 1 - Math.pow(1 - b, 2.6);
-      return {
-        holeX,
-        holeY,
-        heat: smooth(T.cover, T.cover + T.hold, t) * (1 - smooth(0, 0.4, b)),
-        boom: b,
-        tear: b > 0 ? farthest * 1.25 * e + 2 : 0,
-        push:
-          1 + 0.22 * e + 0.012 * Math.sin((t - T.cover) * 18) * (1 - b) * (t >= T.cover ? 1 : 0),
-      };
+    view,
+    shut(i) {
+      const [x, y] = centres[i] ?? [mx, my];
+      const v = view();
+      if (t < T.cover) return clamp(past(x, y, v) / band, 0, 1);
+      return 1 - clamp((v.tear - Math.hypot(x - mx, y - my)) / opening, 0, 1);
+    },
+    reached(trace) {
+      if (t >= T.cover) return 1;
+      const v = view();
+      for (let s = 0; s < trace.length; s += 3) {
+        const [x, y] = pointAt(trace.points, trace.arcs, s);
+        if (past(x, y, v) <= 0) return s / trace.length;
+      }
+      return 1;
     },
     step(dt) {
       const sub = Math.max(1, Math.ceil(dt / (1 / 90)));

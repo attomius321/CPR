@@ -1,8 +1,9 @@
-// Hive's arrival (decision 632): as Hive mode turns on, the question's Hive Mind grows to the
-// middle of the window while a blackout closes on it from every edge; the look changes under the
-// cover, the Mind flares, and a boom from it tears the ink back to the edges. Then a streak of
-// light crosses the main area; then all is still. The Mind and the blackout are drawn here
-// (`hive-art.ts`, `hive-draw.ts`), the streak is `hive.css`'s under `data-hive-arriving`.
+// Hive's arrival (decisions 632, 673): as Hive mode turns on, the question's Hive Mind grows to
+// the middle of the window while a shutter of hex tiles closes on it from every edge and traces
+// route across it into the Mind; the look changes under the cover, the Mind flares, and the tiles
+// open from it out to the edges. Then a streak of light crosses the main area; then all is still.
+// The Mind and the shutter are drawn here (`hive-art.ts`, `hive-draw.ts`), the streak is
+// `hive.css`'s under `data-hive-arriving`.
 import { arrivalScale, arrivalScene } from '../ui/hive-art.js';
 import { Painter, paint, readPalette } from '../ui/hive-draw.js';
 
@@ -22,7 +23,7 @@ const isArrival = (animation: Animation) =>
   animation instanceof CSSAnimation && animation.animationName.startsWith('hive-arrive');
 
 /**
- * The Mind and the blackout from `from`; `swap` changes the look in the frame first drawn covering
+ * The Mind and the shutter from `from`; `swap` changes the look in the frame first drawn covering
  * the whole window, or at once if they cannot be drawn. Resolves once all is still.
  */
 export async function arrive(from: Origin, swap: () => void): Promise<void> {
