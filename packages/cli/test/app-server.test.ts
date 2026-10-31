@@ -147,6 +147,9 @@ describe('codexServer', () => {
       createdAt: clock,
       updatedAt: clock,
       status: 'active',
+      // What it runs on (V83): none given, the configured model and level.
+      model: 'gpt-6-luna',
+      effort: 'medium',
       turns: [
         { id: 'turn-2', status: 'inProgress', startedAt: clock, prompts: ['Do it'], items: [] },
       ],
@@ -320,6 +323,34 @@ describe('codexServer', () => {
     expect(server.calls.filter((c) => c.method === 'thread/start')[1]?.params).not.toHaveProperty(
       'model',
     );
+  });
+
+  it('reads what a thread runs on: its model and level, as Codex says them (V83)', async () => {
+    const server = await serve();
+    const codex = codexServer(server.address);
+    const thread = await codex.start({
+      cwd: WORKTREE,
+      writable: ROOTS,
+      name: 'feature/csv',
+      prompt: 'Do it',
+      model: 'gpt-5.6-terra',
+      effort: 'ultra',
+    });
+    expect(await codex.read(thread, { turns: 1, items: 'summary' })).toMatchObject({
+      model: 'gpt-5.6-terra',
+      effort: 'ultra',
+    });
+    // Changed in its terminal (`/model`): the thread says the new one.
+    Object.assign(server.thread(thread), { model: 'gpt-5.6-luna', effort: 'low' });
+    expect(await codex.read(thread, { turns: 1, items: 'summary' })).toMatchObject({
+      model: 'gpt-5.6-luna',
+      effort: 'low',
+    });
+    // None set, or not a model's ID: left out, never guessed.
+    Object.assign(server.thread(thread), { model: '--yolo', effort: null });
+    const read = await codex.read(thread, { turns: 1, items: 'summary' });
+    expect(read).not.toHaveProperty('model');
+    expect(read).not.toHaveProperty('effort');
   });
 
   it('starts a thread with no turn, its instructions as developer instructions, its level in its config (V50)', async () => {

@@ -1,4 +1,5 @@
 import {
+  appendFileSync,
   existsSync,
   mkdirSync,
   readdirSync,
@@ -59,7 +60,7 @@ import { shellOf, type Terminals } from '../src/terminal.js';
 import type { Codex } from '../src/codex.js';
 import type { Hermes, HermesMessage, HermesSession } from '../src/hermes.js';
 import { codexServer } from '../src/app-server.js';
-import { fakeAppServer, type FakeAppServer } from './fake-app-server.js';
+import { fakeAppServer, type FakeAppServer, type FakeThread } from './fake-app-server.js';
 
 /**
  * main: A ── B; origin/main at A, origin/HEAD naming main; origin/taken at A. The repository
@@ -2604,6 +2605,52 @@ describe('workspaces', () => {
     expect(await s.thread('feature/one')).not.toHaveProperty('tools');
   });
 
+  it("says what a Claude Code agent runs on: its transcript's newest answer, where its hooks said (V83)", async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({
+      brief: 'One',
+      branch: 'feature/one',
+      planFirst: true,
+      effort: 'high',
+    });
+    const { recordEvent } = await import('../src/thread.js');
+    const symbiote = join(repo.root, 'symbiote');
+    const transcript = join(tempDir(), 'session-1.jsonl');
+    const agent = async () => (await s.list()).workspaces[0]?.agent;
+    const answer = (model: string, effort: string, at: string) =>
+      `${JSON.stringify({ type: 'assistant', isSidechain: false, timestamp: at, requestedModel: model, effort, message: { model, role: 'assistant', content: [] } })}\n`;
+    // Its hooks have named no transcript yet: how it started, nothing read.
+    expect(await agent()).toMatchObject({ effort: 'high' });
+    expect(await agent()).not.toHaveProperty('runsOn');
+    await recordEvent(
+      symbiote,
+      {
+        hook_event_name: 'UserPromptSubmit',
+        session_id: 'session-1',
+        cwd: workspace.worktree.path,
+        prompt: 'Go',
+        transcript_path: transcript,
+      },
+      '2026-10-15T09:00:00.000Z',
+    );
+    // Named, not written yet: nothing read.
+    expect(await agent()).not.toHaveProperty('runsOn');
+    writeFileSync(transcript, answer('claude-opus-5-5', 'xhigh', '2026-10-15T09:00:04.000Z'));
+    expect(await agent()).toMatchObject({
+      effort: 'high',
+      runsOn: { model: 'claude-opus-5-5', effort: 'xhigh', at: '2026-10-15T09:00:04.000Z' },
+    });
+    // `/model sonnet` and `/effort medium` in its terminal: from its next answer.
+    appendFileSync(transcript, answer('claude-sonnet-5-5', 'medium', '2026-10-15T09:01:00.000Z'));
+    expect((await agent())?.runsOn).toEqual({
+      model: 'claude-sonnet-5-5',
+      effort: 'medium',
+      at: '2026-10-15T09:01:00.000Z',
+    });
+  });
+
   it("gives the Activity tab its tools' last 1 MB, and says when older ones were left out (V73)", async () => {
     const { repo } = fresh();
     const { claude } = fakeClaude();
@@ -3113,6 +3160,8 @@ describe('workspaces', () => {
       kind: 'codex',
       id: thread?.id,
       remote: server.address,
+      // None picked: the thread says the configured model and level (V83).
+      runsOn: { model: 'gpt-6-luna', effort: 'medium', at: NOW.toISOString() },
     });
     const saved = JSON.parse(
       readFileSync(join(repo.root, 'symbiote', 'workspaces', 'feature', 'csv.json'), 'utf8'),
@@ -3135,7 +3184,8 @@ describe('workspaces', () => {
     const s = await service(repo, null, HOOK, undefined, codex);
     await s.start({ brief: 'Do it', branch: 'feature/csv', planFirst: true });
     const id = server.threads[0]?.id ?? '';
-    const head = { kind: 'codex', id, remote: server.address };
+    const runsOn = { model: 'gpt-6-luna', effort: 'medium', at: NOW.toISOString() };
+    const head = { kind: 'codex', id, remote: server.address, runsOn };
     server.ask(id, 'May I run pnpm install with the network?', 'pnpm install');
     const [waiting] = (await s.list()).workspaces;
     expect(waiting?.agent).toEqual({ state: 'needs-you', ...head, waitingFor: 'approval prompt' });
@@ -3334,6 +3384,35 @@ describe('workspaces', () => {
     await expect(
       t.start({ brief: 'Do it', branch: 'feature/two', planFirst: true, effort: 'low' }),
     ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it("says what Codex on its app server runs on: its thread's model and level (V83)", async () => {
+    const { repo } = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(undefined, server);
+    const s = await service(repo, null, HOOK, undefined, codex);
+    await s.start({
+      brief: 'Do it',
+      branch: 'feature/one',
+      planFirst: true,
+      model: 'gpt-5.6-terra',
+      effort: 'ultra',
+    });
+    const agent = async () => (await s.list()).workspaces[0]?.agent;
+    expect((await agent())?.runsOn).toMatchObject({ model: 'gpt-5.6-terra', effort: 'ultra' });
+    // Changed in its terminal: what the thread says now, beside how it started.
+    Object.assign(server.threads[0] as FakeThread, { model: 'gpt-6-luna', effort: 'low' });
+    expect(await agent()).toMatchObject({
+      model: 'gpt-5.6-terra',
+      effort: 'ultra',
+      runsOn: { model: 'gpt-6-luna', effort: 'low' },
+    });
+    // By exec, nothing to read: how it started is all that is said.
+    const plain = fakeCodex();
+    const t = await service(repo, null, HOOK, undefined, plain.codex);
+    await t.start({ brief: 'Do it', branch: 'feature/two', planFirst: true });
+    const two = (await t.list()).workspaces.find((w) => w.branch === 'feature/two');
+    expect(two?.agent).not.toHaveProperty('runsOn');
   });
 
   it('starts Codex on the model picked: on its thread, or by exec at every run (V47)', async () => {

@@ -226,6 +226,84 @@ export function startedWith(agent: WorkspaceAgentState, via?: McpVia): string | 
   return `Started${through} with ${AGENT_NAMES[agent.kind]}${model} at ${level}.`;
 }
 
+/** The families Claude Code takes as aliases of its newest model of each (`--model opus`). */
+const CLAUDE_FAMILIES = /^(opus|sonnet|haiku|fable)$/;
+
+const capital = (word: string) => word.charAt(0).toUpperCase() + word.slice(1);
+
+/**
+ * A model's name from its ID (V83, decision 661), as its agent's list names it:
+ * `claude-opus-5-5` "Opus 5.5", `claude-haiku-4-5-20251001` "Haiku 4.5", `gpt-5.6-terra`
+ * "GPT-5.6-Terra"; a Claude family alias by the family ("Opus"); any other ID as it is.
+ */
+export function modelName(id: string): string {
+  const claude = /^claude-([a-z]+)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?$/.exec(id);
+  if (claude) {
+    const [, family = '', major = '', minor] = claude;
+    return `${capital(family)} ${minor ? `${major}.${minor}` : major}`;
+  }
+  if (CLAUDE_FAMILIES.test(id)) return capital(id);
+  if (/^gpt-[a-z0-9.-]+$/.test(id)) {
+    return id
+      .split('-')
+      .map((part, i) => (i === 0 ? 'GPT' : capital(part)))
+      .join('-');
+  }
+  return id;
+}
+
+/** A model by its name, and by its ID too when the name is more than its ID's capitals. */
+const modelWords = (id: string) => {
+  const name = modelName(id);
+  return name.toLowerCase() === id.toLowerCase() ? name : `${name} (${id})`;
+};
+
+/** Whether a model picked at the start is the one that runs: the same, or its family's alias. */
+const sameModel = (started: string, running: string) =>
+  started === running ||
+  modelName(started) === modelName(running) ||
+  (CLAUDE_FAMILIES.test(started) && modelName(running).startsWith(`${modelName(started)} `));
+
+/**
+ * What a workspace's agent runs on (V83), for its head's chip and its card: the model by its name
+ * and the level in words ("Opus 5.5 · xhigh effort"), and a tip that says whose, as of when, and
+ * how it started when that differs. Before its session said it (or for an agent Symbiote does not
+ * read: Codex by exec, Hermes), how it started, said as that. Null with no agent.
+ */
+export function runsOnWords(agent: WorkspaceAgentState): { text: string; tip: string } | null {
+  const kind = agent.kind;
+  if (!kind) return null;
+  const name = AGENT_NAMES[kind];
+  /** How it started: "Sonnet at high effort", "its default model at its default effort". */
+  const startedOn = (model: (id: string) => string) =>
+    `${agent.model ? model(agent.model) : 'its default model'} at ${agent.effort ? `${agent.effort} effort` : 'its default effort'}`;
+  const read = agent.runsOn;
+  if (!read?.model && !read?.effort) {
+    const text = `${agent.model ? modelName(agent.model) : 'Default model'} · ${agent.effort ? `${agent.effort} effort` : 'default effort'}`;
+    const started = `${name} started on ${startedOn(modelWords)}`;
+    const reads = kind === 'claude' || (kind === 'codex' && !!agent.remote);
+    return { text, tip: reads ? `${started}\nWhat it runs on shows once it answers` : started };
+  }
+  const level = read.effort ? `${read.effort} effort` : null;
+  const text = [read.model ? modelName(read.model) : 'Default model', level]
+    .filter((part) => part !== null)
+    .join(' · ');
+  const runs = `${name} runs on ${read.model ? modelWords(read.model) : 'its default model'}${level ? ` at ${level}` : ''}`;
+  const clock = read.at
+    ? new Date(read.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    : null;
+  const when = !clock
+    ? null
+    : kind === 'codex'
+      ? `As its thread says at ${clock}`
+      : `As of its answer at ${clock}`;
+  const changed =
+    (agent.model && read.model && !sameModel(agent.model, read.model)) ||
+    (agent.effort && read.effort && agent.effort !== read.effort);
+  const started = changed ? `Started on ${startedOn(modelName)}` : null;
+  return { text, tip: [runs, when, started].filter((line) => line !== null).join('\n') };
+}
+
 /** What a workspace or a verdict was made through (MC1). */
 export const VIA_NAMES: Record<McpVia, string> = { nucleus: 'Nucleus', mcp: 'symbiote mcp' };
 

@@ -205,6 +205,12 @@ export interface FakeThread {
   terminals: string[];
   /** Its session file (NU2), as `thread/read` gives it. */
   path?: string;
+  /**
+   * What it runs on (V83), as Codex 0.163's `Thread` says it: the model and level given at its
+   * start or a turn's, else the configured ones (measured on the person's Codex).
+   */
+  model?: string | null;
+  effort?: string | null;
 }
 
 /** What the fake was asked: each request's method and parameters, in order. */
@@ -286,6 +292,8 @@ export async function fakeAppServer(
   const experimental = new Set<FakeSocket>();
   const trusted: Record<string, string> = {};
   const config: FakeAppServer['config'] = { model: 'gpt-6-luna', model_reasoning_effort: 'medium' };
+  /** The configured model and level, where a handler's own `config` (a request's) hides it. */
+  const configured = config;
   const levels = (...efforts: string[]) =>
     efforts.map((effort) => ({ reasoningEffort: effort, description: `${effort} reasoning` }));
   const models: Record<string, unknown>[] = [
@@ -396,6 +404,8 @@ export async function fakeAppServer(
     cliVersion: '0.163.0',
     source: 'vscode',
     name: thread.name,
+    model: thread.model ?? null,
+    reasoningEffort: thread.effort ?? null,
     turns: [],
   });
   // As Codex 0.163 answers: `readOnly` for a read-only thread (V35 spike).
@@ -518,6 +528,12 @@ export async function fakeAppServer(
           flags: [],
           turns: [],
           terminals: [],
+          model: typeof params.model === 'string' ? params.model : (configured.model ?? null),
+          effort:
+            (params.config as { model_reasoning_effort?: string } | undefined)
+              ?.model_reasoning_effort ??
+            configured.model_reasoning_effort ??
+            null,
         };
         threads.push(thread);
         clients.get(socket)?.add(thread.id);
@@ -578,6 +594,9 @@ export async function fakeAppServer(
         const thread = loaded(params.threadId);
         if (thread.turns.at(-1)?.status === 'inProgress')
           throw new Error('a turn is already running');
+        // "For this turn and subsequent turns": the thread's own from now on.
+        if (typeof params.effort === 'string') thread.effort = params.effort;
+        if (typeof params.model === 'string') thread.model = params.model;
         return { turn: turnOf(begin(thread, text(params.input)), 'notLoaded') };
       },
       'turn/steer': (params) => {

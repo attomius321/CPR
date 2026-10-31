@@ -341,3 +341,6 @@ merge commit.
 - 2026-10-31 [Fix — a commit's menu opens at once: Review out of it, no wait for every branch review](journal/fix-git-right-click-on-commit.md)
 - 2026-10-31 [Hive's question candidates — three robotic heads, then the Circuit](journal/v82-hive-mode.md)
 - 2026-10-31 [Hive circuit — built](journal/v82-hive-mode.md)
+- 2026-10-31 [V83 spike — where Symbiote can read what an agent runs on](journal/v83-workspace-running-model.md)
+- 2026-10-31 [V83a — what runs, read back from the session](journal/v83-workspace-running-model.md)
+- 2026-10-31 [V83b — the head's chip, the card's row, one line of state](journal/v83-workspace-running-model.md)

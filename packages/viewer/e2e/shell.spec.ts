@@ -321,9 +321,12 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
     await expect(icon).toHaveCSS('color', await tokenColour(page, tone));
     drawings.add(await icon.innerHTML());
     // Only the group has the icon: its cards keep their state's dot. A done card's bin (V55) is
-    // an action, and the icons of its facts' row (V79) are its facts, not its state.
+    // an action, and the icons of its facts' row (V79) and of what its agent runs on (V83) are
+    // facts, not its state.
     await expect(
-      group(page, name).locator('.workspace-row .icon:not(.card-remove .icon, .card-fact .icon)'),
+      group(page, name).locator(
+        '.workspace-row .icon:not(.card-remove .icon, .card-fact .icon, .workspace-runs .icon)',
+      ),
     ).toHaveCount(0);
     await expect(group(page, name).locator('.workspace-row .state-dot')).toBeVisible();
   }

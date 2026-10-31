@@ -384,8 +384,9 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
   await inside(tip);
 });
 
-// V79: four rows on 20 px lines, 10 × 12 px in, the cards 6 px apart; a name or a state on two
-// lines, whole (until V79 three rows in 72 px, each cut to one line).
+// V79: four rows on 20 px lines, 10 × 12 px in, the cards 6 px apart; a name on two lines, whole
+// (until V79 three rows in 72 px, each cut to one line). V83: a fifth row, what its agent runs on;
+// the state on one line (decision 663).
 test('a card in the sidenav shows a long name whole, on its own rows, 6 px from the next (V79)', async ({
   page,
 }) => {
@@ -424,10 +425,12 @@ test('a card in the sidenav shows a long name whole, on its own rows, 6 px from 
   const state = card.locator('.workspace-line .workspace-state');
   await expect(state).toHaveCSS('line-height', '20px');
   await expect(card.locator('.workspace-branch')).toHaveCSS('line-height', '20px');
+  await expect(card.locator('.workspace-runs')).toHaveCSS('line-height', '20px');
   await expect(card.locator('.workspace-meta .kind-tag')).toHaveText('feature');
-  // Two lines of name over a line of each other row: 10 + 44 + 4 + 20 + 6 + 22 + 4 + 20 + 10.
+  // Two lines of name over a line of each other row: 10 + 44 + 4 + 20 + 6 + 22 + 4 + 20 (what its
+  // agent runs on, V83) + 4 + 20 + 10.
   expect((await state.boundingBox())?.height).toBe(20);
-  expect(Math.round((await card.boundingBox())?.height ?? 0)).toBe(140);
+  expect(Math.round((await card.boundingBox())?.height ?? 0)).toBe(164);
   // The next card of its group, 6 px under it.
   const next = page.locator('.sidenav .workspace-row[data-branch="feature/add-a-double-function"]');
   const [above, below] = [await card.boundingBox(), await next.boundingBox()];

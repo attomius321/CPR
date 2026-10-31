@@ -53,6 +53,23 @@ export interface WorkspaceAgentState {
   effort?: string;
   /** The model it was started on (V47); absent for its default. Its session may change it since. */
   model?: string;
+  /**
+   * What it runs on, read back from its session (V83): Claude Code's newest answer in its
+   * transcript, Codex's thread on its app server. Absent when nothing was read: then `model` and
+   * `effort`, how it started, are all Symbiote knows.
+   */
+  runsOn?: AgentRunsOn;
+}
+
+/**
+ * What an agent runs on (V83), as it says it: the model's own ID (`claude-opus-5-5`,
+ * `gpt-6-luna`), the level, and as of when. A field it does not say is left out.
+ */
+export interface AgentRunsOn {
+  model?: string;
+  effort?: string;
+  /** The answer it was read from (Claude Code), or the thread's last change (Codex). */
+  at?: string;
 }
 
 /** The agents Symbiote starts: Claude Code (V18), Codex (V20a) and Hermes (V58). */
@@ -572,9 +589,13 @@ export type ThreadEntry = {
   /** The Symbiote run of Codex it belongs to (V20a): which entries are its last run's. */
   run?: string;
 } & (
-  | { kind: 'start'; source: string }
+  | { kind: 'start'; source: string; transcript?: string }
   | { kind: 'end'; reason?: string }
-  | { kind: 'prompt'; text: string }
+  /**
+   * `transcript` here and on a start (V83): Claude Code's transcript of the session, as its hooks
+   * name it (`transcript_path`), where the list reads what the agent runs on.
+   */
+  | { kind: 'prompt'; text: string; transcript?: string }
   | { kind: 'report'; text: string }
   /** A permission (`tool` and its input, cut at 4 KB) or a question (`questions`). */
   | { kind: 'asks'; tool: string; input?: string; questions?: ThreadQuestion[] }
