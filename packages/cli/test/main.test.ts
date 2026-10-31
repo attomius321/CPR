@@ -494,3 +494,109 @@ describe('symbiote view: Hive mode, per repository', () => {
     expect(seen.restarted).toBe(ON);
   });
 });
+
+describe('symbiote activity (V84)', () => {
+  const repo = createRepo();
+  const cacheDir = tempDir();
+  const previousCacheDir = process.env.SYMBIOTE_CACHE_DIR;
+  beforeAll(() => {
+    process.env.SYMBIOTE_CACHE_DIR = cacheDir;
+    repo.write({ 'a.txt': 'a\n' });
+    const base = repo.commit('one');
+    repo.git('config', 'user.email', 'p@example.com');
+    repo.git('branch', 'feature/x');
+    // Symbiote's records, never committed.
+    repo.write({
+      'symbiote/workspaces/feature/x.json': JSON.stringify({
+        agent: { kind: 'claude', hooks: true, activity: true },
+        base,
+        branch: 'feature/x',
+        brief: '# Feature: x\n\nBuild it.',
+        created: '2026-10-31T10:00:00.000Z',
+        from: 'main',
+        planFirst: false,
+        title: 'x',
+        worktree: join(repo.root, '..', 'x'),
+      }),
+      'symbiote/threads/feature/x.jsonl': `${JSON.stringify({
+        at: '2026-10-31T10:00:01.000Z',
+        session: 's1',
+        kind: 'prompt',
+        text: 'Build x',
+      })}\n`,
+      'symbiote/activity/feature/x.jsonl': `${JSON.stringify({
+        at: '2026-10-31T10:00:02.000Z',
+        session: 's1',
+        id: 't1',
+        tool: 'Bash',
+        phase: 'start',
+        subject: 'ls',
+      })}\n`,
+      'symbiote/nucleus-activity.jsonl': `${JSON.stringify({
+        at: '2026-10-31T11:00:00.000Z',
+        conversation: 'c1',
+        agent: 'claude',
+        kind: 'prompt',
+        text: 'What waits?',
+      })}\n`,
+    });
+  });
+  afterAll(() => {
+    repo.cleanup();
+    rmSync(cacheDir, { recursive: true, force: true });
+    if (previousCacheDir === undefined) delete process.env.SYMBIOTE_CACHE_DIR;
+    else process.env.SYMBIOTE_CACHE_DIR = previousCacheDir;
+  });
+
+  it("prints a workspace's activity as Markdown", async () => {
+    const { code, stdout, stderr } = await symbiote(['activity', 'feature/x'], repo.root);
+    expect(stderr).toBe('');
+    expect(code).toBe(0);
+    expect(stdout).toMatch(/^---\nsymbiote-activity: 1\nof: workspace\n/);
+    expect(stdout).toContain("Symbiote's prompt\n\n> Build x");
+    expect(stdout).toContain('Bash · `ls` · no end recorded');
+  });
+
+  it('writes JSON Lines to a file with --out, and says where', async () => {
+    const file = join(cacheDir, 'x.jsonl');
+    const { code, stdout } = await symbiote(
+      ['activity', 'feature/x', '--format', 'jsonl', '--out', file],
+      repo.root,
+    );
+    expect(code).toBe(0);
+    expect(stdout).toBe(`${file}\n`);
+    const [header] = readFileSync(file, 'utf8').split('\n');
+    expect(JSON.parse(header ?? '')).toMatchObject({ record: 'export', branch: 'feature/x' });
+  });
+
+  it("without a branch, exports the checked-out branch's workspace", async () => {
+    repo.git('checkout', '--quiet', 'feature/x');
+    try {
+      const { code, stdout } = await symbiote(['activity'], repo.root);
+      expect(code).toBe(0);
+      expect(stdout).toContain('branch: "feature/x"');
+    } finally {
+      repo.git('checkout', '--quiet', 'main');
+    }
+  });
+
+  it("exports Nucleus's with --nucleus", async () => {
+    const { code, stdout } = await symbiote(['activity', '--nucleus'], repo.root);
+    expect(code).toBe(0);
+    expect(stdout).toMatch(/^---\nsymbiote-activity: 1\nof: nucleus\n/);
+    expect(stdout).toContain('> What waits?');
+  });
+
+  it('refuses a branch without a workspace, a format it does not know, and both kinds at once', async () => {
+    const none = await symbiote(['activity', 'feature/none'], repo.root);
+    expect(none.code).toBe(1);
+    expect(none.stderr).toContain('no workspace feature/none');
+    const main = await symbiote(['activity'], repo.root);
+    expect(main.code).toBe(1);
+    expect(main.stderr).toContain('no workspace main');
+    expect((await symbiote(['activity', 'feature/x', '--format', 'pdf'], repo.root)).code).toBe(2);
+    expect((await symbiote(['activity', 'feature/x', '--nucleus'], repo.root)).code).toBe(2);
+    const help = await symbiote(['activity', '--help'], repo.root);
+    expect(help.stdout).toContain('Usage: symbiote activity');
+  });
+});

@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
-import { dirname, isAbsolute, join, posix, relative, sep } from 'node:path';
+import { basename, dirname, isAbsolute, join, posix, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   addWorktree,
@@ -15,6 +15,7 @@ import {
   isAncestor,
   isCommit,
   listRefs,
+  mainWorktree,
   EFFORT_LEVEL,
   MODEL_ID,
   PERMISSION_MODES,
@@ -52,6 +53,7 @@ import {
   type WorkspaceThread,
   type WorkspaceTools,
   type ThreadEntry,
+  type ActivityEntry,
   type GitRepo,
   type PermissionMode,
   type RefList,
@@ -158,6 +160,8 @@ import {
   workspacesFolder,
 } from './thread.js';
 import { writeFileWhole } from './file-write.js';
+import { exportActivity, type ActivityExport, type ExportFormat } from './activity-export.js';
+import { secretsOf } from './nucleus-record.js';
 import {
   approvedHead,
   byFinished,
@@ -384,6 +388,16 @@ export interface Workspaces {
   thread(branch: string): Promise<WorkspaceThread>;
   /** Its agent's tools for its Activity tab (V48f, V73): the newest megabyte of them. */
   tools(branch: string): Promise<WorkspaceTools>;
+  /**
+   * Its activity taken out (V84): its record, its whole thread and tools, its commits and its
+   * review's verdict, as Markdown or JSON Lines, redacted; what could not be read said in it.
+   * `maxBytes`: the Markdown within that size, its oldest messages left out first (the MCP's).
+   */
+  exportActivity(
+    branch: string,
+    format: ExportFormat,
+    options?: { maxBytes?: number },
+  ): Promise<ActivityExport>;
   /** Sends a message to its agent: continues its session with the text (V18c). */
   reply(request: WorkspaceReply): Promise<WorkspaceReplied>;
   /**
@@ -494,6 +508,43 @@ export function workspaces(
     }
     return path;
   }
+
+  /** Its review's last verdict, with its text for the agent (V16's "Copy for the agent"). */
+  async function verdictOf(
+    where: ReviewPlace,
+    branch: string,
+  ): Promise<WorkspaceThread['verdict'] | undefined> {
+    const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
+    const verdict = review?.verdicts.at(-1);
+    if (!review || !verdict) return undefined;
+    const shown = (path: string) =>
+      where.place === 'repository' ? relative(repo.root, path).split(sep).join('/') : path;
+    return {
+      at: verdict.at,
+      event: verdict.event,
+      head: verdict.head,
+      text: verdictText(
+        review,
+        review.reviewer,
+        verdict,
+        {
+          review: shown(reviewPath(where.dir, branch, where.reviewer)),
+          agents: shown(where.agents),
+        },
+        readPrompts(root).text,
+      ),
+    };
+  }
+
+  /**
+   * Whether its agent's messages are kept: Claude Code's hooks record them (V18c), Symbiote's
+   * runner records Codex's (V20a) or Codex's app server keeps them (V27a), Hermes's own store
+   * keeps its (V58).
+   */
+  const recordedThread = (workspace: WorkspaceFile) =>
+    workspace.agent?.hooks === true ||
+    workspace.agent?.kind === 'codex' ||
+    workspace.agent?.kind === 'hermes';
 
   async function summary(
     where: ReviewPlace,
@@ -976,7 +1027,7 @@ export function workspaces(
     return workspace as FinishedRecord;
   }
 
-  return {
+  const service: Workspaces = {
     async options() {
       const [refs, claudeCode, codexAgent, hermesAgent] = await Promise.all([
         listRefs(repo),
@@ -1574,38 +1625,11 @@ export function workspaces(
       } else {
         entries = await readThread(symbioteFolder(where), branch);
       }
-      const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
-      const verdict = review?.verdicts.at(-1);
-      const shown = (path: string) =>
-        where.place === 'repository' ? relative(repo.root, path).split(sep).join('/') : path;
+      const verdict = await verdictOf(where, branch);
       return {
         entries,
-        // Claude Code's hooks record it (V18c); Symbiote's runner records Codex's (V20a), or
-        // Codex's app server keeps it (V27a); Hermes's own store keeps its (V58).
-        recorded:
-          kept &&
-          (workspace.agent?.hooks === true ||
-            workspace.agent?.kind === 'codex' ||
-            workspace.agent?.kind === 'hermes'),
-        ...(review && verdict
-          ? {
-              verdict: {
-                at: verdict.at,
-                event: verdict.event,
-                head: verdict.head,
-                text: verdictText(
-                  review,
-                  review.reviewer,
-                  verdict,
-                  {
-                    review: shown(reviewPath(where.dir, branch, where.reviewer)),
-                    agents: shown(where.agents),
-                  },
-                  readPrompts(root).text,
-                ),
-              },
-            }
-          : {}),
+        recorded: kept && recordedThread(workspace),
+        ...(verdict ? { verdict } : {}),
       };
     },
 
@@ -1639,6 +1663,91 @@ export function workspaces(
         TIMELINE_TOOLS,
       );
       return { tools, ...(cut ? { cut: true as const } : {}) };
+    },
+
+    async exportActivity(branch, format, { maxBytes } = {}) {
+      const where = await place();
+      const workspace = await readRecord(where, branch);
+      const missing: string[] = [];
+      let entries: ThreadEntry[] = [];
+      let tools: ActivityEntry[] = [];
+      const store =
+        workspace.agent?.kind === 'hermes'
+          ? "Hermes's own store"
+          : onServer(workspace)
+            ? "Codex's app server"
+            : null;
+      if (!workspace.agent) {
+        missing.push('Its agent: none was started for it');
+      } else if (workspace.finished && store) {
+        // Finished (V77, decision 564): what Symbiote kept, never its agent asked.
+        missing.push(
+          `Its agent's messages and calls: ${store} kept them, and a finished workspace's agent is not asked`,
+        );
+      } else if (workspace.agent.kind === 'hermes') {
+        const read = await viaHermes.read(workspace);
+        if (read instanceof Error || !read) {
+          missing.push(
+            `Its agent's messages and calls: Hermes's session could not be read${read instanceof Error ? ` (${read.message})` : ''}`,
+          );
+        } else {
+          entries = hermesEntries(read);
+          tools = hermesTools(read, workspace.worktree);
+        }
+      } else if (onServer(workspace)) {
+        // Its newest turns in full, as its Activity tab reads them (V48c).
+        const { read } = await viaCodex.readServer(workspace, {
+          turns: PANEL_TURNS,
+          items: 'full',
+        });
+        if (read instanceof Error) {
+          missing.push(
+            `Its agent's messages and calls: Codex's app server could not be read (${read.message})`,
+          );
+        } else {
+          entries = serverEntries(read, { first: read.turns.length < PANEL_TURNS });
+          tools = read.turns.flatMap((turn) => serverTools(turn, read.id, workspace.worktree));
+          if (read.turns.length >= PANEL_TURNS) {
+            missing.push(
+              `Its turns before the newest ${String(PANEL_TURNS)}: Codex's app server is read for those`,
+            );
+          }
+        }
+      } else {
+        // The whole thread and tools: its Activity tab reads only the newest of them.
+        const folder = symbioteFolder(where);
+        entries = await readThread(folder, branch, Number.POSITIVE_INFINITY);
+        if (!recordedThread(workspace)) {
+          missing.push("Its agent's messages: it started before Symbiote recorded them");
+        }
+        if (workspace.agent.activity) {
+          tools = (await readActivityWindow(folder, branch, Number.MAX_SAFE_INTEGER)).tools;
+        } else if (recordedThread(workspace)) {
+          missing.push('Its calls: its agent started before Symbiote recorded them');
+        }
+      }
+      const changes = await service.changes(branch);
+      const { count, listed } = changes.commits;
+      if (count > listed.length) {
+        missing.push(
+          `Its ${String(count - listed.length)} oldest commits: Symbiote lists the newest ${String(listed.length)}`,
+        );
+      }
+      const verdict = await verdictOf(where, branch);
+      return exportActivity(
+        {
+          of: 'workspace',
+          repository: basename(mainWorktree(repo)),
+          record: workspace,
+          entries,
+          tools,
+          commits: listed,
+          ...(verdict ? { verdict } : {}),
+          missing,
+        },
+        format,
+        { now: now(), secrets: secretsOf(env), ...(maxBytes ? { maxBytes } : {}) },
+      );
     },
 
     async terminal({ branch, cols, rows }) {
@@ -1858,4 +1967,5 @@ export function workspaces(
       return { finished: workspace.finished };
     },
   };
+  return service;
 }

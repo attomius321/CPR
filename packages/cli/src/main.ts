@@ -15,6 +15,7 @@ import {
   createAdapter,
   defaultCacheDir,
   fetchRefs,
+  git,
   fileDiff,
   commitDetails,
   defaultBranchTips,
@@ -87,6 +88,8 @@ import { readClaudeProfile, readClaudeUsage, readCodexUsage, usageService } from
 import { codex, findCodex, type Codex } from './codex.js';
 import { findHermes, hermes, type Hermes } from './hermes.js';
 import { workspaces, readWorkspaceConfig } from './workspaces.js';
+import { WorkspaceRefused } from './workspace-record.js';
+import { EXPORT_FORMATS, type ActivityExport, type ExportFormat } from './activity-export.js';
 import { claudeCode, claudeModelsFile, findClaude, type ClaudeCode } from './claude-code.js';
 import { removeViewRecord, runBridge, viewFile, writeViewRecord } from './mcp-bridge.js';
 
@@ -191,6 +194,8 @@ Commands:
   pr [<number>]        Review a GitHub pull request or GitLab merge request (alias: mr);
                        in a CI job, the job's own
   merge <branch>       Merge a branch's approved commit, check it, and land it
+  activity [<branch>]  A workspace's activity (or Nucleus's, --nucleus) as Markdown, for
+                       you or an agent to read
   mcp                  Symbiote's tools for an agent of yours (MCP on stdin and stdout):
                        workspaces, reviews and merges, through the symbiote view running
   app install          Add Symbiote's window to your desktop's apps (app uninstall: remove it)
@@ -354,6 +359,7 @@ export async function run(
     if (command === 'view') return await view(rest, ctx);
     if (command === 'pr' || command === 'mr') return await pr(rest, ctx);
     if (command === 'merge') return await merge(rest, ctx);
+    if (command === 'activity') return await activityCommand(rest, ctx);
     if (command === 'mcp') return await mcpCommand(rest, ctx);
     if (command === 'app') return appCommand(rest, ctx);
   } catch (error) {
@@ -901,6 +907,95 @@ function mergeStates(log: Logger): (entry: MergeEntry) => void {
     if (entry.state === 'failed') log.warn(fields, 'merge failed');
     else log.info(fields, `merge ${entry.state}`);
   };
+}
+
+const ACTIVITY_HELP = `Usage: symbiote activity [<branch>] [options]
+
+Prints a workspace's activity as Symbiote recorded it, as its Activity tab shows it: the
+brief, its agent's messages, reports and questions, every call it made (a failed one with
+its input and output), its commits and its review's verdict. Markdown, for you or an agent
+to read whole; secrets redacted. Without a branch, the checked-out branch's workspace: run
+it in a workspace's worktree. No running symbiote view is needed.
+
+Options:
+  --nucleus            Nucleus's activity, across its conversations, instead
+  --format <format>    markdown (default), or jsonl: every line as recorded, each with
+                       the record it came from, for a script
+  --out <file>         Write it to a file, and print the file's path
+  -h, --help           Show this help
+`;
+
+/** `symbiote activity` (V84): a workspace's or Nucleus's activity, exported. */
+async function activityCommand(argv: string[], ctx: CliContext): Promise<number> {
+  const { values, positionals } = parse(
+    {
+      args: argv,
+      allowPositionals: true,
+      options: {
+        nucleus: { type: 'boolean', default: false },
+        format: { type: 'string', default: 'markdown' },
+        out: { type: 'string' },
+        help: { type: 'boolean', short: 'h', default: false },
+      },
+    },
+    ACTIVITY_HELP,
+  );
+  if (values.help) {
+    ctx.stdout(ACTIVITY_HELP);
+    return 0;
+  }
+  const [named, ...extra] = positionals;
+  if (extra.length > 0) throw new UsageError('one branch at most', ACTIVITY_HELP);
+  if (named && values.nucleus)
+    throw new UsageError('a branch or --nucleus, not both', ACTIVITY_HELP);
+  const format = values.format as ExportFormat;
+  if (!EXPORT_FORMATS.includes(format)) {
+    throw new UsageError(
+      `--format: ${EXPORT_FORMATS.join(' or ')}, got '${String(values.format)}'`,
+      ACTIVITY_HELP,
+    );
+  }
+  const repo = await openRepo(ctx.cwd);
+  const cacheDir = defaultCacheDir(ctx.env);
+  let done: ActivityExport;
+  try {
+    if (values.nucleus) {
+      const own = nucleus(repo, cacheDir, { claude: () => Promise.resolve(null), env: ctx.env });
+      done = await (own.exportActivity as NonNullable<typeof own.exportActivity>)(format);
+    } else {
+      const branch =
+        named ??
+        (await git(repo.root, ['symbolic-ref', '--quiet', '--short', 'HEAD']).then(
+          (out) => out.trim(),
+          () => '',
+        ));
+      if (!branch) {
+        ctx.stderr("symbiote activity: no branch is checked out: name a workspace's branch\n");
+        return 1;
+      }
+      const service = workspaces(repo, cacheDir, {
+        claude: agentFinder(repo.root, ctx.env, cacheDir),
+        codex: codexFinder(repo.root, ctx.env),
+        hermes: hermesFinder(repo.root, ctx.env),
+        env: ctx.env,
+      });
+      done = await service.exportActivity(branch, format);
+    }
+  } catch (error) {
+    if (error instanceof WorkspaceRefused) {
+      ctx.stderr(`symbiote activity: ${error.message}\n`);
+      return 1;
+    }
+    throw error;
+  }
+  if (values.out === undefined) {
+    ctx.stdout(done.text);
+    return 0;
+  }
+  const path = resolve(ctx.cwd, values.out);
+  await writeFile(path, done.text);
+  ctx.stdout(`${path}\n`);
+  return 0;
 }
 
 /** `symbiote mcp` (MC1): the bridge to the `symbiote view` of the repository it runs in. */

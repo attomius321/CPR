@@ -1729,6 +1729,22 @@ describe('symbiote view: workspaces (V18)', () => {
             cut: true,
           })
         : Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404)),
+    exportActivity: (branch, format) =>
+      branch === 'feature/csv'
+        ? Promise.resolve(
+            format === 'jsonl'
+              ? {
+                  text: '{"record":"export"}\n',
+                  name: 'activity-app-feature-csv-2026-10-31.jsonl',
+                  type: 'application/x-ndjson; charset=utf-8',
+                }
+              : {
+                  text: '# Activity: csv\n',
+                  name: 'activity-app-feature-csv-2026-10-31.md',
+                  type: 'text/markdown; charset=utf-8',
+                },
+          )
+        : Promise.reject(new WorkspaceRefused(`no workspace ${branch}`, 404)),
     reply: (request) => {
       replies.push(request);
       if (request.text === 'busy') {
@@ -2202,6 +2218,22 @@ describe('symbiote view: workspaces (V18)', () => {
       cut: true,
     });
     expect((await get('/api/workspaces/activity?branch=nope')).status).toBe(404);
+    // Its activity taken out (V84): a file to save, Markdown unless JSON Lines are asked.
+    const md = await get('/api/workspaces/activity/export?branch=feature%2Fcsv');
+    expect(md.status).toBe(200);
+    expect(md.headers.get('content-type')).toBe('text/markdown; charset=utf-8');
+    expect(md.headers.get('content-disposition')).toBe(
+      'attachment; filename="activity-app-feature-csv-2026-10-31.md"',
+    );
+    expect(await md.text()).toBe('# Activity: csv\n');
+    const jsonl = await get('/api/workspaces/activity/export?branch=feature%2Fcsv&format=jsonl');
+    expect(jsonl.headers.get('content-type')).toBe('application/x-ndjson; charset=utf-8');
+    expect(await jsonl.text()).toBe('{"record":"export"}\n');
+    expect(
+      (await get('/api/workspaces/activity/export?branch=feature%2Fcsv&format=pdf')).status,
+    ).toBe(400);
+    expect((await get('/api/workspaces/activity/export?branch=nope')).status).toBe(404);
+    expect((await get('/api/workspaces/activity/export')).status).toBe(400);
 
     const sent = await post('/api/workspaces/reply', { branch: 'feature/csv', text: 'OK' });
     expect(sent.status).toBe(200);
@@ -3622,6 +3654,12 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
   const nucleus = {
     record: (line: NucleusActivityLine) => void recorded.push(line),
     activity: () => Promise.resolve({ lines: recorded, cut: false }),
+    exportActivity: (format: string) =>
+      Promise.resolve({
+        text: format === 'jsonl' ? '{"record":"export"}\n' : '# Activity: Nucleus\n',
+        name: `activity-app-nucleus-2026-10-31.${format === 'jsonl' ? 'jsonl' : 'md'}`,
+        type: 'text/markdown; charset=utf-8',
+      }),
   } as unknown as PageAgent;
   let server: ViewServer;
 
@@ -3742,6 +3780,13 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
     const read = await get('/api/nucleus/activity');
     expect(read.status).toBe(200);
     expect(((await read.json()) as { lines: unknown[] }).lines).toHaveLength(4);
+    // Taken out (V84).
+    const md = await get('/api/nucleus/activity/export');
+    expect(md.headers.get('content-disposition')).toBe(
+      'attachment; filename="activity-app-nucleus-2026-10-31.md"',
+    );
+    expect(await md.text()).toBe('# Activity: Nucleus\n');
+    expect((await get('/api/nucleus/activity/export?format=pdf')).status).toBe(400);
   });
 
   it('takes a bridge from before NU1, which says scout, for Nucleus (decision 590)', async () => {

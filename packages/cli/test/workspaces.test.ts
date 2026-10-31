@@ -2631,6 +2631,91 @@ describe('workspaces', () => {
     expect(workspace.branch).toBe('feature/one');
   });
 
+  it("exports its whole activity, not the tab's megabyte, redacted (V84, decisions 669, 670)", async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { activityPath, recordEvent } = await import('../src/thread.js');
+    const symbiote = join(repo.root, 'symbiote');
+    await recordEvent(
+      symbiote,
+      {
+        hook_event_name: 'UserPromptSubmit',
+        session_id: 'session-1',
+        cwd: workspace.worktree.path,
+        prompt: 'Go',
+      },
+      '2026-10-15T09:00:00.000Z',
+    );
+    const file = activityPath(symbiote, 'feature/one');
+    const line = (i: number) =>
+      JSON.stringify({
+        at: '2026-10-15T09:00:01.000Z',
+        session: 'session-1',
+        id: `t${String(i)}`,
+        tool: 'Bash',
+        phase: 'end',
+        exit: 1,
+        output: `token ghp_0123456789abcdefghijABCDEFGHIJ012345 ${'x'.repeat(2000)}`,
+      });
+    // About 1.25 MB: the tab reads the newest megabyte; the export, all of it.
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, `${Array.from({ length: 600 }, (_, i) => line(i)).join('\n')}\n`);
+    const lines = (await s.exportActivity('feature/one', 'jsonl')).text
+      .trimEnd()
+      .split('\n')
+      .map((l) => JSON.parse(l) as { record: string; kind?: string });
+    expect(lines.filter((l) => l.record === 'tool')).toHaveLength(600);
+    expect(lines.filter((l) => l.record === 'thread' && l.kind === 'prompt')).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ record: 'export', of: 'workspace', complete: true });
+    const md = await s.exportActivity('feature/one', 'markdown');
+    expect(md.name).toMatch(/^activity-.+-feature-one-\d{4}-\d{2}-\d{2}\.md$/);
+    expect(md.text).toContain("Symbiote's prompt");
+    expect(md.text).toContain('calls: 600');
+    expect(md.text).not.toContain('ghp_0123456789');
+    expect(md.text).toContain('token [redacted]');
+  });
+
+  it('says in its export what was not recorded (V84)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const record = join(repo.root, 'symbiote', 'workspaces', 'feature', 'one.json');
+    const saved = JSON.parse(readFileSync(record, 'utf8')) as WorkspaceFile;
+    delete saved.agent?.activity;
+    writeFileSync(record, JSON.stringify(saved));
+    const { text } = await s.exportActivity('feature/one', 'markdown');
+    expect(text).toContain('complete: false');
+    expect(text).toContain('Its calls: its agent started before Symbiote recorded them');
+  });
+
+  it('keeps an export within a size by leaving its oldest messages out (V84, decision 672)', async () => {
+    const { repo } = fresh();
+    const { claude } = fakeClaude();
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    const { recordEvent } = await import('../src/thread.js');
+    for (const [i, at] of ['09:00', '10:00', '11:00'].entries()) {
+      await recordEvent(
+        join(repo.root, 'symbiote'),
+        {
+          hook_event_name: 'UserPromptSubmit',
+          session_id: 'session-1',
+          cwd: workspace.worktree.path,
+          prompt: `Message ${String(i)} ${'y'.repeat(3000)}`,
+        },
+        `2026-10-15T${at}:00.000Z`,
+      );
+    }
+    const { text } = await s.exportActivity('feature/one', 'markdown', { maxBytes: 6000 });
+    expect(Buffer.byteLength(text)).toBeLessThanOrEqual(6000);
+    expect(text).toContain('Message 2');
+    expect(text).not.toContain('Message 0');
+    expect(text).toContain('`symbiote activity feature/one` gives all of it');
+  });
+
   it('says nothing of what runs for an agent started before its tools were recorded (V48f)', async () => {
     const { repo } = fresh();
     const { claude } = fakeClaude();

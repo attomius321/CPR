@@ -1984,6 +1984,25 @@ describe("Nucleus's activity (NU2, decisions 604, 606)", () => {
     });
   });
 
+  it('exports both its files whole, as Markdown and JSON Lines (V84)', async () => {
+    const repo = fresh();
+    const s = await service(repo, {});
+    const older = join(repo.root, 'symbiote', 'nucleus-activity.1.jsonl');
+    const line = (text: string, at: string) =>
+      JSON.stringify({ at, conversation: 'c1', agent: 'claude', kind: 'prompt', text });
+    mkdirSync(dirname(older), { recursive: true });
+    writeFileSync(older, `${line('The first', '2026-10-15T09:00:00.000Z')}\n`);
+    writeFileSync(activityFile(repo), `${line('The second', '2026-10-15T10:00:00.000Z')}\n`);
+    const md = await s.exportActivity!('markdown');
+    expect(md.name).toMatch(/^activity-.+-nucleus-\d{4}-\d{2}-\d{2}\.md$/);
+    expect(md.text).toContain('> The first');
+    expect(md.text).toContain('> The second');
+    expect(md.text).toContain('messages: 2');
+    const jsonl = (await s.exportActivity!('jsonl')).text.trimEnd().split('\n');
+    expect(jsonl).toHaveLength(3);
+    expect(JSON.parse(jsonl[1] as string)).toMatchObject({ record: 'nucleus', text: 'The first' });
+  });
+
   it("writes Symbiote's own lines through record, redacted", async () => {
     const repo = fresh();
     const s = await service(repo, {});
