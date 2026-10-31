@@ -23,6 +23,14 @@ const pages = (page: Page) => page.getByRole('navigation', { name: 'Pages' });
 const link = (page: Page, name: string) => pages(page).getByRole('link', { name, exact: true });
 const region = (page: Page, name: string) => page.getByRole('region', { name });
 const record = () => join(symbiote.repo, 'symbiote', 'nucleus.json');
+/** Nucleus's record, or null while it is not written. */
+const recorded = (): Record<string, unknown> | null => {
+  try {
+    return JSON.parse(readFileSync(record(), 'utf8')) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+};
 /** The fake's starts of Nucleus's session: its session's name stays Nucleus (decision 682). */
 const starts = () => symbiote.calls().filter((call) => call.args.includes('Nucleus'));
 const instructions = (at: number) => starts()[at]?.args.at(-1) ?? '';
@@ -78,7 +86,8 @@ test('Hive on: Alpha Ceph in the sidenav (open and folded), its page, the title 
   await expect.poll(() => starts().length, POLL).toBe(1);
   expect(instructions(0)).toMatch(/^You are Alpha Ceph, /);
   expect(instructions(0)).not.toContain('Nucleus');
-  expect(JSON.parse(readFileSync(record(), 'utf8'))).toMatchObject({ name: 'Alpha Ceph' });
+  // Written once the session is found, a moment after the start.
+  await expect.poll(recorded, POLL).toMatchObject({ name: 'Alpha Ceph' });
 
   // Settings: the prebuilt agent, its page and its prompt's group.
   await page.goto(`${symbiote.url}settings`);
@@ -105,6 +114,7 @@ test('a conversation keeps the name it started with as Hive goes off and on; its
   await hive(page, true);
   await link(page, 'Alpha Ceph').click();
   await expect.poll(() => starts().length, POLL).toBe(1);
+  await expect.poll(recorded, POLL).toMatchObject({ name: 'Alpha Ceph' });
   await expect(region(page, 'Alpha Ceph').getByRole('status')).toHaveText(
     'Ready: ask in its terminal',
     POLL,
@@ -138,5 +148,11 @@ test('a conversation keeps the name it started with as Hive goes off and on; its
   await expect.poll(() => starts().length, POLL).toBe(2);
   await expect(region(page, 'Nucleus').getByRole('note')).toHaveCount(0, POLL);
   expect(instructions(1)).toMatch(/^You are Nucleus, /);
-  expect(JSON.parse(readFileSync(record(), 'utf8'))).not.toHaveProperty('name');
+  // The new conversation's record, once written: no name, as before Alpha Ceph (the old one
+  // had one).
+  const kind = () => {
+    const now = recorded();
+    return now ? ('name' in now ? 'named' : 'plain') : 'none';
+  };
+  await expect.poll(kind, POLL).toBe('plain');
 });

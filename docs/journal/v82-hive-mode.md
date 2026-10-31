@@ -236,11 +236,13 @@ gate's arguments; the Hive Mind as `NucleusIcon` while Hive is on.
   for the agent took a hash of main's text, not a look at the editor.
 - **Settings' agent page title came from the agent's key**, not its entry's name: only the
   screenshots showed it; the e2e checks it now.
+- **Nucleus's record comes after its session is found**: an e2e reading `nucleus.json` as soon as
+  the fake agent was started passed alone and failed in the full suite. It polls for the record now.
 - **Decision numbers moved again**: `feature/hv3-running-reviewer` planned 674–681 twenty minutes
   after this plan took 674; the check before finishing caught it.
 
 **Verification**: tests first (CLI 12 and viewer 8 red before); `pnpm check` 2,614 unit tests;
-`alpha-ceph.spec.ts` 2 and the Nucleus, Settings, Hive, activity, shell and Hive-loop specs; Claude
+`pnpm test:e2e` 368 of 369, the one this branch's race, fixed (16 of 16 runs, 6 at a time); Claude
 Haiku with the built prompt says "I'm Alpha Ceph" (Hive on) and "I'm Nucleus" (off); the built gate
 through its settings file's command refuses as Alpha Ceph; Hive off's prompt hashes to main's;
 screenshots of every changed page, both themes, Hive on and off, at 1×.

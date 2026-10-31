@@ -647,7 +647,9 @@ are kept and ignored).
   Hive on, the sidenav open and folded, the page, the window's title and Settings say Alpha Ceph
   and draw the Mind; a conversation keeps its name across Hive off and on, its Activity tab opens,
   New conversation starts Nucleus. `nucleus`, `settings`, `hive`, `nucleus-activity`, `shell` and
-  `hive-loop` specs pass (two Settings expectations follow `{name}`).
+  `hive-loop` specs pass (two Settings expectations follow `{name}`). The full suite, `pnpm
+  test:e2e`: 368 of 369 passed; the one, this branch's own, read Nucleus's record before Symbiote
+  wrote it. It now waits for the record: 16 of 16 runs pass, 6 at a time.
 - Real agent (Claude Haiku, `claude -p`, the built instructions as its system prompt): "I'm Alpha
   Ceph, the orchestrator in Symbiote for this repository…" with Hive on; "I'm Nucleus, …" with it
   off; an edited text without `{name}` and the added line: "Alpha Ceph".
