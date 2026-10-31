@@ -1,0 +1,77 @@
+{
+  "number": 23147,
+  "title": "fix(css): don't re-run lightningcss visitor during minify (fix #23146)",
+  "body": "When `css.transformer` is `lightningcss`, a configured `css.lightningcss.visitor` runs twice over production CSS: once while bundling, then again during minify. `minifyCSS` spreads the whole `css.lightningcss` config into lightningcss's `transform()`, so the visitor and any `customAtRules` run a second time over CSS that was already transformed. If the visitor isn't idempotent it produces wrong output, and a visitor that throws on input it doesn't recognise can now throw during minify instead of during the transform pass. `build.cssMinify` defaults to lightningcss, so this is the default path.\n\nThe fix drops `visitor` and `customAtRules` from the options passed to the minify pass when the transformer is lightningcss, and keeps the target and format options.\n\nFixes #23146\n",
+  "user": {
+    "login": "lazerg",
+    "type": "User"
+  },
+  "baseSha": "89620f09afcfef6b35e7bb8660132ab5b4d0cd3b",
+  "headSha": "dd949569c0b4ce85e4878381ea238275d9dcb701",
+  "mergedAt": "2026-08-06T12:38:08Z",
+  "mergeCommit": "de041a79b05a0be965c874592fe2c1505bcd48df",
+  "commits": 3,
+  "reviews": [
+    {
+      "id": 4874484401,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "dd949569c0b4ce85e4878381ea238275d9dcb701",
+      "at": "2026-08-06T12:16:07Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23147#pullrequestreview-4874484401"
+    }
+  ],
+  "inline": [],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-07T02:47:15Z",
+      "number": 94,
+      "repo": "sudocarlos/tailrelay",
+      "pull": false,
+      "title": "chore: update Vite from 8.2.0 to 8.2.1",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/issues/94"
+    },
+    {
+      "at": "2026-08-09T17:06:15Z",
+      "number": 444,
+      "repo": "ncaq/www.ncaq.net",
+      "pull": true,
+      "title": "build(deps-dev): update dependency vite to v8.2.1",
+      "state": "closed",
+      "url": "https://github.com/ncaq/www.ncaq.net/pull/444"
+    },
+    {
+      "at": "2026-10-22T20:31:55Z",
+      "number": 241,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm）: bump vite from 8.2.0 to 8.2.1 in /web/server",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/241"
+    },
+    {
+      "at": "2026-10-22T20:32:22Z",
+      "number": 248,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm）: bump vite from 8.2.0 to 8.2.1 in /web/client",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/248"
+    },
+    {
+      "at": "2026-10-22T21:04:31Z",
+      "number": 264,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm-dev）: bump vite from 7.3.1 to 8.2.1 in /desktop/frontend",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/264"
+    }
+  ]
+}

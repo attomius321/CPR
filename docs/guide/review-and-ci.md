@@ -111,9 +111,10 @@ under `test/`, `tests/`, `e2e/`, `__tests__/` or `__mocks__/`.
 
 ## Review a branch
 
-To review a branch, open it with **Review** on its workspace, or with `r` on **Git**. A
-workspace's review starts where the workspace started, or at the branch picked in its **Changes**
-panel; any other branch's, where it leaves the default branch. Then:
+To review a branch, open it with **Review** on its workspace, or right-click it in **Git**'s
+branches panel and choose **Review**. A workspace's review starts where the workspace started, or
+at the branch picked in its **Changes** panel; any other branch's, where it leaves the default
+branch. Then:
 
 1. On **Files**, read each file's diff. Click a line to comment on it: any line shown, changed or
    not.

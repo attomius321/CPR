@@ -1,0 +1,18 @@
+{
+  "number": 23339,
+  "title": "test(css): fix css async order",
+  "body": "#23319 reordered this imports and broke this test's meaning.",
+  "user": {
+    "login": "sapphi-red",
+    "type": "User"
+  },
+  "baseSha": "5fdfd26ed10ffd08928a8d13b71650f3444221ca",
+  "headSha": "55e665d0556b9a5e1d5fdd46c68c1752bfc8b45f",
+  "mergedAt": "2026-08-24T02:38:43Z",
+  "mergeCommit": "8b3b4894afd98a8807ef985b601410d40b795d79",
+  "commits": 1,
+  "reviews": [],
+  "inline": [],
+  "comments": [],
+  "citedBy": []
+}

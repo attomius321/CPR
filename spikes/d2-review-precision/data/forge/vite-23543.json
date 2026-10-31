@@ -1,0 +1,41 @@
+{
+  "number": 23543,
+  "title": "fix(create-vite): add router only options for tanstack router/start",
+  "body": "Selecting \"TanStack Router\" from `vite create` will create a full framework TanStack Start app.\r\n\r\n- Appends `--router-only` to the TanStack CLI npm command for the \"TanStack Router\" option\r\n- Adds a seperate entry for \"TanStack Start\" without `--router-only`\r\n\r\nAI disclouser: very small GLM 5.3 flash session used to track down and debug the issue on both vite and tanstack/cli's side. Solution is very small and explicit and I've read all of it.\r\n",
+  "user": {
+    "login": "DogPawHat",
+    "type": "User"
+  },
+  "baseSha": "1544bb1b7ac92f775e9d0dea97954c99cc6cbd43",
+  "headSha": "f14e0ea80addce9f7c768df20b974c54838b8ffc",
+  "mergedAt": "2026-09-23T06:52:57Z",
+  "mergeCommit": "f155b62ceabbaaf71abbf59933968787e3961c56",
+  "commits": 3,
+  "reviews": [
+    {
+      "id": 5275196556,
+      "user": {
+        "login": "bluwy",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "f14e0ea80addce9f7c768df20b974c54838b8ffc",
+      "at": "2026-09-22T07:27:36Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23543#pullrequestreview-5275196556"
+    }
+  ],
+  "inline": [],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-10-19T07:31:48Z",
+      "number": 23832,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "release: create-vite@9.3.0",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23832"
+    }
+  ]
+}

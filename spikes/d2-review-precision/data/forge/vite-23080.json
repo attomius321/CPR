@@ -1,0 +1,792 @@
+{
+  "number": 23080,
+  "title": "test(bundled-dev): enable sourcemap playgrounds",
+  "body": "Enables more sourcemap test cases for bundled dev (part of #23028).\n\n`formatSourcemapForSnapshot` now removes differences that only come from how a tool serializes the map, so equal maps produce equal snapshots:\n\n- drops top-level `null` fields (e.g. `sourceRoot: null` from lightningcss)\n- drops an empty `ignoreList` (left by the map-merge step in unbundled dev), like the existing empty-`names` rule\n- sorts keys, so the visualization link no longer depends on the generator's key order\n\nBundled-dev snapshot branches whose snapshot is identical to the unbundled one are removed. The remaining branches are real differences:\n\n- plain postcss css gets an empty inline map in bundled dev (the #23028 gap)\n- `sources` are relative for URL-served css but absolute in the bundle's style tag\n- lightningcss keeps relative source names; rolldown emits absolute paths for plain css\n",
+  "user": {
+    "login": "h-a-n-a",
+    "type": "User"
+  },
+  "baseSha": "ad55e344217ad86c1572567e10ba5f40002a13a3",
+  "headSha": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+  "mergedAt": "2026-08-06T11:24:34Z",
+  "mergeCommit": "c2155fe4d5c8d25fba3a7366d367e3296ae669fa",
+  "commits": 12,
+  "reviews": [
+    {
+      "id": 4863417925,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "93a6f8be01fbbca337de99512704dd7a1147a97c",
+      "at": "2026-08-05T10:24:02Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4863417925"
+    },
+    {
+      "id": 4863421812,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "93a6f8be01fbbca337de99512704dd7a1147a97c",
+      "at": "2026-08-05T10:24:36Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4863421812"
+    },
+    {
+      "id": 4870939285,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T04:39:37Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4870939285"
+    },
+    {
+      "id": 4872025183,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "078fd12af38d60e77fedfa761e5d6a4c4ff1cfc7",
+      "at": "2026-08-06T07:16:52Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4872025183"
+    },
+    {
+      "id": 4872289865,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T07:49:15Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4872289865"
+    },
+    {
+      "id": 4872590945,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T08:24:57Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4872590945"
+    },
+    {
+      "id": 4872674757,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T08:36:21Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4872674757"
+    },
+    {
+      "id": 4872790514,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T08:51:01Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4872790514"
+    },
+    {
+      "id": 4872855304,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T08:59:19Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4872855304"
+    },
+    {
+      "id": 4872929179,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T09:07:06Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4872929179"
+    },
+    {
+      "id": 4872935199,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T09:07:50Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4872935199"
+    },
+    {
+      "id": 4872944942,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T09:09:05Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4872944942"
+    },
+    {
+      "id": 4873145952,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T09:35:12Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4873145952"
+    },
+    {
+      "id": 4873324369,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T09:57:29Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4873324369"
+    },
+    {
+      "id": 4873781290,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-06T10:48:15Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4873781290"
+    },
+    {
+      "id": 4874033783,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-06T11:16:03Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4874033783"
+    },
+    {
+      "id": 4874091565,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-06T11:24:23Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4874091565"
+    },
+    {
+      "id": 4874100611,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-06T11:25:37Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4874100611"
+    },
+    {
+      "id": 4874324199,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-06T11:55:35Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4874324199"
+    },
+    {
+      "id": 4882994996,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-07T12:55:40Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23080#pullrequestreview-4882994996"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3719800037,
+      "review": 4863417925,
+      "replyTo": null,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/css-sourcemap.spec.ts",
+      "line": 90,
+      "originalLine": 90,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "93a6f8be01fbbca337de99512704dd7a1147a97c",
+      "at": "2026-08-05T10:24:02Z",
+      "body": "The original test case did include sourcemap, but the matching regex was wrong.",
+      "diffHunk": "@@ -78,20 +115,25 @@ describe.runIf(isServe)('serve', () => {\n     `)\n   })\n \n-  test.runIf(isServe)(\n-    'js .css request does not include sourcemap',\n-    async () => {\n-      const res = await page.request.get(\n-        new URL('./linked-with-import.css', page.url()).href,\n-      )\n-      const content = await res.text()\n-      expect(content).not.toMatch('//#s*sourceMappingURL')\n-    },\n-  )",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3719800037"
+    },
+    {
+      "id": 3719803286,
+      "review": 4863421812,
+      "replyTo": null,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/css-sourcemap.spec.ts",
+      "line": null,
+      "originalLine": 130,
+      "commit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "originalCommit": "93a6f8be01fbbca337de99512704dd7a1147a97c",
+      "at": "2026-08-05T10:24:36Z",
+      "body": "haven't checked why this happens, but the sourcemap is just empty in this case",
+      "diffHunk": "@@ -78,20 +115,25 @@ describe.runIf(isServe)('serve', () => {\n     `)\n   })\n \n-  test.runIf(isServe)(\n-    'js .css request does not include sourcemap',\n-    async () => {\n-      const res = await page.request.get(\n-        new URL('./linked-with-import.css', page.url()).href,\n-      )\n-      const content = await res.text()\n-      expect(content).not.toMatch('//#s*sourceMappingURL')\n-    },\n-  )\n+  test.runIf(!isBundled)('js .css request includes sourcemap', async () => {\n+    const res = await page.request.get(\n+      new URL('./linked-with-import.css', page.url()).href,\n+    )\n+    const content = await res.text()\n+    expect(content).toMatch('/*# sourceMappingURL')\n+  })\n \n-  test('imported css', async () => {\n+  // bundled dev gives plain postcss css an empty inline map, with no sources.\n+  // This is a real gap (vitejs/vite#23028).\n+  // The isBundledDev branch below is what the map should look like. It matches\n+  // the lightningcss twin. Removing the skip is the whole fix.\n+  test.skipIf(isBundledDev)('imported css', async () => {",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3719803286"
+    },
+    {
+      "id": 3725865092,
+      "review": 4870939285,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/lightningcss/lightningcss.spec.ts",
+      "line": null,
+      "originalLine": 48,
+      "commit": "078fd12af38d60e77fedfa761e5d6a4c4ff1cfc7",
+      "originalCommit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T04:20:48Z",
+      "body": "we should ensure the mappings are valid, not only that it's empty. I think we need to still use snapshots.",
+      "diffHunk": "@@ -27,7 +30,31 @@ describe.runIf(isServe)('serve', () => {\n     throw new Error('Not found')\n   }\n \n+  // bundled dev adds CSS to the page through JS style tags\n+  const expectBundledDevStyleMap = (\n+    map: any,\n+    css: string,\n+    sourceFiles: string[],\n+  ) => {\n+    const normalized = formatSourcemapForSnapshot(map, css).map\n+    expect(\n+      normalized.sources.map((source: string) =>\n+        source.replace(/^\\/root\\//, ''),\n+      ),\n+    ).toEqual(sourceFiles)\n+    expect(normalized.sourcesContent).toEqual(\n+      sourceFiles.map((file) => readFile(file)),\n+    )\n+    expect(normalized.mappings).not.toBe('')",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3725865092"
+    },
+    {
+      "id": 3725887457,
+      "review": 4870939285,
+      "replyTo": 3719800037,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/css-sourcemap.spec.ts",
+      "line": 90,
+      "originalLine": 90,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "93a6f8be01fbbca337de99512704dd7a1147a97c",
+      "at": "2026-08-06T04:27:26Z",
+      "body": "No, this is checking the sourcemap for the JS file. Not the sourcemap for the CSS that is inlined. Probably we should elaborate in a comment.\n",
+      "diffHunk": "@@ -78,20 +115,25 @@ describe.runIf(isServe)('serve', () => {\n     `)\n   })\n \n-  test.runIf(isServe)(\n-    'js .css request does not include sourcemap',\n-    async () => {\n-      const res = await page.request.get(\n-        new URL('./linked-with-import.css', page.url()).href,\n-      )\n-      const content = await res.text()\n-      expect(content).not.toMatch('//#s*sourceMappingURL')\n-    },\n-  )",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3725887457"
+    },
+    {
+      "id": 3725917674,
+      "review": 4870939285,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/js-sourcemap/__tests__/js-sourcemap.spec.ts",
+      "line": null,
+      "originalLine": 166,
+      "commit": "016de7e8e57a54ebb4b30e39491be627dbbaa0ed",
+      "originalCommit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T04:35:05Z",
+      "body": "I think we should probably convert this test to a unit test for the pluginContianer and also add this test to Rolldown.\nhttps://github.com/vitejs/vite/pull/14588 is the PR that added this test.",
+      "diffHunk": "@@ -92,6 +156,14 @@ if (!isBuild) {\n   })\n \n   test('plugin return sourcemap with `sources: [\"\"]`', async () => {\n+    if (isBundledDev) {\n+      // rolldown drops the appended '// add comment' text, but the plugin's\n+      // `sources: [\"\"]` map must still remap to the real zoo.js in the bundle map\n+      const { js, map } = await getServedEntryChunk()\n+      expectMapHasSource(map, 'zoo.js', readFile('zoo.js'))\n+      expectVarInitMapsBackToExportConst(js, map, 'zoo', 'zoo.js')\n+      return\n+    }",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3725917674"
+    },
+    {
+      "id": 3725923961,
+      "review": 4870939285,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/js-sourcemap/__tests__/js-sourcemap.spec.ts",
+      "line": null,
+      "originalLine": 191,
+      "commit": "ea03a164afade74a4cc8c78506264b153cf5ba4c",
+      "originalCommit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T04:36:53Z",
+      "body": "```suggestion\n  // bundled dev does not inject fallback sourcemap, so this test is irrelevant\n```",
+      "diffHunk": "@@ -115,18 +187,22 @@ if (!isBuild) {\n     `)\n   })\n \n-  test('js with inline sourcemap injected by a plugin', async () => {\n-    const res = await page.request.get(\n-      new URL('./foo-with-sourcemap.js', page.url()).href,\n-    )\n-    const js = await res.text()\n-\n-    expect(js).toContain(commentSourceMap)\n-    const sourcemapComments = js.match(mapFileCommentRegex).length\n-    expect(sourcemapComments).toBe(1)\n-\n-    const map = extractSourcemap(js)\n-    expect(formatSourcemapForSnapshot(map, js)).toMatchInlineSnapshot(`\n+  // bundled dev: index.html never imports foo-with-sourcemap.js, so it is not\n+  // part of the bundle and nothing serves it. This test is for unbundled-dev only.",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3725923961"
+    },
+    {
+      "id": 3725927087,
+      "review": 4870939285,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/js-sourcemap/__tests__/js-sourcemap.spec.ts",
+      "line": null,
+      "originalLine": 248,
+      "commit": "1bd71336d97da03f303a75069347ae5dec6f1095",
+      "originalCommit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T04:37:48Z",
+      "body": "we can skip this test in bundled-dev because this test is for import-analysis plugin\nhttps://github.com/vitejs/vite/pull/14232",
+      "diffHunk": "@@ -163,6 +246,29 @@ if (!isBuild) {\n   })\n \n   test('multiline import', async () => {",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3725927087"
+    },
+    {
+      "id": 3725931611,
+      "review": 4870939285,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/js-sourcemap/__tests__/js-sourcemap.spec.ts",
+      "line": 253,
+      "originalLine": 307,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T04:39:12Z",
+      "body": "We should probably skip this test for bundled-dev and add this test to Rolldown repo.\nhttps://github.com/vitejs/vite/pull/22158 is the related PR\n",
+      "diffHunk": "@@ -198,6 +304,23 @@ if (!isBuild) {\n   })\n \n   test('should not leak file contents via sourcemap path traversal in node_modules', async () => {\n+    if (isBundledDev) {",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3725931611"
+    },
+    {
+      "id": 3726674370,
+      "review": 4872025183,
+      "replyTo": 3719800037,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/css-sourcemap.spec.ts",
+      "line": 90,
+      "originalLine": 90,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "93a6f8be01fbbca337de99512704dd7a1147a97c",
+      "at": "2026-08-06T07:16:52Z",
+      "body": "Thanks for the clarification. I've reverted.",
+      "diffHunk": "@@ -78,20 +115,25 @@ describe.runIf(isServe)('serve', () => {\n     `)\n   })\n \n-  test.runIf(isServe)(\n-    'js .css request does not include sourcemap',\n-    async () => {\n-      const res = await page.request.get(\n-        new URL('./linked-with-import.css', page.url()).href,\n-      )\n-      const content = await res.text()\n-      expect(content).not.toMatch('//#s*sourceMappingURL')\n-    },\n-  )",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3726674370"
+    },
+    {
+      "id": 3726897309,
+      "review": 4872289865,
+      "replyTo": 3725931611,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/js-sourcemap/__tests__/js-sourcemap.spec.ts",
+      "line": 253,
+      "originalLine": 307,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T07:49:15Z",
+      "body": "Based on what perspective do you decide that whether these things should be tested in the Rolldown repo or in the Vite repo? ",
+      "diffHunk": "@@ -198,6 +304,23 @@ if (!isBuild) {\n   })\n \n   test('should not leak file contents via sourcemap path traversal in node_modules', async () => {\n+    if (isBundledDev) {",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3726897309"
+    },
+    {
+      "id": 3727143643,
+      "review": 4872590945,
+      "replyTo": 3725931611,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/js-sourcemap/__tests__/js-sourcemap.spec.ts",
+      "line": 253,
+      "originalLine": 307,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T08:24:57Z",
+      "body": "I think I got what you mean. Do you mean that we should implement the same leak prevention thing in Rolldown as well?",
+      "diffHunk": "@@ -198,6 +304,23 @@ if (!isBuild) {\n   })\n \n   test('should not leak file contents via sourcemap path traversal in node_modules', async () => {\n+    if (isBundledDev) {",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3727143643"
+    },
+    {
+      "id": 3727213174,
+      "review": 4872674757,
+      "replyTo": 3725917674,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/js-sourcemap/__tests__/js-sourcemap.spec.ts",
+      "line": null,
+      "originalLine": 166,
+      "commit": "016de7e8e57a54ebb4b30e39491be627dbbaa0ed",
+      "originalCommit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T08:36:21Z",
+      "body": "Updated. Will record the Rolldown part in https://github.com/vitejs/vite/issues/23028#issuecomment-5190853274.",
+      "diffHunk": "@@ -92,6 +156,14 @@ if (!isBuild) {\n   })\n \n   test('plugin return sourcemap with `sources: [\"\"]`', async () => {\n+    if (isBundledDev) {\n+      // rolldown drops the appended '// add comment' text, but the plugin's\n+      // `sources: [\"\"]` map must still remap to the real zoo.js in the bundle map\n+      const { js, map } = await getServedEntryChunk()\n+      expectMapHasSource(map, 'zoo.js', readFile('zoo.js'))\n+      expectVarInitMapsBackToExportConst(js, map, 'zoo', 'zoo.js')\n+      return\n+    }",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3727213174"
+    },
+    {
+      "id": 3727307892,
+      "review": 4872790514,
+      "replyTo": null,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/js-sourcemap/__tests__/js-sourcemap.spec.ts",
+      "line": 134,
+      "originalLine": 134,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T08:51:02Z",
+      "body": "The snapshot in bundled-dev is too huge compared to the one down below so I'm going to keep this instead of using a snapshot in this case. (the same as other similar cases)",
+      "diffHunk": "@@ -68,8 +69,71 @@ function expectConsoleLogArgumentMapsToOriginalX(\n   })\n }\n \n+async function getServedEntryChunk() {\n+  const srcMatches = await vi.waitFor(\n+    async () => {\n+      const html = await (await page.request.get(page.url())).text()\n+      const matches = [...html.matchAll(/<script[^>]* src=\"([^\"]+)\"/g)]\n+        // the server also injects its client runtime as a script tag (vitejs/vite#23161)\n+        .filter(([, src]) => !src.endsWith('/bundledDevClient.mjs'))\n+      expect(matches.length).toBeGreaterThan(0)\n+      return matches\n+    },\n+    { timeout: 10_000 },\n+  )\n+  // every bundled-dev check reads the map of this one chunk. Fail here and now\n+  // if the dev bundle ever starts splitting the entry into more chunks.\n+  expect(srcMatches).toHaveLength(1)\n+  const entryUrl = new URL(srcMatches[0][1], page.url())\n+  const js = await (await page.request.get(entryUrl.href)).text()\n+  const mapUrlMatch = js.match(/^\\/\\/# sourceMappingURL=(\\S+)$/m)\n+  expect(mapUrlMatch).toBeTruthy()\n+  const mapRes = await page.request.get(new URL(mapUrlMatch![1], entryUrl).href)\n+  expect(mapRes.status()).toBe(200)\n+  return { js, map: await mapRes.json() }\n+}\n+\n+function expectMapHasSource(map: any, fileName: string, content: string) {\n+  const index = map.sources.findIndex(\n+    (source: string) => source === fileName || source.endsWith(`/${fileName}`),\n+  )\n+  expect(\n+    index,\n+    `map.sources should contain ${fileName}`,\n+  ).toBeGreaterThanOrEqual(0)\n+  expect(map.sourcesContent[index]).toBe(content)\n+}\n+\n+// check the mapping of a variable\n+function expectVarInitMapsBackToExportConst(\n+  js: string,\n+  map: any,\n+  name: string,\n+  fileName: string,\n+) {\n+  const lines = js.split('\\n')\n+  const varRE = new RegExp(\n+    `^var ${escapeRegex(name)}\\\\S* = \"${escapeRegex(name)}\"`,\n+  )\n+  const lineIndex = lines.findIndex((line) => varRE.test(line))\n+  expect(lineIndex).toBeGreaterThanOrEqual(0)\n+  const position = originalPositionFor(new TraceMap(map), {\n+    line: lineIndex + 1,\n+    column: 'var '.length,\n+  })\n+  expect(position.source).toMatch(new RegExp(`(^|/)${escapeRegex(fileName)}$`))\n+  expect(position.line).toBe(1)\n+  expect(position.column).toBe(13)\n+}\n+\n if (!isBuild) {\n   test('js', async () => {\n+    if (isBundledDev) {\n+      const { js, map } = await getServedEntryChunk()\n+      expectMapHasSource(map, 'foo.js', readFile('foo.js'))\n+      expectVarInitMapsBackToExportConst(js, map, 'foo', 'foo.js')",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3727307892"
+    },
+    {
+      "id": 3727360728,
+      "review": 4872855304,
+      "replyTo": 3725931611,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/js-sourcemap/__tests__/js-sourcemap.spec.ts",
+      "line": 253,
+      "originalLine": 307,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "0e53be85bd99210c7ca074cae7865f5c0f8e8e1a",
+      "at": "2026-08-06T08:59:19Z",
+      "body": "It is because this feature won't live in Vite side for bundled-dev.\r\n\r\n> Do you mean that we should implement the same leak prevention thing in Rolldown as well?\r\n\r\nYes.",
+      "diffHunk": "@@ -198,6 +304,23 @@ if (!isBuild) {\n   })\n \n   test('should not leak file contents via sourcemap path traversal in node_modules', async () => {\n+    if (isBundledDev) {",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3727360728"
+    },
+    {
+      "id": 3727417943,
+      "review": 4872929179,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/css-sourcemap.spec.ts",
+      "line": null,
+      "originalLine": 423,
+      "commit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "originalCommit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T09:07:06Z",
+      "body": "Do you know why these outputs are slightly different? I wonder if we can remove this condition by normalizing in `formatSourcemapForSnapshot`",
+      "diffHunk": "@@ -248,6 +420,26 @@ describe.runIf(isServe)('serve', () => {\n   test('imported sugarss', async () => {\n     const css = await getStyleTagContentIncluding('.imported-sugarss ')\n     const map = extractSourcemap(css)\n+    if (isBundledDev) {",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3727417943"
+    },
+    {
+      "id": 3727422365,
+      "review": 4872935199,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/css-sourcemap.spec.ts",
+      "line": 163,
+      "originalLine": 146,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T09:07:50Z",
+      "body": "this isn't used",
+      "diffHunk": "@@ -78,20 +118,32 @@ describe.runIf(isServe)('serve', () => {\n     `)\n   })\n \n-  test.runIf(isServe)(\n+  test.runIf(!isBundled)(\n     'js .css request does not include sourcemap',\n     async () => {\n       const res = await page.request.get(\n         new URL('./linked-with-import.css', page.url()).href,\n       )\n       const content = await res.text()\n-      expect(content).not.toMatch('//#s*sourceMappingURL')\n+      // The response is the JS module that wraps the CSS. The JS itself must\n+      // not carry a `//# sourceMappingURL` comment. The CSS text inlined in\n+      // that JS still contains its own `/*# sourceMappingURL` comment; that\n+      // one is fine.\n+      expect(content).not.toMatch('//# sourceMappingURL')\n     },\n   )\n \n-  test('imported css', async () => {\n+  // bundled dev gives plain postcss css an empty inline map, with no sources.\n+  // This is a real gap (vitejs/vite#23028).\n+  // To fix: remove the skip. The empty snapshot in the isBundledDev branch then\n+  // fills itself on a local run and should match the lightningcss twin.\n+  test.skipIf(isBundledDev)('imported css', async () => {\n     const css = await getStyleTagContentIncluding('.imported ')\n     const map = extractSourcemap(css)\n+    if (isBundledDev) {\n+      expect(formatSourcemapForSnapshot(map, css)).toMatchInlineSnapshot()\n+      return\n+    }",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3727422365"
+    },
+    {
+      "id": 3727428791,
+      "review": 4872944942,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/lightningcss/lightningcss.spec.ts",
+      "line": null,
+      "originalLine": 36,
+      "commit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "originalCommit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T09:08:55Z",
+      "body": "ICYM this one should be a snapshot.",
+      "diffHunk": "@@ -28,6 +30,12 @@ describe.runIf(isServe)('serve', () => {\n   }\n \n   test('linked css', async () => {\n+    if (isBundledDev) {\n+      const css = await getStyleTagContentIncluding('.linked ')\n+      // different from unbundled dev below\n+      expect(css).toContain('sourceMappingURL')",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3727428791"
+    },
+    {
+      "id": 3727429477,
+      "review": 4872944942,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/css-sourcemap.spec.ts",
+      "line": null,
+      "originalLine": 36,
+      "commit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "originalCommit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T09:09:02Z",
+      "body": "same above",
+      "diffHunk": "@@ -28,6 +30,12 @@ describe.runIf(isServe)('serve', () => {\n   }\n \n   test('linked css', async () => {\n+    if (isBundledDev) {\n+      const css = await getStyleTagContentIncluding('.linked ')\n+      // different from unbundled dev below\n+      expect(css).toContain('sourceMappingURL')",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3727429477"
+    },
+    {
+      "id": 3727595161,
+      "review": 4873145952,
+      "replyTo": 3727417943,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/css-sourcemap.spec.ts",
+      "line": null,
+      "originalLine": 423,
+      "commit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "originalCommit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T09:35:12Z",
+      "body": "nice catch! the latter one has `sourceRoot: null`. let me filter out these `null` fields in these cases.",
+      "diffHunk": "@@ -248,6 +420,26 @@ describe.runIf(isServe)('serve', () => {\n   test('imported sugarss', async () => {\n     const css = await getStyleTagContentIncluding('.imported-sugarss ')\n     const map = extractSourcemap(css)\n+    if (isBundledDev) {",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3727595161"
+    },
+    {
+      "id": 3727739635,
+      "review": 4873324369,
+      "replyTo": 3727422365,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/css-sourcemap.spec.ts",
+      "line": 163,
+      "originalLine": 146,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "34efcd0ea8b30de00ead07284b9778314e30e9f0",
+      "at": "2026-08-06T09:57:29Z",
+      "body": "Updated. This generates an empty sourcemap, which is an issue like above",
+      "diffHunk": "@@ -78,20 +118,32 @@ describe.runIf(isServe)('serve', () => {\n     `)\n   })\n \n-  test.runIf(isServe)(\n+  test.runIf(!isBundled)(\n     'js .css request does not include sourcemap',\n     async () => {\n       const res = await page.request.get(\n         new URL('./linked-with-import.css', page.url()).href,\n       )\n       const content = await res.text()\n-      expect(content).not.toMatch('//#s*sourceMappingURL')\n+      // The response is the JS module that wraps the CSS. The JS itself must\n+      // not carry a `//# sourceMappingURL` comment. The CSS text inlined in\n+      // that JS still contains its own `/*# sourceMappingURL` comment; that\n+      // one is fine.\n+      expect(content).not.toMatch('//# sourceMappingURL')\n     },\n   )\n \n-  test('imported css', async () => {\n+  // bundled dev gives plain postcss css an empty inline map, with no sources.\n+  // This is a real gap (vitejs/vite#23028).\n+  // To fix: remove the skip. The empty snapshot in the isBundledDev branch then\n+  // fills itself on a local run and should match the lightningcss twin.\n+  test.skipIf(isBundledDev)('imported css', async () => {\n     const css = await getStyleTagContentIncluding('.imported ')\n     const map = extractSourcemap(css)\n+    if (isBundledDev) {\n+      expect(formatSourcemapForSnapshot(map, css)).toMatchInlineSnapshot()\n+      return\n+    }",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3727739635"
+    },
+    {
+      "id": 3728103671,
+      "review": 4873781290,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/lightningcss/lightningcss.spec.ts",
+      "line": 138,
+      "originalLine": 138,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-06T10:43:49Z",
+      "body": "This may need to be a relative path, but it might be fine. (https://github.com/vitejs/vite/pull/12079)\nWould you check it later?\n",
+      "diffHunk": "@@ -74,30 +106,54 @@ describe.runIf(isServe)('serve', () => {\n           ],\n           \"version\": 3,\n         },\n-        visualization: \"https://evanw.github.io/source-map-visualization/#NzAALmJlLWltcG9ydGVkIHsKICBjb2xvcjogcmVkOwp9CgoubGlua2VkLXdpdGgtaW1wb3J0IHsKICBjb2xvcjogcmVkOwp9CjI0NAB7InZlcnNpb24iOjMsInNvdXJjZVJvb3QiOm51bGwsIm1hcHBpbmdzIjoiQUNBQTs7OztBREVBIiwic291cmNlcyI6WyJsaW5rZWQtd2l0aC1pbXBvcnQuY3NzIiwiYmUtaW1wb3J0ZWQuY3NzIl0sInNvdXJjZXNDb250ZW50IjpbIkBpbXBvcnQgJ0AvYmUtaW1wb3J0ZWQuY3NzJztcblxuLmxpbmtlZC13aXRoLWltcG9ydCB7XG4gIGNvbG9yOiByZWQ7XG59XG4iLCIuYmUtaW1wb3J0ZWQge1xuICBjb2xvcjogcmVkO1xufVxuIl19\"\n+        visualization: \"https://evanw.github.io/source-map-visualization/#NzAALmJlLWltcG9ydGVkIHsKICBjb2xvcjogcmVkOwp9CgoubGlua2VkLXdpdGgtaW1wb3J0IHsKICBjb2xvcjogcmVkOwp9CjIyNgB7Im1hcHBpbmdzIjoiQUNBQTs7OztBREVBIiwic291cmNlcyI6WyJsaW5rZWQtd2l0aC1pbXBvcnQuY3NzIiwiYmUtaW1wb3J0ZWQuY3NzIl0sInNvdXJjZXNDb250ZW50IjpbIkBpbXBvcnQgJ0AvYmUtaW1wb3J0ZWQuY3NzJztcblxuLmxpbmtlZC13aXRoLWltcG9ydCB7XG4gIGNvbG9yOiByZWQ7XG59XG4iLCIuYmUtaW1wb3J0ZWQge1xuICBjb2xvcjogcmVkO1xufVxuIl0sInZlcnNpb24iOjN9\"\n       }\n     `)\n   })\n \n-  test.runIf(isServe)(\n+  test.runIf(!isBundled)(\n     'js .css request does not include sourcemap',\n     async () => {\n       const res = await page.request.get(\n         new URL('./linked-with-import.css', page.url()).href,\n       )\n       const content = await res.text()\n-      expect(content).not.toMatch('//#s*sourceMappingURL')\n+      // The response is the JS module that wraps the CSS. The JS itself must\n+      // not carry a `//# sourceMappingURL` comment. The CSS text inlined in\n+      // that JS still contains its own `/*# sourceMappingURL` comment; that\n+      // one is fine.\n+      expect(content).not.toMatch('//# sourceMappingURL')\n     },\n   )\n \n   test('imported css', async () => {\n     const css = await getStyleTagContentIncluding('.imported ')\n     const map = extractSourcemap(css)\n+    if (isBundledDev) {\n+      expect(formatSourcemapForSnapshot(map, css)).toMatchInlineSnapshot(`\n+        SourceMap {\n+          content: {\n+            \"mappings\": \"AAAA\",\n+            \"sources\": [\n+              \"/root/imported.css\",",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3728103671"
+    },
+    {
+      "id": 3728114627,
+      "review": 4873781290,
+      "replyTo": null,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/lightningcss/lightningcss.spec.ts",
+      "line": 34,
+      "originalLine": 34,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-06T10:45:38Z",
+      "body": "btw do you know the reason?",
+      "diffHunk": "@@ -28,6 +30,30 @@ describe.runIf(isServe)('serve', () => {\n   }\n \n   test('linked css', async () => {\n+    if (isBundledDev) {\n+      // has a sourcemap, unlike unbundled dev below",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3728114627"
+    },
+    {
+      "id": 3728306768,
+      "review": 4874033783,
+      "replyTo": 3728114627,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/lightningcss/lightningcss.spec.ts",
+      "line": 34,
+      "originalLine": 34,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-06T11:16:03Z",
+      "body": "yes, in unbundled-dev mode, [`transformRequest`](https://github.com/vitejs/vite/blob/ef02435114c57d0422028f0e6987f3df8db72969/packages/vite/src/node/server/transformRequest.ts#L363) drops the generated sourcemap if the original code and the generated code are the same. I haven't checked the code in bundled-dev mode, I think they don't have the same logic for this and `AAAA` in mapping is just a dummy that is generated by lightningcss.",
+      "diffHunk": "@@ -28,6 +30,30 @@ describe.runIf(isServe)('serve', () => {\n   }\n \n   test('linked css', async () => {\n+    if (isBundledDev) {\n+      // has a sourcemap, unlike unbundled dev below",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3728306768"
+    },
+    {
+      "id": 3728354303,
+      "review": 4874091565,
+      "replyTo": 3728114627,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/lightningcss/lightningcss.spec.ts",
+      "line": 34,
+      "originalLine": 34,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-06T11:24:23Z",
+      "body": "Makes sense 👍 ",
+      "diffHunk": "@@ -28,6 +30,30 @@ describe.runIf(isServe)('serve', () => {\n   }\n \n   test('linked css', async () => {\n+    if (isBundledDev) {\n+      // has a sourcemap, unlike unbundled dev below",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3728354303"
+    },
+    {
+      "id": 3728361416,
+      "review": 4874100611,
+      "replyTo": 3728103671,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/lightningcss/lightningcss.spec.ts",
+      "line": 138,
+      "originalLine": 138,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-06T11:25:37Z",
+      "body": "Yes! On it! Thanks for the detailed review 🩵",
+      "diffHunk": "@@ -74,30 +106,54 @@ describe.runIf(isServe)('serve', () => {\n           ],\n           \"version\": 3,\n         },\n-        visualization: \"https://evanw.github.io/source-map-visualization/#NzAALmJlLWltcG9ydGVkIHsKICBjb2xvcjogcmVkOwp9CgoubGlua2VkLXdpdGgtaW1wb3J0IHsKICBjb2xvcjogcmVkOwp9CjI0NAB7InZlcnNpb24iOjMsInNvdXJjZVJvb3QiOm51bGwsIm1hcHBpbmdzIjoiQUNBQTs7OztBREVBIiwic291cmNlcyI6WyJsaW5rZWQtd2l0aC1pbXBvcnQuY3NzIiwiYmUtaW1wb3J0ZWQuY3NzIl0sInNvdXJjZXNDb250ZW50IjpbIkBpbXBvcnQgJ0AvYmUtaW1wb3J0ZWQuY3NzJztcblxuLmxpbmtlZC13aXRoLWltcG9ydCB7XG4gIGNvbG9yOiByZWQ7XG59XG4iLCIuYmUtaW1wb3J0ZWQge1xuICBjb2xvcjogcmVkO1xufVxuIl19\"\n+        visualization: \"https://evanw.github.io/source-map-visualization/#NzAALmJlLWltcG9ydGVkIHsKICBjb2xvcjogcmVkOwp9CgoubGlua2VkLXdpdGgtaW1wb3J0IHsKICBjb2xvcjogcmVkOwp9CjIyNgB7Im1hcHBpbmdzIjoiQUNBQTs7OztBREVBIiwic291cmNlcyI6WyJsaW5rZWQtd2l0aC1pbXBvcnQuY3NzIiwiYmUtaW1wb3J0ZWQuY3NzIl0sInNvdXJjZXNDb250ZW50IjpbIkBpbXBvcnQgJ0AvYmUtaW1wb3J0ZWQuY3NzJztcblxuLmxpbmtlZC13aXRoLWltcG9ydCB7XG4gIGNvbG9yOiByZWQ7XG59XG4iLCIuYmUtaW1wb3J0ZWQge1xuICBjb2xvcjogcmVkO1xufVxuIl0sInZlcnNpb24iOjN9\"\n       }\n     `)\n   })\n \n-  test.runIf(isServe)(\n+  test.runIf(!isBundled)(\n     'js .css request does not include sourcemap',\n     async () => {\n       const res = await page.request.get(\n         new URL('./linked-with-import.css', page.url()).href,\n       )\n       const content = await res.text()\n-      expect(content).not.toMatch('//#s*sourceMappingURL')\n+      // The response is the JS module that wraps the CSS. The JS itself must\n+      // not carry a `//# sourceMappingURL` comment. The CSS text inlined in\n+      // that JS still contains its own `/*# sourceMappingURL` comment; that\n+      // one is fine.\n+      expect(content).not.toMatch('//# sourceMappingURL')\n     },\n   )\n \n   test('imported css', async () => {\n     const css = await getStyleTagContentIncluding('.imported ')\n     const map = extractSourcemap(css)\n+    if (isBundledDev) {\n+      expect(formatSourcemapForSnapshot(map, css)).toMatchInlineSnapshot(`\n+        SourceMap {\n+          content: {\n+            \"mappings\": \"AAAA\",\n+            \"sources\": [\n+              \"/root/imported.css\",",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3728361416"
+    },
+    {
+      "id": 3728541875,
+      "review": 4874324199,
+      "replyTo": 3728103671,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/lightningcss/lightningcss.spec.ts",
+      "line": 138,
+      "originalLine": 138,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-06T11:55:35Z",
+      "body": "Both modes get the same map from lightningcss (`sources: [\"imported.css\"]`, relative to `projectRoot`). \r\n\r\nThe difference is who builds the combined map that `vite:css-post` inlines:\r\n\r\n- **unbundled**: Vite's plugin container returns the single transform map as-is, so the relative name stays.\r\n- **bundled**: the hooks run inside rolldown, and rolldown normalizes every transform-returned map before storing it. If the map has exactly one source whose name differs from the module id, it replaces `sources` with `[id]` (the absolute path): [`normalize_transform_sourcemap`](https://github.com/rolldown/rolldown/blob/d6b0fe8b3a8155709134c0e5ad0ce2ac292095e6/crates/rolldown_plugin/src/plugin_driver/build_hooks.rs#L399)\r\n\r\nMaps with more than one source are not touched, which is why `imported css with import` matches in both modes.\r\n\r\nI'm still digging into the real reason behind this.",
+      "diffHunk": "@@ -74,30 +106,54 @@ describe.runIf(isServe)('serve', () => {\n           ],\n           \"version\": 3,\n         },\n-        visualization: \"https://evanw.github.io/source-map-visualization/#NzAALmJlLWltcG9ydGVkIHsKICBjb2xvcjogcmVkOwp9CgoubGlua2VkLXdpdGgtaW1wb3J0IHsKICBjb2xvcjogcmVkOwp9CjI0NAB7InZlcnNpb24iOjMsInNvdXJjZVJvb3QiOm51bGwsIm1hcHBpbmdzIjoiQUNBQTs7OztBREVBIiwic291cmNlcyI6WyJsaW5rZWQtd2l0aC1pbXBvcnQuY3NzIiwiYmUtaW1wb3J0ZWQuY3NzIl0sInNvdXJjZXNDb250ZW50IjpbIkBpbXBvcnQgJ0AvYmUtaW1wb3J0ZWQuY3NzJztcblxuLmxpbmtlZC13aXRoLWltcG9ydCB7XG4gIGNvbG9yOiByZWQ7XG59XG4iLCIuYmUtaW1wb3J0ZWQge1xuICBjb2xvcjogcmVkO1xufVxuIl19\"\n+        visualization: \"https://evanw.github.io/source-map-visualization/#NzAALmJlLWltcG9ydGVkIHsKICBjb2xvcjogcmVkOwp9CgoubGlua2VkLXdpdGgtaW1wb3J0IHsKICBjb2xvcjogcmVkOwp9CjIyNgB7Im1hcHBpbmdzIjoiQUNBQTs7OztBREVBIiwic291cmNlcyI6WyJsaW5rZWQtd2l0aC1pbXBvcnQuY3NzIiwiYmUtaW1wb3J0ZWQuY3NzIl0sInNvdXJjZXNDb250ZW50IjpbIkBpbXBvcnQgJ0AvYmUtaW1wb3J0ZWQuY3NzJztcblxuLmxpbmtlZC13aXRoLWltcG9ydCB7XG4gIGNvbG9yOiByZWQ7XG59XG4iLCIuYmUtaW1wb3J0ZWQge1xuICBjb2xvcjogcmVkO1xufVxuIl0sInZlcnNpb24iOjN9\"\n       }\n     `)\n   })\n \n-  test.runIf(isServe)(\n+  test.runIf(!isBundled)(\n     'js .css request does not include sourcemap',\n     async () => {\n       const res = await page.request.get(\n         new URL('./linked-with-import.css', page.url()).href,\n       )\n       const content = await res.text()\n-      expect(content).not.toMatch('//#s*sourceMappingURL')\n+      // The response is the JS module that wraps the CSS. The JS itself must\n+      // not carry a `//# sourceMappingURL` comment. The CSS text inlined in\n+      // that JS still contains its own `/*# sourceMappingURL` comment; that\n+      // one is fine.\n+      expect(content).not.toMatch('//# sourceMappingURL')\n     },\n   )\n \n   test('imported css', async () => {\n     const css = await getStyleTagContentIncluding('.imported ')\n     const map = extractSourcemap(css)\n+    if (isBundledDev) {\n+      expect(formatSourcemapForSnapshot(map, css)).toMatchInlineSnapshot(`\n+        SourceMap {\n+          content: {\n+            \"mappings\": \"AAAA\",\n+            \"sources\": [\n+              \"/root/imported.css\",",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3728541875"
+    },
+    {
+      "id": 3735882544,
+      "review": 4882994996,
+      "replyTo": 3728103671,
+      "user": {
+        "login": "h-a-n-a",
+        "type": "User"
+      },
+      "path": "playground/css-sourcemap/__tests__/lightningcss/lightningcss.spec.ts",
+      "line": 138,
+      "originalLine": 138,
+      "commit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "originalCommit": "4ca08c8a6924dd8ccb309ceb05136730e8b6ca13",
+      "at": "2026-08-07T12:55:40Z",
+      "body": "Following up on this, it's more tricky than I thought https://github.com/vitejs/vite/issues/23195",
+      "diffHunk": "@@ -74,30 +106,54 @@ describe.runIf(isServe)('serve', () => {\n           ],\n           \"version\": 3,\n         },\n-        visualization: \"https://evanw.github.io/source-map-visualization/#NzAALmJlLWltcG9ydGVkIHsKICBjb2xvcjogcmVkOwp9CgoubGlua2VkLXdpdGgtaW1wb3J0IHsKICBjb2xvcjogcmVkOwp9CjI0NAB7InZlcnNpb24iOjMsInNvdXJjZVJvb3QiOm51bGwsIm1hcHBpbmdzIjoiQUNBQTs7OztBREVBIiwic291cmNlcyI6WyJsaW5rZWQtd2l0aC1pbXBvcnQuY3NzIiwiYmUtaW1wb3J0ZWQuY3NzIl0sInNvdXJjZXNDb250ZW50IjpbIkBpbXBvcnQgJ0AvYmUtaW1wb3J0ZWQuY3NzJztcblxuLmxpbmtlZC13aXRoLWltcG9ydCB7XG4gIGNvbG9yOiByZWQ7XG59XG4iLCIuYmUtaW1wb3J0ZWQge1xuICBjb2xvcjogcmVkO1xufVxuIl19\"\n+        visualization: \"https://evanw.github.io/source-map-visualization/#NzAALmJlLWltcG9ydGVkIHsKICBjb2xvcjogcmVkOwp9CgoubGlua2VkLXdpdGgtaW1wb3J0IHsKICBjb2xvcjogcmVkOwp9CjIyNgB7Im1hcHBpbmdzIjoiQUNBQTs7OztBREVBIiwic291cmNlcyI6WyJsaW5rZWQtd2l0aC1pbXBvcnQuY3NzIiwiYmUtaW1wb3J0ZWQuY3NzIl0sInNvdXJjZXNDb250ZW50IjpbIkBpbXBvcnQgJ0AvYmUtaW1wb3J0ZWQuY3NzJztcblxuLmxpbmtlZC13aXRoLWltcG9ydCB7XG4gIGNvbG9yOiByZWQ7XG59XG4iLCIuYmUtaW1wb3J0ZWQge1xuICBjb2xvcjogcmVkO1xufVxuIl0sInZlcnNpb24iOjN9\"\n       }\n     `)\n   })\n \n-  test.runIf(isServe)(\n+  test.runIf(!isBundled)(\n     'js .css request does not include sourcemap',\n     async () => {\n       const res = await page.request.get(\n         new URL('./linked-with-import.css', page.url()).href,\n       )\n       const content = await res.text()\n-      expect(content).not.toMatch('//#s*sourceMappingURL')\n+      // The response is the JS module that wraps the CSS. The JS itself must\n+      // not carry a `//# sourceMappingURL` comment. The CSS text inlined in\n+      // that JS still contains its own `/*# sourceMappingURL` comment; that\n+      // one is fine.\n+      expect(content).not.toMatch('//# sourceMappingURL')\n     },\n   )\n \n   test('imported css', async () => {\n     const css = await getStyleTagContentIncluding('.imported ')\n     const map = extractSourcemap(css)\n+    if (isBundledDev) {\n+      expect(formatSourcemapForSnapshot(map, css)).toMatchInlineSnapshot(`\n+        SourceMap {\n+          content: {\n+            \"mappings\": \"AAAA\",\n+            \"sources\": [\n+              \"/root/imported.css\",",
+      "url": "https://github.com/vitejs/vite/pull/23080#discussion_r3735882544"
+    }
+  ],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-06T08:41:34Z",
+      "number": 23028,
+      "repo": "vitejs/vite",
+      "pull": false,
+      "title": "Tracking: playground tests skipped under bundled dev mode",
+      "state": "open",
+      "url": "https://github.com/vitejs/vite/issues/23028"
+    },
+    {
+      "at": "2026-08-07T02:47:15Z",
+      "number": 94,
+      "repo": "sudocarlos/tailrelay",
+      "pull": false,
+      "title": "chore: update Vite from 8.2.0 to 8.2.1",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/issues/94"
+    },
+    {
+      "at": "2026-10-22T20:31:55Z",
+      "number": 241,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm）: bump vite from 8.2.0 to 8.2.1 in /web/server",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/241"
+    },
+    {
+      "at": "2026-10-22T20:32:22Z",
+      "number": 248,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm）: bump vite from 8.2.0 to 8.2.1 in /web/client",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/248"
+    },
+    {
+      "at": "2026-10-22T21:04:31Z",
+      "number": 264,
+      "repo": "rennerdo30/bifrost-proxy",
+      "pull": false,
+      "title": "［Historical PR］ deps（npm-dev）: bump vite from 7.3.1 to 8.2.1 in /desktop/frontend",
+      "state": "closed",
+      "url": "https://github.com/rennerdo30/bifrost-proxy/issues/264"
+    }
+  ]
+}

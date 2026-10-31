@@ -1,0 +1,237 @@
+<title>D2 Blind Sample</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column of numbered cards, a sticky progress bar; diff colours carry the code. */
+:root {
+  --bg: #f6f6f3;
+  --card: #ffffff;
+  --fg: #1d2129;
+  --muted: #5d6573;
+  --line: #dfe1e4;
+  --accent: #5b46c9;
+  --add-bg: #e6f4ea; --add-fg: #1f5f33;
+  --del-bg: #fbe9e9; --del-fg: #8a2525;
+  --worth: #1f7a46; --noise: #6b6f78; --wrong: #b3261e;
+  --code-bg: #f1f2f4;
+  --font-body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15161a; --card: #1d1f24; --fg: #e7e8ea; --muted: #a2a8b3; --line: #30333a;
+    --accent: #a395ff; --add-bg: #17301f; --add-fg: #9fdcb0; --del-bg: #3a1b1b; --del-fg: #f2a9a4;
+    --worth: #5fcf8c; --noise: #a2a8b3; --wrong: #ff8a80; --code-bg: #24262c; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15161a; --card: #1d1f24; --fg: #e7e8ea; --muted: #a2a8b3; --line: #30333a;
+  --accent: #a395ff; --add-bg: #17301f; --add-fg: #9fdcb0; --del-bg: #3a1b1b; --del-fg: #f2a9a4;
+  --worth: #5fcf8c; --noise: #a2a8b3; --wrong: #ff8a80; --code-bg: #24262c; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font: 16px/1.55 var(--font-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 20px; }
+header { padding-top: 28px; display: grid; gap: 12px; }
+h1 { font-size: 1.75rem; line-height: 1.2; margin: 0; text-wrap: balance; }
+.lede { margin: 0; color: var(--muted); max-width: 65ch; }
+.defs { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.defs li { display: grid; grid-template-columns: 11rem 1fr; gap: 12px; }
+.defs b { font-weight: 700; }
+.bar {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding-block: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.progress { font-variant-numeric: tabular-nums; font-weight: 700; }
+.meter { flex: 1 1 160px; height: 8px; background: var(--line); border-radius: 4px; overflow: hidden; min-width: 120px; }
+.meter i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.bar label { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+.notice { margin: 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.notice[hidden] { display: none; }
+ol.items { list-style: none; margin: 0; padding: 0; display: grid; gap: 20px; }
+.item { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 12px; min-width: 0; }
+.item.done { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.head { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: baseline; }
+.num { font-family: var(--font-mono); font-weight: 600; color: var(--accent); }
+.chip { font-size: .8rem; letter-spacing: .02em; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.pr { margin: 0; }
+.pr a { color: var(--fg); }
+.claim { margin: 0; padding: 12px 14px; border-left: 3px solid var(--accent); background: var(--code-bg); border-radius: 0 6px 6px 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.code { margin: 0; background: var(--code-bg); border-radius: 6px; padding: 10px 0; overflow-x: auto; font: 13px/1.5 var(--font-mono); }
+.code span { display: block; padding: 0 12px; white-space: pre; min-width: max-content; }
+.code .add { background: var(--add-bg); color: var(--add-fg); }
+.code .del { background: var(--del-bg); color: var(--del-fg); }
+.code .hd { color: var(--muted); font-weight: 600; }
+details summary { cursor: pointer; color: var(--muted); }
+details ul { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.links { display: flex; flex-wrap: wrap; gap: 12px; font-size: .95rem; }
+.links a { color: var(--accent); }
+fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.choice input { position: absolute; opacity: 0; }
+.choice span { display: inline-block; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); cursor: pointer; }
+.choice input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+.choice.worth input:checked + span { background: var(--worth); border-color: var(--worth); color: var(--card); }
+.choice.noise input:checked + span { background: var(--noise); border-color: var(--noise); color: var(--card); }
+.choice.wrong input:checked + span { background: var(--wrong); border-color: var(--wrong); color: var(--card); }
+textarea { width: 100%; min-height: 2.6em; font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; resize: vertical; }
+.status { font-size: .9rem; color: var(--muted); min-height: 1.4em; }
+.status.err { color: var(--wrong); }
+@media (max-width: 560px) { .defs li { grid-template-columns: 1fr; gap: 0; } }
+@media (prefers-reduced-motion: reduce) { .meter i { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>D2 blind sample: is each claim right, and worth a reviewer's time?</h1>
+    <p class="lede">35 items drawn at random from Symbiote's findings and the AI reviewers' comments on 51 merged pull requests of zod, vite and Bitwarden. My scores are not on this page. Pick one choice per item; each answer saves when you click it.</p>
+    <ul class="defs">
+      <li><b>Right and worth reading</b><span>True, and it names something the diff does not make obvious. A reviewer would check or ask about it.</span></li>
+      <li><b>Right but noise</b><span>True, but nothing to act on.</span></li>
+      <li><b>Wrong</b><span>A claim in it is false at the commit it talks about.</span></li>
+    </ul>
+  </header>
+  <div class="bar">
+    <span class="progress" id="progress">0 of 35 scored</span>
+    <span class="meter" aria-hidden="true"><i id="meter"></i></span>
+    <label for="only-open"><input type="checkbox" id="only-open"> Show only unscored</label>
+  </div>
+  <p class="notice" id="notice" hidden></p>
+  <ol class="items" id="items"></ol>
+</div>
+
+<script id="data" type="application/json">/*ITEMS*/[]</script>
+<script>
+const items = JSON.parse(document.getElementById('data').textContent);
+const answers = new Map();
+let db = null;
+const CHOICES = [['worth', 'Right and worth reading'], ['noise', 'Right but noise'], ['wrong', 'Wrong']];
+
+function codeBlock(text) {
+  const pre = document.createElement('pre');
+  pre.className = 'code';
+  for (const line of text.split('\n')) {
+    const span = document.createElement('span');
+    span.textContent = line || ' ';
+    if (/^\+(?!\+\+)/.test(line)) span.className = 'add';
+    else if (/^-(?!--)/.test(line)) span.className = 'del';
+    else if (/^(@@|Change to |Used by |[\w./-]+\.\w+:\d+)/.test(line)) span.className = 'hd';
+    pre.append(span);
+  }
+  return pre;
+}
+
+function render() {
+  const list = document.getElementById('items');
+  list.replaceChildren();
+  for (const it of items) {
+    const li = document.createElement('li');
+    li.className = 'item';
+    li.id = it.id;
+    li.dataset.id = it.id;
+    const head = document.createElement('div');
+    head.className = 'head';
+    const num = document.createElement('span'); num.className = 'num'; num.textContent = it.id;
+    const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = it.label;
+    head.append(num, chip);
+    const pr = document.createElement('p'); pr.className = 'pr';
+    const a = document.createElement('a'); a.href = it.url; a.target = '_blank'; a.rel = 'noopener';
+    a.textContent = `${it.project} #${it.number}`;
+    pr.append(a, document.createTextNode(` — ${it.title}`));
+    const claim = document.createElement('p'); claim.className = 'claim'; claim.textContent = it.claim;
+    li.append(head, pr, claim, codeBlock(it.code));
+    if (it.thread && it.thread.length) {
+      const d = document.createElement('details');
+      const s = document.createElement('summary'); s.textContent = `Thread on GitHub (${it.thread.length} ${it.thread.length === 1 ? 'reply' : 'replies'})`;
+      const ul = document.createElement('ul');
+      for (const t of it.thread) { const r = document.createElement('li'); r.textContent = t; ul.append(r); }
+      d.append(s, ul);
+      li.append(d);
+    }
+    const links = document.createElement('div'); links.className = 'links';
+    for (const [text, href] of it.links) { const l = document.createElement('a'); l.href = href; l.target = '_blank'; l.rel = 'noopener'; l.textContent = `Open ${text}`; links.append(l); }
+    li.append(links);
+    const fs = document.createElement('fieldset');
+    const lg = document.createElement('legend'); lg.textContent = `Your score for ${it.id}`; fs.append(lg);
+    for (const [value, text] of CHOICES) {
+      const lab = document.createElement('label'); lab.className = `choice ${value}`;
+      const input = document.createElement('input'); input.type = 'radio'; input.name = `c-${it.id}`; input.id = `c-${it.id}-${value}`; input.value = value;
+      input.addEventListener('change', () => save(it, { choice: value }));
+      const span = document.createElement('span'); span.textContent = text;
+      lab.append(input, span); fs.append(lab);
+    }
+    const note = document.createElement('textarea'); note.id = `n-${it.id}`; note.placeholder = 'Note (optional)'; note.rows = 1;
+    note.addEventListener('change', () => save(it, { note: note.value.trim() }));
+    const status = document.createElement('div'); status.className = 'status'; status.id = `st-${it.id}`; status.setAttribute('aria-live', 'polite');
+    li.append(fs, note, status);
+    list.append(li);
+  }
+}
+
+function paint() {
+  let done = 0;
+  for (const it of items) {
+    const ans = answers.get(it.id) || {};
+    const li = document.getElementById(it.id);
+    if (ans.choice) {
+      done += 1;
+      const input = document.getElementById(`c-${it.id}-${ans.choice}`);
+      if (input && !input.checked) input.checked = true;
+    }
+    const note = document.getElementById(`n-${it.id}`);
+    if (note && document.activeElement !== note && ans.note !== undefined && note.value !== ans.note) note.value = ans.note;
+    li.classList.toggle('done', Boolean(ans.choice));
+    li.hidden = document.getElementById('only-open').checked && Boolean(ans.choice);
+  }
+  document.getElementById('progress').textContent = `${done} of ${items.length} scored`;
+  document.getElementById('meter').style.width = `${(100 * done) / items.length}%`;
+}
+
+const writing = new Map();
+async function save(it, patch) {
+  const merged = { ...(answers.get(it.id) || {}), ...patch, key: it.key, at: new Date().toISOString() };
+  answers.set(it.id, merged);
+  paint();
+  const status = document.getElementById(`st-${it.id}`);
+  try { localStorage.setItem('d2-sample', JSON.stringify(Object.fromEntries(answers))); } catch {}
+  if (!db) { status.textContent = 'Kept in this browser only.'; return; }
+  status.className = 'status'; status.textContent = 'Saving…';
+  const prev = writing.get(it.id) || Promise.resolve();
+  const job = prev.then(() => db.collection('answers').doc(it.id).set(answers.get(it.id)));
+  writing.set(it.id, job.catch(() => {}));
+  try { await job; status.textContent = 'Saved'; }
+  catch (e) { status.className = 'status err'; status.textContent = `Not saved: ${e && e.message ? e.message : 'the store refused the write'}. Your choice is kept in this browser; try again later.`; }
+}
+
+render();
+try { const local = JSON.parse(localStorage.getItem('d2-sample') || '{}'); for (const [k, v] of Object.entries(local)) answers.set(k, v); } catch {}
+paint();
+document.getElementById('only-open').addEventListener('change', paint);
+
+(async () => {
+  const notice = document.getElementById('notice');
+  db = window.claude && window.claude.use ? await window.claude.use('db') : null;
+  if (!db) {
+    notice.hidden = false;
+    notice.textContent = 'Answers cannot be saved to the shared store here, so they stay in this browser. Open the page on claude.ai while signed in, or tick the boxes in spikes/d2-review-precision/sample.md instead.';
+    return;
+  }
+  const timer = setTimeout(() => { notice.hidden = false; notice.textContent = 'Still loading your saved answers…'; }, 10000);
+  db.collection('answers').onSnapshot((snap) => {
+    clearTimeout(timer); notice.hidden = true;
+    for (const doc of snap.docs) { const d = doc.data(); if (d) answers.set(doc.id, { ...d }); }
+    paint();
+  }, (e) => {
+    clearTimeout(timer); notice.hidden = false;
+    notice.textContent = `Saved answers could not be loaded (${e && e.message ? e.message : 'unknown error'}). New choices still save when you click them.`;
+  });
+})();
+</script>

@@ -1,0 +1,64 @@
+{
+  "number": 23549,
+  "title": "docs: Deprecate format-internal fields on Cipher",
+  "body": "## 🎟️ Tracking\r\n\r\nNo ticket. Related epic: https://bitwarden.atlassian.net/browse/PM-21771. TS counterpart of bitwarden/sdk-internal#1535.\r\n\r\n## 📔 Objective\r\n\r\nMark the encryption-format internal fields of the encrypted `Cipher` domain model as `@deprecated` (not public API): `name`, `notes`, `login`, `identity`, `card`, `secureNote`, `sshKey`, `bankAccount`, `driversLicense`, `passport`, `fields`, `passwordHistory`, and the opaque `data` blob. A class-level doc lists the stable metadata fields and points callers to `CipherView` / `CipherListView`.\r\n\r\nWith v2 (blob) encryption these fields are `undefined` and all sensitive data is sealed in `data`. This caused multiple bugs already. Code outside the encryption layer that reads them silently drops or empties v2 items, e.g. encrypted JSON export (#23546), clone passkey warning (#23547), Item Send serialization (#23548).\r\n",
+  "user": {
+    "login": "quexten",
+    "type": "User"
+  },
+  "baseSha": "742f8bc950286b6a8935aa18084a2194e96b05a2",
+  "headSha": "9cccff69f0183e7e2fc619e0ead7969f1a4f6232",
+  "mergedAt": "2026-09-29T13:24:10Z",
+  "mergeCommit": "0ceb6aed61228e70e237ebb61b18115ede0b80e4",
+  "commits": 1,
+  "reviews": [
+    {
+      "id": 5353091061,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "9cccff69f0183e7e2fc619e0ead7969f1a4f6232",
+      "at": "2026-09-29T13:13:20Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23549#pullrequestreview-5353091061"
+    }
+  ],
+  "inline": [],
+  "comments": [
+    {
+      "id": 5885736041,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-29T07:31:29Z",
+      "updated": "2026-09-29T07:33:44Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nThis PR adds documentation only: a class-level doc block on `Cipher` plus 14 `@deprecated` JSDoc tags on the encryption-format-dependent fields in `libs/common/src/vault/models/domain/cipher.ts`. No runtime behavior, types, or signatures change, and the stable/deprecated split described in the doc matches how the class actually populates those fields in the constructor, `fromJSON`, `toCipherData`, `toSdkCipher`, and `fromSdkCipher`. Lint and the client test suites are green on the PR, and no dependency manifests or Claude configuration files are touched.\n\n<details>\n<summary>Code Review Details</summary>\n\nNo findings.\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/23549#issuecomment-5885736041"
+    },
+    {
+      "id": 5885944189,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-29T07:46:49Z",
+      "updated": "2026-09-29T07:46:49Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/23549?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:white_check_mark: All modified and coverable lines are covered by tests.\n:white_check_mark: Project coverage is 56.86%. Comparing base ([`742f8bc`](https://app.codecov.io/gh/bitwarden/clients/commit/742f8bc950286b6a8935aa18084a2194e96b05a2?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`9cccff6`](https://app.codecov.io/gh/bitwarden/clients/commit/9cccff69f0183e7e2fc619e0ead7969f1a4f6232?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:white_check_mark: All tests successful. No failed tests found.\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@           Coverage Diff           @@\n##             main   #23549   +/-   ##\n=======================================\n  Coverage   56.86%   56.86%           \n=======================================\n  Files        4557     4557           \n  Lines      143858   143858           \n  Branches    22966    22966           \n=======================================\n+ Hits        81798    81799    +1     \n+ Misses      56100    56099    -1     \n  Partials     5960     5960           \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/23549?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/23549#issuecomment-5885944189"
+    }
+  ],
+  "citedBy": [
+    {
+      "at": "2026-09-29T07:26:55Z",
+      "number": 1535,
+      "repo": "bitwarden/sdk-internal",
+      "pull": true,
+      "title": "[PM-44194] docs: Document format-internal fields on Cipher",
+      "state": "closed",
+      "url": "https://github.com/bitwarden/sdk-internal/pull/1535"
+    }
+  ]
+}

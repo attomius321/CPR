@@ -1,0 +1,186 @@
+{
+  "number": 23564,
+  "title": "[PM-28191] - remove pm-28191-cipher-admin-ops-to-sdk feature flag",
+  "body": "## 🎟️ Tracking\r\n\r\n<!-- Paste the link to the Jira or GitHub issue or otherwise describe / point to where this change is coming from. -->\r\nhttps://bitwarden.atlassian.net/browse/PM-28206\r\n\r\n## 📔 Objective\r\n\r\n<!-- Describe what the purpose of this PR is, for example what bug you're fixing or new feature you're adding. -->\r\nRemoves `PM28191CipherAdminOpsToSdk` feature flag and all associated logic and tests.\r\n\r\n## 📸 Screenshots\r\n\r\n<!-- Required for any UI changes; delete if not applicable. Use fixed width images for better display. -->\r\n",
+  "user": {
+    "login": "jaasen-livefront",
+    "type": "User"
+  },
+  "baseSha": "c01c8b3fb98c61d5dae602ca121d23a59c501663",
+  "headSha": "661a72d90c38263275a28a94c1a35a9dcaa19cae",
+  "mergedAt": "2026-09-30T23:45:18Z",
+  "mergeCommit": "6811928a1238ef42ee207fad69413aa6c9f5800d",
+  "commits": 3,
+  "reviews": [
+    {
+      "id": 5359528972,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "f067e96447a4f35845e9bc7a2b9534de150c06be",
+      "at": "2026-09-29T23:02:12Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23564#pullrequestreview-5359528972"
+    },
+    {
+      "id": 5359529335,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "f067e96447a4f35845e9bc7a2b9534de150c06be",
+      "at": "2026-09-29T23:02:15Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23564#pullrequestreview-5359529335"
+    },
+    {
+      "id": 5370725568,
+      "user": {
+        "login": "jaasen-livefront",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "f067e96447a4f35845e9bc7a2b9534de150c06be",
+      "at": "2026-09-30T19:03:22Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23564#pullrequestreview-5370725568"
+    },
+    {
+      "id": 5370726898,
+      "user": {
+        "login": "jaasen-livefront",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "f067e96447a4f35845e9bc7a2b9534de150c06be",
+      "at": "2026-09-30T19:03:30Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23564#pullrequestreview-5370726898"
+    },
+    {
+      "id": 5370926598,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "661a72d90c38263275a28a94c1a35a9dcaa19cae",
+      "at": "2026-09-30T19:21:35Z",
+      "body": "It's worth calling out in the QA Testing Notes about the unavailable cipher scenarios!",
+      "url": "https://github.com/bitwarden/clients/pull/23564#pullrequestreview-5370926598"
+    }
+  ],
+  "inline": [
+    {
+      "id": 4139182378,
+      "review": 5359528972,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "libs/common/src/vault/services/cipher.service.ts",
+      "line": 1156,
+      "originalLine": 1151,
+      "commit": "661a72d90c38263275a28a94c1a35a9dcaa19cae",
+      "originalCommit": "f067e96447a4f35845e9bc7a2b9534de150c06be",
+      "at": "2026-09-29T23:02:12Z",
+      "body": "❓ **QUESTION**: The removed legacy branch handled the `unavailable` response — is that covered on the SDK path?\n\n<details>\n<summary>Details</summary>\n\nThe deleted code checked `response.unavailable`, deleted the cipher from local state, and returned `undefined`:\n\n```ts\nif (response.unavailable) {\n  await this.delete(cipher.id, userId);\n  return;\n}\n```\n\nTwo things still reference that contract:\n\n- `libs/vault/src/cipher-form/services/default-cipher-form.service.ts:106-112` special-cases `savedCipher == null` with the comment \"Its possible the cipher was made no longer available due to collection assignment changes\". With the legacy branch gone, `saveCollectionsWithServer` always returns `encryptResult.cipher`, so that branch looks unreachable.\n- `CipherSdkServiceAbstraction.saveCollectionsWithServer` (`libs/common/src/vault/abstractions/cipher-sdk.service.ts:154`) is documented as returning \"the updated cipher view, or undefined if unavailable\". If it can return `undefined`, that value is passed straight into `cipherEncryptionService.encrypt` here.\n\nIf the SDK handles the access-loss case internally (including removing the item from local state), the stale JSDoc and the now-dead `null` check downstream are worth cleaning up. If it does not, losing access after a collection reassignment would leave the item in local state.\n</details>",
+      "diffHunk": "@@ -1164,55 +1140,26 @@ export class CipherService implements CipherServiceAbstraction {\n   }\n \n   async saveCollectionsWithServer(cipher: Cipher, userId: UserId): Promise<Cipher> {\n-    const useSdk = await firstValueFrom(this.sdkCipherAdminOpsEnabled$);\n-    if (useSdk) {\n-      await this.clearCache(userId);\n-      const cipherView = await this.cipherSdkService.saveCollectionsWithServer(\n-        cipher.id,\n-        cipher.collectionIds,\n-        userId,\n-      );\n-      const encryptResult = await this.cipherEncryptionService.encrypt(cipherView, userId);\n-      return encryptResult.cipher;\n-    }\n-\n-    const request = new CipherCollectionsRequest(cipher.collectionIds);\n-    const response = await this.apiService.putCipherCollections(cipher.id, request);\n-    // The response will now check for an unavailable value. This value determines whether\n-    // the user still has Can Manage access to the item after updating.\n-    if (response.unavailable) {\n-      await this.delete(cipher.id, userId);\n-      return;\n-    }\n-    const data = new CipherData(response.cipher);\n-    const updated = await this.upsert(data);\n-    return new Cipher(updated[cipher.id as CipherId], cipher.localData);\n+    await this.clearCache(userId);\n+    const cipherView = await this.cipherSdkService.saveCollectionsWithServer(\n+      cipher.id,\n+      cipher.collectionIds,\n+      userId,\n+    );\n+    const encryptResult = await this.cipherEncryptionService.encrypt(cipherView, userId);\n+    return encryptResult.cipher;\n   }",
+      "url": "https://github.com/bitwarden/clients/pull/23564#discussion_r4139182378"
+    },
+    {
+      "id": 4139182700,
+      "review": 5359529335,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "libs/common/src/vault/services/cipher.service.ts",
+      "line": 1185,
+      "originalLine": 1180,
+      "commit": "661a72d90c38263275a28a94c1a35a9dcaa19cae",
+      "originalCommit": "f067e96447a4f35845e9bc7a2b9534de150c06be",
+      "at": "2026-09-29T23:02:15Z",
+      "body": "♻️ **DEBT**: This flag removal orphans the legacy collection/move API surface.\n\n<details>\n<summary>Now-unreferenced code</summary>\n\nWith the last callers gone, these have no remaining references in the repo:\n\n- `CipherBulkUpdateCollectionsRequest` — no references outside its own definition file\n- `ApiService.putMoveCiphers`, `putCipherCollections`, `putCipherCollectionsAdmin` (abstraction + implementation) — only remaining mentions are `not.toHaveBeenCalled()` assertions in `cipher.service.spec.ts`\n- `CipherCollectionsRequest` and `CipherBulkMoveRequest`, which exist only to feed those three methods\n\nRemoving them here (or in a tracked follow-up) keeps the flag cleanup complete.\n</details>",
+      "diffHunk": "@@ -1229,47 +1176,14 @@ export class CipherService implements CipherServiceAbstraction {\n     collectionIds: CollectionId[],\n     removeCollections: boolean = false,\n   ): Promise<void> {\n-    const useSdk = await firstValueFrom(this.sdkCipherAdminOpsEnabled$);\n-    if (useSdk) {\n-      await this.clearCache(userId);\n-      await this.cipherSdkService.bulkUpdateCollectionsWithServer(\n-        orgId,\n-        userId,\n-        cipherIds,\n-        collectionIds,\n-        removeCollections,\n-      );\n-      return;\n-    }\n-\n-    const request = new CipherBulkUpdateCollectionsRequest(\n+    await this.clearCache(userId);\n+    await this.cipherSdkService.bulkUpdateCollectionsWithServer(",
+      "url": "https://github.com/bitwarden/clients/pull/23564#discussion_r4139182700"
+    },
+    {
+      "id": 4148282493,
+      "review": 5370725568,
+      "replyTo": 4139182700,
+      "user": {
+        "login": "jaasen-livefront",
+        "type": "User"
+      },
+      "path": "libs/common/src/vault/services/cipher.service.ts",
+      "line": 1185,
+      "originalLine": 1180,
+      "commit": "661a72d90c38263275a28a94c1a35a9dcaa19cae",
+      "originalCommit": "f067e96447a4f35845e9bc7a2b9534de150c06be",
+      "at": "2026-09-30T19:03:22Z",
+      "body": "fixed https://github.com/bitwarden/clients/pull/23564/commits/7f7abc2a91097c44a28792e7de000c9983193052",
+      "diffHunk": "@@ -1229,47 +1176,14 @@ export class CipherService implements CipherServiceAbstraction {\n     collectionIds: CollectionId[],\n     removeCollections: boolean = false,\n   ): Promise<void> {\n-    const useSdk = await firstValueFrom(this.sdkCipherAdminOpsEnabled$);\n-    if (useSdk) {\n-      await this.clearCache(userId);\n-      await this.cipherSdkService.bulkUpdateCollectionsWithServer(\n-        orgId,\n-        userId,\n-        cipherIds,\n-        collectionIds,\n-        removeCollections,\n-      );\n-      return;\n-    }\n-\n-    const request = new CipherBulkUpdateCollectionsRequest(\n+    await this.clearCache(userId);\n+    await this.cipherSdkService.bulkUpdateCollectionsWithServer(",
+      "url": "https://github.com/bitwarden/clients/pull/23564#discussion_r4148282493"
+    },
+    {
+      "id": 4148283580,
+      "review": 5370726898,
+      "replyTo": 4139182378,
+      "user": {
+        "login": "jaasen-livefront",
+        "type": "User"
+      },
+      "path": "libs/common/src/vault/services/cipher.service.ts",
+      "line": 1156,
+      "originalLine": 1151,
+      "commit": "661a72d90c38263275a28a94c1a35a9dcaa19cae",
+      "originalCommit": "f067e96447a4f35845e9bc7a2b9534de150c06be",
+      "at": "2026-09-30T19:03:30Z",
+      "body": "fixed https://github.com/bitwarden/clients/pull/23564/commits/661a72d90c38263275a28a94c1a35a9dcaa19cae",
+      "diffHunk": "@@ -1164,55 +1140,26 @@ export class CipherService implements CipherServiceAbstraction {\n   }\n \n   async saveCollectionsWithServer(cipher: Cipher, userId: UserId): Promise<Cipher> {\n-    const useSdk = await firstValueFrom(this.sdkCipherAdminOpsEnabled$);\n-    if (useSdk) {\n-      await this.clearCache(userId);\n-      const cipherView = await this.cipherSdkService.saveCollectionsWithServer(\n-        cipher.id,\n-        cipher.collectionIds,\n-        userId,\n-      );\n-      const encryptResult = await this.cipherEncryptionService.encrypt(cipherView, userId);\n-      return encryptResult.cipher;\n-    }\n-\n-    const request = new CipherCollectionsRequest(cipher.collectionIds);\n-    const response = await this.apiService.putCipherCollections(cipher.id, request);\n-    // The response will now check for an unavailable value. This value determines whether\n-    // the user still has Can Manage access to the item after updating.\n-    if (response.unavailable) {\n-      await this.delete(cipher.id, userId);\n-      return;\n-    }\n-    const data = new CipherData(response.cipher);\n-    const updated = await this.upsert(data);\n-    return new Cipher(updated[cipher.id as CipherId], cipher.localData);\n+    await this.clearCache(userId);\n+    const cipherView = await this.cipherSdkService.saveCollectionsWithServer(\n+      cipher.id,\n+      cipher.collectionIds,\n+      userId,\n+    );\n+    const encryptResult = await this.cipherEncryptionService.encrypt(cipherView, userId);\n+    return encryptResult.cipher;\n   }",
+      "url": "https://github.com/bitwarden/clients/pull/23564#discussion_r4148283580"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5900679536,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-29T22:58:16Z",
+      "updated": "2026-09-29T23:02:46Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nThis PR removes the `PM28191CipherAdminOpsToSdk` feature flag and its legacy non-SDK branches from `CipherService`, leaving the SDK path as the only implementation for `getManyFromApiForOrganization`, `saveCollectionsWithServer`, `saveCollectionsWithServerAdmin`, `bulkUpdateCollectionsWithServer`, and `moveManyWithServer`. The flag is fully removed from both `FeatureFlag` and `DefaultFeatureFlagValue`, and a repo-wide search found no remaining references to it or its string value. Test changes track the code changes correctly: the disabled-path tests are deleted and the enabled-path tests are retained with the flag setup stripped. Two non-blocking items are noted inline.\n\n<details>\n<summary>Code Review Details</summary>\n\n- ♻️ : Flag removal orphans the legacy collection/move API surface (`CipherBulkUpdateCollectionsRequest`, three `ApiService` methods, two request models)\n  - `libs/common/src/vault/services/cipher.service.ts:1180`\n- ❓ : Removed legacy branch handled the `unavailable` response by deleting the local cipher; downstream `savedCipher == null` check appears stranded\n  - `libs/common/src/vault/services/cipher.service.ts:1142`\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/23564#issuecomment-5900679536"
+    },
+    {
+      "id": 5900888904,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-29T23:16:04Z",
+      "updated": "2026-09-30T18:48:01Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/23564?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:x: Patch coverage is `92.30769%` with `1 line` in your changes missing coverage. Please review.\n:white_check_mark: Project coverage is 56.91%. Comparing base ([`c01c8b3`](https://app.codecov.io/gh/bitwarden/clients/commit/c01c8b3fb98c61d5dae602ca121d23a59c501663?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`661a72d`](https://app.codecov.io/gh/bitwarden/clients/commit/661a72d90c38263275a28a94c1a35a9dcaa19cae?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:warning: Report is 8 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n| [Files with missing lines](https://app.codecov.io/gh/bitwarden/clients/pull/23564?dropdown=coverage&src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) | Patch % | Lines |\n|---|---|---|\n| [libs/common/src/vault/services/cipher.service.ts](https://app.codecov.io/gh/bitwarden/clients/pull/23564?src=pr&el=tree&filepath=libs%2Fcommon%2Fsrc%2Fvault%2Fservices%2Fcipher.service.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-bGlicy9jb21tb24vc3JjL3ZhdWx0L3NlcnZpY2VzL2NpcGhlci5zZXJ2aWNlLnRz) | 83.33% | [0 Missing and 1 partial :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/23564?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@            Coverage Diff             @@\n##             main   #23564      +/-   ##\n==========================================\n+ Coverage   56.89%   56.91%   +0.01%     \n==========================================\n  Files        4556     4552       -4     \n  Lines      143893   143667     -226     \n  Branches    22971    22926      -45     \n==========================================\n- Hits        81864    81762     -102     \n+ Misses      56068    55956     -112     \n+ Partials     5961     5949      -12     \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/23564?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/23564#issuecomment-5900888904"
+    },
+    {
+      "id": 5921782635,
+      "user": {
+        "login": "jaasen-livefront",
+        "type": "User"
+      },
+      "at": "2026-09-30T23:48:48Z",
+      "updated": "2026-09-30T23:48:48Z",
+      "body": "> It's worth calling out in the QA Testing Notes about the unavailable cipher scenarios!\r\n\r\n@nick-livefront  You bet!",
+      "url": "https://github.com/bitwarden/clients/pull/23564#issuecomment-5921782635"
+    }
+  ],
+  "citedBy": []
+}

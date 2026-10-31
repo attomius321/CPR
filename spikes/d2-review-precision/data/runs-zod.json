@@ -1,0 +1,4915 @@
+[
+  {
+    "project": "zod",
+    "position": 0,
+    "number": 6380,
+    "url": "https://github.com/colinhacks/zod/pull/6380",
+    "subject": "feat(json-schema): accept a function for `unrepresentable` (#6380)",
+    "author": "Colin McDonnell",
+    "merged": "2026-08-13T11:44:53-07:00",
+    "merge": "bd6619c06d72f7829ee6ed14417ef1fd4d90ebcb",
+    "head": "51e93234d83cbb5915b3d52942ecb01d039f5040",
+    "summary": "bd6619c06d72f7829ee6ed14417ef1fd4d90ebcb^1 (9d20fdc) → refs/pr/6380 (51e9323), merge-base 9d20fdc\n5 files changed · 23 symbols changed: 1 added, 2 removed, 20 modified\n\nFindings\n  ⚠ signature-changed  packages/zod/src/v4/core/to-json-schema.ts#JSONSchemaGeneratorParams\n      JSONSchemaGeneratorParams changed its signature; 3 of 4 users not updated: EmitParams, JSONSchemaGeneratorConstructorParams, ToJSONSchemaParams\n  ⚠ signature-changed  packages/zod/src/v4/core/to-json-schema.ts#Seen\n      Seen changed its signature; 3 of 4 users not updated: JSONSchemaGenerator.seen, extractDefs, process\n  ⚠ signature-changed  packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaContext\n      ToJSONSchemaContext changed its signature; 6 of 10 users not updated: JSONSchemaGenerator.constructor, JSONSchemaGenerator.ctx, _$ZodTypeInternals, Processor, extractDefs and 1 more\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#bigintProcessor\n      bigintProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#customProcessor\n      customProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#dateProcessor\n      dateProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#functionProcessor\n      functionProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#literalProcessor\n      literalProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#mapProcessor\n      mapProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#nanProcessor\n      nanProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#setProcessor\n      setProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#symbolProcessor\n      symbolProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#transformProcessor\n      transformProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#undefinedProcessor\n      undefinedProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#voidProcessor\n      voidProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/to-json-schema.ts#handleUnrepresentable\n      handleUnrepresentable changed its signature; all 13 users were updated\n\nM  packages/docs/content/json-schema.mdx\nM  packages/zod/src/v4/classic/tests/to-json-schema.test.ts\nM  packages/zod/src/v4/core/json-schema-generator.ts\n     ~ accessor    JSONSchemaGenerator.unrepresentable  (signature)\nM  packages/zod/src/v4/core/json-schema-processors.ts\n     ~ function    bigintProcessor  (signature, body)  · used by 2\n     ~ function    symbolProcessor  (signature, body)  · used by 2\n     ~ function    undefinedProcessor  (signature, body)  · used by 2\n     ~ function    voidProcessor  (signature, body)  · used by 2\n     ~ function    dateProcessor  (signature, body)  · used by 2\n     ~ function    literalProcessor  (signature, body)  · used by 2\n     ~ function    nanProcessor  (signature, body)  · used by 2\n     ~ function    customProcessor  (signature, body)  · used by 2\n     ~ function    functionProcessor  (signature, body)  · used by 2\n     ~ function    transformProcessor  (signature, body)  · used by 2\n     ~ function    mapProcessor  (signature, body)  · used by 2\n     ~ function    setProcessor  (signature, body)  · used by 2\n     ~ function    catchProcessor  (body)  · used by 2\nM  packages/zod/src/v4/core/to-json-schema.ts\n     + type        UnrepresentableHandler  · used by 3\n     ~ interface   JSONSchemaGeneratorParams  (signature)  · used by 4\n     ~ interface   Seen  (signature)  · used by 4\n     ~ interface   ToJSONSchemaContext  (signature)  · used by 10\n     ~ function    initializeContext  (body)  · used by 4\n     ~ function    handleUnrepresentable  (signature, body)  · used by 13\n     - variable    ANNOTATION_KEYS  · used by 1\n     - function    structuralSnapshot  · used by 1\n     ~ function    finalize  (body)  · used by 4\n",
+    "mergeBase": "9d20fdc3c37207fa3fe77c9524a3421f4399cbf6",
+    "files": 5,
+    "stats": {
+      "filesChanged": 5,
+      "symbols": {
+        "added": 1,
+        "removed": 2,
+        "modified": 20,
+        "context": 54
+      },
+      "edges": 126,
+      "durationMs": 8829
+    },
+    "warnings": [],
+    "findings": [
+      {
+        "key": "zod#6380/f1",
+        "rule": "signature-changed",
+        "severity": "warning",
+        "symbol": "packages/zod/src/v4/core/to-json-schema.ts#JSONSchemaGeneratorParams",
+        "related": [
+          "packages/zod/src/v4/core/json-schema-generator.ts#EmitParams",
+          "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGeneratorConstructorParams",
+          "packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaParams",
+          "packages/zod/src/v4/core/to-json-schema.ts#initializeContext"
+        ],
+        "message": "JSONSchemaGeneratorParams changed its signature; 3 of 4 users not updated: EmitParams, JSONSchemaGeneratorConstructorParams, ToJSONSchemaParams",
+        "data": {
+          "callers": 4,
+          "updated": 1,
+          "untouched": 3,
+          "untouchedElsewhere": 2,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "breaking"
+        },
+        "id": "f1",
+        "node": {
+          "id": "packages/zod/src/v4/core/to-json-schema.ts#JSONSchemaGeneratorParams",
+          "kind": "interface",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              26,
+              60
+            ],
+            "signature": "interface JSONSchemaGeneratorParams"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              39,
+              74
+            ],
+            "signature": "interface JSONSchemaGeneratorParams"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/core/json-schema-generator.ts#EmitParams",
+            "kind": "type",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                20,
+                20
+              ],
+              "signature": "type EmitParams = Pick<JSONSchemaGeneratorParams, \"cycles\" | \"reused\" | \"external\">"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                20,
+                20
+              ],
+              "signature": "type EmitParams = Pick<JSONSchemaGeneratorParams, \"cycles\" | \"reused\" | \"external\">"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGeneratorConstructorParams",
+            "kind": "type",
+            "status": "unchanged",
+            "exported": false,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                26,
+                29
+              ],
+              "signature": "type JSONSchemaGeneratorConstructorParams = Pick< JSONSchemaGeneratorParams, \"metadata\" | \"target\" | \"unrepresentable\" | \"override\" | \"io\" >"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                26,
+                29
+              ],
+              "signature": "type JSONSchemaGeneratorConstructorParams = Pick< JSONSchemaGeneratorParams, \"metadata\" | \"target\" | \"unrepresentable\" | \"override\" | \"io\" >"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaParams",
+            "kind": "type",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                65,
+                65
+              ],
+              "signature": "type ToJSONSchemaParams = Omit<JSONSchemaGeneratorParams, \"processors\" | \"external\">"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                79,
+                79
+              ],
+              "signature": "type ToJSONSchemaParams = Omit<JSONSchemaGeneratorParams, \"processors\" | \"external\">"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#initializeContext",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                132,
+                151
+              ],
+              "signature": "initializeContext(params: JSONSchemaGeneratorParams): ToJSONSchemaContext"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                145,
+                164
+              ],
+              "signature": "initializeContext(params: JSONSchemaGeneratorParams): ToJSONSchemaContext"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f2",
+        "rule": "signature-changed",
+        "severity": "warning",
+        "symbol": "packages/zod/src/v4/core/to-json-schema.ts#Seen",
+        "related": [
+          "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.seen",
+          "packages/zod/src/v4/core/to-json-schema.ts#extractDefs",
+          "packages/zod/src/v4/core/to-json-schema.ts#process",
+          "packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaContext"
+        ],
+        "message": "Seen changed its signature; 3 of 4 users not updated: JSONSchemaGenerator.seen, extractDefs, process",
+        "data": {
+          "callers": 4,
+          "updated": 1,
+          "untouched": 3,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "breaking"
+        },
+        "id": "f2",
+        "node": {
+          "id": "packages/zod/src/v4/core/to-json-schema.ts#Seen",
+          "kind": "interface",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              79,
+              96
+            ],
+            "signature": "interface Seen"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              93,
+              108
+            ],
+            "signature": "interface Seen"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.seen",
+            "kind": "accessor",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                79,
+                81
+              ],
+              "signature": "get seen(): Map<schemas.$ZodType, Seen>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                80,
+                82
+              ],
+              "signature": "get seen(): Map<schemas.$ZodType, Seen>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#extractDefs",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                242,
+                382
+              ],
+              "signature": "extractDefs<T extends schemas.$ZodType>(ctx: ToJSONSchemaContext, schema: T): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                266,
+                406
+              ],
+              "signature": "extractDefs<T extends schemas.$ZodType>(ctx: ToJSONSchemaContext, schema: T): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#process",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                164,
+                240
+              ],
+              "signature": "process<T extends schemas.$ZodType>(schema: T, ctx: ToJSONSchemaContext, _params: ProcessParams = { path: [], schemaPath: [] }): JSONSchema.BaseSchema"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                188,
+                264
+              ],
+              "signature": "process<T extends schemas.$ZodType>(schema: T, ctx: ToJSONSchemaContext, _params: ProcessParams = { path: [], schemaPath: [] }): JSONSchema.BaseSchema"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaContext",
+            "kind": "interface",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                98,
+                121
+              ],
+              "signature": "interface ToJSONSchemaContext"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                110,
+                134
+              ],
+              "signature": "interface ToJSONSchemaContext"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f3",
+        "rule": "signature-changed",
+        "severity": "warning",
+        "symbol": "packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaContext",
+        "related": [
+          "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.constructor",
+          "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.ctx",
+          "packages/zod/src/v4/core/schemas.ts#_$ZodTypeInternals",
+          "packages/zod/src/v4/core/to-json-schema.ts#Processor",
+          "packages/zod/src/v4/core/to-json-schema.ts#extractDefs",
+          "packages/zod/src/v4/core/to-json-schema.ts#process",
+          "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.unrepresentable",
+          "packages/zod/src/v4/core/to-json-schema.ts#finalize",
+          "packages/zod/src/v4/core/to-json-schema.ts#handleUnrepresentable",
+          "packages/zod/src/v4/core/to-json-schema.ts#initializeContext"
+        ],
+        "message": "ToJSONSchemaContext changed its signature; 6 of 10 users not updated: JSONSchemaGenerator.constructor, JSONSchemaGenerator.ctx, _$ZodTypeInternals, Processor, extractDefs and 1 more",
+        "data": {
+          "callers": 10,
+          "updated": 4,
+          "untouched": 6,
+          "untouchedElsewhere": 3,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "breaking"
+        },
+        "id": "f3",
+        "node": {
+          "id": "packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaContext",
+          "kind": "interface",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              98,
+              121
+            ],
+            "signature": "interface ToJSONSchemaContext"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              110,
+              134
+            ],
+            "signature": "interface ToJSONSchemaContext"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.constructor",
+            "kind": "constructor",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                83,
+                97
+              ],
+              "signature": "constructor(params?: JSONSchemaGeneratorConstructorParams)"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                84,
+                98
+              ],
+              "signature": "constructor(params?: JSONSchemaGeneratorConstructorParams)"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.ctx",
+            "kind": "property",
+            "status": "unchanged",
+            "exported": false,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                49,
+                49
+              ],
+              "signature": "private ctx: ToJSONSchemaContext"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                49,
+                49
+              ],
+              "signature": "private ctx: ToJSONSchemaContext"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#_$ZodTypeInternals",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                96,
+                166
+              ],
+              "signature": "interface _$ZodTypeInternals"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#Processor",
+            "kind": "type",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                19,
+                24
+              ],
+              "signature": "type Processor<T extends schemas.$ZodType = schemas.$ZodType> = ( schema: T, ctx: ToJSONSchemaContext, json: JSONSchema.BaseSchema, params: ProcessParams ) => void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                19,
+                24
+              ],
+              "signature": "type Processor<T extends schemas.$ZodType = schemas.$ZodType> = ( schema: T, ctx: ToJSONSchemaContext, json: JSONSchema.BaseSchema, params: ProcessParams ) => void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#extractDefs",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                242,
+                382
+              ],
+              "signature": "extractDefs<T extends schemas.$ZodType>(ctx: ToJSONSchemaContext, schema: T): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                266,
+                406
+              ],
+              "signature": "extractDefs<T extends schemas.$ZodType>(ctx: ToJSONSchemaContext, schema: T): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#process",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                164,
+                240
+              ],
+              "signature": "process<T extends schemas.$ZodType>(schema: T, ctx: ToJSONSchemaContext, _params: ProcessParams = { path: [], schemaPath: [] }): JSONSchema.BaseSchema"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                188,
+                264
+              ],
+              "signature": "process<T extends schemas.$ZodType>(schema: T, ctx: ToJSONSchemaContext, _params: ProcessParams = { path: [], schemaPath: [] }): JSONSchema.BaseSchema"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.unrepresentable",
+            "kind": "accessor",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                60,
+                62
+              ],
+              "signature": "get unrepresentable(): \"throw\" | \"any\""
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                61,
+                63
+              ],
+              "signature": "get unrepresentable(): ToJSONSchemaContext[\"unrepresentable\"]"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#finalize",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                406,
+                583
+              ],
+              "signature": "finalize<T extends schemas.$ZodType>(ctx: ToJSONSchemaContext, schema: T): ZodStandardJSONSchemaPayload<T>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                408,
+                573
+              ],
+              "signature": "finalize<T extends schemas.$ZodType>(ctx: ToJSONSchemaContext, schema: T): ZodStandardJSONSchemaPayload<T>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#handleUnrepresentable",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                156,
+                162
+              ],
+              "signature": "handleUnrepresentable(schema: schemas.$ZodType, ctx: ToJSONSchemaContext, message: string): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                171,
+                186
+              ],
+              "signature": "handleUnrepresentable(schema: schemas.$ZodType, ctx: ToJSONSchemaContext, json: JSONSchema.BaseSchema, params: ProcessParams, message: string): boolean"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#initializeContext",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                132,
+                151
+              ],
+              "signature": "initializeContext(params: JSONSchemaGeneratorParams): ToJSONSchemaContext"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                145,
+                164
+              ],
+              "signature": "initializeContext(params: JSONSchemaGeneratorParams): ToJSONSchemaContext"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f4",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#bigintProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodBigInt",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "bigintProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f4",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#bigintProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              103,
+              105
+            ],
+            "signature": "bigintProcessor(schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              103,
+              105
+            ],
+            "signature": "bigintProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodBigInt",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1252,
+                1264
+              ],
+              "signature": "interface ZodBigInt extends _ZodBigInt<core.$ZodBigIntInternals<bigint>>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f5",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#customProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodCustom",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "customProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f5",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#customProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              226,
+              228
+            ],
+            "signature": "customProcessor(schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              230,
+              232
+            ],
+            "signature": "customProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodCustom",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                2687,
+                2696
+              ],
+              "signature": "interface ZodCustom<O = unknown, I = unknown> extends _ZodType<core.$ZodCustomInternals<O, I>>, core.$ZodCustom<O, I>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f6",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#dateProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodDate",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "dateProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f6",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#dateProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              141,
+              143
+            ],
+            "signature": "dateProcessor(schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              141,
+              143
+            ],
+            "signature": "dateProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodDate",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1432,
+                1444
+              ],
+              "signature": "interface ZodDate extends _ZodDate<core.$ZodDateInternals<Date>>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f7",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#functionProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodFunction",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "functionProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f7",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#functionProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              230,
+              232
+            ],
+            "signature": "functionProcessor(schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              234,
+              236
+            ],
+            "signature": "functionProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodFunction",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                2620,
+                2647
+              ],
+              "signature": "interface ZodFunction<Args extends core.$ZodFunctionIn = core.$ZodFunctionIn, Returns extends core.$ZodFunctionOut = core.$ZodFunctionOut> extends _ZodType<core.$ZodFunctionInternals<Args, Returns>>, core.$ZodFunction<Args, Returns>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f8",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#literalProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodLiteral",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "literalProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f8",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#literalProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              154,
+              184
+            ],
+            "signature": "literalProcessor(schema, ctx, json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              154,
+              188
+            ],
+            "signature": "literalProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodLiteral",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                2081,
+                2102
+              ],
+              "signature": "interface ZodLiteral<T extends util.Literal = util.Literal> extends _ZodType<core.$ZodLiteralInternals<T>>, core.$ZodLiteral<T>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f9",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#mapProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodMap",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "mapProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f9",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#mapProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              238,
+              240
+            ],
+            "signature": "mapProcessor(schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              242,
+              244
+            ],
+            "signature": "mapProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodMap",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1921,
+                1942
+              ],
+              "signature": "interface ZodMap<Key extends core.SomeType = core.$ZodType, Value extends core.SomeType = core.$ZodType> extends _ZodType<core.$ZodMapInternals<Key, Value>>, core.$ZodMap<Key, Value>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f10",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#nanProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodNaN",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "nanProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f10",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#nanProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              186,
+              188
+            ],
+            "signature": "nanProcessor(schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              190,
+              192
+            ],
+            "signature": "nanProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodNaN",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                2424,
+                2431
+              ],
+              "signature": "interface ZodNaN extends _ZodType<core.$ZodNaNInternals>, core.$ZodNaN"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f11",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#setProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodSet",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "setProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f11",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#setProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              242,
+              244
+            ],
+            "signature": "setProcessor(schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              246,
+              248
+            ],
+            "signature": "setProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodSet",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1958,
+                1976
+              ],
+              "signature": "interface ZodSet<T extends core.SomeType = core.$ZodType> extends _ZodType<core.$ZodSetInternals<T>>, core.$ZodSet<T>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f12",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#symbolProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodSymbol",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "symbolProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f12",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#symbolProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              107,
+              109
+            ],
+            "signature": "symbolProcessor(schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              107,
+              109
+            ],
+            "signature": "symbolProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodSymbol",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1332,
+                1337
+              ],
+              "signature": "interface ZodSymbol extends _ZodType<core.$ZodSymbolInternals>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f13",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#transformProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodTransform",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "transformProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f13",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#transformProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              234,
+              236
+            ],
+            "signature": "transformProcessor(schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              238,
+              240
+            ],
+            "signature": "transformProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodTransform",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                2142,
+                2188
+              ],
+              "signature": "interface ZodTransform<O = unknown, I = unknown> extends _ZodType<core.$ZodTransformInternals<O, I>>, core.$ZodTransform<O, I>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f14",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#undefinedProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodUndefined",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "undefinedProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f14",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#undefinedProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              121,
+              123
+            ],
+            "signature": "undefinedProcessor(schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              121,
+              123
+            ],
+            "signature": "undefinedProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodUndefined",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1344,
+                1352
+              ],
+              "signature": "interface ZodUndefined extends _ZodType<core.$ZodUndefinedInternals>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f15",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#voidProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodVoid",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "voidProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f15",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#voidProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              125,
+              127
+            ],
+            "signature": "voidProcessor(schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              125,
+              127
+            ],
+            "signature": "voidProcessor(schema, ctx, json, params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodVoid",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1409,
+                1414
+              ],
+              "signature": "interface ZodVoid extends _ZodType<core.$ZodVoidInternals>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                549,
+                589
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6380/f16",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/to-json-schema.ts#handleUnrepresentable",
+        "related": [
+          "packages/zod/src/v4/core/json-schema-processors.ts#bigintProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#catchProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#customProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#dateProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#functionProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#literalProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#mapProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#nanProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#setProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#symbolProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#transformProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#undefinedProcessor",
+          "packages/zod/src/v4/core/json-schema-processors.ts#voidProcessor"
+        ],
+        "message": "handleUnrepresentable changed its signature; all 13 users were updated",
+        "data": {
+          "callers": 13,
+          "updated": 13,
+          "untouched": 0,
+          "untouchedElsewhere": 0,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "breaking"
+        },
+        "id": "f16",
+        "node": {
+          "id": "packages/zod/src/v4/core/to-json-schema.ts#handleUnrepresentable",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              156,
+              162
+            ],
+            "signature": "handleUnrepresentable(schema: schemas.$ZodType, ctx: ToJSONSchemaContext, message: string): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              171,
+              186
+            ],
+            "signature": "handleUnrepresentable(schema: schemas.$ZodType, ctx: ToJSONSchemaContext, json: JSONSchema.BaseSchema, params: ProcessParams, message: string): boolean"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#bigintProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                103,
+                105
+              ],
+              "signature": "bigintProcessor(schema, ctx, _json, _params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                103,
+                105
+              ],
+              "signature": "bigintProcessor(schema, ctx, json, params): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#catchProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                490,
+                503
+              ],
+              "signature": "catchProcessor(schema, ctx, json, params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                494,
+                507
+              ],
+              "signature": "catchProcessor(schema, ctx, json, params): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#customProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                226,
+                228
+              ],
+              "signature": "customProcessor(schema, ctx, _json, _params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                230,
+                232
+              ],
+              "signature": "customProcessor(schema, ctx, json, params): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#dateProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                141,
+                143
+              ],
+              "signature": "dateProcessor(schema, ctx, _json, _params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                141,
+                143
+              ],
+              "signature": "dateProcessor(schema, ctx, json, params): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#functionProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                230,
+                232
+              ],
+              "signature": "functionProcessor(schema, ctx, _json, _params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                234,
+                236
+              ],
+              "signature": "functionProcessor(schema, ctx, json, params): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#literalProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                154,
+                184
+              ],
+              "signature": "literalProcessor(schema, ctx, json, _params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                154,
+                188
+              ],
+              "signature": "literalProcessor(schema, ctx, json, params): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#mapProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                238,
+                240
+              ],
+              "signature": "mapProcessor(schema, ctx, _json, _params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                242,
+                244
+              ],
+              "signature": "mapProcessor(schema, ctx, json, params): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#nanProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                186,
+                188
+              ],
+              "signature": "nanProcessor(schema, ctx, _json, _params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                190,
+                192
+              ],
+              "signature": "nanProcessor(schema, ctx, json, params): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#setProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                242,
+                244
+              ],
+              "signature": "setProcessor(schema, ctx, _json, _params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                246,
+                248
+              ],
+              "signature": "setProcessor(schema, ctx, json, params): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#symbolProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                107,
+                109
+              ],
+              "signature": "symbolProcessor(schema, ctx, _json, _params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                107,
+                109
+              ],
+              "signature": "symbolProcessor(schema, ctx, json, params): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#transformProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                234,
+                236
+              ],
+              "signature": "transformProcessor(schema, ctx, _json, _params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                238,
+                240
+              ],
+              "signature": "transformProcessor(schema, ctx, json, params): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#undefinedProcessor",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                121,
+                123
+              ],
+              "signature": "undefinedProcessor(schema, ctx, _json, _params): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                121,
+                123
+              ],
+              "signature": "undefinedProcessor(schema, ctx, json, params): void"
+            }
+          }
+        ]
+      }
+    ],
+    "ms": 9145
+  },
+  {
+    "project": "zod",
+    "position": 1,
+    "number": 6534,
+    "url": "https://github.com/colinhacks/zod/pull/6534",
+    "subject": "Keep the runtime base64 regexes linear so composed parse paths cannot overflow (#6534)",
+    "author": "Colin McDonnell",
+    "merged": "2026-08-31T13:01:18-07:00",
+    "merge": "07c43e2a08f67082bd35c158d528d571a36094e0",
+    "head": "13bb1a6e74acd346f5fdfe1001534c509ff46999",
+    "summary": "07c43e2a08f67082bd35c158d528d571a36094e0^1 (bc1157e) → refs/pr/6534 (13bb1a6), merge-base 68a609a\n4 files changed · 8 symbols changed: 3 added, 5 modified\n\nFindings\n  ℹ signature-changed  packages/zod/src/v4/core/schemas.ts#base64urlCharset\n      base64urlCharset changed its signature; 1 of 3 users not updated: isValidBase64URL\n\nM  packages/zod/src/v4/classic/tests/string.test.ts\nM  packages/zod/src/v4/classic/tests/to-json-schema.test.ts\nM  packages/zod/src/v4/core/json-schema-processors.ts\n     + variable    exactPatterns  · used by 1\n     + function    exactPattern  · used by 2\n     ~ function    stringProcessor  (body)  · used by 2\n     ~ function    recordProcessor  (body)  · used by 2\nM  packages/zod/src/v4/core/schemas.ts\n     ~ interface   $ZodBase64  (body)  · used by 6\n     + variable    base64Charset  · used by 2\n     ~ variable    base64urlCharset  (signature)  · used by 3\n     ~ interface   $ZodBase64URL  (body)  · used by 6\n",
+    "mergeBase": "68a609ac9b9516e6fe84e3558f17ce16b1032bef",
+    "files": 4,
+    "stats": {
+      "filesChanged": 4,
+      "symbols": {
+        "added": 3,
+        "removed": 0,
+        "modified": 5,
+        "context": 38
+      },
+      "edges": 58,
+      "durationMs": 8780
+    },
+    "warnings": [],
+    "findings": [
+      {
+        "key": "zod#6534/f1",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/schemas.ts#base64urlCharset",
+        "related": [
+          "packages/zod/src/v4/core/schemas.ts#isValidBase64URL",
+          "packages/zod/src/v4/core/json-schema-processors.ts#exactPatterns",
+          "packages/zod/src/v4/core/schemas.ts#$ZodBase64URL"
+        ],
+        "message": "base64urlCharset changed its signature; 1 of 3 users not updated: isValidBase64URL",
+        "data": {
+          "callers": 3,
+          "updated": 2,
+          "untouched": 1,
+          "untouchedElsewhere": 0,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "unknown"
+        },
+        "id": "f1",
+        "node": {
+          "id": "packages/zod/src/v4/core/schemas.ts#base64urlCharset",
+          "kind": "variable",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/schemas.ts",
+            "lines": [
+              1055,
+              1055
+            ],
+            "signature": "const base64urlCharset: RegExp"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/schemas.ts",
+            "lines": [
+              1058,
+              1058
+            ],
+            "signature": "const base64urlCharset: RegExp"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#isValidBase64URL",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1057,
+                1062
+              ],
+              "signature": "isValidBase64URL(data: string): boolean"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1060,
+                1065
+              ],
+              "signature": "isValidBase64URL(data: string): boolean"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#exactPatterns",
+            "kind": "variable",
+            "status": "added",
+            "exported": false,
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                34,
+                37
+              ],
+              "signature": "const exactPatterns: Map<RegExp, RegExp>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodBase64URL",
+            "kind": "interface",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1067,
+                1091
+              ],
+              "signature": "interface $ZodBase64URL extends $ZodType"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1070,
+                1094
+              ],
+              "signature": "interface $ZodBase64URL extends $ZodType"
+            }
+          }
+        ]
+      }
+    ],
+    "ms": 9099
+  },
+  {
+    "project": "zod",
+    "position": 2,
+    "number": 6391,
+    "url": "https://github.com/colinhacks/zod/pull/6391",
+    "subject": "feat(json-schema): run `override` before the unrepresentable error (#6391)",
+    "author": "Colin McDonnell",
+    "merged": "2026-08-12T22:46:44-07:00",
+    "merge": "fd0741065d65ca6a83a8eb095d306444002dd2e3",
+    "head": "7f6a296cfb02e848d0888af7cee8ed5b5518f170",
+    "summary": "fd0741065d65ca6a83a8eb095d306444002dd2e3^1 (2715c12) → refs/pr/6391 (7f6a296), merge-base 2715c12\n4 files changed · 18 symbols changed: 3 added, 15 modified\n\nFindings\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#bigintProcessor\n      bigintProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#customProcessor\n      customProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#dateProcessor\n      dateProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#functionProcessor\n      functionProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#mapProcessor\n      mapProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#nanProcessor\n      nanProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#setProcessor\n      setProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#symbolProcessor\n      symbolProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#transformProcessor\n      transformProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#undefinedProcessor\n      undefinedProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/json-schema-processors.ts#voidProcessor\n      voidProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)\n  ℹ signature-changed  packages/zod/src/v4/core/to-json-schema.ts#Seen\n      Seen changed its signature compatibly; existing users keep working (4 users, 4 untouched)\n\nM  packages/docs/content/json-schema.mdx\nM  packages/zod/src/v4/classic/tests/to-json-schema.test.ts\nM  packages/zod/src/v4/core/json-schema-processors.ts\n     ~ function    bigintProcessor  (signature, body)  · used by 2\n     ~ function    symbolProcessor  (signature, body)  · used by 2\n     ~ function    undefinedProcessor  (signature, body)  · used by 2\n     ~ function    voidProcessor  (signature, body)  · used by 2\n     ~ function    dateProcessor  (signature, body)  · used by 2\n     ~ function    literalProcessor  (body)  · used by 2\n     ~ function    nanProcessor  (signature, body)  · used by 2\n     ~ function    customProcessor  (signature, body)  · used by 2\n     ~ function    functionProcessor  (signature, body)  · used by 2\n     ~ function    transformProcessor  (signature, body)  · used by 2\n     ~ function    mapProcessor  (signature, body)  · used by 2\n     ~ function    setProcessor  (signature, body)  · used by 2\n     ~ function    catchProcessor  (body)  · used by 2\nM  packages/zod/src/v4/core/to-json-schema.ts\n     ~ interface   Seen  (signature)  · used by 4\n     + function    handleUnrepresentable  · used by 13\n     + variable    ANNOTATION_KEYS  · used by 1\n     + function    structuralSnapshot  · used by 1\n     ~ function    finalize  (body)  · used by 4\n",
+    "mergeBase": "2715c12e76cf022d7dbdeb5852c09fddfe91a481",
+    "files": 4,
+    "stats": {
+      "filesChanged": 4,
+      "symbols": {
+        "added": 3,
+        "removed": 0,
+        "modified": 15,
+        "context": 45
+      },
+      "edges": 92,
+      "durationMs": 6528
+    },
+    "warnings": [],
+    "findings": [
+      {
+        "key": "zod#6391/f1",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#bigintProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodBigInt",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "bigintProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f1",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#bigintProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              102,
+              106
+            ],
+            "signature": "bigintProcessor(_schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              103,
+              105
+            ],
+            "signature": "bigintProcessor(schema, ctx, _json, _params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodBigInt",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1219,
+                1243
+              ],
+              "signature": "interface ZodBigInt extends _ZodBigInt<core.$ZodBigIntInternals<bigint>>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                575,
+                615
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6391/f2",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#customProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodCustom",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "customProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f2",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#customProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              244,
+              248
+            ],
+            "signature": "customProcessor(_schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              226,
+              228
+            ],
+            "signature": "customProcessor(schema, ctx, _json, _params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodCustom",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                2620,
+                2629
+              ],
+              "signature": "interface ZodCustom<O = unknown, I = unknown> extends _ZodType<core.$ZodCustomInternals<O, I>>, core.$ZodCustom<O, I>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                575,
+                615
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6391/f3",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#dateProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodDate",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "dateProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f3",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#dateProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              148,
+              152
+            ],
+            "signature": "dateProcessor(_schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              141,
+              143
+            ],
+            "signature": "dateProcessor(schema, ctx, _json, _params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodDate",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1373,
+                1385
+              ],
+              "signature": "interface ZodDate extends _ZodDate<core.$ZodDateInternals<Date>>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                575,
+                615
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6391/f4",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#functionProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodFunction",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "functionProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f4",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#functionProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              250,
+              254
+            ],
+            "signature": "functionProcessor(_schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              230,
+              232
+            ],
+            "signature": "functionProcessor(schema, ctx, _json, _params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodFunction",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                2553,
+                2580
+              ],
+              "signature": "interface ZodFunction<Args extends core.$ZodFunctionIn = core.$ZodFunctionIn, Returns extends core.$ZodFunctionOut = core.$ZodFunctionOut> extends _ZodType<core.$ZodFunctionInternals<Args, Returns>>, core.$ZodFunction<Args, Returns>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                575,
+                615
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6391/f5",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#mapProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodMap",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "mapProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f5",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#mapProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              262,
+              266
+            ],
+            "signature": "mapProcessor(_schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              238,
+              240
+            ],
+            "signature": "mapProcessor(schema, ctx, _json, _params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodMap",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1854,
+                1875
+              ],
+              "signature": "interface ZodMap<Key extends core.SomeType = core.$ZodType, Value extends core.SomeType = core.$ZodType> extends _ZodType<core.$ZodMapInternals<Key, Value>>, core.$ZodMap<Key, Value>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                575,
+                615
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6391/f6",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#nanProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodNaN",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "nanProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f6",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#nanProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              202,
+              206
+            ],
+            "signature": "nanProcessor(_schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              186,
+              188
+            ],
+            "signature": "nanProcessor(schema, ctx, _json, _params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodNaN",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                2357,
+                2364
+              ],
+              "signature": "interface ZodNaN extends _ZodType<core.$ZodNaNInternals>, core.$ZodNaN"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                575,
+                615
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6391/f7",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#setProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodSet",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "setProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f7",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#setProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              268,
+              272
+            ],
+            "signature": "setProcessor(_schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              242,
+              244
+            ],
+            "signature": "setProcessor(schema, ctx, _json, _params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodSet",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1891,
+                1909
+              ],
+              "signature": "interface ZodSet<T extends core.SomeType = core.$ZodType> extends _ZodType<core.$ZodSetInternals<T>>, core.$ZodSet<T>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                575,
+                615
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6391/f8",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#symbolProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodSymbol",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "symbolProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f8",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#symbolProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              108,
+              112
+            ],
+            "signature": "symbolProcessor(_schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              107,
+              109
+            ],
+            "signature": "symbolProcessor(schema, ctx, _json, _params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodSymbol",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1273,
+                1278
+              ],
+              "signature": "interface ZodSymbol extends _ZodType<core.$ZodSymbolInternals>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                575,
+                615
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6391/f9",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#transformProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodTransform",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "transformProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f9",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#transformProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              256,
+              260
+            ],
+            "signature": "transformProcessor(_schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              234,
+              236
+            ],
+            "signature": "transformProcessor(schema, ctx, _json, _params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodTransform",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                2075,
+                2121
+              ],
+              "signature": "interface ZodTransform<O = unknown, I = unknown> extends _ZodType<core.$ZodTransformInternals<O, I>>, core.$ZodTransform<O, I>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                575,
+                615
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6391/f10",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#undefinedProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodUndefined",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "undefinedProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f10",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#undefinedProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              124,
+              128
+            ],
+            "signature": "undefinedProcessor(_schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              121,
+              123
+            ],
+            "signature": "undefinedProcessor(schema, ctx, _json, _params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodUndefined",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1285,
+                1293
+              ],
+              "signature": "interface ZodUndefined extends _ZodType<core.$ZodUndefinedInternals>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                575,
+                615
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6391/f11",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/json-schema-processors.ts#voidProcessor",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodVoid",
+          "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors"
+        ],
+        "message": "voidProcessor changed its signature compatibly; existing users keep working (2 users, 2 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f11",
+        "node": {
+          "id": "packages/zod/src/v4/core/json-schema-processors.ts#voidProcessor",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              130,
+              134
+            ],
+            "signature": "voidProcessor(_schema, ctx, _json, _params): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+            "lines": [
+              125,
+              127
+            ],
+            "signature": "voidProcessor(schema, ctx, _json, _params): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodVoid",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                1350,
+                1355
+              ],
+              "signature": "interface ZodVoid extends _ZodType<core.$ZodVoidInternals>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#allProcessors",
+            "kind": "variable",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                575,
+                615
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                545,
+                585
+              ],
+              "signature": "const allProcessors: Record<string, Processor<any>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6391/f12",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/to-json-schema.ts#Seen",
+        "related": [
+          "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.seen",
+          "packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaContext",
+          "packages/zod/src/v4/core/to-json-schema.ts#extractDefs",
+          "packages/zod/src/v4/core/to-json-schema.ts#process"
+        ],
+        "message": "Seen changed its signature compatibly; existing users keep working (4 users, 4 untouched)",
+        "data": {
+          "callers": 4,
+          "updated": 0,
+          "untouched": 4,
+          "untouchedElsewhere": 1,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f12",
+        "node": {
+          "id": "packages/zod/src/v4/core/to-json-schema.ts#Seen",
+          "kind": "interface",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              79,
+              94
+            ],
+            "signature": "interface Seen"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              79,
+              96
+            ],
+            "signature": "interface Seen"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/core/json-schema-generator.ts#JSONSchemaGenerator.seen",
+            "kind": "accessor",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-generator.ts",
+              "lines": [
+                79,
+                81
+              ],
+              "signature": "get seen(): Map<schemas.$ZodType, Seen>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#ToJSONSchemaContext",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                96,
+                119
+              ],
+              "signature": "interface ToJSONSchemaContext"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                98,
+                121
+              ],
+              "signature": "interface ToJSONSchemaContext"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#extractDefs",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                229,
+                369
+              ],
+              "signature": "extractDefs<T extends schemas.$ZodType>(ctx: ToJSONSchemaContext, schema: T): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                242,
+                382
+              ],
+              "signature": "extractDefs<T extends schemas.$ZodType>(ctx: ToJSONSchemaContext, schema: T): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#process",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                151,
+                227
+              ],
+              "signature": "process<T extends schemas.$ZodType>(schema: T, ctx: ToJSONSchemaContext, _params: ProcessParams = { path: [], schemaPath: [] }): JSONSchema.BaseSchema"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                164,
+                240
+              ],
+              "signature": "process<T extends schemas.$ZodType>(schema: T, ctx: ToJSONSchemaContext, _params: ProcessParams = { path: [], schemaPath: [] }): JSONSchema.BaseSchema"
+            }
+          }
+        ]
+      }
+    ],
+    "ms": 6835
+  },
+  {
+    "project": "zod",
+    "position": 3,
+    "number": 6053,
+    "url": "https://github.com/colinhacks/zod/pull/6053",
+    "subject": "fix: preserve explicit superRefine issue input (#6053)",
+    "author": "Francesco Stefanini",
+    "merged": "2026-08-16T17:08:47-07:00",
+    "merge": "07b0c3d89736f37f022be99cc5e38f9572567595",
+    "head": "009176d08b56e62663b73527b7a138e2c41abde9",
+    "summary": "07b0c3d89736f37f022be99cc5e38f9572567595^1 (ba98071) → refs/pr/6053 (009176d), merge-base 912f0f5\n4 files changed · 2 symbols changed: 2 modified\n\nM  packages/zod/src/v4/classic/schemas.ts\n     ~ interface   ZodTransform  (body)  · used by 6\nM  packages/zod/src/v4/classic/tests/index.test.ts\nM  packages/zod/src/v4/classic/tests/refine.test.ts\nM  packages/zod/src/v4/core/api.ts\n     ~ function    _superRefine  (body)  · used by 2\n",
+    "mergeBase": "912f0f51b0ced654d0069741e7160834dca742ee",
+    "files": 4,
+    "stats": {
+      "filesChanged": 4,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 2,
+        "context": 20
+      },
+      "edges": 26,
+      "durationMs": 7219
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 7528
+  },
+  {
+    "project": "zod",
+    "position": 4,
+    "number": 6029,
+    "url": "https://github.com/colinhacks/zod/pull/6029",
+    "subject": "feat(json-schema): emit a root $ref when the root schema has an id (#6029)",
+    "author": "Định Lê",
+    "merged": "2026-08-17T12:02:20-07:00",
+    "merge": "3c9ca1d9bdc3c08939f2aa099158ee552c70ef80",
+    "head": "01dde60f65cf1fefd5d0622484c2d07f7ad4da1e",
+    "summary": "3c9ca1d9bdc3c08939f2aa099158ee552c70ef80^1 (e125fd8) → refs/pr/6029 (01dde60), merge-base b1077f0\n2 files changed · 2 symbols changed: 2 modified\n\nM  packages/zod/src/v4/classic/tests/to-json-schema.test.ts\nM  packages/zod/src/v4/core/to-json-schema.ts\n     ~ function    extractDefs  (body)  · used by 4\n     ~ function    finalize  (body)  · used by 4\n",
+    "mergeBase": "b1077f05f85450cf53108714973bf7c8d9e3c35d",
+    "files": 2,
+    "stats": {
+      "filesChanged": 2,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 2,
+        "context": 14
+      },
+      "edges": 22,
+      "durationMs": 6801
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 7109
+  },
+  {
+    "project": "zod",
+    "position": 5,
+    "number": 6491,
+    "url": "https://github.com/colinhacks/zod/pull/6491",
+    "subject": "feat(mini): publish Zod Mini as the standalone @zod/mini package (#6491)",
+    "author": "Colin McDonnell",
+    "merged": "2026-08-29T12:04:13-07:00",
+    "merge": "8ce9e8d56b1f408c445db6f2d7542696c6d20326",
+    "head": "6e17b6fbd9a57953f36161daa648615590929566",
+    "summary": "8ce9e8d56b1f408c445db6f2d7542696c6d20326^1 (93186ca) → refs/pr/6491 (6e17b6f), merge-base 1a16102\n24 files changed · 1 symbol changed: 1 added\n\nFindings\n  ℹ orphan-added  packages/mini/vitest.config.ts#default\n      default is a new default export nothing imports (loaded by convention?)\n\nM  .github/workflows/release.yml\nM  AGENTS.md\nM  package.json\nM  packages/docs/content/packages/mini.mdx\nA  packages/integration/fixtures/internal-types/mini-cjs-test.cts  (ignored)\nA  packages/integration/fixtures/internal-types/mini.ts  (ignored)\nM  packages/integration/fixtures/internal-types/tsconfig.node16-cjs.json  (ignored)\nM  packages/integration/package.json\nA  packages/mini/.gitignore\nA  packages/mini/LICENSE\nA  packages/mini/README.md\nA  packages/mini/package.json\nA  packages/mini/src/index.ts\nA  packages/mini/src/tests/index.test.ts\nA  packages/mini/tsconfig.build.json\nA  packages/mini/tsconfig.json\nA  packages/mini/vitest.config.ts\n     + variable    default\nM  packages/resolution/attw.test.ts\nM  packages/resolution/package.json\nM  packages/resolution/src/index.cts\nM  packages/resolution/src/index.mts\nM  packages/resolution/src/index.ts\nM  pnpm-lock.yaml\nM  scripts/check-versions.ts\n",
+    "mergeBase": "1a16102a494b03ce1df7b80b663ae2df465f419e",
+    "files": 24,
+    "stats": {
+      "filesChanged": 24,
+      "symbols": {
+        "added": 1,
+        "removed": 0,
+        "modified": 0,
+        "context": 3
+      },
+      "edges": 3,
+      "durationMs": 8015
+    },
+    "warnings": [],
+    "findings": [
+      {
+        "key": "zod#6491/f1",
+        "rule": "orphan-added",
+        "severity": "info",
+        "symbol": "packages/mini/vitest.config.ts#default",
+        "related": [],
+        "message": "default is a new default export nothing imports (loaded by convention?)",
+        "data": {
+          "exportedFromEntry": false,
+          "exposure": "default-export"
+        },
+        "id": "f1",
+        "node": {
+          "id": "packages/mini/vitest.config.ts#default",
+          "kind": "variable",
+          "status": "added",
+          "exported": true,
+          "head": {
+            "file": "packages/mini/vitest.config.ts",
+            "lines": [
+              4,
+              16
+            ],
+            "signature": "default: Record<string, any>"
+          }
+        },
+        "relatedNodes": []
+      }
+    ],
+    "ms": 8342
+  },
+  {
+    "project": "zod",
+    "position": 6,
+    "number": 6536,
+    "url": "https://github.com/colinhacks/zod/pull/6536",
+    "subject": "feat(v4): make z.properties() a schema, and give z.instanceof() a .properties() method (#6536)",
+    "author": "Colin McDonnell",
+    "merged": "2026-08-31T14:06:27-07:00",
+    "merge": "abfb38977dc28dc9993e3fa6a2ecc2f52a8d0c4c",
+    "head": "fbbe61757a8a31266ac16376c85b76e878d5a9e6",
+    "summary": "abfb38977dc28dc9993e3fa6a2ecc2f52a8d0c4c^1 (69f2a7f) → refs/pr/6536 (fbbe617), merge-base bf99021\n17 files changed · 32 symbols changed: 13 added, 19 modified\n\nFindings\n  ⚠ exported-api-changed  packages/zod/src/v4/classic/schemas.ts#_instanceof\n      _instanceof is public API and its new signature may break code outside the repo\n  ⚠ exported-api-changed  packages/zod/src/v4/core/api.ts#_properties\n      _properties is no longer exported from the package entry\n  ⚠ signature-changed     packages/zod/src/v4/core/schemas.ts#$ZodTypeDef\n      $ZodTypeDef changed its signature; 44 of 46 users not updated: withChecks, ZodType, $ZodAnyDef, $ZodArrayDef, $ZodBigIntDef and 39 more · 1 test user\n  ⚠ signature-changed     packages/zod/src/v4/core/schemas.ts#$ZodTypes\n      $ZodTypes changed its signature; 6 of 7 users not updated: ZodFirstPartySchemaTypes, recordProcessor, JSONSchemaGeneratorParams, finalize, process and 1 more · 3 test users, 2 not updated\n  ⚠ signature-changed     packages/zod/src/v4/core/util.ts#hide\n      hide changed its signature; 2 of 2 users not updated: ZodType, $ZodType\n  ⚠ signature-changed     packages/zod/src/v4/core/util.ts#own\n      own changed its signature; 3 of 6 users not updated: ZodType, $ZodType, ZodMiniType\n  ℹ signature-changed     packages/zod/src/v4/classic/schemas.ts#_instanceof\n      _instanceof changed its signature; only tests use it · 15 test users, 13 not updated\n  ℹ signature-changed     packages/zod/src/v4/core/api.ts#_properties\n      _properties changed its signature; all 2 users were updated\n  ℹ signature-changed     packages/zod/src/v4/core/compile.ts#SupportedCheck\n      SupportedCheck changed its signature; its only user was updated\n  ℹ signature-changed     packages/zod/src/v4/core/compile.ts#SupportedSchemaType\n      SupportedSchemaType changed its signature; its only user was updated\n  ℹ signature-changed     packages/zod/src/v4/core/to-json-schema.ts#isTransforming\n      isTransforming changed its signature compatibly; existing users keep working (2 users, 1 untouched)\n  ℹ signature-changed     packages/zod/src/v4/core/util.ts#defineBound\n      defineBound changed its signature; its only user was updated\n\nM  packages/docs/content/api.mdx\nM  packages/treeshake/bundle-size.test.ts\n     ~ variable    CEILINGS  (body)  · used by 1\nM  packages/zod/src/v4/classic/checks.ts\nM  packages/zod/src/v4/classic/schemas.ts\n     + interface   ZodProperties  · used by 1\n     + function    properties  · used by 3\n     + interface   ZodInstanceOf  · used by 1\n     ~ function    _instanceof  (signature, body)  · used by 15\nM  packages/zod/src/v4/classic/tests/firstparty.test.ts\nM  packages/zod/src/v4/classic/tests/instanceof.test.ts\nA  packages/zod/src/v4/classic/tests/properties.test.ts\nM  packages/zod/src/v4/core/api.ts\n     + type        $ZodPropertiesParams  · used by 4\n     ~ function    _properties  (signature, body)  · used by 2\nM  packages/zod/src/v4/core/compile.ts\n     ~ type        SupportedCheck  (signature)  · used by 1\n     ~ function    generateChecks  (body)  · used by 1\n     + function    generatePropertiesChecks  · used by 2\n     ~ type        SupportedSchemaType  (signature)  · used by 1\n     ~ function    generateCheck  (body)  · used by 14\nM  packages/zod/src/v4/core/json-schema-processors.ts\n     + function    propertiesProcessor  · used by 1\n     ~ variable    allProcessors  (body)  · used by 2\nM  packages/zod/src/v4/core/memoizer.ts\n     + function    isRef  · used by 2\n     ~ function    isRecursive  (body)  · used by 2\n     ~ variable    memo  (body)  · used by 1\n     ~ function    isBackEdge  (body)  · used by 2\nM  packages/zod/src/v4/core/schemas.ts\n     ~ interface   $ZodTypeDef  (signature)  · used by 47\n     + interface   $ZodPropertiesDef  · used by 2\n     + interface   $ZodPropertiesInternals  · used by 3\n     + interface   $ZodProperties  · used by 9\n     + function    handlePropertiesResult  · used by 1\n     ~ type        $ZodTypes  (signature)  · used by 10\nM  packages/zod/src/v4/core/to-json-schema.ts\n     ~ function    isTransforming  (signature)  · used by 2\nM  packages/zod/src/v4/core/util.ts\n     ~ function    members  (body)  · used by 1\n     ~ function    own  (signature)  · used by 6\n     ~ function    hide  (signature)  · used by 2\n     ~ function    defineBound  (signature)  · used by 1\nM  packages/zod/src/v4/core/visit.ts\n     ~ function    visit  (body)  · used by 7\nM  packages/zod/src/v4/mini/checks.ts\nM  packages/zod/src/v4/mini/schemas.ts\n     + interface   ZodMiniProperties  · used by 1\n     + function    properties  · used by 1\n",
+    "mergeBase": "bf9902164b5396449540415c2221a24bc9fd0e22",
+    "files": 17,
+    "stats": {
+      "filesChanged": 17,
+      "symbols": {
+        "added": 13,
+        "removed": 0,
+        "modified": 19,
+        "context": 283
+      },
+      "edges": 410,
+      "durationMs": 10208
+    },
+    "warnings": [],
+    "findings": [
+      {
+        "key": "zod#6536/f1",
+        "rule": "exported-api-changed",
+        "severity": "warning",
+        "symbol": "packages/zod/src/v4/classic/schemas.ts#_instanceof",
+        "related": [],
+        "message": "_instanceof is public API and its new signature may break code outside the repo",
+        "data": {
+          "change": "signature",
+          "compatibility": "breaking"
+        },
+        "id": "f1",
+        "node": {
+          "id": "packages/zod/src/v4/classic/schemas.ts#_instanceof",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/classic/schemas.ts",
+            "lines": [
+              2788,
+              2813
+            ],
+            "signature": "_instanceof<T extends typeof util.Class>(cls: T, params: ZodInstanceOfParams = {}): ZodCustom<InstanceType<T>, InstanceType<T>>"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/classic/schemas.ts",
+            "lines": [
+              2831,
+              2856
+            ],
+            "signature": "_instanceof<T extends typeof util.Class>(cls: T, params: ZodInstanceOfParams = {}): ZodInstanceOf<InstanceType<T>>"
+          }
+        },
+        "relatedNodes": []
+      },
+      {
+        "key": "zod#6536/f2",
+        "rule": "exported-api-changed",
+        "severity": "warning",
+        "symbol": "packages/zod/src/v4/core/api.ts#_properties",
+        "related": [],
+        "message": "_properties is no longer exported from the package entry",
+        "data": {
+          "change": "unexported"
+        },
+        "id": "f2",
+        "node": {
+          "id": "packages/zod/src/v4/core/api.ts#_properties",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/api.ts",
+            "lines": [
+              1131,
+              1137
+            ],
+            "signature": "_properties<Shape extends schemas.$ZodShape>(shape: Shape): checks.$ZodCheckProperty<{ -readonly [k in keyof Shape]: util.Widen<core.input<Shape[k]>> }>[]"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/api.ts",
+            "lines": [
+              1133,
+              1144
+            ],
+            "signature": "_properties<Shape extends schemas.$ZodShape>(Class: util.SchemaClass<schemas.$ZodProperties>, shape: Shape, params?: string | $ZodPropertiesParams): schemas.$ZodProperties<Shape>"
+          }
+        },
+        "relatedNodes": []
+      },
+      {
+        "key": "zod#6536/f3",
+        "rule": "signature-changed",
+        "severity": "warning",
+        "symbol": "packages/zod/src/v4/core/schemas.ts#$ZodTypeDef",
+        "related": [
+          "packages/zod/src/v4/classic/in-out.ts#withChecks",
+          "packages/zod/src/v4/classic/schemas.ts#ZodType",
+          "packages/zod/src/v4/core/schemas.ts#$ZodAnyDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodArrayDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodBigIntDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodBooleanDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodCatchDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodCustomDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodDateDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodDefaultDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodEnumDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodFileDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodFunctionDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodIntersectionDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodLazyDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodLiteralDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodMapDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodNaNDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodNeverDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodNonOptionalDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodNullDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodNullableDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodNumberDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodObjectDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodOptionalDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodPipeDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodPrefaultDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodPromiseDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodReadonlyDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodRecordDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodSetDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodStringDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodSuccessDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodSymbolDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodTemplateLiteralDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodTransformDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodTupleDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodUndefinedDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodUnionDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodUnknownDef",
+          "packages/zod/src/v4/core/schemas.ts#$ZodVoidDef",
+          "packages/zod/src/v4/core/schemas.ts#_$ZodTypeInternals",
+          "packages/zod/src/v4/core/visit.ts#Kind",
+          "packages/zod/src/v4/mini/in-out.ts#withChecks",
+          "packages/zod/src/v4/classic/tests/firstparty.test.ts#(module)",
+          "packages/zod/src/v4/core/memoizer.ts#isRecursive",
+          "packages/zod/src/v4/core/schemas.ts#$ZodPropertiesDef"
+        ],
+        "message": "$ZodTypeDef changed its signature; 44 of 46 users not updated: withChecks, ZodType, $ZodAnyDef, $ZodArrayDef, $ZodBigIntDef and 39 more · 1 test user",
+        "data": {
+          "callers": 47,
+          "updated": 3,
+          "untouched": 44,
+          "untouchedElsewhere": 4,
+          "tests": 1,
+          "untouchedTests": 0,
+          "compatibility": "breaking"
+        },
+        "id": "f3",
+        "node": {
+          "id": "packages/zod/src/v4/core/schemas.ts#$ZodTypeDef",
+          "kind": "interface",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/schemas.ts",
+            "lines": [
+              56,
+              100
+            ],
+            "signature": "interface $ZodTypeDef"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/schemas.ts",
+            "lines": [
+              56,
+              101
+            ],
+            "signature": "interface $ZodTypeDef"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/in-out.ts#withChecks",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": false,
+            "head": {
+              "file": "packages/zod/src/v4/classic/in-out.ts",
+              "lines": [
+                11,
+                15
+              ],
+              "signature": "withChecks(side: core.$ZodType, checks: core.$ZodTypeDef[\"checks\"]): core.$ZodType"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodType",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                33,
+                349
+              ],
+              "signature": "interface ZodType<out Output = unknown, out Input = unknown, out Internals extends core.$ZodTypeInternals<Output, Input> = core.$ZodTypeInternals<Output, Input>> extends core.$ZodType<Output, Input, Internals>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                33,
+                349
+              ],
+              "signature": "interface ZodType<out Output = unknown, out Input = unknown, out Internals extends core.$ZodTypeInternals<Output, Input> = core.$ZodTypeInternals<Output, Input>> extends core.$ZodType<Output, Input, Internals>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodAnyDef",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1594,
+                1596
+              ],
+              "signature": "interface $ZodAnyDef extends $ZodTypeDef"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1595,
+                1597
+              ],
+              "signature": "interface $ZodAnyDef extends $ZodTypeDef"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodArrayDef",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1777,
+                1780
+              ],
+              "signature": "interface $ZodArrayDef<T extends SomeType = $ZodType> extends $ZodTypeDef"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1778,
+                1781
+              ],
+              "signature": "interface $ZodArrayDef<T extends SomeType = $ZodType> extends $ZodTypeDef"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodBigIntDef",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1392,
+                1396
+              ],
+              "signature": "interface $ZodBigIntDef extends $ZodTypeDef"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1393,
+                1397
+              ],
+              "signature": "interface $ZodBigIntDef extends $ZodTypeDef"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodBooleanDef",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1343,
+                1347
+              ],
+              "signature": "interface $ZodBooleanDef extends $ZodTypeDef"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1344,
+                1348
+              ],
+              "signature": "interface $ZodBooleanDef extends $ZodTypeDef"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodCatchDef",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                4188,
+                4192
+              ],
+              "signature": "interface $ZodCatchDef<T extends SomeType = $ZodType> extends $ZodTypeDef"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                4189,
+                4193
+              ],
+              "signature": "interface $ZodCatchDef<T extends SomeType = $ZodType> extends $ZodTypeDef"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodCustomDef",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                4921,
+                4928
+              ],
+              "signature": "interface $ZodCustomDef<O = unknown> extends $ZodTypeDef, checks.$ZodCheckDef"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                4922,
+                4929
+              ],
+              "signature": "interface $ZodCustomDef<O = unknown> extends $ZodTypeDef, checks.$ZodCheckDef"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodDateDef",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1723,
+                1726
+              ],
+              "signature": "interface $ZodDateDef extends $ZodTypeDef"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                1724,
+                1727
+              ],
+              "signature": "interface $ZodDateDef extends $ZodTypeDef"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodDefaultDef",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                3923,
+                3928
+              ],
+              "signature": "interface $ZodDefaultDef<T extends SomeType = $ZodType> extends $ZodTypeDef"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                3924,
+                3929
+              ],
+              "signature": "interface $ZodDefaultDef<T extends SomeType = $ZodType> extends $ZodTypeDef"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodEnumDef",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                3500,
+                3503
+              ],
+              "signature": "interface $ZodEnumDef<T extends util.EnumLike = util.EnumLike> extends $ZodTypeDef"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                3501,
+                3504
+              ],
+              "signature": "interface $ZodEnumDef<T extends util.EnumLike = util.EnumLike> extends $ZodTypeDef"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodFileDef",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                3674,
+                3676
+              ],
+              "signature": "interface $ZodFileDef extends $ZodTypeDef"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                3675,
+                3677
+              ],
+              "signature": "interface $ZodFileDef extends $ZodTypeDef"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6536/f4",
+        "rule": "signature-changed",
+        "severity": "warning",
+        "symbol": "packages/zod/src/v4/core/schemas.ts#$ZodTypes",
+        "related": [
+          "packages/zod/src/v4/classic/compat.ts#ZodFirstPartySchemaTypes",
+          "packages/zod/src/v4/core/json-schema-processors.ts#recordProcessor",
+          "packages/zod/src/v4/core/to-json-schema.ts#JSONSchemaGeneratorParams",
+          "packages/zod/src/v4/core/to-json-schema.ts#finalize",
+          "packages/zod/src/v4/core/to-json-schema.ts#process",
+          "packages/zod/src/v4/core/visit.ts#SchemaOfKind",
+          "packages/zod/src/v4/classic/tests/assignability.test.ts#(module)",
+          "packages/zod/src/v4/classic/tests/to-json-schema.test.ts#(module)",
+          "packages/zod/src/v4/classic/tests/firstparty.test.ts#(module)",
+          "packages/zod/src/v4/core/to-json-schema.ts#isTransforming"
+        ],
+        "message": "$ZodTypes changed its signature; 6 of 7 users not updated: ZodFirstPartySchemaTypes, recordProcessor, JSONSchemaGeneratorParams, finalize, process and 1 more · 3 test users, 2 not updated",
+        "data": {
+          "callers": 10,
+          "updated": 2,
+          "untouched": 8,
+          "untouchedElsewhere": 6,
+          "tests": 3,
+          "untouchedTests": 2,
+          "compatibility": "breaking"
+        },
+        "id": "f4",
+        "node": {
+          "id": "packages/zod/src/v4/core/schemas.ts#$ZodTypes",
+          "kind": "type",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/schemas.ts",
+            "lines": [
+              4979,
+              5018
+            ],
+            "signature": "type $ZodTypes = | $ZodString | $ZodNumber | $ZodBigInt | $ZodBoolean | $ZodDate | $ZodSymbol | $ZodUndefined | $ZodNullable | $ZodNull | $ZodAny | $ZodUnknown | $ZodNever | $ZodVoid | $ZodArray | $ZodObject | $ZodUnion | $ZodIntersection | $ZodTuple | $ZodRecord | $ZodMap | $ZodSet | $ZodLiteral |…"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/schemas.ts",
+            "lines": [
+              5075,
+              5115
+            ],
+            "signature": "type $ZodTypes = | $ZodString | $ZodNumber | $ZodBigInt | $ZodBoolean | $ZodDate | $ZodSymbol | $ZodUndefined | $ZodNullable | $ZodNull | $ZodAny | $ZodUnknown | $ZodNever | $ZodVoid | $ZodArray | $ZodObject | $ZodUnion | $ZodIntersection | $ZodTuple | $ZodRecord | $ZodMap | $ZodSet | $ZodLiteral |…"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/compat.ts#ZodFirstPartySchemaTypes",
+            "kind": "type",
+            "status": "unchanged",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/compat.ts",
+              "lines": [
+                11,
+                11
+              ],
+              "signature": "type ZodFirstPartySchemaTypes = core.$ZodTypes"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#recordProcessor",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                567,
+                621
+              ],
+              "signature": "recordProcessor(schema, ctx, _json, params)"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                616,
+                670
+              ],
+              "signature": "recordProcessor(schema, ctx, _json, params)"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#JSONSchemaGeneratorParams",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                39,
+                74
+              ],
+              "signature": "interface JSONSchemaGeneratorParams"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                39,
+                74
+              ],
+              "signature": "interface JSONSchemaGeneratorParams"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#finalize",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                564,
+                754
+              ],
+              "signature": "finalize<T extends schemas.$ZodType>(ctx: ToJSONSchemaContext, schema: T): ZodStandardJSONSchemaPayload<T>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                564,
+                754
+              ],
+              "signature": "finalize<T extends schemas.$ZodType>(ctx: ToJSONSchemaContext, schema: T): ZodStandardJSONSchemaPayload<T>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#process",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                212,
+                290
+              ],
+              "signature": "process<T extends schemas.$ZodType>(schema: T, ctx: ToJSONSchemaContext, _params: ProcessParams = { path: [], schemaPath: [] }): JSONSchema.BaseSchema"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                212,
+                290
+              ],
+              "signature": "process<T extends schemas.$ZodType>(schema: T, ctx: ToJSONSchemaContext, _params: ProcessParams = { path: [], schemaPath: [] }): JSONSchema.BaseSchema"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/visit.ts#SchemaOfKind",
+            "kind": "type",
+            "status": "unchanged",
+            "exported": false,
+            "base": {
+              "file": "packages/zod/src/v4/core/visit.ts",
+              "lines": [
+                13,
+                15
+              ],
+              "signature": "type SchemaOfKind<K extends Kind> = [Extract<schemas.$ZodTypes, { _zod: { def: { type: K } } }>] extends [never] ? AnyZod : Extract<schemas.$ZodTypes, { _zod: { def: { type: K } } }>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/visit.ts",
+              "lines": [
+                13,
+                15
+              ],
+              "signature": "type SchemaOfKind<K extends Kind> = [Extract<schemas.$ZodTypes, { _zod: { def: { type: K } } }>] extends [never] ? AnyZod : Extract<schemas.$ZodTypes, { _zod: { def: { type: K } } }>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/assignability.test.ts#(module)",
+            "kind": "module",
+            "status": "unchanged",
+            "exported": false
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts#(module)",
+            "kind": "module",
+            "status": "unchanged",
+            "exported": false
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/firstparty.test.ts#(module)",
+            "kind": "module",
+            "status": "unchanged",
+            "exported": false
+          },
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#isTransforming",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                756,
+                820
+              ],
+              "signature": "isTransforming(_schema: schemas.$ZodType, _ctx?: { seen: Set<schemas.$ZodType>; }): boolean"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                756,
+                820
+              ],
+              "signature": "isTransforming(_schema: schemas.$ZodType, _ctx?: { seen: Set<schemas.$ZodType>; }): boolean"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6536/f5",
+        "rule": "signature-changed",
+        "severity": "warning",
+        "symbol": "packages/zod/src/v4/core/util.ts#hide",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodType",
+          "packages/zod/src/v4/core/schemas.ts#$ZodType"
+        ],
+        "message": "hide changed its signature; 2 of 2 users not updated: ZodType, $ZodType",
+        "data": {
+          "callers": 2,
+          "updated": 0,
+          "untouched": 2,
+          "untouchedElsewhere": 2,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "breaking"
+        },
+        "id": "f5",
+        "node": {
+          "id": "packages/zod/src/v4/core/util.ts#hide",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/util.ts",
+            "lines": [
+              1138,
+              1140
+            ],
+            "signature": "hide<T>(inst: object, key: string, value: T): T"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/util.ts",
+            "lines": [
+              1142,
+              1144
+            ],
+            "signature": "hide<T>(inst: object, key: PropertyKey, value: T): T"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodType",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                33,
+                349
+              ],
+              "signature": "interface ZodType<out Output = unknown, out Input = unknown, out Internals extends core.$ZodTypeInternals<Output, Input> = core.$ZodTypeInternals<Output, Input>> extends core.$ZodType<Output, Input, Internals>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                33,
+                349
+              ],
+              "signature": "interface ZodType<out Output = unknown, out Input = unknown, out Internals extends core.$ZodTypeInternals<Output, Input> = core.$ZodTypeInternals<Output, Input>> extends core.$ZodType<Output, Input, Internals>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodType",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                190,
+                332
+              ],
+              "signature": "interface $ZodType<O = unknown, I = unknown, Internals extends $ZodTypeInternals<O, I> = $ZodTypeInternals<O, I>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                191,
+                333
+              ],
+              "signature": "interface $ZodType<O = unknown, I = unknown, Internals extends $ZodTypeInternals<O, I> = $ZodTypeInternals<O, I>>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6536/f6",
+        "rule": "signature-changed",
+        "severity": "warning",
+        "symbol": "packages/zod/src/v4/core/util.ts#own",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#ZodType",
+          "packages/zod/src/v4/core/schemas.ts#$ZodType",
+          "packages/zod/src/v4/mini/schemas.ts#ZodMiniType",
+          "packages/zod/src/v4/core/util.ts#(module)",
+          "packages/zod/src/v4/core/util.ts#defineBound",
+          "packages/zod/src/v4/core/util.ts#hide"
+        ],
+        "message": "own changed its signature; 3 of 6 users not updated: ZodType, $ZodType, ZodMiniType",
+        "data": {
+          "callers": 6,
+          "updated": 3,
+          "untouched": 3,
+          "untouchedElsewhere": 3,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "breaking"
+        },
+        "id": "f6",
+        "node": {
+          "id": "packages/zod/src/v4/core/util.ts#own",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/util.ts",
+            "lines": [
+              1132,
+              1135
+            ],
+            "signature": "own<T>(inst: object, key: string, value: T, enumerable = true): T"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/util.ts",
+            "lines": [
+              1136,
+              1139
+            ],
+            "signature": "own<T>(inst: object, key: PropertyKey, value: T, enumerable = true): T"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#ZodType",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                33,
+                349
+              ],
+              "signature": "interface ZodType<out Output = unknown, out Input = unknown, out Internals extends core.$ZodTypeInternals<Output, Input> = core.$ZodTypeInternals<Output, Input>> extends core.$ZodType<Output, Input, Internals>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                33,
+                349
+              ],
+              "signature": "interface ZodType<out Output = unknown, out Input = unknown, out Internals extends core.$ZodTypeInternals<Output, Input> = core.$ZodTypeInternals<Output, Input>> extends core.$ZodType<Output, Input, Internals>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/schemas.ts#$ZodType",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                190,
+                332
+              ],
+              "signature": "interface $ZodType<O = unknown, I = unknown, Internals extends $ZodTypeInternals<O, I> = $ZodTypeInternals<O, I>>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/schemas.ts",
+              "lines": [
+                191,
+                333
+              ],
+              "signature": "interface $ZodType<O = unknown, I = unknown, Internals extends $ZodTypeInternals<O, I> = $ZodTypeInternals<O, I>>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/mini/schemas.ts#ZodMiniType",
+            "kind": "interface",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/mini/schemas.ts",
+              "lines": [
+                8,
+                103
+              ],
+              "signature": "interface ZodMiniType<out Output = unknown, out Input = unknown, out Internals extends core.$ZodTypeInternals<Output, Input> = core.$ZodTypeInternals<Output, Input>> extends core.$ZodType<Output, Input, Internals>"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/mini/schemas.ts",
+              "lines": [
+                8,
+                103
+              ],
+              "signature": "interface ZodMiniType<out Output = unknown, out Input = unknown, out Internals extends core.$ZodTypeInternals<Output, Input> = core.$ZodTypeInternals<Output, Input>> extends core.$ZodType<Output, Input, Internals>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/util.ts#(module)",
+            "kind": "module",
+            "status": "unchanged",
+            "exported": false
+          },
+          {
+            "id": "packages/zod/src/v4/core/util.ts#defineBound",
+            "kind": "function",
+            "status": "modified",
+            "exported": false,
+            "base": {
+              "file": "packages/zod/src/v4/core/util.ts",
+              "lines": [
+                1142,
+                1153
+              ],
+              "signature": "defineBound(proto: object, key: string, fn: AnyFunc): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/util.ts",
+              "lines": [
+                1146,
+                1157
+              ],
+              "signature": "defineBound(proto: object, key: PropertyKey, fn: AnyFunc): void"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/util.ts#hide",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/util.ts",
+              "lines": [
+                1138,
+                1140
+              ],
+              "signature": "hide<T>(inst: object, key: string, value: T): T"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/util.ts",
+              "lines": [
+                1142,
+                1144
+              ],
+              "signature": "hide<T>(inst: object, key: PropertyKey, value: T): T"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6536/f7",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/classic/schemas.ts#_instanceof",
+        "related": [
+          "packages/zod/src/v4/classic/tests/codec-examples.test.ts#base64",
+          "packages/zod/src/v4/classic/tests/codec-examples.test.ts#base64urlToBytes",
+          "packages/zod/src/v4/classic/tests/codec-examples.test.ts#bytesToUtf8",
+          "packages/zod/src/v4/classic/tests/codec-examples.test.ts#hexToBytes",
+          "packages/zod/src/v4/classic/tests/codec-examples.test.ts#stringToHttpURL",
+          "packages/zod/src/v4/classic/tests/codec-examples.test.ts#stringToURL",
+          "packages/zod/src/v4/classic/tests/codec-examples.test.ts#utf8ToBytes",
+          "packages/zod/src/v4/classic/tests/custom.test.ts#(module)",
+          "packages/zod/src/v4/classic/tests/index.test.ts#(module)",
+          "packages/zod/src/v4/classic/tests/template-literal.test.ts#(module)",
+          "packages/zod/src/v4/classic/tests/to-json-schema.test.ts#(module)",
+          "packages/zod/src/v4/core/tests/compile.test.ts#(module)",
+          "packages/zod/src/v4/core/tests/locales/el.test.ts#(module)",
+          "packages/zod/src/v4/classic/tests/instanceof.test.ts#(module)",
+          "packages/zod/src/v4/classic/tests/properties.test.ts#(module)"
+        ],
+        "message": "_instanceof changed its signature; only tests use it · 15 test users, 13 not updated",
+        "data": {
+          "callers": 15,
+          "updated": 2,
+          "untouched": 13,
+          "untouchedElsewhere": 0,
+          "tests": 15,
+          "untouchedTests": 13,
+          "compatibility": "breaking"
+        },
+        "id": "f7",
+        "node": {
+          "id": "packages/zod/src/v4/classic/schemas.ts#_instanceof",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/classic/schemas.ts",
+            "lines": [
+              2788,
+              2813
+            ],
+            "signature": "_instanceof<T extends typeof util.Class>(cls: T, params: ZodInstanceOfParams = {}): ZodCustom<InstanceType<T>, InstanceType<T>>"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/classic/schemas.ts",
+            "lines": [
+              2831,
+              2856
+            ],
+            "signature": "_instanceof<T extends typeof util.Class>(cls: T, params: ZodInstanceOfParams = {}): ZodInstanceOf<InstanceType<T>>"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/tests/codec-examples.test.ts#base64",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": false,
+            "head": {
+              "file": "packages/zod/src/v4/classic/tests/codec-examples.test.ts",
+              "lines": [
+                305,
+                309
+              ],
+              "signature": "base64()"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/codec-examples.test.ts#base64urlToBytes",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": false,
+            "head": {
+              "file": "packages/zod/src/v4/classic/tests/codec-examples.test.ts",
+              "lines": [
+                333,
+                337
+              ],
+              "signature": "base64urlToBytes()"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/codec-examples.test.ts#bytesToUtf8",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": false,
+            "head": {
+              "file": "packages/zod/src/v4/classic/tests/codec-examples.test.ts",
+              "lines": [
+                276,
+                280
+              ],
+              "signature": "bytesToUtf8()"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/codec-examples.test.ts#hexToBytes",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": false,
+            "head": {
+              "file": "packages/zod/src/v4/classic/tests/codec-examples.test.ts",
+              "lines": [
+                361,
+                365
+              ],
+              "signature": "hexToBytes()"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/codec-examples.test.ts#stringToHttpURL",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": false,
+            "head": {
+              "file": "packages/zod/src/v4/classic/tests/codec-examples.test.ts",
+              "lines": [
+                423,
+                427
+              ],
+              "signature": "stringToHttpURL()"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/codec-examples.test.ts#stringToURL",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": false,
+            "head": {
+              "file": "packages/zod/src/v4/classic/tests/codec-examples.test.ts",
+              "lines": [
+                393,
+                397
+              ],
+              "signature": "stringToURL()"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/codec-examples.test.ts#utf8ToBytes",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": false,
+            "head": {
+              "file": "packages/zod/src/v4/classic/tests/codec-examples.test.ts",
+              "lines": [
+                248,
+                252
+              ],
+              "signature": "utf8ToBytes()"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/custom.test.ts#(module)",
+            "kind": "module",
+            "status": "unchanged",
+            "exported": false
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/index.test.ts#(module)",
+            "kind": "module",
+            "status": "unchanged",
+            "exported": false
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/template-literal.test.ts#(module)",
+            "kind": "module",
+            "status": "unchanged",
+            "exported": false
+          },
+          {
+            "id": "packages/zod/src/v4/classic/tests/to-json-schema.test.ts#(module)",
+            "kind": "module",
+            "status": "unchanged",
+            "exported": false
+          },
+          {
+            "id": "packages/zod/src/v4/core/tests/compile.test.ts#(module)",
+            "kind": "module",
+            "status": "unchanged",
+            "exported": false
+          }
+        ]
+      },
+      {
+        "key": "zod#6536/f8",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/api.ts#_properties",
+        "related": [
+          "packages/zod/src/v4/classic/schemas.ts#properties",
+          "packages/zod/src/v4/mini/schemas.ts#properties"
+        ],
+        "message": "_properties changed its signature; all 2 users were updated",
+        "data": {
+          "callers": 2,
+          "updated": 2,
+          "untouched": 0,
+          "untouchedElsewhere": 0,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "breaking"
+        },
+        "id": "f8",
+        "node": {
+          "id": "packages/zod/src/v4/core/api.ts#_properties",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/api.ts",
+            "lines": [
+              1131,
+              1137
+            ],
+            "signature": "_properties<Shape extends schemas.$ZodShape>(shape: Shape): checks.$ZodCheckProperty<{ -readonly [k in keyof Shape]: util.Widen<core.input<Shape[k]>> }>[]"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/api.ts",
+            "lines": [
+              1133,
+              1144
+            ],
+            "signature": "_properties<Shape extends schemas.$ZodShape>(Class: util.SchemaClass<schemas.$ZodProperties>, shape: Shape, params?: string | $ZodPropertiesParams): schemas.$ZodProperties<Shape>"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/classic/schemas.ts#properties",
+            "kind": "function",
+            "status": "added",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/classic/schemas.ts",
+              "lines": [
+                2761,
+                2766
+              ],
+              "signature": "properties<Shape extends core.$ZodShape>(shape: Shape, params?: string | core.$ZodPropertiesParams): ZodProperties<Shape>"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/mini/schemas.ts#properties",
+            "kind": "function",
+            "status": "added",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/mini/schemas.ts",
+              "lines": [
+                1864,
+                1869
+              ],
+              "signature": "properties<Shape extends core.$ZodShape>(shape: Shape, params?: string | core.$ZodPropertiesParams): ZodMiniProperties<Shape>"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6536/f9",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/compile.ts#SupportedCheck",
+        "related": [
+          "packages/zod/src/v4/core/compile.ts#generateChecks"
+        ],
+        "message": "SupportedCheck changed its signature; its only user was updated",
+        "data": {
+          "callers": 1,
+          "updated": 1,
+          "untouched": 0,
+          "untouchedElsewhere": 0,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "breaking"
+        },
+        "id": "f9",
+        "node": {
+          "id": "packages/zod/src/v4/core/compile.ts#SupportedCheck",
+          "kind": "type",
+          "status": "modified",
+          "exported": false,
+          "base": {
+            "file": "packages/zod/src/v4/core/compile.ts",
+            "lines": [
+              71,
+              87
+            ],
+            "signature": "type SupportedCheck = | checks.$ZodCheckLessThan | checks.$ZodCheckGreaterThan | checks.$ZodCheckMultipleOf | checks.$ZodCheckNumberFormat | checks.$ZodCheckBigIntFormat | checks.$ZodCheckMaxSize | checks.$ZodCheckMinSize | checks.$ZodCheckSizeEquals | checks.$ZodCheckMaxLength | checks.$ZodCheckMi…"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/compile.ts",
+            "lines": [
+              71,
+              88
+            ],
+            "signature": "type SupportedCheck = | checks.$ZodCheckLessThan | checks.$ZodCheckGreaterThan | checks.$ZodCheckMultipleOf | checks.$ZodCheckNumberFormat | checks.$ZodCheckBigIntFormat | checks.$ZodCheckMaxSize | checks.$ZodCheckMinSize | checks.$ZodCheckSizeEquals | checks.$ZodCheckMaxLength | checks.$ZodCheckMi…"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/core/compile.ts#generateChecks",
+            "kind": "function",
+            "status": "modified",
+            "exported": false,
+            "base": {
+              "file": "packages/zod/src/v4/core/compile.ts",
+              "lines": [
+                343,
+                436
+              ],
+              "signature": "generateChecks(doc: Doc, ctx: CompileContext, schema: SomeType, accessor: string): string"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/compile.ts",
+              "lines": [
+                344,
+                440
+              ],
+              "signature": "generateChecks(doc: Doc, ctx: CompileContext, schema: SomeType, accessor: string): string"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6536/f10",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/compile.ts#SupportedSchemaType",
+        "related": [
+          "packages/zod/src/v4/core/compile.ts#generateCheck"
+        ],
+        "message": "SupportedSchemaType changed its signature; its only user was updated",
+        "data": {
+          "callers": 1,
+          "updated": 1,
+          "untouched": 0,
+          "untouchedElsewhere": 0,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "breaking"
+        },
+        "id": "f10",
+        "node": {
+          "id": "packages/zod/src/v4/core/compile.ts#SupportedSchemaType",
+          "kind": "type",
+          "status": "modified",
+          "exported": false,
+          "base": {
+            "file": "packages/zod/src/v4/core/compile.ts",
+            "lines": [
+              828,
+              865
+            ],
+            "signature": "type SupportedSchemaType = | \"string\" | \"number\" | \"boolean\" | \"bigint\" | \"symbol\" | \"undefined\" | \"null\" | \"any\" | \"unknown\" | \"never\" | \"void\" | \"nan\" | \"date\" | \"object\" | \"optional\" | \"nullable\" | \"array\" | \"literal\" | \"enum\" | \"readonly\" | \"success\" | \"default\" | \"prefault\" | \"nonoptional\" | \"…"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/compile.ts",
+            "lines": [
+              861,
+              899
+            ],
+            "signature": "type SupportedSchemaType = | \"string\" | \"number\" | \"boolean\" | \"bigint\" | \"symbol\" | \"undefined\" | \"null\" | \"any\" | \"unknown\" | \"never\" | \"void\" | \"nan\" | \"date\" | \"object\" | \"optional\" | \"nullable\" | \"array\" | \"literal\" | \"enum\" | \"readonly\" | \"success\" | \"default\" | \"prefault\" | \"nonoptional\" | \"…"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/core/compile.ts#generateCheck",
+            "kind": "function",
+            "status": "modified",
+            "exported": false,
+            "base": {
+              "file": "packages/zod/src/v4/core/compile.ts",
+              "lines": [
+                867,
+                1025
+              ],
+              "signature": "generateCheck(doc: Doc, ctx: CompileContext, schema: SomeType, accessor: string): string (+1 overload)"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/compile.ts",
+              "lines": [
+                901,
+                1063
+              ],
+              "signature": "generateCheck(doc: Doc, ctx: CompileContext, schema: SomeType, accessor: string): string (+1 overload)"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6536/f11",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/to-json-schema.ts#isTransforming",
+        "related": [
+          "packages/zod/src/v4/core/to-json-schema.ts#process",
+          "packages/zod/src/v4/core/json-schema-processors.ts#propertiesProcessor"
+        ],
+        "message": "isTransforming changed its signature compatibly; existing users keep working (2 users, 1 untouched)",
+        "data": {
+          "callers": 2,
+          "updated": 1,
+          "untouched": 1,
+          "untouchedElsewhere": 0,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "compatible"
+        },
+        "id": "f11",
+        "node": {
+          "id": "packages/zod/src/v4/core/to-json-schema.ts#isTransforming",
+          "kind": "function",
+          "status": "modified",
+          "exported": true,
+          "base": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              756,
+              820
+            ],
+            "signature": "isTransforming(_schema: schemas.$ZodType, _ctx?: { seen: Set<schemas.$ZodType>; }): boolean"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/to-json-schema.ts",
+            "lines": [
+              756,
+              820
+            ],
+            "signature": "isTransforming(_schema: schemas.$ZodType, _ctx?: { seen: Set<schemas.$ZodType>; }): boolean"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/core/to-json-schema.ts#process",
+            "kind": "function",
+            "status": "unchanged",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                212,
+                290
+              ],
+              "signature": "process<T extends schemas.$ZodType>(schema: T, ctx: ToJSONSchemaContext, _params: ProcessParams = { path: [], schemaPath: [] }): JSONSchema.BaseSchema"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/to-json-schema.ts",
+              "lines": [
+                212,
+                290
+              ],
+              "signature": "process<T extends schemas.$ZodType>(schema: T, ctx: ToJSONSchemaContext, _params: ProcessParams = { path: [], schemaPath: [] }): JSONSchema.BaseSchema"
+            }
+          },
+          {
+            "id": "packages/zod/src/v4/core/json-schema-processors.ts#propertiesProcessor",
+            "kind": "function",
+            "status": "added",
+            "exported": true,
+            "head": {
+              "file": "packages/zod/src/v4/core/json-schema-processors.ts",
+              "lines": [
+                381,
+                426
+              ],
+              "signature": "propertiesProcessor(schema, ctx, _json, params): void"
+            }
+          }
+        ]
+      },
+      {
+        "key": "zod#6536/f12",
+        "rule": "signature-changed",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/core/util.ts#defineBound",
+        "related": [
+          "packages/zod/src/v4/core/util.ts#members"
+        ],
+        "message": "defineBound changed its signature; its only user was updated",
+        "data": {
+          "callers": 1,
+          "updated": 1,
+          "untouched": 0,
+          "untouchedElsewhere": 0,
+          "tests": 0,
+          "untouchedTests": 0,
+          "compatibility": "breaking"
+        },
+        "id": "f12",
+        "node": {
+          "id": "packages/zod/src/v4/core/util.ts#defineBound",
+          "kind": "function",
+          "status": "modified",
+          "exported": false,
+          "base": {
+            "file": "packages/zod/src/v4/core/util.ts",
+            "lines": [
+              1142,
+              1153
+            ],
+            "signature": "defineBound(proto: object, key: string, fn: AnyFunc): void"
+          },
+          "head": {
+            "file": "packages/zod/src/v4/core/util.ts",
+            "lines": [
+              1146,
+              1157
+            ],
+            "signature": "defineBound(proto: object, key: PropertyKey, fn: AnyFunc): void"
+          }
+        },
+        "relatedNodes": [
+          {
+            "id": "packages/zod/src/v4/core/util.ts#members",
+            "kind": "function",
+            "status": "modified",
+            "exported": true,
+            "base": {
+              "file": "packages/zod/src/v4/core/util.ts",
+              "lines": [
+                1121,
+                1129
+              ],
+              "signature": "members(proto: object, table: object): void"
+            },
+            "head": {
+              "file": "packages/zod/src/v4/core/util.ts",
+              "lines": [
+                1121,
+                1133
+              ],
+              "signature": "members(proto: object, table: object): void"
+            }
+          }
+        ]
+      }
+    ],
+    "ms": 10552
+  },
+  {
+    "project": "zod",
+    "position": 7,
+    "number": 6411,
+    "url": "https://github.com/colinhacks/zod/pull/6411",
+    "subject": "fix(v4): make fromJSONSchema propertyNames compose with the other object keywords (#6411)",
+    "author": "Colin McDonnell",
+    "merged": "2026-08-13T19:31:40-07:00",
+    "merge": "6074828e5d134c34cd1fac9b067dbee74ecdc314",
+    "head": "4145f8edf153e0b00d31057d2ff47e35d8a1680a",
+    "summary": "6074828e5d134c34cd1fac9b067dbee74ecdc314^1 (d7b209f) → refs/pr/6411 (4145f8e), merge-base d7b209f\n2 files changed · 3 symbols changed: 1 added, 2 modified\n\nM  packages/zod/src/v4/classic/from-json-schema.ts\n     + function    checkPropertyNames  · used by 1\n     ~ function    convertBaseSchema  (body)  · used by 1\n     ~ function    convertSchema  (body)  · used by 3\nM  packages/zod/src/v4/classic/tests/from-json-schema.test.ts\n",
+    "mergeBase": "d7b209f3928266a3e5cd7d5f8973fc9047be0791",
+    "files": 2,
+    "stats": {
+      "filesChanged": 2,
+      "symbols": {
+        "added": 1,
+        "removed": 0,
+        "modified": 2,
+        "context": 60
+      },
+      "edges": 75,
+      "durationMs": 6685
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 7011
+  },
+  {
+    "project": "zod",
+    "position": 8,
+    "number": 6394,
+    "url": "https://github.com/colinhacks/zod/pull/6394",
+    "subject": "refactor: share default when-clauses for size/length checks (#6394)",
+    "author": "Chris Cook",
+    "merged": "2026-08-19T12:58:07-07:00",
+    "merge": "060bc9f3ec69bff2849f3cc7c17807b863f503b6",
+    "head": "cd41941a31afbc09d6510d45072bc00b4033b4e6",
+    "summary": "060bc9f3ec69bff2849f3cc7c17807b863f503b6^1 (6772a43) → refs/pr/6394 (cd41941), merge-base 3063993\n1 file changed · 8 symbols changed: 2 added, 6 modified\n\nM  packages/zod/src/v4/core/checks.ts\n     + function    _whenHasSize  · used by 3\n     + function    _whenHasLength  · used by 3\n     ~ interface   $ZodCheckMaxSize  (body)  · used by 3\n     ~ interface   $ZodCheckMinSize  (body)  · used by 3\n     ~ interface   $ZodCheckSizeEquals  (body)  · used by 3\n     ~ interface   $ZodCheckMaxLength  (body)  · used by 3\n     ~ interface   $ZodCheckMinLength  (body)  · used by 3\n     ~ interface   $ZodCheckLengthEquals  (body)  · used by 3\n",
+    "mergeBase": "3063993a3317ac8af7a244691b837fce3e53aa96",
+    "files": 1,
+    "stats": {
+      "filesChanged": 1,
+      "symbols": {
+        "added": 2,
+        "removed": 0,
+        "modified": 6,
+        "context": 27
+      },
+      "edges": 82,
+      "durationMs": 6884
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 7241
+  },
+  {
+    "project": "zod",
+    "position": 9,
+    "number": 6471,
+    "url": "https://github.com/colinhacks/zod/pull/6471",
+    "subject": "feat(v4): add z.isValid and z.isValidAsync (#6471)",
+    "author": "Colin McDonnell",
+    "merged": "2026-08-26T22:36:16-07:00",
+    "merge": "37b015017b17420e81e76555066bdfa39c24cdc5",
+    "head": "edb071ac447c9d8586f0be84c8be4c961267bbd3",
+    "summary": "37b015017b17420e81e76555066bdfa39c24cdc5^1 (749f545) → refs/pr/6471 (edb071a), merge-base 749f545\n7 files changed · 8 symbols changed: 7 added, 1 modified\n\nM  packages/docs/content/basics.mdx\nM  packages/zod/src/compile.ts\nM  packages/zod/src/v4/classic/parse.ts\nA  packages/zod/src/v4/classic/tests/is-valid.test.ts\nM  packages/zod/src/v4/core/compile.ts\n     ~ function    compile  (body)  · used by 29\nM  packages/zod/src/v4/core/parse.ts\n     + variable    COMPILE_INVALID  · used by 1\n     + variable    COMPILE_FALLBACK  · used by 1\n     + interface   CompiledBag  · used by 1\n     + type        $IsValid  · used by 1\n     + function    isValid  · used by 1\n     + type        $IsValidAsync  · used by 1\n     + function    isValidAsync  · used by 1\nM  packages/zod/src/v4/mini/parse.ts\n",
+    "mergeBase": "749f545233d7035250620b92e4fc1afcc1bc2f99",
+    "files": 7,
+    "stats": {
+      "filesChanged": 7,
+      "symbols": {
+        "added": 7,
+        "removed": 0,
+        "modified": 1,
+        "context": 43
+      },
+      "edges": 63,
+      "durationMs": 7290
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 7610
+  },
+  {
+    "project": "zod",
+    "position": 10,
+    "number": 6092,
+    "url": "https://github.com/colinhacks/zod/pull/6092",
+    "subject": "feat(locales): add Norwegian Nynorsk (nn) locale (#6092)",
+    "author": "Arvind",
+    "merged": "2026-08-16T16:01:13-07:00",
+    "merge": "69b6bb086ff11dc289d9a4e0321a2cbda9246c02",
+    "head": "0962c96970f88ba9a230281b851fe614c9b9dc97",
+    "summary": "69b6bb086ff11dc289d9a4e0321a2cbda9246c02^1 (33d82e6) → refs/pr/6092 (0962c96), merge-base 912f0f5\n4 files changed · 2 symbols changed: 2 added\n\nFindings\n  ℹ orphan-added  packages/zod/src/v4/locales/nn.ts#default\n      default is a new default export nothing imports (loaded by convention?)\n\nM  packages/docs/content/error-customization.mdx\nM  packages/zod/jsr.json\nM  packages/zod/src/v4/locales/index.ts\nA  packages/zod/src/v4/locales/nn.ts\n     + function    error  · used by 1\n     + function    default\n",
+    "mergeBase": "912f0f51b0ced654d0069741e7160834dca742ee",
+    "files": 4,
+    "stats": {
+      "filesChanged": 4,
+      "symbols": {
+        "added": 2,
+        "removed": 0,
+        "modified": 0,
+        "context": 7
+      },
+      "edges": 9,
+      "durationMs": 5608
+    },
+    "warnings": [],
+    "findings": [
+      {
+        "key": "zod#6092/f1",
+        "rule": "orphan-added",
+        "severity": "info",
+        "symbol": "packages/zod/src/v4/locales/nn.ts#default",
+        "related": [],
+        "message": "default is a new default export nothing imports (loaded by convention?)",
+        "data": {
+          "exportedFromEntry": false,
+          "exposure": "default-export"
+        },
+        "id": "f1",
+        "node": {
+          "id": "packages/zod/src/v4/locales/nn.ts#default",
+          "kind": "function",
+          "status": "added",
+          "exported": true,
+          "head": {
+            "file": "packages/zod/src/v4/locales/nn.ts",
+            "lines": [
+              112,
+              116
+            ],
+            "signature": "default(): { localeError: errors.$ZodErrorMap }"
+          }
+        },
+        "relatedNodes": []
+      }
+    ],
+    "ms": 5945
+  },
+  {
+    "project": "zod",
+    "position": 11,
+    "number": 6535,
+    "url": "https://github.com/colinhacks/zod/pull/6535",
+    "subject": "fix(v4): enforce the six JSON Schema keywords fromJSONSchema silently dropped (#6535)",
+    "author": "Colin McDonnell",
+    "merged": "2026-08-31T14:47:28-07:00",
+    "merge": "eca96871536603076bdd00b8779b947144133aa4",
+    "head": "dd9e16cd0865c69478a7619681aab71ffbe9b459",
+    "summary": "eca96871536603076bdd00b8779b947144133aa4^1 (81ded99) → refs/pr/6535 (dd9e16c), merge-base 68a609a\n2 files changed · 10 symbols changed: 7 added, 1 removed, 2 modified\n\nM  packages/zod/src/v4/classic/from-json-schema.ts\n     - function    checkPropertyNames  · used by 1\n     + function    checkObjectGuards  · used by 1\n     + function    canonicalKey  · used by 1\n     + variable    SCHEMA_KEYWORDS  · used by 1\n     + variable    SCHEMA_MAP_KEYWORDS  · used by 1\n     + function    containsRef  · used by 1\n     + function    plural  · used by 1\n     + function    checkArrayGuards  · used by 1\n     ~ function    convertBaseSchema  (body)  · used by 1\n     ~ function    convertSchema  (body)  · used by 3\nM  packages/zod/src/v4/classic/tests/from-json-schema.test.ts\n",
+    "mergeBase": "68a609ac9b9516e6fe84e3558f17ce16b1032bef",
+    "files": 2,
+    "stats": {
+      "filesChanged": 2,
+      "symbols": {
+        "added": 7,
+        "removed": 1,
+        "modified": 2,
+        "context": 61
+      },
+      "edges": 89,
+      "durationMs": 7270
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 7618
+  },
+  {
+    "project": "zod",
+    "position": 12,
+    "number": 6438,
+    "url": "https://github.com/colinhacks/zod/pull/6438",
+    "subject": "revert(core): drop the exactOptional parse prototype from #6432 (#6438)",
+    "author": "Colin McDonnell",
+    "merged": "2026-08-19T07:51:33-07:00",
+    "merge": "11c9268b6025be7f2220ee83a1c3f28238a50b84",
+    "head": "17a20f37d8328c9cbc2f902fe0c309807b524e63",
+    "summary": "11c9268b6025be7f2220ee83a1c3f28238a50b84^1 (a38ab4a) → refs/pr/6438 (17a20f3), merge-base a38ab4a\n1 file changed · 1 symbol changed: 1 modified\n\nM  packages/zod/src/v4/core/schemas.ts\n     ~ interface   $ZodExactOptional  (body)  · used by 2\n",
+    "mergeBase": "a38ab4a8699e33593749e971e805beba672941f4",
+    "files": 1,
+    "stats": {
+      "filesChanged": 1,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 8
+      },
+      "edges": 12,
+      "durationMs": 7038
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 7335
+  },
+  {
+    "project": "zod",
+    "position": 13,
+    "number": 6314,
+    "url": "https://github.com/colinhacks/zod/pull/6314",
+    "subject": "docs: add zod-form-action to ecosystem (#6314)",
+    "author": "Vishal Tanna",
+    "merged": "2026-08-12T18:02:55-07:00",
+    "merge": "81d9fc6cf47da97ad4ef2c43de02276fba249790",
+    "head": "508849fd11de4edfb045b8a4732135d95f9f64f9",
+    "summary": "81d9fc6cf47da97ad4ef2c43de02276fba249790^1 (d86df5e) → refs/pr/6314 (508849f), merge-base 18b4ff9\n1 file changed · 1 symbol changed: 1 modified\n\nM  packages/docs/components/ecosystem.tsx\n     ~ variable    formIntegrations  (body)  · used by 1\n",
+    "mergeBase": "18b4ff99a0196422ff0d92f8d21f2c5b2ab4ce25",
+    "files": 1,
+    "stats": {
+      "filesChanged": 1,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 2
+      },
+      "edges": 2,
+      "durationMs": 6098
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 6415
+  },
+  {
+    "project": "zod",
+    "position": 14,
+    "number": 6022,
+    "url": "https://github.com/colinhacks/zod/pull/6022",
+    "subject": "fix(from-json-schema): drop redundant inclusive bound for draft-04 exclusive ranges (#6022)",
+    "author": "Frank Johnston",
+    "merged": "2026-08-16T18:02:42-07:00",
+    "merge": "73bacbbb6b83b49b679e141f73f2fd915a514911",
+    "head": "915e2cec021fc0e6ff7ab6ae3e28dc688f6329c8",
+    "summary": "73bacbbb6b83b49b679e141f73f2fd915a514911^1 (8f813b1) → refs/pr/6022 (915e2ce), merge-base bbc68f9\n2 files changed · 1 symbol changed: 1 modified\n\nM  packages/zod/src/v4/classic/from-json-schema.ts\n     ~ function    convertBaseSchema  (body)  · used by 1\nM  packages/zod/src/v4/classic/tests/from-json-schema.test.ts\n",
+    "mergeBase": "bbc68f990c7e6a5e3f506c56fb04bd0279b9c9b5",
+    "files": 2,
+    "stats": {
+      "filesChanged": 2,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 1,
+        "context": 49
+      },
+      "edges": 50,
+      "durationMs": 6394
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 6697
+  },
+  {
+    "project": "zod",
+    "position": 15,
+    "number": 6546,
+    "url": "https://github.com/colinhacks/zod/pull/6546",
+    "subject": "docs: Zod 4.6 announcement post (#6546)",
+    "author": "Colin McDonnell",
+    "merged": "2026-09-10T12:00:01-07:00",
+    "merge": "0c483c58849fdb6445aea4f54b1bac6b57ab3d22",
+    "head": "5cc3549ac77b33c1b7156a6ef158f593990cda60",
+    "summary": "0c483c58849fdb6445aea4f54b1bac6b57ab3d22^1 (a00c3f3) → refs/pr/6546 (5cc3549), merge-base eb1c108\n10 files changed · 27 symbols changed: 26 added, 1 modified\n\nA  packages/bench/validate-vs-safeparse.ts\n     + interface   Case  · used by 1\n     + variable    cases  · used by 2\n     + function    add  · used by 1\n     + variable    flat5  · used by 1\n     + variable    wide20  · used by 1\n     + variable    moltarValid  · used by 1\n     + variable    collect  · used by 1\n     + variable    HAS_GC  · used by 1\n     + variable    ROUNDS  · used by 2\n     + variable    sink  · used by 2\n     + variable    escaped  · used by 2\n     + function    timed  · used by 1\n     + function    calibrate  · used by 1\n     + interface   Measurement  · used by 2\n     + interface   Pair  · used by 1\n     + function    measure  · used by 1\n     + interface   Row  · used by 2\n     + variable    rows  · used by 1\n     + variable    problems  · used by 1\n     + interface   Target  · used by 1\n     + interface   CasePair  · used by 1\n     + variable    targets  · used by 1\n     + variable    pairs  · used by 1\n     + function    fmtNs  · used by 1\n     + function    pad  · used by 1\n     + function    padL  · used by 1\nM  packages/docs/app/layout.tsx\n     ~ function    Layout  (body)\nM  packages/docs/content/blog/zod-4-5.mdx\nA  packages/docs/content/blog/zod-4-6.mdx\nA  packages/docs/public/blog/validate-compiled-invalid-dark.svg\nA  packages/docs/public/blog/validate-compiled-invalid-light.svg\nA  packages/docs/public/blog/validate-compiled-invalid.svg\nA  packages/docs/public/blog/validate-invalid-dark.svg\nA  packages/docs/public/blog/validate-invalid-light.svg\nA  packages/docs/public/blog/validate-invalid.svg\n",
+    "mergeBase": "eb1c1089f7f9469078839f6e443830f7e3fdc06b",
+    "files": 10,
+    "stats": {
+      "filesChanged": 10,
+      "symbols": {
+        "added": 26,
+        "removed": 0,
+        "modified": 1,
+        "context": 22
+      },
+      "edges": 68,
+      "durationMs": 8265
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 8597
+  },
+  {
+    "project": "zod",
+    "position": 16,
+    "number": 6576,
+    "url": "https://github.com/colinhacks/zod/pull/6576",
+    "subject": "docs: reconcile the sponsor listings with active sponsorships (#6576)",
+    "author": "Colin McDonnell",
+    "merged": "2026-09-09T09:00:26-07:00",
+    "merge": "f9465d4e6497f92fe85ef7118ea64d7f86c28676",
+    "head": "d91af26dadc090597507a96ad0ca85618bc207ae",
+    "summary": "f9465d4e6497f92fe85ef7118ea64d7f86c28676^1 (f7fd554) → refs/pr/6576 (d91af26), merge-base 36f1796\n5 files changed · 4 symbols changed: 4 modified\n\nM  packages/docs-v3/home.md\nM  packages/docs/components/bronze.tsx\n     ~ function    Bronze  (body)\nM  packages/docs/components/gold.tsx\n     ~ function    Gold  (body)\nM  packages/docs/components/platinum.tsx\n     ~ function    Platinum  (body)\nM  packages/docs/components/silver.tsx\n     ~ function    Silver  (body)\n",
+    "mergeBase": "36f17960d1defca5d0896d9424f4e1059fbbf081",
+    "files": 5,
+    "stats": {
+      "filesChanged": 5,
+      "symbols": {
+        "added": 0,
+        "removed": 0,
+        "modified": 4,
+        "context": 6
+      },
+      "edges": 29,
+      "durationMs": 8799
+    },
+    "warnings": [],
+    "findings": [],
+    "ms": 9173
+  }
+]

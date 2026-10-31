@@ -1,0 +1,175 @@
+{
+  "number": 23197,
+  "title": "[PM-43142] Vault owned importer changes",
+  "body": "## 🎟️ Tracking\r\n\r\nhttps://bitwarden.atlassian.net/browse/PM-43142\r\n\r\n## 📔 Objective\r\n\r\nThis PR updates Vault owned UI elements to point to the upgraded import experience, which has been introduced in https://github.com/bitwarden/clients/pull/23031. \r\n",
+  "user": {
+    "login": "harr1424",
+    "type": "User"
+  },
+  "baseSha": "e16b4db7e65ec0f9d6077e32aac7901a172763aa",
+  "headSha": "bcf7952cf4681530a222c84174b01786c7a5f3cf",
+  "mergedAt": "2026-09-23T23:15:29Z",
+  "mergeCommit": "31dda4f38df055aade3c0f06d48e98a6c4e65e51",
+  "commits": 6,
+  "reviews": [
+    {
+      "id": 5272274949,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "478ee8a5f59a1ed31226f9e2044c03ec6e1fe243",
+      "at": "2026-09-21T22:03:12Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23197#pullrequestreview-5272274949"
+    },
+    {
+      "id": 5272493422,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "478ee8a5f59a1ed31226f9e2044c03ec6e1fe243",
+      "at": "2026-09-21T22:35:48Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23197#pullrequestreview-5272493422"
+    },
+    {
+      "id": 5286274438,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "41c6517ffd9b9756ded8b8167f3db4996519ce11",
+      "at": "2026-09-23T02:38:43Z",
+      "body": "Changes look good from a vault perspective. You have conflicts from the pre-filled implementation that you reviewed previously! https://github.com/bitwarden/clients/pull/23345",
+      "url": "https://github.com/bitwarden/clients/pull/23197#pullrequestreview-5286274438"
+    },
+    {
+      "id": 5292260942,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "5a3e17c1a73386a4fafa5f16509e66cbe6c8ae81",
+      "at": "2026-09-23T14:22:31Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23197#pullrequestreview-5292260942"
+    },
+    {
+      "id": 5294051303,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "30f50e361f6cfe3f400334a3a785ae44f6537c3f",
+      "at": "2026-09-23T16:56:35Z",
+      "body": "🙌 Thank you for adding that ticket!",
+      "url": "https://github.com/bitwarden/clients/pull/23197#pullrequestreview-5294051303"
+    },
+    {
+      "id": 5294531338,
+      "user": {
+        "login": "mcamirault",
+        "type": "User"
+      },
+      "state": "DISMISSED",
+      "commit": "30f50e361f6cfe3f400334a3a785ae44f6537c3f",
+      "at": "2026-09-23T17:33:44Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23197#pullrequestreview-5294531338"
+    },
+    {
+      "id": 5297703412,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "bcf7952cf4681530a222c84174b01786c7a5f3cf",
+      "at": "2026-09-23T22:51:11Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23197#pullrequestreview-5297703412"
+    },
+    {
+      "id": 5297801877,
+      "user": {
+        "login": "itsadrago",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "bcf7952cf4681530a222c84174b01786c7a5f3cf",
+      "at": "2026-09-23T23:06:01Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/23197#pullrequestreview-5297801877"
+    }
+  ],
+  "inline": [
+    {
+      "id": 4066795919,
+      "review": 5272274949,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "apps/browser/src/vault/popup/components/vault/vault.component.ts",
+      "line": 466,
+      "originalLine": 466,
+      "commit": "bcf7952cf4681530a222c84174b01786c7a5f3cf",
+      "originalCommit": "478ee8a5f59a1ed31226f9e2044c03ec6e1fe243",
+      "at": "2026-09-21T22:03:12Z",
+      "body": "❓ **QUESTION**: The VFO1 empty-state \"Import items\" button still links to `/import` directly — intentional?\n\n<details>\n<summary>Details</summary>\n\n`vault-popup-list-table.component.html:115` is the third Vault-owned import entry point in the popup, and it still uses `routerLink=\"/import\"` rather than going through `ImportUpgradeNavigationService`.\n\nWith the flag on it does reach the new picker, but only via `importUpgradeRedirectGuard`, which opens the tab and then bounces the popup to `/tabs/vault`. That guard's docstring says \"the two known entry points into this route already check the flag themselves before navigating here\" — this PR makes that true for the empty-vault nudge callout and the vault settings entry, leaving this one relying on the safety net.\n\nWas that deliberate (the redirect lands on `/tabs/vault`, which is where this button already lives, so the difference is invisible), or should it call `openImportSourceSelectTab()` as well?\n</details>",
+      "diffHunk": "@@ -458,6 +461,11 @@ export class VaultComponent implements OnInit, OnDestroy {\n   }\n \n   async navigateToImport() {\n+    if (await this.configService.getFeatureFlag(FeatureFlag.ImportUpgrade)) {\n+      await this.importUpgradeNavigationService.openImportSourceSelectTab();\n+      return;",
+      "url": "https://github.com/bitwarden/clients/pull/23197#discussion_r4066795919"
+    },
+    {
+      "id": 4066990658,
+      "review": 5272493422,
+      "replyTo": 4066795919,
+      "user": {
+        "login": "harr1424",
+        "type": "User"
+      },
+      "path": "apps/browser/src/vault/popup/components/vault/vault.component.ts",
+      "line": 466,
+      "originalLine": 466,
+      "commit": "bcf7952cf4681530a222c84174b01786c7a5f3cf",
+      "originalCommit": "478ee8a5f59a1ed31226f9e2044c03ec6e1fe243",
+      "at": "2026-09-21T22:35:48Z",
+      "body": "41c6517ffd9b9756ded8b8167f3db4996519ce11",
+      "diffHunk": "@@ -458,6 +461,11 @@ export class VaultComponent implements OnInit, OnDestroy {\n   }\n \n   async navigateToImport() {\n+    if (await this.configService.getFeatureFlag(FeatureFlag.ImportUpgrade)) {\n+      await this.importUpgradeNavigationService.openImportSourceSelectTab();\n+      return;",
+      "url": "https://github.com/bitwarden/clients/pull/23197#discussion_r4066990658"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5767897629,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-21T21:39:47Z",
+      "updated": "2026-09-23T23:06:25Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/23197?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:x: Patch coverage is `91.66667%` with `3 lines` in your changes missing coverage. Please review.\n:white_check_mark: Project coverage is 56.72%. Comparing base ([`e16b4db`](https://app.codecov.io/gh/bitwarden/clients/commit/e16b4db7e65ec0f9d6077e32aac7901a172763aa?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`bcf7952`](https://app.codecov.io/gh/bitwarden/clients/commit/bcf7952cf4681530a222c84174b01786c7a5f3cf?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:warning: Report is 1 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n| [Files with missing lines](https://app.codecov.io/gh/bitwarden/clients/pull/23197?dropdown=coverage&src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) | Patch % | Lines |\n|---|---|---|\n| [.../desktop/src/vault/app/vault-v3/vault.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/23197?src=pr&el=tree&filepath=apps%2Fdesktop%2Fsrc%2Fvault%2Fapp%2Fvault-v3%2Fvault.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy9kZXNrdG9wL3NyYy92YXVsdC9hcHAvdmF1bHQtdjMvdmF1bHQuY29tcG9uZW50LnRz) | 0.00% | [3 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/23197?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@           Coverage Diff           @@\n##             main   #23197   +/-   ##\n=======================================\n  Coverage   56.72%   56.72%           \n=======================================\n  Files        4543     4543           \n  Lines      143652   143689   +37     \n  Branches    22966    22972    +6     \n=======================================\n+ Hits        81483    81514   +31     \n- Misses      56188    56193    +5     \n- Partials     5981     5982    +1     \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/23197?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/23197#issuecomment-5767897629"
+    },
+    {
+      "id": 5768083618,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-09-21T21:57:38Z",
+      "updated": "2026-09-21T22:04:03Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nThis PR points four Vault-owned import entry points (browser popup vault callout, browser vault settings, desktop vault v3, web vault-next) at the upgraded import experience behind `FeatureFlag.ImportUpgrade`. I verified every flag-on destination resolves: the browser `/import-source-select` route and `ImportUpgradeNavigationService` exist, the desktop `/import` route sits under the root `DesktopLayoutComponent` path with a matching `canMatch` flag guard, and web `/tools/import` resolves to the new picker when the flag is on and the legacy `ImportWebComponent` when it is off. The flag-check pattern matches the existing implementations in `desktop-layout.component.ts` and the desktop `app.component.ts` `importVault` menu handler, and the `openImportDialog` → `openImport` rename has no stale references left. Browser and web branches both gained tests; the desktop branch is the one path without coverage (codecov reports its 3 new lines uncovered).\n\n<details>\n<summary>Code Review Details</summary>\n\n- ❓ : VFO1 empty-state \"Import items\" button still uses `routerLink=\"/import\"` instead of `ImportUpgradeNavigationService`, relying on `importUpgradeRedirectGuard` as the safety net\n  - `apps/browser/src/vault/popup/components/vault/vault-popup-list-table/vault-popup-list-table.component.html:115`\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/23197#issuecomment-5768083618"
+    }
+  ],
+  "citedBy": []
+}

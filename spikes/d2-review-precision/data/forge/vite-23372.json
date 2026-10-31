@@ -1,0 +1,31 @@
+{
+  "number": 23372,
+  "title": "chore: remove useless files",
+  "body": "<!--\r\n- What is this PR solving? Write a clear and concise description.\r\n- Reference the issues it solves (e.g. `fixes #123`).\r\n- What other alternatives have you explored?\r\n- Are there any parts you think require more attention from reviewers?\r\n\r\nAlso, please make sure you do the following:\r\n\r\n- Read the Contributing Guidelines at https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md.\r\n- Check that there isn't already a PR that solves the problem the same way. If you find a duplicate, please help us review it. If you've solved it in a different way, clarify what is different and link the other PRs in the PR description.\r\n- Update the corresponding documentation if needed.\r\n- Include relevant tests that fail without this PR but pass with it. If the tests are not included, explain why.\r\n\r\nIf you have used AI:\r\n\r\n- Read the AI Policy at https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md#ai-policy.\r\n- Keep the PR description and discussion concise. Use your own words, do not let AI write for you.\r\n- Disclose and describe how you have reviewed its code, e.g. the thought process and decisions that lead to the final code.\r\n\r\nThank you for contributing to Vite!\r\n-->\r\nhttps://github.com/vitejs/vite/blob/main/docs/.vitepress/theme/components/TopBanner.vue\r\nThe sponsorBanner component appears to have been replaced by TopBanner.\r\n\r\nThe logic for inlined-scripts seems to have stopped working after #22605.",
+  "user": {
+    "login": "btea",
+    "type": "User"
+  },
+  "baseSha": "cd810de10e32c670f0af5036b1ca6aca6c91cbd6",
+  "headSha": "5f2b3d7a4d0ef05f9fd5fb8788b016845d7b90f5",
+  "mergedAt": "2026-08-26T08:13:26Z",
+  "mergeCommit": "493cc7d43269860fe499a30980d729b0adc93d2c",
+  "commits": 1,
+  "reviews": [
+    {
+      "id": 5028152894,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "5f2b3d7a4d0ef05f9fd5fb8788b016845d7b90f5",
+      "at": "2026-08-26T08:13:11Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23372#pullrequestreview-5028152894"
+    }
+  ],
+  "inline": [],
+  "comments": [],
+  "citedBy": []
+}

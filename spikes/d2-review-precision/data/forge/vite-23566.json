@@ -1,0 +1,117 @@
+{
+  "number": 23566,
+  "title": "chore(optimizer): add debug log when waiting for dep before init",
+  "body": "`transformRequest` against a module containing reference to a dependency in `consumer: 'server'` when dep optimizer is enabled will never be fulfilled until the dependency optimizer is initialized (i.e. the server is listening).\r\nThis PR adds a log to detect those cases for easier debug.\r\n\r\nrefs https://github.com/vitejs/vite/issues/23143\r\nrefs https://github.com/vitejs/vite/pull/22852\r\n",
+  "user": {
+    "login": "sapphi-red",
+    "type": "User"
+  },
+  "baseSha": "f155b62ceabbaaf71abbf59933968787e3961c56",
+  "headSha": "e0cc2455febb8db83de59e705429294e6ee2b44b",
+  "mergedAt": "2026-09-24T08:17:31Z",
+  "mergeCommit": "63567c73ac132e6384fef384e6b9f7e8d5a37fff",
+  "commits": 1,
+  "reviews": [
+    {
+      "id": 5301538669,
+      "user": {
+        "login": "graphite-app[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "e0cc2455febb8db83de59e705429294e6ee2b44b",
+      "at": "2026-09-24T08:04:41Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23566#pullrequestreview-5301538669"
+    },
+    {
+      "id": 5301663050,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "e0cc2455febb8db83de59e705429294e6ee2b44b",
+      "at": "2026-09-24T08:17:05Z",
+      "body": "",
+      "url": "https://github.com/vitejs/vite/pull/23566#pullrequestreview-5301663050"
+    }
+  ],
+  "inline": [
+    {
+      "id": 4091290366,
+      "review": 5301538669,
+      "replyTo": null,
+      "user": {
+        "login": "graphite-app[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/vite/src/node/optimizer/optimizer.ts",
+      "line": 783,
+      "originalLine": 783,
+      "commit": "e0cc2455febb8db83de59e705429294e6ee2b44b",
+      "originalCommit": "e0cc2455febb8db83de59e705429294e6ee2b44b",
+      "at": "2026-09-24T08:04:40Z",
+      "body": "If `optimizeExplicitEnvironmentDeps()` throws an exception, `initState` will remain stuck at `'initializing'` and subsequent calls to `init()` will return early without retrying. This means initialization can never be retried after a failure.\n\n```typescript\nasync function init() {\n  if (depsOptimizer.initState !== 'idle') return\n  depsOptimizer.initState = 'initializing'\n  \n  try {\n    depsOptimizer.metadata = await optimizeExplicitEnvironmentDeps(environment)\n    depsOptimizer.initState = 'initialized'\n  } catch (error) {\n    depsOptimizer.initState = 'idle'\n    throw error\n  }\n}\n```\n```suggestion\n\n  async function init() {\n    if (depsOptimizer.initState !== 'idle') return\n    depsOptimizer.initState = 'initializing'\n\n    try {\n      depsOptimizer.metadata = await optimizeExplicitEnvironmentDeps(environment)\n      depsOptimizer.initState = 'initialized'\n    } catch (error) {\n      depsOptimizer.initState = 'idle'\n      throw error\n    }\n\n```\n  \n\n*Spotted by [Graphite](https://app.graphite.com/diamond/?org=vitejs&ref=ai-review-comment)*<i class='graphite__hidden'><br /><br /><a href=\"https://app.graphite.com/github/pr/vitejs/vite/23566?chatWithGeneratedComment=f83ff88a-2e07-44db-8d44-9c1081b62bff\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://static.graphite.dev/github-diamond-fix-in-graphite-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://static.graphite.dev/github-diamond-fix-in-graphite-light.svg\"><img alt=\"Fix in Graphite\" src=\"https://static.graphite.dev/github-diamond-fix-in-graphite-dark.svg\"></picture></a></i><i class='graphite__hidden'><br /><br />Is this helpful? React 👍 or 👎 to let us know.</i>",
+      "diffHunk": "@@ -774,12 +775,12 @@ export function createExplicitDepsOptimizer(\n     options: environment.config.optimizeDeps,\n   }\n \n-  let inited = false\n   async function init() {\n-    if (inited) return\n-    inited = true\n+    if (depsOptimizer.initState !== 'idle') return\n+    depsOptimizer.initState = 'initializing'\n \n     depsOptimizer.metadata = await optimizeExplicitEnvironmentDeps(environment)\n+    depsOptimizer.initState = 'initialized'",
+      "url": "https://github.com/vitejs/vite/pull/23566#discussion_r4091290366"
+    },
+    {
+      "id": 4091386244,
+      "review": 5301663050,
+      "replyTo": 4091290366,
+      "user": {
+        "login": "sapphi-red",
+        "type": "User"
+      },
+      "path": "packages/vite/src/node/optimizer/optimizer.ts",
+      "line": 783,
+      "originalLine": 783,
+      "commit": "e0cc2455febb8db83de59e705429294e6ee2b44b",
+      "originalCommit": "e0cc2455febb8db83de59e705429294e6ee2b44b",
+      "at": "2026-09-24T08:17:05Z",
+      "body": "While I think this should be fixed, this existed before this PR, so I'm leaving this one.",
+      "diffHunk": "@@ -774,12 +775,12 @@ export function createExplicitDepsOptimizer(\n     options: environment.config.optimizeDeps,\n   }\n \n-  let inited = false\n   async function init() {\n-    if (inited) return\n-    inited = true\n+    if (depsOptimizer.initState !== 'idle') return\n+    depsOptimizer.initState = 'initializing'\n \n     depsOptimizer.metadata = await optimizeExplicitEnvironmentDeps(environment)\n+    depsOptimizer.initState = 'initialized'",
+      "url": "https://github.com/vitejs/vite/pull/23566#discussion_r4091386244"
+    }
+  ],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-09-24T12:18:47Z",
+      "number": 23573,
+      "repo": "vitejs/vite",
+      "pull": true,
+      "title": "release: v8.3.1",
+      "state": "closed",
+      "url": "https://github.com/vitejs/vite/pull/23573"
+    },
+    {
+      "at": "2026-09-25T00:40:19Z",
+      "number": 135,
+      "repo": "sudocarlos/tailrelay",
+      "pull": false,
+      "title": "chore: update Vite from 8.3.0 to 8.3.1",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/issues/135"
+    },
+    {
+      "at": "2026-09-25T00:40:32Z",
+      "number": 136,
+      "repo": "sudocarlos/tailrelay",
+      "pull": true,
+      "title": "chore: update Vite from 8.3.0 to 8.3.1",
+      "state": "closed",
+      "url": "https://github.com/sudocarlos/tailrelay/pull/136"
+    },
+    {
+      "at": "2026-09-30T08:33:14Z",
+      "number": 49,
+      "repo": "kazupon/vrowzer",
+      "pull": true,
+      "title": "fix(vite-dev-server): sync Vite 8.3.1 optimizer and asset URL fixes",
+      "state": "closed",
+      "url": "https://github.com/kazupon/vrowzer/pull/49"
+    }
+  ]
+}

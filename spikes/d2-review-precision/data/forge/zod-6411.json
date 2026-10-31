@@ -1,0 +1,255 @@
+{
+  "number": 6411,
+  "title": "fix(v4): make fromJSONSchema propertyNames compose with the other object keywords",
+  "body": "Closes #6323. Includes #6327 — @deepshekhardas's commits are in this branch, so merging here lands their fix too.\n\n`propertyNames` was modelled as a record, which short-circuited the whole object branch: the `patternProperties` and `additionalProperties` handling below it never ran. That conflated a constraint on key *names* with one on values, and silently dropped three keywords.\n\n```ts\nz.fromJSONSchema({\n  type: \"object\",\n  properties: { a: { type: \"number\" } },\n  propertyNames: { enum: [\"a\", \"b\"] },\n  additionalProperties: { type: \"string\" },\n}).parse({ a: 1 });\n// before: ✖ invalid_type at [\"a\"] — additionalProperties was applied to a\n//            key that `properties` declares\n// after:  ✔\n```\n\nSame cause, two more symptoms: `additionalProperties: false` and `patternProperties` were both ignored whenever `propertyNames` was present, because the branch only read `additionalProperties` when it happened to be an object schema.\n\n`propertyNames` is now a key guard that runs ahead of the object parse, so all four keywords compose. It has to see the raw input rather than the parsed object — an object parse drops `__proto__`, and a property `default` adds keys the instance never carried, so the parsed output is not the set of names to validate. The guard is an identity transform rather than `z.any()` so `toJSONSchema` still reports the object on the input side of the pipe as well as the output side.\n\n`toJSONSchema` can't infer that guard, so the original keyword rides along as metadata — the round trip stays lossless in both `io` modes and now reproduces the source keyword verbatim (`{ enum: [...] }`) instead of the record-derived `{ type: \"string\", enum: [...] }`. The metadata is attached only where the guard applies: not on a non-object type, and not on a `$ref`, where it would land on the target every reference shares.\n\nThree smaller `propertyNames` fixes fall out of the same rewrite:\n\n- `propertyNames: false` is enforced instead of ignored; `true` skips the guard.\n- A subschema that omits `type` now constrains keys instead of converting to `z.any()`. Keys are always strings, so `{ \"pattern\": \"^[A-Za-z_][A-Za-z0-9_]*$\" }` — the spelling json-schema.org's own example uses — was previously a complete no-op.\n- `__proto__` is rejected rather than silently dropped.\n\nNot addressed here: a `required` array naming keys that `properties` never declares is still ignored. I had it in an earlier pass, but injecting those keys into the shape makes `additionalProperties` override a `patternProperties` match and makes `additionalProperties: false` accept a key it forbids, so it needs its own change.\n",
+  "user": {
+    "login": "colinhacks",
+    "type": "User"
+  },
+  "baseSha": "d7b209f3928266a3e5cd7d5f8973fc9047be0791",
+  "headSha": "4145f8edf153e0b00d31057d2ff47e35d8a1680a",
+  "mergedAt": "2026-08-14T02:31:40Z",
+  "mergeCommit": "6074828e5d134c34cd1fac9b067dbee74ecdc314",
+  "commits": 12,
+  "reviews": [
+    {
+      "id": 4933091453,
+      "user": {
+        "login": "copilot-pull-request-reviewer[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "at": "2026-08-14T01:47:21Z",
+      "body": "Copilot was unable to review this pull request because the user who requested the review has reached their quota limit.",
+      "url": "https://github.com/colinhacks/zod/pull/6411#pullrequestreview-4933091453"
+    },
+    {
+      "id": 4933153545,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "at": "2026-08-14T02:01:00Z",
+      "body": "> ℹ️ Two rough edges worth a look — the core restructuring is sound.\n\n**Reviewed changes** — the rewritten `case \"object\"` branch of `from-json-schema.ts` and its eight new tests, checked against the JSON Schema draft-2020-12 object keywords and against Zod's own `$ZodRecord` issue construction.\n\n- **`propertyNames` demoted to a post-hoc check** — `checkPropertyNames` (new lines 146-164) layers a `.check()` over whatever `properties` / `patternProperties` / `additionalProperties` produced, replacing the record/intersection modelling that `break`-ed early and swallowed the sibling keywords.\n- **`additionalProperties` hoisted to `additionalSchema`** (new lines 398-401) so the `required` fallback and the `else` branch share one conversion.\n- **`required` keys absent from `properties`** now enter the shape with `additionalSchema ?? z.any()` (new lines 410-414) instead of being dropped.\n- **`propertyNames` copied into `extraMeta`** (new lines 623-627) to keep the round trip lossless. Worth noting this is load-bearing, not redundant: `propertyNames` is in `RECOGNIZED_KEYS`, so the generic fallthrough loop would otherwise drop it.\n\nI ran the suite (80 tests in `from-json-schema.test.ts`, plus `to-json-schema.test.ts`) and spot-checked that the new tests actually fail against the old modelling rather than passing incidentally — the `additionalProperties: false` and `patternProperties` combos are genuine regression coverage. The issue shape `checkPropertyNames` pushes matches `$ZodRecord`'s own `invalid_key` at `core/schemas.ts:2905`, and `prettifyError` / `treeifyError` render it correctly.\n\n<!--\nPullfrog review metadata. These findings were written against 9341d89;\nif commits have landed on fix/6323-propertynames-composition since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: Review (initial)\n- Files reviewed: 2\n- Commits reviewed: 9\n- Base: main (f722bcd)\n- Head: fix/6323-propertynames-composition (9341d89)\n- Reviewed commits:\n  - 9341d89 — fix(v4): make fromJSONSchema propertyNames compose with the other object keywords\n  - 25eded7 — fix(v4): apply the propertyNames fix to the properties branch too\n  - 02ddd1a — Revert the unrelated fixes stacked on this branch\n  - 8d93be2 — Merge branch 'main' into fix/pr-6323-propertynames-enum\n  - e7db8d4 — chore: remove scratch file\n  - f7708e5 — fix(fromJSONSchema): propertyNames enum keys should not be required (closes #6323)\n  - d98f1da — fix(mini): correct merge signature to accept a plain shape (closes #6302)\n  - 880c5ad — fix: support format hostname in fromJSONSchema (closes #6304)\n  - 14a2224 — fix: handle BigInt default values in toJSONSchema (closes #6209)\n- Prior pullfrog review: none\n-->\n\n### ℹ️ `additionalProperties` still doesn't compose with `patternProperties`\n\nThe PR body says `propertyNames` is layered on \"so all four compose\", but one pairing remains broken. The new `else` at line 450 preserves the old `break` at old-line 440 exactly, so `additionalProperties` is never consulted when `patternProperties` is present. Confirmed: `{ type: \"object\", patternProperties: { \"^S_\": { type: \"string\" } }, additionalProperties: false }` accepts `{ other: \"x\" }`, which the spec says must fail.\n\nThis is pre-existing and faithfully preserved by the refactor, so it's not a regression — flagging only because the PR's framing implies otherwise, and because the restructure is the natural moment to decide whether to close it or leave it documented.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# `additionalProperties` is unreachable when `patternProperties` is set\n\n## Affected sites\n- `packages/zod/src/v4/classic/from-json-schema.ts:417-465` — `if (schema.patternProperties) { ... } else { /* additionalProperties */ }`. The `else` means the two keywords are mutually exclusive, but the spec composes them.\n\n## Spec behavior\n`additionalProperties` applies to instance properties matched by neither `properties` nor `patternProperties` (https://www.learnjsonschema.com/2020-12/applicator/additionalproperties/). Today those keys fall through the `z.looseRecord`s built at line 427 unvalidated.\n\n## Required outcome\nEither enforce `additionalProperties` alongside `patternProperties`, or reword the PR body so it doesn't claim all four keywords compose.\n\n## Suggested approach (optional)\nThe `patternProperties` branch already needs a post-check to express strictness (`z.looseRecord` intentionally passes non-matching keys through). The same mechanism `checkPropertyNames` introduces could carry it: after building the intersection, add a check that issues `unrecognized_keys` for keys matched by neither `properties` nor any compiled pattern regex when `additionalProperties === false`, or validates them against `additionalSchema` when it is a schema.\n\n## Open questions for the human\n- Is closing this in-scope here, or is it better as a follow-up so this PR stays focused on `propertyNames`?\n````\n\n</details>\n\n### ℹ️ Nitpicks\n\n- A `propertyNames` subschema without `\"type\": \"string\"` converts to `z.any()`, so the constraint is dropped entirely. Since property names are strings by definition, `propertyNames: { pattern: \"^S_\" }` is the idiomatic spelling — and it silently validates nothing. The new test at `from-json-schema.test.ts:406` sidesteps this by writing `type: \"string\", pattern: \"^S_\"`. Pre-existing, but it does limit how much of this fix real-world schemas will reach.\n- `required: [\"a\"]` with `additionalProperties: false` and no matching `properties` entry is unsatisfiable per spec. The new fallback gives it `z.any()`, which lands it in the shape and so exempts it from `.strict()` — `{ a: \"x\" }` now parses where it previously threw. The old code had the mirror-image bug (`{}` passed), so this isn't a clean regression, just a note that neither revision gets the pathological case right.\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6411?action=fix&review_id=4933153545) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6411?action=fix-approved&review_id=4933153545) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31761700950/job/94649256969) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6411#pullrequestreview-4933153545"
+    },
+    {
+      "id": 4933161760,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "at": "2026-08-14T02:02:42Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6411#pullrequestreview-4933161760"
+    },
+    {
+      "id": 4933222499,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "9bf1a422b9334891a7ac222f05b6db710e8a711d",
+      "at": "2026-08-14T02:15:56Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6411#pullrequestreview-4933222499"
+    },
+    {
+      "id": 4933222782,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "9bf1a422b9334891a7ac222f05b6db710e8a711d",
+      "at": "2026-08-14T02:16:00Z",
+      "body": "",
+      "url": "https://github.com/colinhacks/zod/pull/6411#pullrequestreview-4933222782"
+    },
+    {
+      "id": 4933249456,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "9bf1a422b9334891a7ac222f05b6db710e8a711d",
+      "at": "2026-08-14T02:23:15Z",
+      "body": "> [!IMPORTANT]\n> The move to a piped guard fixes the two things I flagged last round, but the `z.transform` on the input side has two consequences the tests don't reach — including one that breaks the losslessness claim in the PR body.\n\n**Reviewed changes** — the delta from `9341d89` to `9bf1a42`, which reworks how the `propertyNames` guard is attached and drops the `required` fallback.\n\n- **Guard moved ahead of the object parse** — `checkPropertyNames` no longer `.check()`s the parsed value; it builds `z.transform((v) => v).check(...)` and returns `guard.pipe(objectSchema)` so the check sees raw input. The `__proto__` and `default`-synthesized-key motivations both check out, and the two new tests genuinely fail against the old design.\n- **`required` fallback removed** — the loop that injected undeclared `required` keys into `shape` is gone, and the gap is now stated in the PR body instead. That retires my previous comment on the `key in shape` prototype collision.\n- **`propertyNames: false` now enforced** — the guard is `!== undefined && !== true`, with coverage in the new `boolean propertyNames` test.\n- **Typeless subschemas get a synthetic `type: \"string\"`** — so `{ pattern: \"...\" }` constrains keys instead of converting to `z.any()`.\n- **Metadata narrowed** — `extraMeta.propertyNames` is now gated on `type === \"object\" && $ref === undefined`, with a test asserting it doesn't leak onto a shared `$ref` target.\n\nI re-ran `from-json-schema.test.ts` (83) and `to-json-schema.test.ts` (79) — all green, typecheck clean.\n\n### ℹ️ Nitpicks\n\n- `Object.getOwnPropertyNames` (line 160) isn't needed for the reason the doc comment gives. `Object.keys` already returns `[\"__proto__\"]` for a `JSON.parse('{\"__proto__\":1}')` result — `JSON.parse` creates it as an own *enumerable* data property. The only behavioral difference is that non-enumerable own properties are now validated as key names, which nothing else in the object parse looks at. `Object.keys` matches what `$ZodRecord` uses.\n- The pipe short-circuits, so a bad key name now suppresses every value error. `handlePipeResult` (`core/schemas.ts:4038`) sets `aborted = true` whenever the left side has issues, `continue: true` or not — `{ a: \"not a number\", zzz: \"bad key\" }` on `{ properties: { a: { type: \"number\" } }, propertyNames: { enum: [\"a\"] }, additionalProperties: { type: \"string\" } }` reports only `invalid_key` at `[\"zzz\"]`. That's the mirror image of the old design (where a failed object parse hid the key issues), so it's a sideways move rather than a regression, but the PR body's acknowledgement of the old direction is now stale.\n- The `type: \"string\"` injection is one level deep, so the comment at line 476 overstates slightly. Members inside a composition keyword are converted independently and still hit the typeless `z.any()` fallback: `propertyNames: { oneOf: [{ pattern: \"^a\" }, { pattern: \"^b\" }] }` rejects *every* key (two `z.any()` branches both match, so `z.xor` never succeeds), and `propertyNames: { allOf: [{ pattern: \"^a\" }, { minLength: 3 }] }` accepts every key. Pre-existing and general — `fromJSONSchema({ oneOf: [{ pattern: \"^a\" }] })` fails the same way with no object in sight — so not something this PR has to fix, just worth not claiming.\n- Typo at line 637: \"the shared target shared by every reference\".\n\n<!--\nPullfrog review metadata. These findings were written against 9bf1a42;\nif commits have landed on fix/6323-propertynames-composition since, treat every specific bug, file, or\nline callout as POTENTIALLY STALE and re-diff before acting on it.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 2\n- Commits reviewed: 10\n- Base: main (d7b209f)\n- Head: fix/6323-propertynames-composition (9bf1a42)\n- Reviewed commits:\n  - 9bf1a42 — fix(v4): validate propertyNames against the input, and stop over-reaching\n- Prior pullfrog review: 9341d89 (https://github.com/colinhacks/zod/pull/6411#pullrequestreview-4933153545)\n-->\n\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Fix all ➔](https://pullfrog.com/trigger/colinhacks/zod/6411?action=fix&review_id=4933249456) ｜ [Fix 👍s ➔](https://pullfrog.com/trigger/colinhacks/zod/6411?action=fix-approved&review_id=4933249456) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31763083831/job/94653334858) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6411#pullrequestreview-4933249456"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3780468181,
+      "review": 4933153545,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 413,
+      "commit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "originalCommit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "at": "2026-08-14T02:01:00Z",
+      "body": "`shape` is an object literal, so `key in shape` is `true` for every `Object.prototype` member regardless of what `properties` declared. `required: [\"toString\"]`, `[\"constructor\"]`, `[\"valueOf\"]` and friends are therefore silently skipped and never enforced — I confirmed `{ type: \"object\", required: [\"constructor\"], additionalProperties: { type: \"string\" } }` accepts `{}`.\n\nNo prototype-pollution risk (the assignment is skipped rather than performed), but the constraint is dropped.\n\n```suggestion\n      // `required` may name keys `properties` never declares. Their values fall to\n      // `additionalProperties`, but they still have to be present.\n      for (const key of requiredSet) {\n        if (!Object.hasOwn(shape, key)) shape[key] = additionalSchema ?? z.any();\n```",
+      "diffHunk": "@@ -375,32 +395,22 @@ function convertBaseSchema(schema: JSONSchema.JSONSchema, ctx: ConversionContext\n       const properties = schema.properties || {};\n       const requiredSet = new Set(schema.required || []);\n \n+      const additionalSchema =\n+        typeof schema.additionalProperties === \"object\"\n+          ? convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx)\n+          : undefined;\n+\n       // Convert properties - mark optional ones\n       for (const [key, propSchema] of Object.entries(properties)) {\n         const propZodSchema = convertSchema(propSchema as JSONSchema.JSONSchema, ctx);\n         // If not in required array, make it optional\n         shape[key] = requiredSet.has(key) ? propZodSchema : propZodSchema.optional();\n       }\n \n-      // Handle propertyNames\n-      if (schema.propertyNames) {\n-        const keySchema = convertSchema(schema.propertyNames, ctx) as ZodString;\n-        const valueSchema =\n-          schema.additionalProperties && typeof schema.additionalProperties === \"object\"\n-            ? convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx)\n-            : z.any();\n-\n-        // Case A: No properties (pure record)\n-        if (Object.keys(shape).length === 0) {\n-          zodSchema = z.record(keySchema, valueSchema);\n-          break;\n-        }\n-\n-        // Case B: With properties (intersection of object and looseRecord)\n-        const objectSchema = z.object(shape).passthrough();\n-        const recordSchema = z.looseRecord(keySchema, valueSchema);\n-        zodSchema = z.intersection(objectSchema, recordSchema);\n-        break;\n+      // `required` may name keys `properties` never declares. Their values fall to\n+      // `additionalProperties`, but they still have to be present.\n+      for (const key of requiredSet) {\n+        if (!(key in shape)) shape[key] = additionalSchema ?? z.any();",
+      "url": "https://github.com/colinhacks/zod/pull/6411#discussion_r3780468181"
+    },
+    {
+      "id": 3780468196,
+      "review": 4933153545,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 470,
+      "commit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "originalCommit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "at": "2026-08-14T02:01:00Z",
+      "body": "This guard is truthiness-based while the new metadata block at line 625 uses `!== undefined`, so `propertyNames: false` gets emitted into the round-tripped JSON Schema without ever being enforced — the resulting Zod schema accepts every key. `propertyNames` is typed `_JSONSchema = boolean | JSONSchema`, so `false` is a legal input, and `convertSchema` already handles boolean schemas (`fromJSONSchema(false)` yields a rejecting schema), so tightening the guard makes the `false` case work rather than merely aligning the two conditions.\n\n```suggestion\n      if (schema.propertyNames !== undefined) {\n```",
+      "diffHunk": "@@ -437,22 +447,28 @@ function convertBaseSchema(schema: JSONSchema.JSONSchema, ctx: ConversionContext\n           }\n           zodSchema = result;\n         }\n-        break;\n+      } else {\n+        // Handle additionalProperties\n+        // In JSON Schema, additionalProperties defaults to true (allow any extra properties)\n+        // In Zod, objects strip unknown keys by default, so we need to handle this explicitly\n+        const objectSchema = z.object(shape);\n+        if (schema.additionalProperties === false) {\n+          // Strict mode - no extra properties allowed\n+          zodSchema = objectSchema.strict();\n+        } else if (additionalSchema) {\n+          // Extra properties must match the specified schema\n+          zodSchema = objectSchema.catchall(additionalSchema);\n+        } else {\n+          // additionalProperties is true or undefined - allow any extra properties (passthrough)\n+          zodSchema = objectSchema.passthrough();\n+        }\n       }\n \n-      // Handle additionalProperties\n-      // In JSON Schema, additionalProperties defaults to true (allow any extra properties)\n-      // In Zod, objects strip unknown keys by default, so we need to handle this explicitly\n-      const objectSchema = z.object(shape);\n-      if (schema.additionalProperties === false) {\n-        // Strict mode - no extra properties allowed\n-        zodSchema = objectSchema.strict();\n-      } else if (typeof schema.additionalProperties === \"object\") {\n-        // Extra properties must match the specified schema\n-        zodSchema = objectSchema.catchall(convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx));\n-      } else {\n-        // additionalProperties is true or undefined - allow any extra properties (passthrough)\n-        zodSchema = objectSchema.passthrough();\n+      // propertyNames constrains key *names* only, and says nothing about which keys\n+      // are required or how their values validate. Layering it on top of the result\n+      // keeps properties/patternProperties/additionalProperties composing underneath.\n+      if (schema.propertyNames) {",
+      "url": "https://github.com/colinhacks/zod/pull/6411#discussion_r3780468196"
+    },
+    {
+      "id": 3780474855,
+      "review": 4933161760,
+      "replyTo": 3780468181,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 413,
+      "commit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "originalCommit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "at": "2026-08-14T02:02:42Z",
+      "body": "Correction: don't take that suggestion as written — `Object.hasOwn` doesn't compile here (`.configs/tsconfig.base.json` pins `lib: [\"es2020\", \"dom\"]`, and `packages/zod/tsconfig.json` doesn't override it), so it fails with TS2550. Use `!Object.prototype.hasOwnProperty.call(shape, key)`, which is the idiom `core/util.ts` already uses. The underlying bug and the rest of the comment stand.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31761700950/job/94649256969) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -375,32 +395,22 @@ function convertBaseSchema(schema: JSONSchema.JSONSchema, ctx: ConversionContext\n       const properties = schema.properties || {};\n       const requiredSet = new Set(schema.required || []);\n \n+      const additionalSchema =\n+        typeof schema.additionalProperties === \"object\"\n+          ? convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx)\n+          : undefined;\n+\n       // Convert properties - mark optional ones\n       for (const [key, propSchema] of Object.entries(properties)) {\n         const propZodSchema = convertSchema(propSchema as JSONSchema.JSONSchema, ctx);\n         // If not in required array, make it optional\n         shape[key] = requiredSet.has(key) ? propZodSchema : propZodSchema.optional();\n       }\n \n-      // Handle propertyNames\n-      if (schema.propertyNames) {\n-        const keySchema = convertSchema(schema.propertyNames, ctx) as ZodString;\n-        const valueSchema =\n-          schema.additionalProperties && typeof schema.additionalProperties === \"object\"\n-            ? convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx)\n-            : z.any();\n-\n-        // Case A: No properties (pure record)\n-        if (Object.keys(shape).length === 0) {\n-          zodSchema = z.record(keySchema, valueSchema);\n-          break;\n-        }\n-\n-        // Case B: With properties (intersection of object and looseRecord)\n-        const objectSchema = z.object(shape).passthrough();\n-        const recordSchema = z.looseRecord(keySchema, valueSchema);\n-        zodSchema = z.intersection(objectSchema, recordSchema);\n-        break;\n+      // `required` may name keys `properties` never declares. Their values fall to\n+      // `additionalProperties`, but they still have to be present.\n+      for (const key of requiredSet) {\n+        if (!(key in shape)) shape[key] = additionalSchema ?? z.any();",
+      "url": "https://github.com/colinhacks/zod/pull/6411#discussion_r3780474855"
+    },
+    {
+      "id": 3780525290,
+      "review": 4933222499,
+      "replyTo": 3780468181,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 413,
+      "commit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "originalCommit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "at": "2026-08-14T02:15:56Z",
+      "body": "Moot as of 9bf1a42 — the `required` fallback loop was dropped entirely and the gap is now called out in the PR body instead.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31763083831/job/94653334858) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -375,32 +395,22 @@ function convertBaseSchema(schema: JSONSchema.JSONSchema, ctx: ConversionContext\n       const properties = schema.properties || {};\n       const requiredSet = new Set(schema.required || []);\n \n+      const additionalSchema =\n+        typeof schema.additionalProperties === \"object\"\n+          ? convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx)\n+          : undefined;\n+\n       // Convert properties - mark optional ones\n       for (const [key, propSchema] of Object.entries(properties)) {\n         const propZodSchema = convertSchema(propSchema as JSONSchema.JSONSchema, ctx);\n         // If not in required array, make it optional\n         shape[key] = requiredSet.has(key) ? propZodSchema : propZodSchema.optional();\n       }\n \n-      // Handle propertyNames\n-      if (schema.propertyNames) {\n-        const keySchema = convertSchema(schema.propertyNames, ctx) as ZodString;\n-        const valueSchema =\n-          schema.additionalProperties && typeof schema.additionalProperties === \"object\"\n-            ? convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx)\n-            : z.any();\n-\n-        // Case A: No properties (pure record)\n-        if (Object.keys(shape).length === 0) {\n-          zodSchema = z.record(keySchema, valueSchema);\n-          break;\n-        }\n-\n-        // Case B: With properties (intersection of object and looseRecord)\n-        const objectSchema = z.object(shape).passthrough();\n-        const recordSchema = z.looseRecord(keySchema, valueSchema);\n-        zodSchema = z.intersection(objectSchema, recordSchema);\n-        break;\n+      // `required` may name keys `properties` never declares. Their values fall to\n+      // `additionalProperties`, but they still have to be present.\n+      for (const key of requiredSet) {\n+        if (!(key in shape)) shape[key] = additionalSchema ?? z.any();",
+      "url": "https://github.com/colinhacks/zod/pull/6411#discussion_r3780525290"
+    },
+    {
+      "id": 3780525568,
+      "review": 4933222782,
+      "replyTo": 3780468196,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": null,
+      "originalLine": 470,
+      "commit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "originalCommit": "9341d899579922bbdca463db4afad3fcbf2a420a",
+      "at": "2026-08-14T02:16:00Z",
+      "body": "Addressed in 9bf1a42 — enforcement now uses `!== undefined && !== true`, with coverage in the `boolean propertyNames` test.\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/31763083831/job/94653334858) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Claude Opus` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "diffHunk": "@@ -437,22 +447,28 @@ function convertBaseSchema(schema: JSONSchema.JSONSchema, ctx: ConversionContext\n           }\n           zodSchema = result;\n         }\n-        break;\n+      } else {\n+        // Handle additionalProperties\n+        // In JSON Schema, additionalProperties defaults to true (allow any extra properties)\n+        // In Zod, objects strip unknown keys by default, so we need to handle this explicitly\n+        const objectSchema = z.object(shape);\n+        if (schema.additionalProperties === false) {\n+          // Strict mode - no extra properties allowed\n+          zodSchema = objectSchema.strict();\n+        } else if (additionalSchema) {\n+          // Extra properties must match the specified schema\n+          zodSchema = objectSchema.catchall(additionalSchema);\n+        } else {\n+          // additionalProperties is true or undefined - allow any extra properties (passthrough)\n+          zodSchema = objectSchema.passthrough();\n+        }\n       }\n \n-      // Handle additionalProperties\n-      // In JSON Schema, additionalProperties defaults to true (allow any extra properties)\n-      // In Zod, objects strip unknown keys by default, so we need to handle this explicitly\n-      const objectSchema = z.object(shape);\n-      if (schema.additionalProperties === false) {\n-        // Strict mode - no extra properties allowed\n-        zodSchema = objectSchema.strict();\n-      } else if (typeof schema.additionalProperties === \"object\") {\n-        // Extra properties must match the specified schema\n-        zodSchema = objectSchema.catchall(convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx));\n-      } else {\n-        // additionalProperties is true or undefined - allow any extra properties (passthrough)\n-        zodSchema = objectSchema.passthrough();\n+      // propertyNames constrains key *names* only, and says nothing about which keys\n+      // are required or how their values validate. Layering it on top of the result\n+      // keeps properties/patternProperties/additionalProperties composing underneath.\n+      if (schema.propertyNames) {",
+      "url": "https://github.com/colinhacks/zod/pull/6411#discussion_r3780525568"
+    },
+    {
+      "id": 3780549738,
+      "review": 4933249456,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 168,
+      "originalLine": 156,
+      "commit": "4145f8edf153e0b00d31057d2ff47e35d8a1680a",
+      "originalCommit": "9bf1a422b9334891a7ac222f05b6db710e8a711d",
+      "at": "2026-08-14T02:23:14Z",
+      "body": "`$ZodTransform` sets `_zod.optin = \"optional\"` (`core/schemas.ts:3425`) and `$ZodPipe` inherits `optin` from `def.in` (`core/schemas.ts:4017`), so every guarded object now advertises itself as optional-on-input. `objectProcessor` computes `required` as `optin === undefined` for `io: \"input\"` (`core/json-schema-processors.ts:310`), which means a guarded object nested as a property silently drops out of its parent's `required` array — the losslessness the PR body claims for both `io` modes holds only at the top level, which is the only place the new test loop looks.\n\nThe same transform also makes the schema unencodable: `$ZodTransform._zod.parse` throws `$ZodEncodeError` in the backward direction (`core/schemas.ts:3427`), so `z.encode` now fails on any object carrying `propertyNames`.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# The identity transform leaks `optin: \"optional\"` and blocks `encode`\n\n## Affected sites\n- `packages/zod/src/v4/classic/from-json-schema.ts:155-156` — `z.transform((value: unknown) => value)` is the in-side of the pipe returned at line 173. `$ZodTransform` hardcodes `optin = \"optional\"` and throws on `direction === \"backward\"`.\n- `packages/zod/src/v4/classic/tests/from-json-schema.test.ts:470-484` — the `io` loop only converts a top-level guarded object, where the parent-`required` computation never runs.\n\n## Reproductions\n```ts\nconst src = {\n  type: \"object\",\n  properties: { a: { type: \"object\", propertyNames: { enum: [\"x\"] } } },\n  required: [\"a\"],\n};\nz.toJSONSchema(fromJSONSchema(src), { io: \"input\" }).required; // undefined\n// drop `propertyNames` from the inner schema and it is [\"a\"]\n// io: \"output\" is unaffected — `optout` comes from `def.out`\n\nconst enc = fromJSONSchema({\n  type: \"object\",\n  properties: { a: { type: \"string\" } },\n  propertyNames: { enum: [\"a\"] },\n});\nz.encode(enc, { a: \"x\" });\n// $ZodEncodeError: Encountered unidirectional transform during encode: ZodTransform\n// the same schema without `propertyNames` encodes fine\n```\n\nRuntime requiredness is NOT affected — `util.optionalKeys` requires both `optin` and `optout` to be `\"optional\"`, and `optout` still comes from the object. This is purely a `toJSONSchema` and `encode` problem.\n\n## Required outcome\n- A guarded object nested under `required` keeps its place in the parent's `required` array for `io: \"input\"`.\n- Either `encode` keeps working through a guarded object, or the limitation is a deliberate, stated trade-off.\n- Whichever way it lands, the `io` loop should cover a *nested* guarded object, since the top-level case cannot catch either issue.\n\n## Suggested approach (optional)\nThe transform is load-bearing for representation — `pipeProcessor` (`core/json-schema-processors.ts:531-532`) special-cases `def.in._zod.traits.has(\"$ZodTransform\")` to emit `def.out` for `io: \"input\"`, so swapping in `z.any()` or `z.unknown()` would make `io: \"input\"` report the guard instead of the object. Two directions that keep it:\n- Fix `objectProcessor` to read declared optionality off `def.out` for transform-fronted pipes rather than the runtime `optin` flag. That is the more general fix and helps every hand-rolled `z.pipe(z.transform(...), obj)`, but it is a core change and widens this PR considerably.\n- Or keep the change local: build the guard as a `z.codec` whose reverse transform is also the identity, which is bidirectional and gives you a place to control `optin`.\n\n## Open questions for the human\n- Is `z.encode` on `fromJSONSchema` output a use case you want to hold, or is `fromJSONSchema` decode-only by contract? That answer decides whether the second half of this is a bug or a documented limitation.\n````\n\n</details>",
+      "diffHunk": "@@ -143,6 +143,36 @@ function resolveRef(ref: string, ctx: ConversionContext): JSONSchema.JSONSchema\n   throw new Error(`Reference not found: ${ref}`);\n }\n \n+/**\n+ * Rejects every own key that fails `keySchema`, before `objectSchema` runs. The\n+ * guard has to see the raw input: an object parse drops `__proto__` and can add\n+ * keys from a property `default`, so its output is not the set of names the\n+ * instance actually carried.\n+ */\n+function checkPropertyNames(objectSchema: ZodType, keySchema: ZodType): ZodType {\n+  // An identity transform, not z.any(), so `toJSONSchema` reports the object on\n+  // both the input and the output side of the pipe.\n+  const guard = z\n+    .transform((value: unknown) => value)",
+      "url": "https://github.com/colinhacks/zod/pull/6411#discussion_r3780549738"
+    },
+    {
+      "id": 3780549741,
+      "review": 4933249456,
+      "replyTo": null,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "path": "packages/zod/src/v4/classic/from-json-schema.ts",
+      "line": 435,
+      "originalLine": 411,
+      "commit": "4145f8edf153e0b00d31057d2ff47e35d8a1680a",
+      "originalCommit": "9bf1a422b9334891a7ac222f05b6db710e8a711d",
+      "at": "2026-08-14T02:23:14Z",
+      "body": "With the `required` fallback gone, `additionalSchema` has exactly one consumer left (line 462), inside the `else` that only runs when `patternProperties` is absent — but it is still computed unconditionally. That turns a previously-lazy conversion into an eager one, so a schema whose `additionalProperties` was harmlessly ignored can now throw during conversion.\n\n<details><summary>Technical details</summary>\n\n````markdown\n# Hoisted `additionalSchema` converts a subschema the branch never uses\n\n## Affected sites\n- `packages/zod/src/v4/classic/from-json-schema.ts:408-411` — computed before the `patternProperties` / `else` split.\n- `packages/zod/src/v4/classic/from-json-schema.ts:462-464` — the only remaining read.\n\n## Reproduction\n```ts\nfromJSONSchema({\n  type: \"object\",\n  patternProperties: { \"^S_\": { type: \"string\" } },\n  additionalProperties: { not: { type: \"string\" } },\n});\n// throws: not is not supported in Zod (except { not: {} } for never)\n// on main this converts fine — additionalProperties is ignored when\n// patternProperties is present, so it was never converted\n```\n`convertSchema` also mutates `ctx` (refs, registry), so the eager call has side effects for a schema that is then discarded.\n\n## Required outcome\n`additionalProperties` is converted only on the path that consumes it, restoring the previous behavior for the `patternProperties` combination.\n\n## Suggested approach (optional)\nDelete lines 408-411 and put the conversion back inline at line 464: `zodSchema = objectSchema.catchall(convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx));`, with the guard at 462 back to `typeof schema.additionalProperties === \"object\"`.\n````\n\n</details>",
+      "diffHunk": "@@ -375,34 +405,18 @@ function convertBaseSchema(schema: JSONSchema.JSONSchema, ctx: ConversionContext\n       const properties = schema.properties || {};\n       const requiredSet = new Set(schema.required || []);\n \n+      const additionalSchema =\n+        typeof schema.additionalProperties === \"object\"\n+          ? convertSchema(schema.additionalProperties as JSONSchema.JSONSchema, ctx)\n+          : undefined;",
+      "url": "https://github.com/colinhacks/zod/pull/6411#discussion_r3780549741"
+    }
+  ],
+  "comments": [],
+  "citedBy": [
+    {
+      "at": "2026-08-14T02:32:42Z",
+      "number": 6327,
+      "repo": "colinhacks/zod",
+      "pull": true,
+      "title": "fix(fromJSONSchema): propertyNames enum keys should not be required",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/pull/6327"
+    },
+    {
+      "at": "2026-08-14T03:46:31Z",
+      "number": 1,
+      "repo": "TheRodzz/zod",
+      "pull": true,
+      "title": "test: add regression test for issue 6403",
+      "state": "closed",
+      "url": "https://github.com/TheRodzz/zod/pull/1"
+    },
+    {
+      "at": "2026-08-16T15:49:56Z",
+      "number": 1,
+      "repo": "MHJahanbakhsh/zod",
+      "pull": true,
+      "title": "test(v4): regression coverage for propertyNames + additionalProperties:false",
+      "state": "closed",
+      "url": "https://github.com/MHJahanbakhsh/zod/pull/1"
+    },
+    {
+      "at": "2026-08-25T21:29:32Z",
+      "number": 6463,
+      "repo": "colinhacks/zod",
+      "pull": false,
+      "title": "fromJSONSchema silently ignores minProperties and maxProperties",
+      "state": "closed",
+      "url": "https://github.com/colinhacks/zod/issues/6463"
+    }
+  ]
+}

@@ -23,7 +23,6 @@ import type {
 import {
   fetchBranches,
   fetchJson,
-  fetchReviews,
   fetchRows,
   fetchRowsOf,
   fetchShape,
@@ -80,7 +79,6 @@ import { FindBox } from './FindBox.js';
 import { SyncBar, type SyncRun } from './SyncBar.js';
 import { RefDialog, type RefAction } from './RefDialog.js';
 import type { PanelEntry } from './branches.js';
-import { reviewChoices, type ReviewChoice } from './branchReviews.js';
 import { CheckoutDialog } from './CheckoutDialog.js';
 import { workspaceChips, workspaceHref, workspacesFirst } from '../workspaces/workspaces.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
@@ -130,10 +128,11 @@ const FIND_MS = 250;
  * pane (V66b); the checkout's uncommitted changes are a row above the commits, staged and
  * committed in the pane (V66c). In compare mode (V13: its toggle, or x) a click (or x) picks one
  * end, another the other end; the older is the base. Compare (Enter) opens the diff; one picked
- * is compared with its parent. A row's menu (right-click, "⋯", c or r) checks out its branches,
- * tags or the commit (V11), reviews its branches (V15), and makes a branch or a tag there (V66d);
- * a branch's in the panel renames or deletes it. The head fetches, pulls and pushes (V66e) and
- * finds commits (V66f). A file clicked in the pane shows in the rows' place (V70).
+ * is compared with its parent. A row's menu (right-click, "⋯" or c) checks out its branches,
+ * tags or the commit (V11) and makes a branch or a tag there (V66d); a branch's in the panel
+ * reviews, renames or deletes it. The row's menu reads no branch review: it waited 1.5 s for them
+ * with 113 reviewed branches (fix/git-right-click-on-commit). The head fetches, pulls and pushes
+ * (V66e) and finds commits (V66f). A file clicked in the pane shows in the rows' place (V70).
  */
 export function HistoryPage() {
   const [scope, setScope] = useState(scopeOfUrl);
@@ -279,15 +278,14 @@ function History({
   const scroller = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLOListElement>(null);
   const placed = useRef(false);
-  // A row's menu (check out, review), then a checkout's confirmation (V11).
+  // A row's menu (check out, a branch or a tag there), then a checkout's confirmation (V11).
   const [menu, setMenu] = useState<{
     at: { x: number; y: number };
     /** The row's commit. */
     sha: string;
-    /** The submenu shown at first: `c` and `r` (V14, V15). */
-    open?: 'checkout' | 'review';
+    /** The submenu shown at first: `c`'s (V14). */
+    open?: 'checkout';
     checkout: CheckoutChoice[];
-    review: ReviewChoice[];
     status: RepoStatus;
   } | null>(null);
   const [confirm, setConfirm] = useState<{ choice: CheckoutChoice; status: RepoStatus } | null>(
@@ -297,7 +295,7 @@ function History({
   const [refused, setRefused] = useState<string | null>(null);
 
   // Branch reviews (V15): marks on badges, dots on commits added since.
-  const { marks, setReviews } = useBranchReviews();
+  const marks = useBranchReviews();
 
   // The checkout's uncommitted changes (V66c) and the branch's upstream (V66e), read as the page
   // lists and again when it is back in view.
@@ -582,31 +580,22 @@ function History({
   }, []);
 
   /** Opens row `row`'s menu at a point of the window, the submenu `open` shown. */
-  const openMenu = useCallback(
-    (row: number, x: number, y: number, open?: 'checkout' | 'review') => {
-      const commit = details.current.get(row);
-      if (!commit) return;
-      setCursor(row);
-      Promise.all([
-        fetchJson<RefList>('api/refs'),
-        fetchJson<RepoStatus>('api/status'),
-        fetchReviews(),
-      ])
-        .then(([refs, status, list]) => {
-          if (list) setReviews(list);
-          setMenu({
-            at: { x, y },
-            sha: commit.sha,
-            ...(open ? { open } : {}),
-            checkout: checkoutChoices(commit, refs, status),
-            review: list ? reviewChoices(commit, refs, list) : [],
-            status,
-          });
-        })
-        .catch((e: unknown) => setError(`Could not read the branches: ${(e as Error).message}`));
-    },
-    [],
-  );
+  const openMenu = useCallback((row: number, x: number, y: number, open?: 'checkout') => {
+    const commit = details.current.get(row);
+    if (!commit) return;
+    setCursor(row);
+    Promise.all([fetchJson<RefList>('api/refs'), fetchJson<RepoStatus>('api/status')])
+      .then(([refs, status]) => {
+        setMenu({
+          at: { x, y },
+          sha: commit.sha,
+          ...(open ? { open } : {}),
+          checkout: checkoutChoices(commit, refs, status),
+          status,
+        });
+      })
+      .catch((e: unknown) => setError(`Could not read the branches: ${(e as Error).message}`));
+  }, []);
   const closeMenu = useCallback(() => setMenu(null), []);
 
   // Starting a workspace (V18) at a row's commit: the shell's page (V30a).
@@ -641,16 +630,8 @@ function History({
       .slice(0, 1)
       .map((f) => f.branch);
 
-  /**
-   * "Check out ▸" (V14), "Review ▸" when the row has branches (V15), and "Start a workspace here"
-   * (V18).
-   */
-  const menuItems = ({
-    sha,
-    checkout,
-    review,
-    status,
-  }: NonNullable<typeof menu>): RowMenuItem[] => [
+  /** "Check out ▸" (V14) and "Start a workspace here" (V18), then a branch or a tag there. */
+  const menuItems = ({ sha, checkout, status }: NonNullable<typeof menu>): RowMenuItem[] => [
     {
       label: 'Check out',
       choices: checkout,
@@ -662,24 +643,6 @@ function History({
         setConfirm({ choice, status });
       },
     },
-    ...(review.length === 0
-      ? []
-      : [
-          {
-            label: 'Review',
-            choices: review,
-            onChoose: (index: number) => {
-              const choice = review[index];
-              setMenu(null);
-              if (!choice || choice.disabled) return;
-              startReview(choice.review)
-                .then((url) => window.location.assign(url))
-                .catch((e: unknown) =>
-                  setError(`Could not review ${choice.ref.name}: ${(e as Error).message}`),
-                );
-            },
-          },
-        ]),
     ...workspaceOn(sha).map((branch) => ({
       label: 'Open its workspace',
       onSelect: () =>
@@ -1306,7 +1269,7 @@ function History({
           setOpenFile(null);
           return;
         }
-        if (['x', 'c', 'r', 'Enter'].includes(event.key)) return;
+        if (['x', 'c', 'Enter'].includes(event.key)) return;
       }
       if (event.key === 'j' || event.key === 'k') {
         // Above the first commit, the uncommitted row when there is one (V66c).
@@ -1325,10 +1288,6 @@ function History({
         const box = list.current?.querySelector('.commit.cursor')?.getBoundingClientRect();
         // `c` checks out: straight to the targets.
         if (box) openMenu(cursor, box.left + 48, box.bottom, 'checkout');
-      } else if (event.key === 'r') {
-        const box = list.current?.querySelector('.commit.cursor')?.getBoundingClientRect();
-        // `r` reviews: straight to the row's branches.
-        if (box) openMenu(cursor, box.left + 48, box.bottom, 'review');
       } else if (event.key === '/') {
         // Finds a branch: the panel's filter (shown first under 900 px).
         event.preventDefault();
@@ -1503,7 +1462,7 @@ function History({
                     <span className="commits-help">
                       {comparing
                         ? 'Pick two to compare them, or one against its parent · x picks, Enter compares, Esc leaves'
-                        : 'j/k move · c checks out · r reviews · x picks to compare · / finds a branch · f finds a commit · d shows or folds the details · a branch: double-click checks it out, right-click for more · a file shown: j/k its files, o its diff in VS Code, Esc back'}
+                        : 'j/k move · c checks out · x picks to compare · / finds a branch · f finds a commit · d shows or folds the details · a branch: double-click checks it out, right-click for more · a file shown: j/k its files, o its diff in VS Code, Esc back'}
                     </span>
                   </Help>
                   <button
@@ -1688,7 +1647,6 @@ function History({
           at={menu.at}
           items={menuItems(menu)}
           {...(menu.open === 'checkout' ? { open: 0 } : {})}
-          {...(menu.open === 'review' && menu.review.length > 0 ? { open: 1 } : {})}
           onClose={closeMenu}
         />
       )}

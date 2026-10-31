@@ -1,0 +1,115 @@
+{
+  "number": 22535,
+  "title": "[PM-40851] Render the shared folder grid on the desktop vault view",
+  "body": "## 🎟️ Tracking\r\n\r\n[Jira](https://bitwarden.atlassian.net/browse/PM-40851)\r\n\r\n## 📔 Objective\r\n\r\nRender the shared folder grid above the collection/item list in the desktop vault-v3 host.\r\nThis PR also updates the card grid component to only show 3 rows max based on the container width, per design.\r\n\r\n## 📸 Screenshots\r\n\r\n<!-- Required for any UI changes; delete if not applicable. Use fixed width images for better display. -->\r\n\r\nhttps://github.com/user-attachments/assets/780bcbc9-552b-4a34-b0b7-4d058fdd78f6\r\n\r\n\r\nhttps://github.com/user-attachments/assets/91c93a05-eac7-41bd-bbc9-aaabb5ac06ac\r\n\r\n\r\n",
+  "user": {
+    "login": "jengstrom-bw",
+    "type": "User"
+  },
+  "baseSha": "bc29f12e23be4a8f19e10f7925df5547c7586c79",
+  "headSha": "265d5c1293c832f433b18998b10e36759f4fe5af",
+  "mergedAt": "2026-09-01T16:46:58Z",
+  "mergeCommit": "be5687185c365fbcc3b281fceac8cac899531290",
+  "commits": 8,
+  "reviews": [
+    {
+      "id": 5053261219,
+      "user": {
+        "login": "jengstrom-bw",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "94d81822113b09b40a322285c888c4fede2955eb",
+      "at": "2026-08-28T17:00:05Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22535#pullrequestreview-5053261219"
+    },
+    {
+      "id": 5072527874,
+      "user": {
+        "login": "nikwithak",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "265d5c1293c832f433b18998b10e36759f4fe5af",
+      "at": "2026-08-31T23:43:48Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22535#pullrequestreview-5072527874"
+    },
+    {
+      "id": 5080691940,
+      "user": {
+        "login": "BryanCunningham",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "265d5c1293c832f433b18998b10e36759f4fe5af",
+      "at": "2026-09-01T16:43:55Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22535#pullrequestreview-5080691940"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3882461908,
+      "review": 5053261219,
+      "replyTo": null,
+      "user": {
+        "login": "jengstrom-bw",
+        "type": "User"
+      },
+      "path": "libs/components/src/accordion/accordion.component.ts",
+      "line": 1,
+      "originalLine": 1,
+      "commit": "265d5c1293c832f433b18998b10e36759f4fe5af",
+      "originalCommit": "94d81822113b09b40a322285c888c4fede2955eb",
+      "at": "2026-08-28T17:00:05Z",
+      "body": "This fixes a thick border on the collapsable portion of the accordion on the desktop app. If there is a different way UIF wants to accomplish this, I can pull this portion out and it can be done in a follow up ticket",
+      "diffHunk": "",
+      "url": "https://github.com/bitwarden/clients/pull/22535#discussion_r3882461908"
+    },
+    {
+      "id": 3899422992,
+      "review": 5072527874,
+      "replyTo": null,
+      "user": {
+        "login": "nikwithak",
+        "type": "User"
+      },
+      "path": "libs/vault/src/components/shared-folder-card-grid/shared-folder-card-grid.component.ts",
+      "line": 188,
+      "originalLine": 188,
+      "commit": "265d5c1293c832f433b18998b10e36759f4fe5af",
+      "originalCommit": "265d5c1293c832f433b18998b10e36759f4fe5af",
+      "at": "2026-08-31T23:42:47Z",
+      "body": "🎨 non-blocking: I think you can remove this and it should still work with the `Math.min(Math.max(fit, 1), MAX_COLUMNS);` return statement",
+      "diffHunk": "@@ -123,6 +137,63 @@ export class SharedFolderCardGridComponent {\n \n   protected readonly gridTemplateColumns = GRID_TEMPLATE_COLUMNS;\n \n+  /** The list the cards render into. Absent whenever the grid renders nothing. */\n+  private readonly gridList = viewChild<ElementRef<HTMLElement>>(\"gridList\");\n+\n+  /**\n+   * The width of the grid itself, in px, kept current as the window resizes. 0 until first measured.\n+   *\n+   * The grid's own width rather than the window's: it sits in a container the page sizes and pads,\n+   * so the two only track each other loosely, and it is the grid's width that CSS lays the columns\n+   * out against.\n+   */\n+  private readonly gridWidth = signal(0);\n+\n+  constructor() {\n+    const observer = new ResizeObserver(([entry]) =>\n+      // `contentBoxSize` is the spec'd read; `contentRect` is the older, always-present equivalent,\n+      // and covers engines that hand back an empty box array.\n+      this.gridWidth.set(entry.contentBoxSize?.[0]?.inlineSize ?? entry.contentRect.width),\n+    );\n+    inject(DestroyRef).onDestroy(() => observer.disconnect());\n+\n+    // Re-resolved rather than measured once: hosts load their collections after the first render, so\n+    // the list is usually absent then and arrives — or leaves again, on a drill-in to a folder with\n+    // no children — later.\n+    effect(() => {\n+      const list = this.gridList()?.nativeElement;\n+      observer.disconnect();\n+      if (list == null) {\n+        return;\n+      }\n+      // Primed here so the change-detection pass that follows already has a width, rather than\n+      // painting the widest layout and reflowing once the observer's first callback lands.\n+      this.gridWidth.set(list.clientWidth);\n+      observer.observe(list);\n+    });\n+  }\n+\n+  /**\n+   * How many columns the grid is laid out in, from one to {@link MAX_COLUMNS}. Mirrors what\n+   * `auto-fill` resolves {@link GRID_TEMPLATE_COLUMNS} to at the measured width: no track is\n+   * narrower than {@link MIN_CARD_WIDTH}, so a row holds as many of those — plus the gap between\n+   * each pair — as fit, and the `minmax` floor growing with the container caps that at three.\n+   *\n+   * Falls back to the widest layout until the grid has been measured.\n+   */\n+  private readonly columns = computed(() => {\n+    const width = this.gridWidth();\n+    if (width === 0) {\n+      return MAX_COLUMNS;\n+    }",
+      "url": "https://github.com/bitwarden/clients/pull/22535#discussion_r3899422992"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5348663639,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-19T22:16:15Z",
+      "updated": "2026-09-01T16:47:30Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/22535?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:x: Patch coverage is `88.00000%` with `3 lines` in your changes missing coverage. Please review.\n:white_check_mark: Project coverage is 55.19%. Comparing base ([`bc29f12`](https://app.codecov.io/gh/bitwarden/clients/commit/bc29f12e23be4a8f19e10f7925df5547c7586c79?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`265d5c1`](https://app.codecov.io/gh/bitwarden/clients/commit/265d5c1293c832f433b18998b10e36759f4fe5af?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:warning: Report is 10 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n| [Files with missing lines](https://app.codecov.io/gh/bitwarden/clients/pull/22535?dropdown=coverage&src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) | Patch % | Lines |\n|---|---|---|\n| [.../desktop/src/vault/app/vault-v3/vault.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22535?src=pr&el=tree&filepath=apps%2Fdesktop%2Fsrc%2Fvault%2Fapp%2Fvault-v3%2Fvault.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-YXBwcy9kZXNrdG9wL3NyYy92YXVsdC9hcHAvdmF1bHQtdjMvdmF1bHQuY29tcG9uZW50LnRz) | 0.00% | [2 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22535?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n| [...der-card-grid/shared-folder-card-grid.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22535?src=pr&el=tree&filepath=libs%2Fvault%2Fsrc%2Fcomponents%2Fshared-folder-card-grid%2Fshared-folder-card-grid.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-bGlicy92YXVsdC9zcmMvY29tcG9uZW50cy9zaGFyZWQtZm9sZGVyLWNhcmQtZ3JpZC9zaGFyZWQtZm9sZGVyLWNhcmQtZ3JpZC5jb21wb25lbnQudHM=) | 95.65% | [0 Missing and 1 partial :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22535?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@           Coverage Diff           @@\n##             main   #22535   +/-   ##\n=======================================\n  Coverage   55.18%   55.19%           \n=======================================\n  Files        4357     4357           \n  Lines      139556   139576   +20     \n  Branches    22175    22180    +5     \n=======================================\n+ Hits        77012    77033   +21     \n+ Misses      56946    56945    -1     \n  Partials     5598     5598           \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/22535?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/22535#issuecomment-5348663639"
+    },
+    {
+      "id": 5442226465,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-27T16:38:12Z",
+      "updated": "2026-08-31T20:51:38Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nChecked the new desktop `:vaultId/:collectionId` route against `apps/web/src/app/vault/individual-vault/vault-routing.module.ts` — it mirrors it guard-for-guard, and `vaultScopeGuard` already turns away a folder the user's collections do not hold or that belongs to another organization, falling back to the organization vault rather than the unscoped one. Traced the `vaultScope$` rewrite that now reads both segments through `resolveVaultScope`: `params.get(\"collectionId\")` is `null` on the single-segment route and `parseVaultScope` short-circuits on that, `cipherInScope` narrows the item list to the drilled folder, and `collectionInScope` deliberately keeps the whole organization's collections — which is what `scopedCollections` must carry for the grid to build its tree and find the parent node.\n\nVerified the width-responsive cutoff in the card grid: `floor((width + 12) / 252)` clamped to `[1, 3]` matches what `auto-fill` resolves `minmax(min(100%, max(240px, (100% - 1.5rem) / 3)), 1fr)` to at 240/300/492/600/744/1200px, and `auto-fill` (not `auto-fit`) keeps the track count independent of the card count, so `columns` is not measuring its own output. The `ResizeObserver` is disconnected on `DestroyRef` and re-attached when the list comes and goes, the signal-write-from-observer pattern matches `libs/components/src/layout/layout.component.ts`, and `libs/ui/common/src/setup-jest.ts` stubs `ResizeObserver` globally so the spec's local stub restores to a real value in `afterEach`. Every i18n key the component uses is present in `apps/desktop/src/locales/en/messages.json`, and the `tw-border-0 tw-border-t` pairing on `bit-accordion` is the same idiom used in `tab-header`, `filter-menu`, and the v2 table components.\n\nThe typechecking and browser build failures flagged on the previous review pass have cleared — `Run typechecking`, `Run tests - Desktop`, `Run tests - Browser`, and `Run tests - CLI` are all green on the current head.\n\n<details>\n<summary>Code Review Details</summary>\n\nNo findings.\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/22535#issuecomment-5442226465"
+    }
+  ],
+  "citedBy": []
+}

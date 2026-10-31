@@ -50,6 +50,10 @@ hosted.
 | Fix | a doc-comment reference crashed the analysis | ✅ | | [journal](journal/fix-jsdoc-reference-crash.md) |
 | [E1](plan/e1-explained-changes.md) | Decisions and their ripples | measured | | [journal](journal/e1-explained-changes.md) |
 | [L1–L2](plan/l1-l2-stylesheets.md) | Stylesheets in the graph (CSS and SCSS), and the markup that uses them | ✅ | 299–312, 329–331 | [journal](journal/l1-l2-stylesheets.md) |
+| [D2](plan/d2-review-precision.md) | Findings precision on real pull requests (spike) | measured: not yet | | [journal](journal/d2-review-precision.md) |
+| [D2b](plan/d2b-review-time-findings.md) | Findings at review time, on every push (spike) | proposed | | |
+| [D2c](plan/d2c-review-graph.md) | Is the review graph right, and does it lead to the problems? (spike) | proposed | | |
+| [D3](plan/d3-true-warnings.md) | True warnings: orphans, users that use the change, compatibility | proposed | | |
 
 ### Framework plugins
 
@@ -101,6 +105,7 @@ hosted.
 | [V66](plan/v66-git-page.md) | Git: History renamed; a commit's details, changes staged and committed, branches and tags, fetch/pull/push, find a commit | ✅ | 475–484 | [journal](journal/v66-git-page.md) |
 | [V70](plan/v70-git-file-view.md) | Git: a commit's file shown in the rows' place; Open in VS Code (its diff) from the pane | ✅ | 498–501 | [journal](journal/v70-git-file-view.md) |
 | [Fix](plan/v66-git-page.md#fix-the-page-lists-in-place-more-of-git-fixgit-page-feature-extend) | Git lists in place (the file shown kept); continue/abort, cherry-pick, revert, merge, rebase, stash, reset, discard, hunks and lines, a file's history and blame, remote branches deleted, branches hidden | built, in review | 634–645 | [journal](journal/fix-git-page-feature-extend.md) |
+| Fix | A commit's menu opens at once: no Review in it (the branches panel keeps its own), so no wait for every branch review | ready for review | | [journal](journal/fix-git-right-click-on-commit.md) |
 
 ### Reviews
 

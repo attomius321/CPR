@@ -1,0 +1,359 @@
+{
+  "number": 22523,
+  "title": "[CL-1248] Add FAB button component to vault",
+  "body": "## 🎟️ Tracking\r\n\r\n[CL-1248](https://bitwarden.atlassian.net/browse/CL-1248)\r\n\r\n## 📔 Objective\r\n\r\nAdds a `BitFabComponent` (Floating Action Button) to the component library — a circular primary button for a single high-priority action. Accepts a `BitwardenIcon`, an accessible `label`, and a `disabled` state.\r\n\r\n## 📸 StoryBook\r\n\r\n[StoryBook!](https://62a88a6de5b807fa98886113-vhcbdydiwf.chromatic.com/?path=/docs/vault-fab--docs)\r\n\r\n[CL-1248]: https://bitwarden.atlassian.net/browse/CL-1248?atlOrigin=eyJpIjoiNWRkNTljNzYxNjVmNDY3MDlhMDU5Y2ZhYzA5YTRkZjUiLCJwIjoiZ2l0aHViLWNvbS1KU1cifQ",
+  "user": {
+    "login": "nick-livefront",
+    "type": "User"
+  },
+  "baseSha": "69d0e353f7520da6afecabbb0fbbe17be99a5775",
+  "headSha": "ebf711e5d7556603cd189935c2fbffd96db754d6",
+  "mergedAt": "2026-08-21T14:04:58Z",
+  "mergeCommit": "2992d17688c0ad43afc434da09f9aae9a9f6d996",
+  "commits": 5,
+  "reviews": [
+    {
+      "id": 4965405720,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "dc353781448b3f52a015b6969593aacf59f5673e",
+      "at": "2026-08-18T20:21:12Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22523#pullrequestreview-4965405720"
+    },
+    {
+      "id": 4965406044,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "dc353781448b3f52a015b6969593aacf59f5673e",
+      "at": "2026-08-18T20:21:15Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22523#pullrequestreview-4965406044"
+    },
+    {
+      "id": 4965495828,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "dc353781448b3f52a015b6969593aacf59f5673e",
+      "at": "2026-08-18T20:32:14Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22523#pullrequestreview-4965495828"
+    },
+    {
+      "id": 4965668116,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "dc353781448b3f52a015b6969593aacf59f5673e",
+      "at": "2026-08-18T20:53:39Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22523#pullrequestreview-4965668116"
+    },
+    {
+      "id": 4973338683,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "at": "2026-08-19T14:36:44Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22523#pullrequestreview-4973338683"
+    },
+    {
+      "id": 4973358596,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "at": "2026-08-19T14:38:48Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22523#pullrequestreview-4973358596"
+    },
+    {
+      "id": 4973453540,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "at": "2026-08-19T14:48:13Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22523#pullrequestreview-4973453540"
+    },
+    {
+      "id": 4974607108,
+      "user": {
+        "login": "vleague2",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "at": "2026-08-19T16:47:42Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22523#pullrequestreview-4974607108"
+    },
+    {
+      "id": 4975354006,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "at": "2026-08-19T18:12:50Z",
+      "body": "",
+      "url": "https://github.com/bitwarden/clients/pull/22523#pullrequestreview-4975354006"
+    },
+    {
+      "id": 4985012758,
+      "user": {
+        "login": "vleague2",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "ebf711e5d7556603cd189935c2fbffd96db754d6",
+      "at": "2026-08-20T16:19:24Z",
+      "body": "Exports are fine for now, I'll make a note to reverse these once we bring the FAB into the CL",
+      "url": "https://github.com/bitwarden/clients/pull/22523#pullrequestreview-4985012758"
+    },
+    {
+      "id": 4994081684,
+      "user": {
+        "login": "gbubemismith",
+        "type": "User"
+      },
+      "state": "APPROVED",
+      "commit": "ebf711e5d7556603cd189935c2fbffd96db754d6",
+      "at": "2026-08-21T14:04:12Z",
+      "body": "Looks good. Confirmed on storybook! Nice job @nick-livefront ",
+      "url": "https://github.com/bitwarden/clients/pull/22523#pullrequestreview-4994081684"
+    }
+  ],
+  "inline": [
+    {
+      "id": 3807625378,
+      "review": 4965405720,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "libs/components/src/fab/fab.component.ts",
+      "line": null,
+      "originalLine": 55,
+      "commit": "e6e5069386f583536d183753de2ffadd0705ec7d",
+      "originalCommit": "dc353781448b3f52a015b6969593aacf59f5673e",
+      "at": "2026-08-18T20:21:12Z",
+      "body": "♻️ **DEBT**: FAB opts into `ButtonLikeAbstraction` but never renders a loading indicator.\n\n<details>\n<summary>Details and fix</summary>\n\nThe component provides `ButtonLikeAbstraction` (line 26) and re-exposes `loading`, so `bitAction` / `bitFormButton` resolve against it and call `loading.set(true)` during async work. However `fab.component.html` only renders `<bit-icon>` — there is no spinner branch like `button.component.html` and `icon-button.component.html` have, and `loading` is not forwarded through `hostDirectives` inputs either.\n\nResult: a FAB used with `[bitAction]` goes to the disabled color treatment for the duration of the action with no progress feedback, which diverges from the other button-like components.\n\nTwo ways to close the gap:\n- Render the spinner when `baseButton.showLoadingStyle()` is true, mirroring `icon-button.component.html`, and forward `loading` in the `BaseButtonDirective` host-directive inputs; or\n- Drop the `ButtonLikeAbstraction` provider if loading is intentionally out of scope for v1, so async-action directives can't silently attach.\n</details>",
+      "diffHunk": "@@ -0,0 +1,87 @@\n+import {\n+  ChangeDetectionStrategy,\n+  Component,\n+  effect,\n+  ElementRef,\n+  inject,\n+  input,\n+  model,\n+} from \"@angular/core\";\n+\n+import { AriaDisableDirective } from \"../a11y\";\n+import { setA11yTitleAndAriaLabel } from \"../a11y/set-a11y-title-and-aria-label\";\n+import { IconComponent } from \"../icon\";\n+import { BaseButtonDirective } from \"../shared/base-button.directive\";\n+import { ButtonLikeAbstraction } from \"../shared/button-like.abstraction\";\n+import { FocusableElement } from \"../shared/focusable-element\";\n+import { BitwardenIcon } from \"../shared/icon\";\n+import { TooltipDirective } from \"../tooltip\";\n+import { ariaDisableElement } from \"../utils\";\n+\n+@Component({\n+  selector: \"button[bitFab]\",\n+  templateUrl: \"fab.component.html\",\n+  changeDetection: ChangeDetectionStrategy.OnPush,\n+  providers: [\n+    { provide: ButtonLikeAbstraction, useExisting: BitFabComponent },\n+    { provide: FocusableElement, useExisting: BitFabComponent },\n+  ],\n+  imports: [IconComponent],\n+  host: {\n+    \"[attr.bitFab]\": \"bitFab()\",\n+    class:\n+      \"tw-relative tw-inline-flex tw-items-center tw-justify-center tw-shrink-0 tw-size-12 tw-rounded-full tw-shadow-md\",\n+  },\n+  hostDirectives: [\n+    AriaDisableDirective,\n+    { directive: TooltipDirective, inputs: [\"tooltipPosition\"] },\n+    {\n+      directive: BaseButtonDirective,\n+      inputs: [\"disabled\"],\n+    },\n+  ],\n+})\n+export class BitFabComponent implements ButtonLikeAbstraction, FocusableElement {\n+  private readonly baseButton = inject(BaseButtonDirective);\n+  private readonly elementRef = inject(ElementRef);\n+  private readonly tooltip = inject(TooltipDirective, { host: true, optional: true });\n+\n+  /** The icon to display inside the FAB. */\n+  readonly bitFab = model.required<BitwardenIcon>();\n+\n+  /** Accessible label used for the tooltip and screen readers. */\n+  readonly label = input<string>();\n+\n+  readonly loading = this.baseButton.loading;",
+      "url": "https://github.com/bitwarden/clients/pull/22523#discussion_r3807625378"
+    },
+    {
+      "id": 3807625643,
+      "review": 4965406044,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "package-lock.json",
+      "line": null,
+      "originalLine": 2127,
+      "commit": "dc353781448b3f52a015b6969593aacf59f5673e",
+      "originalCommit": "dc353781448b3f52a015b6969593aacf59f5673e",
+      "at": "2026-08-18T20:21:15Z",
+      "body": "❓ **QUESTION**: `package-lock.json` changed without a corresponding `package.json` change — was this intentional?\n\n<details>\n<summary>Details</summary>\n\nThe lock diff is unrelated to the FAB component: new optional/peer entries (`chokidar@4.0.3`, `readdirp@4.1.2`, `utf-8-validate@5.0.10`) plus ~40 packages reclassified from `devOptional` to `dev` (`@parcel/watcher` and its platform binaries, `detect-libc`, `is-glob`, `is-extglob`).\n\nThis looks like incidental churn from a local `npm install` rather than a deliberate dependency change. Reverting `package-lock.json` keeps the PR scoped and avoids an unexplained change to production/dev pruning behavior.\n</details>",
+      "diffHunk": "@@ -2124,6 +2124,24 @@\n         }\n       }\n     },\n+    \"node_modules/@angular-eslint/builder/node_modules/chokidar\": {",
+      "url": "https://github.com/bitwarden/clients/pull/22523#discussion_r3807625643"
+    },
+    {
+      "id": 3807700677,
+      "review": 4965495828,
+      "replyTo": 3807625643,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "path": "package-lock.json",
+      "line": null,
+      "originalLine": 2127,
+      "commit": "dc353781448b3f52a015b6969593aacf59f5673e",
+      "originalCommit": "dc353781448b3f52a015b6969593aacf59f5673e",
+      "at": "2026-08-18T20:32:14Z",
+      "body": "[e6e5069](https://github.com/bitwarden/clients/pull/22523/commits/e6e5069386f583536d183753de2ffadd0705ec7d)",
+      "diffHunk": "@@ -2124,6 +2124,24 @@\n         }\n       }\n     },\n+    \"node_modules/@angular-eslint/builder/node_modules/chokidar\": {",
+      "url": "https://github.com/bitwarden/clients/pull/22523#discussion_r3807700677"
+    },
+    {
+      "id": 3807842811,
+      "review": 4965668116,
+      "replyTo": 3807625378,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "path": "libs/components/src/fab/fab.component.ts",
+      "line": null,
+      "originalLine": 55,
+      "commit": "e6e5069386f583536d183753de2ffadd0705ec7d",
+      "originalCommit": "dc353781448b3f52a015b6969593aacf59f5673e",
+      "at": "2026-08-18T20:53:39Z",
+      "body": "@bitwarden/team-ui-foundation I'm curious on your thoughts on this one. I didn't include the loading state on purpose here. The vault team doesn't need it but to fully build out the abstraction I can add it. ",
+      "diffHunk": "@@ -0,0 +1,87 @@\n+import {\n+  ChangeDetectionStrategy,\n+  Component,\n+  effect,\n+  ElementRef,\n+  inject,\n+  input,\n+  model,\n+} from \"@angular/core\";\n+\n+import { AriaDisableDirective } from \"../a11y\";\n+import { setA11yTitleAndAriaLabel } from \"../a11y/set-a11y-title-and-aria-label\";\n+import { IconComponent } from \"../icon\";\n+import { BaseButtonDirective } from \"../shared/base-button.directive\";\n+import { ButtonLikeAbstraction } from \"../shared/button-like.abstraction\";\n+import { FocusableElement } from \"../shared/focusable-element\";\n+import { BitwardenIcon } from \"../shared/icon\";\n+import { TooltipDirective } from \"../tooltip\";\n+import { ariaDisableElement } from \"../utils\";\n+\n+@Component({\n+  selector: \"button[bitFab]\",\n+  templateUrl: \"fab.component.html\",\n+  changeDetection: ChangeDetectionStrategy.OnPush,\n+  providers: [\n+    { provide: ButtonLikeAbstraction, useExisting: BitFabComponent },\n+    { provide: FocusableElement, useExisting: BitFabComponent },\n+  ],\n+  imports: [IconComponent],\n+  host: {\n+    \"[attr.bitFab]\": \"bitFab()\",\n+    class:\n+      \"tw-relative tw-inline-flex tw-items-center tw-justify-center tw-shrink-0 tw-size-12 tw-rounded-full tw-shadow-md\",\n+  },\n+  hostDirectives: [\n+    AriaDisableDirective,\n+    { directive: TooltipDirective, inputs: [\"tooltipPosition\"] },\n+    {\n+      directive: BaseButtonDirective,\n+      inputs: [\"disabled\"],\n+    },\n+  ],\n+})\n+export class BitFabComponent implements ButtonLikeAbstraction, FocusableElement {\n+  private readonly baseButton = inject(BaseButtonDirective);\n+  private readonly elementRef = inject(ElementRef);\n+  private readonly tooltip = inject(TooltipDirective, { host: true, optional: true });\n+\n+  /** The icon to display inside the FAB. */\n+  readonly bitFab = model.required<BitwardenIcon>();\n+\n+  /** Accessible label used for the tooltip and screen readers. */\n+  readonly label = input<string>();\n+\n+  readonly loading = this.baseButton.loading;",
+      "url": "https://github.com/bitwarden/clients/pull/22523#discussion_r3807842811"
+    },
+    {
+      "id": 3813954119,
+      "review": 4973338683,
+      "replyTo": null,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "path": "libs/vault/src/components/fab/fab.component.ts",
+      "line": null,
+      "originalLine": 21,
+      "commit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "originalCommit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "at": "2026-08-19T14:36:44Z",
+      "body": "@bitwarden/team-ui-foundation I kept this with `bit` as a prefix to cut down any the needed changes when this moves to the component library. This could lead to confusion as it isn't officially there yet so if you'd like to remove the `bit` aspect from it, I can!",
+      "diffHunk": "@@ -0,0 +1,72 @@\n+import {\n+  ChangeDetectionStrategy,\n+  Component,\n+  effect,\n+  ElementRef,\n+  inject,\n+  input,\n+  model,\n+} from \"@angular/core\";\n+\n+import {\n+  BaseButtonDirective,\n+  BitwardenIcon,\n+  FocusableElement,\n+  IconComponent,\n+  TooltipDirective,\n+  setA11yTitleAndAriaLabel,\n+} from \"@bitwarden/components\";\n+\n+@Component({\n+  selector: \"button[bitFab]\",",
+      "url": "https://github.com/bitwarden/clients/pull/22523#discussion_r3813954119"
+    },
+    {
+      "id": 3813970497,
+      "review": 4973358596,
+      "replyTo": null,
+      "user": {
+        "login": "claude[bot]",
+        "type": "Bot"
+      },
+      "path": "libs/vault/src/components/fab/fab.component.ts",
+      "line": 34,
+      "originalLine": 34,
+      "commit": "ebf711e5d7556603cd189935c2fbffd96db754d6",
+      "originalCommit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "at": "2026-08-19T14:38:48Z",
+      "body": "⚠️ **IMPORTANT**: `disabled` is no longer wired to `BaseButtonDirective`, so a disabled FAB renders with full brand styling.\n\n<details>\n<summary>Details and fix</summary>\n\n`hostDirectives` now lists `BaseButtonDirective` with no `inputs`, and `AriaDisableDirective` / `ariaDisableElement` were dropped in 8c42d3a. Angular does not expose a host directive's inputs unless they're listed explicitly, so:\n\n- `<button bitFab=\"bwi-plus\" disabled>` sets the **native** `disabled` attribute only. `BaseButtonDirective.disabled()` stays `false`, `colorClassList()` is computed with `isDisabled: false`, and the button keeps `tw-bg-bg-brand` — it looks fully enabled while being unclickable.\n- No `aria-disabled` is set, so the `aria-disabled:*` variants in `getButtonColorStyles` never match, and the component diverges from `bitButton` / `bitIconButton`, which both use `AriaDisableDirective` + `ariaDisableElement` specifically to avoid the native `disabled` attribute for a11y.\n\nThe PR description still states the component \"Accepts a `BitwardenIcon`, an accessible `label`, and a `disabled` state\", and the `Disabled` story was removed, so it's unclear whether this was intentional.\n\nIf a disabled state is in scope, restoring it is small:\n\n```ts\nhostDirectives: [\n  AriaDisableDirective,\n  { directive: TooltipDirective, inputs: [\"tooltipPosition\"] },\n  { directive: BaseButtonDirective, inputs: [\"disabled\"] },\n],\n```\n\nplus `ariaDisableElement(element, this.baseButton.disabledAttr)` in the constructor.\n\nIf it's out of scope for VFO1, updating the PR description would avoid consumers reaching for `disabled` and getting the half-wired behavior above.\n</details>",
+      "diffHunk": "@@ -0,0 +1,72 @@\n+import {\n+  ChangeDetectionStrategy,\n+  Component,\n+  effect,\n+  ElementRef,\n+  inject,\n+  input,\n+  model,\n+} from \"@angular/core\";\n+\n+import {\n+  BaseButtonDirective,\n+  BitwardenIcon,\n+  FocusableElement,\n+  IconComponent,\n+  TooltipDirective,\n+  setA11yTitleAndAriaLabel,\n+} from \"@bitwarden/components\";\n+\n+@Component({\n+  selector: \"button[bitFab]\",\n+  templateUrl: \"fab.component.html\",\n+  changeDetection: ChangeDetectionStrategy.OnPush,\n+  providers: [{ provide: FocusableElement, useExisting: BitFabComponent }],\n+  imports: [IconComponent],\n+  host: {\n+    \"[attr.bitFab]\": \"bitFab()\",\n+    class:\n+      \"tw-relative tw-inline-flex tw-items-center tw-justify-center tw-shrink-0 tw-size-12 tw-rounded-full tw-shadow-md\",\n+  },\n+  hostDirectives: [\n+    { directive: TooltipDirective, inputs: [\"tooltipPosition\"] },\n+    { directive: BaseButtonDirective },\n+  ],",
+      "url": "https://github.com/bitwarden/clients/pull/22523#discussion_r3813970497"
+    },
+    {
+      "id": 3814048530,
+      "review": 4973453540,
+      "replyTo": 3813970497,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "path": "libs/vault/src/components/fab/fab.component.ts",
+      "line": 34,
+      "originalLine": 34,
+      "commit": "ebf711e5d7556603cd189935c2fbffd96db754d6",
+      "originalCommit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "at": "2026-08-19T14:48:13Z",
+      "body": "The current usage of vault will be for adding an item on the extension, we will never need a disabled state for that use case. ",
+      "diffHunk": "@@ -0,0 +1,72 @@\n+import {\n+  ChangeDetectionStrategy,\n+  Component,\n+  effect,\n+  ElementRef,\n+  inject,\n+  input,\n+  model,\n+} from \"@angular/core\";\n+\n+import {\n+  BaseButtonDirective,\n+  BitwardenIcon,\n+  FocusableElement,\n+  IconComponent,\n+  TooltipDirective,\n+  setA11yTitleAndAriaLabel,\n+} from \"@bitwarden/components\";\n+\n+@Component({\n+  selector: \"button[bitFab]\",\n+  templateUrl: \"fab.component.html\",\n+  changeDetection: ChangeDetectionStrategy.OnPush,\n+  providers: [{ provide: FocusableElement, useExisting: BitFabComponent }],\n+  imports: [IconComponent],\n+  host: {\n+    \"[attr.bitFab]\": \"bitFab()\",\n+    class:\n+      \"tw-relative tw-inline-flex tw-items-center tw-justify-center tw-shrink-0 tw-size-12 tw-rounded-full tw-shadow-md\",\n+  },\n+  hostDirectives: [\n+    { directive: TooltipDirective, inputs: [\"tooltipPosition\"] },\n+    { directive: BaseButtonDirective },\n+  ],",
+      "url": "https://github.com/bitwarden/clients/pull/22523#discussion_r3814048530"
+    },
+    {
+      "id": 3814980334,
+      "review": 4974607108,
+      "replyTo": 3813954119,
+      "user": {
+        "login": "vleague2",
+        "type": "User"
+      },
+      "path": "libs/vault/src/components/fab/fab.component.ts",
+      "line": null,
+      "originalLine": 21,
+      "commit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "originalCommit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "at": "2026-08-19T16:47:42Z",
+      "body": "Hmm yeah we only use `bit` when it's actually in the CL. I would change this to not use that prefix for now. (There is always the possibility that we will not end up moving this into the CL depending on priorities!)",
+      "diffHunk": "@@ -0,0 +1,72 @@\n+import {\n+  ChangeDetectionStrategy,\n+  Component,\n+  effect,\n+  ElementRef,\n+  inject,\n+  input,\n+  model,\n+} from \"@angular/core\";\n+\n+import {\n+  BaseButtonDirective,\n+  BitwardenIcon,\n+  FocusableElement,\n+  IconComponent,\n+  TooltipDirective,\n+  setA11yTitleAndAriaLabel,\n+} from \"@bitwarden/components\";\n+\n+@Component({\n+  selector: \"button[bitFab]\",",
+      "url": "https://github.com/bitwarden/clients/pull/22523#discussion_r3814980334"
+    },
+    {
+      "id": 3815578186,
+      "review": 4975354006,
+      "replyTo": 3813954119,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "path": "libs/vault/src/components/fab/fab.component.ts",
+      "line": null,
+      "originalLine": 21,
+      "commit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "originalCommit": "8c42d3ad521c4e52bd9080a7aa3ae62cbab1e693",
+      "at": "2026-08-19T18:12:49Z",
+      "body": "Can do! [db826ce](https://github.com/bitwarden/clients/pull/22523/commits/db826ce4e08d4e05d5fea73a3552be08d507f7c1)",
+      "diffHunk": "@@ -0,0 +1,72 @@\n+import {\n+  ChangeDetectionStrategy,\n+  Component,\n+  effect,\n+  ElementRef,\n+  inject,\n+  input,\n+  model,\n+} from \"@angular/core\";\n+\n+import {\n+  BaseButtonDirective,\n+  BitwardenIcon,\n+  FocusableElement,\n+  IconComponent,\n+  TooltipDirective,\n+  setA11yTitleAndAriaLabel,\n+} from \"@bitwarden/components\";\n+\n+@Component({\n+  selector: \"button[bitFab]\",",
+      "url": "https://github.com/bitwarden/clients/pull/22523#discussion_r3815578186"
+    }
+  ],
+  "comments": [
+    {
+      "id": 5333545812,
+      "user": {
+        "login": "github-actions[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-18T20:15:33Z",
+      "updated": "2026-08-19T20:39:32Z",
+      "body": "## 🤖 Bitwarden Claude Code Review\n\n**Overall Assessment:** APPROVE\n\nRe-reviewed at `ebf711e`; no code has changed since the previous pass, so no new inline comments were added. `VaultFabComponent` mirrors the established `BitIconButtonComponent` composition (host `BaseButtonDirective` + `TooltipDirective`, `FocusableElement` provider, `setA11yTitleAndAriaLabel` in an effect), and the new `libs/components` barrel exports (`BaseButtonDirective`, `FocusableElement`) are what a vault-owned button needs. Tailwind classes (`tw-size-12`, `tw-shadow-md`, `tw-text-2xl`, `fixedWidth`) all resolve against the base theme config and are used elsewhere in the codebase.\n\n<details>\n<summary>Code Review Details</summary>\n\nNo new findings. Previously raised points that the author resolved are intentionally not reopened: omitting `disabled` forwarding to `BaseButtonDirective` (not needed for the extension add-item use case) and dropping `ButtonLikeAbstraction`/loading per UI Foundation guidance that this is a vault-owned component rather than a CL component.\n\n#### PR Metadata Assessment\n\n- ❓ **QUESTION**: The description still says this adds `BitFabComponent` \"to the component library\" with a `disabled` state; the component now ships as `VaultFabComponent` in `libs/vault` with no `disabled` input.\n\n</details>\n\n<!-- bitwarden-code-review -->\n\n<!-- bitwarden-code-review -->",
+      "url": "https://github.com/bitwarden/clients/pull/22523#issuecomment-5333545812"
+    },
+    {
+      "id": 5333639640,
+      "user": {
+        "login": "codecov[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-08-18T20:24:48Z",
+      "updated": "2026-08-19T20:35:47Z",
+      "body": "## [Codecov](https://app.codecov.io/gh/bitwarden/clients/pull/22523?dropdown=coverage&src=pr&el=h1&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) Report\n:x: Patch coverage is `38.09524%` with `13 lines` in your changes missing coverage. Please review.\n:white_check_mark: Project coverage is 54.12%. Comparing base ([`73e7084`](https://app.codecov.io/gh/bitwarden/clients/commit/73e7084d6e124fb694c62bdf2b2d259bb4e83b55?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)) to head ([`ebf711e`](https://app.codecov.io/gh/bitwarden/clients/commit/ebf711e5d7556603cd189935c2fbffd96db754d6?dropdown=coverage&el=desc&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden)).\n:warning: Report is 16 commits behind head on main.\n:white_check_mark: All tests successful. No failed tests found.\n\n| [Files with missing lines](https://app.codecov.io/gh/bitwarden/clients/pull/22523?dropdown=coverage&src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) | Patch % | Lines |\n|---|---|---|\n| [libs/vault/src/components/fab/fab.component.ts](https://app.codecov.io/gh/bitwarden/clients/pull/22523?src=pr&el=tree&filepath=libs%2Fvault%2Fsrc%2Fcomponents%2Ffab%2Ffab.component.ts&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden#diff-bGlicy92YXVsdC9zcmMvY29tcG9uZW50cy9mYWIvZmFiLmNvbXBvbmVudC50cw==) | 18.75% | [13 Missing :warning: ](https://app.codecov.io/gh/bitwarden/clients/pull/22523?src=pr&el=tree&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden) |\n\n<details><summary>Additional details and impacted files</summary>\n\n\n\n```diff\n@@            Coverage Diff             @@\n##             main   #22523      +/-   ##\n==========================================\n+ Coverage   54.05%   54.12%   +0.06%     \n==========================================\n  Files        4309     4312       +3     \n  Lines      136784   137012     +228     \n  Branches    21627    21670      +43     \n==========================================\n+ Hits        73940    74156     +216     \n+ Misses      57442    57438       -4     \n- Partials     5402     5418      +16     \n```\n</details>\n\n[:umbrella: View full report in Codecov by Harness](https://app.codecov.io/gh/bitwarden/clients/pull/22523?dropdown=coverage&src=pr&el=continue&utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).   \n:loudspeaker: Have feedback on the report? [Share it here](https://about.codecov.io/codecov-pr-comment-feedback/?utm_medium=referral&utm_source=github&utm_content=comment&utm_campaign=pr+comments&utm_term=bitwarden).\n<details><summary> :rocket: New features to boost your workflow: </summary>\n\n- :package: [JS Bundle Analysis](https://docs.codecov.com/docs/javascript-bundle-analysis): Save yourself from yourself by tracking and limiting bundle sizes in JS merges.\n</details>",
+      "url": "https://github.com/bitwarden/clients/pull/22523#issuecomment-5333639640"
+    },
+    {
+      "id": 5342567114,
+      "user": {
+        "login": "vleague2",
+        "type": "User"
+      },
+      "at": "2026-08-19T13:07:48Z",
+      "updated": "2026-08-19T13:07:48Z",
+      "body": "@nick-livefront To answer your question and also general feedback -- per the ticket, this should be a vault-owned component, not CL. This gives us the flexibility to approach this as a more specific first-pass for VFO1 without all the rigor requirements of it being a CL component and without needing our explicit involvement. If the other teams need to access it, it can go in another shared lib that vault owns for now.  UIF will pull this into the CL as a follow-up to the beta. \r\n\r\nSo, for your specific loading question, if it's not part of the designs for its current usages in VFO1, it does not need to be implemented.",
+      "url": "https://github.com/bitwarden/clients/pull/22523#issuecomment-5342567114"
+    },
+    {
+      "id": 5342743079,
+      "user": {
+        "login": "nick-livefront",
+        "type": "User"
+      },
+      "at": "2026-08-19T13:22:35Z",
+      "updated": "2026-08-19T13:22:46Z",
+      "body": "> @nick-livefront To answer your question and also general feedback -- per the ticket, this should be a vault-owned component, not CL. \r\n\r\n@vleague2 Ah! I totally misinterpreted that, I appreciate the feedback! I'll move this around to be under vault and scrap anything we don't need right away. \r\n",
+      "url": "https://github.com/bitwarden/clients/pull/22523#issuecomment-5342743079"
+    }
+  ],
+  "citedBy": []
+}

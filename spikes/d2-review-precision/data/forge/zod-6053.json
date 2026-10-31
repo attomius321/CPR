@@ -1,0 +1,55 @@
+{
+  "number": 6053,
+  "title": "fix: preserve explicit superRefine issue input",
+  "body": "`superRefine` currently uses nullish assignment when backfilling an issue's `input`, so an issue author who explicitly passes `input: null` or `input: undefined` has that value replaced with the parsed payload value when `reportInput` is enabled.\n\nThis switches the defaulting check to property presence in both `superRefine` paths, so omitted `input` still reports the parsed value while explicit nullish values are preserved. It also adds regression coverage for both `.superRefine(...)` and top-level `z.superRefine(...)` through `.check(...)`.\n\nValidated with `pnpm test`, `pnpm lint:check`, and `pnpm format:check`.",
+  "user": {
+    "login": "frastefanini",
+    "type": "User"
+  },
+  "baseSha": "912f0f51b0ced654d0069741e7160834dca742ee",
+  "headSha": "009176d08b56e62663b73527b7a138e2c41abde9",
+  "mergedAt": "2026-08-17T00:08:48Z",
+  "mergeCommit": "07b0c3d89736f37f022be99cc5e38f9572567595",
+  "commits": 1,
+  "reviews": [
+    {
+      "id": 4430333307,
+      "user": {
+        "login": "wahajahmed010",
+        "type": "User"
+      },
+      "state": "COMMENTED",
+      "commit": "dad5f41f7dcc7c1180bdad8129757035568893b2",
+      "at": "2026-06-04T18:07:45Z",
+      "body": "Nice catch, @frastefanini! The `??=` nullish assignment was silently swallowing explicit `null`/`undefined` inputs on issues — subtle but real bug.\n\n**Review:**\n\n1. **Root cause analysis**: Correct. `_issue.input ??= payload.value` replaces *any* nullish value with the parsed payload. Since `reportInput` docs say it \"backfills\" omitted input, explicit `null`/`undefined` should be preserved. ✅\n\n2. **Fix**: `if (!(\"input\" in _issue))` is the right approach — it checks property presence rather than value truthiness. Found in both `ZodTransform` (classic schemas.ts) and `_superRefine` (core/api.ts). ✅\n\n3. **Tests**: Good coverage — tests both `.superRefine()` and `.check().superRefine()` paths, with three cases per test (default, explicit null, explicit undefined). ✅\n\n4. **Edge cases considered**:\n   - `issue.code` fallback is left as `??=` — correct, since `code` should never intentionally be null/undefined ✅\n   - `reportInput: true` gating is covered (test uses it) ✅\n   - The default case (omitted `input`) still gets the parsed value via the presence check ✅\n\n5. **One question**: What happens when `reportInput` is false/not set? Looking at the code, `input` defaulting is gated internally — this change should not affect that path since the nullish coalescing in the issue construction itself is separate. Could be worth a test to confirm, but not a blocker.\n\nClean, well-scoped fix for a real bug. Welcome to open source! 🎉",
+      "url": "https://github.com/colinhacks/zod/pull/6053#pullrequestreview-4430333307"
+    },
+    {
+      "id": 4483975471,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "state": "COMMENTED",
+      "commit": "009176d08b56e62663b73527b7a138e2c41abde9",
+      "at": "2026-06-12T08:53:17Z",
+      "body": "> ✅ No new issues found.\n\n**Reviewed changes** — force-push to `009176d` with same fix swapping nullish coalescing (`??=`) for a property-presence check (`\"input\" in _issue`) in both `superRefine` paths, preserving explicit `input: null`/`undefined` on issues.\n\n- **Fix `_issue.input` backfill in `ZodTransform`** — `packages/zod/src/v4/classic/schemas.ts` replaces `_issue.input ??= payload.value` with `if (!(\"input\" in _issue)) _issue.input = payload.value`.\n- **Fix `_issue.input` backfill in `_superRefine`** — `packages/zod/src/v4/core/api.ts` applies the same property-presence check.\n- **Regression test for `.superRefine()`** — `packages/zod/src/v4/classic/tests/refine.test.ts` covers default, explicit `null`, and explicit `undefined` input.\n- **Regression test for `z.superRefine()` via `.check()`** — `packages/zod/src/v4/classic/tests/index.test.ts` covers the top-level superRefine path.\n\n<!--\nPullfrog review metadata — for any agent (or human-with-agent) reading this\nreview. Incorporate the fields below into your understanding of the context\nthis review was made in. The findings below were written against\n009176d; if new commits have landed on fix-super-refine-explicit-input since this review\nwas submitted, treat any specific bug, file, or line callout as POTENTIALLY\nSTALE — re-diff against 009176d (or trigger a fresh review) and\nfactor commits past 009176d into your understanding of the current\nstate before acting on findings.\n\n- Mode: IncrementalReview (delta against prior pullfrog review)\n- Files reviewed: 4\n- Commits reviewed: 1\n- Base: main (912f0f5)\n- Head: fix-super-refine-explicit-input (009176d)\n- Reviewed commits:\n  - 009176d — Preserve explicit superRefine issue input\n- Prior pullfrog review: none\n- Submitted at: 2026-06-12T08:52:21Z\n-->\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/27405241518/job/80992671972) ｜ Using `DeepSeek Pro` (free via [Pullfrog for OSS](https://pullfrog.com/for-oss)) ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6053#pullrequestreview-4483975471"
+    }
+  ],
+  "inline": [],
+  "comments": [
+    {
+      "id": 4611390355,
+      "user": {
+        "login": "pullfrog[bot]",
+        "type": "Bot"
+      },
+      "at": "2026-06-03T10:28:46Z",
+      "updated": "2026-06-03T10:48:24Z",
+      "body": "**Run failed.** [View the logs →](https://github.com/colinhacks/zod/actions/runs/26878938787)\n\n<!-- PULLFROG_DIVIDER_DO_NOT_REMOVE_PLZ -->\n<sup><a href=\"https://pullfrog.com\"><picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://pullfrog.com/logos/frog-white-full-18px.png\"><img src=\"https://pullfrog.com/logos/frog-green-full-18px.png\" width=\"9px\" height=\"9px\" style=\"vertical-align: middle; \" alt=\"Pullfrog\"></picture></a>&nbsp;&nbsp;｜ [Rerun failed job ➔](https://pullfrog.com/trigger/colinhacks/zod/26878938787?action=rerun) ｜ [View workflow run](https://github.com/colinhacks/zod/actions/runs/26878938787) ｜ via [Pullfrog](https://pullfrog.com) ｜ Using `Kimi K2` ｜ [𝕏](https://x.com/pullfrogai)</sup>",
+      "url": "https://github.com/colinhacks/zod/pull/6053#issuecomment-4611390355"
+    }
+  ],
+  "citedBy": []
+}

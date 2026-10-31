@@ -1,0 +1,55 @@
+{
+  "about": "Later commits on main that fix or undo what an analyzed pull request did, found by followups.mjs (reverts, mentions, fix commits changing the pull request's symbols) and read by hand. Other candidates were later fixes of the same functions not caused by the pull request (their messages say what they fix).",
+  "followups": [
+    {
+      "pr": "bitwarden#22260",
+      "followup": "51c775bdb8",
+      "subject": "[PM-43782] fix: uncheck select-all after clearing a capped selection (#23227)",
+      "date": "2026-09-17",
+      "kind": "fix, 3 days after the merge",
+      "symbiote": null,
+      "ai": [
+        "ai:bitwarden#22260/4007570178"
+      ],
+      "note": "claude[bot]'s comment on the final head described this exact bug (Angular skips an unchanged [checked] write after a capped select-all, so the header renders checked with nothing selected); it got no reply before the merge. None of Symbiote's 13 findings on #22260 names the template or the selection model."
+    },
+    {
+      "pr": "zod#6391",
+      "followup": "bd6619c06 (inside #6380, commit aebe2d4b)",
+      "subject": "feat(json-schema): accept a function for `unrepresentable` (#6380), which reverts #6391",
+      "date": "2026-08-13",
+      "kind": "revert, the next day",
+      "symbiote": null,
+      "ai": [
+        "ai:zod#6391/3772672907",
+        "ai:zod#6391/3772672912"
+      ],
+      "note": "pullfrog named the flaw of the deferred-throw design (a denylist of annotation keys lets any key waive the error). Symbiote's 12 findings on #6391 are parameter renames and a compatible optional member."
+    },
+    {
+      "pr": "zod#6536",
+      "followup": "413cce9a8",
+      "subject": "fix(v4): make z.properties() a check again (#6594)",
+      "date": "2026-09-12",
+      "kind": "partial revert, 12 days later",
+      "symbiote": [
+        "zod#6536/f2"
+      ],
+      "ai": [
+        "ai:zod#6536/3897695628",
+        "ai:zod#6536/3897695633"
+      ],
+      "note": "#6594: \"The schema form was a trap with transforms. A transform inside the shape ran and was discarded\". pullfrog named that on #6536 (output typed from children whose output is discarded); the typing was fixed before merge, the design reverted later. Symbiote's f2 flagged that z.properties changed (the API that was reverted), not why it was a trap."
+    },
+    {
+      "pr": "zod#6092",
+      "followup": "604464c30",
+      "subject": "fix(locales): da/nn/no/sv called an IP address a range (#6430)",
+      "date": "2026-08-16",
+      "kind": "fix, 0 days later",
+      "symbiote": null,
+      "ai": [],
+      "note": "A wrong noun copied into the new nn locale; a string-content error no reviewer flagged."
+    }
+  ]
+}
