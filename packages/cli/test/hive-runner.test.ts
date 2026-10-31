@@ -514,7 +514,16 @@ describe('Hive off, on again, a killed runner', () => {
     expect(await readHive(s.where, 'feature/check')).toMatchObject({
       step: 'landing',
       checks: [{ round: 1, ok: true }],
-    });
+    }); // Its events say Hive went off, the check stopped, Hive came on and ran it again.
+    expect(events(s.where, 'feature/check').slice(2)).toEqual([
+      'check-started',
+      'off',
+      'check-stopped',
+      'on',
+      'check-started',
+      'check',
+      'landing',
+    ]);
   });
 
   it('a killed runner: the next kills its orphaned check and runs it again, and leaves a working writer be', async () => {

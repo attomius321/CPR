@@ -530,6 +530,7 @@ export function hiveRunner(
           delete again.check;
           delete again.interrupted;
           await save(where, again);
+          await event(where, record.branch, 'on', { step: 'checking' });
         }
         continue;
       }
