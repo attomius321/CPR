@@ -85,6 +85,20 @@ export function formerText(
 }
 
 /**
+ * What Nucleus's page says of a conversation started under its other name (decision 678): Alpha
+ * Ceph's, started while Hive mode was on, now off, or Nucleus's now on. It keeps the name its
+ * prompt gave it until New conversation; null when the names agree, or for none.
+ */
+export function otherNameText(
+  conversation: Pick<PageAgentConversation, 'name'> | null,
+  name: string,
+): string | null {
+  if (!conversation) return null;
+  const started = conversation.name ?? 'Nucleus';
+  return started === name ? null : `Started as ${started}: New conversation starts ${name}.`;
+}
+
+/**
  * Nucleus's conversation as its Activity tab reads an agent's state (NU2): working while it
  * answers, waiting on a dialog or after Esc, else done, stopped, failed or not running.
  */

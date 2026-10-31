@@ -9,6 +9,7 @@ import { nucleusEvents, nucleusRawLines } from '../workspaces/activity/events.js
 import { activityGroups } from '../workspaces/activity/groups.js';
 import { liveActivity } from '../workspaces/activity/live.js';
 import { nucleusAgent } from './page-agent.js';
+import { useNucleusName } from '../shell/names.js';
 
 /** Nucleus's activity, read again with each read of its state; null until the first answers. */
 function useNucleusActivity(read: PageAgentState | null): Activity | null {
@@ -30,6 +31,7 @@ function useNucleusActivity(read: PageAgentState | null): Activity | null {
 
 export function NucleusActivity({ read }: { read: PageAgentState | null }) {
   const activity = useNucleusActivity(read);
+  const name = useNucleusName();
   const conversation = read?.conversation ?? null;
   const agent = useMemo(() => nucleusAgent(conversation), [conversation]);
   const worktree = read?.checkout ?? '';
@@ -43,11 +45,11 @@ export function NucleusActivity({ read }: { read: PageAgentState | null }) {
     () => liveActivity(agent, worktree, events, groups),
     [agent, worktree, events, groups],
   );
-  if (!activity) return <p className="hint activity-empty">Reading what Nucleus did…</p>;
+  if (!activity) return <p className="hint activity-empty">Reading what {name} did…</p>;
   if (activity.lines.length === 0) {
     return (
       <p className="hint activity-empty">
-        Nothing recorded yet: what Nucleus does is recorded from its next conversation, or its
+        Nothing recorded yet: what {name} does is recorded from its next conversation, or its
         session&apos;s next wake.
       </p>
     );

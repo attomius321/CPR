@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from 'react';
 import { useHive } from '../shell/hive.js';
+import { iconCells } from './hive-art.js';
 import mark from './mark.png';
 import markLarge from './mark-96.png';
 import markHive from './mark-hive.png';
@@ -45,13 +46,75 @@ export const GitIcon = () => (
   </Icon>
 );
 
-/** Nucleus (NU1; Scout's compass before): a nucleus in its ring, lucide's circle-dot (ISC). */
-export const NucleusIcon = () => (
-  <Icon lucide>
-    <circle cx="12" cy="12" r="10" />
-    <circle cx="12" cy="12" r="1" />
-  </Icon>
-);
+/**
+ * Nucleus (NU1; Scout's compass before): a nucleus in its ring, lucide's circle-dot (ISC); while
+ * Hive mode is on, Alpha Ceph's Hive Mind (decision 676).
+ */
+export function NucleusIcon() {
+  return useHive() ? (
+    <HiveMindIcon />
+  ) : (
+    <Icon lucide>
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="1" />
+    </Icon>
+  );
+}
+
+/** A hexagon's corners, a point up, for an SVG `points`. */
+const hexagon = (x: number, y: number, r: number) =>
+  Array.from({ length: 6 }, (_, k) => {
+    const a = ((k * 60 - 90) * Math.PI) / 180;
+    return `${(x + r * Math.cos(a)).toFixed(2)},${(y + r * Math.sin(a)).toFixed(2)}`;
+  }).join(' ');
+
+/** The icon's cells, made once: the Mind's core and first ring (`iconCells`). */
+const MIND_CELLS = iconCells().map((cell) => ({
+  ...cell,
+  plate: hexagon(cell.x, cell.y, cell.plate),
+  chamber: hexagon(cell.x, cell.y, cell.chamber),
+}));
+
+/**
+ * Alpha Ceph (decision 676): the Hive Mind of Hive's arrival (decision 666), small and still — its
+ * core and first ring, gunmetal plates lit from the upper left, crimson chambers, the core
+ * white-hot. In its own colours (`--art-icon-*`, `hive.css`), not the text's: a link's state shows
+ * in its band, its dot and its words.
+ */
+export function HiveMindIcon() {
+  const id = useId();
+  return (
+    <svg className="icon hive-mind-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id={`${id}metal`} x1="0.2" y1="0" x2="0.8" y2="1">
+          <stop className="metal-lit" />
+          <stop className="metal" offset="0.5" />
+          <stop className="metal-deep" offset="1" />
+        </linearGradient>
+        <radialGradient id={`${id}lamp`}>
+          <stop className="lamp-hot" />
+          <stop className="lamp" offset="0.5" />
+          <stop className="glow" offset="1" />
+        </radialGradient>
+        <radialGradient id={`${id}core`}>
+          <stop className="white" />
+          <stop className="spec" offset="0.45" />
+          <stop className="lamp" offset="1" />
+        </radialGradient>
+      </defs>
+      {MIND_CELLS.map((cell) => (
+        <g key={`${cell.x},${cell.y}`}>
+          <polygon className="plate" points={cell.plate} fill={`url(#${id}metal)`} />
+          <polygon
+            className="chamber"
+            points={cell.chamber}
+            fill={`url(#${id}${cell.core ? 'core' : 'lamp'})`}
+          />
+        </g>
+      ))}
+    </svg>
+  );
+}
 
 /** The web (NU2): Nucleus's searches and pages, lucide's globe (ISC). */
 export const GlobeIcon = () => (

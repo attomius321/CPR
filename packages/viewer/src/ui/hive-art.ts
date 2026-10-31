@@ -761,3 +761,36 @@ export function arrivalScene({
 export function arrivalScale(width: number, height: number, dpr: number): number {
   return Math.min(1, Math.sqrt(0.9e6 / (width * dpr * height * dpr)));
 }
+
+// ---------- Alpha Ceph's icon ----------
+
+/** A cell of the Mind drawn as an icon: its centre, its plate's and its chamber's circumradius. */
+export interface IconCell {
+  readonly x: number;
+  readonly y: number;
+  readonly plate: number;
+  readonly chamber: number;
+  /** The core: its chamber larger, white-hot. */
+  readonly core: boolean;
+}
+
+/** The icon's cell circumradius on lucide's 24-unit grid, and the gap between two plates. */
+const ICON_R = 4.35;
+const ICON_GAP = 0.6;
+
+/**
+ * Alpha Ceph's icon (decision 676): the Mind's core and its first ring, 7 cells where `Mind` puts
+ * them, on lucide's 24-unit grid. Its outer ring blurs at 18 px, so it is left out.
+ */
+export function iconCells(): IconCell[] {
+  const plate = ICON_R - ICON_GAP;
+  return new Mind(12, 12, ICON_R).cells
+    .filter((cell) => cell.ring <= 1)
+    .map((cell) => ({
+      x: cell.x,
+      y: cell.y,
+      plate,
+      chamber: plate * (cell.ring === 0 ? 0.74 : 0.56),
+      core: cell.ring === 0,
+    }));
+}

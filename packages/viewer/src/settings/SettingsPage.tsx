@@ -29,8 +29,10 @@ import {
   promptOfUrl,
   sizeOf,
   PREBUILT_GROUP,
+  agentName,
   type PrebuiltAgent,
 } from './settings.js';
+import { nucleusName } from '../shell/names.js';
 import {
   AGENT_NAMES,
   effortChoices,
@@ -121,7 +123,7 @@ interface AgentSettings {
   effort: EffortSetting;
 }
 
-const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
+const AGENTS: Record<Exclude<PrebuiltAgent, 'Nucleus'>, AgentSettings> = {
   Merger: {
     api: '/api/merges',
     who: 'The merger',
@@ -140,29 +142,6 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
       ),
       atDefault: 'the merger runs it at its default',
       saved: (level) => `Saved. The merger agent's next run is asked at ${level}.`,
-    },
-  },
-  Nucleus: {
-    api: '/api/nucleus',
-    who: 'Nucleus',
-    whose: "Nucleus's",
-    model: {
-      key: 'nucleus.model',
-      about: "The model each of Nucleus's conversations starts on",
-      saved: (model) => `Saved. Nucleus's next conversation starts on ${model}.`,
-      unlisted: 'Nucleus starts on the default',
-    },
-    effort: {
-      key: 'nucleus.effort',
-      about: "The level each of Nucleus's conversations starts at",
-      also: (
-        <>
-          A running conversation keeps its own: New conversation on Nucleus&apos;s page starts the
-          next on this level, and <code>/effort</code> in its terminal changes a running one.
-        </>
-      ),
-      atDefault: 'Nucleus starts it at its default',
-      saved: (level) => `Saved. Nucleus's next conversation starts at ${level}.`,
     },
   },
   Scribe: {
@@ -189,6 +168,35 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
     },
   },
 };
+
+/** Nucleus's settings in its name: Alpha Ceph's while Hive mode is on (decision 674). */
+const nucleusSettings = (name: string): AgentSettings => ({
+  api: '/api/nucleus',
+  who: name,
+  whose: `${name}'s`,
+  model: {
+    key: 'nucleus.model',
+    about: `The model each of ${name}'s conversations starts on`,
+    saved: (model) => `Saved. ${name}'s next conversation starts on ${model}.`,
+    unlisted: `${name} starts on the default`,
+  },
+  effort: {
+    key: 'nucleus.effort',
+    about: `The level each of ${name}'s conversations starts at`,
+    also: (
+      <>
+        A running conversation keeps its own: New conversation on {name}&apos;s page starts the next
+        on this level, and <code>/effort</code> in its terminal changes a running one.
+      </>
+    ),
+    atDefault: `${name} starts it at its default`,
+    saved: (level) => `Saved. ${name}'s next conversation starts at ${level}.`,
+  },
+});
+
+/** A prebuilt agent's settings, Nucleus's in the name Hive mode gives it. */
+const agentSettings = (agent: PrebuiltAgent, hive: boolean): AgentSettings =>
+  agent === 'Nucleus' ? nucleusSettings(nucleusName(hive)) : AGENTS[agent];
 
 /**
  * The advisor's model and level on `kind` (V75c, decision 556): read and set where Nucleus's are,
@@ -554,7 +562,7 @@ export function SettingsPage() {
             <AgentPage
               key={current.key}
               name={current.agent}
-              settings={AGENTS[current.agent]}
+              settings={agentSettings(current.agent, hive)}
               onSaved={() => void load()}
               onBack={back}
             >
@@ -991,6 +999,8 @@ function PromptEditor({
   onLoad: () => void;
   onBack: () => void;
 }) {
+  // Nucleus's group by its name: Alpha Ceph's while Hive mode is on (decision 674).
+  const group = agentName(prompt.group, useHive());
   const text = draft ?? prompt.text;
   const edited = isEdited(prompt, draft);
   const problem = draftProblem(prompt, text);
@@ -1173,10 +1183,10 @@ function PromptEditor({
     </section>
   ) : (
     <SettingsCard
-      label={`${prompt.group}: ${prompt.title}`}
+      label={`${group}: ${prompt.title}`}
       title={
         <>
-          {`${prompt.group}: ${prompt.title}`}
+          {`${group}: ${prompt.title}`}
           {chip}
         </>
       }

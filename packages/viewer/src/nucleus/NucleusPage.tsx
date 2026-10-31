@@ -11,7 +11,8 @@ import {
   usePageAgent,
 } from './Conversation.js';
 import { tip } from '../ui/tip.js';
-import { formerText } from './page-agent.js';
+import { formerText, otherNameText } from './page-agent.js';
+import { useNucleusName } from '../shell/names.js';
 import { NucleusActivity } from './NucleusActivity.js';
 
 /** Nucleus's two views (NU2): its terminal, and what it did. */
@@ -30,7 +31,9 @@ const API = '/api/nucleus';
  * Nucleus's, without the web, and the page says so until New conversation (decision 591). Since V50
  * the page is its terminal: opened with no question, which the terminal takes. Since V78 nothing
  * on the page picks its agent, model or level (decision 569): Settings does, and its head says
- * what the conversation runs on; New conversation starts the next on Settings'.
+ * what the conversation runs on; New conversation starts the next on Settings'. While Hive mode is
+ * on it is Alpha Ceph (decision 674); a conversation keeps the name it started under, and the page
+ * says so until New conversation (decision 678).
  */
 export function NucleusPage() {
   const { nucleus: read } = useWorkspaces();
@@ -42,7 +45,9 @@ export function NucleusPage() {
     window.history.replaceState(window.history.state, '', url);
   };
   const agent = usePageAgent(API, read);
-  const former = formerText(read?.conversation ?? null, 'Nucleus');
+  const name = useNucleusName();
+  const conversation = read?.conversation ?? null;
+  const former = formerText(conversation, name) ?? otherNameText(conversation, name);
   return (
     <section className="nucleus-page" aria-labelledby="nucleus-title">
       {/* The page frame's head (V72): what it reads and runs on its line; its state and New
@@ -50,14 +55,14 @@ export function NucleusPage() {
       <PageHead
         className="nucleus-head"
         icon={<NucleusIcon />}
-        title="Nucleus"
+        title={name}
         titleId="nucleus-title"
         beside={
-          <Help label="About Nucleus">
+          <Help label={`About ${name}`}>
             <p>
               Where something is decided, why it works this way, what touches it; and your
               workspaces from a start to a merge: what waits for you, a plan to answer, a
-              branch&apos;s review, its merge. Nucleus reads this checkout&apos;s files and history,
+              branch&apos;s review, its merge. {name} reads this checkout&apos;s files and history,
               searches the web and reads pages, and changes no file; it acts through Symbiote, and
               asks you to confirm a start, a verdict, a merge or a clean-up first.
             </p>
@@ -86,7 +91,7 @@ export function NucleusPage() {
       {/* The page's card (V61), in the page frame since V72: its terminal, and since NU2 what it
           did, as line tabs on the card's head as a workspace's are. */}
       <div className="nucleus-card">
-        <div className="workspace-views" role="tablist" aria-label="Nucleus">
+        <div className="workspace-views" role="tablist" aria-label={name}>
           {(['terminal', 'activity'] as const).map((name) => (
             <button
               key={name}
@@ -105,7 +110,7 @@ export function NucleusPage() {
             <NucleusActivity read={read} />
           </div>
         ) : (
-          <PageAgentBody name="Nucleus" api={API} agent={agent} />
+          <PageAgentBody name={name} api={API} agent={agent} />
         )}
       </div>
     </section>

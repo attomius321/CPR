@@ -14,6 +14,7 @@ import {
   type OpenedTerminal,
 } from './AgentTerminal.js';
 import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
+import { useNucleusName } from '../shell/names.js';
 import { ActivityTab } from './ActivityTab.js';
 import { BriefTab } from './BriefTab.js';
 import { ChangesPanel } from './ChangesPanel.js';
@@ -105,7 +106,8 @@ export function WorkspaceView({ branch }: { branch: string }) {
   // The Review tab's "Send to the agent" opens the workspace with `&send=verdict`, once.
   const [send] = useState(sendOfUrl);
   const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
-  const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
+  const nucleusName = useNucleusName();
+  const marks = useMemo(() => reviewMarks(reviews, nucleusName).marks, [reviews, nucleusName]);
   const row = allRows(groups).find((r) => r.workspace.branch === branch);
   const notify = useCallback((notice: Notice | null) => shell?.notify(notice), [shell]);
   const onGone = useCallback(() => shell?.navigate({ page: 'git' }), [shell]);
@@ -192,6 +194,7 @@ function WorkspacePanel({
   onGone: () => void;
 }) {
   const shell = useShell();
+  const nucleusName = useNucleusName();
   const { workspace } = row;
   const { branch, agent } = workspace;
   const [thread, reloadThread] = useThread(branch, version);
@@ -670,7 +673,7 @@ function WorkspacePanel({
             {view === 'brief' && (
               <BriefTab
                 text={workspace.brief}
-                started={startedWith(workspace.agent, workspace.via)}
+                started={startedWith(workspace.agent, workspace.via, nucleusName)}
                 documents={workspace.documents}
               />
             )}

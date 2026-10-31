@@ -243,8 +243,9 @@ test('on a phone, the list first; a prompt or an agent takes the page, and comes
   await entry(page, 'Nucleus').click();
   await expect(list(page)).toBeHidden();
   await expect(part(page, 'Effort').getByRole('slider', { name: 'Effort' })).toBeVisible();
-  // Its system prompt since V50: the person asks in its terminal.
-  await expect(text(page, 'Instructions')).toHaveValue(/^You are Nucleus/);
+  // Its system prompt since V50: the person asks in its terminal. Its name a placeholder since
+  // Alpha Ceph (decision 677): Nucleus, or Alpha Ceph while Hive mode is on.
+  await expect(text(page, 'Instructions')).toHaveValue(/^You are \{name\}/);
   // Nothing wider than the screen.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await editor(page).getByRole('button', { name: 'All settings' }).click();
@@ -503,6 +504,8 @@ test("Nucleus's page: its Model, Effort and Instructions; the effort a stepper o
     'Model',
     'Effort',
     "InstructionsSymbiote's",
+    // {name} since Alpha Ceph (decision 677).
+    'Placeholders',
   ]);
   const effort = part(page, 'Effort').getByRole('slider', { name: 'Effort' });
   await expect(effort).toHaveAttribute('aria-valuetext', "Claude Code's default");

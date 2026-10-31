@@ -49,6 +49,7 @@ import { Resizer } from '../ui/Resizer.js';
 import { nextNucleusMark, type NucleusMark } from '../nucleus/page-agent.js';
 import { mergesWaiting, nucleusWaiting, scribeWaiting } from './waiting.js';
 import { useAsks } from './useAsks.js';
+import { useNucleusName } from './names.js';
 import { useShell, type Notice } from './shell-context.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
@@ -140,7 +141,9 @@ export function Sidenav({
     (start) => !list?.workspaces.some((workspace) => workspace.branch === start.branch),
   );
   const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
-  const marks = useMemo(() => reviewMarks(reviews).marks, [reviews]);
+  // Nucleus by its name: Alpha Ceph while Hive mode is on (decision 674).
+  const nucleusName = useNucleusName();
+  const marks = useMemo(() => reviewMarks(reviews, nucleusName).marks, [reviews, nucleusName]);
   const route = shell?.route;
   const queued = merges?.merges ?? [];
   // What its section lists that waits for the person (N2): the workspaces, the merges.
@@ -255,15 +258,15 @@ export function Sidenav({
         </a>
         <a
           href={NUCLEUS_PAGE}
-          aria-label={nucleusWaits ? 'Nucleus, waits for you' : 'Nucleus'}
+          aria-label={nucleusWaits ? `${nucleusName}, waits for you` : nucleusName}
           {...tip(
             nucleusWaits
-              ? 'Nucleus\nWaits for you'
+              ? `${nucleusName}\nWaits for you`
               : nucleusMark === 'working'
-                ? 'Nucleus\nWorking'
+                ? `${nucleusName}\nWorking`
                 : nucleusMark === 'answered'
-                  ? 'Nucleus\nAnswered while you were away'
-                  : 'Nucleus\nYour orchestrator: ask, research the web, carry a workspace',
+                  ? `${nucleusName}\nAnswered while you were away`
+                  : `${nucleusName}\nYour orchestrator: ask, research the web, carry a workspace`,
             {
               keys: 'a',
               side: 'right',
@@ -280,7 +283,7 @@ export function Sidenav({
           data-state={nucleusWaits ? 'waiting' : (nucleusMark ?? undefined)}
         >
           <NucleusIcon />
-          <span className="sidenav-label">Nucleus</span>
+          <span className="sidenav-label">{nucleusName}</span>
           <AgentMark waits={nucleusWaits} mark={nucleusMark} />
           <kbd aria-hidden="true">a</kbd>
         </a>

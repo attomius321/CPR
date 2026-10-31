@@ -59,6 +59,61 @@
   --art-board: #0a0304;
 }
 
+/* Alpha Ceph's icon (decision 676): the Mind's gunmetal a step lighter than the art's, so its
+   plates read at 16–28 px on the ink and on white; its chambers the art's lamps. */
+.hive-mind-icon {
+  --art-icon-metal-lit: #8a767d;
+  --art-icon-metal: #4f4045;
+  --art-icon-metal-deep: #241b1e;
+  --art-icon-bevel: #d6bac2;
+  --art-icon-lamp-hot: #ff8c98;
+  --art-icon-lamp: #ff283e;
+  --art-icon-glow: #b8101f;
+  --art-icon-spec: #ffe2e6;
+}
+
+.hive-mind-icon .plate {
+  stroke: var(--art-icon-bevel);
+  stroke-opacity: 0.35;
+  stroke-width: 0.45;
+}
+
+.hive-mind-icon .chamber {
+  stroke: none;
+}
+
+.hive-mind-icon .metal-lit {
+  stop-color: var(--art-icon-metal-lit);
+}
+
+.hive-mind-icon .metal {
+  stop-color: var(--art-icon-metal);
+}
+
+.hive-mind-icon .metal-deep {
+  stop-color: var(--art-icon-metal-deep);
+}
+
+.hive-mind-icon .lamp-hot {
+  stop-color: var(--art-icon-lamp-hot);
+}
+
+.hive-mind-icon .lamp {
+  stop-color: var(--art-icon-lamp);
+}
+
+.hive-mind-icon .glow {
+  stop-color: var(--art-icon-glow);
+}
+
+.hive-mind-icon .spec {
+  stop-color: var(--art-icon-spec);
+}
+
+.hive-mind-icon .white {
+  stop-color: #ffffff;
+}
+
 /* --- Hive's arrival (decision 673): the Mind and a hex shutter, then the light; then still --- */
 
 /* The shutter over the whole window, the question's too, under the window's edge (frame.css,

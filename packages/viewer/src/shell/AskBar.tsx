@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { WaitingIcon } from '../ui/icons.js';
 import { askedBy, askLeft } from './asks.js';
+import { useNucleusName } from './names.js';
 import { answerAsk, useAsks } from './useAsks.js';
 
 /**
@@ -10,6 +11,7 @@ import { answerAsk, useAsks } from './useAsks.js';
  */
 export function AskBar() {
   const asks = useAsks();
+  const nucleus = useNucleusName();
   const [now, setNow] = useState(Date.now);
   const [answering, setAnswering] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,10 +32,10 @@ export function AskBar() {
   };
   const more = asks.length - 1;
   return (
-    <section className="ask-bar" aria-label={`${askedBy(ask)} asks`} aria-live="polite">
+    <section className="ask-bar" aria-label={`${askedBy(ask, nucleus)} asks`} aria-live="polite">
       <WaitingIcon />
       <p className="ask-words">
-        <span className="ask-who">{askedBy(ask)} asks:</span> {ask.words}
+        <span className="ask-who">{askedBy(ask, nucleus)} asks:</span> {ask.words}
       </p>
       <span className="ask-left">{askLeft(ask, now)}</span>
       {more > 0 && <span className="ask-more">{more} more after it</span>}

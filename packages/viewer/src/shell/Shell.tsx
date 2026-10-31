@@ -17,6 +17,7 @@ import {
   type Route,
 } from './pages.js';
 import { NucleusPage } from '../nucleus/NucleusPage.js';
+import { useNucleusName } from './names.js';
 import { SettingsPage } from '../settings/SettingsPage.js';
 import { SkillsPage } from '../skills/SkillsPage.js';
 import { MonitorPage } from '../monitor/MonitorPage.js';
@@ -325,13 +326,15 @@ function WindowTitle({ route, repo }: { route: Route; repo: string | undefined }
       ? list?.workspaces.find((workspace) => workspace.branch === route.branch)
       : undefined;
   const name = picked ? workspaceName(picked) : undefined;
+  // Nucleus's page by its name: Alpha Ceph's while Hive mode is on (decision 674).
+  const nucleus = useNucleusName();
   const what = useWaiting();
   const count = what ? waitingCount(what) : null;
   useTellApp(count);
   const waiting = count ?? 0;
   useEffect(() => {
-    const title = routeTitle(route, repo, name);
+    const title = routeTitle(route, repo, name, nucleus);
     document.title = waiting > 0 ? `(${waiting}) ${title}` : title;
-  }, [route, repo, name, waiting]);
+  }, [route, repo, name, nucleus, waiting]);
   return null;
 }
