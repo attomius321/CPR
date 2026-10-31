@@ -385,7 +385,7 @@ describe('promptSettingsService', () => {
   });
 });
 
-describe("Nucleus's name in its prompt (Alpha Ceph, decision 677)", () => {
+describe("Nucleus's name in its prompt (Alpha Ceph, decision 685)", () => {
   /** main's text before Alpha Ceph: its SHA-256, length, and one "Nucleus" in it. */
   const MAIN = 'be549465b6ac31a946aa643e45b57d00be8f0a397a49f23ec6345e29171f56af';
   const sha = (text: string) => createHash('sha256').update(text).digest('hex');

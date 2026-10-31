@@ -136,14 +136,14 @@ function worktreeProblem(folder: string, worktrees: () => readonly string[]): st
 export interface GateOptions {
   reach?: NucleusReach;
   web?: boolean;
-  /** The name the conversation started under when not Nucleus (Alpha Ceph, decision 678). */
+  /** The name the conversation started under when not Nucleus (Alpha Ceph, decision 686). */
   name?: string;
 }
 
 /**
  * The gate's options from its arguments: the checkout and the records folder (V80), `--web`
  * when the conversation was started with the web (NU1), and `--name=` when it was started under
- * another name than Nucleus's (Alpha Ceph, decision 678). A settings file written before NU1, or
+ * another name than Nucleus's (Alpha Ceph, decision 686). A settings file written before NU1, or
  * with `nucleus.web` false, gives no web; one written before V80, no reach.
  */
 export function gateOptions(args: readonly string[]): GateOptions {
@@ -152,7 +152,7 @@ export function gateOptions(args: readonly string[]): GateOptions {
   return { ...(reach ? { reach } : {}), web: args.includes('--web'), ...(name ? { name } : {}) };
 }
 
-/** The gate's argument naming the conversation (decision 678): `--name=Alpha Ceph`. */
+/** The gate's argument naming the conversation (decision 686): `--name=Alpha Ceph`. */
 export const NAME_ARG = '--name=';
 
 /** Claude Code's tools on the web (NU1): a search at Anthropic, a page read by GET from here. */
@@ -394,7 +394,7 @@ function ownOptions(
  * program, optionally piped into `head`, `tail`, `wc` or `grep`. With `worktrees` (Nucleus's, V80):
  * also `-C <a workspace's worktree>`, where `git diff` is refused (it rewrites the index), and
  * `diff-index` and `--no-optional-locks status`, here and there. `who` runs them: Nucleus, or the
- * name its conversation started under (decision 678).
+ * name its conversation started under (decision 686).
  */
 export function gitReadProblem(
   command: string,

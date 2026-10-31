@@ -278,7 +278,7 @@ describe('gateDecision (V35)', () => {
   });
 });
 
-describe("the gate's words in Alpha Ceph's name (decision 678)", () => {
+describe("the gate's words in Alpha Ceph's name (decision 686)", () => {
   const input = (tool_name: string, tool_input: unknown) => ({
     hook_event_name: 'PreToolUse',
     session_id: 's',

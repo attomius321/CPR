@@ -59,7 +59,7 @@
   --art-board: #0a0304;
 }
 
-/* Alpha Ceph's icon (decision 676): the Mind's gunmetal a step lighter than the art's, so its
+/* Alpha Ceph's icon (decision 684): the Mind's gunmetal a step lighter than the art's, so its
    plates read at 16–28 px on the ink and on white; its chambers the art's lamps. */
 .hive-mind-icon {
   --art-icon-metal-lit: #8a767d;

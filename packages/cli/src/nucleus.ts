@@ -20,7 +20,7 @@ import { readWorkspaceConfig } from './workspaces.js';
 
 /**
  * The name Nucleus's session and thread are given: how a new one is told from the person's. Kept
- * in Hive mode (decision 674), so a session started either way is found.
+ * in Hive mode (decision 682), so a session started either way is found.
  */
 export const NUCLEUS_NAME = 'Nucleus';
 
@@ -44,7 +44,7 @@ const webOn = (root: string) => readWorkspaceConfig(root).nucleusWeb !== false;
  */
 const NUCLEUS: PageAgentSpec = {
   name: NUCLEUS_NAME,
-  // Alpha Ceph while Hive mode is on (decision 674).
+  // Alpha Ceph while Hive mode is on (decision 682).
   hiveName: NUCLEUS_NAMES.hive,
   about: NUCLEUS_ABOUT,
   record: 'nucleus.json',
@@ -53,7 +53,7 @@ const NUCLEUS: PageAgentSpec = {
   permissionMode: 'dontAsk',
   // No `folders`, which Codex would write: its gate opens the worktrees at each call (V80); the web
   // a flag after them (NU1),
-  // and its name when not Nucleus's (decision 678).
+  // and its name when not Nucleus's (decision 686).
   gateArgs: (root, where, name) => [
     root,
     workspacesDir(where),
@@ -61,7 +61,7 @@ const NUCLEUS: PageAgentSpec = {
     ...(name === NUCLEUS_NAME ? [] : [`${NAME_ARG}${name}`]),
   ],
   prompt: (_root, text) => text,
-  // Its name filled in, or told at the end (decision 677); a project's text from before V50 may
+  // Its name filled in, or told at the end (decision 685); a project's text from before V50 may
   // still hold {question}: filled with nothing.
   instructions: (root, name) => nucleusInstructions(readPrompts(root).text.nucleus, name),
   codex: (root) => ({ cwd: root, writes: false }),

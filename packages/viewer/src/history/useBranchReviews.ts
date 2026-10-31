@@ -27,7 +27,7 @@ export function useBranchReviews(): ReturnType<typeof reviewMarks> {
       document.removeEventListener('visibilitychange', load);
     };
   }, []);
-  // An approval through Nucleus by its name: Alpha Ceph's in Hive mode (decision 674).
+  // An approval through Nucleus by its name: Alpha Ceph's in Hive mode (decision 682).
   const nucleus = useNucleusName();
   return useMemo(() => reviewMarks(reviews, nucleus), [reviews, nucleus]);
 }

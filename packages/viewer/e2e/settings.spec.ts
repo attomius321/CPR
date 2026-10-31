@@ -244,7 +244,7 @@ test('on a phone, the list first; a prompt or an agent takes the page, and comes
   await expect(list(page)).toBeHidden();
   await expect(part(page, 'Effort').getByRole('slider', { name: 'Effort' })).toBeVisible();
   // Its system prompt since V50: the person asks in its terminal. Its name a placeholder since
-  // Alpha Ceph (decision 677): Nucleus, or Alpha Ceph while Hive mode is on.
+  // Alpha Ceph (decision 685): Nucleus, or Alpha Ceph while Hive mode is on.
   await expect(text(page, 'Instructions')).toHaveValue(/^You are \{name\}/);
   // Nothing wider than the screen.
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
@@ -504,7 +504,7 @@ test("Nucleus's page: its Model, Effort and Instructions; the effort a stepper o
     'Model',
     'Effort',
     "InstructionsSymbiote's",
-    // {name} since Alpha Ceph (decision 677).
+    // {name} since Alpha Ceph (decision 685).
     'Placeholders',
   ]);
   const effort = part(page, 'Effort').getByRole('slider', { name: 'Effort' });

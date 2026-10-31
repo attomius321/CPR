@@ -286,7 +286,7 @@ function CallFacts({ call, running }: { call: ToolCall; running: boolean }) {
   );
 }
 
-/** What Nucleus's gate said of a call (NU2); Alpha Ceph's in Hive mode (decision 674). */
+/** What Nucleus's gate said of a call (NU2); Alpha Ceph's in Hive mode (decision 682). */
 function GateFact({ gate }: { gate: NonNullable<ToolCall['gate']> }) {
   const name = useNucleusName();
   const said =

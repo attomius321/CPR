@@ -65,7 +65,7 @@ function fresh(): TestRepo {
 }
 
 const NOW = new Date('2026-10-22T09:00:00Z');
-/** Nucleus's system prompt as main gave it: Symbiote's, named Nucleus (decision 677). */
+/** Nucleus's system prompt as main gave it: Symbiote's, named Nucleus (decision 685). */
 const INSTRUCTIONS = nucleusInstructions(DEFAULT_PROMPTS.nucleus, 'Nucleus');
 /** Where Symbiote's gate would be installed. */
 const GATE = '/opt/symbiote/dist/nucleus-hook.js';
@@ -734,7 +734,7 @@ describe('nucleus (V35)', () => {
   });
 });
 
-describe('Alpha Ceph: Nucleus while Hive mode is on (decisions 674-679)', () => {
+describe('Alpha Ceph: Nucleus while Hive mode is on (decisions 682-687)', () => {
   const settingsArgs = (repo: TestRepo, name?: string) =>
     pageAgentSettings({
       node: '/usr/bin/node',

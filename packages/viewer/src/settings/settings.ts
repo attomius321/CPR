@@ -16,7 +16,7 @@ const prebuilt = (group: string): group is PrebuiltAgent =>
 
 /**
  * A prompts' group as Settings shows it: Nucleus's by its name, Alpha Ceph while Hive mode is on
- * (decision 674); its key stays `Nucleus`.
+ * (decision 682); its key stays `Nucleus`.
  */
 export function agentName(group: string, hive: boolean): string {
   return group === 'Nucleus' ? nucleusName(hive) : group;

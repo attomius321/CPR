@@ -496,7 +496,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       return pageAgentRoute(req, res, url, nucleus, {
         api: '/api/nucleus',
         busy: 'Nucleus is being asked',
-        // Said in Alpha Ceph's name while Hive mode is on (decision 674).
+        // Said in Alpha Ceph's name while Hive mode is on (decision 682).
         hiveBusy: `${NUCLEUS_NAMES.hive} is being asked`,
       });
     }

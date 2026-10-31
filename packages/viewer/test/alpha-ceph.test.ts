@@ -1,4 +1,4 @@
-// Alpha Ceph (decisions 674–679): Nucleus's name and icon while Hive mode is on; with it off,
+// Alpha Ceph (decisions 682–687): Nucleus's name and icon while Hive mode is on; with it off,
 // every word as before.
 import type { BranchReviewList, McpAsk, PromptSetting } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
@@ -84,7 +84,7 @@ describe('the words that name Nucleus, both ways', () => {
   });
 });
 
-describe('a conversation started under the other name (decision 678)', () => {
+describe('a conversation started under the other name (decision 686)', () => {
   it('says so until New conversation; nothing when they agree', () => {
     expect(otherNameText({ name: 'Alpha Ceph' }, 'Nucleus')).toBe(
       'Started as Alpha Ceph: New conversation starts Nucleus.',
@@ -98,7 +98,7 @@ describe('a conversation started under the other name (decision 678)', () => {
   });
 });
 
-describe("Alpha Ceph's icon (decision 676)", () => {
+describe("Alpha Ceph's icon (decision 684)", () => {
   it("is the Mind's core and first ring, where the Mind puts them, inside lucide's grid", () => {
     const cells = iconCells();
     expect(cells).toHaveLength(7);

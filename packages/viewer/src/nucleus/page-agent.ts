@@ -85,7 +85,7 @@ export function formerText(
 }
 
 /**
- * What Nucleus's page says of a conversation started under its other name (decision 678): Alpha
+ * What Nucleus's page says of a conversation started under its other name (decision 686): Alpha
  * Ceph's, started while Hive mode was on, now off, or Nucleus's now on. It keeps the name its
  * prompt gave it until New conversation; null when the names agree, or for none.
  */

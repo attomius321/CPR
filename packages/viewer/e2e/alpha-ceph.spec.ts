@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
-// Alpha Ceph (decisions 674–679): while Hive mode is on, Nucleus is called Alpha Ceph and its icon
+// Alpha Ceph (decisions 682–687): while Hive mode is on, Nucleus is called Alpha Ceph and its icon
 // is the Hive Mind; with it off, everything as before. A fake Claude Code, never a real one.
 let symbiote: RunningWorkspaces;
 const errors: string[] = [];
@@ -23,7 +23,7 @@ const pages = (page: Page) => page.getByRole('navigation', { name: 'Pages' });
 const link = (page: Page, name: string) => pages(page).getByRole('link', { name, exact: true });
 const region = (page: Page, name: string) => page.getByRole('region', { name });
 const record = () => join(symbiote.repo, 'symbiote', 'nucleus.json');
-/** The fake's starts of Nucleus's session: its session's name stays Nucleus (decision 674). */
+/** The fake's starts of Nucleus's session: its session's name stays Nucleus (decision 682). */
 const starts = () => symbiote.calls().filter((call) => call.args.includes('Nucleus'));
 const instructions = (at: number) => starts()[at]?.args.at(-1) ?? '';
 /** Hive mode turned on or off as Settings writes it (its custom header), without its arrival. */
@@ -90,6 +90,9 @@ test('Hive on: Alpha Ceph in the sidenav (open and folded), its page, the title 
     agents.getByRole('button', { name: 'Alpha Ceph' }).locator('.hive-mind-icon'),
   ).toBeVisible();
   await agents.getByRole('button', { name: 'Alpha Ceph' }).click();
+  await expect(page.locator('.settings-editor').getByRole('heading').first()).toHaveText(
+    'Alpha Ceph',
+  );
   await expect(page.getByText("Alpha Ceph's system prompt")).toBeVisible();
   await expect(page.getByText("Nucleus's system prompt")).toHaveCount(0);
 });

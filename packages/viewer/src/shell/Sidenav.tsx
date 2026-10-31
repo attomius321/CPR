@@ -141,7 +141,7 @@ export function Sidenav({
     (start) => !list?.workspaces.some((workspace) => workspace.branch === start.branch),
   );
   const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
-  // Nucleus by its name: Alpha Ceph while Hive mode is on (decision 674).
+  // Nucleus by its name: Alpha Ceph while Hive mode is on (decision 682).
   const nucleusName = useNucleusName();
   const marks = useMemo(() => reviewMarks(reviews, nucleusName).marks, [reviews, nucleusName]);
   const route = shell?.route;

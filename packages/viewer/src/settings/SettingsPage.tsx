@@ -169,7 +169,7 @@ const AGENTS: Record<Exclude<PrebuiltAgent, 'Nucleus'>, AgentSettings> = {
   },
 };
 
-/** Nucleus's settings in its name: Alpha Ceph's while Hive mode is on (decision 674). */
+/** Nucleus's settings in its name: Alpha Ceph's while Hive mode is on (decision 682). */
 const nucleusSettings = (name: string): AgentSettings => ({
   api: '/api/nucleus',
   who: name,
@@ -561,7 +561,7 @@ export function SettingsPage() {
             // would be refused as changed since.
             <AgentPage
               key={current.key}
-              name={current.agent}
+              name={agentName(current.agent, hive)}
               settings={agentSettings(current.agent, hive)}
               onSaved={() => void load()}
               onBack={back}
@@ -588,7 +588,8 @@ function AgentPage({
   onBack,
   children,
 }: {
-  name: PrebuiltAgent;
+  /** Its name: Nucleus's, Alpha Ceph while Hive mode is on (decision 682). */
+  name: string;
   settings: AgentSettings;
   onSaved: () => void;
   onBack: () => void;
@@ -999,7 +1000,7 @@ function PromptEditor({
   onLoad: () => void;
   onBack: () => void;
 }) {
-  // Nucleus's group by its name: Alpha Ceph's while Hive mode is on (decision 674).
+  // Nucleus's group by its name: Alpha Ceph's while Hive mode is on (decision 682).
   const group = agentName(prompt.group, useHive());
   const text = draft ?? prompt.text;
   const edited = isEdited(prompt, draft);

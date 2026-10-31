@@ -220,3 +220,30 @@ core against 17 and 18; turning on at 2560×1440 59.5–60 fps against 58.4–60
 
 Not verified: the app's window, a GPU, WSLg's own display, the turn-on in a window.
 
+## Alpha Ceph — Nucleus's name and icon in Hive mode (2026-10-31, branch `feature/alpha-ceph-hive-name`)
+
+Built as planned (decisions 682–687, planned as 674–679): `NUCLEUS_NAMES` in core, the viewer's
+literals typed by it; `{name}` in Nucleus's prompt; a conversation's name in its record and its
+gate's arguments; the Hive Mind as `NucleusIcon` while Hive is on.
+
+**Learned**:
+- **The art's gunmetal vanishes at icon size**: the Mind's plates (`#3b2f34` to `#0c0809`) drawn at
+  18 px on the ink showed only their red chambers. A step lighter (`#8a767d` to `#241b1e`) with a
+  faint bevel reads; 19 cells blur to a dotted disc, and outlines in the text's colour merge into a
+  flower (five candidates in `spikes/alpha-ceph-icon/`).
+- **A placeholder changes what Settings shows even when it changes nothing given**: the default
+  text in the editor reads `{name}`, and the page gains a Placeholders section. Proving "as main"
+  for the agent took a hash of main's text, not a look at the editor.
+- **Settings' agent page title came from the agent's key**, not its entry's name: only the
+  screenshots showed it; the e2e checks it now.
+- **Decision numbers moved again**: `feature/hv3-running-reviewer` planned 674–681 twenty minutes
+  after this plan took 674; the check before finishing caught it.
+
+**Verification**: tests first (CLI 12 and viewer 8 red before); `pnpm check` 2,614 unit tests;
+`alpha-ceph.spec.ts` 2 and the Nucleus, Settings, Hive, activity, shell and Hive-loop specs; Claude
+Haiku with the built prompt says "I'm Alpha Ceph" (Hive on) and "I'm Nucleus" (off); the built gate
+through its settings file's command refuses as Alpha Ceph; Hive off's prompt hashes to main's;
+screenshots of every changed page, both themes, Hive on and off, at 1×.
+
+Not verified: a real Claude Code session started by Symbiote (the trust prompt), a real Codex
+thread, the app's window title.

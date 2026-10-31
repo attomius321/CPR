@@ -388,7 +388,8 @@ The sidenav also opens these pages. Each has a key.
   conversations, as a workspace's does: your messages and its answers with their tokens, every
   command, file read, search and page with what its gate allowed or refused, each call of
   Symbiote's tools, and each **Confirm** with your answer. **Export** takes it out as a
-  workspace's does (`symbiote activity --nucleus`). Nucleus was called Scout before. A
+  workspace's does (`symbiote activity --nucleus`). While Hive mode is on, Nucleus is called
+  Alpha Ceph and its icon is the Hive Mind. Nucleus was called Scout before. A
   conversation that Scout started stays open on this page, without the web, until you press
   **New conversation**.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of

@@ -46,7 +46,7 @@ export interface PageAgentConversation {
   startedAs?: string;
   /**
    * The name it was started under when not its own (Alpha Ceph, Nucleus's in Hive mode, decision
-   * 678): its prompt named it so, and it keeps it until New conversation.
+   * 686): its prompt named it so, and it keeps it until New conversation.
    */
   name?: string;
 }

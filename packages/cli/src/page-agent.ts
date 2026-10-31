@@ -61,7 +61,7 @@ export interface PageAgentSpec {
   /** Its session's and thread's name, and how it speaks of itself. */
   name: string;
   /**
-   * Its name while Hive mode is on (Nucleus's, Alpha Ceph, decision 674): what it is called and
+   * Its name while Hive mode is on (Nucleus's, Alpha Ceph, decision 682): what it is called and
    * calls itself; its session and thread keep `name`, how Symbiote finds them.
    */
   hiveName?: string;
@@ -77,7 +77,7 @@ export interface PageAgentSpec {
    * What its gate is given after its script, at each start and wake: Scribe's, the skills' folder
    * and `folders`; Nucleus's, the checkout and the workspaces' records, whose worktrees it opens
    * (V80, decision 596), `--web` when it has the web (NU1), and the conversation's name when not
-   * its own (Alpha Ceph, decision 678).
+   * its own (Alpha Ceph, decision 686).
    */
   gateArgs(root: string, where: ReviewPlace, name: string): string[];
   /**
@@ -138,7 +138,7 @@ interface ConfigSetting {
   older?: readonly string[];
 }
 
-/** A name a record may keep (decision 678): letters, digits and spaces, as Alpha Ceph. */
+/** A name a record may keep (decision 686): letters, digits and spaces, as Alpha Ceph. */
 const NAME = /^[\p{L}\p{N}][\p{L}\p{N} ]{0,39}$/u;
 
 /** How often Codex's thread is read for the activity while it works (NU2, decision 606). */
@@ -174,7 +174,7 @@ interface PageAgentRecord {
    * reads one whose turn ended on a refused tool, `blocked` and idle. Gone at the first turn seen.
    */
   fresh?: true;
-  /** The name it started under when not its own: Alpha Ceph, in Hive mode (decision 678). */
+  /** The name it started under when not its own: Alpha Ceph, in Hive mode (decision 686). */
   name?: string;
   started: string;
 }
@@ -370,7 +370,7 @@ export interface PageAgentOptions {
   /** Symbiote's MCP bridge (`dist/mcp-stdio.js`, MC1), for an agent whose spec has `mcp`. */
   bridge?: string;
   terminals?: Terminals;
-  /** Whether Hive mode is on (V82): a spec with `hiveName` is called so meanwhile (decision 679). */
+  /** Whether Hive mode is on (V82): a spec with `hiveName` is called so meanwhile (decision 687). */
   hive?: () => Promise<boolean>;
 }
 
@@ -422,7 +422,7 @@ export function pageAgent(
   }: PageAgentOptions,
 ): PageAgent {
   const { name } = spec;
-  /** What it is called now: `hiveName` while Hive mode is on (decision 679), else `name`. */
+  /** What it is called now: `hiveName` while Hive mode is on (decision 687), else `name`. */
   const called = async (): Promise<string> =>
     spec.hiveName && (await hive?.()) ? spec.hiveName : name;
   // Symbiote's MCP server (MC1): its bridge, told who calls and where `symbiote view` is.
@@ -576,7 +576,7 @@ export function pageAgent(
       ...(isLevel(v.effort) ? { effort: v.effort } : {}),
       ...(typeof v.model === 'string' && MODEL_ID.test(v.model) ? { model: v.model } : {}),
       ...(v.fresh === true ? { fresh: true as const } : {}),
-      // A name, words only: it goes into the gate's arguments and the page (decision 678).
+      // A name, words only: it goes into the gate's arguments and the page (decision 686).
       ...(typeof v.name === 'string' && NAME.test(v.name) ? { name: v.name } : {}),
     };
     if (v.agent === 'claude' && text(v.id)) {
@@ -605,7 +605,7 @@ export function pageAgent(
   /**
    * Nucleus's settings file, written when its text differs or it is gone: a session that wakes reads
    * it again, and does not start without it (V18c spike); `as`, the name the conversation started
-   * under (decision 678). Its path.
+   * under (decision 686). Its path.
    */
   async function settingsFile(where: ReviewPlace, as: string): Promise<string> {
     const path = join(folder(where), spec.settings);
@@ -952,7 +952,7 @@ export function pageAgent(
     const model = asked === undefined ? await modelFor(agent) : (asked ?? undefined);
     const at = { ...(level ? { effort: level } : {}), ...(model ? { model } : {}) };
     const first = text === undefined ? {} : { prompt: spec.prompt(root, text) };
-    // Its name for this conversation, kept in its record when not its own (decision 678).
+    // Its name for this conversation, kept in its record when not its own (decision 686).
     const as = await called();
     const named = as === name ? {} : { name: as };
     const instructions = spec.instructions?.(root, as);

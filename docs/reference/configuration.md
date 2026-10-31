@@ -95,7 +95,7 @@ and leaves any other brace as text:
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The lines of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`, `{reviewer}`, `{what}`, `{review}`, `{agents}` |
 | `reviews` | The text of `symbiote/AGENTS.md`, which tells agents how to act on a review | none |
 | `merger` | The merger's instructions | none |
-| `nucleus` | Nucleus's instructions, its system prompt | none |
+| `nucleus` | Nucleus's instructions, its system prompt. While Hive is on, a text without `{name}` gets a line at its end that tells Nucleus its name | `{name}`: Nucleus, or Alpha Ceph while [Hive](#hive-mode) is on |
 | `scribe` | Scribe's instructions, its system prompt. A `{request}` left from an older text is filled with nothing | `{skills}`, `{checkout}`, `{library}` |
 | `library` | What `{library}` becomes in Scribe's prompt when a [skill library](#the-skill-library) is set. Without a library, the line that holds `{library}` is left out | `{folder}` (required), `{skills}` |
 | `hive.start` | What `{hive}` becomes in the first prompt of a workspace [Hive](#hive-mode) drives. Without Hive, the line that holds `{hive}` is left out; a start prompt without `{hive}` gets it at its end | `{check}`, `{rounds}` |
@@ -166,6 +166,11 @@ runs the project's check after each of its turns and sends the agent what fails,
 land the workspace. Its switch is in **Settings**, under **This repository**, **Hive mode**, and
 turning it on asks first. While Hive is on, every page is in ink and crimson, in both themes, and
 the S is crimson.
+
+While Hive is on, Nucleus is called **Alpha Ceph**, on every page and in its own words, and its icon
+is the Hive Mind. Its records and files keep the name `nucleus`. A conversation keeps the name it
+started with: its page says so until **New conversation**, which starts one under the current
+name.
 
 The question shows tendrils that grab a Hive Mind and keep moving while it is open. Turning Hive on,
 the Mind grows to the middle of the window, a blackout closes on it, and the new look appears after

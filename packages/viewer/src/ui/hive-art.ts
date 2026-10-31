@@ -779,7 +779,7 @@ const ICON_R = 4.35;
 const ICON_GAP = 0.6;
 
 /**
- * Alpha Ceph's icon (decision 676): the Mind's core and its first ring, 7 cells where `Mind` puts
+ * Alpha Ceph's icon (decision 684): the Mind's core and its first ring, 7 cells where `Mind` puts
  * them, on lucide's 24-unit grid. Its outer ring blurs at 18 px, so it is left out.
  */
 export function iconCells(): IconCell[] {

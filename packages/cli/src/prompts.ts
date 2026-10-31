@@ -307,7 +307,7 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
     'stopped, commit, and end your turn when the work is done.',
 };
 
-/** What Settings says of Nucleus's prompt, in its name (decision 674). */
+/** What Settings says of Nucleus's prompt, in its name (decision 682). */
 function nucleusAbout(name: string): string {
   return (
     `${name}'s system prompt, from a conversation's start: appended to Claude Code's, Codex's ` +
@@ -317,7 +317,7 @@ function nucleusAbout(name: string): string {
 }
 
 /**
- * Nucleus's system prompt from `text` (`prompts.nucleus`), as `name` (decision 677): `{name}`
+ * Nucleus's system prompt from `text` (`prompts.nucleus`), as `name` (decision 685): `{name}`
  * filled, and `{question}` of a text from before V50 with nothing. A text without `{name}` is
  * told its name in a line at its end in Hive mode only; with Hive off it is given as written.
  */
@@ -813,7 +813,7 @@ export function promptSettingsService(
 ): PromptSettingsService {
   const settings = async (): Promise<PromptSettings> => {
     const read = readPrompts(repo.root);
-    // Nucleus's prompt is said in its name: Alpha Ceph's in Hive mode (decision 674).
+    // Nucleus's prompt is said in its name: Alpha Ceph's in Hive mode (decision 682).
     const named = nucleusName((await hive?.()) ?? false);
     return {
       file: read.file,

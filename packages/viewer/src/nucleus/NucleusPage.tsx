@@ -32,8 +32,8 @@ const API = '/api/nucleus';
  * the page is its terminal: opened with no question, which the terminal takes. Since V78 nothing
  * on the page picks its agent, model or level (decision 569): Settings does, and its head says
  * what the conversation runs on; New conversation starts the next on Settings'. While Hive mode is
- * on it is Alpha Ceph (decision 674); a conversation keeps the name it started under, and the page
- * says so until New conversation (decision 678).
+ * on it is Alpha Ceph (decision 682); a conversation keeps the name it started under, and the page
+ * says so until New conversation (decision 686).
  */
 export function NucleusPage() {
   const { nucleus: read } = useWorkspaces();

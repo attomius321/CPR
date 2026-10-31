@@ -326,7 +326,7 @@ function WindowTitle({ route, repo }: { route: Route; repo: string | undefined }
       ? list?.workspaces.find((workspace) => workspace.branch === route.branch)
       : undefined;
   const name = picked ? workspaceName(picked) : undefined;
-  // Nucleus's page by its name: Alpha Ceph's while Hive mode is on (decision 674).
+  // Nucleus's page by its name: Alpha Ceph's while Hive mode is on (decision 682).
   const nucleus = useNucleusName();
   const what = useWaiting();
   const count = what ? waitingCount(what) : null;
