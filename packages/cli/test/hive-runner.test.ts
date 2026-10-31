@@ -1075,6 +1075,55 @@ describe("Hive's running reviewer (HV3)", () => {
     expect(s.reviewer.calls()).toHaveLength(1);
   });
 
+  it("a reviewer that reads Symbiote's own words on a missing sandbox is not taken for one", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/quotes');
+    // It read hive-review.ts, whose source names Claude Code's refusal: the words are in its
+    // stream, inside a tool's result, and it answers.
+    const source =
+      'const SANDBOX_MISSING = /sandbox required but unavailable[^\\n]*/;\n/** Starts one review */\n';
+    s.reviewer.answers([
+      {
+        stream: [
+          {
+            type: 'user',
+            message: { content: [{ type: 'tool_result', content: source.repeat(40) }] },
+          },
+        ],
+      },
+    ]);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'q.txt': 'q\n' } });
+    await runner.tick();
+    await runner.idle();
+    const record = await readHive(s.where, 'feature/quotes');
+    expect(record?.reviews.map((r) => r.verdict)).toEqual(['approved']);
+    expect(record?.note).toBeUndefined();
+  });
+
+  it("Claude Code's refusal, said on its output: its words, cut to a line", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/refused');
+    s.reviewer.answers([
+      {
+        exit: 1,
+        stderr: `sandbox required but unavailable: socat not installed ${'x'.repeat(2000)}`,
+      },
+    ]);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'r.txt': 'r\n' } });
+    await runner.tick();
+    await runner.idle();
+    const record = await readHive(s.where, 'feature/refused');
+    expect(record?.reviews.map((r) => r.verdict)).toEqual(['unavailable']);
+    expect(record?.note).toMatch(/socat not installed/);
+    expect(record?.note?.length).toBeLessThan(400);
+  });
+
   it('without a way to confine the rerun, no reviewer is started', async () => {
     const repo = repository(['true']);
     const s = await setup(repo, { confine: null });

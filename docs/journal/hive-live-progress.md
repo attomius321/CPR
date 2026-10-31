@@ -40,3 +40,17 @@ log stream, the reviewer's events and the viewer's words; then e2e with real she
 fake reviewer that holds. The card's read of a 905 KB review log: 4.2 ms, then 0.33 ms. Screenshots
 in both themes at 1×. `pnpm check` (2,663 tests), `pnpm build` and `pnpm test:e2e` (373 and 20) pass. Not
 done: a real Hive run of this branch (the plan's As built says why).
+
+## Fix: a review of the reviewer's own code taken for a missing sandbox (2026-10-31)
+
+**Learned.** This branch's first Hive review (`main`'s runner, `990fc26`) ended "not reviewed:
+Claude Code's sandbox is not available" after 354 s of a reviewer at work, its note 7,360
+characters of source. The words Symbiote looks for were in the reviewer's stream: it had printed
+`hive-review.ts`, where they are written. A JSON line keeps its newlines escaped, so `[^\n]*`
+took the rest of the line. A sign read in a program's output must be read where the program says
+it, not in what it quotes.
+
+**Verification.** Tests first: a reviewer whose stream quotes the words and approves (was
+`unavailable`, now `approved`); a refusal on its errors, its note under 400 characters (was 2,000+);
+`sandboxMissing` on errors, a plain line, a quoted one and an answer. Not verified: a review of this
+branch with the fix, which `main`'s runner cannot give until it lands.

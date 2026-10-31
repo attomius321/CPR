@@ -193,6 +193,16 @@ merged); an expected time for the review.
   its band, and each card its dot with its time under it. A card's words are muted as every card's.
 - **Times**: the card's and the head's on a clock (`4:12`, `of ~7 min`); the Review tab's steps in
   the merge log's own words (`7.4 s`, `2.1 min`), as the merge page shows them.
+- **Fix: a review of Symbiote's own reviewer was taken for a missing sandbox** (HV3's, found by
+  this branch's own Hive review). The running review of `990fc26` passed its check (432 s), ran
+  354 s, and was recorded "not reviewed: Claude Code's sandbox is not available", its note 7,360
+  characters of `hive-review.ts`. `SANDBOX_MISSING` was searched in the reviewer's whole output;
+  the reviewer had printed `hive-review.ts`, whose source holds Claude Code's words, and `[^\n]*`
+  ran on through the stream's escaped `\n`s. Claude Code says its refusal on its errors, before
+  any token, with no answer (HV3's journal): `sandboxMissing` reads only its errors and output
+  lines that are not its stream's JSON, only when it gave no answer, a line of 300 characters at
+  most. Until this lands, `main`'s runner reviews this branch with the old code: a review that
+  reads that file again ends "Not reviewed".
 - **Not built: the real Hive run of the branch.** A real writer in a scratch repository stops at
   Claude Code's "not trusted" question in a folder an agent made; what it would have shown was
   checked otherwise: the real reviewer stream above, the real `pnpm` scripts of the e2e

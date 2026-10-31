@@ -20,6 +20,7 @@ import {
   rerunVerdict,
   reviewerSettingsService,
   reviewerEvents,
+  sandboxMissing,
 } from '../src/hive-review.js';
 import type { ClaudeCode } from '../src/claude-code.js';
 import { runGroup } from '../src/programs.js';
@@ -369,5 +370,21 @@ describe("the reviewer's events for its log (decision 696)", () => {
         '/copy',
       ),
     ).toEqual([{ result: '2 lines' }]);
+  });
+});
+
+describe("Claude Code's refusal of a missing sandbox (HV3, fix)", () => {
+  const SAID = 'sandbox required but unavailable: socat not installed';
+  it('is read on its errors or a plain line of its output, never inside its stream', () => {
+    expect(sandboxMissing({ stdout: '', stderr: `Error: ${SAID}\nmore` })).toBe(SAID);
+    expect(sandboxMissing({ stdout: `${SAID}\n`, stderr: '' })).toBe(SAID);
+    const quoted = JSON.stringify({
+      type: 'user',
+      message: { content: [{ type: 'tool_result', content: `const X = /${SAID}/;` }] },
+    });
+    expect(sandboxMissing({ stdout: `${quoted}\n`, stderr: '' })).toBeNull();
+    // It answered: whatever its errors say, it ran.
+    const result = JSON.stringify({ type: 'result', subtype: 'success', is_error: false });
+    expect(sandboxMissing({ stdout: `${result}\n`, stderr: SAID })).toBeNull();
   });
 });

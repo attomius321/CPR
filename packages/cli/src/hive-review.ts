@@ -454,8 +454,23 @@ function resultOf(stdout: string): Record<string, unknown> | null {
 
 const wordsOf = (text: string) => text.trim().split('\n').slice(-3).join('\n').slice(0, 1_000);
 
-/** Claude Code refused to start without its sandbox (`failIfUnavailable`): its words. */
-const SANDBOX_MISSING = /sandbox required but unavailable[^\n]*/;
+/**
+ * Claude Code refused to start without its sandbox (`failIfUnavailable`): its words, one line of
+ * 300 characters at most. Read only where Claude Code says it — its errors, or a line of its output
+ * that is not its stream's JSON — and only when it gave no answer: a reviewer that read Symbiote's
+ * own source has these words in its stream, inside a tool's result.
+ */
+const SANDBOX_MISSING = /sandbox required but unavailable[^\n]{0,300}/;
+
+/** Claude Code's refusal of a missing sandbox, if it refused; null when it ran. */
+export function sandboxMissing(answer: { stdout: string; stderr: string }): string | null {
+  if (resultOf(answer.stdout)) return null;
+  const plain = answer.stdout
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('{'))
+    .join('\n');
+  return SANDBOX_MISSING.exec(`${answer.stderr}\n${plain}`)?.[0] ?? null;
+}
 
 /** Starts one review (decisions 675–678); `done` resolves with what it found, or null if stopped. */
 export function startReview(request: ReviewRequest, deps: ReviewDeps): ReviewRun {
@@ -565,10 +580,10 @@ export function startReview(request: ReviewRequest, deps: ReviewDeps): ReviewRun
     deps.steps?.end(answer.code === 0 && answered !== null && answered.is_error !== true);
     await mkdir(dirname(request.log), { recursive: true });
     await writeFile(request.log, answer.stdout).catch(() => undefined);
-    const missing = SANDBOX_MISSING.exec(`${answer.stderr}\n${answer.stdout}`);
+    const missing = sandboxMissing(answer);
     if (missing) {
       return ended('unavailable', {
-        error: `Claude Code's sandbox is not available: ${missing[0].replace(/^sandbox required but unavailable:\s*/, '')}`,
+        error: `Claude Code's sandbox is not available: ${missing.replace(/^sandbox required but unavailable:\s*/, '')}`,
       });
     }
     const result = answered;
