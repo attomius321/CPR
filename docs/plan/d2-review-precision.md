@@ -260,7 +260,9 @@ on the same pull requests were mostly right and acted on.
 and checks them on D2's 51 pull requests and a fresh, blind holdout;
 [D2b — Findings at review time](d2b-review-time-findings.md) runs Symbiote on the 68 heads the AI
 reviewers commented on, to decide whether findings help during review at all or should become
-evidence for an AI reviewer instead.
+evidence for an AI reviewer instead; [D2c — the review graph](d2c-review-graph.md) measures the
+graph itself (edges right, users missed, whether it leads to the problems), on the repository's
+own code only.
 
 **Not verified**
 
