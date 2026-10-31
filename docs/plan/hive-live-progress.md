@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hive-live-progress.md)
 
-**Status:** planned (2026-10-31), on branch `feature/hive-live-progress` (the workspace's, from
-`main` at `cd1956a`). The person's answers to the plan's three questions: 1, an expected time only
+**Status:** built, ready for review (2026-10-31), on branch `feature/hive-live-progress` (the
+workspace's, from `main` at `cd1956a`). The person's answers to the plan's three questions: 1, an expected time only
 from a passing check of the same commands; 2, Hive's cards a sidenav group of their own, "in the
 hive animation style, with that hexagonal background"; 3, every run's log kept. And: "Keep it full
 working … Avoid the risks, or resolve them if those are necessary."
@@ -170,5 +170,42 @@ Hive's runner (`hiveRunner` in `packages/cli/src/hive-runner.ts`, in the `symbio
 
 **Not in this feature**: controls (stop, skip, rerun a check); Hive's loop and its two runner flaws
 (a message at landing reruns the check on an unchanged tip; a check's failure sent after the branch
-merged), nor a plan-first workspace's turn without a commit, which Hive answers with "no commit";
-an expected time for the review.
+merged); an expected time for the review.
+
+## As built
+
+- **The reviewer's answer is said, not shown** (found on real data). Run over a real reviewer's kept
+  stream (chore/hive-north-star's review: 234 KB, 140 lines), its last call is `StructuredOutput`
+  with the whole JSON answer: the card would have shown it as what the reviewer runs. It is the
+  note "Writing its answer" in the log and on the card.
+- **A shell command as typed** in a log's tool line: `Bash: pnpm vitest run …`, where the merge log
+  showed `{"command":"…"}` (`toolInput` in `merge-agent.ts`). The merge log gets it too.
+- **A new run's log starts empty** (found by e2e): when the check ended and the review began, the
+  Review tab's Now kept the check's steps. `StepLog` resets its lines for a new log, and Now mounts
+  one per log.
+- **The guarded write (decision 694)**: reading the runner again, the tick writes nothing on a
+  branch whose check this runner runs (it only watches it), so the old `current` copy undid nothing
+  in practice. The check's write reads the record again and is guarded all the same; a test writes
+  the record between two commands and finds its field kept.
+- **The Hive group is a card of its own**, as Waiting for you's: a crimson hairline, the hexagons
+  (a 26 × 45 px SVG tile as a mask over the crimson, 16 %), and a band of light crossing them every
+  5 s; each card on a dark wash over them, so its words keep their contrast. Folded, the group keeps
+  its band, and each card its dot with its time under it. A card's words are muted as every card's.
+- **Times**: the card's and the head's on a clock (`4:12`, `of ~7 min`); the Review tab's steps in
+  the merge log's own words (`7.4 s`, `2.1 min`), as the merge page shows them.
+- **Not built: the real Hive run of the branch.** A real writer in a scratch repository stops at
+  Claude Code's "not trusted" question in a folder an agent made; what it would have shown was
+  checked otherwise: the real reviewer stream above, the real `pnpm` scripts of the e2e
+  screenshots, and the runner's tests with real shell commands. This workspace's own Hive runs on
+  `main`'s code until it lands.
+
+**Results.**
+
+| What | Measured |
+|---|---|
+| The card's read of a running review's log (905 KB: a 900 KB install, the real stream) | 4.2 ms the first time, 0.33 ms each read after |
+| A real reviewer stream through `reviewerEvents` | 17 calls, 3 texts, 1 thinking; its answer said |
+| `pnpm check` (format, lint, types, unit tests) | passes: 2,663 tests in 185 files. New: 7 in the runner, 1 for the reviewer's events, 1 for the log stream; the viewer's words (`hive-live.test.ts`, 7), a Hive run's steps (`merge-log`, 2), a Hive transition (1); `workspaces` updated for the group |
+| `pnpm build`, `pnpm test:e2e` | pass: viewer 373 of 373, nexus 20 of 20 |
+| e2e | 2 new in `hive-loop.spec.ts` (a slow three-command check then a running review; one command, then its expected time); `merges.spec.ts` unchanged, 17 of 17 with them |
+| Screenshots | the card, the group, the folded rail and its tip, the head, the Review tab while checking and reviewing, a finished round's log: dark and light at 1×; Hive off: as on `main` |

@@ -355,3 +355,4 @@ merge commit.
 - 2026-10-31 [HV3 — the real Hive run, to landing asked](journal/hv3-running-reviewer.md)
 - 2026-10-31 [Hive's North Star — two modes, human-centric and fully autonomous](journal/chore-hive-north-star.md)
 - 2026-10-31 [Hive's live progress, plan](journal/hive-live-progress.md)
+- 2026-10-31 [Hive's live progress, built](journal/hive-live-progress.md)
