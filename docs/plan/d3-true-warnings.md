@@ -13,7 +13,7 @@ warning traces to one of these causes:
 
 | Cause | Wrong warnings | Where |
 |---|---|---|
-| `signature-changed` counts every reference as a user "not updated", even one that doesn't use what changed (a type named but its changed member not read, a return value ignored, a map key or enum member others don't name) | 11 | `packages/core/src/detectors.ts:102–160` |
+| `signature-changed` counts every reference as a user "not updated", even one that doesn't use what changed (a type named but its changed member not read, a return value ignored, a map key or enum member others don't name) | 10 | `packages/core/src/detectors.ts:102–160` |
 | `orphan-added` on a Storybook story (a named export of `*.stories.ts`) | 6 | `detectors.ts:220`, exposure in `lang/typescript/detect.ts` |
 | `exported-api-changed` on a workspace package at version 0.0.0 (`@bitwarden/vault`), counted as published because it lacks `"private": true` | 4 | `lang/typescript/detect.ts:154` |
 | `orphan-added` on an Angular `effect()` field, which runs without being named | 3 | `packages/plugin-angular` (its exposure hook) |
@@ -108,8 +108,8 @@ compatibility, then the users rule (largest), then the info noise.
 | # | Milestone | Output |
 |---|---|---|
 | D3a | orphan-added: stories, Angular effects, untemplated classes, default re-exports | 11 wrong warnings gone on D2 |
-| D3b | Compatibility by assignability; published packages | 9 gone |
-| D3c | signature-changed: users that use the change; one report per call | 11 gone; the 3 kept |
+| D3b | Compatibility by assignability; published packages | 8 gone |
+| D3c | signature-changed: users that use the change; one report per call | 10 gone; the 3 kept |
 | D3d | Info noise out of findings | 47 fewer info findings |
 | D3e | The October holdout, scored blind | the bar, or not yet |
 
