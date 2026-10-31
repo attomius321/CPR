@@ -569,17 +569,17 @@ button.workspace-about {
   line-height: 20px;
 }
 
-/* What it does or what is next: two lines, then "…"; its tip says it whole. */
+/* What it does or what is next: one line, cut with "…" at its end, not at a word (a command's
+   path is one long word); its tip says it whole. Two lines from V79 until V83 (decision 663): a
+   card grew and shrank as its agent's action changed. */
 .sidenav .workspace-state {
-  display: -webkit-box;
   flex: 1;
   min-width: 0;
   margin: 0;
   overflow: hidden;
   font-size: var(--size-small);
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .sidenav .workspace-state strong {
@@ -636,6 +636,26 @@ button.workspace-about {
 
 .sidenav .fact-gone {
   color: var(--warning);
+}
+
+/* What its agent runs on (V83): a row of its own on every card, as the facts' words, the icon
+   15 px as theirs; one line, its tip says it whole. In the facts' row it would wrap on some
+   cards and not others, and when the merge check comes. */
+.sidenav .workspace-runs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin: 4px 0 0 17px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  line-height: 20px;
+}
+
+.sidenav .workspace-runs .icon {
+  flex: none;
+  width: 15px;
+  height: 15px;
 }
 
 /* The branch as git names it: plain, not History's badge; in the text's font (V31). */
@@ -862,6 +882,7 @@ button.workspace-about {
   .sidenav.rail .workspace-blocked,
   .sidenav.rail .workspace-respond,
   .sidenav.rail .workspace-branch,
+  .sidenav.rail .workspace-runs,
   .sidenav.rail .workspaces-empty,
   .sidenav.rail .workspaces-note,
   .sidenav.rail .sidenav-hint,

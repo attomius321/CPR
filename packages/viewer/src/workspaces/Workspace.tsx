@@ -28,7 +28,14 @@ import { useRemoving, workspaceKey } from './removing.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { MergeControl } from './MergeControl.js';
 import { ThreadTab, useThread } from './ThreadTab.js';
-import { KindTag, StateDot, StateFor, WorkspaceBranch, WorkspaceState } from './WorkspaceFacts.js';
+import {
+  KindTag,
+  RunsOn,
+  StateDot,
+  StateFor,
+  WorkspaceBranch,
+  WorkspaceState,
+} from './WorkspaceFacts.js';
 import { RESPOND_EVENT, respondTo } from './respond.js';
 import { WorkspaceStrip } from './WorkspaceStrip.js';
 import { postJson, serverWords } from '../ui/http.js';
@@ -485,7 +492,12 @@ function WorkspacePanel({
         className={`workspace-top tone-${row.next.chip.tone}`}
         icon={(workspace.kind && KIND_ICONS[workspace.kind]) ?? <BranchIcon />}
         title={<span {...tip(briefTip(workspace.brief))}>{workspaceName(workspace)}</span>}
-        beside={<KindTag workspace={workspace} />}
+        beside={
+          <>
+            <KindTag workspace={workspace} />
+            <RunsOn agent={workspace.agent} />
+          </>
+        }
         line={
           <span className="workspace-state-line">
             <span className="workspace-ref">

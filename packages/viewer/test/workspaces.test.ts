@@ -17,6 +17,8 @@ import {
   modelChoices,
   readRun,
   startedWith,
+  modelName,
+  runsOnWords,
   activityText,
   allRows,
   workspaceChips,
@@ -258,6 +260,98 @@ describe('startedWith (V30b)', () => {
     expect(startedWith(agent({ kind: 'codex', model: 'gpt-5.6-luna' }))).toBe(
       'Started with Codex on gpt-5.6-luna at its default effort.',
     );
+  });
+});
+
+describe('modelName (V83)', () => {
+  it("names a model from its ID as its agent's list does", () => {
+    expect(modelName('claude-opus-5-5')).toBe('Opus 5.5');
+    expect(modelName('claude-fable-5-1')).toBe('Fable 5.1');
+    expect(modelName('claude-sonnet-5')).toBe('Sonnet 5');
+    expect(modelName('claude-haiku-4-5-20251001')).toBe('Haiku 4.5');
+    expect(modelName('gpt-6-luna')).toBe('GPT-6-Luna');
+    expect(modelName('gpt-5.6-terra')).toBe('GPT-5.6-Terra');
+    // An alias names its family: Claude Code takes `opus` for its newest Opus.
+    expect(modelName('opus')).toBe('Opus');
+  });
+
+  it('gives any other ID as it is', () => {
+    expect(modelName('o3')).toBe('o3');
+    expect(modelName('us.anthropic.claude-opus-4-6-v1:0')).toBe(
+      'us.anthropic.claude-opus-4-6-v1:0',
+    );
+    expect(modelName('claude-3-5-sonnet-20241022')).toBe('claude-3-5-sonnet-20241022');
+  });
+});
+
+describe('runsOnWords (V83)', () => {
+  const agent = (over: Partial<WorkspaceAgentState>): WorkspaceAgentState => ({
+    state: 'working',
+    kind: 'claude',
+    ...over,
+  });
+  const at = '2026-10-31T09:42:00.000Z';
+  const clock = new Date(at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const opus = { model: 'claude-opus-5-5', effort: 'xhigh', at };
+
+  it('says what it runs on, read from its session, and as of when', () => {
+    expect(runsOnWords(agent({ effort: 'xhigh', runsOn: opus }))).toEqual({
+      text: 'Opus 5.5 · xhigh effort',
+      tip: `Claude Code runs on Opus 5.5 (claude-opus-5-5) at xhigh effort\nAs of its answer at ${clock}`,
+    });
+    expect(
+      runsOnWords(
+        agent({
+          kind: 'codex',
+          remote: 'unix:///s.sock',
+          runsOn: { model: 'gpt-6-luna', effort: 'medium', at },
+        }),
+      ),
+    ).toEqual({
+      text: 'GPT-6-Luna · medium effort',
+      tip: `Codex runs on GPT-6-Luna at medium effort\nAs its thread says at ${clock}`,
+    });
+  });
+
+  it('says how it started when that differs: a change in its terminal', () => {
+    expect(runsOnWords(agent({ model: 'sonnet', effort: 'high', runsOn: opus }))?.tip).toBe(
+      `Claude Code runs on Opus 5.5 (claude-opus-5-5) at xhigh effort\nAs of its answer at ${clock}\nStarted on Sonnet at high effort`,
+    );
+    expect(runsOnWords(agent({ effort: 'high', runsOn: opus }))?.tip).toContain(
+      '\nStarted on its default model at high effort',
+    );
+    // Started on its default, or on the alias of the family it runs: no change to say.
+    expect(runsOnWords(agent({ runsOn: opus }))?.tip).not.toContain('Started');
+    expect(runsOnWords(agent({ model: 'opus', effort: 'xhigh', runsOn: opus }))?.tip).not.toContain(
+      'Started',
+    );
+  });
+
+  it('says no level for a model that takes none, or a session that did not say it', () => {
+    expect(
+      runsOnWords(agent({ effort: 'low', runsOn: { model: 'claude-haiku-4-5-20251001', at } })),
+    ).toMatchObject({ text: 'Haiku 4.5' });
+  });
+
+  it('before its first answer, says how it started, as that', () => {
+    expect(runsOnWords(agent({ effort: 'xhigh' }))).toEqual({
+      text: 'Default model · xhigh effort',
+      tip: 'Claude Code started on its default model at xhigh effort\nWhat it runs on shows once it answers',
+    });
+    expect(runsOnWords(agent({ model: 'sonnet' }))?.text).toBe('Sonnet · default effort');
+    // By exec and Hermes nothing is read: nothing more is promised.
+    expect(runsOnWords(agent({ kind: 'hermes', effort: 'high' }))).toEqual({
+      text: 'Default model · high effort',
+      tip: 'Hermes started on its default model at high effort',
+    });
+    expect(runsOnWords(agent({ kind: 'codex', model: 'gpt-5.6-luna' }))).toEqual({
+      text: 'GPT-5.6-Luna · default effort',
+      tip: 'Codex started on GPT-5.6-Luna at its default effort',
+    });
+  });
+
+  it('says nothing for a workspace with no agent', () => {
+    expect(runsOnWords(agent({ state: 'no-agent', kind: undefined }))).toBeNull();
   });
 });
 

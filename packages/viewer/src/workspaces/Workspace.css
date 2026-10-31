@@ -22,6 +22,44 @@
   color: var(--accent);
 }
 
+/* What its agent runs on (V83), after its kind in its head: the style's metadata chip, as the
+   kind's at rest, with the Start page's Model icon. Short of room it gives way before the title
+   (at 390 px the title kept 5 letters beside it), its words cut, its tip whole. */
+.runs-on {
+  display: inline-flex;
+  flex: 0 100 auto;
+  align-items: center;
+  gap: 6px;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font: 500 var(--size-caption)/22px var(--sans);
+  white-space: nowrap;
+}
+
+.runs-on .icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+/* Its words, in the head and on a card: one line, cut with "…". */
+.runs-on-words {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The kind's own space after it is the line's gap when the chip follows it. */
+.workspace-top .page-name-line .kind-tag {
+  margin-right: 0;
+}
+
 /* The agent's mark before what it does (V53), on the card's line and the heading's. */
 .workspace-state .agent-mark {
   margin-right: 5px;

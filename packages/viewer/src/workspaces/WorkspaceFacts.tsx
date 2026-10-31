@@ -2,7 +2,7 @@
 // its kind, its branch and review mark, a line of what is next and its facts, and how long its
 // state has lasted (V48).
 import { useEffect, useState, type ReactNode } from 'react';
-import type { BranchMerge, WorkspaceSummary } from '@symbiote/core';
+import type { BranchMerge, WorkspaceAgentState, WorkspaceSummary } from '@symbiote/core';
 import { reviewTip, type ReviewMark } from '../history/branchReviews.js';
 import { relativeDate } from '../history/commits.js';
 import { GIT_PAGE } from '../shell/pages.js';
@@ -13,11 +13,13 @@ import {
   CommitIcon,
   HermesMark,
   MergeIcon,
+  ModelIcon,
   PencilIcon,
 } from '../ui/icons.js';
 import { longAge, useNow } from './clock.js';
 import {
   AGENT_NAMES,
+  runsOnWords,
   shortAge,
   workspaceFacts,
   type WorkspaceFact,
@@ -111,6 +113,23 @@ export function CardFacts({ workspace }: { workspace: WorkspaceSummary }) {
       </span>
     );
   });
+}
+
+/**
+ * What a workspace's agent runs on (V83): the Model icon (the Start page's), the model and its
+ * level in words, and a tip that says whose, as of when, and how it started when that differs. In
+ * the head a chip after the kind; on a card (`card`) a row of its own, its words cut to one line.
+ */
+export function RunsOn({ agent, card = false }: { agent: WorkspaceAgentState; card?: boolean }) {
+  const words = runsOnWords(agent);
+  if (!words) return null;
+  const Tag = card ? 'div' : 'span';
+  return (
+    <Tag className={card ? 'workspace-runs' : 'runs-on'} {...tip(words.tip)}>
+      <ModelIcon />
+      <span className="runs-on-words">{words.text}</span>
+    </Tag>
+  );
 }
 
 /** A workspace's kind (V24c), in a chip for every kind (V53); none recorded before V24. */

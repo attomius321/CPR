@@ -54,6 +54,7 @@ import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
   CardFacts,
   KindTag,
+  RunsOn,
   StateAge,
   StateDot,
   WorkspaceBranch,
@@ -746,6 +747,8 @@ function WorkspaceCard({
           {!cleaning && <CardFacts workspace={workspace} />}
         </div>
       )}
+      {/* What its agent runs on (V83): a row of its own, so the card keeps its height. */}
+      <RunsOn agent={workspace.agent} card />
       <div className="workspace-branch">
         <WorkspaceBranch row={row} mark={mark} />
       </div>

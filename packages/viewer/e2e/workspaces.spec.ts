@@ -1,5 +1,12 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { spinner } from './spinner.js';
@@ -499,6 +506,94 @@ test('every card says its kind in a chip at the start of its facts’ row, Featu
   await page.getByRole('button', { name: 'Fold the sidenav' }).click();
   await expect(row.locator('.state-dot')).toBeVisible();
   await expect(chip).toBeHidden();
+});
+
+test('the head and every card say what its agent runs on: as it started, then as it answers (V83)', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const row = workspaceRow(page, branch);
+  const chip = panel(page, branch).locator('.workspace-top .runs-on');
+  const line = row.locator('.workspace-runs');
+  // Before it answers: how it started, said as that.
+  await expect(chip).toHaveText(/^Default model · /);
+  await expect(line).toHaveText(/^Default model · /);
+  await chip.hover();
+  await expect(page.getByRole('tooltip')).toContainText('What it runs on shows once it answers');
+  // In the head after its kind; on the card a row of its own, after the facts, before the branch.
+  await expect(
+    panel(page, branch).locator('.workspace-top .page-name-line .kind-tag + .runs-on'),
+  ).toBeVisible();
+  const [meta, runs, ref] = await Promise.all(
+    [row.locator('.workspace-meta'), line, row.locator('.workspace-branch')].map((part) =>
+      part.boundingBox(),
+    ),
+  );
+  expect(runs!.y).toBeGreaterThanOrEqual(meta!.y + meta!.height);
+  expect(ref!.y).toBeGreaterThanOrEqual(runs!.y + runs!.height);
+  // Its session names its transcript to Symbiote's hooks, and answers on Sonnet 5.5 at low.
+  const transcript = join(symbiote.cache, 'session-1.jsonl');
+  const answer = (model: string, effort: string) =>
+    `${JSON.stringify({
+      type: 'assistant',
+      isSidechain: false,
+      timestamp: new Date().toISOString(),
+      requestedModel: model,
+      effort,
+      message: { model, role: 'assistant', content: [] },
+    })}\n`;
+  writeFileSync(transcript, answer('claude-sonnet-5-5', 'low'));
+  symbiote.hook(branch, {
+    hook_event_name: 'UserPromptSubmit',
+    prompt: 'Go on',
+    transcript_path: transcript,
+  });
+  await expect(chip).toHaveText('Sonnet 5.5 · low effort', POLL);
+  await expect(line).toHaveText('Sonnet 5.5 · low effort');
+  await line.hover();
+  await expect(page.getByRole('tooltip')).toContainText(
+    'Claude Code runs on Sonnet 5.5 (claude-sonnet-5-5) at low effort',
+  );
+  // `/model opus` and `/effort xhigh` typed in its terminal: from its next answer.
+  appendFileSync(transcript, answer('claude-opus-5-5', 'xhigh'));
+  await expect(chip).toHaveText('Opus 5.5 · xhigh effort', POLL);
+  await expect(line).toHaveText('Opus 5.5 · xhigh effort', POLL);
+  // Folded to the rail: the card is its dot alone.
+  await page.getByRole('button', { name: 'Fold the sidenav' }).click();
+  await expect(line).toBeHidden();
+});
+
+test("a card's state is one line, all of it in its tip: the card keeps its height as its agent acts (V83)", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const row = workspaceRow(page, branch);
+  const state = row.locator('.workspace-line .workspace-state');
+  await expect(state.locator('strong')).toHaveText('Thinking');
+  const before = (await row.boundingBox())!.height;
+  const command =
+    'pnpm vitest run packages/cli/test/workspaces.test.ts -t "says what a Claude Code agent runs on"';
+  symbiote.hook(branch, {
+    hook_event_name: 'PreToolUse',
+    tool_name: 'Bash',
+    tool_input: { command },
+    tool_use_id: 't1',
+  });
+  await expect(state.locator('strong')).toHaveText(`Running ${command}`, POLL);
+  // One 20 px line, cut at its end; the card as tall as it was.
+  expect((await state.boundingBox())!.height).toBe(20);
+  expect(
+    await state.evaluate((p) => [p.scrollWidth > p.clientWidth, getComputedStyle(p).textOverflow]),
+  ).toEqual([true, 'ellipsis']);
+  expect((await row.boundingBox())!.height).toBe(before);
+  await state.hover();
+  await expect(page.getByRole('tooltip')).toContainText(command);
 });
 
 test('an agent that starts waiting while you are elsewhere: one line in the status bar, and Open (V48)', async ({
