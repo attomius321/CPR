@@ -71,8 +71,10 @@ import {
   hiveSummary,
   HIVE_ROUNDS,
   readHive,
+  readHives,
   writeHive,
 } from './hive-record.js';
+import { hiveLive } from './hive-live.js';
 import { projectCheck } from './merges.js';
 import {
   ADVISING_AGENTS,
@@ -680,7 +682,11 @@ export function workspaces(
   /** Where Hive is with a workspace it drives (HV2), as its card reads it; none without a record. */
   async function hiveOf(where: ReviewPlace, branch: string) {
     const record = await readHive(where, branch);
-    return record ? { hive: hiveSummary(record, await hiveOn()) } : {};
+    if (!record) return {};
+    const on = await hiveOn();
+    // What runs now (decision 697), read only while Hive is on.
+    const live = on ? await hiveLive(where, record, () => readHives(where)) : undefined;
+    return { hive: hiveSummary(record, on, live) };
   }
 
   /**

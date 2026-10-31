@@ -1,15 +1,25 @@
 // A merge's log on its page (V46a): its steps, each with its mark and time, and the text its
 // read-only terminal is given. Pure.
-import type { MergeAgentEvent, MergeEntry, MergeLogLine, MergeStep } from '@symbiote/core';
+import type {
+  HiveLogStep,
+  LogLine,
+  MergeAgentEvent,
+  MergeEntry,
+  MergeLogLine,
+  MergeStep,
+} from '@symbiote/core';
 import { duration } from './merges.js';
 
 /** How a step went: it runs, passed or failed; waits its turn; did not run; or never ended. */
 export type StepMark = 'running' | 'passed' | 'failed' | 'waiting' | 'not-run' | 'stopped';
 
 export interface LogStep {
-  step: MergeStep;
+  /** A merge's step, or a Hive run's (decision 700). */
+  step: MergeStep | HiveLogStep;
   title: string;
   mark: StepMark;
+  /** Its last time when it is known (a Hive check's command): "~2 min" while it waits. */
+  about?: number;
   /** When it started (ms), for a running step's time. */
   at?: number;
   /** How long it took. */
@@ -32,10 +42,29 @@ export function stepName(step: Pick<LogStep, 'step' | 'title'>): string {
     case 'resolve':
       return 'Merger agent';
     case 'check':
+    case 'install':
+    case 'review':
       return step.title;
+    case 'rerun':
+      return `Rerun: ${step.title}`;
     case 'land':
       return 'Land';
   }
+}
+
+/** Whether a step's name is a command, drawn as code. */
+export const isCommand = (step: Pick<LogStep, 'step'>) =>
+  step.step === 'check' || step.step === 'install';
+
+/** What a log's steps need besides its lines: whether it runs, and the check's commands. */
+export interface LogState {
+  /** It runs now: a step without its end is running, not stopped. */
+  running: boolean;
+  /** It runs its check now: the commands not started yet wait. */
+  checking: boolean;
+  commands?: readonly string[];
+  /** The last time of each command, when known (Hive's, decision 697). */
+  expected?: readonly number[];
 }
 
 const RUNNING = new Set<MergeEntry['state']>(['merging', 'resolving', 'checking']);
@@ -46,6 +75,15 @@ const RUNNING = new Set<MergeEntry['state']>(['merging', 'resolving', 'checking'
  * after a failed one did not run (as `failedCheck` says).
  */
 export function logRuns(lines: readonly MergeLogLine[], entry: MergeEntry): LogRun[] {
+  return stepRuns(lines, {
+    running: RUNNING.has(entry.state),
+    checking: entry.state === 'checking',
+    ...(entry.check?.commands ? { commands: entry.check.commands } : {}),
+  });
+}
+
+/** A log's runs and their steps (a merge's, `logRuns`; a Hive run's, decision 700). */
+export function stepRuns(lines: readonly LogLine<string>[], state: LogState): LogRun[] {
   const runs: LogRun[] = [];
   let current: LogRun | null = null;
   let open: LogStep | null = null;
@@ -57,7 +95,13 @@ export function logRuns(lines: readonly MergeLogLine[], entry: MergeEntry): LogR
       open = null;
     } else if ('step' in line) {
       if (!current) runs.push((current = { steps: [] }));
-      open = { step: line.step, title: line.title, mark: 'stopped', at: line.at, index: index++ };
+      open = {
+        step: line.step as LogStep['step'],
+        title: line.title,
+        mark: 'stopped',
+        at: line.at,
+        index: index++,
+      };
       current.steps.push(open);
     } else if ('end' in line && open) {
       open.mark = line.end.ok ? 'passed' : 'failed';
@@ -67,20 +111,30 @@ export function logRuns(lines: readonly MergeLogLine[], entry: MergeEntry): LogR
   }
   const last = runs.at(-1);
   if (!last) return runs;
-  if (open && RUNNING.has(entry.state) && last.steps.at(-1) === open) open.mark = 'running';
-  const commands = entry.check?.commands;
+  if (open && state.running && last.steps.at(-1) === open) open.mark = 'running';
+  const { commands, expected } = state;
   const checks = last.steps.filter((s) => s.step === 'check');
+  if (expected) {
+    for (const [i, step] of checks.entries()) {
+      if (expected[i] !== undefined) step.about = expected[i];
+    }
+  }
   if (commands && checks.length > 0 && checks.length < commands.length) {
-    const rest = commands.slice(checks.length);
     const lastCheck = checks.at(-1);
-    const mark: StepMark | null =
-      entry.state === 'checking' ? 'waiting' : lastCheck?.mark === 'failed' ? 'not-run' : null;
+    const mark: StepMark | null = state.checking
+      ? 'waiting'
+      : lastCheck?.mark === 'failed'
+        ? 'not-run'
+        : null;
     if (mark && lastCheck) {
       const after = last.steps.indexOf(lastCheck) + 1;
       last.steps.splice(
         after,
         0,
-        ...rest.map((title) => ({ step: 'check' as const, title, mark })),
+        ...commands.slice(checks.length).map((title, i) => {
+          const about = expected?.[checks.length + i];
+          return { step: 'check' as const, title, mark, ...(about !== undefined ? { about } : {}) };
+        }),
       );
     }
   }
@@ -123,7 +177,7 @@ const RESET = '\x1b[0m';
  * `heading`: the text ends with a step's heading line, for the terminal to mark.
  */
 export function logText(
-  line: MergeLogLine,
+  line: LogLine<string>,
   state: TextState,
 ): { text: string; state: TextState; heading?: true } {
   const close = state.open ? '\n' : '';

@@ -211,8 +211,30 @@ The card shows the workspace's round (a hexagon and `2/3`). While the agent work
 you, the card says so as for any workspace. Hive never lands, pushes or deletes work: those stay
 yours. A message you send the agent while Hive waits for you starts its rounds again.
 
-The workspace's **Review** tab shows what Hive did, round by round: each check, each review with
-its model, time and cost, and each finding, proven or dropped, with its test and Symbiote's rerun.
+While Hive checks or reviews, the card is in the sidenav's **Hive** group, on Hive's hexagons, and
+says what runs now, its time ticking:
+
+- **The check**: which of the check's commands runs, its place among them, and the time since the
+  check started. If an earlier check of the same commands passed in this repository, the card
+  also shows how long that check took, for example `Checking 4/4: pnpm test:e2e · 4:12 of ~7 min`.
+  Without one (the first check, or the commands changed), it shows the time alone. A check of one
+  command shows that command: `Checking: npm test · 0:42`.
+- **The review**: its time, then what the reviewer runs now, from its own output, for example
+  `Reviewing · 1:05 · Bash: pnpm vitest run test/csv.test.ts`. Without a check set or found, it
+  says `no check found`.
+
+Folded, the sidenav shows the card's dot and its time under it, and its tip says the rest. The
+workspace's head says the same line.
+
+The workspace's **Review** tab shows what Hive did, round by round: each check with each of its
+commands and their times, each review with its model, time and cost, and each finding, proven or
+dropped, with its test and Symbiote's rerun. While Hive checks or reviews, **Now** comes first: the
+check's commands, each done with its time, running or waiting (with the last check's time when
+there is one), or the review's steps (its install, the reviewer, each test it reruns), and the
+output as it comes. **Its log** opens a finished check's or review's output again.
+
+Each check's and review's output is kept beside Hive's record, in
+`symbiote/hive/<branch>/logs/`: its first and last 512 KB of each command's output, at most.
 
 ### The running reviewer
 
@@ -237,7 +259,7 @@ none of the agent's context:
 It is asked on Opus at high effort unless Settings' **Reviewer** page (in the Hive group) says
 otherwise. One review takes minutes and, by Claude Code's own count, about as much as the agent's
 work on the goal; it stops after 30 minutes or $5. Its output is kept in Symbiote's cache,
-`hive-reviews/`.
+`hive-reviews/`, and what it runs, as it runs, in the review's log beside Hive's record.
 
 If the review cannot run, Hive asks you to land the workspace with a note, and the card says
 **Not reviewed: look, then land it**:

@@ -15,6 +15,7 @@ import {
   worktreeStatus,
   type GitRepo,
   type HiveCheck,
+  type HiveCheckStep,
   type HiveReview,
   type ThreadEntry,
   type WorkspaceSummary,
@@ -45,6 +46,7 @@ import {
   type ReviewRun,
 } from './hive-review.js';
 import { findClaude } from './claude-code.js';
+import { hiveLogId, hiveLogPath, hiveLogs } from './hive-live.js';
 import { projectCheck } from './merges.js';
 import { killGroup, runGroup, type GroupRun, type RunGroup, type SpawnGroup } from './programs.js';
 import { fillPrompt, readPrompts } from './prompts.js';
@@ -379,6 +381,24 @@ export function hiveRunner(
     return act(record.branch, runCheck(where, record, tip, check.commands, summary.worktree.path));
   }
 
+  /**
+   * The running check's place in its record (decisions 693, 694): read again, and written only
+   * while the record is still checking and this runner still runs that check, so nothing written
+   * meanwhile is undone by an older copy.
+   */
+  async function markCheck(
+    where: ReviewPlace,
+    branch: string,
+    running: Running,
+    check: NonNullable<HiveFile['check']>,
+  ): Promise<void> {
+    const fresh = await readHive(where, branch);
+    if (fresh?.step !== 'checking' || checks.get(branch) !== running) return;
+    const next: HiveFile = { ...fresh, check };
+    delete next.interrupted;
+    await save(where, next);
+  }
+
   async function runCheck(
     where: ReviewPlace,
     record: HiveFile,
@@ -386,44 +406,67 @@ export function hiveRunner(
     commands: string[],
     worktree: string,
   ): Promise<void> {
-    const started = Date.now();
+    const began = Date.now();
+    const started = stamp();
+    // Its log beside the record (decision 695): each command a step, its output as it comes.
+    const id = hiveLogId(started);
+    const log = hiveLogs(where, record.branch).of(id);
     let output = '';
     let failedCommand: string | undefined;
-    let current = record;
-    for (const command of commands) {
+    const steps: HiveCheckStep[] = [];
+    for (const [index, command] of commands.entries()) {
       if (closed) return;
-      const running: Running = { run: run(command, worktree) };
+      const since = Date.now();
+      log.step('check', command);
+      const running: Running = {
+        run: run(command, worktree, { onOutput: (chunk) => log.out(chunk) }),
+      };
       checks.set(record.branch, running);
       if (running.run.pid !== undefined) {
-        current = { ...current, check: { pid: running.run.pid, started: stamp(), at: tip } };
-        delete current.interrupted;
-        await save(where, current);
+        await markCheck(where, record.branch, running, {
+          pid: running.run.pid,
+          started,
+          at: tip,
+          commands,
+          step: index,
+          since: stamp(),
+          done: steps.map(({ ok, ms }) => ({ ok, ms })),
+          log: id,
+        });
       }
-      if (command === commands[0]) {
+      if (index === 0) {
         await event(where, record.branch, 'check-started', {
           round: record.round,
           commit: tip,
           commands,
+          log: id,
         });
       }
       const result = await running.run.done;
       checks.delete(record.branch);
       if (closed) return;
       if (running.stopped) return stoppedCheck(where, record.branch, running.stopped);
+      const ok = result.code === 0;
+      log.end(ok);
+      steps.push({ command, ok, ms: Date.now() - since });
       output += result.output;
-      if (result.code !== 0) {
+      if (!ok) {
         failedCommand = command;
         break;
       }
     }
-    const fresh = (await readHive(where, record.branch)) ?? current;
+    const fresh = (await readHive(where, record.branch)) ?? record;
     const ran: HiveCheck = {
       round: fresh.round,
       at: tip,
       ok: failedCommand === undefined,
-      ms: Date.now() - started,
+      ms: Date.now() - began,
       ...(failedCommand ? { failed: failedCommand } : {}),
       output: lastLines(output),
+      started,
+      commands,
+      steps,
+      log: id,
     };
     const after: HiveFile = { ...fresh, checks: [...fresh.checks, ran] };
     delete after.check;
@@ -503,6 +546,8 @@ export function hiveRunner(
     const effort = config.effort ?? REVIEWER_EFFORT;
     const id = `${stamp().replace(/[:.]/g, '-')}-${randomBytes(3).toString('hex')}`;
     const at = stamp();
+    // Its log beside the record (decisions 695, 696): what it runs, the reviewer's stream.
+    const steps = hiveLogs(where, record.branch).of(id);
     let marked: Promise<void> = Promise.resolve();
     const running: Reviewing = {
       run: startReview(
@@ -525,12 +570,16 @@ export function hiveRunner(
           ...(reviewer.spawn ? { spawn: reviewer.spawn } : {}),
           ...(reviewer.reviewerMs ? { reviewerMs: reviewer.reviewerMs } : {}),
           ...(reviewer.rerunMs ? { rerunMs: reviewer.rerunMs } : {}),
+          steps,
           // Each process's leader in the record, for a new runner to end it (decision 655).
           onPid: (pid) => {
             marked = marked.then(async () => {
               const fresh = await readHive(where, record.branch);
               if (fresh?.step !== 'reviewing' || reviews.get(record.branch) !== running) return;
-              const next: HiveFile = { ...fresh, review: { pid, started: at, at: tip } };
+              const next: HiveFile = {
+                ...fresh,
+                review: { pid, started: at, at: tip, log: id },
+              };
               delete next.interrupted;
               await save(where, next);
             });
@@ -556,16 +605,21 @@ export function hiveRunner(
         if (running.stopped || !outcome) {
           return stoppedReview(where, record.branch, running.stopped ?? 'close');
         }
-        return reviewed(where, record.branch, outcome);
+        return reviewed(where, record.branch, outcome, id);
       }),
     );
   }
 
   /** A review's end (decisions 674, 679): landing, the proven tests to the writer, or again. */
-  async function reviewed(where: ReviewPlace, branch: string, outcome: ReviewOutcome) {
+  async function reviewed(where: ReviewPlace, branch: string, outcome: ReviewOutcome, log: string) {
     const fresh = await readHive(where, branch);
     if (!fresh) return;
-    const review: HiveReview = outcome.review;
+    // Its log, once anything was written in it (an unavailable reviewer writes nothing).
+    const logged = await stat(hiveLogPath(where, branch, log)).then(
+      () => true,
+      () => false,
+    );
+    const review: HiveReview = { ...outcome.review, ...(logged ? { log } : {}) };
     const after: HiveFile = { ...fresh, reviews: [...fresh.reviews, review] };
     delete after.review;
     await save(where, after);

@@ -83,3 +83,14 @@ const seconds = makeClock(1000);
 export function useSeconds(): number {
   return useSyncExternalStore(seconds.subscribe, seconds.snapshot);
 }
+
+const still: Clock = { subscribe: () => () => undefined, snapshot: () => 0 };
+
+/**
+ * The time each second while `on` (Hive's live progress, decision 699: a card's tip that ticks),
+ * else 0 and no timer: a component that ticks only while something runs.
+ */
+export function useSecondsWhile(on: boolean): number {
+  const clock = on ? seconds : still;
+  return useSyncExternalStore(clock.subscribe, clock.snapshot);
+}

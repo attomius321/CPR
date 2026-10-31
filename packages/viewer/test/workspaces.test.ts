@@ -849,19 +849,24 @@ describe('workspaceNext for a workspace Hive drives (HV2)', () => {
     );
     // Its turn ended: Hive's to act on, not the person's to review.
     expect(next({ ...ready, hive: hive() })).toEqual({
-      group: 'working',
+      group: 'hive',
       text: 'Hive: reading its turn',
       mark: '⚙',
     });
     // The round is the card's fact (2/3), not its words.
     expect(next({ ...ready, hive: hive({ step: 'checking', round: 2 }) })).toEqual({
-      group: 'working',
+      group: 'hive',
       text: 'Hive: running the check',
       mark: '⚙',
     });
     // Hive's words are Symbiote's: no agent's mark before them; the writer's are its agent's.
     expect(workspaceNext(summary({ ...ready, hive: hive({ step: 'checking' }) })).hive).toBe(true);
     expect(workspaceNext(summary({ hive: hive() })).hive).toBeUndefined();
+    // Hive's steps are a state of their own (decision 698): their tone, not the writer's.
+    expect(workspaceNext(summary({ ...ready, hive: hive({ step: 'checking' }) })).chip.tone).toBe(
+      'hive',
+    );
+    expect(workspaceNext(summary({ hive: hive() })).chip.tone).toBe('working');
   });
 
   it('asks the person to land it once checked, and says why Hive stopped', () => {
@@ -900,7 +905,7 @@ describe('workspaceNext for a workspace Hive drives (HV2)', () => {
 
   it('says Hive reviews it, then asks to land it with Land, in Hive mode (HV3)', () => {
     expect(next({ ...ready, hive: hive({ step: 'reviewing', round: 2 }) })).toEqual({
-      group: 'working',
+      group: 'hive',
       text: 'Hive: reviewing',
       mark: '⚙',
     });

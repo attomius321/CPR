@@ -14,7 +14,9 @@ import {
   type AgentLevels,
   type EffortChange,
   type HiveFinding,
+  type HiveLogStep,
   type HiveReview,
+  type MergeAgentEvent,
   type ModelChange,
 } from '@symbiote/core';
 import {
@@ -27,6 +29,8 @@ import {
 } from './agent-levels.js';
 import { shellWord, type ClaudeCode } from './claude-code.js';
 import { localHost, onPath } from './editor.js';
+import { claudeLine } from './merge-agent.js';
+import type { MergeLog } from './merge-log.js';
 import { CONFIG_FILES } from './plugins.js';
 import { HIVE_REVIEW_ANSWER, PromptRefused, readPrompts, writeConfig } from './prompts.js';
 import {
@@ -374,6 +378,40 @@ export interface ReviewDeps {
   onPid?: (pid: number) => void;
   reviewerMs?: number;
   rerunMs?: number;
+  /**
+   * Its log beside Hive's record (decisions 695, 696): each install command, the reviewer and
+   * its stream's events, each rerun, as they come.
+   */
+  steps?: MergeLog<HiveLogStep>;
+}
+
+/**
+ * The reviewer's stream's events for its log (decision 696): what the merger's log keeps
+ * (`claudeLine`), and the reviewer's words and thinking, which come whole (no partial messages).
+ */
+export function reviewerEvents(line: string, cwd: string): MergeAgentEvent[] {
+  // Its answer is a call of its own (`--json-schema`): said, not shown whole.
+  const events = claudeLine(line, cwd).events.map((event) =>
+    'tool' in event && event.tool === 'StructuredOutput' ? { note: 'Writing its answer' } : event,
+  );
+  let value: unknown;
+  try {
+    value = JSON.parse(line);
+  } catch {
+    return events;
+  }
+  const v = (value && typeof value === 'object' ? value : {}) as Record<string, unknown>;
+  const content = (v.message as { content?: unknown } | undefined)?.content;
+  if (v.type !== 'assistant' || !Array.isArray(content)) return events;
+  const words: MergeAgentEvent[] = [];
+  for (const part of content as Record<string, unknown>[]) {
+    if (part.type === 'thinking' && typeof part.thinking === 'string' && part.thinking) {
+      words.push({ think: `${part.thinking.trimEnd()}\n` });
+    } else if (part.type === 'text' && typeof part.text === 'string' && part.text) {
+      words.push({ say: `${part.text.trimEnd()}\n` });
+    }
+  }
+  return [...words, ...events];
 }
 
 /** A review's end: what it found, and the kept findings' files (repo-relative path → text). */
@@ -416,8 +454,23 @@ function resultOf(stdout: string): Record<string, unknown> | null {
 
 const wordsOf = (text: string) => text.trim().split('\n').slice(-3).join('\n').slice(0, 1_000);
 
-/** Claude Code refused to start without its sandbox (`failIfUnavailable`): its words. */
-const SANDBOX_MISSING = /sandbox required but unavailable[^\n]*/;
+/**
+ * Claude Code refused to start without its sandbox (`failIfUnavailable`): its words, one line of
+ * 300 characters at most. Read only where Claude Code says it — its errors, or a line of its output
+ * that is not its stream's JSON — and only when it gave no answer: a reviewer that read Symbiote's
+ * own source has these words in its stream, inside a tool's result.
+ */
+const SANDBOX_MISSING = /sandbox required but unavailable[^\n]{0,300}/;
+
+/** Claude Code's refusal of a missing sandbox, if it refused; null when it ran. */
+export function sandboxMissing(answer: { stdout: string; stderr: string }): string | null {
+  if (resultOf(answer.stdout)) return null;
+  const plain = answer.stdout
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('{'))
+    .join('\n');
+  return SANDBOX_MISSING.exec(`${answer.stderr}\n${plain}`)?.[0] ?? null;
+}
 
 /** Starts one review (decisions 675–678); `done` resolves with what it found, or null if stopped. */
 export function startReview(request: ReviewRequest, deps: ReviewDeps): ReviewRun {
@@ -453,10 +506,26 @@ export function startReview(request: ReviewRequest, deps: ReviewDeps): ReviewRun
   }
 
   /** The install commands in `copy`: why they failed, if they did; null when stopped. */
+  /** A command in a copy, as a step of the log. */
+  const logged = (
+    step: HiveLogStep,
+    title: string,
+    command: string,
+    cwd: string,
+    timeoutMs?: number,
+  ) => {
+    deps.steps?.step(step, title);
+    return run(command, cwd, {
+      ...(timeoutMs ? { timeoutMs } : {}),
+      onOutput: (chunk) => deps.steps?.out(chunk),
+    });
+  };
+
   async function install(copy: string): Promise<{ failed: string | null } | null> {
     for (const command of request.installs) {
-      const result = await group(run(command, copy));
+      const result = await group(logged('install', command, command, copy));
       if (!result) return null;
+      deps.steps?.end(result.code === 0);
       if (result.code !== 0) {
         return { failed: `\`${command}\` failed: ${wordsOf(result.output)}` };
       }
@@ -482,6 +551,7 @@ export function startReview(request: ReviewRequest, deps: ReviewDeps): ReviewRun
     }
     const settings = join(request.folder, 'reviewer-settings.json');
     await writeFile(settings, reviewerSettings());
+    deps.steps?.step('review', 'The reviewer');
     const answer = await group(
       spawn(
         deps.claude,
@@ -491,19 +561,32 @@ export function startReview(request: ReviewRequest, deps: ReviewDeps): ReviewRun
           model: request.model,
           effort: request.effort,
         }),
-        { cwd: copy, input: request.prompt, timeoutMs: reviewerMs },
+        {
+          cwd: copy,
+          input: request.prompt,
+          timeoutMs: reviewerMs,
+          ...(deps.steps
+            ? {
+                onLine: (line: string) => {
+                  for (const event of reviewerEvents(line, copy)) deps.steps?.agent(event);
+                },
+              }
+            : {}),
+        },
       ),
     );
     if (!answer) return null;
+    const answered = resultOf(answer.stdout);
+    deps.steps?.end(answer.code === 0 && answered !== null && answered.is_error !== true);
     await mkdir(dirname(request.log), { recursive: true });
     await writeFile(request.log, answer.stdout).catch(() => undefined);
-    const missing = SANDBOX_MISSING.exec(`${answer.stderr}\n${answer.stdout}`);
+    const missing = sandboxMissing(answer);
     if (missing) {
       return ended('unavailable', {
-        error: `Claude Code's sandbox is not available: ${missing[0].replace(/^sandbox required but unavailable:\s*/, '')}`,
+        error: `Claude Code's sandbox is not available: ${missing.replace(/^sandbox required but unavailable:\s*/, '')}`,
       });
     }
-    const result = resultOf(answer.stdout);
+    const result = answered;
     const cost = typeof result?.total_cost_usd === 'number' ? result.total_cost_usd : undefined;
     const said = parseReviewAnswer(result?.structured_output);
     if (!result || result.is_error === true || !said) {
@@ -579,9 +662,16 @@ export function startReview(request: ReviewRequest, deps: ReviewDeps): ReviewRun
       }
       for (const finding of toRerun) {
         const result = await group(
-          run(deps.confine(finding.command, again), again, { timeoutMs: rerunMs }),
+          logged(
+            'rerun',
+            finding.test || finding.command,
+            deps.confine(finding.command, again),
+            again,
+            rerunMs,
+          ),
         );
         if (!result) return null;
+        deps.steps?.end(result.code === 0);
         const verdict = rerunVerdict(finding.test, result);
         finding.code = result.code;
         finding.output = lastLines(result.output);

@@ -30,6 +30,7 @@ import {
   TrashIcon,
   WaitingIcon,
   WorkingIcon,
+  HexagonIcon,
 } from '../ui/icons.js';
 import { cleanUp, removeMerge } from '../workspaces/cleanup.js';
 import { mergeState, removableOnCard } from '../workspaces/merges.js';
@@ -62,6 +63,9 @@ import {
   WorkspaceState,
 } from '../workspaces/WorkspaceFacts.js';
 import { respondTo } from '../workspaces/respond.js';
+import { useSecondsWhile } from '../workspaces/clock.js';
+import { liveWords } from '../workspaces/hive-live.js';
+import { HiveNowCard, HiveRailTime } from '../workspaces/HiveNow.js';
 import { useStarts, type StartUnderWay } from '../workspaces/starting.js';
 import { useCardMoves } from '../workspaces/useCardMoves.js';
 import {
@@ -81,6 +85,8 @@ import { tip } from '../ui/tip.js';
 const GROUPS = [
   ['review', 'To review', ReviewIcon],
   ['stopped', 'Not running', StoppedIcon],
+  // Hive at work (decision 698): its checks and reviews, apart from the writers at work.
+  ['hive', 'Hive', HexagonIcon],
   ['working', 'Working', WorkingIcon],
   ['done', 'Done', DoneIcon],
 ] as const;
@@ -647,6 +653,11 @@ function WorkspaceCard({
   const [flash, setFlash] = useState(false);
   const { workspace } = row;
   const name = workspaceName(workspace);
+  // Hive at work (decision 699): what it runs now, ticking — in the card's lines, and folded, in
+  // its tip.
+  const live = row.next.hive && workspace.hive?.live ? workspace.hive : null;
+  const now = useSecondsWhile(folded && live !== null);
+  const said = (live && liveWords(live, now)?.line) ?? row.next.doing ?? row.next.text;
   // Being cleaned up (V57): disabled, saying so, until the list drops it.
   const cleaning = useRemoving(workspaceKey(workspace.branch));
   const cleanable = cleanableOnCard(row) && !cleaning;
@@ -674,7 +685,7 @@ function WorkspaceCard({
         ? tip(
             cleaning
               ? `${name}\nCleaning up`
-              : `${name}\n${row.next.doing ?? row.next.text}${row.next.blocked ? `: ${row.next.blocked}` : ''}`,
+              : `${name}\n${said}${row.next.blocked ? `: ${row.next.blocked}` : ''}`,
             { side: 'right' },
           )
         : {})}
@@ -686,6 +697,7 @@ function WorkspaceCard({
         ) : (
           <StateDot row={row} />
         )}
+        {live && folded && <HiveRailTime hive={live} />}
         <button
           type="button"
           className="workspace-about"
@@ -739,6 +751,10 @@ function WorkspaceCard({
             <KindTag workspace={workspace} />
           </div>
         </>
+      ) : live ? (
+        <div className="workspace-line">
+          <HiveNowCard hive={live} />
+        </div>
       ) : (
         <div className="workspace-line">
           <WorkspaceState row={row} facts={false} />

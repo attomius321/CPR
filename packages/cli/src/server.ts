@@ -694,6 +694,25 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/workspaces/hive/land') {
       return onBranch(req, res, (branch) => answer(res, () => hiveTab.land(branch)));
     }
+    if (url.pathname === '/api/workspaces/hive/log') {
+      // A check's or a review's log (decision 695), streamed as a merge's is; refused from
+      // another site, as a terminal's stream: a check prints the code.
+      if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+      if (!sameSite(req)) return send(res, 403, 'forbidden');
+      const branch = url.searchParams.get('branch') ?? '';
+      const log = url.searchParams.get('log') ?? '';
+      const from = Number(url.searchParams.get('from') ?? '0');
+      if (!branch || !log || !Number.isSafeInteger(from) || from < 0) {
+        return send(res, 400, "branch: a Hive workspace's; log: one of its logs; from: an offset");
+      }
+      return streamLog(
+        req,
+        res,
+        from,
+        (at) => hiveTab.log(branch, log, at),
+        `no log ${log} of ${branch}`,
+      );
+    }
     return send(res, 404, 'not found');
   }
 
@@ -1450,8 +1469,23 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (!id || !Number.isSafeInteger(from) || from < 0) {
       return send(res, 400, 'id: a queued merge; from: an offset in its log');
     }
-    const first = await merges.log(id, from);
-    if (!first) return send(res, 404, `no merge ${id}`);
+    return streamLog(req, res, from, (at) => merges.log(id, at), `no merge ${id}`);
+  }
+
+  /**
+   * A log as server-sent events (V46a; Hive's runs, decision 695): `lines` from `from` and the
+   * offset to read on from, then each time it grows, read every 250 ms; `gone` once `read` finds
+   * no log (a merge's entry removed).
+   */
+  async function streamLog(
+    req: IncomingMessage,
+    res: ServerResponse,
+    from: number,
+    read: (from: number) => Promise<{ lines: unknown[]; next: number } | null>,
+    missing: string,
+  ): Promise<void> {
+    const first = await read(from);
+    if (!first) return send(res, 404, missing);
     res.writeHead(200, {
       'content-type': 'text/event-stream',
       'cache-control': 'no-store',
@@ -1471,18 +1505,17 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     req.on('close', done);
     const poll = () => {
       timer = setTimeout(() => {
-        merges
-          .log(id, next)
-          .then((read) => {
+        read(next)
+          .then((more) => {
             if (!streams.has(res)) return;
-            if (!read) {
+            if (!more) {
               event('gone', {});
               done();
               res.end();
               return;
             }
-            if (read.lines.length > 0) event('lines', read);
-            next = read.next;
+            if (more.lines.length > 0) event('lines', more);
+            next = more.next;
             poll();
           })
           .catch(() => poll());

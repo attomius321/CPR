@@ -25,7 +25,7 @@ import {
   BranchNotMerged,
   GitRefused,
 } from '@symbiote/core';
-import type { HistoryRefs, NucleusActivityLine } from '@symbiote/core';
+import type { HistoryRefs, HiveLogLine, NucleusActivityLine } from '@symbiote/core';
 import type { Review } from '@symbiote/forge';
 import type { CodeMap } from '@symbiote/monitor';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -39,6 +39,7 @@ import { GitOpenRefused, type GitOpen, type GitPage, type GitWrite } from '../sr
 import type { OpenRequest, OpenResult } from '../src/editor.js';
 import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
 import type { Workspaces } from '../src/workspaces.js';
+import type { HiveWorkspace } from '../src/hive-workspace.js';
 import { WorkspaceRefused } from '../src/workspace-record.js';
 import { MergeRefused, type Merger } from '../src/merges.js';
 import type { PageAgent } from '../src/page-agent.js';
@@ -3831,5 +3832,94 @@ describe("symbiote view: Symbiote's MCP (MC1)", () => {
     await expect(call).rejects.toThrow();
     await expect.poll(async () => (await asks()).length).toBe(0);
     expect(queued).toHaveLength(1);
+  });
+});
+
+describe('/api/workspaces/hive/log (decision 695)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  let server: ViewServer;
+  const lines: HiveLogLine[] = [];
+  const asked: string[] = [];
+  const hiveWorkspace: HiveWorkspace = {
+    detail: () => Promise.resolve(null),
+    test: () => Promise.resolve(null),
+    land: () => Promise.reject(new Error('no')),
+    log: (branch, id, from) => {
+      asked.push(`${branch} ${id} ${from}`);
+      if (branch !== 'feature/a' || id !== 'L1') return Promise.resolve(null);
+      return Promise.resolve({ lines: lines.slice(from), next: lines.length });
+    },
+  };
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        workspaces: {} as Workspaces,
+        hiveWorkspace,
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+  const get = (path: string, headers: Record<string, string> = {}) =>
+    fetch(new URL(path, server.url), { headers });
+
+  it("streams a check's log as it grows; refuses a log its record does not name", async () => {
+    lines.push({ at: 1, step: 'check', title: 'pnpm check' }, { at: 2, out: 'one\n' });
+    const response = await get('/api/workspaces/hive/log?branch=feature%2Fa&log=L1');
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-type')).toBe('text/event-stream');
+    const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+    const decoder = new TextDecoder();
+    let text = '';
+    const next = async () => {
+      for (;;) {
+        const end = text.indexOf('\n\n');
+        if (end >= 0) {
+          const block = text.slice(0, end);
+          text = text.slice(end + 2);
+          return {
+            event: /^event: (.*)$/m.exec(block)?.[1],
+            data: JSON.parse(/^data: (.*)$/m.exec(block)?.[1] ?? 'null') as unknown,
+          };
+        }
+        const { value } = await reader.read();
+        text += decoder.decode(value, { stream: true });
+      }
+    };
+    expect(await next()).toEqual({ event: 'lines', data: { lines: lines.slice(0, 2), next: 2 } });
+    lines.push({ at: 3, out: 'two\n' }, { at: 4, end: { ok: true, ms: 3 } });
+    expect(await next()).toEqual({ event: 'lines', data: { lines: lines.slice(2), next: 4 } });
+    await reader.cancel();
+    expect(asked[0]).toBe('feature/a L1 0');
+
+    expect((await get('/api/workspaces/hive/log?branch=feature%2Fa&log=L2')).status).toBe(404);
+    expect((await get('/api/workspaces/hive/log?branch=feature%2Fa')).status).toBe(400);
+    expect((await get('/api/workspaces/hive/log?branch=feature%2Fa&log=L1&from=-1')).status).toBe(
+      400,
+    );
+    expect(
+      (
+        await get('/api/workspaces/hive/log?branch=feature%2Fa&log=L1', {
+          origin: 'http://evil.example',
+        })
+      ).status,
+    ).toBe(403);
   });
 });

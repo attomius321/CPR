@@ -68,6 +68,19 @@ describe('transitionNotice (V48)', () => {
     });
   });
 
+  it("says Hive's check and review ended, as a writer's turn (decision 698)", () => {
+    const ready = { state: 'ready' as const, kind: 'claude' as const };
+    const hive = { round: 1, rounds: 3 };
+    const before = rows(
+      summary('feature/h', ready, { ahead: 2, hive: { ...hive, step: 'checking' } }),
+    );
+    expect(before[0]?.next.group).toBe('hive');
+    const after = rows(
+      summary('feature/h', ready, { ahead: 2, hive: { ...hive, step: 'landing' } }),
+    );
+    expect(transitionNotice(before, after, null)?.text).toBe('h finished: Checked: land it');
+  });
+
   it('nothing on the first read, for the workspace on screen, for a new one, or a stop asked', () => {
     const after = rows(summary('feature/a', { state: 'needs-you', kind: 'claude' }));
     expect(transitionNotice(null, after, null)).toBeNull();

@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
@@ -115,6 +115,166 @@ test('Hive drives a workspace: the check, its failure sent back, Hive off and on
   await expect(card(page)).toContainText('Checked and reviewed: land it', { timeout: 20_000 });
   expect(record()).toMatchObject({ step: 'landing', round: 2 });
   expect(sent()).toHaveLength(2);
+});
+
+/** Starts a Hive workspace from the Start page, as the person does, without a plan first. */
+async function startHive(page: Page, branch: string, title: string) {
+  await page.goto(`${symbiote.url}start`);
+  await startPage(page).getByRole('textbox', { name: 'Title' }).fill(title);
+  await startPage(page).getByRole('textbox', { name: 'Goal' }).fill('Return a / 2.');
+  await startPage(page).getByRole('textbox', { name: 'Branch name', exact: true }).fill(branch);
+  await startPage(page).getByLabel('Plan first and wait for my OK').uncheck();
+  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
+  await expect(startPage(page)).toBeHidden();
+}
+
+/** The project's check (`merge.checks`). */
+const setChecks = (checks: string[]) => {
+  mkdirSync(join(symbiote.repo, 'symbiote'), { recursive: true });
+  writeFileSync(
+    join(symbiote.repo, 'symbiote', 'config.json'),
+    JSON.stringify({ merge: { checks } }),
+  );
+};
+
+/** A command that prints, then waits for its gate's file. */
+const held = (gate: string, said: string) =>
+  `echo ${said}; while [ ! -f ${gate} ]; do sleep 0.1; done; echo ${said}-done`;
+
+test("Hive's live progress: the check's commands, their output as it comes, then the running review", async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  symbiote = await serveWorkspaces();
+  const checkGate = join(symbiote.repo, 'check-gate');
+  const reviewGate = join(symbiote.repo, 'review-gate');
+  const commands = ['echo installing', held(checkGate, 'checking-lines'), 'echo built'];
+  setChecks(commands);
+  symbiote.reviewAnswers([
+    {
+      gate: reviewGate,
+      stream: [
+        {
+          type: 'assistant',
+          message: {
+            content: [
+              {
+                type: 'tool_use',
+                name: 'Bash',
+                input: { command: 'pnpm vitest run half.test.ts' },
+              },
+            ],
+          },
+        },
+      ],
+    },
+  ]);
+  await page.goto(`${symbiote.url}git`);
+  await hive(page, true);
+  await startHive(page, BRANCH, 'Halve it');
+  symbiote.commit(BRANCH, 'half.ts', 'export const half = (a: number) => a / 2;\n', 'Halve');
+  symbiote.report(BRANCH, 'Done: half.ts.');
+
+  // The card: in the Hive group, the command running, its time ticking; no expected time on a
+  // first check.
+  const group = page.locator('.sidenav').getByRole('region', { name: 'Hive', exact: true });
+  await expect(group.locator(`[data-branch="${BRANCH}"]`)).toBeVisible({ timeout: 20_000 });
+  await expect(card(page).locator('.hive-live-head')).toContainText('Checking 2/3', {
+    timeout: 10_000,
+  });
+  await expect(card(page).locator('.hive-live-detail')).toHaveText(commands[1] ?? '');
+  await expect(card(page).locator('.state-dot')).toHaveClass(/tone-hive/);
+  const time = card(page).locator('.hive-live-time');
+  await expect(time).toHaveText(/^ · \d+:\d\d$/);
+  const before = await time.textContent();
+  await expect(time).not.toHaveText(before ?? '', { timeout: 5_000 });
+  await expect(card(page).locator('.fact-hive')).toHaveAccessibleName(
+    'Hive drives it: round 1 of 3',
+  );
+
+  // Folded: its dot and its time; its tip says it whole.
+  await page.getByRole('button', { name: 'Fold the sidenav' }).click();
+  await expect(card(page).locator('.hive-rail-time')).toHaveText(/^\d+:\d\d$/);
+  await card(page).hover();
+  await expect(page.getByRole('tooltip')).toContainText(`Checking 2/3: ${commands[1]}`);
+  await page.getByRole('button', { name: 'Open the sidenav' }).click();
+
+  // The page: its head says it; the Review tab shows each command and the output as it comes.
+  await card(page).locator('.workspace-about').click();
+  await expect(page.locator('.workspace-now')).toContainText(`Checking 2/3: ${commands[1]} · `);
+  await page.getByRole('tab', { name: 'Review' }).click();
+  const now = page.getByRole('region', { name: 'Now' });
+  const steps = now.getByRole('list', { name: 'Its steps' }).getByRole('button');
+  await expect(steps).toHaveCount(3);
+  await expect(steps.nth(0)).toHaveAccessibleName(/^echo installing: passed/);
+  await expect(steps.nth(1)).toHaveAccessibleName(/: running, \d/);
+  await expect(steps.nth(2)).toHaveAccessibleName('echo built: waiting');
+  await expect(now.getByRole('log', { name: 'What it wrote' })).toContainText('checking-lines');
+
+  // The check passes: the running review, what the reviewer runs now from its stream.
+  writeFileSync(checkGate, '');
+  await expect(card(page).locator('.hive-live-head')).toContainText('Reviewing', {
+    timeout: 20_000,
+  });
+  await expect(card(page).locator('.hive-live-detail')).toHaveText(
+    'Bash: pnpm vitest run half.test.ts',
+  );
+  await expect(now.getByRole('status')).toContainText('Reviewing · ');
+  await expect(now.getByRole('status')).toContainText('Bash: pnpm vitest run half.test.ts');
+  await expect(
+    now.getByRole('list', { name: 'Its steps' }).getByRole('button'),
+  ).toHaveAccessibleName(/^The reviewer: running/);
+  await expect(now.getByRole('log', { name: 'What it wrote' })).toContainText(
+    'Bash pnpm vitest run half.test.ts',
+  );
+
+  // It approves: landing asked, nothing running; the round keeps each command and its log.
+  writeFileSync(reviewGate, '');
+  await expect(card(page)).toContainText('Checked and reviewed: land it', { timeout: 20_000 });
+  await expect(page.getByRole('region', { name: 'Now' })).toHaveCount(0);
+  const round = page.getByRole('region', { name: 'Round 1' });
+  await expect(round.getByRole('list', { name: 'Its commands' }).getByRole('listitem')).toHaveCount(
+    3,
+  );
+  const check = round.getByLabel('Check, round 1');
+  await check.getByText('Its log').click();
+  await expect(check.getByRole('log', { name: 'What it wrote' })).toContainText(
+    'checking-lines-done',
+  );
+  rmSync(checkGate);
+});
+
+test('a check of one command: no place among others; the next check of it, its expected time', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  symbiote = await serveWorkspaces();
+  const gate = join(symbiote.repo, 'gate');
+  const command = held(gate, 'testing');
+  setChecks([command]);
+  await page.goto(`${symbiote.url}git`);
+  await hive(page, true);
+
+  await startHive(page, BRANCH, 'Halve it');
+  symbiote.commit(BRANCH, 'half.ts', 'export const half = (a: number) => a / 2;\n', 'Halve');
+  symbiote.report(BRANCH, 'Done: half.ts.');
+  await expect(card(page).locator('.hive-live-head')).toHaveText(/^Checking · \d+:\d\d$/, {
+    timeout: 20_000,
+  });
+  writeFileSync(gate, '');
+  await expect(card(page)).toContainText('Checked and reviewed: land it', { timeout: 20_000 });
+  rmSync(gate);
+
+  const other = 'feature/third';
+  await startHive(page, other, 'A third');
+  symbiote.commit(other, 'third.ts', 'export const third = (a: number) => a / 3;\n', 'Third');
+  symbiote.report(other, 'Done: third.ts.');
+  const second = page.locator(`.sidenav .workspace-row[data-branch="${other}"]`);
+  await expect(second.locator('.hive-live-time')).toHaveText(/^ · \d+:\d\d of ~\d+ s$/, {
+    timeout: 20_000,
+  });
+  writeFileSync(gate, '');
+  await expect(second).toContainText('Checked and reviewed: land it', { timeout: 20_000 });
 });
 
 test("Settings lists Hive's prompts only while Hive is on", async ({ page }) => {

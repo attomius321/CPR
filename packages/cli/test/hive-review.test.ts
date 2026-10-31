@@ -19,6 +19,8 @@ import {
   reviewPrompt,
   rerunVerdict,
   reviewerSettingsService,
+  reviewerEvents,
+  sandboxMissing,
 } from '../src/hive-review.js';
 import type { ClaudeCode } from '../src/claude-code.js';
 import { runGroup } from '../src/programs.js';
@@ -328,5 +330,61 @@ describe("Settings' Reviewer (decision 680)", () => {
     await settings.setEffort({ effort: null });
     expect(readReviewerConfig(root)).toEqual({});
     await expect(settings.setModel({ model: 'gpt-6' })).rejects.toThrow(/lists no model gpt-6/);
+  });
+});
+
+describe("the reviewer's events for its log (decision 696)", () => {
+  it('its words and thinking come whole, then its calls, a command as typed and a path short', () => {
+    const line = JSON.stringify({
+      type: 'assistant',
+      message: {
+        content: [
+          { type: 'thinking', thinking: 'The parser first.' },
+          { type: 'text', text: 'I will run the tests.' },
+          { type: 'tool_use', name: 'Bash', input: { command: 'pnpm vitest run a.test.ts\nmore' } },
+          { type: 'tool_use', name: 'Read', input: { file_path: '/copy/src/a.ts' } },
+        ],
+      },
+    });
+    expect(reviewerEvents(line, '/copy')).toEqual([
+      { think: 'The parser first.\n' },
+      { say: 'I will run the tests.\n' },
+      { tool: 'Bash', input: 'pnpm vitest run a.test.ts' },
+      { tool: 'Read', input: 'src/a.ts' },
+    ]);
+    expect(reviewerEvents('not json', '/copy')).toEqual([]);
+    // Its answer is a call of its own (`--json-schema`): said, not shown whole.
+    const answer = JSON.stringify({
+      type: 'assistant',
+      message: {
+        content: [{ type: 'tool_use', name: 'StructuredOutput', input: { summary: 'None.' } }],
+      },
+    });
+    expect(reviewerEvents(answer, '/copy')).toEqual([{ note: 'Writing its answer' }]);
+    expect(
+      reviewerEvents(
+        JSON.stringify({
+          type: 'user',
+          message: { content: [{ type: 'tool_result', content: 'a\nb\n' }] },
+        }),
+        '/copy',
+      ),
+    ).toEqual([{ result: '2 lines' }]);
+  });
+});
+
+describe("Claude Code's refusal of a missing sandbox (HV3, fix)", () => {
+  const SAID = 'sandbox required but unavailable: socat not installed';
+  it('is read on its errors or a plain line of its output, never inside its stream', () => {
+    expect(sandboxMissing({ stdout: '', stderr: `Error: ${SAID}\nmore` })).toBe(SAID);
+    expect(sandboxMissing({ stdout: `${SAID}\n`, stderr: '' })).toBe(SAID);
+    const quoted = JSON.stringify({
+      type: 'user',
+      message: { content: [{ type: 'tool_result', content: `const X = /${SAID}/;` }] },
+    });
+    expect(sandboxMissing({ stdout: `${quoted}\n`, stderr: '' })).toBeNull();
+    // It answered: whatever its errors say, it ran.
+    const result = JSON.stringify({ type: 'result', subtype: 'success', is_error: false });
+    expect(sandboxMissing({ stdout: `${result}\n`, stderr: SAID })).toBeNull();
   });
 });

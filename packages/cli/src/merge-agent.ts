@@ -272,6 +272,9 @@ function shownPath(path: string, cwd: string): string {
 /** A tool call's main input, in a few words: the file read, the pattern looked for. */
 function toolInput(input: Record<string, unknown>, cwd: string): string {
   const text = (key: string) => (typeof input[key] === 'string' ? input[key] : undefined);
+  // A shell command as it was typed (Hive's reviewer runs the repository's own, decision 696).
+  const command = text('command');
+  if (command) return command.split('\n')[0]?.slice(0, 200) ?? '';
   const path = text('file_path') ?? text('path');
   const pattern = text('pattern');
   const where = path ? shownPath(path, cwd) : undefined;

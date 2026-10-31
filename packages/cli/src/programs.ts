@@ -141,14 +141,26 @@ export interface GroupRun {
 }
 
 /** Starts a command in a process group of its own, `runShell`'s way; 60 minutes at most by default. */
-export type RunGroup = (command: string, cwd: string, options?: { timeoutMs?: number }) => GroupRun;
+export type RunGroup = (
+  command: string,
+  cwd: string,
+  options?: {
+    timeoutMs?: number;
+    /** Its output and errors as they come (Hive's live log, decision 695). */
+    onOutput?: (chunk: string) => void;
+  },
+) => GroupRun;
 
 /**
  * Runs a command through the shell in a process group of its own (HV2, decision 654): Hive's
  * check, which Hive off or a resume after a killed `symbiote view` ends whole, its children
  * (`pnpm`, `vitest`, a browser) with it. The output's end is kept, as `runShell` keeps it.
  */
-export const runGroup: RunGroup = (command, cwd, { timeoutMs = CHECK_TIMEOUT_MS } = {}) => {
+export const runGroup: RunGroup = (
+  command,
+  cwd,
+  { timeoutMs = CHECK_TIMEOUT_MS, onOutput } = {},
+) => {
   let output = '';
   const child = spawn(command, {
     cwd,
@@ -169,6 +181,7 @@ export const runGroup: RunGroup = (command, cwd, { timeoutMs = CHECK_TIMEOUT_MS 
   const keep = (chunk: string) => {
     output += chunk;
     if (output.length > 1_000_000) output = output.slice(-200_000);
+    onOutput?.(chunk);
   };
   child.stdout.setEncoding('utf8').on('data', keep);
   child.stderr.setEncoding('utf8').on('data', keep);
