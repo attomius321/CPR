@@ -87,11 +87,27 @@ function took(now: ReviewNow, line: HiveLogLine): void {
   }
 }
 
+/** Each log's read in progress: a read asked meanwhile waits for it. */
+const reading = new Map<string, Promise<unknown>>();
+
 /**
  * What a running review's log says it runs now (decision 697), read from where the last read of
- * that log ended: the first read of a log takes it whole, a chunk at a time.
+ * that log ended: the first read of a log takes it whole, a chunk at a time. One read of a log at a
+ * time: the card's and the Review tab's, asked together, would both read from one place and both
+ * move it on, past the next line.
  */
-export async function reviewNow(file: string): Promise<Omit<ReviewNow, 'next'>> {
+export function reviewNow(file: string): Promise<Omit<ReviewNow, 'next'>> {
+  const before = reading.get(file) ?? Promise.resolve();
+  const read = before.then(() => readOn(file));
+  const settled = read.catch(() => undefined);
+  reading.set(file, settled);
+  void settled.then(() => {
+    if (reading.get(file) === settled) reading.delete(file);
+  });
+  return read;
+}
+
+async function readOn(file: string): Promise<Omit<ReviewNow, 'next'>> {
   let now = followed.get(file);
   if (!now) {
     now = { next: 0 };

@@ -54,3 +54,14 @@ it, not in what it quotes.
 `unavailable`, now `approved`); a refusal on its errors, its note under 400 characters (was 2,000+);
 `sandboxMissing` on errors, a plain line, a quoted one and an answer. Not verified: a review of this
 branch with the fix, which `main`'s runner cannot give until it lands.
+
+## Fix: two reads of a review's log at once (2026-10-31)
+
+**Learned.** Hive's running reviewer (round 1, `464030c`) proved it with a failing test: the card
+(the workspaces' list) and the Review tab (`/api/workspaces/hive`, fetched again at each list
+poll) read a running review's log together; both read from one position and both moved it on, past
+the next line, which was then read from its middle and dropped. The card kept saying the reviewer's
+last call but one. One read of a log at a time now; a read asked meanwhile waits for it.
+
+**Verification.** The reviewer's test, `packages/cli/test/hive-live.test.ts`, red then green; the
+runner's tests pass.
