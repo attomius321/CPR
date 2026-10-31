@@ -2,11 +2,11 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv3-running-reviewer.md)
 
-**Status:** built, the real reviewer run, the real Hive run waiting for the person (2026-10-31), on branch
-`feature/hv3-running-reviewer` (the workspace's, from `main` at `c84fa98`). The person's answers to
-the plan's five questions: 1–4 as recommended; 5, a Review tab of the workspace's own, "In hive
-mode, there will be no more human review process". Not yet run: the real Hive run, which needs the
-scratch repository trusted in Claude Code (see Results).
+**Status:** built, ready for review (2026-10-31), on branch `feature/hv3-running-reviewer` (the
+workspace's, from `main` at `c84fa98`). The person's answers to the plan's five questions: 1–4 as
+recommended; 5, a Review tab of the workspace's own, "In hive mode, there will be no more human
+review process". The real Hive run reached landing asked, its reviewer proving 2 defects with
+failing tests that the writer then fixed (see Results).
 
 **Problem** (the brief: "Build HV3, the next Hive milestone … the running reviewer (decisions 648,
 650)"). HV2's loop asks the person to land a workspace once the project's check passes. Nothing
@@ -249,7 +249,7 @@ kept); resuming an interrupted review; the graph (HV4); usage pacing (HV5).
 - **The reviewer's settings in Settings** say Symbiote's defaults: the model "Symbiote's default
   (Opus 5.5)", the level "Symbiote's default (high)".
 
-**Results** (so far).
+**Results**.
 
 - **Measured first**: a `--shared` clone of this repository at a commit plus an offline
   `pnpm install --frozen-lockfile`, 0.3 s together (pnpm's store hard-links); `--json-schema`'s
@@ -282,6 +282,27 @@ kept); resuming an interrupted review; the graph (HV4); usage pacing (HV5).
   Both copies were removed; the install in each clone took under a second.
 - **Screenshots** (1440×900 and 820×900, dark and light, Hive on): the Review tab with a proven and
   a dropped finding, the landing asked, Settings' Reviewer and Hive mode.
-- **Not verified yet**: the real Hive run (Verification 6's scratch repository is ready, waiting to
-  be trusted in Claude Code); macOS and Windows (no review there). `socat` is not installed on this
-  machine (its `sudo` needs a terminal): the runs above put Ubuntu's package, unpacked, on `PATH`.
+- **The real Hive run** (Verification 6): this branch's `symbiote view` on a scratch repository,
+  HV1's `loc` seed with its own `symbiote/` and cache (the check: an offline install, `tsc`, vitest,
+  about 1 s); the person trusted the folder in Claude Code and installed `socat`. Hive on, one
+  workspace on HV1's G3 goal, Claude Code on Sonnet at low effort in `auto`; the reviewer on Opus at
+  high:
+
+  | Time (UTC) | What happened |
+  |---|---|
+  | 13:38:11 | Started: `hive: true`, Hive's record at `writing`, round 1 |
+  | 13:39:26 | The writer's turn ended (1 min 15 s), one commit; the check passed (0.8 s); the review started |
+  | 13:41:54 | The review (147 s, $0.54): **2 defects proven**, both kept by Symbiote's rerun. A Rust file whose first line is `#![…]` had it taken for a shebang: a string or a block comment opened there was not carried over (`[3,0,0]` read as `[2,1,0]`). It also ran about 30 cases that held (nesting, raw and byte strings, lifetimes, Swift raw strings, Lua long brackets) |
+  | 13:41:56 | `hive.review` sent with the test file, round 2 |
+  | 13:42:08 | The writer's turn ended (12 s): the test added, the scanner fixed, one commit |
+  | 13:42:09 | The check passed (0.9 s); the second review started |
+  | 13:44:01 | The review (112 s, $0.46): both fixes held, 44 more cases of its own passed, approved. **Landing asked**: the card "Checked and reviewed: land it", Land in the head |
+
+  5 min 50 s from start to landing asked; the reviews $1.00 by Claude Code's count. The first
+  reviewer made 8 tool calls (7 sandboxed Bash commands, none refused), ran `pnpm check` and its
+  tests. Each review's copies were removed at its end; only its stream stays in the cache. HV1's
+  running reviewer had found the same `#![…]` case on Opus's G3 result: it predates the change,
+  and the writer fixed it rather than reject it. The workspace waits in the scratch repository;
+  Hive off, the view stopped, its lock released. Nothing of the person's `symbiote/` was touched.
+- **Not verified**: Land on a real run (the e2e lands one through the merge queue); macOS and
+  Windows, where nothing is reviewed.

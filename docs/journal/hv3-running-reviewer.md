@@ -93,3 +93,30 @@ Then `scripts/hive/reviewer-probe.mjs` on a clone of this repository, with a bri
   whole: the name guard held on a real runner.
 
 Not verified: the real Hive run, waiting for the scratch repository to be trusted.
+
+## HV3 — the real Hive run, to landing asked (2026-10-31, branch `feature/hv3-running-reviewer`)
+
+This branch's `symbiote view` on a scratch repository (HV1's `loc` seed, its own `symbiote/` and
+cache, a check of about 1 s), once the person had trusted it in Claude Code and installed `socat`.
+Hive on; one workspace on HV1's G3 goal, Sonnet at low effort; the reviewer on Opus at high. 5 min
+50 s from start to landing asked: the writer's turn (1 min 15 s), the check, a review that proved 2
+defects (147 s, $0.54), the writer's fix with the test added (12 s), the check, a review that
+approved (112 s, $0.46). The plan has the timeline.
+
+**Learned**:
+- **The reviewer found HV1's edge again**: `#![…]` on a Rust file's first line read as a shebang,
+  this time with what it breaks (a string or comment opened there). It predates the change; the
+  writer fixed it rather than reject it in a line. Whether such a finding belongs to the brief is
+  the writer's call, as the prompt says.
+- **The reviewer works through Bash**: 7 of its 8 calls, its tests written with the shell, all in the
+  sandbox; none refused with every command allowed.
+- **A fix of a proven defect is quick when the test comes with it**: 12 s for Sonnet, as HV1's
+  Haiku took 24 s.
+- **The trust prompt holds for the worktrees**: trusting the scratch checkout let `claude --bg` start
+  in its `.worktrees` folder.
+
+**Verification**: the record and events (`symbiote/hive/feature/g3.json(l)` in the scratch
+repository), the kept test in `hive/feature/g3/r1/`, the review copies' folder empty, the reviewer's
+stream (8 tool calls, no denial); screenshots of the real Review tab, dark and light.
+
+Not verified: Land on the real run (the e2e lands one through the merge queue).
