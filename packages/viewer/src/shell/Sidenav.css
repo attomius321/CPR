@@ -566,11 +566,6 @@ button.workspace-about {
   min-width: 0;
 }
 
-.sidenav .hive-live-head strong {
-  color: var(--text);
-  font-weight: 500;
-}
-
 .hive-live-time {
   font-variant-numeric: tabular-nums;
 }

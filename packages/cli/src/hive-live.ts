@@ -82,6 +82,8 @@ function took(now: ReviewNow, line: HiveLogLine): void {
     delete now.doing;
   } else if ('agent' in line && 'tool' in line.agent) {
     now.doing = line.agent.input ? `${line.agent.tool}: ${line.agent.input}` : line.agent.tool;
+  } else if ('agent' in line && 'note' in line.agent) {
+    now.doing = line.agent.note;
   }
 }
 

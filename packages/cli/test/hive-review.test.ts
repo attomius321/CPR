@@ -352,6 +352,14 @@ describe("the reviewer's events for its log (decision 696)", () => {
       { tool: 'Read', input: 'src/a.ts' },
     ]);
     expect(reviewerEvents('not json', '/copy')).toEqual([]);
+    // Its answer is a call of its own (`--json-schema`): said, not shown whole.
+    const answer = JSON.stringify({
+      type: 'assistant',
+      message: {
+        content: [{ type: 'tool_use', name: 'StructuredOutput', input: { summary: 'None.' } }],
+      },
+    });
+    expect(reviewerEvents(answer, '/copy')).toEqual([{ note: 'Writing its answer' }]);
     expect(
       reviewerEvents(
         JSON.stringify({

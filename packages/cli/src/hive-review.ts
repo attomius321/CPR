@@ -390,7 +390,10 @@ export interface ReviewDeps {
  * (`claudeLine`), and the reviewer's words and thinking, which come whole (no partial messages).
  */
 export function reviewerEvents(line: string, cwd: string): MergeAgentEvent[] {
-  const { events } = claudeLine(line, cwd);
+  // Its answer is a call of its own (`--json-schema`): said, not shown whole.
+  const events = claudeLine(line, cwd).events.map((event) =>
+    'tool' in event && event.tool === 'StructuredOutput' ? { note: 'Writing its answer' } : event,
+  );
   let value: unknown;
   try {
     value = JSON.parse(line);

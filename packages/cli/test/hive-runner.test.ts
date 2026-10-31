@@ -3,6 +3,7 @@
 // ends) and the project's real check, run as a shell would.
 import { execFileSync } from 'node:child_process';
 import {
+  appendFileSync,
   chmodSync,
   existsSync,
   mkdirSync,
@@ -1452,6 +1453,12 @@ describe("Hive's live progress", () => {
         expect.objectContaining({ agent: { tool: 'Bash', input: 'pnpm vitest run x.test.ts' } }),
       ]),
     );
+    // Its answer's call: what it does now, in words.
+    const said = JSON.stringify({ at: Date.now(), agent: { note: 'Writing its answer' } });
+    appendFileSync(file, `${said}\n`);
+    expect((await card(s, 'feature/reviewing'))?.live).toMatchObject({
+      doing: 'Writing its answer',
+    });
 
     writeFileSync(gate, '');
     await runner.idle();
