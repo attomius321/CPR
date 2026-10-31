@@ -423,7 +423,8 @@ test of the tendrils' place above Settings and the arrival's "they rise" step we
 
 ## Feature: Hive's question, a circuit (feature/hive-mode-dialog-prompt)
 
-**Status:** planned (2026-10-31), the person's pick of three candidates.
+**Status:** built, ready for review (2026-10-31): the person's pick of three candidates, and turning
+on in the same style, asked after the plan (decision 673).
 
 **Problem** (the person: "The tentacles right now does not really fit the context...make it more
 like the Hive mind style, more futuristic, robotic..make some screenproofs, and show me first").
@@ -485,9 +486,9 @@ off, two runs): today's tendrils 17 and 18 % of a core, the circuit 13 and 18 %,
 60 frames a second each; 0.7 ms of script a frame.
 
 **Files**: `ui/hive-art.ts` (pure: the Mind, the board and its traces, their timetables; the
-arrival's scene with the new Mind; the tendrils' springs, ropes, plugs, free tendrils and goo
-removed), `ui/hive-draw.ts` (the machined Mind, the board, the traces and packets; the tube shading
-removed; the arrival's blackout kept), `ui/HiveArt.tsx` (the same runner, by time), `ui/hive.css`
+arrival's scene with the new Mind, its tiles and traces; the tendrils' springs, ropes, plugs, free
+tendrils and goo and the blackout's noise removed), `ui/hive-draw.ts` (the machined Mind, the board,
+the traces and packets, the shutter; the tube shading and the liquid edge removed), `ui/HiveArt.tsx` (the same runner, by time), `ui/hive.css`
 (the art's colours: metal, glass, lamp; Carnage's removed), `spikes/hive-question-candidates/`
 (the prototype, its recorder and the Swarm's film).
 
@@ -496,7 +497,10 @@ ten traces, five a side, each at 0° and 45° only, from beyond its side to its 
 the box's height; drawn from the edge and whole by the join's end, never undrawn; a landing lights
 its cell, then each cell in, the core last; packets in and orders out after the join, none before,
 still running an hour later; the same time gives the same state whatever came before; every cell
-booted by the join's end; the arrival's tests kept); `hive.spec.ts` keeps its checks (moving while
+booted by the join's end; the shutter's tiles cover the window at four sizes, shut from the edges
+in and never one back, all shut once covered, open from the Mind out and none left at the end; the
+arrival's traces at 0° and 45° from all four edges onto the grown ring, drawn as it closes; the
+arrival's other tests kept); `hive.spec.ts` keeps its checks (moving while
 open, nothing once closed, one still frame with reduced motion, the cover when the look changes);
 `pnpm check`, `pnpm build`, `pnpm test:e2e`; the built question filmed the same way as the
 candidate and set beside it, both themes, 1×; the arrival filmed; the costs again (the question
@@ -505,3 +509,39 @@ open, the arrival at 2560×1440).
 **Risks**: the art is lines on the dialog's own background, not a filled picture: the e2e still
 frame's share of drawn pixels drops (its threshold follows, with the reason); the traces' glow over
 the question's words (the art ends above the heading, faded at its lower edge, as now).
+
+**As built** (what differs from the plan given to the person):
+
+- **Turning on in the circuit's style** (decision 673): asked after the plan ("Turning Hive on
+  animation should be in the Circuit style. forgot to respond to this question"), built on this
+  branch and filmed before review rather than mocked first. Planned as 668, which
+  `feature/export-activity` took meanwhile.
+- **The Mind at (260, 64)**, the art's middle (the prototype's at 62): the traces then meet its ports
+  at 0°, and the arrival grows it from the art's middle as before.
+- **The e2e still frame** checks the Mind solid in the middle and a trace in the column 3 % from
+  each edge (alpha over 160; the sides' shade alone is about 105 there), in place of a share of
+  filled pixels (the board is lines on the dialog's own background).
+- **The traces' surge is clipped to the tiles still shut**: drawn over the whole window, it left
+  pink lines over the new page for about 0.25 s (seen on the light theme's film).
+- **Timing**: the last trace lands at 1.68 s, every cell on by 1.47 s, `JOIN_SECONDS` 2.
+- `ui/hive-art.ts`, `ui/hive-draw.ts` and `ui/HiveArt.tsx`: 1,985 lines to 1,383.
+
+**Results.**
+
+- Tests first, red before: `hive-art.test.ts` 9 of 12 for the question (16 cells, no traces, no
+  feeds), then 4 for the shutter (no tiles, `shut`, traces, `reached`); now 15. `hive.spec.ts` 5
+  (every sampled pixel opaque when the look changes).
+- Filmed on the build the same way as the candidate (Playwright's clock paused, then run 1/30 s a
+  frame) and set beside it: the same join, frame for frame. The turn-on filmed in both themes.
+- Costs, hardware acceleration off, headless, alternating with `main`'s build:
+
+| | `main` | This branch |
+|---|---|---|
+| The question open 10 s, alive (two runs) | 17, 18 % of a core | 12, 15 % |
+| The question still (reduced motion) | 3, 3 % | 3, 3 % |
+| Turning on at 2560×1440 (three runs) | 59.5, 60, 58.4 fps | 59.5, 60, 60 fps |
+| Turning on at 1440×900 (two runs) | | 60, 60 fps; worst frame 16.8 ms |
+
+Not verified: the app's window (Electron is not installed here), a GPU, WSLg's own display, the
+turn-on in a window rather than headless (V82 measured both).
+

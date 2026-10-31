@@ -173,3 +173,50 @@ headless and 54–56 in a window at 2560×1440 (today's 33–35).
 
 Not verified: the app's window, a GPU, WSLg's own display.
 
+## Hive's question candidates — three robotic heads, then the Circuit (2026-10-31, branch `feature/hive-mode-dialog-prompt`)
+
+The person: "The tentacles right now does not really fit the context... more like the Hive mind
+style, more futuristic, robotic... make some screenproofs, and show me first." A prototype
+(`spikes/hive-question-candidates/proto.js`, each candidate a pure function of time) drew three heads
+in place of the question's canvas in this branch's `symbiote view`: Circuit, Conduits, Swarm, all
+round one machined Hive Mind. They were filmed frame by frame in the real dialog and shown on a page
+with their costs. The person picked the Circuit and kept the Swarm "for the future"; then asked for
+turning on in the same style. Planned as decisions 665–667, then 673.
+
+**Learned**:
+- **A pure function of time films itself**: with no springs, any frame is `draw(t)`, so the
+  candidates were filmed by calling it at 1/30 s steps, with no clock to fake and no stutter.
+- **At 1×, small hexes read as dots**: the Swarm's first drones (a 2.4–4 px radius on their own fine
+  lattice) looked like an LED matrix. Docked on the Mind's own lattice (radius 11, smaller toward the
+  edges) and kept one ring away from it, they read as a hive.
+- **Ports decide a route's angles**: the traces were laid out for a Mind at 64 and the prototype
+  put it at 62; the last run of each came in 2 px off level. Build the routes from the cells' ports.
+
+**Verification**: the candidates' costs, the question open 10 s, every browser process, hardware
+acceleration off, two runs: Carnage 17 and 18 % of a core; Circuit 13 and 18 %; Conduits 13 and
+16 %; Swarm 10 and 10 %; still 3 %.
+
+## Hive circuit — built (2026-10-31, branch `feature/hive-mode-dialog-prompt`)
+
+Built as planned (decisions 665–667, 673): the question's circuit board and machined Mind, pure in
+time (`ui/hive-art.ts`, `ui/hive-draw.ts`, `ui/HiveArt.tsx`); turning on as a hex shutter with traces
+into the grown ring (`shell/hive-arrival.ts` unchanged but for its words); the tendrils' engine and
+the liquid blackout removed (1,985 lines to 1,383).
+
+**Learned**:
+- **Endless signals need slots, not a list**: a timetable of one departure in each seeded slot
+  answers "which left between a and b" in constant time, so a cell's glow is a pure sum and an hour
+  open costs what a second does; a precomputed list ran out after its horizon.
+- **A picture through a clip opens a cover tile by tile**: the covered window, taken once, drawn
+  through a clip of the tiles still shut, opens the shutter at 60 fps at 2560×1440 in software; the
+  traces' surge has to go inside the same clip, or it lingers over the new page.
+- **Decision numbers move while a branch waits for an answer**: 668 was free at plan time and taken
+  by `feature/export-activity` two hours later; the recheck before committing the turn-on caught it.
+
+**Verification**: tests first (red: 9 of 12 for the question, then 4 for the shutter), now 15 in
+`hive-art.test.ts` and 5 in `hive.spec.ts`; the built question filmed beside the approved candidate;
+the turn-on filmed in both themes; the costs against `main`'s build (the question 12 and 15 % of a
+core against 17 and 18; turning on at 2560×1440 59.5–60 fps against 58.4–60).
+
+Not verified: the app's window, a GPU, WSLg's own display, the turn-on in a window.
+
