@@ -41,7 +41,12 @@ const sent = () =>
 const record = () =>
   JSON.parse(
     readFileSync(join(symbiote.repo, 'symbiote', 'hive', 'feature', 'one.json'), 'utf8'),
-  ) as { step: string; round: number; reviews: { verdict: string }[] };
+  ) as {
+    step: string;
+    round: number;
+    reviews: { verdict: string }[];
+    message?: { sent?: true };
+  };
 
 test('a defect proven by a failing test goes to the writer; its fix is approved; Land merges it', async ({
   page,
@@ -118,7 +123,9 @@ test('a defect proven by a failing test goes to the writer; its fix is approved;
   await expect(head.getByRole('button', { name: 'Review', exact: true })).toHaveCount(0);
   await expect(head.getByRole('button', { name: 'Land' })).toHaveCount(0);
 
-  // The writer adds the test and fixes it: the next review approves; landing is asked.
+  // The writer adds the test and fixes it, once Hive's message is recorded (the fake logs a resume
+  // before its hooks run): the next review approves; landing is asked.
+  await expect.poll(() => record().message?.sent, { timeout: 10_000 }).toBe(true);
   symbiote.commit(BRANCH, 'one.test.sh', TEST, 'Its test');
   symbiote.commit(BRANCH, 'one.txt', 'one\n', 'Fix');
   symbiote.report(BRANCH, 'Fixed, with its test.');

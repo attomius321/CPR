@@ -44,7 +44,7 @@ const sent = () =>
 const record = () =>
   JSON.parse(
     readFileSync(join(symbiote.repo, 'symbiote', 'hive', 'feature', 'halve.json'), 'utf8'),
-  ) as { step: string; round: number; interrupted?: boolean };
+  ) as { step: string; round: number; interrupted?: boolean; message?: { sent?: true } };
 
 test('Hive drives a workspace: the check, its failure sent back, Hive off and on, landing asked', async ({
   page,
@@ -106,6 +106,8 @@ test('Hive drives a workspace: the check, its failure sent back, Hive off and on
   await hive(page, true);
   await expect.poll(sent, { timeout: 20_000 }).toHaveLength(2);
   expect(sent()[1]).toContain('Hive was turned off');
+  // Its prompt recorded (the fake logs a resume before its hooks run): the next report is its turn's.
+  await expect.poll(() => record().message?.sent, { timeout: 10_000 }).toBe(true);
 
   // The fix: the check passes, the running reviewer (HV3) finds nothing, and landing is asked.
   symbiote.commit(BRANCH, 'fixed.txt', 'yes\n', 'Fix');

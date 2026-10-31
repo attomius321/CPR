@@ -53,11 +53,17 @@ Decisions 674–681.
   sentences.
 - **Two Lands on one page** (the head's and the tab's) read as two actions: the head keeps the
   primary.
+- **HV2's e2e had a race that HV3's longer step showed**: the suite's fake logs a resume before
+  its `UserPromptSubmit` hook runs, so a test that reports right after seeing the resume can record
+  its report before Hive's prompt; the turn then reads as not ended ("Waiting: for you"). It failed
+  once in the full suite under load, never alone. Both Hive specs now wait for Hive's record to say
+  its message was sent (written only once the resume, hooks and all, returned).
 
 **Verification**: tests first, red for the right reason (12 of 23 runner tests: no review step;
 then 6 for the leftover branch folder and a test that read a pid too early). `pnpm check` 2,625
-tests; e2e Hive, Settings and Workspaces specs 75 passed; screenshots of the Review tab, Settings'
-Reviewer and Hive mode, dark and light, 1440 and 820 px wide.
+tests. e2e: the viewer's 369, 368 passed and `hive-loop.spec.ts` failed on the race above; with the
+fix, the two Hive specs 12 of 12 (each 3 times); nexus 20 passed. Screenshots of the Review tab,
+Settings' Reviewer and Hive mode, dark and light, 1440 and 820 px wide.
 
 Not verified yet: a real reviewer (Claude Code's sandbox needs `socat`, missing here) and the real
 Hive run; macOS and Windows, where nothing is reviewed.

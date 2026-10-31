@@ -259,8 +259,10 @@ kept); resuming an interrupted review; the graph (HV4); usage pacing (HV5).
   the viewer's settings 11, card words and the rounds' words. `pnpm check`: 2,625 tests.
 - **e2e**: `hive-review.spec.ts` (the suite's fake Claude Code as writer and reviewer, the rerun
   under bubblewrap): a defect proven reaches the writer, the tab shows it, the fix is approved,
-  Land merges it into `main` and Hive records `landed`; Settings' Reviewer. With `hive-loop.spec.ts`
-  and the Settings, Workspaces and Hive specs: 75 passed.
+  Land merges it into `main` and Hive records `landed`; Settings' Reviewer. The viewer's whole
+  suite: 368 of 369 passed, `hive-loop.spec.ts` failing once on a race of the fake's (a resume
+  logged before its hook ran; see the journal), fixed in both Hive specs: 12 of 12, each 3 times.
+  Nexus: 20 passed.
 - **Screenshots** (1440×900 and 820×900, dark and light, Hive on): the Review tab with a proven and
   a dropped finding, the landing asked, Settings' Reviewer and Hive mode.
 - **Not verified yet**: Claude Code's sandbox running a reviewer (here `socat` is missing); a real
