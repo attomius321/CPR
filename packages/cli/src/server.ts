@@ -77,6 +77,7 @@ import { parsePromptChange, PromptRefused, type PromptSettingsService } from './
 import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';
 import { withHive, type HiveRecord } from './hive.js';
+import type { ReviewerSettings } from './hive-review.js';
 import type { Histories } from './history.js';
 import {
   GIT_WRITES,
@@ -191,6 +192,11 @@ export interface ViewServerOptions {
   intro?: IntroRecord;
   /** Enables `/api/hive` (V82): Hive mode, on every page from its first paint. */
   hive?: HiveRecord;
+  /**
+   * Enables `/api/hive/reviewer/…` (HV3): the running reviewer's model and level, as the
+   * merger's.
+   */
+  hiveReviewer?: ReviewerSettings;
   /**
    * Symbiote's logs (LG1): a line per request, and the pages' errors at `POST /api/logs`;
    * without it, nothing is written.
@@ -365,6 +371,20 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/logs') return pageError(req, res);
     if (url.pathname === '/api/intro' && options.intro) return introApi(req, res, options.intro);
     if (url.pathname === '/api/hive' && options.hive) return hiveApi(req, res, options.hive);
+    const reviewer = options.hiveReviewer;
+    if (reviewer && url.pathname === '/api/hive/reviewer/efforts') {
+      return read(req, res, () => reviewer.efforts());
+    }
+    if (reviewer && url.pathname === '/api/hive/reviewer/effort') {
+      return written(req, res, parseEffortChange, (change) =>
+        answer(res, () => reviewer.setEffort(change)),
+      );
+    }
+    if (reviewer && url.pathname === '/api/hive/reviewer/model') {
+      return written(req, res, parseModelChange, (change) =>
+        answer(res, () => reviewer.setModel(change)),
+      );
+    }
     if (repository) return repositoryRoute(req, res, url, repository);
     return serveSite(req, res, url, url.pathname, root);
   }

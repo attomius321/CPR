@@ -1,7 +1,7 @@
 // HV3: the running reviewer's parts — what a rerun keeps, the files it takes, its arguments and
 // settings, the message's findings within their room, and bubblewrap's confinement of a rerun.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -18,7 +18,9 @@ import {
   reviewerSettings,
   reviewPrompt,
   rerunVerdict,
+  reviewerSettingsService,
 } from '../src/hive-review.js';
+import type { ClaudeCode } from '../src/claude-code.js';
 import { runGroup } from '../src/programs.js';
 import { HIVE_REVIEW_ANSWER } from '../src/prompts.js';
 
@@ -278,4 +280,50 @@ describe('bubblewrap confines a rerun (decision 678)', () => {
       expect(existsSync(join(outside, 'out.txt'))).toBe(false);
     },
   );
+});
+
+describe("Settings' Reviewer (decision 680)", () => {
+  const levels = ['low', 'medium', 'high', 'xhigh', 'max'];
+  const claude = {
+    efforts: () => Promise.resolve(levels),
+    models: () =>
+      Promise.resolve([
+        { id: 'opus', name: 'Opus 5.5', efforts: { levels } },
+        { id: 'sonnet', name: 'Sonnet 5.5', efforts: { levels: ['low', 'medium', 'high'] } },
+        { id: 'haiku', name: 'Haiku 4.5' },
+      ]),
+  } as unknown as ClaudeCode;
+
+  it("says Opus at high by default, Symbiote's, and keeps a change in the config", async () => {
+    const root = folder();
+    const settings = reviewerSettingsService(root, () => Promise.resolve(claude));
+    const read = await settings.efforts();
+    expect(read).toMatchObject({
+      agents: [
+        {
+          kind: 'claude',
+          efforts: { levels, default: 'high', by: 'symbiote' },
+          defaultModel: { id: 'opus', by: 'symbiote' },
+        },
+      ],
+      file: 'symbiote/config.json',
+    });
+    expect(read.model).toBeUndefined();
+    const set = await settings.setModel({ model: 'sonnet' });
+    expect(set.model).toBe('sonnet');
+    // Sonnet's own levels now.
+    expect(set.agents[0]?.efforts?.levels).toEqual(['low', 'medium', 'high']);
+    await expect(settings.setEffort({ effort: 'max' })).rejects.toThrow(
+      /Sonnet 5.5 takes low, medium or high: max/,
+    );
+    expect((await settings.setEffort({ effort: 'medium' })).effort).toBe('medium');
+    expect(readReviewerConfig(root)).toEqual({ model: 'sonnet', effort: 'medium' });
+    expect(
+      JSON.parse(readFileSync(join(root, 'symbiote', 'config.json'), 'utf8')) as unknown,
+    ).toEqual({ hive: { reviewer: { model: 'sonnet', effort: 'medium' } } });
+    await settings.setModel({ model: null });
+    await settings.setEffort({ effort: null });
+    expect(readReviewerConfig(root)).toEqual({});
+    await expect(settings.setModel({ model: 'gpt-6' })).rejects.toThrow(/lists no model gpt-6/);
+  });
 });

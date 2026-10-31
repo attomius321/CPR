@@ -73,6 +73,7 @@ import { startViewServer, type ChangeFiles, type ReviewTarget } from './server.j
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
 import { repositoryHive } from './hive.js';
 import { hiveRunner } from './hive-runner.js';
+import { findConfinement, reviewerSettingsService } from './hive-review.js';
 import { repositoryHiddenBranches } from './git-hidden.js';
 import { libraryService, type LibraryService } from './library.js';
 import { terminals as agentTerminals } from './terminal.js';
@@ -750,6 +751,11 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   const hiveRun = hiveRunner(repo, cacheDir, {
     hive,
     workspaces: repoWorkspaces,
+    // The running reviewer (HV3): the workspaces' Claude Code, bubblewrap for its reruns.
+    reviewer: {
+      claude: async () => (await claudeOf())?.command ?? null,
+      confine: () => findConfinement(ctx.env),
+    },
     log: log.log,
   });
   // The branches hidden from Git's graph (decision 645): the listing, its search and the status's
@@ -844,6 +850,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     },
     open: vsCodeOpener(repo, ctx.env),
     intro: introOf(ctx),
+    hiveReviewer: reviewerSettingsService(repo.root, claudeOf),
     // Settings' switch: the runner told at once (HV2), another process's change read at its tick.
     hive: {
       on: () => hive.on(),

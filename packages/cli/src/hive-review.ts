@@ -7,11 +7,28 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, isAbsolute, join, relative } from 'node:path';
-import { git, EFFORT_LEVEL, MODEL_ID, type HiveFinding, type HiveReview } from '@symbiote/core';
-import { shellWord } from './claude-code.js';
+import {
+  git,
+  EFFORT_LEVEL,
+  MODEL_ID,
+  type AgentLevels,
+  type EffortChange,
+  type HiveFinding,
+  type HiveReview,
+  type ModelChange,
+} from '@symbiote/core';
+import {
+  AGENT_NAMES,
+  effortOnProblem,
+  effortWordProblem,
+  levelsOn,
+  modelProblem,
+  modelWordProblem,
+} from './agent-levels.js';
+import { shellWord, type ClaudeCode } from './claude-code.js';
 import { localHost, onPath } from './editor.js';
 import { CONFIG_FILES } from './plugins.js';
-import { HIVE_REVIEW_ANSWER } from './prompts.js';
+import { HIVE_REVIEW_ANSWER, PromptRefused, readPrompts, writeConfig } from './prompts.js';
 import {
   runGroup,
   spawnGroup,
@@ -661,4 +678,91 @@ export function findingsText(
     text = render();
   }
   return text.length > budget ? `${text.slice(0, Math.max(0, budget - 2))}\n…` : text;
+}
+
+/** The Reviewer's settings in Settings (decision 680): its levels and models, and setting them. */
+export interface ReviewerSettings {
+  /** Claude Code's levels on the reviewer's model, its models, Symbiote's default. */
+  efforts(): Promise<AgentLevels>;
+  /** Sets `hive.reviewer.effort`, one of Claude Code's levels on its model; null removes it. */
+  setEffort(change: EffortChange): Promise<AgentLevels>;
+  /** Sets `hive.reviewer.model`, one of Claude Code's models; null removes it. */
+  setModel(change: ModelChange): Promise<AgentLevels>;
+}
+
+/** The Reviewer's settings of the project at `root`, on Claude Code as `claude` finds it. */
+export function reviewerSettingsService(
+  root: string,
+  claude: () => Promise<ClaudeCode | null>,
+): ReviewerSettings {
+  const levels = async (agent: ClaudeCode) => {
+    const list = await agent.efforts().catch(() => null);
+    return list ? { levels: list } : null;
+  };
+  async function efforts(): Promise<AgentLevels> {
+    const config = readReviewerConfig(root);
+    const about = {
+      ...(config.effort ? { effort: config.effort } : {}),
+      ...(config.model ? { model: config.model } : {}),
+      file: readPrompts(root).file,
+    };
+    const agent = await claude();
+    if (!agent) return { agents: [], ...about };
+    const [fallback, models] = await Promise.all([levels(agent), agent.models().catch(() => null)]);
+    const on = levelsOn(models, config.model ?? REVIEWER_MODEL, fallback);
+    return {
+      agents: [
+        {
+          kind: 'claude',
+          ...(on ? { efforts: { ...on, default: REVIEWER_EFFORT, by: 'symbiote' as const } } : {}),
+          ...(models ? { models } : {}),
+          ...(models ? { defaultModel: { id: REVIEWER_MODEL, by: 'symbiote' as const } } : {}),
+        },
+      ],
+      ...about,
+    };
+  }
+  return {
+    efforts,
+    async setEffort({ effort }) {
+      if (effort !== null) {
+        if (typeof effort !== 'string' || !EFFORT_LEVEL.test(effort)) {
+          throw new PromptRefused(effortWordProblem(effort), 400);
+        }
+        const agent = await claude();
+        if (!agent)
+          throw new PromptRefused('the reviewer needs Claude Code: it is not installed', 409);
+        const model = readReviewerConfig(root).model ?? REVIEWER_MODEL;
+        const models = await agent.models().catch(() => null);
+        const problem = effortOnProblem(
+          effort,
+          AGENT_NAMES.claude,
+          models,
+          model,
+          await levels(agent),
+        );
+        if (problem) throw new PromptRefused(problem, 400);
+      }
+      await writeConfig(root, ['hive', 'reviewer', 'effort'], effort ?? undefined);
+      return efforts();
+    },
+    async setModel({ model }) {
+      if (model !== null) {
+        if (typeof model !== 'string' || !MODEL_ID.test(model)) {
+          throw new PromptRefused(modelWordProblem(model), 400);
+        }
+        const agent = await claude();
+        if (!agent)
+          throw new PromptRefused('the reviewer needs Claude Code: it is not installed', 409);
+        const problem = modelProblem(
+          model,
+          AGENT_NAMES.claude,
+          await agent.models().catch(() => null),
+        );
+        if (problem) throw new PromptRefused(problem, 400);
+      }
+      await writeConfig(root, ['hive', 'reviewer', 'model'], model ?? undefined);
+      return efforts();
+    },
+  };
 }

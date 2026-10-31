@@ -81,7 +81,12 @@ type Advising = (typeof ADVISING)[number];
  * on an agent (V75c).
  */
 interface ModelSetting {
-  key: 'nucleus.model' | 'scribe.model' | 'merge.model' | `advisor.${Advising}.model`;
+  key:
+    | 'nucleus.model'
+    | 'scribe.model'
+    | 'merge.model'
+    | 'hive.reviewer.model'
+    | `advisor.${Advising}.model`;
   /** What the model is for, before "from <agent>'s list". */
   about: string;
   /** What Default does, when not "passes none of Settings'". */
@@ -97,7 +102,12 @@ interface ModelSetting {
  * merger's (V46d) and Scribe's (fix/scribe-effort-level).
  */
 interface EffortSetting {
-  key: 'nucleus.effort' | 'scribe.effort' | 'merge.effort' | `advisor.${Advising}.effort`;
+  key:
+    | 'nucleus.effort'
+    | 'scribe.effort'
+    | 'merge.effort'
+    | 'hive.reviewer.effort'
+    | `advisor.${Advising}.effort`;
   /** What the level is for, before "from <agent>'s levels". */
   about: string;
   /** What Default does, when not "passes none: the agent's own setting decides". */
@@ -165,6 +175,26 @@ const AGENTS: Record<PrebuiltAgent, AgentSettings> = {
       ),
       atDefault: 'Nucleus starts it at its default',
       saved: (level) => `Saved. Nucleus's next conversation starts at ${level}.`,
+    },
+  },
+  Reviewer: {
+    api: '/api/hive/reviewer',
+    who: 'The running reviewer',
+    whose: "the running reviewer's",
+    missing: 'The running reviewer needs Claude Code: it is not installed here.',
+    model: {
+      key: 'hive.reviewer.model',
+      about: 'The model each running review of a Hive workspace is asked on',
+      byDefault: "Default is Symbiote's pick, Opus.",
+      saved: (model) => `Saved. The next running review is asked on ${model}.`,
+      unlisted: 'the reviewer asks on it as written',
+    },
+    effort: {
+      key: 'hive.reviewer.effort',
+      about: 'The level each running review is asked at',
+      byDefault: "Default is Symbiote's high.",
+      atDefault: 'the reviewer is asked at high',
+      saved: (level) => `Saved. The next running review is asked at ${level}.`,
     },
   },
   Scribe: {
@@ -562,7 +592,9 @@ export function SettingsPage() {
               onSaved={() => void load()}
               onBack={back}
             >
-              {current.prompts.map((prompt) => editor(prompt, true))}
+              {current.prompts.map((prompt) =>
+                editor(prompt, true, prompt.key === 'hive.reviewer' ? 'Instructions' : undefined),
+              )}
             </AgentPage>
           ) : (
             current?.prompts[0] && editor(current.prompts[0])

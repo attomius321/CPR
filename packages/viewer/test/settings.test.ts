@@ -96,6 +96,25 @@ describe("promptGroups and Hive's prompts (HV2)", () => {
         ?.entries.map((e) => e.name),
     ).toEqual(['Start', 'Check failed']);
   });
+
+  it("gives the running reviewer an agent's page in the Hive group, only in Hive mode (HV3)", () => {
+    const withReviewer = [
+      ...prompts,
+      prompt({ key: 'hive.review', group: 'Hive', title: 'Defects proven' }),
+      prompt({ key: 'hive.reviewer', group: 'Hive', title: 'Reviewer' }),
+    ];
+    const hive = promptGroups(withReviewer, { hive: true }).at(-1);
+    expect(hive?.group).toBe('Hive');
+    expect(hive?.entries.map((e) => [e.name, e.agent ?? null])).toEqual([
+      ['Start', null],
+      ['Check failed', null],
+      ['Defects proven', null],
+      ['Reviewer', 'Reviewer'],
+    ]);
+    expect(promptGroups(withReviewer).flatMap((g) => g.entries.map((e) => e.name))).not.toContain(
+      'Reviewer',
+    );
+  });
 });
 
 describe('markOf', () => {
