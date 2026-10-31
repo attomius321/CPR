@@ -214,10 +214,11 @@ const LIBRARY = `The person also keeps skills for all their projects in a skill 
  */
 const HIVE_START =
   'Hive drives this workspace. When you end a turn with commits, Symbiote runs the check on ' +
-  "the branch's tip ({check}) and sends you its failures, up to {rounds} rounds; once it passes, " +
-  'the person reviews the branch and lands it. So commit everything before you end a turn, end ' +
-  'a turn only when the work is done or you need the person, and never push, merge or switch ' +
-  'branches.';
+  "the branch's tip ({check}) and sends you its failures; once the check passes, a reviewer runs " +
+  'your change in a throwaway copy and sends you the tests it proves defects with. That is up to ' +
+  '{rounds} rounds; once both pass, the person lands the branch. So commit everything before you ' +
+  'end a turn, end a turn only when the work is done or you need the person, and never push, ' +
+  'merge or switch branches.';
 
 /** What Hive sends the writer when the check failed (HV2). */
 const HIVE_CHECK = [
@@ -230,6 +231,40 @@ const HIVE_CHECK = [
   '',
   'Fix the cause, run the check yourself, commit, and end your turn.',
 ].join('\n');
+
+/**
+ * What Hive sends the writer when its running reviewer proved defects (HV3, decision 679): the
+ * failing tests, each one rerun by Symbiote on a fresh copy of the commit.
+ */
+const HIVE_REVIEW = [
+  'A reviewer with a clean context ran your change on {branch} at {at} in a throwaway copy ' +
+    '(round {round} of {rounds}) and proved {count} with failing tests. Symbiote ran each test ' +
+    'again on a fresh copy of {at}, with only its files added: each failed there too.',
+  '',
+  '{findings}',
+  '',
+  'Add each test to the branch, where the project keeps its tests, and make it pass; or, for a ' +
+    'test you think is wrong, say in one line why and leave it out. Then run the check, commit, ' +
+    'and end your turn.',
+].join('\n');
+
+/**
+ * The running reviewer's instructions (HV3, decisions 648, 676): its appended system prompt. The
+ * brief, the change and the check's result are its prompt; its answer's format follows these.
+ */
+const HIVE_REVIEWER = `You review one change with a clean context, by running it. You work in a throwaway copy of the repository at the branch's tip: its dependencies are installed, and nothing you do there reaches the branch, the repository or the network.
+
+Find where the change is wrong. Write tests in the project's own style and folders, each a real case the brief covers, and run them; build and run the project as you need. Change no file of the change: add tests only.
+
+Report only a defect that a test of yours shows failing. For each: its test's files, a command that runs that test from the repository's root and fails because of the defect, and the test's name as that command's output prints it. Symbiote runs each command again on a fresh copy of the tip with only those files added, and drops a finding whose test passes there or whose output does not name it.
+
+A defect you only suspect, a matter of style, or a case the brief does not cover is not a finding. Keep the failing tests' files; delete the tests that pass. When you find no defect, say what you ran.`;
+
+/**
+ * The answer the running reviewer is asked for, after its instructions: Symbiote reads it, so a
+ * project cannot change it (decision 169's rule). Its JSON schema is `--json-schema`'s.
+ */
+export const HIVE_REVIEW_ANSWER = `Answer with the JSON your answer's schema asks for: "summary", a sentence or two; "ran", what you ran and what passed; "findings", one for each defect a test of yours shows failing, each with "defect" (what is wrong, in which case), "test" (the failing test's name, as the command's output prints it), "command" (runs that test from the repository's root, and fails because of the defect) and "files" (the test's files, repo-relative). With no defect, "findings" is empty.`;
 
 /**
  * The advisor's instructions (V75): its system prompt, the brief its message. The model guide is
@@ -305,6 +340,8 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
   'hive.resume':
     'You were stopped mid-turn: Hive was turned off, and is on again. Continue where you ' +
     'stopped, commit, and end your turn when the work is done.',
+  'hive.review': HIVE_REVIEW,
+  'hive.reviewer': HIVE_REVIEWER,
 };
 
 /** What Settings says of Nucleus's prompt, in its name (decision 682). */
@@ -570,6 +607,37 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     about: 'What Hive sends a writer it stopped mid-turn when Hive was turned off, once it is on.',
     placeholders: [],
     max: MAX_LINE,
+  },
+  'hive.review': {
+    group: 'Hive',
+    title: 'Defects proven',
+    about:
+      "What Hive sends the writer when its running reviewer proved defects: each kept finding's " +
+      "defect, its test's command and files, and the last lines of Symbiote's rerun.",
+    placeholders: [
+      {
+        name: 'findings',
+        about: "each kept finding: its defect, test, command, files and the rerun's last lines",
+        required: true,
+      },
+      { name: 'count', about: 'how many defects: "1 defect", "2 defects"' },
+      { name: 'branch', about: "the workspace's branch" },
+      { name: 'at', about: 'the commit reviewed, short' },
+      { name: 'round', about: "the writer's round" },
+      { name: 'rounds', about: 'how many rounds before Hive stops for the person' },
+      { name: 'folder', about: "where the tests are kept, beside Hive's record" },
+    ],
+    max: MAX_LINE,
+  },
+  'hive.reviewer': {
+    group: 'Hive',
+    title: 'Reviewer',
+    about:
+      "The running reviewer's system prompt, appended to Claude Code's; the brief, the change and " +
+      "the check's result follow in its prompt.",
+    placeholders: [],
+    max: MAX_TEXT,
+    fixed: HIVE_REVIEW_ANSWER,
   },
 };
 

@@ -17,6 +17,7 @@ import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import { useNucleusName } from '../shell/names.js';
 import { ActivityTab } from './ActivityTab.js';
 import { BriefTab } from './BriefTab.js';
+import { HiveReviewTab, LandButton } from './HiveReviewTab.js';
 import { ChangesPanel } from './ChangesPanel.js';
 import { useChangesPanel } from './useChangesPanel.js';
 import { ReplyForm } from './ReplyForm.js';
@@ -67,9 +68,9 @@ import { tip } from '../ui/tip.js';
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
 
 /**
- * `&thread`, `&terminal`, `&activity`, `&brief` or `&shell=<n>`: the tab picked (V21; the brief
- * since V29a, a shell since V45, the activity since V48); without one, the terminal where one can
- * run, else the thread.
+ * `&thread`, `&terminal`, `&activity`, `&brief`, `&review` or `&shell=<n>`: the tab picked (V21; the
+ * brief since V29a, a shell since V45, the activity since V48, a Hive workspace's Review since HV3);
+ * without one, the terminal where one can run, else the thread.
  */
 const viewOfUrl = (): View | null => {
   const params = new URLSearchParams(window.location.search);
@@ -81,9 +82,11 @@ const viewOfUrl = (): View | null => {
         ? 'activity'
         : params.has('brief')
           ? 'brief'
-          : shellOfUrl(window.location.search) !== null
-            ? 'shell'
-            : null;
+          : params.has('review')
+            ? 'review'
+            : shellOfUrl(window.location.search) !== null
+              ? 'shell'
+              : null;
 };
 
 /** A workspace's shells (V45): its terminals' IDs, so read with the page's header. */
@@ -232,7 +235,11 @@ function WorkspacePanel({
       : shellAfter(shells, shellShown);
   const shellGone = chosen === 'shell' && (!shellsCan || (shells !== null && shellNumber === null));
   const view: View =
-    chosen === 'terminal' && !terminals ? 'thread' : shellGone ? fallback : (chosen ?? fallback);
+    chosen === 'terminal' && !terminals
+      ? 'thread'
+      : shellGone || (chosen === 'review' && !workspace.hive)
+        ? fallback
+        : (chosen ?? fallback);
   const showTerminal = terminals && view === 'terminal';
   const shownShell =
     view === 'shell' ? shells?.find((shell) => shell.number === shellNumber) : undefined;
@@ -485,7 +492,11 @@ function WorkspacePanel({
     'thread',
     'activity',
     'brief',
+    // A workspace Hive drives (HV3): its rounds, and Land in Hive mode.
+    ...(workspace.hive ? (['review'] as const) : []),
   ];
+  // In Hive mode a Hive workspace is landed with Land, not reviewed by the person (decision 681).
+  const hiveLands = workspace.hive !== undefined && !workspace.hive.off;
 
   return (
     <section className="workspace" aria-label={`Workspace ${branch}`}>
@@ -578,7 +589,10 @@ function WorkspacePanel({
               <ChangesIcon />
             </button>
             <MoreActions actions={more} />
-            {workspace.ahead > 0 && workspace.tip !== null && (
+            {hiveLands && workspace.hive?.step === 'landing' && !workspace.merged && (
+              <LandButton branch={branch} />
+            )}
+            {!hiveLands && workspace.ahead > 0 && workspace.tip !== null && (
               <button
                 type="button"
                 className={workspace.merged ? 'button' : 'button primary'}
@@ -670,6 +684,7 @@ function WorkspacePanel({
                 <ActivityTab workspace={workspace} thread={thread} version={version} />
               </div>
             )}
+            {view === 'review' && <HiveReviewTab branch={branch} version={version} />}
             {view === 'brief' && (
               <BriefTab
                 text={workspace.brief}

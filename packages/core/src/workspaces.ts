@@ -128,9 +128,54 @@ export interface CheckGuess {
 
 /**
  * Where Hive is with a workspace it drives (HV2, decision 653): its writer's turn, the check
- * Symbiote runs, landing asked of the person; `stuck` at the round cap; `landed` once merged.
+ * Symbiote runs, the running review of a commit the check passed on (HV3, decision 674), landing
+ * asked of the person; `stuck` at the round cap; `landed` once merged.
  */
-export type HiveStep = 'writing' | 'checking' | 'landing' | 'stuck' | 'landed';
+export type HiveStep = 'writing' | 'checking' | 'reviewing' | 'landing' | 'stuck' | 'landed';
+
+/**
+ * A defect Hive's running reviewer reported with a test of its own (HV3, decision 678), and what
+ * Symbiote's rerun of that test on a fresh copy of the commit made of it.
+ */
+export interface HiveFinding {
+  /** The defect, in the reviewer's words. */
+  defect: string;
+  /** The failing test's name, as its command's output prints it. */
+  test: string;
+  /** The command that runs it from the repository's root. */
+  command: string;
+  /** Its files, repo-relative: kept beside Hive's record for the writer. */
+  files: string[];
+  /** Kept: its test failed on Symbiote's rerun. Dropped otherwise, with why. */
+  kept: boolean;
+  why?: string;
+  /** The rerun's exit code (null: it did not end by itself) and its output's last lines. */
+  code?: number | null;
+  output?: string;
+}
+
+/**
+ * A running review Hive ran (HV3, decisions 674–679): `approved` when it proved no defect,
+ * `changes` when a finding was kept, `failed` when the reviewer gave no answer, `unavailable` when
+ * it could not run (Claude Code's sandbox missing, say; why in `error`).
+ */
+export interface HiveReview {
+  round: number;
+  /** The commit reviewed. */
+  at: string;
+  verdict: 'approved' | 'changes' | 'failed' | 'unavailable';
+  ms: number;
+  /** Its cost by Claude Code's own count, in US dollars at list price. */
+  cost?: number;
+  /** The reviewer's summary, and what it ran. */
+  summary?: string;
+  ran?: string;
+  error?: string;
+  /** The model and level it was asked on. */
+  model?: string;
+  effort?: string;
+  findings: HiveFinding[];
+}
 
 /** A check Hive ran on a workspace's branch (decision 654). */
 export interface HiveCheck {
@@ -153,10 +198,37 @@ export interface WorkspaceHive {
   rounds: number;
   /** Hive's last check. */
   check?: HiveCheck;
+  /** Hive's last running review (HV3): its round, commit, verdict and how many findings it kept. */
+  review?: Pick<HiveReview, 'round' | 'at' | 'verdict'> & { kept: number };
   /** Why it stopped for the person, or what it landed without (no check found). */
   note?: string;
   /** Hive is off: the step waits for it (decision 655). */
   paused?: true;
+  /**
+   * Hive is off, whatever the step (HV3): landing is the person's as for any workspace, from its
+   * review, not by Land.
+   */
+  off?: true;
+}
+
+/**
+ * `GET /api/workspaces/hive?branch=` (HV3, decision 681): what Hive did with a workspace, for its
+ * Review tab: each round's check and running review, and whether Land is asked.
+ */
+export interface WorkspaceHiveDetail {
+  branch: string;
+  step: HiveStep;
+  round: number;
+  rounds: number;
+  /** Hive mode, now: Land only while it is on. */
+  on: boolean;
+  /** The commit checked and reviewed: the one Land approves. */
+  checked?: string;
+  note?: string;
+  checks: HiveCheck[];
+  reviews: HiveReview[];
+  /** Where the kept findings' tests are, beside Hive's record (`r<round>/<path>` below it). */
+  tests: string;
 }
 
 /** A workspace and its agent, for the commits page. */

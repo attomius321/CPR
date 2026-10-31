@@ -1,16 +1,21 @@
 // Hive's runner (HV2, decisions 646, 653–656): in `symbiote view`'s process, it drives every
 // workspace started while Hive is on. It reads what the workspace's card reads — the writer's
 // session and the thread its hooks record — and acts on a turn's end: the project's check on the
-// branch's tip, its failures sent back with `reply`, up to 3 rounds; then landing is asked of the
-// person. Hive off stops Hive's writers and checks and keeps each step; Hive on, or a new runner
-// after a killed one, looks at what the sessions show and goes on from there. One runner drives a
-// repository, by a pid lock beside the records.
-import { mkdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+// branch's tip, its failures sent back with `reply`; once the check passes, the running review of
+// that commit (HV3, decisions 674–679), the tests it proved defects with sent back; up to 3 rounds;
+// then landing is asked of the person. Hive off stops Hive's writers, checks and reviews and keeps
+// each step; Hive on, or a new runner after a killed one, looks at what the sessions show and goes
+// on from there. One runner drives a repository, by a pid lock beside the records.
+import { randomBytes } from 'node:crypto';
+import { mkdir, readFile, rm, rmdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
+  git,
+  mergeBase,
   worktreeStatus,
   type GitRepo,
   type HiveCheck,
+  type HiveReview,
   type ThreadEntry,
   type WorkspaceSummary,
 } from '@symbiote/core';
@@ -19,15 +24,31 @@ import type { HiveRecord } from './hive.js';
 import {
   hiveEvent,
   hiveLockPath,
+  hiveTestsDir,
   readHive,
   readHives,
   writeHive,
   type HiveFile,
   type HiveMessageKey,
 } from './hive-record.js';
+import {
+  findConfinement,
+  findingsText,
+  installCommands,
+  readReviewerConfig,
+  REVIEWER_EFFORT,
+  REVIEWER_MODEL,
+  reviewPrompt,
+  startReview,
+  type Confine,
+  type ReviewOutcome,
+  type ReviewRun,
+} from './hive-review.js';
+import { findClaude } from './claude-code.js';
 import { projectCheck } from './merges.js';
-import { killGroup, runGroup, type GroupRun, type RunGroup } from './programs.js';
+import { killGroup, runGroup, type GroupRun, type RunGroup, type SpawnGroup } from './programs.js';
 import { fillPrompt, readPrompts } from './prompts.js';
+import { MAX_BRIEF } from './workspace-brief.js';
 import { reviewPlace, type ReviewPlace } from './reviews.js';
 import { readThreadEnd } from './thread.js';
 import { symbioteFolder } from './workspace-record.js';
@@ -61,11 +82,35 @@ const lastLines = (text: string) =>
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
+/** Why a check or a review was stopped before its end. */
+type Stop = 'off' | 'took-over' | 'close';
+
 /** A check this runner runs, and why it was stopped, if it was. */
 interface Running {
   run: GroupRun;
-  stopped?: 'off' | 'took-over' | 'close';
+  stopped?: Stop;
 }
+
+/** A review this runner runs (HV3), and why it was stopped, if it was. */
+interface Reviewing {
+  run: ReviewRun;
+  stopped?: Stop;
+}
+
+/** The running reviewer's surroundings (HV3): Claude Code, how a rerun is confined, the limits. */
+export interface HiveReviewer {
+  /** Claude Code's program; null when there is none. */
+  claude: () => Promise<string | null>;
+  /** How a rerun is confined (bubblewrap); null where it cannot be: then nothing is reviewed. */
+  confine: () => Promise<Confine | null>;
+  run?: RunGroup;
+  spawn?: SpawnGroup;
+  reviewerMs?: number;
+  rerunMs?: number;
+}
+
+/** A branch as one folder's name in Symbiote's cache. */
+const slug = (branch: string) => branch.replace(/[^\w.-]+/g, '-');
 
 /** The runner of `repo`'s Hive: its records beside the workspace records. */
 export function hiveRunner(
@@ -80,6 +125,10 @@ export function hiveRunner(
     offInterval = 10_000,
     pid = process.pid,
     run = runGroup,
+    reviewer = {
+      claude: () => findClaude(process.env),
+      confine: () => findConfinement(process.env),
+    },
     log,
   }: {
     hive: HiveRecord;
@@ -94,6 +143,8 @@ export function hiveRunner(
     pid?: number;
     /** How a check's command runs. */
     run?: RunGroup;
+    /** The running reviewer's surroundings (HV3). */
+    reviewer?: HiveReviewer;
     log?: Pick<Logger, 'info' | 'warn'>;
   },
 ): HiveRunner {
@@ -107,6 +158,10 @@ export function hiveRunner(
   /** Each workspace's message or check in flight, by branch. */
   const actions = new Map<string, Promise<void>>();
   const checks = new Map<string, Running>();
+  const reviews = new Map<string, Reviewing>();
+  /** Where a branch's review copies are, each review in a folder of its own (decision 675). */
+  const copiesOf = (branch: string) =>
+    join(cacheDir, 'worktrees', repo.id, 'hive-review', slug(branch));
   /** Writers Hive off must stop: tried again at each tick until stopped or gone. */
   const toStop = new Set<string>();
   /** Messages that failed once: their failure is an event once. */
@@ -227,7 +282,7 @@ export function hiveRunner(
   async function nextRound(
     where: ReviewPlace,
     record: HiveFile,
-    key: 'hive.check' | 'hive.commit',
+    key: 'hive.check' | 'hive.review' | 'hive.commit',
     values: Record<string, string>,
     why: (rounds: number) => string,
   ): Promise<void> {
@@ -310,10 +365,16 @@ export function hiveRunner(
     const tip = summary.tip;
     const check = await projectCheck(repo, root, tip).catch(() => null);
     if (!check) {
+      // No check, but a review all the same (decision 674): the note stays for the person.
       const note = 'no check is set or found: check it yourself before you land it';
-      return void (await moveTo(where, record, { step: 'landing', checked: tip, note }, 'landing', {
-        note,
-      }));
+      const next = await moveTo(
+        where,
+        record,
+        { step: 'reviewing', checked: tip, note },
+        'reviewing',
+        { note },
+      );
+      return reviewing(where, next);
     }
     return act(record.branch, runCheck(where, record, tip, check.commands, summary.worktree.path));
   }
@@ -374,8 +435,13 @@ export function hiveRunner(
       ...(ran.failed ? { failed: ran.failed } : {}),
     });
     if (ran.ok) {
-      await moveTo(where, after, { step: 'landing', checked: tip, note: undefined }, 'landing');
-      return;
+      const next = await moveTo(
+        where,
+        after,
+        { step: 'reviewing', checked: tip, note: undefined },
+        'reviewing',
+      );
+      return reviewing(where, next);
     }
     await nextRound(
       where,
@@ -392,6 +458,203 @@ export function hiveRunner(
       // The card's words: plain text, no Markdown.
       (rounds) => `the check failed ${plural(rounds, 'time')}: ${failedCommand ?? ''}`,
     );
+  }
+
+  /**
+   * The running review of the commit the check passed on (HV3, decisions 674–679): its copy, the
+   * reviewer and the rerun run beside the tick, as a check does.
+   */
+  async function reviewing(where: ReviewPlace, record: HiveFile): Promise<void> {
+    const summary = await workspaces.summaryOf(record.branch);
+    if (!summary) return;
+    if (summary.merged) return void (await moveTo(where, record, { step: 'landed' }, 'landed'));
+    const tip = record.checked ?? summary.tip;
+    if (!tip) return;
+    const [claude, confine] = await Promise.all([reviewer.claude(), reviewer.confine()]);
+    const check = await projectCheck(repo, root, tip).catch(() => null);
+    const passed = record.checks.findLast((c) => c.at === tip && c.ok);
+    const from = summary.from ? await mergeBase(repo, tip, summary.from).catch(() => null) : null;
+    const base = from ?? summary.base;
+    const diff = await git(repo.root, ['diff', base, tip]).catch(() => '');
+    const last = record.reviews.at(-1);
+    const thread = await readThreadEnd(symbioteFolder(where), record.branch);
+    const report = thread.findLast((e) => e.kind === 'report');
+    const installs = check ? installCommands(check.commands) : [];
+    const before =
+      last && last.verdict === 'changes' && last.round < record.round
+        ? {
+            round: last.round,
+            findings: last.findings.filter((f) => f.kept),
+            ...(report?.kind === 'report' ? { report: report.text } : {}),
+          }
+        : undefined;
+    const prompt = reviewPrompt({
+      brief: summary.brief,
+      branch: record.branch,
+      base,
+      tip,
+      diff,
+      check: passed && check ? { ok: true, ms: passed.ms, commands: check.commands } : null,
+      installs,
+      ...(before ? { before } : {}),
+    });
+    const config = readReviewerConfig(root);
+    const model = config.model ?? REVIEWER_MODEL;
+    const effort = config.effort ?? REVIEWER_EFFORT;
+    const id = `${stamp().replace(/[:.]/g, '-')}-${randomBytes(3).toString('hex')}`;
+    const at = stamp();
+    let marked: Promise<void> = Promise.resolve();
+    const running: Reviewing = {
+      run: startReview(
+        {
+          source: repo.root,
+          tip,
+          round: record.round,
+          folder: join(copiesOf(record.branch), id),
+          log: join(cacheDir, 'hive-reviews', repo.id, `${slug(record.branch)}-${id}.jsonl`),
+          installs,
+          prompt,
+          instructions: readPrompts(root).text['hive.reviewer'],
+          model,
+          effort,
+        },
+        {
+          claude,
+          confine,
+          ...(reviewer.run ? { run: reviewer.run } : {}),
+          ...(reviewer.spawn ? { spawn: reviewer.spawn } : {}),
+          ...(reviewer.reviewerMs ? { reviewerMs: reviewer.reviewerMs } : {}),
+          ...(reviewer.rerunMs ? { rerunMs: reviewer.rerunMs } : {}),
+          // Each process's leader in the record, for a new runner to end it (decision 655).
+          onPid: (pid) => {
+            marked = marked.then(async () => {
+              const fresh = await readHive(where, record.branch);
+              if (fresh?.step !== 'reviewing' || reviews.get(record.branch) !== running) return;
+              const next: HiveFile = { ...fresh, review: { pid, started: at, at: tip } };
+              delete next.interrupted;
+              await save(where, next);
+            });
+          },
+        },
+      ),
+    };
+    reviews.set(record.branch, running);
+    await event(where, record.branch, 'review-started', {
+      round: record.round,
+      commit: tip,
+      model,
+      effort,
+    });
+    return act(
+      record.branch,
+      running.run.done.then(async (outcome) => {
+        await marked;
+        if (reviews.get(record.branch) === running) reviews.delete(record.branch);
+        // The branch's folder too, once it holds no other review's copy.
+        await rmdir(copiesOf(record.branch)).catch(() => undefined);
+        if (closed) return;
+        if (running.stopped || !outcome) {
+          return stoppedReview(where, record.branch, running.stopped ?? 'close');
+        }
+        return reviewed(where, record.branch, outcome);
+      }),
+    );
+  }
+
+  /** A review's end (decisions 674, 679): landing, the proven tests to the writer, or again. */
+  async function reviewed(where: ReviewPlace, branch: string, outcome: ReviewOutcome) {
+    const fresh = await readHive(where, branch);
+    if (!fresh) return;
+    const review: HiveReview = outcome.review;
+    const after: HiveFile = { ...fresh, reviews: [...fresh.reviews, review] };
+    delete after.review;
+    await save(where, after);
+    const kept = review.findings.filter((f) => f.kept);
+    await event(where, branch, 'review', {
+      round: review.round,
+      verdict: review.verdict,
+      kept: kept.length,
+      dropped: review.findings.length - kept.length,
+      ms: review.ms,
+      ...(review.cost !== undefined ? { cost: review.cost } : {}),
+      ...(review.error ? { error: review.error } : {}),
+    });
+    if (review.verdict === 'approved') {
+      await moveTo(where, after, { step: 'landing', checked: review.at }, 'landing');
+      return;
+    }
+    if (review.verdict === 'unavailable') {
+      const note = `not reviewed: ${review.error ?? 'the reviewer could not run'}`;
+      await moveTo(where, after, { step: 'landing', checked: review.at, note }, 'landing', {
+        note,
+      });
+      return;
+    }
+    if (review.verdict === 'failed') {
+      const failures = after.reviews.filter(
+        (r) => r.round === review.round && r.at === review.at && r.verdict === 'failed',
+      );
+      if (failures.length < 2) {
+        // Once more, at the next look.
+        await moveTo(where, after, { step: 'reviewing' }, null);
+        return;
+      }
+      const note = `the running review failed twice: ${review.error ?? 'no answer'}; review it yourself`;
+      await moveTo(where, after, { step: 'landing', checked: review.at, note }, 'landing', {
+        note,
+      });
+      return;
+    }
+    // Defects proven: their tests kept beside the record, and sent to the writer.
+    const folder = hiveTestsDir(where, branch, review.round);
+    for (const [path, text] of outcome.files) {
+      await mkdir(dirname(join(folder, path)), { recursive: true });
+      await writeFile(join(folder, path), text);
+    }
+    const values = {
+      count: plural(kept.length, 'defect'),
+      branch,
+      at: review.at.slice(0, 7),
+      round: String(review.round),
+      rounds: String(after.rounds),
+      folder,
+    };
+    const template = readPrompts(root).text['hive.review'];
+    const room = MAX_BRIEF - fillPrompt(template, { ...values, findings: '' }).length - 200;
+    await nextRound(
+      where,
+      after,
+      'hive.review',
+      { ...values, findings: findingsText(review.findings, outcome.files, folder, room) },
+      (rounds) => `the reviewer proved defects in ${rounds} rounds`,
+    );
+  }
+
+  /** A review stopped before its end: no result, its copies gone; the step kept, or the person's. */
+  async function stoppedReview(where: ReviewPlace, branch: string, why: Stop): Promise<void> {
+    const record = await readHive(where, branch);
+    if (!record) return;
+    if (why === 'took-over') {
+      const turn = await turnOf(where, branch, record.since);
+      await roundsAgain(where, record, turn?.prompt?.at ?? stamp());
+      return;
+    }
+    const kept: HiveFile = { ...record, interrupted: true };
+    delete kept.review;
+    await save(where, kept);
+    await event(where, branch, 'review-stopped', { why });
+  }
+
+  /** While a review runs: a message the writer got stops it (the person took over). */
+  async function watchReview(where: ReviewPlace, record: HiveFile): Promise<void> {
+    const running = reviews.get(record.branch);
+    if (!running || running.stopped) return;
+    const thread = await readThreadEnd(symbioteFolder(where), record.branch);
+    const prompt = thread.findLast((e) => e.kind === 'prompt');
+    if (prompt && prompt.at > record.since) {
+      running.stopped = 'took-over';
+      running.run.stop();
+    }
   }
 
   /** A check stopped before its end: no result; the step kept, or the person's turn. */
@@ -425,6 +688,7 @@ export function hiveRunner(
         message: undefined,
         note: undefined,
         check: undefined,
+        review: undefined,
       },
       'rounds-again',
       { prompt: at },
@@ -486,6 +750,13 @@ export function hiveRunner(
       } else if (record.step === 'checking' && record.check) {
         killGroup(record.check.pid, 'SIGKILL');
       }
+      const review = reviews.get(record.branch);
+      if (review) {
+        review.stopped = 'off';
+        review.run.stop();
+      } else if (record.step === 'reviewing' && record.review) {
+        killGroup(record.review.pid, 'SIGKILL');
+      }
       if (record.step === 'writing') toStop.add(record.branch);
       await event(where, record.branch, 'off', { step: record.step });
     }
@@ -521,6 +792,22 @@ export function hiveRunner(
   async function reconcile(where: ReviewPlace, records: HiveFile[]): Promise<void> {
     toStop.clear();
     for (const record of records) {
+      if (reviews.has(record.branch)) continue;
+      // Copies a review of another runner left (decision 675): none is running here.
+      await rm(copiesOf(record.branch), { recursive: true, force: true }).catch(() => undefined);
+      if (record.step === 'reviewing') {
+        if (record.review && killGroup(record.review.pid, 'SIGKILL')) {
+          await event(where, record.branch, 'orphan-killed', { pid: record.review.pid });
+        }
+        if (record.review || record.interrupted) {
+          const again: HiveFile = { ...record };
+          delete again.review;
+          delete again.interrupted;
+          await save(where, again);
+          await event(where, record.branch, 'on', { step: 'reviewing' });
+        }
+        continue;
+      }
       if (record.step === 'checking' && !checks.has(record.branch)) {
         if (record.check && killGroup(record.check.pid, 'SIGKILL')) {
           await event(where, record.branch, 'orphan-killed', { pid: record.check.pid });
@@ -586,10 +873,15 @@ export function hiveRunner(
         await watchCheck(where, record);
         continue;
       }
+      if (reviews.has(record.branch)) {
+        await watchReview(where, record);
+        continue;
+      }
       if (actions.has(record.branch)) continue;
       try {
         if (record.step === 'writing') await writing(where, record);
         else if (record.step === 'checking') await checking(where, record);
+        else if (record.step === 'reviewing') await reviewing(where, record);
         else if (record.step === 'landing' || record.step === 'stuck') await waiting(where, record);
       } catch (error) {
         log?.warn({ branch: record.branch, error: (error as Error).message }, 'hive step failed');
@@ -650,6 +942,10 @@ export function hiveRunner(
       for (const running of checks.values()) {
         running.stopped = 'close';
         running.run.kill();
+      }
+      for (const running of reviews.values()) {
+        running.stopped = 'close';
+        running.run.stop();
       }
       closed = true;
       clearTimeout(timer);

@@ -8,6 +8,7 @@ import { MERGER_INSTRUCTIONS, mergerInstructions } from '../src/merge-agent.js';
 import {
   DEFAULT_PROMPTS,
   fillPrompt,
+  HIVE_REVIEW_ANSWER,
   MERGER_ANSWER,
   nucleusInstructions,
   promptSettingsService,
@@ -543,8 +544,10 @@ describe("Nucleus's prompt (V35, NU1)", () => {
       'library',
       'hive.start',
       'hive.check',
+      'hive.review',
       'hive.commit',
       'hive.resume',
+      'hive.reviewer',
     ]);
   });
 });
@@ -694,9 +697,16 @@ describe("Hive's prompts (HV2, decision 657)", () => {
     expect(prompts.filter((p) => p.group === 'Hive').map((p) => [p.key, p.title])).toEqual([
       ['hive.start', 'Start'],
       ['hive.check', 'Check failed'],
+      ['hive.review', 'Defects proven'],
       ['hive.commit', 'Not committed'],
       ['hive.resume', 'Resume'],
+      ['hive.reviewer', 'Reviewer'],
     ]);
+    // HV3: the message with the proven tests needs them; the reviewer's answer is Symbiote's.
+    expect(of('hive.review')?.placeholders.find((p) => p.required)?.name).toBe('findings');
+    expect(of('hive.reviewer')?.fixed).toBe(HIVE_REVIEW_ANSWER);
+    const without = withConfig({ prompts: { hive: { review: 'Fix it.' } } });
+    expect(readPrompts(without).text['hive.review']).toBe(DEFAULT_PROMPTS['hive.review']);
     expect(of('hive.start')?.placeholders.map((p) => p.name)).toEqual(['check', 'rounds']);
     expect(of('hive.check')?.placeholders.find((p) => p.required)?.name).toBe('output');
     expect(of('start.feature')?.placeholders.map((p) => p.name)).toContain('hive');

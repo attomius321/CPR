@@ -865,7 +865,12 @@ describe('workspaceNext for a workspace Hive drives (HV2)', () => {
   });
 
   it('asks the person to land it once checked, and says why Hive stopped', () => {
-    const checked = hive({ step: 'landing', check: { round: 1, at: TIP, ok: true, ms: 1 } });
+    const checked = hive({
+      step: 'landing',
+      off: true,
+      check: { round: 1, at: TIP, ok: true, ms: 1 },
+    });
+    // Hive off since it asked: the person's review, as for any workspace (HV2's words).
     expect(next({ ...ready, hive: checked })).toEqual({
       group: 'review',
       text: 'Checked: review and land it',
@@ -876,7 +881,10 @@ describe('workspaceNext for a workspace Hive drives (HV2)', () => {
       'Approved: ask your agent to merge it',
     );
     expect(
-      next({ ...ready, hive: hive({ step: 'landing', note: 'no check is set or found' }) }).text,
+      next({
+        ...ready,
+        hive: hive({ step: 'landing', off: true, note: 'no check is set or found' }),
+      }).text,
     ).toBe('No check ran: review, check and land it');
     expect(
       next({
@@ -887,6 +895,51 @@ describe('workspaceNext for a workspace Hive drives (HV2)', () => {
       group: 'waiting',
       text: 'Hive stopped: the check failed 3 times: pnpm check',
       mark: '?',
+    });
+  });
+
+  it('says Hive reviews it, then asks to land it with Land, in Hive mode (HV3)', () => {
+    expect(next({ ...ready, hive: hive({ step: 'reviewing', round: 2 }) })).toEqual({
+      group: 'working',
+      text: 'Hive: reviewing',
+      mark: '⚙',
+    });
+    expect(workspaceNext(summary({ ...ready, hive: hive({ step: 'reviewing' }) })).hive).toBe(true);
+    const review = { round: 2, at: TIP, verdict: 'approved' as const, kept: 0 };
+    const landing = hive({ step: 'landing', round: 2, review });
+    expect(next({ ...ready, hive: landing })).toEqual({
+      group: 'review',
+      text: 'Checked and reviewed: land it',
+      mark: '●',
+    });
+    // No review of the person's in Hive mode: one in progress says nothing here.
+    expect(next({ ...ready, hive: landing }, {}).text).toBe('Checked and reviewed: land it');
+    // Land pressed: its approval at the tip, the merge queue has it.
+    expect(next({ ...ready, hive: landing }, { verdict: verdict('approve') }).text).toBe(
+      'Landing: in the merge queue',
+    );
+    expect(
+      next({
+        ...ready,
+        hive: hive({
+          step: 'landing',
+          note: "not reviewed: Claude Code's sandbox is not available: socat not installed",
+        }),
+      }).text,
+    ).toBe('Not reviewed: look, then land it');
+    expect(
+      next({ ...ready, hive: hive({ step: 'landing', note: 'no check is set or found' }) }).text,
+    ).toBe('No check ran: check, then land it');
+    expect(
+      next({
+        ...ready,
+        hive: hive({ step: 'stuck', round: 3, note: 'the reviewer proved defects in 3 rounds' }),
+      }).text,
+    ).toBe('Hive stopped: the reviewer proved defects in 3 rounds');
+    expect(next({ ...ready, hive: hive({ step: 'reviewing', paused: true }) })).toEqual({
+      group: 'stopped',
+      text: 'Hive off: paused before the review',
+      mark: '·',
     });
   });
 

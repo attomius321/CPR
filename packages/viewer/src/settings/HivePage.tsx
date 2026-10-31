@@ -5,7 +5,7 @@ import { DangerIcon } from '../ui/icons.js';
 import { SettingsCard } from './SettingsCard.js';
 
 /**
- * Hive mode (V82, decision 613): Hive's switch, a danger to press. What Hive does (HV2), in the
+ * Hive mode (V82, decision 613): Hive's switch, a danger to press. What Hive does (HV2, HV3), in the
  * error's tint, and a danger button that asks first; off is the safe way and does not ask. Kept
  * for this repository, out of git (decision 621).
  */
@@ -60,10 +60,12 @@ export function HivePage({ onBack }: { onBack: () => void }) {
         <p>
           <strong>Hive runs agents and the project&apos;s check without asking you first.</strong>
           Every workspace you start while Hive is on is Hive&apos;s: its Claude Code agent works the
-          brief; after each turn Symbiote runs the check in its worktree and sends the agent what
-          fails, for up to 3 rounds; then it asks you to review and land the workspace. Turning Hive
-          off stops Hive&apos;s agents and checks; turning it on again continues where they stopped.
-          Landing, pushing and deleting work stay yours.
+          brief; after each turn Symbiote runs the check in its worktree, and once it passes a
+          reviewer with a clean context runs the change in a throwaway copy and proves defects with
+          failing tests. Symbiote sends the agent what fails, for up to 3 rounds; then the
+          workspace&apos;s Review tab asks you to land it. Turning Hive off stops Hive&apos;s
+          agents, checks and reviews; turning it on again continues where they stopped. Landing,
+          pushing and deleting work stay yours.
         </p>
       </div>
       <div className="hive-control">

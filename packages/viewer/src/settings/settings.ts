@@ -8,10 +8,16 @@ import { nucleusName } from '../shell/names.js';
  * one page for its settings — its model, its effort, its prompt (fix/scout-merger-scribe-settings).
  */
 export const PREBUILT_AGENTS = ['Merger', 'Nucleus', 'Scribe'] as const;
-export type PrebuiltAgent = (typeof PREBUILT_AGENTS)[number];
+/**
+ * Agents whose page is an entry of their prompt's own group, not of "Prebuilt agents": Hive's
+ * running reviewer (HV3, decision 680), in the Hive group.
+ */
+const GROUPED_AGENTS = { 'hive.reviewer': 'Reviewer' } as const;
+export type PrebuiltAgent =
+  (typeof PREBUILT_AGENTS)[number] | (typeof GROUPED_AGENTS)[keyof typeof GROUPED_AGENTS];
 export const PREBUILT_GROUP = 'Prebuilt agents';
 
-const prebuilt = (group: string): group is PrebuiltAgent =>
+const prebuilt = (group: string): group is (typeof PREBUILT_AGENTS)[number] =>
   (PREBUILT_AGENTS as readonly string[]).includes(group);
 
 /**
@@ -22,6 +28,8 @@ export function agentName(group: string, hive: boolean): string {
   return group === 'Nucleus' ? nucleusName(hive) : group;
 }
 
+const groupedAgent = (key: PromptKey): PrebuiltAgent | undefined =>
+  (GROUPED_AGENTS as Partial<Record<PromptKey, PrebuiltAgent>>)[key];
 /** An entry of Settings' list, and the page it opens. */
 export interface SettingsEntry {
   /** The page's key in `?prompt=`: its prompt's, an agent's first prompt's. */
@@ -50,8 +58,9 @@ export function promptGroups(
   const agents = new Map<PrebuiltAgent, SettingsEntry>();
   for (const prompt of prompts) {
     if (prompt.group === HIVE_GROUP && !hive) continue;
-    const agent = prebuilt(prompt.group) ? prompt.group : undefined;
-    const group = agent ? PREBUILT_GROUP : prompt.group;
+    const grouped = groupedAgent(prompt.key);
+    const agent = prebuilt(prompt.group) ? prompt.group : grouped;
+    const group = agent && !grouped ? PREBUILT_GROUP : prompt.group;
     const entries = groups.get(group) ?? [];
     groups.set(group, entries);
     const known = agent && agents.get(agent);

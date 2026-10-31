@@ -623,6 +623,15 @@ export interface RunningWorkspaces extends Running {
   advise(answer: Record<string, unknown> | { exit: number }): void;
   /** Each advisor's run of the fake Claude Code: its arguments and the brief on its stdin. */
   adviceCalls(): { args: string[]; input: string }[];
+  /**
+   * What the fake Claude Code answers as Hive's running reviewer (HV3), run by run: the files it
+   * writes in its copy and its answer (none left: it approves).
+   */
+  reviewAnswers(
+    answers: { write?: Record<string, string>; answer?: Record<string, unknown> }[],
+  ): void;
+  /** Each running reviewer's run: its arguments, its prompt and its folder. */
+  reviewCalls(): { args: string[]; input: string; cwd: string }[];
   /** The sessions the fake stopped, by ID. */
   stops(): string[];
   /** From now on the fake refuses to start, with Claude Code's trust message. */
@@ -762,6 +771,25 @@ const save = (all) => writeFileSync(sessions, JSON.stringify(all));
 const args = process.argv.slice(2);
 // Its models (V47): its answer to the SDK's initialize request.
 ${answersModels(dir)}
+// Hive's running reviewer (HV3): a \`-p\` run held to the review's schema in its copy; each run
+// writes the next answer's files there, then gives its findings (none left: approves).
+if (args.includes('--json-schema') && args[args.indexOf('--json-schema') + 1].includes('"findings"')) {
+  const input = readFileSync(0, 'utf8');
+  const calls = join(dir, 'review-calls.jsonl');
+  appendFileSync(calls, JSON.stringify({ args, input, cwd: process.cwd() }) + '\\n');
+  const n = readFileSync(calls, 'utf8').split('\\n').filter(Boolean).length;
+  const file = join(dir, 'review-answers.json');
+  const answers = existsSync(file) ? JSON.parse(readFileSync(file, 'utf8')) : [];
+  const a = answers[n - 1] || {};
+  for (const [name, text] of Object.entries(a.write || {})) {
+    require('node:fs').mkdirSync(require('node:path').dirname(name), { recursive: true });
+    writeFileSync(name, text);
+  }
+  const out = a.answer || { summary: 'Nothing found.', ran: 'Its tests.', findings: [] };
+  process.stdout.write(JSON.stringify({ type: 'system', subtype: 'init', model: 'claude-fake' }) + '\\n');
+  process.stdout.write(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, total_cost_usd: 0.42, result: JSON.stringify(out), structured_output: out }) + '\\n');
+  process.exit(0);
+}
 // The advisor (V75): one turn held to a schema, the brief on stdin; its answer from advice.json.
 if (args.includes('--json-schema')) {
   const input = readFileSync(0, 'utf8');
@@ -1468,6 +1496,13 @@ export async function serveWorkspaces({
     adviceCalls: () =>
       lines('advice-calls.jsonl').map(
         (line) => JSON.parse(line) as { args: string[]; input: string },
+      ),
+    reviewAnswers(answers) {
+      writeFileSync(join(fake, 'review-answers.json'), JSON.stringify(answers));
+    },
+    reviewCalls: () =>
+      lines('review-calls.jsonl').map(
+        (line) => JSON.parse(line) as { args: string[]; input: string; cwd: string },
       ),
     calls() {
       const file = join(fake, 'calls.jsonl');
