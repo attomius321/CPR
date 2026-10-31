@@ -229,6 +229,21 @@
   font-weight: 500;
 }
 
+/* Hive on (HV2): what Hive does with the workspace, its hexagon before the words. */
+.start-hive {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+
+.start-hive .icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 2px;
+}
+
 /* A subscription's crown, in the warning's amber as the mockup's. */
 .start-account .icon {
   width: 14px;

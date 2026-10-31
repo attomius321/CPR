@@ -130,3 +130,71 @@ export const runShell: RunCheck = (command, cwd, onOutput) =>
       done({ code, output });
     });
   });
+
+/** A command running in a process group of its own (HV2): its leader's pid, its end, and a stop. */
+export interface GroupRun {
+  pid: number | undefined;
+  /** Its exit code (null when it could not start, or was killed) and its output's end. */
+  done: Promise<{ code: number | null; output: string }>;
+  /** Ends the whole group: SIGTERM, then SIGKILL after `graceMs`. */
+  kill(graceMs?: number): void;
+}
+
+/** Starts a command in a process group of its own, `runShell`'s way. */
+export type RunGroup = (command: string, cwd: string) => GroupRun;
+
+/**
+ * Runs a command through the shell in a process group of its own (HV2, decision 654): Hive's
+ * check, which Hive off or a resume after a killed `symbiote view` ends whole, its children
+ * (`pnpm`, `vitest`, a browser) with it. The output's end is kept, as `runShell` keeps it.
+ */
+export const runGroup: RunGroup = (command, cwd) => {
+  let output = '';
+  const child = spawn(command, {
+    cwd,
+    shell: true,
+    detached: true,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true,
+  });
+  const kill = (graceMs = 3_000) => {
+    if (child.pid === undefined) return;
+    killGroup(child.pid, 'SIGTERM');
+    setTimeout(() => {
+      if (child.exitCode === null && child.signalCode === null)
+        killGroup(child.pid ?? 0, 'SIGKILL');
+    }, graceMs).unref();
+  };
+  const timer = setTimeout(() => kill(), CHECK_TIMEOUT_MS);
+  const keep = (chunk: string) => {
+    output += chunk;
+    if (output.length > 1_000_000) output = output.slice(-200_000);
+  };
+  child.stdout.setEncoding('utf8').on('data', keep);
+  child.stderr.setEncoding('utf8').on('data', keep);
+  const done = new Promise<{ code: number | null; output: string }>((resolve) => {
+    child.on('error', (error) => {
+      clearTimeout(timer);
+      resolve({ code: null, output: `${output}${error.message}\n` });
+    });
+    child.on('close', (code) => {
+      clearTimeout(timer);
+      resolve({ code, output });
+    });
+  });
+  return { pid: child.pid, done, kill };
+};
+
+/**
+ * Sends `signal` to the process group `pid` leads (a `runGroup` run, perhaps one a killed process
+ * started); false when there is none. On Windows, where there are no groups, the process alone.
+ */
+export function killGroup(pid: number, signal: NodeJS.Signals): boolean {
+  if (!Number.isSafeInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(process.platform === 'win32' ? pid : -pid, signal);
+    return true;
+  } catch {
+    return false;
+  }
+}

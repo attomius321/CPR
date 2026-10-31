@@ -474,8 +474,17 @@ describe("Nucleus's prompt (V35, NU1)", () => {
       placeholders: [],
     });
     expect(prompts.some((p) => (p.key as string) === 'scout')).toBe(false);
-    // Scribe's two follow it (V41, SK1).
-    expect(prompts.at(-3)?.key).toBe('nucleus');
+    // Scribe's two follow it (V41, SK1), then Hive's (HV2).
+    const keys = prompts.map((p) => p.key);
+    expect(keys.slice(keys.indexOf('nucleus'))).toEqual([
+      'nucleus',
+      'scribe',
+      'library',
+      'hive.start',
+      'hive.check',
+      'hive.commit',
+      'hive.resume',
+    ]);
   });
 });
 
@@ -520,10 +529,12 @@ describe("Scribe's prompt (V41)", () => {
     repo.write({ 'src/a.ts': 'export const a = 1;\n' });
     repo.commit('A');
     const { prompts } = await promptSettingsService(await openRepo(repo.root)).prompts();
-    expect(prompts.at(-2)).toMatchObject({ key: 'scribe', group: 'Scribe', title: 'Instructions' });
-    expect(prompts.at(-1)).toMatchObject({ key: 'library', group: 'Scribe', title: 'Library' });
+    const at = prompts.findIndex((p) => p.key === 'scribe');
+    expect(prompts[at - 1]?.key).toBe('nucleus');
+    expect(prompts[at]).toMatchObject({ key: 'scribe', group: 'Scribe', title: 'Instructions' });
+    expect(prompts[at + 1]).toMatchObject({ key: 'library', group: 'Scribe', title: 'Library' });
     // Its system prompt since V78: no request among its placeholders.
-    const scribe = prompts.at(-2);
+    const scribe = prompts[at];
     expect(scribe?.placeholders.map((p) => p.name)).toEqual(['skills', 'checkout', 'library']);
     expect(scribe?.about).toContain('system prompt');
   });
@@ -566,5 +577,88 @@ describe("Scribe's prompt with a skill library (SK1, decision 430)", () => {
     );
     expect(text.library).toBe(DEFAULT_PROMPTS.library);
     expect(warnings.library).toContain('{folder}');
+  });
+});
+
+describe("Hive's prompts (HV2, decision 657)", () => {
+  const workspace: WorkspaceFile = {
+    agent: null,
+    base: 'a'.repeat(40),
+    branch: 'feature/one',
+    brief: 'Do it.',
+    created: '2026-10-31T10:00:00.000Z',
+    planFirst: false,
+    worktree: '/repo.worktrees/feature-one',
+  };
+  const where = {
+    record: '/repo/symbiote/workspaces/feature/one.json',
+    reviews: '/repo/symbiote/reviews/feature/one',
+    agents: '/repo/symbiote/AGENTS.md',
+    into: 'main',
+  };
+  const hive = 'Hive drives this workspace. HIVE.';
+
+  it("holds Hive's line before the record's, for a workspace Hive drives only", () => {
+    const plain = workspacePrompt(workspace, where);
+    expect(plain).not.toContain('{hive}');
+    // A workspace Hive does not drive: the text Hive's line was added to, as it was.
+    expect(workspacePrompt(workspace, { ...where, hive })).toBe(plain);
+    expect(workspacePrompt({ ...workspace, hive: true }, where)).toBe(plain);
+    const driven = workspacePrompt({ ...workspace, hive: true }, { ...where, hive });
+    expect(driven).toBe(
+      plain.replace("\n\nThis feature's record:", `\n\n${hive}\n\nThis feature's record:`),
+    );
+    for (const kind of ['feature', 'fix', 'refactor', 'chore', 'spike'] as const) {
+      expect(DEFAULT_PROMPTS[`start.${kind}`]).toContain('\n\n{hive}\n\n');
+    }
+  });
+
+  it("adds Hive's text at the end of a project's start prompt without {hive}", () => {
+    const prompts = { ...DEFAULT_PROMPTS, 'start.feature': 'Build {brief} on {branch}.' };
+    expect(workspacePrompt({ ...workspace, hive: true }, { ...where, hive }, prompts)).toBe(
+      `Build Do it. on feature/one.\n\n${hive}\n`,
+    );
+    expect(workspacePrompt(workspace, { ...where, hive }, prompts)).toBe(
+      'Build Do it. on feature/one.\n',
+    );
+  });
+
+  it('is listed in a Hive group, its check message needing the output', async () => {
+    const repo = createRepo();
+    dirs.push(repo.root);
+    repo.write({ 'src/a.ts': 'export const a = 1;\n' });
+    repo.commit('A');
+    const { prompts } = await promptSettingsService(await openRepo(repo.root)).prompts();
+    const of = (key: string) => prompts.find((p) => p.key === key);
+    expect(prompts.filter((p) => p.group === 'Hive').map((p) => [p.key, p.title])).toEqual([
+      ['hive.start', 'Start'],
+      ['hive.check', 'Check failed'],
+      ['hive.commit', 'Not committed'],
+      ['hive.resume', 'Resume'],
+    ]);
+    expect(of('hive.start')?.placeholders.map((p) => p.name)).toEqual(['check', 'rounds']);
+    expect(of('hive.check')?.placeholders.find((p) => p.required)?.name).toBe('output');
+    expect(of('start.feature')?.placeholders.map((p) => p.name)).toContain('hive');
+    // A check message without the output is not used: Symbiote's is.
+    const dir = withConfig({ prompts: { hive: { check: 'It failed.' } } });
+    const read = readPrompts(dir);
+    expect(read.text['hive.check']).toBe(DEFAULT_PROMPTS['hive.check']);
+    expect(read.warnings['hive.check']).toMatch(/output/);
+  });
+
+  it("fills the check's message with its command, output and round", () => {
+    const text = fillPrompt(DEFAULT_PROMPTS['hive.check'], {
+      branch: 'feature/one',
+      at: 'abc1234',
+      round: '1',
+      rounds: '3',
+      command: 'pnpm check',
+      output: 'FAIL a.test.ts',
+    });
+    expect(text).toBe(
+      'Symbiote ran the check on feature/one at abc1234 (round 1 of 3): `pnpm check` failed. ' +
+        'Its last lines:\n\n```\nFAIL a.test.ts\n```\n\n' +
+        'Fix the cause, run the check yourself, commit, and end your turn.',
+    );
   });
 });

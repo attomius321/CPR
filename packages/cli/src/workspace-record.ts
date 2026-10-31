@@ -66,6 +66,11 @@ export interface WorkspaceFile {
   title?: string;
   /** Started through Symbiote's tools (MC1, decision 362): by Nucleus, or through `symbiote mcp`. */
   via?: McpVia;
+  /**
+   * Started while Hive was on (HV2, decision 652): Hive's runner drives it, its state in
+   * `symbiote/hive/<branch>.json`.
+   */
+  hive?: true;
   /** The workspace's worktree folder. */
   worktree: string;
 }
@@ -189,6 +194,7 @@ export async function readWorkspace(path: string): Promise<WorkspaceFile | null>
     planFirst: v.planFirst === true,
     ...(text(v.title) ? { title: text(v.title) } : {}),
     ...viaOf(v.via),
+    ...(v.hive === true ? { hive: true as const } : {}),
     worktree: text(v.worktree),
   };
 }

@@ -45,8 +45,10 @@ import {
   AppearanceIcon,
   ApprovedIcon,
   BranchIcon,
+  ChecksIcon,
   ChoreIcon,
   CommentIcon,
+  CommitIcon,
   DocumentsIcon,
   FixIcon,
   FolderIcon,
@@ -55,6 +57,7 @@ import {
   NucleusIcon,
   PlanIcon,
   PlanWithoutIcon,
+  PlayIcon,
   PushIcon,
   RefactorIcon,
   ResetIcon,
@@ -253,6 +256,10 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   merger: MergeIcon,
   nucleus: NucleusIcon,
   scribe: SparklesIcon,
+  'hive.start': HexagonIcon,
+  'hive.check': ChecksIcon,
+  'hive.commit': CommitIcon,
+  'hive.resume': PlayIcon,
   [LIBRARY]: FolderIcon,
   [HIVE]: HexagonIcon,
   [APPEARANCE]: AppearanceIcon,
@@ -328,17 +335,24 @@ export function SettingsPage() {
       return null;
     }
   }, []);
+  // Read when the page opens: Hive mode's own state, not a dependency (its group follows below).
+  const hiveAtOpen = useRef(hive);
   useEffect(() => {
     void load().then((read) => {
       const keys = read
-        ? promptGroups(read.prompts).flatMap((g) => g.entries.map((e) => e.key))
+        ? promptGroups(read.prompts, { hive: hiveAtOpen.current }).flatMap((g) =>
+            g.entries.map((e) => e.key),
+          )
         : [];
       // Without prompts, Appearance opens first, as before the Skill library (SK1).
       setOpen(promptOfUrl<EntryKey>(window.location.search, [...keys, APPEARANCE, LIBRARY, HIVE]));
     });
   }, [load]);
 
-  const groups = useMemo(() => (settings ? promptGroups(settings.prompts) : []), [settings]);
+  const groups = useMemo(
+    () => (settings ? promptGroups(settings.prompts, { hive }) : []),
+    [settings, hive],
+  );
   // The list scrolls on its own when it is taller than its card (V62): the entry open, from the
   // address or the last group's, is scrolled to; one clicked is in view already.
   const list = useRef<HTMLElement>(null);

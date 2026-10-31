@@ -147,6 +147,8 @@ export function workspacePrompt(
     into: string | null;
     /** Where its documents are (V40). */
     documents?: string;
+    /** For a workspace Hive drives (HV2): what `{hive}` becomes, filled. */
+    hive?: string;
   },
   prompts: Readonly<Record<PromptKey, string>> = DEFAULT_PROMPTS,
 ): string {
@@ -162,9 +164,13 @@ export function workspacePrompt(
         }).trimEnd()
       : '';
   const start = prompts[`start.${kind}`];
-  const template = documents ? start : start.replace(/^\{documents\}(?:\n\n?|$)/m, '');
+  // Hive's text (HV2): `{hive}` for a workspace Hive drives, else its line goes as the documents'.
+  const hive = (workspace.hive && where.hive?.trim()) || '';
+  let template = documents ? start : start.replace(/^\{documents\}(?:\n\n?|$)/m, '');
+  if (!hive) template = template.replace(/^\{hive\}(?:\n\n?|$)/m, '');
   const filled = fillPrompt(template, {
     documents,
+    hive,
     branch: workspace.branch,
     worktree: workspace.worktree,
     start: workspace.from
@@ -179,8 +185,9 @@ export function workspacePrompt(
     agents: where.agents,
     symbiote: dirname(where.agents),
   });
-  const text =
+  let text =
     documents && !template.includes('{documents}') ? `${filled.trimEnd()}\n\n${documents}` : filled;
+  if (hive && !template.includes('{hive}')) text = `${text.trimEnd()}\n\n${hive}`;
   return `${text.trimEnd()}\n`;
 }
 

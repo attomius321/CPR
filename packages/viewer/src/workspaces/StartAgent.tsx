@@ -8,6 +8,7 @@ import {
   ClaudeMark,
   CodexMark,
   EffortIcon,
+  HexagonIcon,
   HermesMark,
   ModelIcon,
   PermissionIcon,
@@ -50,6 +51,7 @@ function AgentMark({ kind }: { kind: AgentKind }) {
  */
 export function StartAgent({
   agents,
+  hive = false,
   agent,
   run,
   mode,
@@ -60,6 +62,8 @@ export function StartAgent({
   onChoose,
 }: {
   agents: AgentOption[];
+  /** Hive mode is on (HV2): Hive drives the workspace, with Claude Code only. */
+  hive?: boolean;
   agent: AgentOption | null;
   run: RunChoices;
   mode: PermissionMode;
@@ -70,6 +74,16 @@ export function StartAgent({
   efforts: ReturnType<typeof effortChoices>;
   onChoose: (run: RunChoices) => void;
 }) {
+  if (!agent && hive) {
+    return (
+      <StartCard icon={<AgentIcon />} title="Agent">
+        <p className="error start-card-note">
+          Hive drives Claude Code, which is not installed here (<code>claude</code> on PATH, or{' '}
+          <code>SYMBIOTE_CLAUDE</code>): turn Hive off to start without it.
+        </p>
+      </StartCard>
+    );
+  }
   if (!agent) {
     return (
       <StartCard icon={<AgentIcon />} title="Agent">
@@ -129,6 +143,14 @@ export function StartAgent({
             </p>
           )}
         </div>
+        {hive && (
+          <p className="start-card-note start-hive">
+            <HexagonIcon />
+            Hive is on: after each turn Symbiote runs the check and sends its failures back to the
+            agent, then asks you to land the workspace. Hive drives Claude Code only: Codex and
+            Hermes start with Hive off.
+          </p>
+        )}
         {agent.apiKey && (
           <p className="error start-card-note">
             ANTHROPIC_API_KEY is set where symbiote view runs: the agent may use that key instead of{' '}

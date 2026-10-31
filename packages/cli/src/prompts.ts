@@ -65,6 +65,10 @@ function startPrompt(kind: WorkKind): string {
         'so. When it is ready, say so: the person reviews the branch in Symbiote, and an approved ' +
         'commit is merged into {into}.',
     '',
+    // Hive's line (HV2): it goes, with the blank line after it, for a workspace Hive does not
+    // drive, and the prompt is what it was before.
+    '{hive}',
+    '',
     `This ${kind}'s record: {record}. Reviews of the branch will be in {reviews}; {agents} ` +
       'says how to act on one. Never edit anything in {symbiote}.',
   ].join('\n');
@@ -203,6 +207,29 @@ When you are done, say what you wrote (each path), which tasks the skill will be
 const LIBRARY = `The person also keeps skills for all their projects in a skill library outside this repository: {folder}. When they ask for a skill in their library, or for every project, write it there, as {folder}/<name>/SKILL.md: Symbiote lets you write in a skill's folder there too, and nowhere else outside {skills}. Read the library's skills first and write like them. A library skill holds what holds in any project: not this repository's paths, commands or conventions, unless the person asks for them.`;
 
 /**
+ * What `{hive}` becomes in a Hive workspace's start prompt (HV2, decision 657): who checks the
+ * work, and what the writer must do for it.
+ */
+const HIVE_START =
+  'Hive drives this workspace. When you end a turn with commits, Symbiote runs the check on ' +
+  "the branch's tip ({check}) and sends you its failures, up to {rounds} rounds; once it passes, " +
+  'the person reviews the branch and lands it. So commit everything before you end a turn, end ' +
+  'a turn only when the work is done or you need the person, and never push, merge or switch ' +
+  'branches.';
+
+/** What Hive sends the writer when the check failed (HV2). */
+const HIVE_CHECK = [
+  'Symbiote ran the check on {branch} at {at} (round {round} of {rounds}): `{command}` failed. ' +
+    'Its last lines:',
+  '',
+  '```',
+  '{output}',
+  '```',
+  '',
+  'Fix the cause, run the check yourself, commit, and end your turn.',
+].join('\n');
+
+/**
  * The advisor's instructions (V75): its system prompt, the brief its message. The model guide is
  * this text, not code (decision 546): every model the agents list is newer than the advisor's
  * training, and the person edits the guide in Settings when the lists change.
@@ -268,6 +295,14 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
   scribe: SCRIBE,
   library: LIBRARY,
   advisor: ADVISOR,
+  'hive.start': HIVE_START,
+  'hive.check': HIVE_CHECK,
+  'hive.commit':
+    'You ended your turn with {what}. Commit your work on {branch}, or remove what does not ' +
+    'belong, then end your turn: Symbiote runs the check on what is committed.',
+  'hive.resume':
+    'You were stopped mid-turn: Hive was turned off, and is on again. Continue where you ' +
+    'stopped, commit, and end your turn when the work is done.',
 };
 
 /** Where a prompt is shown, what it is for, what it may hold, and how long it may be. */
@@ -302,6 +337,12 @@ const START_PLACEHOLDERS: PromptPlaceholder[] = [
   { name: 'reviews', about: "the folder the branch's reviews will be in" },
   { name: 'agents', about: 'symbiote/AGENTS.md, which says how to act on a review' },
   { name: 'symbiote', about: 'the symbiote/ folder, which the agent must not edit' },
+  {
+    name: 'hive',
+    about:
+      'Hive, for a workspace Hive drives; else its line goes (added at the end when a prompt ' +
+      'leaves it out)',
+  },
 ];
 
 /** A start prompt goes on the agent's command line with a brief of up to 20,000 characters. */
@@ -463,6 +504,51 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
       { name: 'agent', about: "the agent's name, Claude Code or Codex" },
     ],
     max: MAX_START,
+  },
+  'hive.start': {
+    group: 'Hive',
+    title: 'Start',
+    about:
+      'What {hive} becomes in a start prompt when Hive drives the workspace; added after a start ' +
+      'prompt without {hive}.',
+    placeholders: [
+      { name: 'check', about: 'the check Symbiote runs: its commands, or that none is set' },
+      { name: 'rounds', about: 'how many rounds before Hive stops for the person: 3' },
+    ],
+    max: MAX_LINE,
+  },
+  'hive.check': {
+    group: 'Hive',
+    title: 'Check failed',
+    about: "What Hive sends the writer when the check fails on its branch's tip.",
+    placeholders: [
+      { name: 'output', about: "the last lines of the check's output", required: true },
+      { name: 'command', about: 'the command that failed' },
+      { name: 'branch', about: "the workspace's branch" },
+      { name: 'at', about: 'the commit checked, short' },
+      { name: 'round', about: "the writer's round" },
+      { name: 'rounds', about: 'how many rounds before Hive stops for the person' },
+    ],
+    max: MAX_LINE,
+  },
+  'hive.commit': {
+    group: 'Hive',
+    title: 'Not committed',
+    about:
+      'What Hive sends the writer when it ended a turn with files not committed, or with no ' +
+      'commit on the branch.',
+    placeholders: [
+      { name: 'what', about: '"3 files not committed: a.ts, b.ts, c.ts" or "no commit"' },
+      { name: 'branch', about: "the workspace's branch" },
+    ],
+    max: MAX_LINE,
+  },
+  'hive.resume': {
+    group: 'Hive',
+    title: 'Resume',
+    about: 'What Hive sends a writer it stopped mid-turn when Hive was turned off, once it is on.',
+    placeholders: [],
+    max: MAX_LINE,
   },
 };
 

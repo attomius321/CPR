@@ -344,3 +344,5 @@ merge commit.
 - 2026-10-31 [V83 spike — where Symbiote can read what an agent runs on](journal/v83-workspace-running-model.md)
 - 2026-10-31 [V83a — what runs, read back from the session](journal/v83-workspace-running-model.md)
 - 2026-10-31 [V83b — the head's chip, the card's row, one line of state](journal/v83-workspace-running-model.md)
+- 2026-10-31 [HV2 plan — Hive's loop on Symbiote's own pieces](journal/hv2-hive-runner.md)
+- 2026-10-31 [HV2 — Hive's runner and record, built](journal/hv2-hive-runner.md)

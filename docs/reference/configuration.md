@@ -88,7 +88,7 @@ and leaves any other brace as text:
 
 | Key | What it is | Placeholders |
 |---|---|---|
-| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace agent's first prompt, for that kind of work | `{brief}` (required), `{branch}`, `{worktree}`, `{start}`, `{plan}`, `{documents}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{symbiote}` |
+| `start.feature`, `start.fix`, `start.refactor`, `start.chore`, `start.spike` | A workspace agent's first prompt, for that kind of work | `{brief}` (required), `{branch}`, `{worktree}`, `{start}`, `{plan}`, `{documents}`, `{into}`, `{record}`, `{reviews}`, `{agents}`, `{symbiote}`, `{hive}` |
 | `plan.first`, `plan.direct` | What `{plan}` becomes, with **Plan first** on and off | none |
 | `documents` | What `{documents}` becomes when you gave files with the brief | `{folder}` (required), `{files}` |
 | `advisor` | The instructions for the model behind **Suggest settings**: how it sizes a brief, and which of the agent's models is small, mid or large. Edit the guide here when your agent lists new models | `{models}` (required), `{agent}` |
@@ -98,15 +98,20 @@ and leaves any other brace as text:
 | `nucleus` | Nucleus's instructions, its system prompt | none |
 | `scribe` | Scribe's instructions, its system prompt. A `{request}` left from an older text is filled with nothing | `{skills}`, `{checkout}`, `{library}` |
 | `library` | What `{library}` becomes in Scribe's prompt when a [skill library](#the-skill-library) is set. Without a library, the line that holds `{library}` is left out | `{folder}` (required), `{skills}` |
+| `hive.start` | What `{hive}` becomes in the first prompt of a workspace [Hive](#hive-mode) drives. Without Hive, the line that holds `{hive}` is left out; a start prompt without `{hive}` gets it at its end | `{check}`, `{rounds}` |
+| `hive.check` | What Hive sends the agent when the check fails | `{output}` (required), `{command}`, `{branch}`, `{at}`, `{round}`, `{rounds}` |
+| `hive.commit` | What Hive sends the agent when it ended a turn with files not committed, or no commit | `{what}`, `{branch}` |
+| `hive.resume` | What Hive sends an agent it stopped, once Hive is on again | none |
 
-Settings lists what each placeholder stands for. Symbiote ignores a prompt it cannot use, uses its
+Settings lists Hive's prompts, in a group of their own, only while Hive is on. Settings lists what
+each placeholder stands for. Symbiote ignores a prompt it cannot use, uses its
 own text instead, and marks the prompt "not used" in Settings. A prompt cannot be used in three
 cases:
 
 - It is neither text nor a list of lines.
 - It lacks a required placeholder.
 - It is too long. The limits are 8,000 characters for a start prompt and for Nucleus's and Scribe's,
-  1,000 for `plan.*`, `documents` and `verdict.*`, and 20,000 for `reviews` and `merger`.
+  1,000 for `plan.*`, `documents`, `verdict.*` and `hive.*`, and 20,000 for `reviews` and `merger`.
 
 Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, Nucleus cannot edit
 files or run any command but git's read commands, and its starts, verdicts, merges and clean-ups
@@ -156,15 +161,60 @@ No agent reads the library from its folder: it is where you keep and write skill
 
 ## Hive mode
 
-Hive will be Symbiote's graph loop: an orchestrator with full access running a main agent, a
-researcher and a reviewer in every workspace. It is not built yet. Its switch is in **Settings**,
-under **This repository**, **Hive mode**, and turning it on asks first. For now it changes only
-the look: every page in ink and crimson, in both themes, and the S in crimson.
+In Hive mode, Symbiote drives the workspaces you start: their agent works the brief, Symbiote
+runs the project's check after each of its turns and sends the agent what fails, then asks you to
+land the workspace. Its switch is in **Settings**, under **This repository**, **Hive mode**, and
+turning it on asks first. While Hive is on, every page is in ink and crimson, in both themes, and
+the S is crimson.
 
 The question shows tendrils that grab a Hive Mind and keep moving while it is open. Turning Hive on,
 the Mind grows to the middle of the window, a blackout closes on it, and the new look appears after
 a burst from the Mind. If your system asks for reduced motion, the question shows one still picture
 and the look changes at once.
+
+### What Hive does with a workspace
+
+Every workspace you start while Hive is on is Hive's, until it is cleaned up. Workspaces started
+before stay as they were. Hive drives Claude Code only: with Hive on, **Start a workspace** offers
+no other agent, and Nucleus's starts are Hive's too.
+
+1. **Its agent works the brief.** Its first prompt has one more paragraph, `{hive}`: Hive drives
+   the workspace, which check Symbiote runs, and that the agent commits before it ends a turn.
+   With **Plan first**, it waits for your OK as any workspace does.
+2. **Symbiote runs the check** when the agent ends a turn with commits and nothing left
+   uncommitted. The check is `merge.checks`, else the one Symbiote finds (see
+   [the settings file](#the-settings-file-symbioteconfigjson)). It runs in the workspace's
+   worktree, on the branch's last commit. If the agent left files uncommitted, or made no commit,
+   Symbiote asks it to commit instead. A spike that ends without commits goes straight to you.
+3. **A failed check goes back to the agent**: the command and its last 60 lines. That is the next
+   round. After 3 rounds, Hive stops and the card says why.
+4. **A passed check asks you to land it.** The card says **Checked: review and land it**. Review
+   the branch, approve it, and merge it with **Merge into**, as for any workspace. Once it is
+   merged, Hive is done with it.
+
+The card shows the workspace's round (a hexagon and `2/3`). While the agent works or waits for
+you, the card says so as for any workspace. Hive never lands, pushes or deletes work: those stay
+yours. A message you send the agent while Hive waits for you starts its rounds again.
+
+Hive runs the agent in the permission mode you pick on the Start page. An agent that asks for a
+permission waits for you.
+
+### Hive off and on
+
+- **Turning Hive off** stops every Hive agent that works or waits, and any check Hive runs. Each
+  workspace keeps its step. Its card says **Hive off: paused**. You can still talk to the agent:
+  Hive does nothing while it is off.
+- **Turning Hive on again** goes on from each step. An agent Hive stopped is told it was
+  interrupted and continues. A check runs again from its start. An agent whose turn went on while
+  Hive was off is checked when its turn ends.
+- **Stopping `symbiote view`** with Hive on stops its checks and nothing else: agents keep
+  working. The next `symbiote view` goes on from each step, and stops a check a killed one left
+  running.
+
+One `symbiote view` drives a repository's Hive at a time. Another one of the same repository
+shows the cards and drives nothing, until the first one stops.
+
+### Where Hive keeps its state
 
 Each repository has its own Hive mode. Symbiote keeps it in `symbiote/hive.json`, beside the
 reviews:
@@ -180,8 +230,19 @@ reviews:
   git tracks reads as off. A commit never turns Hive on for everyone who clones the repository.
 - **The nexus's page never takes the look**: each of its tabs shows its own Symbiote's.
 
-A repository's `symbiote view` reads the file when it serves a page. Its other windows take a
-change on their next load.
+A repository's `symbiote view` reads the file when it serves a page, and its runner every 2
+seconds while Hive is on. Its other windows take a change on their next load.
+
+A workspace Hive drives has `"hive": true` in its record. Hive writes its step in
+`symbiote/hive/<branch>.json` and what it did, one line an event, in `symbiote/hive/<branch>.jsonl`:
+
+```json
+{ "branch": "feature/halve", "step": "landing", "round": 2, "rounds": 3, "checked": "4f1c…" }
+```
+
+The steps are `writing` (the agent's turn), `checking`, `landing` (asked of you), `stuck` (after 3
+rounds) and `landed`. The record also keeps each check's result and the last lines of its output.
+`symbiote/hive/runner.lock` names the process that drives the repository.
 
 Before, Hive mode was one switch for the whole machine, in Symbiote's settings folder:
 `~/.config/symbiote/hive.json` on Linux. Symbiote no longer reads that file, and leaves it where

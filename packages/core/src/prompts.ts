@@ -27,7 +27,15 @@ export type PromptKey =
   /** What Scribe's `{library}` becomes when a skill library is set (SK1). */
   | 'library'
   /** The advisor's instructions (V75): how it sizes a brief and suggests the start's settings. */
-  | 'advisor';
+  | 'advisor'
+  /** What `{hive}` becomes in a Hive workspace's start prompt (HV2). */
+  | 'hive.start'
+  /** What Hive sends the writer when the check fails (HV2). */
+  | 'hive.check'
+  /** What Hive sends the writer when it ended a turn with work not committed, or none (HV2). */
+  | 'hive.commit'
+  /** What Hive sends a writer it stopped, once Hive is on again (HV2). */
+  | 'hive.resume';
 
 /** Every prompt, in the Settings page's order. */
 export const PROMPT_KEYS: readonly PromptKey[] = [
@@ -49,6 +57,10 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'nucleus',
   'scribe',
   'library',
+  'hive.start',
+  'hive.check',
+  'hive.commit',
+  'hive.resume',
 ];
 
 /** A name a prompt may hold as `{name}`, replaced by what it stands for when it is used. */

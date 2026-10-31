@@ -25,16 +25,22 @@ export interface SettingsEntry {
   agent?: PrebuiltAgent;
 }
 
+/** Hive's prompts' group (HV2): listed only while Hive mode is on (decision 657). */
+export const HIVE_GROUP = 'Hive';
+
 /**
  * The list by group, in the server's order: a prompt an entry (Workspaces, Reviews), a prebuilt
  * agent one entry for all its prompts, under "Prebuilt agents" where the first of them comes.
+ * Hive's group only in Hive mode.
  */
 export function promptGroups(
   prompts: readonly PromptSetting[],
+  { hive = false }: { hive?: boolean } = {},
 ): { group: string; entries: SettingsEntry[] }[] {
   const groups = new Map<string, SettingsEntry[]>();
   const agents = new Map<PrebuiltAgent, SettingsEntry>();
   for (const prompt of prompts) {
+    if (prompt.group === HIVE_GROUP && !hive) continue;
     const agent = prebuilt(prompt.group) ? prompt.group : undefined;
     const group = agent ? PREBUILT_GROUP : prompt.group;
     const entries = groups.get(group) ?? [];

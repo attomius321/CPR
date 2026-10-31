@@ -403,6 +403,8 @@ export interface WorkspaceNext {
   blocked?: string;
   /** While it works and its tools are recorded (V48f): "Running pnpm test", "Thinking". */
   doing?: string;
+  /** Hive's words (HV2): Symbiote's, so no agent's mark before them. */
+  hive?: true;
 }
 
 const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip => ({
@@ -432,11 +434,31 @@ export function workspaceNext(
     next('stopped', text, c, tone);
   if (workspace.tip === null) return stopped('Its branch is gone', '!', 'failed');
   if (workspace.merged) return next('done', 'Merged', '✓', 'done');
-  const { agent, activity } = workspace;
+  const { agent, activity, hive } = workspace;
   const waits = (text: string): WorkspaceNext => {
     const blocked = blockedOn(workspace);
     return { ...next('waiting', text, '?', 'waiting'), ...(blocked ? { blocked } : {}) };
   };
+  // Hive's steps (HV2): a turn that ended is Hive's to act on, not the person's to review; the
+  // writer at work or waiting on the person reads as any workspace's.
+  if (hive) {
+    const finished = agent.state === 'ready' || agent.state === 'done';
+    if (hive.paused && agent.state !== 'working') {
+      if (hive.step === 'checking')
+        return stopped('Hive off: paused before the check', '·', 'idle');
+      if (hive.step === 'writing') return stopped('Hive off: paused', '·', 'idle');
+    }
+    // The round is the card's fact (2/3).
+    if (!hive.paused && hive.step === 'checking') {
+      return { ...next('working', 'Hive: running the check', '⚙', 'working'), hive: true };
+    }
+    if (!hive.paused && hive.step === 'writing' && finished) {
+      return { ...next('working', 'Hive: reading its turn', '⚙', 'working'), hive: true };
+    }
+    if (hive.step === 'stuck' && agent.state !== 'working') {
+      return waits(`Hive stopped: ${hive.note ?? 'it needs you'}`);
+    }
+  }
   switch (agent.state) {
     case 'working': {
       const doing = activity?.doing;
@@ -483,7 +505,14 @@ export function workspaceNext(
     return toReview('Changes requested: send them to the agent');
   }
   if (verdict?.event === 'comment') return toReview('Commented: send it to the agent');
-  return toReview(review ? 'Review in progress' : 'Ready for review');
+  if (review) return toReview('Review in progress');
+  // Landing asked by Hive (HV2): its check passed, or none was found to run.
+  if (hive?.step === 'landing') {
+    return toReview(
+      hive.note ? 'No check ran: review, check and land it' : 'Checked: review and land it',
+    );
+  }
+  return toReview('Ready for review');
 }
 
 /**
@@ -530,7 +559,7 @@ export function activityText({ tool, subject }: ToolActivity): string {
 
 /** A workspace's fact (V48): its card shows it as an icon and `shown` (V79), its head says `words`. */
 export interface WorkspaceFact {
-  kind: 'commits' | 'changed' | 'gone' | 'clean' | 'conflicts';
+  kind: 'hive' | 'commits' | 'changed' | 'gone' | 'clean' | 'conflicts';
   /** Beside its icon on the card: "3", "1 conflict". */
   shown: string;
   /** In the workspace's head, and the card's tip: "3 commits", "Conflicts with main in 1 file". */
@@ -538,16 +567,28 @@ export interface WorkspaceFact {
 }
 
 /**
- * A workspace's facts: its commits, its files not committed, a worktree gone, then whether it
- * merges into the branch it is reviewed against (V17's check, V65); a check git could not make
- * says nothing.
+ * A workspace's facts: that Hive drives it (HV2), its commits, its files not committed, a worktree
+ * gone, then whether it merges into the branch it is reviewed against (V17's check, V65); a check
+ * git could not make says nothing.
  */
 export function workspaceFacts(
   workspace: WorkspaceSummary,
   merge: BranchMerge | null,
 ): WorkspaceFact[] {
-  const { ahead, worktree } = workspace;
+  const { ahead, worktree, hive } = workspace;
   const facts: WorkspaceFact[] = [
+    // Hive drives it (HV2): first, and its round.
+    ...(hive
+      ? [
+          hive.paused
+            ? { kind: 'hive' as const, shown: 'off', words: 'Hive is off: its step waits' }
+            : {
+                kind: 'hive' as const,
+                shown: `${hive.round}/${hive.rounds}`,
+                words: `Hive drives it: round ${hive.round} of ${hive.rounds}`,
+              },
+        ]
+      : []),
     {
       kind: 'commits',
       shown: `${ahead}`,

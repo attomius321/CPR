@@ -77,6 +77,27 @@ describe('promptGroups', () => {
   });
 });
 
+describe("promptGroups and Hive's prompts (HV2)", () => {
+  const prompts = [
+    prompt({ key: 'start.fix' }),
+    prompt({ key: 'scribe', group: 'Scribe', title: 'Instructions' }),
+    prompt({ key: 'hive.start', group: 'Hive', title: 'Start' }),
+    prompt({ key: 'hive.check', group: 'Hive', title: 'Check failed' }),
+  ];
+  const names = (hive: boolean) => promptGroups(prompts, { hive }).map((g) => g.group);
+
+  it('lists the Hive group only in Hive mode, each prompt an entry', () => {
+    expect(names(false)).toEqual(['Workspaces', 'Prebuilt agents']);
+    expect(promptGroups(prompts).map((g) => g.group)).toEqual(['Workspaces', 'Prebuilt agents']);
+    expect(names(true)).toEqual(['Workspaces', 'Prebuilt agents', 'Hive']);
+    expect(
+      promptGroups(prompts, { hive: true })
+        .at(-1)
+        ?.entries.map((e) => e.name),
+    ).toEqual(['Start', 'Check failed']);
+  });
+});
+
 describe('markOf', () => {
   it('says not saved before not used before changed, for any of the entry’s prompts', () => {
     const fix = prompt({});
