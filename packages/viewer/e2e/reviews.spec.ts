@@ -62,13 +62,17 @@ const git = (...args: string[]) =>
 const changesTab = (page: Page) => page.getByRole('tab', { name: /Changes/ });
 const reviewTab = (page: Page) => page.getByRole('tab', { name: /Review/ });
 const originGit = (...args: string[]) => git('--git-dir', symbiote.origin, ...args);
-/** Opens row `subject`'s Review submenu and reviews its first branch. */
-const review = async (page: Page, subject: string, entry: string) => {
-  await row(page, subject).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Review', exact: true }).hover();
-  const first = page.getByRole('menu', { name: 'Review' }).getByRole('menuitem').first();
-  await expect(first).toHaveText(entry);
-  await first.click();
+/** Reviews `branch` from Git's branches panel: its menu's Review (a commit's menu has none). */
+const review = async (page: Page, branch: string) => {
+  await page
+    .getByRole('complementary', { name: 'Branches' })
+    .locator('.branches-branch', {
+      has: page.locator('.branches-name', { hasText: new RegExp(`^${branch}$`) }),
+    })
+    // The local branch: Local is listed before Remotes (origin/main is a "main" there too).
+    .first()
+    .click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Review', exact: true }).click();
 };
 const reviewFile = () =>
   join(symbiote.repo, 'symbiote', 'reviews', 'agent', 'reviewer@example.com.json');
@@ -77,26 +81,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   const [base, , cube] = symbiote.shas;
   await page.goto(`${symbiote.url}git`);
 
-  // The agent's tip offers "Review" beside "Check out"; main, the default branch, cannot be.
-  await row(page, 'Agent: add cube').click({ button: 'right' });
-  await expect(page.getByRole('menuitem')).toHaveText([
-    'Check out',
-    'Review',
-    'Start a workspace here',
-    'New branch here…',
-    'New tag here…',
-    // fix/git-page-feature-extend: onto the branch checked out; the row's branch merged or rebased onto.
-    'Cherry-pick onto main…',
-    'Revert…',
-    'Reset main to here…',
-    'Merge into main',
-    'Rebase main onto',
-  ]);
-  await page.getByRole('menuitem', { name: 'Review', exact: true }).hover();
-  const targets = page.getByRole('menu', { name: 'Review' }).getByRole('menuitem');
-  await expect(targets).toHaveText(['agent not reviewed yet']);
-  await expect(targets.first()).toHaveAccessibleName('Review branch agent');
-  await targets.first().click();
+  await review(page, 'agent');
 
   // From where the branch left main to its tip.
   await expect(page).toHaveURL(/\/review\/agent\/$/);
@@ -149,13 +134,8 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await expect(added.locator('.review-new')).toHaveCount(1);
   await expect(row(page, 'Agent: add cube').locator('.review-new')).toHaveCount(0);
 
-  // Reviewing again, from the keyboard: only square (changed) and half (new) are left.
-  await added.click();
-  await page.keyboard.press('r');
-  await expect(page.getByRole('menu', { name: 'Review' }).getByRole('menuitem').first()).toHaveText(
-    'agent 2 reviewed · 1 commit since',
-  );
-  await page.keyboard.press('Enter');
+  // Reviewing again: only square (changed) and half (new) are left.
+  await review(page, 'agent');
   await expect(page.locator('.review-of')).toHaveText('Review of agent');
   await expect(page.locator('.review-after')).toHaveText('1 commit since your last review');
   await expect(page.locator('.revisions')).toHaveText(`${short(base)} → ${short(tip)}`);
@@ -178,7 +158,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   const [, , cube] = symbiote.shas;
   await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.goto(`${symbiote.url}git`);
-  await review(page, 'Agent: add cube', 'agent not reviewed yet');
+  await review(page, 'agent');
   await expect(page).toHaveURL(/\/review\/agent\/$/);
 
   // A comment on square, then Request changes.
@@ -261,7 +241,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await expect(row(page, 'Agent: square returns early').locator('.ref-review')).toHaveText('+1');
 
   // Reviewed again and approved (V17): metadata for the agent, the merge into main; no push.
-  await review(page, 'Agent: square returns early', 'agent changes requested · 1 commit since');
+  await review(page, 'agent');
   await expect(page.locator('.review-of')).toHaveText('Review of agent');
   await expect(page.locator('.review-after')).toHaveText('1 commit since your last review');
   await reviewTab(page).click();
@@ -316,7 +296,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   expect(look.height).toBeLessThan(look.badgeHeight);
 
   // Symbiote merges the approved commit (V26a): Merge into ▾ on the review, preselected main.
-  await review(page, 'Agent: square returns early', 'agent approved');
+  await review(page, 'agent');
   await reviewTab(page).click();
   const target = page.getByLabel('Branch to merge into');
   await expect(target).toHaveValue('main');
@@ -366,7 +346,7 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   );
   git('commit', '-q', '-am', 'Main: add double');
   await page.goto(`${symbiote.url}git`);
-  await review(page, 'Agent: add cube', 'agent not reviewed yet');
+  await review(page, 'agent');
   await reviewTab(page).click();
   // Each file on its line, its folder beside it, and a button that opens it in VS Code.
   const check = page.locator('.merge-check');
@@ -418,7 +398,7 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   await expect(row(page, 'Main: add double').locator('.review-new')).toHaveCount(0);
 
   // Reviewed again: the merge into main is clean now.
-  await review(page, 'Merge main into agent', 'agent approved · 1 commit since');
+  await review(page, 'agent');
   await reviewTab(page).click();
   await expect(page.locator('.merge-check')).toHaveText('Merges cleanly into main.');
 });
@@ -431,7 +411,7 @@ test("reviews the agent's commits on main itself; an approval says they may be p
   git('commit', '-q', '-am', 'Agent: add half on main');
   const tip = git('rev-parse', 'HEAD');
   await page.goto(`${symbiote.url}git`);
-  await review(page, 'Agent: add half on main', 'main 1 unpushed commit');
+  await review(page, 'main');
   await expect(page).toHaveURL(/\/review\/main\/$/);
   await expect(page.locator('.review-of')).toHaveText('Review of main');
   await expect(page.locator('.review-after')).toHaveText('first review');

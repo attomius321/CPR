@@ -121,7 +121,7 @@ toolbar.
 | j, k | Next or previous commit (above the first: your uncommitted changes); with a file shown, its next or previous file | Next or previous file | Next or previous changed symbol |
 | / | Find a branch | | Search the change list |
 | c | Check out the commit or one of its branches (asks first) | Comment on the file's first change | Comment on the selected symbol |
-| r | Review the branch | | Mark the selected symbol reviewed |
+| r | | | Mark the selected symbol reviewed |
 | x | Compare mode: pick two commits | | |
 | f | Find a commit: Enter and Shift+Enter step through what it finds | | Show only the selected symbol and its neighbours |
 | d | Show or fold the commit's details | | |

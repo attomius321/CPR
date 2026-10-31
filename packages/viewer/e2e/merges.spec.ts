@@ -36,15 +36,17 @@ const git = (...args: string[]) =>
     },
   }).trim();
 
-/** Reviews `agent` from History and approves it, at its tip `subject`. */
+/** Reviews `agent` from Git's branches panel and approves it, at its tip `subject`. */
 async function approve(page: Page, subject = 'Agent: add cube') {
   await page.goto(`${symbiote.url}git`);
-  const tip = page.locator('.commit', {
-    has: page.locator('.commit-subject', { hasText: subject }),
-  });
-  await tip.click({ button: 'right' });
-  await page.getByRole('menuitem', { name: 'Review', exact: true }).hover();
-  await page.getByRole('menu', { name: 'Review' }).getByRole('menuitem').first().click();
+  await expect(
+    page.locator('.commit', { has: page.locator('.commit-subject', { hasText: subject }) }),
+  ).toBeVisible();
+  await page
+    .getByRole('complementary', { name: 'Branches' })
+    .locator('.branches-branch', { has: page.locator('.branches-name', { hasText: /^agent$/ }) })
+    .click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Review', exact: true }).click();
   await page.getByRole('tab', { name: /Review/ }).click();
   await page.getByLabel('Approve').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
