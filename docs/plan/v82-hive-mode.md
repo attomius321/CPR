@@ -162,6 +162,12 @@ icon (taskbar) stays.
 | 666 | The Hive Mind (replaces 630's comb) | **Machined: 19 gunmetal plates in a honeycomb, bevels lit from the upper left, dark-glass chambers lit crimson from within, a white-hot core lens; the cells boot with a flicker; a signal lights its cell, then each cell in to the core; a targeting ring round it in the question. The same Mind grows in the arrival** | one Mind for the question and the arrival |
 | 667 | The other candidates | **The Swarm (drones docking on the Mind's lattice) kept for later: its prototype and film in `spikes/hive-question-candidates/`; the Conduits only there** | the person: "keep the comb idea for the future… we'll do something with that" |
 | 673 | Turning it on (amends 632) | **A hex shutter in place of the blackout: the window's honeycomb of tiles shuts from the edges onto the growing Mind, the front's edges lit; traces at 0° and 45° route across the shut tiles from every edge into the grown targeting ring; covered at 1.0 s (every pixel ink, the look changes under it); the Mind flares and the traces surge; the tiles open from the Mind out to the edges, their edges lit, a ring of light ahead; still by 1.9 s; the canvas at most 0.9 megapixels; reduced motion: at once** | the person: "Turning Hive on animation should be in the Circuit style" |
+| 674 | Nucleus's name in Hive mode | **"Alpha Ceph" wherever the person reads Nucleus's name and in what the agent calls itself, while Hive mode is on; "Nucleus" with it off. The id `nucleus` (records' `via`, files, `/api/nucleus`, settings keys, the MCP bridge's `--as`), the Claude Code session's and Codex thread's name (`NUCLEUS_NAME`) and exports stay** | the person's brief; past conversations and records survive Hive going on and off |
+| 675 | Where the name lives | **`NUCLEUS_NAMES` in `@symbiote/core` (`{ off: 'Nucleus', hive: 'Alpha Ceph' }`); the viewer, which imports only types from core, writes its two literals typed by core's (`NucleusNames['hive']`), so a change in core fails the viewer's typecheck until it follows** | one place to change; the viewer bundle must not pull core's runtime |
+| 676 | The icon | **A still SVG from the Mind's geometry: the core and its first ring (7 cells), lit gunmetal plates, crimson chambers, a white-hot core; drawn in place of NucleusIcon wherever it is drawn, in its own colours (not the link's)** | of five candidates mocked at 18, 28 and 16 px in both themes, the only one that reads as the Mind at 18 px on the ink: 19 cells blur to a dotted disc, the art's own gunmetal vanishes on the ink, outlines merge into a flower |
+| 677 | The name in the start prompt | **`{name}` in `prompts.nucleus` ("You are {name}, …"), filled with the conversation's name; a project's text without `{name}`, in Hive mode only, gets a line at its end: "Hive mode is on: you are called Alpha Ceph, not Nucleus." With Hive off the text given the agent is main's, byte for byte** | an edited prompt is reached without rewriting the person's text; the precedent of `{documents}` and `{hive}`, added when a text leaves them out |
+| 678 | A conversation started before Hive changed | **It keeps its name until New conversation: its record keeps `name` (only when not Nucleus, so a record made with Hive off is main's), its gate words follow it (`--name` after the gate's arguments, only when not Nucleus). The page's names follow Hive at once; when the running conversation's name differs, a note under the head says so: "Started as Nucleus: New conversation starts Alpha Ceph." The agent is not told** | as the Scout note (decision 591); a message into a running conversation would change what Nucleus does, out of scope |
+| 679 | What reads Hive | **The viewer: `useHive` (the sidenav, the page, Settings, the activity re-render as Hive turns on or off); pure helpers take the name. The CLI: `hive.on()` at a conversation's start (its prompt, record and gate) and for the words it serves (refusals, the Prompts group's about)** | the look's own switch (decisions 612, 621); nothing new kept |
 
 **Not in V82 (later)**: Hive itself; the app's taskbar icon and the desktop start page; other
 open windows following a change at once.
@@ -545,3 +551,72 @@ the question's words (the art ends above the heading, faded at its lower edge, a
 Not verified: the app's window (Electron is not installed here), a GPU, WSLg's own display, the
 turn-on in a window rather than headless (V82 measured both).
 
+
+## Feature: Alpha Ceph, Nucleus in Hive mode (feature/alpha-ceph-hive-name)
+
+**Status:** planned (2026-10-31); the person said to start once planned.
+
+**Problem.** Hive mode changes the look (decision 614) but not who the person talks to: the
+orchestrator is still "Nucleus" with lucide's circle-dot, while Hive's own figure is the machined
+Hive Mind (decision 666). The name is written out in 12 viewer files (34 strings: the sidenav's
+label, aria label and 4 tips; the page's title, "?", tabs and notes; the window's title; who asked
+a Confirm; who started a workspace; Settings' entry, its 8 words and the Prompts group; the
+activity's "Nucleus's gate") and in the CLI's prompt (1), gate (6 refusals and the allowed
+reason's prefix) and the page agent's refusals (10).
+
+**Goal** (decisions 674–679): while Hive mode is on, Nucleus is **Alpha Ceph** everywhere the person
+reads its name and in what the agent calls itself, and its icon is the Hive Mind, small and still.
+**Unchanged**: everything with Hive off (names, icon, the text given the agent, its record, its
+settings file); the id `nucleus` everywhere it is an id; the session's name; what it may do.
+
+**The name** (674, 675). `@symbiote/core` exports `NUCLEUS_NAMES = { off: 'Nucleus', hive: 'Alpha
+Ceph' }` and `nucleusName(hive)`. The viewer's `shell/names.ts` holds the same two literals typed by
+core's type, `nucleusName(hive)` for pure helpers and `useNucleusName()` for components. Each
+string above takes the name; the pure helpers (`routeTitle`, `askerName`, `VIA_NAMES` into
+`viaName`, `formerText`, Settings' agent words) take it as an argument, so a test calls them both
+ways. Settings keeps `Nucleus` as the prebuilt agent's key and the prompts' group id, and shows the
+name. The CLI's served words (the page agent's refusals, the prompt's `about` in Settings) take the
+name from `hive.on()`.
+
+**The icon** (676). `HiveMindIcon` in `ui/icons.tsx`: 7 hexagons placed as `Mind`'s cells of ring
+≤ 1 (`hive-art.ts`) on lucide's 24-unit grid (a cell's circumradius 4.35, plates 0.6 apart),
+plates in a gradient lit from the upper left with a bevel's edge, chambers crimson, the core's
+larger and white-hot; colours from new `--art-icon-*` tokens beside the art's in `hive.css`,
+gradient ids from `useId`. `NucleusIcon` draws it while `useHive()`; circle-dot otherwise. It has its
+own colours: a waiting or current link still shows its state by its band, ring, dot and words.
+Mockup (five candidates, real size, both themes): `spikes/alpha-ceph-icon/`.
+
+**The agent** (677, 678). `prompts.nucleus` becomes "You are {name}, …" (`{name}` a new optional
+placeholder, "the agent's name: Nucleus, or Alpha Ceph while Hive mode is on"); with Hive off it is
+filled with Nucleus, so the text given the agent is main's. A project's text without `{name}`, in
+Hive mode only, gets "Hive mode is on: you are called Alpha Ceph, not Nucleus." after a blank line.
+At a conversation's start the page agent records `name: "Alpha Ceph"` (only then) and gives the
+gate `--name Alpha Ceph`; the gate's refusals and its allowed prefix say that name. At each wake
+the settings file is written from the record's name, so a conversation keeps its name across Hive
+turning on or off; the page shows a note when they differ (678). `NUCLEUS_NAME` ('Nucleus') stays
+the session's name, how a new session is told from the person's.
+
+**Out of scope**: the id and files; exports (V84) keep "Nucleus", the record's name; the nexus's
+tabs (they show the page's title as it is); what Nucleus may do in Hive mode (HV4).
+
+**Verification**:
+
+- Tests first, red before: core `nucleusName`; the viewer's `routeTitle`, `askerName`, `viaName`,
+  `formerText`/the name note, Settings' agent words, both ways; the icon's 7 cells at `Mind`'s
+  places; CLI: `prompts.nucleus` with Hive off equals main's text byte for byte (main's copied into
+  the test), with Hive on says "You are Alpha Ceph", an edited text gets the line only in Hive
+  mode; the gate's words with `--name`; the page agent's record and settings file byte for byte
+  without Hive, with `name` and `--name` with it, kept at a wake after Hive turned off.
+- e2e (`hive.spec.ts` or a new spec): Hive on, the sidenav (open and folded), the page's head and
+  tabs, the window's title, Settings' entry say Alpha Ceph and draw the Mind; Hive off as main; a
+  past conversation and its activity open after Hive goes on and off.
+- A real Claude Code Nucleus in a scratch repository with Hive on (its own cache, never main's
+  `symbiote/`): asked its name, it says Alpha Ceph; a refused command's reason says Alpha Ceph.
+  Hive off, a new conversation: Nucleus.
+- `pnpm check`, `pnpm build`, `pnpm test:e2e`; `viewer-check` screenshots of the sidenav, the rail,
+  the page and Settings in Hive on and off, both themes, 1×; the `symbiote-style` checks.
+
+**Risks**: a string missed (a grep for `'Nucleus` in the viewer and served CLI words after, each
+left one an id or a comment); the icon's colours on the light page head (checked in the mockup:
+the plates read on white); the record's new key read by an older `symbiote view` (unknown keys
+are kept and ignored).
