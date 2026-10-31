@@ -5,13 +5,9 @@ import { reviewMarks } from './branchReviews.js';
 
 /**
  * The reviewer's branch reviews (V15) as marks for History: read when the page opens, and again
- * when it is back, since a review is made on another page. `setReviews` keeps a list read
- * elsewhere (a row's menu reads it anew).
+ * when it is back, since a review is made on another page.
  */
-export function useBranchReviews(): {
-  marks: ReturnType<typeof reviewMarks>;
-  setReviews: (list: BranchReviewList | null) => void;
-} {
+export function useBranchReviews(): ReturnType<typeof reviewMarks> {
   const [reviews, setReviews] = useState<BranchReviewList | null>(null);
   useEffect(() => {
     let live = true;
@@ -30,6 +26,5 @@ export function useBranchReviews(): {
       document.removeEventListener('visibilitychange', load);
     };
   }, []);
-  const marks = useMemo(() => reviewMarks(reviews), [reviews]);
-  return { marks, setReviews };
+  return useMemo(() => reviewMarks(reviews), [reviews]);
 }
