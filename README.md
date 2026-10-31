@@ -351,10 +351,10 @@ The sidenav also opens these pages. Each has a key.
   commits' place, and **Open in VS Code** (`o`) to open that diff in VS Code; `j` and `k` step
   through the files, `Esc` goes back to the commits. Beside **Diff**, **History** lists the
   commits that changed the file, and **Blame** shows each line's commit; click one to go to it.
-  Right-click a commit to check it out, review its branch (`r`), start a workspace from it, make
-  a branch or a tag there, cherry-pick or revert it, or reset your branch to it (your changes
-  stay on disk). Right-click a branch in the branches panel to rename, delete, merge or hide it,
-  or to rebase your branch onto it; a remote branch can be deleted from its remote. Double-click
+  Right-click a commit to check it out (`c`), start a workspace from it, make a branch or a tag
+  there, cherry-pick or revert it, or reset your branch to it (your changes stay on disk).
+  Right-click a branch in the branches panel to review, rename, delete, merge or hide it, or to
+  rebase your branch onto it; a remote branch can be deleted from its remote. Double-click
   the branch to check it out. Press `x` to compare two commits.
   Your uncommitted changes are a row above the commits: stage files, or only the lines you pick
   in a file's diff, write a message and commit them in the details pane. **Stash…** puts them

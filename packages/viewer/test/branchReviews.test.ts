@@ -1,30 +1,9 @@
-import type { BranchReviewList, Commit, CommitRef, RefList } from '@symbiote/core';
+import type { BranchReviewList } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { reviewChoices, reviewMarks } from '../src/history/branchReviews.js';
+import { reviewMarks } from '../src/history/branchReviews.js';
 import { rowBadges } from '../src/history/commits.js';
 
 const sha = (c: string) => c.repeat(40);
-const commit = (c: string, refs: CommitRef[]): Commit => ({
-  sha: sha(c),
-  parents: [],
-  author: 'Ada',
-  date: '2026-10-14T08:00:00Z',
-  subject: `commit ${c}`,
-  refs,
-});
-const REFS: RefList = {
-  branches: [
-    { name: 'main', sha: sha('a'), upstream: 'origin/main', ahead: 2, behind: 0 },
-    { name: 'agent', sha: sha('b'), upstream: 'origin/agent', ahead: 0, behind: 0 },
-    { name: 'solo', sha: sha('f') },
-  ],
-  remotes: [
-    { name: 'origin/main', remote: 'origin', branch: 'main', sha: sha('a') },
-    { name: 'origin/agent', remote: 'origin', branch: 'agent', sha: sha('b') },
-    { name: 'origin/topic', remote: 'origin', branch: 'topic', sha: sha('c') },
-  ],
-  tags: [],
-};
 const LIST: BranchReviewList = {
   defaultBranch: 'main',
   reviewer: 'ada@example.com',
@@ -53,60 +32,6 @@ const LIST: BranchReviewList = {
     },
   ],
 };
-const entries = (c: Commit, list: BranchReviewList = LIST) =>
-  reviewChoices(c, REFS, list).map(
-    ({ ref, note, disabled, review }) =>
-      `${ref.kind}:${ref.name} → ${review} · ${note}${disabled ? ` [${disabled}]` : ''}`,
-  );
-
-describe('reviewChoices', () => {
-  it('offers each branch on a row once, saying how far its review is', () => {
-    expect(
-      entries(
-        commit('b', [
-          { kind: 'branch', name: 'agent' },
-          { kind: 'remote', name: 'origin/agent' },
-        ]),
-      ),
-    ).toEqual(['branch:agent → agent · 12 reviewed · 2 commits since']);
-    expect(entries(commit('c', [{ kind: 'remote', name: 'origin/topic' }]))).toEqual([
-      'remote:origin/topic → origin/topic · 3 reviewed · in progress',
-    ]);
-    expect(
-      entries(commit('c', [{ kind: 'remote', name: 'origin/topic' }]), { ...LIST, reviews: [] }),
-    ).toEqual(['remote:origin/topic → origin/topic · not reviewed yet']);
-  });
-
-  it('offers the default branch for its unpushed commits (V16), and nothing on a row without branches', () => {
-    const main = commit('a', [
-      { kind: 'head', name: 'HEAD' },
-      { kind: 'branch', name: 'main' },
-      { kind: 'remote', name: 'origin/main' },
-      { kind: 'tag', name: 'v1' },
-    ]);
-    expect(entries(main)).toEqual(['branch:main → main · 2 unpushed commits']);
-    const pushed: RefList = {
-      ...REFS,
-      branches: REFS.branches.map((b) => (b.name === 'main' ? { ...b, ahead: 0 } : b)),
-    };
-    const lone: RefList = {
-      ...REFS,
-      branches: REFS.branches.map((b) => (b.name === 'main' ? { name: 'main', sha: b.sha } : b)),
-    };
-    const note = (refs: RefList) =>
-      reviewChoices(main, refs, LIST).map((c) => `${c.note} [${c.disabled ?? ''}]`);
-    expect(note(pushed)).toEqual(['default branch [no unpushed commits]']);
-    expect(note(lone)).toEqual(['default branch [no upstream to compare it with]']);
-    // Only the pushed default branch on the row: its local branch is where the commits are.
-    expect(entries(commit('g', [{ kind: 'remote', name: 'origin/main' }]))).toEqual([
-      'remote:origin/main → origin/main · default branch [the default branch as pushed: review main]',
-    ]);
-    expect(entries(commit('e', [{ kind: 'tag', name: 'v1' }]))).toEqual([]);
-    const [agent] = reviewChoices(commit('b', [{ kind: 'branch', name: 'agent' }]), REFS, LIST);
-    expect(agent?.label).toBe('Review branch agent');
-  });
-});
-
 describe('reviewMarks', () => {
   const verdict = (
     event: 'approve' | 'request-changes' | 'comment',
@@ -173,22 +98,6 @@ describe('reviewMarks', () => {
       tone: 'progress',
     });
     expect(at(null)).toEqual({ mark: '…', title: 'Review in progress', tone: 'progress' });
-  });
-
-  it('says the verdict in the Review submenu too', () => {
-    expect(entries(commit('b', [{ kind: 'branch', name: 'agent' }]), withVerdicts)).toEqual([
-      'branch:agent → agent · changes requested · 2 commits since',
-    ]);
-    expect(entries(commit('c', [{ kind: 'remote', name: 'origin/topic' }]), withVerdicts)).toEqual([
-      'remote:origin/topic → origin/topic · approved',
-    ]);
-    const merged: BranchReviewList = {
-      ...LIST,
-      reviews: [{ ...LIST.reviews[1]!, verdict: verdict('approve', sha('c'), true) }],
-    };
-    expect(entries(commit('c', [{ kind: 'remote', name: 'origin/topic' }]), merged)).toEqual([
-      'remote:origin/topic → origin/topic · approved · merged into main',
-    ]);
   });
 
   it("puts a branch's mark on its badge, HEAD's too", () => {
