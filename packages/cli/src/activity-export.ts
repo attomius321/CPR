@@ -145,8 +145,9 @@ function dateOf(date: Date, zone: string): string {
   return `${p.year}-${p.month}-${p.day}`;
 }
 
-/** A duration in words: `0.2 s`, `42 s`, `3 min 12 s`, `1 h 4 min`. */
+/** A duration in words: `180 ms`, `4.2 s`, `42 s`, `3 min 12 s`, `1 h 4 min`. */
 export function duration(ms: number): string {
+  if (ms < 1000) return `${String(Math.round(ms))} ms`;
   const s = ms / 1000;
   if (s < 10) return `${String(Math.round(s * 10) / 10)} s`;
   if (s < 60) return `${String(Math.round(s))} s`;
@@ -247,8 +248,16 @@ function callsOf<T extends ActivityEntry>(lines: readonly T[]): { start?: T; end
 const failedCall = (end: ActivityEntry | undefined) =>
   !!end && (end.failed === true || (end.exit !== undefined && end.exit !== 0));
 
-/** A call as a list item, and under it, when it failed, its input and output. */
-function callPiece(call: { start?: NucleusCall; end?: NucleusCall }, zone: string): Piece {
+/**
+ * A call as a list item, and under it, when it failed, its input and output. `declined`: how the
+ * person's Confirm for it ended when it was not a yes (Nucleus's calls of Symbiote, NU2): neither
+ * a failure nor its output then.
+ */
+function callPiece(
+  call: { start?: NucleusCall; end?: NucleusCall },
+  zone: string,
+  declined?: string,
+): Piece {
   const { start, end } = call;
   const line = (start ?? end) as NucleusCall;
   const symbiote = line.source === 'symbiote';
@@ -258,11 +267,12 @@ function callPiece(call: { start?: NucleusCall; end?: NucleusCall }, zone: strin
     : [line.tool, ...(subject ? [code(subject)] : [])];
   const gate = start?.gate;
   const refusedByGate = gate?.decision === 'deny';
-  const failed = failedCall(end);
+  const failed = !declined && failedCall(end);
   if (refusedByGate) {
     said.push(`**refused by its gate**${gate.reason ? `: ${gate.reason}` : ''}`);
   } else {
     if (end?.refused) said.push(`**refused**: ${end.refused}`);
+    if (declined) said.push(declined);
     if (failed) said.push('**failed**');
     if (end?.exit !== undefined) said.push(`exit ${String(end.exit)}`);
     if (end?.added !== undefined || end?.removed !== undefined) {
@@ -279,7 +289,6 @@ function callPiece(call: { start?: NucleusCall; end?: NucleusCall }, zone: strin
     if (end?.interrupted) said.push('interrupted');
     if (end?.background) said.push('sent to the background');
     if (!end) said.push('no end recorded');
-    if (gate?.decision === 'allow' && gate.reason) said.push(`allowed: ${gate.reason}`);
   }
   const task = start?.task ?? end?.task;
   if (task?.subject) said.push(`task: ${task.subject}`);
@@ -515,6 +524,22 @@ function nucleusEntryPiece(entry: NucleusEntry, zone: string): Piece | null {
 const isCall = (line: NucleusActivityLine): line is NucleusCall =>
   'phase' in line && (line.phase === 'start' || line.phase === 'end');
 
+const NOT_YES = {
+  declined: 'declined by the person',
+  expired: 'not answered in time',
+  gone: 'its call ended before an answer',
+} as const;
+
+/** Symbiote's calls whose Confirm ended without a yes, by the call's ID, in words. */
+function notConfirmed(lines: readonly NucleusActivityLine[]): Map<string, string> {
+  const ends = new Map<string, string>();
+  for (const line of lines) {
+    if (isCall(line) || line.kind !== 'confirm' || line.stage !== 'ended' || !line.call) continue;
+    if (line.answer !== 'confirmed') ends.set(line.call, NOT_YES[line.answer]);
+  }
+  return ends;
+}
+
 function nucleusPieces(sources: NucleusSources, zone: string): Piece[] {
   const pieces: Piece[] = [];
   const of = (line: NucleusActivityLine) =>
@@ -528,9 +553,11 @@ function nucleusPieces(sources: NucleusSources, zone: string): Piece[] {
     if (piece && conversation) piece.conversation = conversation;
     if (piece) pieces.push(piece);
   }
+  const declined = notConfirmed(sources.lines);
   for (const call of callsOf(sources.lines.filter(isCall))) {
-    const piece = callPiece(call, zone);
-    const conversation = of((call.start ?? call.end) as NucleusCall);
+    const line = (call.start ?? call.end) as NucleusCall;
+    const piece = callPiece(call, zone, declined.get(line.id));
+    const conversation = of(line);
     if (conversation) piece.conversation = conversation;
     pieces.push(piece);
   }
@@ -654,11 +681,18 @@ function counts(sources: ActivitySources): [string, number][] {
     ];
   }
   const calls = callsOf(sources.lines.filter(isCall));
+  const declined = notConfirmed(sources.lines);
   const entries = sources.lines.filter((line): line is NucleusEntry => !isCall(line));
   return [
     ['messages', entries.filter((e) => e.kind === 'prompt').length],
     ['calls', calls.length],
-    ['failed', calls.filter((c) => c.start?.gate?.decision !== 'deny' && failedCall(c.end)).length],
+    [
+      'failed',
+      calls.filter((c) => {
+        const id = (c.start ?? c.end)?.id ?? '';
+        return c.start?.gate?.decision !== 'deny' && !declined.has(id) && failedCall(c.end);
+      }).length,
+    ],
     [
       'refused',
       calls.filter((c) => c.start?.gate?.decision === 'deny' || c.end?.refused !== undefined)

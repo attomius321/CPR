@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
@@ -198,6 +199,64 @@ test('the raw stream: every line recorded, in order, each opening to its JSON (V
   // Back to the timeline.
   await page.getByRole('button', { name: 'Timeline' }).click();
   await expect(page.getByRole('list', { name: 'Activity' })).toBeVisible();
+});
+
+test('Export: the activity saved as Markdown or JSON Lines, or its Markdown copied (V84)', async ({
+  page,
+}) => {
+  await startHalf(page);
+  tool('PreToolUse', 'b1', 'Bash', { command: 'ls -la', description: 'List files' });
+  tool(
+    'PostToolUse',
+    'b1',
+    'Bash',
+    { command: 'ls -la' },
+    { tool_response: { stdout: 'total 0\n', stderr: '' }, duration_ms: 12 },
+  );
+  await openActivity(page);
+  await expect(groupOf(page, 'Exploration')).toBeVisible(POLL);
+  const exporting = page.locator('.activity-bar').getByRole('button', { name: 'Export' });
+  const menu = page.getByRole('menu', { name: 'Export' });
+  await exporting.click();
+  await expect(menu.getByRole('menuitem')).toHaveText([
+    'Download Markdown',
+    'Download JSON Lines',
+    'Copy Markdown',
+  ]);
+  const [markdown] = await Promise.all([
+    page.waitForEvent('download'),
+    menu.getByRole('menuitem', { name: 'Download Markdown' }).click(),
+  ]);
+  expect(markdown.suggestedFilename()).toMatch(
+    /^activity-.+-feature-add-a-half-function-\d{4}-\d{2}-\d{2}\.md$/,
+  );
+  const text = readFileSync(await markdown.path(), 'utf8');
+  expect(text).toMatch(/^---\nsymbiote-activity: 1\nof: workspace\n/);
+  expect(text).toContain('branch: "feature/add-a-half-function"');
+  expect(text).toContain("Symbiote's prompt");
+  expect(text).toContain('Bash · `ls -la` · 12 ms — List files');
+  await expect(menu).toBeHidden();
+
+  await exporting.click();
+  const [lines] = await Promise.all([
+    page.waitForEvent('download'),
+    menu.getByRole('menuitem', { name: 'Download JSON Lines' }).click(),
+  ]);
+  expect(lines.suggestedFilename()).toMatch(/\.jsonl$/);
+  const records = readFileSync(await lines.path(), 'utf8')
+    .trimEnd()
+    .split('\n')
+    .map((line) => (JSON.parse(line) as { record: string }).record);
+  expect(records).toEqual(['export', 'workspace', 'thread', 'thread', 'tool', 'tool']);
+
+  // Copied, to paste into an agent's chat; the button says so for a moment.
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await exporting.click();
+  await menu.getByRole('menuitem', { name: 'Copy Markdown' }).click();
+  await expect(page.locator('.activity-bar').getByRole('button', { name: 'Copied' })).toBeVisible();
+  const copied = await page.evaluate(() => navigator.clipboard.readText());
+  expect(copied).toMatch(/^---\nsymbiote-activity: 1\nof: workspace\n/);
+  expect(copied).toContain('Bash · `ls -la` · 12 ms — List files');
 });
 
 test('what runs now: a live strip and a running phase, then into the timeline as it ends (V73)', async ({

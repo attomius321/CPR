@@ -195,7 +195,7 @@ The workspace \`feature/export-activity\` (feature): Claude Code (opus, xhigh ef
 >
 > # Feature: export
 
-- 10:06:10 · Bash · \`git log -5\` · exit 0 · 0.2 s — Show recent history
+- 10:06:10 · Bash · \`git log -5\` · exit 0 · 180 ms — Show recent history
 - 10:07:00 · Bash · \`pnpm test\` · **failed** · exit 1 · 42 s — Run the tests
 
   Input:
@@ -212,7 +212,7 @@ The workspace \`feature/export-activity\` (feature): Claude Code (opus, xhigh ef
   expected 1, got 2
   \`\`\`
 
-- 10:08:00 · Edit · \`src/a.ts\` · +12 −3 · 0.1 s
+- 10:08:00 · Edit · \`src/a.ts\` · +12 −3 · 100 ms
 
 ### 10:20:00 · Asked: Which format?
 
@@ -266,6 +266,7 @@ const nucleusLines: NucleusActivityLine[] = [
     tool: 'WebFetch',
     phase: 'start',
     subject: 'https://code.claude.com/docs',
+    gate: { decision: 'allow', reason: 'the web, as its agent reads it (NU1)' },
     ...of1,
   },
   {
@@ -382,7 +383,7 @@ timezone: "UTC"
 exported: "2026-11-01T09:00:00.000Z"
 messages: 1
 calls: 4
-failed: 1
+failed: 0
 refused: 1
 confirms: 1
 complete: true
@@ -408,24 +409,11 @@ Nucleus, the person's assistant in \`Symbiote\`, across its conversations. Times
 > What waits for me?
 
 - 17:10:40 · Bash · \`curl https://example.com\` · **refused by its gate**: Nucleus reads; it runs no other command
-- 17:10:41 · WebFetch · \`https://code.claude.com/docs\` · 0.5 s
+- 17:10:41 · WebFetch · \`https://code.claude.com/docs\` · 534 ms
   - 200 · 42,596 bytes · https://code.claude.com/docs
 - 17:10:42 · WebSearch · \`agent teams\` · 5 s
   - Result: Agent teams — https://example.com/teams
-- 17:10:48 · Symbiote · \`start_workspace\` · **failed** · 4.1 s
-
-  Input:
-
-  \`\`\`
-  {"branch":"fix/a"}
-  \`\`\`
-
-  Output:
-
-  \`\`\`
-  The person declined
-  \`\`\`
-
+- 17:10:48 · Symbiote · \`start_workspace\` · declined by the person · 4.1 s
 - 17:10:48 · Confirm asked: Start fix/a with Claude Code (\`start_workspace\`)
 - 17:10:52 · Confirm declined after 3.9 s
 

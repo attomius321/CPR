@@ -80,6 +80,19 @@
   white-space: nowrap;
 }
 
+/* Export (V84) before Timeline and Raw events; its menu under it, at its right. */
+.activity-bar-end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
+.activity-export-button {
+  padding: 0 10px;
+  white-space: nowrap;
+}
+
 .activity-counts {
   min-width: 0;
   overflow: hidden;

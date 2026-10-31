@@ -61,6 +61,7 @@ export function NucleusActivity({ read }: { read: PageAgentState | null }) {
       worktree={worktree}
       ready
       cut={activity.cut}
+      exportFrom="/api/nucleus/activity/export"
     />
   );
 }

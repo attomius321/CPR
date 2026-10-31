@@ -50,6 +50,7 @@ export function ActivityTab({
       worktree={worktree}
       ready={read !== null}
       cut={read?.cut === true}
+      exportFrom={`/api/workspaces/activity/export?branch=${encodeURIComponent(workspace.branch)}`}
       after={
         read &&
         !read.tools &&
