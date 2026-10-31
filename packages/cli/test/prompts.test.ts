@@ -1,6 +1,7 @@
+import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { openRepo, PROMPT_KEYS, type Verdict, type WorkKind } from '@symbiote/core';
+import { NUCLEUS_NAMES, openRepo, PROMPT_KEYS, type Verdict, type WorkKind } from '@symbiote/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createRepo, tempDir } from '../../core/test/helpers/git-repo.js';
 import { MERGER_INSTRUCTIONS, mergerInstructions } from '../src/merge-agent.js';
@@ -8,6 +9,7 @@ import {
   DEFAULT_PROMPTS,
   fillPrompt,
   MERGER_ANSWER,
+  nucleusInstructions,
   promptSettingsService,
   PromptRefused,
   readPrompts,
@@ -383,10 +385,67 @@ describe('promptSettingsService', () => {
   });
 });
 
+describe("Nucleus's name in its prompt (Alpha Ceph, decision 685)", () => {
+  /** main's text before Alpha Ceph: its SHA-256, length, and one "Nucleus" in it. */
+  const MAIN = 'be549465b6ac31a946aa643e45b57d00be8f0a397a49f23ec6345e29171f56af';
+  const sha = (text: string) => createHash('sha256').update(text).digest('hex');
+
+  it("is main's text, byte for byte, with Hive off", () => {
+    const off = nucleusInstructions(DEFAULT_PROMPTS.nucleus, NUCLEUS_NAMES.off);
+    expect(off).toMatch(/^You are Nucleus, the person's orchestrator/);
+    expect(off).toHaveLength(3452);
+    expect(sha(off)).toBe(MAIN);
+  });
+
+  it('calls it Alpha Ceph in Hive mode, and nothing else changes', () => {
+    const on = nucleusInstructions(DEFAULT_PROMPTS.nucleus, NUCLEUS_NAMES.hive);
+    expect(on).toMatch(/^You are Alpha Ceph, the person's orchestrator in Symbiote/);
+    expect(on).not.toContain('Nucleus');
+    expect(on.replace('Alpha Ceph', 'Nucleus')).toBe(
+      nucleusInstructions(DEFAULT_PROMPTS.nucleus, NUCLEUS_NAMES.off),
+    );
+  });
+
+  it("reaches a project's own text: {name} filled; without it, a line at the end in Hive mode only", () => {
+    expect(nucleusInstructions('You are {name}. Be brief.', NUCLEUS_NAMES.hive)).toBe(
+      'You are Alpha Ceph. Be brief.',
+    );
+    expect(nucleusInstructions('You are {name}. Be brief.', NUCLEUS_NAMES.off)).toBe(
+      'You are Nucleus. Be brief.',
+    );
+    // Written before {name}: as it is with Hive off; told its name with Hive on.
+    expect(nucleusInstructions('You are Nucleus. Be brief.\n', NUCLEUS_NAMES.off)).toBe(
+      'You are Nucleus. Be brief.',
+    );
+    expect(nucleusInstructions('You are Nucleus. Be brief.', NUCLEUS_NAMES.hive)).toBe(
+      'You are Nucleus. Be brief.\n\nHive mode is on: you are called Alpha Ceph, not Nucleus.',
+    );
+    // A text from before V50: its {question} filled with nothing, as before.
+    expect(nucleusInstructions('Be brief.\n\n{question}', NUCLEUS_NAMES.off)).toBe('Be brief.');
+  });
+
+  it('lists {name} among its placeholders in Settings, not required', async () => {
+    const repo = createRepo();
+    dirs.push(repo.root);
+    const settings = promptSettingsService(await openRepo(repo.root));
+    const nucleus = (await settings.prompts()).prompts.find((p) => p.key === 'nucleus');
+    expect(nucleus?.placeholders).toEqual([
+      { name: 'name', about: 'its name: Nucleus, or Alpha Ceph while Hive mode is on' },
+    ]);
+    expect(nucleus?.about).toMatch(/^Nucleus's system prompt/);
+    const hive = promptSettingsService(await openRepo(repo.root), {
+      hive: () => Promise.resolve(true),
+    });
+    const named = (await hive.prompts()).prompts.find((p) => p.key === 'nucleus');
+    expect(named?.about).toMatch(/^Alpha Ceph's system prompt/);
+    expect(named?.about).not.toContain('Nucleus');
+  });
+});
+
 describe("Nucleus's prompt (V35, NU1)", () => {
   it("is Symbiote's until the project has its own; the question is not in it (V50)", () => {
     const nucleus = DEFAULT_PROMPTS.nucleus;
-    expect(nucleus).toMatch(/^You are Nucleus, the person's orchestrator in Symbiote/);
+    expect(nucleus).toMatch(/^You are \{name\}, the person's orchestrator in Symbiote/);
     expect(nucleus).not.toMatch(/Scout/);
     // Its system prompt: the person asks in its terminal (decision 383).
     expect(nucleus).not.toContain('{question}');
@@ -471,7 +530,9 @@ describe("Nucleus's prompt (V35, NU1)", () => {
       group: 'Nucleus',
       title: 'Instructions',
       text: DEFAULT_PROMPTS.nucleus,
-      placeholders: [],
+      placeholders: [
+        { name: 'name', about: 'its name: Nucleus, or Alpha Ceph while Hive mode is on' },
+      ],
     });
     expect(prompts.some((p) => (p.key as string) === 'scout')).toBe(false);
     // Scribe's two follow it (V41, SK1), then Hive's (HV2).

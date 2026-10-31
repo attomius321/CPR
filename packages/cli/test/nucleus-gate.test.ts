@@ -20,6 +20,7 @@ import {
   openWorktrees,
   type NucleusReach,
 } from '../src/nucleus-gate.js';
+import { gateHook } from '../src/nucleus-record.js';
 
 describe('gitReadProblem (V35, decision 236)', () => {
   it.each([
@@ -274,6 +275,68 @@ describe('gateDecision (V35)', () => {
         permissionDecisionReason: 'No.',
       },
     });
+  });
+});
+
+describe("the gate's words in Alpha Ceph's name (decision 686)", () => {
+  const input = (tool_name: string, tool_input: unknown) => ({
+    hook_event_name: 'PreToolUse',
+    session_id: 's',
+    cwd: '/repo',
+    tool_name,
+    tool_input,
+  });
+  const reason = (decision: ReturnType<typeof gateDecision>) =>
+    decision && !decision.allow ? decision.reason : '';
+
+  it('reads --name from its arguments; none given, Nucleus as before', () => {
+    expect(gateOptions(['--web', '--name=Alpha Ceph'])).toEqual({ web: true, name: 'Alpha Ceph' });
+    expect(gateOptions(['--web'])).toEqual({ web: true });
+    // Not one of the reach's two folders.
+    expect(
+      gateOptions(['/repo', '/repo/symbiote/workspaces', '--name=Alpha Ceph']).reach,
+    ).toMatchObject({ checkout: '/repo' });
+  });
+
+  it("refuses in the conversation's name", () => {
+    const named = { name: 'Alpha Ceph' };
+    expect(reason(gateDecision(input('Bash', { command: 'ls' }), named))).toMatch(
+      /^Alpha Ceph runs only git's read commands/,
+    );
+    expect(reason(gateDecision(input('Bash', { command: 'git push' }), named))).toContain(
+      "git push is not one of git's read commands Alpha Ceph runs",
+    );
+    expect(reason(gateDecision(input('Edit', {}), named))).toMatch(/^Alpha Ceph changes no file/);
+    expect(reason(gateDecision(input('mcp__x__y', {}), named))).toMatch(
+      /^Alpha Ceph acts only through Symbiote's tools/,
+    );
+    expect(reason(gateDecision(input('WebSearch', { query: 'x' }), named))).toMatch(
+      /^Alpha Ceph has no web in this conversation/,
+    );
+    for (const decision of [
+      gateDecision(input('Bash', { command: 'ls' }), named),
+      gateDecision(input('Edit', {}), named),
+      gateDecision(input('WebFetch', { url: 'https://example.com' }), named),
+    ]) {
+      expect(reason(decision)).not.toContain('Nucleus');
+    }
+    // Without a name, Nucleus's words as before.
+    expect(reason(gateDecision(input('Edit', {})))).toMatch(/^Nucleus changes no file/);
+  });
+
+  it('answers Claude Code in that name, through the hook', () => {
+    const allowed = JSON.parse(
+      gateHook(input('Bash', { command: 'git log -1' }), ['--name=Alpha Ceph'], {}, 'now') ?? '',
+    ) as { hookSpecificOutput: { permissionDecisionReason: string } };
+    expect(allowed.hookSpecificOutput.permissionDecisionReason).toBe(
+      "Alpha Ceph: one of git's read commands",
+    );
+    const before = JSON.parse(
+      gateHook(input('Bash', { command: 'git log -1' }), [], {}, 'now') ?? '',
+    ) as { hookSpecificOutput: { permissionDecisionReason: string } };
+    expect(before.hookSpecificOutput.permissionDecisionReason).toBe(
+      "Nucleus: one of git's read commands",
+    );
   });
 });
 

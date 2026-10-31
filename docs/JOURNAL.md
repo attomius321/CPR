@@ -348,3 +348,4 @@ merge commit.
 - 2026-10-31 [HV2 — Hive's runner and record, built](journal/hv2-hive-runner.md)
 - 2026-10-31 [V84 spike — where activity is kept, and which format reads](journal/v84-activity-export.md)
 - 2026-10-31 [V84 — Export activity, built](journal/v84-activity-export.md)
+- 2026-10-31 [Alpha Ceph — Nucleus's name and icon in Hive mode](journal/v82-hive-mode.md)

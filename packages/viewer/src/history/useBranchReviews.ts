@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { BranchReviewList } from '@symbiote/core';
 import { fetchReviews } from './api.js';
 import { reviewMarks } from './branchReviews.js';
+import { useNucleusName } from '../shell/names.js';
 
 /**
  * The reviewer's branch reviews (V15) as marks for History: read when the page opens, and again
@@ -26,5 +27,7 @@ export function useBranchReviews(): ReturnType<typeof reviewMarks> {
       document.removeEventListener('visibilitychange', load);
     };
   }, []);
-  return useMemo(() => reviewMarks(reviews), [reviews]);
+  // An approval through Nucleus by its name: Alpha Ceph's in Hive mode (decision 682).
+  const nucleus = useNucleusName();
+  return useMemo(() => reviewMarks(reviews, nucleus), [reviews, nucleus]);
 }

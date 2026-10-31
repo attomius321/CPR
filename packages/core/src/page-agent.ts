@@ -44,6 +44,11 @@ export interface PageAgentConversation {
    * it keeps that one's tools until New conversation (decision 591).
    */
   startedAs?: string;
+  /**
+   * The name it was started under when not its own (Alpha Ceph, Nucleus's in Hive mode, decision
+   * 686): its prompt named it so, and it keeps it until New conversation.
+   */
+  name?: string;
 }
 
 /** An agent Nucleus can run, installed here. */

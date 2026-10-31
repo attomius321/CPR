@@ -6,6 +6,7 @@ import {
   BranchNotMerged,
   CheckoutRefused,
   GitRefused,
+  NUCLEUS_NAMES,
   SymbioteError,
   UnknownCheckoutTarget,
   type BranchReviewInfo,
@@ -495,6 +496,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       return pageAgentRoute(req, res, url, nucleus, {
         api: '/api/nucleus',
         busy: 'Nucleus is being asked',
+        // Said in Alpha Ceph's name while Hive mode is on (decision 682).
+        hiveBusy: `${NUCLEUS_NAMES.hive} is being asked`,
       });
     }
     // Scribe (V41), on the Skills page: Nucleus's conversation, its own agent.
@@ -791,18 +794,19 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     res: ServerResponse,
     url: URL,
     agent: PageAgent,
-    { api, busy }: { api: string; busy: string },
+    { api, busy, hiveBusy }: { api: string; busy: string; hiveBusy?: string },
   ): Promise<void> {
+    const said = async () => (hiveBusy && (await hiveOn()) ? hiveBusy : busy);
     if (url.pathname === api) return read(req, res, () => agent.state());
     if (url.pathname === `${api}/ask`) {
       return written(req, res, parsePageAgentAsk, (request) =>
-        oneAtATime(res, busy, () => agent.ask(request)),
+        oneAtATime(res, busy, () => agent.ask(request), said),
       );
     }
     // Nucleus's conversation with no question (V50).
     if (url.pathname === `${api}/open`) {
       return written(req, res, parsePageAgentOpen, (request) =>
-        oneAtATime(res, busy, () => agent.open(request)),
+        oneAtATime(res, busy, () => agent.open(request), said),
       );
     }
     if (url.pathname === `${api}/new`) {
@@ -810,7 +814,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         req,
         res,
         () => ({}),
-        () => oneAtATime(res, busy, () => agent.renew()),
+        () => oneAtATime(res, busy, () => agent.renew(), said),
       );
     }
     if (url.pathname === `${api}/terminal`) {
@@ -1634,13 +1638,17 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     });
   }
 
-  /** One such write at a time: another meanwhile is refused (409) with `words`. */
+  /**
+   * One such write at a time: another meanwhile is refused (409) with `words`, or what `said`
+   * says (Alpha Ceph's name in Hive mode); `words` is the lock either way.
+   */
   async function oneAtATime(
     res: ServerResponse,
     words: string,
     task: () => Promise<unknown>,
+    said?: () => Promise<string>,
   ): Promise<void> {
-    if (busy.has(words)) return json(res, 409, { error: words });
+    if (busy.has(words)) return json(res, 409, { error: said ? await said() : words });
     busy.add(words);
     try {
       return await answer(res, task);

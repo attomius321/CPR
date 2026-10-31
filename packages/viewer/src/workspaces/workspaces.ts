@@ -218,11 +218,15 @@ export function readRun(
  * How a workspace's agent was started (V30b), for its Brief tab: the agent, its model (V47) and
  * its level. Said as a start, since its session may have changed them since (decisions 211, 341).
  */
-export function startedWith(agent: WorkspaceAgentState, via?: McpVia): string | null {
+export function startedWith(
+  agent: WorkspaceAgentState,
+  via?: McpVia,
+  nucleus = 'Nucleus',
+): string | null {
   if (!agent.kind) return null;
   const model = agent.model ? ` on ${agent.model}` : '';
   const level = agent.effort ? `${agent.effort} effort` : 'its default effort';
-  const through = via ? ` through ${VIA_NAMES[via]}` : '';
+  const through = via ? ` through ${viaName(via, nucleus)}` : '';
   return `Started${through} with ${AGENT_NAMES[agent.kind]}${model} at ${level}.`;
 }
 
@@ -304,8 +308,10 @@ export function runsOnWords(agent: WorkspaceAgentState): { text: string; tip: st
   return { text, tip: [runs, when, started].filter((line) => line !== null).join('\n') };
 }
 
-/** What a workspace or a verdict was made through (MC1). */
-export const VIA_NAMES: Record<McpVia, string> = { nucleus: 'Nucleus', mcp: 'symbiote mcp' };
+/** What a workspace or a verdict was made through (MC1): Nucleus by `nucleus`, its name now. */
+export function viaName(via: McpVia, nucleus = 'Nucleus'): string {
+  return via === 'nucleus' ? nucleus : 'symbiote mcp';
+}
 
 /** Longest name proposed after the prefix. */
 const MAX_NAME = 40;

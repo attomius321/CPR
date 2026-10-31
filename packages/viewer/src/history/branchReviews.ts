@@ -1,5 +1,5 @@
 import type { BranchReviewList, BranchReviewSummary } from '@symbiote/core';
-import { VIA_NAMES as VIA } from '../workspaces/workspaces.js';
+import { viaName } from '../workspaces/workspaces.js';
 import { tip, type TipAttributes, type TipTone } from '../ui/tip.js';
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -25,21 +25,30 @@ export const reviewTip = (mark: ReviewMark): TipAttributes =>
 /**
  * What the commits page shows of reviews: each reviewed branch's mark by ref name — "+2" commits
  * since the review, else its verdict at the tip ("✓", "✗"), else "…" — and branches by new commit.
+ * An approval through Nucleus names it `nucleus` (Alpha Ceph in Hive mode).
  */
-export function reviewMarks(list: BranchReviewList | null): {
+export function reviewMarks(
+  list: BranchReviewList | null,
+  nucleus = 'Nucleus',
+): {
   marks: Map<string, ReviewMark>;
   added: Map<string, string[]>;
 } {
   const marks = new Map<string, ReviewMark>();
   const added = new Map<string, string[]>();
   for (const review of list?.reviews ?? []) {
-    for (const ref of review.refs) marks.set(ref.name, markOf(review, ref.tip, ref.since));
+    for (const ref of review.refs) marks.set(ref.name, markOf(review, ref.tip, ref.since, nucleus));
     for (const sha of review.added) added.set(sha, [...(added.get(sha) ?? []), review.branch]);
   }
   return { marks, added };
 }
 
-function markOf(review: BranchReviewSummary, tip: string, since: number): ReviewMark {
+function markOf(
+  review: BranchReviewSummary,
+  tip: string,
+  since: number,
+  nucleus: string,
+): ReviewMark {
   if (since > 0)
     return {
       mark: `+${since}`,
@@ -49,7 +58,7 @@ function markOf(review: BranchReviewSummary, tip: string, since: number): Review
   const verdict = review.verdict?.head === tip ? review.verdict : undefined;
   if (verdict?.event === 'approve') {
     // Through Nucleus or symbiote mcp, on the person's Confirm (MC1).
-    const approved = `Approved${verdict.via ? ` through ${VIA[verdict.via]}` : ''}`;
+    const approved = `Approved${verdict.via ? ` through ${viaName(verdict.via, nucleus)}` : ''}`;
     const title =
       verdict.merged && verdict.into ? `${approved} · merged into ${verdict.into}` : approved;
     return { mark: '✓', title, tone: 'approved' };

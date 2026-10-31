@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { codexServer, readProfile } from '../src/app-server.js';
 import { codexFolders, type Codex } from '../src/codex.js';
-import { DEFAULT_PROMPTS } from '../src/prompts.js';
+import { DEFAULT_PROMPTS, nucleusInstructions } from '../src/prompts.js';
 import { NUCLEUS_NAME, nucleus as nucleusAgent } from '../src/nucleus.js';
 import {
   findPageAgentSession,
@@ -65,6 +65,8 @@ function fresh(): TestRepo {
 }
 
 const NOW = new Date('2026-10-22T09:00:00Z');
+/** Nucleus's system prompt as main gave it: Symbiote's, named Nucleus (decision 685). */
+const INSTRUCTIONS = nucleusInstructions(DEFAULT_PROMPTS.nucleus, 'Nucleus');
 /** Where Symbiote's gate would be installed. */
 const GATE = '/opt/symbiote/dist/nucleus-hook.js';
 /** Where Symbiote's MCP bridge would be installed (MC1). */
@@ -204,7 +206,13 @@ const service = async (
     claude = null,
     codex = null,
     terminals,
-  }: { claude?: ClaudeCode | null; codex?: Codex | null; terminals?: Terminals } = {},
+    hive,
+  }: {
+    claude?: ClaudeCode | null;
+    codex?: Codex | null;
+    terminals?: Terminals;
+    hive?: () => Promise<boolean>;
+  } = {},
 ) =>
   nucleus(await openRepo(repo.root), cache, {
     claude: () => Promise.resolve(claude),
@@ -215,6 +223,7 @@ const service = async (
     bridge: BRIDGE,
     node: '/usr/bin/node',
     ...(terminals ? { terminals } : {}),
+    ...(hive ? { hive } : {}),
   });
 
 const record = (repo: TestRepo) => join(repo.root, 'symbiote', 'nucleus.json');
@@ -516,7 +525,7 @@ describe('nucleus (V35)', () => {
     const request = startPageAgent.mock.calls[0]?.[0];
     expect(request).toMatchObject({ cwd: repo.root, name: 'Nucleus', settings, ...READ_ONLY });
     // Its instructions are its system prompt (V50, decision 383); the question its first message.
-    expect(request?.instructions).toBe(DEFAULT_PROMPTS.nucleus);
+    expect(request?.instructions).toBe(INSTRUCTIONS);
     expect(request?.prompt).toBe("Where is the merger's prompt defined?");
     // Its gate is given the checkout and the workspaces' records (V80, decision 596).
     expect(readFileSync(settings, 'utf8')).toBe(
@@ -725,6 +734,96 @@ describe('nucleus (V35)', () => {
   });
 });
 
+describe('Alpha Ceph: Nucleus while Hive mode is on (decisions 682-687)', () => {
+  const settingsArgs = (repo: TestRepo, name?: string) =>
+    pageAgentSettings({
+      node: '/usr/bin/node',
+      gate: GATE,
+      args: [
+        repo.root,
+        join(repo.root, 'symbiote', 'workspaces'),
+        '--web',
+        ...(name ? [`--name=${name}`] : []),
+      ],
+      activity: join(repo.root, 'symbiote', 'nucleus-activity.jsonl'),
+    });
+  const settingsOf = (repo: TestRepo) =>
+    readFileSync(join(repo.root, 'symbiote', 'nucleus-settings.json'), 'utf8');
+
+  it('starts as Alpha Ceph: its prompt, record and gate say so; its session keeps its name', async () => {
+    const repo = fresh();
+    const { claude, startPageAgent } = fakeClaude(repo.root);
+    const s = await service(repo, { claude, hive: () => Promise.resolve(true) });
+    const state = await s.open({});
+    const request = startPageAgent.mock.calls[0]?.[0];
+    // The session's name is how Symbiote finds it (decision 239): Nucleus whatever it is called.
+    expect(request).toMatchObject({ name: 'Nucleus' });
+    expect(request?.instructions).toBe(nucleusInstructions(DEFAULT_PROMPTS.nucleus, 'Alpha Ceph'));
+    expect(request?.instructions).toMatch(/^You are Alpha Ceph, /);
+    expect(settingsOf(repo)).toBe(settingsArgs(repo, 'Alpha Ceph'));
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
+      agent: 'claude',
+      name: 'Alpha Ceph',
+    });
+    expect(state.conversation).toMatchObject({ id: 's9', name: 'Alpha Ceph' });
+  });
+
+  it('keeps the name it started with when Hive goes off, until New conversation', async () => {
+    const repo = fresh();
+    let hive = true;
+    const { claude, set, startPageAgent } = fakeClaude(repo.root);
+    const s = await service(repo, { claude, hive: () => Promise.resolve(hive) });
+    await s.ask({ text: 'Q' });
+    hive = false;
+    expect((await s.state()).conversation).toMatchObject({ name: 'Alpha Ceph' });
+    // A wake writes its settings file again: its gate keeps the conversation's name.
+    set('s9', { state: 'done', status: 'idle' });
+    await s.ask({ text: 'And why?' });
+    expect(settingsOf(repo)).toBe(settingsArgs(repo, 'Alpha Ceph'));
+    // New conversation with Hive off: Nucleus, every file as before Alpha Ceph.
+    await s.renew();
+    const state = await s.open({});
+    expect(startPageAgent.mock.calls[1]?.[0]?.instructions).toBe(
+      nucleusInstructions(DEFAULT_PROMPTS.nucleus, 'Nucleus'),
+    );
+    expect(settingsOf(repo)).toBe(settingsArgs(repo));
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).not.toHaveProperty('name');
+    expect(state.conversation).not.toHaveProperty('name');
+    // And one started as Nucleus keeps Nucleus when Hive comes on.
+    hive = true;
+    expect((await s.state()).conversation).not.toHaveProperty('name');
+    set('s10', { state: 'done', status: 'idle' });
+    await s.ask({ text: 'Q' });
+    expect(settingsOf(repo)).toBe(settingsArgs(repo));
+  });
+
+  it('refuses in the name Hive gives it', async () => {
+    const repo = fresh();
+    const s = await service(repo, { hive: () => Promise.resolve(true) });
+    await expect(s.ask({ text: 'Q' })).rejects.toThrow(
+      'Alpha Ceph needs Claude Code or Codex: neither is installed',
+    );
+    const off = await service(repo, { hive: () => Promise.resolve(false) });
+    await expect(off.ask({ text: 'Q' })).rejects.toThrow(
+      'Nucleus needs Claude Code or Codex: neither is installed',
+    );
+  });
+
+  it("starts Codex's thread as Alpha Ceph: its instructions, its record", async () => {
+    const repo = fresh();
+    const server = await appServer();
+    const { codex } = fakeCodex(server);
+    const s = await service(repo, { codex, hive: () => Promise.resolve(true) });
+    await s.ask({ text: 'Q', agent: 'codex' });
+    const started = server.calls.find((c) => c.method === 'thread/start');
+    expect(JSON.stringify(started)).toContain('You are Alpha Ceph, ');
+    expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
+      agent: 'codex',
+      name: 'Alpha Ceph',
+    });
+  });
+});
+
 describe("Nucleus reads the workspaces' worktrees (V80, decisions 596-599)", () => {
   /** `repo` with a workspace's worktree beside it, and its record. */
   function withWorkspace(repo: TestRepo) {
@@ -914,7 +1013,7 @@ describe('Nucleus is a terminal (V50)', () => {
       name: 'Nucleus',
       ...READ_ONLY,
       ...files(repo),
-      instructions: DEFAULT_PROMPTS.nucleus,
+      instructions: INSTRUCTIONS,
     });
     expect(request).not.toHaveProperty('prompt');
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
@@ -1016,7 +1115,7 @@ describe('Nucleus is a terminal (V50)', () => {
     expect(server.calls.find((c) => c.method === 'thread/start')?.params).toMatchObject({
       cwd: repo.root,
       approvalPolicy: 'never',
-      developerInstructions: DEFAULT_PROMPTS.nucleus,
+      developerInstructions: INSTRUCTIONS,
       config: { model_reasoning_effort: 'low', default_permissions: 'symbiote-read' },
     });
     expect(server.calls.some((c) => c.method === 'turn/start')).toBe(false);
@@ -1656,7 +1755,7 @@ describe("Nucleus with Symbiote's tools (MC1, decisions 358, 365)", () => {
     expect(server.calls.find((c) => c.method === 'thread/start')?.params).toEqual({
       cwd: repo.root,
       approvalPolicy: 'never',
-      developerInstructions: DEFAULT_PROMPTS.nucleus,
+      developerInstructions: INSTRUCTIONS,
       config,
     });
     server.reply('thread-1', 'Nothing.');

@@ -35,6 +35,7 @@ import {
 } from './history.js';
 import { useWorkspaces } from './useWorkspaces.js';
 import { AGENT_NAMES, briefTip, startedWith, workspaceName } from './workspaces.js';
+import { useNucleusName } from '../shell/names.js';
 
 const TAB_NAMES: Record<HistoryView, string> = {
   activity: 'Activity',
@@ -318,6 +319,7 @@ function FinishedCard({
   onView: (view: HistoryView) => void;
 }) {
   const summary = useFinished(entry.branch);
+  const nucleusName = useNucleusName();
   const workspace = summary && typeof summary !== 'string' ? summary : null;
   const [thread] = useThread(entry.branch, entry);
   const changes = useChanges(entry.branch, entry);
@@ -408,7 +410,7 @@ function FinishedCard({
         {workspace && view === 'brief' && (
           <BriefTab
             text={workspace.brief}
-            started={startedWith(workspace.agent, workspace.via)}
+            started={startedWith(workspace.agent, workspace.via, nucleusName)}
             documents={workspace.documents}
             removed
           />

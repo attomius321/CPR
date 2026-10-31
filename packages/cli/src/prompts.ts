@@ -7,6 +7,8 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
   fileGitState,
+  NUCLEUS_NAMES,
+  nucleusName,
   PROMPT_KEYS,
   type GitRepo,
   type PromptChange,
@@ -167,7 +169,7 @@ You may read files in this folder when a region is not enough. You cannot edit t
  * person's words its first message. Its tools are fixed by Symbiote (read tools, git's read
  * commands through its gate, Symbiote's tools, and the web since NU1), whatever this text says.
  */
-const NUCLEUS = `You are Nucleus, the person's orchestrator in Symbiote for this repository. The person asks; you answer from the repository as it is in this folder, the checkout they work in, and in their workspaces' worktrees, where the agents' work in progress is; you research on the web; and you carry their workspaces from a start to a merge.
+const NUCLEUS = `You are {name}, the person's orchestrator in Symbiote for this repository. The person asks; you answer from the repository as it is in this folder, the checkout they work in, and in their workspaces' worktrees, where the agents' work in progress is; you research on the web; and you carry their workspaces from a start to a merge.
 
 You never edit, create or delete a file, commit, check out, stash, merge or push yourself. You act only through Symbiote's tools (the symbiote MCP server): what needs the person (overview), the workspaces and their agents' threads, starting a workspace, a message to its agent, a branch's review as Symbiote's graph, a verdict, the merge queue. Starting a workspace or its agent again, a verdict, every merge action and a clean-up wait for the person's Confirm in Symbiote: say first, in one line, what you are about to ask; after a decline, do not ask again unless the person says so. Call wait only when the person asks you to watch.
 
@@ -304,6 +306,26 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
     'You were stopped mid-turn: Hive was turned off, and is on again. Continue where you ' +
     'stopped, commit, and end your turn when the work is done.',
 };
+
+/** What Settings says of Nucleus's prompt, in its name (decision 682). */
+function nucleusAbout(name: string): string {
+  return (
+    `${name}'s system prompt, from a conversation's start: appended to Claude Code's, Codex's ` +
+    "developer instructions. The person's words follow, in its terminal. Whatever it says, it " +
+    'changes no file, and starts, approves or merges only on your Confirm.'
+  );
+}
+
+/**
+ * Nucleus's system prompt from `text` (`prompts.nucleus`), as `name` (decision 685): `{name}`
+ * filled, and `{question}` of a text from before V50 with nothing. A text without `{name}` is
+ * told its name in a line at its end in Hive mode only; with Hive off it is given as written.
+ */
+export function nucleusInstructions(text: string, name: string): string {
+  const filled = fillPrompt(text, { question: '', name }).trimEnd();
+  if (text.includes('{name}') || name === NUCLEUS_NAMES.off) return filled;
+  return `${filled}\n\nHive mode is on: you are called ${name}, not ${NUCLEUS_NAMES.off}.`;
+}
 
 /** Where a prompt is shown, what it is for, what it may hold, and how long it may be. */
 interface PromptSpec {
@@ -456,11 +478,10 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
   nucleus: {
     group: 'Nucleus',
     title: 'Instructions',
-    about:
-      "Nucleus's system prompt, from a conversation's start: appended to Claude Code's, Codex's " +
-      "developer instructions. The person's words follow, in its terminal. Whatever it says, it " +
-      'changes no file, and starts, approves or merges only on your Confirm.',
-    placeholders: [],
+    about: nucleusAbout(NUCLEUS_NAMES.off),
+    placeholders: [
+      { name: 'name', about: 'its name: Nucleus, or Alpha Ceph while Hive mode is on' },
+    ],
     max: MAX_START,
   },
   scribe: {
@@ -786,9 +807,14 @@ export interface PromptSettingsService {
 }
 
 /** The prompts of `repo`'s checkout, as the Settings page shows and changes them (V28). */
-export function promptSettingsService(repo: GitRepo): PromptSettingsService {
+export function promptSettingsService(
+  repo: GitRepo,
+  { hive }: { hive?: () => Promise<boolean> } = {},
+): PromptSettingsService {
   const settings = async (): Promise<PromptSettings> => {
     const read = readPrompts(repo.root);
+    // Nucleus's prompt is said in its name: Alpha Ceph's in Hive mode (decision 682).
+    const named = nucleusName((await hive?.()) ?? false);
     return {
       file: read.file,
       version: read.version,
@@ -800,6 +826,7 @@ export function promptSettingsService(repo: GitRepo): PromptSettingsService {
         return {
           key,
           ...spec,
+          ...(key === 'nucleus' ? { about: nucleusAbout(named) } : {}),
           text: read.text[key],
           default: DEFAULT_PROMPTS[key],
           changed: read.changed.has(key),

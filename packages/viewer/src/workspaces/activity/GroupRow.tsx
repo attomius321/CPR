@@ -39,6 +39,7 @@ import { markdownNodes, type Lexer } from '../../ui/markdown.js';
 import { tip } from '../../ui/tip.js';
 import { longDate } from '../../history/commits.js';
 import { askedFor } from '../workspaces.js';
+import { useNucleusName } from '../../shell/names.js';
 import { callKind, COMMAND_TOOLS, IMAGE } from './classify.js';
 import type { ActivityEvent, ToolCall } from './events.js';
 import type { ActivityGroup, GroupKind } from './groups.js';
@@ -285,8 +286,9 @@ function CallFacts({ call, running }: { call: ToolCall; running: boolean }) {
   );
 }
 
-/** What Nucleus's gate said of a call (NU2). */
+/** What Nucleus's gate said of a call (NU2); Alpha Ceph's in Hive mode (decision 682). */
 function GateFact({ gate }: { gate: NonNullable<ToolCall['gate']> }) {
+  const name = useNucleusName();
   const said =
     gate.decision === 'allow'
       ? `Allowed${gate.reason ? `: ${gate.reason}` : ": one of git's read commands"}`
@@ -294,7 +296,7 @@ function GateFact({ gate }: { gate: NonNullable<ToolCall['gate']> }) {
         ? `Refused: ${gate.reason ?? 'no reason given'}`
         : "Left to Claude Code's own rules";
   return (
-    <Fact label="Nucleus's gate">
+    <Fact label={`${name}'s gate`}>
       <span className={gate.decision === 'deny' ? 'tone-error' : ''}>{said}</span>
     </Fact>
   );

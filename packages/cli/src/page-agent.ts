@@ -60,6 +60,11 @@ export const MAX_QUESTION = 20_000;
 export interface PageAgentSpec {
   /** Its session's and thread's name, and how it speaks of itself. */
   name: string;
+  /**
+   * Its name while Hive mode is on (Nucleus's, Alpha Ceph, decision 682): what it is called and
+   * calls itself; its session and thread keep `name`, how Symbiote finds them.
+   */
+  hiveName?: string;
   /** Its record's first key. */
   about: string;
   /** Its record and its settings file, in `symbiote/`. */
@@ -71,9 +76,10 @@ export interface PageAgentSpec {
   /**
    * What its gate is given after its script, at each start and wake: Scribe's, the skills' folder
    * and `folders`; Nucleus's, the checkout and the workspaces' records, whose worktrees it opens
-   * (V80, decision 596), and `--web` when it has the web (NU1).
+   * (V80, decision 596), `--web` when it has the web (NU1), and the conversation's name when not
+   * its own (Alpha Ceph, decision 686).
    */
-  gateArgs(root: string, where: ReviewPlace): string[];
+  gateArgs(root: string, where: ReviewPlace, name: string): string[];
   /**
    * Folders outside the checkout it works in too, read at each start (Scribe: the skill library,
    * SK1): Claude Code's `--add-dir`, folders Codex's sandbox may also write.
@@ -88,7 +94,7 @@ export interface PageAgentSpec {
    * Codex's developer instructions. With it a conversation starts with no question (`open`), its
    * terminal taking the first; without it a conversation starts with what the person asks.
    */
-  instructions?(root: string): string;
+  instructions?(root: string, name: string): string;
   /**
    * Where Codex's thread runs: in the checkout read-only (Nucleus), or writing in that folder and
    * nowhere else (Scribe, its skills; decision 275).
@@ -132,6 +138,9 @@ interface ConfigSetting {
   older?: readonly string[];
 }
 
+/** A name a record may keep (decision 686): letters, digits and spaces, as Alpha Ceph. */
+const NAME = /^[\p{L}\p{N}][\p{L}\p{N} ]{0,39}$/u;
+
 /** How often Codex's thread is read for the activity while it works (NU2, decision 606). */
 const CODEX_EVERY_MS = 2_000;
 
@@ -165,6 +174,8 @@ interface PageAgentRecord {
    * reads one whose turn ended on a refused tool, `blocked` and idle. Gone at the first turn seen.
    */
   fresh?: true;
+  /** The name it started under when not its own: Alpha Ceph, in Hive mode (decision 686). */
+  name?: string;
   started: string;
 }
 
@@ -359,6 +370,8 @@ export interface PageAgentOptions {
   /** Symbiote's MCP bridge (`dist/mcp-stdio.js`, MC1), for an agent whose spec has `mcp`. */
   bridge?: string;
   terminals?: Terminals;
+  /** Whether Hive mode is on (V82): a spec with `hiveName` is called so meanwhile (decision 687). */
+  hive?: () => Promise<boolean>;
 }
 
 /** A page agent's MCP servers' file for Claude Code (MC1): Symbiote's, through its bridge. */
@@ -405,9 +418,13 @@ export function pageAgent(
     node = process.execPath,
     bridge,
     terminals,
+    hive,
   }: PageAgentOptions,
 ): PageAgent {
   const { name } = spec;
+  /** What it is called now: `hiveName` while Hive mode is on (decision 687), else `name`. */
+  const called = async (): Promise<string> =>
+    spec.hiveName && (await hive?.()) ? spec.hiveName : name;
   // Symbiote's MCP server (MC1): its bridge, told who calls and where `symbiote view` is.
   const symbioteServer =
     spec.mcp && bridge
@@ -559,6 +576,8 @@ export function pageAgent(
       ...(isLevel(v.effort) ? { effort: v.effort } : {}),
       ...(typeof v.model === 'string' && MODEL_ID.test(v.model) ? { model: v.model } : {}),
       ...(v.fresh === true ? { fresh: true as const } : {}),
+      // A name, words only: it goes into the gate's arguments and the page (decision 686).
+      ...(typeof v.name === 'string' && NAME.test(v.name) ? { name: v.name } : {}),
     };
     if (v.agent === 'claude' && text(v.id)) {
       const sessionId = text(v.sessionId);
@@ -585,15 +604,16 @@ export function pageAgent(
 
   /**
    * Nucleus's settings file, written when its text differs or it is gone: a session that wakes reads
-   * it again, and does not start without it (V18c spike). Its path.
+   * it again, and does not start without it (V18c spike); `as`, the name the conversation started
+   * under (decision 686). Its path.
    */
-  async function settingsFile(where: ReviewPlace): Promise<string> {
+  async function settingsFile(where: ReviewPlace, as: string): Promise<string> {
     const path = join(folder(where), spec.settings);
     const text = pageAgentSettings(
       {
         node,
         gate,
-        args: spec.gateArgs(root, where),
+        args: spec.gateArgs(root, where, as),
         ...(spec.activity ? { activity: join(folder(where), spec.activity) } : {}),
       },
       process.platform,
@@ -769,7 +789,7 @@ export function pageAgent(
     const server = await agent.server();
     if (!server) {
       throw new PageAgentRefused(
-        `${name} runs Codex on its app server, and none runs: \`codex app-server daemon start\` started none (it needs Codex 0.163 or later). Codex's terminal joins a thread there.`,
+        `${await called()} runs Codex on its app server, and none runs: \`codex app-server daemon start\` started none (it needs Codex 0.163 or later). Codex's terminal joins a thread there.`,
         409,
       );
     }
@@ -802,6 +822,7 @@ export function pageAgent(
       ...(record.effort ? { effort: record.effort } : {}),
       ...(record.model ? { model: record.model } : {}),
       ...(record.former && spec.former ? { startedAs: spec.former.name } : {}),
+      ...(record.name ? { name: record.name } : {}),
     };
     const unknown = (error: string): PageAgentConversation => ({
       ...head,
@@ -862,12 +883,13 @@ export function pageAgent(
     where: ReviewPlace,
     agent: ClaudeCode,
     request: { prompt?: string; effort?: string; model?: string },
+    as: string,
   ): Promise<AgentSession & { id: string }> {
     // Copied: what Claude Code lists after the start is told from what it listed before.
     const before = [...((await agent.sessions()) ?? [])];
-    const settings = await settingsFile(where);
+    const settings = await settingsFile(where, as);
     const mcpConfig = await mcpFile(where);
-    const instructions = spec.instructions?.(root);
+    const instructions = spec.instructions?.(root, as);
     const addDirs = spec.folders?.(root) ?? [];
     const result = await agent.startPageAgent({
       cwd: root,
@@ -921,7 +943,7 @@ export function pageAgent(
       throw new PageAgentRefused(
         kind
           ? `${AGENT_NAMES[kind]} is not installed`
-          : `${name} needs Claude Code or Codex: neither is installed`,
+          : `${await called()} needs Claude Code or Codex: neither is installed`,
         409,
       );
     }
@@ -930,15 +952,19 @@ export function pageAgent(
     const model = asked === undefined ? await modelFor(agent) : (asked ?? undefined);
     const at = { ...(level ? { effort: level } : {}), ...(model ? { model } : {}) };
     const first = text === undefined ? {} : { prompt: spec.prompt(root, text) };
-    const instructions = spec.instructions?.(root);
+    // Its name for this conversation, kept in its record when not its own (decision 686).
+    const as = await called();
+    const named = as === name ? {} : { name: as };
+    const instructions = spec.instructions?.(root, as);
     const config = codexTools();
     const started = now().toISOString();
     await spec.prepare?.(root);
     if (agent.claude) {
-      const session = await claudeStart(where, agent.claude, { ...first, ...at });
+      const session = await claudeStart(where, agent.claude, { ...first, ...at }, as);
       const record: PageAgentRecord = {
         about: spec.about,
         agent: 'claude',
+        ...named,
         id: session.id,
         ...(session.sessionId ? { sessionId: session.sessionId } : {}),
         ...at,
@@ -973,7 +999,14 @@ export function pageAgent(
       if (error instanceof AppServerStartFailed) await server.archive(error.thread).catch(() => {});
       throw new PageAgentRefused(`Codex's app server: ${(error as Error).message}`, 502);
     }
-    const record: PageAgentRecord = { about: spec.about, agent: 'codex', thread, ...at, started };
+    const record: PageAgentRecord = {
+      about: spec.about,
+      agent: 'codex',
+      ...named,
+      thread,
+      ...at,
+      started,
+    };
     await put(where, recordPath(where), `${JSON.stringify(record, null, 2)}\n`);
     await write([{ at: started, ...ofRecord(record), kind: 'opened', ...at }]);
   }
@@ -1005,13 +1038,16 @@ export function pageAgent(
     const session = findPageAgentSession(record, (await agent.sessions()) ?? []);
     const sessionId = record.sessionId ?? session?.sessionId;
     if (!session || !sessionId) {
-      throw new PageAgentRefused(`${name}'s session is gone: start a new conversation`, 409);
+      throw new PageAgentRefused(
+        `${await called()}'s session is gone: start a new conversation`,
+        409,
+      );
     }
     // A live process is stopped first: a resume of a running session makes a copy (V18c).
     const alive = session.status !== undefined;
     if (alive && (session.status !== 'idle' || session.waitingFor !== undefined)) {
       throw new PageAgentRefused(
-        `${name} is answering: wait for its answer, or type in its terminal`,
+        `${await called()} is answering: wait for its answer, or type in its terminal`,
         409,
       );
     }
@@ -1019,8 +1055,8 @@ export function pageAgent(
       const stopped = await agent.stop(session.id);
       if (!stopped.ok) throw new PageAgentRefused(stopped.error, 409);
     }
-    // The session wakes reading its files again.
-    await settingsFile(where);
+    // The session wakes reading its files again: its gate in the name it started under.
+    await settingsFile(where, record.name ?? name);
     await mcpFile(where);
     const resumed = await agent.resume({ sessionId, cwd: root, text });
     if (!resumed.ok) throw new PageAgentRefused(resumed.error, 502);
@@ -1113,7 +1149,7 @@ export function pageAgent(
 
     async open({ agent, model, effort }) {
       if (!spec.instructions)
-        throw new PageAgentRefused(`${name} starts with what you ask it`, 409);
+        throw new PageAgentRefused(`${await called()} starts with what you ask it`, 409);
       if (agent !== undefined && !PAGE_AGENTS.includes(agent)) {
         throw new PageAgentRefused(`unknown agent: ${String(agent)}`, 400);
       }
@@ -1176,7 +1212,7 @@ export function pageAgent(
         const agent = (await installed())[0];
         if (!agent) {
           throw new PageAgentRefused(
-            `${name} needs Claude Code or Codex: neither is installed`,
+            `${await called()} needs Claude Code or Codex: neither is installed`,
             409,
           );
         }
@@ -1201,7 +1237,7 @@ export function pageAgent(
         const agent = (await installed())[0];
         if (!agent) {
           throw new PageAgentRefused(
-            `${name} needs Claude Code or Codex: neither is installed`,
+            `${await called()} needs Claude Code or Codex: neither is installed`,
             409,
           );
         }
@@ -1224,7 +1260,8 @@ export function pageAgent(
     async terminal({ cols, rows }) {
       const where = await place();
       const record = await readRecord(where);
-      if (!record) throw new PageAgentRefused(`${name} has no conversation: open it first`, 409);
+      if (!record)
+        throw new PageAgentRefused(`${await called()} has no conversation: open it first`, 409);
       if (!terminals) throw new PageAgentRefused('no terminals here', 409);
       const can = await terminals.available();
       if (!can.available) throw new PageAgentRefused(can.reason, 409);
@@ -1235,12 +1272,15 @@ export function pageAgent(
         const agent = await claude();
         if (!agent) throw new PageAgentRefused('Claude Code is not installed', 409);
         // A session that wakes reads its settings file again, and does not start without it.
-        await settingsFile(where);
+        await settingsFile(where, record.name ?? name);
         await mcpFile(where);
         // `attach` to an ID Claude Code does not know exits 0, saying "No job matching…".
         const session = findPageAgentSession(record, (await agent.sessions()) ?? []);
         if (!session?.id) {
-          throw new PageAgentRefused(`${name}'s session is gone: start a new conversation`, 409);
+          throw new PageAgentRefused(
+            `${await called()}'s session is gone: start a new conversation`,
+            409,
+          );
         }
         command = agent.command;
         args = ['attach', session.id];

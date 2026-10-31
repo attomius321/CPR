@@ -1,6 +1,7 @@
 // The Settings page's prompts (V28b): pure helpers for the list, the editor and what saving
 // says. The prompts and Symbiote's texts come from `symbiote view` (`/api/settings/prompts`).
 import type { PromptKey, PromptSetting, PromptSettings } from '@symbiote/core';
+import { nucleusName } from '../shell/names.js';
 
 /**
  * The agents Symbiote brings, by their prompts' group: each one entry under "Prebuilt agents" and
@@ -12,6 +13,14 @@ export const PREBUILT_GROUP = 'Prebuilt agents';
 
 const prebuilt = (group: string): group is PrebuiltAgent =>
   (PREBUILT_AGENTS as readonly string[]).includes(group);
+
+/**
+ * A prompts' group as Settings shows it: Nucleus's by its name, Alpha Ceph while Hive mode is on
+ * (decision 682); its key stays `Nucleus`.
+ */
+export function agentName(group: string, hive: boolean): string {
+  return group === 'Nucleus' ? nucleusName(hive) : group;
+}
 
 /** An entry of Settings' list, and the page it opens. */
 export interface SettingsEntry {
@@ -49,7 +58,7 @@ export function promptGroups(
     if (known) {
       known.prompts.push(prompt);
     } else if (agent) {
-      const entry = { key: prompt.key, name: agent, prompts: [prompt], agent };
+      const entry = { key: prompt.key, name: agentName(agent, hive), prompts: [prompt], agent };
       agents.set(agent, entry);
       entries.push(entry);
     } else {

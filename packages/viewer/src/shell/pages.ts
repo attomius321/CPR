@@ -56,14 +56,19 @@ export function pageTitle(...parts: (string | undefined)[]): string {
 
 /**
  * A shell page's title: a workspace by its title (`name`) when known, else its branch; History's
- * picked one too (V77).
+ * picked one too (V77); Nucleus's page by its name (`nucleus`: Alpha Ceph in Hive mode).
  */
-export function routeTitle(route: Route, repo: string | undefined, name?: string): string {
+export function routeTitle(
+  route: Route,
+  repo: string | undefined,
+  name?: string,
+  nucleus = 'Nucleus',
+): string {
   switch (route.page) {
     case 'git':
       return pageTitle('Git', repo);
     case 'nucleus':
-      return pageTitle('Nucleus', repo);
+      return pageTitle(nucleus, repo);
     case 'skills':
       return pageTitle('Skills', repo);
     case 'monitor':
