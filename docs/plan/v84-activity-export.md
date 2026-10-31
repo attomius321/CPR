@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v84-activity-export.md)
 
-**Status:** planned (2026-10-31), on branch `feature/export-activity` (a workspace started in
-Symbiote, from `main` at `21e510e`). The person asked for the plan and to start implementing with
-its recommendations ("Make the plan, and start implementing with your own recommandations").
+**Status:** ready for review (2026-10-31), on branch `feature/export-activity` (a workspace
+started in Symbiote, from `main` at `21e510e`). The person asked for the plan and to start
+implementing with its recommendations ("Make the plan, and start implementing with your own
+recommandations"). Its "As built" and results below.
 
 **Problem** (asked: "I need a way to export activity of a workspace. Find the right format. This
 will be read by me or another agent. Any activity should be exportable (including Nucleus)").
@@ -161,3 +162,56 @@ sources:
 **Not in V84 (later)**: Scribe's activity (nothing is recorded, NU2); the merges' logs (V46, their
 own page and format); an export of several workspaces at once; the timeline's phases (the tab's
 classification lives in the viewer: the export is the record, in time order).
+
+## As built (V84)
+
+- **Built as planned**: `packages/cli/src/activity-export.ts` (pure, every string redacted first),
+  `Workspaces.exportActivity`, Nucleus's `exportActivity` (`page-agent.ts`), the two
+  `…/activity/export` routes, `symbiote activity`, the MCP's `activity`, and `ExportMenu.tsx` on the
+  shared `ActivityTimeline`'s bar (a workspace's tab, History's, Nucleus's).
+- **A declined Confirm is not a failure.** Nucleus's real e2e run showed Symbiote's
+  `start_workspace` as **failed** with "The person declined" under it. NU2's tab counts it as
+  declined; the export now does too: "declined by the person" (or not answered in time, or its
+  call ended first), no output, not in `failed`.
+- **The gate's allow reasons are left out.** Every web call said "allowed: the web, as its agent
+  reads it (NU1)". A refusal and its reason stay; the JSON Lines keep every decision.
+- **A call under a second is in milliseconds** ("12 ms", not "0 s"): Claude Code's Bash calls
+  are often under 50 ms.
+- **Export on a phone's width**: its menu opened from the button's right edge, 25 px off the
+  window at 390 px; it opens from its left edge now. Under 520 px the button shows its icon
+  alone, its word kept as its name, so the counts keep room.
+- **The MCP's answer is the Markdown itself**: a tool's text answer is now sent as it is (any
+  other value as its JSON, as before), not as a JSON string with escaped line breaks.
+- **Nucleus's export reads, never rotates**: the tab's read moves the file past 4 MB; the export
+  reads both files whole and writes nothing.
+- **Copy** writes a promised clipboard item while the export is read, so the click's permission
+  holds in Chromium; a browser without promised items gets the text once read.
+- **Not done**: the reader test by a fresh agent (planned in Verification 3); this session
+  starts no agent unasked. The exports' structure was checked by a parser instead (below).
+
+**Results.** Tests first, red for the right reason, for the export (the module missing), the
+routes (404), the command (unknown command) and the MCP tool (unknown tool); the services' tests
+and the e2e were written after their code. 12 tests for the export, 3 for the workspace service,
+1 for Nucleus's, the routes in `server.test.ts`, 5 for the command, 2 for the MCP tool; e2e: the
+workspace's tab (both downloads, their names and contents, the clipboard), Nucleus's and
+History's. `pnpm check`: 179 files, 2,550 tests.
+
+| What | Result |
+|---|---|
+| The person's 124 workspace records and Nucleus's file, copied into a scratch repository (read only), exported by the built `symbiote activity` | 248 runs, both formats: no failure; ~330 ms a run, Node's start most of it |
+| Markdown, the 67 workspaces with recorded tools | median **38.7 KB**, p90 75.6 KB, largest **100.8 KB** (the prototype: 36, 75, 94) |
+| JSON Lines, the same 67 | median 177 KB, p90 549 KB, largest 806 KB |
+| Nucleus's (509 lines, 6 conversations) | Markdown 121 KB, JSON Lines 510 KB |
+| The Markdown read back by `marked` (CommonMark) | 125 files: 13,398 list items and 872 headings, as written; no agent's text added or broke one |
+| Front matter (PyYAML) and JSON Lines | 125 front matters parse; 26,641 JSON lines parse |
+| Secrets | No token shape left in any export (the 3 matches of a loose search are the redaction's own regular expressions, quoted in records) |
+| `complete: false` | 54 workspaces whose agents started before calls were recorded (V48f), 2 finished on Codex's app server, 1 finished on Hermes |
+| The MCP's 60 KB | Nucleus's 121 KB → 48 KB, its 20 oldest of 35 messages left out and said; the largest workspace 101 KB → 45 KB, its first turn left out |
+| Screenshots, History's and Nucleus's tabs with the menu open: 1440 and 390 px, dark and light | No horizontal overflow, no page errors; the menu inside the window at both widths |
+
+**Not verified**: an export of a running Codex workspace on its app server (`symbiote activity`
+starts Codex's app server to read it, as `symbiote merge` starts Codex for its levels) and of a
+running Hermes workspace (unit-tested readers only); commits in the scratch copy (it had none of
+the branches: real commits are listed by `changes`, as the e2e's History export shows); the
+desktop app's download (Electron's own Save dialog; no handler) and Copy there; Firefox and
+Safari; a reader test by a fresh agent.

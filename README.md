@@ -239,7 +239,9 @@ Click a workspace to open it. Its page has four tabs:
   it started, how long it took and its status. Click a phase to see
   its events, and click an event to see its whole command, output and exit code. While the agent
   works, a line at the top says what it is running. **Raw events** lists every line Symbiote
-  recorded.
+  recorded. **Export** saves the whole activity as one Markdown file, for you or another agent
+  to read, or copies it to paste into an agent's chat. `symbiote activity` prints the same file
+  in a terminal.
 - **Brief**: what the agent was asked, with the documents you gave it.
 
 The **+** after the tabs opens a shell in the workspace's worktree, for tests, a dev server or git.
@@ -377,7 +379,8 @@ The sidenav also opens these pages. Each has a key.
   **Confirm**. **New conversation** starts over. Its **Activity** tab shows what it did, across
   conversations, as a workspace's does: your messages and its answers with their tokens, every
   command, file read, search and page with what its gate allowed or refused, each call of
-  Symbiote's tools, and each **Confirm** with your answer. Nucleus was called Scout before. A
+  Symbiote's tools, and each **Confirm** with your answer. **Export** takes it out as a
+  workspace's does (`symbiote activity --nucleus`). Nucleus was called Scout before. A
   conversation that Scout started stays open on this page, without the web, until you press
   **New conversation**.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
@@ -433,7 +436,8 @@ An agent's activity holds each command it ran, whole up to 8 KB, and the last 2 
 or error. Nucleus's activity, `symbiote/nucleus-activity.jsonl`, also keeps the first 2 KB of a
 page it read or a tool's answer; values of your environment variables named like secrets, and
 tokens by their shape, are replaced with `[redacted]` before anything is written. Past 4 MB it
-moves to `nucleus-activity.1.jsonl`, replacing the one before. It also writes `symbiote/AGENTS.md`, which tells any agent how to act on a review. Symbiote's own
+moves to `nucleus-activity.1.jsonl`, replacing the one before. An exported activity, a
+workspace's included, has the same values replaced before it leaves Symbiote. It also writes `symbiote/AGENTS.md`, which tells any agent how to act on a review. Symbiote's own
 `symbiote/.gitignore` keeps everything there out of git, itself included, except two files. They
 are yours to commit and share: `config.json` holds your settings, and `merge.md` your rules for
 the merger.
