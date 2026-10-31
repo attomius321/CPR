@@ -1,0 +1,73 @@
+{
+ "run": "/tmp/hive-spike-b89c2d5a/runs/g3-loop",
+ "mode": "loop",
+ "profile": "real",
+ "status": "done",
+ "head": "5436a51bb2bf5a9804a42a2557383d7b5ff276c6",
+ "cost": 1.126,
+ "byRole": {
+  "researcher": {
+   "calls": 1,
+   "cost": 0.0809865,
+   "ms": 17000
+  },
+  "main": {
+   "calls": 1,
+   "cost": 0.7798452,
+   "ms": 175244
+  },
+  "reviewer": {
+   "calls": 1,
+   "cost": 0.26528739999999995,
+   "ms": 99531
+  }
+ },
+ "calls": 3,
+ "wallMinutes": 4.9,
+ "gates": [
+  {
+   "kind": "land",
+   "node": "goal",
+   "at": "2026-10-30T22:55:25.613Z",
+   "auto": true
+  }
+ ],
+ "windows": [
+  {
+   "before": {
+    "fiveHour": 21,
+    "week": 65,
+    "at": "2026-10-30T22:50:31.583Z"
+   },
+   "after": {
+    "fiveHour": 21,
+    "week": 65,
+    "at": "2026-10-30T22:50:31.583Z"
+   }
+  }
+ ],
+ "change": {
+  "shortstat": "3 files changed, 262 insertions(+), 24 deletions(-)",
+  "files": [
+   "M\tsrc/count.ts",
+   "M\tsrc/languages.ts",
+   "M\ttest/count.test.ts"
+  ]
+ },
+ "check": true,
+ "build": true,
+ "acceptance": {
+  "passed": 8,
+  "total": 8,
+  "failed": []
+ },
+ "symbioteFindings": [
+  "info signature-changed src/count.ts#closeAt: closeAt changed its signature; its only user was updated",
+  "info signature-changed src/count.ts#Open: Open changed its signature; 1 of 3 users not updated: countLines",
+  "info signature-changed src/languages.ts#Syntax: Syntax changed its signature compatibly; existing users keep working (24 users, 18 untouched)"
+ ],
+ "blind": {
+  "n": 5,
+  "cost": 0.9595536000000001
+ }
+}

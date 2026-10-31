@@ -1,0 +1,15 @@
+{"at":"2026-10-30T23:28:08.810Z","kind":"run","mode":"loop","profile":"fake","fake":""}
+{"at":"2026-10-30T23:28:08.820Z","kind":"workspace-start","node":"goal","from":"main","base":"f144387"}
+{"at":"2026-10-30T23:28:08.821Z","kind":"agent-start","role":"researcher","node":"goal","round":0,"model":"fake","session":"ccee511c-9f69-45f6-bea0-371cfab7f49a","resume":false}
+{"at":"2026-10-30T23:28:08.848Z","kind":"agent-end","role":"researcher","node":"goal","round":0,"exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T23:28:08.850Z","kind":"agent-start","role":"main","node":"goal","round":1,"model":"fake","session":"8bdea286-e594-4279-a56d-623bffeb7916","resume":false}
+{"at":"2026-10-30T23:28:08.883Z","kind":"agent-end","role":"main","node":"goal","round":1,"exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T23:28:09.804Z","kind":"check","node":"goal","round":1,"ok":true,"ms":917}
+{"at":"2026-10-30T23:28:09.814Z","kind":"agent-start","role":"reviewer","node":"goal","round":1,"model":"fake","session":"c9c4c57c-a2a9-4b6f-bb6e-46110f1fc7eb","resume":false}
+{"at":"2026-10-30T23:28:09.837Z","kind":"agent-end","role":"reviewer","node":"goal","round":1,"exit":0,"subtype":"success","cost":"0.000","s":0}
+{"at":"2026-10-30T23:28:10.291Z","kind":"probe","node":"goal","round":1,"tests":0,"failing":0}
+{"at":"2026-10-30T23:28:10.291Z","kind":"review","node":"goal","round":1,"verdict":"approve","blocking":0,"findings":0}
+{"at":"2026-10-30T23:28:10.292Z","kind":"land","node":"goal","auto":true}
+{"at":"2026-10-30T23:28:11.192Z","kind":"merge-check","node":"goal","ok":true,"ms":887}
+{"at":"2026-10-30T23:28:11.196Z","kind":"merged","node":"goal","sha":"a6fc1fc"}
+{"at":"2026-10-30T23:28:11.197Z","kind":"finished","status":"done","cost":"0.00"}

@@ -1,0 +1,29 @@
+{
+  "review": {
+    "summary": "I found one defect, and two tests in test/probe-rust-inner-attribute.test.ts show it failing. In a Rust file, if line 1 starts with an inner attribute (`#![…]`), the comment or string it opens is lost. The rest of the change worked in every test I ran.\n\nI checked it three ways:\n- **Hand-picked cases** across all three languages. All passed.\n- **Fuzzing against the old code** (f144387): 200k random inputs over 19 other file types, with identical results, so the other languages count as before.\n- **Fuzzing against small lexers I wrote from the goal's rules** for Rust, Swift and Lua: 600k inputs each, and they agreed everywhere.\n\nRules that held up in testing: nesting block comments over lines, raw and byte strings with any number of `#`, telling character literals from lifetimes and labels, Swift's `#` escapes and its `#if`/`#selector`, and Lua's long brackets with `=`s and `--[` line comments.\n\nAs instructed, I deleted the passing probes and the copy of the old code. The only file I left behind is test/probe-rust-inner-attribute.test.ts, and nothing in src/ was touched.",
+    "findings": [
+      {
+        "severity": "minor",
+        "test": "test/probe-rust-inner-attribute.test.ts › Rust: a first line that opens with an inner attribute, `#![…]` › follows a block comment it opens",
+        "text": "`countLines` treats any first line starting with `#!` as a shebang, counts it as code and never reads it, even in Rust files. In Rust, a first line starting `#![` is an inner attribute (`#![allow(…)]`, `#![doc = …]`), not a shebang. So a block comment opened on that line is not carried to the next line. Input: `#![allow(dead_code)] /* kept for the` / `   next release */` / `fn main() {}`. Expected: code 2, comments 1. Got: code 3, comments 0, because the comment's second line is counted as code."
+      },
+      {
+        "severity": "minor",
+        "test": "test/probe-rust-inner-attribute.test.ts › Rust: a first line that opens with an inner attribute, `#![…]` › follows a string it opens over lines",
+        "text": "Same cause: a string opened by a first-line `#![…]` attribute is never seen. Input: `#![doc = r#\"` / `// an example` / `\"#]` / `fn main() {}`. Every line is code (expected code 4, comments 0). Got code 3, comments 1: line 2, which is inside the raw string, is counted as a comment. The raw string's closer `\"#` is then taken for an ordinary string opener, so every line after it is counted as being inside a string."
+      }
+    ],
+    "cost": 1.3652806,
+    "ms": 354755
+  },
+  "tests": {
+    "files": [
+      "probe-rust-inner-attribute.test.ts"
+    ],
+    "failed": [
+      "Rust: a first line that opens with an inner attribute, `#![…]` follows a block comment it opens",
+      "Rust: a first line that opens with an inner attribute, `#![…]` follows a string it opens over lines"
+    ],
+    "passed": 0
+  }
+}

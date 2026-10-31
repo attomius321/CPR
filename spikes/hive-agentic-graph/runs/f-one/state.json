@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "mode": "one",
+  "profile": "fake",
+  "fake": "happy",
+  "goal": "# Goal: a folder report for loc\n\nGive `loc` a report of a folder: how many files and lines each language has, from the command\nline. No new dependencies.\n\n1. `scanFolder(root: string): Promise<FileCount[]>`, exported from `src/index.ts`:\n   - every file under `root`, recursively; directories named `.git` and `node_modules` are skipped;\n     symbolic links are not followed (left out);\n   - a file whose first 8,000 bytes hold a NUL byte is binary: left out;\n   - each file is `{ path, language, lines, code, comments, blank }`: `path` relative to `root`\n     with `/` separators; `language` is `languageOf(path)?.name`, `\"Text\"` when there is none; the\n     counts are `countLines(text, languageOf(path)?.syntax)` of its UTF-8 text;\n   - sorted by `path` (plain string order).\n2. `summarize(files: FileCount[]): Summary`, exported from `src/index.ts`:\n   - `{ languages: LanguageTotal[]; total: Totals }`, where `Totals` is\n     `{ files, lines, code, comments, blank }` and `LanguageTotal` is `Totals` plus `language`;\n   - one entry per language, sorted by `code` (most first), then by `language` (plain string\n     order);\n   - `total` sums every file.\n3. A command, `node dist/cli.js [folder] [--json]` (after `npm run build`); `folder` defaults to\n   the current directory:\n   - `--json`: prints `summarize(await scanFolder(folder))` as JSON, two-space indented, with a\n     final newline;\n   - otherwise a table: a header row, one row per language in the summary's order, and a last row\n     `Total`; columns `Language`, `Files`, `Lines`, `Code`, `Comments`, `Blank`; numbers\n     right-aligned;\n   - exit code 0; a folder that does not exist or is not a directory: a message on stderr that\n     starts with `loc: `, exit code 2; an unknown option: the same.\n",
+  "goalFile": "/home/anton/projects/Symbiote.worktrees/spike-hive-agentic-graph/spikes/hive-agentic-graph/goals/g1-folder-report.md",
+  "template": "/tmp/hive-spike-b89c2d5a/template/loc",
+  "repo": "/tmp/hive-spike-b89c2d5a/runs/f-one/repo",
+  "base": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+  "status": "done",
+  "started": "2026-10-30T22:30:17.985Z",
+  "ledger": null,
+  "nodes": [
+    {
+      "id": "goal",
+      "title": "the whole goal",
+      "brief": "# Goal: a folder report for loc\n\nGive `loc` a report of a folder: how many files and lines each language has, from the command\nline. No new dependencies.\n\n1. `scanFolder(root: string): Promise<FileCount[]>`, exported from `src/index.ts`:\n   - every file under `root`, recursively; directories named `.git` and `node_modules` are skipped;\n     symbolic links are not followed (left out);\n   - a file whose first 8,000 bytes hold a NUL byte is binary: left out;\n   - each file is `{ path, language, lines, code, comments, blank }`: `path` relative to `root`\n     with `/` separators; `language` is `languageOf(path)?.name`, `\"Text\"` when there is none; the\n     counts are `countLines(text, languageOf(path)?.syntax)` of its UTF-8 text;\n   - sorted by `path` (plain string order).\n2. `summarize(files: FileCount[]): Summary`, exported from `src/index.ts`:\n   - `{ languages: LanguageTotal[]; total: Totals }`, where `Totals` is\n     `{ files, lines, code, comments, blank }` and `LanguageTotal` is `Totals` plus `language`;\n   - one entry per language, sorted by `code` (most first), then by `language` (plain string\n     order);\n   - `total` sums every file.\n3. A command, `node dist/cli.js [folder] [--json]` (after `npm run build`); `folder` defaults to\n   the current directory:\n   - `--json`: prints `summarize(await scanFolder(folder))` as JSON, two-space indented, with a\n     final newline;\n   - otherwise a table: a header row, one row per language in the summary's order, and a last row\n     `Total`; columns `Language`, `Files`, `Lines`, `Code`, `Comments`, `Blank`; numbers\n     right-aligned;\n   - exit code 0; a folder that does not exist or is not a directory: a message on stderr that\n     starts with `loc: `, exit code 2; an unknown option: the same.\n",
+      "deps": [],
+      "branch": "hive/goal",
+      "phase": "merged",
+      "round": 0,
+      "reviews": [],
+      "checks": [
+        {
+          "round": 1,
+          "ok": true,
+          "ms": 925,
+          "tail": ""
+        }
+      ],
+      "progress": [],
+      "replans": 0,
+      "from": "main",
+      "worktree": "/tmp/hive-spike-b89c2d5a/runs/f-one/wt/goal",
+      "forkBase": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+      "session": "f70381e0-8c06-432f-9622-c828489c8106",
+      "interrupted": false,
+      "merged": "bd43d1a06444d1cdf56836a4e0a812ddd28cad21"
+    }
+  ],
+  "merges": [
+    {
+      "node": "goal",
+      "sha": "bd43d1a06444d1cdf56836a4e0a812ddd28cad21",
+      "at": "2026-10-30T22:30:19.913Z"
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "goal",
+      "at": "2026-10-30T22:30:18.956Z",
+      "auto": true
+    }
+  ],
+  "calls": [
+    {
+      "role": "one",
+      "node": "goal",
+      "round": 1,
+      "model": "fake",
+      "session": "f70381e0-8c06-432f-9622-c828489c8106",
+      "started": "2026-10-30T22:30:17.999Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/f-one/agents/01-one-goal-r1.jsonl",
+      "ended": "2026-10-30T22:30:18.027Z",
+      "ms": 30,
+      "exit": 0,
+      "cost": 0,
+      "turns": 1,
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation_input_tokens": 0
+      },
+      "subtype": "success"
+    }
+  ],
+  "runs": [
+    {
+      "pid": 92494,
+      "started": "2026-10-30T22:30:17.985Z",
+      "windows": null,
+      "ended": "2026-10-30T22:30:19.913Z",
+      "windowsAfter": null
+    }
+  ],
+  "finished": "2026-10-30T22:30:19.913Z"
+}

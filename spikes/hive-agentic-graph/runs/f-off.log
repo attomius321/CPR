@@ -1,0 +1,10 @@
+22:29:47 run mode=graph profile=fake fake=slow
+22:29:47 agent-start role=orchestrator node=undefined round=undefined model=fake session=782eae3a-5c86-4cdc-aebe-a3b8b3bd7be3 resume=false
+22:29:47 agent-end role=orchestrator node=undefined round=undefined exit=0 subtype=success cost=0.000 s=0
+22:29:47 planned workspaces=summary<-[] cli<-[summary]
+22:29:47 workspace-start node=summary from=main base=f144387
+22:29:47 agent-start role=researcher node=summary round=0 model=fake session=ff603142-28ab-47ea-96ac-051c4df86291 resume=false
+22:29:47 agent-end role=researcher node=summary round=0 exit=0 subtype=success cost=0.000 s=0
+22:29:47 agent-start role=main node=summary round=1 model=fake session=ac30fc60-a5de-46c8-bcb5-b19b9feead1a resume=false
+22:29:48 hive-off agents=1
+22:29:51 stopped status=off

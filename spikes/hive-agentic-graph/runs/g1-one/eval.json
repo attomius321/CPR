@@ -1,0 +1,126 @@
+{
+  "run": "/tmp/hive-spike-b89c2d5a/runs/g1-one",
+  "mode": "one",
+  "profile": "real",
+  "status": "done",
+  "head": "6d84ea2dd78ff19acbb6bb57068a8d14c268e351",
+  "cost": 0.47,
+  "byModel": {
+    "claude-opus-5-5": {
+      "input": 16,
+      "output": 10422,
+      "cacheRead": 211057,
+      "cacheWrite": 27466,
+      "cost": 0.47044340000000007
+    }
+  },
+  "byRole": {
+    "one": {
+      "calls": 1,
+      "cost": 0.47044340000000007,
+      "ms": 88970
+    }
+  },
+  "calls": 1,
+  "wallMinutes": 1.5,
+  "nodes": [
+    {
+      "id": "goal",
+      "phase": "merged",
+      "rounds": 0,
+      "from": "main",
+      "replans": 0,
+      "reviews": [],
+      "checks": [
+        true
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "goal",
+      "at": "2026-10-30T22:37:32.021Z",
+      "auto": true
+    }
+  ],
+  "windows": [
+    {
+      "before": {
+        "fiveHour": 8,
+        "week": 63,
+        "at": "2026-10-30T22:36:02.069Z"
+      },
+      "after": {
+        "fiveHour": 10,
+        "week": 64,
+        "at": "2026-10-30T22:37:33.348Z"
+      }
+    }
+  ],
+  "change": {
+    "shortstat": "10 files changed, 425 insertions(+), 1 deletion(-)",
+    "files": [
+      "M\tREADME.md",
+      "A\tsrc/cli.ts",
+      "M\tsrc/index.ts",
+      "A\tsrc/report.ts",
+      "A\tsrc/scan.ts",
+      "A\tsrc/summary.ts",
+      "M\tsrc/types.ts",
+      "A\ttest/cli.test.ts",
+      "A\ttest/scan.test.ts",
+      "A\ttest/summary.test.ts"
+    ]
+  },
+  "check": true,
+  "build": true,
+  "acceptance": {
+    "passed": 11,
+    "total": 11,
+    "failed": []
+  },
+  "symbioteFindings": [],
+  "blind": {
+    "findings": [
+      {
+        "severity": "minor",
+        "path": "src/scan.ts",
+        "line": 40,
+        "text": "`bytes.toString('utf8')` keeps a UTF-8 byte-order mark (U+FEFF), unlike a standard UTF-8 decode (TextDecoder strips it). countLines only treats ' ' and '\\t' as whitespace before a special character, so in a file with a BOM a first line like `﻿// header` or `﻿/* … */` is counted as code instead of a comment. A BOM'd shebang (`﻿#!…`) also misses the shebang rule, so in a `#`-comment language it is counted as a comment instead of code. The fix is to strip a leading BOM, or decode with `new TextDecoder()`."
+      },
+      {
+        "severity": "minor",
+        "path": "src/scan.ts",
+        "line": 34,
+        "text": "Each file is read whole (`readFile`) before the 8,000-byte binary check. This wastes memory on large binaries. A binary file over 2 GiB (disk image, archive) makes readFile throw ERR_FS_FILE_TOO_LARGE, which aborts the whole scan (the CLI exits 1) when the goal says such a file should be left out. Reading only the first 8,000 bytes before deciding would fix it."
+      },
+      {
+        "severity": "minor",
+        "path": "src/scan.ts",
+        "line": 25,
+        "text": "Any readdir or readFile error has no handling. One unreadable subfolder or file (EACCES), or a file removed between readdir and readFile (ENOENT), aborts the whole report: cli.ts prints `loc: …` and exits 1, so the user gets no output at all instead of a report of everything else."
+      },
+      {
+        "severity": "minor",
+        "path": "src/report.ts",
+        "line": 37,
+        "text": "`stat(folder).catch(() => null)` treats every stat failure as missing. A folder that exists but can't be stat'ed (EACCES on a parent, ELOOP, ENAMETOOLONG) is reported as `no such folder`, which is wrong. The exit code 2 is still right."
+      },
+      {
+        "severity": "minor",
+        "path": "test/scan.test.ts",
+        "line": 95,
+        "text": "'reads UTF-8 text' does not test UTF-8 decoding. The non-ASCII characters are in a comment and in a string, and decoding the bytes as latin1 (or anything else) gives the same counts, so a wrong decoding would still pass. A real check needs content whose counts depend on the decoding, for example a BOM before a comment, or a check of the decoded text."
+      },
+      {
+        "severity": "minor",
+        "path": "src/cli.ts",
+        "line": 4,
+        "text": "No test covers the entry point the goal names (`node dist/cli.js`). The tests drive `run` from report.ts with an injected cwd. Nothing checks that cli.ts passes process.cwd() for the default folder, sets the process exit code (0/2), or that the build emits a runnable dist/cli.js. The catch path's exit code 1 is also untested."
+      }
+    ],
+    "summary": "I found no blockers. The goal is met as specified: scanFolder, summarize and the command (table and --json output, exit code 2 with a `loc: ` message on stderr) all behave as the goal asks, and the main tests check real values. I did not run the tests or the build because this review was read-only, so all findings come from reading the code. What's left is a set of minor defects. A UTF-8 byte-order mark changes how the first line is counted. Every file is read in full just to check whether it's binary, so a binary file over 2 GiB crashes the scan. One unreadable or vanished file or folder aborts the whole report with exit code 1. A stat failure other than \"not found\" is reported as \"no such folder\". The UTF-8 test would pass under any decoding, and nothing tests cli.ts itself.",
+    "cost": 0.3191774
+  }
+}

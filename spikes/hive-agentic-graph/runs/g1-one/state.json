@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "mode": "one",
+  "profile": "real",
+  "goal": "# Goal: a folder report for loc\n\nGive `loc` a report of a folder: how many files and lines each language has, from the command\nline. No new dependencies.\n\n1. `scanFolder(root: string): Promise<FileCount[]>`, exported from `src/index.ts`:\n   - every file under `root`, recursively; directories named `.git` and `node_modules` are skipped;\n     symbolic links are not followed (left out);\n   - a file whose first 8,000 bytes hold a NUL byte is binary: left out;\n   - each file is `{ path, language, lines, code, comments, blank }`: `path` relative to `root`\n     with `/` separators; `language` is `languageOf(path)?.name`, `\"Text\"` when there is none; the\n     counts are `countLines(text, languageOf(path)?.syntax)` of its UTF-8 text;\n   - sorted by `path` (plain string order).\n2. `summarize(files: FileCount[]): Summary`, exported from `src/index.ts`:\n   - `{ languages: LanguageTotal[]; total: Totals }`, where `Totals` is\n     `{ files, lines, code, comments, blank }` and `LanguageTotal` is `Totals` plus `language`;\n   - one entry per language, sorted by `code` (most first), then by `language` (plain string\n     order);\n   - `total` sums every file.\n3. A command, `node dist/cli.js [folder] [--json]` (after `npm run build`); `folder` defaults to\n   the current directory:\n   - `--json`: prints `summarize(await scanFolder(folder))` as JSON, two-space indented, with a\n     final newline;\n   - otherwise a table: a header row, one row per language in the summary's order, and a last row\n     `Total`; columns `Language`, `Files`, `Lines`, `Code`, `Comments`, `Blank`; numbers\n     right-aligned;\n   - exit code 0; a folder that does not exist or is not a directory: a message on stderr that\n     starts with `loc: `, exit code 2; an unknown option: the same.\n",
+  "goalFile": "/home/anton/projects/Symbiote.worktrees/spike-hive-agentic-graph/spikes/hive-agentic-graph/goals/g1-folder-report.md",
+  "template": "/tmp/hive-spike-b89c2d5a/template/loc",
+  "repo": "/tmp/hive-spike-b89c2d5a/runs/g1-one/repo",
+  "base": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+  "status": "done",
+  "started": "2026-10-30T22:36:01.777Z",
+  "ledger": null,
+  "nodes": [
+    {
+      "id": "goal",
+      "title": "the whole goal",
+      "brief": "# Goal: a folder report for loc\n\nGive `loc` a report of a folder: how many files and lines each language has, from the command\nline. No new dependencies.\n\n1. `scanFolder(root: string): Promise<FileCount[]>`, exported from `src/index.ts`:\n   - every file under `root`, recursively; directories named `.git` and `node_modules` are skipped;\n     symbolic links are not followed (left out);\n   - a file whose first 8,000 bytes hold a NUL byte is binary: left out;\n   - each file is `{ path, language, lines, code, comments, blank }`: `path` relative to `root`\n     with `/` separators; `language` is `languageOf(path)?.name`, `\"Text\"` when there is none; the\n     counts are `countLines(text, languageOf(path)?.syntax)` of its UTF-8 text;\n   - sorted by `path` (plain string order).\n2. `summarize(files: FileCount[]): Summary`, exported from `src/index.ts`:\n   - `{ languages: LanguageTotal[]; total: Totals }`, where `Totals` is\n     `{ files, lines, code, comments, blank }` and `LanguageTotal` is `Totals` plus `language`;\n   - one entry per language, sorted by `code` (most first), then by `language` (plain string\n     order);\n   - `total` sums every file.\n3. A command, `node dist/cli.js [folder] [--json]` (after `npm run build`); `folder` defaults to\n   the current directory:\n   - `--json`: prints `summarize(await scanFolder(folder))` as JSON, two-space indented, with a\n     final newline;\n   - otherwise a table: a header row, one row per language in the summary's order, and a last row\n     `Total`; columns `Language`, `Files`, `Lines`, `Code`, `Comments`, `Blank`; numbers\n     right-aligned;\n   - exit code 0; a folder that does not exist or is not a directory: a message on stderr that\n     starts with `loc: `, exit code 2; an unknown option: the same.\n",
+      "deps": [],
+      "branch": "hive/goal",
+      "phase": "merged",
+      "round": 0,
+      "reviews": [],
+      "checks": [
+        {
+          "round": 1,
+          "ok": true,
+          "ms": 968,
+          "tail": ""
+        }
+      ],
+      "progress": [],
+      "replans": 0,
+      "from": "main",
+      "worktree": "/tmp/hive-spike-b89c2d5a/runs/g1-one/wt/goal",
+      "forkBase": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+      "session": "50184063-07ab-455d-8fd5-7cce6f21e825",
+      "interrupted": false,
+      "merged": "6d84ea2dd78ff19acbb6bb57068a8d14c268e351"
+    }
+  ],
+  "merges": [
+    {
+      "node": "goal",
+      "sha": "6d84ea2dd78ff19acbb6bb57068a8d14c268e351",
+      "at": "2026-10-30T22:37:33.004Z"
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "goal",
+      "at": "2026-10-30T22:37:32.021Z",
+      "auto": true
+    }
+  ],
+  "calls": [
+    {
+      "role": "one",
+      "node": "goal",
+      "round": 1,
+      "model": "opus",
+      "effort": "high",
+      "session": "50184063-07ab-455d-8fd5-7cce6f21e825",
+      "started": "2026-10-30T22:36:02.082Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/g1-one/agents/01-one-goal-r1.jsonl",
+      "ended": "2026-10-30T22:37:31.051Z",
+      "ms": 88970,
+      "exit": 0,
+      "cost": 0.47044340000000007,
+      "turns": 8,
+      "usage": {
+        "input_tokens": 16,
+        "cache_creation_input_tokens": 27466,
+        "cache_read_input_tokens": 211057,
+        "output_tokens": 10422,
+        "output_tokens_details": {
+          "thinking_tokens": 2077
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 27466,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 600,
+            "cache_read_input_tokens": 35862,
+            "cache_creation_input_tokens": 571,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 571
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "modelUsage": {
+        "claude-opus-5-5": {
+          "inputTokens": 16,
+          "outputTokens": 10422,
+          "cacheReadInputTokens": 211057,
+          "cacheCreationInputTokens": 27466,
+          "webSearchRequests": 0,
+          "costUSD": 0.47044340000000007,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 2077,
+          "cacheCreationEphemeral5mInputTokens": 0,
+          "cacheCreationEphemeral1hInputTokens": 27466,
+          "canonicalModel": "claude-opus-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      },
+      "subtype": "success"
+    }
+  ],
+  "runs": [
+    {
+      "pid": 80024,
+      "started": "2026-10-30T22:36:01.777Z",
+      "windows": {
+        "fiveHour": 8,
+        "week": 63,
+        "at": "2026-10-30T22:36:02.069Z"
+      },
+      "ended": "2026-10-30T22:37:33.004Z",
+      "windowsAfter": {
+        "fiveHour": 10,
+        "week": 64,
+        "at": "2026-10-30T22:37:33.348Z"
+      }
+    }
+  ],
+  "finished": "2026-10-30T22:37:33.004Z"
+}

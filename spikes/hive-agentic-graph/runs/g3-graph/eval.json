@@ -1,0 +1,186 @@
+{
+  "run": "/tmp/hive-spike-b89c2d5a/runs/g3-graph",
+  "mode": "graph",
+  "profile": "real",
+  "status": "done",
+  "head": "2c639b7026e3eaaa9a72f38e1a85eda6acc4f762",
+  "cost": 2.207,
+  "byModel": {
+    "claude-opus-5-5": {
+      "input": 54,
+      "output": 35422,
+      "cacheRead": 737250,
+      "cacheWrite": 101982,
+      "cost": 1.6719620000000002
+    },
+    "claude-sonnet-5-5": {
+      "input": 34,
+      "output": 14789,
+      "cacheRead": 202010,
+      "cacheWrite": 91819,
+      "cost": 0.535435
+    }
+  },
+  "byRole": {
+    "orchestrator": {
+      "calls": 1,
+      "cost": 0.38748099999999996,
+      "ms": 102254
+    },
+    "researcher": {
+      "calls": 3,
+      "cost": 0.26647940000000003,
+      "ms": 65886
+    },
+    "main": {
+      "calls": 3,
+      "cost": 1.284481,
+      "ms": 250523
+    },
+    "reviewer": {
+      "calls": 3,
+      "cost": 0.2689556,
+      "ms": 74763
+    }
+  },
+  "calls": 10,
+  "wallMinutes": 7.4,
+  "nodes": [
+    {
+      "id": "scanner-rust",
+      "phase": "merged",
+      "rounds": 1,
+      "from": "main",
+      "replans": 0,
+      "reviews": [
+        {
+          "round": 1,
+          "verdict": "approve",
+          "blocking": 0,
+          "minor": 0
+        }
+      ],
+      "checks": [
+        true
+      ]
+    },
+    {
+      "id": "swift",
+      "phase": "merged",
+      "rounds": 1,
+      "from": "hive/scanner-rust",
+      "replans": 0,
+      "reviews": [
+        {
+          "round": 1,
+          "verdict": "approve",
+          "blocking": 0,
+          "minor": 0
+        }
+      ],
+      "checks": [
+        true
+      ]
+    },
+    {
+      "id": "lua",
+      "phase": "merged",
+      "rounds": 1,
+      "from": "hive/scanner-rust",
+      "replans": 0,
+      "reviews": [
+        {
+          "round": 1,
+          "verdict": "approve",
+          "blocking": 0,
+          "minor": 0
+        }
+      ],
+      "checks": [
+        true
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "scanner-rust",
+      "at": "2026-10-30T22:56:15.162Z",
+      "auto": true
+    },
+    {
+      "kind": "land",
+      "node": "lua",
+      "at": "2026-10-30T22:57:16.871Z",
+      "auto": true
+    },
+    {
+      "kind": "land",
+      "node": "swift",
+      "at": "2026-10-30T22:57:51.882Z",
+      "auto": true
+    }
+  ],
+  "windows": [
+    {
+      "before": {
+        "fiveHour": 21,
+        "week": 65,
+        "at": "2026-10-30T22:50:31.614Z"
+      },
+      "after": {
+        "fiveHour": 21,
+        "week": 65,
+        "at": "2026-10-30T22:50:31.614Z"
+      }
+    }
+  ],
+  "change": {
+    "shortstat": "7 files changed, 513 insertions(+), 24 deletions(-)",
+    "files": [
+      "M\tsrc/count.ts",
+      "M\tsrc/index.ts",
+      "M\tsrc/languages.ts",
+      "M\ttest/count.test.ts",
+      "A\ttest/lua.test.ts",
+      "A\ttest/rust.test.ts",
+      "A\ttest/swift.test.ts"
+    ]
+  },
+  "check": true,
+  "build": true,
+  "acceptance": {
+    "passed": 8,
+    "total": 8,
+    "failed": []
+  },
+  "symbioteFindings": [
+    "info signature-changed src/count.ts#closeAt: closeAt changed its signature; its only user was updated",
+    "info signature-changed src/count.ts#Open: Open changed its signature; 1 of 3 users not updated: countLines",
+    "info signature-changed src/languages.ts#Syntax: Syntax changed its signature compatibly; existing users keep working (24 users, 18 untouched · 1 test user)"
+  ],
+  "blind": {
+    "findings": [
+      {
+        "severity": "minor",
+        "path": "src/languages.ts",
+        "line": 110,
+        "text": "Swift: a single-line raw string whose content starts with `\"\"` is read as a multi-line string. Examples are `let q = #\"\"\"#` (a string holding one `\"`) and `#\"\"\"a\"#`. The pattern `(#+)\"\"\"` matches first, so the string is kept open until some later `\"\"\"#`, and every line in between, comments included, counts as code. Swift treats `#\"\"\"` as a single-line raw string when its closer (`\"` plus the same `#`s) is on the same line. Only the multi-line pattern should be tried when no such closer follows on the line."
+      },
+      {
+        "severity": "minor",
+        "path": "test/rust.test.ts",
+        "line": 75,
+        "text": "Nothing tests the look-behind that stops `r\"…\"` matching after an identifier (`(?<!\\p{XID_Continue})`). The row that seems meant to cover it, `let bar = 2; // g`, has no `\"` after the `r`, so it passes with or without the look-behind."
+      },
+      {
+        "severity": "minor",
+        "path": "test/swift.test.ts",
+        "line": 46,
+        "text": "Escapes are only tested with one `#`. The goal says a backslash escapes nothing unless as many `#` as the delimiter follow it, but no test covers `##\"…\"##`, where `\\#\"` must not escape and `\\##\"` must. Each case should get a test."
+      }
+    ],
+    "summary": "I traced each test case in `rust.test.ts`, `swift.test.ts`, `lua.test.ts` and the new `count.test.ts` block against the code by hand, and every expected count matches. I had no shell, so `npm run check` was not run.\n\nThe change meets the goal for Rust, Swift and Lua:\n- **Nested comments:** the depth carries over to the next line, and `/*/` is handled the way rustc handles it.\n- **Rust:** raw and byte strings close on `\"` plus the same number of `#`. A `'` starts a character literal only with one character or one escape and a closing `'`, so lifetimes and labels start nothing.\n- **Swift:** `#\"…\"#` strings close on the same number of `#`, and the escape is `\\` plus that many `#`. `#if` and `#selector` start nothing.\n- **Lua:** long comments and long strings close on the same number of `=`, and a bare `--[` is a line comment.\n\nOther languages count as before. The new `closeAt` scan always finds the same closer the old backslash-parity check did, and languages without `delimited` take the old path.\n\nWhat's left is one minor Swift edge case and two minor test gaps.",
+    "cost": 0.6731084
+  }
+}

@@ -1,0 +1,97 @@
+{
+ "run": "/tmp/hive-spike-b89c2d5a/runs/g3-graph",
+ "mode": "graph",
+ "profile": "real",
+ "status": "done",
+ "head": "2c639b7026e3eaaa9a72f38e1a85eda6acc4f762",
+ "cost": 2.207,
+ "byRole": {
+  "orchestrator": {
+   "calls": 1,
+   "cost": 0.38748099999999996,
+   "ms": 102254
+  },
+  "researcher": {
+   "calls": 3,
+   "cost": 0.26647940000000003,
+   "ms": 65886
+  },
+  "main": {
+   "calls": 3,
+   "cost": 1.284481,
+   "ms": 250523
+  },
+  "reviewer": {
+   "calls": 3,
+   "cost": 0.2689556,
+   "ms": 74763
+  }
+ },
+ "calls": 10,
+ "wallMinutes": 7.4,
+ "gates": [
+  {
+   "kind": "land",
+   "node": "scanner-rust",
+   "at": "2026-10-30T22:56:15.162Z",
+   "auto": true
+  },
+  {
+   "kind": "land",
+   "node": "lua",
+   "at": "2026-10-30T22:57:16.871Z",
+   "auto": true
+  },
+  {
+   "kind": "land",
+   "node": "swift",
+   "at": "2026-10-30T22:57:51.882Z",
+   "auto": true
+  }
+ ],
+ "windows": [
+  {
+   "before": {
+    "fiveHour": 21,
+    "week": 65,
+    "at": "2026-10-30T22:50:31.614Z"
+   },
+   "after": {
+    "fiveHour": 21,
+    "week": 65,
+    "at": "2026-10-30T22:50:31.614Z"
+   }
+  }
+ ],
+ "change": {
+  "shortstat": "7 files changed, 513 insertions(+), 24 deletions(-)",
+  "files": [
+   "M\tsrc/count.ts",
+   "M\tsrc/index.ts",
+   "M\tsrc/languages.ts",
+   "M\ttest/count.test.ts",
+   "A\ttest/lua.test.ts",
+   "A\ttest/rust.test.ts",
+   "A\ttest/swift.test.ts"
+  ]
+ },
+ "check": true,
+ "build": true,
+ "acceptance": {
+  "passed": 8,
+  "total": 8,
+  "failed": []
+ },
+ "symbioteFindings": [
+  "info signature-changed src/count.ts#closeAt: closeAt changed its signature; its only user was updated",
+  "info signature-changed src/count.ts#Open: Open changed its signature; 1 of 3 users not updated: countLines",
+  "info signature-changed src/languages.ts#Syntax: Syntax changed its signature compatibly; existing users keep working (24 users, 18 untouched · 1 test user)"
+ ],
+ "blind": {
+  "n": 3,
+  "cost": 0.6731084
+ }
+}
+001
+ }
+}

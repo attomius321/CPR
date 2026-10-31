@@ -1,0 +1,26 @@
+{
+  "review": {
+    "summary": "I wrote 17 tests covering Rust, Swift and Lua and ran them. Four failed, all from one defect: Rust doesn't recognise a character literal that holds a simple escape (`'\\n'`, `'\\''`, `'\\\\'`, `'\\\"'`). In `rustCharEnd` (src/dialects.ts), after a backslash the code does `j += 3`, which looks for the closing `'` one character too far right. Only `\\x..` and `\\u{..}` escapes work. When a simple escape fails to register, a `\"` inside or right after it opens a string. Rust strings can run over lines, so the lines after it are counted as code instead of comments. The diff's own `'\\''` and `'\\\\'` tests pass only because nothing on those lines exposes the mistake. The four failing tests are in test/probe-dialects.test.ts and the 13 passing ones were deleted. Nothing I tested in Swift or Lua failed: nested comments, raw strings with any number of `#`, `\"\"` before a comment, long comments and long strings of any level, escapes, and `---[[`.",
+    "findings": [
+      {
+        "severity": "major",
+        "test": "test/probe-dialects.test.ts > probe Rust > reads '\\\"' as a character literal, not a string opener (also: reads b'\\\"' as a byte character literal; reads '\\'' as a character literal before another; reads '\\n' as a character literal)",
+        "text": "`rustCharEnd` (src/dialects.ts) skips 3 characters past the backslash for a simple escape (`j += 3` with `j` already at the backslash), so it looks for the closing `'` at at+4 instead of at+3. The goal says `'\\n'`, `'\\''` and `'\\\\'` are character literals, but none of them is read as one. Example: `let q = '\\\"'; // c` followed by `// d` gives code 2, comments 0; the right answer is code 1, comments 1. The `\"` inside the literal opens a multi-line Rust string, which swallows the next line. The same happens with `b'\\\"'` and with `('\\'','\"')` and `('\\n','\"')`: the escape literal is missed, so the quotes pair up wrongly and a `\"` opens a string."
+      }
+    ],
+    "cost": 0.5621488,
+    "ms": 114916
+  },
+  "tests": {
+    "files": [
+      "probe-dialects.test.ts"
+    ],
+    "failed": [
+      "probe Rust reads '\\\"' as a character literal, not a string opener",
+      "probe Rust reads b'\\\"' as a byte character literal",
+      "probe Rust reads '\\'' as a character literal before another",
+      "probe Rust reads '\\n' as a character literal"
+    ],
+    "passed": 0
+  }
+}

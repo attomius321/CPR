@@ -1,0 +1,17 @@
+22:30:38 run mode=graph profile=cheap fake=
+22:30:38 agent-start role=orchestrator node=undefined round=undefined model=haiku session=81a1600e-dedd-40e8-ba87-87bc4d950e23 resume=false
+22:31:05 agent-end role=orchestrator node=undefined round=undefined exit=0 subtype=success cost=0.007 s=27
+22:31:05 planned workspaces=folder-report<-[]
+22:31:05 workspace-start node=folder-report from=main base=f144387
+22:31:05 agent-start role=researcher node=folder-report round=0 model=haiku session=ac88b5dd-a395-4a3c-85a6-47321d5ddb09 resume=false
+22:31:28 agent-end role=researcher node=folder-report round=0 exit=0 subtype=success cost=0.007 s=23
+22:31:28 agent-start role=main node=folder-report round=1 model=sonnet session=9e0a024d-eed4-421d-9c1e-011716763720 resume=false
+22:32:11 agent-end role=main node=folder-report round=1 exit=0 subtype=success cost=0.142 s=44
+22:32:12 check node=folder-report round=1 ok=true ms=903
+22:32:14 agent-start role=reviewer node=folder-report round=1 model=haiku session=f261b755-0345-4cc2-9305-44d7a2c9be59 resume=false
+22:32:36 agent-end role=reviewer node=folder-report round=1 exit=0 subtype=success cost=0.008 s=23
+22:32:36 review node=folder-report round=1 verdict=approve blocking=0 findings=3
+22:32:36 gate kind=land node=folder-report auto=true
+22:32:37 merge-check node=folder-report ok=true ms=890
+22:32:37 merged node=folder-report sha=d89c5f2
+22:32:38 finished status=done cost=0.16

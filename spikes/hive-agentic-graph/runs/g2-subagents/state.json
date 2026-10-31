@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "mode": "subagents",
+  "profile": "real",
+  "goal": "# Goal: loc skips what a project ignores\n\n`loc` counts every file under a folder. Projects keep files there they don't want counted:\nvendored code, fixtures, generated files. Give `loc` an ignore file, then use it in the scan and\nthe command. No new dependencies.\n\n1. `ignoreMatcher(root: string): Promise<(path: string, isFolder: boolean) => boolean>`, exported\n   from `src/index.ts`. It reads `<root>/.locignore` (when there is none, nothing is ignored) and\n   answers whether a path is ignored. `path` is relative to `root`, with `/` separators. The\n   file's syntax is a subset of `.gitignore`'s:\n   - one pattern a line; blank lines and lines that start with `#` are skipped; trailing spaces\n     are trimmed;\n   - `*` matches any characters but `/`; `?` matches one character but `/`; `**` matches across\n     folders: `**/x` (x at any depth), `x/**` (everything inside x), `a/**/b` (b under a, at any\n     depth, `a/b` included);\n   - a pattern with no `/`, or only a trailing one, matches a name at any depth (`*.log`,\n     `build`); a pattern with a `/` at its start or in its middle is relative to `root` (`/dist`,\n     `src/gen`);\n   - a trailing `/` matches folders only (`out/`);\n   - a path is ignored when it, or one of the folders it is in, matches;\n   - `!pattern` includes again what an earlier pattern ignored; the last pattern that matches\n     wins. As in git, a file cannot be included again when a folder it is in is ignored.\n2. `scanFolder(root, options?)` leaves out what `ignoreMatcher(root)` ignores (files, and folders\n   with everything in them) unless `options.ignore` is `false`; the `.locignore` file itself is\n   counted like any other file. The command does the same, and takes `--no-ignore` to count\n   everything.\n",
+  "goalFile": "/home/anton/projects/Symbiote.worktrees/spike-hive-agentic-graph/spikes/hive-agentic-graph/goals/g2-ignore-file.md",
+  "template": "/tmp/hive-spike-b89c2d5a/template/loc2",
+  "repo": "/tmp/hive-spike-b89c2d5a/runs/g2-subagents/repo",
+  "base": "733a33774bbf1fb784521a06aa9523187a22e03f",
+  "status": "done",
+  "started": "2026-10-30T22:41:17.912Z",
+  "ledger": null,
+  "nodes": [
+    {
+      "id": "goal",
+      "title": "the whole goal",
+      "brief": "# Goal: loc skips what a project ignores\n\n`loc` counts every file under a folder. Projects keep files there they don't want counted:\nvendored code, fixtures, generated files. Give `loc` an ignore file, then use it in the scan and\nthe command. No new dependencies.\n\n1. `ignoreMatcher(root: string): Promise<(path: string, isFolder: boolean) => boolean>`, exported\n   from `src/index.ts`. It reads `<root>/.locignore` (when there is none, nothing is ignored) and\n   answers whether a path is ignored. `path` is relative to `root`, with `/` separators. The\n   file's syntax is a subset of `.gitignore`'s:\n   - one pattern a line; blank lines and lines that start with `#` are skipped; trailing spaces\n     are trimmed;\n   - `*` matches any characters but `/`; `?` matches one character but `/`; `**` matches across\n     folders: `**/x` (x at any depth), `x/**` (everything inside x), `a/**/b` (b under a, at any\n     depth, `a/b` included);\n   - a pattern with no `/`, or only a trailing one, matches a name at any depth (`*.log`,\n     `build`); a pattern with a `/` at its start or in its middle is relative to `root` (`/dist`,\n     `src/gen`);\n   - a trailing `/` matches folders only (`out/`);\n   - a path is ignored when it, or one of the folders it is in, matches;\n   - `!pattern` includes again what an earlier pattern ignored; the last pattern that matches\n     wins. As in git, a file cannot be included again when a folder it is in is ignored.\n2. `scanFolder(root, options?)` leaves out what `ignoreMatcher(root)` ignores (files, and folders\n   with everything in them) unless `options.ignore` is `false`; the `.locignore` file itself is\n   counted like any other file. The command does the same, and takes `--no-ignore` to count\n   everything.\n",
+      "deps": [],
+      "branch": "hive/goal",
+      "phase": "merged",
+      "round": 0,
+      "reviews": [],
+      "checks": [
+        {
+          "round": 1,
+          "ok": true,
+          "ms": 968,
+          "tail": ""
+        }
+      ],
+      "progress": [],
+      "replans": 0,
+      "from": "main",
+      "worktree": "/tmp/hive-spike-b89c2d5a/runs/g2-subagents/wt/goal",
+      "forkBase": "733a33774bbf1fb784521a06aa9523187a22e03f",
+      "session": "c01a32a6-aaa7-45d4-a871-532ff12d8a88",
+      "interrupted": false,
+      "merged": "2d320a5038ecb3c5a6f5423451b9cb35d4495969"
+    }
+  ],
+  "merges": [
+    {
+      "node": "goal",
+      "sha": "2d320a5038ecb3c5a6f5423451b9cb35d4495969",
+      "at": "2026-10-30T22:44:02.125Z"
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "goal",
+      "at": "2026-10-30T22:44:01.147Z",
+      "auto": true
+    }
+  ],
+  "calls": [
+    {
+      "role": "main",
+      "node": "goal",
+      "round": 1,
+      "model": "opus",
+      "effort": "high",
+      "session": "c01a32a6-aaa7-45d4-a871-532ff12d8a88",
+      "started": "2026-10-30T22:41:18.195Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/g2-subagents/agents/01-main-goal-r1.jsonl",
+      "ended": "2026-10-30T22:44:00.176Z",
+      "ms": 161982,
+      "exit": 0,
+      "cost": 0.7109601,
+      "turns": 15,
+      "usage": {
+        "input_tokens": 26,
+        "cache_creation_input_tokens": 30836,
+        "cache_read_input_tokens": 392952,
+        "output_tokens": 11119,
+        "output_tokens_details": {
+          "thinking_tokens": 2753
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 30836,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 599,
+            "cache_read_input_tokens": 39548,
+            "cache_creation_input_tokens": 255,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 255
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "modelUsage": {
+        "claude-opus-5-5": {
+          "inputTokens": 26,
+          "outputTokens": 11119,
+          "cacheReadInputTokens": 392952,
+          "cacheCreationInputTokens": 30836,
+          "webSearchRequests": 0,
+          "costUSD": 0.5477624,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 2753,
+          "cacheCreationEphemeral5mInputTokens": 0,
+          "cacheCreationEphemeral1hInputTokens": 30836,
+          "canonicalModel": "claude-opus-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        },
+        "claude-sonnet-5-5": {
+          "inputTokens": 12,
+          "outputTokens": 8288,
+          "cacheReadInputTokens": 24587,
+          "cacheCreationInputTokens": 31134,
+          "webSearchRequests": 0,
+          "costUSD": 0.1631977,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 2070,
+          "cacheCreationEphemeral5mInputTokens": 31134,
+          "cacheCreationEphemeral1hInputTokens": 0,
+          "canonicalModel": "claude-sonnet-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      },
+      "subtype": "success"
+    }
+  ],
+  "runs": [
+    {
+      "pid": 32461,
+      "started": "2026-10-30T22:41:17.912Z",
+      "windows": {
+        "fiveHour": 13,
+        "week": 64,
+        "at": "2026-10-30T22:41:18.181Z"
+      },
+      "ended": "2026-10-30T22:44:02.125Z",
+      "windowsAfter": {
+        "fiveHour": 17,
+        "week": 64,
+        "at": "2026-10-30T22:44:02.373Z"
+      }
+    }
+  ],
+  "finished": "2026-10-30T22:44:02.125Z"
+}

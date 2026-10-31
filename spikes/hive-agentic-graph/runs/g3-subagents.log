@@ -1,0 +1,9 @@
+22:50:31 run mode=subagents profile=real fake=
+22:50:31 workspace-start node=goal from=main base=f144387
+22:50:31 agent-start role=main node=goal round=1 model=opus session=d76f4a58-3332-4cd2-8e18-4f03342ac1cb resume=false
+22:56:06 agent-end role=main node=goal round=1 exit=0 subtype=success cost=1.208 s=335
+22:56:07 check node=goal ok=true
+22:56:07 gate kind=land node=goal auto=true
+22:56:08 merge-check node=goal ok=true ms=910
+22:56:08 merged node=goal sha=6b387fb
+22:56:08 finished status=done cost=1.21

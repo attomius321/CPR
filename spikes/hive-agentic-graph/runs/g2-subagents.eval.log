@@ -1,0 +1,64 @@
+{
+ "run": "/tmp/hive-spike-b89c2d5a/runs/g2-subagents",
+ "mode": "subagents",
+ "profile": "real",
+ "status": "done",
+ "head": "2d320a5038ecb3c5a6f5423451b9cb35d4495969",
+ "cost": 0.711,
+ "byRole": {
+  "main": {
+   "calls": 1,
+   "cost": 0.7109601,
+   "ms": 161982
+  }
+ },
+ "calls": 1,
+ "wallMinutes": 2.7,
+ "gates": [
+  {
+   "kind": "land",
+   "node": "goal",
+   "at": "2026-10-30T22:44:01.147Z",
+   "auto": true
+  }
+ ],
+ "windows": [
+  {
+   "before": {
+    "fiveHour": 13,
+    "week": 64,
+    "at": "2026-10-30T22:41:18.181Z"
+   },
+   "after": {
+    "fiveHour": 17,
+    "week": 64,
+    "at": "2026-10-30T22:44:02.373Z"
+   }
+  }
+ ],
+ "change": {
+  "shortstat": "6 files changed, 206 insertions(+), 7 deletions(-)",
+  "files": [
+   "M\tREADME.md",
+   "M\tsrc/cli.ts",
+   "A\tsrc/ignore.ts",
+   "M\tsrc/index.ts",
+   "M\tsrc/scan.ts",
+   "A\ttest/ignore.test.ts"
+  ]
+ },
+ "check": true,
+ "build": true,
+ "acceptance": {
+  "passed": 13,
+  "total": 13,
+  "failed": []
+ },
+ "symbioteFindings": [
+  "info signature-changed src/scan.ts#scanFolder: scanFolder changed its signature compatibly; existing users keep working (1 user, 0 untouched · 2 test users, 1 not updated)"
+ ],
+ "blind": {
+  "n": 5,
+  "cost": 0.3862171999999999
+ }
+}

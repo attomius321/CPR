@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "mode": "one",
+  "profile": "real",
+  "goal": "# Goal: count Rust, Swift and Lua right\n\n`loc` knows Rust, Swift and Lua only roughly (`src/languages.ts`): Rust's and Swift's block comments\ndo not nest, raw strings and Lua's long brackets with `=` are unknown, and Rust's `'` is taken for\na string. Lines are miscounted. Teach `loc` each one's real comments and strings, so `countLines`\nsorts their lines right (the rule for a line stays: blank, a comment when it holds only comments,\notherwise code). Keep every other language counted as it is now. No new dependencies.\n\n1. **Rust**: `.rs` files, the language `Rust`, a source.\n   - `//` line comments (`///` and `//!` too); `/* */` block comments, which nest:\n     `/* a /* b */ still a comment */`, over any number of lines.\n   - Strings `\"…\"` with backslash escapes, which may go on over lines; raw strings `r\"…\"`,\n     `r#\"…\"#`, `r##\"…\"##` (any number of `#`; the closer is `\"` and the same number of `#`; no\n     escapes), which may go on over lines; byte strings `b\"…\"`, `br\"…\"`, `br#\"…\"#` likewise.\n   - `'` starts a character literal only when one character, or one escape (`'\\n'`, `'\\''`,\n     `'\\\\'`, `'\\u{1F600}'`), and a closing `'` follow it on the line; otherwise it is a lifetime\n     or a label (`'a`, `'static`, `'outer:`) and starts nothing.\n2. **Swift**: `.swift` files, the language `Swift`, a source.\n   - `//` line comments; `/* */` block comments, which nest, as Rust's.\n   - Strings `\"…\"` with backslash escapes, ending on their line; multi-line strings `\"\"\"…\"\"\"`;\n     raw strings `#\"…\"#` and `#\"\"\"…\"\"\"#` with any number of `#` (the closer is the quotes and the\n     same number of `#`; a backslash escapes nothing unless that many `#` follow it). A `#` not\n     followed by more `#` and a `\"` starts nothing (`#if`, `#selector`).\n3. **Lua**: `.lua` files, the language `Lua`, a source.\n   - `--` line comments; long comments `--[[ … ]]` and `--[==[ … ]==]` (any number of `=`; the\n     closer has the same number), which may go on over lines. `--[` not followed by `=`s and\n     another `[` is a line comment.\n   - Strings `\"…\"` and `'…'` with backslash escapes, ending on their line; long strings `[[ … ]]`\n     and `[==[ … ]==]` (the same rule for `=`), which may go on over lines.\n",
+  "goalFile": "/home/anton/projects/Symbiote.worktrees/spike-hive-agentic-graph/spikes/hive-agentic-graph/goals/g3-rust-swift-lua.md",
+  "template": "/tmp/hive-spike-b89c2d5a/template/loc",
+  "repo": "/tmp/hive-spike-b89c2d5a/runs/g3-one/repo",
+  "base": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+  "status": "done",
+  "started": "2026-10-30T22:50:31.298Z",
+  "ledger": null,
+  "nodes": [
+    {
+      "id": "goal",
+      "title": "the whole goal",
+      "brief": "# Goal: count Rust, Swift and Lua right\n\n`loc` knows Rust, Swift and Lua only roughly (`src/languages.ts`): Rust's and Swift's block comments\ndo not nest, raw strings and Lua's long brackets with `=` are unknown, and Rust's `'` is taken for\na string. Lines are miscounted. Teach `loc` each one's real comments and strings, so `countLines`\nsorts their lines right (the rule for a line stays: blank, a comment when it holds only comments,\notherwise code). Keep every other language counted as it is now. No new dependencies.\n\n1. **Rust**: `.rs` files, the language `Rust`, a source.\n   - `//` line comments (`///` and `//!` too); `/* */` block comments, which nest:\n     `/* a /* b */ still a comment */`, over any number of lines.\n   - Strings `\"…\"` with backslash escapes, which may go on over lines; raw strings `r\"…\"`,\n     `r#\"…\"#`, `r##\"…\"##` (any number of `#`; the closer is `\"` and the same number of `#`; no\n     escapes), which may go on over lines; byte strings `b\"…\"`, `br\"…\"`, `br#\"…\"#` likewise.\n   - `'` starts a character literal only when one character, or one escape (`'\\n'`, `'\\''`,\n     `'\\\\'`, `'\\u{1F600}'`), and a closing `'` follow it on the line; otherwise it is a lifetime\n     or a label (`'a`, `'static`, `'outer:`) and starts nothing.\n2. **Swift**: `.swift` files, the language `Swift`, a source.\n   - `//` line comments; `/* */` block comments, which nest, as Rust's.\n   - Strings `\"…\"` with backslash escapes, ending on their line; multi-line strings `\"\"\"…\"\"\"`;\n     raw strings `#\"…\"#` and `#\"\"\"…\"\"\"#` with any number of `#` (the closer is the quotes and the\n     same number of `#`; a backslash escapes nothing unless that many `#` follow it). A `#` not\n     followed by more `#` and a `\"` starts nothing (`#if`, `#selector`).\n3. **Lua**: `.lua` files, the language `Lua`, a source.\n   - `--` line comments; long comments `--[[ … ]]` and `--[==[ … ]==]` (any number of `=`; the\n     closer has the same number), which may go on over lines. `--[` not followed by `=`s and\n     another `[` is a line comment.\n   - Strings `\"…\"` and `'…'` with backslash escapes, ending on their line; long strings `[[ … ]]`\n     and `[==[ … ]==]` (the same rule for `=`), which may go on over lines.\n",
+      "deps": [],
+      "branch": "hive/goal",
+      "phase": "merged",
+      "round": 0,
+      "reviews": [],
+      "checks": [
+        {
+          "round": 1,
+          "ok": true,
+          "ms": 943,
+          "tail": ""
+        }
+      ],
+      "progress": [],
+      "replans": 0,
+      "from": "main",
+      "worktree": "/tmp/hive-spike-b89c2d5a/runs/g3-one/wt/goal",
+      "forkBase": "f144387d8e05f6e0633b8180c44a859a88e5df09",
+      "session": "b84fce21-1af6-43bc-938e-35582e96c17e",
+      "interrupted": false,
+      "merged": "c8b04e25854070bbe6e59ce0322c7cd299e24251"
+    }
+  ],
+  "merges": [
+    {
+      "node": "goal",
+      "sha": "c8b04e25854070bbe6e59ce0322c7cd299e24251",
+      "at": "2026-10-30T22:54:28.437Z"
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "goal",
+      "at": "2026-10-30T22:54:27.481Z",
+      "auto": true
+    }
+  ],
+  "calls": [
+    {
+      "role": "one",
+      "node": "goal",
+      "round": 1,
+      "model": "opus",
+      "effort": "high",
+      "session": "b84fce21-1af6-43bc-938e-35582e96c17e",
+      "started": "2026-10-30T22:50:31.603Z",
+      "log": "/tmp/hive-spike-b89c2d5a/runs/g3-one/agents/01-one-goal-r1.jsonl",
+      "ended": "2026-10-30T22:54:26.535Z",
+      "ms": 234933,
+      "exit": 0,
+      "cost": 1.0551472,
+      "turns": 23,
+      "usage": {
+        "input_tokens": 44,
+        "cache_creation_input_tokens": 48800,
+        "cache_read_input_tokens": 973456,
+        "output_tokens": 23494,
+        "output_tokens_details": {
+          "thinking_tokens": 12958
+        },
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 48800,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "global",
+        "iterations": [
+          {
+            "input_tokens": 2,
+            "output_tokens": 940,
+            "cache_read_input_tokens": 57567,
+            "cache_creation_input_tokens": 200,
+            "cache_creation": {
+              "ephemeral_5m_input_tokens": 0,
+              "ephemeral_1h_input_tokens": 200
+            },
+            "type": "message"
+          }
+        ],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "modelUsage": {
+        "claude-opus-5-5": {
+          "inputTokens": 44,
+          "outputTokens": 23494,
+          "cacheReadInputTokens": 973456,
+          "cacheCreationInputTokens": 48800,
+          "webSearchRequests": 0,
+          "costUSD": 1.0551472,
+          "contextWindow": 1000000,
+          "maxOutputTokens": 128000,
+          "thinkingTokens": 12958,
+          "cacheCreationEphemeral5mInputTokens": 0,
+          "cacheCreationEphemeral1hInputTokens": 48800,
+          "canonicalModel": "claude-opus-5-5",
+          "provider": "firstParty",
+          "costBasis": "list"
+        }
+      },
+      "subtype": "success"
+    }
+  ],
+  "runs": [
+    {
+      "pid": 72109,
+      "started": "2026-10-30T22:50:31.299Z",
+      "windows": {
+        "fiveHour": 21,
+        "week": 65,
+        "at": "2026-10-30T22:50:31.589Z"
+      },
+      "ended": "2026-10-30T22:54:28.437Z",
+      "windowsAfter": {
+        "fiveHour": 21,
+        "week": 65,
+        "at": "2026-10-30T22:50:31.589Z"
+      }
+    }
+  ],
+  "finished": "2026-10-30T22:54:28.437Z"
+}

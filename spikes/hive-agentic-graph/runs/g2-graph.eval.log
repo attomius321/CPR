@@ -1,0 +1,86 @@
+{
+ "run": "/tmp/hive-spike-b89c2d5a/runs/g2-graph",
+ "mode": "graph",
+ "profile": "real",
+ "status": "done",
+ "head": "e125116e789c07b16edc31a5e104185de2b4164c",
+ "cost": 0.913,
+ "byRole": {
+  "orchestrator": {
+   "calls": 1,
+   "cost": 0.19317460000000003,
+   "ms": 24315
+  },
+  "researcher": {
+   "calls": 2,
+   "cost": 0.1116325,
+   "ms": 26657
+  },
+  "main": {
+   "calls": 2,
+   "cost": 0.5049176,
+   "ms": 65586
+  },
+  "reviewer": {
+   "calls": 2,
+   "cost": 0.1033343,
+   "ms": 26270
+  }
+ },
+ "calls": 7,
+ "wallMinutes": 2.5,
+ "gates": [
+  {
+   "kind": "land",
+   "node": "ignore-matcher",
+   "at": "2026-10-30T22:42:37.179Z",
+   "auto": true
+  },
+  {
+   "kind": "land",
+   "node": "scan-and-cli-ignore",
+   "at": "2026-10-30T22:43:27.459Z",
+   "auto": true
+  }
+ ],
+ "windows": [
+  {
+   "before": {
+    "fiveHour": 12,
+    "week": 64,
+    "at": "2026-10-30T22:40:59.002Z"
+   },
+   "after": {
+    "fiveHour": 16,
+    "week": 64,
+    "at": "2026-10-30T22:43:28.680Z"
+   }
+  }
+ ],
+ "change": {
+  "shortstat": "7 files changed, 208 insertions(+), 7 deletions(-)",
+  "files": [
+   "M\tREADME.md",
+   "M\tsrc/cli.ts",
+   "A\tsrc/ignore.ts",
+   "M\tsrc/index.ts",
+   "M\tsrc/scan.ts",
+   "A\ttest/ignore.test.ts",
+   "M\ttest/scan.test.ts"
+  ]
+ },
+ "check": true,
+ "build": true,
+ "acceptance": {
+  "passed": 13,
+  "total": 13,
+  "failed": []
+ },
+ "symbioteFindings": [
+  "info signature-changed src/scan.ts#scanFolder: scanFolder changed its signature compatibly; existing users keep working (1 user, 0 untouched · 1 test user)"
+ ],
+ "blind": {
+  "n": 6,
+  "cost": 0.28402540000000004
+ }
+}

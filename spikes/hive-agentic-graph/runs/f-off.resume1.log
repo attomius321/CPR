@@ -1,0 +1,21 @@
+22:30:01 resume phases=summary:main cli:pending
+22:30:01 run mode=graph profile=fake fake=slow
+22:30:01 agent-start role=main node=summary round=1 model=fake session=ac30fc60-a5de-46c8-bcb5-b19b9feead1a resume=true
+22:30:01 agent-end role=main node=summary round=1 exit=0 subtype=success cost=0.000 s=0
+22:30:02 check node=summary round=1 ok=true ms=864
+22:30:02 agent-start role=reviewer node=summary round=1 model=fake session=518ceda2-8172-4e2c-9661-7e870ba9265c resume=false
+22:30:02 agent-end role=reviewer node=summary round=1 exit=0 subtype=success cost=0.000 s=0
+22:30:02 review node=summary round=1 verdict=changes blocking=1 findings=1
+22:30:02 agent-start role=main node=summary round=2 model=fake session=ac30fc60-a5de-46c8-bcb5-b19b9feead1a resume=true
+22:30:03 agent-end role=main node=summary round=2 exit=0 subtype=success cost=0.000 s=0
+22:30:03 check node=summary round=2 ok=true ms=912
+22:30:04 agent-start role=reviewer node=summary round=2 model=fake session=093e1233-098e-45cc-b8fe-bfd16caa6866 resume=false
+22:30:04 agent-end role=reviewer node=summary round=2 exit=0 subtype=success cost=0.000 s=0
+22:30:04 review node=summary round=2 verdict=approve blocking=0 findings=0
+22:30:04 workspace-start node=cli from=hive/summary base=e545a25
+22:30:04 gate kind=land node=summary auto=true
+22:30:05 merge-check node=summary ok=true ms=916
+22:30:05 merged node=summary sha=fb00756
+22:30:05 agent-start role=researcher node=cli round=0 model=fake session=53b85482-755f-4a06-bfc3-6183a9b5d23c resume=false
+22:30:05 agent-end role=researcher node=cli round=0 exit=0 subtype=success cost=0.000 s=0
+22:30:05 agent-start role=main node=cli round=1 model=fake session=d0da8c7f-045b-4c6f-8c0a-23964f427153 resume=false

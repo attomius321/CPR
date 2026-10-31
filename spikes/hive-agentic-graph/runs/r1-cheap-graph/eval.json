@@ -1,0 +1,157 @@
+{
+  "run": "/tmp/hive-spike-b89c2d5a/runs/r1-cheap-graph",
+  "mode": "graph",
+  "profile": "cheap",
+  "status": "done",
+  "head": "d89c5f2503b3189f0918bdc2254593a7eeaa0f3c",
+  "cost": 0.164,
+  "byModel": {
+    "claude-haiku-5-5": {
+      "input": 26,
+      "output": 12920,
+      "cacheRead": 173186,
+      "cacheWrite": 67191,
+      "cost": 0.021632659999999998
+    },
+    "claude-sonnet-5-5": {
+      "input": 10,
+      "output": 5766,
+      "cacheRead": 103119,
+      "cacheWrite": 18576,
+      "cost": 0.1422959
+    }
+  },
+  "byRole": {
+    "orchestrator": {
+      "calls": 1,
+      "cost": 0.00706946,
+      "ms": 26917
+    },
+    "researcher": {
+      "calls": 1,
+      "cost": 0.00674103,
+      "ms": 22584
+    },
+    "main": {
+      "calls": 1,
+      "cost": 0.1422959,
+      "ms": 43626
+    },
+    "reviewer": {
+      "calls": 1,
+      "cost": 0.00782217,
+      "ms": 22914
+    }
+  },
+  "calls": 4,
+  "wallMinutes": 2,
+  "nodes": [
+    {
+      "id": "folder-report",
+      "phase": "merged",
+      "rounds": 1,
+      "from": "main",
+      "replans": 0,
+      "reviews": [
+        {
+          "round": 1,
+          "verdict": "approve",
+          "blocking": 0,
+          "minor": 3
+        }
+      ],
+      "checks": [
+        true
+      ]
+    }
+  ],
+  "gates": [
+    {
+      "kind": "land",
+      "node": "folder-report",
+      "at": "2026-10-30T22:32:36.987Z",
+      "auto": true
+    }
+  ],
+  "windows": [
+    {
+      "before": {
+        "fiveHour": 5,
+        "week": 63,
+        "at": "2026-10-30T22:30:38.821Z"
+      },
+      "after": {
+        "fiveHour": 6,
+        "week": 63,
+        "at": "2026-10-30T22:32:38.142Z"
+      }
+    }
+  ],
+  "change": {
+    "shortstat": "6 files changed, 271 insertions(+)",
+    "files": [
+      "A\tsrc/cli.ts",
+      "A\tsrc/folder.ts",
+      "M\tsrc/index.ts",
+      "M\tsrc/types.ts",
+      "A\ttest/cli.test.ts",
+      "A\ttest/folder.test.ts"
+    ]
+  },
+  "check": true,
+  "build": true,
+  "acceptance": {
+    "passed": 11,
+    "total": 11,
+    "failed": []
+  },
+  "symbioteFindings": [],
+  "blind": {
+    "findings": [
+      {
+        "severity": "minor",
+        "path": "src/cli.ts",
+        "line": 47,
+        "text": "Errors during the scan aren't caught. If a subfolder or file can't be read (EACCES), or a file is deleted mid-scan (ENOENT from readdir/open/readFile in folder.ts), `scanFolder` rejects. The top-level `await` at line 54 then rethrows, so the process exits with code 1 and a Node stack trace instead of a `loc: ` message on stderr."
+      },
+      {
+        "severity": "minor",
+        "path": "src/cli.ts",
+        "line": 35,
+        "text": "`folder ??= arg` silently ignores every positional argument after the first. `loc a b` reports only `a`, with exit code 0 and no warning, even though the usage `[folder]` allows only one folder."
+      },
+      {
+        "severity": "minor",
+        "path": "src/cli.ts",
+        "line": 43,
+        "text": "The `catch` turns every `stat` failure into `no such folder`. An existing folder whose parent can't be searched (EACCES) is reported as missing. The exit code (2) and the `loc: ` prefix are still correct; only the message is wrong."
+      },
+      {
+        "severity": "minor",
+        "path": "test/cli.test.ts",
+        "line": 25,
+        "text": "The 'prints JSON' test checks only `endsWith('}\\n')` and the parsed values. Compact output from `JSON.stringify(summary)` would also pass, so the required two-space indentation is never checked."
+      },
+      {
+        "severity": "minor",
+        "path": "test/cli.test.ts",
+        "line": 34,
+        "text": "The 'prints a table' test can't detect wrong alignment. It splits rows on whitespace, and every number is one digit, so left-aligned or centred numbers give the same tokens and the same row length. Right alignment, which the goal requires, is untested; a fixture with numbers of different widths would cover it."
+      },
+      {
+        "severity": "minor",
+        "path": "test/cli.test.ts",
+        "line": 42,
+        "text": "No test runs `main` without a folder argument, so the rule that `folder` defaults to the current directory is untested. Nothing tests the real `node dist/cli.js` entry point either: the `invoked` guard and `process.exitCode` at src/cli.ts:52-58 are never run by the tests."
+      },
+      {
+        "severity": "minor",
+        "path": "test/folder.test.ts",
+        "line": 34,
+        "text": "The binary test uses a 3-byte file with a NUL at byte 1. Nothing checks the 8,000-byte limit, such as a file whose first NUL comes after 8,000 bytes and so must still be counted as text. Code that scanned the whole file, or a different number of bytes, would still pass."
+      }
+    ],
+    "summary": "I found no blocker or major defects. `scanFolder`, `summarize` and the CLI do what the goal asks: recursive walk, skipping `.git` and `node_modules`, leaving out symlinks, the 8,000-byte NUL check, `/`-separated relative paths, \"Text\" as the fallback language, plain string sorts, the ordering and totals, two-space JSON with a final newline, a right-aligned table, and the exit-code-2 paths with messages starting `loc: `. I also checked every expected number in the tests against countLines/languageOf, and they are right. What's left is small: one error path that crashes instead of printing a `loc: ` message, extra folder arguments being silently ignored, and several tests that don't check what their names claim (JSON indentation, right alignment, the default folder, the 8,000-byte limit, the real `node dist/cli.js` entry point).",
+    "cost": 0.32821559999999994
+  }
+}

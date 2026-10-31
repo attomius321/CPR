@@ -1,0 +1,62 @@
+{
+ "run": "/tmp/hive-spike-b89c2d5a/runs/g3-one-haiku",
+ "mode": "one",
+ "profile": "haiku",
+ "status": "done",
+ "head": "9dfca478489963a84cffda16b99c673e6592b804",
+ "cost": 0.04,
+ "byRole": {
+  "one": {
+   "calls": 1,
+   "cost": 0.04028532,
+   "ms": 200009
+  }
+ },
+ "calls": 1,
+ "wallMinutes": 3.4,
+ "gates": [
+  {
+   "kind": "land",
+   "node": "goal",
+   "at": "2026-10-30T23:11:38.141Z",
+   "auto": true
+  }
+ ],
+ "windows": [
+  {
+   "before": {
+    "fiveHour": 45,
+    "week": 67,
+    "at": "2026-10-30T23:08:17.144Z"
+   },
+   "after": {
+    "fiveHour": 45,
+    "week": 67,
+    "at": "2026-10-30T23:08:17.144Z"
+   }
+  }
+ ],
+ "change": {
+  "shortstat": "3 files changed, 246 insertions(+), 25 deletions(-)",
+  "files": [
+   "M\tsrc/count.ts",
+   "M\tsrc/languages.ts",
+   "M\ttest/count.test.ts"
+  ]
+ },
+ "check": true,
+ "build": true,
+ "acceptance": {
+  "passed": 8,
+  "total": 8,
+  "failed": []
+ },
+ "symbioteFindings": [
+  "info signature-changed src/count.ts#Open: Open changed its signature; 1 of 4 users not updated: countLines",
+  "info signature-changed src/languages.ts#Syntax: Syntax changed its signature compatibly; existing users keep working (23 users, 18 untouched)"
+ ],
+ "blind": {
+  "n": 5,
+  "cost": 0.6592975999999999
+ }
+}

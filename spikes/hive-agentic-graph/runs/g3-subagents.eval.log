@@ -1,0 +1,65 @@
+{
+ "run": "/tmp/hive-spike-b89c2d5a/runs/g3-subagents",
+ "mode": "subagents",
+ "profile": "real",
+ "status": "done",
+ "head": "6b387fbdd3a61db550143ec36065226125dfe686",
+ "cost": 1.208,
+ "byRole": {
+  "main": {
+   "calls": 1,
+   "cost": 1.2077925000000005,
+   "ms": 334787
+  }
+ },
+ "calls": 1,
+ "wallMinutes": 5.6,
+ "gates": [
+  {
+   "kind": "land",
+   "node": "goal",
+   "at": "2026-10-30T22:56:07.301Z",
+   "auto": true
+  }
+ ],
+ "windows": [
+  {
+   "before": {
+    "fiveHour": 21,
+    "week": 65,
+    "at": "2026-10-30T22:50:31.598Z"
+   },
+   "after": {
+    "fiveHour": 21,
+    "week": 65,
+    "at": "2026-10-30T22:50:31.598Z"
+   }
+  }
+ ],
+ "change": {
+  "shortstat": "4 files changed, 250 insertions(+), 21 deletions(-)",
+  "files": [
+   "M\tsrc/count.ts",
+   "M\tsrc/index.ts",
+   "M\tsrc/languages.ts",
+   "M\ttest/count.test.ts"
+  ]
+ },
+ "check": true,
+ "build": true,
+ "acceptance": {
+  "passed": 8,
+  "total": 8,
+  "failed": []
+ },
+ "symbioteFindings": [
+  "info signature-changed src/count.ts#closeAt: closeAt changed its signature; its only user was updated",
+  "info signature-changed src/count.ts#Open: Open changed its signature; 1 of 3 users not updated: countLines",
+  "info signature-changed src/languages.ts#Syntax: Syntax changed its signature compatibly; existing users keep working (23 users, 18 untouched)"
+ ],
+ "blind": {
+  "n": 3,
+  "cost": 0.925652
+ }
+}
+
