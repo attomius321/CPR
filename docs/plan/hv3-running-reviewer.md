@@ -228,6 +228,13 @@ kept); resuming an interrupted review; the graph (HV4); usage pacing (HV5).
   no command of its own for another program's commands. So reviews run on Linux only; macOS's
   `sandbox-exec` is not built (it could not be checked here). Without bubblewrap, no reviewer starts
   and landing is asked with a note.
+- **Every command allowed, in the sandbox** (`Bash` in the reviewer's allow rules). Measured with
+  `socat` from Ubuntu's package on `PATH` (no `sudo`: `apt download`, unpacked in `/tmp`): without
+  the rule, `dontAsk` refused a whole command line that wrote outside the copy or reached the
+  network, before it ran, and auto-allowed one that stayed inside; with it, the same line ran in the
+  sandbox: the write inside done, the write outside "Read-only file system", the network refused
+  ("deny network-outbound registry.npmjs.org"). A reviewer must build and test: the sandbox is the
+  confinement, `allowUnsandboxedCommands: false` its only way out closed.
 - **Claude Code refuses to start without its sandbox**: with `failIfUnavailable`, 2.1.316 here
   says "sandbox required but unavailable: … socat not installed". Symbiote reads that line: the
   review is `unavailable`, landing is asked with the note "not reviewed: Claude Code's sandbox is

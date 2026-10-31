@@ -110,9 +110,12 @@ describe("the reviewer's run (decisions 676, 677)", () => {
       autoAllowBashIfSandboxed: true,
       allowUnsandboxedCommands: false,
     });
+    // Every command allowed, and run in the sandbox: measured, a write outside its copy fails
+    // ("Read-only file system") and the network is refused. Without the rule, `dontAsk` refused a
+    // whole command line that reached outside before it ran.
     expect(settings.permissions).toEqual({
       defaultMode: 'dontAsk',
-      allow: ['Edit(./**)', 'Write(./**)'],
+      allow: ['Bash', 'Edit(./**)', 'Write(./**)'],
     });
     expect(settings.disableAllHooks).toBe(true);
   });

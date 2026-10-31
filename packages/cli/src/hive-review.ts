@@ -107,14 +107,14 @@ export const REVIEW_SCHEMA = {
 
 /**
  * The reviewer's settings file (decision 677): Claude Code's sandbox on, required, every command
- * in it and none outside; nothing asked (`dontAsk`), edits only in its copy; no hook of any
- * settings file. Given with `--setting-sources ""`: no user, project or local settings are read,
+ * allowed and run in it, none outside (a write outside its copy fails, the network is refused);
+ * nothing asked (`dontAsk`), edits only in its copy; no hook of any settings file. Given with `--setting-sources ""`: no user, project or local settings are read,
  * so neither the person's (their MCP servers, hooks, plugins) nor the branch's own reach it.
  */
 export function reviewerSettings(): string {
   const settings = {
     disableAllHooks: true,
-    permissions: { defaultMode: 'dontAsk', allow: ['Edit(./**)', 'Write(./**)'] },
+    permissions: { defaultMode: 'dontAsk', allow: ['Bash', 'Edit(./**)', 'Write(./**)'] },
     sandbox: {
       enabled: true,
       failIfUnavailable: true,
