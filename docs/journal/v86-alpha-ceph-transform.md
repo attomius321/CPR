@@ -66,7 +66,7 @@ busy; `hive.nucleus` at the end of Alpha Ceph's instructions; one sentence in th
 **Verification**: unit tests red first (prompts: the new key in the Hive group, the text at the
 end, main's Nucleus text unchanged by SHA-256; server: 5 cases); e2e written first but first run
 after the code: the question's sentence, the session removed and the next started with and
-without Hive's text, one answering kept. See the plan's results for the suite.
+without Hive's text, one answering kept. `pnpm check` 2,691 unit tests; `pnpm test:e2e` 381 of 381 and the nexus 20 of 20 (the first run caught `hive-loop.spec`'s pinned Hive group, updated, and a merge log's wait under load, which passed alone and in the rerun). The question and Settings' new entry screenshotted at 1×.
 
 Not verified: a real Claude Code or Codex conversation given the Hive text (the fake agent's
 arguments only); another window on Nucleus's page while the conversation is replaced (its own
