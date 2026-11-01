@@ -58,7 +58,7 @@ export function useNucleusPhase(): NucleusPhase {
   return useSyncExternalStore(subscribeNucleus, nucleusPhase, nucleusPhase);
 }
 
-const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 
 /**
  * `from` changing over to `to`, `ms` in: from the left, each letter starts to scramble 30 ms after

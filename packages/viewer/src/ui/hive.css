@@ -122,7 +122,7 @@
   fill: none;
   stroke: currentColor;
   transform-origin: 12px 12px;
-  animation: alpha-ceph-ring 550ms cubic-bezier(0.4, 0, 0.2, 1) 0ms both;
+  animation: alpha-ceph-ring 760ms cubic-bezier(0.4, 0, 0.2, 1) 0ms both;
 }
 
 .hive-mind-icon.becoming .was-dot {
@@ -134,7 +134,7 @@
 }
 
 .hive-mind-icon.becoming .cell {
-  animation: alpha-ceph-boot 260ms step-end calc(400ms + var(--k) * 80ms) both;
+  animation: alpha-ceph-boot 260ms step-end calc(340ms + var(--k) * 80ms) both;
 }
 
 .hive-mind-icon.becoming .cell.core {
@@ -144,7 +144,6 @@
 }
 
 .hive-mind-icon.becoming .flare {
-  fill: #ffffff;
   stroke: none;
   animation: alpha-ceph-flare 950ms ease-out 250ms both;
 }
@@ -159,11 +158,18 @@
     opacity: 1;
   }
 
-  45% {
+  35% {
     stroke-dasharray: 5 5;
     stroke-dashoffset: 2.5;
     transform: scale(0.8);
     opacity: 1;
+  }
+
+  70% {
+    stroke-dasharray: 2 8;
+    stroke-dashoffset: 1;
+    transform: scale(0.75);
+    opacity: 0.8;
   }
 
   100% {
@@ -174,7 +180,7 @@
   }
 }
 
-/* The dot swells and heats to white, then is gone into the core's flare. */
+/* The dot swells and heats to the lamp's crimson, then is gone into the core's white-hot flare. */
 @keyframes alpha-ceph-dot {
   0% {
     transform: scale(1);
@@ -185,15 +191,15 @@
 
   55% {
     transform: scale(2.2);
-    fill: #ffffff;
-    stroke: #ffffff;
+    fill: var(--art-icon-lamp);
+    stroke: var(--art-icon-lamp);
     opacity: 1;
   }
 
   100% {
     transform: scale(2.6);
-    fill: #ffffff;
-    stroke: #ffffff;
+    fill: var(--art-icon-lamp-hot);
+    stroke: var(--art-icon-lamp-hot);
     opacity: 0;
   }
 }
@@ -255,7 +261,7 @@
   }
 }
 
-/* The core white-hot as it ignites, cooling, one pulse as the last cells boot, then its rest. */
+/* The whole core white-hot as it ignites (its chamber's gradient over its plate), cooling, one pulse as the last cells boot, then its rest. */
 @keyframes alpha-ceph-flare {
   0% {
     opacity: 0;

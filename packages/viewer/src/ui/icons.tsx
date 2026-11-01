@@ -77,8 +77,8 @@ const MIND_CELLS = iconCells().map((cell) => ({
   chamber: hexagon(cell.x, cell.y, cell.chamber),
 }));
 
-/** The core's chamber, for its flare as Nucleus becomes Alpha Ceph. */
-const CORE_CHAMBER = MIND_CELLS.find((cell) => cell.core)?.chamber ?? '';
+/** The core's plate, for its white-hot flare as Nucleus becomes Alpha Ceph. */
+const CORE_PLATE = MIND_CELLS.find((cell) => cell.core)?.plate ?? '';
 
 /**
  * Alpha Ceph (decision 684): the Hive Mind of Hive's arrival (decision 666), small and still — its
@@ -137,7 +137,7 @@ export function HiveMindIcon({ becoming }: { becoming?: boolean } = {}) {
       ))}
       {becoming && (
         <>
-          <polygon className="flare" points={CORE_CHAMBER} />
+          <polygon className="flare" points={CORE_PLATE} fill={`url(#${id}core)`} />
           <circle className="was-ring" cx="12" cy="12" r="10" pathLength="60" />
           <circle className="was-dot" cx="12" cy="12" r="1" />
         </>
