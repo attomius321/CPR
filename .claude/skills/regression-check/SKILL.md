@@ -28,12 +28,12 @@ Copy and track:
 
 ```
 - [ ] 1. Clone the sets' repos (once per machine)
-- [ ] 2. Build a baseline worktree of main
+- [ ] 2. Build main in a folder of your own
 - [ ] 3. Build this checkout
 - [ ] 4. Run each set on both, compare
 - [ ] 5. Explain every difference; fix and repeat until each one is intended
 - [ ] 6. Record the result (journal entry, commit message)
-- [ ] 7. Remove the baseline worktree
+- [ ] 7. Remove the folder
 ```
 
 **1. Clone** into `$SYMBIOTE_REGRESSION_DIR` (default `~/.cache/symbiote-regression`). Blobless clones;
@@ -43,32 +43,36 @@ the RealWorld experiment branches are recreated from `scripts/regression/patches
 node scripts/regression/setup.mjs r1 bitwarden qwik-docs   # or: all
 ```
 
-**2. Baseline** — a detached worktree, so `main` stays free to check out:
+**2. Baseline** — `main` from `git archive`, in a folder no other session uses. A Symbiote
+workspace may not add a worktree (its start prompt), and workspaces run side by side, so a fixed
+path such as `/tmp/symbiote-base` is someone else's build too. Each shell command starts a new
+shell: note the folder `mktemp` prints and use it in the next steps.
 
 ```sh
 git fetch origin main
-git worktree add --detach /tmp/symbiote-base origin/main
-(cd /tmp/symbiote-base && pnpm install --frozen-lockfile --offline && pnpm build)
+base=$(mktemp -d /tmp/symbiote-base-XXXXXX) && echo "$base"
+git archive origin/main | tar -x -C "$base"
+(cd "$base" && pnpm install --frozen-lockfile --offline && pnpm build)
 ```
 
-Compare against the branch's merge-base instead of `main` when `main` has moved on with
-analysis changes of its own.
+Compare against the branch's merge-base instead (`git archive $(git merge-base HEAD
+origin/main)`) when `main` has moved on with analysis changes of its own.
 
-**3–4. Run and compare**:
+**3–4. Run and compare**, the results in the same folder:
 
 ```sh
 pnpm build
-node scripts/regression/run.mjs --set r1 --symbiote /tmp/symbiote-base --out /tmp/r1-base.json
-node scripts/regression/run.mjs --set r1 --out /tmp/r1-head.json
-node scripts/regression/compare.mjs /tmp/r1-base.json /tmp/r1-head.json
+node scripts/regression/run.mjs --set r1 --symbiote "$base" --out "$base/r1-base.json"
+node scripts/regression/run.mjs --set r1 --out "$base/r1-head.json"
+node scripts/regression/compare.mjs "$base/r1-base.json" "$base/r1-head.json"
 ```
 
 To measure a plugin's effect instead (same build, plugin off then on):
 
 ```sh
-node scripts/regression/run.mjs --set qwik-docs --no-plugins --out /tmp/q-off.json
-node scripts/regression/run.mjs --set qwik-docs --out /tmp/q-on.json
-node scripts/regression/compare.mjs /tmp/q-off.json /tmp/q-on.json
+node scripts/regression/run.mjs --set qwik-docs --no-plugins --out "$base/q-off.json"
+node scripts/regression/run.mjs --set qwik-docs --out "$base/q-on.json"
+node scripts/regression/compare.mjs "$base/q-off.json" "$base/q-on.json"
 ```
 
 **5. Read the output.** `compare.mjs` prints only comparisons that differ (edges `-`/`+`,
@@ -88,7 +92,7 @@ findings `-`/`+`, errors), then totals and the time ratio after/before.
 **6. Record** the totals in the journal entry's "Verification" (e.g. "29 comparisons identical:
 932 edges, no finding changed; Bitwarden 10 identical") and in the commit message.
 
-**7. Clean up**: `git worktree remove --force /tmp/symbiote-base`.
+**7. Clean up**: `rm -rf "$base"` (the folder `mktemp` printed).
 
 ## Adding a comparison
 

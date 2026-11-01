@@ -372,3 +372,4 @@ merge commit.
 - 2026-11-01 [V87 plan — the research and three designs](journal/v87-readable-type.md)
 - 2026-11-01 [V87a, V87b — design B and the target check, built](journal/v87-readable-type.md)
 - 2026-11-01 [V87c — Settings' text size, built](journal/v87-readable-type.md)
+- 2026-11-01 [The milestone, regression-check and viewer-check skills for workspaces](journal/chore-milestone-skill-workspaces.md)

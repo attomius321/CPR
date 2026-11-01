@@ -1,7 +1,7 @@
 # A milestone's plan — template
 
-Create `docs/plan/<id>-<slug>.md` (the slug from the branch: `milestone/v29-workbench` →
-`v29-workbench.md`) and its journal of the same name (journal-template.md). Write for a reviewer
+Create `docs/plan/<id>-<slug>.md` (the slug a few words of the title, `v87-readable-type.md`,
+whatever the branch is called) and its journal of the same name (journal-template.md). Write for a reviewer
 who has not seen the conversation: short sentences, measured numbers, real file and commit names.
 `v6-navigable-graph.md`, `w1-multi-project.md` and `q1-q2-qwik.md` are good examples.
 
@@ -10,7 +10,8 @@ who has not seen the conversation: short sentences, measured numbers, real file 
 
 [Index](../PLAN.md) · [Journal](../journal/<id>-<slug>.md)
 
-**Status:** planned (<date>), on branch `milestone/<id>-<slug>`; not started.
+**Status:** planned (<date>), on branch `<branch>` (the workspace's, from `main` at `<sha>`; or
+`milestone/<id>-<slug>` outside a workspace); not started.
 
 **Problem** (asked: "<the user's words>"). What happens today, measured: a table of real changes
 (repo, commit, the numbers that show the problem). What causes it, in two or three points.
@@ -66,7 +67,7 @@ cost in time.
 ```
 
 And its row in the index in `docs/PLAN.md`, at the end of its area (rows are in the order
-built; ✅ once merged):
+built; ✅ once merged, set on `main` by `scripts/plan/mark-merged.mjs`, not on your branch):
 
 ```markdown
 | [<ID>](plan/<id>-<slug>.md) | <title in a few words> | planned | <decisions, e.g. 290–293> | [journal](journal/<id>-<slug>.md) |
