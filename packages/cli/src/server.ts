@@ -59,6 +59,7 @@ import {
   parseWorkspaceDiff,
   parseWorkspaceOpen,
   parseWorkspaceReply,
+  parseWorkspaceSent,
   parseWorkspaceRequest,
   parseSuggestRequest,
   parseWorkspaceTerminal,
@@ -73,7 +74,7 @@ import type { Workspaces } from './workspaces.js';
 import { STATE_NAMES, type StateName, type StateStore } from './state.js';
 import { MAX_DOCUMENT_BYTES } from './workspace-documents.js';
 import { WorkspaceRefused } from './workspace-record.js';
-import { MergeRefused, type Merger } from './merges.js';
+import { MergeRefused, sendFailure, type Merger } from './merges.js';
 import { parsePromptChange, PromptRefused, type PromptSettingsService } from './prompts.js';
 import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';
@@ -585,7 +586,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       );
     }
     if (merges && url.pathname.startsWith('/api/merges')) {
-      return mergesRoute(req, res, url, merges);
+      return mergesRoute(req, res, url, merges, repository.workspaces);
     }
     const terminal = repository.terminals ? TERMINAL_PATH.exec(url.pathname) : null;
     if (terminal && repository.terminals) {
@@ -837,6 +838,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         oneAtATime(res, 'a message is being sent', () => workspaces.reply(request)),
       );
     }
+    if (url.pathname === '/api/workspaces/sent') {
+      return written(req, res, parseWorkspaceSent, (request) =>
+        answer(res, () => workspaces.noteSent(request).then(() => ({ noted: true }))),
+      );
+    }
     if (url.pathname === '/api/workspaces/clean') {
       return written(req, res, parseWorkspaceClean, (request) =>
         answer(res, () => workspaces.clean(request)),
@@ -931,6 +937,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     res: ServerResponse,
     url: URL,
     merges: Merger,
+    workspaces?: Workspaces,
   ): Promise<void> {
     if (url.pathname === '/api/merges') {
       if (req.method === 'GET') return answer(res, () => merges.list());
@@ -959,6 +966,16 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
     if (url.pathname === '/api/merges/recheck') {
       return written(req, res, parseMergeId, (id) => answer(res, () => merges.recheck(id)));
+    }
+    // A failed check sent to the branch's agent, on the person's press (AR2, decision 742).
+    if (url.pathname === '/api/merges/send') {
+      return written(req, res, parseMergeId, (id) =>
+        workspaces
+          ? oneAtATime(res, 'a message is being sent', () =>
+              sendFailure(merges, (request) => workspaces.reply(request), id),
+            )
+          : Promise.resolve(json(res, 409, { error: 'no workspaces here to send it to' })),
+      );
     }
     // A fast-forward its target can no longer take, merged with a merge commit (V67).
     if (url.pathname === '/api/merges/merge-commit') {
@@ -1445,9 +1462,38 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     return written(req, res, parseHiveChange, ({ on }) =>
       answer(res, async () => {
         await hive.set(on);
+        // After the answer: the arrival does not wait on an agent's start.
+        void nucleusFollows(on).catch((error: unknown) =>
+          log.log.warn({ err: error }, "Nucleus's conversation did not follow Hive"),
+        );
         return { on };
       }),
     );
+  }
+
+  /**
+   * Nucleus's conversation follows Hive mode (V86, decision 750): one started under the other name
+   * ends and the next opens under the new one (Alpha Ceph told what Hive does), unless it is
+   * answering, waits on a dialog or on the person's Confirm: then it keeps its name, and its page
+   * says how to start the next (decision 686). One at a time with the page's own starts.
+   */
+  async function nucleusFollows(on: boolean): Promise<void> {
+    const nucleus = repository?.nucleus;
+    if (!nucleus) return;
+    const { conversation } = await nucleus.state();
+    const name = on ? NUCLEUS_NAMES.hive : NUCLEUS_NAMES.off;
+    if (!conversation || (conversation.name ?? NUCLEUS_NAMES.off) === name) return;
+    if (conversation.state === 'working' || conversation.state === 'needs-you') return;
+    if (mcp?.asks().asks.some((ask) => ask.by.via === 'nucleus')) return;
+    const words = 'Nucleus is being asked';
+    if (busy.has(words)) return;
+    busy.add(words);
+    try {
+      await nucleus.renew();
+      await nucleus.open({});
+    } finally {
+      busy.delete(words);
+    }
   }
 
   /**

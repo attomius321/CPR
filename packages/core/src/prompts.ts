@@ -17,6 +17,8 @@ export type PromptKey =
   | 'verdict.where'
   | 'reviews'
   | 'merger'
+  /** What Send to the agent types into a branch's workspace when its merge's check failed (AR2). */
+  | 'merge.failed'
   /**
    * Nucleus's instructions, its system prompt (V35, V50); `prompts.scout` before NU1, still read
    * while there is no `prompts.nucleus` (decision 590).
@@ -39,7 +41,9 @@ export type PromptKey =
   /** What Hive sends the writer with the tests its running reviewer proved defects with (HV3). */
   | 'hive.review'
   /** The running reviewer's instructions, its appended system prompt (HV3). */
-  | 'hive.reviewer';
+  | 'hive.reviewer'
+  /** What Alpha Ceph is told of Hive, at its instructions' end while Hive mode is on (V86). */
+  | 'hive.nucleus';
 
 /** Every prompt, in the Settings page's order. */
 export const PROMPT_KEYS: readonly PromptKey[] = [
@@ -58,6 +62,7 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'verdict.where',
   'reviews',
   'merger',
+  'merge.failed',
   'nucleus',
   'scribe',
   'library',
@@ -67,6 +72,7 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'hive.commit',
   'hive.resume',
   'hive.reviewer',
+  'hive.nucleus',
 ];
 
 /** A name a prompt may hold as `{name}`, replaced by what it stands for when it is used. */

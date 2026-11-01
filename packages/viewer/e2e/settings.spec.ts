@@ -213,10 +213,15 @@ test("the merger's page: its Model, Effort and Instructions; its answer format, 
     'Model',
     'Effort',
     "InstructionsSymbiote's",
+    // AR2 (decision 742): what Send to the agent types when a merge's check failed, and its
+    // placeholders; the instructions have none.
+    "Check failedSymbiote's",
+    'Placeholders',
   ]);
   await expect(text(page, 'Instructions')).toHaveValue(
     /^You resolve merge conflicts for Symbiote\./,
   );
+  await expect(text(page, 'Check failed')).toHaveValue(/^Symbiote merged \{at\} into \{into\}/);
   await expect(part(page, 'Instructions').locator('.settings-fixed pre')).toContainText(
     'Answer with one JSON object and nothing else:',
   );

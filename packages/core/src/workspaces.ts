@@ -752,6 +752,17 @@ export interface ThreadQuestion {
 }
 
 /**
+ * Who sent a prompt (AR2, decision 741), as the thread's reader labels it: Symbiote's start
+ * prompt, the person, one of Symbiote's senders (from the note it wrote before sending), a
+ * background job's end (`<task-notification>`), or a subagent's hand-back (`<agent-message`).
+ */
+export type PromptFrom =
+  'start' | 'person' | 'hive' | 'nucleus' | 'merger' | 'verdict' | 'task' | 'subagent';
+
+/** Which of Symbiote's senders typed a message into a workspace's agent (AR2, decision 741). */
+export type SentBy = 'hive' | 'nucleus' | 'merger' | 'verdict';
+
+/**
  * One entry of a workspace's thread (V18c), as Symbiote's hooks recorded it from its agent's
  * sessions: a session's start and end, what it was given (Symbiote's prompt, then the person's
  * messages), what it reported at the end of a turn, what it waited on, and Claude Code's notices.
@@ -768,7 +779,11 @@ export type ThreadEntry = {
    * `transcript` here and on a start (V83): Claude Code's transcript of the session, as its hooks
    * name it (`transcript_path`), where the list reads what the agent runs on.
    */
-  | { kind: 'prompt'; text: string; transcript?: string }
+  /**
+   * `from` and `key` (AR2): who sent it and, for Symbiote's own, its prompt key, given by the
+   * thread's reader, never written by the hook.
+   */
+  | { kind: 'prompt'; text: string; transcript?: string; from?: PromptFrom; key?: string }
   | { kind: 'report'; text: string }
   /** A permission (`tool` and its input, cut at 4 KB) or a question (`questions`). */
   | { kind: 'asks'; tool: string; input?: string; questions?: ThreadQuestion[] }
@@ -803,6 +818,13 @@ export interface WorkspaceReply {
   text: string;
   /** Stop the agent's turn to send (it works, or waits on a prompt). */
   stop?: boolean;
+  /**
+   * Which of Symbiote's senders this is (AR2): noted in the thread before it is sent, so the
+   * prompt reads as theirs; absent for the person's own message.
+   */
+  by?: SentBy;
+  /** Its prompt key, when Symbiote wrote it from one (`hive.check`, `merge.failed`). */
+  key?: string;
 }
 
 /** A message sent to a workspace's agent. */

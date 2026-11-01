@@ -339,6 +339,8 @@ export {
   type WorkspaceTools,
   type PermissionMode,
   type TerminalAvailability,
+  type PromptFrom,
+  type SentBy,
   type ThreadEntry,
   type ThreadQuestion,
   type WorkKind,

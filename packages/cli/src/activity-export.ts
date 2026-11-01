@@ -11,6 +11,7 @@ import type {
   NucleusActivityLine,
   NucleusCall,
   NucleusEntry,
+  PromptFrom,
   ThreadEntry,
   TurnTokens,
   WorkspaceCommit,
@@ -360,6 +361,17 @@ function asked(entry: Extract<ThreadEntry, { kind: 'asks' }>, at: number | null,
   return heading(at, zone, `Asked: ${questions.map((q) => q.question).join('; ')}`, body);
 }
 
+/** A prompt's heading by who sent it (AR2, decision 741). */
+const SENDERS: Readonly<Record<Exclude<PromptFrom, 'task'>, string>> = {
+  start: "Symbiote's prompt",
+  person: "The person's message",
+  hive: "Hive's message",
+  nucleus: "Nucleus's message",
+  merger: "Symbiote's message",
+  verdict: 'The verdict, as Symbiote wrote it',
+  subagent: "A subagent's hand-back",
+};
+
 function workspacePieces(sources: WorkspaceSources, zone: string): Piece[] {
   const { record } = sources;
   const agent = agentName(record.agent?.kind);
@@ -393,20 +405,27 @@ function workspacePieces(sources: WorkspaceSources, zone: string): Piece[] {
         pieces.push(item(at, zone, `Session ended${entry.reason ? `: ${entry.reason}` : ''}`));
         break;
       case 'prompt': {
-        if (!firstPrompt && entry.text.trimStart().startsWith('<task-notification>')) {
+        // Who sent it, as the thread's reader labels it (AR2); else the first prompt is
+        // Symbiote's and the rest the person's, as before.
+        const from =
+          entry.from ??
+          (firstPrompt
+            ? 'start'
+            : entry.text.trimStart().startsWith('<task-notification>')
+              ? 'task'
+              : 'person');
+        firstPrompt = false;
+        if (from === 'task') {
           const summary = /<summary>([^<]+)<\/summary>/.exec(entry.text)?.[1]?.trim();
           pieces.push(item(at, zone, `A background task ended${summary ? `: ${summary}` : ''}`));
           break;
         }
-        const piece = heading(
-          at,
-          zone,
-          firstPrompt ? "Symbiote's prompt" : "The person's message",
-          [quote(entry.text)],
-        );
+        const keyed = entry.key ? ` (${code(entry.key)})` : '';
+        const piece = heading(at, zone, `${SENDERS[from]}${from === 'start' ? '' : keyed}`, [
+          quote(entry.text),
+        ]);
         piece.message = true;
         pieces.push(piece);
-        firstPrompt = false;
         break;
       }
       case 'report':

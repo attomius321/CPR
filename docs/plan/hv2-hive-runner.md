@@ -198,12 +198,18 @@ merges of `main` in HV7.
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 652 | Where a Hive workspace's state lives | **`symbiote/hive/<branch>.json` and `<branch>.jsonl` (events) beside the workspace records, written after each step; `hive: true` on the workspace record; in HV2 a goal is one workspace, named by its branch** | Decision 647, concrete: the records' place and naming; one workspace a goal (649) |
-| 653 | What drives a step | **The writer's session and thread as the card reads them, polled every 2 s while Hive is on: `writing` → `checking` → `landing` → `landed`, `stuck` at the cap; a turn's end counted only after Hive's message arrived; the person's message at `landing` or `stuck` starts the rounds again** | No new signal to keep: the hooks already record every turn; the sessions' list is read at most every 2 s and shared |
+| 653 | What drives a step | **The writer's session and thread as the card reads them, polled every 2 s while Hive is on: `writing` → `checking` → `landing` → `landed`, `stuck` at the cap; a turn's end counted only after Hive's message arrived; the person's message at `landing` or `stuck` starts the rounds again** (amended by fix/hive-runner-flaws: a commit already checked is not checked again, 716; a branch being landed is left to it, 717; a message is sent once its prompt is recorded, 718; a turn Hive cannot see stops, 719) | No new signal to keep: the hooks already record every turn; the sessions' list is read at most every 2 s and shared |
 | 654 | The check | **`merge.checks`, else the merger's guess, run by Symbiote in the workspace's worktree on a clean tree after a turn, in a process group of its own; its failure's command and last lines sent with `reply`; 3 rounds, then the person** | The person's answer: no second install (this repository's check: 396 s); HV1: the check stays the last word |
 | 655 | Hive off, on, and a restart | **Off: Hive's sessions stopped, a check's group killed, the step kept (`interrupted`); on or a restart: what the session shows first — a turn ended goes on, a stopped writer gets `hive.resume`, a check runs again; a restart never stops a `--bg` session** | HV1's trap: a killed call is not a finished step; `--bg` sessions outlive `symbiote view` |
 | 656 | Who drives | **One runner per repository, by a pid lock beside the records; another view reads only** | Two `symbiote view`s of one repository share its `symbiote/`; the merge queue's lock (V26) |
 | 657 | Hive's prompts | **`{hive}` in the start prompts (its line gone when not Hive's, the text added at a project prompt's end), and `hive.start`, `hive.check`, `hive.commit`, `hive.resume` in a Hive group listed only in Hive mode** | The person's answers: new keys in a Hive group; a `{hive}` line only for Hive workspaces; Hive's settings only in Hive mode |
 | 658 | Which agents Hive drives | **Claude Code only; a start that picks Codex or Hermes while Hive is on is refused (409); the writer in the permission mode picked, no `bypassPermissions`** | The brief: Claude only for now; "every workspace started while Hive is on" stays true; the person's answers to questions 2 and 4 |
+| 716 | A commit already checked (fix/hive-runner-flaws) | **A turn that ends on a commit where a check of the same commands passed goes to the review with no check; a commit a review approved goes to landing with no review. A check that failed on the commit runs again** | HV3's record: three checks of `6da7d5a` after it passed at 13:59:20, the last one failing on a flaky e2e test; a flaky failure still gets its retry |
+| 717 | A branch being landed (fix/hive-runner-flaws) | **Merged, or in the merge queue (any state but `landed` and `failed`): Hive sends nothing (a message not sent yet is dropped), starts no check or review and stops one that runs, keeping no result; queued → `landing`, merged → `landed`. A check or review that ends meanwhile is kept, and nothing is sent** | HV3's record: the failure was sent at 14:19:23 while the merge queue checked the merge; `main` moved at 14:22:42, so "merged" alone would not have caught it. The person: queued counts |
+| 718 | What `sent` means (fix/hive-runner-flaws) | **Its prompt is in the thread; Claude Code's answer alone is `taken`** | The honeycomb record said `sent` for a message no hook ever recorded |
+| 719 | A turn Hive cannot see (fix/hive-runner-flaws) | **No prompt recorded 60 s after its message was taken (or since its turn began), or Claude Code took it into a copy of the session: `stuck`, its note says why; the writer is left as it is, nothing sent again** | The honeycomb workspace waited at `writing` from 17:00 until the next day, the card saying nothing; a message sent again would go to the same unseen session |
+| 720 | A reply to a live session (fix/hive-runner-flaws; amends 107) | **After `claude stop`, wait until `claude agents` lists no process for the session and every terminal of this view attached to it has ended (read every 200 ms, at most 10 s, else refused), then resume; in both modes** | The honeycomb resume at 17:00:13 started a copy, `337836a3`, without the hooks, its terminal attached. Measured with Claude Code 2.1.316: a resume right after the stop started a copy in 3 of 4 rounds, 4 of 4 with a terminal attached; once the process left the list (155–202 ms), 0 of 4, but 3 of 4 with a terminal attached, whose client ends about 1 s after the stop. The person: in both modes |
+| 721 | The hook the settings name (fix/hive-runner-flaws) | **A copy of `agent-hook.js` and the modules it runs in Symbiote's cache (`hooks/<content>/`), never removed; a hook given (tests) is used as it is; in both modes** | A `symbiote view` built in a worktree writes its own hook's path into `symbiote/claude-settings.json` (HV2's real run); once that worktree is deleted, sessions started then record nothing. The person: in both modes |
 
 **Not in HV2 (later)**: the running reviewer and its Settings (HV3, Opus at high effort by
 default); the graph, new plans and merges of `main` (HV7); usage read before each start (HV5);
@@ -286,3 +292,99 @@ Codex in any Hive role.
   path; the person's view writes its own back at its next list. Both record the same thread.
 - **A check run again says why.** The real run's events went `off`, `check-stopped`, then a bare
   `check-started` when Hive came on again; an `on` event comes first now (`cc38a36`).
+
+## Fix: Hive's runner, three flaws (fix/hive-runner-flaws)
+
+**Problem**: three flaws in the runner, each in real records on 2026-10-31 (times UTC).
+
+1. **A message at landing checked the same commit again.** `feature/hv3-running-reviewer`: the
+   check passed on `6da7d5a` at 13:59:20; the person's messages at 14:10:24, 14:11:04 and 14:11:46
+   each started the rounds again, and each turn that ended on `6da7d5a` ran the whole check
+   again (about 450 s). The last one failed on a flaky e2e test.
+2. **A check's failure went to a branch being landed.** The person queued HV3 to merge at about
+   14:12; the merge queue made its merge commit (`d40cde5`) at 14:12:29 and ran its own check.
+   Hive's check of the same commit, started at 14:11:52, failed at 14:19:21 (two e2e suites at
+   once), and `hive.check` reached the writer at 14:19:23. `main` moved only at 14:22:42 (its
+   reflog), so a test of "merged" would not have caught it: the branch was in the queue.
+3. **A turn Hive never saw left the workspace at `writing`, with no sign.**
+   `feature/hive-honeycomb-background`: `hive.review` was sent at 17:00:12. Symbiote's reply
+   stopped the idle session `6f914615` (its end recorded at 17:00:13.144) and resumed it at once;
+   Claude Code took the message into a **copy**, `337836a3` (its first line at 17:00:14.647),
+   without the session's `--settings`. The copy did the round's work (commit `092548c` at
+   17:17:28) and recorded nothing: 0 entries in the thread and in Activity. `reply` answered
+   `copy: "337836a3"`; Hive ignored it and wrote `sent`. Its record waited at round 2's `writing`
+   until the next day, the card saying "Hive: reading its turn". A message the next day (00:48:13)
+   resumed the copy, the newest session, and was not recorded either. The brief's guess, a hook
+   path gone with a worktree, was not the cause this time: `claude-settings.json` was last written
+   at 10:38 and named the main checkout's build, which exists. It is a real hazard all the same
+   (HV2's real run: a second view rewrites that file with its own build's path).
+
+**Decisions 716–721** (the table above; 653, 674 and V18's 107 amended).
+
+- **No second check of a commit** (`checking`, `reviewing` in `hive-runner.ts`): a turn that ends
+  on a commit where a check of the same commands passed goes straight to the review (event
+  `reviewing` with `passed`); a commit a review approved goes straight to landing (`landing` with
+  `reviewed`). A review round the writer ends with no commit runs the review again, not the check.
+  A failed check on the commit runs again: a flaky failure keeps its retry.
+- **A branch being landed** (`landingOf`, `leaveTo`): merged, or an entry of the merge queue
+  (`state/<repo>/merges.json`, read as a file: the merger's `list` would start a merge it finds
+  queued) in any state but `landed` and `failed`. Checked before a message is sent, before a check
+  or review starts, at each look while one runs (stopped, no result kept) and when one ends (kept,
+  nothing sent). Merged → `landed`; queued → `landing`, where Hive does nothing while the queue
+  has it. Events: `landed`/`landing` with `stopped: check|review` or `queued: true`.
+- **`sent` is proven** (`deliver`): after `reply`, the thread is read again; the message's prompt
+  there → `sent`; else `taken` (its time) and `copy` (the copy's ID when `reply` names one), event
+  `taken`. A taken message whose prompt comes later is marked `sent` at the next look.
+- **A turn Hive cannot see** (`unseen`): in `writing`, no prompt since the step began 60 s after
+  the message was taken (or since the turn began, when Hive sent nothing), or a copy at once →
+  `stuck` with a note, event `stuck` with `unseen`. The card says "Hive stopped: the writer's
+  turn cannot be seen: no prompt recorded after Hive's message at 17:00 UTC (Claude Code took it
+  into a copy of its session, 337836a3, whose hooks record nothing)". The writer is left as it is.
+  A record an older runner marked `sent` with no prompt after it is caught the same way.
+- **The reply waits for the stop** (`workspaces.ts`, `processEnded`): after `claude stop`,
+  `claude agents` is read again (fresh, past its 2-s cache) every 200 ms until the session has no
+  process and every terminal this view opened on it (`claude attach`, remembered by session when
+  opened) has ended, at most 10 s (`stopWaitMs`), else 409 "its agent did not stop within 10 s:
+  try again" (Hive tries again at its next look). The stop ends an attached client by itself
+  (17:00:14.201 in the honeycomb's log): Symbiote waits for that rather than hang it up, since a
+  hung-up client is dropped from the list before its process ends. A client Symbiote did not open
+  (the person's own `claude attach`) cannot be waited for: a copy then is noticed (719). Both
+  modes.
+- **The hook's copy** (`agent-hook-copy.ts`): `agent-hook.js`, `thread.js` and
+  `tool-activity.js` (the hook's imports; a test keeps the list whole) copied once into
+  `<cache>/hooks/<16 hex of their content>/` beside a `package.json` that makes them ES modules,
+  written in a folder of its own and renamed into place; `claude-settings.json` names that copy.
+  Each build has its own folder, none is removed. A copy that fails names the build's own hook, as
+  before. Both modes.
+
+**As built** (what differs from the plan the person approved):
+
+- **The reply also waits for its own terminals on the session.** The plan waited for `claude
+  agents` alone. Measured: with a `claude attach` client on the session, that wait still let 3
+  of 4 resumes start a copy; the client ends about 1 s after the stop, and a resume before that
+  is taken as one of a running session. Waiting for it too: 0 of 4 (decision 720).
+- **A turn is "unseen" only while its agent works, waits or has finished a turn.** An agent that
+  never started, failed or was stopped has no turn for Hive to wait for, and its card already
+  says why ("Not started: …", "Its agent failed"); the rule would have replaced those words.
+- **The runner reads the merge queue's file**, not the merger's `list`, which starts a merge it
+  finds queued.
+- **The e2e test drives a copy** (the fake Claude Code's new `copies`) rather than silent hooks
+  and the 60-s delay; the delay is the unit tests'.
+- **The measurement is kept**: `scripts/hive/resume-race.mjs`, to run again when Claude Code
+  changes (each round is a Haiku turn; it needs a folder Claude Code trusts).
+
+**Results.**
+
+- Tests first, each red for the right reason (the journal lists each): `hive-runner.test.ts` 14
+  new (47 in all), `workspaces.test.ts` 1, `agent-hook-copy.test.ts` 3, `hive-loop.spec.ts` 1
+  (red with `main`'s runner in `dist`). `pnpm check`: 2,685 tests. `pnpm build`. e2e: 374 viewer
+  and 20 nexus tests passed.
+- Claude Code 2.1.316, 20 rounds on one Haiku session (the journal has the table): a resume as
+  soon as `claude stop` answered started a copy in 3 of 4 rounds, 4 of 4 with a terminal
+  attached; with the wait as built, 0 of 4 and 0 of 4. Of the 10 copies, 9 recorded nothing.
+- Hive off: the runner is as on `main` (it reads nothing while Hive is off). What changes in both
+  modes, as the person asked: a reply to a live session waits 155–880 ms more before it resumes
+  (the wait measured), and `claude-settings.json` names the hook's copy in the cache.
+- Not verified: a real Hive round end to end through Symbiote's own terminal with real Claude
+  Code (a new workspace's worktree is a folder Claude Code does not trust, so `--bg` refuses it);
+  the waits were measured with the script, which does what the reply does.

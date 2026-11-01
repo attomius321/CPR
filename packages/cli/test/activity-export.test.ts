@@ -367,6 +367,56 @@ const nucleusLines: NucleusActivityLine[] = [
 
 const nucleus: NucleusSources = { of: 'nucleus', repository: 'Symbiote', lines: nucleusLines };
 
+describe("who sent each message, as the thread's reader labels it (AR2, decision 741)", () => {
+  it("heads Symbiote's own messages as theirs, not the person's", () => {
+    const at = (m: number) => `2026-11-01T08:${String(m).padStart(2, '0')}:00.000Z`;
+    const said = (m: number, text: string, from: string, key?: string): ThreadEntry => ({
+      at: at(m),
+      session: S1,
+      kind: 'prompt',
+      text,
+      from: from as never,
+      ...(key ? { key } : {}),
+    });
+    const text = markdown({
+      ...workspace,
+      tools: [],
+      commits: [],
+      entries: [
+        { at: at(0), session: S1, kind: 'start', source: 'startup' },
+        said(1, 'You are starting a new feature.', 'start'),
+        said(
+          2,
+          'Symbiote ran the check on feature/export at abc1234: `make` failed.',
+          'hive',
+          'hive.check',
+        ),
+        said(3, 'Rebase it on main.', 'nucleus'),
+        said(4, 'Approved the branch feature/export at abc1234.', 'verdict', 'verdict.approve'),
+        said(5, 'Symbiote merged abc1234 into main and ran the check.', 'merger', 'merge.failed'),
+        said(6, '<agent-message from="a1"> [Subagent hand-back] Found 3 callers.', 'subagent'),
+        said(
+          7,
+          '<task-notification>\n<summary>Background command "e2e" completed</summary>',
+          'task',
+        ),
+        said(8, 'Looks good', 'person'),
+      ],
+    });
+    expect(text).toContain("### 08:01:00 · Symbiote's prompt");
+    expect(text).toContain("### 08:02:00 · Hive's message (`hive.check`)");
+    expect(text).toContain("### 08:03:00 · Nucleus's message");
+    expect(text).toContain('### 08:04:00 · The verdict, as Symbiote wrote it (`verdict.approve`)');
+    expect(text).toContain("### 08:05:00 · Symbiote's message (`merge.failed`)");
+    expect(text).toContain("### 08:06:00 · A subagent's hand-back");
+    expect(text).toContain(
+      '- 08:07:00 · A background task ended: Background command "e2e" completed',
+    );
+    expect(text).toContain("### 08:08:00 · The person's message");
+    expect(text.match(/The person's message/g)).toHaveLength(1);
+  });
+});
+
 describe('Nucleus as Markdown (V84)', () => {
   const text = markdown(nucleus);
 

@@ -50,7 +50,9 @@ import { Resizer } from '../ui/Resizer.js';
 import { nextNucleusMark, type NucleusMark } from '../nucleus/page-agent.js';
 import { mergesWaiting, nucleusWaiting, scribeWaiting } from './waiting.js';
 import { useAsks } from './useAsks.js';
-import { useNucleusName } from './names.js';
+import { nucleusName as named, useNucleusName } from './names.js';
+import { useNucleusPhase } from './alpha-ceph.js';
+import { BecomingName } from './BecomingName.js';
 import { useShell, type Notice } from './shell-context.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import {
@@ -149,6 +151,8 @@ export function Sidenav({
   const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
   // Nucleus by its name: Alpha Ceph while Hive mode is on (decision 682).
   const nucleusName = useNucleusName();
+  // Nucleus becoming Alpha Ceph as this window turned Hive on (V86): only here does it play.
+  const becoming = useNucleusPhase() === 'becoming';
   const marks = useMemo(() => reviewMarks(reviews, nucleusName).marks, [reviews, nucleusName]);
   const route = shell?.route;
   const queued = merges?.merges ?? [];
@@ -288,8 +292,10 @@ export function Sidenav({
           aria-current={route?.page === 'nucleus' ? 'page' : undefined}
           data-state={nucleusWaits ? 'waiting' : (nucleusMark ?? undefined)}
         >
-          <NucleusIcon />
-          <span className="sidenav-label">{nucleusName}</span>
+          <NucleusIcon becoming={becoming} />
+          <span className="sidenav-label">
+            {becoming ? <BecomingName from={named(false)} to={nucleusName} /> : nucleusName}
+          </span>
           <AgentMark waits={nucleusWaits} mark={nucleusMark} />
           <kbd aria-hidden="true">a</kbd>
         </a>

@@ -1,5 +1,6 @@
-import { useId, type ReactNode } from 'react';
+import { useId, type CSSProperties, type ReactNode } from 'react';
 import { useHive } from '../shell/hive.js';
+import { useAlphaCeph } from '../shell/names.js';
 import { iconCells } from './hive-art.js';
 import mark from './mark.png';
 import markLarge from './mark-96.png';
@@ -48,11 +49,12 @@ export const GitIcon = () => (
 
 /**
  * Nucleus (NU1; Scout's compass before): a nucleus in its ring, lucide's circle-dot (ISC); while
- * Hive mode is on, Alpha Ceph's Hive Mind (decision 684).
+ * Hive mode is on, Alpha Ceph's Hive Mind (decision 684). `becoming`: the sidenav's, playing
+ * Nucleus's change into it (V86).
  */
-export function NucleusIcon() {
-  return useHive() ? (
-    <HiveMindIcon />
+export function NucleusIcon({ becoming }: { becoming?: boolean } = {}) {
+  return useAlphaCeph() ? (
+    <HiveMindIcon becoming={becoming} />
   ) : (
     <Icon lucide>
       <circle cx="12" cy="12" r="10" />
@@ -75,16 +77,29 @@ const MIND_CELLS = iconCells().map((cell) => ({
   chamber: hexagon(cell.x, cell.y, cell.chamber),
 }));
 
+/** The core's plate, for its white-hot flare as Nucleus becomes Alpha Ceph. */
+const CORE_PLATE = MIND_CELLS.find((cell) => cell.core)?.plate ?? '';
+
 /**
  * Alpha Ceph (decision 684): the Hive Mind of Hive's arrival (decision 666), small and still — its
  * core and first ring, gunmetal plates lit from the upper left, crimson chambers, the core
  * white-hot. In its own colours (`--art-icon-*`, `hive.css`), not the text's: a link's state shows
  * in its band, its dot and its words.
+ *
+ * `becoming` (V86, decision 732): Nucleus's ring and dot drawn over the cells, and the cells
+ * numbered (`--k`) for `hive.css`'s animations: the ring breaks onto the ring cells, the dot ignites
+ * into the core, the cells boot clockwise. Every animation ends on the still icon, which this is
+ * without them.
  */
-export function HiveMindIcon() {
+export function HiveMindIcon({ becoming }: { becoming?: boolean } = {}) {
   const id = useId();
   return (
-    <svg className="icon hive-mind-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+    <svg
+      className={becoming ? 'icon hive-mind-icon becoming' : 'icon hive-mind-icon'}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      focusable="false"
+    >
       <defs>
         <linearGradient id={`${id}metal`} x1="0.2" y1="0" x2="0.8" y2="1">
           <stop className="metal-lit" />
@@ -103,7 +118,15 @@ export function HiveMindIcon() {
         </radialGradient>
       </defs>
       {MIND_CELLS.map((cell) => (
-        <g key={`${cell.x},${cell.y}`}>
+        <g
+          key={`${cell.x},${cell.y}`}
+          {...(becoming
+            ? {
+                className: cell.core ? 'cell core' : 'cell',
+                style: { '--k': cell.order } as CSSProperties,
+              }
+            : {})}
+        >
           <polygon className="plate" points={cell.plate} fill={`url(#${id}metal)`} />
           <polygon
             className="chamber"
@@ -112,6 +135,13 @@ export function HiveMindIcon() {
           />
         </g>
       ))}
+      {becoming && (
+        <>
+          <polygon className="flare" points={CORE_PLATE} fill={`url(#${id}core)`} />
+          <circle className="was-ring" cx="12" cy="12" r="10" pathLength="60" />
+          <circle className="was-dot" cx="12" cy="12" r="1" />
+        </>
+      )}
     </svg>
   );
 }

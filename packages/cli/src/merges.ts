@@ -46,6 +46,8 @@ import {
   type AgentLevels,
   type ModelChange,
   type Verdict,
+  type WorkspaceReplied,
+  type WorkspaceReply,
 } from '@symbiote/core';
 import { guessCheck, treeAt } from './check.js';
 import { CONFIG_FILES } from './plugins.js';
@@ -75,7 +77,7 @@ import {
 import { mergeLogs } from './merge-log.js';
 import { mergeQueue } from './merge-queue.js';
 import { runShell, type RunCheck } from './programs.js';
-import { PromptRefused, readPrompts, writeConfig } from './prompts.js';
+import { fillPrompt, PromptRefused, readPrompts, writeConfig } from './prompts.js';
 
 /**
  * What `symbiote/config.json` says of merges: `merge.checks` (one command or several),
@@ -178,6 +180,9 @@ const RUNNING = new Set<MergeEntry['state']>(['merging', 'resolving', 'checking'
 const OUTPUT_LINES = 60;
 
 const short = (sha: string) => sha.slice(0, 7);
+
+/** A failed check's characters sent to an agent at most, as Hive sends them (AR2). */
+const SENT_CHARS = 6_000;
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 /** `4.0 s`, `1 min 21 s`: as the page says a time. */
 const seconds = (ms: number) => {
@@ -301,6 +306,11 @@ export interface Merger {
   requestChanges(id: string, comments: string): Promise<MergeEntry>;
   /** Runs a resolution's failed check again on the same merge; the agent is not asked. */
   recheck(id: string): Promise<MergeEntry>;
+  /**
+   * A merge's failed check in words for its branch's agent (AR2, decision 742): `merge.failed`
+   * filled with the command and its last lines. Refused when its check did not fail.
+   */
+  failure(id: string): Promise<{ branch: string; text: string }>;
   /** Queues a fast-forward its target can no longer take as a merge commit instead (V67). */
   mergeCommit(id: string): Promise<MergeEntry>;
   /** Takes an entry out of the queue (not while it merges or checks), with its log. */
@@ -319,6 +329,19 @@ export interface Merger {
 
 /** Merges of `repo`, queued in Symbiote's cache; reviews and workspaces read where Symbiote keeps
  * them. */
+/**
+ * Sends a merge's failed check to its branch's agent (AR2, decision 742), as the merger's
+ * message: noted in the thread, so its prompt reads as Symbiote's (`merge.failed`).
+ */
+export async function sendFailure(
+  merges: Pick<Merger, 'failure'>,
+  reply: (request: WorkspaceReply) => Promise<WorkspaceReplied>,
+  id: string,
+): Promise<WorkspaceReplied> {
+  const { branch, text } = await merges.failure(id);
+  return reply({ branch, text, by: 'merger', key: 'merge.failed' });
+}
+
 export function merger(
   repo: GitRepo,
   cacheDir: string,
@@ -1109,6 +1132,22 @@ export function merger(
       logs.of(id).run('Check again');
       kick();
       return after;
+    },
+
+    async failure(id) {
+      const entry = await entryOf(id);
+      const check = entry.check;
+      if (check?.ok !== false || !check.failed) {
+        throw new MergeRefused(`${entry.branch}'s merge has no failed check to send`, 409);
+      }
+      const text = fillPrompt(readPrompts(root).text['merge.failed'], {
+        branch: entry.branch,
+        at: short(entry.head),
+        into: entry.into,
+        command: check.failed,
+        output: lastLines(check.output ?? '').slice(-SENT_CHARS),
+      });
+      return { branch: entry.branch, text };
     },
 
     async mergeCommit(id) {

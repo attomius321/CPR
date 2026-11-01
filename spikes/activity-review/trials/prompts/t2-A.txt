@@ -1,0 +1,66 @@
+The brief this change was written for:
+
+# Feature: a discount on the stock's value
+
+## Goal
+`Stock.total_value(discount)`: the stock's value less `discount` percent. The discount is a percentage from 0 to 100; anything else is refused with `ValueError`. Without a discount, the value is as today.
+
+## Out of scope
+- The report's format (`Stock.report`).
+
+The change on feature/discount-report: git diff 18753ab..37082af:
+
+```diff
+diff --git a/inventory/stock.py b/inventory/stock.py
+index ce6eebd..1e23639 100644
+--- a/inventory/stock.py
++++ b/inventory/stock.py
+@@ -31,10 +31,14 @@ class Stock:
+     def quantity(self, name):
+         return self._items.get(name, [0, 0])[0]
+ 
+-    def total_value(self):
+-        return sum(q * p for q, p in self._items.values())
++    def total_value(self, discount=0):
++        """The stock's value, less `discount` percent (0 to 100)."""
++        if discount < 0 or discount > 1000:
++            raise ValueError("discount must be between 0 and 100")
++        value = sum(q * p for q, p in self._items.values())
++        return value * (100 - discount) / 100
+ 
+     def report(self):
+         lines = [f"{name}: {q} x {p}" for name, (q, p) in sorted(self._items.items())]
+-        lines.append(f"total: {self.total_value()}")
++        lines.append(f"total: {self.total_value():.2f}")
+         return "\n".join(lines)
+diff --git a/tests/test_stock.py b/tests/test_stock.py
+index f41af3d..d905de1 100644
+--- a/tests/test_stock.py
++++ b/tests/test_stock.py
+@@ -28,10 +28,20 @@ class StockTests(unittest.TestCase):
+         s.add("pear", 1, 5)
+         self.assertEqual(s.total_value(), 11)
+ 
++    def test_total_value_with_discount(self):
++        s = Stock()
++        s.add("apple", 3, 2)
++        s.add("pear", 1, 5)
++        self.assertAlmostEqual(s.total_value(10), 9.9)
++
++    def test_negative_discount(self):
++        with self.assertRaises(ValueError):
++            Stock().total_value(-5)
++
+     def test_report(self):
+         s = Stock()
+         s.add("apple", 3, 2)
+-        self.assertEqual(s.report(), "apple: 3 x 2\ntotal: 6")
++        self.assertEqual(s.report(), "apple: 3 x 2\ntotal: 6.00")
+ 
+ 
+ if __name__ == "__main__":
+```
+
+Symbiote's check passed on 37082af in 75 s: `make check`.
+
+You work in a throwaway copy of the repository at 37082af. Read the project's own instructions first (CLAUDE.md, AGENTS.md, its README) for how it builds and tests.
