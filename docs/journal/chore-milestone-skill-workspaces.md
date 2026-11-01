@@ -60,7 +60,7 @@ to 119 lines, from 90; $1.07 and $1.06). The `git archive` baseline installed an
 and on this branch: ky and zod identical (271 edges); vite and RealWorld are not cloned on this
 machine, so 23 of 29 comparisons could not run, on either side. `measure.mjs` from the copy and
 from the branch on ky `0d59458`: first paint 193 and 192 ms, no page errors. `pnpm check` and
-`pnpm build` green.
+`pnpm build` green (192 test files, 2,739 tests).
 
 Not verified: a real workspace agent working with the new skill (the reader test reads the docs
 alone, without Claude Code's own instructions); the script's `--write` on today's `main` (it runs
