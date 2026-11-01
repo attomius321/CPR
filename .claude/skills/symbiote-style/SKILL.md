@@ -33,10 +33,10 @@ the primary), every page's panels as cards on its ground, line tabs, and type a 
    squares `#171a21`. Never one black for everything. Every page has one frame (V72, decisions
    507–511, the layout tokens in [tokens.md](tokens.md)). The page fills the main area at any
    width: nothing is centred. Its head (`PageHead`) sits on the ground: the page's icon in the
-   accent, the title, a muted line under it, the actions at the right. The title stands at x 60
-   on every page. The panels are cards under the head, from y 76, 16 px from the area's edges
-   and 16 px apart, 10 px radius, a `--line` hairline. Inside a card the words start 16 px in,
-   and a card's head (tabs, or a title and actions) is 48 px with a hairline under it. The
+   accent, the title, a muted line under it, the actions at the right. The title stands at x 52
+   on every page. The panels are cards under the head, from y 64, 12 px from the area's edges
+   and 8 px apart, 10 px radius, a `--line` hairline. Inside a card the words start 12 px in,
+   and a card's head (tabs, or a title and actions) is 37 px with a hairline under it. The
    person's mockups (Settings V62, Start a workspace V63, Skills V64, the merge page V69) keep
    their own parts inside this frame: the S in Start's head, the kinds as tabs with icons,
    seven cards with accent icons, a skill's text with line numbers, the merge's chips.
@@ -48,7 +48,7 @@ the primary), every page's panels as cards on its ground, line tabs, and type a 
    and a guard in `tokens.test.ts` keeps `--accent` to its roles. The hover stays a wash of the
    text.
 4. **Hierarchy by weight and opacity, not by colour or size.** 15 px for rows and nav, 14 px
-   secondary, 13 px captions, nothing smaller but uppercase labels (the `--size-*` scale, V32,
+   secondary, 13 px captions, 12 px uppercase labels, nothing smaller (the `--size-*` scale, V32,
    V61; the graph keeps V32's 14/13/12); weight 500 for labels and buttons, 600 for headings and
    a card's name; idle nav text and icons in `--muted`.
 5. **Soft geometry.** Controls and rows 8 px radius, panels and dialogs 10 px, menus 11 px, cards
@@ -66,9 +66,12 @@ look); a new look must keep them.
 - **Fonts**: `'Geist Variable', monospace` and `'Geist Mono Variable', monospace`, nothing else
   (V29a/V29b: a family name the system lacks cost 283–900 ms on Linux). No system font stack.
   Prefer an icon to a new symbol glyph.
-- **Type** (V32, V61): every font size from the `--size-*` scale on `:root`, never a px value (the
-  same test). V29b's 13 px body was too small to read, and V32's 14 still too small for the
-  person's eyes: 15 px body, nothing under 13 px. The graph re-declares V32's scale on
+- **Type** (V32, V61, V87): every font size from the `--size-*` scale on `:root`, never a px value
+  (the same test), and every line height its size and a leading, never px. V29b's 13 px body was
+  too small to read, V32's 14 still too small for the person's eyes, and V85's 13 px again (the
+  next day): 15 px body, nothing under 12 px (V87, decision 760). Settings' text size moves the
+  scale a step (Compact 14, Large 16); never shrink text to make something fit. Targets are 24 px
+  or spaced (WCAG 2.2's 2.5.8, `e2e/targets.spec.ts`). The graph re-declares V32's scale on
   `.react-flow` (decision 438): node widths are estimated from characters.
 - **Contrast** (`packages/viewer/test/tokens.test.ts`): text, muted and the accent ≥ 4.5:1 on the
   four backgrounds; white on the primary and its hover ≥ 4.5:1; states, `--faint`, `--focus` ≥

@@ -69,6 +69,66 @@ test('dark by default; Appearance in Settings makes it light, kept for this brow
   expect(await background(page)).toBe(LIGHT);
 });
 
+// V87c (decision 763): the text a step smaller or larger, in Settings' Appearance, for this
+// browser; only the text: a row, the graph's labels and the terminal keep their sizes.
+test('Appearance sets the text size: Compact, Default, Large, kept for this browser before the first paint', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  const body = () => page.evaluate(() => getComputedStyle(document.body).fontSize);
+  const textSize = () => page.getByRole('group', { name: 'Text size' });
+  await page.goto(`${symbiote.url}git`);
+  await expect(page.locator('.commit').first()).toBeVisible(POLL);
+  expect(await body()).toBe('15px');
+  const row = await page.locator('.commit').first().boundingBox();
+
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await openAppearance(page);
+  await expect(textSize().getByRole('button', { name: 'Default' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await textSize().getByRole('button', { name: 'Large' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-text-size', 'large');
+  expect(await body()).toBe('16px');
+  await textSize().getByRole('button', { name: 'Compact' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-text-size', 'compact');
+  expect(await body()).toBe('14px');
+  await textSize().getByRole('button', { name: 'Large' }).click();
+
+  // Set by the page's own script before React runs: no step from 15 to 16 px after the paint.
+  await page.addInitScript(() => {
+    const seen = () =>
+      ((window as { symbioteFirstSize?: string }).symbioteFirstSize ??=
+        document.documentElement.dataset.textSize);
+    document.addEventListener('readystatechange', seen, { once: true });
+  });
+  await page.goto(`${symbiote.url}git`);
+  expect(
+    await page.evaluate(() => (window as { symbioteFirstSize?: string }).symbioteFirstSize),
+  ).toBe('large');
+  await expect(page.locator('.commit').first()).toBeVisible(POLL);
+  expect(await body()).toBe('16px');
+  expect((await page.locator('.commit').first().boundingBox())!.height).toBe(row!.height);
+
+  // The graph keeps its own scale (decision 438): its labels' widths are estimated from it.
+  const [base, head] = symbiote.shas;
+  await page.goto(`${symbiote.url}diff/${base}..${head}/?view=graph`);
+  await expect(page.locator('.react-flow')).toBeVisible(POLL);
+  expect(
+    await page
+      .locator('.react-flow')
+      .evaluate((flow) => getComputedStyle(flow).getPropertyValue('--size-body').trim()),
+  ).toBe('14px');
+
+  // Default takes the mark away.
+  await page.goto(`${symbiote.url}settings`);
+  await openAppearance(page);
+  await textSize().getByRole('button', { name: 'Default' }).click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-text-size');
+  expect(await body()).toBe('15px');
+});
+
 test("System follows the system's scheme", async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}settings?prompt=appearance`);

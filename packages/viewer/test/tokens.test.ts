@@ -513,6 +513,27 @@ describe('the type scale (V32)', () => {
     expect(off).toEqual([]);
   });
 
+  // V87c (decision 763): Settings' text size moves the scale a step either side of design B
+  // (Compact is design A); only the sizes: the heights, the graph and the terminal stay.
+  it("moves only the sizes for Settings' text size: Compact 14 px, Large 16 px", () => {
+    expect(Object.fromEntries(tokens(":root[data-text-size='compact']"))).toEqual({
+      '--size-caps': '12px',
+      '--size-caption': '12px',
+      '--size-small': '13px',
+      '--size-body': '14px',
+      '--size-title': '17px',
+      '--size-code': '14px',
+    });
+    expect(Object.fromEntries(tokens(":root[data-text-size='large']"))).toEqual({
+      '--size-caps': '13px',
+      '--size-caption': '14px',
+      '--size-small': '15px',
+      '--size-body': '16px',
+      '--size-title': '19px',
+      '--size-code': '15px',
+    });
+  });
+
   it('names only sizes it has', () => {
     const used = new Set([...css.matchAll(/var\((--size-[a-z]+)\)/g)].map((m) => m[1]!));
     expect([...used].filter((name) => !base.has(name))).toEqual([]);

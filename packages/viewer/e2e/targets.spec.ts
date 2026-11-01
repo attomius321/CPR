@@ -67,7 +67,7 @@ for (const size of ['default', 'compact', 'large'] as const) {
       .getByRole('navigation', { name: 'Settings' })
       .getByRole('button', { name: 'Appearance' })
       .click();
-    await expect(page.getByRole('group', { name: 'Theme' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Text size' })).toBeVisible();
     await expectTargets(page, "Settings' Appearance");
 
     // A workspace and its review.

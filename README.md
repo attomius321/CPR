@@ -417,7 +417,8 @@ The sidenav also opens these pages. Each has a key.
   Hive checks or reviews, its card is in the sidenav's **Hive** group and says which command runs
   and for how long, and the Review tab shows the output as it comes; see
   [configuration](docs/reference/configuration.md#hive-mode)); and **Appearance** (dark, light or
-  your system's, and whether Git's commit details show on the right or below the commits).
+  your system's; the text size, Compact, Default or Large, which changes the text and not the rows;
+  and whether Git's commit details show on the right or below the commits).
 
 The status bar at the bottom shows how much of your Claude and Codex subscription limits you have
 used.
