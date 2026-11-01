@@ -14,7 +14,8 @@ import {
 } from './page-agent.js';
 import { NUCLEUS_ACTIVITY } from './nucleus-activity.js';
 import { NAME_ARG, openWorktrees } from './nucleus-gate.js';
-import { nucleusInstructions, readPrompts } from './prompts.js';
+import { HIVE_ROUNDS } from './hive-record.js';
+import { fillPrompt, nucleusInstructions, readPrompts } from './prompts.js';
 import { workspacesDir } from './workspace-record.js';
 import { readWorkspaceConfig } from './workspaces.js';
 
@@ -62,8 +63,15 @@ const NUCLEUS: PageAgentSpec = {
   ],
   prompt: (_root, text) => text,
   // Its name filled in, or told at the end (decision 685); a project's text from before V50 may
-  // still hold {question}: filled with nothing.
-  instructions: (root, name) => nucleusInstructions(readPrompts(root).text.nucleus, name),
+  // still hold {question}: filled with nothing. Alpha Ceph is told what Hive does (V86, 751).
+  instructions: (root, name) => {
+    const { text } = readPrompts(root);
+    const hive =
+      name === NUCLEUS_NAMES.hive
+        ? fillPrompt(text['hive.nucleus'], { rounds: String(HIVE_ROUNDS) })
+        : undefined;
+    return nucleusInstructions(text.nucleus, name, hive);
+  },
   codex: (root) => ({ cwd: root, writes: false }),
   // As its gate opens them to Claude Code: the checkout and the open workspaces' worktrees.
   codexReads: (root, where) => [root, ...openWorktrees(root, workspacesDir(where))],

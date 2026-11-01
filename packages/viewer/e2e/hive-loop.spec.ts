@@ -328,6 +328,8 @@ test("Settings lists Hive's prompts only while Hive is on", async ({ page }) => 
     'Not committed',
     'Resume',
     'Reviewer',
+    // What Alpha Ceph is told of Hive (V86, decision 751).
+    'Alpha Ceph',
   ]);
   await group.getByRole('button', { name: 'Check failed' }).click();
   await expect(

@@ -25,7 +25,13 @@ import {
   BranchNotMerged,
   GitRefused,
 } from '@symbiote/core';
-import type { HistoryRefs, HiveLogLine, NucleusActivityLine } from '@symbiote/core';
+import type {
+  HistoryRefs,
+  HiveLogLine,
+  NucleusActivityLine,
+  PageAgentConversation,
+  PageAgentState,
+} from '@symbiote/core';
 import type { Review } from '@symbiote/forge';
 import type { CodeMap } from '@symbiote/monitor';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -3177,6 +3183,145 @@ describe('/api/hive (V82)', () => {
   it('is not there without a record', async () => {
     const server = await start({ repository });
     expect((await fetch(new URL('/api/hive', server.url))).status).toBe(404);
+  });
+});
+
+describe("Nucleus's conversation follows Hive (V86, decision 750)", () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const servers: ViewServer[] = [];
+  let on = false;
+  const hive = {
+    on: () => Promise.resolve(on),
+    set: (value: boolean) => {
+      on = value;
+      return Promise.resolve();
+    },
+  };
+  /** A Nucleus whose conversation is `conversation`; what it was asked, in order. */
+  const nucleusWith = (conversation: Partial<PageAgentConversation> | null) => {
+    const done: string[] = [];
+    let now = conversation;
+    const state = () =>
+      Promise.resolve({ checkout: '/repo', agents: [], conversation: now } as PageAgentState);
+    const agent = {
+      state,
+      renew: () => {
+        done.push('renew');
+        now = null;
+        return state();
+      },
+      open: (request: unknown) => {
+        done.push(`open ${JSON.stringify(request)}`);
+        now = { state: 'ready', ...(on ? { name: 'Alpha Ceph' } : {}) };
+        return state();
+      },
+    } as unknown as PageAgent;
+    return { agent, done };
+  };
+  const merges = {
+    list: () => Promise.resolve({ merges: [] }),
+    targets: () => Promise.resolve({ branches: ['main'], into: 'main', head: C }),
+    enqueue: () => Promise.resolve({ id: 'm1' }),
+  } as unknown as Merger;
+  const start = async (nucleus: PageAgent) => {
+    const server = await startViewServer({
+      viewerDir: viewer,
+      hive,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        merges,
+        nucleus,
+      },
+    });
+    servers.push(server);
+    return server;
+  };
+  const post = (server: ViewServer, path: string, body: unknown, headers = {}) =>
+    fetch(new URL(path, server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1', ...headers },
+      body: JSON.stringify(body),
+    });
+  beforeAll(() => writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>'));
+  afterAll(async () => {
+    for (const server of servers) await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+
+  it('turned on, a Nucleus conversation at rest ends and Alpha Ceph opens; turned off, back', async () => {
+    on = false;
+    const { agent, done } = nucleusWith({ state: 'answered' });
+    const server = await start(agent);
+    expect((await post(server, '/api/hive', { on: true })).status).toBe(200);
+    await expect.poll(() => done).toEqual(['renew', 'open {}']);
+    // Alpha Ceph's now, at rest: off, Nucleus's again.
+    expect((await post(server, '/api/hive', { on: false })).status).toBe(200);
+    await expect.poll(() => done).toEqual(['renew', 'open {}', 'renew', 'open {}']);
+  });
+
+  it('leaves none, and one already named for the mode', async () => {
+    on = false;
+    const none = nucleusWith(null);
+    await post(await start(none.agent), '/api/hive', { on: true });
+    on = false;
+    const named = nucleusWith({ state: 'ready', name: 'Alpha Ceph' });
+    await post(await start(named.agent), '/api/hive', { on: true });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(none.done).toEqual([]);
+    expect(named.done).toEqual([]);
+  });
+
+  it.each(['working', 'needs-you'] as const)(
+    'keeps one that is %s: its page says how to start the next (decision 686)',
+    async (state) => {
+      on = false;
+      const { agent, done } = nucleusWith({ state });
+      await post(await start(agent), '/api/hive', { on: true });
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(done).toEqual([]);
+    },
+  );
+
+  it("keeps one whose Confirm waits for the person's answer", async () => {
+    on = false;
+    const { agent, done } = nucleusWith({ state: 'ready' });
+    const server = await start(agent);
+    const call = post(
+      server,
+      '/api/mcp',
+      {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'tools/call',
+        params: { name: 'queue_merge', arguments: { branch: 'feature/csv' } },
+      },
+      { 'x-symbiote-caller': 'nucleus' },
+    );
+    const asks = async () =>
+      (
+        (await (await fetch(new URL('/api/mcp/asks', server.url))).json()) as {
+          asks: { id: string }[];
+        }
+      ).asks;
+    await expect.poll(async () => (await asks()).length).toBe(1);
+    await post(server, '/api/hive', { on: true });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(done).toEqual([]);
+    const [ask] = await asks();
+    await post(server, '/api/mcp/answer', { id: ask?.id, yes: false });
+    await call;
   });
 });
 

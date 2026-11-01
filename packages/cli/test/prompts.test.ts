@@ -463,6 +463,28 @@ describe("Nucleus's name in its prompt (Alpha Ceph, decision 685)", () => {
     );
   });
 
+  it("tells Alpha Ceph what Hive does: Hive's text at the end (V86, decision 751)", () => {
+    const hive = fillPrompt(DEFAULT_PROMPTS['hive.nucleus'], { rounds: '3' });
+    expect(hive).toMatch(/^Hive mode is on\. Every workspace you start now is Hive's/);
+    expect(hive).toContain('for up to 3 rounds');
+    expect(hive).not.toMatch(/\{\w+\}/);
+    const on = nucleusInstructions(DEFAULT_PROMPTS.nucleus, NUCLEUS_NAMES.hive, hive);
+    expect(on).toBe(
+      `${nucleusInstructions(DEFAULT_PROMPTS.nucleus, NUCLEUS_NAMES.hive)}\n\n${hive}`,
+    );
+    // After the line that tells a project's text its name.
+    expect(nucleusInstructions('You are Nucleus.', NUCLEUS_NAMES.hive, 'Hive is on.')).toBe(
+      'You are Nucleus.\n\nHive mode is on: you are called Alpha Ceph, not Nucleus.\n\nHive is on.',
+    );
+    // Nucleus's, with Hive off: main's, whatever Hive's text.
+    const MAIN = 'be549465b6ac31a946aa643e45b57d00be8f0a397a49f23ec6345e29171f56af';
+    expect(
+      createHash('sha256')
+        .update(nucleusInstructions(DEFAULT_PROMPTS.nucleus, NUCLEUS_NAMES.off))
+        .digest('hex'),
+    ).toBe(MAIN);
+  });
+
   it("reaches a project's own text: {name} filled; without it, a line at the end in Hive mode only", () => {
     expect(nucleusInstructions('You are {name}. Be brief.', NUCLEUS_NAMES.hive)).toBe(
       'You are Alpha Ceph. Be brief.',
@@ -604,6 +626,7 @@ describe("Nucleus's prompt (V35, NU1)", () => {
       'hive.commit',
       'hive.resume',
       'hive.reviewer',
+      'hive.nucleus',
     ]);
   });
 });
@@ -757,6 +780,7 @@ describe("Hive's prompts (HV2, decision 657)", () => {
       ['hive.commit', 'Not committed'],
       ['hive.resume', 'Resume'],
       ['hive.reviewer', 'Reviewer'],
+      ['hive.nucleus', 'Alpha Ceph'],
     ]);
     // HV3: the message with the proven tests needs them; the reviewer's answer is Symbiote's.
     expect(of('hive.review')?.placeholders.find((p) => p.required)?.name).toBe('findings');
@@ -764,6 +788,11 @@ describe("Hive's prompts (HV2, decision 657)", () => {
     const without = withConfig({ prompts: { hive: { review: 'Fix it.' } } });
     expect(readPrompts(without).text['hive.review']).toBe(DEFAULT_PROMPTS['hive.review']);
     expect(of('hive.start')?.placeholders.map((p) => p.name)).toEqual(['check', 'rounds']);
+    // V86: what Alpha Ceph is told of Hive, in a project's config as `prompts.hive.nucleus`.
+    expect(of('hive.nucleus')?.placeholders.map((p) => p.name)).toEqual(['rounds']);
+    expect(
+      readPrompts(withConfig({ prompts: { hive: { nucleus: 'Hive is on.' } } })).text,
+    ).toMatchObject({ 'hive.nucleus': 'Hive is on.' });
     expect(of('hive.check')?.placeholders.find((p) => p.required)?.name).toBe('output');
     expect(of('start.feature')?.placeholders.map((p) => p.name)).toContain('hive');
     // A check message without the output is not used: Symbiote's is.

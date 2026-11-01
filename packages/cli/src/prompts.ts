@@ -223,6 +223,23 @@ const HIVE_START =
   'whole check. Commit everything before you end a turn, end a turn only when the work is done ' +
   'or you need the person, and never push, merge or switch branches.';
 
+/**
+ * What Alpha Ceph is told of Hive (V86, decision 751): what Hive does with the workspaces it
+ * starts, and what is Hive's to send them. At its instructions' end while Hive mode is on.
+ */
+const HIVE_NUCLEUS =
+  "Hive mode is on. Every workspace you start now is Hive's: its Claude Code agent works the " +
+  'brief (Hive starts Claude Code only); after each turn with commits, Symbiote runs the ' +
+  "project's check on the branch's tip, and once the check passes, a reviewer runs the change in " +
+  'a throwaway copy and proves defects with failing tests. Hive sends the agent what fails, for ' +
+  'up to {rounds} rounds; then the workspace waits for the person to land it from its Review ' +
+  'tab.\n\n' +
+  "A workspace's hive field says where Hive is with it: writing, checking, reviewing, landing " +
+  '(it waits for the person to land it), stuck (out of rounds, or it needs the person) or ' +
+  "landed. Do not send a Hive workspace's agent its check's or review's results, or tell it to " +
+  'commit: Hive does. Report on it by its step and what its last check and review found. ' +
+  "Landing, pushing and deleting work stay the person's.";
+
 /** What Hive sends the writer when the check failed (HV2). */
 const HIVE_CHECK = [
   'Symbiote ran the check on {branch} at {at} (round {round} of {rounds}): `{command}` failed. ' +
@@ -364,6 +381,7 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
     'stopped, commit, and end your turn when the work is done.',
   'hive.review': HIVE_REVIEW,
   'hive.reviewer': HIVE_REVIEWER,
+  'hive.nucleus': HIVE_NUCLEUS,
 };
 
 /** What Settings says of Nucleus's prompt, in its name (decision 682). */
@@ -379,11 +397,15 @@ function nucleusAbout(name: string): string {
  * Nucleus's system prompt from `text` (`prompts.nucleus`), as `name` (decision 685): `{name}`
  * filled, and `{question}` of a text from before V50 with nothing. A text without `{name}` is
  * told its name in a line at its end in Hive mode only; with Hive off it is given as written.
+ * `hive`, Alpha Ceph's (`hive.nucleus`, filled), comes last (V86, decision 751).
  */
-export function nucleusInstructions(text: string, name: string): string {
+export function nucleusInstructions(text: string, name: string, hive?: string): string {
   const filled = fillPrompt(text, { question: '', name }).trimEnd();
-  if (text.includes('{name}') || name === NUCLEUS_NAMES.off) return filled;
-  return `${filled}\n\nHive mode is on: you are called ${name}, not ${NUCLEUS_NAMES.off}.`;
+  const named =
+    text.includes('{name}') || name === NUCLEUS_NAMES.off
+      ? filled
+      : `${filled}\n\nHive mode is on: you are called ${name}, not ${NUCLEUS_NAMES.off}.`;
+  return hive?.trim() ? `${named}\n\n${hive.trim()}` : named;
 }
 
 /** Where a prompt is shown, what it is for, what it may hold, and how long it may be. */
@@ -675,6 +697,17 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     placeholders: [],
     max: MAX_TEXT,
     fixed: HIVE_REVIEW_ANSWER,
+  },
+  'hive.nucleus': {
+    group: 'Hive',
+    title: 'Alpha Ceph',
+    about:
+      "What Alpha Ceph is told of Hive, at its instructions' end while Hive mode is on: given to " +
+      'each conversation that starts as Alpha Ceph.',
+    placeholders: [
+      { name: 'rounds', about: 'how many rounds before Hive stops for the person: 3' },
+    ],
+    max: MAX_START,
   },
 };
 

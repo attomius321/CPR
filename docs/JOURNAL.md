@@ -367,3 +367,5 @@ merge commit.
 - 2026-11-01 [AR2 plan — six changes from AR1's measurements](journal/ar2-defaults-from-ar1.md)
 - 2026-11-01 [AR2 — the six changes, built](journal/ar2-defaults-from-ar1.md)
 - 2026-11-01 [Fix — Hive's runner: no second check of a commit, nothing sent to a branch being landed, a turn it cannot see noticed](journal/fix-hive-runner-flaws.md)
+- 2026-11-01 [V86 — Nucleus becomes Alpha Ceph, built](journal/v86-alpha-ceph-transform.md)
+- 2026-11-01 [V86b — Alpha Ceph's conversation, told what Hive does](journal/v86-alpha-ceph-transform.md)
