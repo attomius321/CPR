@@ -1,7 +1,7 @@
 # The merger
 
-[Index](../PLAN.md) · [Its decisions](../decisions.md#the-merger) · Checked against the code at
-`108f956` (2026-11-01)
+[Index](../PLAN.md) · [Its decisions](../decisions.md#the-merger) · Checked against the code on
+2026-11-01
 
 This page says how Symbiote's merger works today. Read it before you change the merger. The plans
 listed in the index under "The merger" say why each part was built, as it was decided then. If a
@@ -119,10 +119,11 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 | What | Where |
 |---|---|
 | The service: queue, merge, check, land | `packages/cli/src/merges.ts` |
-| The queue file and its lock | `<cache>/state/<repo-id>/merges.json`, `merges.lock` (`merge-queue.ts`) |
-| Each entry's log, one JSON object a line | `<cache>/state/<repo-id>/merges/<id>.jsonl` (`merge-log.ts`) |
+| The queue file and its lock | `<cache>/state/<repo-id>/merges.json`, `merges.lock` (`packages/cli/src/merge-queue.ts`) |
+| Each entry's log, one JSON object a line | `<cache>/state/<repo-id>/merges/<id>.jsonl` (`packages/cli/src/merge-log.ts`) |
 | The merge worktree | `<cache>/worktrees/<repo-id>/merge` |
 | The merger agent's prompt and answer parsing | `packages/cli/src/merge-agent.ts` |
+| Hive's **Land**: the approval and the queued entry | `packages/cli/src/hive-workspace.ts` |
 | Settings: `merge.checks`, `push`, `strategy`, `agent`, `model`, `effort` | `symbiote/config.json`; defaults in [configuration](../reference/configuration.md) |
 | A project's rules for the merger agent | `symbiote/merge.md`, committed with the project |
 | **Merge into ▾** | `packages/viewer/src/workspaces/MergeControl.tsx` |

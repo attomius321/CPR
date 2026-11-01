@@ -13,9 +13,15 @@ on measurements, not guesses; results are reported with numbers.
 
 Read what the work needs, not the folders: the index, then the area's page in `docs/area/` if it
 has one (what holds now, the decisions in force, the traps), then the plan and journal files you
-need, then a decision or a term by grep (`grep -rn '^| 246 |' docs/plan`,
-`grep -rln <term> docs/plan docs/journal`). Plans and journals are records of their day: a
-replaced decision's row ends with `*(superseded by …)*`.
+need, then a decision or a term by grep. A decision, with any newer row that replaces it:
+
+```sh
+grep -rnE '^\| 246 \||^\| [0-9]+ \|.*(supersedes|replaces)[^|]*\b246\b' docs/plan
+grep -rln <term> docs/plan docs/journal      # a term
+```
+
+Plans and journals are records of their day: a replaced decision's row ends with
+`*(superseded by …)*` once `consolidate.mjs` has run on `main`.
 
 ## Where you are
 
@@ -91,7 +97,7 @@ done                                                           # anyone using V4
          comparisons, numbers); its line in docs/JOURNAL.md
 - [ ] 8b. The area's page (docs/area/<area>.md), if it has one: what now holds, the decisions
          in force (a replaced one moves to "no longer hold"), a new trap, files that moved;
-         its "Checked against the code at" commit
+         its "Checked against the code on" date. In the same commit as the code, or after it
 - [ ] 9. Report to the user with numbers and what was not verified; then, as "Where you are"
          says, ask before merging (outside a workspace) or say it is ready (in one)
 ```
@@ -126,7 +132,10 @@ marks each replaced decision's row (`*(superseded by 82 of V17)*`), regenerates
 `main` as "Docs: merged" (the IDs in the body; the one commit made on `main` itself) and push.
 Read the diff first, then settle the notes by hand: a merged row that says "planned" or
 "measured", a branch with commits after its merge, a journal several branches wrote in that are
-not all merged, a replacement the script lists as ambiguous.
+not all merged, a replacement the script lists as ambiguous. A note `area/<page>: N commits since
+the page last changed touch <files>` means code the page names changed without it: read those
+commits and the page, and update the page in its own "Docs:" commit (on `main`, or a `chore/`
+branch if it takes more than a few lines).
 
 ## Templates
 

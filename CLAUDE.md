@@ -13,9 +13,11 @@ framework templates) and the calls between them, with findings on the risky part
 - What each milestone learned and measured: `docs/journal/`, under its plan's name (by date:
   `docs/JOURNAL.md`). Without an area page, read the journal files of the area you touch.
 - Read the index, then your area's page, then only the files you need; find a decision or a term
-  by grep (`grep -rn '^| 246 |' docs/plan`, `grep -rln <term> docs/plan docs/journal`), not by
-  reading the folders. A replaced decision's row says what replaced it (`*(superseded by …)*`);
-  every decision's status: `docs/decisions.md`.
+  by grep, not by reading the folders. A decision with any newer row that replaces it:
+  `grep -rnE '^\| 246 \||^\| [0-9]+ \|.*(supersedes|replaces)[^|]*\b246\b' docs/plan`
+  A term: `grep -rln <term> docs/plan docs/journal`. A replaced decision's row says what replaced
+  it (`*(superseded by …)*`) once `consolidate.mjs` has run on `main`; the grep finds the
+  replacement before that. Every decision's status: `docs/decisions.md`.
 - Graph JSON contract: `docs/graph-schema.md`.
 
 **Two modes, two North Stars** (`docs/PLAN.md`, decision 688).
