@@ -792,7 +792,10 @@ export interface ThreadItem {
   who: 'symbiote' | 'agent' | 'you' | 'waits' | 'line';
   at: string;
   text: string;
-  /** Who of Symbiote's sent it, when not its start prompt (AR2): "Hive's message". */
+  /**
+   * Its heading when not the plain one (AR2): who of Symbiote's sent it ("Hive's message"), or
+   * "Your verdict" for the person's verdict in Symbiote's words.
+   */
   label?: string;
 }
 
@@ -800,7 +803,6 @@ export interface ThreadItem {
 const SENT_LABELS: Readonly<Partial<Record<PromptFrom, string>>> = {
   hive: "Hive's message",
   nucleus: "Nucleus's message",
-  verdict: 'The verdict',
   merger: "Symbiote's message",
 };
 
@@ -892,6 +894,9 @@ export function threadItems(entries: readonly ThreadEntry[], worktree?: string):
           items.push({ who: 'line', at, text: 'A subagent handed back its report' });
         } else if (from === 'person') {
           items.push({ who: 'you', at, text: entry.text });
+        } else if (from === 'verdict') {
+          // The person's decision, in Symbiote's words: theirs, shown whole, named for what it is.
+          items.push({ who: 'you', at, text: entry.text, label: 'Your verdict' });
         } else {
           const label = SENT_LABELS[from];
           items.push({ who: 'symbiote', at, text: entry.text, ...(label ? { label } : {}) });

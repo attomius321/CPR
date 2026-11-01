@@ -1186,7 +1186,7 @@ describe('threadItems', () => {
       { who: 'symbiote', at: at(0), text: 'Start' },
       { who: 'symbiote', at: at(1), text: 'Symbiote ran the check', label: "Hive's message" },
       { who: 'symbiote', at: at(2), text: 'Rebase it.', label: "Nucleus's message" },
-      { who: 'symbiote', at: at(3), text: 'Approved the branch', label: 'The verdict' },
+      { who: 'you', at: at(3), text: 'Approved the branch', label: 'Your verdict' },
       { who: 'symbiote', at: at(4), text: 'Symbiote merged it', label: "Symbiote's message" },
       {
         who: 'line',

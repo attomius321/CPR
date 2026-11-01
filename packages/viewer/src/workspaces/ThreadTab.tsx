@@ -85,7 +85,7 @@ export function ThreadTab({
             return (
               <li key={key} className={`thread-item thread-${item.who}`}>
                 <div className="thread-who">
-                  {item.who === 'agent' ? 'Agent' : 'You'} ·{' '}
+                  {item.who === 'agent' ? 'Agent' : (item.label ?? 'You')} ·{' '}
                   <time dateTime={item.at}>{timeOf(item.at)}</time>
                 </div>
                 {item.who === 'agent' && lexer ? (
