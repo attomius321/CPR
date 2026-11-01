@@ -44,7 +44,13 @@ const sent = () =>
 const record = () =>
   JSON.parse(
     readFileSync(join(symbiote.repo, 'symbiote', 'hive', 'feature', 'halve.json'), 'utf8'),
-  ) as { step: string; round: number; interrupted?: boolean; message?: { sent?: true } };
+  ) as {
+    step: string;
+    round: number;
+    interrupted?: boolean;
+    note?: string;
+    message?: { sent?: true };
+  };
 
 test('Hive drives a workspace: the check, its failure sent back, Hive off and on, landing asked', async ({
   page,
@@ -127,6 +133,35 @@ async function startHive(page: Page, branch: string, title: string) {
   await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
   await expect(startPage(page)).toBeHidden();
 }
+
+test('a turn Hive cannot see: its message taken into a copy of the session, the card says why (decisions 719, 721)', async ({
+  page,
+}) => {
+  test.setTimeout(90_000);
+  symbiote = await serveWorkspaces();
+  setChecks(['test -f fixed.txt']);
+  await page.goto(`${symbiote.url}git`);
+  await hive(page, true);
+  await startHive(page, BRANCH, 'Halve it');
+  // The settings name Symbiote's copy of its hook, in its cache: no deleted build takes it along.
+  const settings = readFileSync(join(symbiote.repo, 'symbiote', 'claude-settings.json'), 'utf8');
+  expect(settings).toContain(join(symbiote.cache, 'hooks'));
+
+  // From here on Claude Code takes every message into a copy, whose hooks record nothing.
+  symbiote.copies();
+  symbiote.commit(BRANCH, 'half.ts', 'export const half = (a: number) => a / 2;\n', 'Halve');
+  symbiote.report(BRANCH, 'Done: half.ts.');
+  await expect.poll(sent, { timeout: 20_000 }).toHaveLength(1);
+  await expect.poll(() => record().step, { timeout: 10_000 }).toBe('stuck');
+  expect(record().message).toBeUndefined();
+  // The copy works on and finishes, unseen: the card says why Hive stopped, not "reading its turn".
+  symbiote.report(BRANCH, 'Done: fixed.txt.');
+  await expect(card(page)).toContainText("Hive stopped: the writer's turn cannot be seen", {
+    timeout: 20_000,
+  });
+  expect(record().note).toMatch(/a copy of its session, fake\d+, whose hooks record nothing\)$/);
+  expect(sent()).toHaveLength(1);
+});
 
 /** The project's check (`merge.checks`). */
 const setChecks = (checks: string[]) => {

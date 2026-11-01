@@ -218,6 +218,20 @@ The card shows the workspace's round (a hexagon and `2/3`). While the agent work
 you, the card says so as for any workspace. Hive never lands, pushes or deletes work: those stay
 yours. A message you send the agent while Hive waits for you starts its rounds again.
 
+Hive checks and reviews a commit once:
+
+- **A commit already checked is not checked again.** If a turn ends on a commit where the check
+  (the same commands) passed, Hive goes straight to the review. If the reviewer approved that
+  commit too, Hive asks you to land it again at once. So a question you ask at landing costs no
+  check. A check that failed on a commit runs again, in case it was flaky.
+- **A branch being landed is left to the landing.** Once the branch is in the merge queue, or
+  merged, Hive sends its agent nothing more and stops a check or review that runs.
+- **A turn Hive cannot see stops it.** Hive reads the agent's turns from what its hooks record. If
+  no prompt is recorded within a minute of Hive's message, or Claude Code took the message into a
+  copy of the session (whose hooks record nothing), Hive stops and the card says why, for example
+  "Hive stopped: the writer's turn cannot be seen: no prompt recorded after Hive's message at
+  17:00 UTC".
+
 While Hive checks or reviews, the card is in the sidenav's **Hive** group, on Hive's hexagons, and
 says what runs now, its time ticking:
 
