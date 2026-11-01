@@ -111,7 +111,7 @@ q7. Your change touches packages/core, so you need \`main\`'s build for regressi
 
 /** The right letters per situation; a list where more than one is right. */
 const EXPECTED = {
-  checkout: { q1: 'A', q2: 'A', q3: 'A', q4: 'A', q5: 'A', q6: 'A', q7: 'AB' },
+  checkout: { q1: 'A', q2: 'A', q3: 'A', q4: 'AB', q5: 'A', q6: 'A', q7: 'AB' },
   'plan-first': { q1: 'B', q2: 'B', q3: 'A', q4: 'B', q5: 'C', q6: 'C', q7: 'B' },
   direct: { q1: 'B', q2: 'A', q3: 'A', q4: 'B', q5: 'C', q6: 'C', q7: 'B' },
   hive: { q1: 'B', q2: 'B', q3: 'B', q4: 'C', q5: 'C', q6: 'C', q7: 'B' },

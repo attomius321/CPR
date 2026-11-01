@@ -26,6 +26,9 @@ Now:
   A workspace may not add a worktree, and a fixed `/tmp/symbiote-base` is shared by sessions that
   run side by side. `viewer-check` runs the copy's own `measure.mjs`, and says what to do about a
   timing spec that fails under other workspaces' load and about Xvfb displays.
+- `symbiote-review` said an Approve is the agent's yes to merge. `symbiote/AGENTS.md` says
+  Symbiote's merger merges it and the agent does nothing unless the person asks; the skill,
+  CLAUDE.md and the `milestone` skill now say so too.
 
 **Learned**:
 
@@ -55,8 +58,9 @@ behind, a branch that moved on after its merge). The script on `main` as it was 
 chore (`c88b237`) marks the same index rows that chore marked, except V40 (a note) and two
 duplicate rows the chore deleted, with the same merge dates in the Status lines, in 0.7 s. On
 today's `main` it finds 23 rows to mark and 9 notes (spikes whose rows say "measured" or
-"proposed"). The reader test on the new text: 56 of 56, twice (before and after trimming the skill
-to 119 lines, from 90; $1.07 and $1.06). The `git archive` baseline installed and built in 4 s. `r1` on it
+"proposed"). The reader test on the new text: 56 of 56, three times (as first written, after trimming the
+skill to 120 lines from 90, and after the `symbiote-review` fix, where merging yourself or the
+merger after an Approve are both right outside a workspace; $1.07, $1.06, $1.16). The `git archive` baseline installed and built in 4 s. `r1` on it
 and on this branch: ky and zod identical (271 edges); vite and RealWorld are not cloned on this
 machine, so 23 of 29 comparisons could not run, on either side. `measure.mjs` from the copy and
 from the branch on ky `0d59458`: first paint 193 and 192 ms, no page errors. `pnpm check` and

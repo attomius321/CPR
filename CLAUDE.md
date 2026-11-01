@@ -136,9 +136,10 @@ unless the change says otherwise — prove it with the comparisons.
   to "Ready for review".
 - IMPORTANT: **ask the user before merging into `main`** (normal mode; in a Hive workspace, Hive
   decides landing). In a workspace, say the branch is ready and merge nothing: the person's
-  Approve in Symbiote has Symbiote's merger merge it (it runs `merge.checks` and pushes). Outside
-  one, an Approve the user asks you to act on (`symbiote-review` skill) is that yes: merge with
-  `--no-ff` ("Merge <ID>: …"), verify `main` (`pnpm check`, build, e2e) and push.
+  Approve in Symbiote has Symbiote's merger merge it (it runs `merge.checks` and pushes); so does
+  an Approve of any branch (`symbiote-review` skill). Merge yourself only when the user asks you
+  to: then merge with `--no-ff` ("Merge <ID>: …"), verify `main` (`pnpm check`, build, e2e) and
+  push.
 - Merged work is marked merged on `main`, not on its branch: `node scripts/plan/mark-merged.mjs
   --write` (✅, the plan's Status, the journal's last line) for every merged branch at once, then
   a "Docs: merged" commit, pushed. Run it after your own merge, or when the person asks.

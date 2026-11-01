@@ -28,7 +28,7 @@ checkout. Where the start prompt and this skill differ, the start prompt wins.
 | Branch | `milestone/<id>-<slug>` from up-to-date `main`; a fix `fix/<slug>`, docs or tooling `chore/<slug>` | The workspace's own (e.g. `feature/<slug>`): never another branch or worktree | The workspace's own |
 | The plan | Commit "Plan <ID>", push, report | With `planFirst`: the plan is your final message, then stop. **Commit nothing before the person's OK, not even the plan**: any commit turns the card from "Plan ready" to "Ready for review". Its files are the first commit after the OK. Without: commit "Plan <ID>" and go on | As its start prompt and Hive's messages say |
 | Push | As you go | As you go (with `planFirst`, from the OK on) | Never: Hive does (CLAUDE.md, "Which rules are which mode's") |
-| Into `main` | You merge it, after the person's yes ([Merge](#merge-outside-a-workspace)) | Say it is ready. The person reviews it in Symbiote; their Approve has Symbiote's merger merge it, run `merge.checks` and push. You merge nothing | Hive lands it (CLAUDE.md); you merge nothing |
+| Into `main` | You merge it when the person asks ([Merge](#merge-outside-a-workspace-after-the-persons-yes)); an Approve in Symbiote has its merger merge it | Say it is ready. The person reviews it in Symbiote; their Approve has Symbiote's merger merge it, run `merge.checks` and push. You merge nothing | Hive lands it (CLAUDE.md); you merge nothing |
 | Marked merged | By you, after your merge ([Marking merged work](#marking-merged-work)) | Not by you, not on your branch: on `main`, later, for every merged branch at once | As a workspace |
 | An unrelated bug | Its own `fix/<slug>` from `main` (test first); merged only with the person's OK | Do not fix it here: report it, and suggest a fix workspace for it | As a workspace |
 
@@ -94,7 +94,8 @@ merged in order.
 
 ## Merge (outside a workspace, after the person's yes)
 
-An Approve in Symbiote they ask you to act on (`symbiote-review` skill) is that yes.
+Their yes is their words. An Approve in Symbiote has its merger merge the branch, with nothing
+for you to do (`symbiote-review` skill), unless they ask you to merge it.
 
 ```sh
 git checkout main && git pull --ff-only origin main
