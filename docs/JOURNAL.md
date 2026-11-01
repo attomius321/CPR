@@ -363,3 +363,4 @@ merge commit.
 - 2026-10-31 [V85b — the compact look, built](journal/v85-hive-honeycomb-compact.md)
 - 2026-10-31 [V85 — Hive's running review, round 1](journal/v85-hive-honeycomb-compact.md)
 - 2026-11-01 [V86 — Nucleus becomes Alpha Ceph, built](journal/v86-alpha-ceph-transform.md)
+- 2026-11-01 [V86b — Alpha Ceph's conversation, told what Hive does](journal/v86-alpha-ceph-transform.md)

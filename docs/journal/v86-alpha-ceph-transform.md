@@ -44,3 +44,30 @@ arrival at 2560×1440 against `main`'s build (`git archive`), three runs each, a
 
 Not verified: the app's window, a GPU, a narrow window (the drawer closed plays unseen), the
 first paint on real graphs (the change adds no work at load).
+
+## V86b — Alpha Ceph's conversation, told what Hive does (2026-11-01, branch `feature/alpha-ceph-transform`)
+
+Asked after V86a: the question names the change, and Alpha Ceph gets a new conversation with a
+Hive text. Decisions 735–737, each the person's choice, the text approved as drafted: turning Hive
+on or off ends a conversation started under the other name and opens the next, unless it is
+busy; `hive.nucleus` at the end of Alpha Ceph's instructions; one sentence in the question.
+
+**Learned**:
+- **Alpha Ceph knew nothing of Hive**: its instructions were Nucleus's with a new name (decision
+  685); `{hive}` reached only the agents of workspaces Hive drives. The `workspace` tool already
+  returns each workspace's `hive` (step, round, check, review), so the text points to it.
+- **The arrival must not wait on an agent**: `setHive` awaits `POST /api/hive` before the
+  shutter starts, and ending one Claude Code session and starting the next takes seconds. The
+  server answers first and follows after, under the same guard as the page's starts.
+- **A test written for the old rule needed a busy conversation**: "a conversation keeps the name
+  it started with" turned Hive off with Alpha Ceph's conversation at rest, which now ends; it sets
+  the fake session `working` first, the case the rule still keeps.
+
+**Verification**: unit tests red first (prompts: the new key in the Hive group, the text at the
+end, main's Nucleus text unchanged by SHA-256; server: 5 cases); e2e written first but first run
+after the code: the question's sentence, the session removed and the next started with and
+without Hive's text, one answering kept. See the plan's results for the suite.
+
+Not verified: a real Claude Code or Codex conversation given the Hive text (the fake agent's
+arguments only); another window on Nucleus's page while the conversation is replaced (its own
+open may be refused once with "Alpha Ceph is being asked", then reads the new one).

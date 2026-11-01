@@ -106,6 +106,7 @@ and leaves any other brace as text:
 | `hive.commit` | What Hive sends the agent when it ended a turn with files not committed, or no commit | `{what}`, `{branch}` |
 | `hive.resume` | What Hive sends an agent it stopped, once Hive is on again | none |
 | `hive.reviewer` | The running reviewer's instructions, its system prompt. Symbiote adds the answer it reads after them, which you cannot change. In Settings it is the **Reviewer** page, with its model and effort | none |
+| `hive.nucleus` | What Alpha Ceph is told of Hive: added at the end of its instructions while Hive is on, for each conversation that starts as Alpha Ceph | `{rounds}` |
 
 Settings lists Hive's prompts, in a group of their own, only while Hive is on. Settings lists what
 each placeholder stands for. Symbiote ignores a prompt it cannot use, uses its
@@ -114,9 +115,9 @@ cases:
 
 - It is neither text nor a list of lines.
 - It lacks a required placeholder.
-- It is too long. The limits are 8,000 characters for a start prompt and for Nucleus's and Scribe's,
-  1,000 for `plan.*`, `documents`, `verdict.*` and `hive.*`, and 20,000 for `reviews`, `merger`
-  and `hive.reviewer`.
+- It is too long. The limits are 8,000 characters for a start prompt, for Nucleus's and Scribe's
+  and for `hive.nucleus`; 1,000 for `plan.*`, `documents`, `verdict.*` and the other `hive.*`; and
+  20,000 for `reviews`, `merger` and `hive.reviewer`.
 
 Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, Nucleus cannot edit
 files or run any command but git's read commands, and its starts, verdicts, merges and clean-ups
@@ -175,9 +176,10 @@ crimson outlines in the dark theme, white with pale crimson outlines in the ligh
 dialogs, the graph and the terminals keep their own ground.
 
 While Hive is on, Nucleus is called **Alpha Ceph**, on every page and in its own words, and its icon
-is the Hive Mind. Its records and files keep the name `nucleus`. A conversation keeps the name it
-started with: its page says so until **New conversation**, which starts one under the current
-name.
+is the Hive Mind. Alpha Ceph's instructions end with what Hive does with the workspaces it starts
+(`hive.nucleus`). Its records and files keep the name `nucleus`. Turning Hive on or off ends the
+conversation and starts the next under the new name, unless it is answering or waiting on you: then
+it keeps its name, and its page says so until **New conversation**.
 
 The question shows traces that route into a Hive Mind and keep moving while it is open. Turning Hive
 on, the Mind grows to the middle of the window, a shutter of hex tiles closes on it, and the tiles
