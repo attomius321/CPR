@@ -1,9 +1,9 @@
 /* ---- the page frame (V72, decisions 507–509) -------------------------------------------- */
 
-/* A page's head (`PageHead`): its icon in a 32 px square, its title and the line under it (two
-   lines, `--page-head` high), its actions at the right. `--page-pad` around it, so on every page
-   the title stands at x 60 and the cards start at y 76. The actions go under the title when the
-   title would have less than 200 px. */
+/* A page's head (`PageHead`): its icon in a `--height-control` square, its title and the line under
+   it (two lines, 20 and 16 px, `--page-head` high), its actions at the right. `--page-pad` around
+   it, so on every page the title stands at x 50 and the cards start at y 60 (60 and 76 before V85).
+   The actions go under the title when the title would have less than 200 px. */
 .page-head {
   flex: none;
   display: flex;
@@ -21,14 +21,14 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: var(--height-control);
+  height: var(--height-control);
   color: var(--accent);
 }
 
 :is(.page-head, .page-head-main) > .page-icon .icon {
-  width: 28px;
-  height: 28px;
+  width: var(--height-row);
+  height: var(--height-row);
   stroke-width: 1.4;
 }
 
@@ -46,7 +46,7 @@
   align-items: center;
   gap: 8px;
   min-width: 0;
-  height: 22px;
+  height: 20px;
 }
 
 .page-name-line h1 {
@@ -55,17 +55,17 @@
   overflow: hidden;
   font-size: var(--size-title);
   font-weight: 600;
-  line-height: 22px;
+  line-height: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .page-line {
-  margin: 2px 0 0;
+  margin: 0;
   overflow: hidden;
   color: var(--muted);
   font-size: var(--size-small);
-  line-height: 20px;
+  line-height: 16px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

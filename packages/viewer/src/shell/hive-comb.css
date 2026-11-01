@@ -1,0 +1,46 @@
+/* ---- Hive's honeycomb (V85, decisions 701–707) ----------------------------------------------
+   The arrival's shutter kept behind the page while Hive is on (`HiveComb.tsx`): its ground and its
+   etched tiles' outlines, the colours Hive's tokens (`ui/base.css`). Under everything; the cards
+   stay opaque, the ground clears over it. */
+
+.hive-comb {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: -1;
+  display: block;
+  pointer-events: none;
+  background: var(--hive-comb-ground);
+}
+
+.hive-comb path {
+  fill: none;
+  stroke: var(--hive-comb-line);
+  stroke-width: 1px;
+}
+
+/* The ground clear over it: the sidenav (its gloss stays, `ui/hive.css`), the pages' heads that
+   paint their own (a diff's, the Monitor's), and the app's own frame on Linux, whose rounded corners
+   the honeycomb takes. */
+:root[data-hive] .sidenav,
+:root[data-hive] .shell-main > .app > .bar,
+:root[data-hive] .monitor-bar,
+:root[data-hive][data-frame='own'] #root {
+  background-color: transparent;
+}
+
+:root[data-frame='own'][data-window='normal'] .hive-comb {
+  border-radius: 10px;
+}
+
+/* A merge's head stays while its log scrolls under it: opaque, the honeycomb's ground. */
+:root[data-hive] .merge-view .merge-row-head {
+  background: var(--hive-comb-ground);
+}
+
+/* Narrow, the sidenav is a drawer over the page: opaque. */
+@media (max-width: 899px) {
+  :root[data-hive] .shell.drawer-open .sidenav {
+    background-color: var(--side);
+  }
+}

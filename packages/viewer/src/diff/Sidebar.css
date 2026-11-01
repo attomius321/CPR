@@ -36,7 +36,7 @@
 
 .tabs button {
   flex: none;
-  height: 40px;
+  height: var(--height-tab);
   padding: 0 12px;
   white-space: nowrap;
   border: 0;
@@ -100,7 +100,7 @@
 .search-input {
   flex: 1;
   min-width: 0;
-  height: 28px;
+  height: var(--height-row);
   padding: 0 10px;
   font-size: var(--size-small);
 }
@@ -134,7 +134,7 @@
 .list-file-name {
   padding: 8px 12px 2px;
   color: var(--muted);
-  font: var(--size-small) var(--mono);
+  font: var(--size-code) var(--mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -261,7 +261,7 @@
   border: 0;
   background: none;
   color: var(--text);
-  font: var(--size-small) var(--mono);
+  font: var(--size-code) var(--mono);
   text-align: left;
   cursor: pointer;
   overflow: hidden;

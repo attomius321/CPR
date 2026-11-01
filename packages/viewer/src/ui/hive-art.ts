@@ -603,6 +603,34 @@ function octilinear(from: Point, to: Point, major: 'x' | 'y', bend: number): Pat
   return { points, arcs, length: arcs.at(-1)! };
 }
 
+/** The honeycomb's tiles' radius for a `width` × `height` window: a 26th of its short side. */
+export const combRadius = (width: number, height: number) =>
+  Math.max(16, Math.min(width, height) / 26);
+
+/**
+ * The honeycomb of hex tiles (a point up) centred on `at`, every point of the `width` × `height`
+ * window in a tile: the arrival's shutter (decision 673) and, kept, the background while Hive is
+ * on (V85, decision 702). A given `r` keeps a lattice as the window grows.
+ */
+export function combLattice(
+  width: number,
+  height: number,
+  at: Point,
+  r = combRadius(width, height),
+): { centres: Point[]; r: number } {
+  const [mx, my] = at;
+  const centres: Point[] = [];
+  for (let s = Math.floor((-2 * r - my) / (1.5 * r)); s * 1.5 * r + my <= height + 2 * r; s++) {
+    const q0 = Math.floor((-2 * r - mx) / (r * SQ3) - s / 2);
+    for (let q = q0; mx + r * SQ3 * (q + s / 2) <= width + 2 * r; q++) {
+      const x = mx + r * SQ3 * (q + s / 2);
+      const y = my + 1.5 * r * s;
+      if (x >= -r && x <= width + r && y >= -r && y <= height + r) centres.push([x, y]);
+    }
+  }
+  return { centres, r };
+}
+
 /**
  * Turning on (decisions 632, 673): the question's Hive Mind (at `at`, `scale` its size there),
  * awake and thinking, grows to a fifth of the `width` × `height` window while a shutter of hex
@@ -638,16 +666,7 @@ export function arrivalScene({
   );
 
   // The shutter: a honeycomb centred on the Mind, every point of the window in a tile.
-  const r = Math.max(16, Math.min(width, height) / 26);
-  const centres: Point[] = [];
-  for (let s = Math.floor((-2 * r - my) / (1.5 * r)); s * 1.5 * r + my <= height + 2 * r; s++) {
-    const q0 = Math.floor((-2 * r - mx) / (r * SQ3) - s / 2);
-    for (let q = q0; mx + r * SQ3 * (q + s / 2) <= width + 2 * r; q++) {
-      const x = mx + r * SQ3 * (q + s / 2);
-      const y = my + 1.5 * r * s;
-      if (x >= -r && x <= width + r && y >= -r && y <= height + r) centres.push([x, y]);
-    }
-  }
+  const { centres, r } = combLattice(width, height, at);
   // A tile shuts over this far past the front (in the hole's radii), and opens over 1.6 tiles.
   const band = (1.6 * r) / (Math.min(width, height) / 2);
   const opening = 1.6 * r;

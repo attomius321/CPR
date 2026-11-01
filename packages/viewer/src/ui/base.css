@@ -9,24 +9,35 @@
   --sans: 'Geist Variable', monospace;
   --mono: 'Geist Mono Variable', monospace;
   /* The type scale (V32): one step above V29b's dense 13 px, which was too small to read; V61 a
-     pixel more each, still too small for the person's eyes. Every text is sized from it
-     (test/tokens.test.ts); hierarchy is by weight and colour more than size. Nothing under 13 px
-     but uppercase labels and one-glyph marks. The graph keeps V32's (below, `.react-flow`). */
-  --size-caps: 12px; /* uppercase labels (a symbol's kind), one-glyph marks */
-  --size-caption: 13px; /* captions, chips, badges, counts, key caps, category labels */
-  --size-small: 14px; /* secondary: buttons, menu items, paths, code, the status bar */
-  --size-body: 15px; /* rows, nav, tabs, body text, editors */
-  --size-title: 17px; /* titles: a page's, a dialog's, a symbol's in its panel */
+     pixel more each. V85 (decisions 708, 709): the person asked for VS Code's look, measured from
+     its build: 13 px body, 12 and 11 px secondary, nothing under 11 px; code 13 beside it. Every
+     text is sized from it (test/tokens.test.ts); hierarchy is by weight and colour more than size.
+     The graph keeps V32's (below, `.react-flow`). */
+  --size-caps: 11px; /* uppercase labels (a symbol's kind), one-glyph marks */
+  --size-caption: 11px; /* captions, chips, badges, counts, key caps, category labels */
+  --size-small: 12px; /* secondary: buttons, menu items, paths, the status bar */
+  --size-body: 13px; /* rows, nav, tabs, body text, editors */
+  --size-title: 16px; /* titles: a page's, a dialog's, a symbol's in its panel */
+  --size-code: 13px; /* code: a diff's lines, a file, a commit's message in mono */
   /* The page frame (V72, decisions 507–509): every page the whole main area, its head
      (`ui/page.css`) and its cards the same distance from the area's edges, from each other and
-     from their contents on every page; one form rhythm. One value for both themes. */
-  --page-pad: 16px; /* the main area's edges to its cards and the head's contents */
-  --page-gap: 16px; /* between two cards; a resizer lies in it */
-  --page-head: 44px; /* the head's two lines: the title and the line under it */
-  --card-pad: 16px; /* a card's edge to its contents, its head's and its body's */
-  --card-head: 48px; /* a card's head: its tabs, or a title and actions */
-  --field-label-gap: 8px; /* a label to its field */
-  --field-gap: 20px; /* a field to the next label */
+     from their contents on every page; one form rhythm. One value for both themes. V85 (decision
+     713): VS Code's tighter spacing. */
+  --page-pad: 12px; /* the main area's edges to its cards and the head's contents */
+  --page-gap: 8px; /* between two cards; a resizer lies in it */
+  --page-head: 36px; /* the head's two lines: the title and the line under it */
+  --card-pad: 12px; /* a card's edge to its contents, its head's and its body's */
+  --card-head: 35px; /* a card's head: its tabs, or a title and actions (VS Code's tabs) */
+  --field-label-gap: 4px; /* a label to its field */
+  --field-gap: 14px; /* a field to the next label */
+  /* Heights (V85, decisions 710–712): VS Code's density, each a step below V72's. Every control,
+     row and bar takes one; a height of 28 to 56 px in px is refused (test/tokens.test.ts). */
+  --height-row: 22px; /* a list's row, a small control, an icon button (28 before V85) */
+  --height-control: 26px; /* buttons, inputs, selects, a list's taller row (32) */
+  --height-tall: 28px; /* a tall control: a page's actions, a sidenav entry (36) */
+  --height-tab: 30px; /* tabs and kinds in a head, a tile (40) */
+  --height-bar: 34px; /* a bar over a card (44) */
+  --height-top: 40px; /* the sidenav's top, the Monitor's bar (52) */
   /* lucide's chevron-right (ISC) as a mask, drawn in the text's colour: a submenu's, a <summary>'s. */
   --chevron-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
 }
@@ -37,10 +48,9 @@
    (decisions 437–440): near-black neutrals, the chrome a step lighter, the primary and the accent
    the new S's violet. Text, muted and the accent at least 4.5:1 on the four backgrounds, states,
    edges and the focus ring 3:1 (test/tokens.test.ts). Lines only separate regions: hairlines.
-   Hive mode (V82) gives light's sidenav and its own dialog the whole dark set, Hive's over it. */
+   Hive mode (V82) gives its own dialog the whole dark set, Hive's over it. */
 :root,
 :root[data-theme='dark'],
-:root[data-hive] .sidenav,
 .hive-ink {
   --bg: #090b0e;
   --side: #0d1015;
@@ -318,10 +328,9 @@
 /* Hive mode (V82, decision 614): while it is on (`data-hive`, written by the server), ink and
    crimson over each theme, glossy; "like Venom, but not that much". Only surfaces, words and the
    accents change: states, lanes, kinds of work and type are the theme's. The same contrast rules
-   (test/tokens.test.ts). Dark Hive is also light Hive's sidenav (the ink at the edge) and the Hive
-   dialog's, whatever the theme (decision 615). */
+   (test/tokens.test.ts). Dark Hive is also the Hive dialog's, whatever the theme (decision 615);
+   light Hive's sidenav is light since V85 (decision 704). */
 :root[data-hive]:not([data-theme='light']),
-:root[data-hive] .sidenav,
 .hive-ink {
   --bg: #070506;
   --side: #0d090a;
@@ -358,6 +367,10 @@
   --hive-sheen: rgb(255 255 255 / 4%);
   --hive-streak: rgb(255 255 255 / 2.4%);
   --hive-glow: rgb(200 16 46 / 9%);
+  /* The honeycomb behind the page (V85, decision 701): the arrival's ink, its etched outlines the
+     lamp's crimson at 12 % over it, opaque. */
+  --hive-comb-ground: #0b0102;
+  --hive-comb-line: #280609;
 }
 
 /* Light Hive: the content stays white and readable, the crimson the primary, wine the accent. */
@@ -393,6 +406,10 @@
   --hive-sheen: rgb(18 10 12 / 2.5%);
   --hive-streak: rgb(18 10 12 / 1.4%);
   --hive-glow: rgb(200 16 46 / 5%);
+  /* White, the crimson's outlines at 13 % over it, opaque (decision 704): the most that keeps
+     the states 3:1 on a line (16 % left `--context` at 2.88). */
+  --hive-comb-ground: #ffffff;
+  --hive-comb-line: #f8e0e4;
 }
 
 @media (prefers-color-scheme: light) {
@@ -428,6 +445,8 @@
     --hive-sheen: rgb(18 10 12 / 2.5%);
     --hive-streak: rgb(18 10 12 / 1.4%);
     --hive-glow: rgb(200 16 46 / 5%);
+    --hive-comb-ground: #ffffff;
+    --hive-comb-line: #f8e0e4;
   }
 }
 

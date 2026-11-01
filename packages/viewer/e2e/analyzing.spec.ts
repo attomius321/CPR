@@ -103,15 +103,15 @@ test('draws a running analysis as a card of steps on the arcs, over the whole pa
     .evaluate((el) => getComputedStyle(el, '::after').animationName);
   expect(turning).not.toBe('none');
 
-  // Start's head buttons: 36 px, an icon; Stop is not the primary.
+  // Start's head buttons: `--height-tall` (28 px since V85), an icon; Stop is not the primary.
   const stop = page.getByRole('button', { name: 'Stop' });
   await expect(stop).toHaveClass(/secondary/);
   await expect(stop.locator('svg')).toHaveCount(1);
   const back = page.getByRole('link', { name: 'Back to Git' });
   await expect(back).toHaveClass(/button ghost/);
   await expect(back.locator('svg')).toHaveCount(1);
-  expect((await stop.boundingBox())?.height).toBe(36);
-  expect((await back.boundingBox())?.height).toBe(36);
+  expect((await stop.boundingBox())?.height).toBe(28);
+  expect((await back.boundingBox())?.height).toBe(28);
 });
 
 test('waits for the analyses before it', async ({ page }) => {

@@ -28,8 +28,8 @@ function tokens(selector: string): Map<string, string> {
 
 /** What both themes share: the fonts. */
 const base = tokens(':root');
-// V82: light Hive's sidenav and Hive's dialog take the whole dark set, Hive's over it.
-const dark = tokens(":root,\n:root[data-theme='dark'],\n:root[data-hive] .sidenav,\n.hive-ink");
+// V82: Hive's dialog takes the whole dark set, Hive's over it (light Hive's sidenav too until V85).
+const dark = tokens(":root,\n:root[data-theme='dark'],\n.hive-ink");
 const light = tokens(":root[data-theme='light']");
 const systemLight = tokens("  :root[data-theme='system']");
 
@@ -411,15 +411,17 @@ describe('the geometry is the style’s (V31c)', () => {
 
 describe('the type scale (V32)', () => {
   // V29b's dense 13 px body, with 10–11 px captions, was too small to read: one step up (V32).
-  // V61: still too small for the person's eyes, another pixel each; nothing under 13 px but
-  // uppercase labels and one-glyph marks.
-  it('is two steps above V29b’s, 15 px for the body', () => {
+  // V61: still too small for the person's eyes, another pixel each. V85 (decisions 708, 709): the
+  // person asked for VS Code's look, its 13 px body and its density; nothing under 11 px; code 13,
+  // a terminal 14.
+  it("is VS Code's: 13 px for the body, code 13", () => {
     expect(Object.fromEntries([...base].filter(([name]) => name.startsWith('--size-')))).toEqual({
-      '--size-caps': '12px',
-      '--size-caption': '13px',
-      '--size-small': '14px',
-      '--size-body': '15px',
-      '--size-title': '17px',
+      '--size-caps': '11px',
+      '--size-caption': '11px',
+      '--size-small': '12px',
+      '--size-body': '13px',
+      '--size-title': '16px',
+      '--size-code': '13px',
     });
   });
 
@@ -462,6 +464,58 @@ describe('the type scale (V32)', () => {
   });
 });
 
+// V85 (decisions 710–714): VS Code's density. Controls, rows and heads take their heights from
+// the tokens, a step below V72's; the page frame's tokens tighter.
+describe('the density (V85)', () => {
+  it("is VS Code's: 26 px controls, 22 px rows, 35 px card heads, 12 px margins", () => {
+    const pick = (names: string[]) => Object.fromEntries(names.map((n) => [n, base.get(n)]));
+    expect(
+      pick([
+        '--height-row',
+        '--height-control',
+        '--height-tall',
+        '--height-tab',
+        '--height-bar',
+        '--height-top',
+        '--card-head',
+        '--page-head',
+        '--page-pad',
+        '--page-gap',
+        '--card-pad',
+        '--field-label-gap',
+        '--field-gap',
+      ]),
+    ).toEqual({
+      '--height-row': '22px',
+      '--height-control': '26px',
+      '--height-tall': '28px',
+      '--height-tab': '30px',
+      '--height-bar': '34px',
+      '--height-top': '40px',
+      '--card-head': '35px',
+      '--page-head': '36px',
+      '--page-pad': '12px',
+      '--page-gap': '8px',
+      '--card-pad': '12px',
+      '--field-label-gap': '4px',
+      '--field-gap': '14px',
+    });
+  });
+
+  it("takes a control's, a row's or a bar's height (28 to 56 px) from a token, but the window title bar's", () => {
+    const off = rules
+      .filter(
+        (rule) => !rule.selector.includes('.titlebar') && !rule.selector.includes('.app.alone'),
+      )
+      .flatMap((rule) =>
+        [...rule.body.matchAll(/(?:^|[\s;])((?:min-|max-)?height):\s*(\d+)px/g)]
+          .filter((m) => Number(m[2]) >= 28 && Number(m[2]) <= 56)
+          .map((m) => `${rule.selector.split('\n')[0]}: ${m[1]}: ${m[2]}px`),
+      );
+    expect(off).toEqual([]);
+  });
+});
+
 describe('the fonts (V29b, decision 180)', () => {
   // Every family a system lacks is a font-matching miss: on Linux they held History's first rows
   // for 850–900 ms (V29a). Only the bundled families are named, and monospace after them.
@@ -488,11 +542,10 @@ describe('the fonts (V29b, decision 180)', () => {
 });
 
 // V82 (decisions 614, 615): Hive mode's ink and crimson, over each theme while it is on. Its blocks
-// name only what changes; light Hive's sidenav and the Hive dialog take dark Hive's.
+// name only what changes; the Hive dialog takes dark Hive's (light Hive's sidenav is light since
+// V85, decision 704).
 describe('Hive mode (V82)', () => {
-  const hiveDark = tokens(
-    ":root[data-hive]:not([data-theme='light']),\n:root[data-hive] .sidenav,\n.hive-ink",
-  );
+  const hiveDark = tokens(":root[data-hive]:not([data-theme='light']),\n.hive-ink");
   const hiveLight = tokens(":root[data-hive][data-theme='light']");
   const hiveSystemLight = tokens("  :root[data-hive][data-theme='system']");
   const hive = {
@@ -554,6 +607,14 @@ describe('Hive mode (V82)', () => {
         );
         expect(under(theme, ['--edge'], ['--bg', '--side', '--panel'], 3)).toEqual([]);
         expect(under(theme, LANES, ['--bg', '--raised'], 3)).toEqual([]);
+      });
+
+      // V85 (decisions 701, 704): the honeycomb behind the page; words over a line's pixel too.
+      it("keeps words readable on the honeycomb's ground and on its lines", () => {
+        const comb = ['--hive-comb-ground', '--hive-comb-line'];
+        expect(comb.filter((t) => !theme.has(t))).toEqual([]);
+        expect(under(theme, TEXT, comb, 4.5)).toEqual([]);
+        expect(under(theme, [...STATES, '--focus', '--faint'], comb, 3)).toEqual([]);
       });
 
       it('separates regions with lines that show', () => {

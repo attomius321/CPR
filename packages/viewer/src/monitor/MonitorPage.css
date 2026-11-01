@@ -70,7 +70,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 32px;
+  min-height: var(--height-control);
   padding: 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -146,7 +146,7 @@
    card's head since V72, the legend at its end. */
 .monitor-place {
   flex-wrap: wrap;
-  padding-block: 8px;
+  padding-block: 4px;
 }
 
 .monitor-back:disabled {
@@ -397,7 +397,7 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: 32px;
+  min-height: var(--height-control);
   padding: 0 8px;
   border: 0;
   border-radius: 8px;

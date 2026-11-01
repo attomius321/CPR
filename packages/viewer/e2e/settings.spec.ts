@@ -277,15 +277,15 @@ test("the mockup: two cards to the main area's bottom, the page a head over its 
     await page.goto(`${symbiote.url}settings`);
     await expect(text(page, 'Feature')).toBeVisible();
     const { area, l, e } = await boxes();
-    // The page frame since V72 (decision 508): 16 px from the area's edges, 16 apart; the list
-    // 300 px since V81 (decision 602), its tiles' room.
+    // The page frame since V72 (decision 508): 12 px from the area's edges, 8 apart since V85
+    // (16 and 16 before); the list 300 px since V81 (decision 602), its tiles' room.
     near(l.width, 300);
-    near(l.x - area.x, 16);
-    near(e.x - (l.x + l.width), 16);
-    near(area.x + area.width - (e.x + e.width), 16);
+    near(l.x - area.x, 12);
+    near(e.x - (l.x + l.width), 8);
+    near(area.x + area.width - (e.x + e.width), 12);
     near(l.y, e.y);
-    near(area.y + area.height - (l.y + l.height), 16);
-    near(area.y + area.height - (e.y + e.height), 16);
+    near(area.y + area.height - (l.y + l.height), 12);
+    near(area.y + area.height - (e.y + e.height), 12);
   }
   // The list scrolls on its own when taller than its card: the open entry is scrolled to.
   await page.goto(`${symbiote.url}settings?prompt=appearance`);
@@ -348,8 +348,8 @@ test("the mockup: two cards to the main area's bottom, the page a head over its 
     await page.setViewportSize({ width, height });
     await expect(text(page, 'Feature')).toBeVisible();
     const { area, l, e } = await boxes();
-    near(l.x - area.x, 16);
-    near(area.x + area.width - (e.x + e.width), 16);
+    near(l.x - area.x, 12);
+    near(area.x + area.width - (e.x + e.width), 12);
     const icon = await head.locator('.page-icon').boundingBox();
     near(icon?.x ?? 0, l.x);
   }

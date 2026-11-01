@@ -49,8 +49,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: var(--height-row);
+  height: var(--height-row);
   border-radius: 8px;
   background: color-mix(in srgb, var(--phase, var(--muted)) var(--phase-wash), var(--bg));
   color: var(--phase, var(--muted));
@@ -69,8 +69,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 44px;
-  padding: 6px var(--card-pad);
+  min-height: var(--height-bar);
+  padding: 4px var(--card-pad);
   border-bottom: 1px solid var(--line);
 }
 
@@ -102,7 +102,7 @@
 /* On a phone's width, the icon alone; its word stays its name. */
 @media (max-width: 520px) {
   .activity-export-button {
-    width: 32px;
+    width: var(--height-control);
     padding: 0;
   }
 
@@ -131,7 +131,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
+  min-height: var(--height-tab);
   margin: 12px var(--card-pad) 0;
   padding: 8px 12px;
   border: 1px solid var(--line);
@@ -374,7 +374,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 28px;
+  min-height: var(--height-row);
 }
 
 .activity-title {
@@ -628,7 +628,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 32px;
+  min-height: var(--height-control);
   padding: 4px 10px;
   font-size: var(--size-small);
   transition: background-color 150ms;
@@ -825,7 +825,7 @@
 
 .activity-raw-line > details > summary {
   gap: 8px;
-  min-height: 28px;
+  min-height: var(--height-row);
   padding: 2px 8px;
   border-radius: 8px;
   white-space: nowrap;

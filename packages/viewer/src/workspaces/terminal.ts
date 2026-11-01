@@ -365,8 +365,9 @@ export function linkHint(target: LinkTarget, mac: boolean): { what: string; keys
 
 /** The bundled mono (V29b), as styles.css names it: every terminal's, the merge log's too (V46a). */
 export const TERMINAL_FONT = "'Geist Mono Variable', monospace";
-/** The body's size (`--size-body`, V32, V61): xterm takes a number, not a token. */
-export const TERMINAL_FONT_SIZE = 15;
+/** A terminal's size (V85, decision 709: VS Code's 14, a step over the 13 px body): xterm takes a
+ * number, not a token. */
+export const TERMINAL_FONT_SIZE = 14;
 
 /**
  * Dark in both of the page's themes: Claude Code keeps its own theme whatever the terminal's

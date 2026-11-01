@@ -127,7 +127,7 @@
   overflow: auto;
   border-radius: 8px;
   background: var(--bg);
-  font: var(--size-small) / 1.5 var(--mono);
+  font: var(--size-code) / 1.5 var(--mono);
   white-space: pre;
 }
 

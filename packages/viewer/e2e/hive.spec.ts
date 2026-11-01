@@ -44,6 +44,15 @@ const html = (page: Page) => page.locator('html');
 const editor = (page: Page) => page.getByRole('region', { name: 'Hive mode' });
 const question = (page: Page) => page.getByRole('alertdialog', { name: 'Turn on Hive mode?' });
 const turnOn = (page: Page) => editor(page).getByRole('button', { name: 'Turn on Hive mode' });
+/** The honeycomb behind the page while Hive is on (V85). */
+const comb = (page: Page) => page.locator('svg.hive-comb');
+/** Where the honeycomb's lattice is: its centre and its tiles' radius. */
+const lattice = (page: Page) =>
+  comb(page).evaluate((svg) => ({
+    x: Number(svg.dataset.x),
+    y: Number(svg.dataset.y),
+    r: Number(svg.dataset.r),
+  }));
 /** A computed colour of what `selector` finds. */
 const colour = (page: Page, selector: string, property: 'color' | 'backgroundColor') =>
   page
@@ -141,7 +150,7 @@ test('Hive mode: a danger to press, asked first, kept for the repository, its lo
   expect(JSON.parse(readFileSync(record(), 'utf8'))).toEqual({ on: false });
 });
 
-test('light: the content stays white, the sidenav goes ink; the question is ink while off', async ({
+test('light: the content and the sidenav white over the honeycomb; the question is ink while off', async ({
   page,
 }) => {
   await page.addInitScript(() => localStorage.setItem('symbiote.viewer.theme', 'light'));
@@ -155,8 +164,16 @@ test('light: the content stays white, the sidenav goes ink; the question is ink 
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
   expect(await colour(page, 'body', 'backgroundColor')).toBe('rgb(255, 255, 255)');
   expect(await colour(page, 'body', 'color')).toBe('rgb(18, 10, 12)');
-  expect(await colour(page, '.sidenav', 'backgroundColor')).toBe('rgb(13, 9, 10)');
-  expect(await colour(page, '.sidenav', 'color')).toBe('rgb(247, 242, 242)');
+  // V85 (decision 704): the sidenav light like the page, the honeycomb seen through it.
+  await expect(page.locator('.hive-flood')).toHaveCount(0, { timeout: 3_000 });
+  expect(await colour(page, '.sidenav', 'backgroundColor')).toBe('rgba(0, 0, 0, 0)');
+  expect(await colour(page, '.sidenav', 'color')).toBe('rgb(18, 10, 12)');
+  expect(await colour(page, '.hive-comb', 'backgroundColor')).toBe('rgb(255, 255, 255)');
+  expect(
+    await comb(page)
+      .locator('path')
+      .evaluate((path) => getComputedStyle(path).stroke),
+  ).toBe('rgb(248, 224, 228)');
 });
 
 /** A canvas's pixels, to tell whether it moved. */
@@ -274,6 +291,112 @@ test('turning on, the Hive Mind and a hex shutter cover the window, the look cha
   await expect(page.locator('.hive-flood')).toHaveCount(0);
 });
 
+// V85 (decisions 701–707): the arrival's honeycomb stays behind the page, on the shutter's tiles.
+test("the honeycomb stays behind the page after the arrival, on the shutter's tiles, after a reload too; a new tab's centred; gone when off", async ({
+  page,
+}) => {
+  await serve();
+  await hivePage(page);
+  await expect(page.locator('.sidenav')).toBeVisible();
+  await expect(comb(page)).toHaveCount(0);
+  await turnOn(page).click();
+  await expect(question(page).locator('canvas.hive-joining')).toBeVisible();
+  const art = (await question(page).locator('canvas.hive-joining').boundingBox())!;
+  // At the swap, the honeycomb is already laid under the shutter, on its lattice.
+  await page.evaluate(() => {
+    const w = window as unknown as { combAtSwap?: string | null };
+    w.combAtSwap = null;
+    new MutationObserver((_, observer) => {
+      if (document.documentElement.dataset.hive !== 'on') return;
+      observer.disconnect();
+      const svg = document.querySelector<SVGSVGElement>('svg.hive-comb');
+      const flood = document.querySelector('.hive-flood');
+      w.combAtSwap = svg && flood ? `${svg.dataset.x},${svg.dataset.y}` : 'missing';
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-hive'] });
+  });
+  await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
+  await expect(html(page)).toHaveAttribute('data-hive', 'on');
+  await expect(page.locator('.hive-flood')).toHaveCount(0, { timeout: 3_000 });
+  const middle = { x: art.x + art.width / 2, y: art.y + art.height / 2 };
+  const size = page.viewportSize()!;
+  const laid = await lattice(page);
+  expect(laid.x).toBeCloseTo(middle.x, 3);
+  expect(laid.y).toBeCloseTo(middle.y, 3);
+  expect(laid.r).toBeCloseTo(Math.max(16, Math.min(size.width, size.height) / 26), 6);
+  expect(await page.evaluate(() => (window as unknown as { combAtSwap?: string }).combAtSwap)).toBe(
+    `${laid.x},${laid.y}`,
+  );
+  // Behind the whole window, the sidenav clear over it; the cards as they were.
+  expect(await comb(page).boundingBox()).toEqual({ x: 0, y: 0, ...size });
+  expect(await colour(page, '.hive-comb', 'backgroundColor')).toBe('rgb(11, 1, 2)');
+  expect(
+    await comb(page)
+      .locator('path')
+      .evaluate((path) => getComputedStyle(path).stroke),
+  ).toBe('rgb(40, 6, 9)');
+  expect(await colour(page, '.sidenav', 'backgroundColor')).toBe('rgba(0, 0, 0, 0)');
+  await expect(comb(page)).toHaveAttribute('aria-hidden', 'true');
+
+  // A bigger window: the same lattice, more tiles.
+  await page.setViewportSize({ width: size.width + 400, height: size.height + 200 });
+  await expect(comb(page)).toHaveAttribute('width', String(size.width + 400));
+  expect(await lattice(page)).toEqual(laid);
+
+  // A reload: there with the first render, still on the arrival's tiles (kept for the tab).
+  await page.setViewportSize(size);
+  await page.addInitScript(() => {
+    const w = window as unknown as { combAtFirstRender?: boolean };
+    new MutationObserver((_, observer) => {
+      if (!document.querySelector('.sidenav')) return;
+      observer.disconnect();
+      w.combAtFirstRender = !!document.querySelector('svg.hive-comb');
+    }).observe(document, { childList: true, subtree: true });
+  });
+  await page.goto(`${symbiote!.url}git`);
+  await expect(page.locator('.sidenav')).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => (window as unknown as { combAtFirstRender?: boolean }).combAtFirstRender,
+    ),
+  ).toBe(true);
+  expect(await lattice(page)).toEqual(laid);
+  // A new tab, Hive already on: centred on the window, the arrival's own rule without a question.
+  const other = await page.context().newPage();
+  await other.goto(`${symbiote!.url}git`);
+  await expect(comb(other)).toBeAttached();
+  expect(await lattice(other)).toEqual({
+    x: size.width / 2,
+    y: size.height / 2,
+    r: Math.max(16, Math.min(size.width, size.height) / 26),
+  });
+  await other.close();
+
+  // A diff's page has a shell of its own: the honeycomb there too, its head clear over it.
+  await page.getByRole('button', { name: 'Review this commit' }).click();
+  await expect(page).toHaveURL(/\/diff\//);
+  await expect(comb(page)).toBeAttached();
+  // The honeycomb is there from the page's first render, before the diff's head: wait for it.
+  await expect(page.locator('.app > .bar')).toBeVisible({ timeout: 15_000 });
+  expect(await colour(page, '.app > .bar', 'backgroundColor')).toBe('rgba(0, 0, 0, 0)');
+  await page.goto(`${symbiote!.url}git`);
+
+  // Narrow: the drawer over the page stays opaque.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole('button', { name: 'Open the sidenav' }).click();
+  await expect(page.locator('.sidenav')).toBeVisible();
+  expect(await colour(page, '.sidenav', 'backgroundColor')).toBe('rgb(13, 9, 10)');
+  await page.setViewportSize(size);
+
+  // Off: no honeycomb, the sidenav as on main.
+  await hivePage(page);
+  await editor(page).getByRole('button', { name: 'Turn off Hive mode' }).click();
+  await expect(html(page)).not.toHaveAttribute('data-hive');
+  await expect(comb(page)).toHaveCount(0);
+  expect(await colour(page, '.sidenav', 'backgroundColor')).toBe('rgb(13, 16, 21)');
+  // The tab forgets the arrival's tiles: the next turn-on lays its own.
+  expect(await page.evaluate(() => sessionStorage.getItem('symbiote.viewer.hive-comb'))).toBeNull();
+});
+
 test('with reduced motion, Hive turns on at once: no ink, no growing', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await serve();
@@ -286,4 +409,6 @@ test('with reduced motion, Hive turns on at once: no ink, no growing', async ({ 
   await expect(page.locator('.hive-flood')).toHaveCount(0);
   await expect(page.locator('[data-moving]')).toHaveCount(0);
   await expect(html(page)).not.toHaveAttribute('data-hive-arriving');
+  // The honeycomb at once, centred on the window.
+  await expect(comb(page)).toBeAttached();
 });

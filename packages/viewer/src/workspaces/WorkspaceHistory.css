@@ -91,7 +91,7 @@
 .history-search input {
   box-sizing: border-box;
   width: 100%;
-  height: 32px;
+  height: var(--height-control);
   padding: 0 10px 0 34px;
   font-size: var(--size-body);
 }
@@ -103,7 +103,7 @@
 
 .history-kind {
   flex: none;
-  height: 32px;
+  height: var(--height-control);
   padding: 0 8px;
   font-size: var(--size-small);
 }
@@ -271,8 +271,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: var(--height-tab);
+  height: var(--height-tab);
   border-radius: 8px;
   background: var(--raised);
   color: var(--accent);

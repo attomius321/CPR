@@ -3,9 +3,8 @@
    question, which look the same whether it is on: off, the interface is main's. Last in the
    cascade (`styles.css`). */
 
-/* Light Hive's sidenav and the dialog are ink: their words take their own tokens, not the colour
-   the page's body passed down. */
-:root[data-hive] .sidenav,
+/* The dialog is ink: its words take its own tokens, not the colour the page's body passed down.
+   (Light Hive's sidenav was ink too until V85, decision 704.) */
 .hive-ink {
   color: var(--text);
 }

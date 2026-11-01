@@ -104,8 +104,8 @@
   display: flex;
   align-items: center;
   gap: 8px 12px;
-  min-height: 48px;
-  padding: 8px 8px 8px 16px;
+  min-height: var(--card-head);
+  padding: 4px 8px 4px var(--card-pad);
   border-bottom: 1px solid var(--line);
   background: var(--side);
 }
@@ -278,8 +278,8 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 48px;
-  padding: 8px 8px 8px 16px;
+  min-height: var(--card-head);
+  padding: 4px 8px 4px var(--card-pad);
   border-bottom: 1px solid var(--line);
   background: var(--side);
   font-size: var(--size-small);
@@ -456,7 +456,7 @@
 }
 
 .git-sync-button {
-  min-height: 32px;
+  min-height: var(--height-control);
   padding: 0 10px;
   white-space: nowrap;
 }
@@ -484,7 +484,7 @@
 
 .git-find input {
   width: 200px;
-  height: 32px;
+  height: var(--height-control);
   padding: 0 10px;
   font-size: var(--size-small);
 }
@@ -508,7 +508,7 @@
 
 .git-field input,
 .git-field textarea {
-  height: 32px;
+  height: var(--height-control);
   padding: 0 10px;
   font-size: var(--size-body);
 }
@@ -682,7 +682,7 @@
 .git-file-sha {
   flex: none;
   color: var(--muted);
-  font: var(--size-small) var(--mono);
+  font: var(--size-code) var(--mono);
 }
 
 .git-file-subject {

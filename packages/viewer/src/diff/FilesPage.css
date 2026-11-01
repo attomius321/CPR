@@ -63,7 +63,7 @@
   gap: 6px 12px;
   /* The card's head (V72): 48 px with its hairline, its words `--card-pad` in. */
   min-height: var(--card-head);
-  padding: 8px var(--card-pad);
+  padding: 4px var(--card-pad);
   border-bottom: 1px solid var(--line);
   background: var(--bg);
   font-size: var(--size-small);

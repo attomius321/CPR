@@ -149,7 +149,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--mono);
-  font-size: var(--size-small);
+  font-size: var(--size-code);
 }
 
 .merge-dir {
@@ -247,6 +247,6 @@ p.review-result {
 
 .review-result-actions .button {
   flex: 1 1 auto;
-  min-height: 28px;
+  min-height: var(--height-row);
   padding: 0 10px;
 }

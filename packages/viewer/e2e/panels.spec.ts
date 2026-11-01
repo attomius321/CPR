@@ -174,8 +174,8 @@ test("drags a workspace's changes wider and narrower; the terminal follows", asy
   // The panel is on the right: dragging its edge left widens it.
   await drag(page, changesHandle(page), -144);
   await expect.poll(() => width(changes(page))).toBe(400);
-  // 144 px is 16 cells of 9 px (Geist Mono at 15 px since V61; 18 of 8 px at 14).
-  await expect.poll(() => columns(page), POLL).toBe(before - 16);
+  // 144 px is 18 cells of 8 px (Geist Mono at 14 px since V85; 16 of 9 px at V61's 15).
+  await expect.poll(() => columns(page), POLL).toBe(before - 18);
 
   await page.reload();
   await expect(changes(page)).toBeVisible();

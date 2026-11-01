@@ -35,14 +35,15 @@
   font-size: var(--size-small);
 }
 
-/* Where it is and what it merges (V69, the mockup): in the text's colour, 20 px apart. */
+/* Where it is and what it merges (V69, the mockup): in the text's colour, on the head's 16 px
+   second line (V85). */
 .merge-row-state,
 .merge-title {
   min-width: 0;
   margin: 0;
   color: var(--text);
   font-size: var(--size-small);
-  line-height: 20px;
+  line-height: 16px;
   overflow-wrap: anywhere;
 }
 
@@ -54,7 +55,7 @@
   align-items: center;
   gap: 6px;
   min-width: 0;
-  height: 22px;
+  height: 20px;
   padding: 0 8px;
   border-radius: 8px;
   background: color-mix(in srgb, var(--merge-chip) 12%, transparent);
@@ -176,7 +177,7 @@
 
 .merge-file {
   font-family: var(--mono);
-  font-size: var(--size-small);
+  font-size: var(--size-code);
   font-weight: 600;
 }
 
@@ -418,7 +419,7 @@
   flex-direction: column;
   min-width: 0;
   overflow: auto;
-  padding: 0 0 16px;
+  padding: 0 0 var(--page-pad);
 }
 
 .merge-view .hint {
@@ -467,7 +468,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  height: 40px;
+  height: var(--height-tab);
   padding: 0 12px;
   border: 0;
   border-radius: 8px 8px 0 0;
