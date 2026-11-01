@@ -2,6 +2,7 @@
 // per entry in `symbiote/threads/<branch>.jsonl`. The hook runs once per event in the agent's
 // process tree (`agent-hook.ts`), so this module uses Node's own modules only: loading
 // `@symbiote/core` would make each event cost ~290 ms instead of ~25 ms.
+import { createHash } from 'node:crypto';
 import { realpathSync } from 'node:fs';
 import {
   access,
@@ -14,7 +15,13 @@ import {
   type FileHandle,
 } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
-import type { ActivityEntry, ThreadEntry, ThreadQuestion } from '@symbiote/core';
+import type {
+  ActivityEntry,
+  PromptFrom,
+  SentBy,
+  ThreadEntry,
+  ThreadQuestion,
+} from '@symbiote/core';
 import { activityEntry } from './tool-activity.js';
 
 export { activityEntry, MAX_COMMAND, MAX_OUTPUT, MAX_SUBJECT, outputOf } from './tool-activity.js';
@@ -239,6 +246,35 @@ export async function appendThread(
   await appendFile(path, `${JSON.stringify(entry)}\n`);
 }
 
+/** A message's digest (AR2): its whitespace collapsed, as the prompt that carries it may differ. */
+export function digestOf(text: string): string {
+  return createHash('sha256').update(text.replace(/\s+/g, ' ').trim()).digest('hex').slice(0, 16);
+}
+
+/**
+ * Notes in a workspace's thread that Symbiote is about to send a message to its agent (AR2,
+ * decision 741): who, from which prompt key, and its text's digest. The reader labels the prompt
+ * that carries it, and leaves the note out.
+ */
+export async function appendSent(
+  symbiote: string,
+  branch: string,
+  sent: { at: string; session: string; by: SentBy; key?: string; text: string },
+): Promise<void> {
+  const { at, session, by, key, text: message } = sent;
+  const note = {
+    at,
+    session,
+    kind: 'sent',
+    by,
+    ...(key ? { key } : {}),
+    digest: digestOf(message),
+  };
+  const path = threadPath(symbiote, branch);
+  await mkdir(dirname(path), { recursive: true });
+  await appendFile(path, `${JSON.stringify(note)}\n`);
+}
+
 /**
  * The hook's work (`agent-hook.ts`): never throws, whatever it is given; decides nothing. In its
  * `activity` mode (V48f, the tools' hooks) it records a tool's start or end, else a thread entry.
@@ -327,7 +363,8 @@ export async function readThreadEnd(
   branch: string,
   bytes = THREAD_END,
 ): Promise<ThreadEntry[]> {
-  return parseThread(await fileEnd(threadPath(symbiote, branch), bytes));
+  const { text: content, cut } = await fileWindow(threadPath(symbiote, branch), bytes);
+  return parseThread(content, !cut);
 }
 
 /**
@@ -383,9 +420,107 @@ export async function readActivityWindow(
   return { tools: parseActivity(text), cut };
 }
 
-/** A thread file's entries, as `readThread` describes them. */
-function parseThread(content: string): ThreadEntry[] {
-  const entries: ThreadEntry[] = [];
+/** A note Symbiote wrote before sending a message (`appendSent`). */
+interface SentNote {
+  at: string;
+  by: SentBy;
+  key?: string;
+  digest: string;
+}
+
+function isSent(value: unknown): value is SentNote & { kind: 'sent' } {
+  const v = value as Partial<Record<string, unknown>> | null;
+  return (
+    !!v &&
+    v.kind === 'sent' &&
+    typeof v.at === 'string' &&
+    typeof v.digest === 'string' &&
+    ['hive', 'nucleus', 'merger', 'verdict'].includes(v.by as string)
+  );
+}
+
+/**
+ * The openings of Symbiote's default texts (V17, HV2, HV3): a record from before AR2 has no notes,
+ * so Hive's messages and the verdicts are told by these. A project's own text is not.
+ */
+const OPENINGS: readonly (readonly [RegExp, PromptFrom, string])[] = [
+  [/^Symbiote ran the check on \S+ at \S+ \(round \d+ of \d+\)/, 'hive', 'hive.check'],
+  [/^A reviewer with a clean context ran your change on /, 'hive', 'hive.review'],
+  [/^You ended your turn with .+\. Commit your work on /s, 'hive', 'hive.commit'],
+  [/^You were stopped mid-turn: Hive was turned off/, 'hive', 'hive.resume'],
+  [/^Approved the branch \S+ at \S+:/, 'verdict', 'verdict.approve'],
+  [/^Approved the unpushed commits of /, 'verdict', 'verdict.push'],
+  [/^Address this review of the branch /, 'verdict', 'verdict.address'],
+];
+
+/**
+ * Who sent each prompt (AR2, decision 741), in order of trust: a background job's end and a
+ * subagent's hand-back by their tags; Symbiote's own by the note it wrote before sending (each
+ * note used once); the first prompt of a session Symbiote started (`startup`) as its start
+ * prompt, or, read `whole`, the thread's first prompt; then the openings of Symbiote's default
+ * texts; else the person.
+ */
+function labelPrompts(lines: readonly (ThreadEntry | SentNote)[], whole: boolean): ThreadEntry[] {
+  const notes: SentNote[] = [];
+  const started = new Map<string, string>();
+  const prompted = new Set<string>();
+  let anyPrompt = false;
+  const out: ThreadEntry[] = [];
+  for (const entry of lines) {
+    if ('digest' in entry) {
+      notes.push(entry);
+      continue;
+    }
+    if (entry.kind === 'start') {
+      started.set(entry.session, entry.source);
+      prompted.delete(entry.session);
+    }
+    if (entry.kind !== 'prompt') {
+      out.push(entry);
+      continue;
+    }
+    const firstOfSession = !prompted.has(entry.session);
+    const firstOfThread = !anyPrompt;
+    prompted.add(entry.session);
+    anyPrompt = true;
+    const text = entry.text.trimStart();
+    const labelled = (from: PromptFrom, key?: string): ThreadEntry => ({
+      ...entry,
+      from,
+      ...(key ? { key } : {}),
+    });
+    if (text.startsWith('<task-notification>')) {
+      out.push(labelled('task'));
+      continue;
+    }
+    if (text.startsWith('<agent-message')) {
+      out.push(labelled('subagent'));
+      continue;
+    }
+    const digest = digestOf(entry.text);
+    const note = notes.findIndex((n) => n.digest === digest && n.at <= entry.at);
+    if (note >= 0) {
+      const [used] = notes.splice(note, 1) as [SentNote];
+      out.push(labelled(used.by, used.key));
+      continue;
+    }
+    const source = started.get(entry.session);
+    if (
+      firstOfSession &&
+      (source === 'startup' || (source === undefined && whole && firstOfThread))
+    ) {
+      out.push(labelled('start'));
+      continue;
+    }
+    const opening = OPENINGS.find(([pattern]) => pattern.test(text));
+    out.push(opening ? labelled(opening[1], opening[2]) : labelled('person'));
+  }
+  return out;
+}
+
+/** A thread file's entries, as `readThread` describes them; `whole`: the file from its start. */
+function parseThread(content: string, whole = true): ThreadEntry[] {
+  const lines: (ThreadEntry | SentNote)[] = [];
   /** The last question asked in each session, until something else happens there. */
   const asked = new Map<string, string>();
   for (const line of content.split('\n')) {
@@ -396,6 +531,11 @@ function parseThread(content: string): ThreadEntry[] {
     } catch {
       continue;
     }
+    if (isSent(entry)) {
+      const { at, by, key, digest } = entry;
+      lines.push({ at, by, ...(key ? { key } : {}), digest });
+      continue;
+    }
     if (!isEntry(entry)) continue;
     if (entry.kind === 'asks' && entry.questions) {
       const key = JSON.stringify(entry.questions);
@@ -404,9 +544,9 @@ function parseThread(content: string): ThreadEntry[] {
     } else if (entry.kind !== 'notice') {
       asked.delete(entry.session);
     }
-    entries.push(entry);
+    lines.push(entry);
   }
-  return entries;
+  return labelPrompts(lines, whole);
 }
 
 /** Whether the agent's last turn ended: its last report comes after the last prompt. */

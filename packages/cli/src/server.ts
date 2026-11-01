@@ -59,6 +59,7 @@ import {
   parseWorkspaceDiff,
   parseWorkspaceOpen,
   parseWorkspaceReply,
+  parseWorkspaceSent,
   parseWorkspaceRequest,
   parseSuggestRequest,
   parseWorkspaceTerminal,
@@ -835,6 +836,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/workspaces/reply') {
       return written(req, res, parseWorkspaceReply, (request) =>
         oneAtATime(res, 'a message is being sent', () => workspaces.reply(request)),
+      );
+    }
+    if (url.pathname === '/api/workspaces/sent') {
+      return written(req, res, parseWorkspaceSent, (request) =>
+        answer(res, () => workspaces.noteSent(request).then(() => ({ noted: true }))),
       );
     }
     if (url.pathname === '/api/workspaces/clean') {

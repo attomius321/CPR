@@ -1760,6 +1760,10 @@ describe('symbiote view: workspaces (V18)', () => {
       cleaned.push(request);
       return Promise.resolve({ finished: C });
     },
+    noteSent: (request) => {
+      noted.push(request);
+      return Promise.resolve();
+    },
     terminal: () => Promise.reject(new WorkspaceRefused('no terminals here', 409)),
     shell: () => Promise.reject(new WorkspaceRefused('no terminals here', 409)),
     shells: () => Promise.resolve({ shells: [] }),
@@ -1795,6 +1799,7 @@ describe('symbiote view: workspaces (V18)', () => {
     merge: () => Promise.resolve(null),
   };
   const replies: WorkspaceReply[] = [];
+  const noted: { branch: string; by: 'verdict'; text: string }[] = [];
   const cleaned: { branch: string; unmerged?: boolean }[] = [];
   const stopped: string[] = [];
   const openedWorkspaces: string[] = [];
@@ -2249,12 +2254,32 @@ describe('symbiote view: workspaces (V18)', () => {
       { branch: 'feature/csv', text: 'Now', stop: true },
       { branch: 'feature/csv', text: 'busy' },
     ]);
+    // The page sends a verdict as the verdict (AR2); it can claim no other sender.
+    await post('/api/workspaces/reply', { branch: 'feature/csv', text: 'V', by: 'verdict' });
+    expect(replies.at(-1)).toEqual({ branch: 'feature/csv', text: 'V', by: 'verdict' });
+    replies.pop();
     for (const body of [
       { branch: 'feature/csv' },
       { text: 'x' },
       { branch: 'x', text: 'y', stop: 'yes' },
+      { branch: 'x', text: 'y', by: 'hive' },
     ]) {
       expect((await post('/api/workspaces/reply', body)).status, JSON.stringify(body)).toBe(400);
+    }
+    // The verdict the page types into the terminal is noted first (AR2, decision 741).
+    const typed = await post('/api/workspaces/sent', {
+      branch: 'feature/csv',
+      by: 'verdict',
+      text: 'Approved the branch',
+    });
+    expect(typed.status).toBe(200);
+    expect(noted).toEqual([{ branch: 'feature/csv', by: 'verdict', text: 'Approved the branch' }]);
+    for (const body of [
+      { branch: 'feature/csv', by: 'hive', text: 'x' },
+      { branch: 'feature/csv', by: 'verdict' },
+      { by: 'verdict', text: 'x' },
+    ]) {
+      expect((await post('/api/workspaces/sent', body)).status, JSON.stringify(body)).toBe(400);
     }
 
     expect((await post('/api/workspaces/clean', { branch: 'feature/csv' })).status).toBe(200);

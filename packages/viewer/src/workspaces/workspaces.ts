@@ -15,6 +15,7 @@ import type {
   WorkspaceSummary,
   WorkspaceThread,
   PermissionMode,
+  PromptFrom,
   StartBranch,
   TerminalAvailability,
   ThreadEntry,
@@ -791,6 +792,29 @@ export interface ThreadItem {
   who: 'symbiote' | 'agent' | 'you' | 'waits' | 'line';
   at: string;
   text: string;
+  /** Who of Symbiote's sent it, when not its start prompt (AR2): "Hive's message". */
+  label?: string;
+}
+
+/** The heading of a message one of Symbiote's senders typed (AR2, decision 741). */
+const SENT_LABELS: Readonly<Partial<Record<PromptFrom, string>>> = {
+  hive: "Hive's message",
+  nucleus: "Nucleus's message",
+  verdict: 'The verdict',
+  merger: "Symbiote's message",
+};
+
+/**
+ * Who sent a prompt: as the thread's reader labelled it (AR2), else, for a thread read before,
+ * the first prompt Symbiote's, a background job's end by its tag, and the rest the person's.
+ */
+export function promptFrom(
+  entry: Extract<ThreadEntry, { kind: 'prompt' }>,
+  first: boolean,
+): PromptFrom {
+  if (entry.from) return entry.from;
+  if (first) return 'start';
+  return entry.text.trimStart().startsWith('<task-notification>') ? 'task' : 'person';
 }
 
 /** Tools whose permission is to change a file (`file_path` in their input). */
@@ -854,10 +878,26 @@ export function threadItems(entries: readonly ThreadEntry[], worktree?: string):
         }
         started = true;
         break;
-      case 'prompt':
-        items.push({ who: prompted ? 'you' : 'symbiote', at, text: entry.text });
+      case 'prompt': {
+        const from = promptFrom(entry, !prompted);
         prompted = true;
+        if (from === 'task') {
+          const said = /<summary>([^<]+)<\/summary>/.exec(entry.text)?.[1]?.trim();
+          items.push({
+            who: 'line',
+            at,
+            text: `A background task ended${said ? `: ${said}` : ''}`,
+          });
+        } else if (from === 'subagent') {
+          items.push({ who: 'line', at, text: 'A subagent handed back its report' });
+        } else if (from === 'person') {
+          items.push({ who: 'you', at, text: entry.text });
+        } else {
+          const label = SENT_LABELS[from];
+          items.push({ who: 'symbiote', at, text: entry.text, ...(label ? { label } : {}) });
+        }
         break;
+      }
       case 'report':
         items.push({ who: 'agent', at, text: entry.text });
         break;

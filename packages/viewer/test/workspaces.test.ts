@@ -1160,6 +1160,46 @@ describe('threadItems', () => {
     ]);
   });
 
+  it("shows Symbiote's own messages as Symbiote's, by who sent them (AR2, decision 741)", () => {
+    const said = (n: number, text: string, from: string, key?: string) =>
+      e(n, { kind: 'prompt', text, from: from as never, ...(key ? { key } : {}) });
+    expect(
+      threadItems([
+        e(0, { kind: 'start', source: 'startup' }),
+        said(0, 'Start', 'start'),
+        said(1, 'Symbiote ran the check', 'hive', 'hive.check'),
+        said(2, 'Rebase it.', 'nucleus'),
+        said(3, 'Approved the branch', 'verdict', 'verdict.approve'),
+        said(4, 'Symbiote merged it', 'merger', 'merge.failed'),
+        said(
+          5,
+          '<task-notification>\n<summary>Background command "e2e" completed</summary>',
+          'task',
+        ),
+        said(6, '<agent-message from="a1"> Found it.', 'subagent'),
+        said(7, 'Thanks', 'person'),
+        // A restart's start prompt, later in the thread.
+        e(8, { kind: 'start', source: 'startup' }, 's2'),
+        e(8, { kind: 'prompt', text: 'Start again', from: 'start' }, 's2'),
+      ]),
+    ).toEqual([
+      { who: 'symbiote', at: at(0), text: 'Start' },
+      { who: 'symbiote', at: at(1), text: 'Symbiote ran the check', label: "Hive's message" },
+      { who: 'symbiote', at: at(2), text: 'Rebase it.', label: "Nucleus's message" },
+      { who: 'symbiote', at: at(3), text: 'Approved the branch', label: 'The verdict' },
+      { who: 'symbiote', at: at(4), text: 'Symbiote merged it', label: "Symbiote's message" },
+      {
+        who: 'line',
+        at: at(5),
+        text: 'A background task ended: Background command "e2e" completed',
+      },
+      { who: 'line', at: at(6), text: 'A subagent handed back its report' },
+      { who: 'you', at: at(7), text: 'Thanks' },
+      { who: 'line', at: at(8), text: 'Started again' },
+      { who: 'symbiote', at: at(8), text: 'Start again' },
+    ]);
+  });
+
   it('says a later fresh start, and keeps a broken input readable', () => {
     expect(
       threadItems([

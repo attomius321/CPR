@@ -3,8 +3,8 @@
 // session's start and end) between phases of calls (exploring, implementing, documenting, testing,
 // looking at screenshots, debugging, git). A presentation of the events: each event is in one
 // group, as it is; a group says only what its events say.
-import type { ThreadEntry, TurnTokens, WorkspaceAgentState } from '@symbiote/core';
-import { AGENT_NAMES, askedFor } from '../workspaces.js';
+import type { PromptFrom, ThreadEntry, TurnTokens, WorkspaceAgentState } from '@symbiote/core';
+import { AGENT_NAMES, askedFor, promptFrom } from '../workspaces.js';
 import {
   callKind,
   COMMAND_TOOLS,
@@ -103,6 +103,8 @@ interface Context {
   lastAsks?: string;
   /** Nucleus's activity (NU2): its own words and milestones. */
   nucleus?: true;
+  /** Nucleus's name, "Alpha Ceph" in Hive mode: its messages' titles (AR2). */
+  nucleusName?: string;
 }
 
 const plural = (n: number, one: string, many: string) =>
@@ -752,6 +754,22 @@ function nucleusGroup(entry: NucleusOwn, base: Base, context: Context): Activity
 export const questionsOf = (entry: Extract<ThreadEntry, { kind: 'asks' }>) =>
   (entry.questions ?? []).map((q) => q.question).join('; ');
 
+/** Who sent a message, as a milestone's title starts (AR2, decision 741). */
+function senderOf(from: PromptFrom, context: Context): string {
+  switch (from) {
+    case 'hive':
+      return 'Hive';
+    case 'nucleus':
+      return context.nucleusName ?? 'Nucleus';
+    case 'verdict':
+      return 'The verdict';
+    case 'merger':
+      return 'Symbiote';
+    default:
+      return 'You';
+  }
+}
+
 /** A milestone event as its group; null for one the timeline leaves to the raw stream. */
 function milestone(
   event: Exclude<ActivityEvent, WorkEvent>,
@@ -782,7 +800,8 @@ function milestone(
     }
     case 'prompt': {
       const { entry, first } = event;
-      if (first) {
+      const from = promptFrom(entry, first);
+      if (from === 'start') {
         return {
           ...base,
           kind: 'prompt',
@@ -793,7 +812,17 @@ function milestone(
           status: 'done',
         };
       }
-      if (entry.text.trimStart().startsWith('<task-notification>')) {
+      if (from === 'subagent') {
+        return {
+          ...base,
+          kind: 'notice',
+          milestone: false,
+          title: 'A subagent handed back its report',
+          detail: entry.text,
+          status: 'done',
+        };
+      }
+      if (from === 'task') {
         const said = /<summary>([^<]+)<\/summary>/.exec(entry.text)?.[1]?.trim();
         return {
           ...base,
@@ -810,7 +839,7 @@ function milestone(
         ...base,
         kind: 'message',
         milestone: true,
-        title: `You: ${line}`,
+        title: `${senderOf(from, context)}: ${line}`,
         ...(entry.text.trim() !== line ? { detail: entry.text } : {}),
         status: 'done',
       };
@@ -927,7 +956,12 @@ function sameness(event: ActivityEvent): string | null {
  */
 export function activityGroups(
   events: readonly ActivityEvent[],
-  { agent, worktree, nucleus }: { agent: WorkspaceAgentState; worktree: string; nucleus?: true },
+  {
+    agent,
+    worktree,
+    nucleus,
+    nucleusName,
+  }: { agent: WorkspaceAgentState; worktree: string; nucleus?: true; nucleusName?: string },
 ): ActivityGroup[] {
   const lastPrompt = events.findLast((e) => e.kind === 'prompt');
   const asking = waitingAsk(events);
@@ -935,6 +969,7 @@ export function activityGroups(
     agent,
     worktree,
     ...(nucleus ? { nucleus } : {}),
+    ...(nucleusName ? { nucleusName } : {}),
     turn: lastPrompt?.at ? Date.parse(lastPrompt.at) : -Infinity,
     ...(asking ? { lastAsks: asking.key } : {}),
   };

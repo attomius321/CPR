@@ -74,7 +74,8 @@ export function ThreadTab({
                 <li key={key} className="thread-item thread-symbiote">
                   <details>
                     <summary>
-                      Symbiote's prompt · <time dateTime={item.at}>{timeOf(item.at)}</time>
+                      {item.label ?? "Symbiote's prompt"} ·{' '}
+                      <time dateTime={item.at}>{timeOf(item.at)}</time>
                     </summary>
                     <div className="thread-text">{item.text}</div>
                   </details>
