@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { codexServer, readProfile } from '../src/app-server.js';
 import { codexFolders, type Codex } from '../src/codex.js';
-import { DEFAULT_PROMPTS, nucleusInstructions } from '../src/prompts.js';
+import { DEFAULT_PROMPTS, fillPrompt, nucleusInstructions } from '../src/prompts.js';
 import { NUCLEUS_NAME, nucleus as nucleusAgent } from '../src/nucleus.js';
 import {
   findPageAgentSession,
@@ -758,8 +758,16 @@ describe('Alpha Ceph: Nucleus while Hive mode is on (decisions 682-687)', () => 
     const request = startPageAgent.mock.calls[0]?.[0];
     // The session's name is how Symbiote finds it (decision 239): Nucleus whatever it is called.
     expect(request).toMatchObject({ name: 'Nucleus' });
-    expect(request?.instructions).toBe(nucleusInstructions(DEFAULT_PROMPTS.nucleus, 'Alpha Ceph'));
+    // Told what Hive does at its end (V86, decision 736).
+    expect(request?.instructions).toBe(
+      nucleusInstructions(
+        DEFAULT_PROMPTS.nucleus,
+        'Alpha Ceph',
+        fillPrompt(DEFAULT_PROMPTS['hive.nucleus'], { rounds: '3' }),
+      ),
+    );
     expect(request?.instructions).toMatch(/^You are Alpha Ceph, /);
+    expect(request?.instructions).toMatch(/Hive mode is on\. Every workspace you start now/);
     expect(settingsOf(repo)).toBe(settingsArgs(repo, 'Alpha Ceph'));
     expect(JSON.parse(readFileSync(record(repo), 'utf8'))).toMatchObject({
       agent: 'claude',

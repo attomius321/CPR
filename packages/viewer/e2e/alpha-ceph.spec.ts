@@ -106,7 +106,7 @@ test('Hive on: Alpha Ceph in the sidenav (open and folded), its page, the title 
   await expect(page.getByText("Nucleus's system prompt")).toHaveCount(0);
 });
 
-test('a conversation keeps the name it started with as Hive goes off and on; its activity still opens', async ({
+test('a conversation at work keeps the name it started with as Hive goes off and on; its activity still opens', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -119,6 +119,9 @@ test('a conversation keeps the name it started with as Hive goes off and on; its
     'Ready: ask in its terminal',
     POLL,
   );
+  // Answering: Hive going off or on leaves it be (V86, decision 735).
+  symbiote.setSession('fake0', { state: 'working', status: 'busy' });
+  await expect(link(page, 'Alpha Ceph')).toHaveAttribute('data-state', 'working', POLL);
 
   // Hive off: the page says Nucleus, and that this conversation is Alpha Ceph's.
   await hive(page, false);
@@ -155,6 +158,83 @@ test('a conversation keeps the name it started with as Hive goes off and on; its
     return now ? ('name' in now ? 'named' : 'plain') : 'none';
   };
   await expect.poll(kind, POLL).toBe('plain');
+});
+
+// V86 (decisions 735–737): Nucleus's conversation follows Hive, told what Hive does as Alpha Ceph;
+// the question says so.
+const hiveText = "Hive mode is on. Every workspace you start now is Hive's";
+
+test('turning Hive on, a conversation at rest ends and Alpha Ceph starts, told what Hive does; off, Nucleus again; the question says so', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}nucleus`);
+  await expect.poll(() => starts().length, POLL).toBe(1);
+  expect(instructions(0)).toMatch(/^You are Nucleus, /);
+  expect(instructions(0)).not.toContain('Hive mode is on');
+
+  await page.goto(`${symbiote.url}settings?prompt=hive-mode`);
+  await page
+    .getByRole('region', { name: 'Hive mode' })
+    .getByRole('button', { name: 'Turn on Hive mode' })
+    .click();
+  const question = page.getByRole('alertdialog', { name: 'Turn on Hive mode?' });
+  await expect(question).toContainText(
+    'Nucleus becomes Alpha Ceph and is told what Hive does: its conversation starts again, unless it is answering or waiting on you.',
+  );
+  await question.getByRole('button', { name: 'Turn on Hive mode' }).click();
+  await expect.poll(() => starts().length, POLL).toBe(2);
+  expect(symbiote.removed()).toEqual(['fake0']);
+  expect(instructions(1)).toMatch(/^You are Alpha Ceph, /);
+  expect(instructions(1)).toContain(hiveText);
+  expect(instructions(1)).toContain('for up to 3 rounds');
+  await expect.poll(recorded, POLL).toMatchObject({ name: 'Alpha Ceph' });
+  await link(page, 'Alpha Ceph').click();
+  await expect(
+    region(page, 'Alpha Ceph').getByRole('heading', { name: 'Alpha Ceph' }),
+  ).toBeVisible();
+  await expect(region(page, 'Alpha Ceph').getByRole('note')).toHaveCount(0);
+
+  // Off: Nucleus again, without Hive's text.
+  await page.goto(`${symbiote.url}settings?prompt=hive-mode`);
+  await page
+    .getByRole('region', { name: 'Hive mode' })
+    .getByRole('button', { name: 'Turn off Hive mode' })
+    .click();
+  await expect.poll(() => starts().length, POLL).toBe(3);
+  expect(instructions(2)).toMatch(/^You are Nucleus, /);
+  expect(instructions(2)).not.toContain('Hive mode is on');
+  await expect.poll(recorded, POLL).not.toHaveProperty('name');
+});
+
+test("turning Hive on, a conversation that is answering is kept: its page says how to start Alpha Ceph's", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}nucleus`);
+  await expect.poll(() => starts().length, POLL).toBe(1);
+  await expect(region(page, 'Nucleus').getByRole('status')).toHaveText(
+    'Ready: ask in its terminal',
+    POLL,
+  );
+  symbiote.setSession('fake0', { state: 'working', status: 'busy' });
+  await expect(link(page, 'Nucleus')).toHaveAttribute('data-state', 'working', POLL);
+  await page.goto(`${symbiote.url}settings?prompt=hive-mode`);
+  await page
+    .getByRole('region', { name: 'Hive mode' })
+    .getByRole('button', { name: 'Turn on Hive mode' })
+    .click();
+  await page
+    .getByRole('alertdialog', { name: 'Turn on Hive mode?' })
+    .getByRole('button', { name: 'Turn on Hive mode' })
+    .click();
+  await expect(page.locator('html')).toHaveAttribute('data-hive', 'on');
+  await link(page, 'Alpha Ceph').click();
+  await expect(region(page, 'Alpha Ceph').getByRole('note')).toHaveText(
+    'Started as Nucleus: New conversation starts Alpha Ceph.',
+  );
+  expect(starts()).toHaveLength(1);
+  expect(symbiote.removed()).toEqual([]);
 });
 
 // V86 (decisions 730–734): Nucleus becomes Alpha Ceph in the sidenav once Hive's arrival is still;

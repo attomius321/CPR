@@ -152,7 +152,8 @@ function HiveQuestion({
         <p id="hive-detail">
           Hive will start your workspaces&apos; agents again and run the project&apos;s check
           without asking you first. Every workspace you start while it is on is Hive&apos;s;
-          landing, pushing and deleting work stay yours.
+          landing, pushing and deleting work stay yours. Nucleus becomes Alpha Ceph and is told what
+          Hive does: its conversation starts again, unless it is answering or waiting on you.
         </p>
         <div className="dialog-buttons">
           <button type="button" className="button danger" disabled={busy} onClick={onTurnOn}>

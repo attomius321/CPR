@@ -302,6 +302,8 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   'hive.commit': CommitIcon,
   'hive.resume': PlayIcon,
   'hive.reviewer': FlaskIcon,
+  // What Alpha Ceph is told of Hive (V86): its own icon, the Hive Mind.
+  'hive.nucleus': NucleusIcon,
   [LIBRARY]: FolderIcon,
   [HIVE]: HexagonIcon,
   [APPEARANCE]: AppearanceIcon,
