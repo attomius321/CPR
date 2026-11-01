@@ -362,3 +362,4 @@ merge commit.
 - 2026-10-31 [V85a — the honeycomb, built](journal/v85-hive-honeycomb-compact.md)
 - 2026-10-31 [V85b — the compact look, built](journal/v85-hive-honeycomb-compact.md)
 - 2026-10-31 [V85 — Hive's running review, round 1](journal/v85-hive-honeycomb-compact.md)
+- 2026-11-01 [AR1 plan — the sources and what is counted](journal/ar1-activity-review.md)

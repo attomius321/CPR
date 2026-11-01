@@ -219,6 +219,7 @@ HV4. The milestones toward this North Star are HV4–HV7, in the order they are 
 | HV5 | Usage pacing: usage read before every agent starts, a pause until the window resets, a usage or budget cap; required before Hive runs unattended | planned | | |
 | HV6 | Spike: a more rigorous measurement of a graph of workspaces against one agent, on large real goals (649, 691) | planned | | |
 | HV7 | The graph: Alpha Ceph splits a goal into workspaces and orchestrates them, merges in order, stalls and new plans; only if HV6 shows a gain (691, 692) | planned | | |
+| [AR1](plan/ar1-activity-review.md) | Spike: Symbiote's own record — what works, what fails, what to change in its defaults (prompts, models, the advisor, plan first, permission modes, the merger, Hive), from every workspace's and Nucleus's activity | planned | | [journal](journal/ar1-activity-review.md) |
 
 ### The merger
 
