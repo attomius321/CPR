@@ -103,3 +103,12 @@ on Git, Settings and Start. First contentful paint of `/git` against `main`'s bu
 Not verified: the person's own window (WSLg, their GPU); a workspace's page with a live agent's
 terminal at Large (the terminal stays 14 px by design); Bitwarden's graph (the graph's type is
 unchanged).
+
+## V87 — main merged in (2026-11-01, branch `feature/font-sizes-too-small`)
+
+`main` at `6b42615` (V86, Nucleus becoming Alpha Ceph; AR2) merged in: `docs/PLAN.md` and
+`docs/JOURNAL.md` conflicted where both appended, rebuilt as `main`'s files with V87's lines.
+The merge brought no font size, line height or height in px. **Verification**: `pnpm check`
+2,736 tests; `pnpm test:e2e` 387 of 387 viewer and 20 of 20 nexus (before the merge, on V87 alone:
+380 of 380 and 20 of 20); Git with Hive on at 1440 × 900, Alpha Ceph's entry at the new sizes.
+

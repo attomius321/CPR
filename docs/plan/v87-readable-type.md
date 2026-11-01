@@ -176,4 +176,5 @@ a diff's Files and Graph) at 2560 × 1354 and 1440 × 900, both themes, Hive on 
 text size; the app's 200 % (1280 × 677 at 2×) on Git, Settings and Start: the details go under
 the commits, nothing cut. Git's three panes at 1440 cut subjects and the HEAD chip sooner than at
 13 px, as `main` cuts them at 1440 ("HEAD → m…"). Tests: `pnpm check` 2,690; `pnpm test:e2e`
-379 of 380 viewer (a honeycomb colour read empty under load, 3 of 3 alone) and 20 of 20 nexus.
+380 of 380 viewer and 20 of 20 nexus. With `main` (`6b42615`, V86) merged in: 2,736 tests, 387 of
+387 and 20 of 20.
