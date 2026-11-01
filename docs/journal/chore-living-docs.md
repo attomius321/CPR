@@ -38,7 +38,9 @@ milestone skill. Branches cleaned up first. Decisions 776–781.
 - **`mark-merged.mjs` copes with gone branches**: after the deletions it still said "Nothing to
   mark", finding each by its merge commit's subject.
 - **Deleting 205 branches on `origin` needs the person's go.** The permission check refused a
-  push whose list was computed at run time. The list is in this entry's verification.
+  push whose list was computed at run time. The person ran it from the list written to a file;
+  its last three names, on a line of their own, ran as a command and failed, so they were deleted
+  after, by name, once their tags were checked on `origin`.
 
 **Verification**:
 - Tests first: `packages/cli/test/plan-consolidate.test.ts`, 8 tests, 7 red before the script
@@ -61,9 +63,9 @@ milestone skill. Branches cleaned up first. Decisions 776–781.
 - Branches: 49 merged local branches deleted (and the merged V75 worktree, clean); 5 unmerged
   ones tagged `archive/<branch>` and deleted, plus a tag for `origin`'s
   `milestone/v20-other-agents`; the 6 tags pushed and checked equal to the branch tips on
-  `origin`. Left: `main` and the open
-  HV4 workspace. On `origin`, 205 merged branches (each checked an ancestor of `origin/main`) and
-  the 5 archived ones are not deleted yet.
+  `origin`. Left: `main` and the open HV4 workspace. On `origin`, 205 merged branches (each
+  checked an ancestor of `origin/main`) and the 5 archived ones deleted; left there: `main` and
+  `chore/living-docs`.
 - `pnpm check`: 2,747 tests, format, lint, typecheck. `pnpm build`.
 
 Not verified: that an agent changing the merger or reviews does better with the page than with

@@ -118,7 +118,7 @@ tests, every decision's number, every journal entry.
 
 | # | Milestone | Output |
 |---|---|---|
-| a | Branches | Local merged and unmerged branches gone (tags, tips); `origin`'s after the person's go |
+| a | Branches | Merged and unmerged branches gone, here and on `origin` (tags, tips) |
 | b | The script and its test | `scripts/plan/consolidate.mjs`, `packages/cli/test/plan-consolidate.test.ts` |
 | c | Two area pages | `docs/area/reviews.md`, `docs/area/merger.md`; the replacements found there written |
 | d | The rules | CLAUDE.md, PLAN.md's "How the plan is kept", the milestone skill |
@@ -148,8 +148,8 @@ their paths); pruning plans (the measured why is there, and nothing else keeps i
     `docs/decisions.md`, one folder up, the link broke. Found by the link check; a test first.
   - **The area pages define their terms** (workspace, main checkout, entry, Hive mode, fork
     point, cache): the reader test's agents named them as used before they were explained.
-  - **The deletions on `origin` were not made**: the permission check refused a push of 205
-    deletions listed at run time. The list is in the journal; the person decides.
+  - **The person deleted `origin`'s branches**: the permission check refused a push of 205
+    deletions listed at run time, so the person ran it; the last three, after, by name.
 - **Not a decision, a finding**: `symbiote merge --help` gives the default target without the
   reviewed-against branch, which `targets` in `merges.ts` checks first. Left for a fix of its own.
 
@@ -162,7 +162,7 @@ their paths); pruning plans (the measured why is there, and nothing else keeps i
 | Replaced decisions marked on the older row | 3 of 18 | 21 of 21, by the script: the 18, and 82, 147 and 149, whose replacements were written on newer rows |
 | `grep -rn '^\| 80 \|' docs/plan` | "Pushes the reviewed commit", no word of 82 | the same row, ending `*(superseded by 82 of V17)*` |
 | Every decision's status | none | `docs/decisions.md`: 746 numbers in 752 rows, 10,329 words, by area |
-| Branches | 56 local, 212 on `origin` | 2 local (`main`, the open HV4 workspace); `origin` unchanged until the person's go; 6 `archive/` tags |
+| Branches | 56 local, 212 on `origin` | 2 local (`main`, the open HV4 workspace); 2 on `origin` (`main`, this branch); 6 `archive/` tags |
 
 - **Reader test**: two rounds per page, 10 questions each, a fresh agent each round given only the
   page. Round 1: every answer right and quoted, three in part guessed; round 2: all right and
