@@ -32,7 +32,7 @@ import {
   agentName,
   type PrebuiltAgent,
 } from './settings.js';
-import { nucleusName } from '../shell/names.js';
+import { nucleusName, useAlphaCeph } from '../shell/names.js';
 import {
   AGENT_NAMES,
   effortChoices,
@@ -365,6 +365,8 @@ export function SettingsPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const hive = useHive();
+  // Nucleus's name: Alpha Ceph's once the sidenav plays its change (V86, decision 731).
+  const alpha = useAlphaCeph();
 
   const load = useCallback(async () => {
     try {
@@ -392,8 +394,8 @@ export function SettingsPage() {
   }, [load]);
 
   const groups = useMemo(
-    () => (settings ? promptGroups(settings.prompts, { hive }) : []),
-    [settings, hive],
+    () => (settings ? promptGroups(settings.prompts, { hive, alpha }) : []),
+    [settings, hive, alpha],
   );
   // The list scrolls on its own when it is taller than its card (V62): the entry open, from the
   // address or the last group's, is scrolled to; one clicked is in view already.
@@ -595,8 +597,8 @@ export function SettingsPage() {
             // would be refused as changed since.
             <AgentPage
               key={current.key}
-              name={agentName(current.agent, hive)}
-              settings={agentSettings(current.agent, hive)}
+              name={agentName(current.agent, alpha)}
+              settings={agentSettings(current.agent, alpha)}
               onSaved={() => void load()}
               onBack={back}
             >
@@ -1037,7 +1039,7 @@ function PromptEditor({
   onBack: () => void;
 }) {
   // Nucleus's group by its name: Alpha Ceph's while Hive mode is on (decision 682).
-  const group = agentName(prompt.group, useHive());
+  const group = agentName(prompt.group, useAlphaCeph());
   const text = draft ?? prompt.text;
   const edited = isEdited(prompt, draft);
   const problem = draftProblem(prompt, text);

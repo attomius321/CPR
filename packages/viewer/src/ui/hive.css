@@ -113,6 +113,181 @@
   stop-color: #ffffff;
 }
 
+/* --- Nucleus becoming Alpha Ceph (V86, decision 732): 1.2 s in the sidenav after the arrival ---
+   Nucleus's ring breaks into six arcs on the ring cells and contracts onto them, its dot ignites
+   into the white-hot core, the ring cells boot clockwise with the Mind's flicker (`FLICKER`,
+   hive-art.ts). Every animation ends on the still icon; all end by `BECOMING_MS` (alpha-ceph.ts,
+   checked by alpha-ceph-becoming.test.ts), when the still icon takes their place. */
+.hive-mind-icon.becoming .was-ring {
+  fill: none;
+  stroke: currentColor;
+  transform-origin: 12px 12px;
+  animation: alpha-ceph-ring 550ms cubic-bezier(0.4, 0, 0.2, 1) 0ms both;
+}
+
+.hive-mind-icon.becoming .was-dot {
+  fill: currentColor;
+  stroke: currentColor;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: alpha-ceph-dot 520ms ease-in 0ms both;
+}
+
+.hive-mind-icon.becoming .cell {
+  animation: alpha-ceph-boot 260ms step-end calc(400ms + var(--k) * 80ms) both;
+}
+
+.hive-mind-icon.becoming .cell.core {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: alpha-ceph-land 320ms cubic-bezier(0.2, 0.8, 0.2, 1) 250ms both;
+}
+
+.hive-mind-icon.becoming .flare {
+  fill: #ffffff;
+  stroke: none;
+  animation: alpha-ceph-flare 950ms ease-out 250ms both;
+}
+
+/* The ring: whole, then six arcs centred on the ring cells (each 10 of its 60 units, a cell every
+   60°, the first at three o'clock), shrinking onto them as they come. */
+@keyframes alpha-ceph-ring {
+  0% {
+    stroke-dasharray: 10 0;
+    stroke-dashoffset: 5;
+    transform: scale(1);
+    opacity: 1;
+  }
+
+  45% {
+    stroke-dasharray: 5 5;
+    stroke-dashoffset: 2.5;
+    transform: scale(0.8);
+    opacity: 1;
+  }
+
+  100% {
+    stroke-dasharray: 1 9;
+    stroke-dashoffset: 0.5;
+    transform: scale(0.75);
+    opacity: 0;
+  }
+}
+
+/* The dot swells and heats to white, then is gone into the core's flare. */
+@keyframes alpha-ceph-dot {
+  0% {
+    transform: scale(1);
+    fill: currentColor;
+    stroke: currentColor;
+    opacity: 1;
+  }
+
+  55% {
+    transform: scale(2.2);
+    fill: #ffffff;
+    stroke: #ffffff;
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(2.6);
+    fill: #ffffff;
+    stroke: #ffffff;
+    opacity: 0;
+  }
+}
+
+/* The core lands: grown from a third, a touch past, then its size. */
+@keyframes alpha-ceph-land {
+  0% {
+    transform: scale(0.35);
+    opacity: 0;
+  }
+
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* A ring cell boots: the Mind's flicker, held at each step. */
+@keyframes alpha-ceph-boot {
+  0% {
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  25% {
+    opacity: 0.15;
+  }
+
+  37% {
+    opacity: 0.9;
+  }
+
+  50% {
+    opacity: 0;
+  }
+
+  62% {
+    opacity: 0.55;
+  }
+
+  75% {
+    opacity: 1;
+  }
+
+  87% {
+    opacity: 0.35;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+/* The core white-hot as it ignites, cooling, one pulse as the last cells boot, then its rest. */
+@keyframes alpha-ceph-flare {
+  0% {
+    opacity: 0;
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.2;
+  }
+
+  78% {
+    opacity: 0.65;
+  }
+
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hive-mind-icon.becoming * {
+    animation: none;
+  }
+
+  .hive-mind-icon.becoming :is(.flare, .was-ring, .was-dot) {
+    display: none;
+  }
+}
+
 /* --- Hive's arrival (decision 673): the Mind and a hex shutter, then the light; then still --- */
 
 /* The shutter over the whole window, the question's too, under the window's edge (frame.css,

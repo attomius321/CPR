@@ -48,11 +48,12 @@ export const HIVE_GROUP = 'Hive';
 /**
  * The list by group, in the server's order: a prompt an entry (Workspaces, Reviews), a prebuilt
  * agent one entry for all its prompts, under "Prebuilt agents" where the first of them comes.
- * Hive's group only in Hive mode.
+ * Hive's group only in Hive mode; Nucleus named Alpha Ceph by `alpha` (Hive's, but for Nucleus held
+ * through Hive's arrival, V86).
  */
 export function promptGroups(
   prompts: readonly PromptSetting[],
-  { hive = false }: { hive?: boolean } = {},
+  { hive = false, alpha = hive }: { hive?: boolean; alpha?: boolean } = {},
 ): { group: string; entries: SettingsEntry[] }[] {
   const groups = new Map<string, SettingsEntry[]>();
   const agents = new Map<PrebuiltAgent, SettingsEntry>();
@@ -67,7 +68,7 @@ export function promptGroups(
     if (known) {
       known.prompts.push(prompt);
     } else if (agent) {
-      const entry = { key: prompt.key, name: agentName(agent, hive), prompts: [prompt], agent };
+      const entry = { key: prompt.key, name: agentName(agent, alpha), prompts: [prompt], agent };
       agents.set(agent, entry);
       entries.push(entry);
     } else {

@@ -156,3 +156,152 @@ test('a conversation keeps the name it started with as Hive goes off and on; its
   };
   await expect.poll(kind, POLL).toBe('plain');
 });
+
+// V86 (decisions 730–734): Nucleus becomes Alpha Ceph in the sidenav once Hive's arrival is still;
+// only in the window that turned Hive on, never at load, at once with reduced motion.
+
+/** One moment of the sidenav's Nucleus link and of the arrival, as the page changed. */
+interface Moment {
+  hive: boolean;
+  arriving: boolean;
+  label: string;
+  mind: boolean;
+  becoming: boolean;
+}
+
+/** From the page's first script on, every change of the link or the arrival kept in order. */
+const watch = (page: Page) =>
+  page.addInitScript(() => {
+    const w = window as unknown as { moments: Moment[] };
+    w.moments = [];
+    const take = () => {
+      const link = document.querySelector('.sidenav-pages a[href="/nucleus"]');
+      if (!link) return;
+      const root = document.documentElement;
+      const moment: Moment = {
+        hive: root.dataset.hive === 'on',
+        arriving: 'hiveArriving' in root.dataset || !!document.querySelector('.hive-flood'),
+        label: link.querySelector('.sidenav-label')?.textContent ?? '',
+        mind: !!link.querySelector('.hive-mind-icon'),
+        becoming: !!link.querySelector('.hive-mind-icon.becoming'),
+      };
+      const last = w.moments.at(-1);
+      if (!last || JSON.stringify(last) !== JSON.stringify(moment)) w.moments.push(moment);
+    };
+    new MutationObserver(take).observe(document, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ['data-hive', 'data-hive-arriving', 'class'],
+    });
+  });
+const moments = (page: Page) =>
+  page.evaluate(() => (window as unknown as { moments: Moment[] }).moments);
+const hiveEditor = (page: Page) => page.getByRole('region', { name: 'Hive mode' });
+/** Turns Hive on as the person does: Settings' button, then the question's. */
+const turnOn = async (page: Page) => {
+  await hiveEditor(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
+  await page
+    .getByRole('alertdialog', { name: 'Turn on Hive mode?' })
+    .getByRole('button', { name: 'Turn on Hive mode' })
+    .click();
+};
+/** The sidenav's link, either name. */
+const nucleusLink = (page: Page) => pages(page).locator('a[href="/nucleus"]');
+/** Animations still running in the sidenav. */
+const moving = (page: Page) =>
+  page.evaluate(
+    () =>
+      document
+        .getAnimations()
+        .filter(
+          (animation) =>
+            animation.playState === 'running' &&
+            !!(animation.effect as KeyframeEffect | null)?.target?.closest('.sidenav'),
+        ).length,
+  );
+
+test('turning Hive on, Nucleus becomes Alpha Ceph in the sidenav once the arrival is still, open and folded; Hive off, Nucleus at once', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await watch(page);
+  await page.goto(`${symbiote.url}settings?prompt=hive-mode`);
+  await expect(link(page, 'Nucleus')).toBeVisible();
+
+  await turnOn(page);
+  const icon = nucleusLink(page).locator('.hive-mind-icon');
+  await expect(icon).toHaveClass(/becoming/, { timeout: 6_000 });
+  // While it plays, the link is Alpha Ceph's to a reader, and it stays usable.
+  await expect(link(page, 'Alpha Ceph')).toBeVisible();
+  await expect(icon).not.toHaveClass(/becoming/, { timeout: 3_000 });
+  await expect(link(page, 'Alpha Ceph').locator('.sidenav-label')).toHaveText('Alpha Ceph');
+  await expect(icon.locator('.plate')).toHaveCount(7);
+  await expect(icon.locator('.was-ring, .was-dot, .flare')).toHaveCount(0);
+  expect(await moving(page)).toBe(0);
+
+  const seen = await moments(page);
+  // Nucleus through the arrival, the look Hive's around it: held, not changed under the cover.
+  const swapped = seen.findIndex((moment) => moment.hive);
+  expect(swapped).toBeGreaterThan(-1);
+  expect(seen[swapped]).toMatchObject({ label: 'Nucleus', mind: false });
+  // It plays only once all is still, and never before.
+  const played = seen.findIndex((moment) => moment.becoming);
+  expect(played).toBeGreaterThan(swapped);
+  expect(seen.slice(swapped, played).every((moment) => moment.label === 'Nucleus')).toBe(true);
+  expect(seen.filter((moment) => moment.becoming).every((moment) => !moment.arriving)).toBe(true);
+  // The name changes over: other letters between the two names.
+  const during = seen.filter((moment) => moment.becoming).map((moment) => moment.label);
+  expect(during.some((label) => label !== 'Nucleus' && label !== 'Alpha Ceph')).toBe(true);
+  expect(seen.at(-1)).toMatchObject({ label: 'Alpha Ceph', mind: true, becoming: false });
+
+  // Off: Nucleus at once, nothing plays.
+  await hiveEditor(page).getByRole('button', { name: 'Turn off Hive mode' }).click();
+  await expect(link(page, 'Nucleus')).toBeVisible();
+  await expect(nucleusLink(page).locator('.hive-mind-icon')).toHaveCount(0);
+
+  // Folded: the icon plays on the rail.
+  await page.getByRole('button', { name: 'Fold the sidenav' }).click();
+  await expect(page.locator('.shell')).toHaveClass(/folded/);
+  await turnOn(page);
+  await expect(icon).toHaveClass(/becoming/, { timeout: 6_000 });
+  await expect(icon).toBeVisible();
+  await expect(icon).not.toHaveClass(/becoming/, { timeout: 3_000 });
+  await expect(link(page, 'Alpha Ceph')).toBeVisible();
+});
+
+test('with Hive already on, a reload and a new tab show Alpha Ceph still', async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  await watch(page);
+  await page.goto(`${symbiote.url}git`);
+  await hive(page, true);
+  await expect(link(page, 'Alpha Ceph').locator('.hive-mind-icon')).toBeVisible();
+  const other = await page.context().newPage();
+  await watch(other);
+  await other.goto(`${symbiote.url}nucleus`);
+  await expect(link(other, 'Alpha Ceph').locator('.hive-mind-icon')).toBeVisible();
+  // Longer than an arrival and the play: nothing ever played.
+  await page.waitForTimeout(1_500);
+  for (const shown of [page, other]) {
+    const seen = await moments(shown);
+    expect(seen.some((moment) => moment.becoming || moment.label === 'Nucleus')).toBe(false);
+    expect(await moving(shown)).toBe(0);
+  }
+  await other.close();
+});
+
+test('with reduced motion, Nucleus is Alpha Ceph at once as Hive turns on', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  symbiote = await serveWorkspaces();
+  await watch(page);
+  await page.goto(`${symbiote.url}settings?prompt=hive-mode`);
+  await turnOn(page);
+  await expect(link(page, 'Alpha Ceph').locator('.hive-mind-icon')).toBeVisible();
+  await page.waitForTimeout(1_500);
+  const seen = await moments(page);
+  expect(seen.some((moment) => moment.becoming)).toBe(false);
+  // The name and the look changed together.
+  const swapped = seen.find((moment) => moment.hive);
+  expect(swapped).toMatchObject({ label: 'Alpha Ceph', mind: true });
+});
