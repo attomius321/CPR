@@ -62,6 +62,11 @@ If `symbiote/merge.md` exists, Symbiote adds it to the merger's prompt for every
 your project's rules for resolving conflicts there, such as "keep both entries of a changelog".
 Commit it to share it.
 
+A file that every branch only adds lines to the end of, such as a changelog, need not reach the
+merger at all. One line in the repository's `.gitattributes`, `CHANGELOG.md merge=union`, makes
+git keep both sides' new lines, the target's first. Use it only where the order of the added
+lines does not matter.
+
 ## Prompts
 
 **Settings** (`s`) shows every text Symbiote gives its agents, grouped by agent. You can change
@@ -97,6 +102,7 @@ and leaves any other brace as text:
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The lines of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`, `{reviewer}`, `{what}`, `{review}`, `{agents}` |
 | `reviews` | The text of `symbiote/AGENTS.md`, which tells agents how to act on a review | none |
 | `merger` | The merger's instructions | none |
+| `merge.failed` | What **Send to the agent** types into the branch's workspace when a merge's check failed: the command, its last lines, and what the agent is asked | `{output}` (required), `{command}`, `{branch}`, `{at}`, `{into}` |
 | `nucleus` | Nucleus's instructions, its system prompt. While Hive is on, a text without `{name}` gets a line at its end that tells Nucleus its name | `{name}`: Nucleus, or Alpha Ceph while [Hive](#hive-mode) is on |
 | `scribe` | Scribe's instructions, its system prompt. A `{request}` left from an older text is filled with nothing | `{skills}`, `{checkout}`, `{library}` |
 | `library` | What `{library}` becomes in Scribe's prompt when a [skill library](#the-skill-library) is set. Without a library, the line that holds `{library}` is left out | `{folder}` (required), `{skills}` |

@@ -17,6 +17,8 @@ export type PromptKey =
   | 'verdict.where'
   | 'reviews'
   | 'merger'
+  /** What Send to the agent types into a branch's workspace when its merge's check failed (AR2). */
+  | 'merge.failed'
   /**
    * Nucleus's instructions, its system prompt (V35, V50); `prompts.scout` before NU1, still read
    * while there is no `prompts.nucleus` (decision 590).
@@ -58,6 +60,7 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'verdict.where',
   'reviews',
   'merger',
+  'merge.failed',
   'nucleus',
   'scribe',
   'library',

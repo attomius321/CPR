@@ -924,7 +924,12 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       const text = words(args, 'text', 'the message for the agent');
       const stop = flag(args, 'stop');
       const replied = await exclusive('a message is being sent', () =>
-        service('workspaces').reply({ branch, text, ...(stop ? { stop: true } : {}) }),
+        service('workspaces').reply({
+          branch,
+          text,
+          by: 'nucleus',
+          ...(stop ? { stop: true } : {}),
+        }),
       );
       return { workspace: row(replied.workspace), ...(replied.copy ? { copy: replied.copy } : {}) };
     },

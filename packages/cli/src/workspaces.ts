@@ -163,6 +163,7 @@ import {
   type ReviewPlace,
 } from './reviews.js';
 import {
+  appendSent,
   lastAction,
   readActivityEnd,
   readActivityWindow,
@@ -414,6 +415,11 @@ export interface Workspaces {
   ): Promise<ActivityExport>;
   /** Sends a message to its agent: continues its session with the text (V18c). */
   reply(request: WorkspaceReply): Promise<WorkspaceReplied>;
+  /**
+   * Notes in a workspace's thread a message the page is about to type into its agent's terminal
+   * (AR2, decision 741): the verdict, so its prompt reads as the verdict.
+   */
+  noteSent(request: { branch: string; by: 'verdict'; text: string }): Promise<void>;
   /**
    * One workspace as the list shows it (HV2: what Hive's runner reads of a turn); null when it has
    * no record, or was cleaned up.
@@ -1986,7 +1992,7 @@ export function workspaces(
       };
     },
 
-    async reply({ branch, text, stop }) {
+    async reply({ branch, text, stop, by, key }) {
       if (text.trim() === '') throw new WorkspaceRefused('a message cannot be empty', 400);
       if (text.length > MAX_BRIEF) {
         throw new WorkspaceRefused('a message is at most 20,000 characters', 400);
@@ -2001,7 +2007,20 @@ export function workspaces(
           409,
         );
       }
+      /** Symbiote's own message noted before it goes (AR2, decision 741): its prompt reads as
+       * the sender's. A note whose send then fails matches nothing. */
+      const note = (session: string) =>
+        by
+          ? appendSent(symbioteFolder(where), branch, {
+              at: new Date().toISOString(),
+              session,
+              by,
+              ...(key ? { key } : {}),
+              text,
+            })
+          : Promise.resolve();
       if (workspace.agent?.kind === 'codex') {
+        await note('');
         await viaCodex.reply(where, workspace, text, stop === true);
         const refs = await listRefs(repo);
         return { workspace: await summary(where, workspace, refs, await trunkOf(refs), []) };
@@ -2038,6 +2057,7 @@ export function workspaces(
           );
         }
       }
+      await note(session.sessionId);
       const resumed = await agent.resume({
         sessionId: session.sessionId,
         cwd: workspace.worktree,
@@ -2052,6 +2072,18 @@ export function workspaces(
         workspace: await summary(where, workspace, refs, await trunkOf(refs), sessions),
         ...(copy ? { copy } : {}),
       };
+    },
+
+    async noteSent({ branch, by, text }) {
+      const where = await place();
+      await readRecord(where, branch);
+      // The session is not asked for: a note is matched by its text, whichever session takes it.
+      await appendSent(symbioteFolder(where), branch, {
+        at: new Date().toISOString(),
+        session: '',
+        by,
+        text,
+      });
     },
 
     async summaryOf(branch) {

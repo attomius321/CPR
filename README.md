@@ -325,7 +325,8 @@ waits until you click **Land**.
 Symbiote does not push unless you set `merge.push` to `true` in `symbiote/config.json`. Merges
 run one at a time, in the order you asked for them. Click one under **Merging** to see its steps
 and their output as they run. If the check fails, nothing lands, and the merge page shows the
-check's output. If the project has no check, the merge waits for you to click **Land**.
+check's output. **Send to the agent** gives the failure to the branch's agent, which says whether
+its branch caused it. If the project has no check, the merge waits for you to click **Land**.
 
 If the branch conflicts with the target, Symbiote gives the conflict to the *merger*, an agent
 that proposes a resolution for each conflicting part. Nothing lands until you review it. The

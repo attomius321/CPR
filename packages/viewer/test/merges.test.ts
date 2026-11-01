@@ -140,6 +140,41 @@ describe('a resolution to review (V26c)', () => {
     ).toEqual(['retry', 'remove']);
   });
 
+  it("offers Send to the agent for a failed check, when the branch's agent takes messages (AR2)", () => {
+    const failed = entry({
+      state: 'failed',
+      merge: M,
+      check: { ...check, ok: false, failed: 'x' },
+    });
+    expect(mergeActions(failed, { send: true })).toEqual(['send', 'retry', 'remove']);
+    expect(mergeButtons(failed, { send: true }).buttons).toEqual(['send']);
+    // A resolution whose check failed: the agent may fix its branch, or Check again.
+    const resolved = entry({
+      state: 'needs-you',
+      merge: M,
+      resolution,
+      check: { ...check, ok: false, failed: 'x' },
+    });
+    expect(mergeActions(resolved, { send: true })).toEqual([
+      'approve',
+      'change',
+      'recheck',
+      'send',
+      'retry',
+      'remove',
+    ]);
+    // No agent to take it, or no failed check: not offered.
+    expect(mergeActions(failed)).not.toContain('send');
+    expect(
+      mergeActions(entry({ state: 'failed', message: 'conflicts' }), { send: true }),
+    ).not.toContain('send');
+    expect(
+      mergeActions(entry({ state: 'ready', merge: M, check: { ...check, ok: true } }), {
+        send: true,
+      }),
+    ).not.toContain('send');
+  });
+
   it('says a resolution waits for its check to run again', () => {
     expect(mergeState(entry({ state: 'queued', merge: M, resolution, recheck: true }))).toEqual({
       text: 'Queued: its check runs again on mmmmmmm',

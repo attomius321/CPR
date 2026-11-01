@@ -242,7 +242,27 @@ export function parseWorkspaceReply(text: string): WorkspaceReply {
   if (value.stop !== undefined && typeof value.stop !== 'boolean') {
     throw new Error('stop: true or false');
   }
-  return { branch: value.branch, text: value.text, ...(value.stop ? { stop: true } : {}) };
+  // The page sends a review's verdict as the verdict (AR2); Symbiote's other senders are its own.
+  if (value.by !== undefined && value.by !== 'verdict') throw new Error('by: "verdict" or none');
+  return {
+    branch: value.branch,
+    text: value.text,
+    ...(value.stop ? { stop: true } : {}),
+    ...(value.by ? { by: 'verdict' as const } : {}),
+  };
+}
+
+/**
+ * `{ branch, by: "verdict", text }` (AR2, decision 741): the verdict the page is about to type
+ * into a workspace's terminal, noted so its prompt reads as the verdict.
+ */
+export function parseWorkspaceSent(text: string): { branch: string; by: 'verdict'; text: string } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");
+  if (value.by !== 'verdict') throw new Error('by: "verdict"');
+  if (typeof value.text !== 'string' || value.text.trim() === '')
+    throw new Error('text: the verdict');
+  return { branch: value.branch, by: 'verdict', text: value.text };
 }
 
 /** `{ cols, rows }`: whole numbers from 2 to 1000; null otherwise. */

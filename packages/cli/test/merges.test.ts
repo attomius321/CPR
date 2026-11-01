@@ -1,11 +1,24 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { openRepo, type AgentModel, type MergeLogLine, type Verdict } from '@symbiote/core';
+import {
+  openRepo,
+  type AgentModel,
+  type MergeLogLine,
+  type Verdict,
+  type WorkspaceReplied,
+  type WorkspaceReply,
+} from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { run } from '../src/main.js';
-import { merger, MergeRefused, readMergeConfig, type ChangedSymbols } from '../src/merges.js';
+import {
+  merger,
+  MergeRefused,
+  readMergeConfig,
+  sendFailure,
+  type ChangedSymbols,
+} from '../src/merges.js';
 import type { RunCheck } from '../src/programs.js';
 import { MERGER_INSTRUCTIONS, type MergerAgent } from '../src/merge-agent.js';
 import { MERGER_ANSWER } from '../src/prompts.js';
@@ -285,6 +298,63 @@ describe('merging, checking and landing (V26a)', () => {
     expect(lines.at(-1)).toBe('line 80');
     expect(checks.asked.map((a) => a.command)).toEqual(['first', 'then fail']);
     expect(repo.git('rev-parse', 'main')).toBe(shas.M);
+  });
+
+  it("words a failed check for the branch's agent, from merge.failed (AR2, decision 742)", async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: ['first', 'then fail'] });
+    const m = await make(repo, fakeChecks().run);
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    const { branch, text } = await m.failure(entry?.id ?? '');
+    expect(branch).toBe('topic');
+    expect(text).toContain(
+      `Symbiote merged ${shas.T.slice(0, 7)} into main and ran the check: \`then fail\` failed. ` +
+        'Its last lines:\n\n```\n',
+    );
+    expect(text).toContain('line 80\n```');
+    expect(text).toContain('Say whether your branch causes it. If it does, fix it on topic');
+    expect(text).toContain('say why in a few lines and change nothing');
+    // A project's own words, as Settings saves them.
+    writeFileSync(
+      join(repo.root, 'symbiote', 'config.json'),
+      JSON.stringify({
+        merge: { checks: ['first', 'then fail'] },
+        prompts: { merge: { failed: 'Failed: {command}\n{output}' } },
+      }),
+    );
+    expect((await m.failure(entry?.id ?? '')).text).toMatch(/^Failed: then fail\nline 21\n/);
+    await expect(m.failure('nope')).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("sends a failed check to the branch's agent as the merger's message (AR2)", async () => {
+    const replies: WorkspaceReply[] = [];
+    const reply = (request: WorkspaceReply) => {
+      replies.push(request);
+      return Promise.resolve({ workspace: {} as WorkspaceReplied['workspace'] });
+    };
+    const failure = (id: string) =>
+      id === 'm1'
+        ? Promise.resolve({ branch: 'topic', text: 'Symbiote merged it.' })
+        : Promise.reject(new MergeRefused(`no merge ${id}`, 404));
+    await sendFailure({ failure }, reply, 'm1');
+    expect(replies).toEqual([
+      { branch: 'topic', text: 'Symbiote merged it.', by: 'merger', key: 'merge.failed' },
+    ]);
+    await expect(sendFailure({ failure }, reply, 'm2')).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('has no failure to send for a merge whose check passed', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: ['first'] });
+    const m = await make(repo, fakeChecks().run);
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    await expect(m.failure(entry?.id ?? '')).rejects.toMatchObject({ status: 409 });
   });
 
   it('runs a real check in the merge, through the shell', async () => {

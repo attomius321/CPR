@@ -6,6 +6,7 @@
 // list (every 5 s while its agent works or waits).
 import { useMemo } from 'react';
 import type { WorkspaceSummary, WorkspaceThread } from '@symbiote/core';
+import { useNucleusName } from '../shell/names.js';
 import { useChanges } from './ChangesPanel.js';
 import { useTools } from './activity/api.js';
 import { ActivityTimeline } from './activity/ActivityTimeline.js';
@@ -32,9 +33,10 @@ export function ActivityTab({
     () => activityEvents(workspace, thread, tools, commits),
     [workspace, thread, tools, commits],
   );
+  const nucleusName = useNucleusName();
   const groups = useMemo(
-    () => activityGroups(events, { agent: workspace.agent, worktree }),
-    [events, workspace.agent, worktree],
+    () => activityGroups(events, { agent: workspace.agent, worktree, nucleusName }),
+    [events, workspace.agent, worktree, nucleusName],
   );
   const live = useMemo(
     () => liveActivity(workspace.agent, worktree, events, groups),

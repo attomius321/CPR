@@ -535,6 +535,16 @@ describe('Hive, on', () => {
     await s.service.reply({ branch: 'feature/cap', text: 'Add fixed.txt.' });
     await runner.tick();
     expect(await readHive(s.where, 'feature/cap')).toMatchObject({ step: 'writing', round: 1 });
+    // Hive's messages read as Hive's in the thread, the person's as theirs (AR2, decision 741).
+    const prompts = (await s.service.thread('feature/cap')).entries.filter(
+      (e) => e.kind === 'prompt',
+    );
+    expect(prompts.map((e) => (e.kind === 'prompt' ? [e.from, e.key] : []))).toEqual([
+      ['start', undefined],
+      ['hive', 'hive.check'],
+      ['hive', 'hive.check'],
+      ['person', undefined],
+    ]);
     await s.fake.endTurn(worktree, { files: { 'fixed.txt': 'yes\n' } });
     await runner.tick();
     await runner.idle();

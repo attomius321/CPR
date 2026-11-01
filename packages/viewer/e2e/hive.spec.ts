@@ -377,7 +377,9 @@ test("the honeycomb stays behind the page after the arrival, on the shutter's ti
   await expect(comb(page)).toBeAttached();
   // The honeycomb is there from the page's first render, before the diff's head: wait for it.
   await expect(page.locator('.app > .bar')).toBeVisible({ timeout: 15_000 });
-  expect(await colour(page, '.app > .bar', 'backgroundColor')).toBe('rgba(0, 0, 0, 0)');
+  // Polled (AR2): under load the head was drawn again as the diff loaded, and a read of the one
+  // being replaced gave no colour at all.
+  await expect.poll(() => colour(page, '.app > .bar', 'backgroundColor')).toBe('rgba(0, 0, 0, 0)');
   await page.goto(`${symbiote!.url}git`);
 
   // Narrow: the drawer over the page stays opaque.

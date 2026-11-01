@@ -59,6 +59,7 @@ import {
   parseWorkspaceDiff,
   parseWorkspaceOpen,
   parseWorkspaceReply,
+  parseWorkspaceSent,
   parseWorkspaceRequest,
   parseSuggestRequest,
   parseWorkspaceTerminal,
@@ -73,7 +74,7 @@ import type { Workspaces } from './workspaces.js';
 import { STATE_NAMES, type StateName, type StateStore } from './state.js';
 import { MAX_DOCUMENT_BYTES } from './workspace-documents.js';
 import { WorkspaceRefused } from './workspace-record.js';
-import { MergeRefused, type Merger } from './merges.js';
+import { MergeRefused, sendFailure, type Merger } from './merges.js';
 import { parsePromptChange, PromptRefused, type PromptSettingsService } from './prompts.js';
 import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';
@@ -585,7 +586,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       );
     }
     if (merges && url.pathname.startsWith('/api/merges')) {
-      return mergesRoute(req, res, url, merges);
+      return mergesRoute(req, res, url, merges, repository.workspaces);
     }
     const terminal = repository.terminals ? TERMINAL_PATH.exec(url.pathname) : null;
     if (terminal && repository.terminals) {
@@ -837,6 +838,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         oneAtATime(res, 'a message is being sent', () => workspaces.reply(request)),
       );
     }
+    if (url.pathname === '/api/workspaces/sent') {
+      return written(req, res, parseWorkspaceSent, (request) =>
+        answer(res, () => workspaces.noteSent(request).then(() => ({ noted: true }))),
+      );
+    }
     if (url.pathname === '/api/workspaces/clean') {
       return written(req, res, parseWorkspaceClean, (request) =>
         answer(res, () => workspaces.clean(request)),
@@ -931,6 +937,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     res: ServerResponse,
     url: URL,
     merges: Merger,
+    workspaces?: Workspaces,
   ): Promise<void> {
     if (url.pathname === '/api/merges') {
       if (req.method === 'GET') return answer(res, () => merges.list());
@@ -959,6 +966,16 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     }
     if (url.pathname === '/api/merges/recheck') {
       return written(req, res, parseMergeId, (id) => answer(res, () => merges.recheck(id)));
+    }
+    // A failed check sent to the branch's agent, on the person's press (AR2, decision 742).
+    if (url.pathname === '/api/merges/send') {
+      return written(req, res, parseMergeId, (id) =>
+        workspaces
+          ? oneAtATime(res, 'a message is being sent', () =>
+              sendFailure(merges, (request) => workspaces.reply(request), id),
+            )
+          : Promise.resolve(json(res, 409, { error: 'no workspaces here to send it to' })),
+      );
     }
     // A fast-forward its target can no longer take, merged with a merge commit (V67).
     if (url.pathname === '/api/merges/merge-commit') {

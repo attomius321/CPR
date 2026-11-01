@@ -319,7 +319,13 @@ export function hiveRunner(
     let copy: string | undefined;
     if (!arrived(await readThreadEnd(symbiote, record.branch), message)) {
       try {
-        ({ copy } = await workspaces.reply({ branch: record.branch, text: message.text }));
+        // Noted as Hive's (AR2, decision 741): the record says who sent it.
+        ({ copy } = await workspaces.reply({
+          branch: record.branch,
+          text: message.text,
+          by: 'hive',
+          key: message.key,
+        }));
       } catch (error) {
         if (!failed.has(record.branch)) {
           failed.add(record.branch);

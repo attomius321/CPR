@@ -1066,7 +1066,11 @@ describe("Symbiote's MCP: asks (decision 361)", () => {
       false,
     );
     expect((await call(mcp, 'stop_agent', { branch: 'feature/b' })).isError).toBe(false);
-    expect(calls).toContainEqual(['reply', { branch: 'fix/a', text: 'OK, go ahead' }]);
+    // Noted as Nucleus's (AR2, decision 741): its prompt reads as Nucleus's, not the person's.
+    expect(calls).toContainEqual([
+      'reply',
+      { branch: 'fix/a', text: 'OK, go ahead', by: 'nucleus' },
+    ]);
     expect(calls).toContainEqual(['stopAgent', 'feature/b']);
     expect(mcp.asks().asks).toEqual([]);
   });

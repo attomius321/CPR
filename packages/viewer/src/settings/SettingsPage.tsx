@@ -294,6 +294,7 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   'verdict.where': WhereIcon,
   reviews: AgentsFileIcon,
   merger: MergeIcon,
+  'merge.failed': ChecksIcon,
   nucleus: NucleusIcon,
   scribe: SparklesIcon,
   'hive.start': HexagonIcon,
