@@ -457,7 +457,7 @@ p.settings-section.settings-about {
   color: var(--accent);
   font-family: var(--mono);
   font-size: var(--size-caption);
-  line-height: 20px;
+  line-height: calc(var(--size-caption) + 7px);
   text-decoration: none;
 }
 

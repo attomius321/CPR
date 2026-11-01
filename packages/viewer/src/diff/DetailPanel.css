@@ -208,7 +208,7 @@
   color: var(--muted);
   font-size: var(--size-caption);
   font-weight: 500;
-  line-height: 16px;
+  line-height: calc(var(--size-caption) + 3px);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }

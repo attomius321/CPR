@@ -195,7 +195,7 @@
   font: inherit;
   font-size: var(--size-caption);
   font-weight: normal;
-  line-height: 16px;
+  line-height: calc(var(--size-caption) + 3px);
 }
 
 /* The header's actions, at its right: "Start a workspace" (V18), then Compare mode. */
@@ -219,10 +219,16 @@
 
 /* ---- checkout (V11) ------------------------------------------------------------------ */
 
+/* A row's menu: a square as tall as the row, WCAG 2.2's 24 px target (V87b; 20 px in V85). */
 .commit-menu {
   display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--height-row);
+  height: var(--height-row);
   visibility: hidden;
-  padding: 2px;
+  padding: 0;
   border-radius: 4px;
   color: var(--muted);
 }
@@ -264,7 +270,7 @@
   border-radius: 4px;
   background: var(--raised);
   color: var(--muted);
-  font: 500 var(--size-caption)/18px var(--sans);
+  font: 500 var(--size-caption) / calc(var(--size-caption) + 5px) var(--sans);
   white-space: nowrap;
 }
 
@@ -384,7 +390,7 @@
   color: var(--panel);
   font-size: var(--size-caps);
   font-weight: 700;
-  line-height: 14px;
+  line-height: calc(var(--size-caps) + 2px);
   text-align: center;
   vertical-align: 1px;
 }

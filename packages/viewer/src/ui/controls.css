@@ -142,7 +142,7 @@ select option {
   padding: 0 6px;
   font-size: var(--size-caption);
   font-weight: 500;
-  line-height: 20px;
+  line-height: calc(var(--size-caption) + 7px);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -181,7 +181,7 @@ select option {
   border-radius: 9999px;
   background: color-mix(in srgb, var(--badge) 10%, transparent);
   color: var(--badge);
-  line-height: 18px;
+  line-height: calc(1em + 5px);
 }
 
 .badge-error {
@@ -423,7 +423,7 @@ kbd {
   background: color-mix(in srgb, var(--raised) 70%, transparent);
   box-shadow: var(--shadow-lift);
   color: var(--muted);
-  font: 500 var(--size-caption)/18px var(--sans);
+  font: 500 var(--size-caption) / calc(var(--size-caption) + 5px) var(--sans);
   text-align: center;
 }
 

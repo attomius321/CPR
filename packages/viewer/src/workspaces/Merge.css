@@ -43,7 +43,7 @@
   margin: 0;
   color: var(--text);
   font-size: var(--size-small);
-  line-height: 16px;
+  line-height: calc(var(--size-small) + 4px);
   overflow-wrap: anywhere;
 }
 
@@ -585,7 +585,7 @@
 }
 
 .merge-filerow-count {
-  color: var(--faint);
+  color: var(--muted);
   font-size: var(--size-caption);
   font-variant-numeric: tabular-nums;
 }

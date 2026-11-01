@@ -22,15 +22,16 @@ test.afterEach(() => {
 });
 
 const POLL = { timeout: 15_000 };
-// V85 (decision 713): VS Code's tighter frame, from the tokens (16, 16, 44, 48 before).
+// V85 (decision 713): VS Code's tighter frame, from the tokens (16, 16, 44, 48 before). V87
+// (decision 761): the head's lines and controls a step taller for 15 px text.
 const PAD = 12;
 const GAP = 8;
-/** The head: 12 px, its two lines (36 px), 12 px. */
-const CARDS_FROM = 60;
-/** The page's icon in a 26 px square 12 px in, 12 px before the title. */
-const TITLE_AT = 50;
+/** The head: 12 px, its two lines (`--page-head`, 40 px), 12 px. */
+const CARDS_FROM = 64;
+/** The page's icon in a 28 px square 12 px in, 12 px before the title. */
+const TITLE_AT = 52;
 /** A card's head (`--card-head`) and its first word: the card's 1 px edge, then `--card-pad`. */
-const HEAD = 35;
+const HEAD = 37;
 const INSET = 13;
 const SIZES = [
   [1440, 900],
@@ -292,7 +293,8 @@ function rhythm(page: Page, fields: string) {
 // V72e (decision 508): inside the cards, one inset and one head — before it, a card's head was 40,
 // 41, 48 or 64 px and its words 12 to 24 px in — and one form rhythm (a label 5, 9 or 13 px over
 // its field, 13 or 21 px to the next). V85: 35 px heads, 12 px in, a label 4 px over, 14 to the next.
-test('inside the cards: heads 35 px, their words or controls 12 px in; a label 4 px over its field, 14 to the next', async ({
+// V87: 37 px heads.
+test('inside the cards: heads 37 px, their words or controls 12 px in; a label 4 px over its field, 14 to the next', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces({ terminal: false });

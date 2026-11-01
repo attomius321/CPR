@@ -168,9 +168,10 @@ test("History in Symbiote's style: names in the text's font, HEAD a tint, menus 
 });
 
 // V32: text one can read. V61: a pixel more. V85 (decision 708): VS Code's sizes, as the person
-// asked: every text shown, on every page, 11 px at least; 13 px for the body, 14 px for the
-// terminal. The graph keeps V32's (decision 438): 12 and 11 px there.
-test('no text under 11 px on any page; the body at 13 px and the terminal at 14 px', async ({
+// asked. V87 (decision 760): their design B: every text shown, on every page, 12 px at least
+// (Windows' minimum); 15 px for the body, 14 px for the terminal. The graph keeps V32's (decision
+// 438): 12 and 11 px there, and zooms.
+test('no text under 12 px on any page; the body at 15 px and the terminal at 14 px', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -184,17 +185,22 @@ test('no text under 11 px on any page; the body at 13 px and the terminal at 14 
           .join('')
           .trim();
         // The terminal draws its own text at its own size, checked below.
-        if (!text || element.closest('.xterm') || element.getClientRects().length === 0) continue;
+        if (
+          !text ||
+          element.closest('.xterm, .react-flow') ||
+          element.getClientRects().length === 0
+        )
+          continue;
         const style = getComputedStyle(element);
         const size = Number.parseFloat(style.fontSize);
-        if (size < 11) under.push(`${element.className}: "${text}" ${size}px`);
+        if (size < 12) under.push(`${element.className}: "${text}" ${size}px`);
       }
       return under;
     });
 
   await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible(POLL);
-  expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('13px');
+  expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('15px');
   expect(await small()).toEqual([]);
   await page.locator('.commit.head').click({ button: 'right', position: { x: 120, y: 10 } });
   await expect(page.getByRole('menu')).toBeVisible();
@@ -320,10 +326,10 @@ test('text fields: a quiet edge, a stronger one on hover, a ring on focus, one h
   expect(await style(title, 'outline-style')).toBe('none');
   await expect.poll(() => style(title, 'box-shadow')).toContain('0px 0px 0px 3px');
   for (const field of [title, form.getByRole('textbox', { name: 'Branch name' })]) {
-    expect((await field.boundingBox())?.height).toBe(26);
+    expect((await field.boundingBox())?.height).toBe(28);
   }
   for (const select of await form.getByRole('combobox').all()) {
-    expect((await select.boundingBox())?.height).toBe(26);
+    expect((await select.boundingBox())?.height).toBe(28);
   }
   expect(await style(goal, 'resize')).toBe('none');
   const before = (await goal.boundingBox())?.height ?? 0;

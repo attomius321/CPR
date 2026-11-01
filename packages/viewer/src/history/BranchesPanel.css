@@ -196,7 +196,7 @@
   color: var(--muted);
   font-size: var(--size-caption);
   font-weight: 500;
-  line-height: 18px;
+  line-height: calc(var(--size-caption) + 5px);
 }
 
 /* The stashes, at the panel's foot under a hairline (decision 639): the branches scroll above

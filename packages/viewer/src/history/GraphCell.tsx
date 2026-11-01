@@ -3,8 +3,8 @@ import type { LaneRow } from './lanes.js';
 import { tip } from '../ui/tip.js';
 
 /** Every row of the commits page is this tall, so rows can be placed by number: `--height-row`
- * (V85, decision 711). */
-export const ROW_HEIGHT = 22;
+ * (V85, decision 711; 24 px since V87, decision 761: WCAG 2.2's target size). */
+export const ROW_HEIGHT = 24;
 
 /** `lane-0` is the current branch's accent; others cycle through six colors. */
 const laneClass = (lane: number) => `lane-${lane === 0 ? 0 : ((lane - 1) % 6) + 1}`;

@@ -8,36 +8,39 @@
 :root {
   --sans: 'Geist Variable', monospace;
   --mono: 'Geist Mono Variable', monospace;
-  /* The type scale (V32): one step above V29b's dense 13 px, which was too small to read; V61 a
-     pixel more each. V85 (decisions 708, 709): the person asked for VS Code's look, measured from
-     its build: 13 px body, 12 and 11 px secondary, nothing under 11 px; code 13 beside it. Every
-     text is sized from it (test/tokens.test.ts); hierarchy is by weight and colour more than size.
-     The graph keeps V32's (below, `.react-flow`). */
-  --size-caps: 11px; /* uppercase labels (a symbol's kind), one-glyph marks */
-  --size-caption: 11px; /* captions, chips, badges, counts, key caps, category labels */
-  --size-small: 12px; /* secondary: buttons, menu items, paths, the status bar */
-  --size-body: 13px; /* rows, nav, tabs, body text, editors */
-  --size-title: 16px; /* titles: a page's, a dialog's, a symbol's in its panel */
-  --size-code: 13px; /* code: a diff's lines, a file, a commit's message in mono */
+  /* The type scale (V32): one step above V29b's dense 13 px body, which was too small to read; V61 a
+     pixel more each. V85 (decisions 708, 709) took VS Code's 13 px; too small again on the
+     person's 27-inch 1440p screen at 100 %, where a px is 0.233 mm. V87 (decision 760): their design
+     B, 15 px body and nothing under Windows' 12 px; code 14 beside it. Every text is sized from it
+     (test/tokens.test.ts) and every line follows its size; hierarchy is by weight and colour more
+     than size. The graph keeps V32's (`.react-flow`). */
+  --size-caps: 12px; /* uppercase labels (a symbol's kind), one-glyph marks */
+  --size-caption: 13px; /* captions, chips, badges, counts, key caps, category labels */
+  --size-small: 14px; /* secondary: buttons, menu items, paths, the status bar */
+  --size-body: 15px; /* rows, nav, tabs, body text, editors */
+  --size-title: 18px; /* titles: a page's, a dialog's, a symbol's in its panel */
+  --size-code: 14px; /* code: a diff's lines, a file, a commit's message in mono */
   /* The page frame (V72, decisions 507–509): every page the whole main area, its head
      (`ui/page.css`) and its cards the same distance from the area's edges, from each other and
      from their contents on every page; one form rhythm. One value for both themes. V85 (decision
      713): VS Code's tighter spacing. */
   --page-pad: 12px; /* the main area's edges to its cards and the head's contents */
   --page-gap: 8px; /* between two cards; a resizer lies in it */
-  --page-head: 36px; /* the head's two lines: the title and the line under it */
+  --page-head: 40px; /* the head's two lines: the title and the line under it */
   --card-pad: 12px; /* a card's edge to its contents, its head's and its body's */
-  --card-head: 35px; /* a card's head: its tabs, or a title and actions (VS Code's tabs) */
+  --card-head: 37px; /* a card's head: its tabs, or a title and actions (VS Code's tabs: 35) */
   --field-label-gap: 4px; /* a label to its field */
   --field-gap: 14px; /* a field to the next label */
-  /* Heights (V85, decisions 710–712): VS Code's density, each a step below V72's. Every control,
-     row and bar takes one; a height of 28 to 56 px in px is refused (test/tokens.test.ts). */
-  --height-row: 22px; /* a list's row, a small control, an icon button (28 before V85) */
-  --height-control: 26px; /* buttons, inputs, selects, a list's taller row (32) */
-  --height-tall: 28px; /* a tall control: a page's actions, a sidenav entry (36) */
-  --height-tab: 30px; /* tabs and kinds in a head, a tile (40) */
-  --height-bar: 34px; /* a bar over a card (44) */
-  --height-top: 40px; /* the sidenav's top, the Monitor's bar (52) */
+  /* Heights (V85, decisions 710–712): VS Code's density, each a step below V72's. V87 (decision
+     761): rows and small controls 24 px, WCAG 2.2's target size (2.5.8); the rest a step for 15 px
+     text. Every control, row and bar takes one; a height of 28 to 56 px in px is refused
+     (test/tokens.test.ts). */
+  --height-row: 24px; /* a list's row, a small control, an icon button (22 in V85, 28 before) */
+  --height-control: 28px; /* buttons, inputs, selects, a list's taller row (26; 32) */
+  --height-tall: 30px; /* a tall control: a page's actions, a sidenav entry (28; 36) */
+  --height-tab: 32px; /* tabs and kinds in a head, a tile (30; 40) */
+  --height-bar: 36px; /* a bar over a card (34; 44) */
+  --height-top: 40px; /* the sidenav's top, the Monitor's bar (52 before V85) */
   /* lucide's chevron-right (ISC) as a mask, drawn in the text's colour: a submenu's, a <summary>'s. */
   --chevron-right: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m9 18 6-6-6-6'/%3E%3C/svg%3E");
 }

@@ -103,7 +103,7 @@
   border-radius: 9999px;
   background: color-mix(in srgb, var(--tone) 10%, transparent);
   color: var(--tone);
-  line-height: 16px;
+  line-height: calc(var(--size-caption) + 4px);
   font-size: var(--size-caption);
 }
 
