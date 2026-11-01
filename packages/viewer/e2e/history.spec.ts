@@ -4,7 +4,8 @@ import { serveLongHistory, type Running } from './symbiote.js';
 // The commits page on a longer history (V10): rows drawn only near the view, their details
 // asked for as they come near, and a line too long to draw cut into arrows.
 const ROWS = 450;
-const ROW_HEIGHT = 22;
+// `ROW_HEIGHT` of history/GraphCell.tsx: `--height-row` (V87: 24 px, WCAG 2.2's target size).
+const ROW_HEIGHT = 24;
 let symbiote: Running;
 const errors: string[] = [];
 

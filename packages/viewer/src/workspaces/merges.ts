@@ -181,7 +181,7 @@ export function mergeLabel(entry: MergeEntry): string {
 }
 
 export type MergeAction =
-  'land' | 'approve' | 'change' | 'recheck' | 'merge-commit' | 'retry' | 'remove';
+  'land' | 'approve' | 'change' | 'recheck' | 'send' | 'merge-commit' | 'retry' | 'remove';
 
 /** What else can be done when `into` cannot fast-forward (V67, decision 486). */
 const OTHERWISE = (into: string) =>
@@ -220,16 +220,19 @@ export const toReview = (entry: MergeEntry) =>
 
 /**
  * What a row offers: Land when ready; Approve and Request changes on a resolution, its check
- * passed or failed, and Check again when it failed; Merge commit instead on a fast-forward its
+ * passed or failed, and Check again when it failed; Send to the agent when its check failed and
+ * the branch's agent takes messages (`send`, AR2); Merge commit instead on a fast-forward its
  * target can no longer take (V67); Retry when it stopped; Remove unless it runs.
  */
-export function mergeActions(entry: MergeEntry): MergeAction[] {
+export function mergeActions(entry: MergeEntry, { send = false } = {}): MergeAction[] {
   if (['merging', 'resolving', 'checking'].includes(entry.state)) return [];
   const cannot = entry.state === 'needs-you' && entry.strategy === 'fast-forward' && entry.behind;
+  const failed = entry.check?.ok === false && Boolean(entry.check.failed);
   return [
     ...(cannot ? (['merge-commit'] as const) : []),
     ...(toReview(entry) ? (['approve', 'change'] as const) : []),
     ...(toReview(entry) && entry.check?.ok === false ? (['recheck'] as const) : []),
+    ...(send && failed && ['failed', 'needs-you'].includes(entry.state) ? (['send'] as const) : []),
     ...(entry.state === 'ready' ? (['land'] as const) : []),
     ...(entry.state === 'failed' || entry.state === 'needs-you' ? (['retry'] as const) : []),
     'remove',
@@ -240,8 +243,11 @@ export function mergeActions(entry: MergeEntry): MergeAction[] {
  * Where a merge's head draws its actions (V55): the frequent ones as buttons, Retry and Remove
  * under "⋯"; a landed merge's Remove, all it has left, as a button.
  */
-export function mergeButtons(entry: MergeEntry): { buttons: MergeAction[]; more: MergeAction[] } {
-  const actions = mergeActions(entry);
+export function mergeButtons(
+  entry: MergeEntry,
+  options: { send?: boolean } = {},
+): { buttons: MergeAction[]; more: MergeAction[] } {
+  const actions = mergeActions(entry, options);
   if (entry.state === 'landed') return { buttons: actions, more: [] };
   const rare = (action: MergeAction) => action === 'retry' || action === 'remove';
   return { buttons: actions.filter((a) => !rare(a)), more: actions.filter(rare) };

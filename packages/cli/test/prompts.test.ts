@@ -87,9 +87,24 @@ describe('with no prompts set (V28)', () => {
         `$1. Symbiote has already made its branch and its worktree: you are in that worktree now, ${worktree}, with the branch $2 (started from $3) checked out. Work only here, on $2. Do not create another branch or worktree, and do not switch branches (no \`git checkout -b\`, \`git switch\`, \`git worktree add\` or EnterWorktree), even where the project's instructions or your tools say new work gets one: this branch is the one the person reviews and merges.\n`,
       );
       expect(expected).not.toBe(into);
+      // Since AR2 (decision 740), a spike's answer is also kept where the project keeps answers.
+      const spike = expected
+        .replace(
+          'The answer is what is asked for, not a change to merge: put it in your final report; ' +
+            "keep experiments out of the project's code unless the brief says otherwise.",
+          'The answer is what is asked for, not a change to merge. Put it in your final report; if ' +
+            "the brief or the project's instructions say where answers are kept (a file, its docs), " +
+            "write it there too. Keep experiments out of the project's code unless the brief says " +
+            'otherwise.',
+        )
+        .replace(
+          'Commit nothing unless the brief asks for it.',
+          "Commit only what the brief or the project's instructions ask you to keep.",
+        );
+      expect(spike !== expected).toBe(workspace.kind === 'spike');
       const given = { ...workspace, worktree };
-      expect(workspacePrompt(given, where, text)).toBe(expected);
-      expect(workspacePrompt(given, where)).toBe(expected);
+      expect(workspacePrompt(given, where, text)).toBe(spike);
+      expect(workspacePrompt(given, where)).toBe(spike);
     }
   });
 
@@ -152,9 +167,50 @@ describe('with no prompts set (V28)', () => {
       'Reproduce it first, with a failing test where the project has tests',
     );
     expect(DEFAULT_PROMPTS['start.feature']).not.toContain('Reproduce it first');
+    // AR2 (decision 740): a spike's answer is kept where the brief or the project keeps answers.
     expect(DEFAULT_PROMPTS['start.spike']).toContain(
-      'Commit nothing unless the brief asks for it.',
+      "if the brief or the project's instructions say where answers are kept (a file, its docs), " +
+        'write it there too.',
     );
+    expect(DEFAULT_PROMPTS['start.spike']).toContain(
+      "Commit only what the brief or the project's instructions ask you to keep.",
+    );
+    expect(DEFAULT_PROMPTS['start.spike']).not.toContain('Commit nothing');
+  });
+
+  it("words a failed merge check for the branch's agent, with the merger's prompts (AR2)", () => {
+    const text = fillPrompt(DEFAULT_PROMPTS['merge.failed'], {
+      branch: 'feature/one',
+      at: 'abc1234',
+      into: 'main',
+      command: 'pnpm check',
+      output: 'FAIL a.test.ts',
+    });
+    expect(text).toBe(
+      'Symbiote merged abc1234 into main and ran the check: `pnpm check` failed. Its last ' +
+        'lines:\n\n```\nFAIL a.test.ts\n```\n\nSay whether your branch causes it. If it does, fix ' +
+        'it on feature/one and commit: the person approves the new commit. If it does not (a test ' +
+        'your change cannot reach, or a commit on main), say why in a few lines and change ' +
+        'nothing: the person runs the check again.',
+    );
+  });
+
+  it("asks Hive's writer for the failing tests, not the whole check Symbiote runs (AR2)", () => {
+    // Decision 739: the writer ran the whole check before each turn's end, then Hive ran it again.
+    const again = 'Symbiote runs the whole check again.';
+    expect(DEFAULT_PROMPTS['hive.start']).toContain(
+      'Symbiote runs the whole check after each of your turns: before you end one, run the tests ' +
+        'your change touches, not the whole check.',
+    );
+    expect(DEFAULT_PROMPTS['hive.start']).not.toContain('So commit everything');
+    expect(DEFAULT_PROMPTS['hive.check']).toContain(
+      'Fix the cause and run the tests that failed, and the ones your fix touches, until they ' +
+        `pass. Then commit and end your turn: ${again}`,
+    );
+    expect(DEFAULT_PROMPTS['hive.review']).toContain(`Then commit and end your turn: ${again}`);
+    for (const key of ['hive.start', 'hive.check', 'hive.review'] as const) {
+      expect(DEFAULT_PROMPTS[key]).not.toMatch(/run the check yourself|Then run the check/);
+    }
   });
 });
 
@@ -407,6 +463,28 @@ describe("Nucleus's name in its prompt (Alpha Ceph, decision 685)", () => {
     );
   });
 
+  it("tells Alpha Ceph what Hive does: Hive's text at the end (V86, decision 751)", () => {
+    const hive = fillPrompt(DEFAULT_PROMPTS['hive.nucleus'], { rounds: '3' });
+    expect(hive).toMatch(/^Hive mode is on\. Every workspace you start now is Hive's/);
+    expect(hive).toContain('for up to 3 rounds');
+    expect(hive).not.toMatch(/\{\w+\}/);
+    const on = nucleusInstructions(DEFAULT_PROMPTS.nucleus, NUCLEUS_NAMES.hive, hive);
+    expect(on).toBe(
+      `${nucleusInstructions(DEFAULT_PROMPTS.nucleus, NUCLEUS_NAMES.hive)}\n\n${hive}`,
+    );
+    // After the line that tells a project's text its name.
+    expect(nucleusInstructions('You are Nucleus.', NUCLEUS_NAMES.hive, 'Hive is on.')).toBe(
+      'You are Nucleus.\n\nHive mode is on: you are called Alpha Ceph, not Nucleus.\n\nHive is on.',
+    );
+    // Nucleus's, with Hive off: main's, whatever Hive's text.
+    const MAIN = 'be549465b6ac31a946aa643e45b57d00be8f0a397a49f23ec6345e29171f56af';
+    expect(
+      createHash('sha256')
+        .update(nucleusInstructions(DEFAULT_PROMPTS.nucleus, NUCLEUS_NAMES.off))
+        .digest('hex'),
+    ).toBe(MAIN);
+  });
+
   it("reaches a project's own text: {name} filled; without it, a line at the end in Hive mode only", () => {
     expect(nucleusInstructions('You are {name}. Be brief.', NUCLEUS_NAMES.hive)).toBe(
       'You are Alpha Ceph. Be brief.',
@@ -548,6 +626,7 @@ describe("Nucleus's prompt (V35, NU1)", () => {
       'hive.commit',
       'hive.resume',
       'hive.reviewer',
+      'hive.nucleus',
     ]);
   });
 });
@@ -701,6 +780,7 @@ describe("Hive's prompts (HV2, decision 657)", () => {
       ['hive.commit', 'Not committed'],
       ['hive.resume', 'Resume'],
       ['hive.reviewer', 'Reviewer'],
+      ['hive.nucleus', 'Alpha Ceph'],
     ]);
     // HV3: the message with the proven tests needs them; the reviewer's answer is Symbiote's.
     expect(of('hive.review')?.placeholders.find((p) => p.required)?.name).toBe('findings');
@@ -708,6 +788,11 @@ describe("Hive's prompts (HV2, decision 657)", () => {
     const without = withConfig({ prompts: { hive: { review: 'Fix it.' } } });
     expect(readPrompts(without).text['hive.review']).toBe(DEFAULT_PROMPTS['hive.review']);
     expect(of('hive.start')?.placeholders.map((p) => p.name)).toEqual(['check', 'rounds']);
+    // V86: what Alpha Ceph is told of Hive, in a project's config as `prompts.hive.nucleus`.
+    expect(of('hive.nucleus')?.placeholders.map((p) => p.name)).toEqual(['rounds']);
+    expect(
+      readPrompts(withConfig({ prompts: { hive: { nucleus: 'Hive is on.' } } })).text,
+    ).toMatchObject({ 'hive.nucleus': 'Hive is on.' });
     expect(of('hive.check')?.placeholders.find((p) => p.required)?.name).toBe('output');
     expect(of('start.feature')?.placeholders.map((p) => p.name)).toContain('hive');
     // A check message without the output is not used: Symbiote's is.
@@ -729,7 +814,8 @@ describe("Hive's prompts (HV2, decision 657)", () => {
     expect(text).toBe(
       'Symbiote ran the check on feature/one at abc1234 (round 1 of 3): `pnpm check` failed. ' +
         'Its last lines:\n\n```\nFAIL a.test.ts\n```\n\n' +
-        'Fix the cause, run the check yourself, commit, and end your turn.',
+        'Fix the cause and run the tests that failed, and the ones your fix touches, until they ' +
+        'pass. Then commit and end your turn: Symbiote runs the whole check again.',
     );
   });
 });

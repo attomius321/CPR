@@ -791,6 +791,8 @@ export interface IconCell {
   readonly chamber: number;
   /** The core: its chamber larger, white-hot. */
   readonly core: boolean;
+  /** When it boots as Nucleus becomes Alpha Ceph (V86): the core 0, the ring clockwise from 1. */
+  readonly order: number;
 }
 
 /** The icon's cell circumradius on lucide's 24-unit grid, and the gap between two plates. */
@@ -803,13 +805,17 @@ const ICON_GAP = 0.6;
  */
 export function iconCells(): IconCell[] {
   const plate = ICON_R - ICON_GAP;
-  return new Mind(12, 12, ICON_R).cells
-    .filter((cell) => cell.ring <= 1)
-    .map((cell) => ({
-      x: cell.x,
-      y: cell.y,
-      plate,
-      chamber: plate * (cell.ring === 0 ? 0.74 : 0.56),
-      core: cell.ring === 0,
-    }));
+  const cells = new Mind(12, 12, ICON_R).cells.filter((cell) => cell.ring <= 1);
+  // Clockwise from twelve o'clock, in degrees: the ring's boot order.
+  const clock = ({ x, y }: { x: number; y: number }) =>
+    ((Math.atan2(x - 12, 12 - y) * 180) / Math.PI + 360) % 360;
+  const ring = cells.filter((cell) => cell.ring === 1).sort((a, b) => clock(a) - clock(b));
+  return cells.map((cell) => ({
+    x: cell.x,
+    y: cell.y,
+    plate,
+    chamber: plate * (cell.ring === 0 ? 0.74 : 0.56),
+    core: cell.ring === 0,
+    order: cell.ring === 0 ? 0 : ring.indexOf(cell) + 1,
+  }));
 }

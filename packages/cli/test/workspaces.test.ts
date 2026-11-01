@@ -54,6 +54,7 @@ import {
   type ClaudeCode,
 } from '../src/claude-code.js';
 import { runProgram, type Run, type RunWithInput } from '../src/programs.js';
+import { appendThread, threadPath } from '../src/thread.js';
 import { reviewPlace } from '../src/reviews.js';
 import { DEFAULT_PROMPTS } from '../src/prompts.js';
 import { shellOf, type Terminals } from '../src/terminal.js';
@@ -421,10 +422,12 @@ describe('workspacePrompt', () => {
       expect(text).toContain('You are starting a new feature in this repository');
       for (const line of lines) expect(text).not.toMatch(line);
     }
-    // A spike's answer is its report: nothing to commit unless asked.
+    // A spike's answer is its report, and kept where the project keeps answers (AR2, 740).
     const spike = workspacePrompt(record({ kind: 'spike', title: 'T' }), where);
     expect(spike).not.toMatch(/Commit your work/);
-    expect(spike).toMatch(/Commit nothing unless the brief asks for it/);
+    expect(spike).toMatch(
+      /Commit only what the brief or the project's instructions ask you to keep/,
+    );
   });
 
   it('names the documents and their folder after the brief, saying the folder can be read (V40)', () => {
@@ -2342,6 +2345,86 @@ describe('workspaces', () => {
     expect(resume).toHaveBeenLastCalledWith(expect.objectContaining({ text: 'Go on' }));
   });
 
+  it("notes a message Symbiote sends before it goes, so its prompt reads as Symbiote's (AR2)", async () => {
+    const { repo } = fresh();
+    const { claude, listed } = fakeClaude();
+    const s = await service(repo, claude);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    Object.assign(listed[0] as AgentSession, { state: 'blocked', status: 'idle' });
+    const symbiote = join(repo.root, 'symbiote');
+    const text = 'Symbiote ran the check on feature/one at abc1234: `make` failed.';
+    await s.reply({ branch: 'feature/one', text, by: 'hive', key: 'hive.check' });
+    const lines = readFileSync(threadPath(symbiote, 'feature/one'), 'utf8').trim().split('\n');
+    expect(JSON.parse(lines.at(-1) ?? '{}')).toMatchObject({
+      kind: 'sent',
+      session: 'session-1',
+      by: 'hive',
+      key: 'hive.check',
+    });
+    // The hook records the prompt as Claude Code gives it; the reader labels it.
+    const prompt = (at: string, said: string) =>
+      appendThread(symbiote, 'feature/one', {
+        at,
+        session: 'session-1',
+        kind: 'prompt',
+        text: said,
+      });
+    await prompt(new Date(Date.now() + 1000).toISOString(), text);
+    // The person's own message carries no sender and writes no note.
+    Object.assign(listed[0] as AgentSession, { state: 'blocked', status: 'idle' });
+    await s.reply({ branch: 'feature/one', text: 'Thanks' });
+    await prompt(new Date(Date.now() + 2000).toISOString(), 'Thanks');
+    const prompts = (await s.thread('feature/one')).entries.filter((e) => e.kind === 'prompt');
+    expect(prompts.slice(-2)).toMatchObject([
+      { text, from: 'hive', key: 'hive.check' },
+      { text: 'Thanks', from: 'person' },
+    ]);
+    expect(
+      readFileSync(threadPath(symbiote, 'feature/one'), 'utf8').match(/"kind":"sent"/g),
+    ).toHaveLength(1);
+
+    // The verdict the page types into the terminal: noted, then the person presses Enter.
+    await s.noteSent({
+      branch: 'feature/one',
+      by: 'verdict',
+      text: 'Approved the branch feature/one',
+    });
+    await prompt(new Date(Date.now() + 3000).toISOString(), 'Approved the branch feature/one');
+    expect((await s.thread('feature/one')).entries.at(-1)).toMatchObject({ from: 'verdict' });
+    await expect(
+      s.noteSent({ branch: 'feature/nope', by: 'verdict', text: 'x' }),
+    ).rejects.toMatchObject({ status: 404 });
+  });
+
+  it("a reply resumes once the stopped session's terminal ended: a resume while `claude attach` runs starts a copy (decision 720)", async () => {
+    const { repo } = fresh();
+    const { claude, listed, stop, resume } = fakeClaude();
+    const { terminals, programs } = fakeTerminals();
+    const s = await service(repo, claude, HOOK, terminals);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    Object.assign(listed[0] as AgentSession, { state: 'blocked', status: 'idle' });
+    const { id } = await s.terminal({ branch: 'feature/one', cols: 80, rows: 24 });
+    // As measured (fix/hive-runner-flaws): the stop ends the session's process at once, and the
+    // `claude attach` client on it about a second later.
+    let ended = 0;
+    claude.stop = async (session) => {
+      const answer = await stop(session);
+      setTimeout(() => {
+        programs.delete(id);
+        ended = Date.now();
+      }, 300);
+      return answer;
+    };
+    let resumed = 0;
+    resume.mockImplementationOnce(() => {
+      resumed = Date.now();
+      return Promise.resolve({ ok: true });
+    });
+    await s.reply({ branch: 'feature/one', text: 'OK, go ahead.' });
+    expect(ended).toBeGreaterThan(0);
+    expect(resumed).toBeGreaterThanOrEqual(ended);
+  });
+
   it('says when Claude Code made a copy, and refuses what it cannot send', async () => {
     const { repo } = fresh();
     const { claude, listed } = fakeClaude();
@@ -2397,7 +2480,14 @@ describe('workspaces', () => {
     const thread = await s.thread('feature/one');
     expect(thread).toEqual({
       entries: [
-        { at: '2026-10-15T09:00:01.000Z', session: 'session-1', kind: 'prompt', text: 'Start' },
+        // The thread's first prompt is Symbiote's start prompt (AR2's label).
+        {
+          at: '2026-10-15T09:00:01.000Z',
+          session: 'session-1',
+          kind: 'prompt',
+          text: 'Start',
+          from: 'start',
+        },
         { at: '2026-10-15T09:00:02.000Z', session: 'session-1', kind: 'report', text: 'The plan' },
       ],
       recorded: true,

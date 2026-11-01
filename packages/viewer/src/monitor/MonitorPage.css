@@ -233,7 +233,7 @@
   border-radius: 4px;
   background: var(--kind-fill, var(--raised));
   font-size: var(--size-caption);
-  line-height: 16px;
+  line-height: calc(var(--size-caption) + 3px);
   cursor: pointer;
 }
 
@@ -457,7 +457,7 @@
   align-items: center;
   gap: 8px;
   margin: 4px 8px;
-  color: var(--faint);
+  color: var(--muted);
   font-size: var(--size-caption);
 }
 

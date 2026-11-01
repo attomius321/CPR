@@ -409,20 +409,75 @@ describe('the geometry is the style’s (V31c)', () => {
   });
 });
 
+// V87 (decision 765): `--faint` is 3:1, for what is not read as text (WCAG 2.2's 1.4.3 asks
+// 4.5:1 of text): a disabled control, an icon, a chevron, a separator, a help button's mark.
+describe('faint is not for text (V87)', () => {
+  const MARKS = /:disabled|\.icon\b|chevron|-sep\b|\.help-button|\.activity-tile/;
+
+  it('colours only marks and disabled controls with --faint', () => {
+    const off = rules
+      .filter((rule) => /(?:^|[\s;{])color:\s*var\(--faint\)/.test(rule.body))
+      .filter((rule) => !rule.selector.split(',').every((part) => MARKS.test(part)))
+      .map((rule) => rule.selector.split('\n')[0]);
+    expect(off).toEqual([]);
+  });
+});
+
 describe('the type scale (V32)', () => {
   // V29b's dense 13 px body, with 10–11 px captions, was too small to read: one step up (V32).
   // V61: still too small for the person's eyes, another pixel each. V85 (decisions 708, 709): the
-  // person asked for VS Code's look, its 13 px body and its density; nothing under 11 px; code 13,
-  // a terminal 14.
-  it("is VS Code's: 13 px for the body, code 13", () => {
+  // person asked for VS Code's look, its 13 px body and its density; nothing under 11 px. V87
+  // (decision 760): 13 px was too small again; the person chose 15 px on 1:1 designs, nothing
+  // under Windows' 12 px; code 14; the terminal stays 14 (decision 762).
+  it("is the person's design B: 15 px for the body, code 14", () => {
     expect(Object.fromEntries([...base].filter(([name]) => name.startsWith('--size-')))).toEqual({
-      '--size-caps': '11px',
-      '--size-caption': '11px',
-      '--size-small': '12px',
-      '--size-body': '13px',
-      '--size-title': '16px',
-      '--size-code': '13px',
+      '--size-caps': '12px',
+      '--size-caption': '13px',
+      '--size-small': '14px',
+      '--size-body': '15px',
+      '--size-title': '18px',
+      '--size-code': '14px',
     });
+  });
+
+  // V87 (decision 760): Windows' minimum for regular text (its type guidance: smaller "are
+  // illegible in some languages"). The graph's own scale zooms with it, and is left out.
+  it('sets nothing under 12 px', () => {
+    const graph = /(?:^|\n)\.react-flow \{[^}]*\}/g;
+    const sizes = [...css.replace(graph, '').matchAll(/(--size-[\w-]+):\s*(\d+)px/g)];
+    expect(sizes.length).toBeGreaterThan(5);
+    expect(sizes.filter((m) => Number(m[2]) < 12).map((m) => `${m[1]}: ${m[2]}px`)).toEqual([]);
+  });
+
+  // V87 (decision 764): a line follows its text. The text-size choice (V87c) changes the sizes; a
+  // line in px would crowd or clip a larger text, and leave a smaller one loose.
+  it('gives no line height in px: a size and a leading, unitless, or a token', () => {
+    // A shared control (a badge, a key cap) takes its parent's size: 1em and a leading.
+    const LINE =
+      /^(normal|inherit|[\d.]+|var\(--[\w-]+\)|calc\([^;]*(?:var\(--[\w-]+\)|[\d.]+em)[^;]*\))$/;
+    // In the shorthand, the line height follows the size's slash: a word, or a calc() whole.
+    const lineOf = (font: string): string | undefined => {
+      const after = /\/\s*/.exec(font);
+      if (!after) return undefined;
+      const rest = font.slice(after.index + after[0].length);
+      if (!rest.startsWith('calc(')) return rest.split(/\s/)[0];
+      let depth = 0;
+      for (let i = 0; i < rest.length; i++) {
+        if (rest[i] === '(') depth++;
+        if (rest[i] === ')' && --depth === 0) return rest.slice(0, i + 1);
+      }
+      return rest;
+    };
+    const off = rules.flatMap((rule) => [
+      ...[...rule.body.matchAll(/(?:^|[\s;])line-height:\s*([^;]+);/g)]
+        .filter((m) => !LINE.test(m[1]!.trim()))
+        .map((m) => `${rule.selector.split('\n')[0]}: ${m[1]}`),
+      ...[...rule.body.matchAll(/(?:^|[\s;])font:\s*([^;]+);/g)]
+        .map((m) => lineOf(m[1]!))
+        .filter((line): line is string => line !== undefined && !LINE.test(line))
+        .map((line) => `${rule.selector.split('\n')[0]}: font: …/${line}`),
+    ]);
+    expect(off).toEqual([]);
   });
 
   // V61 (decision 438): the graph keeps V32's sizes. A node's width is estimated from its
@@ -458,6 +513,27 @@ describe('the type scale (V32)', () => {
     expect(off).toEqual([]);
   });
 
+  // V87c (decision 763): Settings' text size moves the scale a step either side of design B
+  // (Compact is design A); only the sizes: the heights, the graph and the terminal stay.
+  it("moves only the sizes for Settings' text size: Compact 14 px, Large 16 px", () => {
+    expect(Object.fromEntries(tokens(":root[data-text-size='compact']"))).toEqual({
+      '--size-caps': '12px',
+      '--size-caption': '12px',
+      '--size-small': '13px',
+      '--size-body': '14px',
+      '--size-title': '17px',
+      '--size-code': '14px',
+    });
+    expect(Object.fromEntries(tokens(":root[data-text-size='large']"))).toEqual({
+      '--size-caps': '13px',
+      '--size-caption': '14px',
+      '--size-small': '15px',
+      '--size-body': '16px',
+      '--size-title': '19px',
+      '--size-code': '15px',
+    });
+  });
+
   it('names only sizes it has', () => {
     const used = new Set([...css.matchAll(/var\((--size-[a-z]+)\)/g)].map((m) => m[1]!));
     expect([...used].filter((name) => !base.has(name))).toEqual([]);
@@ -465,9 +541,10 @@ describe('the type scale (V32)', () => {
 });
 
 // V85 (decisions 710–714): VS Code's density. Controls, rows and heads take their heights from
-// the tokens, a step below V72's; the page frame's tokens tighter.
+// the tokens, a step below V72's; the page frame's tokens tighter. V87 (decision 761): rows and
+// small controls 24 px, WCAG 2.2's target size (2.5.8); the rest a step for 15 px text.
 describe('the density (V85)', () => {
-  it("is VS Code's: 26 px controls, 22 px rows, 35 px card heads, 12 px margins", () => {
+  it("is near VS Code's: 28 px controls, 24 px rows, 37 px card heads, 12 px margins", () => {
     const pick = (names: string[]) => Object.fromEntries(names.map((n) => [n, base.get(n)]));
     expect(
       pick([
@@ -486,14 +563,14 @@ describe('the density (V85)', () => {
         '--field-gap',
       ]),
     ).toEqual({
-      '--height-row': '22px',
-      '--height-control': '26px',
-      '--height-tall': '28px',
-      '--height-tab': '30px',
-      '--height-bar': '34px',
+      '--height-row': '24px',
+      '--height-control': '28px',
+      '--height-tall': '30px',
+      '--height-tab': '32px',
+      '--height-bar': '36px',
       '--height-top': '40px',
-      '--card-head': '35px',
-      '--page-head': '36px',
+      '--card-head': '37px',
+      '--page-head': '40px',
       '--page-pad': '12px',
       '--page-gap': '8px',
       '--card-pad': '12px',

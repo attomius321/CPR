@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   ActivityEntry,
+  PromptFrom,
   ThreadEntry,
   WorkspaceAgentState,
   WorkspaceCommit,
@@ -511,6 +512,32 @@ describe('activityGroups (V73)', () => {
       ['notice', false, 'Background command "Run e2e" completed (exit code 0)'],
       ['notice', false, 'A background task ended'],
       ['message', true, 'You: FAIL  packages/a.test.ts'],
+    ]);
+  });
+
+  it("titles Symbiote's own messages by who sent them, not as the person's (AR2, decision 741)", () => {
+    const said = (n: number, text: string, from: PromptFrom) =>
+      entry(n, { kind: 'prompt', text, from });
+    const groups = groupsOf(
+      [],
+      [
+        said(1, 'You are starting a new feature.', 'start'),
+        said(2, 'Symbiote ran the check on feature/x', 'hive'),
+        said(3, 'Rebase it.', 'nucleus'),
+        said(4, 'Approved the branch feature/x', 'verdict'),
+        said(5, 'Symbiote merged abc1234 into main', 'merger'),
+        said(6, '<agent-message from="a1"> [Subagent hand-back] Found it.', 'subagent'),
+        said(7, 'Thanks', 'person'),
+      ],
+    );
+    expect(groups.slice(1).map((g) => [g.kind, g.milestone, g.title])).toEqual([
+      ['prompt', true, "Symbiote's prompt"],
+      ['message', true, 'Hive: Symbiote ran the check on feature/x'],
+      ['message', true, 'Nucleus: Rebase it.'],
+      ['message', true, 'The verdict: Approved the branch feature/x'],
+      ['message', true, 'Symbiote: Symbiote merged abc1234 into main'],
+      ['notice', false, 'A subagent handed back its report'],
+      ['message', true, 'You: Thanks'],
     ]);
   });
 

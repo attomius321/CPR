@@ -24,7 +24,7 @@
   color: var(--text);
   font-size: var(--size-small);
   font-weight: 450;
-  line-height: 17px;
+  line-height: calc(var(--size-small) + 3px);
   text-align: left;
   cursor: pointer;
 }

@@ -18,7 +18,7 @@
   color: var(--warning);
   font-size: var(--size-caption);
   font-weight: 600;
-  line-height: 20px;
+  line-height: calc(var(--size-caption) + 7px);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -268,7 +268,7 @@ button.workspace-about {
   color: var(--warning);
   font-size: var(--size-caption);
   font-weight: 600;
-  line-height: 20px;
+  line-height: calc(var(--size-caption) + 7px);
 }
 
 .sidenav-pages a .sidenav-waits + .state-dot {
@@ -454,7 +454,7 @@ button.workspace-about {
   overflow: hidden;
   color: var(--text);
   font-size: var(--size-small);
-  line-height: 20px;
+  line-height: calc(var(--size-small) + 6px);
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -601,7 +601,7 @@ button.workspace-about {
   color: var(--muted);
   font-size: var(--size-caption);
   font-weight: 500;
-  line-height: 20px;
+  line-height: calc(var(--size-caption) + 7px);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -635,7 +635,7 @@ button.workspace-about {
 .sidenav .workspace-head {
   align-items: flex-start;
   gap: 10px;
-  line-height: 22px;
+  line-height: calc(var(--size-body) + 7px);
 }
 
 .sidenav .workspace-head > .state-dot {
@@ -672,7 +672,7 @@ button.workspace-about {
   min-width: 0;
   margin: 4px 0 0 17px;
   font-size: var(--size-small);
-  line-height: 20px;
+  line-height: calc(var(--size-small) + 6px);
 }
 
 /* What it does or what is next: one line, cut with "…" at its end, not at a word (a command's
@@ -710,7 +710,7 @@ button.workspace-about {
   margin: 6px 0 0 17px;
   color: var(--muted);
   font-size: var(--size-small);
-  line-height: 20px;
+  line-height: calc(var(--size-small) + 6px);
   font-variant-numeric: tabular-nums;
 }
 
@@ -755,7 +755,7 @@ button.workspace-about {
   margin: 4px 0 0 17px;
   color: var(--muted);
   font-size: var(--size-small);
-  line-height: 20px;
+  line-height: calc(var(--size-small) + 6px);
 }
 
 .sidenav .workspace-runs .icon {
@@ -771,7 +771,14 @@ button.workspace-about {
   border-radius: 0;
   background: none;
   color: var(--muted);
-  font: var(--size-small)/20px var(--sans);
+  font: var(--size-small) / calc(var(--size-small) + 6px) var(--sans);
+}
+
+/* The link to Git is a target inside the card's (V87b): its box reaches WCAG 2.2's 24 px over the
+   line, which keeps its height. */
+.sidenav .workspace-branch a.ref-branch {
+  padding-block: calc((var(--height-row) - var(--size-small) - 6px) / 2);
+  margin-block: calc((var(--size-small) + 6px - var(--height-row)) / 2);
 }
 
 .sidenav .workspace-branch a.ref-branch:hover {
@@ -920,7 +927,7 @@ button.workspace-about {
   overflow: hidden;
   font-size: var(--size-body);
   font-weight: 600;
-  line-height: 22px;
+  line-height: calc(var(--size-body) + 7px);
   overflow-wrap: anywhere;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
@@ -1072,7 +1079,7 @@ button.workspace-about {
     padding: 0 4px;
     background: var(--warning);
     color: var(--bg);
-    line-height: 16px;
+    line-height: calc(var(--size-caption) + 3px);
   }
 
   .sidenav.rail .group-waiting .workspace-row {
@@ -1103,7 +1110,7 @@ button.workspace-about {
     display: block;
     color: var(--text);
     font-size: var(--size-caption);
-    line-height: 16px;
+    line-height: calc(var(--size-caption) + 3px);
     font-variant-numeric: tabular-nums;
   }
 

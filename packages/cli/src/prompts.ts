@@ -29,9 +29,11 @@ const KIND_LINES: Partial<Record<WorkKind, string>> = {
     'Change structure, not behaviour: do not change what existing tests assert; if behaviour ' +
     'must change, stop and say so.',
   chore: 'Keep to what is asked; if it needs a change in behaviour, stop and say so.',
+  // AR2 (decision 740): 4 of 11 spikes ended with the person asking to keep the answer.
   spike:
-    'The answer is what is asked for, not a change to merge: put it in your final report; ' +
-    "keep experiments out of the project's code unless the brief says otherwise.",
+    'The answer is what is asked for, not a change to merge. Put it in your final report; if the ' +
+    "brief or the project's instructions say where answers are kept (a file, its docs), write it " +
+    "there too. Keep experiments out of the project's code unless the brief says otherwise.",
 };
 
 /**
@@ -61,8 +63,8 @@ function startPrompt(kind: WorkKind): string {
     '{plan}',
     '',
     kind === 'spike'
-      ? 'Commit nothing unless the brief asks for it. When you have the answer, say it: the ' +
-        'person reads your report in Symbiote.'
+      ? "Commit only what the brief or the project's instructions ask you to keep. When you " +
+        'have the answer, say it: the person reads your report in Symbiote.'
       : "Commit your work on {branch} as you go. Push only if the project's instructions say " +
         'so. When it is ready, say so: the person reviews the branch in Symbiote, and an approved ' +
         'commit is merged into {into}.',
@@ -216,9 +218,27 @@ const HIVE_START =
   'Hive drives this workspace. When you end a turn with commits, Symbiote runs the check on ' +
   "the branch's tip ({check}) and sends you its failures; once the check passes, a reviewer runs " +
   'your change in a throwaway copy and sends you the tests it proves defects with. That is up to ' +
-  '{rounds} rounds; once both pass, the person lands the branch. So commit everything before you ' +
-  'end a turn, end a turn only when the work is done or you need the person, and never push, ' +
-  'merge or switch branches.';
+  '{rounds} rounds; once both pass, the person lands the branch. Symbiote runs the whole check ' +
+  'after each of your turns: before you end one, run the tests your change touches, not the ' +
+  'whole check. Commit everything before you end a turn, end a turn only when the work is done ' +
+  'or you need the person, and never push, merge or switch branches.';
+
+/**
+ * What Alpha Ceph is told of Hive (V86, decision 751): what Hive does with the workspaces it
+ * starts, and what is Hive's to send them. At its instructions' end while Hive mode is on.
+ */
+const HIVE_NUCLEUS =
+  "Hive mode is on. Every workspace you start now is Hive's: its Claude Code agent works the " +
+  'brief (Hive starts Claude Code only); after each turn with commits, Symbiote runs the ' +
+  "project's check on the branch's tip, and once the check passes, a reviewer runs the change in " +
+  'a throwaway copy and proves defects with failing tests. Hive sends the agent what fails, for ' +
+  'up to {rounds} rounds; then the workspace waits for the person to land it from its Review ' +
+  'tab.\n\n' +
+  "A workspace's hive field says where Hive is with it: writing, checking, reviewing, landing " +
+  '(it waits for the person to land it), stuck (out of rounds, or it needs the person) or ' +
+  "landed. Do not send a Hive workspace's agent its check's or review's results, or tell it to " +
+  'commit: Hive does. Report on it by its step and what its last check and review found. ' +
+  "Landing, pushing and deleting work stay the person's.";
 
 /** What Hive sends the writer when the check failed (HV2). */
 const HIVE_CHECK = [
@@ -229,7 +249,9 @@ const HIVE_CHECK = [
   '{output}',
   '```',
   '',
-  'Fix the cause, run the check yourself, commit, and end your turn.',
+  // AR2 (decision 739): "run the check yourself" had the writer run it before Symbiote did.
+  'Fix the cause and run the tests that failed, and the ones your fix touches, until they pass. ' +
+    'Then commit and end your turn: Symbiote runs the whole check again.',
 ].join('\n');
 
 /**
@@ -244,8 +266,8 @@ const HIVE_REVIEW = [
   '{findings}',
   '',
   'Add each test to the branch, where the project keeps its tests, and make it pass; or, for a ' +
-    'test you think is wrong, say in one line why and leave it out. Then run the check, commit, ' +
-    'and end your turn.',
+    'test you think is wrong, say in one line why and leave it out. Then commit and end your ' +
+    'turn: Symbiote runs the whole check again.',
 ].join('\n');
 
 /**
@@ -297,6 +319,22 @@ Use "default" for the model or the level when nothing above fits better. The tas
 Answer with JSON. "why" is one sentence for the person, naming the signal in the brief that decided the size, for example "Renames one constant in two files: small and mechanical."`;
 
 /**
+ * What Send to the agent types into a branch's workspace when its merge's check failed (AR2,
+ * decision 742): the failure, and the question the person pasted it for (AR1: 14 pastes by hand).
+ */
+const MERGE_FAILED = [
+  'Symbiote merged {at} into {into} and ran the check: `{command}` failed. Its last lines:',
+  '',
+  '```',
+  '{output}',
+  '```',
+  '',
+  'Say whether your branch causes it. If it does, fix it on {branch} and commit: the person ' +
+    'approves the new commit. If it does not (a test your change cannot reach, or a commit on ' +
+    '{into}), say why in a few lines and change nothing: the person runs the check again.',
+].join('\n');
+
+/**
  * The answer the merger is asked for, after its instructions: Symbiote parses it, so a project
  * cannot change it (decision 169).
  */
@@ -328,6 +366,7 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
   'verdict.where': 'The review: {review}; how to act on it: {agents}.',
   reviews: REVIEWS.trimEnd(),
   merger: MERGER,
+  'merge.failed': MERGE_FAILED,
   nucleus: NUCLEUS,
   scribe: SCRIBE,
   library: LIBRARY,
@@ -342,6 +381,7 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
     'stopped, commit, and end your turn when the work is done.',
   'hive.review': HIVE_REVIEW,
   'hive.reviewer': HIVE_REVIEWER,
+  'hive.nucleus': HIVE_NUCLEUS,
 };
 
 /** What Settings says of Nucleus's prompt, in its name (decision 682). */
@@ -357,11 +397,15 @@ function nucleusAbout(name: string): string {
  * Nucleus's system prompt from `text` (`prompts.nucleus`), as `name` (decision 685): `{name}`
  * filled, and `{question}` of a text from before V50 with nothing. A text without `{name}` is
  * told its name in a line at its end in Hive mode only; with Hive off it is given as written.
+ * `hive`, Alpha Ceph's (`hive.nucleus`, filled), comes last (V86, decision 751).
  */
-export function nucleusInstructions(text: string, name: string): string {
+export function nucleusInstructions(text: string, name: string, hive?: string): string {
   const filled = fillPrompt(text, { question: '', name }).trimEnd();
-  if (text.includes('{name}') || name === NUCLEUS_NAMES.off) return filled;
-  return `${filled}\n\nHive mode is on: you are called ${name}, not ${NUCLEUS_NAMES.off}.`;
+  const named =
+    text.includes('{name}') || name === NUCLEUS_NAMES.off
+      ? filled
+      : `${filled}\n\nHive mode is on: you are called ${name}, not ${NUCLEUS_NAMES.off}.`;
+  return hive?.trim() ? `${named}\n\n${hive.trim()}` : named;
 }
 
 /** Where a prompt is shown, what it is for, what it may hold, and how long it may be. */
@@ -512,6 +556,21 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     max: MAX_TEXT,
     fixed: MERGER_ANSWER,
   },
+  'merge.failed': {
+    group: 'Merger',
+    title: 'Check failed',
+    about:
+      "What Send to the agent types into a branch's workspace when its merge's check failed: " +
+      'the command, its last lines, and what the agent is asked.',
+    placeholders: [
+      { name: 'output', about: "the last lines of the check's output", required: true },
+      { name: 'command', about: 'the command that failed' },
+      { name: 'branch', about: 'the branch merged' },
+      { name: 'at', about: 'the approved commit merged, short' },
+      { name: 'into', about: 'the branch it was merged into' },
+    ],
+    max: MAX_LINE,
+  },
   nucleus: {
     group: 'Nucleus',
     title: 'Instructions',
@@ -638,6 +697,17 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     placeholders: [],
     max: MAX_TEXT,
     fixed: HIVE_REVIEW_ANSWER,
+  },
+  'hive.nucleus': {
+    group: 'Hive',
+    title: 'Alpha Ceph',
+    about:
+      "What Alpha Ceph is told of Hive, at its instructions' end while Hive mode is on: given to " +
+      'each conversation that starts as Alpha Ceph.',
+    placeholders: [
+      { name: 'rounds', about: 'how many rounds before Hive stops for the person: 3' },
+    ],
+    max: MAX_START,
   },
 };
 

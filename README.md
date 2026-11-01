@@ -325,7 +325,8 @@ waits until you click **Land**.
 Symbiote does not push unless you set `merge.push` to `true` in `symbiote/config.json`. Merges
 run one at a time, in the order you asked for them. Click one under **Merging** to see its steps
 and their output as they run. If the check fails, nothing lands, and the merge page shows the
-check's output. If the project has no check, the merge waits for you to click **Land**.
+check's output. **Send to the agent** gives the failure to the branch's agent, which says whether
+its branch caused it. If the project has no check, the merge waits for you to click **Land**.
 
 If the branch conflicts with the target, Symbiote gives the conflict to the *merger*, an agent
 that proposes a resolution for each conflicting part. Nothing lands until you review it. The
@@ -389,7 +390,8 @@ The sidenav also opens these pages. Each has a key.
   command, file read, search and page with what its gate allowed or refused, each call of
   Symbiote's tools, and each **Confirm** with your answer. **Export** takes it out as a
   workspace's does (`symbiote activity --nucleus`). While Hive mode is on, Nucleus is called
-  Alpha Ceph and its icon is the Hive Mind. Nucleus was called Scout before. A
+  Alpha Ceph, its icon is the Hive Mind, and it is told what Hive does; turning Hive on or off
+  starts its next conversation, unless it is answering or waiting on you. Nucleus was called Scout before. A
   conversation that Scout started stays open on this page, without the web, until you press
   **New conversation**.
 - **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
@@ -417,7 +419,8 @@ The sidenav also opens these pages. Each has a key.
   Hive checks or reviews, its card is in the sidenav's **Hive** group and says which command runs
   and for how long, and the Review tab shows the output as it comes; see
   [configuration](docs/reference/configuration.md#hive-mode)); and **Appearance** (dark, light or
-  your system's, and whether Git's commit details show on the right or below the commits).
+  your system's; the text size, Compact, Default or Large, which changes the text and not the rows;
+  and whether Git's commit details show on the right or below the commits).
 
 The status bar at the bottom shows how much of your Claude and Codex subscription limits you have
 used.
@@ -465,7 +468,9 @@ Outside the repository, Symbiote writes:
 - the workspaces' worktrees, next to your checkout, in `../<repo>.worktrees/`;
 - its cache, `~/.cache/symbiote` on Linux, with the worktrees it compares and merges in, the
   list of merges, drafts, pasted images, its logs, the address of each running
-  `symbiote view` (Symbiote nexus reads them), and the output of each Symbiote the nexus started;
+  `symbiote view` (Symbiote nexus reads them), the output of each Symbiote the nexus started, and
+  a copy of the hook that records each agent's thread (about 23 KB a build, kept so a session
+  never names a hook that is gone);
 - its settings for this machine, `~/.config/symbiote` on Linux: the skill library's folder, and
   whether the intro was seen;
 - the skill library's skills, when you save, add or delete one, or Scribe writes one. Symbiote

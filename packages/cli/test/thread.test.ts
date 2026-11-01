@@ -14,6 +14,8 @@ import { tempDir } from '../../core/test/helpers/git-repo.js';
 import {
   activityEntry,
   activityPath,
+  appendSent,
+  appendThread,
   hookMain,
   lastAction,
   readActivityEnd,
@@ -270,6 +272,156 @@ describe('recordEvent and readThread', () => {
     );
     expect(lastAction(thread.slice(0, 2))).toBeUndefined();
     expect(lastAction([])).toBeUndefined();
+  });
+});
+
+describe('who sent a prompt (AR2, decision 741)', () => {
+  const folders: string[] = [];
+  afterEach(() => {
+    for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true });
+  });
+  const folder = () => {
+    const root = tempDir();
+    folders.push(root);
+    return join(root, 'symbiote');
+  };
+  const at = (n: number) => `2026-11-01T09:00:${String(n).padStart(2, '0')}.000Z`;
+  const prompt = (n: number, text: string, session = 's1'): ThreadEntry => ({
+    at: at(n),
+    session,
+    kind: 'prompt',
+    text,
+  });
+  const start = (n: number, source: string, session = 's1'): ThreadEntry => ({
+    at: at(n),
+    session,
+    kind: 'start',
+    source,
+  });
+  const report = (n: number, session = 's1'): ThreadEntry => ({
+    at: at(n),
+    session,
+    kind: 'report',
+    text: 'Done.',
+  });
+  const labels = async (symbiote: string) =>
+    (await readThread(symbiote, 'feature/x'))
+      .filter((e) => e.kind === 'prompt')
+      .map((e) => (e.kind === 'prompt' ? [e.text.slice(0, 24), e.from] : []));
+
+  it('labels a prompt by the note Symbiote wrote before sending it, and keeps notes out of the thread', async () => {
+    const symbiote = folder();
+    const hive = 'Symbiote ran the check on feature/x at abc1234 (round 1 of 3): `make` failed.';
+    await appendThread(symbiote, 'feature/x', start(0, 'startup'));
+    await appendThread(symbiote, 'feature/x', prompt(1, 'You are starting a new feature.'));
+    await appendThread(symbiote, 'feature/x', report(2));
+    await appendSent(symbiote, 'feature/x', {
+      at: at(3),
+      session: 's1',
+      by: 'hive',
+      key: 'hive.check',
+      text: hive,
+    });
+    // Claude Code gives the prompt as typed: its whitespace may differ.
+    await appendThread(symbiote, 'feature/x', prompt(4, hive.replace(/ /g, '  ') + '\n'));
+    await appendThread(symbiote, 'feature/x', report(5));
+    await appendSent(symbiote, 'feature/x', {
+      at: at(6),
+      session: 's1',
+      by: 'nucleus',
+      text: 'Rebase it.',
+    });
+    await appendThread(symbiote, 'feature/x', prompt(7, 'Rebase it.'));
+    // The same words typed by the person later are theirs: a note is used once.
+    await appendThread(symbiote, 'feature/x', prompt(8, 'Rebase it.'));
+    // A note never followed by its prompt labels nothing else.
+    await appendSent(symbiote, 'feature/x', {
+      at: at(9),
+      session: 's1',
+      by: 'merger',
+      key: 'merge.failed',
+      text: 'Never sent.',
+    });
+    await appendThread(symbiote, 'feature/x', prompt(10, 'Is it done?'));
+    const thread = await readThread(symbiote, 'feature/x');
+    expect(thread.map((e) => e.kind)).not.toContain('sent');
+    expect(await labels(symbiote)).toEqual([
+      ['You are starting a new f', 'start'],
+      ['Symbiote  ran  the  chec', 'hive'],
+      ['Rebase it.', 'nucleus'],
+      ['Rebase it.', 'person'],
+      ['Is it done?', 'person'],
+    ]);
+    const sent = (await readThread(symbiote, 'feature/x')).find(
+      (e) => e.kind === 'prompt' && e.from === 'hive',
+    );
+    expect(sent).toMatchObject({ key: 'hive.check' });
+  });
+
+  it("labels a session's first prompt Symbiote's when Symbiote started it, a background job's end and a subagent's hand-back", async () => {
+    const symbiote = folder();
+    for (const entry of [
+      start(0, 'startup'),
+      prompt(1, 'Start prompt'),
+      report(2),
+      prompt(
+        3,
+        '<task-notification>\n<summary>Background command "e2e" completed</summary>\n</task-notification>',
+      ),
+      prompt(4, '<agent-message from="a1"> [Subagent hand-back] The text below is a report.'),
+      report(5),
+      start(6, 'resume'),
+      prompt(7, 'Continue please'),
+      // Started again by Symbiote (Restart, Nucleus's restart_agent): its start prompt.
+      start(8, 'startup', 's2'),
+      prompt(9, 'You are starting a new feature again.', 's2'),
+      start(10, 'clear', 's3'),
+      prompt(11, 'After a clear', 's3'),
+    ]) {
+      await appendThread(symbiote, 'feature/x', entry);
+    }
+    expect(await labels(symbiote)).toEqual([
+      ['Start prompt', 'start'],
+      ['<task-notification>\n<sum', 'task'],
+      ['<agent-message from="a1"', 'subagent'],
+      ['Continue please', 'person'],
+      ['You are starting a new f', 'start'],
+      ['After a clear', 'person'],
+    ]);
+  });
+
+  it("labels a record from before AR2, with no notes, by the openings of Symbiote's own texts", async () => {
+    const symbiote = folder();
+    for (const entry of [
+      prompt(0, 'The start, with no start entry before it'),
+      prompt(
+        1,
+        'Symbiote ran the check on feature/x at abc1234 (round 2 of 3): `pnpm check` failed.',
+      ),
+      prompt(2, 'A reviewer with a clean context ran your change on feature/x at abc1234'),
+      prompt(
+        3,
+        'You ended your turn with 2 files not committed: a.ts, b.ts. Commit your work on ' +
+          'feature/x, or remove what does not belong, then end your turn.',
+      ),
+      prompt(
+        4,
+        'Approved the branch feature/x at abc1234: Symbiote merges abc1234 into main; do not merge it yourself.',
+      ),
+      prompt(5, 'Address this review of the branch feature/x (me, at abc1234): request-changes.'),
+      prompt(6, 'Symbiote ran the tests? I did not see it.'),
+    ]) {
+      await appendThread(symbiote, 'feature/x', entry);
+    }
+    expect((await labels(symbiote)).map(([, from]) => from)).toEqual([
+      'start',
+      'hive',
+      'hive',
+      'hive',
+      'verdict',
+      'verdict',
+      'person',
+    ]);
   });
 });
 

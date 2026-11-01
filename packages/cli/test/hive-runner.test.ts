@@ -36,7 +36,7 @@ import type { Confine } from '../src/hive-review.js';
 import { hiveWorkspace } from '../src/hive-workspace.js';
 import type { Merger } from '../src/merges.js';
 import { reviewPlace, type BranchReviews, type ReviewPlace } from '../src/reviews.js';
-import { recordEvent } from '../src/thread.js';
+import { readThreadEnd, recordEvent } from '../src/thread.js';
 import {
   readRecord,
   serializeWorkspace,
@@ -94,17 +94,30 @@ async function until(ready: () => boolean | Promise<boolean>, what: string): Pro
 /**
  * A fake Claude Code: a start or a resume is a working session whose prompt the hooks record, as
  * `UserPromptSubmit` does; `endTurn` commits (or leaves files) in the worktree and records the
- * report, as `Stop` does; a stop is a stopped session.
+ * report, as `Stop` does; a stop is a stopped session. As the real one (V18c spike, the honeycomb
+ * workspace's copy on 2026-10-31): a resume of a session whose process still lives starts a copy
+ * under a new ID, without the original's settings, so its hooks record nothing; `linger` keeps a
+ * stopped session's process listed for that many more listings; `deafen` silences every hook (a
+ * settings file whose hook is gone); `copies` makes every resume a copy.
  */
 function fakeClaude(symbiote: string, now: () => Date) {
   const listed: AgentSession[] = [];
+  /** Sessions whose hooks record nothing: the copies. */
+  const deaf = new Set<string>();
+  let allDeaf = false;
+  let lingering = 0;
+  let copying = false;
+  /** Stopped sessions whose process is still listed, and for how many more listings. */
+  const ending = new Map<AgentSession, number>();
   const hook = (session: AgentSession, input: Record<string, unknown>) =>
-    recordEvent(
-      symbiote,
-      { session_id: session.sessionId, cwd: session.cwd, ...input },
-      now().toISOString(),
-    );
-  const start = vi.fn<ClaudeCode['start']>(async ({ cwd, prompt }) => {
+    allDeaf || deaf.has(session.sessionId ?? '')
+      ? Promise.resolve()
+      : recordEvent(
+          symbiote,
+          { session_id: session.sessionId, cwd: session.cwd, ...input },
+          now().toISOString(),
+        );
+  const add = (cwd: string): AgentSession => {
     const n = listed.length + 1;
     const session: AgentSession = {
       cwd,
@@ -116,12 +129,22 @@ function fakeClaude(symbiote: string, now: () => Date) {
       status: 'busy',
     };
     listed.push(session);
+    return session;
+  };
+  const start = vi.fn<ClaudeCode['start']>(async ({ cwd, prompt }) => {
+    const session = add(cwd);
     await hook(session, { hook_event_name: 'UserPromptSubmit', prompt });
     return { ok: true };
   });
   const resume = vi.fn<ClaudeCode['resume']>(async ({ sessionId, text }) => {
     const session = listed.find((s) => s.sessionId === sessionId);
     if (!session) return { ok: false, error: 'no such session' };
+    if (copying || session.status !== undefined) {
+      // A copy with the conversation, not the settings: it works, and nothing is recorded.
+      const copy = add(session.cwd);
+      deaf.add(copy.sessionId ?? '');
+      return { ok: true };
+    }
     Object.assign(session, { state: 'working', status: 'busy' });
     await hook(session, { hook_event_name: 'UserPromptSubmit', prompt: text });
     return { ok: true };
@@ -129,12 +152,27 @@ function fakeClaude(symbiote: string, now: () => Date) {
   const stop = vi.fn<ClaudeCode['stop']>((id) => {
     for (const session of listed) {
       if (session.id !== id) continue;
+      if (lingering > 0 && session.status !== undefined) {
+        ending.set(session, lingering);
+        continue;
+      }
       session.state = 'stopped';
       delete session.status;
     }
     return Promise.resolve({ ok: true });
   });
-  const sessions = vi.fn<ClaudeCode['sessions']>(() => Promise.resolve(listed));
+  const sessions = vi.fn<ClaudeCode['sessions']>(() => {
+    for (const [session, left] of ending) {
+      if (left > 0) {
+        ending.set(session, left - 1);
+        continue;
+      }
+      ending.delete(session);
+      session.state = 'stopped';
+      delete session.status;
+    }
+    return Promise.resolve(listed);
+  });
   const claude: ClaudeCode = {
     command: '/usr/bin/claude',
     start,
@@ -167,7 +205,22 @@ function fakeClaude(symbiote: string, now: () => Date) {
     Object.assign(session, { state: 'blocked', status: 'idle' });
     await hook(session, { hook_event_name: 'Stop', last_assistant_message: 'Done.' });
   };
-  return { claude, listed, start, resume, stop, sessions, sessionIn, endTurn };
+  return {
+    claude,
+    listed,
+    start,
+    resume,
+    stop,
+    sessions,
+    sessionIn,
+    endTurn,
+    /** A stopped session's process is listed for `listings` more listings. */
+    linger: (listings: number) => (lingering = listings),
+    /** From now on no hook records anything. */
+    deafen: () => (allDeaf = true),
+    /** Every resume starts a copy. */
+    copies: () => (copying = true),
+  };
 }
 
 /** One run of the fake reviewer: the files it writes in its copy, then its answer or its failure. */
@@ -301,7 +354,9 @@ interface Setup {
   /** Where the reviews' copies are, in Symbiote's cache. */
   copies: string;
   now: () => Date;
-  runner: (options?: { pid?: number }) => HiveRunner;
+  /** The merge queue's entries, as the runner reads them (decision 717). */
+  queue: MergeEntry[];
+  runner: (options?: { pid?: number; unseenMs?: number }) => HiveRunner;
   /** Turns Hive on or off as Settings does: the record, then this process's runner told. */
   turn: (on: boolean, runner?: HiveRunner) => Promise<void>;
   start: (branch: string, more?: { planFirst?: boolean; kind?: 'spike' }) => Promise<string>;
@@ -309,7 +364,7 @@ interface Setup {
 
 async function setup(
   repo: TestRepo,
-  { confine = unconfined }: { confine?: Confine | null } = {},
+  { confine = unconfined, stopWaitMs }: { confine?: Confine | null; stopWaitMs?: number } = {},
 ): Promise<Setup> {
   const git = await openRepo(repo.root);
   const now = clock();
@@ -317,6 +372,7 @@ async function setup(
   const hive = repositoryHive(git, cache, { now });
   const fake = fakeClaude(symbioteFolder(where), now);
   const reviewer = fakeReviewer(join(cache, 'fake-reviewer'));
+  const queue: MergeEntry[] = [];
   const service = workspaces(git, cache, {
     claude: () => Promise.resolve(fake.claude),
     now,
@@ -324,14 +380,17 @@ async function setup(
     hook: HOOK,
     node: '/usr/bin/node',
     hive: () => hive.on(),
+    ...(stopWaitMs === undefined ? {} : { stopWaitMs }),
   });
-  const runner = ({ pid }: { pid?: number } = {}) => {
+  const runner = ({ pid, unseenMs }: { pid?: number; unseenMs?: number } = {}) => {
     const made = hiveRunner(git, cache, {
       hive,
       workspaces: service,
       now,
       interval: 0,
+      merges: () => Promise.resolve(queue),
       ...(pid ? { pid } : {}),
+      ...(unseenMs === undefined ? {} : { unseenMs }),
       reviewer: {
         claude: () => Promise.resolve(reviewer.script),
         confine: () => Promise.resolve(confine),
@@ -349,6 +408,7 @@ async function setup(
     reviewer,
     copies: join(cache, 'worktrees', git.id, 'hive-review'),
     now,
+    queue,
     runner,
     async turn(on, made) {
       await hive.set(on);
@@ -475,6 +535,16 @@ describe('Hive, on', () => {
     await s.service.reply({ branch: 'feature/cap', text: 'Add fixed.txt.' });
     await runner.tick();
     expect(await readHive(s.where, 'feature/cap')).toMatchObject({ step: 'writing', round: 1 });
+    // Hive's messages read as Hive's in the thread, the person's as theirs (AR2, decision 741).
+    const prompts = (await s.service.thread('feature/cap')).entries.filter(
+      (e) => e.kind === 'prompt',
+    );
+    expect(prompts.map((e) => (e.kind === 'prompt' ? [e.from, e.key] : []))).toEqual([
+      ['start', undefined],
+      ['hive', 'hive.check'],
+      ['hive', 'hive.check'],
+      ['person', undefined],
+    ]);
     await s.fake.endTurn(worktree, { files: { 'fixed.txt': 'yes\n' } });
     await runner.tick();
     await runner.idle();
@@ -1567,6 +1637,423 @@ describe("Hive's live progress", () => {
     };
     expect(hiveSummary(record, true, live).live).toEqual(live);
     expect(hiveSummary(record, false, live)).not.toHaveProperty('live');
+  });
+});
+
+/** A check that counts its runs in `file`. */
+const counted = (file: string) => `echo run >> '${file}'`;
+const runsOf = (file: string) =>
+  existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean).length : 0;
+
+/** `branch` in the merge queue at `state` (decision 717). */
+const inQueue = (branch: string, head: string, state: MergeEntry['state']): MergeEntry => ({
+  id: 'm1',
+  branch,
+  head,
+  into: 'main',
+  title: `Merge ${branch}`,
+  state,
+  queued: '2026-10-31T10:00:00.000Z',
+  updated: '2026-10-31T10:00:00.000Z',
+});
+
+/** The prompts the writer's sessions recorded, with their session. */
+const prompts = async (where: ReviewPlace, branch: string) =>
+  (await readThreadEnd(symbioteFolder(where), branch)).flatMap((e) =>
+    e.kind === 'prompt' ? [{ session: e.session, text: e.text }] : [],
+  );
+
+// fix/hive-runner-flaws: three flaws seen in real records on 2026-10-31.
+describe('A check that passed is not run again on its commit (decision 716)', () => {
+  it("the person's message at landing on an unchanged tip reaches the writer; the check and review are not run again", async () => {
+    const runs = join(cache, 'runs.txt');
+    const repo = repository([counted(runs)]);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/same');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'one.txt': 'one\n' } });
+    await runner.tick();
+    await runner.idle();
+    const tip = gitIn(worktree, 'rev-parse', 'HEAD');
+    expect(await readHive(s.where, 'feature/same')).toMatchObject({
+      step: 'landing',
+      checked: tip,
+    });
+    expect(runsOf(runs)).toBe(1);
+    expect(s.reviewer.calls()).toHaveLength(1);
+
+    // The person asks something at landing: it reaches the writer, the rounds start again.
+    await s.service.reply({ branch: 'feature/same', text: 'Is the README current?' });
+    await runner.tick();
+    expect(await readHive(s.where, 'feature/same')).toMatchObject({ step: 'writing', round: 1 });
+    expect((await prompts(s.where, 'feature/same')).at(-1)?.text).toBe('Is the README current?');
+    // Its turn ends on the same commit: landing again, with no second check or review.
+    await s.fake.endTurn(worktree);
+    await runner.tick();
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/same')).toMatchObject({
+      step: 'landing',
+      round: 1,
+      checked: tip,
+    });
+    expect(runsOf(runs)).toBe(1);
+    expect(s.reviewer.calls()).toHaveLength(1);
+    expect(events(s.where, 'feature/same').slice(-4)).toEqual([
+      'rounds-again',
+      'turn-ended',
+      'reviewing',
+      'landing',
+    ]);
+  });
+
+  it('a review round the writer ends with no commit: the review runs again, not the check', async () => {
+    const runs = join(cache, 'runs.txt');
+    const repo = repository([counted(runs)]);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/rejects');
+    s.reviewer.answers([
+      {
+        write: { 'test/one.test.sh': ONE_TEST },
+        answer: { summary: 'uno', ran: 'test/one.test.sh', findings: [ONE_FINDING] },
+      },
+      {},
+    ]);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'one.txt': 'uno\n' } });
+    await runner.tick();
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/rejects')).toMatchObject({ step: 'writing', round: 2 });
+    // The writer rejects the finding in a line and commits nothing.
+    await runner.tick();
+    await s.fake.endTurn(worktree);
+    await runner.tick();
+    await runner.idle();
+    const record = await readHive(s.where, 'feature/rejects');
+    expect(record).toMatchObject({ step: 'landing', round: 2 });
+    expect(record?.checks).toHaveLength(1);
+    expect(runsOf(runs)).toBe(1);
+    expect(record?.reviews.map((r) => r.verdict)).toEqual(['changes', 'approved']);
+  });
+
+  it('a check that failed on a commit runs again on it: a flaky failure gets its retry', async () => {
+    const runs = join(cache, 'runs.txt');
+    const flag = join(cache, 'passes');
+    const repo = repository([`${counted(runs)} && test -f '${flag}'`]);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/flaky');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'f.txt': 'f\n' } });
+    await runner.tick();
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/flaky')).toMatchObject({ step: 'writing', round: 2 });
+    writeFileSync(flag, '');
+    await runner.tick();
+    await s.fake.endTurn(worktree);
+    await runner.tick();
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/flaky')).toMatchObject({ step: 'landing', round: 2 });
+    expect(runsOf(runs)).toBe(2);
+  });
+});
+
+describe('A branch being landed: queued or merged (decision 717)', () => {
+  it('merged while its check runs: the check is stopped, nothing is sent, landed', async () => {
+    const repo = repository(['sleep 30']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/merged');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'm.txt': 'm\n' } });
+    await runner.tick();
+    await until(
+      async () => (await readHive(s.where, 'feature/merged'))?.check !== undefined,
+      'the check',
+    );
+    const pid = (await readHive(s.where, 'feature/merged'))?.check?.pid ?? 0;
+    repo.git('merge', '-q', '--no-ff', 'feature/merged', '-m', 'Merge merged');
+    await runner.tick();
+    await until(() => !alive(pid), 'the check to be stopped');
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/merged')).toMatchObject({
+      step: 'landed',
+      checks: [],
+    });
+    expect(s.fake.resume).not.toHaveBeenCalled();
+    expect(events(s.where, 'feature/merged').slice(-2)).toEqual(['check-started', 'landed']);
+  });
+
+  it('queued to land while it is reviewed: the review is stopped, nothing is sent, landing; landed once merged', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/queued');
+    s.reviewer.answers([{ sleep: 30_000 }]);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'q.txt': 'q\n' } });
+    await runner.tick();
+    await until(() => s.reviewer.calls().length === 1, 'the reviewer');
+    const pid = s.reviewer.calls()[0]?.pid ?? 0;
+    const tip = gitIn(worktree, 'rev-parse', 'HEAD');
+    s.queue.push(inQueue('feature/queued', tip, 'checking'));
+    await runner.tick();
+    await until(() => !alive(pid), 'the reviewer to be stopped');
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/queued')).toMatchObject({
+      step: 'landing',
+      reviews: [],
+    });
+    expect(copiesLeft(s.copies)).toEqual([]);
+    // While the queue has it, nothing more.
+    await runner.tick();
+    await runner.idle();
+    expect((await readHive(s.where, 'feature/queued'))?.step).toBe('landing');
+    expect(s.reviewer.calls()).toHaveLength(1);
+    // The queue lands it.
+    repo.git('merge', '-q', '--no-ff', 'feature/queued', '-m', 'Merge queued');
+    s.queue[0] = inQueue('feature/queued', tip, 'landed');
+    await runner.tick();
+    expect((await readHive(s.where, 'feature/queued'))?.step).toBe('landed');
+    expect(s.fake.resume).not.toHaveBeenCalled();
+  });
+
+  it("a check that fails after its branch merged sends nothing (HV3's record, 14:19:23)", async () => {
+    const gate = join(cache, 'gate');
+    const repo = repository([`until [ -f '${gate}' ]; do sleep 0.05; done; exit 1`]);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/late');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'l.txt': 'l\n' } });
+    await runner.tick();
+    await until(
+      async () => (await readHive(s.where, 'feature/late'))?.check !== undefined,
+      'the check',
+    );
+    // Merged, then the check fails, with no look between.
+    repo.git('merge', '-q', '--no-ff', 'feature/late', '-m', 'Merge late');
+    writeFileSync(gate, '');
+    await runner.idle();
+    const record = await readHive(s.where, 'feature/late');
+    // It ran to its end: kept, and nothing sent.
+    expect(record).toMatchObject({ step: 'landed', checks: [{ ok: false }] });
+    expect(record?.message).toBeUndefined();
+    expect(s.fake.resume).not.toHaveBeenCalled();
+  });
+
+  it('a review that proves defects after its branch was queued sends nothing', async () => {
+    const gate = join(cache, 'gate');
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/proven');
+    s.reviewer.answers([
+      {
+        gate,
+        write: { 'test/one.test.sh': ONE_TEST },
+        answer: { summary: 'uno', ran: 'test/one.test.sh', findings: [ONE_FINDING] },
+      },
+    ]);
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'one.txt': 'uno\n' } });
+    await runner.tick();
+    await until(() => s.reviewer.calls().length === 1, 'the reviewer');
+    s.queue.push(inQueue('feature/proven', gitIn(worktree, 'rev-parse', 'HEAD'), 'queued'));
+    writeFileSync(gate, '');
+    await runner.idle();
+    const record = await readHive(s.where, 'feature/proven');
+    expect(record).toMatchObject({ step: 'landing', reviews: [{ verdict: 'changes' }] });
+    expect(record?.message).toBeUndefined();
+    expect(s.fake.resume).not.toHaveBeenCalled();
+  });
+
+  it("a message not sent yet is not sent to a branch in the merge queue; a queue that failed doesn't hold it", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/held');
+    await s.fake.endTurn(worktree, { files: { 'h.txt': 'h\n' } });
+    const record = await readHive(s.where, 'feature/held');
+    if (!record) throw new Error('no record');
+    const since = s.now().toISOString();
+    await writeHive(s.where, {
+      ...record,
+      round: 2,
+      since,
+      message: { key: 'hive.commit', text: 'Commit it.', at: since },
+    });
+    const tip = gitIn(worktree, 'rev-parse', 'HEAD');
+    s.queue.push(inQueue('feature/held', tip, 'failed'));
+    const runner = s.runner();
+    // A failed entry is not a landing: the message goes.
+    await runner.tick();
+    expect(s.fake.resume).toHaveBeenCalledTimes(1);
+    await writeHive(s.where, {
+      ...record,
+      round: 2,
+      since,
+      message: { key: 'hive.commit', text: 'Commit it again.', at: since },
+    });
+    s.queue[0] = inQueue('feature/held', tip, 'queued');
+    await runner.tick();
+    expect(s.fake.resume).toHaveBeenCalledTimes(1);
+    const held = await readHive(s.where, 'feature/held');
+    expect(held).toMatchObject({ step: 'landing' });
+    expect(held?.message).toBeUndefined();
+  });
+});
+
+describe('A turn Hive cannot see (decisions 718–720)', () => {
+  it("a session still ending when Hive's message comes: Symbiote waits for it, and the message reaches it, not a copy", async () => {
+    const repo = repository(['test -f fixed.txt']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/ending');
+    const runner = s.runner();
+    // Its process outlives `claude stop` for two listings, as the real one did at 17:00:13.
+    s.fake.linger(2);
+    await s.fake.endTurn(worktree, { files: { 'a.txt': 'a\n' } });
+    await runner.tick();
+    await runner.idle();
+    expect(s.fake.listed).toHaveLength(1);
+    expect(await readHive(s.where, 'feature/ending')).toMatchObject({
+      step: 'writing',
+      round: 2,
+      message: { key: 'hive.check', sent: true },
+    });
+    const last = (await prompts(s.where, 'feature/ending')).at(-1);
+    expect(last?.session).toBe('session-1');
+    expect(last?.text).toContain('`test -f fixed.txt` failed');
+  });
+
+  it('a session that does not end in time is not resumed: refused, and sent at the next look', async () => {
+    const repo = repository(['test -f fixed.txt']);
+    const s = await setup(repo, { stopWaitMs: 300 });
+    await s.turn(true);
+    const worktree = await s.start('feature/slow');
+    const runner = s.runner();
+    s.fake.linger(1_000);
+    await s.fake.endTurn(worktree, { files: { 'a.txt': 'a\n' } });
+    await runner.tick();
+    await runner.idle();
+    expect(s.fake.listed).toHaveLength(1);
+    expect(s.fake.resume).not.toHaveBeenCalled();
+    expect((await readHive(s.where, 'feature/slow'))?.message?.sent).toBeUndefined();
+    expect(events(s.where, 'feature/slow')).toContain('send-failed');
+    // It ends: the message goes at the next look.
+    s.fake.linger(0);
+    for (const session of s.fake.listed) Object.assign(session, { state: 'stopped' });
+    for (const session of s.fake.listed) delete session.status;
+    await runner.tick();
+    expect((await readHive(s.where, 'feature/slow'))?.message?.sent).toBe(true);
+    expect(s.fake.listed).toHaveLength(1);
+  });
+
+  it('no prompt recorded after its message: Hive stops with a note, not left waiting (the honeycomb workspace)', async () => {
+    const repo = repository(['test -f fixed.txt']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/deaf');
+    const runner = s.runner({ unseenMs: 30_000 });
+    await s.fake.endTurn(worktree, { files: { 'a.txt': 'a\n' } });
+    // From here on its hooks record nothing.
+    s.fake.deafen();
+    await runner.tick();
+    await runner.idle();
+    const taken = await readHive(s.where, 'feature/deaf');
+    // Its session took the message, but no prompt was recorded: taken, not sent.
+    expect(taken).toMatchObject({ step: 'writing', round: 2, message: { key: 'hive.check' } });
+    expect(taken?.message?.taken).toBeDefined();
+    expect(taken?.message?.sent).toBeUndefined();
+    // The writer works on unseen, commits and finishes: Hive waits out its delay, then stops.
+    await s.fake.endTurn(worktree, { files: { 'fixed.txt': 'yes\n' } });
+    await runner.tick();
+    expect((await readHive(s.where, 'feature/deaf'))?.step).toBe('writing');
+    for (let i = 0; i < 60; i++) {
+      if ((await readHive(s.where, 'feature/deaf'))?.step !== 'writing') break;
+      await runner.tick();
+    }
+    const stuck = await readHive(s.where, 'feature/deaf');
+    expect(stuck).toMatchObject({ step: 'stuck', round: 2 });
+    expect(stuck?.note).toMatch(
+      /^the writer's turn cannot be seen: no prompt recorded after Hive's message at \d\d:\d\d UTC$/,
+    );
+    expect(stuck?.checks).toHaveLength(1);
+    expect((await s.service.list()).workspaces[0]?.hive).toMatchObject({
+      step: 'stuck',
+      note: stuck?.note,
+    });
+    expect(events(s.where, 'feature/deaf').slice(-3)).toEqual(['message', 'taken', 'stuck']);
+  });
+
+  it("a copy Claude Code starts in its session's place is noticed at once, by its ID", async () => {
+    const repo = repository(['test -f fixed.txt']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/copied');
+    const runner = s.runner();
+    s.fake.copies();
+    await s.fake.endTurn(worktree, { files: { 'a.txt': 'a\n' } });
+    await runner.tick();
+    await runner.idle();
+    const stuck = await readHive(s.where, 'feature/copied');
+    expect(stuck).toMatchObject({ step: 'stuck', round: 2 });
+    expect(stuck?.note).toMatch(
+      /^the writer's turn cannot be seen: no prompt recorded after Hive's message at \d\d:\d\d UTC \(Claude Code took it into a copy of its session, s2, whose hooks record nothing\)$/,
+    );
+    // Hive leaves the copy be: it does not stop the writer.
+    expect(s.fake.stop).toHaveBeenCalledTimes(1);
+  });
+
+  it('a first turn whose hooks record nothing: noticed once its session works or ends, not while its card says it failed', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    s.fake.deafen();
+    await s.start('feature/silent');
+    const runner = s.runner({ unseenMs: 10_000 });
+    const session = s.fake.listed[0] as AgentSession;
+    // Its agent failed: its card says so, Hive waits as before.
+    Object.assign(session, { state: 'failed' });
+    delete session.status;
+    // Past the delay (the clock moves a second at each read).
+    for (let i = 0; i < 20; i++) s.now();
+    await runner.tick();
+    expect(await readHive(s.where, 'feature/silent')).toMatchObject({ step: 'writing' });
+    // A session at work with nothing recorded since the start: a turn Hive cannot see.
+    Object.assign(session, { state: 'working', status: 'busy' });
+    await runner.tick();
+    const stuck = await readHive(s.where, 'feature/silent');
+    expect(stuck).toMatchObject({ step: 'stuck', round: 1 });
+    expect(stuck?.note).toMatch(
+      /^the writer's turn cannot be seen: no prompt recorded since its turn began at \d\d:\d\d UTC$/,
+    );
+  });
+
+  it('a record an older runner marked sent, with no prompt after it, is noticed too', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/old');
+    await s.fake.endTurn(worktree, { files: { 'o.txt': 'o\n' } });
+    const record = await readHive(s.where, 'feature/old');
+    if (!record) throw new Error('no record');
+    const since = s.now().toISOString();
+    await writeHive(s.where, {
+      ...record,
+      round: 2,
+      since,
+      message: { key: 'hive.review', text: 'Fix the defects.', at: since, sent: true },
+    });
+    const runner = s.runner({ unseenMs: 10_000 });
+    for (let i = 0; i < 30; i++) {
+      if ((await readHive(s.where, 'feature/old'))?.step !== 'writing') break;
+      await runner.tick();
+    }
+    expect(await readHive(s.where, 'feature/old')).toMatchObject({ step: 'stuck', round: 2 });
+    expect(s.fake.resume).not.toHaveBeenCalled();
   });
 });
 

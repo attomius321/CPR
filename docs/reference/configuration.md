@@ -62,6 +62,11 @@ If `symbiote/merge.md` exists, Symbiote adds it to the merger's prompt for every
 your project's rules for resolving conflicts there, such as "keep both entries of a changelog".
 Commit it to share it.
 
+A file that every branch only adds lines to the end of, such as a changelog, need not reach the
+merger at all. One line in the repository's `.gitattributes`, `CHANGELOG.md merge=union`, makes
+git keep both sides' new lines, the target's first. Use it only where the order of the added
+lines does not matter.
+
 ## Prompts
 
 **Settings** (`s`) shows every text Symbiote gives its agents, grouped by agent. You can change
@@ -97,6 +102,7 @@ and leaves any other brace as text:
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The lines of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`, `{reviewer}`, `{what}`, `{review}`, `{agents}` |
 | `reviews` | The text of `symbiote/AGENTS.md`, which tells agents how to act on a review | none |
 | `merger` | The merger's instructions | none |
+| `merge.failed` | What **Send to the agent** types into the branch's workspace when a merge's check failed: the command, its last lines, and what the agent is asked | `{output}` (required), `{command}`, `{branch}`, `{at}`, `{into}` |
 | `nucleus` | Nucleus's instructions, its system prompt. While Hive is on, a text without `{name}` gets a line at its end that tells Nucleus its name | `{name}`: Nucleus, or Alpha Ceph while [Hive](#hive-mode) is on |
 | `scribe` | Scribe's instructions, its system prompt. A `{request}` left from an older text is filled with nothing | `{skills}`, `{checkout}`, `{library}` |
 | `library` | What `{library}` becomes in Scribe's prompt when a [skill library](#the-skill-library) is set. Without a library, the line that holds `{library}` is left out | `{folder}` (required), `{skills}` |
@@ -106,6 +112,7 @@ and leaves any other brace as text:
 | `hive.commit` | What Hive sends the agent when it ended a turn with files not committed, or no commit | `{what}`, `{branch}` |
 | `hive.resume` | What Hive sends an agent it stopped, once Hive is on again | none |
 | `hive.reviewer` | The running reviewer's instructions, its system prompt. Symbiote adds the answer it reads after them, which you cannot change. In Settings it is the **Reviewer** page, with its model and effort | none |
+| `hive.nucleus` | What Alpha Ceph is told of Hive: added at the end of its instructions while Hive is on, for each conversation that starts as Alpha Ceph | `{rounds}` |
 
 Settings lists Hive's prompts, in a group of their own, only while Hive is on. Settings lists what
 each placeholder stands for. Symbiote ignores a prompt it cannot use, uses its
@@ -114,9 +121,9 @@ cases:
 
 - It is neither text nor a list of lines.
 - It lacks a required placeholder.
-- It is too long. The limits are 8,000 characters for a start prompt and for Nucleus's and Scribe's,
-  1,000 for `plan.*`, `documents`, `verdict.*` and `hive.*`, and 20,000 for `reviews`, `merger`
-  and `hive.reviewer`.
+- It is too long. The limits are 8,000 characters for a start prompt, for Nucleus's and Scribe's
+  and for `hive.nucleus`; 1,000 for `plan.*`, `documents`, `verdict.*` and the other `hive.*`; and
+  20,000 for `reviews`, `merger` and `hive.reviewer`.
 
 Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, Nucleus cannot edit
 files or run any command but git's read commands, and its starts, verdicts, merges and clean-ups
@@ -175,15 +182,18 @@ crimson outlines in the dark theme, white with pale crimson outlines in the ligh
 dialogs, the graph and the terminals keep their own ground.
 
 While Hive is on, Nucleus is called **Alpha Ceph**, on every page and in its own words, and its icon
-is the Hive Mind. Its records and files keep the name `nucleus`. A conversation keeps the name it
-started with: its page says so until **New conversation**, which starts one under the current
-name.
+is the Hive Mind. Alpha Ceph's instructions end with what Hive does with the workspaces it starts
+(`hive.nucleus`). Its records and files keep the name `nucleus`. Turning Hive on or off ends the
+conversation and starts the next under the new name, unless it is answering or waiting on you: then
+it keeps its name, and its page says so until **New conversation**.
 
 The question shows traces that route into a Hive Mind and keep moving while it is open. Turning Hive
 on, the Mind grows to the middle of the window, a shutter of hex tiles closes on it, and the tiles
-open from the Mind onto the new look; the honeycomb they leave is the background above. If your
-system asks for reduced motion, the question shows one still picture and the look and the
-honeycomb appear at once.
+open from the Mind onto the new look; the honeycomb they leave is the background above. Once all
+is still, Nucleus becomes Alpha Ceph in the sidenav: its ring breaks into the Mind's cells and its
+name changes over, in about a second. A reload or another window with Hive already on shows Alpha
+Ceph at once. If your system asks for reduced motion, the question shows one still picture and the
+look, the honeycomb and Alpha Ceph appear at once.
 
 ### What Hive does with a workspace
 
@@ -213,6 +223,20 @@ no other agent, and Nucleus's starts are Hive's too.
 The card shows the workspace's round (a hexagon and `2/3`). While the agent works or waits for
 you, the card says so as for any workspace. Hive never lands, pushes or deletes work: those stay
 yours. A message you send the agent while Hive waits for you starts its rounds again.
+
+Hive checks and reviews a commit once:
+
+- **A commit already checked is not checked again.** If a turn ends on a commit where the check
+  (the same commands) passed, Hive goes straight to the review. If the reviewer approved that
+  commit too, Hive asks you to land it again at once. So a question you ask at landing costs no
+  check. A check that failed on a commit runs again, in case it was flaky.
+- **A branch being landed is left to the landing.** Once the branch is in the merge queue, or
+  merged, Hive sends its agent nothing more and stops a check or review that runs.
+- **A turn Hive cannot see stops it.** Hive reads the agent's turns from what its hooks record. If
+  no prompt is recorded within a minute of Hive's message, or Claude Code took the message into a
+  copy of the session (whose hooks record nothing), Hive stops and the card says why, for example
+  "Hive stopped: the writer's turn cannot be seen: no prompt recorded after Hive's message at
+  17:00 UTC".
 
 While Hive checks or reviews, the card is in the sidenav's **Hive** group, on Hive's hexagons, and
 says what runs now, its time ticking:

@@ -24,7 +24,7 @@
   margin: 0 0 4px;
   font-size: var(--size-body);
   font-weight: 600;
-  line-height: 20px;
+  line-height: calc(var(--size-body) + 5px);
 }
 
 .review-empty {

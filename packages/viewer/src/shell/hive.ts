@@ -8,6 +8,7 @@ import { flushSync } from 'react-dom';
 import { postJson } from '../ui/http.js';
 import favicon from './favicon.png';
 import faviconHive from './favicon-hive.png';
+import { becomeAlphaCeph, holdNucleus, settleNucleus } from './alpha-ceph.js';
 import { arrive, lessMotion, type Origin } from './hive-arrival.js';
 
 /** Whether Hive mode is on, as the page says. */
@@ -38,21 +39,24 @@ function show(on: boolean, then?: () => void): void {
  * Turns Hive mode on or off for this repository's pages; the look follows once it is kept, and
  * `then` runs as it changes (the question closing under the shutter). On, the Hive Mind grows
  * from `from` (the question's; the window's middle without one); off, the page fades. Resolves once
- * the look has changed; the arrival goes on to its end.
+ * the look has changed; the arrival goes on to its end. Nucleus is held through the arrival, then
+ * becomes Alpha Ceph in the sidenav (V86, decision 730); off ends that at once (decision 734).
  */
 export async function setHive(
   on: boolean,
   { from, then }: { from?: Origin; then?: () => void } = {},
 ): Promise<void> {
   const kept = await postJson<{ on: boolean }>('/api/hive', { on });
+  if (!kept.on) settleNucleus();
   if (kept.on === isHive() || lessMotion()) return show(kept.on, then);
   if (kept.on) {
     const origin = from ?? { x: window.innerWidth / 2, y: window.innerHeight / 2, scale: 1 };
+    holdNucleus();
     return new Promise((resolve) => {
       void arrive(origin, () => {
         show(true, then);
         resolve();
-      });
+      }).finally(becomeAlphaCeph);
     });
   }
   if (!document.startViewTransition) return show(false, then);

@@ -13,6 +13,7 @@ import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
 import { getJson, postJson } from '../ui/http.js';
 import { useShell } from '../shell/shell-context.js';
+import { setTextSize, useTextSize, type TextSize } from '../shell/text-size.js';
 import { setTheme, useTheme, type Theme } from '../shell/theme.js';
 import { setDetailsPlace, useDetailsPlace, type DetailsPlace } from '../history/details.js';
 import { startIntro } from '../intro/intro.js';
@@ -32,7 +33,7 @@ import {
   agentName,
   type PrebuiltAgent,
 } from './settings.js';
-import { nucleusName } from '../shell/names.js';
+import { nucleusName, useAlphaCeph } from '../shell/names.js';
 import {
   AGENT_NAMES,
   effortChoices,
@@ -294,6 +295,7 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   'verdict.where': WhereIcon,
   reviews: AgentsFileIcon,
   merger: MergeIcon,
+  'merge.failed': ChecksIcon,
   nucleus: NucleusIcon,
   scribe: SparklesIcon,
   'hive.start': HexagonIcon,
@@ -302,6 +304,8 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   'hive.commit': CommitIcon,
   'hive.resume': PlayIcon,
   'hive.reviewer': FlaskIcon,
+  // What Alpha Ceph is told of Hive (V86): its own icon, the Hive Mind.
+  'hive.nucleus': NucleusIcon,
   [LIBRARY]: FolderIcon,
   [HIVE]: HexagonIcon,
   [APPEARANCE]: AppearanceIcon,
@@ -365,6 +369,8 @@ export function SettingsPage() {
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const hive = useHive();
+  // Nucleus's name: Alpha Ceph's once the sidenav plays its change (V86, decision 731).
+  const alpha = useAlphaCeph();
 
   const load = useCallback(async () => {
     try {
@@ -392,8 +398,8 @@ export function SettingsPage() {
   }, [load]);
 
   const groups = useMemo(
-    () => (settings ? promptGroups(settings.prompts, { hive }) : []),
-    [settings, hive],
+    () => (settings ? promptGroups(settings.prompts, { hive, alpha }) : []),
+    [settings, hive, alpha],
   );
   // The list scrolls on its own when it is taller than its card (V62): the entry open, from the
   // address or the last group's, is scrolled to; one clicked is in view already.
@@ -595,8 +601,8 @@ export function SettingsPage() {
             // would be refused as changed since.
             <AgentPage
               key={current.key}
-              name={agentName(current.agent, hive)}
-              settings={agentSettings(current.agent, hive)}
+              name={agentName(current.agent, alpha)}
+              settings={agentSettings(current.agent, alpha)}
               onSaved={() => void load()}
               onBack={back}
             >
@@ -930,6 +936,13 @@ const THEMES: { theme: Theme; label: string }[] = [
   { theme: 'system', label: 'System' },
 ];
 
+/** The text size (V87c, decision 763): the body at 14, 15 or 16 px. */
+const TEXT_SIZE_CHOICES: { size: TextSize; label: string }[] = [
+  { size: 'compact', label: 'Compact' },
+  { size: 'default', label: 'Default' },
+  { size: 'large', label: 'Large' },
+];
+
 /** Where Git's details pane goes (V66b, decision 478). */
 const PLACES: { place: DetailsPlace; label: string }[] = [
   { place: 'right', label: 'On the right' },
@@ -938,11 +951,12 @@ const PLACES: { place: DetailsPlace; label: string }[] = [
 
 /**
  * This browser's Appearance (V51, decision 388; in the head before): the page's theme (V29b,
- * decision 179), dark unless chosen, where Git's commit details go (V66b), and the first-time
- * intro again (V39), as often as one likes.
+ * decision 179), dark unless chosen, the text size (V87c), where Git's commit details go (V66b),
+ * and the first-time intro again (V39), as often as one likes.
  */
 function AppearancePage({ onBack }: { onBack: () => void }) {
   const theme = useTheme();
+  const textSize = useTextSize();
   const place = useDetailsPlace();
   return (
     <SettingsCard label="Appearance" title="Appearance" onBack={onBack}>
@@ -963,6 +977,26 @@ function AppearancePage({ onBack }: { onBack: () => void }) {
             ))}
           </span>
           <p className="settings-row-note">Kept in this browser.</p>
+        </section>
+        <section className="settings-part" aria-label="Text size">
+          <h3 id="settings-text-size">Text size</h3>
+          <span className="scopes" role="group" aria-labelledby="settings-text-size">
+            {TEXT_SIZE_CHOICES.map((choice) => (
+              <button
+                key={choice.size}
+                type="button"
+                className={textSize === choice.size ? 'scope active' : 'scope'}
+                aria-pressed={textSize === choice.size}
+                onClick={() => setTextSize(choice.size)}
+              >
+                {choice.label}
+              </button>
+            ))}
+          </span>
+          <p className="settings-row-note">
+            The text a step smaller or larger; rows, buttons, the graph and the terminal keep their
+            sizes. Kept in this browser.
+          </p>
         </section>
         <section className="settings-part" aria-label="Commit details">
           <h3 id="settings-details">Commit details</h3>
@@ -1037,7 +1071,7 @@ function PromptEditor({
   onBack: () => void;
 }) {
   // Nucleus's group by its name: Alpha Ceph's while Hive mode is on (decision 682).
-  const group = agentName(prompt.group, useHive());
+  const group = agentName(prompt.group, useAlphaCeph());
   const text = draft ?? prompt.text;
   const edited = isEdited(prompt, draft);
   const problem = draftProblem(prompt, text);

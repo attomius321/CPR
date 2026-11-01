@@ -352,12 +352,21 @@ function WorkspacePanel({
     await toTerminal(shell.id, 'close', {}).catch(() => {});
     forgetShell(shell.id);
   };
-  /** Types the verdict's line into the open terminal, without Enter (decision 114). */
-  const typeVerdict = (into: OpenedTerminal, text: string) =>
-    toTerminal(into.id, 'in', { data: verdictLine(text) }).then(
-      () => into.focus(),
-      (e: unknown) => setSaid((e as Error).message),
-    );
+  /**
+   * Types the verdict's line into the open terminal, without Enter (decision 114); noted first,
+   * so the prompt it becomes reads as the verdict (AR2, decision 741). A note that fails leaves
+   * the prompt the person's: the verdict is typed all the same.
+   */
+  const typeVerdict = (into: OpenedTerminal, text: string) => {
+    const line = verdictLine(text);
+    return postJson('/api/workspaces/sent', { branch, by: 'verdict', text: line })
+      .catch(() => undefined)
+      .then(() => toTerminal(into.id, 'in', { data: line }))
+      .then(
+        () => into.focus(),
+        (e: unknown) => setSaid((e as Error).message),
+      );
+  };
 
   // From the Review tab (`?send=verdict`): the verdict in the box, or typed into the terminal.
   useEffect(() => {
@@ -407,6 +416,8 @@ function WorkspacePanel({
         branch,
         text,
         ...(stop ? { stop: true } : {}),
+        // The review's verdict, sent as it was filled in, is the verdict (AR2).
+        ...(verdict && text === verdict.text ? { by: 'verdict' } : {}),
       }).then(
         (replied) => {
           setText('');

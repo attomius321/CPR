@@ -76,11 +76,12 @@ describe('readState and writeState', () => {
     });
   });
 
-  it("names the viewer's five choices", () => {
+  it("names the viewer's six choices", () => {
     expect([...CHOICES].sort()).toEqual([
       'symbiote.viewer.changes',
       'symbiote.viewer.sidenav',
       'symbiote.viewer.sidenav.diff',
+      'symbiote.viewer.text-size',
       'symbiote.viewer.theme',
       'symbiote.viewer.widths',
     ]);

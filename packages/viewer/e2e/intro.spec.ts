@@ -44,6 +44,37 @@ const watchAudio = (page: Page) =>
       }
     };
   });
+/**
+ * Each state the intro's overlay takes, timed by the page's own clock as it happens (AR2): the
+ * spec's clock saw them late under load, and its times failed while the intro's were right.
+ */
+const watchStates = (page: Page) =>
+  page.addInitScript(() => {
+    const seen: { state: string; at: number }[] = [];
+    Object.assign(window, { introStates: seen });
+    const note = () => {
+      const overlay = document.querySelector<HTMLElement>('.intro');
+      const state = overlay ? (overlay.dataset.state ?? 'shown') : seen.length > 0 ? 'gone' : '';
+      if (state !== '' && seen.at(-1)?.state !== state) seen.push({ state, at: performance.now() });
+    };
+    new MutationObserver(note).observe(document, {
+      subtree: true,
+      childList: true,
+      attributes: true,
+      attributeFilter: ['data-state'],
+    });
+  });
+/** When the overlay first showed, and reached `state`, by the page's clock. */
+const stateTimes = (page: Page) =>
+  page.evaluate(() => {
+    const seen = (window as unknown as { introStates: { state: string; at: number }[] })
+      .introStates;
+    const at = (state: string) => seen.find((s) => s.state === state)?.at ?? NaN;
+    return { shown: seen[0]?.at ?? NaN, formed: at('formed'), gone: at('gone') };
+  });
+/** The intro's own promise (`LONGEST_MS`, then its fade): gone by then whatever happens. */
+const LONGEST = 12_000 + 450;
+
 const audioStates = (page: Page) =>
   page.evaluate(() =>
     (window as unknown as { audioContexts: AudioContext[] }).audioContexts.map((c) => c.state),
@@ -54,9 +85,9 @@ test('plays over the first page, the page there beneath it, once: the next visit
 }) => {
   symbiote = await firstTime();
   await watchAudio(page);
+  await watchStates(page);
   await page.goto(symbiote.url);
   await expect(intro(page)).toBeVisible();
-  const shown = Date.now();
   await expect(intro(page).locator('canvas')).toBeVisible();
   // History is drawn beneath while the koi swim.
   await expect(rows(page).first()).toBeAttached();
@@ -65,14 +96,14 @@ test('plays over the first page, the page there beneath it, once: the next visit
   expect(JSON.parse(readFileSync(record(), 'utf8'))).toEqual({ seen: expect.any(String) });
   // Sound on from the start: its context is made with the intro.
   expect((await audioStates(page)).length).toBe(1);
-  await expect(intro(page)).toHaveAttribute('data-state', 'formed', { timeout: 8_000 });
-  const formed = Date.now() - shown;
-  await expect(intro(page)).toHaveCount(0, { timeout: 4_000 });
-  const gone = Date.now() - shown;
-  // The S at 4.2 s, held 0.9 s, faded in 0.45 s.
-  expect(formed).toBeGreaterThan(3_500);
+  // Waited for as long as the intro may last: under load its frames, and so its swim, are slower.
+  await expect(intro(page)).toHaveAttribute('data-state', 'formed', { timeout: LONGEST });
+  await expect(intro(page)).toHaveCount(0, { timeout: LONGEST });
+  // The S at 4.2 s, held 0.9 s, faded in 0.45 s: by the page's clock, from its first frame shown.
+  const { shown, formed, gone } = await stateTimes(page);
+  expect(formed - shown).toBeGreaterThan(3_500);
   expect(gone - formed).toBeGreaterThan(800);
-  expect(gone).toBeLessThan(8_000);
+  expect(gone - shown).toBeLessThan(LONGEST);
   await expect.poll(() => audioStates(page)).toEqual(['closed']);
   await expect(rows(page).first()).toBeVisible();
 
@@ -181,9 +212,10 @@ test('a WebGL context lost before the koi show and given back: the intro starts 
   symbiote = await firstTime();
   await loseFirstContext(page, 300);
   await page.goto(symbiote.url);
-  await expect(intro(page)).toHaveAttribute('data-state', 'formed', { timeout: 8_000 });
+  // Started again once its context is back (a second later), then as long as the intro may last.
+  await expect(intro(page)).toHaveAttribute('data-state', 'formed', { timeout: LONGEST });
   expect(await liveCanvases(page)).toEqual([true]);
-  await expect(intro(page)).toHaveCount(0, { timeout: 2_500 });
+  await expect(intro(page)).toHaveCount(0, { timeout: 5_000 });
 });
 
 test('a WebGL context lost and never given back: the intro ends, the page is there', async ({
