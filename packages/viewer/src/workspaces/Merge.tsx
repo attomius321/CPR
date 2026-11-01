@@ -1,5 +1,11 @@
 import { useState, type CSSProperties, type ReactElement } from 'react';
-import type { MergeConflict, MergeEntry, MergeList, MergeRegion } from '@symbiote/core';
+import type {
+  MergeConflict,
+  MergeEntry,
+  MergeList,
+  MergeRegion,
+  WorkspaceList,
+} from '@symbiote/core';
 import { useShell } from '../shell/shell-context.js';
 import { postJson } from '../ui/http.js';
 import { splitPath } from './changes.js';
@@ -35,6 +41,7 @@ import {
 import { PageHead } from '../ui/PageHead.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
+import { replyMode } from './workspaces.js';
 import { tip } from '../ui/tip.js';
 
 const ACTION_NAMES: Record<MergeAction, string> = {
@@ -42,6 +49,7 @@ const ACTION_NAMES: Record<MergeAction, string> = {
   approve: 'Approve',
   change: 'Request changes',
   recheck: 'Check again',
+  send: 'Send to the agent',
   'merge-commit': 'Merge commit instead',
   retry: 'Retry',
   remove: 'Remove',
@@ -73,7 +81,7 @@ export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | 
  * to review region by region, or the regions the agent asked about.
  */
 export function MergeView({ branch }: { branch: string }) {
-  const { merges } = useWorkspaces();
+  const { merges, list } = useWorkspaces();
   if (!merges) return <p className="hint main-hint">Reading the merges…</p>;
   const entry = mergeOf(merges, branch);
   if (!entry) {
@@ -90,12 +98,22 @@ export function MergeView({ branch }: { branch: string }) {
           Another Symbiote in this repository merges these: it shows them as it goes.
         </p>
       )}
-      <MergeEntryView key={entry.id} entry={entry} />
+      <MergeEntryView key={entry.id} entry={entry} send={sendable(list, entry.branch)} />
     </div>
   );
 }
 
-function MergeEntryView({ entry }: { entry: MergeEntry }) {
+/**
+ * Whether a failed check can be sent to the branch's agent (AR2): its workspace's agent takes
+ * messages (Claude Code or Codex with a session; Hermes takes them in its terminal only).
+ */
+function sendable(list: WorkspaceList | null, branch: string): boolean {
+  const workspace = list?.workspaces.find((w) => w.branch === branch);
+  if (!workspace || workspace.agent.kind === 'hermes') return false;
+  return replyMode(workspace.agent) !== 'none';
+}
+
+function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boolean }) {
   const shell = useShell();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,14 +153,27 @@ function MergeEntryView({ entry }: { entry: MergeEntry }) {
       .catch((e: unknown) => setError((e as Error).message))
       .finally(() => setBusy(false));
   };
+  /** The failed check typed into the branch's agent (AR2, decision 742); the bar says so. */
+  const sendToAgent = () => {
+    setBusy(true);
+    setError(null);
+    postJson('/api/merges/send', { id: entry.id })
+      .then(() => {
+        shell?.notify({ text: `Sent the failed check to ${entry.branch}'s agent` });
+        return reloadWorkspaces();
+      })
+      .catch((e: unknown) => setError((e as Error).message))
+      .finally(() => setBusy(false));
+  };
   const act = (action: MergeAction) => {
     if (action === 'change') setChanging((open) => !open);
     else if (action === 'remove') remove();
+    else if (action === 'send') sendToAgent();
     else post(`/api/merges/${action}`, {});
   };
   // The frequent actions as buttons; Retry and Remove, rarer, in the "⋯" menu; a landed merge's
   // Remove, its last, its primary button (V55).
-  const { buttons: shownActions, more: rarer } = mergeButtons(entry);
+  const { buttons: shownActions, more: rarer } = mergeButtons(entry, { send });
   const more: MenuAction[] = rarer.map((a) => ({
     label: ACTION_NAMES[a],
     disabled: busy,

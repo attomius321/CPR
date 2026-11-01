@@ -302,6 +302,22 @@ Use "default" for the model or the level when nothing above fits better. The tas
 Answer with JSON. "why" is one sentence for the person, naming the signal in the brief that decided the size, for example "Renames one constant in two files: small and mechanical."`;
 
 /**
+ * What Send to the agent types into a branch's workspace when its merge's check failed (AR2,
+ * decision 742): the failure, and the question the person pasted it for (AR1: 14 pastes by hand).
+ */
+const MERGE_FAILED = [
+  'Symbiote merged {at} into {into} and ran the check: `{command}` failed. Its last lines:',
+  '',
+  '```',
+  '{output}',
+  '```',
+  '',
+  'Say whether your branch causes it. If it does, fix it on {branch} and commit: the person ' +
+    'approves the new commit. If it does not (a test your change cannot reach, or a commit on ' +
+    '{into}), say why in a few lines and change nothing: the person runs the check again.',
+].join('\n');
+
+/**
  * The answer the merger is asked for, after its instructions: Symbiote parses it, so a project
  * cannot change it (decision 169).
  */
@@ -333,6 +349,7 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
   'verdict.where': 'The review: {review}; how to act on it: {agents}.',
   reviews: REVIEWS.trimEnd(),
   merger: MERGER,
+  'merge.failed': MERGE_FAILED,
   nucleus: NUCLEUS,
   scribe: SCRIBE,
   library: LIBRARY,
@@ -516,6 +533,21 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     placeholders: [],
     max: MAX_TEXT,
     fixed: MERGER_ANSWER,
+  },
+  'merge.failed': {
+    group: 'Merger',
+    title: 'Check failed',
+    about:
+      "What Send to the agent types into a branch's workspace when its merge's check failed: " +
+      'the command, its last lines, and what the agent is asked.',
+    placeholders: [
+      { name: 'output', about: "the last lines of the check's output", required: true },
+      { name: 'command', about: 'the command that failed' },
+      { name: 'branch', about: 'the branch merged' },
+      { name: 'at', about: 'the approved commit merged, short' },
+      { name: 'into', about: 'the branch it was merged into' },
+    ],
+    max: MAX_LINE,
   },
   nucleus: {
     group: 'Nucleus',

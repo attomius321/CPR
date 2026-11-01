@@ -102,6 +102,7 @@ and leaves any other brace as text:
 | `verdict.approve`, `verdict.push`, `verdict.address`, `verdict.where` | The lines of a verdict sent to a branch's agent | `{branch}`, `{at}`, `{into}`, `{reviewer}`, `{what}`, `{review}`, `{agents}` |
 | `reviews` | The text of `symbiote/AGENTS.md`, which tells agents how to act on a review | none |
 | `merger` | The merger's instructions | none |
+| `merge.failed` | What **Send to the agent** types into the branch's workspace when a merge's check failed: the command, its last lines, and what the agent is asked | `{output}` (required), `{command}`, `{branch}`, `{at}`, `{into}` |
 | `nucleus` | Nucleus's instructions, its system prompt. While Hive is on, a text without `{name}` gets a line at its end that tells Nucleus its name | `{name}`: Nucleus, or Alpha Ceph while [Hive](#hive-mode) is on |
 | `scribe` | Scribe's instructions, its system prompt. A `{request}` left from an older text is filled with nothing | `{skills}`, `{checkout}`, `{library}` |
 | `library` | What `{library}` becomes in Scribe's prompt when a [skill library](#the-skill-library) is set. Without a library, the line that holds `{library}` is left out | `{folder}` (required), `{skills}` |

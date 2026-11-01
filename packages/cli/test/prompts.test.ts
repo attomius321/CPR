@@ -178,6 +178,23 @@ describe('with no prompts set (V28)', () => {
     expect(DEFAULT_PROMPTS['start.spike']).not.toContain('Commit nothing');
   });
 
+  it("words a failed merge check for the branch's agent, with the merger's prompts (AR2)", () => {
+    const text = fillPrompt(DEFAULT_PROMPTS['merge.failed'], {
+      branch: 'feature/one',
+      at: 'abc1234',
+      into: 'main',
+      command: 'pnpm check',
+      output: 'FAIL a.test.ts',
+    });
+    expect(text).toBe(
+      'Symbiote merged abc1234 into main and ran the check: `pnpm check` failed. Its last ' +
+        'lines:\n\n```\nFAIL a.test.ts\n```\n\nSay whether your branch causes it. If it does, fix ' +
+        'it on feature/one and commit: the person approves the new commit. If it does not (a test ' +
+        'your change cannot reach, or a commit on main), say why in a few lines and change ' +
+        'nothing: the person runs the check again.',
+    );
+  });
+
   it("asks Hive's writer for the failing tests, not the whole check Symbiote runs (AR2)", () => {
     // Decision 739: the writer ran the whole check before each turn's end, then Hive ran it again.
     const again = 'Symbiote runs the whole check again.';

@@ -2353,6 +2353,10 @@ describe('symbiote view: merges (V26a)', () => {
       asked.push(`recheck ${id}`);
       return Promise.resolve({ ...entry, recheck: true });
     },
+    failure: (id) => {
+      asked.push(`failure ${id}`);
+      return Promise.resolve({ branch: 'feature/csv', text: 'Symbiote merged it: failed.' });
+    },
     mergeCommit: (id) => {
       asked.push(`merge-commit ${id}`);
       return Promise.resolve(entry);
@@ -2478,6 +2482,11 @@ describe('symbiote view: merges (V26a)', () => {
     );
     expect(asked.slice(-3)).toEqual(['approve m1', 'change m1 Keep both.', 'recheck m1']);
     asked.splice(-3);
+    // A failed check sent to the branch's agent (AR2): a repository without workspaces cannot.
+    const unsent = await post('/api/merges/send', { id: 'm1' });
+    expect(unsent.status).toBe(409);
+    expect(await unsent.json()).toEqual({ error: 'no workspaces here to send it to' });
+    expect((await post('/api/merges/send', { id: 'm1' }, { 'x-symbiote': '' })).status).toBe(403);
     expect(asked).toEqual([
       'enqueue feature/csv main',
       'enqueue x main',
