@@ -27,3 +27,5 @@ index chore (`c88b237`): the same rows as before the fix and as that chore. On `
 "Docs: merged" (`72fe24d`): the same files as that commit, plus "Merged into main (2026-10-31)."
 after Alpha Ceph's entry in `v82-hive-mode.md`. On today's `main`: nothing to mark, 9 notes.
 `pnpm check` green.
+
+Merged into main (2026-11-01).
