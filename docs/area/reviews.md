@@ -1,7 +1,7 @@
 # Reviews
 
-[Index](../PLAN.md) · [Its decisions](../decisions.md#reviews) · Checked against the code at
-`108f956` (2026-11-01)
+[Index](../PLAN.md) · [Its decisions](../decisions.md#reviews) · Checked against the code on
+2026-11-01
 
 This page says how branch reviews work today. Read it before you change them. The plans listed
 in the index under "Reviews" say why each part was built, as it was decided then. If a plan and
@@ -110,9 +110,9 @@ all**.
 |---|---|
 | Where reviews are kept, the review files, finishing a review, the merge check | `packages/cli/src/reviews.ts` |
 | Where a review starts | `packages/cli/src/review-base.ts` |
-| The text of `AGENTS.md` | the `reviews` prompt in `packages/cli/src/prompts.ts` |
+| The text of `AGENTS.md` | the `reviews` prompt, `DEFAULT_PROMPTS.reviews` in the CLI's `prompts.ts` |
 | The Review tab | `packages/viewer/src/diff/ReviewTab.tsx` |
-| The Files page and its diff | `packages/viewer/src/diff/FilesPage.tsx`, `file-diff.ts` |
+| The Files page and its diff | `packages/viewer/src/diff/FilesPage.tsx`, `packages/viewer/src/diff/file-diff.ts` |
 | Comments and sending a verdict | `packages/viewer/src/diff/comments.ts` (`POST /api/review`) |
 | The reviews list | `GET /api/reviews` in `packages/cli/src/server.ts` |
 

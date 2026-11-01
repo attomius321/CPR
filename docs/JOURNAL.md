@@ -375,3 +375,4 @@ merge commit.
 - 2026-11-01 [The milestone, regression-check and viewer-check skills for workspaces](journal/chore-milestone-skill-workspaces.md)
 - 2026-11-01 [Fix — mark-merged and journals several branches wrote in](journal/fix-mark-merged-shared-journals.md)
 - 2026-11-01 [Living docs: area pages, replaced decisions marked, the register, branches](journal/chore-living-docs.md)
+- 2026-11-01 [Living docs' gaps: AGENTS.md, the lookup, stale pages, Prettier](journal/chore-living-docs-gaps.md)

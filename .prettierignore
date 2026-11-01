@@ -8,5 +8,8 @@ packages/*/test/fixtures
 spikes
 test-results
 playwright-report
-# Files given to a workspace's agent with its brief (V40): the person's, not formatted.
-symbiote/documents
+# Symbiote's own files in this checkout, which symbiote/.gitignore keeps out of git: workspace
+# records, reviews, Hive's records, the documents given with a brief (V40). Symbiote writes them;
+# they are not this project's code. symbiote/config.json is committed, and checked.
+symbiote/*
+!symbiote/config.json

@@ -72,7 +72,9 @@ const V3 = plan(
   '\n**Runs**:\n\n| # | Change | Label |\n|---|---|---|\n| 1 | install (replaces 2) | ok |\n',
 );
 const DESIGN = `# Design\n\n**Decisions**:\n\n${HEAD}| 12 | The first rule | **This** | v1 |\n`;
-const PAGE = '# Reviews\n\n[Index](../PLAN.md)\n\nWhat holds now.\n';
+const PAGE =
+  '# Reviews\n\n[Index](../PLAN.md)\n\nWhat holds now. The code: `src/reviews.ts`, `src/base.ts` and\n' +
+  '`src/gone.ts`; the journal, `docs/JOURNAL.md`.\n';
 
 let repo: TestRepo;
 
@@ -101,6 +103,9 @@ beforeEach(() => {
     'docs/plan/v3-c.md': V3,
     'docs/plan/design.md': DESIGN,
     'docs/area/reviews.md': PAGE,
+    'docs/JOURNAL.md': '# Journal\n',
+    'src/reviews.ts': 'export {};\n',
+    'src/base.ts': 'export {};\n',
   });
   repo.commit('Docs');
 });
@@ -213,6 +218,48 @@ describe('consolidate.mjs', () => {
     run('--write');
     expect(row('docs/plan/v1-a.md', 1)).toBe(
       '| 1 | What Approve does *(partly superseded by 11 of V3)* | **Pushes** | asked |',
+    );
+  });
+
+  it('names an area page whose code changed after the page did, and the files', () => {
+    run('--write');
+    repo.commit('Consolidated');
+    expect(run().out).not.toContain('area/reviews.md:');
+    // Docs it names, files it does not name and files that do not exist are not watched.
+    repo.write({
+      'src/reviews.ts': 'export const a = 1;\n',
+      'docs/JOURNAL.md': 'more\n',
+      'src/x.ts': '',
+    });
+    repo.commit('Code');
+    repo.write({ 'src/base.ts': 'export const b = 1;\n' });
+    repo.commit('More code');
+    const { code, out } = run('--check');
+    // A note for a person, not a failure.
+    expect(code).toBe(0);
+    expect(out).toContain(
+      'note  area/reviews.md: 2 commits since the page last changed touch src/base.ts, src/reviews.ts: reread it against them',
+    );
+    // Changed with or after its code, the page is current again.
+    repo.write({ 'docs/area/reviews.md': `${PAGE}Updated.\n` });
+    repo.commit('Page');
+    expect(run().out).not.toContain('area/reviews.md:');
+  });
+
+  it("leaves out a file most commits touch: it is every area's", () => {
+    run('--write');
+    repo.write({ 'docs/area/reviews.md': `${PAGE}The routes: \`src/server.ts\`.\n` });
+    repo.commit('Page');
+    // 44 commits, 6 of them in src/server.ts: more than 1 in 20.
+    for (let i = 0; i < 44; i++) {
+      repo.write({ 'src/x.ts': `${i}\n`, ...(i % 8 === 0 ? { 'src/server.ts': `${i}\n` } : {}) });
+      repo.commit(`Work ${i}`);
+    }
+    expect(run().out).not.toContain('area/reviews.md:');
+    repo.write({ 'src/server.ts': 'last\n', 'src/reviews.ts': 'export const c = 1;\n' });
+    repo.commit('Reviews and a route');
+    expect(run().out).toContain(
+      'note  area/reviews.md: 1 commit since the page last changed touches src/reviews.ts: reread it against them',
     );
   });
 

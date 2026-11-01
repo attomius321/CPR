@@ -10,12 +10,15 @@
 // - `docs/decisions.md`: every decision by area and plan, in the index's order, with its status.
 // - For an area with a page in `docs/area/` (titled as the index's heading): a line under that
 //   heading in `docs/PLAN.md`, and a banner under each of its plans' reference line.
+// - A note for each area page whose code changed after the page did: the commits since the page's
+//   last commit that touch a file it names in backticks (chore/living-docs-gaps). Not a failure:
+//   a person reads them and updates the page.
 //
 //   node scripts/plan/consolidate.mjs            # lists what it would change; changes nothing
 //   node scripts/plan/consolidate.mjs --write    # changes it; on `main`, with "Docs: merged"
 //   node scripts/plan/consolidate.mjs --check    # exits 1 when something would change
 import { execFileSync } from 'node:child_process';
-import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const args = process.argv.slice(2);
@@ -26,6 +29,14 @@ const root = execFileSync('git', ['rev-parse', '--show-toplevel'], { encoding: '
 const docs = join(root, 'docs');
 const indexPath = join(docs, 'PLAN.md');
 const registerPath = join(docs, 'decisions.md');
+/** git in the repository, its output; its errors not printed. */
+const gitIn = (...command) =>
+  execFileSync('git', command, {
+    cwd: root,
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'ignore'],
+    maxBuffer: 64 * 1024 * 1024,
+  });
 
 /** The marker this script writes on a replaced row, and only it. */
 const MARKER = /\s*\*\((?:partly )?superseded by [^)]*\)\*/g;
@@ -88,10 +99,60 @@ if (existsSync(areaDir)) {
   for (const file of readdirSync(areaDir)
     .filter((f) => f.endsWith('.md'))
     .sort()) {
-    const title = read(join(areaDir, file)).match(/^# (.+?)\s*$/m)?.[1];
+    const text = read(join(areaDir, file));
+    const title = text.match(/^# (.+?)\s*$/m)?.[1];
     if (title && areas.some((a) => a.name === title)) pages.set(title, file);
     else notes.push(`area/${file}: its title names no area of the index ("${title ?? ''}")`);
+    const stale = staleness(`docs/area/${file}`, text);
+    if (stale) notes.push(`area/${file}: ${stale}`);
   }
+}
+
+/**
+ * Files that more than 1 in 20 of the last 500 commits touch (here `server.ts`, `styles.css`):
+ * every area's, so a change to one says nothing about a page. Judged from 40 commits on; read once.
+ */
+function shared() {
+  if (shared.files) return shared.files;
+  const log = gitIn(
+    'log',
+    '--no-merges',
+    '-500',
+    '--format=tformat:@',
+    '--name-only',
+    'HEAD',
+  ).split('\n');
+  const commits = log.filter((l) => l === '@').length;
+  const counts = new Map();
+  for (const l of log) if (l && l !== '@') counts.set(l, (counts.get(l) ?? 0) + 1);
+  shared.files = new Set(
+    commits < 40 ? [] : [...counts].filter(([, n]) => n * 20 > commits).map(([f]) => f),
+  );
+  return shared.files;
+}
+
+/**
+ * Whether an area page may have fallen behind its code: the commits after the page last changed
+ * that touch a file it names in backticks (`packages/cli/src/merges.ts`). Docs, Symbiote's own
+ * folder and shared files are not watched, nor a path that is not a file. Null when none.
+ */
+function staleness(page, text) {
+  const named = new Set();
+  for (const m of text.matchAll(/`([\w.@-]+(?:\/[\w.@-]+)+)`/g)) {
+    const path = m[1];
+    if (/^(docs|symbiote)\//.test(path)) continue;
+    if (existsSync(join(root, path)) && statSync(join(root, path)).isFile()) named.add(path);
+  }
+  const last = gitIn('log', '-1', '--format=%H', '--', page).trim();
+  if (!last) return null;
+  for (const path of shared()) named.delete(path);
+  if (named.size === 0) return null;
+  const log = gitIn('log', '--format=@%h', '--name-only', `${last}..HEAD`, '--', ...named);
+  const commits = log.split('\n').filter((l) => l.startsWith('@')).length;
+  if (commits === 0) return null;
+  const touched = [...new Set(log.split('\n').filter((l) => l && !l.startsWith('@')))].sort();
+  const verb = commits === 1 ? 'touches' : 'touch';
+  return `${commits} commit${commits === 1 ? '' : 's'} since the page last changed ${verb} ${touched.join(', ')}: reread it against them`;
 }
 
 // --- The decisions ------------------------------------------------------------------------------

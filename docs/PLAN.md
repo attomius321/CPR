@@ -44,7 +44,9 @@ HV4. The milestones toward this North Star are HV4–HV7, in the order they are 
 - **Read** the North Star and the index below. If your area has a page in [area/](area/),
   read it next: it says what holds now, checked against the code, with the decisions in force
   and the traps. Then read only the plans and journals you need for why. A decision by its
-  number: `grep -rn '^| 246 |' docs/plan`; a term: `grep -rln <term> docs/plan docs/journal`.
+  number, with any newer row that replaces it:
+  `grep -rnE '^\| 246 \||^\| [0-9]+ \|.*(supersedes|replaces)[^|]*\b246\b' docs/plan`
+  A term: `grep -rln <term> docs/plan docs/journal`.
 - **Plans and journals are kept as written**: each says what was decided or learned on its day.
   An area's page says what holds now, and is changed in the commit that changes the code it
   describes. Reviews and The merger have pages; the other areas get theirs one at a time.
@@ -339,6 +341,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | Chore | The milestone, regression-check and viewer-check skills for workspaces: where you are, plan first, how work reaches `main`; merged work marked by `scripts/plan/mark-merged.mjs` | ✅ | | [journal](journal/chore-milestone-skill-workspaces.md) |
 | Fix | `mark-merged.mjs`: a row with no plan waits for every branch its journal names; a journal's last line is its last entry's | ✅ | | [journal](journal/fix-mark-merged-shared-journals.md) |
 | [Chore](plan/chore-living-docs.md) | Living docs: a page per area of what holds now (Reviews and The merger first), replaced decisions marked on both rows, a register of every decision; merged branches deleted, unmerged ones kept as `archive/` tags | ✅ | 776–781 | [journal](journal/chore-living-docs.md) |
+| Chore | Living docs' gaps: a root `AGENTS.md` for Codex and Hermes; a decision lookup that finds its replacement before `consolidate.mjs` marks it; a note for an area page whose code changed after it; Prettier leaves Symbiote's local files out | ready for review | | [journal](journal/chore-living-docs-gaps.md) |
 
 ### Across the app
 
