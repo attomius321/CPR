@@ -323,6 +323,7 @@ HV4. The milestones toward this North Star are HV4–HV7, in the order they are 
 | [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | ✅ | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
 | [Refactor](plan/refactor-readability.md) | The CLI's services and the viewer's pages in modules one can read | ✅ | 344–348 | [journal](journal/refactor-readability.md) |
 | [IN1](plan/in1-one-command-install.md) | Install in one command (`./install.sh`), with no native build: the agents' terminal prebuilt | ✅ | 532–538 | [journal](journal/in1-one-command-install.md) |
+| Chore | The milestone, regression-check and viewer-check skills for workspaces: where you are, plan first, how work reaches `main`; merged work marked by `scripts/plan/mark-merged.mjs` | ready for review | | [journal](journal/chore-milestone-skill-workspaces.md) |
 
 ### Across the app
 

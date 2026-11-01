@@ -32,6 +32,9 @@ Not verified: what was not, and why.
 Merged into main (<date>).
 ```
 
+The last line is written on `main` once the branch is merged, by `scripts/plan/mark-merged.mjs`
+(the milestone skill's "Marking merged work"), not on the branch.
+
 Each entry also gets a line at the end of `docs/JOURNAL.md` (the heading without its
 parenthesis):
 
