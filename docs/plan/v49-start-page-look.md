@@ -117,7 +117,7 @@ the check guess, the field style (decision 246), the tokens, every other page.
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 378 | Where the page stands in a wide main area | **Centred, the head's contents in the same width** | 18–57 % of the area used at 1440–2560; creation pages and agent launchers centre their form |
+| 378 | Where the page stands in a wide main area *(superseded by 507 of V72)* | **Centred, the head's contents in the same width** | 18–57 % of the area used at 1440–2560; creation pages and agent launchers centre their form |
 | 379 | How the brief and the run are grouped | **Two cards; the run's choices as rows, name left, control right** | the run was the taller column (524 px) as a stack of names over fields |
 | 380 | Plan first | **A switch, the same checkbox and label** | an on/off setting (the style's switch); `getByLabel` and the draft unchanged |
 | 381 | Where Start is | **The head, over the run card's edge** | in view while the form scrolls (V30a) |

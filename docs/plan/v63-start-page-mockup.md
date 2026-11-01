@@ -138,7 +138,7 @@ start from a History row, Codex's and Hermes's rows, the tokens' values.
 | 451 | The head | **The S, the title at Settings' size, the mockup's line; Cancel and Clear framed; "Start workspace" with dark words** | the mockup; the person's answers (V62's head, decision 440) |
 | 452 | The brief | **Kinds as tabs with icons; a "?" per field; the goal's preview, attach and counter; the tip box; More a framed row** | the mockup, with what Symbiote can answer |
 | 453 | The run | **Seven cards with accent icons; the base in Source's note; ⤨ names the branch after the title** | the mockup; the commit stays said |
-| 454 | The layout | **1,312 px at most, 821 : 470; one column under 1,000; More open scrolls at 1440×900** | the mockup's proportions |
+| 454 | The layout *(partly superseded by 507 of V72)* | **1,312 px at most, 821 : 470; one column under 1,000; More open scrolls at 1440×900** | the mockup's proportions |
 | 455 | The ground | **The mockup's arcs, faint, on this page** | the person's "try" |
 | 456 | The stepper's words | **Capitalised, xHigh; everywhere the stepper is** | the mockup; one stepper |
 | 457 | The ✨, link and page icons | **Left out** | the person's answer: no behaviour behind them |

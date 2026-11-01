@@ -2,6 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v60-files-page.md)
 
+> What holds now: [Reviews](../area/reviews.md). This plan is kept as it was written.
+
 **Status:** merged into `main` on 2026-10-26 (built 2026-10-26), on branch `feature/simpler-reviewe` (a workspace
 started in Symbiote, from `main` at `00d88e1`); the plan OK'd by the person ("Ok") with its three
 defaults: the pages named Files and Graph, unchanged lines commented on a branch review, every

@@ -41,8 +41,13 @@ HV4. The milestones toward this North Star are HV4–HV7, in the order they are 
 
 ## How the plan is kept
 
-- **Read** the North Star and the index below, then only the files of your area. A decision by
-  its number: `grep -rn '^| 246 |' docs/plan`; a term: `grep -rln <term> docs/plan docs/journal`.
+- **Read** the North Star and the index below. If your area has a page in [area/](area/),
+  read it next: it says what holds now, checked against the code, with the decisions in force
+  and the traps. Then read only the plans and journals you need for why. A decision by its
+  number: `grep -rn '^| 246 |' docs/plan`; a term: `grep -rln <term> docs/plan docs/journal`.
+- **Plans and journals are kept as written**: each says what was decided or learned on its day.
+  An area's page says what holds now, and is changed in the commit that changes the code it
+  describes. Reviews and The merger have pages; the other areas get theirs one at a time.
 - **A milestone** has a plan, `plan/<id>-<slug>.md` (status, problem, goal, design,
   verification, risks, decisions; after it is built, "As built" and results), and a journal of
   the same name, `journal/<id>-<slug>.md` (its spike, parts and merge: what was measured and
@@ -53,7 +58,11 @@ HV4. The milestones toward this North Star are HV4–HV7, in the order they are 
   [plan/design.md](plan/design.md); the phases, their milestone tables and "Proposed next" as
   it stood at V44 in [plan/roadmap.md](plan/roadmap.md).
 - **Decisions** are numbered across the project and kept in their milestone's plan; the index
-  gives each milestone's. 242 and 243 are each used twice (a V26 fix and V36).
+  gives each milestone's. 242 and 243 are each used twice (a V26 fix and V36). A decision that
+  replaces an older one says so in its row (`supersedes 80`, `replaces 446's centring`);
+  `scripts/plan/consolidate.mjs --write` then marks the older row
+  (`*(superseded by 82 of V17)*`) and regenerates [decisions.md](decisions.md), every decision
+  with its status. It runs on `main` with `mark-merged.mjs`, in the "Docs: merged" commit.
 - **The index**: one row per milestone, fix and chore, by area, in the order they were built.
   ✅ is merged into `main`. The ID links the plan.
 
@@ -130,6 +139,8 @@ HV4. The milestones toward this North Star are HV4–HV7, in the order they are 
 | Fix | A commit's menu opens at once: no Review in it (the branches panel keeps its own), so no wait for every branch review | ✅ | | [journal](journal/fix-git-right-click-on-commit.md) |
 
 ### Reviews
+
+What holds now: [Reviews](area/reviews.md) · its decisions: [the register](decisions.md#reviews).
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
@@ -224,6 +235,8 @@ HV4. The milestones toward this North Star are HV4–HV7, in the order they are 
 | [AR2](plan/ar2-defaults-from-ar1.md) | The changes AR1 found: the journal merged as a union, Hive's check messages, the spike's answer kept, who sent a message in the record, a failed merge check sent to the agent, the flaky e2e tests | ✅ | 738–744 | [journal](journal/ar2-defaults-from-ar1.md) |
 
 ### The merger
+
+What holds now: [The merger](area/merger.md) · its decisions: [the register](decisions.md#the-merger).
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
@@ -325,6 +338,7 @@ HV4. The milestones toward this North Star are HV4–HV7, in the order they are 
 | [IN1](plan/in1-one-command-install.md) | Install in one command (`./install.sh`), with no native build: the agents' terminal prebuilt | ✅ | 532–538 | [journal](journal/in1-one-command-install.md) |
 | Chore | The milestone, regression-check and viewer-check skills for workspaces: where you are, plan first, how work reaches `main`; merged work marked by `scripts/plan/mark-merged.mjs` | ✅ | | [journal](journal/chore-milestone-skill-workspaces.md) |
 | Fix | `mark-merged.mjs`: a row with no plan waits for every branch its journal names; a journal's last line is its last entry's | ✅ | | [journal](journal/fix-mark-merged-shared-journals.md) |
+| [Chore](plan/chore-living-docs.md) | Living docs: a page per area of what holds now (Reviews and The merger first), replaced decisions marked on both rows, a register of every decision; merged branches deleted, unmerged ones kept as `archive/` tags | ready for review | 776–781 | [journal](journal/chore-living-docs.md) |
 
 ### Across the app
 

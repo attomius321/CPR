@@ -1,0 +1,203 @@
+# The merger
+
+[Index](../PLAN.md) · [Its decisions](../decisions.md#the-merger) · Checked against the code at
+`108f956` (2026-11-01)
+
+This page says how Symbiote's merger works today. Read it before you change the merger. The plans
+listed in the index under "The merger" say why each part was built, as it was decided then. If a
+plan and this page disagree, trust this page: it was checked against the code. Change this page in
+the commit that changes what it says.
+
+## What the merger does
+
+The *merger* is the part of Symbiote that merges an approved branch into a target branch, runs the
+project's check on the result, and moves the target. It merges in a worktree of its own, never
+in your checkout. It uses no agent and no tokens when the merge is clean. A conflict goes to a
+fresh agent, the *merger agent*, never to the workspace's agent. You review every resolution
+before it lands.
+
+Terms used below:
+
+- A *workspace* is a branch and a worktree that Symbiote made for one agent's task. Its record
+  names the branch it started `from`, and `against`, a branch the person picked to review it
+  against.
+- The *main checkout* is the repository's first worktree, where the default branch is usually
+  checked out.
+- An *entry* is one merge in the merger's queue. Its state says where it is; `needs-you` means it
+  waits for the person.
+- *Hive mode* is Symbiote's autonomous mode, in which Symbiote drives a workspace with no person
+  in the loop ([the North Star](../PLAN.md#hive-mode-fully-autonomous)).
+
+## From Approve to landed
+
+1. A person approves a branch in its Review tab. The verdict records the approved commit and the
+   branch to merge into (see [Reviews](reviews.md)). Nothing is merged yet.
+2. The person picks **Merge into ▾**, or runs `symbiote merge <branch>`. Symbiote queues an
+   *entry*: the branch, the approved commit, the target and the strategy. In Hive mode, **Land**
+   on a workspace's Review tab records the approval and queues the entry in one step.
+3. The merger takes one entry at a time per repository. It resets its merge worktree to the
+   target's tip and merges the approved commit with `--no-ff`. The commit's subject is
+   `Merge <branch>: <the workspace's title, else the approved commit's subject>`. (With the
+   fast-forward strategy there is no merge commit: see [Strategies](#strategies).)
+4. If the merge conflicts, the merger agent answers each conflicting region. Symbiote writes the
+   answers, commits the merge and runs the check. The entry then waits at `needs-you` for the
+   person, whether the check passed or not.
+5. If the merge is clean, Symbiote runs the check. If the check passes, Symbiote lands the merge
+   at once, and nobody has to act. If it fails, the entry is `failed`. If there is no check, the
+   entry waits at `ready` until the person presses **Land**.
+6. To land, Symbiote moves the target by fast-forward to the merge commit. Pushing is off by
+   default: Symbiote pushes the target only if `merge.push` is `true`.
+
+The states an entry goes through are `queued`, `merging`, `resolving`, `checking`, `ready`,
+`needs-you`, `landed` and `failed` (`MERGE_STATES` in `packages/core/src/merges.ts`). `ready`
+means merged and checked but not landed: no check ran, or git refused the landing. Entries run in
+the order they were queued.
+
+## How the target branch moves
+
+- **The target is checked out somewhere** (usually the main checkout): Symbiote runs
+  `git merge --ff-only` in that worktree, so the branch and its files move together. If local
+  changes would be overwritten, git refuses. The entry stays `ready` with git's message, and the
+  person presses **Land** to try again.
+- **The target is checked out nowhere**: Symbiote moves the ref with `git update-ref`, giving the
+  old value, so a ref that moved meanwhile is refused.
+- **The target moved since the merge**: the entry goes back to `queued` and is merged again on the
+  new tip.
+- **Pushing**: only with `merge.push: true`, to the target's upstream, else to `origin`.
+  Symbiote reads `merge.push` before it lands, because the landing can bring a different
+  `symbiote/config.json` into the checkout.
+
+## The check
+
+The check is `merge.checks` in `symbiote/config.json`: one command, or a list run in order. If
+there is none, Symbiote guesses one from the target's files, such as a package script after its
+package manager's install. The merge worktree keeps ignored files, such as `node_modules`,
+between merges.
+
+If no check is set or found, a clean merge waits at `ready` for **Land**, and a resolved one at
+`needs-you`. A clean merge whose check fails is `failed`. The person can then **Retry**, **Send
+to the agent** (Symbiote types the `merge.failed` prompt into the branch's workspace), or
+**Remove** it.
+
+## Conflicts and the merger agent
+
+The merger agent is one run of Claude Code (`claude -p`) or Codex (`codex exec`) with read-only
+tools. Its prompt holds each conflict region with 3 lines around it, both sides' titles, the
+symbols both sides changed, and `symbiote/merge.md` if the project has one. The agent writes no
+file. It answers each region's text, and Symbiote writes the answers between the markers. The
+agent may ask a question instead; the person answers it on the merge page.
+
+The person reviews the resolution on the merge page. Lines a side loses or doubles are red, and
+lines the agent wrote are amber. Then the person picks one of these:
+
+- **Approve** lands it, even when its check failed: the person read what failed.
+- **Request changes** runs the agent again with the comments and its previous answers.
+- **Check again** runs a failed check again. If the target has not moved, it checks the same
+  merge commit; if it has, it merges again on the new tip.
+- **Remove** takes the entry out of the queue.
+
+## Strategies
+
+A merge lands with a merge commit unless the person picks a fast-forward in **Merge into ▾**, or
+sets `merge.strategy`. A fast-forward moves the target to the approved commit itself, with no new
+commit. It is possible only if the approved commit already contains the target's tip. The check
+still runs, on the approved commit. If the target
+has commits the approved commit lacks, the entry waits at `needs-you`, saying how far the target
+moved. **Merge commit instead** queues it again as a merge. Squash and rebase are not
+offered.
+
+## Order between merges
+
+A merge into a branch waits while any other merge into that branch is in a state other than
+`queued` or `landed`. It starts once that merge lands, is removed, or is queued again (**Retry**,
+**Request changes**, **Check again**). The wait matters because the held merge may still land and
+move the target. A merge made on the old tip would then have to be merged again. If Symbiote
+stops during a merge, the entry is merged again from the start when Symbiote runs next.
+
+## Where things are
+
+| What | Where |
+|---|---|
+| The service: queue, merge, check, land | `packages/cli/src/merges.ts` |
+| The queue file and its lock | `<cache>/state/<repo-id>/merges.json`, `merges.lock` (`merge-queue.ts`) |
+| Each entry's log, one JSON object a line | `<cache>/state/<repo-id>/merges/<id>.jsonl` (`merge-log.ts`) |
+| The merge worktree | `<cache>/worktrees/<repo-id>/merge` |
+| The merger agent's prompt and answer parsing | `packages/cli/src/merge-agent.ts` |
+| Settings: `merge.checks`, `push`, `strategy`, `agent`, `model`, `effort` | `symbiote/config.json`; defaults in [configuration](../reference/configuration.md) |
+| A project's rules for the merger agent | `symbiote/merge.md`, committed with the project |
+| **Merge into ▾** | `packages/viewer/src/workspaces/MergeControl.tsx` |
+| The merge page: state, files, log | `packages/viewer/src/workspaces/Merge.tsx` |
+| HTTP | `/api/merges…` in `packages/cli/src/server.ts`; the log as server-sent events |
+| Command line | `symbiote merge <branch>`, with `--into`, `--strategy`, `--land`, `--approve` and `--again` |
+| MCP tools | `merges`, `merge_log`, `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` |
+
+`<id>` is the entry's ID, a UUID. `<cache>` is `SYMBIOTE_CACHE_DIR`, else `~/.cache/symbiote` on
+Linux. `<repo-id>` is the folder name Symbiote gives the repository there: its folder's name and a
+short hash of its git folder's path, such as `Symbiote-e8cf43a060b0`
+(`packages/core/src/git/repo.ts`).
+
+## Decisions in force
+
+The table gives each decision as it holds today. A decision's row in its plan can say otherwise,
+when a later decision or a fix changed it.
+
+| # | The rule now | Made in |
+|---|---|---|
+| 142 | Symbiote merges; an agent only for conflicts; never the workspace's agent | [V26](../plan/v26-merger.md) |
+| 143 | The merge happens in a worktree in Symbiote's cache | V26 |
+| 144 | The target moves by fast-forward only: in the worktree that has it, else `update-ref` with the old value | V26 |
+| 145 | No push unless `merge.push` | V26 |
+| 146 | A clean merge needs no agent and no review: the approval was the yes | V26 |
+| 147 | Every resolution is reviewed by the person before it lands | V26 (its rule step dropped by 164) |
+| 148 | The merger agent's model is `merge.model`, by default `sonnet` for Claude Code | V26 |
+| 149 | Any target can be picked; the preselected one is as 473 says | V26, changed by [V65](../plan/v65-review-against.md)'s 473 |
+| 150 | The merger agent gets Symbiote's short instructions plus `symbiote/merge.md` | V26 |
+| 151 | The merger agent changes no file: Symbiote writes its answers | V26 |
+| 152 | One agent run, waited for, with read-only tools | V26 |
+| 153 | A clean merge whose check fails is `failed`; the merger agent does not fix it | V26 |
+| 164 | No "keep both" rule: every conflict goes to the merger agent | V26 |
+| 242 | A resolution whose check failed: the person decides, and Approve lands it | V26 (a fix) |
+| 243 | **Check again** reruns the check without an agent. Since the queue fix it reads the target's tip first, and merges again if the tip moved | V26 (a fix), changed by [the queue fix](../journal/fix-merger-queue-wrong-behaviour.md) |
+| 313–316 | Each entry's log is a JSON-lines file in the cache, sent as server-sent events and drawn in a read-only terminal with its steps | [V46](../plan/v46-merger-logs.md) |
+| 317 | A resolution lists its files; the first shown is the first that loses or doubles lines | V46 |
+| 318 | A step's output is cut at 1 MB: its first 64 KB and its end | V46 |
+| 319 | `merge.effort`, set in Settings; if absent, the agent's own level | V46 |
+| 473 | The target is the branch reviewed against: the workspace's `against`, else its `from`, else the verdict's `into`, else the default branch | [V65](../plan/v65-review-against.md) |
+| 485–489 | Fast-forward lands the approved commit, only if the target's tip is in it; otherwise `needs-you`; the check runs first; picked per merge; no squash or rebase | [V67](../plan/v67-merge-strategies.md) |
+| 494–497 | The merge page uses the theme's colours and the mockup's shapes; the log fills the page; a conflict's Files and Log are line tabs | [V69](../plan/v69-merge-page-mockup.md) |
+| 742 | **Send to the agent** sends a failed check to the branch's workspace, only when the person presses it | [AR2](../plan/ar2-defaults-from-ar1.md) |
+| 743 | In this repository, `docs/JOURNAL.md` merges as a union (`.gitattributes`), so it no longer conflicts | AR2 |
+
+These no longer hold:
+
+- **82's "the agent merges the approved commit"**: since V26 the merger merges it (142).
+- **147's "rule, then agent"**: V26b's rule was dropped (164).
+- **149's preselection** (`from`, the verdict's `into`, the default branch): the reviewed-against
+  branch comes first since V65 (473).
+
+## Traps
+
+- **Land in the checkout that has the target.** Moving the ref from elsewhere leaves that
+  checkout's files behind its branch. `merge --ff-only` there moves both, and git's refusal is
+  the guard against losing local changes ([V26](../journal/v26-merger.md)).
+- **Read the config before landing.** A landing can bring another `symbiote/config.json`. Read
+  after landing, it once pushed a test clone's `main` (V26).
+- **Do not link the main checkout's `node_modules` into the merge worktree.** pnpm's workspace
+  links would resolve into the main checkout, and the check would run the wrong code (V26).
+- **Hold every later merge into the same target.** A merge that waits at `ready` or `failed` and
+  lands later moves the tip under the next one
+  ([the queue fix](../journal/fix-merger-queue-wrong-behaviour.md)).
+- **Read the target's tip before every start**, **Check again** included (the queue fix).
+- **The person's Claude Code hooks run in the merger's `claude -p`**: two `SessionStart` hooks a
+  run here ([V46](../journal/v46-merger-logs.md)).
+- **e2e tests must not find the developer's own agent.** The merger runs `claude` from `PATH`.
+  Every e2e `symbiote view` sets `SYMBIOTE_CLAUDE` and `SYMBIOTE_CODEX` to nowhere (V26).
+- **A merge can need changes outside the conflict** (a test adapted to the other side, an ID
+  renumbered). The agent cannot make them, so the check and the person's review catch them (V26).
+- **A correct resolution can still show red**, for example when both sides counted a number up
+  ([the conflict view fix](../journal/fix-merge-viewer-on-conflict.md)).
+- **This repository's full check runs e2e**, which fails under other sessions' load: 3 of 309
+  tests at a load average of 20. The merge then fails and nothing lands
+  ([V67](../journal/v67-merge-strategies.md)).
+- **`symbiote merge --help` lists the default target without the reviewed-against branch**, which
+  the code checks first (`targets` in `merges.ts`). Found while writing this page; not fixed.

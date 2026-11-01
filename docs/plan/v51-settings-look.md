@@ -125,7 +125,7 @@ the narrow layout (the list, then a page with All settings), the tokens, every o
 | 387 | How a page is grouped | **Cards; a prebuilt agent's Model and Effort as rows in one card, each prompt a card** | the start page's cards and rows (decision 379) |
 | 388 | Where Appearance and the intro go | **An entry of their own, "This browser → Appearance", at the list's end** | the person's answer; a setting is a row, not a head's action |
 | 389 | The list | **A plain column, not a card** | navigation beside the cards; the person left it to me |
-| 390 | Skills | **Follows Settings, Scribe's pane in the page's width** | the person's answer; the two pages are drawn alike (V41) |
+| 390 | Skills *(superseded by 407 of V56)* | **Follows Settings, Scribe's pane in the page's width** | the person's answer; the two pages are drawn alike (V41) |
 
 **Not in V51 (later)**: Scout's page and History; a settings search.
 

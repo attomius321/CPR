@@ -101,7 +101,7 @@ Review then opens against it. The select's tip says what the base resolved to.
 |---|---|---|---|
 | 471 | Where a workspace's review starts by default | **`workspace.base`, moved to the fork point with `from` once the branch takes it in** | What was asked; a merge of the parent must not count its commits as the workspace's (the fix of 2026-10-20) |
 | 472 | What a picked branch means | **The fork point with that branch's tips**, as Review does for the default branch | One rule for every branch; a stale local branch does not pull a remote's commits in |
-| 473 | Where an approval merges | **The branch reviewed against**: `against`, else `from`, else the default branch | Approving a diff against `feature/one` and landing it in `main` would land `feature/one`'s unreviewed commits |
+| 473 | Where an approval merges (replaces 82's and 149's target) | **The branch reviewed against**: `against`, else `from`, else the default branch | Approving a diff against `feature/one` and landing it in `main` would land `feature/one`'s unreviewed commits |
 | 474 | Where the choice is | **In the changes panel's "since"**, kept in the record | The panel is where the base shows; the record makes Review, the count and the merge check agree across pages and `symbiote view`s |
 
 **Not in V65**: a pick for a branch reviewed from History without a workspace; the agent's prompt

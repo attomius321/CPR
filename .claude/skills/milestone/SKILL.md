@@ -11,9 +11,11 @@ design, verification, risks, decisions), and a journal of the same name,
 North Star and their index by area; `docs/JOURNAL.md` lists every entry by date. Plans are built
 on measurements, not guesses; results are reported with numbers.
 
-Read what the work needs, not the folders: the index, then the plan and journal files of the
-area, then a decision or a term by grep (`grep -rn '^| 246 |' docs/plan`,
-`grep -rln <term> docs/plan docs/journal`).
+Read what the work needs, not the folders: the index, then the area's page in `docs/area/` if it
+has one (what holds now, the decisions in force, the traps), then the plan and journal files you
+need, then a decision or a term by grep (`grep -rn '^| 246 |' docs/plan`,
+`grep -rln <term> docs/plan docs/journal`). Plans and journals are records of their day: a
+replaced decision's row ends with `*(superseded by …)*`.
 
 ## Where you are
 
@@ -35,8 +37,8 @@ checkout. Where the start prompt and this skill differ, the start prompt wins.
 ## Plan (when asked to plan, or before implementing an unplanned milestone)
 
 ```
-- [ ] 1. Read: docs/PLAN.md (North Star, index); the plan and journal files of the area and
-         the decisions they cite
+- [ ] 1. Read: docs/PLAN.md (North Star, index); the area's page (docs/area/), if any; the
+         plan and journal files of the area and the decisions they cite
 - [ ] 2. Your branch, as "Where you are" says: in a workspace the one you are on; outside one,
          git checkout -b milestone/<id>-<slug> from up-to-date main
 - [ ] 3. Reproduce the user's problem; measure it on real repos (regression-check skill sets,
@@ -50,6 +52,10 @@ checkout. Where the start prompt and this skill differ, the start prompt wins.
 - [ ] 7. Report: the problem in numbers, the plan's steps, open choices; stop if asked to plan
          only, or with plan first
 ```
+
+A decision that replaces an older one says so in its own row: `(supersedes 80)`, or
+`(replaces 446's centring)` for a part. Do not edit the older row: `consolidate.mjs` marks it on
+`main` (Marking merged work).
 
 Pick the next free ID in its family (an area's prefix in the index: V the viewer, HV Hive, NX
 the nexus…) and the next free decision numbers (the highest plus one). Workspaces are built side
@@ -83,6 +89,9 @@ done                                                           # anyone using V4
          docs/reference/ or docs/guide/ it belongs to; graph-schema.md for JSON changes
 - [ ] 8. The journal file: an entry with Learned (surprises, traps), Verification (tests,
          comparisons, numbers); its line in docs/JOURNAL.md
+- [ ] 8b. The area's page (docs/area/<area>.md), if it has one: what now holds, the decisions
+         in force (a replaced one moves to "no longer hold"), a new trap, files that moved;
+         its "Checked against the code at" commit
 - [ ] 9. Report to the user with numbers and what was not verified; then, as "Where you are"
          says, ask before merging (outside a workspace) or say it is ready (in one)
 ```
@@ -111,10 +120,13 @@ Then mark it merged, and merge `main` into any open milestone branch that needs 
 Symbiote's merger leaves the docs as they were (70 stale index rows on 2026-10-30, 23 on
 2026-11-01). On `main`, after your own merge or when the person asks,
 `node scripts/plan/mark-merged.mjs` lists, and with `--write` marks, every merged branch's row ✅,
-its plan's Status and its journal's last line. Commit that on `main` as "Docs: merged" (the IDs
-in the body; the one commit made on `main` itself) and push. Read its diff first, then settle its
-notes by hand: a merged row that says "planned" or "measured", a branch with commits after its
-merge, a journal several branches wrote in that are not all merged.
+its plan's Status and its journal's last line. Then `node scripts/plan/consolidate.mjs --write`
+marks each replaced decision's row (`*(superseded by 82 of V17)*`), regenerates
+`docs/decisions.md`, and links each area's page from its index heading and plans. Commit both on
+`main` as "Docs: merged" (the IDs in the body; the one commit made on `main` itself) and push.
+Read the diff first, then settle the notes by hand: a merged row that says "planned" or
+"measured", a branch with commits after its merge, a journal several branches wrote in that are
+not all merged, a replacement the script lists as ambiguous.
 
 ## Templates
 
