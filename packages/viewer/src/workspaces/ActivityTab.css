@@ -243,7 +243,7 @@
   color: var(--muted);
   font-size: var(--size-caption);
   font-variant-numeric: tabular-nums;
-  line-height: 16px;
+  line-height: calc(var(--size-caption) + 3px);
   white-space: nowrap;
 }
 
@@ -454,7 +454,7 @@
   font-size: var(--size-caption);
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  line-height: 18px;
+  line-height: calc(var(--size-caption) + 5px);
   text-align: center;
 }
 
@@ -471,7 +471,7 @@
   overflow: hidden;
   color: var(--muted);
   font-size: var(--size-small);
-  line-height: 20px;
+  line-height: calc(var(--size-small) + 6px);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

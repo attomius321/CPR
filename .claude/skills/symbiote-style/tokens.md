@@ -187,41 +187,58 @@ Kept in step by hand, each with a comment pointing here: the terminal's theme
 (`packages/desktop/src/frame.ts`, `test/frame.test.ts`); the app's start page
 (`packages/desktop/start/start.css`, its own copy of the tokens and sizes).
 
-## Type scale (V32, V61; on `:root`, both themes)
+## Type scale (V32, V61, V87; on `:root`, both themes)
 
-Two steps above V29b's dense 13 px: V32's 14 px was still too small for the person's eyes (V61).
-Every font size in the stylesheet is one of these (`test/tokens.test.ts`), a multiple of one
-(`calc`), `inherit` or an `em`.
+V29b's dense 13 px was too small to read; V32's 14 px still too small for the person's eyes (V61:
+15 px). V85 took VS Code's 13 px and the person found it too small the next day on their 27-inch
+2560 × 1440 screen at 100 % (a px is 0.233 mm there): V87 (decision 760) is their design B,
+15 px body and nothing under 12 px (Windows' minimum). Every font size in the stylesheet is one of
+these (`test/tokens.test.ts`), a multiple of one (`calc`), `inherit` or an `em`; every line height
+is its size and a leading (`calc(var(--size-small) + 4px)`), never px, so Settings' text size
+(below) moves the lines with the text.
 
 | Token | Value | Role |
 |---|---|---|
 | `--size-caps` | 12 px | Uppercase labels (a symbol's kind), one-glyph marks |
-| `--size-caption` | 13 px | Captions, chips, badges, counts, key caps, category labels: the smallest text |
-| `--size-small` | 14 px | Secondary: buttons, menu items, paths, code, the status bar |
+| `--size-caption` | 13 px | Captions, chips, badges, counts, key caps, category labels |
+| `--size-small` | 14 px | Secondary: buttons, menu items, paths, the status bar |
 | `--size-body` | 15 px | Rows, nav, tabs, body text, editors |
-| `--size-title` | 17 px | Titles: a page's, a dialog's, a symbol's name in its panel |
+| `--size-title` | 18 px | Titles: a page's, a dialog's, a symbol's name in its panel |
+| `--size-code` | 14 px | Code: a diff's lines, a file, a commit's message in mono |
 
-Titles are 17 px, not 18: at 18 px a symbol's long name wrapped mid-word in its panel
-(Bitwarden, V32). The graph keeps V32's 11/12/13/14/16 (decision 438): `.react-flow` declares them
+**Text size** (V87c, decision 763): Settings → Appearance moves the scale a step, the text only
+(`:root[data-text-size]`, set before the first paint from `symbiote.viewer.text-size`; the app
+keeps it). Compact is 12 / 12 / 13 / 14 / 17, code 14 (the person's design A); Large 13 / 14 / 15 /
+16 / 19, code 15. 16 px is the largest text a 24 px row holds: a larger step is a density change.
+
+The graph keeps V32's 11/12/13/14/16 (decision 438) at every text size: `.react-flow` declares them
 again in `ui/base.css`, so a node's estimated width (`flow.ts`, 9.4 px a character), a frame's
 name band (10 px a character) and every layout stay as they were; the graph zooms. The terminal
-takes a number (`terminal.ts`'s `TERMINAL_FONT_SIZE`, 15). The map's project names are
-`calc(2 * var(--size-body))`, on the graph's scale.
+takes a number (`terminal.ts`'s `TERMINAL_FONT_SIZE`, 14; decision 762). The map's project names
+are `calc(2 * var(--size-body))`, on the graph's scale.
 
-## The page frame (V72; on `:root`, both themes)
+## The page frame (V72, V85, V87; on `:root`, both themes)
 
 One value for both themes, in `ui/base.css` beside the type scale. Every page's CSS takes its
-spacing from these; `e2e/page-frame.spec.ts` measures the result on every page.
+spacing from these; `e2e/page-frame.spec.ts` measures the result on every page. V85 tightened them
+to VS Code's density; V87 (decision 761) made rows and small controls 24 px, WCAG 2.2's target
+size (2.5.8, checked on every page by `e2e/targets.spec.ts`), and the rest a step for 15 px text.
 
 | Token | Value | What it sets |
 |---|---|---|
-| `--page-pad` | 16 px | The main area's left, right and bottom edges to the cards, and the head's padding |
-| `--page-gap` | 16 px | Between two cards; a `Resizer` with `gutter` is this gap |
-| `--page-head` | 44 px | The head's two lines: the title (22 px) and the line under it (20 px) |
-| `--card-pad` | 16 px | A card's edge to its words, in its head and its body; a dialog's and a terminal's too |
-| `--card-head` | 48 px | A card's head, its hairline included |
-| `--field-label-gap` | 8 px | A label to its field |
-| `--field-gap` | 20 px | A field to the next label; a form's last field to its buttons |
+| `--page-pad` | 12 px | The main area's left, right and bottom edges to the cards, and the head's padding |
+| `--page-gap` | 8 px | Between two cards; a `Resizer` with `gutter` is this gap |
+| `--page-head` | 40 px | The head's two lines: the title (22 px) and the line under it (18 px) |
+| `--card-pad` | 12 px | A card's edge to its words, in its head and its body; a dialog's and a terminal's too |
+| `--card-head` | 37 px | A card's head, its hairline included |
+| `--field-label-gap` | 4 px | A label to its field |
+| `--field-gap` | 14 px | A field to the next label; a form's last field to its buttons |
+| `--height-row` | 24 px | A list's row (Git's too: `ROW_HEIGHT`), a small control, an icon button |
+| `--height-control` | 28 px | Buttons, inputs, selects, a list's taller row |
+| `--height-tall` | 30 px | A page's actions, a sidenav entry |
+| `--height-tab` | 32 px | Tabs and kinds in a head, a tile |
+| `--height-bar` | 36 px | A bar over a card |
+| `--height-top` | 40 px | The sidenav's top, the Monitor's bar |
 
 ## Shape, type, size (both themes)
 
@@ -240,16 +257,16 @@ spacing from these; `e2e/page-frame.spec.ts` measures the result on every page.
 | Uppercase labels (a symbol's kind), one-glyph marks | 12 px |
 | Category label (menus, settings groups) | 13 px, weight 600, `--muted` |
 | Section header (sidenav "Workspaces") | 15 px, weight 600, `--text` |
-| Page, dialog or panel title | 17 px, weight 600 |
-| Terminal | Geist Mono 15 px |
-| Page head | 76 px: 16 px, two lines (44 px), 16 px, on the page's ground (V72; 52 px since V61, 44 before) |
-| Line tabs | 40 px in a 48 px card head, the picked one's line 3 px on the hairline |
+| Page, dialog or panel title | 18 px, weight 600 |
+| Terminal | Geist Mono 14 px |
+| Page head | 64 px: 12 px, two lines (40 px), 12 px, on the page's ground (V87; 60 in V85, 76 in V72) |
+| Line tabs | 32 px in a 37 px card head, the picked one's line 3 px on the hairline |
 | Status bar | 24 px, 14 px text |
-| Rows | 28 px dense, 36 px nav |
-| Buttons | 32 px in toolbars and forms, 28 in a sidenav card, 24 px in rows |
+| Rows | 24 px (WCAG 2.2's targets), 30 px nav |
+| Buttons | 28 px in toolbars and forms, 24 px in rows and sidenav cards |
 | Icons | 16 px; 18 px in the sidenav's pages; 14 px in menus and dense rows; 12 px in chips |
 | Sidenav | 300 px at first (V79; 264 from V61, 240 before); the mark 32 px in a 52 px brand row |
-| Cards' margins and gutter | 16 px from the main area's edges and between cards (V72; 8, 16 or 24 px before) |
+| Cards' margins and gutter | 12 px from the main area's edges, 8 px between cards (V85; 16 in V72) |
 | Motion | colours 150 ms; menus fade in 150 ms, dialogs 200 ms, by opacity only |
 
 Letter-spacing is 0 everywhere but uppercase labels (V37). At 1× on Linux Chromium puts glyphs on

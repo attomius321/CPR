@@ -58,7 +58,7 @@
   color: var(--muted);
   font-size: var(--size-caption);
   font-weight: 500;
-  line-height: 16px;
+  line-height: calc(var(--size-caption) + 3px);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
@@ -88,7 +88,7 @@
   width: 100%;
   min-height: 24px;
   padding: 4px var(--card-pad);
-  line-height: 16px;
+  line-height: calc(var(--size-small) + 2px);
 }
 
 .changes-commit {

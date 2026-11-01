@@ -80,7 +80,7 @@
   color: #090b0e;
   font-size: var(--size-small);
   font-weight: 500;
-  line-height: 18px;
+  line-height: calc(var(--size-small) + 4px);
   pointer-events: none;
   transform: translateY(-100%);
 }
@@ -104,7 +104,7 @@
 
 .terminal-link-hint kbd {
   min-width: 18px;
-  height: 18px;
+  height: calc(1em + 4px);
   box-sizing: border-box;
   padding: 0 5px;
   border: 0;
@@ -112,5 +112,5 @@
   background: #d3d7df;
   box-shadow: none;
   color: #3b4252;
-  line-height: 18px;
+  line-height: calc(1em + 4px);
 }

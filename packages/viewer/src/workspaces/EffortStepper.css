@@ -120,7 +120,7 @@
   margin: 0 8px;
   color: var(--muted);
   font-size: var(--size-caption);
-  line-height: 18px;
+  line-height: calc(var(--size-caption) + 5px);
 }
 
 /* Centred on its stop; the first and the last kept inside the stepper's edges. */

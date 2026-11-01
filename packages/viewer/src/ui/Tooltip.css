@@ -15,7 +15,7 @@
   font-family: var(--sans);
   font-size: var(--size-small);
   font-weight: 500;
-  line-height: 18px;
+  line-height: calc(var(--size-small) + 4px);
   text-align: left;
   white-space: normal;
   overflow-wrap: anywhere;
@@ -76,7 +76,7 @@
   font-family: var(--sans);
   font-size: var(--size-caption);
   font-weight: 500;
-  line-height: 18px;
+  line-height: calc(var(--size-caption) + 5px);
 }
 
 /* A state's dot (decision 400), in the other theme's state colours: 3:1 on the tip. */

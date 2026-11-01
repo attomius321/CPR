@@ -5,6 +5,8 @@ import { formerChoice } from './former-name.js';
 /** The viewer's own choices, kept in the page's storage, that the app keeps across runs. */
 export const CHOICES = [
   'symbiote.viewer.theme',
+  // V87c: Settings' text size.
+  'symbiote.viewer.text-size',
   'symbiote.viewer.sidenav',
   'symbiote.viewer.sidenav.diff',
   'symbiote.viewer.changes',

@@ -369,3 +369,6 @@ merge commit.
 - 2026-11-01 [Fix — Hive's runner: no second check of a commit, nothing sent to a branch being landed, a turn it cannot see noticed](journal/fix-hive-runner-flaws.md)
 - 2026-11-01 [V86 — Nucleus becomes Alpha Ceph, built](journal/v86-alpha-ceph-transform.md)
 - 2026-11-01 [V86b — Alpha Ceph's conversation, told what Hive does](journal/v86-alpha-ceph-transform.md)
+- 2026-11-01 [V87 plan — the research and three designs](journal/v87-readable-type.md)
+- 2026-11-01 [V87a, V87b — design B and the target check, built](journal/v87-readable-type.md)
+- 2026-11-01 [V87c — Settings' text size, built](journal/v87-readable-type.md)

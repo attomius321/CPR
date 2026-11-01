@@ -128,7 +128,8 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   controls are in `src/ui/controls.css`.
 - The page frame (V72): `src/ui/PageHead.tsx` is every page's head (its icon, title, the line
   under it, its actions; an `end` after them that stays on the title's line at every width, V76c: a
-  diff's Files and Graph) and `src/ui/page.css` its rules and a card's head (`.card-head`, 48 px).
+  diff's Files and Graph) and `src/ui/page.css` its rules and a card's head (`.card-head`,
+  `--card-head`).
   A page's margins, gutters, card insets and form rhythm come from the layout tokens on `:root`
   (`--page-pad`, `--page-gap`, `--card-pad`, `--card-head`, `--field-label-gap`, `--field-gap`),
   not from px values of its own; a `Resizer` between two cards takes `gutter`. `e2e/page-frame.spec.ts` measures every page: a new
@@ -141,8 +142,10 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 - Colours are tokens on `:root` (dark) and `:root[data-theme='light']` in `src/ui/base.css`,
   contrast tested by `test/tokens.test.ts` (which reads every `.css` under `src/`);
   `src/shell/theme.ts` and `index.html`'s inline script set the theme. Text sizes are the
-  `--size-*` scale on `:root` (V32: 14 px body, nothing under 12 px but uppercase labels), never
-  a px value: the same test fails on one.
+  `--size-*` scale on `:root` (V87: 15 px body, nothing under 12 px), never a px value, and a line
+  height is its size and a leading, never px: the same test fails on either. Settings' text size
+  (`src/shell/text-size.ts`, `data-text-size` set by the same inline script) moves the scale a
+  step. Targets are 24 px or spaced (WCAG 2.2's 2.5.8): `e2e/targets.spec.ts` checks every page.
 
 ## Fonts (V29b)
 

@@ -29,6 +29,13 @@
         } catch (e) {}
         document.documentElement.dataset.theme =
           theme === 'light' || theme === 'system' ? theme : 'dark';
+        // The text size (V87c): a step smaller or larger than the default, as Appearance kept it.
+        var size = null;
+        try {
+          size = localStorage.getItem('symbiote.viewer.text-size');
+        } catch (e) {}
+        if (size === 'compact' || size === 'large')
+          document.documentElement.dataset.textSize = size;
         // In Symbiote's window (N1c), its title bar is the page's: marked before the first paint. On
         // Linux its frame is too (N1d): rounded corners, square while the window fills the screen.
         var app = window.symbioteApp;

@@ -69,6 +69,66 @@ test('dark by default; Appearance in Settings makes it light, kept for this brow
   expect(await background(page)).toBe(LIGHT);
 });
 
+// V87c (decision 763): the text a step smaller or larger, in Settings' Appearance, for this
+// browser; only the text: a row, the graph's labels and the terminal keep their sizes.
+test('Appearance sets the text size: Compact, Default, Large, kept for this browser before the first paint', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  const body = () => page.evaluate(() => getComputedStyle(document.body).fontSize);
+  const textSize = () => page.getByRole('group', { name: 'Text size' });
+  await page.goto(`${symbiote.url}git`);
+  await expect(page.locator('.commit').first()).toBeVisible(POLL);
+  expect(await body()).toBe('15px');
+  const row = await page.locator('.commit').first().boundingBox();
+
+  await page.getByRole('link', { name: 'Settings' }).click();
+  await openAppearance(page);
+  await expect(textSize().getByRole('button', { name: 'Default' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await textSize().getByRole('button', { name: 'Large' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-text-size', 'large');
+  expect(await body()).toBe('16px');
+  await textSize().getByRole('button', { name: 'Compact' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-text-size', 'compact');
+  expect(await body()).toBe('14px');
+  await textSize().getByRole('button', { name: 'Large' }).click();
+
+  // Set by the page's own script before React runs: no step from 15 to 16 px after the paint.
+  await page.addInitScript(() => {
+    const seen = () =>
+      ((window as { symbioteFirstSize?: string }).symbioteFirstSize ??=
+        document.documentElement.dataset.textSize);
+    document.addEventListener('readystatechange', seen, { once: true });
+  });
+  await page.goto(`${symbiote.url}git`);
+  expect(
+    await page.evaluate(() => (window as { symbioteFirstSize?: string }).symbioteFirstSize),
+  ).toBe('large');
+  await expect(page.locator('.commit').first()).toBeVisible(POLL);
+  expect(await body()).toBe('16px');
+  expect((await page.locator('.commit').first().boundingBox())!.height).toBe(row!.height);
+
+  // The graph keeps its own scale (decision 438): its labels' widths are estimated from it.
+  const [base, head] = symbiote.shas;
+  await page.goto(`${symbiote.url}diff/${base}..${head}/?view=graph`);
+  await expect(page.locator('.react-flow')).toBeVisible(POLL);
+  expect(
+    await page
+      .locator('.react-flow')
+      .evaluate((flow) => getComputedStyle(flow).getPropertyValue('--size-body').trim()),
+  ).toBe('14px');
+
+  // Default takes the mark away.
+  await page.goto(`${symbiote.url}settings`);
+  await openAppearance(page);
+  await textSize().getByRole('button', { name: 'Default' }).click();
+  await expect(page.locator('html')).not.toHaveAttribute('data-text-size');
+  expect(await body()).toBe('15px');
+});
+
 test("System follows the system's scheme", async ({ page }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}settings?prompt=appearance`);
@@ -168,9 +228,10 @@ test("History in Symbiote's style: names in the text's font, HEAD a tint, menus 
 });
 
 // V32: text one can read. V61: a pixel more. V85 (decision 708): VS Code's sizes, as the person
-// asked: every text shown, on every page, 11 px at least; 13 px for the body, 14 px for the
-// terminal. The graph keeps V32's (decision 438): 12 and 11 px there.
-test('no text under 11 px on any page; the body at 13 px and the terminal at 14 px', async ({
+// asked. V87 (decision 760): their design B: every text shown, on every page, 12 px at least
+// (Windows' minimum); 15 px for the body, 14 px for the terminal. The graph keeps V32's (decision
+// 438): 12 and 11 px there, and zooms.
+test('no text under 12 px on any page; the body at 15 px and the terminal at 14 px', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -184,17 +245,22 @@ test('no text under 11 px on any page; the body at 13 px and the terminal at 14 
           .join('')
           .trim();
         // The terminal draws its own text at its own size, checked below.
-        if (!text || element.closest('.xterm') || element.getClientRects().length === 0) continue;
+        if (
+          !text ||
+          element.closest('.xterm, .react-flow') ||
+          element.getClientRects().length === 0
+        )
+          continue;
         const style = getComputedStyle(element);
         const size = Number.parseFloat(style.fontSize);
-        if (size < 11) under.push(`${element.className}: "${text}" ${size}px`);
+        if (size < 12) under.push(`${element.className}: "${text}" ${size}px`);
       }
       return under;
     });
 
   await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible(POLL);
-  expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('13px');
+  expect(await page.evaluate(() => getComputedStyle(document.body).fontSize)).toBe('15px');
   expect(await small()).toEqual([]);
   await page.locator('.commit.head').click({ button: 'right', position: { x: 120, y: 10 } });
   await expect(page.getByRole('menu')).toBeVisible();
@@ -320,10 +386,10 @@ test('text fields: a quiet edge, a stronger one on hover, a ring on focus, one h
   expect(await style(title, 'outline-style')).toBe('none');
   await expect.poll(() => style(title, 'box-shadow')).toContain('0px 0px 0px 3px');
   for (const field of [title, form.getByRole('textbox', { name: 'Branch name' })]) {
-    expect((await field.boundingBox())?.height).toBe(26);
+    expect((await field.boundingBox())?.height).toBe(28);
   }
   for (const select of await form.getByRole('combobox').all()) {
-    expect((await select.boundingBox())?.height).toBe(26);
+    expect((await select.boundingBox())?.height).toBe(28);
   }
   expect(await style(goal, 'resize')).toBe('none');
   const before = (await goal.boundingBox())?.height ?? 0;
