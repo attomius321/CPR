@@ -38,3 +38,68 @@ person's real workspace list (one read of their running view's `/api/workspaces`
 [APCA in a Nutshell](https://git.apcacontrast.com/documentation/APCA_in_a_Nutshell.html);
 [Legge & Bigelow 2011](https://pmc.ncbi.nlm.nih.gov/articles/PMC3428264). The designs:
 `https://claude.ai/artifact/SbY6qQ3mMJ3KVJkHBwcfHW` (private).
+
+## V87a, V87b — design B and the target check, built (2026-11-01, branch `feature/font-sizes-too-small`)
+
+The scale 12 / 13 / 14 / 15 / 18, code 14; rows 24, controls 28, tall 30, tabs 32, bars 36, card
+heads 37, the page's head 40; Git's rows 24; every line height from its size; `--faint` text
+`--muted`; WCAG 2.2's 2.5.8 checked on every page (decisions 760, 761, 764–766).
+
+**Learned**:
+- **Most line heights were V61's**: of 37 `line-height`s in px, V85 had changed four; the rest
+  were sized for 12 / 13 / 14 / 15 / 17, which B nearly is. Made `calc(var(--size-…) + K)` with
+  V61's leading, they are unchanged at B and follow the text size.
+- **The `font` shorthand hides line heights**: five rules set `…/20px` in it, which a guard on
+  `line-height:` alone passed; the guard reads the slash now (with a `calc()`'s spaces: the first
+  regex cut it at the first space).
+- **A target check by roles misses Git's rows**: commit rows are elements with a handler and no
+  role. The first version found 48 targets on Git and passed `main`'s 22 px rows; with the
+  outermost element that shows a pointer it finds 59 there, and fails 35 on `main`'s build, 1 on
+  the branch (a row's 20 px menu).
+- **A flex row squeezes a fixed square**: the commit menu, 24 px wide, was 21 at Large, where the
+  row's words are wider: `flex: none`.
+- **A link's target can grow without moving its line**: padding and an equal negative margin give
+  the sidenav card's branch link a 24 px box on its 20 px line.
+- **WCAG's own exceptions cover two cases honestly**: a diff's line-number buttons are sized by the
+  code's line (inline), and a card's name button does what a click on the card does
+  (equivalent). Both are named in `e2e/targets.ts` rather than fixed by growing every code line or
+  card line.
+
+**Verification**: tests first (red: the scale, the density, the floor, px line heights, `--faint`
+text; then the shorthand); `pnpm check` 2,679 tests. The first full e2e run: 370 of 376, the six
+failures checks on V85's numbers (28 px buttons, 26 px fields, the title at x 50, cards from 60,
+35 px heads), moved to V87's. A run of the changed specs and Git's, workspaces' and the targets':
+91 of 92; the one (a sidenav card's name box compared before and after a hover) moved 18 px
+under load and passed 3 of 3 alone.
+
+## V87c — Settings' text size, built (2026-11-01, branch `feature/font-sizes-too-small`)
+
+Appearance's Text size (decision 763): Compact 14 px body (design A), Default 15 (B), Large 16;
+`shell/text-size.ts`, `data-text-size` set by `index.html`'s script before the first paint, the
+app keeping `symbiote.viewer.text-size` across runs.
+
+**Learned**:
+- **The app forgets a choice it does not list**: each run's server is a new origin with empty
+  storage, and the app puts back only `CHOICES` (`packages/desktop/src/state.ts`); without the
+  key there, the text size would have lasted one run in the window.
+- **16 px is the largest text the density holds**: 16 px at 1.45 is 23 px, inside a 24 px row;
+  Large's step stops there (a larger one changes the heights, which the person kept).
+- **A label column in px wraps at a larger size**: Settings' names (104 px) and Start's
+  (`--start-name`, 124 px) wrapped "Commit details" at 15 px and "Branch name" at Large; both
+  follow `--size-body` now. Found on the screenshots, not by a test.
+- **Restart the view after a build, and check it is the new one**: a SIGINT left the old
+  `symbiote view` holding its port for a while, the new one exited with EADDRINUSE, and a round of
+  screenshots came from the build before; the served stylesheet's text tells which.
+
+**Verification**: tests first (red: no `text-size` module, no `data-text-size` blocks, five app
+choices); `pnpm check` 2,690 tests; `look.spec.ts` (chosen, kept before the first paint, a row's
+height kept, the graph's scale kept, Default unmarks) and `targets.spec.ts` at each size, a
+review's Graph included; `pnpm test:e2e` 379 of 380 viewer (the honeycomb's diff head read an
+empty colour under load; 3 of 3 alone), 20 of 20 nexus. Screenshots of every page at 2560 × 1354
+and 1440 × 900, both themes, Hive on and off, Default; Large and Compact in dark; the app's 200 %
+on Git, Settings and Start. First contentful paint of `/git` against `main`'s build, alternated,
+15 loads each, two runs: 72 / 76 and 72 / 72 ms (main / V87).
+
+Not verified: the person's own window (WSLg, their GPU); a workspace's page with a live agent's
+terminal at Large (the terminal stays 14 px by design); Bitwarden's graph (the graph's type is
+unchanged).

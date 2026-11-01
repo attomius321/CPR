@@ -92,5 +92,9 @@ for (const size of ['default', 'compact', 'large'] as const) {
     await panel.getByRole('button', { name: 'Review', exact: true }).click();
     await expect(page.locator('.file-view')).toBeVisible(POLL);
     await expectTargets(page, "A workspace's review, Files");
+    await page.goto(`${page.url().split('?')[0]}?view=graph`);
+    await expect(page.locator('nav.sidebar')).toBeVisible(POLL);
+    await expect(page.locator('.react-flow__node').first()).toBeVisible(POLL);
+    await expectTargets(page, "A workspace's review, Graph");
   });
 }

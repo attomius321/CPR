@@ -323,10 +323,11 @@ p.settings-section.settings-about {
 }
 
 /* Settings as rows (V51, the start page's run): the name and its "?" at the left in --muted, the
-   control beside it, what it says under the control, a hairline between rows. */
+   control beside it, what it says under the control, a hairline between rows. The names' column
+   follows the text size (V87): at 104 px, "Commit details" wrapped from 15 px. */
 .settings-rows > .settings-part {
   display: grid;
-  grid-template-columns: 104px minmax(0, 1fr);
+  grid-template-columns: calc(8 * var(--size-body)) minmax(0, 1fr);
   align-items: center;
   column-gap: 12px;
   row-gap: 4px;

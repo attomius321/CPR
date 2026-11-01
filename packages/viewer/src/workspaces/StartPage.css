@@ -5,8 +5,9 @@
    width, the cards right under the head on any window. The body scrolls under the head, which
    keeps Start workspace in view. */
 .start-page {
-  /* A run row's name, and the head of a card that is one choice: their controls line up. */
-  --start-name: 124px;
+  /* A run row's name, and the head of a card that is one choice: their controls line up. From the
+     text size (V87): 124 px at the default, so "Branch name" and its "?" stay one line at Large. */
+  --start-name: calc(8.25 * var(--size-body));
   position: relative;
   isolation: isolate;
   flex: 1;

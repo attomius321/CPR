@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v87-readable-type.md)
 
-**Status:** planned, approved 2026-11-01, on branch `feature/font-sizes-too-small` (a workspace
-started in Symbiote, from `main` at `6aed550`). The person chose design B on 1:1 designs, kept the
-terminal at 14 px ("Terminal is ok as it is now") and asked for the text-size choice.
+**Status:** built, ready for review (2026-11-01), on branch `feature/font-sizes-too-small` (a
+workspace started in Symbiote, from `main` at `6aed550`). The person chose design B on 1:1
+designs, kept the terminal at 14 px ("Terminal is ok as it is now") and asked for the text-size
+choice. Its "As built" and results below.
 
 **Problem** (asked: "The font sizes are too small.. Make please some research to make it to the
 accesibility standards...but still keep its density"). V85 set VS Code's 13 px body the day before.
@@ -129,3 +130,50 @@ Settings → Appearance, under Theme: **Text size** — Compact, Default, Large.
 | 764 | Line heights | **Each its size plus a leading; px refused** | a choice changes sizes: a fixed line clips or crowds |
 | 765 | `--faint` text | **`--muted` for text; `--faint` for disabled controls and marks** | WCAG 1.4.3: 4.05–4.58:1 under 4.5 |
 | 766 | Target size | **WCAG 2.5.8 checked on every page by an e2e test** | V85's 22 px rows failed it unseen |
+
+## As built (V87)
+
+- **Line heights from sizes, the shorthand too** (764): 37 `line-height`s and 5 `font`
+  shorthands (`…/20px`) were px; each is now `calc(var(--size-…) + K)`, K the leading it had at
+  V61's scale, which B nearly is (V85 changed four: a page's head lines, the diff's head chips, a
+  merge's title, kept at V85's leading). A shared control that takes its parent's size (a badge,
+  a key cap) is `calc(1em + K)`. The guard reads the shorthand's slash too.
+- **The page's head** is the title's line and the line under it, each its size and 4 px: 22 and
+  18 px at the default, 40 (`--page-head`); the title at x 52, the cards from y 64.
+- **`--faint` text** (765): three rules were text (Skills' line numbers, a merge's file counts,
+  the Monitor's half line), now `--muted`; the rest are marks or disabled (a help button, icons,
+  chevrons, separators, an activity tile's icon). A guard allows `--faint` only on those.
+- **The target check** (766) takes, beside roles, the outermost element showing a pointer: Git's
+  commit rows are elements with a handler and no role, and the first version, by roles only,
+  passed `main`'s 22 px rows. Two exceptions are named in `e2e/targets.ts`: a diff's line-number
+  buttons (as tall as their code's line: 2.5.8's inline exception) and a sidenav card's name
+  (the card takes the same click: its equivalent exception). The plan's "20 × 20 px buttons 10 px
+  apart fail" was wrong: they pass; 0 px apart fail, 4 px pass, as the Understanding page draws.
+- **Two targets fixed**: a commit row's menu, 20 × 20 px, is a 24 px square (`flex: none`: at
+  Large the row's words squeezed it to 21); the card's branch link keeps its 20 px line, its box
+  24 px by padding and a negative margin.
+- **The terminal** keeps 14 px at every text size (762); the text size changes only `--size-*`.
+- **Two names' columns follow the text size**: Settings' rows (104 px since V51: "Commit details"
+  wrapped at 15 px, as it had in V61) are `8 × --size-body`; Start's `--start-name` (124 px) is
+  `8.25 × --size-body`, 124 at the default, so "Branch name" and its "?" stay one line at Large.
+- **The target check covers a review's Graph too** (its sidebar's rows), opened by its address.
+
+**Results.**
+
+| What | `main` (`6aed550`, V85) | V87 |
+|---|---|---|
+| Body, secondary, smallest text | 13, 12, 11 px | 15, 14, 12 px (Compact 14, 13, 12; Large 16, 15, 13) |
+| A row, a control, a card's head, the page's head | 22, 26, 35, 36 px | 24, 28, 37, 40 px |
+| Git's commits in view at the person's window (2560 × 1354) | 56 | 52 |
+| Body text's x-height at 60 cm on the person's screen | 0.154° | 0.178° (Large 0.190°) |
+| Targets failing WCAG 2.2's 2.5.8 on Git (1440 × 900) | 35 | 0 |
+| Text under 4.5:1 (`--faint` text) | 3 rules | 0 |
+| First contentful paint of `/git`, median of 15, two runs | 72, 72 ms | 76, 72 ms |
+| The first commit row (after a poll: an upper bound), two runs | 173, 166 ms | 169, 165 ms |
+
+Every page (Git with a commit, Start, Settings and Appearance, Skills, Monitor, Nucleus, History,
+a diff's Files and Graph) at 2560 × 1354 and 1440 × 900, both themes, Hive on and off, at each
+text size; the app's 200 % (1280 × 677 at 2×) on Git, Settings and Start: the details go under
+the commits, nothing cut. Git's three panes at 1440 cut subjects and the HEAD chip sooner than at
+13 px, as `main` cuts them at 1440 ("HEAD → m…"). Tests: `pnpm check` 2,690; `pnpm test:e2e`
+379 of 380 viewer (a honeycomb colour read empty under load, 3 of 3 alone) and 20 of 20 nexus.
