@@ -215,6 +215,33 @@ test('without an agent: the branch and worktree are made, and the prompt is give
 // The workspaces view (V18b): what each workspace needs, and each workspace and its branch leading
 // to the other.
 const POLL = { timeout: 12_000 };
+
+/**
+ * Waits until `locator` is still: no animation in it, and the same box two frames apart (AR2). A
+ * card that moves to another group slides there (`useCardMoves`); measured mid-slide, it read
+ * 1.33 px off under the merge check's load.
+ */
+async function still(locator: Locator) {
+  await expect
+    .poll(
+      () =>
+        locator.evaluate(
+          (el) =>
+            new Promise<boolean>((resolve) => {
+              const a = el.getBoundingClientRect();
+              requestAnimationFrame(() =>
+                requestAnimationFrame(() => {
+                  const b = el.getBoundingClientRect();
+                  const moving = el.getAnimations({ subtree: true }).length > 0;
+                  resolve(!moving && a.x === b.x && a.y === b.y && a.height === b.height);
+                }),
+              );
+            }),
+        ),
+      POLL,
+    )
+    .toBe(true);
+}
 const workspaceRow = (page: Page, branch: string) =>
   page.locator(`.workspace-row[data-branch="${branch}"]`);
 const group = (page: Page, name: string) => page.getByRole('region', { name });
@@ -960,6 +987,10 @@ test('Send the verdict: a review fills the box, from the panel and from the Revi
   await expect(box(page, branch)).toHaveValue(/Name it halve\./);
   await panel(page, branch).getByRole('button', { name: 'Send', exact: true }).click();
   await expect(panel(page, branch).locator('.thread-you')).toContainText('Name it halve.', POLL);
+  // Sent as it was filled in, it is the person's verdict in Symbiote's words (AR2, decision 741).
+  await expect(panel(page, branch).locator('.thread-you .thread-who')).toContainText(
+    'Your verdict',
+  );
   expect(resumes()[0]?.args.at(-1)).toContain('Address this review of the branch');
   // Sent: the panel no longer offers it.
   await expect(panel(page, branch).getByRole('button', { name: 'Send the verdict' })).toHaveCount(
@@ -1087,6 +1118,7 @@ test("a done card's icon cleans it up from the sidenav: on hover or focus, witho
   await expect(icon).toHaveCSS('opacity', '0');
   const time = card.locator('.workspace-head .commit-date');
   await expect(time).toBeVisible();
+  await still(card);
   const name = await card.locator('.workspace-about').boundingBox();
   const head = await card.locator('.workspace-head').boundingBox();
   await card.hover();

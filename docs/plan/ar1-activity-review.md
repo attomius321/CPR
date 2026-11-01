@@ -234,7 +234,8 @@ nowhere.
    - `activity-export.ts` labels every prompt but the first "The person's message", task
      notifications aside.
    - So 12 of the 255 such messages in the export were not the person's: 4 of Hive's, 3
-     verdicts, 5 subagent hand-backs.
+     verdicts, 5 subagent hand-backs. (AR2's reader, run on the same records, finds 14: a fourth
+     verdict, and the start prompt of an agent Nucleus restarted.)
    - The Activity tab, the export and Nucleus's `thread` tool read the same.
 7. **Spikes answer in the report, but the person wants the answer kept** (new; product default).
    - The spike line says "put it in your final report … Commit nothing unless the brief asks for

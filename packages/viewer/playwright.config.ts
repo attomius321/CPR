@@ -8,6 +8,9 @@ const preinstalled = '/opt/pw-browsers/chromium';
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,
+  // A state waited for gets 15 s, not Playwright's 5 (AR2): under other workspaces' checks (load
+  // 13-16) merges and logs took longer than 5 s to show what they then showed.
+  expect: { timeout: 15_000 },
   fullyParallel: false,
   reporter: process.env.CI ? 'list' : 'line',
   use: {

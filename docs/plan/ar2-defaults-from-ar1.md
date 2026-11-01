@@ -2,7 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/ar2-defaults-from-ar1.md)
 
-**Status:** planned (2026-11-01), on branch `spike/activity-review`, after AR1 (decision 738).
+**Status:** built (2026-11-01), ready for review, on branch `spike/activity-review`, after AR1
+(decision 738).
 
 The person's answers (2026-11-01):
 
@@ -150,3 +151,80 @@ person sees changes but the record's labels.
 **Not in AR2**: the running reviewer reading the person's later words (after
 `fix/hive-runner-flaws`); a check retried once (rests on this repository's flakes); a merge
 failure sent on its own (Hive mode, HV4).
+
+## As built (AR2)
+
+- **1. The journal's union merge** as planned: `.gitattributes` and a paragraph in
+  `configuration.md`'s merger section. A scratch merge of two branches that each append a line to
+  `docs/JOURNAL.md` conflicts without it and lands with it.
+- **2–3. The prompts** as planned. The guard test that compares today's start prompts with V28's
+  recorded ones lists the spike's change, as it lists every earlier one.
+- **4. Who sent a message**:
+  - The notes are written in `reply` itself, just before the message goes, for Claude Code and
+    Codex alike: Hive passes `by: 'hive'` and its key, Nucleus's `reply` tool `by: 'nucleus'`,
+    step 5 `by: 'merger'`.
+  - The page's verdict: typed into the terminal, it is noted first (`POST /api/workspaces/sent`);
+    sent from the box unchanged, the reply says `by: 'verdict'`. The page can claim no other
+    sender: `reply` refuses any `by` but `verdict` from it.
+  - The reader drops the notes, so nothing that reads a thread meets a new kind of entry.
+  - A note is matched by the digest of its whitespace-collapsed text, once, whichever session takes
+    it; one never followed by its prompt labels nothing.
+  - The Thread tab heads Symbiote's messages as theirs ("Hive's message"); a background job's end
+    and a subagent's hand-back are lines. The Activity tab titles them "Hive: …", "Nucleus: …"
+    (Alpha Ceph in Hive mode), "The verdict: …", "Symbiote: …".
+  - A verdict stays the person's: their decision in Symbiote's words. The first full e2e run
+    found it drawn collapsed as Symbiote's, the person's comments hidden; the Thread tab now draws
+    it as theirs, whole, headed "Your verdict".
+- **5. Send to the agent**:
+  - Offered on a clean merge whose check failed, and also on a resolution whose check failed
+    (beside Check again): in both the branch's agent can say whether its branch caused it.
+  - Shown only when the branch is a workspace whose agent takes messages (not Hermes, not one
+    without a session).
+  - `Merger.failure` words the failure from `merge.failed`, the output's last 60 lines cut at
+    6,000 characters, as Hive cuts a check's; `sendFailure` sends it through `reply`.
+- **6. The flaky tests**:
+  - Not reproduced by load alone: `intro.spec.ts` ran 45 of 45 times green with 24 of the 32
+    cores held by busy loops. The failures AR1 counted came with several whole suites running at
+    once, and the records keep no error lines. The fixes follow the causes the agents found when
+    each failure was pasted to them.
+  - Already fixed on `main` after AR1's failures: `changes.spec.ts` (`308baad`), `report.spec.ts`
+    (`0a611f7`), `open-pr.spec.ts` (`65ca53b`), `scout.spec.ts` (`6ad0e08`), and `shell.spec.ts`'s
+    keys and focus (both wait for the two cards).
+  - The done card (`workspaces.spec.ts`): measured while it slid into its new group, 1.33 px off.
+    It now waits until the card is still: no animation in it and the same box two frames apart.
+  - The intro (`intro.spec.ts:52`, `:178`): the engine caps a frame's step at 50 ms, so under load
+    the swim is slower in wall-clock time, and the spec saw the states late. Its states are now
+    timed by the page's clock as they happen, and waited for as long as the intro may last (its
+    `LONGEST_MS`, then the fade).
+  - The merges (`merges.spec.ts:56`, `:202`): a merge and its log took over Playwright's 5-second
+    default to show under load 13–16. Every state the viewer's specs wait for now gets 15 s
+    (`expect.timeout`), the budget the specs' `POLL` already gave the slow ones.
+  - Found by the verification's two suites run at once: `hive.spec.ts`'s honeycomb test read the
+    diff's head colour once, while the head was being drawn again, and got no colour. It polls the
+    colour now.
+
+**Results.**
+
+- **Tests first**: every unit test written red before its change, for the right reason. 2,689
+  unit tests pass (2,676 before AR2).
+- **The full e2e suite** passed three times on the last build, viewer 377 of 377 and nexus 20 of
+  20 alone, then two viewer suites at once, 377 of 377 each.
+  - The first verification round found the verdict's heading (above) and the honeycomb's race.
+    The second stopped at `pnpm check` on the honeycomb fix's formatting, before the build, so its
+    e2e runs tested the old bundle and failed the verdict test again. The third passed.
+- **The real records, read by the built reader** (`spikes/activity-review/labels.mjs`, the main
+  checkout's 131 workspaces up to AR1's export):
+  - 241 prompts are the person's, 129 Symbiote's start prompts, 439 a background job's end;
+  - 4 Hive's (3 `hive.check`, 1 `hive.review`), 4 verdicts, 5 subagents' hand-backs.
+  - AR1's hand count said 12 of the 255 "person's messages" were not the person's. The reader
+    finds 14: a fourth verdict (`feature/codex-agent-integration`, 19 October), and the start
+    prompt of the agent Nucleus restarted in `feature/hive-honeycomb-background`.
+- **The union merge**: a scratch merge of two branches appending to the journal lands with no
+  conflict; replayed on `main`'s 148 merges, AR1 measured 53 conflicts to 17.
+- **Send to the agent**, in both themes at 1×: one button, beside the "⋯" menu, in the merge's
+  head (screenshots in the ignored `coverage/ar2-shots/`).
+- **Not verified**:
+  - a real Claude Code session getting `merge.failed` (the e2e uses the fake agent);
+  - a real Hive run with the new `hive.*` words (the Python trial in AR1 used `claude -p`);
+  - whether the flaky tests stay green under the load AR1 saw: several whole suites from other
+    workspaces at once. The busy-loop load did not reproduce them.
