@@ -2,10 +2,11 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v86-alpha-ceph-transform.md)
 
-**Status:** planned (2026-11-01), on branch `feature/alpha-ceph-transform` (a workspace started in
-Symbiote, from `main` at `6aed550`). The person asked to start building after the plan, without
-waiting for an OK; the motion is shown to them in films of the built sidenav instead of a mockup
-made first.
+**Status:** built, ready for review (2026-11-01), on branch `feature/alpha-ceph-transform` (a
+workspace started in Symbiote, from `main` at `6aed550`). The person asked to start building after
+the plan without waiting for an OK, so films of the built sidenav stand in for a mockup made
+first. Open: whether turning Hive off should play the change backwards (decision 734). Its "As
+built" and results are below.
 
 **Problem** (asked: "I want an animation of Nucleus transforming to Alpha Ceph, after Hive mode
 activation, in sidenav").
@@ -107,3 +108,28 @@ measurements; docs.
 
 **Not in V86 (later)**: the change on Nucleus's page head and in Settings; a transform in other
 windows of the same repository when Hive turns on elsewhere (they learn it on reload today).
+
+## As built (V86)
+
+- **The timings** (films at 1×, every 50 ms): the ring's arcs faded by 550 ms while the first ring
+  cell booted at 480 ms, which left a lone dot for 250 ms. The ring now takes 760 ms (whole,
+  six arcs by 270 ms, faded from 530 to 760 ms) and the ring cells boot at 340 ms + 80 ms each
+  (420 to 1,080 ms). The core lands at 250–570 ms; its flare runs 250–1,200 ms; all end by
+  1,200 ms, inside `BECOMING_MS` (1,250 ms, checked by a unit test that reads `hive.css`).
+- **The ignition's colours**: a white dot and a flat white flare vanished on the light sidenav. The
+  dot heats to the icon's crimson lamp (`--art-icon-lamp`), and the flare is the core chamber's
+  gradient over the whole core plate: white-hot in the middle, crimson at the rim, on ink and on
+  white.
+- **The scramble** uses letters only: digits read as a hash.
+- **Settings** named Nucleus with `useHive()`: `promptGroups` takes `alpha` for the name beside
+  `hive` for Hive's own prompts, and the agent page reads `useAlphaCeph()`.
+- **The ring cells' order**: `iconCells()` gives each cell its `order` (the core 0, the ring 1–6
+  clockwise from the upper right); the cells sit at 0°, ±60°, ±120° and 180°, where the ring's arcs
+  break.
+
+**Results.** 9 unit tests and 3 e2e tests, red first; `pnpm check` 2,685 unit tests; `pnpm test:e2e` 379 of 379 and the nexus 20 of 20. The play's
+last frame equals the still icon pixel for pixel, open and folded, both themes. The arrival at
+2560×1440, three runs each against `main`'s build, alternated: 59.6 / 59.6 / 59.6 fps on `main`,
+59.1 / 59.6 / 59.6 on the branch, 1.91 s long on both; the play 60.1 fps for 1,248 ms with no
+long task; no animation running afterwards. Films and frames:
+[the review page](https://claude.ai/artifact/82gJ3c1J9DNpbnQeFw4u1g) (private to the person).

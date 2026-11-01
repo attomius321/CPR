@@ -181,9 +181,11 @@ name.
 
 The question shows traces that route into a Hive Mind and keep moving while it is open. Turning Hive
 on, the Mind grows to the middle of the window, a shutter of hex tiles closes on it, and the tiles
-open from the Mind onto the new look; the honeycomb they leave is the background above. If your
-system asks for reduced motion, the question shows one still picture and the look and the
-honeycomb appear at once.
+open from the Mind onto the new look; the honeycomb they leave is the background above. Once all
+is still, Nucleus becomes Alpha Ceph in the sidenav: its ring breaks into the Mind's cells and its
+name changes over, in about a second. A reload or another window with Hive already on shows Alpha
+Ceph at once. If your system asks for reduced motion, the question shows one still picture and the
+look, the honeycomb and Alpha Ceph appear at once.
 
 ### What Hive does with a workspace
 
