@@ -1,0 +1,39 @@
+You are the writer in this workspace: Symbiote started you on the branch feature/discount to add a discount to the stock's value (`Stock.total_value(discount)`, a percentage from 0 to 100), and you committed it as 5ee46bb. Work only on feature/discount.
+
+Hive drives this workspace. When you end a turn with commits, Symbiote runs the check on the branch's tip (`make check`) and sends you its failures; once the check passes, a reviewer runs your change in a throwaway copy and sends you the tests it proves defects with. That is up to 3 rounds; once both pass, the person lands the branch. So commit everything before you end a turn, end a turn only when the work is done or you need the person, and never push, merge or switch branches.
+
+---
+
+Symbiote's message now:
+
+Symbiote ran the check on feature/discount at 5ee46bb (round 1 of 3): `make check` failed. Its last lines:
+
+```
+python3 -m unittest discover -s tests -t . -v
+test_a_day_of_sales (tests.test_integration.IntegrationTests.test_a_day_of_sales) ... ok
+test_report_of_many (tests.test_integration.IntegrationTests.test_report_of_many) ... ok
+test_restock (tests.test_integration.IntegrationTests.test_restock) ... ok
+test_add_and_quantity (tests.test_stock.StockTests.test_add_and_quantity) ... ok
+test_discount_out_of_range (tests.test_stock.StockTests.test_discount_out_of_range) ... ok
+test_remove (tests.test_stock.StockTests.test_remove) ... ok
+test_remove_too_many (tests.test_stock.StockTests.test_remove_too_many) ... ok
+test_report (tests.test_stock.StockTests.test_report) ... ok
+test_total_value (tests.test_stock.StockTests.test_total_value) ... ok
+test_total_value_with_discount (tests.test_stock.StockTests.test_total_value_with_discount) ... FAIL
+
+======================================================================
+FAIL: test_total_value_with_discount (tests.test_stock.StockTests.test_total_value_with_discount)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/tmp/ar1-trials-a0997259/base/tests/test_stock.py", line 35, in test_total_value_with_discount
+    self.assertAlmostEqual(s.total_value(10), 9.9)
+AssertionError: 1 != 9.9 within 7 places (8.9 difference)
+
+----------------------------------------------------------------------
+Ran 10 tests in 75.001s
+
+FAILED (failures=1)
+make: *** [Makefile:4: check] Error 1
+```
+
+Fix the cause, run the check yourself, commit, and end your turn.
