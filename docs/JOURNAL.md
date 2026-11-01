@@ -364,3 +364,4 @@ merge commit.
 - 2026-10-31 [V85 — Hive's running review, round 1](journal/v85-hive-honeycomb-compact.md)
 - 2026-11-01 [AR1 plan — the sources and what is counted](journal/ar1-activity-review.md)
 - 2026-11-01 [AR1 spike — what the records say, and what to change](journal/ar1-activity-review.md)
+- 2026-11-01 [AR2 plan — six changes from AR1's measurements](journal/ar2-defaults-from-ar1.md)
