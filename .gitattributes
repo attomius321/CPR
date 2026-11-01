@@ -1,0 +1,4 @@
+# docs/JOURNAL.md is appended to by every workspace: a union merge keeps both sides' lines, the
+# target's first, instead of a conflict for the merger (AR2, decision 743). Not docs/PLAN.md: its
+# rows go inside tables by area, where a union can misplace one.
+docs/JOURNAL.md merge=union

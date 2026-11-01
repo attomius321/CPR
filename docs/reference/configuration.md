@@ -62,6 +62,11 @@ If `symbiote/merge.md` exists, Symbiote adds it to the merger's prompt for every
 your project's rules for resolving conflicts there, such as "keep both entries of a changelog".
 Commit it to share it.
 
+A file that every branch only adds lines to the end of, such as a changelog, need not reach the
+merger at all. One line in the repository's `.gitattributes`, `CHANGELOG.md merge=union`, makes
+git keep both sides' new lines, the target's first. Use it only where the order of the added
+lines does not matter.
+
 ## Prompts
 
 **Settings** (`s`) shows every text Symbiote gives its agents, grouped by agent. You can change
