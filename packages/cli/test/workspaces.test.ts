@@ -2396,6 +2396,35 @@ describe('workspaces', () => {
     ).rejects.toMatchObject({ status: 404 });
   });
 
+  it("a reply resumes once the stopped session's terminal ended: a resume while `claude attach` runs starts a copy (decision 720)", async () => {
+    const { repo } = fresh();
+    const { claude, listed, stop, resume } = fakeClaude();
+    const { terminals, programs } = fakeTerminals();
+    const s = await service(repo, claude, HOOK, terminals);
+    await s.start({ brief: 'One', branch: 'feature/one', planFirst: true });
+    Object.assign(listed[0] as AgentSession, { state: 'blocked', status: 'idle' });
+    const { id } = await s.terminal({ branch: 'feature/one', cols: 80, rows: 24 });
+    // As measured (fix/hive-runner-flaws): the stop ends the session's process at once, and the
+    // `claude attach` client on it about a second later.
+    let ended = 0;
+    claude.stop = async (session) => {
+      const answer = await stop(session);
+      setTimeout(() => {
+        programs.delete(id);
+        ended = Date.now();
+      }, 300);
+      return answer;
+    };
+    let resumed = 0;
+    resume.mockImplementationOnce(() => {
+      resumed = Date.now();
+      return Promise.resolve({ ok: true });
+    });
+    await s.reply({ branch: 'feature/one', text: 'OK, go ahead.' });
+    expect(ended).toBeGreaterThan(0);
+    expect(resumed).toBeGreaterThanOrEqual(ended);
+  });
+
   it('says when Claude Code made a copy, and refuses what it cannot send', async () => {
     const { repo } = fresh();
     const { claude, listed } = fakeClaude();

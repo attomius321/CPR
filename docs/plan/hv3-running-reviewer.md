@@ -199,7 +199,7 @@ only).
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 674 | Where the review comes in the loop | **After a passing check (or none found), on the same commit; a failing check goes back without a review; landing only when both hold on one commit; one round counter, 3 rounds** | The check stays the last word (648); a review of code the writer must change anyway is wasted |
+| 674 | Where the review comes in the loop | **After a passing check (or none found), on the same commit; a failing check goes back without a review; landing only when both hold on one commit; one round counter, 3 rounds** (fix/hive-runner-flaws, 716: a check passed or a review approved on that commit holds for it, not run again) | The check stays the last word (648); a review of code the writer must change anyway is wasted |
 | 675 | The reviewer's copy | **A `git clone --shared` at the tip, detached, no remote, in Symbiote's cache; the install run by Symbiote; deleted after every outcome, on Hive off, swept at a runner's start** | A worktree shares the repository's refs and config; the install needs the store outside the copy |
 | 676 | The reviewer's session | **`claude -p` in a process group of its own, stream-json, `--json-schema`, no session kept, no MCP server, no user settings; 30 min, $5; Claude Code only** | One run whose answer Symbiote reads (the merger's way, HV1's); `--bg` hits the trust prompt in a new folder; the person's user settings hold a Kubernetes server |
 | 677 | Access only inside the copy | **Claude Code's sandbox for its commands (writes in the copy and temp only, no network but localhost), file tools allowed in the copy only (`dontAsk`); no sandbox → no review, landing asked with a note** | Decision 651; the person's answer to question 3 |

@@ -23,11 +23,17 @@ export const HIVE_ROUNDS = 3;
 /** Hive's messages to the writer, by their prompt's key. */
 export type HiveMessageKey = 'hive.check' | 'hive.review' | 'hive.commit' | 'hive.resume';
 
-/** A message Hive sends the writer: written here first, `sent` once its session took it. */
+/**
+ * A message Hive sends the writer: written here first; `taken` once Claude Code took it (`reply`
+ * answered), `sent` once its prompt is in the thread (decision 718; before it, `sent` was the
+ * answer alone). `copy`: Claude Code took it into a copy of the session, whose hooks record nothing.
+ */
 export interface HiveMessage {
   key: HiveMessageKey;
   text: string;
   at: string;
+  taken?: string;
+  copy?: string;
   sent?: true;
 }
 
@@ -264,6 +270,8 @@ export function parseHive(value: unknown): HiveFile | null {
             key,
             text: text(message.text),
             at: text(message.at),
+            ...(text(message.taken) ? { taken: text(message.taken) } : {}),
+            ...(text(message.copy) ? { copy: text(message.copy) } : {}),
             ...(message.sent === true ? { sent: true as const } : {}),
           },
         }

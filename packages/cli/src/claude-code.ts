@@ -326,8 +326,11 @@ export interface ClaudeCode {
     /** Its model (V47, `--model`), over the project's. */
     model?: string;
   }): Promise<{ ok: true } | { ok: false; error: string }>;
-  /** Its sessions, finished ones included; null when it cannot list them. */
-  sessions(): Promise<AgentSession[] | null>;
+  /**
+   * Its sessions, finished ones included; null when it cannot list them. `fresh`: read now, not
+   * the list read in the last 2 s (a reply waiting for a stop to end, decision 720).
+   */
+  sessions(options?: { fresh?: boolean }): Promise<AgentSession[] | null>;
   /** Stops a background session (`claude stop <id>`); its words when it cannot. */
   stop(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
   /**
@@ -506,8 +509,8 @@ export function claudeCode(
       if (result.code === 0) return { ok: true };
       return { ok: false, error: wordsOf(result) || `could not remove ${id}` };
     },
-    sessions() {
-      if (!sessions || Date.now() - sessions.at > 2_000) {
+    sessions(options) {
+      if (options?.fresh || !sessions || Date.now() - sessions.at > 2_000) {
         const list = run(command, ['agents', '--json', '--all'], { cwd, timeoutMs: 20_000 }).then(
           (result) => (result.code === 0 ? parseSessions(result.stdout) : null),
         );

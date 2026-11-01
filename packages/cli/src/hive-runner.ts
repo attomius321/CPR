@@ -6,6 +6,9 @@
 // then landing is asked of the person. Hive off stops Hive's writers, checks and reviews and keeps
 // each step; Hive on, or a new runner after a killed one, looks at what the sessions show and goes
 // on from there. One runner drives a repository, by a pid lock beside the records.
+// fix/hive-runner-flaws: a commit is checked and reviewed once (decision 716); a branch in the
+// merge queue or merged is left to its landing (717); a message is sent once its prompt is
+// recorded (718), and a turn Hive cannot see stops it, with why (719).
 import { randomBytes } from 'node:crypto';
 import { mkdir, readFile, rm, rmdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -13,10 +16,13 @@ import {
   git,
   mergeBase,
   worktreeStatus,
+  type AgentStateName,
   type GitRepo,
   type HiveCheck,
   type HiveCheckStep,
   type HiveReview,
+  type MergeEntry,
+  type MergeState,
   type ThreadEntry,
   type WorkspaceSummary,
 } from '@symbiote/core';
@@ -30,6 +36,7 @@ import {
   readHives,
   writeHive,
   type HiveFile,
+  type HiveMessage,
   type HiveMessageKey,
 } from './hive-record.js';
 import {
@@ -47,6 +54,7 @@ import {
 } from './hive-review.js';
 import { findClaude } from './claude-code.js';
 import { hiveLogId, hiveLogPath, hiveLogs } from './hive-live.js';
+import { mergeQueue } from './merge-queue.js';
 import { projectCheck } from './merges.js';
 import { killGroup, runGroup, type GroupRun, type RunGroup, type SpawnGroup } from './programs.js';
 import { fillPrompt, readPrompts } from './prompts.js';
@@ -84,8 +92,41 @@ const lastLines = (text: string) =>
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-/** Why a check or a review was stopped before its end. */
-type Stop = 'off' | 'took-over' | 'close';
+/** How a branch is being landed (decision 717): merged, or in the merge queue. */
+type Landing = 'merged' | 'queued';
+
+/** The merge queue's states while it has a branch: every one but its ends. */
+const QUEUED: ReadonlySet<MergeState> = new Set<MergeState>([
+  'queued',
+  'merging',
+  'resolving',
+  'checking',
+  'needs-you',
+  'ready',
+]);
+
+/** How long a message Claude Code took may go without its prompt in the thread (decision 719). */
+const UNSEEN_MS = 60_000;
+
+/** The agent's states with a session at work or done with a turn: whose turns Hive must see. */
+const SESSION_STATES: ReadonlySet<AgentStateName> = new Set<AgentStateName>([
+  'working',
+  'needs-you',
+  'plan-ready',
+  'ready',
+  'done',
+]);
+
+/** The same commands, in the same order: a check's result holds only for the commands it ran. */
+const sameCommands = (ran: string[] | undefined, now: string[]) =>
+  ran !== undefined && ran.length === now.length && ran.every((c, i) => c === now[i]);
+
+/** Whether `thread` has `message` as a prompt: its session took it with its hooks. */
+const arrived = (thread: ThreadEntry[], message: HiveMessage) =>
+  thread.some((e) => e.kind === 'prompt' && e.at >= message.at && e.text === message.text);
+
+/** Why a check or a review was stopped before its end; a landing (decision 717) says which. */
+type Stop = 'off' | 'took-over' | 'close' | Landing;
 
 /** A check this runner runs, and why it was stopped, if it was. */
 interface Running {
@@ -131,6 +172,8 @@ export function hiveRunner(
       claude: () => findClaude(process.env),
       confine: () => findConfinement(process.env),
     },
+    merges = () => mergeQueue(join(cacheDir, 'state', repo.id)).read(),
+    unseenMs = UNSEEN_MS,
     log,
   }: {
     hive: HiveRecord;
@@ -147,6 +190,13 @@ export function hiveRunner(
     run?: RunGroup;
     /** The running reviewer's surroundings (HV3). */
     reviewer?: HiveReviewer;
+    /**
+     * The merge queue's entries (decision 717): a branch it has is being landed. Its file in
+     * Symbiote's cache, read only (the merger's `list` would start a merge it finds queued).
+     */
+    merges?: () => Promise<MergeEntry[]>;
+    /** How long a message taken may go without its prompt before Hive stops (decision 719). */
+    unseenMs?: number;
     log?: Pick<Logger, 'info' | 'warn'>;
   },
 ): HiveRunner {
@@ -254,23 +304,28 @@ export function hiveRunner(
     return next;
   }
 
-  /** Sends the record's message unless its session has it already; kept for a retry when refused. */
+  /**
+   * Sends the record's message unless its session has it already; kept for a retry when refused.
+   * Sent once its prompt is in the thread (decision 718); taken when Claude Code took it and no
+   * prompt came yet — at once a turn Hive cannot see when it went into a copy (decision 719).
+   * Nothing goes to a branch being landed (decision 717).
+   */
   async function deliver(where: ReviewPlace, record: HiveFile): Promise<void> {
     const message = record.message;
-    if (!message || message.sent || closed) return;
-    const thread = await readThreadEnd(symbioteFolder(where), record.branch);
-    const arrived = thread.some(
-      (e: ThreadEntry) => e.kind === 'prompt' && e.at >= message.at && e.text === message.text,
-    );
-    if (!arrived) {
+    if (!message || message.sent || message.taken || closed) return;
+    const landing = await landingOf(record.branch);
+    if (landing) return leaveTo(where, record, landing);
+    const symbiote = symbioteFolder(where);
+    let copy: string | undefined;
+    if (!arrived(await readThreadEnd(symbiote, record.branch), message)) {
       try {
         // Noted as Hive's (AR2, decision 741): the record says who sent it.
-        await workspaces.reply({
+        ({ copy } = await workspaces.reply({
           branch: record.branch,
           text: message.text,
           by: 'hive',
           key: message.key,
-        });
+        }));
       } catch (error) {
         if (!failed.has(record.branch)) {
           failed.add(record.branch);
@@ -282,8 +337,74 @@ export function hiveRunner(
     failed.delete(record.branch);
     const fresh = (await readHive(where, record.branch)) ?? record;
     if (fresh.message?.at !== message.at) return;
-    await save(where, { ...fresh, message: { ...message, sent: true } });
+    if (arrived(await readThreadEnd(symbiote, record.branch), message)) {
+      await seen(where, fresh, message);
+      return;
+    }
+    const taken: HiveFile = {
+      ...fresh,
+      message: { ...message, taken: stamp(), ...(copy ? { copy } : {}) },
+    };
+    await save(where, taken);
+    await event(where, record.branch, 'taken', { key: message.key, ...(copy ? { copy } : {}) });
+    if (copy) await unseen(where, taken);
+  }
+
+  /** The message's prompt is in the thread: sent (decision 718). */
+  async function seen(where: ReviewPlace, record: HiveFile, message: HiveMessage) {
+    const next: HiveFile = { ...record, message: { ...message, sent: true } };
+    await save(where, next);
     await event(where, record.branch, 'sent', { key: message.key });
+    return next;
+  }
+
+  /**
+   * A turn Hive cannot see (decision 719): no prompt recorded after its message (or since the turn
+   * began), so no turn of it can be read as ended. Stopped for the person, with why; the writer is
+   * left as it is.
+   */
+  async function unseen(where: ReviewPlace, record: HiveFile): Promise<void> {
+    const message = record.message;
+    const at = `${(message ? (message.taken ?? message.at) : record.since).slice(11, 16)} UTC`;
+    const copy = message?.copy
+      ? ` (Claude Code took it into a copy of its session, ${message.copy}, whose hooks record nothing)`
+      : '';
+    const note = `the writer's turn cannot be seen: no prompt recorded ${message ? `after Hive's message at ${at}` : `since its turn began at ${at}`}${copy}`;
+    const stuck: HiveFile = { ...record, step: 'stuck', since: stamp(), note };
+    delete stuck.message;
+    await save(where, stuck);
+    await event(where, record.branch, 'stuck', { note, unseen: true });
+  }
+
+  /** Whether a branch is being landed (decision 717): merged, or in the merge queue. */
+  async function landingOf(
+    branch: string,
+    known?: WorkspaceSummary | null,
+  ): Promise<Landing | null> {
+    const summary = known === undefined ? await workspaces.summaryOf(branch) : known;
+    if (summary?.merged) return 'merged';
+    const queue = await merges().catch(() => []);
+    return queue.some((m) => m.branch === branch && QUEUED.has(m.state)) ? 'queued' : null;
+  }
+
+  /**
+   * A branch being landed is left to its landing (decision 717): `landed` once merged, `landing`
+   * while the merge queue has it; a message not sent yet is dropped.
+   */
+  async function leaveTo(
+    where: ReviewPlace,
+    record: HiveFile,
+    landing: Landing,
+    data: Record<string, unknown> = {},
+  ): Promise<void> {
+    const step = landing === 'merged' ? 'landed' : 'landing';
+    await moveTo(
+      where,
+      record,
+      { step, message: undefined, check: undefined, review: undefined, interrupted: undefined },
+      step,
+      landing === 'queued' ? { queued: true, ...data } : data,
+    );
   }
 
   /** The next round with `key`'s message, or the person once the rounds are spent. */
@@ -324,12 +445,29 @@ export function hiveRunner(
   }
 
   /** The writer's turn (decision 653). */
-  async function writing(where: ReviewPlace, record: HiveFile): Promise<void> {
-    if (record.message && !record.message.sent) return deliver(where, record);
+  async function writing(where: ReviewPlace, given: HiveFile): Promise<void> {
+    let record = given;
+    const message = record.message;
+    if (message && !message.sent && !message.taken) return deliver(where, record);
     const turn = await turnOf(where, record.branch, record.since);
     if (!turn) return;
     const { summary } = turn;
-    if (summary.merged) return void (await moveTo(where, record, { step: 'landed' }, 'landed'));
+    const landing = await landingOf(record.branch, summary);
+    if (landing) return leaveTo(where, record, landing);
+    if (message?.taken && !message.sent && arrived(turn.thread, message)) {
+      record = await seen(where, record, message);
+    }
+    if (!turn.prompt || turn.prompt.at < record.since) {
+      // No prompt since the step began: no turn of it can end where Hive sees it (decision 719),
+      // while a session works or has finished. An agent that never started, failed or was stopped
+      // says so on its card. An older runner's `sent` (before 718) proved nothing: its time counts.
+      const from = message ? (message.taken ?? message.at) : record.since;
+      const live = SESSION_STATES.has(summary.agent.state);
+      if (live && (message?.copy || now().getTime() - Date.parse(from) >= unseenMs)) {
+        return unseen(where, record);
+      }
+      return;
+    }
     if (!turn.ended) return;
     await event(where, record.branch, 'turn-ended', { round: record.round });
     const changed = summary.worktree.changed ?? 0;
@@ -362,7 +500,10 @@ export function hiveRunner(
     return checking(where, next, summary);
   }
 
-  /** Runs the project's check on the branch's tip (decision 654). */
+  /**
+   * Runs the project's check on the branch's tip (decision 654), unless a check of the same
+   * commands passed on that commit already: then its review (decision 716).
+   */
   async function checking(
     where: ReviewPlace,
     record: HiveFile,
@@ -370,8 +511,25 @@ export function hiveRunner(
   ): Promise<void> {
     const summary = known ?? (await workspaces.summaryOf(record.branch));
     if (!summary?.tip) return;
+    const landing = await landingOf(record.branch, summary);
+    if (landing) return leaveTo(where, record, landing);
     const tip = summary.tip;
     const check = await projectCheck(repo, root, tip).catch(() => null);
+    const passed =
+      check &&
+      record.checks.findLast(
+        (c) => c.at === tip && c.ok && sameCommands(c.commands, check.commands),
+      );
+    if (passed) {
+      const next = await moveTo(
+        where,
+        record,
+        { step: 'reviewing', checked: tip, note: undefined },
+        'reviewing',
+        { passed: passed.round },
+      );
+      return reviewing(where, next);
+    }
     if (!check) {
       // No check, but a review all the same (decision 674): the note stays for the person.
       const note = 'no check is set or found: check it yourself before you land it';
@@ -483,6 +641,9 @@ export function hiveRunner(
       ms: ran.ms,
       ...(ran.failed ? { failed: ran.failed } : {}),
     });
+    // Merged or queued while it ran (HV3's record: a failure sent at 14:19:23, merged 14:22:42).
+    const landing = await landingOf(record.branch);
+    if (landing) return leaveTo(where, after, landing);
     if (ran.ok) {
       const next = await moveTo(
         where,
@@ -511,14 +672,23 @@ export function hiveRunner(
 
   /**
    * The running review of the commit the check passed on (HV3, decisions 674–679): its copy, the
-   * reviewer and the rerun run beside the tick, as a check does.
+   * reviewer and the rerun run beside the tick, as a check does. A commit reviewed and approved
+   * already goes to landing as it is (decision 716).
    */
   async function reviewing(where: ReviewPlace, record: HiveFile): Promise<void> {
     const summary = await workspaces.summaryOf(record.branch);
     if (!summary) return;
-    if (summary.merged) return void (await moveTo(where, record, { step: 'landed' }, 'landed'));
+    const landing = await landingOf(record.branch, summary);
+    if (landing) return leaveTo(where, record, landing);
     const tip = record.checked ?? summary.tip;
     if (!tip) return;
+    const approved = record.reviews.findLast((r) => r.at === tip);
+    if (approved?.verdict === 'approved') {
+      await moveTo(where, record, { step: 'landing', checked: tip }, 'landing', {
+        reviewed: approved.round,
+      });
+      return;
+    }
     const [claude, confine] = await Promise.all([reviewer.claude(), reviewer.confine()]);
     const check = await projectCheck(repo, root, tip).catch(() => null);
     const passed = record.checks.findLast((c) => c.at === tip && c.ok);
@@ -639,6 +809,9 @@ export function hiveRunner(
       ...(review.cost !== undefined ? { cost: review.cost } : {}),
       ...(review.error ? { error: review.error } : {}),
     });
+    // Merged or queued while it ran: its findings stay in the record, nothing goes to the writer.
+    const landing = await landingOf(branch);
+    if (landing) return leaveTo(where, after, landing);
     if (review.verdict === 'approved') {
       await moveTo(where, after, { step: 'landing', checked: review.at }, 'landing');
       return;
@@ -690,10 +863,16 @@ export function hiveRunner(
     );
   }
 
-  /** A review stopped before its end: no result, its copies gone; the step kept, or the person's. */
+  /**
+   * A review stopped before its end: no result, its copies gone; the step kept, the person's, or
+   * the branch's landing.
+   */
   async function stoppedReview(where: ReviewPlace, branch: string, why: Stop): Promise<void> {
     const record = await readHive(where, branch);
     if (!record) return;
+    if (why === 'merged' || why === 'queued') {
+      return leaveTo(where, record, why, { stopped: 'review' });
+    }
     if (why === 'took-over') {
       const turn = await turnOf(where, branch, record.since);
       await roundsAgain(where, record, turn?.prompt?.at ?? stamp());
@@ -705,10 +884,20 @@ export function hiveRunner(
     await event(where, branch, 'review-stopped', { why });
   }
 
-  /** While a review runs: a message the writer got stops it (the person took over). */
+  /**
+   * While a review runs: the branch's landing stops it (decision 717), as does a message the writer
+   * got (the person took over).
+   */
   async function watchReview(where: ReviewPlace, record: HiveFile): Promise<void> {
     const running = reviews.get(record.branch);
     if (!running || running.stopped) return;
+    const landing = await landingOf(record.branch);
+    if (reviews.get(record.branch) !== running || running.stopped) return;
+    if (landing) {
+      running.stopped = landing;
+      running.run.stop();
+      return;
+    }
     const thread = await readThreadEnd(symbioteFolder(where), record.branch);
     const prompt = thread.findLast((e) => e.kind === 'prompt');
     if (prompt && prompt.at > record.since) {
@@ -717,14 +906,13 @@ export function hiveRunner(
     }
   }
 
-  /** A check stopped before its end: no result; the step kept, or the person's turn. */
-  async function stoppedCheck(
-    where: ReviewPlace,
-    branch: string,
-    why: 'off' | 'took-over' | 'close',
-  ): Promise<void> {
+  /** A check stopped before its end: no result; the step kept, the person's turn, or the landing. */
+  async function stoppedCheck(where: ReviewPlace, branch: string, why: Stop): Promise<void> {
     const record = await readHive(where, branch);
     if (!record) return;
+    if (why === 'merged' || why === 'queued') {
+      return leaveTo(where, record, why, { stopped: 'check' });
+    }
     if (why === 'took-over') {
       const turn = await turnOf(where, branch, record.since);
       await roundsAgain(where, record, turn?.prompt?.at ?? stamp());
@@ -755,12 +943,19 @@ export function hiveRunner(
     );
   }
 
-  /** Landing asked, or stopped for the person: merged, or the person's message, or new commits. */
+  /**
+   * Landing asked, or stopped for the person: merged, or the person's message, or new commits;
+   * nothing while the merge queue has the branch (decision 717).
+   */
   async function waiting(where: ReviewPlace, record: HiveFile): Promise<void> {
     const turn = await turnOf(where, record.branch, record.since);
     if (!turn) return;
     const { summary, prompt } = turn;
-    if (summary.merged) return void (await moveTo(where, record, { step: 'landed' }, 'landed'));
+    const landing = await landingOf(record.branch, summary);
+    if (landing === 'merged' || (landing === 'queued' && record.step !== 'landing')) {
+      return leaveTo(where, record, landing);
+    }
+    if (landing) return;
     if (prompt && prompt.at > record.since) return roundsAgain(where, record, prompt.at);
     const moved =
       record.step === 'landing' &&
@@ -775,10 +970,20 @@ export function hiveRunner(
     }
   }
 
-  /** While a check runs: a message the writer got stops it (the person took over). */
+  /**
+   * While a check runs: the branch's landing stops it (decision 717), as does a message the writer
+   * got (the person took over).
+   */
   async function watchCheck(where: ReviewPlace, record: HiveFile): Promise<void> {
     const running = checks.get(record.branch);
     if (!running || running.stopped) return;
+    const landing = await landingOf(record.branch);
+    if (checks.get(record.branch) !== running || running.stopped) return;
+    if (landing) {
+      running.stopped = landing;
+      running.run.kill();
+      return;
+    }
     const thread = await readThreadEnd(symbioteFolder(where), record.branch);
     const prompt = thread.findLast((e) => e.kind === 'prompt');
     if (prompt && prompt.at > record.since) {

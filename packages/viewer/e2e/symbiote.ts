@@ -642,6 +642,11 @@ export interface RunningWorkspaces extends Running {
   stops(): string[];
   /** From now on the fake refuses to start, with Claude Code's trust message. */
   distrust(): void;
+  /**
+   * From now on every resume starts a copy without the original's settings, as Claude Code does
+   * for a session whose process still runs (fix/hive-runner-flaws): its hooks record nothing.
+   */
+  copies(): void;
   /** A workspace's worktree folder. */
   folder(branch: string): string;
   /** Sets what the fake says of the newest session in a workspace's worktree. */
@@ -851,8 +856,8 @@ if (args[0] === '--bg' && args[1] === '--resume') {
     process.stderr.write('No conversation found with session ID: ' + id + '\\n');
     process.exit(1);
   }
-  if (session.status) {
-    // Running: a copy, which keeps none of the original's options.
+  if (session.status || existsSync(join(dir, 'copies'))) {
+    // Running (or told to copy): a copy, which keeps none of the original's options.
     const copy = started({ cwd: process.cwd(), name: session.name });
     process.stdout.write('note: session ' + session.id + ' is already running in the background, so this started a copy as ' + copy.id + '.\\n');
   } else {
@@ -1522,6 +1527,9 @@ export async function serveWorkspaces({
     },
     distrust() {
       writeFileSync(join(fake, 'distrust'), '');
+    },
+    copies() {
+      writeFileSync(join(fake, 'copies'), '');
     },
     codexCalls: () => lines('codex-calls.jsonl').map((line) => JSON.parse(line) as FakeClaudeCall),
     codexTurn(branch, turn) {
