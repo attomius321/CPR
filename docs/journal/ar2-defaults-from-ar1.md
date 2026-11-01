@@ -63,3 +63,8 @@ Not verified:
 - a real Claude Code session getting `merge.failed`;
 - a real Hive run with the new words;
 - the flaky tests under several whole suites from other workspaces at once.
+
+`main` merged in after `fix/hive-runner-flaws` landed. That branch rewrote Hive's delivery
+around the same `reply` call this one gives a sender to; both changes were kept. The journal
+merged with no conflict, by the union attribute added here. On the merged tree: `pnpm check`
+(2,707 unit tests), `pnpm build`, the full e2e (viewer 378, nexus 20).
