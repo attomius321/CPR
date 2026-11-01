@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/chore-living-docs.md)
 
 **Status:** built (2026-11-01), on branch `chore/living-docs` (outside a workspace, from `main` at
-`108f956`); ready for review.
+`108f956`); merged into `main` on 2026-11-01.
 
 **Problem** (asked: "How would you manage this multitude of Journal and Plans in time, because i
 would like to delete the branches, and somehow 'consolidate' these md files … how big players do

@@ -70,3 +70,5 @@ milestone skill. Branches cleaned up first. Decisions 776–781.
 
 Not verified: that an agent changing the merger or reviews does better with the page than with
 the journals (the reader test measures the page alone); the other 13 areas.
+
+Merged into main (2026-11-01).
