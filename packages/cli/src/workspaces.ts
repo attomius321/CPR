@@ -63,6 +63,7 @@ import {
   type ModelChange,
   type WorkKind,
 } from '@symbiote/core';
+import { copyHook } from './agent-hook-copy.js';
 import { guessCheck, treeAt } from './check.js';
 import { fillPrompt, PromptRefused, readPrompts, writeConfig } from './prompts.js';
 import {
@@ -467,11 +468,12 @@ export function workspaces(
     env = process.env,
     root = repo.root,
     openFolder,
-    hook = fileURLToPath(new URL('./agent-hook.js', import.meta.url)),
+    hook,
     node = process.execPath,
     terminals,
     advisor,
     hive,
+    stopWaitMs = 10_000,
   }: {
     /** Finds Claude Code (once a start or a list needs it); null when it is not installed. */
     claude: () => Promise<ClaudeCode | null>;
@@ -484,7 +486,10 @@ export function workspaces(
     /** Where `symbiote/config.json` is read. */
     root?: string;
     openFolder?: OpenFolder;
-    /** Symbiote's hook (`dist/agent-hook.js`) and the Node that runs it. */
+    /**
+     * Symbiote's hook and the Node that runs it. Without `hook`, this build's `agent-hook.js`,
+     * copied into Symbiote's cache by its content (decision 721).
+     */
     hook?: string;
     node?: string;
     /** Terminals on agents' sessions (V21); without them, none. */
@@ -496,6 +501,8 @@ export function workspaces(
      * record). Without it, as before Hive.
      */
     hive?: () => Promise<boolean>;
+    /** How long a reply waits for a stopped session's process to end before it resumes it. */
+    stopWaitMs?: number;
   },
 ): Workspaces {
   const hiveOn = async () => (await hive?.().catch(() => false)) ?? false;
@@ -523,13 +530,31 @@ export function workspaces(
   /** Commits' files as VS Code's diffs are given them (V43, decision 288), by commit and path. */
   const revisions = join(cacheDir, 'state', repo.id, 'revisions');
 
+  /** This process's copy of its hook in the cache (decision 721), made at the first need. */
+  let copied: Promise<string> | null = null;
+
+  /**
+   * The hook the settings name: the one given, else this build's copy in the cache, which no
+   * deleted worktree takes with it. A copy that fails names the build's own, as before, and is
+   * tried again at the next need.
+   */
+  function hookPath(): Promise<string> {
+    if (hook) return Promise.resolve(hook);
+    const dist = fileURLToPath(new URL('.', import.meta.url));
+    copied ??= copyHook(dist, cacheDir);
+    return copied.catch(() => {
+      copied = null;
+      return join(dist, 'agent-hook.js');
+    });
+  }
+
   /**
    * Symbiote's settings file, written when its text differs (Symbiote moved) or it is gone: a
    * session that wakes reads it again, and does not start without it (V18c spike). Its path.
    */
   async function settingsFile(where: ReviewPlace): Promise<string> {
     const path = join(symbioteFolder(where), 'claude-settings.json');
-    const text = agentSettings({ node, hook, symbiote: symbioteFolder(where) });
+    const text = agentSettings({ node, hook: await hookPath(), symbiote: symbioteFolder(where) });
     if ((await readFile(path, 'utf8').catch(() => null)) !== text) {
       await writeFileWhole(path, text);
     }
@@ -990,6 +1015,31 @@ export function workspaces(
   }
 
   /** A workspace's agent, found; a refusal the page can show when there is none. */
+  /** This view's terminals on each Claude Code session (`claude attach`), by the session's ID. */
+  const attached = new Map<string, Set<string>>();
+
+  /**
+   * Whether a stopped session has ended, within `stopWaitMs`, read again every 200 ms: Claude Code
+   * lists no process for it (no `status`), and every terminal of this view attached to it has
+   * ended. A `claude attach` client outlives the stop by about a second, and a resume meanwhile
+   * starts a copy as for a running session (measured, fix/hive-runner-flaws). A list Claude Code
+   * cannot give is no answer: taken as ended.
+   */
+  async function processEnded(agent: ClaudeCode, id: string): Promise<boolean> {
+    const until = Date.now() + stopWaitMs;
+    const clients = attached.get(id) ?? new Set<string>();
+    for (;;) {
+      const listed = await agent.sessions({ fresh: true });
+      const session = listed?.find((s) => s.id === id);
+      for (const client of clients)
+        if (terminals?.running(client) === undefined) clients.delete(client);
+      if (clients.size === 0) attached.delete(id);
+      if ((!listed || session?.status === undefined) && clients.size === 0) return true;
+      if (Date.now() >= until) return false;
+      await new Promise((done) => setTimeout(done, 200));
+    }
+  }
+
   async function agentOf(workspace: WorkspaceFile): Promise<ClaudeCode> {
     const agent = workspace.agent ? await claude() : null;
     if (!agent) {
@@ -1878,6 +1928,7 @@ export function workspaces(
           rows,
           env,
         });
+        attached.set(session.id, (attached.get(session.id) ?? new Set()).add(id));
         return { id };
       } catch (error) {
         if (error instanceof TerminalRefused) throw new WorkspaceRefused(error.message, 409);
@@ -1978,6 +2029,14 @@ export function workspaces(
       if (alive) {
         const stopped = await agent.stop(session.id);
         if (!stopped.ok) throw new WorkspaceRefused(stopped.error, 409);
+        // Its process ends a moment after `claude stop` answers, and a resume before that starts a
+        // copy without the hooks (decision 720; the honeycomb workspace's 337836a3).
+        if (!(await processEnded(agent, session.id))) {
+          throw new WorkspaceRefused(
+            `its agent did not stop within ${Math.round(stopWaitMs / 1000)} s: try again`,
+            409,
+          );
+        }
       }
       const resumed = await agent.resume({
         sessionId: session.sessionId,

@@ -465,7 +465,9 @@ Outside the repository, Symbiote writes:
 - the workspaces' worktrees, next to your checkout, in `../<repo>.worktrees/`;
 - its cache, `~/.cache/symbiote` on Linux, with the worktrees it compares and merges in, the
   list of merges, drafts, pasted images, its logs, the address of each running
-  `symbiote view` (Symbiote nexus reads them), and the output of each Symbiote the nexus started;
+  `symbiote view` (Symbiote nexus reads them), the output of each Symbiote the nexus started, and
+  a copy of the hook that records each agent's thread (about 23 KB a build, kept so a session
+  never names a hook that is gone);
 - its settings for this machine, `~/.config/symbiote` on Linux: the skill library's folder, and
   whether the intro was seen;
 - the skill library's skills, when you save, add or delete one, or Scribe writes one. Symbiote

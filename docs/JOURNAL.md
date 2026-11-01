@@ -362,3 +362,4 @@ merge commit.
 - 2026-10-31 [V85a — the honeycomb, built](journal/v85-hive-honeycomb-compact.md)
 - 2026-10-31 [V85b — the compact look, built](journal/v85-hive-honeycomb-compact.md)
 - 2026-10-31 [V85 — Hive's running review, round 1](journal/v85-hive-honeycomb-compact.md)
+- 2026-11-01 [Fix — Hive's runner: no second check of a commit, nothing sent to a branch being landed, a turn it cannot see noticed](journal/fix-hive-runner-flaws.md)
