@@ -2,6 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v26-merger.md)
 
+> What holds now: [The merger](../area/merger.md). This plan is kept as it was written.
+
 **Status:** V26a and V26c merged into main (2026-10-20, from branch `milestone/v26-merger`). V26b dropped (2026-10-20, decision 164): every conflict goes to the merger agent.
 
 **Problem** (asked: "I want a merger agent, who specializes in merging branches"; "I don't like the
@@ -189,14 +191,14 @@ reviewed either way. V26b was built after V26c, then dropped (decision 164).
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 142 | Who merges | **Symbiote, and a fresh agent only for what needs judgement; never the workspace's agent** | The workspace's context is 66K–474K tokens and holds nothing a merge needs. A conflict is 0.6K–5.8K tokens |
+| 142 | Who merges (replaces 82's "the agent merges") | **Symbiote, and a fresh agent only for what needs judgement; never the workspace's agent** | The workspace's context is 66K–474K tokens and holds nothing a merge needs. A conflict is 0.6K–5.8K tokens |
 | 143 | Where | **A merge worktree in Symbiote's cache** | The person's checkout may hold their work, and the workspace's worktree has its branch checked out |
 | 144 | How `main` moves | **Fast-forward only: in the checkout that has it, else `update-ref` with the old value** | Never stale, never forced; git refuses rather than overwrite |
 | 145 | Push | **Off by default (`merge.push`)** | Other projects may not want Symbiote to push. This repository turns it on |
 | 146 | Clean merges | **No agent, no review: Approve was the yes** | Most merges are clean. A plain merge plus the check can be explained line by line |
-| 147 | Conflicts | **Rule, then agent; every resolution reviewed before landing** (the rule dropped: decision 164) | Measured: the rule was right on 7 of 7 and refused 5. A wrong merge costs more trust than a slow one |
+| 147 | Conflicts *(partly superseded by 164 of V26)* | **Rule, then agent; every resolution reviewed before landing** (the rule dropped: decision 164) | Measured: the rule was right on 7 of 7 and refused 5. A wrong merge costs more trust than a slow one |
 | 148 | The agent's model | **`merge.model`, default `sonnet`** | Resolving a few regions with their symbols needs less than building a feature; the person can raise it |
-| 149 | Into which branch | **Any, picked at Merge; preselected: the workspace's `from`, the verdict's `into`, the default branch** | Old projects use `master`, others `develop` or release branches. Work goes back where it started from |
+| 149 | Into which branch *(partly superseded by 473 of V65)* | **Any, picked at Merge; preselected: the workspace's `from`, the verdict's `into`, the default branch** | Old projects use `master`, others `develop` or release branches. Work goes back where it started from |
 | 150 | The merger's skill | **Light: ~1K tokens of Symbiote's own instructions in its prompt, plus an optional `symbiote/merge.md`** | What a conflict needs is assembled per conflict. A heavy skill would be read on every run, which is the cost V26 removes. A skill file in the repository would reach the workspaces' agents too, and Codex does not read it |
 
 ## V26a as built
@@ -264,7 +266,7 @@ that is ~100K tokens, the cost V26 is to remove.
 | 151 | How the agent changes files | **It does not: it answers each region's text, Symbiote writes it** | Edit would read whole files (~100K tokens for this repository's journal); the answer is confined by construction; the review is region by region |
 | 152 | Which run | **One `claude -p` / `codex exec` run, waited for, read-only tools** | Bounded, its usage in its answer; nothing to attach to or clean up |
 | 153 | A failed check after a clean merge | **`failed`, not the agent's** | No region to answer: what fails is the branch's code, fixed on the branch and reviewed again |
-| 164 | V26b, keep both by rule | **Dropped: every conflict goes to the merger agent** | Asked ("Remove this feature from the plan … any conflict should be resolved by the agent", 2026-10-20), after V26b was built and tried on real merges. In the replays the rule was right where it applied, but a rule cannot see meaning: run file by file, it would have kept two `PLAN.md` rows that both claim V21 (Symbiote `01161fa2f`; the agent stopped and asked) and a changelog's entries twice under two headings (vite `67a8f8022`); each guard added for such a case is another rule to explain. The agent sees what both sides were for. Branch `milestone/v26b-keep-both` deleted |
+| 164 | V26b, keep both by rule (replaces 147's rule) | **Dropped: every conflict goes to the merger agent** | Asked ("Remove this feature from the plan … any conflict should be resolved by the agent", 2026-10-20), after V26b was built and tried on real merges. In the replays the rule was right where it applied, but a rule cannot see meaning: run file by file, it would have kept two `PLAN.md` rows that both claim V21 (Symbiote `01161fa2f`; the agent stopped and asked) and a changelog's entries twice under two headings (vite `67a8f8022`); each guard added for such a case is another rule to explain. The agent sees what both sides were for. Branch `milestone/v26b-keep-both` deleted |
 
 **V26c results**: 852 unit tests, 117 e2e. This repository's 11 conflicting merges replayed with
 the real Claude Code (`sonnet`): 5 equal to what was committed, 1 equal but for indentation, 1

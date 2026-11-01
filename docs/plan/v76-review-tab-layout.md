@@ -2,6 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v76-review-tab-layout.md)
 
+> What holds now: [Reviews](../area/reviews.md). This plan is kept as it was written.
+
 **Status:** merged into `main` on 2026-10-29 (built 2026-10-29), on branch `feature/review-merge-layout`. Its "As built"
 and results below.
 

@@ -2,6 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v67-merge-strategies.md)
 
+> What holds now: [The merger](../area/merger.md). This plan is kept as it was written.
+
 **Status:** merged into `main` on 2026-10-27 (built 2026-10-27), on branch `feature/review-merging-strategies`. Its
 "As built" and results below.
 

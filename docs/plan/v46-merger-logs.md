@@ -2,6 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v46-merger-logs.md)
 
+> What holds now: [The merger](../area/merger.md). This plan is kept as it was written.
+
 **Status:** merged into `main` on 2026-10-24 (built 2026-10-24), on branch `feature/merger-logs` (a workspace started
 in Symbiote, from `main` at `561826d`). The plan OK'd by the person, with its three questions
 answered: "1. Add a merger effort in settings. 2. Yes 3. Yes, recommendation. Ok" — a merger

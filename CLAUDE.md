@@ -7,12 +7,15 @@ framework templates) and the calls between them, with findings on the risky part
 - North Star and the index of every milestone, fix and chore by area: `docs/PLAN.md`. Each
   milestone's plan (design, decisions, "As built", results): `docs/plan/<id>-<slug>.md`; the v1
   design and decisions 1–19: `docs/plan/design.md`.
+- What holds now in an area, checked against the code: `docs/area/<area>.md` (Reviews and The
+  merger so far). Read your area's page before changing it: its decisions in force and its traps,
+  most of them found the hard way. Plans and journals are records of their day, kept as written.
 - What each milestone learned and measured: `docs/journal/`, under its plan's name (by date:
-  `docs/JOURNAL.md`). Read the journal files of the area you touch before changing it — most
-  traps there were found the hard way.
-- Read the index, then only your area's files; find a decision or a term by grep
-  (`grep -rn '^| 246 |' docs/plan`, `grep -rln <term> docs/plan docs/journal`), not by reading
-  the folders.
+  `docs/JOURNAL.md`). Without an area page, read the journal files of the area you touch.
+- Read the index, then your area's page, then only the files you need; find a decision or a term
+  by grep (`grep -rn '^| 246 |' docs/plan`, `grep -rln <term> docs/plan docs/journal`), not by
+  reading the folders. A replaced decision's row says what replaced it (`*(superseded by …)*`);
+  every decision's status: `docs/decisions.md`.
 - Graph JSON contract: `docs/graph-schema.md`.
 
 **Two modes, two North Stars** (`docs/PLAN.md`, decision 688).
@@ -158,6 +161,9 @@ unless the change says otherwise — prove it with the comparisons.
 - `docs/journal/<id>-<slug>.md` (a fix on its own branch: `fix-<slug>.md`): one entry per
   milestone part or fix — what was learned, how it was verified, and "Merged into main (date)";
   each entry a line in `docs/JOURNAL.md`. Templates: the `milestone` skill.
+- `docs/area/<area>.md`, if your area has one: what holds now, changed in the same commit as the
+  code it describes (a decision that replaces another, a new trap, a moved file). A new decision
+  that replaces an older one says so in its row (`supersedes 80`, `replaces 446's centring`).
 - User docs: `README.md` for what a user does (install, workspaces, the pages), short;
   `docs/reference/commands.md` (commands, options, keys, MCP tools) and `configuration.md`
   (`symbiote/config.json`, prompts, environment variables); `docs/guide/review-and-ci.md` (the

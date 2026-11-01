@@ -121,7 +121,7 @@ green before and after), then V25c (disk).
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 135 | The history page's name | **History** | It is the repository's history (every branch, the commit graph). "Branches" is git's own word, and every workspace already has a branch. "Repository" would cover workspaces too |
-| 136 | The first page | **Workspaces, also when there are none** | The empty state starts one or links to History. Workspaces are the unit Symbiote works in, so a first run shows that |
+| 136 | The first page *(superseded by 176 of V29)* | **Workspaces, also when there are none** | The empty state starts one or links to History. Workspaces are the unit Symbiote works in, so a first run shows that |
 | 137 | `/api/features` alias | **None** | The viewer and the server are always the same version (one process) |
 | 138 | Old records | **Move `symbiote/features/` once, with `rename`** | Reading both forever would keep the old word in the code. A copy would leave two sources |
 | 139 | "feature" as a kind | **Kept** | It is the kind most branches are (V24). Renaming it would change branch prefixes people already use |
