@@ -112,8 +112,9 @@ Symbiote's merger leaves the docs as they were (70 stale index rows on 2026-10-3
 2026-11-01). On `main`, after your own merge or when the person asks,
 `node scripts/plan/mark-merged.mjs` lists, and with `--write` marks, every merged branch's row ✅,
 its plan's Status and its journal's last line. Commit that on `main` as "Docs: merged" (the IDs
-in the body; the one commit made on `main` itself) and push. Settle its notes by hand: a merged
-row that says "planned" or "measured", a branch with commits after its merge.
+in the body; the one commit made on `main` itself) and push. Read its diff first, then settle its
+notes by hand: a merged row that says "planned" or "measured", a branch with commits after its
+merge, a journal several branches wrote in that are not all merged.
 
 ## Templates
 

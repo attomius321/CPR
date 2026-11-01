@@ -37,12 +37,19 @@ const INDEX = `# Plan
 | [Chore](plan/v6-g.md#chore-h) | H | ready for review | | [journal](journal/chore-h.md#h) |
 | [V7](plan/v7-i.md) | I | ✅ | 7 | [journal](journal/v7-i.md) |
 | Fix | J | merged | | [journal](journal/fix-j.md) |
+| Fix | K | ready for review | | [journal](journal/k-shared.md) |
+| Fix | L | ready for review | | [journal](journal/l-shared.md) |
+| [V10](plan/v10-m.md) | M | ready for review | 10 | [journal](journal/v10-m.md) |
 `;
 
 const plan = (id: string, status: string) =>
   `# ${id} — a plan\n\n[Index](../PLAN.md)\n\n**Status:** ${status}\n\n**Problem**: none.\n`;
 const journal = (heading: string) =>
   `# Journal\n\n[Index](../JOURNAL.md)\n\n## ${heading}\n\nWhat was built.\n`;
+
+/** A journal two branches wrote in, one entry each. */
+const shared = (first: string, second: string) =>
+  `${journal(first)}\n## ${second}\n\nWhat was fixed.\n`;
 
 let repo: TestRepo;
 
@@ -102,6 +109,19 @@ beforeEach(() => {
     'docs/journal/v5-f.md': journal('V5 — F (2026-10-19, branch `feature/f`)'),
     'docs/journal/v6-g.md': journal('V6 — G (2026-10-29, branch `feature/g`)'),
     'docs/journal/chore-h.md': journal('H (2026-10-29, branch `chore/h`)'),
+    'docs/journal/k-shared.md': shared(
+      'K — first (2026-10-29, branch `feature/k1`)',
+      'K — second (2026-10-30, branch `feature/k2`)',
+    ),
+    'docs/journal/l-shared.md': shared(
+      'L — first (2026-10-29, branch `fix/l1`)',
+      'L — second (2026-10-30, branch `fix/l2`)',
+    ),
+    'docs/plan/v10-m.md': plan('V10', 'ready for review (2026-10-29), on branch `feature/m`.'),
+    'docs/journal/v10-m.md': shared(
+      'V10 — M (2026-10-29, branch `feature/m`)',
+      'Fix — after M (2026-10-31, branch `fix/m2`)',
+    ),
   });
   repo.commitAt('Docs', '2026-10-28T10:00:00Z');
   branch('feature/a', '2026-10-30T12:00:00Z');
@@ -120,6 +140,12 @@ beforeEach(() => {
   branch('chore/h', '2026-11-01T16:00:00Z');
   branch('feature/i', '2026-11-01T17:00:00Z');
   branch('fix/j', '2026-11-01T18:00:00Z');
+  branch('feature/k1', '2026-10-30T10:00:00Z');
+  branch('feature/k2', '2026-11-01T10:00:00Z');
+  branch('fix/l1', '2026-10-30T10:00:00Z');
+  branch('fix/l2', null);
+  branch('feature/m', '2026-10-30T11:00:00Z');
+  branch('fix/m2', null);
 });
 
 afterEach(() => repo.cleanup());
@@ -137,6 +163,8 @@ describe('mark-merged', () => {
     // Merged, then moved on: a later commit is not in main, so a person decides.
     expect(out).toMatch(/V4.*1 later commit/);
     expect(out).not.toMatch(/V2|V5/);
+    // A journal two branches wrote in: its row waits for both.
+    expect(out).toMatch(/fix\/l1, fix\/l2: fix\/l2 not in main yet/);
     expect(repo.git('status', '--porcelain')).toBe('');
   });
 
@@ -163,6 +191,17 @@ describe('mark-merged', () => {
       '**Status:** merged into `main` on 2026-11-01 (built 2026-10-29), on branch `feature/i`',
     );
     expect(read('docs/journal/v7-i.md')).not.toContain('Merged into main');
+    // A journal two branches wrote in: ✅ once both are merged; its last line is its last entry's.
+    expect(index).toContain('| Fix | K | ✅ | |');
+    expect(read('docs/journal/k-shared.md')).toMatch(
+      /K — second[^]*What was fixed\.\n\nMerged into main \(2026-11-01\)\.\n$/,
+    );
+    expect(read('docs/journal/k-shared.md').match(/Merged into main/g)).toHaveLength(1);
+    expect(index).toContain('| Fix | L | ready for review | |');
+    expect(read('docs/journal/l-shared.md')).not.toContain('Merged into main');
+    // Its own plan says merged; its journal's last entry is another branch's, not merged.
+    expect(index).toContain('| [V10](plan/v10-m.md) | M | ✅ | 10 |');
+    expect(read('docs/journal/v10-m.md')).not.toContain('Merged into main');
     // A row that says "merged" without ✅.
     expect(index).toContain('| Fix | J | ✅ | |');
     expect(read('docs/plan/v2-b.md')).toContain('**Status:** ready for review (2026-10-29)');
