@@ -421,10 +421,12 @@ describe('workspacePrompt', () => {
       expect(text).toContain('You are starting a new feature in this repository');
       for (const line of lines) expect(text).not.toMatch(line);
     }
-    // A spike's answer is its report: nothing to commit unless asked.
+    // A spike's answer is its report, and kept where the project keeps answers (AR2, 740).
     const spike = workspacePrompt(record({ kind: 'spike', title: 'T' }), where);
     expect(spike).not.toMatch(/Commit your work/);
-    expect(spike).toMatch(/Commit nothing unless the brief asks for it/);
+    expect(spike).toMatch(
+      /Commit only what the brief or the project's instructions ask you to keep/,
+    );
   });
 
   it('names the documents and their folder after the brief, saying the folder can be read (V40)', () => {

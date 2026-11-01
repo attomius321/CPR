@@ -87,9 +87,24 @@ describe('with no prompts set (V28)', () => {
         `$1. Symbiote has already made its branch and its worktree: you are in that worktree now, ${worktree}, with the branch $2 (started from $3) checked out. Work only here, on $2. Do not create another branch or worktree, and do not switch branches (no \`git checkout -b\`, \`git switch\`, \`git worktree add\` or EnterWorktree), even where the project's instructions or your tools say new work gets one: this branch is the one the person reviews and merges.\n`,
       );
       expect(expected).not.toBe(into);
+      // Since AR2 (decision 740), a spike's answer is also kept where the project keeps answers.
+      const spike = expected
+        .replace(
+          'The answer is what is asked for, not a change to merge: put it in your final report; ' +
+            "keep experiments out of the project's code unless the brief says otherwise.",
+          'The answer is what is asked for, not a change to merge. Put it in your final report; if ' +
+            "the brief or the project's instructions say where answers are kept (a file, its docs), " +
+            "write it there too. Keep experiments out of the project's code unless the brief says " +
+            'otherwise.',
+        )
+        .replace(
+          'Commit nothing unless the brief asks for it.',
+          "Commit only what the brief or the project's instructions ask you to keep.",
+        );
+      expect(spike !== expected).toBe(workspace.kind === 'spike');
       const given = { ...workspace, worktree };
-      expect(workspacePrompt(given, where, text)).toBe(expected);
-      expect(workspacePrompt(given, where)).toBe(expected);
+      expect(workspacePrompt(given, where, text)).toBe(spike);
+      expect(workspacePrompt(given, where)).toBe(spike);
     }
   });
 
@@ -152,9 +167,33 @@ describe('with no prompts set (V28)', () => {
       'Reproduce it first, with a failing test where the project has tests',
     );
     expect(DEFAULT_PROMPTS['start.feature']).not.toContain('Reproduce it first');
+    // AR2 (decision 740): a spike's answer is kept where the brief or the project keeps answers.
     expect(DEFAULT_PROMPTS['start.spike']).toContain(
-      'Commit nothing unless the brief asks for it.',
+      "if the brief or the project's instructions say where answers are kept (a file, its docs), " +
+        'write it there too.',
     );
+    expect(DEFAULT_PROMPTS['start.spike']).toContain(
+      "Commit only what the brief or the project's instructions ask you to keep.",
+    );
+    expect(DEFAULT_PROMPTS['start.spike']).not.toContain('Commit nothing');
+  });
+
+  it("asks Hive's writer for the failing tests, not the whole check Symbiote runs (AR2)", () => {
+    // Decision 739: the writer ran the whole check before each turn's end, then Hive ran it again.
+    const again = 'Symbiote runs the whole check again.';
+    expect(DEFAULT_PROMPTS['hive.start']).toContain(
+      'Symbiote runs the whole check after each of your turns: before you end one, run the tests ' +
+        'your change touches, not the whole check.',
+    );
+    expect(DEFAULT_PROMPTS['hive.start']).not.toContain('So commit everything');
+    expect(DEFAULT_PROMPTS['hive.check']).toContain(
+      'Fix the cause and run the tests that failed, and the ones your fix touches, until they ' +
+        `pass. Then commit and end your turn: ${again}`,
+    );
+    expect(DEFAULT_PROMPTS['hive.review']).toContain(`Then commit and end your turn: ${again}`);
+    for (const key of ['hive.start', 'hive.check', 'hive.review'] as const) {
+      expect(DEFAULT_PROMPTS[key]).not.toMatch(/run the check yourself|Then run the check/);
+    }
   });
 });
 
@@ -729,7 +768,8 @@ describe("Hive's prompts (HV2, decision 657)", () => {
     expect(text).toBe(
       'Symbiote ran the check on feature/one at abc1234 (round 1 of 3): `pnpm check` failed. ' +
         'Its last lines:\n\n```\nFAIL a.test.ts\n```\n\n' +
-        'Fix the cause, run the check yourself, commit, and end your turn.',
+        'Fix the cause and run the tests that failed, and the ones your fix touches, until they ' +
+        'pass. Then commit and end your turn: Symbiote runs the whole check again.',
     );
   });
 });

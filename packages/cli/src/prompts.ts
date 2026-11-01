@@ -29,9 +29,11 @@ const KIND_LINES: Partial<Record<WorkKind, string>> = {
     'Change structure, not behaviour: do not change what existing tests assert; if behaviour ' +
     'must change, stop and say so.',
   chore: 'Keep to what is asked; if it needs a change in behaviour, stop and say so.',
+  // AR2 (decision 740): 4 of 11 spikes ended with the person asking to keep the answer.
   spike:
-    'The answer is what is asked for, not a change to merge: put it in your final report; ' +
-    "keep experiments out of the project's code unless the brief says otherwise.",
+    'The answer is what is asked for, not a change to merge. Put it in your final report; if the ' +
+    "brief or the project's instructions say where answers are kept (a file, its docs), write it " +
+    "there too. Keep experiments out of the project's code unless the brief says otherwise.",
 };
 
 /**
@@ -61,8 +63,8 @@ function startPrompt(kind: WorkKind): string {
     '{plan}',
     '',
     kind === 'spike'
-      ? 'Commit nothing unless the brief asks for it. When you have the answer, say it: the ' +
-        'person reads your report in Symbiote.'
+      ? "Commit only what the brief or the project's instructions ask you to keep. When you " +
+        'have the answer, say it: the person reads your report in Symbiote.'
       : "Commit your work on {branch} as you go. Push only if the project's instructions say " +
         'so. When it is ready, say so: the person reviews the branch in Symbiote, and an approved ' +
         'commit is merged into {into}.',
@@ -216,9 +218,10 @@ const HIVE_START =
   'Hive drives this workspace. When you end a turn with commits, Symbiote runs the check on ' +
   "the branch's tip ({check}) and sends you its failures; once the check passes, a reviewer runs " +
   'your change in a throwaway copy and sends you the tests it proves defects with. That is up to ' +
-  '{rounds} rounds; once both pass, the person lands the branch. So commit everything before you ' +
-  'end a turn, end a turn only when the work is done or you need the person, and never push, ' +
-  'merge or switch branches.';
+  '{rounds} rounds; once both pass, the person lands the branch. Symbiote runs the whole check ' +
+  'after each of your turns: before you end one, run the tests your change touches, not the ' +
+  'whole check. Commit everything before you end a turn, end a turn only when the work is done ' +
+  'or you need the person, and never push, merge or switch branches.';
 
 /** What Hive sends the writer when the check failed (HV2). */
 const HIVE_CHECK = [
@@ -229,7 +232,9 @@ const HIVE_CHECK = [
   '{output}',
   '```',
   '',
-  'Fix the cause, run the check yourself, commit, and end your turn.',
+  // AR2 (decision 739): "run the check yourself" had the writer run it before Symbiote did.
+  'Fix the cause and run the tests that failed, and the ones your fix touches, until they pass. ' +
+    'Then commit and end your turn: Symbiote runs the whole check again.',
 ].join('\n');
 
 /**
@@ -244,8 +249,8 @@ const HIVE_REVIEW = [
   '{findings}',
   '',
   'Add each test to the branch, where the project keeps its tests, and make it pass; or, for a ' +
-    'test you think is wrong, say in one line why and leave it out. Then run the check, commit, ' +
-    'and end your turn.',
+    'test you think is wrong, say in one line why and leave it out. Then commit and end your ' +
+    'turn: Symbiote runs the whole check again.',
 ].join('\n');
 
 /**
