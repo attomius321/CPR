@@ -64,3 +64,5 @@ the five gaps found are fixed here; the person keeps the fifth (the HV4 workspac
 Not verified: a real Codex or Hermes run reading `AGENTS.md` (Codex's documentation says it reads
 it; Hermes's, through secondary sources, says it loads `AGENTS.md` or `HERMES.md`); the note on a
 real stale page, only in the tests.
+
+Merged into main (2026-11-01).
