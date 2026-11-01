@@ -65,3 +65,5 @@ last call but one. One read of a log at a time now; a read asked meanwhile waits
 
 **Verification.** The reviewer's test, `packages/cli/test/hive-live.test.ts`, red then green; the
 runner's tests pass.
+
+Merged into main (2026-10-31).

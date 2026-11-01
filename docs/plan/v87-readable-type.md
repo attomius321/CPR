@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v87-readable-type.md)
 
-**Status:** built, ready for review (2026-11-01), on branch `feature/font-sizes-too-small` (a
+**Status:** merged into `main` on 2026-11-01 (built 2026-11-01), on branch `feature/font-sizes-too-small` (a
 workspace started in Symbiote, from `main` at `6aed550`). The person chose design B on 1:1
 designs, kept the terminal at 14 px ("Terminal is ok as it is now") and asked for the text-size
 choice. Its "As built" and results below.

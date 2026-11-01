@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/ar2-defaults-from-ar1.md)
 
-**Status:** built (2026-11-01), ready for review, on branch `spike/activity-review`, after AR1
+**Status:** built (2026-11-01), merged into `main` on 2026-11-01, on branch `spike/activity-review`, after AR1
 (decision 738).
 
 The person's answers (2026-11-01):

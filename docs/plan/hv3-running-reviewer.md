@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv3-running-reviewer.md)
 
-**Status:** built, ready for review (2026-10-31), on branch `feature/hv3-running-reviewer` (the
+**Status:** merged into `main` on 2026-10-31 (built 2026-10-31), on branch `feature/hv3-running-reviewer` (the
 workspace's, from `main` at `c84fa98`). The person's answers to the plan's five questions: 1–4 as
 recommended; 5, a Review tab of the workspace's own, "In hive mode, there will be no more human
 review process". The real Hive run reached landing asked, its reviewer proving 2 defects with

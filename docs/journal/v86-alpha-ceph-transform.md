@@ -71,3 +71,5 @@ without Hive's text, one answering kept. `pnpm check` 2,691 unit tests; `pnpm te
 Not verified: a real Claude Code or Codex conversation given the Hive text (the fake agent's
 arguments only); another window on Nucleus's page while the conversation is replaced (its own
 open may be refused once with "Alpha Ceph is being asked", then reads the new one).
+
+Merged into main (2026-11-01).

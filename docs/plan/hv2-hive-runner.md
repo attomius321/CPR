@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv2-hive-runner.md)
 
-**Status:** built, ready for review (2026-10-31), on branch `feature/hv2-hive-runner` (the
+**Status:** merged into `main` on 2026-10-31 (built 2026-10-31), on branch `feature/hv2-hive-runner` (the
 workspace's, from `main` at `6250957`); the person's OK on the plan ("Ok, go for it"), with the
 recommended answers to its five questions. The real run went from its start to landing asked, in 3
 rounds, through a killed `symbiote view` and a Hive off and on (see Results).

@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v82-hive-mode.md)
 
-**Status:** built, ready for review (2026-10-30), on branch `feature/hive-mode-setting` (the
+**Status:** merged into `main` on 2026-10-30 (built 2026-10-30), on branch `feature/hive-mode-setting` (the
 workspace's). The plan was confirmed by the person ("YES. Do it") after two rounds of mockups: the
 first (a neutral ink tint, white highlights) was "more like this, but redish and black", with a
 reference picture of glossy black liquid; the second (below) was approved. Then: "Also change the

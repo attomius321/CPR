@@ -42,3 +42,5 @@ are: decision 119 in `design.md` ("the North Star is unchanged"), which is dated
 worktree: the highest in use was 687, and each of 688–692 is used once. Normal mode's North Star
 text is identical to `main`'s. `pnpm check` passes. No code changed: no build, e2e or regression
 sets run for this change; Hive's check runs them on the branch.
+
+Merged into main (2026-10-31).

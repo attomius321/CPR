@@ -66,3 +66,5 @@ after a restart; screenshots 1440 and 390 px, dark and light, in the job's folde
 Not verified: a running conversation picking up its recording at its next wake; Claude Code's
 compaction, `StopFailure` and `PermissionDenied` and a Codex compaction from a real run; the
 rotation on a real record; the desktop app; macOS and Windows.
+
+Merged into main (2026-10-30).

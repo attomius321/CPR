@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v84-activity-export.md)
 
-**Status:** ready for review (2026-10-31), on branch `feature/export-activity` (a workspace
+**Status:** merged into `main` on 2026-10-31 (built 2026-10-31), on branch `feature/export-activity` (a workspace
 started in Symbiote, from `main` at `21e510e`). The person asked for the plan and to start
 implementing with its recommendations ("Make the plan, and start implementing with your own
 recommandations"). Its "As built" and results below.

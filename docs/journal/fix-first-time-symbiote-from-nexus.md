@@ -45,3 +45,5 @@ Not verified: WSL's mirrored networking; Edge or Firefox on Windows; the person'
 `symbiote view --browser` and `symbiote-nexus --browser` opening a Windows browser on a new port.
 The same gap applies there in principle, but it was not seen: a browser starts slower than WSL
 forwards a port.
+
+Merged into main (2026-10-30).

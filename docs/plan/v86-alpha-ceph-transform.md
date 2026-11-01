@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v86-alpha-ceph-transform.md)
 
-**Status:** built, ready for review (2026-11-01), on branch `feature/alpha-ceph-transform` (a
+**Status:** merged into `main` on 2026-11-01 (built 2026-11-01), on branch `feature/alpha-ceph-transform` (a
 workspace started in Symbiote, from `main` at `6aed550`). The person asked to start building after
 the plan without waiting for an OK, so films of the built sidenav stand in for a mockup made
 first. V86b (Alpha Ceph's conversation and its Hive text) was asked after V86a was built; the

@@ -69,3 +69,5 @@ from the branch on ky `0d59458`: first paint 193 and 192 ms, no page errors. `pn
 Not verified: a real workspace agent working with the new skill (the reader test reads the docs
 alone, without Claude Code's own instructions); the script's `--write` on today's `main` (it runs
 there after this merges).
+
+Merged into main (2026-11-01).

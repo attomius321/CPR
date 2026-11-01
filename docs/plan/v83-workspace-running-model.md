@@ -3,8 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/v83-workspace-running-model.md)
 
 **Status:** built (2026-10-31), on branch `feature/workspace-running-agent-model-and` (a
-workspace started in Symbiote, from `main` at `6250957`; `main` merged in at `82cbd6c`); ready
-for review. V83a–b built; "As built" and results at the end. The person OK'd the plan
+workspace started in Symbiote, from `main` at `6250957`; `main` merged in at `82cbd6c`); merged into `main` on 2026-10-31. V83a–b built; "As built" and results at the end. The person OK'd the plan
 with their answers to its three questions: "1. On the head and each sidenav card. Also, in the
 sidenav card, keep the agent action one line only..right now the card keeps growing and
 shrinking, and on hover, the tooltip expand the agent action message. 2. Recommended 3. Not now."

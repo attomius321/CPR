@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/nx4-pinned-folders.md)
 
 **Status:** built (2026-10-30) on branch `feature/pinned-in-symbiote-nexus` (a workspace started
-in Symbiote), ready for review. Planned and OK'd by the person the same day, with their answers
+in Symbiote), merged into `main` on 2026-10-30. Planned and OK'd by the person the same day, with their answers
 (decisions 617–620); NX4a–c built. "As built" and results at the end.
 
 **Problem** (asked: "I need pinned feature in symbiote-nexus"; to the plan's questions: what is

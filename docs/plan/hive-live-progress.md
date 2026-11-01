@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hive-live-progress.md)
 
-**Status:** built, ready for review (2026-10-31), on branch `feature/hive-live-progress` (the
+**Status:** merged into `main` on 2026-10-31 (built 2026-10-31), on branch `feature/hive-live-progress` (the
 workspace's, from `main` at `cd1956a`). The person's answers to the plan's three questions: 1, an expected time only
 from a passing check of the same commands; 2, Hive's cards a sidenav group of their own, "in the
 hive animation style, with that hexagonal background"; 3, every run's log kept. And: "Keep it full
