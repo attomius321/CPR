@@ -35,6 +35,12 @@ the five gaps found are fixed here; the person keeps the fifth (the HV4 workspac
   Symbiote's own files there, git-ignored by `symbiote/.gitignore`, which Prettier does not read:
   13 workspace and Hive records failed. `.prettierignore` now leaves out `symbiote/*` but
   `symbiote/config.json`, the one committed file.
+- **Prettier's failure hid ESLint's.** With Prettier passing in the main checkout, `eslint .`
+  stopped on 2 test files Hive's reviewer had written in its throwaway copies, kept in
+  `symbiote/hive/<branch>/r1/packages/…` ("not found by the project service"). Found only after the
+  first merge, by running `pnpm check` in the main checkout. `eslint.config.js` now ignores
+  `symbiote/**`. Typecheck (root `*.ts` and the packages) and Vitest (`packages/*/test`) never
+  read `symbiote/`.
 - **A format without a placeholder is a preset's name to git**: `--format=@` failed with "invalid
   --pretty format"; `tformat:@` works. And a `let` read by a function called before its line is a
   ReferenceError in a script whose top-level code runs in order.
@@ -50,6 +56,8 @@ the five gaps found are fixed here; the person keeps the fifth (the HV4 workspac
 - Prettier: Symbiote's 492 local files copied into this worktree, `prettier --check .` passes;
   with `main`'s `.prettierignore`, the same 13 warnings as in the main checkout.
   `symbiote/config.json` is still checked (`--file-info`: not ignored).
+- ESLint: Hive's and the workspaces' local files copied in (150), `eslint .` passes; with the old
+  config, the same 2 parsing errors. Then `pnpm check` in the main checkout itself.
 - `pnpm check`: 2,749 tests, format, lint, typecheck. `pnpm build`. Links in the changed files:
   0 broken.
 
