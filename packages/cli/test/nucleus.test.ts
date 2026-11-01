@@ -758,7 +758,7 @@ describe('Alpha Ceph: Nucleus while Hive mode is on (decisions 682-687)', () => 
     const request = startPageAgent.mock.calls[0]?.[0];
     // The session's name is how Symbiote finds it (decision 239): Nucleus whatever it is called.
     expect(request).toMatchObject({ name: 'Nucleus' });
-    // Told what Hive does at its end (V86, decision 736).
+    // Told what Hive does at its end (V86, decision 751).
     expect(request?.instructions).toBe(
       nucleusInstructions(
         DEFAULT_PROMPTS.nucleus,

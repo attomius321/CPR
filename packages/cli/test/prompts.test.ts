@@ -407,7 +407,7 @@ describe("Nucleus's name in its prompt (Alpha Ceph, decision 685)", () => {
     );
   });
 
-  it("tells Alpha Ceph what Hive does: Hive's text at the end (V86, decision 736)", () => {
+  it("tells Alpha Ceph what Hive does: Hive's text at the end (V86, decision 751)", () => {
     const hive = fillPrompt(DEFAULT_PROMPTS['hive.nucleus'], { rounds: '3' });
     expect(hive).toMatch(/^Hive mode is on\. Every workspace you start now is Hive's/);
     expect(hive).toContain('for up to 3 rounds');

@@ -270,7 +270,7 @@ HV4. The milestones toward this North Star are HV4–HV7, in the order they are 
 | [Feature](plan/v82-hive-mode.md#feature-hives-question-a-circuit-featurehive-mode-dialog-prompt) | Hive's question as a circuit board: traces route into a machined Hive Mind; turning on as a hex shutter; the Swarm kept for later | ready for review | 665–667, 673 | [journal](journal/v82-hive-mode.md) |
 | [Feature](plan/v82-hive-mode.md#feature-alpha-ceph-nucleus-in-hive-mode-featurealpha-ceph-hive-name) | Alpha Ceph: Nucleus's name and icon while Hive is on — the Hive Mind as its icon, the name in its prompt and gate; Hive off as before | built, ready for review | 682–687 | [journal](journal/v82-hive-mode.md) |
 | [V85](plan/v85-hive-honeycomb-compact.md) | Hive's honeycomb stays as the app's background after the arrival; every page compact like VS Code (13 px body, 26 px controls, 22 px rows) | built, ready for review | 701–715 | [journal](journal/v85-hive-honeycomb-compact.md) |
-| [V86](plan/v86-alpha-ceph-transform.md) | Nucleus becomes Alpha Ceph in the sidenav after Hive's arrival: the ring breaks onto the Mind's cells, the name's letters change over; never at load. Its conversation follows Hive, Alpha Ceph told what Hive does | built, ready for review | 730–737 | [journal](journal/v86-alpha-ceph-transform.md) |
+| [V86](plan/v86-alpha-ceph-transform.md) | Nucleus becomes Alpha Ceph in the sidenav after Hive's arrival: the ring breaks onto the Mind's cells, the name's letters change over; never at load. Its conversation follows Hive, Alpha Ceph told what Hive does | built, ready for review | 730–734, 750–752 | [journal](journal/v86-alpha-ceph-transform.md) |
 
 ### Native window
 

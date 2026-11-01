@@ -48,7 +48,7 @@ first paint on real graphs (the change adds no work at load).
 ## V86b — Alpha Ceph's conversation, told what Hive does (2026-11-01, branch `feature/alpha-ceph-transform`)
 
 Asked after V86a: the question names the change, and Alpha Ceph gets a new conversation with a
-Hive text. Decisions 735–737, each the person's choice, the text approved as drafted: turning Hive
+Hive text. Decisions 750–752, each the person's choice, the text approved as drafted: turning Hive
 on or off ends a conversation started under the other name and opens the next, unless it is
 busy; `hive.nucleus` at the end of Alpha Ceph's instructions; one sentence in the question.
 

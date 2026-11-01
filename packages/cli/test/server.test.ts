@@ -3152,7 +3152,7 @@ describe('/api/hive (V82)', () => {
   });
 });
 
-describe("Nucleus's conversation follows Hive (V86, decision 735)", () => {
+describe("Nucleus's conversation follows Hive (V86, decision 750)", () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);
   const servers: ViewServer[] = [];

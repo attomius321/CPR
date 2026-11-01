@@ -63,7 +63,7 @@ const NUCLEUS: PageAgentSpec = {
   ],
   prompt: (_root, text) => text,
   // Its name filled in, or told at the end (decision 685); a project's text from before V50 may
-  // still hold {question}: filled with nothing. Alpha Ceph is told what Hive does (V86, 736).
+  // still hold {question}: filled with nothing. Alpha Ceph is told what Hive does (V86, 751).
   instructions: (root, name) => {
     const { text } = readPrompts(root);
     const hive =

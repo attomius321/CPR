@@ -6,7 +6,7 @@
 workspace started in Symbiote, from `main` at `6aed550`). The person asked to start building after
 the plan without waiting for an OK, so films of the built sidenav stand in for a mockup made
 first. V86b (Alpha Ceph's conversation and its Hive text) was asked after V86a was built; the
-person chose each of its decisions and approved the text before it was built. Its "As built" and
+person chose each of its decisions and approved the text before it was built. V86b's decisions were 735–737 until `spike/activity-review` was found to hold 735–744 (planned an hour earlier): renumbered 750–752, leaving that branch room; the commit `567fd74` still says 735 and 736. Its "As built" and
 results are below.
 
 **Problem** (asked: "I want an animation of Nucleus transforming to Alpha Ceph, after Hive mode
@@ -105,7 +105,7 @@ measurements; docs.
 | 731 | Nucleus between the swap and the play | **Held as Nucleus everywhere (name and icon), then Alpha Ceph everywhere as the sidenav starts to play; only the sidenav animates** | one name on screen at a time; the page head and Settings are out of the brief's scope to animate |
 | 732 | The icon's motion | **CSS animations on the SVG's elements: the ring breaks into six arcs onto the ring cells, the dot ignites into the core, the cells boot clockwise with the Mind's flicker; 1.2 s, ending on the still icon's values** | the brief's own sketch; nothing drawn once it ends; no canvas next to the arrival's |
 | 733 | The name's motion | **Letters scramble and lock left to right into "Alpha Ceph" in about 850 ms; `aria-label` and tooltip the new name from the start** | "the name's letters changing over"; the machined, circuit look of decision 665 |
-| 734 | Turning Hive off | **The sidenav at once, under today's fade; the conversation as when it turns on (735)** | the person's answer: "Mirror the turn-on" |
+| 734 | Turning Hive off | **The sidenav at once, under today's fade; the conversation as when it turns on (750)** | the person's answer: "Mirror the turn-on" |
 
 **Not in V86 (later)**: the change on Nucleus's page head and in Settings; a transform in other
 windows of the same repository when Hive turns on elsewhere (they learn it on reload today).
@@ -137,9 +137,9 @@ workspaces Hive drives. The question ("Turn on Hive mode?") does not name Nucleu
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 735 | A conversation when Hive turns on or off | **Ends and the next opens under the new name, unless it is answering, waits on a dialog or on a Confirm: then kept, its page's note as today (decision 686)** | the person: "New, unless it's busy"; no work in progress cut off |
-| 736 | What Alpha Ceph is told of Hive | **`hive.nucleus`, editable in Settings' Hive group, at the end of Alpha Ceph's instructions: what Hive does with the workspaces it starts, the `hive` field's steps, what is Hive's to send, and that landing, pushing and deleting stay the person's** | the person: "Yes, editable", then the draft "as written"; HV7 (decision 692) may grow it into Hive's orchestrator |
-| 737 | The question | **One sentence: Nucleus becomes Alpha Ceph, is told what Hive does, and its conversation starts again unless busy** | the person's brief: "it should be stated … in the Hive mode dialog" |
+| 750 | A conversation when Hive turns on or off | **Ends and the next opens under the new name, unless it is answering, waits on a dialog or on a Confirm: then kept, its page's note as today (decision 686)** | the person: "New, unless it's busy"; no work in progress cut off |
+| 751 | What Alpha Ceph is told of Hive | **`hive.nucleus`, editable in Settings' Hive group, at the end of Alpha Ceph's instructions: what Hive does with the workspaces it starts, the `hive` field's steps, what is Hive's to send, and that landing, pushing and deleting stay the person's** | the person: "Yes, editable", then the draft "as written"; HV7 (decision 692) may grow it into Hive's orchestrator |
+| 752 | The question | **One sentence: Nucleus becomes Alpha Ceph, is told what Hive does, and its conversation starts again unless busy** | the person's brief: "it should be stated … in the Hive mode dialog" |
 
 ## As built (V86)
 

@@ -221,7 +221,7 @@ const HIVE_START =
   'merge or switch branches.';
 
 /**
- * What Alpha Ceph is told of Hive (V86, decision 736): what Hive does with the workspaces it
+ * What Alpha Ceph is told of Hive (V86, decision 751): what Hive does with the workspaces it
  * starts, and what is Hive's to send them. At its instructions' end while Hive mode is on.
  */
 const HIVE_NUCLEUS =
@@ -375,7 +375,7 @@ function nucleusAbout(name: string): string {
  * Nucleus's system prompt from `text` (`prompts.nucleus`), as `name` (decision 685): `{name}`
  * filled, and `{question}` of a text from before V50 with nothing. A text without `{name}` is
  * told its name in a line at its end in Hive mode only; with Hive off it is given as written.
- * `hive`, Alpha Ceph's (`hive.nucleus`, filled), comes last (V86, decision 736).
+ * `hive`, Alpha Ceph's (`hive.nucleus`, filled), comes last (V86, decision 751).
  */
 export function nucleusInstructions(text: string, name: string, hive?: string): string {
   const filled = fillPrompt(text, { question: '', name }).trimEnd();

@@ -119,7 +119,7 @@ test('a conversation at work keeps the name it started with as Hive goes off and
     'Ready: ask in its terminal',
     POLL,
   );
-  // Answering: Hive going off or on leaves it be (V86, decision 735).
+  // Answering: Hive going off or on leaves it be (V86, decision 750).
   symbiote.setSession('fake0', { state: 'working', status: 'busy' });
   await expect(link(page, 'Alpha Ceph')).toHaveAttribute('data-state', 'working', POLL);
 
@@ -160,7 +160,7 @@ test('a conversation at work keeps the name it started with as Hive goes off and
   await expect.poll(kind, POLL).toBe('plain');
 });
 
-// V86 (decisions 735–737): Nucleus's conversation follows Hive, told what Hive does as Alpha Ceph;
+// V86 (decisions 750–752): Nucleus's conversation follows Hive, told what Hive does as Alpha Ceph;
 // the question says so.
 const hiveText = "Hive mode is on. Every workspace you start now is Hive's";
 
