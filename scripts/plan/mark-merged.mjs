@@ -9,12 +9,14 @@
 //   node scripts/plan/mark-merged.mjs --write    # marks it; commit the result as "Docs: merged"
 //   --into <ref>                                 # another target than main
 //
-// A row's branch is the one its plan's Status names (`on branch \`feature/x\``), else the first
-// one its journal names. It is merged when its tip is in `main`; a branch that is gone, when a
-// merge on `main`'s first-parent line names it (`Merge feature/x: …`, the merger's subject). Only
-// rows that say the work is built, in review or merged change; a merged row that says "planned"
-// or "measured" is listed for a person to read. A row already ✅ gets its plan's Status fixed
-// when that still says "ready for review".
+// A row's branch is the one its plan's Status names (`on branch \`feature/x\``); a row with no
+// plan of its own waits for every branch its journal's entries name, since a journal several
+// branches wrote in does not say which entry is the row's. A branch is merged when its tip is in
+// `main`; one that is gone, when a merge on `main`'s first-parent line names it (`Merge
+// feature/x: …`, the merger's subject). Only rows that say the work is built, in review or merged
+// change; a merged row that says "planned" or "measured" is listed for a person to read. A row
+// already ✅ gets its plan's Status fixed when that still says "ready for review". The journal's
+// last line is its last entry's: the date that entry's branch was merged.
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -104,6 +106,10 @@ function markStatus(status, date) {
   return status.replace(/^\*\*Status:\*\*\s*/, `**Status:** ${merged}; `);
 }
 
+/** The branches a journal's entries name in their headings, in order: "(date, branch `x`)". */
+const entryBranches = (text) =>
+  [...text.matchAll(/^## .*?branch\s+`([^`\s]+)`/gm)].map((m) => m[1]);
+
 /** The journal with "Merged into main (<date>)." at its end, unless its last entry has it. */
 function markJournal(text, date) {
   const last = text.lastIndexOf('\n## ');
@@ -150,16 +156,36 @@ for (let i = 0; i < lines.length; i++) {
   if (done && !(planStatus && REVIEW.test(planStatus) && !saysMerged(planStatus))) continue;
 
   const journalText = journalPath && existsSync(journalPath) ? current(journalPath) : null;
-  const branch = planStatus?.match(BRANCH)?.[1] ?? journalText?.match(BRANCH)?.[1];
-  if (!branch || branch === into) continue;
-  const merged = mergedOn(branch);
-  if (!merged) continue;
-  const { date, later } = merged;
-  if (later > 0) {
-    const commits = later === 1 ? '1 later commit is' : `${later} later commits are`;
-    notes.push(`${id}  ${branch}  merged ${date}, but ${commits} not in ${into}: left as it is`);
+  const entries = journalText ? entryBranches(journalText) : [];
+  // The row's branches: its plan's; else every branch its journal's entries name, since a journal
+  // several branches wrote in does not say which entry is the row's.
+  const planBranch = planStatus?.match(BRANCH)?.[1];
+  const fallback = journalText?.match(BRANCH)?.[1];
+  const own = [
+    ...new Set(planBranch ? [planBranch] : entries.length ? entries : fallback ? [fallback] : []),
+  ].filter((b) => b !== into);
+  if (own.length === 0) continue;
+  const results = own.map((b) => ({ branch: b, merged: mergedOn(b) }));
+  const open = results.filter((r) => !r.merged).map((r) => r.branch);
+  if (open.length === own.length) continue;
+  const branch = own.join(', ');
+  if (open.length > 0) {
+    notes.push(`${id}  ${branch}: ${open.join(', ')} not in ${into} yet: left as it is`);
     continue;
   }
+  const movedOn = results.find((r) => r.merged.later > 0);
+  if (movedOn) {
+    const { later } = movedOn.merged;
+    const commits = later === 1 ? '1 later commit is' : `${later} later commits are`;
+    notes.push(
+      `${id}  ${movedOn.branch}  merged ${movedOn.merged.date}, but ${commits} not in ${into}: left as it is`,
+    );
+    continue;
+  }
+  const date = results
+    .map((r) => r.merged.date)
+    .sort()
+    .at(-1);
 
   if (done) {
     if (editStatus(planPath, date)) statuses.push(`${id}  plan/${planLink[1]}  merged ${date}`);
@@ -172,8 +198,12 @@ for (let i = 0; i < lines.length; i++) {
   lines[i] = `|${[cells[0], cells[1], ' ✅ ', ...cells.slice(3)].join('|')}|`;
   marked.push(`${id}  ${branch}  merged ${date}`);
   if (planPath && planStatus) editStatus(planPath, date);
-  if (journalText && !journalLink[2]) {
-    const next = markJournal(journalText, date);
+  // The journal's last line says when its last entry's branch was merged: that branch's date,
+  // which need not be the row's (a fix written after it, on its own branch).
+  const lastBranch = entries.at(-1) ?? (own.length === 1 ? own[0] : undefined);
+  const lastMerged = lastBranch && lastBranch !== into ? mergedOn(lastBranch) : null;
+  if (journalText && !journalLink[2] && lastMerged && lastMerged.later === 0) {
+    const next = markJournal(journalText, lastMerged.date);
     if (next !== null) edits.set(journalPath, next);
   }
 }
