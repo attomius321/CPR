@@ -358,3 +358,4 @@ merge commit.
 - 2026-10-31 [Hive's live progress, built](journal/hive-live-progress.md)
 - 2026-10-31 [Fix: a review of the reviewer's own code taken for a missing sandbox](journal/hive-live-progress.md)
 - 2026-10-31 [Fix: two reads of a review's log at once](journal/hive-live-progress.md)
+- 2026-11-01 [Fix — Hive's runner: no second check of a commit, nothing sent to a branch being landed, a turn it cannot see noticed](journal/fix-hive-runner-flaws.md)
