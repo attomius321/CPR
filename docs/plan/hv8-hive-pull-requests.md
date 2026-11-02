@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv8-hive-pull-requests.md)
 
-**Status:** built (2026-11-02), on branch `feature/hive-pull-requests` (the workspace's, a Hive
+**Status:** merged into `main` on 2026-11-02; built (2026-11-02), on branch `feature/hive-pull-requests` (the workspace's, a Hive
 workspace, from `main` at `0e4e4b2`); Hive OK'd the plan. Proved against a fake GitHub and GitLab
 and a bare local `origin`; no real pull or merge request was opened anywhere.
 

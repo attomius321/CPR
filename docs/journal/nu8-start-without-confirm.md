@@ -49,3 +49,5 @@ did not change, the route was missing), `pnpm check` (195 files, 2,771 tests), `
 off, on and with Hive on (Alpha Ceph's), dark and light.
 
 Not verified: a real Nucleus conversation on Claude Code or Codex reading the new texts.
+
+Merged into main (2026-11-02).

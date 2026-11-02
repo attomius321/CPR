@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/nu8-start-without-confirm.md)
 
 **Status:** built (2026-11-02), on branch `feature/nucleus-start-without-confirm` (the
-workspace's, from `main` at `e23651c`); ready for review. Planned as NU3; NU8 since NU1's plan
+workspace's, from `main` at `e23651c`); merged into `main` on 2026-11-02. Planned as NU3; NU8 since NU1's plan
 (decision 595) had NU3–NU7 for other steps.
 
 **Problem** (the brief: "Add a setting, off by default, that lets Nucleus … start a workspace

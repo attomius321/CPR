@@ -103,3 +103,5 @@ kept both sides' intents; the check and review passed again and it landed 2 min 
 `origin`'s refs in the scratch repository, the person's review file (`via: "hive"`), the queue's
 entries (`by: "hive"`, `pushed` ok), the review copies removed (only their streams kept);
 screenshots of the real Review tab and the Done group, dark and light.
+
+Merged into main (2026-11-02).

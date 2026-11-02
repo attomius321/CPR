@@ -211,3 +211,5 @@ a new request while its record holds one it has not seen closed.
 **Verification**: the reviewer's test (`hive-request-merged-mid-rounds.test.ts`, already on the
 branch, identical to the review's file) and every earlier reviewer test and the runner suites,
 96 tests; `tsc -p packages/cli`, lint.
+
+Merged into main (2026-11-02).
