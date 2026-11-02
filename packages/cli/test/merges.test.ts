@@ -1046,6 +1046,149 @@ describe('the config a landing reads (V26a)', () => {
   });
 });
 
+/** A bare `origin` with `main` pushed and tracked. */
+function origin(repo: TestRepo): string {
+  const remote = tempDir();
+  folders.push(remote);
+  repo.git('init', '--quiet', '--bare', remote);
+  repo.git('remote', 'add', 'origin', remote);
+  repo.git('push', '--quiet', '-u', 'origin', 'main');
+  return remote;
+}
+
+describe("Hive's entries (HV4, decisions 767–769)", () => {
+  it('keeps who queued it: Hive', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const m = await make(repo);
+    const entry = await m.enqueue({ branch: 'topic', into: 'main', by: 'hive' }, { start: false });
+    expect(entry.by).toBe('hive');
+    await m.remove(entry.id);
+    const theirs = await m.enqueue({ branch: 'topic', into: 'main' }, { start: false });
+    expect(theirs.by).toBeUndefined();
+  });
+
+  it('a conflict waits with its files: no merger agent is asked, the writer merges main in', async () => {
+    const { repo, shas } = conflicting();
+    config(repo, { checks: 'ok' });
+    const agent = fakeAgent(BOTH);
+    const checks = fakeChecks();
+    const m = await make(repo, checks.run, { mergerAgent: agent.find });
+    await m.enqueue({ branch: 'topic', into: 'main', by: 'hive' });
+    await m.idle();
+
+    const [entry] = (await m.list()).merges;
+    expect(entry).toMatchObject({ state: 'needs-you', conflicts: ['src/a.ts'], by: 'hive' });
+    expect(entry?.resolution).toBeUndefined();
+    expect(entry?.message).toMatch(/src\/a\.ts/);
+    expect(agent.asked).toEqual([]);
+    expect(checks.asked).toEqual([]);
+    expect(repo.git('rev-parse', 'main')).toBe(shas.M2);
+    const worktree = join(cache, 'worktrees', (await openRepo(repo.root)).id, 'merge');
+    expect(repo.git('-C', worktree, 'status', '--porcelain')).toBe('');
+  });
+
+  it('lands without a check when the project has none (the person: "land anyway")', async () => {
+    const { repo, shas } = setup();
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    const m = await make(repo);
+    await m.enqueue({ branch: 'topic', into: 'main', by: 'hive' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry?.state).toBe('landed');
+    expect(entry?.check).toBeUndefined();
+    expect(repo.git('rev-parse', 'main')).toBe(entry?.merge);
+    expect(parents(repo, entry?.merge ?? '')).toEqual([shas.M, shas.T]);
+  });
+
+  it('pushes the branch it landed in, whatever merge.push says; never another', async () => {
+    const { repo, shas } = setup();
+    const remote = origin(repo);
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'ok', push: false });
+    const m = await make(repo);
+    await m.enqueue({ branch: 'topic', into: 'main', by: 'hive' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry).toMatchObject({ state: 'landed', pushed: { ok: true, remote: 'origin' } });
+    expect(repo.git('--git-dir', remote, 'rev-parse', 'main')).toBe(entry?.merge);
+    expect(repo.git('--git-dir', remote, 'for-each-ref', '--format=%(refname)')).toBe(
+      'refs/heads/main',
+    );
+  });
+
+  it("the person's merge is pushed only with merge.push, as before", async () => {
+    const { repo, shas } = setup();
+    const remote = origin(repo);
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'ok' });
+    const m = await make(repo);
+    await m.enqueue({ branch: 'topic', into: 'main' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry?.state).toBe('landed');
+    expect(entry?.pushed).toBeUndefined();
+    expect(repo.git('--git-dir', remote, 'rev-parse', 'main')).toBe(shas.M);
+  });
+
+  it("brings a target behind its remote up first, in the checkout that has it, and merges on the remote's tip", async () => {
+    const { repo, shas } = setup();
+    const remote = origin(repo);
+    // Someone else's push: origin has M, this checkout's main is back at A.
+    repo.git('reset', '--quiet', '--hard', shas.A);
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'ok' });
+    const m = await make(repo);
+    await m.enqueue({ branch: 'topic', into: 'main', by: 'hive' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry).toMatchObject({ state: 'landed', base: shas.M, pushed: { ok: true } });
+    expect(parents(repo, entry?.merge ?? '')).toEqual([shas.M, shas.T]);
+    expect(repo.git('rev-parse', 'main')).toBe(entry?.merge);
+    expect(repo.git('--git-dir', remote, 'rev-parse', 'main')).toBe(entry?.merge);
+    expect(existsSync(join(repo.root, 'src', 'm.ts'))).toBe(true);
+  });
+
+  it('a target that diverged from its remote is not merged: it fails, saying so; nothing forced', async () => {
+    const { repo, shas } = setup();
+    const remote = origin(repo);
+    repo.git('reset', '--quiet', '--hard', shas.A);
+    repo.write({ 'src/y.ts': 'export const y = 1;\n' });
+    const Y = repo.commit('Y: not pushed');
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'ok' });
+    const checks = fakeChecks();
+    const m = await make(repo, checks.run);
+    await m.enqueue({ branch: 'topic', into: 'main', by: 'hive' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry).toMatchObject({ state: 'failed', diverged: 'origin/main' });
+    expect(entry?.message).toMatch(/main and origin\/main have diverged/);
+    expect(checks.asked).toEqual([]);
+    expect(repo.git('rev-parse', 'main')).toBe(Y);
+    expect(repo.git('--git-dir', remote, 'rev-parse', 'main')).toBe(shas.M);
+  });
+
+  it('a push refused is said, the landing kept', async () => {
+    const { repo, shas } = setup();
+    const remote = origin(repo);
+    // The remote refuses every push.
+    writeFileSync(join(remote, 'hooks', 'pre-receive'), '#!/bin/sh\necho no >&2\nexit 1\n', {
+      mode: 0o755,
+    });
+    review(repo, 'topic', { head: shas.T, into: 'main' });
+    config(repo, { checks: 'ok' });
+    const m = await make(repo);
+    await m.enqueue({ branch: 'topic', into: 'main', by: 'hive' });
+    await m.idle();
+    const [entry] = (await m.list()).merges;
+    expect(entry?.state).toBe('landed');
+    expect(entry?.pushed).toMatchObject({ ok: false, remote: 'origin' });
+    expect(repo.git('rev-parse', 'main')).toBe(entry?.merge);
+    expect(repo.git('--git-dir', remote, 'rev-parse', 'main')).toBe(shas.M);
+  });
+});
+
 describe('into which branch (V26a)', () => {
   it('preselects the workspace’s against, else its from, else the verdict’s into, else the default branch', async () => {
     const { repo, shas } = setup();

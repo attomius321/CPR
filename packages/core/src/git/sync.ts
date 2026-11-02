@@ -179,3 +179,59 @@ export async function deleteRemoteBranch(repo: GitRepo, name: string): Promise<v
     throw error;
   }
 }
+
+/**
+ * Fetches one branch of `remote` into its remote-tracking ref (HV4, decision 768): Hive brings a
+ * target up to its remote before it merges into it. Its tip there; null when the remote has no
+ * such branch.
+ */
+export async function fetchBranch(
+  repo: GitRepo,
+  remote: string,
+  branch: string,
+): Promise<string | null> {
+  const tracking = `refs/remotes/${remote}/${branch}`;
+  try {
+    await git(
+      repo.root,
+      [
+        'fetch',
+        '--quiet',
+        '--no-tags',
+        '--end-of-options',
+        remote,
+        `+refs/heads/${branch}:${tracking}`,
+      ],
+      await network(repo),
+    );
+  } catch (error) {
+    if (!(error instanceof GitError)) throw error;
+    if (/couldn't find remote ref/i.test(error.stderr)) return null;
+    throw new GitRefused(words(error), { cause: error });
+  }
+  return (
+    (await git(repo.root, ['rev-parse', '--verify', '--quiet', tracking]).catch(() => '')).trim() ||
+    null
+  );
+}
+
+/**
+ * Pushes `sha` to `branch` on `remote`, never forced, as a network run (HV4, decision 768):
+ * Hive's pushes, with no one to answer a prompt. git's words when it refuses.
+ */
+export async function pushBranch(
+  repo: GitRepo,
+  { remote, sha, branch }: { remote: string; sha: string; branch: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await git(
+      repo.root,
+      ['push', '--quiet', '--end-of-options', remote, `${sha}:refs/heads/${branch}`],
+      await network(repo),
+    );
+    return { ok: true };
+  } catch (error) {
+    if (error instanceof GitError) return { ok: false, error: words(error) };
+    throw error;
+  }
+}

@@ -158,9 +158,11 @@ export { applyStash, dropStash, listStashes, stashChanges, type StashEntry } fro
 export {
   deleteRemoteBranch,
   fetchAll,
+  fetchBranch,
   pull,
   PULL_MODES,
   push,
+  pushBranch,
   syncState,
   type PullMode,
   type SyncState,
