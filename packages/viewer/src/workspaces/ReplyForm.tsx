@@ -1,5 +1,7 @@
 // A workspace's reply box (V18c): one message that continues the agent's session; sending to an
-// agent that works, or waits on a prompt, ends its turn, so that is asked first (decision 82).
+// agent that works, or waits on a prompt, ends its turn, so that is asked first (decision 82). Under
+// a plan that waits (V89, decisions 833, 834), Send reply and Approve plan, which sends the plan's
+// OK; with its terminal, both are typed there and sent.
 import type { WorkspaceThread } from '@symbiote/core';
 import type { replyMode } from './workspaces.js';
 import { tip } from '../ui/tip.js';
@@ -13,8 +15,11 @@ export function ReplyForm({
   confirming,
   busy,
   waitingFor,
+  plan = false,
+  inTerminal = false,
   onText,
   onSend,
+  onApprove,
   onCancel,
 }: {
   hidden: boolean;
@@ -27,11 +32,18 @@ export function ReplyForm({
   busy: boolean;
   /** What the agent waits on, said when sending stops it. */
   waitingFor: string | undefined;
+  /** A plan waits for the person's OK: Send reply and Approve plan. */
+  plan?: boolean;
+  /** What is sent is typed into the agent's terminal (decision 834). */
+  inTerminal?: boolean;
   onText: (text: string) => void;
   /** Sends the text; `stop`: its turn stopped first, as asked. */
   onSend: (stop: boolean) => void;
+  /** Sends the plan's OK. */
+  onApprove?: () => void;
   onCancel: () => void;
 }) {
+  const approve = plan && onApprove;
   return (
     <form
       hidden={hidden}
@@ -43,7 +55,9 @@ export function ReplyForm({
     >
       <textarea
         aria-label="Reply to the agent"
-        placeholder="Reply to the agent…"
+        placeholder={
+          approve ? 'Reply to the agent, or approve the plan as it is…' : 'Reply to the agent…'
+        }
         value={text}
         rows={3}
         disabled={mode === 'none'}
@@ -51,7 +65,9 @@ export function ReplyForm({
         onKeyDown={(event) => {
           if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
             event.preventDefault();
-            onSend(false);
+            // Nothing typed under a plan: Ctrl+Enter approves it, as its button says.
+            if (approve && text.trim() === '') onApprove();
+            else onSend(false);
           }
         }}
       />
@@ -68,6 +84,9 @@ export function ReplyForm({
             Send the verdict
           </button>
         )}
+        {approve && inTerminal && (
+          <span className="hint reply-where">It answers in its terminal</span>
+        )}
         {mode === 'none' && (
           <span className="hint">No session to continue: start the agent again.</span>
         )}
@@ -83,14 +102,35 @@ export function ReplyForm({
             </button>
           </span>
         ) : (
-          <button
-            type="submit"
-            className="button"
-            disabled={busy || mode === 'none' || text.trim() === ''}
-            {...tip(mode === 'stop-and-send' ? 'Stop and send' : 'Send', { keys: 'Ctrl+Enter' })}
-          >
-            {mode === 'stop-and-send' ? 'Stop and send' : 'Send'}
-          </button>
+          <>
+            <button
+              type="submit"
+              className={approve ? 'button secondary' : 'button'}
+              disabled={busy || mode === 'none' || text.trim() === ''}
+              {...tip(
+                approve ? 'Send reply' : mode === 'stop-and-send' ? 'Stop and send' : 'Send',
+                approve ? {} : { keys: 'Ctrl+Enter' },
+              )}
+            >
+              {approve ? 'Send reply' : mode === 'stop-and-send' ? 'Stop and send' : 'Send'}
+            </button>
+            {approve && (
+              <button
+                type="button"
+                className="button primary"
+                disabled={busy}
+                {...tip(
+                  `Sends: Your plan is approved.\nBuild it as planned, and commit in small steps.`,
+                  {
+                    keys: 'Ctrl+Enter',
+                  },
+                )}
+                onClick={onApprove}
+              >
+                Approve plan
+              </button>
+            )}
+          </>
         )}
       </div>
     </form>

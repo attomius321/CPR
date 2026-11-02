@@ -59,7 +59,7 @@
 }
 
 /* The stage track (`StageTrack`, the kits' `.track`): hexagons on a line; done green and joined in
-   green, now amber, failed red, to come an outline. */
+   green, now amber, the person's violet (V89, decision 826), failed red, to come an outline. */
 .stage-track {
   flex: none;
   display: inline-flex;
@@ -91,6 +91,12 @@
 .stage-hex.now polygon {
   fill: color-mix(in srgb, var(--run) 30%, transparent);
   stroke: var(--run);
+  stroke-width: 2;
+}
+
+.stage-hex.you polygon {
+  fill: color-mix(in srgb, var(--you) 30%, transparent);
+  stroke: var(--you);
   stroke-width: 2;
 }
 

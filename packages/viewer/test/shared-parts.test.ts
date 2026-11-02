@@ -69,4 +69,15 @@ describe('StageTrack (V88)', () => {
     expect(landed.match(/class="stage-hex done"/g)).toHaveLength(5);
     expect(landed).toContain('aria-label="Plan, Your OK, Build, Review and Merge done"');
   });
+
+  // V89 (decision 826): the person's step, violet, as the proofs draw it.
+  it("marks the person's step: waiting for them", () => {
+    const html = renderToStaticMarkup(
+      createElement(StageTrack, { steps: NORMAL_STAGES, at: 1, state: 'you' }),
+    );
+    expect(html).toContain('class="stage-hex you"');
+    expect(html).toContain(
+      'aria-label="Plan done, Your OK waits for you, Build, Review and Merge to come"',
+    );
+  });
 });

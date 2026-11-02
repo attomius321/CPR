@@ -1,5 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import type {
+  MergeEntry,
   WorkspaceReplied,
   WorkspaceShell,
   WorkspaceShells,
@@ -17,12 +27,16 @@ import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import { useNucleusName } from '../shell/names.js';
 import { ActivityTab } from './ActivityTab.js';
 import { BriefTab } from './BriefTab.js';
-import { HiveReviewTab } from './HiveReviewTab.js';
-import { ChangesPanel } from './ChangesPanel.js';
-import { useChangesPanel } from './useChangesPanel.js';
+import { HiveReviewTab, useHiveDetail } from './HiveReviewTab.js';
+import { ChangesPanel, changedFiles, useChanges } from './ChangesPanel.js';
+import { useChangesPanel, useFocus } from './useChangesPanel.js';
+import { HeadSteps, Since } from './HeadSteps.js';
+import { TerminalBar } from './TerminalBar.js';
+import { barOf } from './terminal-bar.js';
+import { agentTabName, hiveSteps, normalSteps, planAnswered } from './workspace-steps.js';
 import { ReplyForm } from './ReplyForm.js';
 import { WorkspaceTabs, type AgentView, type View } from './WorkspaceTabs.js';
-import { BranchIcon, ChangesIcon, TerminalIcon } from '../ui/icons.js';
+import { BranchIcon, ChangesIcon, ExpandIcon, TerminalIcon } from '../ui/icons.js';
 import { PageHead } from '../ui/PageHead.js';
 import { KIND_ICONS } from './StartKinds.js';
 import { cleanUp } from './cleanup.js';
@@ -30,19 +44,12 @@ import { useRemoving, workspaceKey } from './removing.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { MergeControl } from './MergeControl.js';
 import { ThreadTab, useThread } from './ThreadTab.js';
-import {
-  KindTag,
-  RunsOn,
-  StateDot,
-  StateFor,
-  WorkspaceBranch,
-  WorkspaceState,
-} from './WorkspaceFacts.js';
+import { KindTag, RunsOn, WorkspaceBranch } from './WorkspaceFacts.js';
 import { RESPOND_EVENT, respondTo } from './respond.js';
-import { WorkspaceStrip } from './WorkspaceStrip.js';
 import { postJson, serverWords } from '../ui/http.js';
 import { Resizer } from '../ui/Resizer.js';
 import {
+  AGENT_NAMES,
   allRows,
   workspaceGroups,
   workspaceHref,
@@ -61,7 +68,7 @@ import {
 import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
 import { verdictLine } from './terminal.js';
-import { closeQuestion, shellAfter, shellOfUrl, withShell } from './shells.js';
+import { closeQuestion, shellAfter, shellName, shellOfUrl, withShell } from './shells.js';
 import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 import { tip } from '../ui/tip.js';
 
@@ -167,11 +174,21 @@ function NotListed({ branch }: { branch: string }) {
   );
 }
 
+/** `&split=<n>`: Split on, with shell `n` beside the agent (V89, decision 831). */
+const splitOfUrl = (): number | null => {
+  const value = new URLSearchParams(window.location.search).get('split');
+  return value !== null && /^[1-9]\d*$/.test(value) ? Number(value) : null;
+};
+
+/** What Approve plan sends (V89, decision 833): the plan's OK, as the proof words it. */
+export const PLAN_OK = 'Your plan is approved. Build it as planned, and commit in small steps.';
+
 /**
- * The picked workspace (V18c; in the shell's main area since V29a): its state and actions, then
- * its terminal, its thread with one box whose message continues the agent's session, or its
- * brief. Nothing is sent without Send (decision 82); sending to an agent that works, or waits on
- * a prompt, ends its turn, so that is asked first.
+ * The picked workspace (V18c; in the shell's main area since V29a; the redesign's since V89): its
+ * steps and actions in its head, then its sessions — its agent's terminal, its thread, activity
+ * and brief, its shells —, the bar under them that says what waits, and its side card. Nothing is
+ * sent without the person (decision 82); sending to an agent that works, or waits on a prompt,
+ * ends its turn, so that is asked first.
  */
 function WorkspacePanel({
   row,
@@ -199,6 +216,7 @@ function WorkspacePanel({
 }) {
   const shell = useShell();
   const nucleusName = useNucleusName();
+  const { merges } = useWorkspaces();
   const { workspace } = row;
   const { branch, agent } = workspace;
   const [thread, reloadThread] = useThread(branch, version);
@@ -220,13 +238,22 @@ function WorkspacePanel({
   // in a terminal would not reach its thread (decision 133).
   const terminals = opensTerminal(agent, terminal);
   const talk = talkCommand(agent, workspace.worktree.path);
+  // Hive drives it (HV4): its steps, its writer, its bar.
+  const hiveDrives = workspace.hive !== undefined && !workspace.hive.off;
   // V45: shells in its worktree, in tabs after the agent's, whatever its agent; kept by the server
-  // until closed, so read when the panel opens (a reload, another window).
+  // until closed. Read when the panel opens and with every read of the list (V89): their tabs say
+  // what runs in them.
   const shellsCan = terminal?.available === true && workspace.worktree.exists;
   const [shells, setShells] = useState<WorkspaceShell[] | null>(null);
+  // Bumped by every change made here: a read begun before it is older than what is shown.
+  const shellsChanged = useRef(0);
   const [shellShown, setShellShown] = useState(() => shellOfUrl(window.location.search));
   const [closing, setClosing] = useState<{ shell: WorkspaceShell; question: string } | null>(null);
   const [chosen, setChosen] = useState(viewOfUrl);
+  // V89: Split (the agent and a shell, by its number) and Focus (the rail, no side card).
+  const [split, setSplit] = useState(splitOfUrl);
+  const [focus, toggleFocus] = useFocus();
+  const splitCan = terminals && shellsCan;
   const fallback: AgentView = terminals ? 'terminal' : 'thread';
   // The shell picked; once it went (closed, exited), its neighbour, the one before first; none
   // left, or `symbiote view` started again: the agent's tab.
@@ -234,46 +261,81 @@ function WorkspacePanel({
     shellShown === null || shells === null || shells.some((shell) => shell.number === shellShown)
       ? shellShown
       : shellAfter(shells, shellShown);
+  // Split's shell, as for a picked one: its neighbour once it went; none left, Split is off.
+  const splitNumber =
+    !splitCan || split === null
+      ? null
+      : shells === null || shells.some((shell) => shell.number === split)
+        ? split
+        : shellAfter(shells, split);
   const shellGone = chosen === 'shell' && (!shellsCan || (shells !== null && shellNumber === null));
   const view: View =
-    chosen === 'terminal' && !terminals
-      ? 'thread'
-      : shellGone || (chosen === 'review' && !workspace.hive)
-        ? fallback
-        : (chosen ?? fallback);
+    splitNumber !== null
+      ? 'terminal'
+      : chosen === 'terminal' && !terminals
+        ? 'thread'
+        : shellGone || (chosen === 'review' && !workspace.hive)
+          ? fallback
+          : (chosen ?? fallback);
   const showTerminal = terminals && view === 'terminal';
   const shownShell =
-    view === 'shell' ? shells?.find((shell) => shell.number === shellNumber) : undefined;
+    splitNumber !== null
+      ? shells?.find((shell) => shell.number === splitNumber)
+      : view === 'shell'
+        ? shells?.find((shell) => shell.number === shellNumber)
+        : undefined;
   const [opened, setOpened] = useState<OpenedTerminal | null>(null);
   const [ended, setEnded] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   // Attaching to a stopped session continues it (with no turn): asked when a terminal is to
   // open, not once it is open (a stop from the head leaves its last lines in view).
   const [asking, setAsking] = useState(() => asksBeforeOpening(agent));
-  // The branch's changes at the right (V29d), shown or hidden, as wide as they were dragged.
+  // The branch's changes at the right (V29d), shown or hidden, as wide as they were dragged; read
+  // here (V89), for the head's counts and the side card alike.
   const { changesShown, toggleChanges, changesWidth, resizeChanges, resizing, setResizing } =
     useChangesPanel();
+  const [picks, setPicks] = useState(0);
+  const changes = useChanges(branch, version, picks);
+  // Hive's record (HV3), read once a list read (V89): the head's spend and the Review tab.
+  const hive = useHiveDetail(branch, version, workspace.hive !== undefined);
+  // A text to type into the agent's terminal and send (decision 834), once it is open.
+  const [typing, setTyping] = useState<string | null>(null);
+
   useEffect(() => {
     if (!shellsCan) return;
     let gone = false;
+    const asked = shellsChanged.current;
     readShells(branch).then(
-      (read) => !gone && setShells(read),
+      (read) => !gone && asked === shellsChanged.current && setShells(read),
       (e: unknown) => {
         if (gone) return;
-        setShells([]);
+        // A read that fails keeps the tabs as they were; the first one shows none.
+        setShells((now) => now ?? []);
         setSaid((e as Error).message);
       },
     );
     return () => {
       gone = true;
     };
-  }, [branch, shellsCan]);
+  }, [branch, shellsCan, version]);
+  // Focus folds the sidenav to its rail while this page shows it (decision 830).
+  const setFocused = shell?.setFocused;
+  useEffect(() => {
+    setFocused?.(focus);
+    return () => setFocused?.(false);
+  }, [focus, setFocused]);
+  /** The address for the tabs shown: `&split=<n>`, `&shell=<n>`, `&<view>`, or the terminal. */
+  const address = (next: string | null) => {
+    const href = workspaceHref(branch);
+    window.history.replaceState(null, '', next === null ? href : `${href}&${next}`);
+  };
   const show = (next: AgentView) => {
     setChosen(next);
     setEnded(null);
     setAsking(asksBeforeOpening(agent));
-    const href = workspaceHref(branch);
-    window.history.replaceState(null, '', next === 'terminal' ? href : `${href}&${next}`);
+    // The agent's tab keeps Split; any other view leaves it.
+    if (next !== 'terminal') setSplit(null);
+    address(next === 'terminal' ? (splitNumber !== null ? `split=${splitNumber}` : null) : next);
   };
   /**
    * Takes the person's answer (V48): its terminal shown and focused where one runs, else the
@@ -300,22 +362,48 @@ function WorkspacePanel({
     return () => window.removeEventListener(RESPOND_EVENT, onRespond);
   }, [branch]);
   const showShell = (number: number) => {
+    // In Split a shell's tab swaps the right pane.
+    if (splitNumber !== null) {
+      setSplit(number);
+      address(`split=${number}`);
+      return;
+    }
     setChosen('shell');
     setShellShown(number);
-    window.history.replaceState(null, '', `${workspaceHref(branch)}&shell=${number}`);
+    address(`shell=${number}`);
   };
   /** Opens a shell at the size the last terminal was drawn at; it is fitted once shown. */
-  const openShell = () =>
+  const openShell = (then: (number: number) => void = showShell) =>
     postJson<WorkspaceShell>('/api/workspaces/shell', { branch, ...lastTerminalSize() }).then(
       (opened) => {
+        shellsChanged.current += 1;
         setShells((now) => withShell(now ?? [], opened));
-        showShell(opened.number);
+        then(opened.number);
       },
       (e: unknown) => setSaid((e as Error).message),
     );
   /** A shell closed or exited: its tab goes. Twice is once: a close is followed by its exit. */
-  const forgetShell = (id: string) =>
+  const forgetShell = (id: string) => {
+    shellsChanged.current += 1;
     setShells((now) => now?.filter((shell) => shell.id !== id) ?? now);
+  };
+  /** Split on, with the shell last shown, else the first, else a new one; or off. */
+  const toggleSplit = () => {
+    if (splitNumber !== null) {
+      setSplit(null);
+      address(null);
+      return;
+    }
+    const on = (number: number) => {
+      setChosen('terminal');
+      setEnded(null);
+      setSplit(number);
+      address(`split=${number}`);
+    };
+    const known = shells?.find((shell) => shell.number === shellNumber) ?? shells?.[0];
+    if (known) on(known.number);
+    else void openShell(on);
+  };
   // The picked tab in sight when the strip scrolls (many shells, a narrow window): when it is
   // picked, and when the strip narrows.
   const strip = useRef<HTMLDivElement>(null);
@@ -333,6 +421,11 @@ function WorkspacePanel({
   }, [view, shellNumber, shells?.length]);
   // What is drawn for a shell that went is its neighbour's tab: the address says so too.
   useEffect(() => {
+    if (split !== null && shells !== null && splitNumber !== split) {
+      setSplit(splitNumber);
+      address(splitNumber === null ? null : `split=${splitNumber}`);
+      return;
+    }
     if (chosen !== 'shell' || shells === null || shellNumber === shellShown) return;
     if (shellNumber === null) show(fallback);
     else showShell(shellNumber);
@@ -382,10 +475,21 @@ function WorkspacePanel({
     setText(verdict.text);
   }, [fillVerdict, verdict, terminals, showTerminal, opened]);
 
+  // Approve plan and Send reply with a terminal (decision 834): typed into it and sent with
+  // Enter once its input is drawn. One line: a line break typed would send early.
+  useEffect(() => {
+    if (typing === null || !opened || !showTerminal) return;
+    setTyping(null);
+    opened.submit(typing.replace(/\s*\n\s*/g, ' ').trim());
+    setText('');
+  }, [typing, opened, showTerminal]);
+
   const live = agent.state === 'working' || agent.state === 'needs-you';
   const restartable =
     agent.kind !== undefined &&
     ['not-started', 'failed', 'stopped', 'not-running'].includes(agent.state);
+  // A plan that waits (decision 833): Approve plan and Send reply under it, while its turn ended.
+  const planWaits = agent.state === 'plan-ready' && !agent.interrupted;
 
   /** Runs an action, says how it went in the panel; the list (and thread) are read again. */
   const act = (task: () => Promise<string | null>) => {
@@ -405,8 +509,14 @@ function WorkspacePanel({
       () => `Could not copy ${what}`,
     );
 
-  const send = (stop: boolean) => {
-    if (text.trim() === '' || busy) return;
+  const send = (stop: boolean, words = text) => {
+    if (words.trim() === '' || busy) return;
+    // With its terminal (decision 834): typed there and sent, while the plan waits.
+    if (terminals && planWaits) {
+      setTyping(words);
+      if (view !== 'terminal') show('terminal');
+      return;
+    }
     if (mode === 'stop-and-send' && !stop) {
       setConfirming('send');
       return;
@@ -415,10 +525,10 @@ function WorkspacePanel({
     act(() =>
       postJson<WorkspaceReplied>('/api/workspaces/reply', {
         branch,
-        text,
+        text: words,
         ...(stop ? { stop: true } : {}),
         // The review's verdict, sent as it was filled in, is the verdict (AR2).
-        ...(verdict && text === verdict.text ? { by: 'verdict' } : {}),
+        ...(verdict && words === verdict.text ? { by: 'verdict' } : {}),
       }).then(
         (replied) => {
           setText('');
@@ -486,7 +596,7 @@ function WorkspacePanel({
           return copy(prompt, 'the prompt');
         }),
     },
-    // Merged, Clean up is the head's primary button (V55).
+    // Merged, Clean up is the head's own button (V55).
     ...(!mergedForCard(workspace) && !live
       ? [
           {
@@ -508,32 +618,60 @@ function WorkspacePanel({
     ...(workspace.hive ? (['review'] as const) : []),
   ];
   // In Hive mode Hive lands a workspace it drives (HV4, decision 774): no review of the person's.
-  const hiveLands = workspace.hive !== undefined && !workspace.hive.off;
+  const hiveLands = hiveDrives;
+  const entries = thread?.entries ?? [];
+
+  // The head's steps (decisions 823–825).
+  const steps =
+    hiveDrives && workspace.hive
+      ? hiveSteps(workspace.hive)
+      : normalSteps({
+          workspace,
+          next: row.next,
+          planAnswered: planAnswered(entries),
+          ...mergeOf(merges?.merges ?? [], branch),
+        });
+  const read = changes !== null && typeof changes !== 'string' ? changes : null;
+  const landed =
+    workspace.hive?.landing?.outcome === 'landed' ? workspace.hive.landing.ended : undefined;
+  const bar = barOf({ workspace, next: row.next, entries });
+  const agentName = agentTabName(agent, hiveDrives);
+  const shellsRunning = (shells ?? []).filter((one) => one.running);
+  const doing = workspace.activity?.doing;
+  const editing = doing && 'tool' in doing ? doing.subject : undefined;
+
+  const pane = (head: ReactNode, body: ReactNode, key: string) => (
+    <div key={key} className="term-pane">
+      {splitNumber !== null && <div className="term-pane-head">{head}</div>}
+      {body}
+    </div>
+  );
 
   return (
     <section className="workspace" aria-label={`Workspace ${branch}`}>
       {/* The page frame's head (V72, decision 511): the kind's icon, the name and its kind, then
-          the branch, the state and how long; the actions at the right. */}
+          the branch, where it started and what runs it; its steps and actions at the right
+          (V89, decision 823). */}
       <PageHead
         className={`workspace-top tone-${row.next.chip.tone}`}
         icon={(workspace.kind && KIND_ICONS[workspace.kind]) ?? <BranchIcon />}
         title={<span {...tip(briefTip(workspace.brief))}>{workspaceName(workspace)}</span>}
-        beside={
-          <>
-            <KindTag workspace={workspace} />
-            <RunsOn agent={workspace.agent} />
-          </>
-        }
+        beside={<KindTag workspace={workspace} />}
         line={
           <span className="workspace-state-line">
             <span className="workspace-ref">
               <WorkspaceBranch row={row} mark={mark} />
             </span>
-            <StateDot row={row} />
-            <span className="workspace-now">
-              <WorkspaceState row={row} />
-              <StateFor workspace={workspace} />
+            {workspace.from && (
+              <span className="workspace-from">
+                from <span className="mono">{workspace.from}</span>
+              </span>
+            )}
+            <span className="workspace-started">
+              started {startedAt(workspace.created)}
+              {workspace.via ? ` by ${workspace.via === 'nucleus' ? nucleusName : 'an agent'}` : ''}
             </span>
+            <RunsOn agent={workspace.agent} />
           </span>
         }
         actions={
@@ -543,17 +681,23 @@ function WorkspacePanel({
                 {said}
               </span>
             )}
-            {opened && showTerminal && <AttachImages into={opened} />}
-            {verdict && opened && showTerminal && (
-              <button
-                type="button"
-                className="link"
-                {...tip('Types its first line and where the review is\nEnter sends it')}
-                onClick={() => void typeVerdict(opened, verdict.text)}
-              >
-                Send the verdict
-              </button>
-            )}
+            <HeadSteps
+              model={steps}
+              {...(hiveDrives
+                ? {
+                    hive: {
+                      started: workspace.created,
+                      ...(landed ? { ended: landed } : {}),
+                      ...(hive.detail?.spend ? { spend: hive.detail.spend } : {}),
+                    },
+                  }
+                : {
+                    normal: {
+                      commits: workspace.ahead,
+                      files: read ? changedFiles(read) : null,
+                    },
+                  })}
+            />
             {live && (
               <button
                 type="button"
@@ -561,7 +705,7 @@ function WorkspacePanel({
                 disabled={busy}
                 onClick={() => {
                   setStopping(true);
-                  // The head's state says Stopped: no word of its own beside the buttons (V37).
+                  // The head's steps say Stopped: no word of its own beside the buttons (V37).
                   act(() =>
                     postJson('/api/workspaces/stop', { branch })
                       .then(() => null)
@@ -593,16 +737,18 @@ function WorkspacePanel({
             {workspace.ahead > 0 && !mergedForCard(workspace) && !hiveLands && (
               <MergeControl branch={branch} />
             )}
-            <button
-              type="button"
-              className="icon-button changes-toggle"
-              aria-label="Changes"
-              aria-pressed={changesShown}
-              {...tip(`${changesShown ? 'Hide' : 'Show'} the branch's changes`, { keys: ']' })}
-              onClick={toggleChanges}
-            >
-              <ChangesIcon />
-            </button>
+            {!focus && (
+              <button
+                type="button"
+                className="icon-button changes-toggle"
+                aria-label="Changes"
+                aria-pressed={changesShown}
+                {...tip(`${changesShown ? 'Hide' : 'Show'} the side card`, { keys: ']' })}
+                onClick={toggleChanges}
+              >
+                <ChangesIcon />
+              </button>
+            )}
             <MoreActions actions={more} />
             {!hiveLands && workspace.ahead > 0 && workspace.tip !== null && (
               <button
@@ -636,13 +782,6 @@ function WorkspacePanel({
           </>
         }
       />
-      <WorkspaceStrip
-        row={row}
-        waiting={waiting}
-        onRespond={respond}
-        onThread={() => show('thread')}
-        onNext={(next) => respondTo(next, (route) => shell?.navigate(route))}
-      />
       {closing && (
         <p className="workspace-confirm">
           {closing.question}{' '}
@@ -671,7 +810,7 @@ function WorkspacePanel({
         </p>
       )}
       <div
-        className={`workspace-split${resizing ? ' resizing' : ''}`}
+        className={`workspace-split${resizing ? ' resizing' : ''}${focus ? ' focus' : ''}`}
         style={
           changesWidth ? ({ '--changes-width': `${changesWidth}px` } as CSSProperties) : undefined
         }
@@ -682,13 +821,19 @@ function WorkspacePanel({
             views={views}
             view={view}
             agent={agent}
+            agentName={agentName}
             shells={shells}
             shellsCan={shellsCan}
             shellNumber={shellNumber}
+            split={splitCan ? splitNumber : undefined}
+            focus={focus}
+            attach={opened && showTerminal ? <AttachImages into={opened} /> : null}
             onShow={show}
             onShowShell={showShell}
             onCloseShell={(shell) => void closeShell(shell)}
             onOpenShell={() => void openShell()}
+            onSplit={toggleSplit}
+            onFocus={toggleFocus}
           />
           <div className="workspace-body">
             {view === 'activity' && (
@@ -696,7 +841,9 @@ function WorkspacePanel({
                 <ActivityTab workspace={workspace} thread={thread} version={version} />
               </div>
             )}
-            {view === 'review' && <HiveReviewTab branch={branch} version={version} />}
+            {view === 'review' && (
+              <HiveReviewTab branch={branch} detail={hive.detail} error={hive.error} />
+            )}
             {view === 'brief' && (
               <BriefTab
                 text={workspace.brief}
@@ -704,59 +851,105 @@ function WorkspacePanel({
                 documents={workspace.documents}
               />
             )}
-            {showTerminal && (
-              <div className="workspace-terminal">
-                {asking ? (
-                  <p className="workspace-confirm">
-                    Opening the terminal continues the stopped session.{' '}
-                    <button type="button" className="button" onClick={() => setAsking(false)}>
-                      Open the terminal
-                    </button>
-                  </p>
-                ) : (
-                  <AgentTerminal
-                    key={attempt}
-                    branch={branch}
-                    onOpened={setOpened}
-                    onEnded={setEnded}
-                  />
-                )}
-                {ended && (
-                  <p className="workspace-confirm">
-                    The terminal {ended === 'exited' ? 'ended' : 'lost its session'}.{' '}
-                    <button
-                      type="button"
-                      className="button"
-                      onClick={() => {
-                        setEnded(null);
-                        // A stop ends the terminal before the list says so: the state is read anew.
-                        void readWorkspacesAgain().then(({ list }) => {
-                          const now = list?.workspaces.find((f) => f.branch === branch)?.agent
-                            .state;
-                          setAsking(asksBeforeOpening({ ...agent, state: now ?? agent.state }));
-                          setAttempt((n) => n + 1);
-                        });
-                      }}
-                    >
-                      Open again
-                    </button>
-                  </p>
-                )}
-              </div>
-            )}
-            {shownShell && (
-              <div className="workspace-terminal">
-                <AgentTerminal
-                  key={shownShell.id}
-                  id={shownShell.id}
-                  onEnded={() => forgetShell(shownShell.id)}
-                />
+            {(showTerminal || shownShell) && (
+              <div className={`term-panes${splitNumber !== null ? ' split' : ''}`}>
+                {/* The agent's pane first, at one place in the tree whether Split is on or off:
+                    a toggle resizes its terminal, never attaches it again (decision 831). */}
+                {showTerminal &&
+                  pane(
+                    <>
+                      <span className="term-pane-name">{agentName.name}</span>
+                      <span className="term-pane-what">{bar.detail ?? bar.text}</span>
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label={`${agentName.name} alone`}
+                        {...tip('This terminal alone')}
+                        onClick={toggleSplit}
+                      >
+                        <ExpandIcon />
+                      </button>
+                    </>,
+                    <div className="workspace-terminal">
+                      {asking ? (
+                        <p className="workspace-confirm">
+                          Opening the terminal continues the stopped session.{' '}
+                          <button type="button" className="button" onClick={() => setAsking(false)}>
+                            Open the terminal
+                          </button>
+                        </p>
+                      ) : (
+                        <AgentTerminal
+                          key={attempt}
+                          branch={branch}
+                          onOpened={setOpened}
+                          onEnded={setEnded}
+                        />
+                      )}
+                      {ended && (
+                        <p className="workspace-confirm">
+                          The terminal {ended === 'exited' ? 'ended' : 'lost its session'}.{' '}
+                          <button
+                            type="button"
+                            className="button"
+                            onClick={() => {
+                              setEnded(null);
+                              // A stop ends the terminal before the list says so: the state is
+                              // read anew.
+                              void readWorkspacesAgain().then(({ list }) => {
+                                const now = list?.workspaces.find((f) => f.branch === branch)?.agent
+                                  .state;
+                                setAsking(
+                                  asksBeforeOpening({ ...agent, state: now ?? agent.state }),
+                                );
+                                setAttempt((n) => n + 1);
+                              });
+                            }}
+                          >
+                            Open again
+                          </button>
+                        </p>
+                      )}
+                    </div>,
+                    'agent',
+                  )}
+                {shownShell &&
+                  pane(
+                    <>
+                      <span className="term-pane-name">{shellName(shownShell.number)}</span>
+                      {shownShell.running && (
+                        <span className="term-pane-what">{shownShell.running}</span>
+                      )}
+                      <button
+                        type="button"
+                        className="icon-button"
+                        aria-label={`${shellName(shownShell.number)} alone`}
+                        {...tip('This terminal alone')}
+                        onClick={() => {
+                          setSplit(null);
+                          setChosen('shell');
+                          setShellShown(shownShell.number);
+                          address(`shell=${shownShell.number}`);
+                        }}
+                      >
+                        <ExpandIcon />
+                      </button>
+                    </>,
+                    <div className="workspace-terminal">
+                      <AgentTerminal
+                        key={shownShell.id}
+                        id={shownShell.id}
+                        onEnded={() => forgetShell(shownShell.id)}
+                      />
+                    </div>,
+                    `shell-${shownShell.id}`,
+                  )}
               </div>
             )}
             {view === 'thread' && (
               <div className="workspace-thread">
-                <ThreadTab thread={thread} worktree={workspace.worktree.path} />
-                {terminals && (
+                <ThreadTab thread={thread} worktree={workspace.worktree.path} plan={planWaits} />
+                {terminals && !planWaits && (
                   <p className="hint thread-readonly">
                     <span className="thread-readonly-icon">
                       <TerminalIcon />
@@ -774,19 +967,34 @@ function WorkspacePanel({
             )}
           </div>
           <ReplyForm
-            hidden={terminals || view !== 'thread'}
+            hidden={view !== 'thread' || (terminals && !planWaits)}
             text={text}
             mode={mode}
             verdict={verdict}
             confirming={confirming === 'send'}
             busy={busy}
             waitingFor={agent.waitingFor}
+            plan={planWaits}
+            inTerminal={terminals}
             onText={setText}
-            onSend={send}
+            onSend={(stop) => send(stop)}
+            onApprove={() => send(false, PLAN_OK)}
             onCancel={() => setConfirming(null)}
           />
+          <TerminalBar
+            model={bar}
+            hive={workspace.hive}
+            terminalShown={showTerminal || shownShell !== undefined}
+            waiting={waiting}
+            {...(terminals ? { onTerminal: respond } : {})}
+            onThread={() => show('thread')}
+            onNext={(next) => respondTo(next, (route) => shell?.navigate(route))}
+            {...(verdict && opened && showTerminal
+              ? { onVerdict: () => void typeVerdict(opened, verdict.text) }
+              : {})}
+          />
         </div>
-        {changesShown && (
+        {changesShown && !focus && (
           <Resizer
             gutter
             label="Resize changes panel"
@@ -798,8 +1006,80 @@ function WorkspacePanel({
             onDrag={setResizing}
           />
         )}
-        {changesShown && <ChangesPanel branch={branch} version={version} onSaid={setSaid} />}
+        {changesShown && !focus && (
+          <ChangesPanel
+            branch={branch}
+            version={version}
+            changes={changes}
+            onPicked={() => setPicks((n) => n + 1)}
+            editing={editing}
+            now={<NowSection row={row} bar={bar} shells={shellsRunning} />}
+            onSaid={setSaid}
+          />
+        )}
       </div>
+    </section>
+  );
+}
+
+/** The workspace's newest entry in the merge queue, if any. */
+function mergeOf(entries: readonly MergeEntry[], branch: string): { merge?: MergeEntry } {
+  const merge = entries.filter((entry) => entry.branch === branch).at(-1);
+  return merge ? { merge } : {};
+}
+
+/** When it started: the time today, else the day. */
+function startedAt(iso: string): string {
+  const date = new Date(iso);
+  return date.toDateString() === new Date().toDateString()
+    ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/**
+ * The side card's first section (V89, decision 832): what the agent does now and since when, and
+ * what runs in its shells; nothing while neither.
+ */
+function NowSection({
+  row: { workspace, next },
+  bar,
+  shells,
+}: {
+  row: WorkspaceRow;
+  bar: ReturnType<typeof barOf>;
+  shells: WorkspaceShell[];
+}) {
+  const { agent } = workspace;
+  const live = ['working', 'needs-you', 'plan-ready'].includes(agent.state);
+  if (!live && shells.length === 0) return null;
+  const since = workspace.activity?.since;
+  return (
+    <section className="changes-section changes-now" aria-label="Now">
+      <h2>Now</h2>
+      <dl className="changes-facts">
+        {live && (
+          <>
+            <dt>{agent.kind ? AGENT_NAMES[agent.kind] : 'Agent'}</dt>
+            <dd data-tone={bar.tone}>
+              {agent.state === 'working' ? (next.doing ?? 'Working') : bar.text}
+            </dd>
+            {since && (
+              <>
+                <dt>{agent.state === 'working' ? 'Working' : 'Waiting'}</dt>
+                <dd>
+                  <Since since={since} />
+                </dd>
+              </>
+            )}
+          </>
+        )}
+        {shells.map((one) => (
+          <Fragment key={one.id}>
+            <dt>{shellName(one.number)}</dt>
+            <dd className="mono">{one.running}</dd>
+          </Fragment>
+        ))}
+      </dl>
     </section>
   );
 }

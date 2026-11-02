@@ -192,10 +192,24 @@ test('normal mode, Claude Code with terminals', async ({ page }) => {
   await both(page, '10-worktree-gone', 'feature/gone');
 
   await start(page, 'feature/shells', 'Serve the site');
-  for (let i = 0; i < 8; i++) {
+  const first = (await post(page, '/api/workspaces/shell', {
+    branch: 'feature/shells',
+    cols: 80,
+    rows: 24,
+  })) as { id: string };
+  await post(page, `/api/terminals/${first.id}/in`, { data: 'sleep 300\r' });
+  for (let i = 1; i < 8; i++) {
     await post(page, '/api/workspaces/shell', { branch: 'feature/shells', cols: 80, rows: 24 });
   }
   await both(page, '11-many-shells', 'feature/shells', '&shell=3');
+  if (phase !== 'before') {
+    // New in V89: Split and Focus.
+    await post(page, '/api/workspaces/shell', { branch: 'feature/waiting', cols: 80, rows: 24 });
+    await both(page, '17-split', 'feature/waiting', '&split=1');
+    await page.evaluate(() => localStorage.setItem('symbiote.viewer.focus', 'on'));
+    await both(page, '18-focus', 'feature/working');
+    await page.evaluate(() => localStorage.setItem('symbiote.viewer.focus', 'off'));
+  }
 
   await page.setViewportSize({ width: 960, height: 900 });
   await both(page, '12-narrow', 'feature/waiting');
@@ -243,4 +257,8 @@ test('Hive mode: writing, checking', async ({ page }) => {
     .toBe(true);
   await page.waitForTimeout(2500);
   await both(page, '16-hive-checking', 'feature/one');
+  if (phase !== 'before') {
+    await page.evaluate(() => localStorage.setItem('symbiote.viewer.focus', 'on'));
+    await both(page, '19-hive-focus', 'feature/one');
+  }
 });

@@ -92,7 +92,11 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   const [notice, setNotice] = useState<Notice | null>(null);
   const [flashed, setFlashed] = useState<string | null>(null);
   const [folded, setFolded] = useState(loadFolded);
-  const sidenav = useSidenavWidth(folded);
+  // A workspace's Focus (V89, decision 830): the sidenav as its rail while it is on, the
+  // person's own fold kept as it was.
+  const [focused, setFocused] = useState(false);
+  const railed = folded || focused;
+  const sidenav = useSidenavWidth(railed);
   const [drawer, setDrawer] = useState(false);
   // A page's question before it is left (Settings with unsaved prompts), and the address shown.
   const guard = useRef<LeaveGuard | null>(null);
@@ -235,19 +239,19 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   }, [go, fold, startWorkspace]);
 
   const shell = useMemo<ShellApi>(
-    () => ({ route, navigate, notify, startWorkspace, setLeaveGuard }),
+    () => ({ route, navigate, notify, startWorkspace, setLeaveGuard, setFocused }),
     [route, navigate, notify, startWorkspace, setLeaveGuard],
   );
 
   return (
     <ShellContext.Provider value={shell}>
       <div
-        className={`shell${folded ? ' folded' : ''}${drawer ? ' drawer-open' : ''}${sidenav.resizing ? ' resizing' : ''}`}
+        className={`shell${railed ? ' folded' : ''}${drawer ? ' drawer-open' : ''}${sidenav.resizing ? ' resizing' : ''}`}
         style={sidenav.style}
       >
         {desktop && <TitleBar />}
         <DrawerStrip open={drawer} onToggle={() => setDrawer((open) => !open)} />
-        <Sidenav repo={repo} folded={folded} onFold={fold} flashed={flashed} />
+        <Sidenav repo={repo} folded={railed} onFold={fold} flashed={flashed} />
         {sidenav.handle}
         <main className="shell-main">
           {route.page === 'git' && <HistoryPage key={visit} />}

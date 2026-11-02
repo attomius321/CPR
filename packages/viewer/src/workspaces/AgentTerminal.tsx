@@ -68,13 +68,16 @@ export async function toTerminal(id: string, action: string, body: unknown): Pro
 /**
  * An open terminal: its ID, to type into it, a way to give it the keys again, and files to attach
  * as a drop does (the images; anything else is said), the keys given back after. `type` puts a
- * text in the agent's input, unsent, as a paste (Improve with Scribe, V78).
+ * text in the agent's input, unsent, as a paste (Improve with Scribe, V78); `submit` types one and
+ * sends it (Approve plan, V89).
  */
 export interface OpenedTerminal {
   id: string;
   focus(): void;
   attach(files: File[]): void;
   type(text: string): void;
+  /** Types `text` into the agent's input once it is drawn and sends it with Enter (V89). */
+  submit(text: string): void;
 }
 
 /** The size the last terminal drawn was fitted to: a new shell opens at it (V45). */
@@ -208,18 +211,23 @@ export function AgentTerminal({
       // Codex's trust question waits, held for after the person's key: a paste would answer it.
       let typing: ReturnType<typeof setTimeout> | undefined;
       let asksTrust = opened.trusted === false;
-      let held: string | null = null;
-      const typeIn = (text: string) => {
+      let held: { text: string; enter: boolean } | null = null;
+      // `enter` (V89, decision 834): typed, not pasted, and sent with Enter as its own write, as
+      // the V21 spike measured a typed prompt; before its input is drawn, an Enter is lost.
+      const typeIn = (text: string, enter = false) => {
         clearTimeout(typing);
         const now = Date.now();
         const drawn =
           firstPrinted > 0 && (now - printed >= QUIET_MS || now - firstPrinted >= TYPE_WAIT_MS);
         if (drawn) {
-          shown.paste(text);
+          if (enter) {
+            send(text);
+            send('\r');
+          } else shown.paste(text);
           shown.focus();
           return;
         }
-        typing = setTimeout(() => typeIn(text), firstPrinted > 0 ? QUIET_MS : 100);
+        typing = setTimeout(() => typeIn(text, enter), firstPrinted > 0 ? QUIET_MS : 100);
       };
       shown.onData((data) => {
         // Codex's trust question is the first thing in its terminal: a key answers it (V27b).
@@ -227,7 +235,7 @@ export function AgentTerminal({
         send(data);
         if (asksTrust) {
           asksTrust = false;
-          if (held !== null) typeIn(held);
+          if (held !== null) typeIn(held.text, held.enter);
           held = null;
         }
       });
@@ -267,8 +275,12 @@ export function AgentTerminal({
           shown.focus();
         },
         type: (text) => {
-          if (asksTrust) held = text;
+          if (asksTrust) held = { text, enter: false };
           else typeIn(text);
+        },
+        submit: (text) => {
+          if (asksTrust) held = { text, enter: true };
+          else typeIn(text, true);
         },
       });
       // Ctrl+V left to the browser: its paste comes next, with the clipboard the page sees.

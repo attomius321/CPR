@@ -97,6 +97,17 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   included (border-box), and drew up to 8 px more than the box held, which made the scrolling
   Scribe pane's scrollbars come and go every frame. `e2e/terminal-fit.spec.ts` checks it with
   real scrollbars: headless Chromium hides them, and the loop needs one that takes room.
+- A workspace's page (`src/workspaces/Workspace.tsx`, V89): its steps in the head
+  (`HeadSteps.tsx`) and the bar under the terminal (`TerminalBar.tsx`) are derived by pure modules,
+  `workspace-steps.ts` and `terminal-bar.ts` (tested per state, both modes): what Symbiote records,
+  never guessed; the bar shows only keys measured on a real session (Enter and Esc for Claude
+  Code's permission prompt) and never a button that answers the agent's prompt. The terminals sit
+  in `.term-panes`, the agent's pane first at one place in the tree, so Split (`&split=<n>`) and
+  Focus only resize it: a remount would attach the agent again (a Claude Code process each).
+  Focus folds the sidenav through the shell's `setFocused`, the person's fold untouched; it is
+  kept in the browser. Approve plan and Send reply with a terminal go through
+  `OpenedTerminal.submit` (typed once its input is drawn, Enter its own write): typed before, the
+  Enter is lost.
 - `src/monitor/` — the Monitor (RM1), at `/monitor` (absolute `/api/monitor`, the `CodeMap` of
   `@symbiote/monitor`, whose **types** only it imports). `codemap.ts` builds the folder tree of the
   kinds turned on, says the concentration in words and gives a file's heat step by its lines

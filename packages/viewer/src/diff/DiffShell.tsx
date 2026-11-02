@@ -87,6 +87,7 @@ export function DiffShell({ repo, children }: { repo?: string | undefined; child
       startWorkspace,
       // Nothing on a diff's page is left unsaved: its review state saves as it goes.
       setLeaveGuard: () => {},
+      setFocused: () => {},
     }),
     [navigate, startWorkspace],
   );

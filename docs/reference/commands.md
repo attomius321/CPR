@@ -143,7 +143,15 @@ change, only n and [ work.
 | h | History: the cleaned-up workspaces. ↑ and ↓ move between them in its list. |
 | w | Move to the workspaces in the sidenav. ↑ and ↓ move between them, and Enter opens one. |
 | [ | Fold the sidenav to a row of icons, or open it again |
-| ] | In a workspace: hide or show the **Changes** panel |
+| ] | In a workspace: hide or show the side card |
+
+In a workspace's terminal, every key is the agent's or the shell's. The bar under the terminal
+names the keys that answer what the agent waits for: Enter allows a permission Claude Code asks for,
+and Esc says no and ends its turn. Ctrl+click opens a path the agent printed in VS Code, and Ctrl+V
+pastes an image (on macOS, Cmd+click and Cmd+V). **Split**, at the end of the tabs, shows the agent
+and a shell side by side; it stays on through a reload. **Focus** shows the terminal alone, with
+the sidenav as a row of icons and no side card; Symbiote remembers it in this browser for every
+workspace.
 
 In Symbiote nexus, with the focus on its tabs, ← and → move to the previous or next tab, and Home
 and End to the first or the last. In the folders under **Symbiotes**, the arrows move between the
