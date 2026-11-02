@@ -117,6 +117,7 @@ all**.
 | Where a review starts | `packages/cli/src/review-base.ts` |
 | The text of `AGENTS.md` | the `reviews` prompt, `DEFAULT_PROMPTS.reviews` in the CLI's `prompts.ts` |
 | The Review tab | `packages/viewer/src/diff/ReviewTab.tsx` |
+| The marks, the drafts and the verdict picked, for both pages | `packages/viewer/src/diff/useReview.ts` |
 | The Files page and its diff | `packages/viewer/src/diff/FilesPage.tsx`, `packages/viewer/src/diff/file-diff.ts` |
 | Comments and sending a verdict | `packages/viewer/src/diff/comments.ts` (`POST /api/review`) |
 | The reviews list | `GET /api/reviews` in `packages/cli/src/server.ts` |
@@ -172,3 +173,6 @@ These no longer hold:
   the Files page draws git's diff ([V60](../journal/v60-files-page.md)).
 - **A select is as wide as its longest option.** **Merge into**'s branch list overflowed the
   panel until the select got `min-width: 0` ([V76](../journal/v76-review-tab-layout.md)).
+- **Each page draws its own Review tab.** What the tab keeps is lost on `g`: the verdict was, so
+  **Finish review** on the other page sent a comment. The review's state lives in `useReview`
+  ([the fix](../journal/fix-hive-turn-end-flaky-tests-verdict.md)).

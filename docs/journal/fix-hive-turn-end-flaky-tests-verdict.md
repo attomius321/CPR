@@ -157,3 +157,20 @@ zooms. The cut is laid out, which V8a kept off zoom frames: it reads `--symbiote
   map name ends inside its box and the box's tooltip names the file (red on the build before: 32
   names 6.5 px past their boxes). The graph specs pass (24).
 - Screenshots before and after at 1,440 × 900, dark and light.
+
+## Results (2026-11-02)
+
+- **The whole unit suite** after every change: 2,903 of 2,903 pass at load 3–8; the two HV8
+  tests took 3.5 s and 3.1 s, under their own 30 s. `pnpm format:check`, `lint` and `typecheck`
+  pass; `pnpm build` passes.
+- **e2e, the specs the change touches**, on the branch's build: `reviews`, `branches` and the
+  Git page's specs (29), the graph's (`large-graph`, `projects`, `tooltips`, `angular-v11`: 24),
+  `workspaces`, `hive-loop`, `hive-review` and `hive-pacing` (62 of 63 in one run at load 15–36:
+  `workspaces.spec.ts:502`, a card's chip measured before its state line was drawn, failed once;
+  it passed 3 of 3 alone, and the whole spec 52 of 52 after). The whole `pnpm test:e2e` was left
+  to Hive's check.
+- **Screenshots** at 1,440 × 900 before and after, dark and light (items 4 and 5): a private
+  page, <https://claude.ai/artifact/RPiCytfNWEnbYyZWtZm96s>.
+- **Not verified**: a real Hive round with Claude Code listing a reported turn `working` (item 1
+  rests on the job timeline, the thread and the fake); the HV8 tests at load 44 with the new 30 s
+  (they took 21 s there; the suite then fails elsewhere anyway).
