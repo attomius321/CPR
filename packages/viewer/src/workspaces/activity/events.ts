@@ -506,8 +506,8 @@ export function nucleusEvents(lines: readonly NucleusActivityLine[]): ActivityEv
         const known = confirms.get(line.ask);
         const did = line.call ? byId.get(line.call) : undefined;
         if (known) {
-          if (line.stage === 'ended') known.ended = line;
-          else known.asked = line;
+          if (line.stage === 'asked') known.asked = line;
+          else known.ended = line;
           continue;
         }
         const event: Extract<ActivityEvent, { kind: 'confirm' }> = {
