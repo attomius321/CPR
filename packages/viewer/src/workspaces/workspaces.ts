@@ -1,6 +1,12 @@
 // Workspaces started from the commits page (V18): pure helpers for the start page and the
 // line the page shows after Start.
-import { landedLine, landingLine, requestName } from './hive-rounds.js';
+import {
+  checkoutLine,
+  landedLine,
+  landingLine,
+  requestName,
+  waitsForCheckout,
+} from './hive-rounds.js';
 import { COMMAND_TOOLS, shownCommand } from './activity/classify.js';
 import type {
   AgentEfforts,
@@ -427,6 +433,15 @@ const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip =
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 /**
+ * Merged, as the pages count it: not while Hive's request, merged on its forge, waits for the
+ * person's checkout (HV8). `merged` counts `origin`'s branch, which Hive's own fetch moved, while
+ * the person's own branch has not moved and Hive has not landed it.
+ */
+export const mergedForCard = (workspace: Pick<WorkspaceSummary, 'merged' | 'hive'>): boolean =>
+  workspace.merged &&
+  !(workspace.hive && workspace.hive.step !== 'landed' && waitsForCheckout(workspace.hive.request));
+
+/**
  * What a workspace needs next: merged, it is done; while its agent works, nothing; while it waits,
  * an answer; else — once it has commits, or its agent finished — what its review says; else its
  * agent does not run.
@@ -464,11 +479,16 @@ export function workspaceNext(
     });
     // HV8: by a pull or merge request, its link at the end of the card's line.
     const request = hive.landing?.via === 'request' ? hive.request : undefined;
-    // Merged on the forge, Hive's fetch has origin's main at its merge (so `merged`), and the
-    // person's checkout refuses the fast-forward: Hive still waits, in its group (770, 789).
-    const waitsForCheckout =
-      hive.step === 'landing' && request?.state === 'merged' && !request.pulled?.ok;
-    if (!waitsForCheckout && (workspace.merged || hive.step === 'landed')) {
+    // Merged on the forge and the person's checkout refusing the fast-forward: Hive still waits,
+    // in its group, whatever the step (770, 789); `merged` is its own fetch of origin's branch.
+    if (hive.step !== 'landed' && waitsForCheckout(hive.request)) {
+      const waiting = hive.request;
+      return {
+        ...said(checkoutLine(waiting), '⚙', 'hive'),
+        link: { href: waiting.url, text: requestName(waiting) },
+      };
+    }
+    if (mergedForCard(workspace) || hive.step === 'landed') {
       const done = next('done', landedLine(hive.landing, request), '✓', 'done');
       if (!request || hive.landing?.outcome !== 'landed') return done;
       return {
@@ -506,6 +526,10 @@ export function workspaceNext(
       default:
         return next('hive', 'Its agent is not running', '·', 'idle');
     }
+  }
+  // Hive off while its merged request waits for the person's checkout (HV8): not done yet.
+  if (hive && waitsForCheckout(hive.request) && hive.step !== 'landed') {
+    return stopped(`Hive off: ${checkoutLine(hive.request)}`, '·', 'idle');
   }
   if (workspace.merged) return next('done', 'Merged', '✓', 'done');
   const waits = (text: string): WorkspaceNext => {

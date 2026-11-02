@@ -27,6 +27,7 @@ import {
   type WorkspaceFact,
   type WorkspaceNext,
   type WorkspaceRow,
+  mergedForCard,
 } from './workspaces.js';
 import { tip } from '../ui/tip.js';
 
@@ -36,7 +37,7 @@ import { tip } from '../ui/tip.js';
  */
 function useMergeCheck(workspace: WorkspaceSummary, read = true): BranchMerge | null {
   const [merge, setMerge] = useState<BranchMerge | null>(null);
-  const wanted = read && workspace.ahead > 0 && !workspace.merged && workspace.tip !== null;
+  const wanted = read && workspace.ahead > 0 && !mergedForCard(workspace) && workspace.tip !== null;
   useEffect(() => {
     if (!wanted) return;
     let live = true;

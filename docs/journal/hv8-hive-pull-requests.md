@@ -129,3 +129,26 @@ a merge runs (V46a). This branch changes nothing of the merger, its queue, its l
 `merges.spec.ts` is empty). Rerun after `pnpm build`: alone 3 of 3 (`--repeat-each=3`), the whole
 spec 13 of 13. A timing-sensitive e2e test under the check's load, as AR1 and AR2 measured for this
 suite; left as it is, not patched here.
+
+## HV8 — the card waits for your checkout in any step (2026-11-02, branch `feature/hive-pull-requests`)
+
+The running reviewer's last defect at `e2ca0a5`: the card's "main waits for your checkout" held
+only at `landing`. After the person's message restarted the rounds (`writing`) and the request was
+merged on the forge with their file in main's way, the record was right (merged, `pulled.ok:
+false`) but the card said "Merged" in Done: `workspace.merged` counts `origin/main`, which Hive's own
+fetch moved.
+
+**Learned**:
+- **The card must read the record's state, not the step.** `waitsForCheckout` (`hive-rounds.ts`)
+  is now the one rule: Hive's request merged on its forge and the start branch not brought up. The
+  card stays in the Hive group with "Merged on GitHub: main waits for your checkout" and the
+  request's link in any step but `landed`; with Hive off, among the stopped, saying so.
+- **Every viewer reader of `merged` had the same flaw**: the head's Clean up (its menu and button),
+  Merge into and Review's look, the card's clean-up words and the merge check. They read
+  `mergedForCard` now, `merged` except while Hive waits for the checkout. The runner already treats
+  that state as awaited (`awaiting`, the one gate).
+
+**Verification**: the reviewer's test added unchanged (`hive-request-card-rounds.test.ts`, GitHub
+and GitLab), red before, green after; a unit test of the card in every step and with Hive off;
+the viewer's suites and every earlier reviewer test, 860 tests; e2e: the request, Hive review and
+the workspaces' Clean up and Merge specs, 10 of 10.

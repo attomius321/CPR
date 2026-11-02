@@ -80,6 +80,18 @@ export const requestName = (request: Pick<HiveRequest, 'forge' | 'number'>) =>
 /** "Pull request" or "Merge request". */
 export const requestKind = (request: Pick<HiveRequest, 'forge'>) => FORGES[request.forge].kind;
 
+/**
+ * Hive's request merged on its forge, the start branch not brought up yet (HV8, 770, 789): Hive
+ * still waits for the person's checkout, in any step. The workspace's `merged` is then Hive's own
+ * fetch of `origin`'s branch, not a landing.
+ */
+export const waitsForCheckout = (request: HiveRequest | undefined): request is HiveRequest =>
+  request?.state === 'merged' && !request.pulled?.ok;
+
+/** "Merged on GitHub: main waits for your checkout". */
+export const checkoutLine = (request: HiveRequest) =>
+  `Merged on ${FORGES[request.forge].name}: ${request.into} waits for your checkout`;
+
 /** A request's state, for the Review tab (HV8). */
 export function requestState(request: HiveRequest): {
   text: string;
@@ -109,9 +121,7 @@ export function reviewWords(request: HiveRequest): string {
 export function landingLine(landing: HiveLanding | undefined, request?: HiveRequest): string {
   if (!landing || landing.outcome) return 'Hive: landing it';
   if (landing.via === 'request' && request) {
-    if (request.state === 'merged') {
-      return `Merged on ${FORGES[request.forge].name}: ${request.into} waits for your checkout`;
-    }
+    if (request.state === 'merged') return checkoutLine(request);
     return `Waiting for your merge: ${requestName(request)}`;
   }
   const at = `Landing in ${landing.into}`;
