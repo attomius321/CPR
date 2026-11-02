@@ -191,7 +191,7 @@ itself; cleaning up a landed workspace; requests from normal mode.
   stopping, no token, a restart and a lost record opening no second request, Hive off reading
   nothing, the default landing through the queue with no forge call; and no forge);
   `hive-request.test.ts` 3; the viewer's words (`hive-rounds`, `workspaces`, `hive-switch`) 4 new.
-  The runner's tests were red first, for the reason each names (landed through the queue).
+  The runner's tests were red first, for the reason each names (landed through the queue). `pnpm check`: 2,835 tests pass.
 - **e2e**: `hive-request.spec.ts` 2: a real `symbiote view` on a fake GitHub opens the request at
   landing, the card waits for the merge with its link, the Review tab shows it, `main` untouched
   until the fake forge's merge, then Done with `main` at the forge's merge; Settings' part with

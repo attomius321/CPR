@@ -45,7 +45,7 @@ sets it and says what `origin` is and whether a token is found. Decisions 788–
 
 **Verification**: forge 38 tests (10 new); `hive-runner.test.ts` 77 (60 HV4 tests unchanged, 17
 new, red first: they landed through the queue); `hive-request.test.ts` 3; the viewer's words 4
-new. e2e `hive-request.spec.ts` 2 of 2 on a fake GitHub with a real `symbiote view`; with the
+new; `pnpm check` 2,835 tests. e2e `hive-request.spec.ts` 2 of 2 on a fake GitHub with a real `symbiote view`; with the
 Hive, Settings, targets and page-frame specs, 34 of 34. Screenshots dark and light.
 
 Not verified: a real GitHub or GitLab (on purpose: nothing was sent to a forge); GitHub's lazy
