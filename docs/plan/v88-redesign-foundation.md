@@ -138,6 +138,7 @@ question keeps its circuit art and its layout and takes the warm ink.
 | 819 | Buttons (supersedes 613's danger button; replaces 404's Clean up as the head's primary) | **One constructive primary a page (violet, dark words; crimson, white words in Hive); secondary raised; ghost; destructive a secondary with red words (Clean up, Delete, Turn off Hive); Turn on Hive crimson in both modes** | the kits; the person's yes to the plan |
 | 820 | The page head and a card's head | **The icon on a 28 px tile; a card head 37 px, its title 15 px at 600** | the kit's `.head` and `.card-head` at today's tested heights |
 | 821 | The taskbar dot | **Violet, as Waiting for you** | the person's yes to the plan |
+| 822 | The sidenav's top (added while building) | **The S and the project's name alone; "Symbiote ·" stays in its tip and its accessible name, for the rail** | the person: "remove the Symbiote name from the top of sidenav. We'll only keep the project name"; the kits draw it so |
 
 **Not in V88 (later briefs)**: the workspace page's and the terminal view's new layout, reviews,
 the two Overview pages, Hive's pages and sidenav groups, turning Hive on in 1.4 s, Approve plan, the
@@ -174,6 +175,9 @@ scale and heights.
   Stop and Start the agent are secondary, Review the one primary until merged and secondary after,
   Clean up and Clean up anyway destructive (decision 819 replaces 404's Clean up primary); a
   skill's Delete is destructive too.
+- **The sidenav's top** (decision 822, asked while building): the S and the project's name alone;
+  the tip and the link's accessible name keep "Symbiote · <project>" for the rail, where only the
+  S shows. `shell.spec.ts` checks it.
 - **Not placed**: `StageTrack` is built and tested but on no page (no page shows these steps
   today); the Hive group in the sidenav is a plain group until its own brief.
 

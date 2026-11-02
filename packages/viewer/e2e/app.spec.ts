@@ -394,8 +394,9 @@ test.describe('the title bar', () => {
     for (const name of ['Minimize', 'Maximize', 'Close']) {
       await expect(bar.getByRole('button', { name, exact: true })).toBeVisible();
     }
-    // Symbiote and the repository, the fold and History's branches: the page's, as in a browser.
-    await expect(page.locator('.sidenav-brand')).toHaveText(/^Symbiote · .+/);
+    // The repository's name (V88: Symbiote's no longer beside it), the fold and History's
+    // branches: the page's, as in a browser.
+    await expect(page.locator('.sidenav-brand')).toHaveAccessibleName(/^Symbiote · .+/);
     await expect(bar.getByRole('button', { name: 'All branches' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'All branches' })).toBeVisible();
 

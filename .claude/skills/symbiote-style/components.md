@@ -471,7 +471,8 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
 ## Shell
 
 - Sidenav: `--side`, 300 px at first (V79; 264 since V61), `--line` on its right. From the top: the brand row (52 px: the
-  round mark at 32 px, "Symbiote" at 17 px 600, the repository in `--muted`, the fold a 32 px
+  round mark at 32 px, the project's name alone at the title size, 600 (V88: "Symbiote ·" no
+  longer before it; the tip and the link's name keep it), the fold a 32 px
   raised square), the pages as 36 px rows with 18 px icons, the section header, the groups and
   their cards; at the bottom, Settings alone, a page's row over a `--line` hairline (6 × 8 px
   around it) that the list scrolls under, its icon at the rail's bottom when folded.

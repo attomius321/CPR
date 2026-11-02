@@ -20,10 +20,11 @@ ground and raised, lines 1.2:1).
 
 ## V88 — the kits' colours, shared states and parts; no honeycomb (2 November 2026, branch `feature/redesign-foundation`)
 
-Both modes' tokens from the kits in dark, light and the system's light; one set of states (amber
+Both modes' tokens from the kits in dark, light and the system's light; the sidenav's top the
+project's name alone, beside the S (asked while building); one set of states (amber
 the agent's turn and in progress, violet the person's, green passed, red failed, cyan paused);
 `StatusLabel`, `StageTrack`, the buttons, the page head's tile and `.card-head` on every card's
-head, from `src/ui`; the honeycomb, sheen, streak, glow and gloss removed. Decisions 812–821.
+head, from `src/ui`; the honeycomb, sheen, streak, glow and gloss removed. Decisions 812–822.
 
 **Learned**:
 - **`--panel` was `--side` in disguise.** The two were equal since V61, and 28 card grounds used

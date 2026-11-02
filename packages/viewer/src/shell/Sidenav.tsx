@@ -244,9 +244,9 @@ export function Sidenav({
           {...tip(repo ? `Symbiote · ${repo}` : 'Symbiote', { side: 'right' })}
         >
           <SymbioteMark />
-          <span className="sidenav-label">
-            Symbiote{repo && <span className="sidenav-repo"> · {repo}</span>}
-          </span>
+          {/* The project's name alone beside the S (V88, the redesign's kits); Symbiote's only
+              where there is no project. */}
+          <span className="sidenav-label">{repo ?? 'Symbiote'}</span>
         </a>
         <button
           type="button"
