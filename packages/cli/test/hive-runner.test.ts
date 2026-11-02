@@ -108,7 +108,10 @@ async function until(ready: () => boolean | Promise<boolean>, what: string): Pro
  * workspace's copy on 2026-10-31): a resume of a session whose process still lives starts a copy
  * under a new ID, without the original's settings, so its hooks record nothing; `linger` keeps a
  * stopped session's process listed for that many more listings; `deafen` silences every hook (a
- * settings file whose hook is gone); `copies` makes every resume a copy.
+ * settings file whose hook is gone); `copies` makes every resume a copy; `drowse` leaves a resumed
+ * session `working` with its process `idle`, its prompt recorded, until `wake`: what the real one
+ * lists for a moment after a resume (feature/hive-pull-requests, 2026-11-02), and Symbiote reads
+ * as an interrupted turn.
  */
 function fakeClaude(symbiote: string, now: () => Date) {
   const listed: AgentSession[] = [];
@@ -117,6 +120,7 @@ function fakeClaude(symbiote: string, now: () => Date) {
   let allDeaf = false;
   let lingering = 0;
   let copying = false;
+  let drowsy = false;
   /** Stopped sessions whose process is still listed, and for how many more listings. */
   const ending = new Map<AgentSession, number>();
   const hook = (session: AgentSession, input: Record<string, unknown>) =>
@@ -155,7 +159,7 @@ function fakeClaude(symbiote: string, now: () => Date) {
       deaf.add(copy.sessionId ?? '');
       return { ok: true };
     }
-    Object.assign(session, { state: 'working', status: 'busy' });
+    Object.assign(session, { state: 'working', status: drowsy ? 'idle' : 'busy' });
     await hook(session, { hook_event_name: 'UserPromptSubmit', prompt: text });
     return { ok: true };
   });
@@ -230,6 +234,10 @@ function fakeClaude(symbiote: string, now: () => Date) {
     deafen: () => (allDeaf = true),
     /** Every resume starts a copy. */
     copies: () => (copying = true),
+    /** From now on a resumed session lists `working` and `idle` until `wake`. */
+    drowse: () => (drowsy = true),
+    /** The newest session in `worktree` at work: its process busy. */
+    wake: (worktree: string) => Object.assign(sessionIn(worktree) ?? {}, { status: 'busy' }),
   };
 }
 
@@ -2428,6 +2436,117 @@ describe('No gate before landing (HV4, decision 773)', () => {
       permissionMode: 'default',
     });
     expect(s.fake.start.mock.calls[1]?.[0].permissionMode).toBe('default');
+  });
+});
+
+describe('A message is not the writer asking (fix/hive-spurious-decide, decisions 794, 795)', () => {
+  it("Hive's message, delivered by stopping and resuming the writer, gets no hive.decide while the writer reads interrupted", async () => {
+    const repo = repository(['false']);
+    const s = await setup(repo, { stopWaitMs: 0 });
+    await s.turn(true);
+    const worktree = await s.start('feature/woken');
+    const runner = s.runner();
+    s.fake.drowse();
+    await s.fake.endTurn(worktree, { files: { 'w.txt': 'w\n' } });
+    await runner.tick();
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/woken')).toMatchObject({
+      step: 'writing',
+      round: 2,
+      message: { key: 'hive.check', sent: true },
+    });
+    // Resumed with Hive's message, before its first busy moment: an interrupted turn, to its card.
+    expect((await s.service.summaryOf('feature/woken'))?.agent).toMatchObject({
+      state: 'needs-you',
+      interrupted: true,
+    });
+    for (let i = 0; i < 3; i++) {
+      await runner.tick();
+      await runner.idle();
+    }
+    const record = await readHive(s.where, 'feature/woken');
+    expect(record).toMatchObject({ step: 'writing', message: { key: 'hive.check', sent: true } });
+    expect(record?.decided).toBeUndefined();
+    expect(s.fake.resume).toHaveBeenCalledTimes(1);
+    expect(s.fake.stop).toHaveBeenCalledTimes(1);
+    // The writer works and ends its turn: the next round, and still no answer counted.
+    s.fake.wake(worktree);
+    await s.fake.endTurn(worktree, { files: { 'w.txt': 'w2\n' } });
+    await runner.tick();
+    await runner.idle();
+    const next = await readHive(s.where, 'feature/woken');
+    expect(next).toMatchObject({
+      step: 'writing',
+      round: 3,
+      message: { key: 'hive.check', sent: true },
+    });
+    expect(next?.decided).toBeUndefined();
+    expect(s.fake.resume).toHaveBeenCalledTimes(2);
+  });
+
+  it("the person's message to a Hive writer, read as interrupted as it starts, gets no hive.decide either", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo, { stopWaitMs: 0 });
+    await s.turn(true);
+    const worktree = await s.start('feature/told');
+    const runner = s.runner();
+    await runner.tick();
+    await runner.idle();
+    s.fake.drowse();
+    await s.service.reply({ branch: 'feature/told', text: 'Write it in Rust.', stop: true });
+    expect((await s.service.summaryOf('feature/told'))?.agent).toMatchObject({
+      state: 'needs-you',
+      interrupted: true,
+    });
+    for (let i = 0; i < 3; i++) {
+      await runner.tick();
+      await runner.idle();
+    }
+    const record = await readHive(s.where, 'feature/told');
+    expect(record).toMatchObject({ step: 'writing' });
+    expect(record?.decided).toBeUndefined();
+    expect(record?.message).toBeUndefined();
+    expect(s.fake.resume).toHaveBeenCalledTimes(1);
+    s.fake.wake(worktree);
+    expect((await s.service.summaryOf('feature/told'))?.agent.state).toBe('working');
+  });
+
+  it("the person's message to a writer stopped for asking 4 times counts Hive's answers again, as the rounds", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo, { stopWaitMs: 0 });
+    await s.turn(true);
+    const worktree = await s.start('feature/again');
+    const runner = s.runner();
+    const ask = () =>
+      Object.assign(s.fake.sessionIn(worktree) ?? {}, {
+        state: 'blocked',
+        status: 'idle',
+        waitingFor: 'permission to run Bash',
+      });
+    for (let n = 1; n <= 4; n++) {
+      ask();
+      await runner.tick();
+      await runner.idle();
+    }
+    expect(await readHive(s.where, 'feature/again')).toMatchObject({
+      step: 'stuck',
+      decided: 3,
+      note: 'the writer asked for the person 4 times: no one answers in Hive mode',
+    });
+    await s.service.reply({ branch: 'feature/again', text: 'Use the test helper.', stop: true });
+    await runner.tick();
+    await runner.idle();
+    const again = await readHive(s.where, 'feature/again');
+    expect(again).toMatchObject({ step: 'writing', round: 1 });
+    expect(again?.decided).toBeUndefined();
+    ask();
+    await runner.tick();
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/again')).toMatchObject({
+      step: 'writing',
+      decided: 1,
+      message: { key: 'hive.decide', sent: true },
+    });
   });
 });
 
