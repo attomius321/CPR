@@ -341,7 +341,7 @@ describe("Nucleus's groups (NU2)", () => {
   });
 });
 
-describe("Nucleus's start without a Confirm (NU3, decision 785)", () => {
+describe("Nucleus's start without a Confirm (NU8, decision 785)", () => {
   const skipped = (why: 'setting' | 'hive'): NucleusActivityLine[] => [
     {
       at: at(1),

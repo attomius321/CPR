@@ -741,7 +741,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   // Hive mode (V82): this repository's switch; while it is on, every workspace started is Hive's
   // and its runner drives it (HV2).
   const hive = repositoryHive(repo, cacheDir);
-  // Nucleus's start without a Confirm (NU3): the person's setting, kept as Hive mode is.
+  // Nucleus's start without a Confirm (NU8): the person's setting, kept as Hive mode is.
   const nucleusStartSetting = repositoryNucleusStart(repo, cacheDir);
   const repoWorkspaces = workspaces(repo, cacheDir, {
     claude: claudeOf,

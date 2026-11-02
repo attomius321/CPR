@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { startConfirmNote } from '../src/settings/start-confirm.js';
 
-// Settings' switch on Nucleus's page in words (NU3, decisions 783, 786).
+// Settings' switch on Nucleus's page in words (NU8, decisions 783, 786).
 describe('startConfirmNote', () => {
   it('says what it does, off or on, and what still waits', () => {
     const off = startConfirmNote({ withoutConfirm: false, own: false, hive: false }, 'Nucleus');

@@ -1,4 +1,4 @@
-// Nucleus's start without a Confirm in words (NU3, decisions 783, 786): what Settings' switch on
+// Nucleus's start without a Confirm in words (NU8, decisions 783, 786): what Settings' switch on
 // Nucleus's page says, in the name Hive mode gives it. Pure.
 
 /** `GET /api/nucleus/start-confirm`: what holds now, the person's own choice, Hive mode. */

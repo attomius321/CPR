@@ -1,4 +1,4 @@
-// Nucleus's start without a Confirm (NU3): the person's setting, kept as Hive mode is, in
+// Nucleus's start without a Confirm (NU8): the person's setting, kept as Hive mode is, in
 // `symbiote/nucleus-start.json` and never committed (decision 782); on whatever it says while Hive
 // mode is on (decision 783). Read by the MCP at each call (`withoutConfirm`), set only by Settings.
 import type { GitRepo, WithoutConfirm } from '@symbiote/core';

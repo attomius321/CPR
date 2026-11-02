@@ -483,7 +483,7 @@ Nucleus, the person's assistant in \`Symbiote\`, across its conversations. Times
   });
 });
 
-describe('Nucleus as Markdown: a start without a Confirm (NU3, decision 785)', () => {
+describe('Nucleus as Markdown: a start without a Confirm (NU8, decision 785)', () => {
   it('says it started without one, and why', () => {
     const at = (s: number) => `2026-11-02T08:00:0${s}.000Z`;
     const text = markdown({

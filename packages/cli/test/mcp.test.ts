@@ -1294,7 +1294,7 @@ describe("Symbiote's MCP: Nucleus's calls recorded (NU2, decision 607)", () => {
   });
 });
 
-describe("Symbiote's MCP: Nucleus starts without a Confirm (NU3, decisions 782-787)", () => {
+describe("Symbiote's MCP: Nucleus starts without a Confirm (NU8, decisions 782-787)", () => {
   const request = {
     kind: 'fix',
     title: 'The button',

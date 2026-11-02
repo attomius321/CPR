@@ -1,4 +1,4 @@
-// Settings' switch on Nucleus's page (NU3, decision 786): its start_workspace without the person's
+// Settings' switch on Nucleus's page (NU8, decision 786): its start_workspace without the person's
 // Confirm. Only the person sets it, here; on and fixed while Hive mode is on (decision 783).
 import { useEffect, useState } from 'react';
 import { getJson, postJson } from '../ui/http.js';

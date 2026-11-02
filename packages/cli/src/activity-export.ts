@@ -533,7 +533,7 @@ function nucleusEntryPiece(entry: NucleusEntry, zone: string): Piece | null {
       return item(at, zone, 'New conversation: this one ended');
     case 'confirm':
       if (entry.stage === 'skipped') {
-        // NU3 (decision 785): none asked, by the person's setting or while Hive mode is on.
+        // NU8 (decision 785): none asked, by the person's setting or while Hive mode is on.
         const why = entry.why === 'hive' ? 'Hive mode' : 'your setting';
         return item(
           at,

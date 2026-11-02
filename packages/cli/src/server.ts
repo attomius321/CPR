@@ -202,7 +202,7 @@ export interface ViewServerOptions {
   /** Enables `/api/hive` (V82): Hive mode, on every page from its first paint. */
   hive?: HiveRecord;
   /**
-   * Enables `/api/nucleus/start-confirm` (NU3): the person's setting with which Nucleus's
+   * Enables `/api/nucleus/start-confirm` (NU8): the person's setting with which Nucleus's
    * `start_workspace` goes without a Confirm, on while `hive` is; the MCP reads it at each call.
    */
   nucleusStart?: HiveRecord;
@@ -350,7 +350,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
    * a time), from the pages and from Symbiote's MCP alike.
    */
   const busy = new Set<string>();
-  /** Nucleus's start without a Confirm (NU3): the person's setting with Hive mode over it. */
+  /** Nucleus's start without a Confirm (NU8): the person's setting with Hive mode over it. */
   const startSetting = options.nucleusStart
     ? nucleusStart(options.nucleusStart, options.hive)
     : undefined;
@@ -362,7 +362,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         exclusive,
         // Nucleus's calls and their Confirms, in its activity (NU2, decision 607).
         ...(repository.nucleus?.record ? { record: repository.nucleus.record } : {}),
-        // Its start without a Confirm: the person's setting, or Hive mode (NU3, decision 784).
+        // Its start without a Confirm: the person's setting, or Hive mode (NU8, decision 784).
         ...(startSetting ? { withoutConfirm: () => startSetting.why() } : {}),
       })
     : undefined;
@@ -514,7 +514,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
     if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
     if (mcp && url.pathname.startsWith('/api/mcp')) return mcpRoute(req, res, url, mcp);
-    // Settings' switch (NU3, decision 782): the person's alone, never an MCP tool's.
+    // Settings' switch (NU8, decision 782): the person's alone, never an MCP tool's.
     if (startSetting && url.pathname === '/api/nucleus/start-confirm') {
       if (req.method === 'GET') return answer(res, () => startSetting.read());
       return written(req, res, parseHiveChange, ({ on }) =>

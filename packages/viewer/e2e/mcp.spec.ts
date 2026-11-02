@@ -190,7 +190,7 @@ test("an agent of the person's starts a workspace through symbiote mcp, on their
   );
 });
 
-test("Nucleus starts a workspace without the person's Confirm once they turn it on in Settings, and while Hive is on; the other tools still ask (NU3)", async ({
+test("Nucleus starts a workspace without the person's Confirm once they turn it on in Settings, and while Hive is on; the other tools still ask (NU8)", async ({
   page,
 }) => {
   const running = await serveWorkspaces();

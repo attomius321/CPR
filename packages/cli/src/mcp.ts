@@ -3,7 +3,7 @@
 // stdio bridge (`mcp-bridge.ts`, decision 358). The protocol's few methods by hand (decision 359).
 // A tool that changes a branch's fate waits for the person's Confirm on Symbiote's pages, 10 minutes
 // at most (an ask, decision 361); the others run at once. Nucleus's start goes without one while
-// the person's setting or Hive mode says so (NU3, decision 784).
+// the person's setting or Hive mode says so (NU8, decision 784).
 import {
   AGENT_KINDS,
   MERGE_STRATEGIES,
@@ -126,7 +126,7 @@ export interface McpOptions {
    */
   record?: (line: NucleusActivityLine) => void;
   /**
-   * Why Nucleus's `start_workspace` goes without the person's Confirm now (NU3, decisions 783,
+   * Why Nucleus's `start_workspace` goes without the person's Confirm now (NU8, decisions 783,
    * 784): Hive mode on, or the person's setting; undefined: it asks. Read at each call and listing.
    */
   withoutConfirm?: () => Promise<WithoutConfirm | undefined>;
@@ -167,7 +167,7 @@ interface ToolSpec {
 
 const ASKS =
   " Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.";
-/** What `start_workspace` says in ASKS's place when Nucleus's start goes without a Confirm (NU3). */
+/** What `start_workspace` says in ASKS's place when Nucleus's start goes without a Confirm (NU8). */
 const STARTS_AT_ONCE: Record<WithoutConfirm, string> = {
   setting:
     " Starts at once, without the person's Confirm: they turned on Start workspaces without a Confirm in Symbiote's Settings. Say first in one line what you start.",
@@ -1348,7 +1348,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
           until: ask.until,
         });
       },
-      /** A start that went without a Confirm (NU3, decision 785): its words and why. */
+      /** A start that went without a Confirm (NU8, decision 785): its words and why. */
       skipped(tool: string, words: string, why: WithoutConfirm) {
         const at = now();
         put({
@@ -1392,7 +1392,7 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
   }
 
   /**
-   * Why `name`'s call goes without the person's Confirm (NU3, decision 784): only Nucleus's
+   * Why `name`'s call goes without the person's Confirm (NU8, decision 784): only Nucleus's
    * `start_workspace`, while Hive mode or the person's setting says so; else undefined.
    */
   async function startsAtOnce(

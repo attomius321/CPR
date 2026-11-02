@@ -55,7 +55,7 @@ export function repositoryHive(
 
 /**
  * A switch of `repo`'s kept as Hive mode is (`repositoryHive`): `name` in its `symbiote/`, never
- * committed, a tracked one read as off. Nucleus's start without a Confirm is one too (NU3).
+ * committed, a tracked one read as off. Nucleus's start without a Confirm is one too (NU8).
  */
 export function repositorySwitch(
   repo: GitRepo,

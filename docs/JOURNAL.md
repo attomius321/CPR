@@ -376,4 +376,5 @@ merge commit.
 - 2026-11-01 [Fix — mark-merged and journals several branches wrote in](journal/fix-mark-merged-shared-journals.md)
 - 2026-11-01 [Living docs: area pages, replaced decisions marked, the register, branches](journal/chore-living-docs.md)
 - 2026-11-01 [Living docs' gaps: AGENTS.md, the lookup, stale pages, Prettier](journal/chore-living-docs-gaps.md)
-- 2026-11-02 [NU3 spike — who can say it is Nucleus](journal/nu3-start-without-confirm.md)
+- 2026-11-02 [NU8 spike — who can say it is Nucleus](journal/nu8-start-without-confirm.md)
+- 2026-11-02 [NU8 — the setting, the MCP, the record, Settings](journal/nu8-start-without-confirm.md)

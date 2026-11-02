@@ -1,9 +1,10 @@
-# NU3 — Nucleus starts workspaces without a Confirm
+# NU8 — Nucleus starts workspaces without a Confirm
 
-[Index](../PLAN.md) · [Journal](../journal/nu3-start-without-confirm.md)
+[Index](../PLAN.md) · [Journal](../journal/nu8-start-without-confirm.md)
 
-**Status:** building (2026-11-02), on branch `feature/nucleus-start-without-confirm` (the
-workspace's, from `main` at `e23651c`).
+**Status:** built (2026-11-02), on branch `feature/nucleus-start-without-confirm` (the
+workspace's, from `main` at `e23651c`); ready for review. Planned as NU3; NU8 since NU1's plan
+(decision 595) had NU3–NU7 for other steps.
 
 **Problem** (the brief: "Add a setting, off by default, that lets Nucleus … start a workspace
 without the person's Confirm in Symbiote"; the person's addition: "in Hive mode this setting is
@@ -22,13 +23,13 @@ nothing changes**: the same asks, records, tool descriptions and instructions, b
 
 ## The setting (`nucleus-start.ts`, `server.ts`)
 
-- Kept in `symbiote/nucleus-start.json` (`{ "withoutConfirm": true, "since": "<ISO date>" }`),
+- Kept in `symbiote/nucleus-start.json` (`{ "on": true, "since": "<ISO date>" }`),
   beside `hive.json` and placed as it is (`reviewPlace`: the main checkout's `symbiote/`, so every
   worktree shares it; Symbiote's cache where the reviews are kept there). A missing, broken or
   foreign file reads as off; a file git tracks reads as off, so a commit never turns it on for
   every clone (Hive's rule, decision 621). Not `symbiote/config.json`: agents edit and commit it.
 - `GET /api/nucleus/start-confirm` answers `{ withoutConfirm, own, hive }`: what holds now, the
-  person's own choice, and whether Hive is on. `POST { withoutConfirm }` sets the person's choice;
+  person's own choice, and whether Hive is on. `POST { on }` sets the person's choice;
   refused (409) while Hive is on, as Settings shows it.
 - No MCP tool reads or changes it. Nucleus's gate already denies it every write and every command
   but git's read commands (V35, decision 236).
@@ -110,7 +111,7 @@ e2e, docs.
 
 | # | Milestone | Output |
 |---|---|---|
-| NU3 | The setting, the MCP, the record, Settings | tests, e2e, docs |
+| NU8 | The setting, the MCP, the record, Settings | tests, e2e, docs |
 
 **Decisions**:
 
@@ -121,7 +122,33 @@ e2e, docs.
 | 784 | What skips the Confirm | **Only `start_workspace`, only Nucleus's calls; its description, the server's instructions and its answer (`withoutConfirm`) say so; every other asked tool and every `symbiote mcp` caller wait as before** | The brief; out of scope: the rest |
 | 785 | The record | **A `confirm` line with `stage: 'skipped'` and `why`, shown "Started without a Confirm" in the Activity tab and the export** | The brief: recorded, marked as started without one |
 | 786 | Where the switch is | **On Nucleus's page in Settings, before its prompts** | Where the person sets what Nucleus does; Hive's page is Hive's alone |
-| 787 | Who counts as Nucleus | **The bridge's `--as nucleus` header, as since MC1; not a key** | Measured: a `claude --bg` session's MCP server does not get the starter's environment (`NU3_PROBE_KEY` null), and a key on disk is readable by every agent of the same user, as `/proc` is. The plan's first choice, a per-view key, cannot reach Claude Code's Nucleus |
+| 787 | Who counts as Nucleus | **The bridge's `--as nucleus` header, as since MC1; not a key** | Measured: a `claude --bg` session's MCP server does not get the starter's environment (`NU8_PROBE_KEY` null), and a key on disk is readable by every agent of the same user, as `/proc` is. The plan's first choice, a per-view key, cannot reach Claude Code's Nucleus |
 
-**Not in NU3 (later)**: skipping the Confirm for anything but a start; a stronger proof that a call
+**Not in NU8 (later)**: skipping the Confirm for anything but a start; a stronger proof that a call
 is Nucleus's; telling a running conversation of a changed setting other than in an answer.
+
+## As built (NU8)
+
+- **The ID**: planned as NU3; NU1's plan (decision 595) had already named NU3–NU7 (a standing
+  watch, standing orders, notes, the forge, across repositories), which the plan-time check of
+  headings and index rows missed. NU8; decisions 782–787 unchanged, free on every branch.
+- **The record is Hive's, shared**: `hive.ts`'s per-repository record became
+  `repositorySwitch(repo, cacheDir, name)`, which `repositoryHive` and `repositoryNucleusStart`
+  both use, so the file is `{ "on", "since" }` as `hive.json` is, and `POST` takes `{ on }`
+  (`parseHiveChange`). `nucleus-start.ts`'s `nucleusStart(own, hive)` gives `why()`, `read()` and
+  `set()`; a record that fails reads as off.
+- **Settings**: the row is named **Starting**, its switch **Start workspaces without a Confirm**,
+  in a second `.settings-rows` under the Model and Effort (`StartConfirm.tsx`, its words in
+  `start-confirm.ts`). Settings' line about Nucleus's prompt (`nucleusAbout`) now says a start may
+  go without a Confirm; Nucleus's prompt itself is unchanged.
+- **The export** says "Started without a Confirm (your setting|Hive mode): <words>".
+- **Lost and rebuilt**: the workspace's uncommitted changes were discarded once mid-build (the
+  person's terminal had detached from the session and the agent looked stopped); rebuilt from the
+  session and committed at each step after.
+
+**Results.** Unit: 8 MCP tests (`mcp.test.ts`, 45 of 45), 6 of the record (`nucleus-start.test.ts`),
+4 of the API (`server.test.ts`), 1 of the export, 1 of the Activity tab, 2 of Settings' words;
+`pnpm check` 195 files, 2,771 tests. e2e: `mcp.spec.ts` 3 of 3, the new one (off asks; on in
+Settings starts at once, recorded "Started without a Confirm", `restart_agent` still asks; Hive on:
+the switch on and disabled, the choice kept). Not verified: a real Nucleus conversation reading the
+new description (the e2e's bridge is the spec itself), Codex's Nucleus.

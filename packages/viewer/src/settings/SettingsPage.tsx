@@ -640,7 +640,7 @@ function AgentPage({
   settings: AgentSettings;
   onSaved: () => void;
   onBack: () => void;
-  /** Its own rows under the Model and Effort: Nucleus's start without a Confirm (NU3). */
+  /** Its own rows under the Model and Effort: Nucleus's start without a Confirm (NU8). */
   rows?: ReactNode;
   children: ReactNode;
 }) {

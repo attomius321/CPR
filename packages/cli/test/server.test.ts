@@ -3186,7 +3186,7 @@ describe('/api/hive (V82)', () => {
   });
 });
 
-describe('/api/nucleus/start-confirm (NU3, decisions 782, 783)', () => {
+describe('/api/nucleus/start-confirm (NU8, decisions 782, 783)', () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);
   const servers: ViewServer[] = [];

@@ -675,7 +675,7 @@ const CONFIRM_ENDS = {
   gone: { text: 'Its call ended first', tone: 'muted' },
 } as const;
 
-/** Why a start went without a Confirm (NU3), in words and tone. */
+/** Why a start went without a Confirm (NU8), in words and tone. */
 const WITHOUT_CONFIRM = {
   setting: { text: 'Your setting', tone: 'muted' },
   hive: { text: 'Hive mode', tone: 'muted' },
@@ -691,7 +691,7 @@ function confirmGroup(
 ): ActivityGroup {
   const words = (event.asked ?? event.ended)?.words ?? '';
   const did = event.did?.output;
-  // None asked (NU3, decision 785): the person's setting or Hive mode started it at once.
+  // None asked (NU8, decision 785): the person's setting or Hive mode started it at once.
   if (event.ended?.stage === 'skipped') {
     return {
       ...base,

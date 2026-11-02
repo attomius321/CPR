@@ -6,7 +6,7 @@ import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-
 import type { HiveRecord } from '../src/hive.js';
 import { nucleusStart, repositoryNucleusStart } from '../src/nucleus-start.js';
 
-// Nucleus's start without a Confirm (NU3, decisions 782, 783): the person's setting, kept as Hive
+// Nucleus's start without a Confirm (NU8, decisions 782, 783): the person's setting, kept as Hive
 // mode is, and on whatever it says while Hive is on.
 describe('repositoryNucleusStart', () => {
   let repos: TestRepo[];
