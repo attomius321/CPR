@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv8-hive-pull-requests.md)
 
-**Status:** planned (2026-11-02), on branch `feature/hive-pull-requests` (the workspace's, a Hive
-workspace, from `main` at `0e4e4b2`); Hive OK'd the plan.
+**Status:** built (2026-11-02), on branch `feature/hive-pull-requests` (the workspace's, a Hive
+workspace, from `main` at `0e4e4b2`); Hive OK'd the plan. Proved against a fake GitHub and GitLab
+and a bare local `origin`; no real pull or merge request was opened anywhere.
 
 **Problem** (the brief: HV4's first "later" item, "pull or merge requests at a workspace's end";
 the person's answers of 2026-11-02). Since HV4 a Hive workspace lands in its start branch through
@@ -143,3 +144,57 @@ tried again a minute later.
 
 **Not in HV8 (later)**: waiting on or showing the forge's CI; auto-merge; Hive merging the request
 itself; cleaning up a landed workspace; requests from normal mode.
+
+## As built (HV8)
+
+- **The forge** (HV8a) as planned: `openChangeRequest` (GitHub `draft: false`; GitLab opens ready),
+  `findOpenRequest` (GitLab's list lacks the diff refs, so the one found is read whole),
+  `updateDescription`, `token`; `ChangeRequest.conflict` and `mergeCommit` absent unless the forge
+  says them (the `symbiote pr` tests' `toEqual`s unchanged). `GitHubForge` takes `gh`'s token
+  reader as a parameter: a test without a token must not read the developer's real one.
+- **Posting the findings** is shared: `postGraphFindings` (`post-findings.ts`) is what
+  `symbiote pr --post-findings` did in `main.ts`, now used by both.
+- **The runner** (HV8b): at `landing`, `land()` reads `hive.lands`; with `request` it checks the
+  branch was pushed and the forge has a token *before* Hive's approval, so a stop leaves no
+  approval behind. `openRequest` records the request and a landing attempt (`via: 'request'`,
+  `entry: '#12'`), then posts the graph review (`reviewRequest`, 3 tries a commit: GitLab's
+  diff refs may be missing for a moment after an open). `watchRequest` reads it, in any step: from
+  `landing` through `waitingForMerge` (the person's message, new commits and a commit checked
+  since come first), elsewhere from the tick's loop.
+- **Not planned, found by a test**: after the person closed a request, their message started the
+  rounds again and the next landing stopped again on the same closed request. `roundsAgain` now
+  leaves a closed request behind; the next landing opens a new one.
+- **`origin`'s forge** is read as git reaches it (`git remote get-url`, `insteadOf` expanded), else
+  as written (`remote.origin.url`). Found while building the e2e: with `insteadOf` pointing
+  GitHub's address at a bare repository, `get-url` returned the folder.
+- **The read interval** is 60 s; `SYMBIOTE_HIVE_REQUEST_MS` sets it (the e2e reads every 500 ms).
+- **The fake forge** (`packages/forge/test/fake-forge.ts`) keeps requests, reviews and notes in
+  memory for GitHub and GitLab, and makes the merge on the bare `origin` with `git merge-tree` and
+  `commit-tree`, as the forge would. It imports nothing of the forge's sources, so the viewer's
+  e2e serves it too.
+- **The viewer** (HV8c): the card's line ends with the request as a link (`.link`, the accent
+  under the pointer, as the tokens' test allows); the Review tab's Landing part lists the request
+  first; Settings' Hive page has a **Hive lands by** part under the switch, and the page's warning
+  says how Hive lands only while a request is picked (with the queue its words are `main`'s). The
+  off question says a request stays open on its forge.
+- **The writer's prompts are unchanged**: `hive.start` still says Hive lands and pushes; `hive.land`
+  carries the forge's words in `{why}` ("its pull request #12 cannot be merged on GitHub: src/a.ts
+  conflicts with main.").
+
+**Results.**
+
+- **Tests**: `forge` 38 (10 new, `requests.test.ts`: open, find, update, conflict and merge commit,
+  token, for GitHub and GitLab); `hive-runner.test.ts` 77 (60 on `main`, every one unchanged;
+  17 new: for GitHub and for GitLab, opened with the right base, head, title and body and the
+  graph review posted, merged → landed and `main` fast-forwarded, closed → stopped and a new
+  request after the person's message, cannot merge → `hive.land` and the request updated, the third
+  stopping, no token, a restart and a lost record opening no second request, Hive off reading
+  nothing, the default landing through the queue with no forge call; and no forge);
+  `hive-request.test.ts` 3; the viewer's words (`hive-rounds`, `workspaces`, `hive-switch`) 4 new.
+  The runner's tests were red first, for the reason each names (landed through the queue).
+- **e2e**: `hive-request.spec.ts` 2: a real `symbiote view` on a fake GitHub opens the request at
+  landing, the card waits for the merge with its link, the Review tab shows it, `main` untouched
+  until the fake forge's merge, then Done with `main` at the forge's merge; Settings' part with
+  and without a forge. With the Hive, Settings, targets and page-frame specs: 34 of 34.
+- **Screenshots** (1440×900, dark and light): the Review tab and card waiting for the merge,
+  landed in Done, Settings' part with no forge and with GitHub found.

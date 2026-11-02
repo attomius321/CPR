@@ -267,7 +267,8 @@ New message keys `hive.land`, `hive.plan`, `hive.decide`.
 The writer's tests (the brief's parked question) were settled by AR2 (decision 739): the failing
 tests and those the change touches; Symbiote runs the whole check.
 
-**Not in HV4 (later)**: pull or merge requests at a workspace's end; cleaning up a landed workspace
+**Not in HV4 (later)**: pull or merge requests at a workspace's end (since built as
+[HV8](hv8-hive-pull-requests.md)); cleaning up a landed workspace
 (the person's, from Done); Alpha Ceph's Confirm on a start (HV7); usage pacing (HV5); skipping the
 queue's check when the merge's tree is the one Hive checked (about 6 min a landing here); Claude
 Code's "not trusted" question in a new repository, answered once by the person.

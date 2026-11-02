@@ -418,7 +418,9 @@ The sidenav also opens these pages. Each has a key.
   waits for you: Symbiote runs the check after each turn of its agent, a reviewer runs the change
   in a throwaway copy and proves defects with failing tests, Symbiote sends the agent what fails
   and answers its plans and questions, then Hive lands the workspace in the branch it started from
-  and pushes it. In Hive mode the sidenav has two groups, **Hive** and **Done**. Start a project in
+  and pushes it. With **Hive lands by** set to a pull or merge request, Hive opens one on GitHub or
+  GitLab instead, and your merge there lands it. In Hive mode the sidenav has two groups, **Hive**
+  and **Done**. Start a project in
   normal mode, and turn Hive on once the repository has a check and tests you trust; it does not
   turn on while a workspace started in normal mode is open. See
   [configuration](docs/reference/configuration.md#hive-mode)); and **Appearance** (dark, light or
@@ -483,7 +485,9 @@ Symbiote itself sends three things over the network:
 
 - Your Claude usage is read from `api.anthropic.com`, with the token Claude Code stored. Codex's
   usage comes from Codex on your machine. Set `SYMBIOTE_USAGE=off` to read neither.
-- `symbiote pr` and the CI jobs call the GitHub or GitLab API, and fetch the pull request.
+- `symbiote pr` and the CI jobs call the GitHub or GitLab API, and fetch the pull request. So
+  does Hive with **Hive lands by** set to a pull or merge request: it opens the request, posts
+  Symbiote's review on it and reads it once a minute until you merge or close it.
 - A merge is pushed only if you set `merge.push`.
 
 The agents talk to their own services, as they do when you run them yourself. Symbiote's fonts

@@ -1,7 +1,7 @@
 # The merger
 
 [Index](../PLAN.md) · [Its decisions](../decisions.md#the-merger) · Checked against the code on
-2026-11-01
+2026-11-02
 
 This page says how Symbiote's merger works today. Read it before you change the merger. The plans
 listed in the index under "The merger" say why each part was built, as it was decided then. If a
@@ -86,6 +86,12 @@ An entry Hive queues has `by: 'hive'` (HV4). Every other entry is merged as abov
   checkout refused, it presses Land again each minute; `failed` or `needs-you`, it copies what
   failed and the log into its record, removes the entry (the target is free again), and tells the
   agent. The merge page marks the entry **by Hive** and offers no **Send to the agent** on it.
+- **Landing through a request instead** (HV8): with `hive.lands: "request"` Hive queues nothing.
+  It pushes the branch and opens a pull or merge request into the start branch on `origin`'s forge;
+  the person's merge there lands it. Hive then fetches the start branch and fast-forwards it as a
+  landing does (`--ff-only` in the checkout that has it; refused, tried again each minute). A
+  request the forge cannot merge goes to the workspace's agent as a failed landing does (769).
+  The merger and the queue take no part.
 
 ## The check
 
@@ -144,6 +150,7 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 | The merge worktree | `<cache>/worktrees/<repo-id>/merge` |
 | The merger agent's prompt and answer parsing | `packages/cli/src/merge-agent.ts` |
 | Hive's landing: the approval, the queued entry, what Hive does with its end | `packages/cli/src/hive-runner.ts` (`landing`, `land`, `follow`) |
+| Hive's landing by request (HV8): opened, reviewed, watched | `packages/cli/src/hive-runner.ts` (`openRequest`, `watchRequest`), `hive-request.ts`; the forge's calls in `packages/forge/src` |
 | A target fetched, a push that never prompts | `fetchBranch`, `pushBranch` in `packages/core/src/git/sync.ts` |
 | Settings: `merge.checks`, `push`, `strategy`, `agent`, `model`, `effort` | `symbiote/config.json`; defaults in [configuration](../reference/configuration.md) |
 | A project's rules for the merger agent | `symbiote/merge.md`, committed with the project |
@@ -193,6 +200,9 @@ when a later decision or a fix changed it.
 | 768 | Hive's merges: the target brought up to its remote first, diverged stops it; pushed after landing whatever `merge.push` | HV4 |
 | 769 | Hive's merges: no merger agent; a conflict or a failed check goes to the workspace's agent, twice at most | HV4 |
 | 770 | Hive's merge refused by the person's checkout: Land again each minute | HV4 |
+| 788 | `hive.lands`: the merge queue (the default) or a pull or merge request; with a request, no queue entry and no push of the start branch | [HV8](../plan/hv8-hive-pull-requests.md) |
+| 789 | By request, the person's merge on the forge lands it: the start branch fetched and fast-forwarded (as 770); closed stops; cannot merge goes to the agent (as 769) | HV8 |
+| 792 | By request with no `origin`, forge or token, or a refused push or open: stopped, never the queue instead | HV8 |
 
 These no longer hold:
 
@@ -218,6 +228,9 @@ These no longer hold:
   ([the queue fix](../journal/fix-merger-queue-wrong-behaviour.md)). So a Hive merge that failed
   must leave the queue, or it holds the target for everyone: Hive removes it before it tells the
   agent ([HV4](../journal/hv4-autonomous-landing.md)).
+- **`git remote get-url` expands `insteadOf`**: a forge's address that git reaches elsewhere reads
+  as that elsewhere. Hive's request reads `remote.origin.url` as written too, to know the forge
+  ([HV8](../journal/hv8-hive-pull-requests.md)).
 - **A merge commit needs a git user name**, which a test repository may lack: "Committer identity
   unknown" (HV4).
 - **Read the target's tip before every start**, **Check again** included (the queue fix).
