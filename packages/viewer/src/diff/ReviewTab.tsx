@@ -27,6 +27,12 @@ export interface ReviewProps {
   forge: 'github' | 'gitlab' | 'local';
   draft: ReviewDraft;
   onBody: (body: string) => void;
+  /**
+   * The verdict picked: the page's, not the tab's, so `g` to the other page keeps it (the tab is
+   * drawn again there).
+   */
+  verdict: ReviewEvent;
+  onVerdict: (verdict: ReviewEvent) => void;
   onRemove: (id: string) => void;
   /** The review was posted: its drafts are done. */
   onPosted: () => void;
@@ -80,8 +86,7 @@ export function ReviewTab({
   /** The server opens files in VS Code (`/api/open`): a conflicting file too (V17). */
   canOpen?: boolean;
 }) {
-  const { forge, draft } = review;
-  const [event, setEvent] = useState<ReviewEvent>('comment');
+  const { forge, draft, verdict: event } = review;
   const [submission, setSubmission] = useState<Submission>({ status: 'idle' });
   const nodes = useMemo(() => new Map(graph.nodes.map((n) => [n.id, n])), [graph]);
   const id = useId();
@@ -96,13 +101,11 @@ export function ReviewTab({
       if (local) {
         const result = await finishReview(toLocalReview(draft.drafts, event, draft.body));
         setSubmission({ status: 'finished', result });
-        setEvent('comment');
         review.onPosted();
         return;
       }
       const { url } = await postReview(toReview(graph, draft.drafts, event, draft.body));
       setSubmission({ status: 'posted', url });
-      setEvent('comment');
       review.onPosted();
     } catch (error) {
       setSubmission({ status: 'failed', error: (error as Error).message });
@@ -175,7 +178,7 @@ export function ReviewTab({
                   name="event"
                   value={option.value}
                   checked={event === option.value}
-                  onChange={() => setEvent(option.value)}
+                  onChange={() => review.onVerdict(option.value)}
                 />
                 {option.label}
               </label>

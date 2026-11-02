@@ -6,22 +6,26 @@ import {
   refreshDrafts,
   type Anchor,
   type ReviewDraft,
+  type ReviewEvent,
 } from './comments.js';
 import { toggleMark, type Marks } from './review.js';
 import { asMarks, asReviewDraft, type Store } from './store.js';
 
 /**
  * A diff's review as the person makes it: the symbols marked reviewed and the draft comments and
- * summary, read from `store` for each graph and saved there as they change.
+ * summary, read from `store` for each graph and saved there as they change; the verdict picked,
+ * kept for both pages (`g` between them) and never saved: a verdict is given to the head shown.
  */
 export function useReview(graph: Graph | undefined, store: Store | undefined) {
   const [marks, setMarks] = useState<Marks>({});
   const [draft, setDraft] = useState<ReviewDraft>({ drafts: [], body: '' });
+  const [verdict, setVerdict] = useState<ReviewEvent>('comment');
   useEffect(() => {
     if (!graph || !store) return;
     let live = true;
     setMarks({});
     setDraft({ drafts: [], body: '' });
+    setVerdict('comment');
     void Promise.all([store.load('review'), store.load('drafts')]).then(([marks, drafts]) => {
       if (!live) return;
       setMarks(asMarks(marks));
@@ -78,5 +82,15 @@ export function useReview(graph: Graph | undefined, store: Store | undefined) {
     (id: string) => updateDraft((d) => ({ ...d, drafts: d.drafts.filter((x) => x.id !== id) })),
     [updateDraft],
   );
-  return { marks, draft, updateDraft, toggleReviewed, addDraft, addLineDraft, removeDraft };
+  return {
+    marks,
+    draft,
+    updateDraft,
+    verdict,
+    setVerdict,
+    toggleReviewed,
+    addDraft,
+    addLineDraft,
+    removeDraft,
+  };
 }

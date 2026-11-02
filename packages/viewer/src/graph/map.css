@@ -18,12 +18,20 @@
   display: none;
 }
 
-/* The file's name, readable at any zoom; it may run past a narrow box. Map labels keep fixed
-   sizes and are scaled by `1 / --symbiote-zoom`: a transform needs no text layout, a font size does on
-   every zoom frame. `--symbiote-zoom` is set by mapzoom.ts on these labels only (`.file-name`,
-   `.project-frame`, `.project-name`): add any other element that reads it there. */
+/* The file's name, readable at any zoom, cut at its box's edge: run past a narrow box, it was
+   drawn over the next file's box (fix/hive-turn-end-flaky-tests-verdict); the box's tooltip names
+   the file. Map labels keep fixed sizes and are scaled by `1 / --symbiote-zoom`: a transform needs
+   no text layout, a font size does on every zoom frame. The cut, the box's width times the zoom,
+   is laid out: it reads `--symbiote-cut`, the zoom once it rests, so a name may run past its box
+   while the view zooms out. Both are set by mapzoom.ts on these labels only (`.file-name`,
+   `.project-frame`, `.project-name`): add any other element that reads them there. */
 .react-flow.map .file-name {
   display: inline-block;
+  box-sizing: border-box;
+  max-width: calc(100% * var(--symbiote-cut, 1));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: top;
   padding: 2px 6px;
   border-radius: 4px;
   background: color-mix(in srgb, var(--panel) 85%, transparent);
@@ -45,7 +53,8 @@
   font-size: var(--size-caption);
 }
 
-/* A name may cover a neighbouring box: clicks go to the box under the pointer. */
+/* A name taller than its box (at the lowest zooms) may run over the box below: clicks go to the
+   box under the pointer. */
 .react-flow.map .file-name {
   pointer-events: none;
 }

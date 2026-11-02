@@ -265,6 +265,7 @@ New message keys `hive.land`, `hive.plan`, `hive.decide`.
 | 775 | What agents and people are told | **`hive.start`, `hive.land`, `hive.plan`, `hive.decide`, `hive.nucleus`, AGENTS.md's `via: "hive"`; the dialogs, README and `configuration.md` say Hive lands and pushes, and when to use Hive** | The brief; the person's words of 2026-10-31 |
 | 794 | What asks the person (fix/hive-spurious-decide; amends 773) | **`needs-you` read as an interrupted turn with nothing named is not the writer asking: no `hive.decide`, nothing counted, Hive waits for the turn. A session waiting on something (`waitingFor`), or blocked in a turn that did not end, still gets `hive.decide`** | `feature/hive-pull-requests`, 2026-11-02: three asks counted, each within 2 ms of Hive's own message marked `sent` and none after a question; the third stopped the workspace. Claude Code lists a session it just resumed as `working` and `idle`, which reads as an interrupted turn |
 | 795 | When Hive's answers count again (fix/hive-spurious-decide) | **The person's message that starts the rounds again resets `decided` too; replaces 773's "3 a workspace"** | The same record: after the person's message at 09:57 `decided` stayed at 3, and the next answer stopped the workspace at once. The person who stepped in has answered, as for the rounds |
+| 810 | When a writer's turn has ended (fix/hive-turn-end-flaky-tests-verdict; amends 794) | **A Claude Code session whose process is idle, with nothing named, and whose thread has a report after its last prompt has ended its turn, whatever `state` Claude Code lists: `ready` or `done`, so Hive checks it. Without a report it stays an interrupted turn that waits (794); a busy process is still working** | `chore/readme-remake`, 2026-11-02: the writer reported at 18:58:33, Claude Code wrote `working` for that turn's end with no task in flight, and Hive waited 819 s, until the person's prompt started another turn. `agentState` had read the report this way since 2cf0ccb, but its caller passed it only for `blocked` sessions |
 
 The writer's tests (the brief's parked question) were settled by AR2 (decision 739): the failing
 tests and those the change touches; Symbiote runs the whole check.
@@ -416,3 +417,41 @@ a resumed session lists `working` and `idle`, its prompt recorded, until woken.
   what the person saw on the card and what the timings above show; it was not listed directly.
 - Known limit: a turn someone interrupts with Esc in a Hive workspace now waits for them, with
   the card saying so; before, Hive answered it with `hive.decide`.
+
+## Fix: a report ends the turn, whatever Claude Code lists (fix/hive-turn-end-flaky-tests-verdict)
+
+**Problem**: on `chore/readme-remake`, 2026-11-02 (times UTC), Hive sent its `hive.check` (prompt
+in the thread at 18:54:58). The writer committed `a26f62b` and reported at 18:58:33, and its Stop
+hook fired. The card read "Interrupted: waiting for you" (`needs-you`, `interrupted`), and Hive
+recorded no `turn-ended`. At 19:12:00 the person typed "Wyd? end your turn" in the writer's
+terminal; that turn's report at 19:12:10 read `done`, and Hive started round 2's check at 19:12:15.
+From the report to `turn-ended`: 819 s. For the 9 other turns on record that ended after Hive's
+message, the same gap is 0–2 s.
+
+**Cause**:
+
+- Claude Code wrote the session's state `working` at that turn's end. Its job's timeline (`state`
+  and `detail` at each update) has `working` at 18:58:33.108 with the report's last sentence as
+  its detail, `done` at the turns before and after. Nothing was in flight: the session had been
+  resumed at 18:54:57 with Hive's message, and in that turn the transcript has no background
+  shell, Monitor or subagent. Across this machine's job timelines, 46 of 118 turn ends are
+  written `working`: 44 by one session that watches workspaces between its turns.
+- `claude agents` lists such a session `working` with its process `idle`. `agentState` has read
+  that as a finished turn when the thread has a report after the last prompt since 2cf0ccb
+  (2026-10-18), but `summaryOf` worked the report out only for a `blocked` session, so the
+  branch never ran. The listing read as an Esc: `needs-you`, `interrupted`. Since decision 794
+  Hive waits on that, and `turnOf` counts a turn ended only at `ready` or `done`. The wait lasts
+  until Claude Code lists the session otherwise, which here took a second turn; a session that
+  keeps a background task could keep it longer.
+
+**Decision 810** (the table above; 794 amended): the thread's evidence over the listed state.
+`summaryOf` works out whether the turn ended for any idle session with nothing named, `blocked`
+or `working`. A report after the last prompt is a finished turn (`ready`, `done` or
+`plan-ready`), on the card and for Hive. With no report it is still an Esc that waits (794); with
+something named (`waitingFor`) it still asks (`hive.decide`); a busy process is working.
+
+**As built**: one condition in `workspaces.ts`; `hive-runner.ts` is unchanged, as its `turnOf`
+reads the state. The fake Claude Code in `hive-runner.test.ts` gained `endTurn`'s `listed`: the
+state Claude Code lists once the turn ended.
+
+**Results**: in the journal, [fix-hive-turn-end-flaky-tests-verdict](../journal/fix-hive-turn-end-flaky-tests-verdict.md).

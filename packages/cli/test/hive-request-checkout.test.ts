@@ -4,6 +4,9 @@
 // within its rate limits, not at every look of the runner (every 2 s). The harness is
 // hive-runner.test.ts's, as hive-request-merged-forge.test.ts copies it, with a clock that moves a
 // millisecond a read and jumps when told, and the watch's real interval.
+// Each test drives the runner, the merge queue, git and a fake forge: 1.4-2.3 s alone, up to
+// 5.3 s in the full suite at load 8-25 and 21 s at load 44, so it has its own 30 s
+// (fix/hive-turn-end-flaky-tests-verdict), as hive-runner.test.ts's slowest have their own.
 import { execFileSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
@@ -551,6 +554,6 @@ describe.each(['github', 'gitlab'] as const)(
         'landed',
       );
       expect(repo.git('rev-parse', 'main')).toBe(merge);
-    });
+    }, 30_000);
   },
 );

@@ -180,7 +180,9 @@ symbol glyph. Measure first paint (`/git`) and Bitwarden's graph after any font 
 - Map labels keep fixed sizes and are scaled by `transform: scale(1 / var(--symbiote-zoom))`; the
   variable is written by `mapZoomStyle` into a one-rule stylesheet for the labels only, and only
   on the map (V8a). Never set it on the page root or change a font size with the zoom: either
-  restyles or re-lays out thousands of elements on every zoom frame.
+  restyles or re-lays out thousands of elements on every zoom frame. A file name is cut to its
+  box at `--symbiote-cut`, the zoom once it rests (`CUT_REST_MS`): a cut is laid out, so never
+  on every frame (1.1 ms a frame on Bitwarden's map; fix/hive-turn-end-flaky-tests-verdict).
 - Frames (V7b): only when the files drawn span two or more projects; otherwise the layout must
   equal one without `projects` (a unit test compares them). Nodes nest three deep — frame → file
   box → symbol — and parents come first in `nodes`. A frame takes the pointer only on its name

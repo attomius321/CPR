@@ -38,14 +38,17 @@ describe('symbiote', () => {
     expect(stdout).toContain('Usage: symbiote');
   });
 
-  it('describes symbiote view as History, every branch, with the workspaces beside it (V25, V29a)', async () => {
+  it('describes symbiote view as Git, every branch, with the workspaces beside it (V25, V29a, V66)', async () => {
     for (const argv of [[], ['view', '--help']]) {
       const { stdout } = await symbiote(argv);
       expect(stdout).not.toMatch(/current\s+branch/);
       expect(stdout).not.toMatch(/commits\s+page/);
       expect(stdout).not.toMatch(/first\s+page\s+is\s+Workspaces/);
-      expect(stdout).toMatch(/History[^]*every\s+branch[^]*workspaces/);
+      expect(stdout).toMatch(/Git[^]*every\s+branch[^]*workspaces/);
+      // The Git page was History until V66; History (h) is the finished workspaces' since V77.
+      expect(stdout).not.toMatch(/History/);
     }
+    expect((await symbiote(['view', '--help'])).stdout).toMatch(/opens\s+on\s+Git\s+\(g\)/);
   });
 
   it('prints the version and schema version', async () => {

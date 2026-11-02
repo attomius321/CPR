@@ -2,6 +2,9 @@
 // message (the check and the review in flight). "Merged on the forge: the workspace is landed
 // (Done), and the local start branch is fetched and fast-forwarded" (the brief); the merged
 // request is never taken for one gone. The harness is hive-runner.test.ts's.
+// Each test drives the runner, the merge queue, git and a fake forge: 1.4-2.3 s alone, up to
+// 5.3 s in the full suite at load 8-25 and 21 s at load 44, so it has its own 30 s
+// (fix/hive-turn-end-flaky-tests-verdict), as hive-runner.test.ts's slowest have their own.
 import { execFileSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
@@ -540,6 +543,6 @@ describe.each(['github', 'gitlab'] as const)(
       expect(forge.requests.map((r) => [r.number, r.state])).toEqual([[12, 'merged']]);
       expect(record).toMatchObject({ step: 'landed', request: { number: 12, state: 'merged' } });
       expect(repo.git('rev-parse', 'main')).toBe(merge);
-    });
+    }, 30_000);
   },
 );

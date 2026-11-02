@@ -252,17 +252,34 @@
   font-size: var(--size-small);
 }
 
+/* The subject and the row's badges share the room, the subject 3 parts to a badge's 1 (their
+   text, padding apart), none wider than its text; what is left goes after the subject, so the
+   badges stay at the row's end.
+   Badges at their whole width first left the subject a letter or none at 1,440 px with the
+   details pane open (fix/hive-turn-end-flaky-tests-verdict). */
 .commit-subject {
-  flex: 1;
+  flex: 3 1 0;
   min-width: 0;
+  max-width: max-content;
+  margin-right: auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.commit > .ref {
+  flex: 1 1 0;
+  max-width: max-content;
+}
+
+/* HEAD stands out (V11): its badge weighs as much as the subject. */
+.commit > .ref-head {
+  flex-grow: 3;
+}
+
 .ref {
-  /* Once the subject has no room left, badges shrink before the author and date leave the row
-     (V10b: the branches panel takes 260 px of it). */
+  /* Badges shrink before the author and date leave the row (V10b: the branches panel takes
+     260 px of it). */
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

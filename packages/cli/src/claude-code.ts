@@ -238,7 +238,8 @@ export const isBlocked = (session: AgentSession) =>
  * by real path), else why there is none. `ahead` (commits since the fork point) tells a finished
  * plan from finished work. `ended`: the thread says its last turn ended (V18c) — Claude Code reads
  * a finished plan as `blocked` with nothing named it waits for, so that is a finished turn. A
- * turn interrupted with Esc fires no hook and reads `idle` with `working` until the next one ends.
+ * turn interrupted with Esc fires no hook and reads `idle` with `working` until the next one ends;
+ * so can a turn that ended with its report (decision 810), which `ended` tells apart.
  */
 export function agentState(
   workspace: WorkspaceFile,

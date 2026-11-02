@@ -130,6 +130,22 @@ test('zoomed out, the canvas is a map of files, and a click zooms into one', asy
   expect(
     await page.evaluate(() => document.documentElement.style.getPropertyValue('--symbiote-zoom')),
   ).toBe('');
+  // A name is cut at its box's edge, never drawn over the next file's box, and the box names
+  // the file on hover (fix/hive-turn-end-flaky-tests-verdict).
+  const past = await page.evaluate(() =>
+    [...document.querySelectorAll<HTMLElement>('.react-flow__node-file')].flatMap((box) => {
+      const label = box.querySelector('.file-name')?.getBoundingClientRect();
+      const edge = box.getBoundingClientRect().right;
+      return label && label.right > edge + 0.5
+        ? [`${box.dataset.id}: ${label.right - edge} px`]
+        : [];
+    }),
+  );
+  expect(past).toEqual([]);
+  await expect(node(page, 'group:file:src/hub.ts').locator('.file-box')).toHaveAttribute(
+    'data-tip',
+    'src/hub.ts',
+  );
 
   await node(page, 'group:file:src/hub.ts').click({ position: { x: 2, y: 2 } });
   await expect(page.locator('.react-flow.map')).toHaveCount(0);

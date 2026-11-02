@@ -152,6 +152,49 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await expect(changesTab(page)).toContainText('1/3');
 });
 
+test('keeps the verdict picked on the Graph page through g to Files: Finish review sends it (fix/hive-turn-end-flaky-tests-verdict)', async ({
+  page,
+}) => {
+  const [, , cube] = symbiote.shas;
+  await page.goto(`${symbiote.url}git`);
+  await review(page, 'agent');
+  await expect(page).toHaveURL(/\/review\/agent\/$/);
+  await showGraph(page);
+  await reviewTab(page).click();
+  await page.getByLabel('Review summary').fill('Return early for 0.');
+  await page.getByLabel('Request changes').check();
+  // `g` is a key of the page, not of the summary: out of the text box first.
+  await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+  await page.keyboard.press('g');
+  await expect(page.locator('.page-switch').getByRole('tab', { name: 'Files' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await reviewTab(page).click();
+  await expect(page.getByLabel('Review summary')).toHaveValue('Return early for 0.');
+  await expect(page.getByLabel('Request changes')).toBeChecked();
+  // And back: still the verdict picked.
+  await page.keyboard.press('g');
+  await reviewTab(page).click();
+  await expect(page.getByLabel('Request changes')).toBeChecked();
+  await page.keyboard.press('g');
+  await reviewTab(page).click();
+  await page.getByRole('button', { name: 'Finish review' }).click();
+  await expect(page.locator('.finished')).toContainText('Changes requested');
+  const verdicts = (
+    JSON.parse(readFileSync(reviewFile(), 'utf8')) as {
+      verdicts: { event: string; head: string; summary: string }[];
+    }
+  ).verdicts;
+  expect(verdicts.at(-1)).toMatchObject({
+    event: 'request-changes',
+    head: cube,
+    summary: 'Return early for 0.',
+  });
+  // Finished: the next review starts at Comment again.
+  await expect(page.getByLabel('Comment', { exact: true })).toBeChecked();
+});
+
 test('finishes a review: changes requested for the agent, then approved to merge (V16, V17)', async ({
   page,
 }) => {
