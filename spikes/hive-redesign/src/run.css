@@ -1,0 +1,491 @@
+/* A Hive workspace's page: the pipeline, the run's timeline, the run's facts. */
+
+.pipeline {
+  flex-direction: row;
+  align-items: stretch;
+  flex: none;
+}
+.steps {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 0;
+  padding: 16px 18px 14px;
+  min-width: 0;
+}
+.step {
+  display: flex;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+}
+.step:last-child {
+  flex: none;
+  width: 200px;
+}
+.step .node {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 28px;
+  flex: none;
+  position: relative;
+}
+.step .node svg.hexbg {
+  position: absolute;
+  inset: 0;
+  width: 26px;
+  height: 28px;
+}
+.step .node svg.hexbg polygon {
+  fill: var(--raised);
+  stroke: var(--line-2);
+  stroke-width: 1.5;
+}
+.step.done .node svg.hexbg polygon {
+  fill: color-mix(in srgb, var(--ok) 16%, var(--panel));
+  stroke: color-mix(in srgb, var(--ok) 70%, transparent);
+}
+.step.now .node svg.hexbg polygon {
+  fill: color-mix(in srgb, var(--run) 16%, var(--panel));
+  stroke: var(--run);
+  stroke-width: 2;
+}
+.step.bad .node svg.hexbg polygon {
+  fill: color-mix(in srgb, var(--fail) 16%, var(--panel));
+  stroke: var(--fail);
+}
+.step .node svg.i {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  stroke-width: 2.25;
+  color: var(--faint);
+}
+.step.done .node svg.i {
+  color: var(--ok);
+}
+.step.now .node svg.i {
+  color: var(--run);
+}
+.step .words {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 12px 0 10px;
+  min-width: 0;
+}
+.step .name {
+  font-size: var(--size-body);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.step.todo .name {
+  color: var(--muted);
+  font-weight: 500;
+}
+.step .detail {
+  color: var(--faint);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.step.now .detail {
+  color: var(--muted);
+}
+.step .wire {
+  flex: 1;
+  height: 2px;
+  margin: 13px 10px 0 0;
+  min-width: 24px;
+  border-radius: 1px;
+  background: var(--line-2);
+}
+.step.done .wire {
+  background: color-mix(in srgb, var(--ok) 50%, transparent);
+}
+.step.now .wire {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--run) 60%, transparent), var(--line-2));
+}
+.mini-progress {
+  height: 3px;
+  width: 140px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: var(--raised);
+  overflow: hidden;
+}
+.mini-progress i {
+  display: block;
+  height: 100%;
+  background: var(--run);
+  border-radius: 2px;
+}
+.run-sum {
+  display: flex;
+  align-items: stretch;
+  border-left: 1px solid var(--line);
+}
+.run-sum .cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 18px;
+  min-width: 112px;
+}
+.run-sum .cell + .cell {
+  border-left: 1px solid var(--line);
+}
+.run-sum .k {
+  color: var(--faint);
+  font-size: var(--size-caption);
+}
+.run-sum .v {
+  font-size: var(--size-title);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.run-sum .v small {
+  font-size: var(--size-caption);
+  color: var(--faint);
+  font-weight: 500;
+}
+.pips {
+  display: flex;
+  gap: 4px;
+  margin-top: 2px;
+}
+.pips i {
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--raised);
+}
+.pips i.fail {
+  background: var(--fail);
+}
+.pips i.run {
+  background: var(--run);
+}
+.pips i.ok {
+  background: var(--ok);
+}
+
+.body {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+}
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 4px 0 0;
+}
+
+/* The run's timeline: a round's head, then its steps on a rail. */
+.round-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px 8px;
+}
+.round-head h3 {
+  margin: 0;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+.round-head .when {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+.item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px 1fr;
+  column-gap: 12px;
+  padding: 0 16px 14px;
+}
+.item::before {
+  content: '';
+  position: absolute;
+  left: 27px;
+  top: 26px;
+  bottom: 2px;
+  width: 1px;
+  background: var(--line-2);
+}
+.item.last::before {
+  display: none;
+}
+.item .dot {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--muted);
+}
+.item .dot svg {
+  width: 13px;
+  height: 13px;
+  stroke-width: 2;
+}
+.item.is-ok .dot {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 35%, transparent);
+}
+.item.is-run .dot {
+  color: var(--run);
+  background: color-mix(in srgb, var(--run) 12%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--run) 45%, transparent);
+}
+.item.is-fail .dot {
+  color: var(--fail);
+  background: color-mix(in srgb, var(--fail) 12%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fail) 40%, transparent);
+}
+.item.is-todo .dot {
+  background: transparent;
+  color: var(--faint);
+}
+.item .top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 24px;
+  font-size: var(--size-small);
+}
+.item .top b {
+  font-weight: 600;
+  font-size: var(--size-body);
+}
+.item .top .end {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--faint);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+.item.is-todo .top b {
+  color: var(--muted);
+  font-weight: 500;
+}
+.item .content {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+  min-width: 0;
+}
+.cmds {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+.cmd {
+  display: grid;
+  grid-template-columns: 16px 1fr 120px 92px;
+  align-items: center;
+  column-gap: 10px;
+  height: 30px;
+  padding: 0 12px;
+  font-size: var(--size-small);
+  border-top: 1px solid var(--line);
+}
+.cmd:first-child {
+  border-top: 0;
+}
+.cmd code {
+  font-family: var(--mono);
+  font-size: var(--size-caption);
+}
+.cmd .t {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+.cmd.is-now {
+  background: color-mix(in srgb, var(--run) 6%, transparent);
+}
+.bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--raised);
+  overflow: hidden;
+}
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--run);
+}
+.commit-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--size-small);
+  min-width: 0;
+}
+.commit-line .mono {
+  color: var(--faint);
+}
+.finding {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--fail) 5%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fail) 22%, var(--line));
+}
+.finding .what {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+.finding .how {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--faint);
+  font-size: var(--size-caption);
+}
+.finding .how code {
+  font-family: var(--mono);
+  font-size: var(--size-caps);
+  color: var(--muted);
+}
+.quote {
+  color: var(--muted);
+  font-size: var(--size-small);
+  line-height: 1.5;
+}
+.disclose {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+.collapsed {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 16px 12px;
+  padding: 0 12px;
+  height: 40px;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--size-small);
+}
+
+/* The side card: facts, spend, commits, files. */
+.side .facts {
+  padding-top: 4px;
+}
+.spend {
+  padding: 4px 14px 14px;
+}
+.spend .bar i {
+  background: var(--muted);
+}
+.spend .top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: var(--size-small);
+}
+.spend .top b {
+  font-size: var(--size-title);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.spend .split {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 7px;
+  color: var(--faint);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+.list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 6px 8px;
+}
+.list .li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: 8px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: var(--size-small);
+}
+.list .li .mono {
+  color: var(--faint);
+  font-size: var(--size-caps);
+}
+.list .li .t {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.list .li .n {
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+.add {
+  color: var(--ok);
+}
+.del {
+  color: var(--fail);
+}
+.kind {
+  font-family: var(--mono);
+  font-size: var(--size-caps);
+  font-weight: 600;
+  width: 12px;
+}
+.kind.m {
+  color: var(--run);
+}
+.kind.a {
+  color: var(--ok);
+}
+.side .section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.side .section-label:first-child {
+  border-top: 0;
+}
+.side .section-label .count {
+  height: 16px;
+  min-width: 18px;
+  font-size: var(--size-caps);
+}

@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hive — New goal</title>
+    <link rel="stylesheet" href="kit.css" />
+    <script src="kit.js"></script>
+    <style>
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 360px;
+        gap: 8px;
+        flex: 1;
+        min-height: 0;
+      }
+      .form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px;
+      }
+      .field label .opt {
+        color: var(--faint);
+        font-weight: 400;
+      }
+      .counter {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 10px;
+        color: var(--faint);
+        font-size: var(--size-caption);
+      }
+      .counter .n {
+        margin-left: auto;
+        font-variant-numeric: tabular-nums;
+      }
+      .checkline {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        color: var(--faint);
+        font-size: var(--size-caption);
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 0;
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: 96px 1fr;
+        align-items: center;
+        row-gap: 10px;
+        column-gap: 12px;
+        padding: 14px;
+        font-size: var(--size-small);
+      }
+      .kv .k {
+        color: var(--muted);
+      }
+      .kv .input {
+        height: 30px;
+        font-size: var(--size-small);
+      }
+      .how {
+        padding: 6px 14px 4px;
+      }
+      .how .s {
+        position: relative;
+        display: grid;
+        grid-template-columns: 26px 1fr;
+        column-gap: 12px;
+        padding-bottom: 14px;
+      }
+      .how .s::before {
+        content: '';
+        position: absolute;
+        left: 12px;
+        top: 29px;
+        bottom: 1px;
+        width: 2px;
+        border-radius: 1px;
+        background: var(--line-2);
+      }
+      .how .s:last-child::before {
+        display: none;
+      }
+      .how .hx {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 26px;
+        height: 28px;
+        color: var(--hive-text);
+      }
+      .how .hx svg.bg {
+        position: absolute;
+        inset: 0;
+        width: 26px;
+        height: 28px;
+      }
+      .how .hx svg.bg polygon {
+        fill: var(--hive-wash);
+        stroke: var(--hive-edge);
+        stroke-width: 1.5;
+      }
+      .how .hx svg.i {
+        position: relative;
+        width: 13px;
+        height: 13px;
+        stroke-width: 2.25;
+      }
+      .how .n {
+        font-size: var(--size-body);
+        font-weight: 600;
+        padding-top: 3px;
+      }
+      .how .d {
+        grid-column: 2;
+        color: var(--muted);
+        font-size: var(--size-caption);
+        line-height: 1.45;
+      }
+      .limits {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        padding: 12px 14px 14px;
+        border-top: 1px solid var(--line);
+      }
+      .drop {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 40px;
+        padding: 0 12px;
+        border-radius: var(--radius-control);
+        box-shadow: inset 0 0 0 1px var(--line-2);
+        color: var(--faint);
+        font-size: var(--size-small);
+      }
+      .drop .btn {
+        height: 26px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <nav class="nav" data-page="new"></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="target"></i></span>
+          <div>
+            <h1>New goal</h1>
+            <div class="sub">Hive drives it from the brief to landed in main, and no step waits for you</div>
+          </div>
+          <div class="actions">
+            <span class="btn ghost">Cancel</span>
+            <span class="btn"><i data-i="feature" class="s14"></i>Suggest settings</span>
+            <span class="btn primary"><i data-i="hexagon" class="s14"></i>Start goal<span class="kbd">Ctrl ↵</span></span>
+          </div>
+        </header>
+
+        <div class="split">
+          <section class="card">
+            <div class="tabs">
+              <span class="tab on"><i data-i="feature" class="s14"></i>Feature</span>
+              <span class="tab"><i data-i="fix" class="s14"></i>Fix</span>
+              <span class="tab"><i data-i="refactor" class="s14"></i>Refactor</span>
+              <span class="tab"><i data-i="checks" class="s14"></i>Chore</span>
+              <span class="tab"><i data-i="spike" class="s14"></i>Spike</span>
+            </div>
+            <div class="form">
+              <div class="field">
+                <label>Title</label>
+                <span class="input">Email a receipt after checkout</span>
+              </div>
+              <div class="field">
+                <label>Goal</label>
+                <div class="input area" style="flex-direction: column; align-items: stretch; min-height: 236px">
+                  <span>
+                    After a paid checkout, the customer gets an email receipt: the order number, each
+                    line with its price, the discount if a code was used, the total and the delivery
+                    address. It is sent once, from the payment webhook, never from the page. A failed
+                    send is retried by the webhook queue and does not fail the checkout.
+                  </span>
+                  <span class="counter" style="margin-top: auto"
+                    ><i data-i="attach" class="s14"></i><span class="n">372 / 20,000</span></span
+                  >
+                </div>
+              </div>
+              <div class="field">
+                <label>Done when <span class="opt">(optional)</span></label>
+                <div class="input area" style="min-height: 88px">
+                  A test sends one receipt for a paid order and none for a failed one, and
+                  <span class="mono" style="margin: 0 4px">pnpm test:e2e</span> passes.
+                </div>
+              </div>
+              <div class="checkline">
+                <i data-i="checks" class="s14"></i>Hive’s check:
+                <span class="chip mono">pnpm install --frozen-lockfile</span><span class="chip mono">pnpm check</span
+                ><span class="chip mono">pnpm build</span><span class="chip mono">pnpm test:e2e</span>
+                <span>from <span class="mono">merge.checks</span></span>
+              </div>
+              <div class="drop">
+                <i data-i="attach" class="s14"></i>Documents
+                <span class="faint">(optional) mockups, specs, logs</span>
+                <span class="btn small" style="margin-left: auto"><i data-i="plus" class="s14"></i>Add files</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="col">
+            <section class="card">
+              <div class="card-head"><h2>Where and who</h2></div>
+              <div class="kv">
+                <span class="k">Starts from</span><span class="input select"><i data-i="branch" class="s14 faint"></i>main</span>
+                <span class="k">Branch</span><span class="input mono" style="font-size: 13px">feature/email-receipt</span>
+                <span class="k">Agent</span><span class="input select">Claude Code</span>
+                <span class="k">Model</span><span class="input select">Opus 5.5 · default effort</span>
+              </div>
+            </section>
+            <section class="card">
+              <div class="card-head"><h2>How Hive runs it</h2></div>
+              <div class="how">
+                <div class="s">
+                  <span class="hx"><svg class="bg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg><i data-i="pencil"></i></span>
+                  <span class="n">Write</span>
+                  <span class="d">In its own worktree; Hive answers its questions.</span>
+                </div>
+                <div class="s">
+                  <span class="hx"><svg class="bg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg><i data-i="checks"></i></span>
+                  <span class="n">Check</span>
+                  <span class="d">4 commands on each commit; failures go back.</span>
+                </div>
+                <div class="s">
+                  <span class="hx"><svg class="bg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg><i data-i="eye"></i></span>
+                  <span class="n">Review</span>
+                  <span class="d">Opus proves defects with failing tests.</span>
+                </div>
+                <div class="s">
+                  <span class="hx"><svg class="bg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg><i data-i="merge"></i></span>
+                  <span class="n">Land</span>
+                  <span class="d">Merge queue into main, then both pushed.</span>
+                </div>
+              </div>
+              <div class="limits">
+                <span class="chip"><i data-i="history" class="s14"></i>3 rounds</span>
+                <span class="chip"><i data-i="coins" class="s14"></i>$5.00 budget</span>
+                <span class="chip"><i data-i="gauge" class="s14"></i>pauses at 90 %</span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      Kit.render();
+    </script>
+  </body>
+</html>

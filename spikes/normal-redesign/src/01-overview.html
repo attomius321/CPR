@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Normal mode — Overview</title>
+    <link rel="stylesheet" href="../../hive-redesign/src/kit.css" />
+    <link rel="stylesheet" href="normal.css" />
+    <script src="../../hive-redesign/src/kit.js"></script>
+    <script src="nkit.js"></script>
+    <style>
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 8px;
+        flex: 1;
+        min-height: 0;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 0;
+        min-width: 0;
+      }
+      .work .tr,
+      .merging .tr {
+        grid-template-columns: minmax(0, 1fr) 280px 128px 48px;
+      }
+      .merged .tr {
+        grid-template-columns: minmax(0, 1fr) 150px 110px 48px;
+        min-height: 40px;
+      }
+      .need b {
+        white-space: nowrap;
+      }
+      .events {
+        flex: 1;
+      }
+      .usage {
+        padding: 12px 14px 14px;
+      }
+      .usage .top {
+        display: flex;
+        align-items: baseline;
+        font-size: var(--size-small);
+      }
+      .usage .top b {
+        margin-left: auto;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <nav class="nav" data-page="overview"></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="overview"></i></span>
+          <div>
+            <h1>Overview</h1>
+            <div class="sub">
+              4 things wait for you<span class="sep">·</span>2 agents at work<span class="sep">·</span>1 merge in the queue
+            </div>
+          </div>
+          <div class="actions">
+            <span class="btn"><i data-i="nucleus" class="s14"></i>Ask Nucleus</span>
+            <span class="btn primary"><i data-i="plus" class="s14"></i>Start a workspace</span>
+          </div>
+        </header>
+
+        <section class="card metrics">
+          <div class="metric">
+            <div class="label"><i data-i="bell" class="s14"></i>Waiting for you</div>
+            <div class="value you">4</div>
+            <div class="note">2 answers · 2 reviews</div>
+          </div>
+          <div class="metric">
+            <div class="label"><i data-i="spin" class="s14"></i>Agents working</div>
+            <div class="value">2</div>
+            <div class="note">Claude Code · Codex</div>
+          </div>
+          <div class="metric">
+            <div class="label"><i data-i="alert" class="s14"></i>Findings to read</div>
+            <div class="value">3 <small>in 1 review</small></div>
+            <div class="note"><span class="fail">1 error</span> · <span class="run">2 warnings</span></div>
+          </div>
+          <div class="metric">
+            <div class="label"><i data-i="merge" class="s14"></i>Merged this week</div>
+            <div class="value">
+              9
+              <span class="bars"
+                ><i style="height: 40%"></i><i style="height: 20%"></i><i style="height: 60%"></i
+                ><i style="height: 35%"></i><i style="height: 80%"></i><i style="height: 15%"></i
+                ><i class="today" style="height: 100%"></i
+              ></span>
+            </div>
+            <div class="note">3 today, all into main</div>
+          </div>
+          <div class="metric">
+            <div class="label"><i data-i="clock" class="s14"></i>Time to merge</div>
+            <div class="value">2.4 <small>h median</small></div>
+            <div class="note">start to merged, this week</div>
+          </div>
+        </section>
+
+        <div class="grid">
+          <div class="col">
+            <section class="card inbox">
+              <div class="card-head">
+                <h2>Waiting for you</h2>
+                <span class="count">4</span>
+                <div class="end"><span class="link">Oldest first</span></div>
+              </div>
+              <div class="table">
+                                <div class="tr">
+                  <div class="cell-2">
+                    <span class="title">Save a cart for later</span><span class="branch">feature/saved-carts</span>
+                  </div>
+                  <div class="need"><i data-i="bell" class="s14 you"></i><b>Plan ready</b><span class="q">read it and answer</span></div>
+                  <span class="num right faint">4m</span>
+                  <span class="right row"><span class="btn small">Respond</span></span>
+                </div>
+                <div class="tr">
+                  <div class="cell-2">
+                    <span class="title">Charge tax on shipping</span><span class="branch">fix/shipping-tax</span>
+                  </div>
+                  <div class="need"><i data-i="question" class="s14 you"></i><b>Asks</b><span class="q">“Tax shipping for EU orders only?”</span></div>
+                  <span class="num right faint">1m</span>
+                  <span class="right row"><span class="btn small">Answer</span></span>
+                </div>
+                <div class="tr">
+                  <div class="cell-2">
+                    <span class="title">Add a discount code</span><span class="branch">feature/discount-code</span>
+                  </div>
+                  <div class="need">
+                    <i data-i="eye" class="s14 you"></i><b>To review</b>
+                    <span class="facts-inline">3 commits · <span class="fail">1 error</span> · <span class="run">2 warnings</span></span>
+                  </div>
+                  <span class="num right faint">6m</span>
+                  <span class="right row"><span class="btn small">Review</span></span>
+                </div>
+                <div class="tr">
+                  <div class="cell-2">
+                    <span class="title">Which search library fits the catalog?</span><span class="branch">spike/catalog-search</span>
+                  </div>
+                  <div class="need"><i data-i="answered" class="s14 you"></i><b>Answered</b><span class="q">a report, no commits</span></div>
+                  <span class="num right faint">2m</span>
+                  <span class="right row"><span class="btn small">Read</span></span>
+                </div>
+              </div>
+            </section>
+
+            <section class="card work">
+              <div class="card-head"><h2>Agents at work</h2><span class="count">2</span></div>
+              <div class="table">
+                <div class="tr">
+                  <div class="cell-2">
+                    <span class="title">Show stock levels on product pages</span><span class="branch">feature/stock-levels</span>
+                  </div>
+                  <div class="need"><i data-i="spin" class="s14 spin"></i><b class="run">Running tests</b><span class="mono q">npm test</span></div>
+                  <span class="chip"><i data-i="model" class="s14"></i>Claude · Opus</span>
+                  <span class="num right">3:05</span>
+                </div>
+                <div class="tr">
+                  <div class="cell-2">
+                    <span class="title">Paginate the order history</span><span class="branch">feature/order-pages</span>
+                  </div>
+                  <div class="need"><i data-i="spin" class="s14 spin"></i><b class="run">Editing</b><span class="mono q">src/orders/list.ts</span></div>
+                  <span class="chip"><i data-i="model" class="s14"></i>Codex · high</span>
+                  <span class="num right">7:40</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="card merging">
+              <div class="card-head"><h2>Merging</h2><span class="count">1</span><div class="end"><span class="link">The queue<i data-i="chevron-right" class="s14"></i></span></div></div>
+              <div class="table">
+                <div class="tr">
+                  <div class="cell-2">
+                    <span class="title">Fix order total rounding</span><span class="branch">fix/order-total-rounding → main</span>
+                  </div>
+                  <div class="stage"><span data-track="done,now,todo"></span><span class="word run">Checking the merge</span><span class="mono faint">npm test</span></div>
+                  <span class="faint" style="font-size: 14px">approved by you</span>
+                  <span class="num right">0:12</span>
+                </div>
+              </div>
+            </section>
+            <section class="card merged">
+              <div class="card-head"><h2>Merged today</h2><span class="count">3</span><div class="end"><span class="link">History<i data-i="chevron-right" class="s14"></i></span></div></div>
+              <div class="table">
+                <div class="tr">
+                  <div class="row" style="min-width: 0"><i data-i="circle-check" class="s14 ok"></i><span class="title">Email a receipt after checkout</span></div>
+                  <span class="muted" style="font-size: 14px">approved by you</span>
+                  <span class="row muted" style="font-size: 14px"><span class="mono">3c1e0f2</span>pushed</span>
+                  <span class="num right faint">11:20</span>
+                </div>
+                <div class="tr">
+                  <div class="row" style="min-width: 0"><i data-i="circle-check" class="s14 ok"></i><span class="title">Rename the cart’s coupon field</span></div>
+                  <span class="muted" style="font-size: 14px">approved by you</span>
+                  <span class="row muted" style="font-size: 14px"><span class="mono">5a77b31</span>pushed</span>
+                  <span class="num right faint">10:02</span>
+                </div>
+                <div class="tr">
+                  <div class="row" style="min-width: 0"><i data-i="circle-check" class="s14 ok"></i><span class="title">Retry failed payment webhooks</span></div>
+                  <span class="muted" style="font-size: 14px">2 rounds of review</span>
+                  <span class="row muted" style="font-size: 14px"><span class="mono">0e44b7d</span>pushed</span>
+                  <span class="num right faint">09:41</span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="col">
+            <section class="card">
+              <div class="card-head"><h2>Usage</h2><div class="end"><span class="link">Claude Pro</span></div></div>
+              <div class="usage">
+                <div class="top"><span>5-hour window</span><b>34%</b></div>
+                <div class="gauge"><i style="width: 34%"></i></div>
+                <div class="help" style="display: flex; justify-content: space-between"><span>resets 14:00</span><span>2 agents running</span></div>
+                <div class="top" style="margin-top: 12px"><span>Week</span><b>58%</b></div>
+                <div class="gauge"><i style="width: 58%"></i></div>
+                <div class="help">resets Thursday</div>
+              </div>
+            </section>
+            <section class="card events">
+              <div class="card-head"><h2>Today</h2><div class="end"><span class="link">History<i data-i="chevron-right" class="s14"></i></span></div></div>
+              <div class="feed">
+                <div class="event"><span class="when">12:52</span><i data-i="question" class="you"></i><span class="what">Asked you a question<span class="b">Charge tax on shipping</span></span></div>
+                <div class="event"><span class="when">12:50</span><i data-i="merge" class="run"></i><span class="what">Queued to merge into main<span class="b">Fix order total rounding · you approved</span></span></div>
+                <div class="event"><span class="when">12:49</span><i data-i="bell" class="you"></i><span class="what">Plan ready<span class="b">Save a cart for later</span></span></div>
+                <div class="event"><span class="when">12:47</span><i data-i="answered" class="you"></i><span class="what">Answered with a report<span class="b">Which search library fits the catalog?</span></span></div>
+                <div class="event"><span class="when">12:46</span><i data-i="eye" class="you"></i><span class="what">Ready for review, 3 findings<span class="b">Add a discount code</span></span></div>
+                <div class="event"><span class="when">11:20</span><i data-i="merge" class="ok"></i><span class="what">Merged into main, pushed<span class="b">Email a receipt after checkout · 3c1e0f2</span></span></div>
+                <div class="event"><span class="when">10:02</span><i data-i="merge" class="ok"></i><span class="what">Merged into main, pushed<span class="b">Rename the cart’s coupon field · 5a77b31</span></span></div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      NKit.render();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hive — a workspace Hive stopped</title>
+    <link rel="stylesheet" href="kit.css" />
+    <link rel="stylesheet" href="run.css" />
+    <script src="kit.js"></script>
+    <style>
+      .why {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin: 12px 16px 6px;
+        padding: 12px 14px 14px;
+        border-radius: var(--radius-control);
+        background: color-mix(in srgb, var(--fail) 5%, transparent);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fail) 26%, var(--line));
+      }
+      .why .top {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .why b {
+        font-size: var(--size-body);
+        font-weight: 600;
+      }
+      .why p {
+        margin: 2px 0 0;
+        color: var(--muted);
+        font-size: var(--size-small);
+      }
+      .why .acts {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .why .acts .faint {
+        font-size: var(--size-caption);
+      }
+      .step.bad .node svg.i {
+        color: var(--fail);
+      }
+      .step.bad .detail {
+        color: var(--fail);
+      }
+      .step.skip {
+        opacity: 0.6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <nav class="nav" data-page="workspace" data-open="feature/supplier-import"></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="feature"></i></span>
+          <div style="min-width: 0">
+            <h1>Import products from a supplier feed</h1>
+            <div class="sub">
+              <span class="mono">feature/supplier-import</span><span class="sep">·</span>from
+              <span class="mono">main</span><span class="sep">·</span>started 12:02
+              <span class="sep">·</span><span class="row" style="gap: 5px"><i data-i="model" class="s14 faint"></i>Opus · default effort</span>
+            </div>
+          </div>
+          <div class="actions">
+            <span class="pill fail"><i data-i="stopped"></i>Stopped · 3 of 3 rounds</span>
+            <span class="icon-button boxed"><i data-i="vscode"></i></span>
+            <span class="icon-button boxed"><i data-i="more"></i></span>
+          </div>
+        </header>
+
+        <section class="card pipeline">
+          <div class="steps">
+            <div class="step done">
+              <span class="node"
+                ><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg
+                ><i data-i="check"></i
+              ></span>
+              <div class="words"><span class="name">Write</span><span class="detail">5 commits · 3 rounds</span></div>
+              <span class="wire"></span>
+            </div>
+            <div class="step bad">
+              <span class="node"
+                ><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg
+                ><i data-i="x"></i
+              ></span>
+              <div class="words"><span class="name">Check</span><span class="detail">failed: pnpm test:e2e</span></div>
+              <span class="wire"></span>
+            </div>
+            <div class="step todo skip">
+              <span class="node"
+                ><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg
+                ><i data-i="eye"></i
+              ></span>
+              <div class="words"><span class="name">Review</span><span class="detail">not run on round 3</span></div>
+              <span class="wire"></span>
+            </div>
+            <div class="step todo skip">
+              <span class="node"
+                ><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg
+                ><i data-i="merge"></i
+              ></span>
+              <div class="words"><span class="name">Land</span><span class="detail">nothing landed</span></div>
+            </div>
+          </div>
+          <div class="run-sum">
+            <div class="cell">
+              <span class="k">Rounds</span><span class="v">3 <small>of 3</small></span>
+              <span class="pips"><i class="fail"></i><i class="fail"></i><i class="fail"></i></span>
+            </div>
+            <div class="cell">
+              <span class="k">Time</span><span class="v">45:12</span><span class="k">brief to stop</span>
+            </div>
+            <div class="cell">
+              <span class="k">Spend</span><span class="v">$3.40 <small>of $5</small></span>
+              <span class="bar" style="width: 76px; margin-top: 4px"><i style="width: 68%; background: var(--muted)"></i></span>
+            </div>
+          </div>
+        </section>
+
+        <div class="body">
+          <section class="card">
+            <div class="tabs">
+              <span class="tab on"><i data-i="hexagon" class="s14"></i>Run</span>
+              <span class="tab"><i data-i="terminal" class="s14"></i>Terminal</span>
+              <span class="tab"><i data-i="thread" class="s14"></i>Thread</span>
+              <span class="tab"><i data-i="activity" class="s14"></i>Activity</span>
+              <span class="tab"><i data-i="file" class="s14"></i>Brief</span>
+            </div>
+            <div class="scroll">
+              <div class="why">
+                <div class="top">
+                  <i data-i="stopped" class="s18 fail" style="margin-top: 2px"></i>
+                  <div class="grow">
+                    <b>Hive stopped after 3 rounds</b>
+                    <p>
+                      The check failed on round 3. Each failure went back to the writer; at the round
+                      cap Hive stops and records why, and changes nothing else.
+                    </p>
+                  </div>
+                  <span class="faint num" style="font-size: 13px">13:02</span>
+                </div>
+                <pre class="log"><span class="w">pnpm test:e2e</span> <span class="t">failed after 6:48, exit 1</span>
+  <span class="r">✘</span> import › imports a 10,000-row feed <span class="t">(30.0 s)</span>
+    <span class="r">Test timeout of 30000ms exceeded.</span>
+    <span class="t">at test/e2e/import.spec.ts:41:5</span>
+  <span class="r">1 failed</span>, <span class="g">63 passed</span> <span class="t">(6.8 min)</span></pre>
+                <div class="acts">
+                  <span class="btn primary"><i data-i="thread" class="s14"></i>Message the writer</span>
+                  <span class="btn"><i data-i="log" class="s14"></i>Full log</span>
+                  <span class="faint">A message starts its rounds again.</span>
+                </div>
+              </div>
+
+              <div class="round-head">
+                <h3>Round 3</h3>
+                <span class="pill fail"><i data-i="x"></i>Check failed</span>
+                <span class="when">12:49 – 13:02</span>
+              </div>
+              <div class="item is-ok">
+                <span class="dot"><i data-i="pencil"></i></span>
+                <div class="top">
+                  <b>Writer</b><span class="muted">tried to make the import fast enough</span>
+                  <span class="end"><span><span class="add">+22</span> <span class="del">−14</span></span><span>5:03</span></span>
+                </div>
+                <div class="content">
+                  <div class="commit-line">
+                    <i data-i="commit" class="s14 faint"></i><span class="mono">4f1c0aa</span><span>Stream the feed instead of reading it whole</span>
+                  </div>
+                </div>
+              </div>
+              <div class="item is-fail last">
+                <span class="dot"><i data-i="x"></i></span>
+                <div class="top">
+                  <b>Check</b><span class="muted">failed on <span class="mono">4f1c0aa</span></span>
+                  <span class="end"><span>9:48</span></span>
+                </div>
+                <div class="content">
+                  <div class="cmds">
+                    <div class="cmd"><i data-i="check" class="s14 ok"></i><code>pnpm install --frozen-lockfile</code><span></span><span class="t">0:20</span></div>
+                    <div class="cmd"><i data-i="check" class="s14 ok"></i><code>pnpm check</code><span></span><span class="t">1:51</span></div>
+                    <div class="cmd"><i data-i="check" class="s14 ok"></i><code>pnpm build</code><span></span><span class="t">0:49</span></div>
+                    <div class="cmd"><i data-i="x" class="s14 fail"></i><code>pnpm test:e2e</code><span class="fail" style="font-size: 13px">1 failed</span><span class="t">6:48</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="collapsed">
+                <i data-i="chevron-right" class="s14 faint"></i><b style="font-weight: 600">Round 2</b>
+                <span class="pill fail"><i data-i="bug"></i>1 defect proven</span>
+                <span class="muted ellipsis">A quoted comma splits a row into two columns</span>
+                <span class="faint num" style="margin-left: auto; font-size: 13px; white-space: nowrap">check 6:12 · review $0.51</span>
+              </div>
+              <div class="collapsed">
+                <i data-i="chevron-right" class="s14 faint"></i><b style="font-weight: 600">Round 1</b>
+                <span class="pill fail"><i data-i="x"></i>Check failed</span>
+                <span class="muted ellipsis"><span class="mono">pnpm check</span>: 2 lint errors</span>
+                <span class="faint num" style="margin-left: auto; font-size: 13px">check 2:01</span>
+              </div>
+            </div>
+          </section>
+
+          <aside class="card side">
+            <div class="section-label">Run</div>
+            <dl class="facts">
+              <dt>Stopped</dt>
+              <dd class="fail">13:02 · round cap</dd>
+              <dt>Writer</dt>
+              <dd>Claude Code · Opus</dd>
+              <dt>Reviewer</dt>
+              <dd>Opus · high</dd>
+              <dt>Pushed</dt>
+              <dd><span class="mono">4f1c0aa</span> · 12:55</dd>
+              <dt>Landed</dt>
+              <dd class="faint">nothing</dd>
+            </dl>
+            <div class="section-label">Spend</div>
+            <div class="spend">
+              <div class="top"><b>$3.40</b><span class="faint">budget $5.00</span></div>
+              <div class="bar"><i style="width: 68%"></i></div>
+              <div class="split"><span>writer $2.89</span><span>1 review $0.51</span></div>
+            </div>
+            <div class="section-label">Commits <span class="count">5</span></div>
+            <div class="list">
+              <div class="li"><span class="mono">4f1c0aa</span><span class="t">Stream the feed instead of read…</span><span class="n faint">12:55</span></div>
+              <div class="li"><span class="mono">b83e5d1</span><span class="t">Keep a quoted comma in its column</span><span class="n faint">12:41</span></div>
+              <div class="li"><span class="mono">e0c2a97</span><span class="t">Add the reviewer’s test for quot…</span><span class="n faint">12:39</span></div>
+              <div class="li"><span class="mono">71d4f08</span><span class="t">Fix two lint errors in the parser</span><span class="n faint">12:18</span></div>
+              <div class="li"><span class="mono">2a6b9c3</span><span class="t">Import products from a CSV feed</span><span class="n faint">12:13</span></div>
+            </div>
+            <div class="section-label">Files <span class="count">4</span><span class="num" style="margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 13px"><span class="add">+188</span> <span class="del">−14</span></span></div>
+            <div class="list">
+              <div class="li"><span class="kind a">A</span><span class="t">feed.ts <span class="faint">src/import</span></span><span class="n"><span class="add">+96</span> <span class="del">−14</span></span></div>
+              <div class="li"><span class="kind a">A</span><span class="t">csv.ts <span class="faint">src/import</span></span><span class="n"><span class="add">+41</span> <span class="del">−0</span></span></div>
+              <div class="li"><span class="kind a">A</span><span class="t">import.spec.ts <span class="faint">test/e2e</span></span><span class="n"><span class="add">+38</span> <span class="del">−0</span></span></div>
+              <div class="li"><span class="kind a">A</span><span class="t">review-quotes.test.ts <span class="faint">test</span></span><span class="n"><span class="add">+13</span> <span class="del">−0</span></span></div>
+            </div>
+          </aside>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      Kit.render();
+    </script>
+  </body>
+</html>

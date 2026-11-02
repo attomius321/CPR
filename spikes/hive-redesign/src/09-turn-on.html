@@ -1,0 +1,473 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hive — turning it on</title>
+    <link rel="stylesheet" href="kit.css" />
+    <script src="kit.js"></script>
+    <style>
+      /* Turning Hive on: the question over normal mode's Settings, then Hive's look revealed from
+         the Hive Mind. `?state=refused` shows the question when it cannot turn on; `?t=<ms>`
+         stops the turn-on at that time (frames); `?play` plays it. */
+      body {
+        position: relative;
+        background: #090a0d;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      iframe {
+        position: absolute;
+        inset: 0;
+        width: 1440px;
+        height: 900px;
+        border: 0;
+      }
+      #after {
+        clip-path: circle(0 at var(--mx) var(--my));
+      }
+      #dim {
+        position: absolute;
+        inset: 0;
+        background: rgb(5 6 9 / 72%);
+      }
+      #ring {
+        position: absolute;
+        left: var(--mx);
+        top: var(--my);
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow:
+          0 0 0 1.5px rgb(255 120 140 / 90%),
+          0 0 24px 6px rgb(229 36 63 / 45%),
+          inset 0 0 40px 6px rgb(229 36 63 / 22%);
+        opacity: 0;
+        pointer-events: none;
+      }
+
+      /* The question: always in Hive's ink (decision 615), the circuit kept as its head. */
+      .hq {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 600px;
+        transform: translate(-50%, -50%);
+        border-radius: 14px;
+        background: #0f0d0f;
+        box-shadow:
+          0 0 0 1px #2a2226,
+          0 32px 80px rgb(0 0 0 / 65%);
+        overflow: hidden;
+      }
+      .hq .art {
+        position: relative;
+        height: 149px;
+        background: #0b0102;
+      }
+      .hq .art img {
+        display: block;
+        width: 600px;
+        height: 149px;
+      }
+      .hq .art::after {
+        content: '';
+        position: absolute;
+        inset: auto 0 0;
+        height: 36px;
+        background: linear-gradient(transparent, #0f0d0f);
+      }
+      .hq-body {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 6px 24px 18px;
+      }
+      .hq-title {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+      .hq-title h2 {
+        margin: 0;
+        font-size: var(--size-title);
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      .hq .lede {
+        margin: -6px 0 0;
+        color: var(--muted);
+        font-size: var(--size-body);
+        line-height: 1.5;
+      }
+      .hq-track {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        padding: 14px 0 2px;
+        border-top: 1px solid var(--line);
+      }
+      .hq-step {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding-right: 12px;
+      }
+      .hq-step .node {
+        position: relative;
+        z-index: 1;
+        display: grid;
+        place-items: center;
+        width: 24px;
+        height: 26px;
+        margin-bottom: 4px;
+      }
+      .hq-step .node svg.hexbg {
+        position: absolute;
+        inset: 0;
+        width: 24px;
+        height: 26px;
+      }
+      .hq-step .node polygon {
+        fill: var(--raised);
+        stroke: var(--line-2);
+        stroke-width: 1.5;
+      }
+      .hq-step .node svg.i {
+        position: relative;
+        width: 12px;
+        height: 12px;
+        stroke-width: 2.25;
+        color: var(--muted);
+      }
+      .hq-step .wire {
+        position: absolute;
+        left: 30px;
+        right: 6px;
+        top: 12px;
+        height: 2px;
+        border-radius: 1px;
+        background: var(--line-2);
+        overflow: hidden;
+      }
+      .hq-step .wire i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--hive);
+      }
+      .hq-step b {
+        font-size: var(--size-small);
+        font-weight: 600;
+      }
+      .hq-step span {
+        color: var(--faint);
+        font-size: var(--size-caption);
+        line-height: 1.4;
+      }
+      .hq-label {
+        margin-top: 2px;
+        color: var(--faint);
+        font-size: var(--size-caps);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .ready {
+        display: flex;
+        flex-direction: column;
+        border-radius: var(--radius-control);
+        box-shadow: inset 0 0 0 1px var(--line);
+        margin-top: -6px;
+      }
+      .ready .r {
+        display: grid;
+        grid-template-columns: 16px auto 1fr;
+        align-items: center;
+        column-gap: 10px;
+        min-height: 36px;
+        padding: 7px 12px;
+        border-top: 1px solid var(--line);
+        font-size: var(--size-small);
+      }
+      .ready .r:first-child {
+        border-top: 0;
+      }
+      .ready .r .d {
+        text-align: right;
+        color: var(--faint);
+        font-size: var(--size-caption);
+      }
+      .ready .r.no {
+        background: color-mix(in srgb, var(--fail) 7%, transparent);
+      }
+      .ready .r .names {
+        grid-column: 2 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 6px;
+      }
+      .hq .note {
+        margin: -4px 0 0;
+        color: var(--faint);
+        font-size: var(--size-caption);
+      }
+      .hq-foot {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px 12px 24px;
+        border-top: 1px solid var(--line);
+        background: #0c0a0c;
+      }
+      .hq-foot .faint {
+        font-size: var(--size-caption);
+        margin-right: auto;
+      }
+      .btn.primary[aria-disabled='true'] {
+        background: var(--raised);
+        color: var(--faint);
+        box-shadow: inset 0 0 0 1px var(--line-2);
+      }
+
+      /* The Mind over the art, lifted out of it when Hive turns on. */
+      #mind {
+        position: absolute;
+        width: 128px;
+        height: 128px;
+        border-radius: 50%;
+        background: url('assets/circuit-art@2x.png') no-repeat;
+        background-size: 600px 149px;
+        opacity: 0;
+        pointer-events: none;
+      }
+      #shine {
+        position: absolute;
+        left: 128px;
+        top: 16px;
+        width: 66px;
+        height: 20px;
+        border-radius: 999px;
+        overflow: hidden;
+        opacity: 0;
+      }
+      #shine::before {
+        content: '';
+        position: absolute;
+        inset: 0 auto 0 -40px;
+        width: 34px;
+        background: linear-gradient(90deg, transparent, rgb(255 210 216 / 85%), transparent);
+        transform: skewX(-20deg);
+      }
+
+      /* The turn-on, 1.5 s. Every step is a CSS animation of opacity, transform or clip-path. */
+      .go .hq-step:nth-child(1) .node polygon { animation: arm 140ms 0ms both; }
+      .go .hq-step:nth-child(2) .node polygon { animation: arm 140ms 100ms both; }
+      .go .hq-step:nth-child(3) .node polygon { animation: arm 140ms 200ms both; }
+      .go .hq-step:nth-child(4) .node polygon { animation: arm 140ms 300ms both; }
+      .go .hq-step .node svg.i { animation: arm-icon 140ms both; }
+      .go .hq-step:nth-child(2) .node svg.i { animation-delay: 100ms; }
+      .go .hq-step:nth-child(3) .node svg.i { animation-delay: 200ms; }
+      .go .hq-step:nth-child(4) .node svg.i { animation-delay: 300ms; }
+      .go .hq-step:nth-child(1) .wire i { animation: wire 100ms 40ms both; }
+      .go .hq-step:nth-child(2) .wire i { animation: wire 100ms 140ms both; }
+      .go .hq-step:nth-child(3) .wire i { animation: wire 100ms 240ms both; }
+      .go .hq .btn.primary { animation: press 160ms both; }
+      .go .hq { animation: fold 140ms 390ms cubic-bezier(0.4, 0, 1, 1) both; }
+      .go #mind { animation: lift 460ms 380ms cubic-bezier(0.2, 0, 0.2, 1) both; }
+      .go #dim { animation: undim 320ms 540ms ease-out both; }
+      .go #after { animation: reveal 620ms 560ms cubic-bezier(0.6, 0, 0.3, 1) both; }
+      .go #ring { animation: ring 620ms 560ms cubic-bezier(0.6, 0, 0.3, 1) both; }
+      .go #shine { animation: shine-on 380ms 1160ms both; }
+      .go #shine::before { animation: sweep 380ms 1160ms ease-in-out both; }
+
+      @keyframes arm {
+        to {
+          fill: rgb(229 36 63 / 30%);
+          stroke: #ff6a7e;
+          stroke-width: 2;
+        }
+      }
+      @keyframes arm-icon {
+        to {
+          color: #ffd2d8;
+        }
+      }
+      @keyframes wire {
+        to {
+          width: 100%;
+        }
+      }
+      @keyframes press {
+        50% {
+          transform: scale(0.97);
+          filter: brightness(1.25);
+        }
+      }
+      @keyframes fold {
+        to {
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.95);
+        }
+      }
+      @keyframes lift {
+        0% {
+          opacity: 1;
+          transform: scale(1);
+          filter: brightness(1);
+        }
+        45% {
+          opacity: 1;
+          transform: scale(1.35);
+          filter: brightness(1.7) drop-shadow(0 0 18px rgb(229 36 63 / 80%));
+        }
+        100% {
+          opacity: 0;
+          transform: scale(1.9);
+          filter: brightness(2.2) drop-shadow(0 0 30px rgb(229 36 63 / 60%));
+        }
+      }
+      @keyframes undim {
+        to {
+          opacity: 0;
+        }
+      }
+      @keyframes reveal {
+        to {
+          clip-path: circle(1080px at var(--mx) var(--my));
+        }
+      }
+      @keyframes ring {
+        0% {
+          opacity: 1;
+          width: 0;
+          height: 0;
+        }
+        85% {
+          opacity: 0.8;
+        }
+        100% {
+          opacity: 0;
+          width: 2160px;
+          height: 2160px;
+        }
+      }
+      @keyframes shine-on {
+        0%,
+        100% {
+          opacity: 1;
+        }
+      }
+      @keyframes sweep {
+        to {
+          left: 100px;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .go * {
+          animation-duration: 1ms !important;
+          animation-delay: 0ms !important;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <iframe id="before" src="../../normal-redesign/src/11-settings-hive.html" title="Normal mode"></iframe>
+    <iframe id="after" src="04-settings.html?fresh=1" title="Hive mode"></iframe>
+    <div id="ring"></div>
+    <div id="dim"></div>
+
+    <div class="hq" role="alertdialog" aria-labelledby="hq-title">
+      <div class="art"><img src="assets/circuit-art@2x.png" alt="" /></div>
+      <div class="hq-body">
+        <div class="hq-title"><h2 id="hq-title">Turn on Hive mode</h2><span class="faint">for storefront</span></div>
+        <p class="lede">Hive drives every workspace you start, from its brief to landed. No step waits for you.</p>
+        <div class="hq-track">
+          <div class="hq-step">
+            <span class="node"><svg class="hexbg" viewBox="0 0 24 26"><polygon points="12,1 23,7 23,19 12,25 1,19 1,7" /></svg><i data-i="pencil"></i></span>
+            <span class="wire"><i></i></span>
+            <b>Write</b><span>Agents work in auto mode; Hive answers them</span>
+          </div>
+          <div class="hq-step">
+            <span class="node"><svg class="hexbg" viewBox="0 0 24 26"><polygon points="12,1 23,7 23,19 12,25 1,19 1,7" /></svg><i data-i="checks"></i></span>
+            <span class="wire"><i></i></span>
+            <b>Check</b><span>The check runs on every commit</span>
+          </div>
+          <div class="hq-step">
+            <span class="node"><svg class="hexbg" viewBox="0 0 24 26"><polygon points="12,1 23,7 23,19 12,25 1,19 1,7" /></svg><i data-i="eye"></i></span>
+            <span class="wire"><i></i></span>
+            <b>Review</b><span>Opus proves defects with failing tests</span>
+          </div>
+          <div class="hq-step">
+            <span class="node"><svg class="hexbg" viewBox="0 0 24 26"><polygon points="12,1 23,7 23,19 12,25 1,19 1,7" /></svg><i data-i="merge"></i></span>
+            <b>Land</b><span>Merges into main and pushes, unasked</span>
+          </div>
+        </div>
+        <div class="hq-label">Before it starts</div>
+        <div class="ready" id="ready-ok">
+          <div class="r"><i data-i="check" class="s14 ok"></i><span>A check is set</span><span class="d"><span class="mono">npm test</span>, from merge.checks</span></div>
+          <div class="r"><i data-i="check" class="s14 ok"></i><span>No workspace in normal mode is open</span><span class="d">3 merged today</span></div>
+          <div class="r"><i data-i="check" class="s14 ok"></i><span>Limits</span><span class="d">pauses at 90 % · $5.00 a workspace · 3 rounds</span></div>
+          <div class="r"><i data-i="danger" class="s14 fail"></i><span>Full access</span><span class="d">its agents can run anything on this machine</span></div>
+        </div>
+        <div class="ready" id="ready-no" hidden>
+          <div class="r"><i data-i="check" class="s14 ok"></i><span>A check is set</span><span class="d"><span class="mono">npm test</span>, from merge.checks</span></div>
+          <div class="r no">
+            <i data-i="x" class="s14 fail"></i><span>2 workspaces in normal mode are open</span><span class="d">finish or clean them up first</span>
+            <div class="names"><span class="chip">Save a cart for later</span><span class="chip">Add a discount code</span></div>
+          </div>
+          <div class="r"><i data-i="check" class="s14 ok"></i><span>Limits</span><span class="d">pauses at 90 % · $5.00 a workspace · 3 rounds</span></div>
+          <div class="r"><i data-i="danger" class="s14 fail"></i><span>Full access</span><span class="d">its agents can run anything on this machine</span></div>
+        </div>
+        <p class="note">Nucleus becomes Alpha Ceph, and its conversation starts again.</p>
+      </div>
+      <div class="hq-foot">
+        <span class="faint">Turn it off any time; nothing done is undone.</span>
+        <span class="btn">Cancel</span>
+        <span class="btn primary" id="turn-on"><i data-i="hexagon" class="s14"></i>Turn on Hive</span>
+      </div>
+    </div>
+
+    <div id="mind"></div>
+    <div id="shine"></div>
+
+    <script>
+      Kit.render();
+      const params = new URLSearchParams(location.search);
+      if (params.get('state') === 'refused') {
+        document.getElementById('ready-ok').hidden = true;
+        document.getElementById('ready-no').hidden = false;
+        document.getElementById('turn-on').setAttribute('aria-disabled', 'true');
+        // Behind it, the normal-mode workspaces that are open.
+        document.getElementById('before').src += '?ws=all';
+      }
+      // Lay the Mind over the art's middle, and centre the reveal on it.
+      const art = document.querySelector('.hq .art').getBoundingClientRect();
+      const mx = art.left + 300;
+      const my = art.top + 73.5;
+      const mind = document.getElementById('mind');
+      mind.style.left = `${mx - 64}px`;
+      mind.style.top = `${my - 64}px`;
+      mind.style.backgroundPosition = `${-(300 - 64)}px ${-(73.5 - 64)}px`;
+      document.documentElement.style.setProperty('--mx', `${mx}px`);
+      document.documentElement.style.setProperty('--my', `${my}px`);
+      // A frame at `t` ms: every animation started, then stopped there.
+      window.frameAt = (t) => {
+        document.body.classList.add('go');
+        for (const a of document.getAnimations()) {
+          a.pause();
+          a.currentTime = t;
+        }
+      };
+      window.play = () => {
+        document.body.classList.remove('go');
+        void document.body.offsetWidth;
+        document.body.classList.add('go');
+      };
+      if (params.has('t')) window.frameAt(Number(params.get('t')));
+      if (params.has('play')) window.play();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Normal mode — the terminal view, split</title>
+    <link rel="stylesheet" href="../../hive-redesign/src/kit.css" />
+    <link rel="stylesheet" href="../../hive-redesign/src/run.css" />
+    <link rel="stylesheet" href="../../hive-redesign/src/term.css" />
+    <link rel="stylesheet" href="normal.css" />
+    <script src="../../hive-redesign/src/kit.js"></script>
+    <script src="nkit.js"></script>
+  </head>
+  <body>
+    <div class="app">
+      <nav
+        class="nav"
+        data-page="workspace"
+        data-open="feature/saved-carts"
+        data-meta='{"feature/saved-carts": ["spin", "spin", "<b>Building</b> · 1 commit · 9:20", "working"]}'
+      ></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="feature"></i></span>
+          <div style="min-width: 0">
+            <h1>Save a cart for later</h1>
+            <div class="sub">
+              <span class="mono">feature/saved-carts</span><span class="sep">·</span>from
+              <span class="mono">main</span><span class="sep">·</span><span class="row" style="gap: 5px"><i data-i="model" class="s14 faint"></i>Claude Code · Opus · xhigh</span>
+            </div>
+          </div>
+          <div class="actions">
+            <div class="steps-inline">
+              <span data-track="done,done,now,todo,todo"></span>
+              <span class="word run">Build</span><span class="k">9:20</span>
+              <span class="sep"></span>
+              <span class="k">Commits</span><b>1</b>
+              <span class="k">Files</span><b>4</b>
+            </div>
+            <span class="icon-button boxed"><i data-i="vscode"></i></span>
+            <span class="icon-button boxed"><i data-i="panel"></i></span>
+            <span class="icon-button boxed"><i data-i="more"></i></span>
+          </div>
+        </header>
+
+        <div class="tbody wide">
+          <section class="card term-card">
+            <div class="stabs">
+              <span class="stab on"><i data-i="tty" class="s14"></i>Claude Code<span class="live run"></span></span>
+              <span class="stab"><i data-i="thread" class="s14"></i>Thread</span>
+              <span class="stab"><i data-i="activity" class="s14"></i>Activity</span>
+              <span class="stab"><i data-i="file" class="s14"></i>Brief</span>
+              <span class="div"></span>
+              <span class="stab on"><i data-i="terminal" class="s14"></i>Shell 1<span class="what">npm run dev</span><span class="live"></span><span class="x"><i data-i="x" class="s12"></i></span></span>
+              <span class="stab"><i data-i="terminal" class="s14"></i>Shell 2<span class="what">bash</span><span class="x"><i data-i="x" class="s12"></i></span></span>
+              <span class="stab" style="padding: 0 6px"><i data-i="plus" class="s14"></i></span>
+              <div class="end">
+                <span class="icon-button"><i data-i="image" class="s14"></i></span>
+                <span class="icon-button"><i data-i="search" class="s14"></i></span>
+                <span class="icon-button" style="background: var(--selected); color: var(--hive-text)"><i data-i="columns" class="s14"></i></span>
+                <span class="icon-button"><i data-i="maximize" class="s14"></i></span>
+              </div>
+            </div>
+            <div class="panes">
+              <div class="pane">
+                <div class="pane-head"><i data-i="spin" class="s14 spin"></i><b>Claude Code</b>working · 2:41<span class="icons"><i data-i="maximize" class="s14"></i></span></div>
+<pre class="tty"><span class="g">●</span> <span class="w">Bash</span>(npm install pg)
+  <span class="d">⎿  added 14 packages in 3s</span>
+
+<span class="g">●</span> <span class="w">Update</span>(src/cart/saved.ts)
+  <span class="d">⎿  Updated src/cart/saved.ts with 9 additions</span>
+     <span class="d"> 3</span> <span class="add">+ import { Pool } from 'pg';              </span>
+     <span class="d"> 5</span> <span class="add">+ const pool = new Pool();                </span>
+
+<span class="g">●</span> <span class="w">Bash</span>(npm test)
+  <span class="d">⎿</span>  <span class="g">✔</span> 18 tests passed <span class="d">(412 ms)</span>
+
+<span class="g">●</span> <span class="w">Bash</span>(git commit -m "Store a saved cart in Postgres")
+  <span class="d">⎿  [feature/saved-carts 4c1d2e9] Store a saved cart</span>
+     <span class="d">2 files changed, 23 insertions(+)</span>
+
+<span class="w">●</span> I'll try it against the dev server in Shell 1.
+
+<span class="g">●</span> <span class="w">Bash</span>(curl -s localhost:5173/api/carts/42)
+  <span class="d">⎿  {"lines":[{"productId":"cap","quantity":2}],</span>
+     <span class="d">"code":"SAVE10"}</span>
+
+<span class="g">●</span> <span class="w">Update</span>(<span class="link">src/ui/CartView.tsx</span>)
+  <span class="d">⎿  Updated src/ui/CartView.tsx with 12 additions</span>
+
+<span class="c">✻ Checking the Save for later button…</span> <span class="d">(2m 41s · esc to interrupt)</span>
+
+<span class="rule">──────────────────────────────────────────────────────────</span>
+&gt; <span class="cursor"></span>
+<span class="rule">──────────────────────────────────────────────────────────</span>
+  <span class="v">⏵⏵ accept edits on</span> <span class="d">(shift+tab to cycle)</span></pre>
+              </div>
+              <div class="pane">
+                <div class="pane-head"><span class="ok">●</span><b>Shell 1</b>npm run dev · localhost:5173<span class="icons"><i data-i="maximize" class="s14"></i><i data-i="x" class="s14"></i></span></div>
+<pre class="tty"><span class="g">~/storefront.worktrees/feature-saved-carts</span> <span class="d">$</span> npm run dev
+
+<span class="d">&gt; storefront@1.0.0 dev</span>
+<span class="d">&gt; vite</span>
+
+  <span class="g">VITE</span> <span class="g">v6.3.5</span>  <span class="d">ready in</span> <span class="w">412</span> <span class="d">ms</span>
+
+  <span class="g">➜</span>  <span class="w">Local</span>:   <span class="link">http://localhost:5173/</span>
+  <span class="g">➜</span>  <span class="d">Network: use --host to expose</span>
+
+<span class="d">12:58:02</span> <span class="cy">[vite]</span> page reload <span class="d">src/cart/saved.ts</span>
+<span class="d">12:58:40</span> PUT  /api/carts/42   <span class="g">204</span>  <span class="d">12 ms</span>
+<span class="d">12:58:41</span> GET  /api/carts/42   <span class="g">200</span>   <span class="d">8 ms</span>
+<span class="d">12:59:03</span> <span class="cy">[vite]</span> hmr update <span class="d">/src/ui/CartView.tsx</span>
+<span class="d">12:59:05</span> GET  /                <span class="g">200</span>   <span class="d">3 ms</span>
+<span class="d">12:59:05</span> GET  /api/carts/42   <span class="g">200</span>   <span class="d">6 ms</span>
+<span class="d">12:59:06</span> GET  /api/catalog/cap <span class="a">304</span>   <span class="d">2 ms</span></pre>
+              </div>
+            </div>
+            <div class="tty-bar">
+              <i data-i="spin" class="s14 spin"></i>
+              <span>Claude Code is working</span><span class="faint">· 14 tool calls · 1 commit</span>
+              <span class="keys">
+                <span><kbd>Ctrl</kbd><kbd>Click</kbd>opens a path in VS Code</span><span><kbd>Ctrl</kbd><kbd>V</kbd>pastes an image</span>
+              </span>
+            </div>
+          </section>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      NKit.render();
+    </script>
+  </body>
+</html>

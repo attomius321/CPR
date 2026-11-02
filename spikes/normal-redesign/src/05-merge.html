@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Normal mode — a merge in the queue</title>
+    <link rel="stylesheet" href="../../hive-redesign/src/kit.css" />
+    <link rel="stylesheet" href="../../hive-redesign/src/run.css" />
+    <link rel="stylesheet" href="normal.css" />
+    <script src="../../hive-redesign/src/kit.js"></script>
+    <script src="nkit.js"></script>
+    <style>
+      .body {
+        grid-template-columns: 400px 1fr;
+      }
+      .scroll {
+        padding-top: 10px;
+      }
+      .term {
+        flex: 1;
+        min-height: 0;
+        margin: 0;
+        padding: 14px 16px;
+        background: var(--code-bg);
+        color: var(--muted);
+        font: 400 var(--size-caption) / 1.7 var(--mono);
+        white-space: pre;
+        overflow: hidden;
+      }
+      .term .h {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .term .g {
+        color: var(--ok);
+      }
+      .term .t {
+        color: var(--faint);
+      }
+      .term .y {
+        color: var(--run);
+      }
+      .rules {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 4px 16px 14px;
+        padding: 10px 12px;
+        border-radius: var(--radius-control);
+        background: var(--raised);
+        color: var(--muted);
+        font-size: var(--size-caption);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <nav class="nav" data-page="merge" data-open="fix/order-total-rounding"></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="merge"></i></span>
+          <div style="min-width: 0">
+            <h1>Fix order total rounding <span class="faint" style="font-weight: 400">→ main</span></h1>
+            <div class="sub">
+              <span class="mono">fix/order-total-rounding</span><span class="sep">·</span>approved by you at 12:50
+              <span class="sep">·</span>first in the queue
+            </div>
+          </div>
+          <div class="actions">
+            <span class="pill run"><i data-i="spin"></i>Checking the merge</span>
+            <span class="btn"><i data-i="x" class="s14"></i>Take out of the queue</span>
+          </div>
+        </header>
+
+        <section class="card pipeline">
+          <div class="steps">
+            <div class="step done">
+              <span class="node"><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg><i data-i="check"></i></span>
+              <div class="words"><span class="name">Approved</span><span class="detail">by you · 12:50</span></div>
+              <span class="wire"></span>
+            </div>
+            <div class="step done">
+              <span class="node"><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg><i data-i="check"></i></span>
+              <div class="words"><span class="name">Merge</span><span class="detail">into main at 7017d22 · 0.4 s</span></div>
+              <span class="wire"></span>
+            </div>
+            <div class="step now">
+              <span class="node"><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg><i data-i="spin"></i></span>
+              <div class="words">
+                <span class="name">Check</span><span class="detail">npm test · 0:12 of ~0:20</span>
+                <div class="mini-progress"><i style="width: 60%"></i></div>
+              </div>
+              <span class="wire"></span>
+            </div>
+            <div class="step todo">
+              <span class="node"><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg><i data-i="upload"></i></span>
+              <div class="words"><span class="name">Land</span><span class="detail">main fast-forwards, then push</span></div>
+            </div>
+          </div>
+          <div class="run-sum">
+            <div class="cell"><span class="k">Queue</span><span class="v">1 <small>of 1</small></span><span class="k">nothing behind it</span></div>
+            <div class="cell"><span class="k">Time</span><span class="v">0:14</span><span class="k">since your OK</span></div>
+          </div>
+        </section>
+
+        <div class="body">
+          <section class="card">
+            <div class="card-head"><h2>Steps</h2><div class="end"><span class="link"><i data-i="file" class="s14"></i>symbiote/merge.md</span></div></div>
+            <div class="scroll">
+              <div class="item is-ok">
+                <span class="dot"><i data-i="eye"></i></span>
+                <div class="top"><b>Approved</b><span class="muted">your review, 2nd</span><span class="end"><span>12:50</span></span></div>
+                <div class="content"><div class="quote">“The rounding now matches the receipt. Ship it.”</div></div>
+              </div>
+              <div class="item is-ok">
+                <span class="dot"><i data-i="merge"></i></span>
+                <div class="top"><b>Merge</b><span class="muted">in Symbiote’s merge worktree</span><span class="end"><span>0.4 s</span></span></div>
+                <div class="content">
+                  <div class="commit-line"><i data-i="commit" class="s14 faint"></i><span class="mono">c54655f</span><span>into</span><span class="mono">main</span><span>at</span><span class="mono">7017d22</span><span class="faint">→</span><span class="mono">7aeb0ad</span></div>
+                </div>
+              </div>
+              <div class="item is-run">
+                <span class="dot"><i data-i="spin"></i></span>
+                <div class="top"><b>Check</b><span class="muted">merge.checks</span><span class="end"><span>0:12 of ~0:20</span></span></div>
+                <div class="content">
+                  <div class="cmds">
+                    <div class="cmd is-now" style="grid-template-columns: 16px 1fr 90px 72px"><i data-i="spin" class="s14 run"></i><code>npm test</code><span class="bar"><i style="width: 60%"></i></span><span class="t">0:12</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="item is-todo last">
+                <span class="dot"><i data-i="upload"></i></span>
+                <div class="top"><b>Land</b><span class="faint">main to 7aeb0ad, then pushed</span></div>
+              </div>
+              <div class="rules"><i data-i="shield" class="s14"></i>A failed check goes back to the workspace’s agent, with its output.</div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="tabs">
+              <span class="tab on"><i data-i="terminal" class="s14"></i>Log</span>
+              <span class="tab"><i data-i="file" class="s14"></i>Changes <span class="count">3</span></span>
+              <span class="row faint" style="margin-left: auto; font-size: 13px"><i data-i="spin" class="s14 run"></i>live</span>
+            </div>
+            <pre class="term"><span class="h">── Merge fix/order-total-rounding into main</span>
+Symbiote’s merge worktree at main (7017d22)
+Merged c54655f as 7aeb0ad
+<span class="g">✓ passed in 0.4 s</span>
+
+<span class="h">── npm test</span>
+<span class="t">&gt; storefront@1.0.0 test</span>
+<span class="t">&gt; node --test</span>
+
+<span class="g">✔</span> a cart adds up its lines <span class="t">(0.6 ms)</span>
+<span class="g">✔</span> a receipt ends with the total <span class="t">(0.9 ms)</span>
+<span class="g">✔</span> three caps cost $54.00 <span class="t">(0.5 ms)</span>
+<span class="g">✔</span> half a cent rounds away from zero <span class="t">(0.1 ms)</span>
+<span class="g">✔</span> a discount rounds after the total <span class="t">(0.2 ms)</span>
+<span class="y">›</span> checkout › pays the rounded total …</pre>
+          </section>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      NKit.render();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Normal mode — a review's graph</title>
+    <link rel="stylesheet" href="../../hive-redesign/src/kit.css" />
+    <link rel="stylesheet" href="../../hive-redesign/src/run.css" />
+    <link rel="stylesheet" href="normal.css" />
+    <script src="../../hive-redesign/src/kit.js"></script>
+    <script src="nkit.js"></script>
+    <style>
+      .three {
+        display: grid;
+        grid-template-columns: 320px 1fr 336px;
+        gap: 8px;
+        flex: 1;
+        min-height: 0;
+      }
+      .three .tab {
+        padding: 0 8px;
+      }
+      .findings {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 10px;
+      }
+      .progress {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        font-size: var(--size-caption);
+        color: var(--muted);
+      }
+      .progress .bar i {
+        background: var(--hive-text);
+      }
+      .foot {
+        margin-top: auto;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 14px;
+        border-top: 1px solid var(--line);
+        font-size: var(--size-caption);
+        color: var(--muted);
+      }
+      .detail-head {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .detail-head .k {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .detail-head .kd {
+        font-size: var(--size-caps);
+        color: var(--faint);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .detail-head .name {
+        font-family: var(--mono);
+        font-size: var(--size-body);
+        font-weight: 600;
+        text-decoration: line-through;
+        text-decoration-color: var(--removed);
+      }
+      .detail-head .where {
+        font-size: var(--size-caption);
+        color: var(--faint);
+      }
+      .block {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .block .label-text {
+        font-size: var(--size-caps);
+        color: var(--faint);
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .alert {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 10px 12px;
+        border-radius: var(--radius-control);
+        background: color-mix(in srgb, var(--fail) 7%, transparent);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--fail) 28%, var(--line));
+      }
+      .alert .t {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: var(--size-small);
+        font-weight: 600;
+      }
+      .alert p {
+        margin: 0;
+        padding-left: 22px;
+        color: var(--muted);
+        font-size: var(--size-caption);
+        line-height: 1.45;
+      }
+      .mini-diff {
+        margin: 0;
+        border-radius: var(--radius-control);
+        box-shadow: inset 0 0 0 1px var(--line);
+        overflow: hidden;
+        font: 400 var(--size-caps) / 1.65 var(--mono);
+      }
+      .mini-diff .dl {
+        grid-template-columns: 30px 14px 1fr;
+      }
+      .user {
+        display: grid;
+        grid-template-columns: 16px 1fr auto;
+        align-items: center;
+        column-gap: 8px;
+        font-size: var(--size-small);
+      }
+      .user .w {
+        color: var(--faint);
+        font-size: var(--size-caption);
+      }
+      .comment-box {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app railed">
+      <nav class="rail"></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="eye"></i></span>
+          <div style="min-width: 0">
+            <h1>Review of feature/discount-code</h1>
+            <div class="sub">
+              Add a discount code<span class="sep">·</span>first review<span class="sep">·</span>
+              <span class="mono">7017d22 → b3fbfe0</span><span class="sep">·</span>5 files
+              <span class="add num">+47</span><span class="del num">−2</span>
+            </div>
+          </div>
+          <div class="actions">
+            <span class="pill fail"><i data-i="circle-x"></i>1 error</span>
+            <span class="pill warn"><i data-i="danger"></i>2 warnings</span>
+            <span class="btn ghost"><i data-i="back" class="s14"></i>Workspace</span>
+            <span class="segmented"><span>Files</span><span class="on">Graph</span></span>
+          </div>
+        </header>
+
+        <div class="three">
+          <section class="card">
+            <div class="tabs">
+              <span class="tab">Changes <span class="count">10</span></span>
+              <span class="tab on">Findings <span class="count">3</span></span>
+              <span class="tab">Review <span class="count">1</span></span>
+            </div>
+            <div class="progress">
+              <div class="row"><span>4 of 10 changed symbols reviewed</span><span class="faint" style="margin-left: auto">j / k next</span></div>
+              <div class="bar"><i style="width: 40%"></i></div>
+            </div>
+            <div class="findings">
+              <div class="finding-card on">
+                <div class="top"><i data-i="circle-x" class="s14 fail"></i>legacyCoupon is removed but still used</div>
+                <div class="why">legacyTotal in src/pricing/legacy.ts calls it, and this change leaves it as it is.</div>
+                <div class="rule">removed-still-referenced</div>
+              </div>
+              <div class="finding-card">
+                <div class="top"><i data-i="danger" class="s14 run"></i>Nothing calls the new Cart.applyCode</div>
+                <div class="why">Only its test does: the checkout form never applies a code.</div>
+                <div class="rule">orphan-added</div>
+              </div>
+              <div class="finding-card">
+                <div class="top"><i data-i="danger" class="s14 run"></i>Nothing calls the new isExpired</div>
+                <div class="why">A code’s expiry is written but never checked.</div>
+                <div class="rule">orphan-added</div>
+              </div>
+            </div>
+            <div class="foot">
+              <i data-i="thread" class="s14"></i>1 comment drafted
+              <span class="btn primary small" style="margin-left: auto">Finish review</span>
+            </div>
+          </section>
+
+          <section class="card">
+            <div
+              class="canvas"
+              data-edges='[["receipt","total","ctx"],["total","roundCents","ctx"],["total","legacyCoupon","removed"],["applyCode","discountRate","added"],["top","applyCode","added"],["legacyTotal","legacyCoupon","removed hot"]]'
+            >
+              <div class="frame" style="left: 12px; top: 36px; width: 208px; height: 80px"><span class="fname">src/cart/receipt.ts</span></div>
+              <div class="node" id="receipt" style="left: 24px; top: 60px">
+                <div class="k"><span class="kd">function</span><span class="mark m">~</span></div>
+                <div class="n">receipt</div>
+                <div class="s">receipt(cart: Cart): string</div>
+              </div>
+
+              <div class="frame" style="left: 12px; top: 330px; width: 208px; height: 80px"><span class="fname">src/pricing/legacy.ts</span></div>
+              <div class="node ctx" id="legacyTotal" style="left: 24px; top: 354px">
+                <div class="k"><span class="kd">function</span><span class="faint" style="margin-left: auto">unchanged</span></div>
+                <div class="n">legacyTotal</div>
+                <div class="s">legacyTotal(cart: Cart): number</div>
+              </div>
+
+              <div class="frame" style="left: 12px; top: 560px; width: 208px; height: 80px"><span class="fname">test/discount.test.ts</span></div>
+              <div class="node" id="top" style="left: 24px; top: 584px">
+                <div class="k"><span class="kd">module</span><span class="mark a">+</span></div>
+                <div class="n">top level</div>
+                <div class="s">code outside declarations</div>
+              </div>
+
+              <div class="frame" style="left: 236px; top: 150px; width: 208px; height: 330px"><span class="fname">src/cart/cart.ts</span></div>
+              <div class="node reviewed" id="cart" style="left: 248px; top: 174px">
+                <div class="k"><span class="kd">class</span><span class="mark m">~</span></div>
+                <div class="n">Cart</div>
+                <div class="s">class Cart</div>
+              </div>
+              <div class="node" id="total" style="left: 248px; top: 248px">
+                <div class="k"><span class="kd">method</span><span class="mark m">~</span></div>
+                <div class="n">Cart.total</div>
+                <div class="s">total(): number</div>
+              </div>
+              <div class="node" id="applyCode" style="left: 248px; top: 322px">
+                <div class="k"><span class="kd">method</span><span class="fb w">1</span><span class="mark a" style="margin-left: 0">+</span></div>
+                <div class="n">Cart.applyCode</div>
+                <div class="s">applyCode(code: string): void</div>
+              </div>
+              <div class="node reviewed" id="code" style="left: 248px; top: 396px">
+                <div class="k"><span class="kd">property</span><span class="mark a">+</span></div>
+                <div class="n">Cart.code</div>
+                <div class="s">code?: string</div>
+              </div>
+
+              <div class="frame" style="left: 460px; top: 214px; width: 208px; height: 156px"><span class="fname">src/pricing/money.ts</span></div>
+              <div class="node removed picked" id="legacyCoupon" style="left: 472px; top: 238px">
+                <div class="k"><span class="kd">function</span><span class="fb">1</span><span class="mark r" style="margin-left: 0">−</span></div>
+                <div class="n">legacyCoupon</div>
+                <div class="s">legacyCoupon(total: number)</div>
+              </div>
+              <div class="node ctx" id="roundCents" style="left: 472px; top: 304px">
+                <div class="k"><span class="kd">function</span></div>
+                <div class="n">roundCents</div>
+                <div class="s">roundCents(value: number): number</div>
+              </div>
+
+              <div class="frame" style="left: 460px; top: 450px; width: 208px; height: 156px"><span class="fname">src/cart/discount.ts</span></div>
+              <div class="node" id="discountRate" style="left: 472px; top: 474px">
+                <div class="k"><span class="kd">function</span><span class="mark a">+</span></div>
+                <div class="n">discountRate</div>
+                <div class="s">discountRate(code: string): number</div>
+              </div>
+              <div class="node" id="isExpired" style="left: 472px; top: 540px">
+                <div class="k"><span class="kd">function</span><span class="fb w">1</span><span class="mark a" style="margin-left: 0">+</span></div>
+                <div class="n">isExpired</div>
+                <div class="s">isExpired(code: Code): boolean</div>
+              </div>
+
+              <div class="zoom"><span><i data-i="plus" class="s14"></i></span><span><i data-i="minus" class="s14"></i></span><span><i data-i="fit" class="s14"></i></span></div>
+              <div class="minimap">
+                <i style="left: 12px; top: 16px; width: 26px"></i><i style="left: 12px; top: 46px; width: 26px"></i><i style="left: 12px; top: 70px; width: 26px"></i>
+                <i style="left: 60px; top: 26px; width: 26px; background: var(--modified)"></i><i style="left: 60px; top: 36px; width: 26px; background: var(--modified)"></i><i style="left: 60px; top: 46px; width: 26px; background: var(--added)"></i><i style="left: 60px; top: 56px; width: 26px; background: var(--added)"></i>
+                <i style="left: 104px; top: 34px; width: 26px; background: var(--removed)"></i><i style="left: 104px; top: 44px; width: 26px"></i><i style="left: 104px; top: 62px; width: 26px; background: var(--added)"></i><i style="left: 104px; top: 72px; width: 26px; background: var(--added)"></i>
+                <span class="view"></span>
+              </div>
+            </div>
+            <div class="legend">
+              <span><span class="mark a" style="display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; font-family: var(--mono)">+</span>added</span>
+              <span><span class="mark r" style="display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; font-family: var(--mono)">−</span>removed</span>
+              <span><span class="mark m" style="display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 4px; font-family: var(--mono)">~</span>modified</span>
+              <span><span class="sw" style="background: var(--added)"></span>added call</span>
+              <span><span class="sw" style="background: repeating-linear-gradient(90deg, var(--removed) 0 4px, transparent 4px 7px)"></span>removed call</span>
+              <span style="margin-left: auto" class="faint"><i data-i="keyboard" class="s14"></i>r reviewed · f focus</span>
+            </div>
+          </section>
+
+          <aside class="card">
+            <div class="detail-head">
+              <div class="k">
+                <span class="kd">function</span><span class="name">legacyCoupon</span>
+                <span class="pill fail" style="margin-left: auto">Removed</span>
+              </div>
+              <span class="where">src/pricing/money.ts · line 18 at 7017d22</span>
+            </div>
+            <div class="block">
+              <div class="alert">
+                <span class="t"><i data-i="circle-x" class="s14 fail"></i>Removed, but still used</span>
+                <p>legacyTotal calls it and is not part of this change: the build breaks there.</p>
+              </div>
+            </div>
+            <div class="block">
+              <span class="label-text">Still used by 1</span>
+              <div class="user"><i data-i="alert" class="s14 fail"></i><span><span class="mono">legacyTotal</span> <span class="w">src/pricing/legacy.ts:14</span></span><span class="link">Open<i data-i="external" class="s14"></i></span></div>
+              <span class="label-text" style="margin-top: 4px">Used before by 1</span>
+              <div class="user"><i data-i="check" class="s14 ok"></i><span><span class="mono">Cart.total</span> <span class="w">no longer calls it</span></span><span></span></div>
+            </div>
+            <div class="block">
+              <span class="label-text">Its code, removed</span>
+              <div class="mini-diff">
+                <div class="dl r"><span class="ln">18</span><span class="sg">−</span><span><span class="tok-k">export function</span> <span class="tok-f">legacyCoupon</span>(total) {</span></div>
+                <div class="dl r"><span class="ln">19</span><span class="sg">−</span><span>  <span class="tok-k">if</span> (total &lt; <span class="tok-s">5000</span>) <span class="tok-k">return</span> <span class="tok-s">0</span>;</span></div>
+                <div class="dl r"><span class="ln">20</span><span class="sg">−</span><span>  <span class="tok-k">return</span> roundCents(total * <span class="tok-s">0.1</span>);</span></div>
+                <div class="dl r"><span class="ln">21</span><span class="sg">−</span><span>}</span></div>
+              </div>
+            </div>
+            <div class="comment-box">
+              <span class="input area" style="min-height: 64px; color: var(--faint); font-size: 14px">Comment on legacyCoupon…</span>
+              <div class="row">
+                <span class="btn small"><i data-i="check" class="s14"></i>Mark reviewed<span class="kbd" style="background: var(--panel)">r</span></span>
+                <span class="btn small" style="margin-left: auto">Comment</span>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      NKit.render();
+    </script>
+  </body>
+</html>

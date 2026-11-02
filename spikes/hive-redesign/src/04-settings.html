@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hive — Settings, Hive mode</title>
+    <link rel="stylesheet" href="kit.css" />
+    <script src="kit.js"></script>
+    <style>
+      .split {
+        display: grid;
+        grid-template-columns: 272px 1fr;
+        gap: 8px;
+        flex: 1;
+        min-height: 0;
+      }
+      .entries {
+        padding: 6px;
+        gap: 1px;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .entries .g {
+        padding: 10px 8px 4px;
+        color: var(--faint);
+        font-size: var(--size-caption);
+        font-weight: 500;
+      }
+      .entries .e {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 30px;
+        padding: 0 8px;
+        border-radius: var(--radius-control);
+        color: var(--muted);
+        font-size: var(--size-small);
+      }
+      .entries .e.on {
+        background: var(--selected);
+        color: var(--text);
+        font-weight: 500;
+      }
+      .entries .e .tag {
+        margin-left: auto;
+      }
+      .entries .e svg {
+        color: var(--faint);
+      }
+      .entries .e.on svg {
+        color: var(--hive-text);
+      }
+      .page {
+        overflow: hidden;
+      }
+      .page-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .page-head h2 {
+        margin: 0;
+        font-size: var(--size-title);
+        font-weight: 600;
+      }
+      .notice {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 14px 16px 2px;
+        padding: 10px 12px;
+        border-radius: var(--radius-control);
+        background: var(--raised);
+        box-shadow: inset 0 0 0 1px var(--line);
+        font-size: var(--size-small);
+        color: var(--muted);
+      }
+      .notice b {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .group-title {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        padding: 18px 16px 8px;
+      }
+      .group-title h3 {
+        margin: 0;
+        font-size: var(--size-body);
+        font-weight: 600;
+      }
+      .group-title span {
+        color: var(--faint);
+        font-size: var(--size-caption);
+      }
+      .group {
+        margin: 0 16px;
+        border-radius: var(--radius-control);
+        box-shadow: inset 0 0 0 1px var(--line);
+      }
+      .setting {
+        padding: 12px 14px;
+      }
+      .ctl {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .warn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--run);
+        font-size: var(--size-caption);
+      }
+      .foot {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 16px;
+        color: var(--faint);
+        font-size: var(--size-caption);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <nav class="nav" data-page="settings"></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="settings"></i></span>
+          <div>
+            <h1>Settings</h1>
+            <div class="sub">How Hive runs this repository, and what Symbiote tells its agents</div>
+          </div>
+          
+        </header>
+
+        <div class="split">
+          <section class="card entries">
+            <div class="g">Hive</div>
+            <div class="e on"><i data-i="hexagon"></i>Hive mode<span class="pill ok tag" style="height: 20px">On</span></div>
+            <div class="e"><i data-i="eye"></i>Reviewer</div>
+            <div class="e"><i data-i="thread"></i>Hive’s prompts<span class="count tag">8</span></div>
+            <div class="e"><i data-i="mind"></i>Alpha Ceph</div>
+            <div class="g">Workspaces</div>
+            <div class="e"><i data-i="feature"></i>Feature</div>
+            <div class="e"><i data-i="fix"></i>Fix</div>
+            <div class="e"><i data-i="refactor"></i>Refactor</div>
+            <div class="e"><i data-i="spike"></i>Spike</div>
+            <div class="e"><i data-i="checks"></i>Suggest settings</div>
+            <div class="g">Agents</div>
+            <div class="e"><i data-i="merge"></i>Merger</div>
+            <div class="e"><i data-i="pencil"></i>Scribe</div>
+            <div class="g">This machine</div>
+            <div class="e"><i data-i="skills"></i>Skill library</div>
+            <div class="e"><i data-i="overview"></i>Appearance</div>
+          </section>
+
+          <section class="card page">
+            <div class="page-head">
+              <h2>Hive mode</h2>
+              <span class="pill ok"><i data-i="check"></i>On</span>
+              <span class="faint" style="font-size: 14px">for storefront since 2 Nov, 09:02</span>
+              <span class="btn danger" style="margin-left: auto"><i data-i="power" class="s14"></i>Turn off Hive</span>
+            </div>
+
+            <div class="notice">
+              <i data-i="shield" class="s18" style="color: var(--muted)"></i>
+              <div class="grow">
+                <b>Hive runs agents with full access to this machine.</b> It never force-pushes or
+                deletes work. Off stops every agent, check and review; on again goes on where they
+                stopped.
+              </div>
+              <span class="link">How Hive works<i data-i="external" class="s14"></i></span>
+            </div>
+
+            <div class="group-title"><h3>Landing</h3><span>where finished work goes</span></div>
+            <div class="group">
+              <div class="setting">
+                <div>
+                  <div class="name">Lands through</div>
+                  <div class="help">Into the branch the workspace started from; both branches are pushed.</div>
+                </div>
+                <div class="ctl">
+                  <span class="segmented"
+                    ><span class="on"><i data-i="merge" class="s14"></i>Merge queue</span
+                    ><span><i data-i="pr" class="s14"></i>Pull request</span></span
+                  >
+                </div>
+              </div>
+              <div class="setting">
+                <div>
+                  <div class="name">Pull and merge requests</div>
+                  <div class="help">origin is <span class="mono">example/storefront</span> on GitHub</div>
+                </div>
+                <div class="ctl">
+                  <span class="warn"><i data-i="alert" class="s14"></i>No token: set <span class="mono">GITHUB_TOKEN</span> or run <span class="mono">gh auth login</span></span>
+                </div>
+              </div>
+              <div class="setting">
+                <div>
+                  <div class="name">Rounds</div>
+                  <div class="help">Check and review rounds before Hive stops a workspace and records why.</div>
+                </div>
+                <div class="ctl"><span class="muted" style="font-size: 14px">3 per workspace</span></div>
+              </div>
+            </div>
+
+            <div class="group-title"><h3>Limits</h3><span>what Hive may spend</span></div>
+            <div class="group">
+              <div class="setting">
+                <div>
+                  <div class="name">Pause by usage</div>
+                  <div class="help">No agent starts while a window of your Claude plan is at it or over, until it resets.</div>
+                </div>
+                <div class="ctl"><span class="input select" style="width: 168px">90 %</span></div>
+              </div>
+              <div class="setting">
+                <div>
+                  <div class="name">Budget per workspace</div>
+                  <div class="help">A workspace that reaches it stops; raise it and send a message to go on.</div>
+                </div>
+                <div class="ctl">
+                  <span class="input" style="width: 168px"><span class="faint">$</span>5.00</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="group-title"><h3>Running reviewer</h3><span>proves defects with failing tests</span></div>
+            <div class="group">
+              <div class="setting">
+                <div>
+                  <div class="name">Model and effort</div>
+                  <div class="help">A clean Claude Code, in its sandbox, in a throwaway copy of the commit.</div>
+                </div>
+                <div class="ctl">
+                  <span class="input select" style="width: 118px">Opus</span>
+                  <span class="input select" style="width: 104px">High</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="foot">
+              <i data-i="file" class="s14"></i>
+              <span>Kept in <span class="mono">symbiote/config.json</span> as <span class="mono">hive.lands</span>, <span class="mono">hive.usage.pauseAt</span> and <span class="mono">hive.budget</span>. On or off: <span class="mono">symbiote/hive.json</span>, never committed.</span>
+            </div>
+          </section>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      Kit.render();
+    </script>
+  </body>
+</html>

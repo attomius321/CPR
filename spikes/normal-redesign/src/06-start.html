@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Normal mode — Start a workspace</title>
+    <link rel="stylesheet" href="../../hive-redesign/src/kit.css" />
+    <link rel="stylesheet" href="normal.css" />
+    <script src="../../hive-redesign/src/kit.js"></script>
+    <script src="nkit.js"></script>
+    <style>
+      .split {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 8px;
+        flex: 1;
+        min-height: 0;
+      }
+      .form {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        padding: 16px;
+      }
+      .field label .opt {
+        color: var(--faint);
+        font-weight: 400;
+      }
+      .counter {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--faint);
+        font-size: var(--size-caption);
+      }
+      .counter .n {
+        margin-left: auto;
+        font-variant-numeric: tabular-nums;
+      }
+      .checkline {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px;
+        color: var(--faint);
+        font-size: var(--size-caption);
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 0;
+      }
+      .kv {
+        display: grid;
+        grid-template-columns: 100px 1fr;
+        align-items: center;
+        row-gap: 10px;
+        column-gap: 12px;
+        padding: 14px;
+        font-size: var(--size-small);
+      }
+      .kv .k {
+        color: var(--muted);
+      }
+      .kv .input {
+        height: 30px;
+        font-size: var(--size-small);
+      }
+      .effort {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 2px;
+        padding: 2px;
+        border-radius: 9px;
+        background: var(--raised);
+        box-shadow: inset 0 0 0 1px var(--line);
+      }
+      .effort span {
+        display: grid;
+        place-items: center;
+        height: 26px;
+        border-radius: 7px;
+        color: var(--muted);
+        font-size: var(--size-caption);
+        font-weight: 500;
+      }
+      .effort span.on {
+        background: var(--panel);
+        color: var(--text);
+        box-shadow:
+          0 1px 2px rgb(0 0 0 / 30%),
+          inset 0 0 0 1px var(--hive-edge);
+      }
+      .toggle {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: center;
+        column-gap: 14px;
+        padding: 14px;
+        border-top: 1px solid var(--line);
+      }
+      .toggle b {
+        font-weight: 500;
+        font-size: var(--size-body);
+      }
+      .toggle .help {
+        margin-top: 2px;
+      }
+      .switch.on {
+        background: var(--hive);
+      }
+      .drop {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 40px;
+        padding: 0 12px;
+        border-radius: var(--radius-control);
+        box-shadow: inset 0 0 0 1px var(--line-2);
+        color: var(--faint);
+        font-size: var(--size-small);
+      }
+      .more {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        height: 40px;
+        padding: 0 12px;
+        border-radius: var(--radius-control);
+        box-shadow: inset 0 0 0 1px var(--line);
+        font-size: var(--size-small);
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <nav class="nav" data-page="start"></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="plus"></i></span>
+          <div>
+            <h1>Start a workspace</h1>
+            <div class="sub">An agent works on a branch of its own; you review it before it merges</div>
+          </div>
+          <div class="actions">
+            <span class="btn ghost">Cancel</span>
+            <span class="btn"><i data-i="feature" class="s14"></i>Suggest settings</span>
+            <span class="btn primary"><i data-i="arrow-right" class="s14"></i>Start workspace<span class="kbd" style="background: rgb(11 10 26 / 14%)">Ctrl ↵</span></span>
+          </div>
+        </header>
+
+        <div class="split">
+          <section class="card">
+            <div class="tabs">
+              <span class="tab on"><i data-i="feature" class="s14"></i>Feature</span>
+              <span class="tab"><i data-i="fix" class="s14"></i>Fix</span>
+              <span class="tab"><i data-i="refactor" class="s14"></i>Refactor</span>
+              <span class="tab"><i data-i="checks" class="s14"></i>Chore</span>
+              <span class="tab"><i data-i="spike" class="s14"></i>Spike</span>
+            </div>
+            <div class="form">
+              <div class="field">
+                <label>Title</label>
+                <span class="input">Save a cart for later</span>
+              </div>
+              <div class="field">
+                <label>Goal</label>
+                <div class="input area" style="flex-direction: column; align-items: stretch; gap: 10px; min-height: 212px">
+                  <span>
+                    A signed-in customer can save the cart and find it again on another visit or
+                    device. A saved cart keeps its lines and its discount code; prices come from the
+                    catalog when it loads, and a product removed since is dropped with a note.
+                  </span>
+                  <span class="counter" style="margin-top: auto"><i data-i="attach" class="s14"></i><span class="n">281 / 20,000</span></span>
+                </div>
+              </div>
+              <div class="field">
+                <label>Done when <span class="opt">(optional)</span></label>
+                <div class="input area" style="min-height: 76px">A saved cart loads the same, and npm test passes.</div>
+              </div>
+              <div class="checkline">
+                <i data-i="checks" class="s14"></i>The merge’s check:
+                <span class="chip mono">npm test</span><span>from <span class="mono">package.json</span></span>
+              </div>
+              <div class="more"><i data-i="chevron-right" class="s14 faint"></i>Where to look, out of scope, notes<span class="faint" style="margin-left: auto; font-size: 13px">optional</span></div>
+              <div class="drop">
+                <i data-i="attach" class="s14"></i>Documents
+                <span class="faint">(optional) mockups, specs, logs</span>
+                <span class="btn small" style="margin-left: auto"><i data-i="plus" class="s14"></i>Add files</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="col">
+            <section class="card">
+              <div class="card-head"><h2>Source</h2></div>
+              <div class="kv">
+                <span class="k">Starts from</span><span class="input select"><i data-i="branch" class="s14 faint"></i>main</span>
+                <span class="k">Branch</span><span class="input mono" style="font-size: 13px">feature/saved-carts</span>
+              </div>
+            </section>
+            <section class="card">
+              <div class="card-head"><h2>Agent</h2><div class="end"><span class="link">your Pro subscription</span></div></div>
+              <div class="kv">
+                <span class="k">Agent</span><span class="input select">Claude Code</span>
+                <span class="k">Model</span><span class="input select">Opus 5.5</span>
+                <span class="k">Permissions</span><span class="input select">Claude Code’s default</span>
+              </div>
+              <div style="padding: 0 14px 14px; display: flex; flex-direction: column; gap: 8px">
+                <span class="label-text" style="font-size: 14px">Effort</span>
+                <div class="effort"><span>Default</span><span>Low</span><span>Medium</span><span class="on">High</span><span>xHigh</span><span>Max</span></div>
+              </div>
+              <div class="toggle">
+                <div><b>Plan first and wait for my OK</b><div class="help">The agent proposes a plan before it changes anything.</div></div>
+                <span class="switch on"></span>
+              </div>
+            </section>
+            <section class="card">
+              <div class="card-head"><h2>What happens next</h2></div>
+              <div class="kv" style="grid-template-columns: 22px 1fr; row-gap: 12px; font-size: 14px">
+                <i data-i="pencil" class="s14 faint"></i><span class="muted">The agent writes its plan in its own worktree</span>
+                <i data-i="bell" class="s14 you"></i><span class="muted">You read it and answer: <span style="color: var(--text)">Waiting for you</span></span>
+                <i data-i="eye" class="s14 you"></i><span class="muted">You review its commits on their graph</span>
+                <i data-i="merge" class="s14 faint"></i><span class="muted">Your Approve merges it into main</span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      NKit.render();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hive — Overview</title>
+    <link rel="stylesheet" href="kit.css" />
+    <script src="kit.js"></script>
+    <style>
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 8px;
+        flex: 1;
+        min-height: 0;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 0;
+        min-width: 0;
+      }
+      .flight .th,
+      .flight .tr {
+        grid-template-columns: minmax(0, 1fr) 272px 44px 56px 56px;
+      }
+      .landed .th,
+      .landed .tr {
+        grid-template-columns: minmax(0, 1fr) 190px 150px 56px 48px;
+      }
+      .stopped {
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px 10px 14px;
+        border-color: color-mix(in srgb, var(--fail) 30%, var(--line));
+      }
+      .stopped .why {
+        color: var(--muted);
+        font-size: var(--size-small);
+      }
+      .stopped .why code {
+        font-family: var(--mono);
+        font-size: var(--size-caption);
+        color: var(--text);
+      }
+      .limit {
+        padding: 12px 14px 4px;
+      }
+      .limit .top {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        font-size: var(--size-small);
+      }
+      .limit .top .v {
+        margin-left: auto;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .limit .help {
+        display: flex;
+        justify-content: space-between;
+      }
+      .events {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <nav class="nav" data-page="overview"></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="hexagon"></i></span>
+          <div>
+            <h1>Overview</h1>
+            <div class="sub">
+              Hive drives each workspace from its brief to landed<span class="sep">·</span>lands in
+              <span class="mono">main</span> through the merge queue
+            </div>
+          </div>
+          <div class="actions">
+            <span class="btn"><i data-i="power" class="s14"></i>Turn off Hive</span>
+            <span class="btn primary"><i data-i="plus" class="s14"></i>New goal</span>
+          </div>
+        </header>
+
+        <section class="card metrics">
+          <div class="metric">
+            <div class="label"><i data-i="spin" class="s14"></i>In flight</div>
+            <div class="value">4</div>
+            <div class="note">write 1 · check 1 · review 1 · land 1</div>
+          </div>
+          <div class="metric">
+            <div class="label"><i data-i="merge" class="s14"></i>Landed today</div>
+            <div class="value">
+              5
+              <span class="bars"
+                ><i style="height: 30%"></i><i style="height: 55%"></i><i style="height: 40%"></i
+                ><i style="height: 80%"></i><i style="height: 45%"></i><i style="height: 60%"></i
+                ><i class="today" style="height: 100%"></i
+              ></span>
+            </div>
+            <div class="note">all pushed to origin · 7 days</div>
+          </div>
+          <div class="metric">
+            <div class="label"><i data-i="bug" class="s14"></i>Defects caught</div>
+            <div class="value">3</div>
+            <div class="note">proven by failing tests, fixed</div>
+          </div>
+          <div class="metric">
+            <div class="label"><i data-i="clock" class="s14"></i>Time to land</div>
+            <div class="value">18 <small>min median</small></div>
+            <div class="note">brief to pushed, today</div>
+          </div>
+          <div class="metric">
+            <div class="label"><i data-i="coins" class="s14"></i>Spend today</div>
+            <div class="value">$11.66</div>
+            <div class="note">$0.80 a landing on average</div>
+          </div>
+        </section>
+
+        <div class="grid">
+          <div class="col">
+            <section class="card stopped">
+              <i data-i="stopped" class="s18 fail"></i>
+              <div class="grow">
+                <div class="row">
+                  <b style="font-weight: 600">Import products from a supplier feed</b>
+                  <span class="pill fail">Stopped · 3 of 3 rounds</span>
+                </div>
+                <div class="why ellipsis">
+                  The check still fails:
+                  <code>pnpm test:e2e › imports a 10,000-row feed</code> timed out after 30 s
+                </div>
+              </div>
+              <span class="btn small">Read why<i data-i="arrow-right" class="s14"></i></span>
+            </section>
+
+            <section class="card flight">
+              <div class="card-head">
+                <h2>In flight</h2>
+                <span class="count">4</span>
+                <div class="end">
+                  <span class="link"><i data-i="filter" class="s14"></i>All kinds</span>
+                </div>
+              </div>
+              <div class="table">
+                <div class="th">
+                  <span>Workspace</span><span>Stage</span><span>Round</span
+                  ><span class="right">Time</span><span class="right">Spend</span>
+                </div>
+                <div class="tr">
+                  <div class="cell-2">
+                    <span class="title">Retry failed payment webhooks</span>
+                    <span class="branch">fix/payment-webhook-retry</span>
+                  </div>
+                  <div class="cell-2">
+                    <div class="stage">
+                      <span data-track="done,now,todo,todo"></span
+                      ><span class="word run">Checking 4/4</span>
+                    </div>
+                    <span class="b"><span class="mono" style="font-size: 12px">pnpm test:e2e</span> · 4:12 of ~7 min</span>
+                  </div>
+                  <span class="num">2/3</span><span class="num right">18:40</span
+                  ><span class="num right">$1.92</span>
+                </div>
+                <div class="tr">
+                  <div class="cell-2">
+                    <span class="title">Cache product search results</span>
+                    <span class="branch">feature/search-cache</span>
+                  </div>
+                  <div class="cell-2">
+                    <div class="stage">
+                      <span data-track="done,done,now,todo"></span
+                      ><span class="word run">Reviewing</span>
+                    </div>
+                    <span class="b">Opus runs <span class="mono" style="font-size: 12px">vitest run test/search</span></span>
+                  </div>
+                  <span class="num">1/3</span><span class="num right">9:12</span
+                  ><span class="num right">$0.86</span>
+                </div>
+                <div class="tr">
+                  <div class="cell-2">
+                    <span class="title">Show stock levels on product pages</span>
+                    <span class="branch">feature/stock-levels</span>
+                  </div>
+                  <div class="cell-2">
+                    <div class="stage">
+                      <span data-track="now,todo,todo,todo"></span
+                      ><span class="word run">Writing</span>
+                    </div>
+                    <span class="b">Editing <span class="mono" style="font-size: 12px">src/catalog/stock.ts</span></span>
+                  </div>
+                  <span class="num">1/3</span><span class="num right">3:05</span
+                  ><span class="num right">$0.38</span>
+                </div>
+                <div class="tr">
+                  <div class="cell-2">
+                    <span class="title">Export orders as CSV</span>
+                    <span class="branch">feature/orders-csv</span>
+                  </div>
+                  <div class="cell-2">
+                    <div class="stage">
+                      <span data-track="done,done,done,now"></span
+                      ><span class="word run">Landing</span>
+                    </div>
+                    <span class="b">Merge queue: checking the merge into main</span>
+                  </div>
+                  <span class="num">1/3</span><span class="num right">14:26</span
+                  ><span class="num right">$1.12</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="card landed">
+              <div class="card-head">
+                <h2>Landed today</h2>
+                <span class="count">5</span>
+                <div class="end"><span class="link">History<i data-i="chevron-right" class="s14"></i></span></div>
+              </div>
+              <div class="table">
+                <div class="th">
+                  <span>Workspace</span><span>Rounds</span><span>Landed</span
+                  ><span class="right">Spend</span><span class="right">At</span>
+                </div>
+                <div class="tr compact">
+                  <div class="row" style="min-width: 0">
+                    <i data-i="circle-check" class="s14 ok"></i><span class="title">Add a discount code</span>
+                  </div>
+                  <span class="muted" style="font-size: 14px">2 rounds · 1 defect caught</span>
+                  <span class="row muted" style="font-size: 14px"><span class="mono">20c37bc</span>pushed</span>
+                  <span class="num right">$0.84</span><span class="num right faint">12:44</span>
+                </div>
+                <div class="tr compact">
+                  <div class="row" style="min-width: 0">
+                    <i data-i="circle-check" class="s14 ok"></i><span class="title">Fix tax rounding on invoices</span>
+                  </div>
+                  <span class="muted" style="font-size: 14px">1 round</span>
+                  <span class="row muted" style="font-size: 14px"><span class="mono">8f3e1a2</span>pushed</span>
+                  <span class="num right">$0.51</span><span class="num right faint">11:58</span>
+                </div>
+                <div class="tr compact">
+                  <div class="row" style="min-width: 0">
+                    <i data-i="circle-check" class="s14 ok"></i><span class="title">Paginate the order history</span>
+                  </div>
+                  <span class="muted" style="font-size: 14px">3 rounds · 2 defects caught</span>
+                  <span class="row muted" style="font-size: 14px"><span class="mono">c41d9e0</span>pushed</span>
+                  <span class="num right">$2.10</span><span class="num right faint">10:27</span>
+                </div>
+                <div class="tr compact">
+                  <div class="row" style="min-width: 0">
+                    <i data-i="circle-check" class="s14 ok"></i><span class="title">Rename the cart’s coupon field</span>
+                  </div>
+                  <span class="muted" style="font-size: 14px">1 round</span>
+                  <span class="row muted" style="font-size: 14px"><span class="mono">5a77b31</span>pushed</span>
+                  <span class="num right">$0.22</span><span class="num right faint">09:40</span>
+                </div>
+                <div class="tr compact">
+                  <div class="row" style="min-width: 0">
+                    <i data-i="answered" class="s14 faint"></i><span class="title">Can we drop lodash?</span>
+                  </div>
+                  <span class="muted" style="font-size: 14px">Spike · answered</span>
+                  <span class="faint" style="font-size: 14px">no commits</span>
+                  <span class="num right">$0.31</span><span class="num right faint">09:12</span>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div class="col">
+            <section class="card">
+              <div class="card-head">
+                <h2>Limits</h2>
+                <div class="end"><span class="link"><i data-i="settings" class="s14"></i>Settings</span></div>
+              </div>
+              <div class="limit">
+                <div class="top"><span>Claude usage, 5 hours</span><span class="v">41%</span></div>
+                <div class="gauge"><i style="width: 41%"></i><b style="left: 90%"></b></div>
+                <div class="help"><span>Hive pauses at 90 %</span><span>resets 14:00</span></div>
+              </div>
+              <div class="limit" style="padding-bottom: 12px">
+                <div class="top"><span>Claude usage, week</span><span class="v">63%</span></div>
+                <div class="gauge"><i style="width: 63%"></i><b style="left: 90%"></b></div>
+                <div class="help"><span>Hive pauses at 90 %</span><span>resets Thu</span></div>
+              </div>
+              <dl class="facts" style="border-top: 1px solid var(--line)">
+                <dt>Budget per workspace</dt>
+                <dd>$5.00</dd>
+                <dt>Rounds per workspace</dt>
+                <dd>3</dd>
+                <dt>Reviewer</dt>
+                <dd>Opus · high</dd>
+                <dt>Lands by</dt>
+                <dd>Merge queue</dd>
+              </dl>
+            </section>
+
+            <section class="card events">
+              <div class="card-head">
+                <h2>Events</h2>
+                <div class="end"><span class="link">Activity<i data-i="chevron-right" class="s14"></i></span></div>
+              </div>
+              <div class="feed">
+                <div class="event">
+                  <span class="when">12:52</span><i data-i="checks" class="run"></i>
+                  <span class="what">Check 4/4: <span class="mono">pnpm test:e2e</span><span class="b">Retry failed payment webhooks · round 2</span></span>
+                </div>
+                <div class="event">
+                  <span class="when">12:50</span><i data-i="eye" class="run"></i>
+                  <span class="what">Running review started<span class="b">Cache product search results · Opus</span></span>
+                </div>
+                <div class="event">
+                  <span class="when">12:49</span><i data-i="merge" class="muted"></i>
+                  <span class="what">Queued to land in main<span class="b">Export orders as CSV · 7d2e9f1</span></span>
+                </div>
+                <div class="event">
+                  <span class="when">12:47</span><i data-i="stopped" class="fail"></i>
+                  <span class="what">Stopped after 3 rounds<span class="b">Import products from a supplier feed</span></span>
+                </div>
+                <div class="event">
+                  <span class="when">12:44</span><i data-i="merge" class="ok"></i>
+                  <span class="what">Landed in main, pushed<span class="b">Add a discount code · 20c37bc</span></span>
+                </div>
+                <div class="event">
+                  <span class="when">12:43</span><i data-i="shield" class="ok"></i>
+                  <span class="what">Approved by the reviewer<span class="b">Add a discount code · round 2 · $0.42</span></span>
+                </div>
+                <div class="event">
+                  <span class="when">12:38</span><i data-i="bug" class="fail"></i>
+                  <span class="what">Defect proven by a test<span class="b">Retry failed payment webhooks · round 1</span></span>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      Kit.render();
+    </script>
+  </body>
+</html>

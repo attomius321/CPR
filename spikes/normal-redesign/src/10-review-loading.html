@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Normal mode — a review while its change is analyzed</title>
+    <link rel="stylesheet" href="../../hive-redesign/src/kit.css" />
+    <link rel="stylesheet" href="../../hive-redesign/src/run.css" />
+    <link rel="stylesheet" href="normal.css" />
+    <script src="../../hive-redesign/src/kit.js"></script>
+    <script src="nkit.js"></script>
+    <style>
+      .two {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 8px;
+        flex: 1;
+        min-height: 0;
+      }
+      .col {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-height: 0;
+      }
+      .progress-head {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 18px 20px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      .progress-head .top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .progress-head h2 {
+        margin: 0;
+        font-size: var(--size-title);
+        font-weight: 600;
+      }
+      .progress-head .clock {
+        margin-left: auto;
+        font-size: var(--size-title);
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+      .progress-head .line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--muted);
+        font-size: var(--size-small);
+      }
+      .segments {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 4px;
+      }
+      .segments i {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--raised);
+        overflow: hidden;
+        position: relative;
+      }
+      .segments i.done {
+        background: var(--ok);
+      }
+      .segments i.now {
+        background: color-mix(in srgb, var(--run) 25%, var(--raised));
+      }
+      .segments i.now::after {
+        content: '';
+        position: absolute;
+        inset: 0 45% 0 0;
+        border-radius: 3px;
+        background: var(--run);
+      }
+      .steps-list {
+        padding: 14px 4px 0;
+      }
+      .steps-list .item {
+        padding-bottom: 18px;
+      }
+      .steps-list .item .top .what {
+        color: var(--faint);
+        font-size: var(--size-caption);
+      }
+      .steps-list .item .top b {
+        min-width: 172px;
+      }
+      .why {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        margin: 0 16px 16px;
+        padding: 12px 14px;
+        border-radius: var(--radius-control);
+        background: var(--raised);
+        color: var(--muted);
+        font-size: var(--size-small);
+        line-height: 1.5;
+      }
+      .ready-head {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        padding: 16px 16px 12px;
+        border-bottom: 1px solid var(--line);
+      }
+      .ready-head h2 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: var(--size-body);
+        font-weight: 600;
+      }
+      .ready-head p {
+        margin: 0;
+        color: var(--muted);
+        font-size: var(--size-small);
+      }
+      .report {
+        padding: 2px 16px 14px;
+        color: var(--muted);
+        font-size: var(--size-small);
+        line-height: 1.55;
+      }
+      .report b {
+        color: var(--text);
+        font-weight: 500;
+      }
+      .waits {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: 4px 16px 16px;
+        font-size: var(--size-small);
+        color: var(--faint);
+      }
+      .waits span {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app railed">
+      <nav class="rail"></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="eye"></i></span>
+          <div style="min-width: 0">
+            <h1>Review of feature/discount-code</h1>
+            <div class="sub">
+              Add a discount code<span class="sep">·</span>into main<span class="sep">·</span>first review<span class="sep">·</span>
+              <span class="mono">7017d22 → b3fbfe0</span><span class="sep">·</span>5 files
+              <span class="add num">+47</span><span class="del num">−2</span>
+            </div>
+          </div>
+          <div class="actions">
+            <span class="pill run"><i data-i="spin"></i>Analyzing · step 4 of 6</span>
+            <span class="btn ghost"><i data-i="back" class="s14"></i>Workspace</span>
+            <span class="segmented"><span>Files</span><span class="on"><i data-i="spin" class="s14 spin"></i>Graph</span></span>
+          </div>
+        </header>
+
+        <div class="two">
+          <div class="col">
+          <section class="card">
+            <div class="progress-head">
+              <div class="top">
+                <h2>Reading the change</h2>
+                <span class="faint" style="font-size: 14px">so the graph can show what changed, who uses it and what is risky</span>
+                <span class="clock">0:21</span>
+              </div>
+              <div class="segments"><i class="done"></i><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i></div>
+              <div class="line">
+                <span><b style="color: var(--text); font-weight: 500">Extract symbols</b> · 3 done, 3 to come</span>
+                <span class="btn small" style="margin-left: auto"><i data-i="circle-pause" class="s14"></i>Stop</span>
+              </div>
+            </div>
+            <div class="steps-list">
+              <div class="item is-ok">
+                <span class="dot"><i data-i="check"></i></span>
+                <div class="top"><b>Check out both sides</b><span class="what">7017d22 and b3fbfe0, each in a worktree</span><span class="end"><span>1.2 s</span></span></div>
+              </div>
+              <div class="item is-ok">
+                <span class="dot"><i data-i="check"></i></span>
+                <div class="top"><b>Load the base</b><span class="what">the TypeScript program at 7017d22</span><span class="end"><span>4.8 s</span></span></div>
+              </div>
+              <div class="item is-ok">
+                <span class="dot"><i data-i="check"></i></span>
+                <div class="top"><b>Load the head</b><span class="what">the same at b3fbfe0</span><span class="end"><span>4.6 s</span></span></div>
+              </div>
+              <div class="item is-run">
+                <span class="dot"><i data-i="spin"></i></span>
+                <div class="top"><b>Extract symbols</b><span class="what">functions, classes, methods and types on both sides</span><span class="end"><span class="run">0:09</span></span></div>
+              </div>
+              <div class="item is-todo">
+                <span class="dot"><i data-i="search"></i></span>
+                <div class="top"><b>Find references</b><span class="what">who calls what changed, and what it calls</span></div>
+              </div>
+              <div class="item is-todo last">
+                <span class="dot"><i data-i="alert"></i></span>
+                <div class="top"><b>Look for findings</b><span class="what">removed but used, new but unused, broken contracts</span></div>
+              </div>
+            </div>
+            <div class="why">
+              <i data-i="clock" class="s18" style="flex: none; margin-top: 1px"></i>
+              <span>Both sides are read as whole TypeScript programs, so a larger repository takes longer. The files, the commits and the agent’s report do not wait for it: start with them.</span>
+            </div>
+          </section>
+          <section class="card" style="flex: 1">
+            <div class="card-head"><h2>From the agent</h2><span class="faint" style="font-size: 13px">Claude Code · 12:44</span></div>
+            <div class="section-label">Its report</div>
+            <div class="report">
+              <b>Done.</b> SAVE10 takes 10 % off the subtotal; an unknown code is refused with a message
+              and the cart stays as it was. The receipt shows the discount on its own line.
+              <span class="mono">npm test</span> passes, 14 tests. One choice to check: a code is
+              matched in capitals, so “save10” works too.
+            </div>
+            <div class="section-label" style="display: flex; align-items: center; gap: 6px; border-top: 1px solid var(--line); padding-top: 12px">Its commits <span class="count" style="height: 16px">3</span></div>
+            <div class="list">
+              <div class="li"><span class="mono">b3fbfe0</span><span class="t">Refuse an unknown code with a message</span><span class="n faint">12:44</span></div>
+              <div class="li"><span class="mono">97ddb55</span><span class="t">Apply a code to the order total</span><span class="n faint">12:41</span></div>
+              <div class="li"><span class="mono">d1308ed</span><span class="t">Add discount codes to the cart</span><span class="n faint">12:38</span></div>
+            </div>
+          </section>
+          </div>
+
+          <div class="col">
+            <section class="card" style="flex: 1">
+              <div class="ready-head">
+                <h2><i data-i="circle-check" class="s14 ok"></i>Ready now</h2>
+                <p>Start with these while the graph is built.</p>
+              </div>
+              <div class="section-label" style="display: flex; align-items: center; gap: 6px">Files <span class="count" style="height: 16px">5</span><span class="num" style="margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 13px"><span class="add">+47</span> <span class="del">−2</span></span></div>
+              <div class="list">
+                <div class="li"><span class="kind m">M</span><span class="t">cart.ts <span class="faint">src/cart</span></span><span class="n"><span class="add">+9</span> <span class="del">−1</span></span></div>
+                <div class="li"><span class="kind a">A</span><span class="t">discount.ts <span class="faint">src/cart</span></span><span class="n"><span class="add">+19</span> <span class="del">−0</span></span></div>
+                <div class="li"><span class="kind m">M</span><span class="t">receipt.ts <span class="faint">src/cart</span></span><span class="n"><span class="add">+10</span> <span class="del">−1</span></span></div>
+                <div class="li"><span class="kind m">M</span><span class="t">money.ts <span class="faint">src/pricing</span></span><span class="n"><span class="add">+0</span> <span class="del">−6</span></span></div>
+                <div class="li"><span class="kind a">A</span><span class="t">discount.test.ts <span class="faint">test</span></span><span class="n"><span class="add">+9</span> <span class="del">−0</span></span></div>
+              </div>
+              <div style="padding: 0 16px 14px"><span class="btn primary" style="width: 100%; justify-content: center"><i data-i="file" class="s14"></i>Read the files</span></div>
+              <div class="section-label" style="border-top: 1px solid var(--line); padding-top: 12px">The brief</div>
+              <div class="report">
+                Customers can enter a discount code at checkout. A known code takes its percentage off
+                the subtotal; an unknown code is refused with a clear message. Done when SAVE10 takes
+                10 % off and <span class="mono">npm test</span> passes.
+              </div>
+              <div class="section-label" style="border-top: 1px solid var(--line); padding-top: 12px">Waits for the graph</div>
+              <div class="waits">
+                <span><i data-i="alert" class="s14"></i>Findings</span>
+                <span><i data-i="overview" class="s14"></i>The graph, and who uses what changed</span>
+              </div>
+            </section>
+          </div>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      NKit.render();
+    </script>
+  </body>
+</html>

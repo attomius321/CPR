@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Normal mode — a review's files</title>
+    <link rel="stylesheet" href="../../hive-redesign/src/kit.css" />
+    <link rel="stylesheet" href="../../hive-redesign/src/run.css" />
+    <link rel="stylesheet" href="normal.css" />
+    <script src="../../hive-redesign/src/kit.js"></script>
+    <script src="nkit.js"></script>
+    <style>
+      .two {
+        display: grid;
+        grid-template-columns: 340px 1fr;
+        gap: 8px;
+        flex: 1;
+        min-height: 0;
+      }
+      .left {
+        display: flex;
+        flex-direction: column;
+      }
+      .files {
+        display: flex;
+        flex-direction: column;
+        padding: 6px;
+        border-bottom: 1px solid var(--line);
+      }
+      .file {
+        display: grid;
+        grid-template-columns: 16px 14px 1fr auto;
+        align-items: center;
+        column-gap: 8px;
+        height: 30px;
+        padding: 0 8px;
+        border-radius: var(--radius-control);
+        font-size: var(--size-small);
+      }
+      .file.on {
+        background: var(--selected);
+      }
+      .file .t {
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      .file .n {
+        font-size: var(--size-caption);
+        font-variant-numeric: tabular-nums;
+      }
+      .sec {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 12px 14px;
+      }
+      .sec h3 {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: var(--size-small);
+        font-weight: 600;
+      }
+      .c {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        padding: 8px 10px;
+        border-radius: var(--radius-control);
+        box-shadow: inset 0 0 0 1px var(--line);
+        font-size: var(--size-caption);
+      }
+      .c .on {
+        display: flex;
+        gap: 6px;
+        color: var(--faint);
+      }
+      .c .on b {
+        font-family: var(--mono);
+        color: var(--text);
+        font-weight: 500;
+      }
+      .c p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.45;
+        font-size: var(--size-small);
+      }
+      .verdict {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .opt {
+        display: grid;
+        grid-template-columns: 18px 1fr;
+        column-gap: 10px;
+        padding: 7px 10px;
+        border-radius: var(--radius-control);
+        font-size: var(--size-small);
+      }
+      .opt .dot {
+        width: 16px;
+        height: 16px;
+        margin-top: 2px;
+        border-radius: 50%;
+        box-shadow: inset 0 0 0 1.5px var(--line-2);
+      }
+      .opt.on {
+        background: var(--selected);
+        box-shadow: inset 0 0 0 1px var(--hive-edge);
+      }
+      .opt.on .dot {
+        box-shadow: inset 0 0 0 5px var(--hive-text);
+      }
+      .opt b {
+        font-weight: 500;
+      }
+      .opt span.h {
+        grid-column: 2;
+        color: var(--faint);
+        font-size: var(--size-caption);
+      }
+      .file-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        height: 44px;
+        padding: 0 12px 0 14px;
+        border-bottom: 1px solid var(--line);
+        font-size: var(--size-small);
+      }
+      .file-head .path {
+        font-family: var(--mono);
+        font-size: var(--size-caption);
+        font-weight: 600;
+      }
+      .scroll {
+        padding-top: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app railed">
+      <nav class="rail"></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="eye"></i></span>
+          <div style="min-width: 0">
+            <h1>Review of feature/discount-code</h1>
+            <div class="sub">
+              Add a discount code<span class="sep">·</span>first review<span class="sep">·</span>
+              <span class="mono">7017d22 → b3fbfe0</span><span class="sep">·</span>5 files
+              <span class="add num">+47</span><span class="del num">−2</span>
+            </div>
+          </div>
+          <div class="actions">
+            <span class="pill fail"><i data-i="circle-x"></i>1 error</span>
+            <span class="pill warn"><i data-i="danger"></i>2 warnings</span>
+            <span class="btn ghost"><i data-i="back" class="s14"></i>Workspace</span>
+            <span class="segmented"><span class="on">Files</span><span>Graph</span></span>
+          </div>
+        </header>
+
+        <div class="two">
+          <section class="card left">
+            <div class="files">
+              <div class="file"><i data-i="circle-check" class="s14 ok"></i><span class="kind m">M</span><span class="t">receipt.ts <span class="faint">src/cart</span></span><span class="n"><span class="add">+10</span> <span class="del">−1</span></span></div>
+              <div class="file on"><i data-i="eye" class="s14 you"></i><span class="kind m">M</span><span class="t">cart.ts <span class="faint">src/cart</span> · 2 comments</span><span class="n"><span class="add">+9</span> <span class="del">−1</span></span></div>
+              <div class="file"><span></span><span class="kind a">A</span><span class="t">discount.ts <span class="faint">src/cart</span></span><span class="n"><span class="add">+19</span> <span class="del">−0</span></span></div>
+              <div class="file"><span></span><span class="kind m">M</span><span class="t">money.ts <span class="faint">src/pricing</span></span><span class="n"><span class="add">+0</span> <span class="del">−6</span></span></div>
+              <div class="file"><span></span><span class="kind a">A</span><span class="t">discount.test.ts <span class="faint">test</span></span><span class="n"><span class="add">+9</span> <span class="del">−0</span></span></div>
+            </div>
+            <div class="sec">
+              <h3>Your review <span class="count">2 comments</span></h3>
+              <div class="c">
+                <span class="on">on <b>Cart.applyCode</b> · line 24</span>
+                <p>Nothing calls applyCode yet: wire it into the checkout form, or say why not.</p>
+              </div>
+              <div class="c">
+                <span class="on">on <b>Cart.total</b> · line 34</span>
+                <p>An empty code is falsy here and skips the discount silently. Refuse it in applyCode?</p>
+              </div>
+              <span class="input area" style="min-height: 56px; font-size: 14px; color: var(--muted)">Close: two gaps, and legacyCoupon is still used by legacyTotal.</span>
+              <div class="verdict">
+                <div class="opt"><span class="dot"></span><b>Comment</b></div>
+                <div class="opt"><span class="dot"></span><b>Approve</b><span class="h">Symbiote’s merger merges it into main</span></div>
+                <div class="opt on"><span class="dot"></span><b>Request changes</b><span class="h">sent to the agent with your comments</span></div>
+              </div>
+              <span class="btn primary" style="justify-content: center">Finish review<span class="kbd" style="background: rgb(11 10 26 / 14%)">Ctrl ↵</span></span>
+              <span class="row ok" style="font-size: 13px; justify-content: center"><i data-i="check" class="s14"></i>Merges cleanly into main</span>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="file-head">
+              <span class="path">src/cart/cart.ts</span><span class="pill" style="--c: var(--modified)">modified</span>
+              <span class="num"><span class="add">+9</span> <span class="del">−1</span></span>
+              <span class="faint" style="margin-left: auto; font-size: 13px">2 of 5</span>
+              <span class="icon-button boxed"><i data-i="arrow-up" class="s14"></i></span>
+              <span class="icon-button boxed"><i data-i="arrow-down" class="s14"></i></span>
+              <span class="btn small"><i data-i="external" class="s14"></i>Open in VS Code</span>
+              <span class="btn small"><i data-i="check" class="s14"></i>Viewed</span>
+            </div>
+            <div class="scroll">
+              <div class="diff">
+                <div class="dl"><span class="ln">1</span><span class="ln">1</span><span class="sg"></span><span><span class="tok-k">import</span> { findProduct } <span class="tok-k">from</span> <span class="tok-s">'../catalog/products'</span>;</span></div>
+                <div class="dl a"><span class="ln"></span><span class="ln">2</span><span class="sg">+</span><span><span class="tok-k">import</span> { applyDiscount, discountRate } <span class="tok-k">from</span> <span class="tok-s">'./discount'</span>;</span></div>
+                <div class="dl fold">6 unchanged lines</div>
+                <div class="dl"><span class="ln">8</span><span class="ln">9</span><span class="sg"></span><span><span class="tok-k">export class</span> <span class="tok-f">Cart</span> {</span></div>
+                <div class="dl"><span class="ln">9</span><span class="ln">10</span><span class="sg"></span><span>  lines: Line[] = [];</span></div>
+                <div class="dl a"><span class="ln"></span><span class="ln">11</span><span class="sg">+</span><span>  code?: <span class="tok-k">string</span>;</span></div>
+                <div class="dl fold">10 unchanged lines</div>
+                <div class="dl"><span class="ln">20</span><span class="ln">22</span><span class="sg"></span><span></span></div>
+                <div class="dl a"><span class="ln"></span><span class="ln">23</span><span class="sg">+</span><span>  <span class="tok-c">/** Sets the cart's code; an unknown code throws and leaves the cart as it was. */</span></span></div>
+                <div class="dl a"><span class="ln"></span><span class="ln">24</span><span class="sg">+</span><span>  <span class="tok-f">applyCode</span>(code: <span class="tok-k">string</span>): <span class="tok-k">void</span> {</span></div>
+                <div class="comment">
+                  <div class="who"><b>You</b>on Cart.applyCode · draft<span style="margin-left: auto" class="link">Edit</span><span class="link">Delete</span></div>
+                  <p>Nothing calls applyCode yet: wire it into the checkout form, or say why not.</p>
+                </div>
+                <div class="dl a"><span class="ln"></span><span class="ln">25</span><span class="sg">+</span><span>    <span class="tok-f">discountRate</span>(code);</span></div>
+                <div class="dl a"><span class="ln"></span><span class="ln">26</span><span class="sg">+</span><span>    <span class="tok-k">this</span>.code = code.<span class="tok-f">toUpperCase</span>();</span></div>
+                <div class="dl a"><span class="ln"></span><span class="ln">27</span><span class="sg">+</span><span>  }</span></div>
+                <div class="dl a"><span class="ln"></span><span class="ln">28</span><span class="sg">+</span><span></span></div>
+                <div class="dl"><span class="ln">21</span><span class="ln">29</span><span class="sg"></span><span>  <span class="tok-f">subtotal</span>(): <span class="tok-k">number</span> {</span></div>
+                <div class="dl"><span class="ln">22</span><span class="ln">30</span><span class="sg"></span><span>    <span class="tok-k">return this</span>.lines.<span class="tok-f">reduce</span>((sum, l) =&gt; sum + <span class="tok-f">price</span>(l), <span class="tok-s">0</span>);</span></div>
+                <div class="dl"><span class="ln">23</span><span class="ln">31</span><span class="sg"></span><span>  }</span></div>
+                <div class="dl"><span class="ln">24</span><span class="ln">32</span><span class="sg"></span><span></span></div>
+                <div class="dl"><span class="ln">25</span><span class="ln">33</span><span class="sg"></span><span>  <span class="tok-f">total</span>(): <span class="tok-k">number</span> {</span></div>
+                <div class="dl r"><span class="ln">26</span><span class="ln"></span><span class="sg">−</span><span>    <span class="tok-k">return this</span>.<span class="tok-f">subtotal</span>();</span></div>
+                <div class="dl a"><span class="ln"></span><span class="ln">34</span><span class="sg">+</span><span>    <span class="tok-k">return this</span>.code ? <span class="tok-f">applyDiscount</span>(<span class="tok-k">this</span>.<span class="tok-f">subtotal</span>(), <span class="tok-k">this</span>.code) : <span class="tok-k">this</span>.<span class="tok-f">subtotal</span>();</span></div>
+                <div class="comment">
+                  <div class="who"><b>You</b>on Cart.total · draft<span style="margin-left: auto" class="link">Edit</span><span class="link">Delete</span></div>
+                  <p>An empty code ("") is falsy here and skips the discount silently. Refuse it in applyCode instead?</p>
+                </div>
+                <div class="dl"><span class="ln">27</span><span class="ln">35</span><span class="sg"></span><span>  }</span></div>
+                <div class="dl"><span class="ln">28</span><span class="ln">36</span><span class="sg"></span><span>}</span></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      NKit.render();
+    </script>
+  </body>
+</html>
