@@ -1,6 +1,12 @@
 // What turning Hive mode on or off concerns, in words (HV4, decisions 771, 772): the workspaces
 // in normal mode that keep it off, and what Hive off does to each Hive workspace in flight. Pure.
-import type { HiveLandingSetting, HiveLandsBy, HiveState, HiveStep } from '@symbiote/core';
+import type {
+  HiveLandingSetting,
+  HiveLandsBy,
+  HivePacingSetting,
+  HiveState,
+  HiveStep,
+} from '@symbiote/core';
 
 /** A workspace as the questions name it: its title, else its branch. */
 export const nameOf = (w: { branch: string; title?: string }) => w.title ?? w.branch;
@@ -64,4 +70,46 @@ export function forgeWords(setting: HiveLandingSetting): { text: string; ok: boo
     return { text: at ? `${at}. ${cannot}` : cannot, ok: false };
   }
   return { text: `${at}; a token is found.`, ok: true };
+}
+
+/** The thresholds Settings offers (HV5, decision 797); 90 % is the default. */
+const PAUSE_AT = [50, 60, 70, 80, 90, 95, 100];
+
+/** Settings' choices for `hive.usage.pauseAt`: never, then the thresholds, the project's own too. */
+export function pauseChoices(current: number | false): { value: string; label: string }[] {
+  const listed =
+    current === false || PAUSE_AT.includes(current)
+      ? PAUSE_AT
+      : [...PAUSE_AT, current].sort((a, b) => a - b);
+  return [
+    { value: 'off', label: 'Never: Hive does not pause by usage' },
+    ...listed.map((n) => ({ value: String(n), label: n === 90 ? '90 % (default)' : `${n} %` })),
+  ];
+}
+
+/** What the threshold does, or why nothing pauses Hive (HV5, decisions 797, 799). */
+export function pauseAtWords(setting: Pick<HivePacingSetting, 'pauseAt' | 'read'>): string {
+  if (!setting.read) {
+    return 'Symbiote reads no usage here (SYMBIOTE_USAGE=off): Hive does not pause for it.';
+  }
+  if (setting.pauseAt === false) {
+    return "Hive starts agents whatever your subscription's usage says.";
+  }
+  return `While any window of your Claude subscription (the 5-hour session, the week, a model's week) is at ${setting.pauseAt} % or more, Hive starts no agent for any workspace until it resets, then goes on by itself. A turn or review already running finishes. Usage that cannot be read for 15 minutes pauses Hive too.`;
+}
+
+/** The budget as typed (HV5): dollars above 0, or empty for none; else why not. */
+export function budgetOf(text: string): { value: number | null } | { problem: string } {
+  const typed = text.trim().replace(/^\$\s*/, '');
+  if (typed === '') return { value: null };
+  const value = Number(typed);
+  return /^\d+(\.\d+)?$/.test(typed) && value > 0 && value <= 1_000_000
+    ? { value }
+    : { problem: 'A budget is an amount in dollars above 0, or empty for none.' };
+}
+
+/** What the budget does (HV5, decision 801). */
+export function budgetWords(budget: number | null): string {
+  if (budget === null) return 'No budget: a workspace spends what its rounds take.';
+  return `A workspace that has spent $${budget.toFixed(2)} (its writer's sessions and its running reviews, by Claude Code's own count) stops, with why. A turn or review already running finishes first.`;
 }

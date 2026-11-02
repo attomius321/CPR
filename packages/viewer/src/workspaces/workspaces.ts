@@ -4,6 +4,7 @@ import {
   checkoutLine,
   landedLine,
   landingLine,
+  pauseWords,
   requestName,
   waitsForCheckout,
 } from './hive-rounds.js';
@@ -422,6 +423,8 @@ export interface WorkspaceNext {
   hive?: true;
   /** A link at the end of `text` (HV8): the request Hive waits on, or landed through. */
   link?: { href: string; text: string };
+  /** Hive holds its next start for usage (HV5): the status bar says when it pauses and goes on. */
+  paused?: true;
 }
 
 const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip => ({
@@ -449,6 +452,7 @@ export const mergedForCard = (workspace: Pick<WorkspaceSummary, 'merged' | 'hive
 export function workspaceNext(
   workspace: WorkspaceSummary,
   review?: BranchReviewSummary,
+  now = Date.now(),
 ): WorkspaceNext {
   const next = (
     group: WorkspaceGroup,
@@ -499,6 +503,10 @@ export function workspaceNext(
     if (hive.step === 'answered') return next('done', 'Answered: read its report', '✓', 'done');
     if (hive.step === 'stuck')
       return said(`Stopped: ${hive.note ?? 'Hive cannot go on'}`, '!', 'failed');
+    // HV5: its next start held for usage, from its record; no agent at work, so no spinner.
+    if (hive.pause && agent.state !== 'working') {
+      return { ...said(pauseWords(hive.pause, now), '·', 'idle'), paused: true };
+    }
     if (hive.step === 'landing') {
       const text = landingLine(hive.landing, request);
       const asked = said(text, '⚙', 'hive');

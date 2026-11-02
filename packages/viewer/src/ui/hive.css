@@ -450,6 +450,39 @@
   color: var(--error);
 }
 
+/* Hive's pacing (HV5): the threshold, the pause now, the budget, as "Hive lands by" is laid. */
+.hive-pacing h3:not(:first-child) {
+  margin-top: 8px;
+}
+
+.hive-paused-now {
+  color: var(--warning);
+}
+
+.hive-budget {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hive-budget-sign {
+  color: var(--muted);
+}
+
+.hive-budget input {
+  box-sizing: border-box;
+  width: 12ch;
+  height: var(--height-control);
+  padding: 0 10px;
+  font: inherit;
+  letter-spacing: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.hive-budget input[aria-invalid='true'] {
+  border-color: var(--error);
+}
+
 /* --- The question (decision 615): ink and crimson whatever the theme and the mode --- */
 
 /* No blur behind it or in it while its art moves: in software (the app on WSL) the compositor blurs

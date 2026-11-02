@@ -4,8 +4,10 @@ import type {
   HiveCheck,
   HiveFinding,
   HiveLanding,
+  HivePause,
   HiveRequest,
   HiveReview,
+  HiveSpend,
   WorkspaceHiveDetail,
 } from '@symbiote/core';
 
@@ -183,13 +185,72 @@ export function landingOutcome(landing: HiveLanding, request?: HiveRequest): str
   }
 }
 
+/** A usage window by its length (HV5): "the 5-hour window", "the week", "the week (opus)". */
+export function windowWords(minutes: number | undefined, scope?: string): string {
+  const of = scope ? ` (${scope})` : '';
+  if (minutes === 10_080) return `the week${of}`;
+  if (minutes && minutes % 1_440 === 0) return `the ${minutes / 1_440}-day window${of}`;
+  if (minutes && minutes % 60 === 0) return `the ${minutes / 60}-hour window${of}`;
+  return minutes ? `the ${minutes}-minute window${of}` : `a window${of}`;
+}
+
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const two = (n: number) => String(n).padStart(2, '0');
+
+/**
+ * When Hive goes on, in the viewer's time (HV5): "at 16:10" today, "tomorrow at 09:00", else
+ * "Sun 8 Nov at 23:00"; "now" once the time has come.
+ */
+export function goesOnWords(until: string, now: number): string {
+  const at = new Date(until);
+  if (!(at.getTime() > now)) return 'now';
+  const time = `${two(at.getHours())}:${two(at.getMinutes())}`;
+  const today = new Date(now);
+  const day = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  if (day(at) === day(today)) return `at ${time}`;
+  const tomorrow = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  if (day(at) === day(tomorrow)) return `tomorrow at ${time}`;
+  return `${DAYS[at.getDay()]} ${at.getDate()} ${MONTHS[at.getMonth()]} at ${time}`;
+}
+
+/**
+ * Hive's pause in words (HV5, decision 802): "Paused: usage 92 % of the 5-hour window, goes on at
+ * 16:10"; "Paused: usage unknown (Claude's usage answered 429)".
+ */
+export function pauseWords(pause: HivePause, now: number): string {
+  if (pause.reason === 'unknown') {
+    return `Paused: usage unknown${pause.why ? ` (${pause.why})` : ''}`;
+  }
+  const used = `usage ${Math.round(pause.percent ?? pause.pauseAt)} % of ${windowWords(pause.minutes, pause.scope)}`;
+  return `Paused: ${used}${pause.until ? `, goes on ${goesOnWords(pause.until, now)}` : ''}`;
+}
+
+/**
+ * What a workspace spent (HV5, decision 801): "Spent $47.20: the writer $29.18, 8 reviews
+ * $18.02"; with a budget, "Spent $47.20 of a $60.00 budget: …".
+ */
+export function spendWords(spend: HiveSpend): string {
+  const writer =
+    spend.writer === undefined
+      ? 'the writer’s cost not read'
+      : `the writer ${costWords(spend.writer)}`;
+  const reviews = spend.reviewed
+    ? `${plural(spend.reviewed, 'review')} ${costWords(spend.reviews)}`
+    : 'no review';
+  const budget = spend.budget !== undefined ? ` of a ${costWords(spend.budget)} budget` : '';
+  return `Spent ${costWords(spend.total)}${budget}: ${writer}, ${reviews}`;
+}
+
 /** Where Hive is, for the Review tab's head. */
-export function stepWords(detail: WorkspaceHiveDetail): string {
+export function stepWords(detail: WorkspaceHiveDetail, now = Date.now()): string {
   const round = `round ${detail.round} of ${detail.rounds}`;
   const ended = detail.step === 'landed' || detail.step === 'answered';
   if (!detail.on && !ended && detail.step !== 'landing') {
     return `Hive is off: ${detail.step}, ${round}, waits`;
   }
+  // HV5: its next start held for usage, from the record.
+  if (detail.pause) return `${pauseWords(detail.pause, now)} (${round})`;
   switch (detail.step) {
     case 'writing':
       return `The writer's turn, ${round}`;

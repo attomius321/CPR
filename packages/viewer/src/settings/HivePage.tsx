@@ -1,11 +1,23 @@
 import { useEffect, useState } from 'react';
-import type { HiveLandingSetting, HiveLandsBy, HiveState } from '@symbiote/core';
+import type { HiveLandingSetting, HiveLandsBy, HivePacingSetting, HiveState } from '@symbiote/core';
 import { setHive, useHive } from '../shell/hive.js';
 import { getJson, postJson } from '../ui/http.js';
 import { HiveJoining } from '../ui/HiveArt.js';
 import { DangerIcon } from '../ui/icons.js';
 import { SettingsCard } from './SettingsCard.js';
-import { forgeWords, LANDS_BY, landsByWords, nameOf, offWords, onRefusal } from './hive-switch.js';
+import { pauseWords } from '../workspaces/hive-rounds.js';
+import {
+  budgetOf,
+  budgetWords,
+  forgeWords,
+  LANDS_BY,
+  landsByWords,
+  nameOf,
+  offWords,
+  onRefusal,
+  pauseAtWords,
+  pauseChoices,
+} from './hive-switch.js';
 
 /**
  * Hive mode (V82, decision 613): Hive's switch, a danger to press. What Hive does (HV2–HV4), in the
@@ -136,6 +148,7 @@ export function HivePage({ onBack }: { onBack: () => void }) {
         </p>
       )}
       <HiveLandsBy onRead={setLandsBy} />
+      <HivePacing />
       {asking === 'on' && (
         <HiveQuestion
           busy={busy}
@@ -221,6 +234,134 @@ function HiveLandsBy({ onRead }: { onRead: (by: HiveLandsBy) => void }) {
       <p className="settings-row-note">
         For this repository: <code>hive.lands</code> in <code>symbiote/config.json</code>.
       </p>
+      {error && (
+        <p className="settings-notice error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Hive's pacing (HV5, decisions 797–801): the usage threshold every start waits under, Hive's
+ * pause now, and a budget per workspace; `hive.usage.pauseAt` and `hive.budget` in the project's
+ * config.
+ */
+function HivePacing() {
+  const [setting, setSetting] = useState<HivePacingSetting | null>(null);
+  const [budget, setBudget] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    getJson<HivePacingSetting>('/api/hive/pacing')
+      .then((read) => {
+        if (!live) return;
+        setSetting(read);
+        setBudget(read.budget === null ? '' : String(read.budget));
+      })
+      .catch((failed: unknown) => live && setError((failed as Error).message));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const save = async (
+    change: { pauseAt?: number | false; budget?: number | null },
+    said: string,
+  ) => {
+    setBusy(true);
+    setError(null);
+    setSaved(null);
+    try {
+      const answer = await postJson<HivePacingSetting>('/api/hive/pacing', change);
+      setSetting(answer);
+      setBudget(answer.budget === null ? '' : String(answer.budget));
+      setSaved(said);
+    } catch (failed) {
+      setError(`Hive's pacing could not be set: ${(failed as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const typed = budgetOf(budget);
+  const changed = 'value' in typed && setting !== null && typed.value !== setting.budget;
+  return (
+    <section className="hive-lands hive-pacing" aria-label="Pacing">
+      <h3 id="hive-pause-at">Pause by usage</h3>
+      <select
+        aria-labelledby="hive-pause-at"
+        value={setting ? String(setting.pauseAt === false ? 'off' : setting.pauseAt) : ''}
+        disabled={busy || !setting}
+        onChange={(event) => {
+          const value = event.target.value;
+          const pauseAt = value === 'off' ? false : Number(value);
+          void save(
+            { pauseAt },
+            pauseAt === false ? 'Hive no longer pauses by usage.' : `Hive pauses at ${pauseAt} %.`,
+          );
+        }}
+      >
+        {setting &&
+          pauseChoices(setting.pauseAt).map((choice) => (
+            <option key={choice.value} value={choice.value}>
+              {choice.label}
+            </option>
+          ))}
+      </select>
+      {setting && <p className="settings-row-note">{pauseAtWords(setting)}</p>}
+      {setting?.pause && (
+        <p className="settings-row-note hive-paused-now" role="status">
+          Hive is paused now. {pauseWords(setting.pause, Date.now())}.
+        </p>
+      )}
+      <h3>
+        <label htmlFor="hive-budget">Budget per workspace</label>
+      </h3>
+      <form
+        className="hive-budget"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!('value' in typed)) return;
+          void save(
+            { budget: typed.value },
+            typed.value === null ? 'No budget.' : `The budget is $${typed.value.toFixed(2)}.`,
+          );
+        }}
+      >
+        <span className="hive-budget-sign" aria-hidden="true">
+          $
+        </span>
+        <input
+          id="hive-budget"
+          inputMode="decimal"
+          placeholder="None"
+          value={budget}
+          disabled={busy || !setting}
+          aria-invalid={'problem' in typed}
+          aria-describedby="hive-budget-note"
+          onChange={(event) => {
+            setBudget(event.target.value);
+            setSaved(null);
+          }}
+        />
+        <button type="submit" className="button secondary" disabled={busy || !changed}>
+          Save
+        </button>
+      </form>
+      <p id="hive-budget-note" className="settings-row-note">
+        {'problem' in typed ? typed.problem : budgetWords(setting?.budget ?? null)}
+      </p>
+      <p className="settings-row-note">
+        For this repository: <code>hive.usage.pauseAt</code> and <code>hive.budget</code> in{' '}
+        <code>symbiote/config.json</code>.
+      </p>
+      {saved && (
+        <p className="settings-notice" role="status">
+          {saved}
+        </p>
+      )}
       {error && (
         <p className="settings-notice error" role="alert">
           {error}
