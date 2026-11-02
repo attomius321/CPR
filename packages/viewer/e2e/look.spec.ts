@@ -516,11 +516,12 @@ test("a workspace's views: the picked one a wash on the chrome, readable in ligh
   await form.getByRole('textbox', { name: 'Title' }).fill('Add a half function');
   await form.getByRole('textbox', { name: 'Goal' }).fill('Half of a number.');
   await form.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
-  const tab = page.getByRole('tab', { name: 'Terminal' });
+  const tab = page.getByRole('tab', { name: 'Claude Code' });
   await expect(tab).toHaveAttribute('aria-selected', 'true', POLL);
   await expect(page.locator('.xterm-screen')).toBeVisible(POLL);
+  // The tabs' card head (V89: the tablist inside it, beside Split and Focus).
   const strip = await page
-    .getByRole('tablist', { name: 'Talk to the agent' })
+    .locator('.workspace-views')
     .evaluate((e) => getComputedStyle(e).backgroundColor);
   // V88: the card's ground, white in the light theme.
   expect(strip).toBe('rgb(255, 255, 255)');

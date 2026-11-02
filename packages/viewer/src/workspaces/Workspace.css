@@ -281,15 +281,15 @@
 }
 
 .workspace-tabs .shell-tab > .stab {
-  padding-right: 30px;
+  padding-right: 32px;
 }
 
 .workspace-tabs .shell-close {
   position: absolute;
   top: 50%;
-  right: 6px;
-  width: 20px;
-  height: 20px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border-radius: 4px;
   color: var(--muted);
@@ -616,7 +616,7 @@
 
 /* The line under the title: the branch, where it started, when, and what runs it. */
 .workspace-from,
-.workspace-started {
+.workspace-since {
   flex: none;
   color: var(--muted);
   white-space: nowrap;
@@ -630,9 +630,14 @@
   flex: 0 1 auto;
 }
 
+/* What runs it, plain on the line as the proofs write it: no chip, the line stays its height. */
 .workspace-state-line > .runs-on {
   flex: 0 3 auto;
   min-width: 0;
+  height: auto;
+  padding: 0;
+  background: none;
+  font: inherit;
 }
 
 .workspace-state-line > * + *::before {
@@ -677,6 +682,10 @@
 
 .term-bar[data-tone='ok'] {
   --bar-tone: var(--ok);
+}
+
+.term-bar[data-tone='info'] {
+  --bar-tone: var(--info);
 }
 
 .term-bar[data-tone='hive'] {

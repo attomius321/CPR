@@ -108,9 +108,12 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
 
   // It asks for an approval: "needs you", and what it said in the thread.
   server.ask(id, 'May I run pnpm install with the network?', 'pnpm install');
-  // Its card says what it asked (V48); its heading, what it waits on.
+  // Its card says what it asked (V48); the bar under its views, what it waits on (V89).
   await expect(workspaceRow(page)).toContainText('May I run pnpm install with the network?', POLL);
-  await expect(here.locator('.workspace-top')).toContainText('Waiting: approval prompt');
+  await expect(here.getByRole('region', { name: 'Agent status' })).toContainText(
+    'May I run pnpm install with the network?',
+  );
+  await expect(here.locator('.head-steps')).toContainText('asks you');
   await expect(here.locator('.thread-agent').last()).toContainText(
     'May I run pnpm install with the network?',
     POLL,
@@ -167,13 +170,10 @@ test("Codex's own terminal in its panel: the trust it asks for, a turn typed the
   const id = server.threads[0]!.id;
 
   // The panel opens on Codex's terminal, its thread joined; no box, no Talk.
-  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  await expect(here.getByRole('tab', { name: 'Codex' })).toHaveAttribute('aria-selected', 'true');
   await expect(box(page)).toBeHidden();
   await expect(here.getByRole('menuitem', { name: 'Talk' })).toHaveCount(0);
-  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+  await expect(here.getByRole('tab', { name: 'Codex' })).toHaveAttribute(
     'data-tip',
     /\? in an empty prompt lists Codex's keys/,
   );

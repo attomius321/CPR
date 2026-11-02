@@ -667,7 +667,7 @@ function WorkspacePanel({
                 from <span className="mono">{workspace.from}</span>
               </span>
             )}
-            <span className="workspace-started">
+            <span className="workspace-since">
               started {startedAt(workspace.created)}
               {workspace.via ? ` by ${workspace.via === 'nucleus' ? nucleusName : 'an agent'}` : ''}
             </span>
@@ -1054,7 +1054,7 @@ function NowSection({
   if (!live && shells.length === 0) return null;
   const since = workspace.activity?.since;
   return (
-    <section className="changes-section changes-now" aria-label="Now">
+    <section className="changes-section changes-now" aria-label="What its agent does">
       <h2>Now</h2>
       <dl className="changes-facts">
         {live && (

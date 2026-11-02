@@ -69,7 +69,7 @@ describe('the bar under the terminal (V89)', () => {
     expect(bar(bare).keys).toEqual([]);
   });
 
-  it('a question: its options as words, no keys (not measured)', () => {
+  it('a question: it and its options as words, no keys (not measured)', () => {
     const question = waiting({
       agent: { state: 'needs-you', kind: 'claude', id: 's1', waitingFor: 'question' },
       activity: {
@@ -85,8 +85,9 @@ describe('the bar under the terminal (V89)', () => {
     });
     const model = bar(question);
     expect(model.tone).toBe('you');
+    expect(model.text).toBe('Asks: Which store? — Postgres · SQLite');
     expect(model.keys).toEqual([]);
-    expect(model.note).toBe('Postgres · SQLite: answer in its terminal');
+    expect(model.note).toBe('Answer in its terminal');
   });
 
   it('Codex and Hermes waiting: their words, no keys', () => {
@@ -176,6 +177,20 @@ describe('the bar under the terminal (V89)', () => {
       }),
     );
     expect(checking).toMatchObject({ tone: 'hive', hiveLive: true });
+    // HV5: its next start held for usage: the pause in Hive's words, not who drives.
+    const paused = bar(
+      summary({
+        agent: { state: 'done', kind: 'claude', id: 's1' },
+        hive: {
+          step: 'writing',
+          round: 1,
+          rounds: 3,
+          pause: { reason: 'usage', pauseAt: 90, percent: 95, minutes: 300, since: SINCE },
+        },
+      }),
+    );
+    expect(paused.tone).toBe('info');
+    expect(paused.text).toMatch(/^Paused: usage 95 %/);
     const stuck = bar(
       summary({ hive: { step: 'stuck', round: 3, rounds: 3, note: '3 rounds failed the check' } }),
     );

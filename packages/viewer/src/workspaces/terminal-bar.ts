@@ -11,8 +11,8 @@ export interface BarKey {
 }
 
 export interface BarModel {
-  /** Its colour: the person's turn, the agent's, failed, done, nobody's, or Hive driving. */
-  tone: 'you' | 'run' | 'error' | 'ok' | 'idle' | 'hive';
+  /** Its colour: the person's turn, the agent's, failed, done, paused, nobody's, or Hive. */
+  tone: 'you' | 'run' | 'error' | 'ok' | 'info' | 'idle' | 'hive';
   /** What waits or what happens, in bold. */
   text: string;
   /** After it, muted. */
@@ -76,6 +76,8 @@ export function barOf({
     if (hive.step === 'landed' || hive.step === 'answered' || mergedForCard(workspace)) {
       return { tone: 'ok', text: next.text, keys: [] };
     }
+    // HV5: its next start held for usage; the sidenav's words, which say until when.
+    if (next.paused) return { tone: 'info', text: next.text, keys: [], terminalKeys: true };
     return {
       tone: 'hive',
       text: 'Hive drives this writer',
@@ -102,19 +104,13 @@ export function barOf({
           terminalKeys: true,
         };
       }
+      const asks = activity?.asks;
+      // A question: what it asks and its options, as recorded (no keys: not measured).
+      if (asks?.questions?.length && next.blocked) {
+        return { tone: 'you', text: next.blocked, ...at, keys: [], note: 'Answer in its terminal' };
+      }
       const text =
         noticeSince(entries, since) ?? next.blocked ?? `Waiting: ${agent.waitingFor ?? 'for you'}`;
-      const asks = activity?.asks;
-      if (asks?.questions?.length) {
-        const options = asks.questions[0]?.options ?? [];
-        return {
-          tone: 'you',
-          text,
-          ...at,
-          keys: [],
-          ...(options.length > 0 ? { note: `${options.join(' · ')}: answer in its terminal` } : {}),
-        };
-      }
       const keys = agent.kind === 'claude' && asks ? PERMISSION_KEYS : [];
       return { tone: 'you', text, ...at, keys };
     }

@@ -10,6 +10,7 @@ import {
   IdleIcon,
   RunningIcon,
   DoneIcon,
+  StoppedIcon,
   WaitingIcon,
 } from '../ui/icons.js';
 import { HiveNowLine } from './HiveNow.js';
@@ -30,6 +31,7 @@ const ICONS: Record<BarModel['tone'], () => ReactNode> = {
   run: RunningIcon,
   error: FailedIcon,
   ok: DoneIcon,
+  info: StoppedIcon,
   idle: IdleIcon,
   hive: HexagonIcon,
 };

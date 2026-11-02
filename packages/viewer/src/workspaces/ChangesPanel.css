@@ -1,14 +1,14 @@
 /* ---- a workspace's changes (V29d) ---------------------------------------------------------- */
 
 /* 256 px at the right of the terminal, where the workspace's area is at least 1,200 px wide: at
-   1440 with the sidenav the terminal keeps 56 % of the window (decision 186); 300 px since V89, as
-   the redesign's side card draws it. */
+   1440 with the sidenav the terminal keeps 56 % of the window (decision 186). The redesign draws
+   it at 300 px; V89 keeps 256, the terminal first. */
 .changes {
   flex: none;
   /* As wide as the person dragged it (V34), the terminal keeping 480 px; past the cards' margins
      and the gutter between them (V61; 16 px each since V72). */
   width: min(
-    var(--changes-width, 300px),
+    var(--changes-width, 256px),
     calc(100cqi - 480px - 2 * var(--page-pad) - var(--page-gap))
   );
   min-height: 0;

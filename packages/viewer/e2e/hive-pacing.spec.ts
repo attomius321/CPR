@@ -84,7 +84,9 @@ test("over the threshold, a workspace's writer waits for the window's reset, sai
 
   // The workspace's page and its Review tab say it.
   await card(page).click();
-  await expect(page.locator('.workspace-top')).toContainText(
+  // The bar under its views says it (V89); the head's steps, paused.
+  await expect(page.locator('.head-steps')).toContainText('paused');
+  await expect(page.getByRole('region', { name: 'Agent status' })).toContainText(
     'Paused: usage 95 % of the 5-hour window, goes on at',
   );
   await page

@@ -46,10 +46,7 @@ test('Hermes in its terminal: started with the prompt, kept while its tab is lef
 
   // Its panel opens on Hermes itself: one Hermes, in the worktree, given the prompt.
   const here = panel(page);
-  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
-    'aria-selected',
-    'true',
-  );
+  await expect(here.getByRole('tab', { name: 'Hermes' })).toHaveAttribute('aria-selected', 'true');
   await expect(screen(page)).toContainText('Fake Hermes ·', POLL);
   const id = symbiote.hermesSession(BRANCH);
   const [call, ...more] = symbiote.hermesCalls();
@@ -57,7 +54,7 @@ test('Hermes in its terminal: started with the prompt, kept while its tab is lef
   expect(call?.cwd).toBe(realpathSync(folder));
   expect(call?.args[0]).toBe('chat');
   expect(call?.args[1]).toMatch(/^--query=[\s\S]*Add a half function/);
-  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+  await expect(here.getByRole('tab', { name: 'Hermes' })).toHaveAttribute(
     'data-tip',
     /\/help in its prompt lists Hermes's commands/,
   );
@@ -72,7 +69,9 @@ test('Hermes in its terminal: started with the prompt, kept while its tab is lef
   // Leaving its tab does not hang Hermes up: it is the agent, not a client of it.
   await page.waitForTimeout(1_000);
   expect(symbiote.hermesHangups()).toEqual([]);
-  await here.getByRole('button', { name: 'open its terminal' }).click();
+  // A plan that waits shows Approve plan under it (V89): its terminal opens by its tab.
+  await expect(here.getByRole('button', { name: 'Approve plan' })).toBeVisible();
+  await here.getByRole('tab', { name: 'Hermes' }).click();
   await expect(screen(page)).toContainText(`Fake Hermes · ${id}`, POLL);
   expect(symbiote.hermesCalls()).toHaveLength(1);
 
