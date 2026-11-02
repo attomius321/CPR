@@ -187,3 +187,27 @@ waited on #13 and `main` was never brought up to the forge's merge.
 **Verification**: the reviewer's test added unchanged (`hive-request-merged-mid-rounds.test.ts`,
 GitHub and GitLab), red at `e5a79d1`, green after; with every earlier reviewer test and the
 runner suites, 96 tests.
+
+## HV8 — a request on record is read through the gate before any landing (2026-11-02, branch `feature/hive-pull-requests`)
+
+The person asked for the root of round 2's defect, not the patch in `429c580`: Hive must never open
+a new request while its record holds one it has not seen closed.
+
+**Learned**:
+- **The landing read the request its own way**, outside the gate, and each state it forgot
+  became a new path (merged opened #13). Now `land()` asks the gate first, before Hive's approval:
+  the gate says what it saw (`none`, `not-due`, `failed`, `ended`, or `open` with the request as
+  read). Merged lands the workspace as a forge merge (`mergedOnForge`: the start branch fetched and
+  fast-forwarded), closed stops it, outside lands it; only open goes on, and the landing waits its
+  turn when no read is due. `openRequest` no longer reads: it updates the request the gate read
+  open, and looks for or opens one only when the record holds none.
+- **Every other way the record's request is replaced** was checked: the write after opening keeps a
+  request on record unless it was seen closed or is the same one (it may have been written while
+  the forge answered), and replaces only its own landing attempt; the person's message drops only a
+  request seen closed; a merge outside it ends it with the workspace landed.
+- **The root `tsconfig.json` does not typecheck the CLI's sources** (`tsc -p packages/cli` does):
+  the gate's new return type broke four callers that the earlier check never saw.
+
+**Verification**: the reviewer's test (`hive-request-merged-mid-rounds.test.ts`, already on the
+branch, identical to the review's file) and every earlier reviewer test and the runner suites,
+96 tests; `tsc -p packages/cli`, lint.
