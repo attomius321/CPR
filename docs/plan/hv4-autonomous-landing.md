@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv4-autonomous-landing.md)
 
-**Status:** built, ready for review (2026-11-02), on branch `feature/hv4-autonomous-landing` (the
+**Status:** merged into `main` on 2026-11-02 (built 2026-11-02), on branch `feature/hv4-autonomous-landing` (the
 workspace's, from `main` at `6aed550`, `main` merged in at `4cdce3b`). The person's answers are in
 the decisions below; "Go for it" on 2026-11-02. Two real Hive workspaces landed in a scratch
 repository with no press, one through a conflict (see Results).

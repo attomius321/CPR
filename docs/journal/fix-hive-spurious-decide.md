@@ -53,3 +53,5 @@ workspace. Plan, decisions 794–795 and results in
   unchanged; the file's 63 tests pass. Not verified: a real round with Claude Code; the
   `working`/`idle` listing after a resume comes from the person's look at the card and the
   record's timings, not from a listing captured at that moment.
+
+Merged into main (2026-11-02).
