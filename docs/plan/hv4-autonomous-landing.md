@@ -263,6 +263,8 @@ New message keys `hive.land`, `hive.plan`, `hive.decide`.
 | 773 | No gate before landing | **Plan first not offered in Hive mode, `hive.plan` for a plan that comes; the writer in `auto`; `hive.decide` for anything that asks, 3 a workspace; a failed writer started again once; a stop is a stop, with why (689); replaces 658's permission mode picked on Start** | The person: "a fully autonomous system. From the start to the end"; AR1: 121 of 131 plan first, 29 permission prompts, 20 questions |
 | 774 | The sidenav in Hive mode | **Two groups: Hive (every workspace not done, Hive's words) and Done (landed or merged); no Review, Land or Merge into on a Hive workspace's head** | The person: "Only Done exists beside Hive in Hive mode" |
 | 775 | What agents and people are told | **`hive.start`, `hive.land`, `hive.plan`, `hive.decide`, `hive.nucleus`, AGENTS.md's `via: "hive"`; the dialogs, README and `configuration.md` say Hive lands and pushes, and when to use Hive** | The brief; the person's words of 2026-10-31 |
+| 794 | What asks the person (fix/hive-spurious-decide; amends 773) | **`needs-you` read as an interrupted turn with nothing named is not the writer asking: no `hive.decide`, nothing counted, Hive waits for the turn. A session waiting on something (`waitingFor`), or blocked in a turn that did not end, still gets `hive.decide`** | `feature/hive-pull-requests`, 2026-11-02: three asks counted, each within 2 ms of Hive's own message marked `sent` and none after a question; the third stopped the workspace. Claude Code lists a session it just resumed as `working` and `idle`, which reads as an interrupted turn |
+| 795 | When Hive's answers count again (fix/hive-spurious-decide) | **The person's message that starts the rounds again resets `decided` too; replaces 773's "3 a workspace"** | The same record: after the person's message at 09:57 `decided` stayed at 3, and the next answer stopped the workspace at once. The person who stepped in has answered, as for the rounds |
 
 The writer's tests (the brief's parked question) were settled by AR2 (decision 739): the failing
 tests and those the change touches; Symbiote runs the whole check.
@@ -362,3 +364,54 @@ Code's "not trusted" question in a new repository, answered once by the person.
   untrusted folder; Hive started the writer again once and stopped it, with why, in 3 s.
   Screenshots of the real Review tab (the failed landing and its log, then the landing) and the
   sidenav's Done group, dark and light.
+
+## Fix: a message is not the writer asking (fix/hive-spurious-decide)
+
+**Problem**: Hive answered questions no writer asked. `feature/hive-pull-requests` on 2026-11-02
+(times UTC): `decided` was 1 after its plan's OK at 07:39. Then, three times, the same pattern in
+its thread and record:
+
+| Hive's message | Its prompt in the thread | Hive marks it `sent` | Hive counts an ask |
+|---|---|---|---|
+| `hive.review` | 09:24:12.149 | 09:24:12.791 | 09:24:12.792: `hive.decide`, `decided` 2 |
+| `hive.check` | 09:32:17.551 | 09:32:18.402 | 09:32:18.403: `hive.decide`, `decided` 3 |
+| `hive.review` | 10:27:29.570 | 10:27:30.259 | 10:27:30.261: the fourth, `stuck` |
+
+No question and no permission (`asks` in the thread) came between them. Each `hive.decide` is sent
+with `stop`, so it stopped the turn the writer had just begun on Hive's message (the session's
+`end` at 09:24:13.009 and 09:32:18.627). The last one stopped the workspace: "the writer asked for
+the person 4 times: no one answers in Hive mode". The person's message at 09:57 had started the
+rounds again but left `decided` at 3, so the next count stopped it at once.
+
+**Cause**: every message, Hive's or the person's, reaches a Claude Code writer by `claude stop`
+and a resume. For a moment after the resume, `claude agents` lists the session as `working` with
+its process `idle`. `agentState` reads that as a turn interrupted with Esc: `needs-you`,
+`interrupted: true` (no hook fires for an interrupt). The person saw the same state after a
+message sent through Alpha Ceph. `writing()` sees the message's prompt, marks it `sent`, and in
+the same pass reads `needs-you` as the writer asking.
+
+**Decisions 794–795** (the table above; 773 amended).
+
+- **What asks** (`asks` in `hive-runner.ts`): `needs-you`, except an interrupted turn with nothing
+  named. A session waiting on something (`waitingFor`: a permission, a question) asks; so does one
+  blocked in a turn that did not end. An interrupted turn gets nothing from Hive: it waits for the
+  turn to go on or end, as it waits for a stopped writer. The card still says "Interrupted:
+  waiting for you".
+- **Hive's answers count again** (`roundsAgain`): the person's message that starts the rounds
+  again (on a stopped or landing workspace, or during a check or review) clears `decided`.
+
+**As built**: as above. The fake Claude Code in `hive-runner.test.ts` gained `drowse` and `wake`:
+a resumed session lists `working` and `idle`, its prompt recorded, until woken.
+
+**Results**:
+
+- Tests first, each red for the right reason (`hive-runner.test.ts`, 3 new, 63 in all): Hive's
+  check failure delivered to a writer that reads interrupted (red: `hive.decide` sent in its
+  place); the person's message to a Hive writer that reads interrupted (red: `decided` 3 after
+  three looks, each answer's own resume read as the next ask); the person's message to a workspace
+  stopped for 4 asks (red: `decided` stayed 3). HV4's two tests of `hive.plan` and `hive.decide`
+  (a real ask answered, the fourth stopping) pass unchanged.
+- Not verified: a real Hive round with Claude Code. The `working`/`idle` listing after a resume is
+  what the person saw on the card and what the timings above show; it was not listed directly.
+- Known limit: a turn someone interrupts with Esc in a Hive workspace now waits for them, with
+  the card saying so; before, Hive answered it with `hive.decide`.

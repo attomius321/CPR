@@ -381,3 +381,4 @@ merge commit.
 - 2026-11-02 [NU8 spike — who can say it is Nucleus](journal/nu8-start-without-confirm.md)
 - 2026-11-02 [NU8 — the setting, the MCP, the record, Settings](journal/nu8-start-without-confirm.md)
 - 2026-11-02 [HV4 — the real runs: two workspaces landed with no press](journal/hv4-autonomous-landing.md)
+- 2026-11-02 [Fix — Hive's message is not the writer asking: no `hive.decide` for a writer just resumed](journal/fix-hive-spurious-decide.md)
