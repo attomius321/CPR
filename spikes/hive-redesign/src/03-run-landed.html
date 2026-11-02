@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hive — a landed workspace</title>
+    <link rel="stylesheet" href="kit.css" />
+    <link rel="stylesheet" href="run.css" />
+    <script src="kit.js"></script>
+    <style>
+      .landed-banner {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 12px 16px 4px;
+        padding: 10px 12px;
+        border-radius: var(--radius-control);
+        background: color-mix(in srgb, var(--ok) 7%, transparent);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 26%, var(--line));
+        font-size: var(--size-small);
+      }
+      .landed-banner .big {
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: color-mix(in srgb, var(--ok) 16%, transparent);
+        color: var(--ok);
+      }
+      .landed-banner b {
+        font-weight: 600;
+        font-size: var(--size-body);
+      }
+      .cmds.one .cmd {
+        border: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <nav class="nav" data-page="workspace" data-open="feature/discount-code"></nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="feature"></i></span>
+          <div style="min-width: 0">
+            <h1>Add a discount code</h1>
+            <div class="sub">
+              <span class="mono">feature/discount-code</span><span class="sep">·</span>from
+              <span class="mono">main</span><span class="sep">·</span>started 12:34
+              <span class="sep">·</span><span class="row" style="gap: 5px"><i data-i="model" class="s14 faint"></i>Opus · default effort</span>
+            </div>
+          </div>
+          <div class="actions">
+            <span class="pill ok"><i data-i="merge"></i>Landed in main · pushed</span>
+            <span class="icon-button boxed"><i data-i="vscode"></i></span>
+            <span class="icon-button boxed"><i data-i="more"></i></span>
+          </div>
+        </header>
+
+        <section class="card pipeline">
+          <div class="steps">
+            <div class="step done">
+              <span class="node"
+                ><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg
+                ><i data-i="check"></i
+              ></span>
+              <div class="words"><span class="name">Write</span><span class="detail">4 commits · 2 rounds</span></div>
+              <span class="wire"></span>
+            </div>
+            <div class="step done">
+              <span class="node"
+                ><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg
+                ><i data-i="check"></i
+              ></span>
+              <div class="words"><span class="name">Check</span><span class="detail">passed in 38 s</span></div>
+              <span class="wire"></span>
+            </div>
+            <div class="step done">
+              <span class="node"
+                ><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg
+                ><i data-i="check"></i
+              ></span>
+              <div class="words"><span class="name">Review</span><span class="detail">approved · $0.42</span></div>
+              <span class="wire"></span>
+            </div>
+            <div class="step done">
+              <span class="node"
+                ><svg class="hexbg" viewBox="0 0 26 28"><polygon points="13,1 25,7.5 25,20.5 13,27 1,20.5 1,7.5" /></svg
+                ><i data-i="check"></i
+              ></span>
+              <div class="words">
+                <span class="name">Land</span><span class="detail"><span class="mono">20c37bc</span> in main · pushed</span>
+              </div>
+            </div>
+          </div>
+          <div class="run-sum">
+            <div class="cell">
+              <span class="k">Rounds</span><span class="v">2 <small>of 3</small></span>
+              <span class="pips"><i class="fail"></i><i class="ok"></i><i></i></span>
+            </div>
+            <div class="cell">
+              <span class="k">Time</span><span class="v">9:46</span><span class="k">brief to landed</span>
+            </div>
+            <div class="cell">
+              <span class="k">Spend</span><span class="v">$0.84 <small>of $5</small></span>
+              <span class="bar" style="width: 76px; margin-top: 4px"><i style="width: 17%; background: var(--muted)"></i></span>
+            </div>
+          </div>
+        </section>
+
+        <div class="body">
+          <section class="card">
+            <div class="tabs">
+              <span class="tab on"><i data-i="hexagon" class="s14"></i>Run</span>
+              <span class="tab"><i data-i="terminal" class="s14"></i>Terminal</span>
+              <span class="tab"><i data-i="thread" class="s14"></i>Thread</span>
+              <span class="tab"><i data-i="activity" class="s14"></i>Activity</span>
+              <span class="tab"><i data-i="file" class="s14"></i>Brief</span>
+            </div>
+            <div class="scroll">
+              <div class="landed-banner">
+                <span class="big"><i data-i="merge"></i></span>
+                <div class="grow">
+                  <b>Landed in main</b>
+                  <div class="muted">
+                    Merged through the merge queue as <span class="mono">20c37bc</span>; pushed
+                    <span class="mono">main</span> and <span class="mono">feature/discount-code</span> to origin
+                  </div>
+                </div>
+                <span class="faint num" style="font-size: 13px">12:44</span>
+              </div>
+
+              <div class="round-head">
+                <h3>Round 2</h3>
+                <span class="pill ok"><i data-i="shield"></i>Approved</span>
+                <span class="when">12:40 – 12:43</span>
+              </div>
+              <div class="item is-ok">
+                <span class="dot"><i data-i="pencil"></i></span>
+                <div class="top">
+                  <b>Writer</b><span class="muted">fixed the proven defect</span>
+                  <span class="end"><span><span class="add">+12</span> <span class="del">−1</span></span><span>1:55</span></span>
+                </div>
+                <div class="content">
+                  <div class="commit-line">
+                    <i data-i="commit" class="s14 faint"></i><span class="mono">20c37bc</span><span>Trim a code before it is matched</span>
+                  </div>
+                  <div class="commit-line">
+                    <i data-i="commit" class="s14 faint"></i><span class="mono">f299285</span><span>Add the reviewer’s test for spaces</span>
+                  </div>
+                </div>
+              </div>
+              <div class="item is-ok">
+                <span class="dot"><i data-i="checks"></i></span>
+                <div class="top">
+                  <b>Check</b><span class="muted">passed on <span class="mono">20c37bc</span></span>
+                  <span class="end"><span class="disclose"><i data-i="log" class="s14"></i>Log</span><span>38 s</span></span>
+                </div>
+              </div>
+              <div class="item is-ok last">
+                <span class="dot"><i data-i="eye"></i></span>
+                <div class="top">
+                  <b>Running review</b><span class="muted">no defect proven</span>
+                  <span class="end"><span class="disclose"><i data-i="log" class="s14"></i>What it ran</span><span>Opus · high · 1:12 · $0.42</span></span>
+                </div>
+                <div class="content">
+                  <div class="quote">
+                    “Codes are trimmed and matched in any case; the receipt shows the discount. Ran the
+                    cart and checkout tests and a code typed with spaces, in capitals and empty.”
+                  </div>
+                </div>
+              </div>
+
+              <div class="round-head" style="padding-top: 6px">
+                <h3>Round 1</h3>
+                <span class="pill fail"><i data-i="bug"></i>1 defect proven</span>
+                <span class="when">12:34 – 12:39</span>
+              </div>
+              <div class="item is-ok">
+                <span class="dot"><i data-i="checks"></i></span>
+                <div class="top">
+                  <b>Check</b><span class="muted">passed on <span class="mono">97ddb55</span></span>
+                  <span class="end"><span class="disclose"><i data-i="log" class="s14"></i>Log</span><span>41 s</span></span>
+                </div>
+              </div>
+              <div class="item is-fail last">
+                <span class="dot"><i data-i="bug"></i></span>
+                <div class="top">
+                  <b>Running review</b><span class="muted">proved a defect with a failing test</span>
+                  <span class="end"><span>Opus · high · 1:31 · $0.42</span></span>
+                </div>
+                <div class="content">
+                  <div class="finding">
+                    <div class="what">
+                      <span class="pill fail">Proven</span>applyCode refuses “ save10 ”: a code pasted with spaces is not trimmed
+                    </div>
+                    <div class="how">
+                      <i data-i="flask" class="s14"></i><span>a code typed with spaces still applies</span>
+                      <code>node --test test/review-spaces.test.ts</code>
+                      <span style="margin-left: auto">rerun by Symbiote · exit 1</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="card side">
+            <div class="section-label">Run</div>
+            <dl class="facts">
+              <dt>Landed</dt>
+              <dd class="ok">12:44 · merge queue</dd>
+              <dt>Writer</dt>
+              <dd>Claude Code · Opus</dd>
+              <dt>Reviewer</dt>
+              <dd>Opus · high</dd>
+              <dt>Merged</dt>
+              <dd><span class="mono">20c37bc</span> into main</dd>
+              <dt>Pushed</dt>
+              <dd>main, the branch</dd>
+            </dl>
+            <div class="section-label">Spend</div>
+            <div class="spend">
+              <div class="top"><b>$0.84</b><span class="faint">budget $5.00</span></div>
+              <div class="bar"><i style="width: 17%"></i></div>
+              <div class="split"><span>writer not read</span><span>2 reviews $0.84</span></div>
+            </div>
+            <div class="section-label">Commits <span class="count">4</span></div>
+            <div class="list">
+              <div class="li"><span class="mono">20c37bc</span><span class="t">Trim a code before it is matched</span><span class="n faint">12:42</span></div>
+              <div class="li"><span class="mono">f299285</span><span class="t">Add the reviewer’s test for spa…</span><span class="n faint">12:41</span></div>
+              <div class="li"><span class="mono">97ddb55</span><span class="t">Apply a code to the order total</span><span class="n faint">12:37</span></div>
+              <div class="li"><span class="mono">d1308ed</span><span class="t">Add discount codes to the cart</span><span class="n faint">12:36</span></div>
+            </div>
+            <div class="section-label">Files <span class="count">5</span><span class="num" style="margin-left: auto; text-transform: none; letter-spacing: 0; font-size: 13px"><span class="add">+47</span> <span class="del">−2</span></span></div>
+            <div class="list">
+              <div class="li"><span class="kind m">M</span><span class="t">cart.ts <span class="faint">src/cart</span></span><span class="n"><span class="add">+10</span> <span class="del">−1</span></span></div>
+              <div class="li"><span class="kind a">A</span><span class="t">discount.ts <span class="faint">src/cart</span></span><span class="n"><span class="add">+19</span> <span class="del">−0</span></span></div>
+              <div class="li"><span class="kind m">M</span><span class="t">checkout.ts <span class="faint">src/checkout</span></span><span class="n"><span class="add">+2</span> <span class="del">−1</span></span></div>
+              <div class="li"><span class="kind a">A</span><span class="t">discount.test.ts <span class="faint">test</span></span><span class="n"><span class="add">+6</span> <span class="del">−0</span></span></div>
+              <div class="li"><span class="kind a">A</span><span class="t">review-spaces.test.ts <span class="faint">test</span></span><span class="n"><span class="add">+10</span> <span class="del">−0</span></span></div>
+            </div>
+          </aside>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      Kit.render();
+    </script>
+  </body>
+</html>

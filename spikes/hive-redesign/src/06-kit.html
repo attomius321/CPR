@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hive Control — the kit</title>
+    <link rel="stylesheet" href="kit.css" />
+    <script src="kit.js"></script>
+    <style>
+      body {
+        height: auto;
+        min-height: 900px;
+        padding: 24px 28px 28px;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+      .top img {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px var(--line-2);
+      }
+      .top h1 {
+        margin: 0;
+        font-size: var(--size-title);
+        font-weight: 600;
+      }
+      .top .sub {
+        color: var(--muted);
+        font-size: var(--size-small);
+      }
+      .board {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr 1fr;
+        gap: 12px;
+      }
+      .box {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-card);
+        padding: 14px 16px 16px;
+      }
+      .box h2 {
+        margin: 0 0 10px;
+        font-size: var(--size-small);
+        font-weight: 600;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+      .box h2 span {
+        color: var(--faint);
+        font-weight: 400;
+        font-size: var(--size-caption);
+      }
+      .sw {
+        display: grid;
+        grid-template-columns: 30px 30px 1fr auto;
+        align-items: center;
+        column-gap: 10px;
+        height: 34px;
+        font-size: var(--size-caption);
+      }
+      .sw i {
+        width: 30px;
+        height: 22px;
+        border-radius: 6px;
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%);
+      }
+      .sw i.l {
+        box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
+      }
+      .sw b {
+        font-weight: 500;
+        font-size: var(--size-small);
+      }
+      .sw .hex {
+        font-family: var(--mono);
+        font-size: var(--size-caps);
+        color: var(--faint);
+        text-align: right;
+      }
+      .sw .r {
+        color: var(--muted);
+      }
+      .type div {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        padding: 3px 0;
+      }
+      .type small {
+        width: 112px;
+        white-space: nowrap;
+        flex: none;
+        color: var(--faint);
+        font-size: var(--size-caption);
+        font-family: var(--mono);
+      }
+      .rowc {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+      .tracks {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        row-gap: 10px;
+        column-gap: 14px;
+        align-items: center;
+        font-size: var(--size-small);
+      }
+      .rule {
+        margin: 2px 0 0;
+        padding-left: 16px;
+        color: var(--muted);
+        font-size: var(--size-caption);
+        line-height: 1.6;
+      }
+      .mini-nav {
+        width: 244px;
+        padding: 6px;
+        border-radius: var(--radius-card);
+        background: var(--side);
+        box-shadow: inset 0 0 0 1px var(--line);
+      }
+      .metric-demo {
+        border-radius: var(--radius-card);
+        box-shadow: inset 0 0 0 1px var(--line);
+        width: 220px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <img src="../../../packages/viewer/src/ui/mark-hive-96.png" alt="" />
+      <div>
+        <h1>Hive Control · the kit</h1>
+        <div class="sub">
+          Ink surfaces, crimson for Hive’s identity only, CI’s colours for state. Geist 15 px (V87),
+          8 px controls, 10 px cards, line tabs.
+        </div>
+      </div>
+      <span class="mode-pill" style="margin-left: auto"
+        ><svg viewBox="0 0 12 13"><polygon points="6,0.5 11.5,3.5 11.5,9.5 6,12.5 0.5,9.5 0.5,3.5" /></svg>Hive</span
+      >
+    </div>
+
+    <div class="board">
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <section class="box">
+          <h2>Surfaces <span>dark · light · role</span></h2>
+          <div class="sw"><i style="background: #09090b"></i><i class="l" style="background: #f3f3f5"></i><b>--bg <span class="r">the page’s ground</span></b><span class="hex">#09090b · #f3f3f5</span></div>
+          <div class="sw"><i style="background: #0e0e11"></i><i class="l" style="background: #f9f9fa"></i><b>--side <span class="r">sidenav, status bar</span></b><span class="hex">#0e0e11 · #f9f9fa</span></div>
+          <div class="sw"><i style="background: #0f0f12"></i><i class="l" style="background: #ffffff"></i><b>--panel <span class="r">cards</span></b><span class="hex">#0f0f12 · #ffffff</span></div>
+          <div class="sw"><i style="background: #18181d"></i><i class="l" style="background: #f0f0f3"></i><b>--raised <span class="r">chips, tiles</span></b><span class="hex">#18181d · #f0f0f3</span></div>
+          <div class="sw"><i style="background: #24242b"></i><i class="l" style="background: #e3e3e8"></i><b>--line <span class="r">hairlines, 1.24 : 1</span></b><span class="hex">#24242b · #e3e3e8</span></div>
+        </section>
+        <section class="box">
+          <h2>Text <span>lowest ratio on the four grounds, dark · light</span></h2>
+          <div class="sw"><i style="background: #f3f2f5"></i><i class="l" style="background: #121216"></i><b>--text</b><span class="hex">15.9 · 16.4 : 1</span></div>
+          <div class="sw"><i style="background: #a6a4ae"></i><i class="l" style="background: #595762"></i><b>--muted</b><span class="hex">7.2 · 6.2 : 1</span></div>
+          <div class="sw"><i style="background: #7b7983"></i><i class="l" style="background: #7c7a85"></i><b>--faint <span class="r">times, labels</span></b><span class="hex">4.1 · 3.7 : 1</span></div>
+        </section>
+        <section class="box">
+          <h2>Hive’s crimson <span>identity, never a state</span></h2>
+          <div class="sw"><i style="background: #e5243f"></i><i class="l" style="background: #c8102e"></i><b>--hive <span class="r">mark, picked tab, live dot</span></b><span class="hex">#e5243f · #c8102e</span></div>
+          <div class="sw"><i style="background: #c8102e"></i><i class="l" style="background: #c8102e"></i><b>--primary <span class="r">one per page</span></b><span class="hex">white 5.88 : 1</span></div>
+          <div class="sw"><i style="background: #ff8090"></i><i class="l" style="background: #b30f2a"></i><b>--hive-text <span class="r">page icon, mode</span></b><span class="hex">7.4 · 6.1 : 1</span></div>
+          <ul class="rule">
+            <li>No red surfaces, no honeycomb behind work: the hexagon is the stage track and the mark.</li>
+            <li>Destructive actions are secondary with red words, never the crimson primary.</li>
+          </ul>
+        </section>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <section class="box">
+          <h2>States <span>as CI reads them; an icon and a word, never colour alone</span></h2>
+          <div class="sw"><i style="background: #f2b33d"></i><i class="l" style="background: #8f5b00"></i><b>--run <span class="r">writing to landing</span></b><span class="hex">9.5 · 5.0</span></div>
+          <div class="sw"><i style="background: #3fcf8e"></i><i class="l" style="background: #137a4a"></i><b>--ok <span class="r">passed, approved, landed</span></b><span class="hex">8.9 · 4.7</span></div>
+          <div class="sw"><i style="background: #ff6166"></i><i class="l" style="background: #cf2330"></i><b>--fail <span class="r">failed, defect proven, stopped</span></b><span class="hex">6.0 · 4.7</span></div>
+          <div class="sw"><i style="background: #5cc8d8"></i><i class="l" style="background: #0a7383"></i><b>--info <span class="r">paused, waiting on a forge</span></b><span class="hex">9.0 · 4.9</span></div>
+          <div class="sw"><i style="background: #6f6d77"></i><i class="l" style="background: #8b8994"></i><b>--idle <span class="r">queued, not run</span></b><span class="hex">track only</span></div>
+          <div class="rowc" style="margin: 10px 0 0">
+            <span class="pill run"><i data-i="spin"></i>Checking 4/4</span>
+            <span class="pill ok"><i data-i="merge"></i>Landed</span>
+            <span class="pill ok"><i data-i="shield"></i>Approved</span>
+            <span class="pill fail"><i data-i="bug"></i>1 defect proven</span>
+            <span class="pill fail"><i data-i="stopped"></i>Stopped</span>
+            <span class="pill info"><i data-i="circle-pause"></i>Paused by usage</span>
+            <span class="pill idle"><i data-i="answered"></i>Answered</span>
+          </div>
+        </section>
+        <section class="box">
+          <h2>The stage track <span>Write · Check · Review · Land</span></h2>
+          <div class="tracks">
+            <span data-track="now,todo,todo,todo"></span><span class="run">Writing</span>
+            <span data-track="done,now,todo,todo"></span><span class="run">Checking 4/4</span>
+            <span data-track="done,done,now,todo"></span><span class="run">Reviewing</span>
+            <span data-track="done,done,done,now"></span><span class="run">Landing</span>
+            <span data-track="done,done,done,done"></span><span class="ok">Landed</span>
+            <span data-track="done,bad,todo,todo"></span><span class="fail">Stopped at the check</span>
+          </div>
+        </section>
+        <section class="box">
+          <h2>Limits <span>a gauge, its pause mark</span></h2>
+          <div class="row" style="font-size: 14px"><span>Claude usage, 5 hours</span><b class="num" style="margin-left: auto; font-weight: 600">41%</b></div>
+          <div class="gauge"><i style="width: 41%"></i><b style="left: 90%"></b></div>
+          <div class="help" style="display: flex; justify-content: space-between"><span>Hive pauses at 90 %</span><span>resets 14:00</span></div>
+        </section>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <section class="box">
+          <h2>Actions <span>30 px, 8 px radius</span></h2>
+          <div class="rowc">
+            <span class="btn primary"><i data-i="plus" class="s14"></i>New goal</span>
+            <span class="btn"><i data-i="log" class="s14"></i>Full log</span>
+            <span class="btn ghost">Cancel</span>
+          </div>
+          <div class="rowc" style="margin: 0">
+            <span class="btn danger"><i data-i="power" class="s14"></i>Turn off Hive</span>
+            <span class="segmented"><span class="on">Merge queue</span><span>Pull request</span></span>
+          </div>
+        </section>
+        <section class="box">
+          <h2>Sidenav rows <span>two lines at most</span></h2>
+          <div class="mini-nav">
+            <div class="ws on"><i data-i="spin" class="spin"></i><div class="t">Retry failed payment webhooks</div><div class="m"><b>Checking 4/4</b> · round 2 · 7:23</div></div>
+            <div class="ws"><i data-i="stopped" class="fail"></i><div class="t">Import products from a supplier feed</div><div class="m"><b>Stopped</b> · 3 of 3 rounds</div></div>
+            <div class="ws small"><i data-i="circle-check" class="ok s14"></i><div class="t">Add a discount code</div><span class="when">12:44</span></div>
+          </div>
+        </section>
+        <section class="box">
+          <h2>Metric <span>a figure, its label, one line of context</span></h2>
+          <div class="metric metric-demo">
+            <div class="label"><i data-i="bug" class="s14"></i>Defects caught</div>
+            <div class="value">3</div>
+            <div class="note">proven by failing tests, fixed</div>
+          </div>
+        </section>
+        <section class="box">
+          <h2>Type <span>Geist; numbers tabular</span></h2>
+          <div class="type">
+            <div><small>metric 26/600</small><span class="num" style="font-size: 26px; font-weight: 600">$11.66</span></div>
+            <div><small>title 18/600</small><span style="font-size: 18px; font-weight: 600">Retry failed webhooks</span></div>
+            <div><small>body 15/400</small><span>Hive drives each workspace to landed</span></div>
+            <div><small>small 14/500</small><span style="font-size: 14px; font-weight: 500">Merge queue · Pull request</span></div>
+            <div><small>caption 13</small><span class="muted" style="font-size: 13px">pnpm test:e2e · 4:12 of ~7 min</span></div>
+            <div><small>caps 12/500</small><span class="faint" style="font-size: 12px; font-weight: 500; letter-spacing: 0.05em">WORKSPACE · STAGE · SPEND</span></div>
+            <div><small>mono 13</small><span class="mono">fix/webhook-retry 0e44b7d</span></div>
+          </div>
+        </section>
+        
+      </div>
+    </div>
+    <script>
+      Kit.render();
+    </script>
+  </body>
+</html>
