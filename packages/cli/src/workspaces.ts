@@ -665,10 +665,12 @@ export function workspaces(
       const thread = workspace.agent
         ? await readThreadEnd(symbioteFolder(where), workspace.branch)
         : [];
-      // Blocked with nothing named: its thread tells a finished turn from a question (V18c).
+      // Idle with nothing named: its thread tells a finished turn from a question (V18c) or from
+      // an Esc. Claude Code can list a reported turn `working` with its process idle until the
+      // next turn ends (decision 810: chore/readme-remake, 819 s); its report is the evidence.
       const session = newestSession(workspace, sessions, real);
-      const ended =
-        session && isBlocked(session) && !session.waitingFor ? turnEnded(thread) : false;
+      const idle = session && (isBlocked(session) || session.status === 'idle');
+      const ended = idle && !session.waitingFor ? turnEnded(thread) : false;
       acted = workspace.agent ? (lastAction(thread) ?? workspace.agent.started) : undefined;
       agent =
         workspace.agent?.kind === 'codex'

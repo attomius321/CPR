@@ -111,7 +111,8 @@ async function until(ready: () => boolean | Promise<boolean>, what: string): Pro
  * settings file whose hook is gone); `copies` makes every resume a copy; `drowse` leaves a resumed
  * session `working` with its process `idle`, its prompt recorded, until `wake`: what the real one
  * lists for a moment after a resume (feature/hive-pull-requests, 2026-11-02), and Symbiote reads
- * as an interrupted turn.
+ * as an interrupted turn. `endTurn`'s `listed` is the state Claude Code lists once the turn ended:
+ * `blocked`, or `working` as it wrote for chore/readme-remake's turn at 18:58:33 on 2026-11-02.
  */
 function fakeClaude(symbiote: string, now: () => Date) {
   const listed: AgentSession[] = [];
@@ -204,7 +205,11 @@ function fakeClaude(symbiote: string, now: () => Date) {
   /** Ends the writer's turn: files written (committed unless `commit: false`), then its report. */
   const endTurn = async (
     worktree: string,
-    { files = {}, commit = true }: { files?: Record<string, string>; commit?: boolean } = {},
+    {
+      files = {},
+      commit = true,
+      listed = 'blocked',
+    }: { files?: Record<string, string>; commit?: boolean; listed?: 'blocked' | 'working' } = {},
   ) => {
     for (const [path, text] of Object.entries(files)) {
       mkdirSync(dirname(join(worktree, path)), { recursive: true });
@@ -216,7 +221,7 @@ function fakeClaude(symbiote: string, now: () => Date) {
     }
     const session = sessionIn(worktree);
     if (!session) throw new Error(`no session in ${worktree}`);
-    Object.assign(session, { state: 'blocked', status: 'idle' });
+    Object.assign(session, { state: listed, status: 'idle' });
     await hook(session, { hook_event_name: 'Stop', last_assistant_message: 'Done.' });
   };
   return {
@@ -2547,6 +2552,50 @@ describe('A message is not the writer asking (fix/hive-spurious-decide, decision
       decided: 1,
       message: { key: 'hive.decide', sent: true },
     });
+  });
+});
+
+describe('A report ends the turn, whatever Claude Code lists (fix/hive-turn-end-flaky-tests-verdict, decision 810)', () => {
+  it("the writer's report after Hive's message ends its turn while Claude Code lists it working and idle: the check runs", async () => {
+    const repo = repository(['false']);
+    const s = await setup(repo, { stopWaitMs: 0 });
+    await s.turn(true);
+    const worktree = await s.start('feature/listed');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'w.txt': 'w\n' } });
+    await runner.tick();
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/listed')).toMatchObject({
+      step: 'writing',
+      round: 2,
+      message: { key: 'hive.check', sent: true },
+    });
+    // Hive's message taken, no report yet: an interrupted turn waits, as decision 794 has it.
+    Object.assign(s.fake.sessionIn(worktree) ?? {}, { state: 'working', status: 'idle' });
+    expect((await s.service.summaryOf('feature/listed'))?.agent).toMatchObject({
+      state: 'needs-you',
+      interrupted: true,
+    });
+    await runner.tick();
+    await runner.idle();
+    expect(events(s.where, 'feature/listed').filter((k) => k === 'turn-ended')).toHaveLength(1);
+    // The writer commits and reports (its Stop hook); Claude Code still lists `working`, its
+    // process idle, as for chore/readme-remake from 18:58:33 to 19:12:10 on 2026-11-02.
+    await s.fake.endTurn(worktree, { files: { 'w.txt': 'w2\n' }, listed: 'working' });
+    const agent = (await s.service.summaryOf('feature/listed'))?.agent;
+    expect(agent).toMatchObject({ state: 'ready' });
+    expect(agent).not.toHaveProperty('interrupted');
+    await runner.tick();
+    await runner.idle();
+    const record = await readHive(s.where, 'feature/listed');
+    expect(record).toMatchObject({
+      step: 'writing',
+      round: 3,
+      message: { key: 'hive.check', sent: true },
+    });
+    expect(record?.checks.map((c) => c.round)).toEqual([1, 2]);
+    expect(record?.decided).toBeUndefined();
+    expect(events(s.where, 'feature/listed').filter((k) => k === 'turn-ended')).toHaveLength(2);
   });
 });
 

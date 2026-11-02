@@ -2560,6 +2560,45 @@ describe('workspaces', () => {
     });
   });
 
+  it('reads a reported turn as finished while Claude Code lists it working and idle; with no report, interrupted (decision 810)', async () => {
+    const { repo } = fresh();
+    const { claude, listed } = fakeClaude();
+    const s = await service(repo, claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    const { recordEvent } = await import('../src/thread.js');
+    const symbiote = join(repo.root, 'symbiote');
+    const cwd = workspace.worktree.path;
+    const event = (input: Record<string, unknown>, at: string) =>
+      recordEvent(symbiote, { session_id: 'session-1', cwd, ...input }, at);
+    // Claude Code wrote `working` at the turn's end, its process idle (chore/readme-remake).
+    Object.assign(listed[0] as AgentSession, { state: 'working', status: 'idle' });
+    await event(
+      { hook_event_name: 'UserPromptSubmit', prompt: 'Start' },
+      '2026-10-15T09:00:01.000Z',
+    );
+    // No report after the prompt: an Esc, as before.
+    expect((await s.list()).workspaces[0]?.agent).toMatchObject({
+      state: 'needs-you',
+      interrupted: true,
+    });
+    await event(
+      { hook_event_name: 'Stop', last_assistant_message: 'Done.' },
+      '2026-10-15T09:00:02.000Z',
+    );
+    const agent = (await s.list()).workspaces[0]?.agent;
+    expect(agent).toMatchObject({ state: 'done' });
+    expect(agent).not.toHaveProperty('interrupted');
+    // At work again (its process busy): working, whatever the thread says.
+    Object.assign(listed[0] as AgentSession, { status: 'busy' });
+    expect((await s.list()).workspaces[0]?.agent.state).toBe('working');
+    // Waiting on something named: needs you, report or not.
+    Object.assign(listed[0] as AgentSession, { status: 'idle', waitingFor: 'permission prompt' });
+    expect((await s.list()).workspaces[0]?.agent).toMatchObject({
+      state: 'needs-you',
+      waitingFor: 'permission prompt',
+    });
+  });
+
   it("lists when each agent last acted: its thread's newest report or question, else its start (V23)", async () => {
     const { repo } = fresh();
     const { claude } = fakeClaude();
