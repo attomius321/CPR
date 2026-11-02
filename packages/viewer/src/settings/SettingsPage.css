@@ -289,6 +289,20 @@ p.settings-section.settings-about {
   margin-bottom: 0;
 }
 
+/* Nucleus's own rows under its Model and Effort (NU3): one list, a hairline between. */
+.settings-rows + .settings-rows {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+/* The switch with its words beside it (NU3). */
+.settings-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* A prebuilt agent's prompts (fix/scout-merger-scribe-settings): sections of its page under its
    Model and Effort, a hairline between; the name, the chip and Reset on the first line. Suggest
    settings' page (V75c): an agent's name over its Model and Effort, each agent a section. */

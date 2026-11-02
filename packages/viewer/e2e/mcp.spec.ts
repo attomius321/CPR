@@ -1,5 +1,5 @@
 import { spawn, type ChildProcess } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type Page } from '@playwright/test';
@@ -188,4 +188,107 @@ test("an agent of the person's starts a workspace through symbiote mcp, on their
     'Started through symbiote mcp with Claude Code at its default effort.',
     POLL,
   );
+});
+
+test("Nucleus starts a workspace without the person's Confirm once they turn it on in Settings, and while Hive is on; the other tools still ask (NU3)", async ({
+  page,
+}) => {
+  const running = await serveWorkspaces();
+  symbiote = running;
+  const nucleus = client(
+    [BRIDGE, '--as', 'nucleus', '--view', record(running.cache)],
+    running.repo,
+  );
+  await nucleus.request('initialize', { clientInfo: { name: 'claude-code', version: '2' } });
+  const startDescription = async () =>
+    (
+      (await nucleus.request('tools/list')).result as {
+        tools: { name: string; description: string }[];
+      }
+    ).tools.find((t) => t.name === 'start_workspace')?.description ?? '';
+  const brief = (branch: string, title: string) => ({
+    kind: 'fix',
+    title,
+    branch,
+    parts: { happens: 'It subtracts the percent as cents' },
+    planFirst: true,
+  });
+  const setting = join(running.repo, 'symbiote', 'nucleus-start.json');
+  const toggle = () =>
+    page
+      .getByRole('region', { name: 'Starting' })
+      .getByRole('switch', { name: 'Start workspaces without a Confirm' });
+
+  // Off, as by default: the start waits for the person, as before.
+  expect(await startDescription()).toContain("Waits for the person's Confirm");
+  await page.goto(`${running.url}settings?prompt=nucleus`);
+  await expect(toggle()).not.toBeChecked();
+  await expect(toggle()).toBeEnabled();
+  const asked = nucleus.call('start_workspace', brief('fix/asked', 'Asked first'));
+  await expect(ask(page).locator('.ask-words')).toHaveText(
+    'Nucleus asks: Start fix/asked, "Asked first", with Claude Code, plan first',
+    POLL,
+  );
+  await ask(page).getByRole('button', { name: 'Confirm' }).click();
+  expect((await asked).value).toMatchObject({ workspace: { branch: 'fix/asked' } });
+  expect((await asked).value).not.toHaveProperty('withoutConfirm');
+
+  // On, in Settings: kept out of git, and Nucleus's start goes at once.
+  await toggle().click();
+  await expect(toggle()).toBeChecked();
+  await expect(page.locator('.settings-start-confirm .settings-row-note')).toContainText(
+    'Nucleus starts a workspace at once',
+  );
+  expect(JSON.parse(readFileSync(setting, 'utf8'))).toMatchObject({ on: true });
+  expect(await startDescription()).toContain("Starts at once, without the person's Confirm");
+  const started = await nucleus.call('start_workspace', brief('fix/at-once', 'At once'));
+  expect(started.isError).toBe(false);
+  expect(started.value).toMatchObject({
+    workspace: { branch: 'fix/at-once' },
+    withoutConfirm: 'setting',
+  });
+  await expect(ask(page)).toHaveCount(0);
+  await expect(page.locator('.sidenav [data-branch="fix/at-once"]')).toBeVisible(POLL);
+
+  // Every other asked tool still waits: restarting its agent is declined.
+  const restart = nucleus.call('restart_agent', { branch: 'fix/at-once' });
+  await expect(ask(page).locator('.ask-words')).toContainText(
+    "Start fix/at-once's agent again",
+    POLL,
+  );
+  await ask(page).getByRole('button', { name: 'Decline' }).click();
+  expect((await restart).text).toContain('The person declined');
+
+  // Recorded on Nucleus's Activity tab, marked as started without a Confirm.
+  await page.goto(`${running.url}nucleus?activity`);
+  await expect(
+    page.locator('.activity-group.kind-confirm', { hasText: 'Started without a Confirm' }),
+  ).toContainText(
+    'Started without a Confirm: Start fix/at-once, "At once", with Claude Code',
+    POLL,
+  );
+
+  // Turned off again: it asks.
+  await page.goto(`${running.url}settings?prompt=nucleus`);
+  await toggle().click();
+  await expect(toggle()).not.toBeChecked();
+  expect(await startDescription()).toContain("Waits for the person's Confirm");
+
+  // Hive on (its record, as Settings' switch writes it): on and fixed, the person's choice kept.
+  const hive = join(running.repo, 'symbiote', 'hive.json');
+  writeFileSync(hive, '{ "on": true }\n');
+  try {
+    expect(await startDescription()).toContain('Hive mode is on');
+    await page.reload();
+    await expect(toggle()).toBeChecked();
+    await expect(toggle()).toBeDisabled();
+    await expect(page.locator('.settings-start-confirm .settings-row-note')).toContainText(
+      'Your own choice (off) holds again when Hive is off.',
+    );
+  } finally {
+    writeFileSync(hive, '{ "on": false }\n');
+  }
+  expect(await startDescription()).toContain("Waits for the person's Confirm");
+  expect(existsSync(setting)).toBe(true);
+  expect(JSON.parse(readFileSync(setting, 'utf8'))).toEqual({ on: false });
 });

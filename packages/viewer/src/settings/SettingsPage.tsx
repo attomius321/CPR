@@ -19,6 +19,7 @@ import { setDetailsPlace, useDetailsPlace, type DetailsPlace } from '../history/
 import { startIntro } from '../intro/intro.js';
 import { LibraryPage } from './LibraryPage.js';
 import { HivePage } from './HivePage.js';
+import { StartConfirm } from './StartConfirm.js';
 import { useHive } from '../shell/hive.js';
 import {
   draftProblem,
@@ -605,6 +606,9 @@ export function SettingsPage() {
               settings={agentSettings(current.agent, alpha)}
               onSaved={() => void load()}
               onBack={back}
+              {...(current.agent === 'Nucleus'
+                ? { rows: <StartConfirm name={agentName(current.agent, alpha)} /> }
+                : {})}
             >
               {current.prompts.map((prompt) =>
                 editor(prompt, true, prompt.key === 'hive.reviewer' ? 'Instructions' : undefined),
@@ -628,6 +632,7 @@ function AgentPage({
   settings,
   onSaved,
   onBack,
+  rows,
   children,
 }: {
   /** Its name: Nucleus's, Alpha Ceph while Hive mode is on (decision 682). */
@@ -635,11 +640,14 @@ function AgentPage({
   settings: AgentSettings;
   onSaved: () => void;
   onBack: () => void;
+  /** Its own rows under the Model and Effort: Nucleus's start without a Confirm (NU3). */
+  rows?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <SettingsCard label={name} title={name} onBack={onBack}>
       <AgentRows settings={settings} onSaved={onSaved} />
+      {rows}
       {children}
     </SettingsCard>
   );
