@@ -1,5 +1,5 @@
 import type { ChangedLines, Finding, Graph, Severity } from '@symbiote/core';
-import type { Review, ReviewComment } from '@symbiote/forge';
+import type { ChangeRequest, Forge, Review, ReviewComment } from '@symbiote/forge';
 
 const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
 const ICONS: Record<Severity, string> = { error: '✖', warning: '⚠', info: 'ℹ' };
@@ -104,4 +104,40 @@ export function findingsReview(plan: FindingsPlan, { inline = true } = {}): Revi
       body: `**${ICONS[finding.severity]} ${finding.severity} · ${finding.rule}**\n\n${finding.message}\n\n${findingMarker(finding)}`,
     })),
   };
+}
+
+/** What `postGraphFindings` posted: how many, how many an earlier run had, where; why inline failed. */
+export interface PostedFindings {
+  posted: number;
+  skipped: number;
+  url?: string;
+  /** The forge refused the inline comments: everything went into the summary. */
+  inlineRefused?: string;
+}
+
+/**
+ * Posts the findings no earlier run posted, as one comment review: inline on their symbols'
+ * changed lines, the rest in the summary. If the forge refuses the inline comments (a line
+ * outside its diff), everything goes into the summary instead. `symbiote pr --post-findings`'s and
+ * Hive's request's (HV8).
+ */
+export async function postGraphFindings(
+  forge: Forge,
+  request: ChangeRequest,
+  graph: Graph,
+  lines: ChangedLines,
+  level: Severity,
+): Promise<PostedFindings> {
+  const plan = planFindings(graph, lines, level, postedMarkers(await forge.commentBodies(request)));
+  const posted = plan.inline.length + plan.summary.length;
+  const skipped = plan.skipped.length;
+  if (posted === 0) return { posted, skipped };
+  try {
+    const { url } = await forge.submitReview(request, findingsReview(plan));
+    return { posted, skipped, url };
+  } catch (error) {
+    if (plan.inline.length === 0) throw error;
+    const { url } = await forge.submitReview(request, findingsReview(plan, { inline: false }));
+    return { posted, skipped, url, inlineRefused: (error as Error).message };
+  }
 }

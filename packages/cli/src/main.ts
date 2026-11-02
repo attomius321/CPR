@@ -67,7 +67,8 @@ import { formatAnalysis } from './format.js';
 import { Histories, slowListingHint } from './history.js';
 import { gitPage } from './git-page.js';
 import { frameworkHints, loadPlugins } from './plugins.js';
-import { findingsReview, planFindings, postedMarkers } from './post-findings.js';
+import { postGraphFindings } from './post-findings.js';
+import { hiveRequests } from './hive-request.js';
 import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ChangeFiles, type ReviewTarget } from './server.js';
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
@@ -700,21 +701,20 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     });
   }
   // Pairs picked in the viewer: the same analysis options, in a child process each.
-  const diffs = new Diffs(
-    childRunner({
-      command: [process.execPath, ...process.execArgv, CLI_SCRIPT],
-      cwd: ctx.cwd,
-      env: ctx.env,
-      args: [
-        ...(values.plugin ?? []).flatMap((plugin) => ['--plugin', plugin]),
-        ...(values.project === undefined ? [] : ['--project', values.project]),
-        '--depth',
-        values.depth,
-      ],
-      stderr: ctx.stderr,
-      log: log.log,
-    }),
-  );
+  const analyzePair = childRunner({
+    command: [process.execPath, ...process.execArgv, CLI_SCRIPT],
+    cwd: ctx.cwd,
+    env: ctx.env,
+    args: [
+      ...(values.plugin ?? []).flatMap((plugin) => ['--plugin', plugin]),
+      ...(values.project === undefined ? [] : ['--project', values.project]),
+      '--depth',
+      values.depth,
+    ],
+    stderr: ctx.stderr,
+    log: log.log,
+  });
+  const diffs = new Diffs(analyzePair);
   let hinted = false;
   // VS Code, for a workspace's worktree (V29d) and the files agents print in terminals (V38).
   const openFolder = vsCodeFolder(ctx.env);
@@ -769,7 +769,17 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       confine: () => findConfinement(ctx.env),
     },
     // HV4: Hive lands what it checked and reviewed through the branch reviews and the merge queue.
-    lander: { reviews: repoReviews, merges: repoMerges },
+    lander: {
+      reviews: repoReviews,
+      merges: repoMerges,
+      // HV8: by a pull or merge request where `hive.lands` says so; its graph review analyzed as
+      // the viewer's diffs are, in a child process.
+      requests: hiveRequests(repo, {
+        env: ctx.env,
+        graphOf: (pair) =>
+          analyzePair(pair, { onPhase: () => undefined, signal: new AbortController().signal }),
+      }),
+    },
     log: log.log,
   });
   // The branches hidden from Git's graph (decision 645): the listing, its search and the status's
@@ -1527,11 +1537,7 @@ async function pr(argv: string[], ctx: CliContext): Promise<number> {
   });
 }
 
-/**
- * Posts the findings no earlier run posted, as one review: inline on their symbols' changed
- * lines, the rest in the summary. If the forge refuses the inline comments (a line outside its
- * diff), everything goes into the summary instead.
- */
+/** Posts the findings no earlier run posted (`postGraphFindings`), saying what it did. */
 async function postFindings(
   forge: Forge,
   request: ChangeRequest,
@@ -1540,24 +1546,19 @@ async function postFindings(
   level: Severity,
   ctx: CliContext,
 ): Promise<void> {
-  const plan = planFindings(graph, lines, level, postedMarkers(await forge.commentBodies(request)));
-  const count = plan.inline.length + plan.summary.length;
-  const already = plan.skipped.length > 0 ? ` (${plan.skipped.length} already posted)` : '';
-  if (count === 0) {
+  const result = await postGraphFindings(forge, request, graph, lines, level);
+  const already = result.skipped > 0 ? ` (${result.skipped} already posted)` : '';
+  if (result.posted === 0) {
     ctx.stderr(`No new findings to post${already}\n`);
     return;
   }
-  let result: { url: string };
-  try {
-    result = await forge.submitReview(request, findingsReview(plan));
-  } catch (error) {
-    if (plan.inline.length === 0) throw error;
+  if (result.inlineRefused) {
     ctx.stderr(
-      `warning: inline comments were refused (${(error as Error).message}); posting the findings in the summary\n`,
+      `warning: inline comments were refused (${result.inlineRefused}); posting the findings in the summary\n`,
     );
-    result = await forge.submitReview(request, findingsReview(plan, { inline: false }));
   }
-  ctx.stderr(`Posted ${count} finding${count === 1 ? '' : 's'}${already}: ${result.url}\n`);
+  const count = result.posted;
+  ctx.stderr(`Posted ${count} finding${count === 1 ? '' : 's'}${already}: ${result.url ?? ''}\n`);
 }
 
 /** The built viewer that ships with the CLI (`SYMBIOTE_VIEWER_DIR` overrides, e.g. for tests). */
