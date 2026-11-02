@@ -25,9 +25,9 @@ hosted.
 ### Hive mode: fully autonomous
 
 **Goals in, verified work landed.** Symbiote drives each workspace through its loops (the writer,
-the check, the running reviewer) and lands it. Later it splits a goal into a graph of workspaces,
-with Alpha Ceph orchestrating. No step waits for a person (decision 689). Every step is recorded
-and explainable, and Hive off stops everything (decision 690).
+the check, the running reviewer) and lands it. One workspace a goal: no graph of workspaces
+(decision 811). No step waits for a person (decision 689). Every step is recorded and
+explainable, and Hive off stops everything (decision 690).
 
 Tie-breakers when trading off:
 
@@ -37,8 +37,8 @@ Tie-breakers when trading off:
 - **Within limits beats faster**: Hive off, the round caps and the usage or budget cap hold.
 
 Since HV4, a Hive workspace goes from its brief to landed, and pushed, with no step that waits for
-the person (decisions 767–775). The milestones toward this North Star are HV4–HV7, in the order
-they are built (Agents, below).
+the person (decisions 767–775). HV5 and HV8 pace it and land it through a request; HV7 makes the
+loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 
 ## How the plan is kept
 
@@ -234,8 +234,7 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [Fix](plan/hv4-autonomous-landing.md#fix-a-message-is-not-the-writer-asking-fixhive-spurious-decide) | A message is not the writer asking: a writer just resumed with Hive's message or the person's, read as an interrupted turn, gets no `hive.decide` and counts nothing; the person's message counts Hive's answers again, as the rounds | ✅ | 794–795 | [journal](journal/fix-hive-spurious-decide.md) |
 | [HV8](plan/hv8-hive-pull-requests.md) | Hive lands through a pull or merge request: a per-repository setting, `hive.lands`; with `request`, Hive pushes the branch and opens a ready request with the brief, what ran and Symbiote's graph review; the person's merge on the forge lands it, closed stops, cannot merge goes to the writer; watched every 60 s; Settings says the forge and the token | ✅ | 788–793 | [journal](journal/hv8-hive-pull-requests.md) |
 | [HV5](plan/hv5-usage-pacing.md) | Usage pacing: usage read before every agent Hive starts, one gate; at or over `hive.usage.pauseAt` (90 %) every start waits until the window resets, recorded and shown; usage unknown after 15 min pauses; `hive.budget` per workspace stops it, with why; the spend in the Review tab | built | 796–803 | [journal](journal/hv5-usage-pacing.md) |
-| HV6 | Spike: a more rigorous measurement of a graph of workspaces against one agent, on large real goals (649, 691) | planned | | |
-| HV7 | The graph: Alpha Ceph splits a goal into workspaces and orchestrates them, merges in order, stalls and new plans; only if HV6 shows a gain (691, 692) | planned | | |
+| [HV7](plan/hv7-steadier-loop.md) | A steadier Hive loop, from the graph runs of 2026-11-02 (the graph and HV6 dropped: one workspace a goal): the budget sees a writer from its first turn, a check failing on flaky tests run again before it costs a round, checks at once limited, Hive off stops what the writer started, trust said before a start, no second check at landing | proposed | 811 | |
 | [AR1](plan/ar1-activity-review.md) | Spike: Symbiote's own record — 131 workspaces, Nucleus and Starknet measured; the time goes to checks and journal conflicts; seven changes ranked (a union merge for the journal, the flaky e2e tests, Hive's check messages, a failed merge sent to the agent, the record's labels, the spike line, the reviewer reading later words) | measured; its changes 1–6 built in AR2 | 735–737 | [journal](journal/ar1-activity-review.md) |
 | [AR2](plan/ar2-defaults-from-ar1.md) | The changes AR1 found: the journal merged as a union, Hive's check messages, the spike's answer kept, who sent a message in the record, a failed merge check sent to the agent, the flaky e2e tests | ✅ | 738–744 | [journal](journal/ar2-defaults-from-ar1.md) |
 | [NU8](plan/nu8-start-without-confirm.md) | A setting, off by default: Nucleus starts workspaces without the person's Confirm; on while Hive is on; every other asked tool still waits; recorded | ✅ | 782–787 | [journal](journal/nu8-start-without-confirm.md) |
