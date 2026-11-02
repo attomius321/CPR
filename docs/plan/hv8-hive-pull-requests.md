@@ -164,6 +164,12 @@ itself; cleaning up a landed workspace; requests from normal mode.
 - **Not planned, found by a test**: after the person closed a request, their message started the
   rounds again and the next landing stopped again on the same closed request. `roundsAgain` now
   leaves a closed request behind; the next landing opens a new one.
+- **One gate to the forge** (after the running reviewer's three rounds): `watchRequest` is the only
+  place that reads a request Hive waits on or fetches the start branch after its merge, at most once
+  a minute (the request's `read`, stamped first). The landing step, the watch in every other step,
+  a branch found in the start branch (`leaveTo`, `landing`) and the person's checkout in the way all
+  go through it, and it alone tells a merge on the forge from one outside the request. Only opening
+  or updating a request at a landing calls the forge outside it, once a landing round.
 - **`origin`'s forge** is read as git reaches it (`git remote get-url`, `insteadOf` expanded), else
   as written (`remote.origin.url`). Found while building the e2e: with `insteadOf` pointing
   GitHub's address at a bare repository, `get-url` returned the folder.

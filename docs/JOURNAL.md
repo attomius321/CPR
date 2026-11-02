@@ -385,3 +385,4 @@ merge commit.
 - 2026-11-02 [HV8 — Hive lands through a pull or merge request, built](journal/hv8-hive-pull-requests.md)
 - 2026-11-02 [HV8 — the running reviewer's round 1: a merge outside the request, the off question](journal/hv8-hive-pull-requests.md)
 - 2026-11-02 [HV8 — the running reviewer's round 2: a forge's merge taken for one outside it](journal/hv8-hive-pull-requests.md)
+- 2026-11-02 [HV8 — round 3: one gate to the forge](journal/hv8-hive-pull-requests.md)

@@ -82,3 +82,25 @@ and the switch's suites, 86 tests.
 **Verification**: the reviewer's test added as it was (`hive-request-merged-forge.test.ts`, for
 GitHub and GitLab: a pull after the forge's merge, two requests merged together), red before the
 fix, green after; with both runner suites, 83 tests.
+
+## HV8 — round 3: one gate to the forge (2026-11-02, branch `feature/hive-pull-requests`)
+
+The running reviewer's round 3 proved that, while the person's checkout refused the fast-forward
+after a merge on the forge, every look of the runner (about every 2 s) read the forge and fetched
+`origin`: about 1,800 reads an hour a request, not the 60 promised (791). The person asked for one
+place, not a fourth patch: each of rounds 1–3 had fixed one path to "is this request merged" and
+broken a neighbour.
+
+**Learned**:
+- **Each path asked the forge its own way.** The landing step, the watch in other steps, a merge
+  found in the start branch (`leaveTo`) and the checkout's retry each read or fetched with their
+  own rules, and only one of them looked at the interval. Now `watchRequest` is the one gate: it
+  stamps the request's `read` before it acts, and decides merged on the forge, merged outside it,
+  closed, cannot merge or still open. The others only call it. Opening or updating a request at a
+  landing is the one forge call outside it, once a landing round.
+- **A merge seen in the start branch now waits for the gate's turn**, at most a minute, before the
+  workspace lands: the forge is what tells a merge there from one outside the request.
+
+**Verification**: the reviewer's test added as it was (`hive-request-checkout.test.ts`, GitHub and
+GitLab: no forge read in ten looks within a minute, landed a minute on), red before (12 reads where
+2 were due), green after; with rounds 1 and 2's tests and the runner's suites, 88 tests.
