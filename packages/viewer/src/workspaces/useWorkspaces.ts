@@ -43,9 +43,15 @@ let timer: ReturnType<typeof setTimeout> | undefined;
 const busy = (page: PageAgentState | null) =>
   page?.conversation?.state === 'working' || page?.conversation?.state === 'needs-you';
 
+/** Hive's steps that move on their own while Hive is on (HV4): until it lands or stops. */
+const HIVE_AT_WORK = new Set(['writing', 'checking', 'reviewing', 'landing']);
+
 const live = (state: WorkspacesState) =>
   (state.list?.workspaces.some(
-    (f) => f.agent.state === 'working' || f.agent.state === 'needs-you',
+    (f) =>
+      f.agent.state === 'working' ||
+      f.agent.state === 'needs-you' ||
+      (f.hive !== undefined && !f.hive.off && HIVE_AT_WORK.has(f.hive.step)),
   ) ??
     false) ||
   busy(state.nucleus) ||
@@ -63,9 +69,9 @@ let terminalsOpen = 0;
 let closedUntil = 0;
 
 /**
- * How long until the next read: 1.5 s while a merge runs; 5 s while an agent works or waits, Nucleus
- * answers, Scribe writes, either waits on the person, a terminal is open (`open`), or the last
- * read failed (V48: until one answers); none otherwise.
+ * How long until the next read: 1.5 s while a merge runs; 5 s while an agent works or waits, Hive
+ * is at work on a workspace (HV4), Nucleus answers, Scribe writes, either waits on the person, a
+ * terminal is open (`open`), or the last read failed (V48: until one answers); none otherwise.
  */
 export function readEvery(state: WorkspacesState, open: number): number | null {
   if (merging(state)) return MERGE_POLL_MS;
