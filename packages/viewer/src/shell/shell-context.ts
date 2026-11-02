@@ -34,6 +34,11 @@ export interface Shell {
    * is left in place, so the browser's own question on leaving does not come.
    */
   setLeaveGuard: (guard: LeaveGuard | null) => void;
+  /**
+   * A workspace's Focus (V89): the sidenav as its rail while on, whatever the person's fold.
+   * The page turns it off when it goes.
+   */
+  setFocused: (focused: boolean) => void;
 }
 
 export const ShellContext = createContext<Shell | null>(null);

@@ -390,15 +390,20 @@ test('the terminal fills the main area, down to the status bar', async ({ page }
   await workspace(page, branch).getByRole('button', { name: 'Changes' }).click();
   await expect.poll(async () => (await size())[0], POLL).toBeGreaterThanOrEqual(118);
   const [, rows = 0] = await size();
-  // Most of the window. In Geist Mono at 15 px (V61) a cell is 9 x 19 px: 119 x 38 here since
-  // V79's 300 px sidenav, 59.7 % of the window; 124 x 38 and 62 % since V72 (the page frame's
+  // Most of the window. In Geist Mono at 15 px (V61) a cell is 9 x 19 px: 58.9 % of the window
+  // since V89's bar under the terminal (37 px); 119 x 38 since V79's 300 px sidenav, 59.7 %; 124 x 38 and 62 % since V72 (the page frame's
   // 16 px margins, its two-line head, the tabs' 48 px head); 127 x 40 and 67 % before; at 14 px (V32) 8 x 18, 148 x 44; 46 rows at 13 px
   // (V29b), 58 in the fallback font's 13 px lines (V29a), 41 on `main` then.
   expect(rows).toBeGreaterThanOrEqual(38);
   const box = await workspace(page, branch).locator('.xterm-screen').boundingBox();
-  expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.59);
+  expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.585);
+  // Down to the bar under it (V89), and that bar down to the status bar.
+  const under = await workspace(page, branch)
+    .getByRole('region', { name: 'Agent status' })
+    .boundingBox();
+  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan((under?.y ?? 0) - 20);
   const bar = await statusBar(page).boundingBox();
-  expect((box?.y ?? 0) + (box?.height ?? 0)).toBeGreaterThan((bar?.y ?? 0) - 40);
+  expect((under?.y ?? 0) + (under?.height ?? 0)).toBeGreaterThan((bar?.y ?? 0) - 40);
 });
 
 test('narrow: the sidenav is a drawer, closed once a workspace is picked', async ({ page }) => {

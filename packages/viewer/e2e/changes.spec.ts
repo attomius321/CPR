@@ -90,13 +90,14 @@ test("lists the branch's commits and files and what is not committed; a file ope
   const folder = symbiote.folder(BRANCH);
   expect(symbiote.opened()).toEqual([[folder, join(folder, 'half.ts')]]);
 
-  // Beside it the terminal keeps about half the window (decision 186): 44.6 % and 89 columns of
-  // 9 px since V79's 300 px sidenav; 47 % and 94 since V72 (the page frame's 16 px margins and
+  // Beside it the terminal keeps about half the window (decision 186): 42.3 % and 89 columns of
+  // 9 px since V89's bar under the terminal (37 px: what waits and its keys); 44.6 % since V79's
+  // 300 px sidenav; 47 % and 94 since V72 (the page frame's 16 px margins and
   // gutter, its two-line head); 49 % and 97 since V61 (the cards' gutters, a 264 px sidenav, its
   // 15 px type); 56 % and 110 before.
   await expect.poll(async () => (await lastSize(page)).columns, POLL).toBeGreaterThan(0);
   const box = await workspace(page).locator('.xterm-screen').boundingBox();
-  expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.44);
+  expect(((box?.width ?? 0) * (box?.height ?? 0)) / (1440 * 900)).toBeGreaterThan(0.42);
   expect((await lastSize(page)).columns).toBeGreaterThanOrEqual(88);
 });
 
@@ -215,7 +216,7 @@ test('reviews the workspace against a branch picked in its changes, or where it 
   await against.selectOption('older');
   await expect(commits.getByRole('listitem')).toHaveCount(2);
   await expect(against).toHaveValue('older');
-  await expect(workspace(page).getByText('2 commits')).toBeVisible(POLL);
+  await expect(workspace(page).locator('.head-steps')).toContainText('Commits2', POLL);
 
   // Review opens from older's fork point.
   await workspace(page).getByRole('button', { name: 'Review', exact: true }).click();

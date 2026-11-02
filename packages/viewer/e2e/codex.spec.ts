@@ -99,7 +99,7 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   const here = panel(page);
   await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
   await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
-  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveCount(0);
+  await expect(here.getByRole('tab', { name: 'Codex' })).toHaveCount(0);
   // A shell in its worktree all the same (V45): shells need no agent's session.
   await expect(here.getByRole('button', { name: 'New shell' })).toBeEnabled();
 
@@ -158,14 +158,12 @@ test('a working Codex card shows Codex’s mark: OpenAI’s blossom, in OpenAI�
   await expect(mark).toBeVisible();
   await expect(state.getByRole('img', { name: 'Claude Code' })).toHaveCount(0);
   await expect(state.locator('> :first-child')).toHaveClass(/agent-mark/);
-  // The card's and the heading's: two marks, OpenAI's blossom in OpenAI's white on the dark theme.
-  await expect(
-    panel(page).locator('.workspace-state').getByRole('img', { name: 'Codex' }),
-  ).toBeVisible();
+  // The card's: OpenAI's blossom in OpenAI's white on the dark theme. The heading shows the steps
+  // since V89, no mark.
   const fills = await page
     .locator('.agent-mark.codex')
     .evaluateAll((marks) => marks.map((svg) => getComputedStyle(svg.querySelector('path')!).fill));
-  expect(fills).toEqual(['rgb(255, 255, 255)', 'rgb(255, 255, 255)']);
+  expect(fills).toEqual(['rgb(255, 255, 255)']);
 
   // It reports with a commit: ready for review, no mark.
   symbiote.commit(BRANCH, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');

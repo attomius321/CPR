@@ -169,6 +169,40 @@ test("the shell's pages: the whole main area, one head, cards 12 px from its edg
   await expectPage(page, 'History', 'workspace-history', ['.history-list', '.history-workspace']);
 });
 
+// V89 (decisions 823, 830, 831): the terminal view, with the steps in its head and the bar under
+// its terminal, in Split and in Focus: the same frame, the tabs on the card's head.
+test("a workspace's terminal view, in Split and in Focus: the same frame", async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}git`);
+  await page.evaluate(async () => {
+    const response = await fetch('/api/workspaces', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      body: JSON.stringify({
+        kind: 'feature',
+        title: 'Frame',
+        parts: { goal: 'Frame.' },
+        branch: 'feature/frame',
+        planFirst: false,
+      }),
+    });
+    if (!response.ok) throw new Error(await response.text());
+  });
+  const at = '?branch=feature%2Fframe';
+  await expectPage(page, 'The terminal view', at, ['.workspace-main', '.changes']);
+  const tabs = await head(page, '.workspace-main', '.workspace-views', 'text');
+  expect.soft(tabs?.height, "The terminal view: its tabs' height").toBe(HEAD);
+  await page.getByRole('button', { name: 'Split' }).click();
+  await expect(page.locator('.term-pane')).toHaveCount(2, POLL);
+  await expectPage(page, 'Split', page.url().slice(symbiote.url.length), [
+    '.workspace-main',
+    '.changes',
+  ]);
+  await page.getByRole('button', { name: 'Split' }).click();
+  await page.getByRole('button', { name: 'Focus' }).click();
+  await expectPage(page, 'Focus', at, ['.workspace-main']);
+});
+
 test("a workspace, its review's two views and its merge: the same frame", async ({ page }) => {
   symbiote = await serveWorkspaces({ terminal: false });
   await page.goto(`${symbiote.url}start`);

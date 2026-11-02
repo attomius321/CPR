@@ -98,3 +98,40 @@ for (const size of ['default', 'compact', 'large'] as const) {
     await expectTargets(page, "A workspace's review, Graph");
   });
 }
+
+// V89: the terminal view's new parts (the session tabs, Split, Focus, the bar under the terminal,
+// a pane's head), with terminals, at the default and the large text.
+for (const size of ['default', 'large'] as const) {
+  test(`the terminal view's targets are 24 px or spaced, the text ${size}`, async ({ page }) => {
+    symbiote = await serveWorkspaces();
+    await page.addInitScript((size) => {
+      try {
+        localStorage.setItem('symbiote.viewer.text-size', size);
+      } catch {
+        // The default.
+      }
+    }, size);
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${symbiote.url}git`);
+    await page.evaluate(async () => {
+      const response = await fetch('/api/workspaces', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+        body: JSON.stringify({
+          kind: 'feature',
+          title: 'Targets',
+          parts: { goal: 'Targets.' },
+          branch: 'feature/targets',
+          planFirst: false,
+        }),
+      });
+      if (!response.ok) throw new Error(await response.text());
+    });
+    await visit(page, 'The terminal view', '?branch=feature%2Ftargets', '.agent-terminal');
+    await page.getByRole('button', { name: 'Split' }).click();
+    await expect(page.locator('.term-pane-head')).toHaveCount(2, POLL);
+    await expectTargets(page, 'Split');
+    await page.getByRole('button', { name: 'Focus' }).click();
+    await expectTargets(page, 'Split in Focus');
+  });
+}

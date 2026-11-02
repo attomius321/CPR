@@ -103,7 +103,7 @@ and accept its trust prompt.
 4. Click **Start workspace**. Symbiote creates a branch and a folder for it, starts the agent there,
    and opens the workspace.
 5. Wait for the plan. The workspace moves to **Waiting for you**. Read the plan in the **Thread**
-   tab, then answer in the **Terminal** tab: "OK", or what to change.
+   tab, then click **Approve plan**, or write what to change and click **Send reply**.
 6. When the agent has finished, the workspace moves to **To review**. Click **Review**, read the
    changes, and in the **Review** tab pick **Approve** and click **Finish review**.
 7. Click **Merge into**. Symbiote merges the commit you approved into the branch the workspace
@@ -225,18 +225,31 @@ violet dot, and on desktops that support it the taskbar button blinks.
 
 ### Work with the agent
 
-Click a workspace to open it. Its page has four tabs:
+Click a workspace to open it. Its head shows the workspace's *steps* on one line: **Build**,
+**Review** and **Merge**, after **Plan** and **Your OK** when **Plan first** is on. The current
+step is amber while the agent works and violet when it waits for you. Then come the commits and
+the changed files. In Hive mode, the steps are **Write**, **Check**, **Review** and **Land**, with
+the round, the time and what it spent.
 
-- **Terminal**: the agent's own terminal. Answer its questions and permission prompts here, as you
-  would in your own terminal. To give it an image, paste it or use **Attach images**.
-- **Thread**: the agent's plans and reports, and your messages.
+Under the head, the tabs:
+
+- The agent's own terminal, named after the agent (**Claude Code**, **Codex** or **Hermes**), with
+  a violet dot when it waits for you and an amber one while it works. Answer its questions and
+  permission prompts here, as you would in your own terminal. To give it an image, paste it or use
+  **Attach images**.
+- **Thread**: the agent's plans and reports, and your messages. When a plan waits for your OK,
+  **Approve plan** types the OK into the agent's terminal and sends it. **Send reply** does the
+  same with what you wrote.
 - **Activity**: what the agent did, as a timeline of phases such as exploring, implementing, testing
   and debugging. Click a phase to see each command and its output. **Export** saves it as one
   Markdown file, for you or another agent to read.
 - **Brief**: what the agent was asked: the *brief*, written from your answers on the Start page.
 
-The **+** after the tabs opens a shell in the workspace's folder. The **Changes** panel on the right
-lists the branch's commits and changed files.
+The **+** after the tabs opens a shell in the workspace's folder. A shell's tab names the program
+running in it. The bar under the terminal says what the agent waits for, in its own words, and the
+keys that answer it. **Split** shows the agent and a shell side by side. **Focus** keeps the
+terminal alone: the sidenav as a row of icons and no side card. The side card on the right shows
+what the agent does now, the files it has not committed yet, and the branch's commits and files.
 
 ![A workspace waiting for you: its agent's plan in the Thread tab, a Respond button in the amber band above it, and the sidenav grouping the other workspaces by what they need](docs/images/workspace.png)
 

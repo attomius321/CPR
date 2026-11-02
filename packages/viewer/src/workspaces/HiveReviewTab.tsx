@@ -328,11 +328,20 @@ function ReviewRow({ branch, review }: { branch: string; review: HiveReview }) {
   );
 }
 
-/** The Review tab of a workspace Hive drives: its landings, then its rounds, newest first. */
-export function HiveReviewTab({ branch, version }: { branch: string; version: unknown }) {
+/**
+ * What Hive did with a workspace (`/api/workspaces/hive`), read with every read of the list; the
+ * last answer stays while the next is read. The page reads it once (V89) for its head's spend and
+ * this tab; `on` false reads nothing (not a Hive workspace).
+ */
+export function useHiveDetail(
+  branch: string,
+  version: unknown,
+  on: boolean,
+): { detail: WorkspaceHiveDetail | null; error: string | null } {
   const [detail, setDetail] = useState<WorkspaceHiveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
+    if (!on) return;
     let live = true;
     getJson<WorkspaceHiveDetail>(`/api/workspaces/hive?branch=${enc(branch)}`)
       .then((read) => {
@@ -344,8 +353,20 @@ export function HiveReviewTab({ branch, version }: { branch: string; version: un
     return () => {
       live = false;
     };
-  }, [branch, version]);
+  }, [branch, version, on]);
+  return { detail, error };
+}
 
+/** The Review tab of a workspace Hive drives: its landings, then its rounds, newest first. */
+export function HiveReviewTab({
+  branch,
+  detail,
+  error,
+}: {
+  branch: string;
+  detail: WorkspaceHiveDetail | null;
+  error: string | null;
+}) {
   if (error) {
     return (
       <div className="hive-review">

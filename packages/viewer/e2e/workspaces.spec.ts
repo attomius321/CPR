@@ -351,13 +351,13 @@ test('the agents that wait for you: first, what each asks, Respond, the count in
   await page.goto(`${symbiote.url}git`);
   await waiting.locator(workspaceRow(page, tests)).getByRole('button', { name: 'Respond' }).click();
   await expect(panel(page, tests)).toBeVisible();
-  await expect(page.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: 'Claude Code' })).toHaveAttribute(
     'aria-selected',
     'true',
   );
   await expect(terminal(page, tests).locator('.xterm-helper-textarea')).toBeFocused(POLL);
-  // Its heading's strip says it too, with Respond there.
-  const strip = panel(page, tests).getByRole('region', { name: 'Waiting for you' });
+  // The bar under its terminal says it too (V89, decision 828), with the next one there.
+  const strip = panel(page, tests).getByRole('region', { name: 'Agent status' });
   await expect(strip).toContainText('Permission to run pnpm test -- --run src/half');
 
   // A second asks a question: two, the next one a click away.
@@ -373,7 +373,7 @@ test('the agents that wait for you: first, what each asks, Respond, the count in
   await expect(page).toHaveTitle(/^\(2\) /);
   await strip.getByRole('button', { name: 'Next waiting (1)' }).click();
   await expect(panel(page, store)).toBeVisible();
-  await expect(panel(page, store).getByRole('region', { name: 'Waiting for you' })).toContainText(
+  await expect(panel(page, store).getByRole('region', { name: 'Agent status' })).toContainText(
     'Asks: Which store? — Redis · SQLite',
   );
 
@@ -448,8 +448,8 @@ test('a working agent says what it runs, from its tools, and since when; thinkin
     'Running pnpm test -- --run src/half',
     POLL,
   );
-  // Since its prompt: under a minute, in its heading.
-  await expect(panel(page, branch).locator('.state-for')).toHaveText(/under a minute/);
+  // Since its prompt, in its heading's steps (V89): working, and the time.
+  await expect(panel(page, branch).locator('.head-steps')).toContainText(/working \d+:\d\d/);
   tool('PostToolUse', 't1');
   await expect(row.locator('.workspace-state strong')).toHaveText('Thinking', POLL);
 });
@@ -487,9 +487,9 @@ test('a working card names its agent by its mark, in its colour, before what it 
   await expect(state.locator('> :first-child')).toHaveClass(/agent-mark/);
   expect(await mark.evaluate((svg) => getComputedStyle(svg).fill)).toBe('rgb(217, 119, 87)');
   expect(await mark.boundingBox()).toMatchObject({ width: 14, height: 14 });
-  // Its heading's line too.
+  // Its page names it on its terminal's tab (V89, decision 827): the head shows the steps.
   await expect(
-    panel(page, branch).locator('.workspace-state').getByRole('img', { name: 'Claude Code' }),
+    panel(page, branch).getByRole('tab', { name: 'Claude Code', exact: true }),
   ).toBeVisible();
 
   // Finished with a commit: what is next is Symbiote's to say, not the agent's doing.
@@ -559,10 +559,9 @@ test('the head and every card say what its agent runs on: as it started, then as
   await expect(chip).toHaveText(/^Default model · /);
   await expect(line).toHaveText(/^Default model · /);
   await expectTip(page, chip, 'What it runs on shows once it answers');
-  // In the head after its kind; on the card a row of its own, after the facts, before the branch.
-  await expect(
-    panel(page, branch).locator('.workspace-top .page-name-line .kind-tag + .runs-on'),
-  ).toBeVisible();
+  // In the head's line, after where it started (V89); on the card a row of its own, after the
+  // facts, before the branch.
+  await expect(panel(page, branch).locator('.workspace-top .page-line .runs-on')).toBeVisible();
   const [meta, runs, ref] = await Promise.all(
     [row.locator('.workspace-meta'), line, row.locator('.workspace-branch')].map((part) =>
       part.boundingBox(),
@@ -715,7 +714,9 @@ test('Stop the agent says it stops until Symbiote answers (V48)', async ({ page 
   });
   await here.getByRole('button', { name: 'Stop the agent' }).click();
   await expect(here.getByRole('button', { name: 'Stopping…' })).toBeDisabled();
-  await expect(here.locator('.workspace-top')).toContainText('Stopped', POLL);
+  // The head's steps say it (V89), and the bar under the terminal.
+  await expect(here.locator('.head-steps')).toContainText('stopped', POLL);
+  await expect(here.getByRole('region', { name: 'Agent status' })).toContainText('Stopped');
 });
 
 test('a workspace and its branch lead to each other', async ({ page }) => {
@@ -1382,13 +1383,13 @@ test("the agent's session in a terminal in its panel: keys, the thread, hang-up,
   await expect(here.getByRole('button', { name: 'Talk' })).toHaveCount(0);
   // The panel opens on its terminal: how to talk to it now, with no box.
   await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
-  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+  await expect(here.getByRole('tab', { name: 'Claude Code' })).toHaveAttribute(
     'aria-selected',
     'true',
   );
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
   await expect(box(page, branch)).toBeHidden();
-  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+  await expect(here.getByRole('tab', { name: 'Claude Code' })).toHaveAttribute(
     'data-tip',
     /← in an empty prompt lists all your agents/,
   );
@@ -1732,7 +1733,7 @@ test("a workspace's shells: each its own, kept across tabs and a reload, closed 
   const here = panel(page, branch);
   await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
   // The agent's tabs as they were, the shells after them.
-  await expect(here.getByRole('tab')).toHaveText(['Terminal', 'Thread', 'Activity', 'Brief']);
+  await expect(here.getByRole('tab')).toHaveText(['Claude Code', 'Thread', 'Activity', 'Brief']);
   await here.getByRole('button', { name: 'New shell' }).click();
   await expect(shellTab(page, branch, 1)).toHaveAttribute('aria-selected', 'true');
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function&shell=1`);
@@ -1750,7 +1751,7 @@ test("a workspace's shells: each its own, kept across tabs and a reload, closed 
   await typeLine(page, 'echo two-$((2+2))');
   await expect(screen(page, branch)).toContainText('two-4');
   await expect(here.getByRole('tab')).toHaveText([
-    'Terminal',
+    'Claude Code',
     'Thread',
     'Activity',
     'Brief',
@@ -1765,7 +1766,7 @@ test("a workspace's shells: each its own, kept across tabs and a reload, closed 
   await typeLine(page, NAP);
   await expect.poll(sleeps).toBe(1);
   await here.getByRole('tab', { name: 'Thread' }).click();
-  await here.getByRole('tab', { name: 'Terminal' }).click();
+  await here.getByRole('tab', { name: 'Claude Code' }).click();
   await expect(screen(page, branch)).toContainText('Fake Claude Code · fake0', POLL);
   await shellTab(page, branch, 1).click();
   await page.reload();
@@ -1790,7 +1791,7 @@ test("a workspace's shells: each its own, kept across tabs and a reload, closed 
   // `exit` closes its tab; with no shell left, the agent's terminal shows.
   await typeLine(page, 'exit');
   await expect(shellTab(page, branch, 2)).toHaveCount(0, POLL);
-  await expect(here.getByRole('tab', { name: 'Terminal' })).toHaveAttribute(
+  await expect(here.getByRole('tab', { name: 'Claude Code' })).toHaveAttribute(
     'aria-selected',
     'true',
   );
@@ -1855,7 +1856,7 @@ test("an agent's report is drawn as Markdown; HTML in it, and your messages, sta
   await expect(report).not.toContainText('**');
   // Your messages are shown as you typed them. Sent once the list says the turn ended: before
   // that, sending would stop a working agent, and asks first.
-  await expect(here).toContainText('Plan ready', POLL);
+  await expect(here).toContainText('The plan waits for your OK', POLL);
   await box(page, branch).fill('Keep **this** as typed.');
   await box(page, branch).press('Control+Enter');
   await expect(here.locator('.thread-you').last()).toContainText('Keep **this** as typed.', POLL);

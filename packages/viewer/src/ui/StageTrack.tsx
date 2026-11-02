@@ -13,9 +13,10 @@ const list = (words: readonly string[]) =>
 
 /**
  * The stage track (V88, decision 818; the kits' `.track`): a workspace's steps as hexagons on a
- * line, those before `at` done (green, joined in green), the one at `at` in progress (amber) or
- * failed (`state: 'bad'`, red), the rest to come; `at` past the last, all done. Its words are its
- * accessible name (`ui/status.css`). Placed by the pages' own redesigns.
+ * line, those before `at` done (green, joined in green), the one at `at` in progress (amber),
+ * the person's (`state: 'you'`, violet; V89, decision 826) or failed (`state: 'bad'`, red), the
+ * rest to come; `at` past the last, all done. Its words are its accessible name
+ * (`ui/status.css`). A workspace's head places it (V89, `workspaces/HeadSteps.tsx`).
  */
 export function StageTrack({
   steps,
@@ -24,7 +25,7 @@ export function StageTrack({
 }: {
   steps: readonly string[];
   at: number;
-  state?: 'now' | 'bad';
+  state?: 'now' | 'you' | 'bad';
 }) {
   const mark = (i: number) => (i < at ? 'done' : i === at ? state : 'todo');
   const done = steps.slice(0, Math.min(at, steps.length));
@@ -35,7 +36,7 @@ export function StageTrack({
       ? `${list(done)} done`
       : [
           done.length > 0 && `${list(done)} done`,
-          `${current} ${state === 'bad' ? 'failed' : 'now'}`,
+          `${current} ${state === 'bad' ? 'failed' : state === 'you' ? 'waits for you' : 'now'}`,
           later.length > 0 && `${list(later)} to come`,
         ]
           .filter(Boolean)

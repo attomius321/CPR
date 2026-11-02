@@ -124,3 +124,42 @@ test("Nucleus's terminal fits its card at every height: its last row whole", asy
   await expect(terminal.locator('.xterm-rows')).toContainText('Fake Claude Code', POLL);
   await sweep(page, terminal);
 });
+
+// V89 (decision 831): in Split each terminal fits its own pane, the agent's and the shell's, at
+// every height; the agent is told the rows its pane holds.
+test('in Split, the agent and a shell each fit their own pane at every height', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto(`${symbiote.url}git`);
+  await page.evaluate(async () => {
+    const response = await fetch('/api/workspaces', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      body: JSON.stringify({
+        kind: 'feature',
+        title: 'Split',
+        parts: { goal: 'Split.' },
+        branch: 'feature/split',
+        planFirst: false,
+      }),
+    });
+    if (!response.ok) throw new Error(await response.text());
+  });
+  await page.goto(`${symbiote.url}?branch=feature%2Fsplit`);
+  const workspace = page.getByRole('region', { name: 'Workspace feature/split' });
+  await workspace.getByRole('button', { name: 'Split' }).click();
+  const panes = workspace.locator('.term-pane');
+  await expect(panes).toHaveCount(2, POLL);
+  const agent = panes.nth(0).locator('.agent-terminal');
+  const shell = panes.nth(1).locator('.agent-terminal');
+  await expect(agent.locator('.xterm-rows')).toContainText('Fake Claude Code', POLL);
+  await expect(shell.locator('.xterm-rows')).toContainText('$', POLL);
+  await sweep(page, agent, async (at) => {
+    const { past, sizes } = await fitOf(shell);
+    expect.soft(sizes, `${at}: the shell, one size`).toHaveLength(1);
+    expect.soft(past.bottom, `${at}: the shell's rows inside its pane`).toBeLessThanOrEqual(0.5);
+    expect.soft(past.right, `${at}: the shell's columns inside its pane`).toBeLessThanOrEqual(0.5);
+  });
+});

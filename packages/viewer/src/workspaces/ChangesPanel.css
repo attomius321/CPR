@@ -1,7 +1,8 @@
 /* ---- a workspace's changes (V29d) ---------------------------------------------------------- */
 
 /* 256 px at the right of the terminal, where the workspace's area is at least 1,200 px wide: at
-   1440 with the sidenav the terminal keeps 56 % of the window (decision 186). */
+   1440 with the sidenav the terminal keeps 56 % of the window (decision 186). The redesign draws
+   it at 300 px; V89 keeps 256, the terminal first. */
 .changes {
   flex: none;
   /* As wide as the person dragged it (V34), the terminal keeping 480 px; past the cards' margins
@@ -205,4 +206,57 @@ button.changes-file:hover {
   background-position: right 6px center;
   font-size: var(--size-caption);
   text-overflow: ellipsis;
+}
+
+/* The side card's first section (V89, decision 832): what the agent does now and since when, and
+   what runs in its shells; a name at the left, its value at the right. */
+.changes-facts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px 12px;
+  margin: 4px 0 4px;
+  padding: 0 var(--card-pad);
+}
+
+.changes-facts dt {
+  color: var(--muted);
+}
+
+.changes-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.changes-facts dd.mono {
+  font-family: var(--mono);
+}
+
+.changes-facts dd[data-tone='you'] {
+  color: var(--you);
+}
+
+.changes-facts dd[data-tone='run'] {
+  color: var(--run);
+}
+
+.changes-facts dd[data-tone='error'] {
+  color: var(--error);
+}
+
+/* The file the agent edits now: a dot in the agent's amber before its name. */
+.changes-list li.editing .changes-name::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--run);
+  vertical-align: middle;
 }

@@ -37,10 +37,13 @@ const timeOf = (at: string) =>
 export function ThreadTab({
   thread,
   worktree,
+  plan = false,
   unrecorded = "Symbiote keeps an agent's messages from V18c on: Talk shows this one's.",
 }: {
   thread: WorkspaceThread | null;
   worktree: string;
+  /** A plan waits for the person's OK (V89): its report, the last, typeset as a document. */
+  plan?: boolean;
   /** What is said when Symbiote kept none of its messages (History's own words, V77). */
   unrecorded?: string;
 }) {
@@ -60,7 +63,7 @@ export function ThreadTab({
       )}
       {items.length > 0 && (
         <ol ref={list} className="thread">
-          {items.map((item, i) => {
+          {items.map((item, i, all) => {
             const key = `${i}:${item.at}`;
             if (item.who === 'line' || item.who === 'waits') {
               return (
@@ -82,8 +85,16 @@ export function ThreadTab({
                 </li>
               );
             }
+            // The plan: the newest of the agent's reports, while it waits for the person's OK.
+            const isPlan =
+              plan &&
+              item.who === 'agent' &&
+              !all.slice(i + 1).some((later) => later.who === 'agent');
             return (
-              <li key={key} className={`thread-item thread-${item.who}`}>
+              <li
+                key={key}
+                className={`thread-item thread-${item.who}${isPlan ? ' thread-plan' : ''}`}
+              >
                 <div className="thread-who">
                   {item.who === 'agent' ? 'Agent' : (item.label ?? 'You')} ·{' '}
                   <time dateTime={item.at}>{timeOf(item.at)}</time>

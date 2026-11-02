@@ -3,6 +3,41 @@ import { keyIsTaken } from '../ui/keys.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 
 const CHANGES_KEY = 'symbiote.viewer.changes';
+const FOCUS_KEY = 'symbiote.viewer.focus';
+
+/** Whether the person turned a workspace's Focus on (V89, decision 830), kept in this browser. */
+function loadFocus(): boolean {
+  try {
+    return window.localStorage.getItem(FOCUS_KEY) === 'on';
+  } catch {
+    return false;
+  }
+}
+
+function saveFocus(on: boolean): void {
+  try {
+    window.localStorage.setItem(FOCUS_KEY, on ? 'on' : 'off');
+  } catch {
+    // Storage blocked: the choice lasts until the page closes.
+  }
+}
+
+/**
+ * A workspace's Focus (V89, decision 830): the terminal with the sidenav as its rail and no side
+ * card; remembered in this browser, as the sidenav's fold is, for every workspace.
+ */
+export function useFocus(): [boolean, () => void] {
+  const [focus, setFocus] = useState(loadFocus);
+  const toggle = useCallback(
+    () =>
+      setFocus((on) => {
+        saveFocus(!on);
+        return !on;
+      }),
+    [],
+  );
+  return [focus, toggle];
+}
 
 /** Whether the person hid the changes panel (V29d), kept in this browser; shown by default. */
 function loadChangesShown(): boolean {

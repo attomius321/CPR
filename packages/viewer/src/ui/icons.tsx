@@ -705,6 +705,14 @@ export const ExpandIcon = () => (
   </Icon>
 );
 
+/** Split (V89): the agent and a shell side by side; lucide's columns-2. */
+export const SplitIcon = () => (
+  <Icon lucide>
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <path d="M12 3v18" />
+  </Icon>
+);
+
 /** Back from over the main area (V64): lucide's minimize-2. */
 export const CollapseIcon = () => (
   <Icon lucide>

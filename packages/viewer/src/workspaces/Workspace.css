@@ -176,116 +176,134 @@
   font-size: var(--size-body);
 }
 
-/* V21: the workspace's agent session in a terminal, beside its thread. */
-/* Terminal, Thread, Brief: views of one thing, line tabs on the card's chrome (V61, the person's
-   mockup): the picked one in the text's colour on a lifted ground, the primary's line under it. */
-/* The tabs, the main card's head (V72): `--card-head` high with its hairline, the tabs on it, the
-   first tab's words `--card-pad` in (a tab is 14 px wider than its words each side). */
+/* The session tabs (V21, V45; named since V89, decision 827, term.css's `.stabs`): the agent's
+   terminal by its agent's name with a dot for its state, its views, then its shells with what
+   runs in them; the main card's head (V72), `--card-head` high with its hairline. The tabs scroll
+   sideways when many; attaching images, Split and Focus stay at the strip's end. */
 .workspace-views {
-  gap: 2px;
-  padding: 4px calc(var(--card-pad) - 10px) 0;
+  gap: 4px;
+  padding: 0 calc(var(--card-pad) - 10px);
   background: var(--panel);
 }
 
-.workspace-views button {
-  height: var(--height-tab);
-  padding: 0 10px;
-  border: 0;
-  border-radius: 8px 8px 0 0;
-  background: none;
-  color: var(--muted);
-  font-size: var(--size-body);
-  font-weight: 500;
-  cursor: pointer;
-  transition:
-    background-color 150ms,
-    color 150ms;
-}
-
-.workspace-views button:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.workspace-views button.selected {
-  position: relative;
-  background: var(--tab-picked);
-  color: var(--text);
-}
-
-.workspace-views button.selected::after {
-  content: '';
-  position: absolute;
-  right: 10px;
-  bottom: 0;
-  left: 10px;
-  height: 3px;
-  border-radius: 4px 4px 0 0;
-  background: var(--primary);
-}
-
-/* V45: the shells' tabs after the agent's, a hairline between, + at the end. Many scroll the
-   strip sideways rather than wrap it. */
-.workspace-views {
-  align-items: center;
+.workspace-tabs {
+  flex: 1;
   min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
   overflow-x: auto;
   scrollbar-width: none;
   /* The picked tab scrolls into sight clear of the + over the strip's end. */
   scroll-padding-inline-end: 36px;
 }
 
-.workspace-views > * {
+.workspace-tabs > * {
   flex: none;
 }
 
+.workspace-tabs .stab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 150ms;
+}
+
+.workspace-tabs .stab .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.workspace-tabs .stab:hover,
+.workspace-tabs .stab.selected {
+  color: var(--text);
+}
+
+/* The picked tab's line, in the identity's colour (V88). Two are picked in Split. */
+.workspace-tabs .stab.selected::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  bottom: -1px;
+  left: 8px;
+  height: 3px;
+  border-radius: 4px 4px 0 0;
+  background: var(--primary);
+}
+
+/* What runs in it, after its name: the writer's agent, a shell's foreground program. */
+.stab-what {
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: var(--size-caps);
+  font-weight: 400;
+}
+
+/* Its state (decision 813): violet the person's turn, amber the agent's, green a program runs. */
+.stab-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+
+.stab-dot[data-state='you'] {
+  background: var(--you);
+}
+
+.stab-dot[data-state='run'] {
+  background: var(--run);
+}
+
 .views-divider {
+  align-self: center;
   width: 1px;
   height: 16px;
   margin: 0 6px;
-  background: var(--line);
+  background: var(--line-2);
 }
 
-/* A shell's tab: its × inside the tab's right padding, shown on hover, focus and when picked
-   (its place kept, so nothing moves). */
+/* A shell's tab: its × after its words, faint until hovered or picked (term.css's `.stab .x`). */
 .shell-tab {
   position: relative;
   display: flex;
 }
 
-.workspace-views .shell-tab > [role='tab'] {
+.workspace-tabs .shell-tab > .stab {
   padding-right: 32px;
 }
 
-.shell-tab:hover > [role='tab'] {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.shell-tab:hover > [role='tab'].selected {
-  background: var(--tab-picked);
-}
-
-.workspace-views .shell-close {
+.workspace-tabs .shell-close {
   position: absolute;
-  top: 10px;
-  right: 6px;
-  width: 20px;
-  height: 20px;
+  top: 50%;
+  right: 4px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border-radius: 4px;
-  opacity: 0;
+  color: var(--muted);
+  transform: translateY(-50%);
 }
 
-.workspace-views .shell-close .icon {
+.workspace-tabs .shell-close .icon {
   width: 12px;
   height: 12px;
 }
 
 .shell-tab:hover > .shell-close,
-.shell-tab > [role='tab'].selected + .shell-close,
-.workspace-views .shell-close:focus-visible {
-  opacity: 1;
+.shell-tab > .stab.selected + .shell-close {
+  color: var(--text);
 }
 
 /* + stays at the strip's end when the tabs scroll under it. */
@@ -293,21 +311,34 @@
   position: sticky;
   right: 0;
   display: flex;
+  align-items: center;
   padding-left: 4px;
   background: var(--panel);
 }
 
-.workspace-views .shell-new {
-  width: var(--height-control);
-  height: var(--height-control);
+.workspace-tabs .shell-new {
+  width: var(--height-row);
+  height: var(--height-row);
   padding: 0;
   border-radius: 8px;
 }
 
-.workspace-views .shell-new:disabled {
+.workspace-tabs .shell-new:disabled {
   background: none;
   color: var(--faint);
   cursor: default;
+}
+
+.workspace-views-end {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.workspace-views-end .icon-button[aria-pressed='true'] {
+  background: var(--selected);
+  color: var(--accent);
 }
 
 /* The tab's content takes the rest of the main area's height (V29a). */
@@ -440,10 +471,6 @@
   font-size: var(--size-small);
 }
 
-.workspace-state-line > .workspace-ref {
-  flex: 0 3 auto;
-}
-
 .workspace-state-line > .state-dot {
   flex: none;
 }
@@ -510,47 +537,335 @@
   max-width: 240px;
 }
 
-/* The strip under the heading (V48): a waiting agent's question and its answer, or a failure
-   and where to read it, in its state's tint; a card of its own since V61, its edge in the tone. */
-.workspace-strip {
+/* The steps in the head (V89, decision 823; term.css's `.steps-inline`): the track, the step's
+   word in its state's colour and what it waits on, then the figures; one line. */
+.head-steps {
+  flex: none;
   display: flex;
   align-items: center;
-  gap: 12px;
-  min-height: var(--card-head);
-  margin: 0 var(--page-pad) var(--page-gap);
-  padding: 7px 8px 7px var(--card-pad);
-  border: 1px solid color-mix(in srgb, var(--strip-tone) 30%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--strip-tone) 8%, var(--bg));
-}
-
-.strip-waiting {
-  --strip-tone: var(--you);
-}
-
-.strip-failed {
-  --strip-tone: var(--error);
-}
-
-.workspace-strip > .icon {
-  flex: none;
-  color: var(--strip-tone);
-}
-
-.workspace-strip-text {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
-  overflow: hidden;
+  gap: 10px;
+  height: var(--height-tab);
+  padding: 0 12px 0 10px;
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line);
   color: var(--text);
-  font-size: var(--size-body);
-  text-overflow: ellipsis;
+  font-size: var(--size-small);
   white-space: nowrap;
 }
 
-.workspace-strip .button.secondary,
-.workspace-strip .button.ghost {
+.head-steps-word {
+  font-weight: 500;
+  color: var(--step-tone, var(--text));
+}
+
+.head-steps[data-tone='run'] {
+  --step-tone: var(--run);
+}
+
+.head-steps[data-tone='you'] {
+  --step-tone: var(--you);
+}
+
+.head-steps[data-tone='error'] {
+  --step-tone: var(--error);
+}
+
+.head-steps[data-tone='ok'] {
+  --step-tone: var(--ok);
+}
+
+.head-steps[data-tone='info'] {
+  --step-tone: var(--info);
+}
+
+.head-steps[data-tone='idle'] {
+  --step-tone: var(--muted);
+}
+
+.head-steps-k {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.head-steps b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.head-steps-sep {
+  width: 1px;
+  height: 16px;
+  background: var(--line-2);
+}
+
+.head-steps-spend {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Where the main area is narrow, the figures give way: the steps and the word stay. */
+@container workspace (max-width: 1100px) {
+  .head-steps-sep,
+  .head-steps-sep ~ * {
+    display: none;
+  }
+}
+
+/* The line under the title: the branch, where it started, when, and what runs it. */
+.workspace-from,
+.workspace-since {
   flex: none;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.workspace-from .mono {
+  font-family: var(--mono);
+}
+
+/* The branch kept whole as long as it can be: what runs it takes only the room left (flex
+   shrinks in proportion, so a factor cannot make it give way first), then the branch gives way. */
+.workspace-state-line > .workspace-ref {
+  flex: 0 1 auto;
+}
+
+/* What runs it, plain on the line as the proofs write it: no chip, the line stays its height. */
+.workspace-state-line > .runs-on {
+  flex: 1 1 0;
+  min-width: 0;
+  height: auto;
+  padding: 0;
+  background: none;
+  font: inherit;
+}
+
+.workspace-state-line > * + *::before {
+  content: '·';
+  margin-right: 8px;
+  color: var(--muted);
+}
+
+.workspace-state-line > .runs-on::before {
+  content: none;
+}
+
+/* The bar under the terminal (V89, decisions 828, 829; replaces V48's strip; term.css's
+   `.tty-bar`): what waits, in the agent's words, tinted the person's violet, and the keys that
+   answer it; or what the agent does, or who drives. */
+.term-bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--height-bar);
+  padding: 0 8px 0 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--size-small);
+  white-space: nowrap;
+}
+
+.term-bar[data-tone='you'] {
+  --bar-tone: var(--you);
+  background: color-mix(in srgb, var(--you) 9%, var(--panel));
+}
+
+.term-bar[data-tone='run'] {
+  --bar-tone: var(--run);
+}
+
+.term-bar[data-tone='error'] {
+  --bar-tone: var(--error);
+  background: color-mix(in srgb, var(--error) 7%, var(--panel));
+}
+
+.term-bar[data-tone='ok'] {
+  --bar-tone: var(--ok);
+}
+
+.term-bar[data-tone='info'] {
+  --bar-tone: var(--info);
+}
+
+.term-bar[data-tone='hive'] {
+  --bar-tone: var(--hive-text, var(--text));
+}
+
+.term-bar-icon {
+  flex: none;
+  display: inline-flex;
+  color: var(--bar-tone, var(--faint));
+}
+
+.term-bar-icon .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.term-bar-text {
+  flex: 0 1 auto;
+  min-width: 8em;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.term-bar-detail {
+  flex: 0 3 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+}
+
+.term-bar-end {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.term-bar-note {
+  max-width: 28em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.term-bar-key,
+.term-bar .button {
+  flex: none;
+}
+
+.term-bar-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.term-bar .button {
+  height: var(--height-row);
+  font-size: var(--size-small);
+}
+
+/* Where the bar is narrow, the agent's keys stay and Symbiote's give way to its words. */
+@container workspace (max-width: 900px) {
+  .term-bar-note,
+  .term-bar-detail,
+  .term-bar-next {
+    display: none;
+  }
+}
+
+/* The terminals (V89, decision 831; term.css's `.panes`): one, or the agent's and a shell's side
+   by side in Split, each fitted to its own pane; stacked where the area is narrow. */
+.term-panes {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  background: #22252c;
+}
+
+.term-panes.split {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1px;
+}
+
+@container workspace (max-width: 760px) {
+  .term-panes.split {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+
+/* A pane clips its terminal: a terminal fitted before a line above it showed (its open failed:
+   a gone worktree) overflowed onto the bar under it. */
+.term-pane {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #050608;
+}
+
+/* A pane's slim head in Split: what it is and what runs in it, in the terminal's own colours. */
+.term-pane-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: var(--height-tall);
+  padding: 0 4px 0 14px;
+  border-bottom: 1px solid #22252c;
+  color: #8a909c;
+  font-size: var(--size-caption);
+  white-space: nowrap;
+}
+
+.term-pane-name {
+  color: #e3e6ec;
+  font-weight: 500;
+}
+
+.term-pane-what {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.term-pane-head .icon-button {
+  margin-left: auto;
+  color: #8a909c;
+}
+
+.term-pane-head .icon-button:hover {
+  background: rgb(255 255 255 / 8%);
+  color: #e3e6ec;
+}
+
+/* The plan that waits (V89, decision 833): its report as a document, the composer under it. An
+   agent's headings start at h3 (`ui/markdown.ts`): its title, then its sections in capitals. */
+.thread-item.thread-plan {
+  padding: 4px 4px 12px;
+  border: 0;
+  background: none;
+}
+
+.thread-plan .markdown h3 {
+  margin: 6px 0 12px;
+  font-size: var(--size-title);
+  line-height: 1.3;
+}
+
+.thread-plan .markdown h4,
+.thread-plan .markdown h5 {
+  margin: 18px 0 6px;
+  color: var(--muted);
+  font-size: var(--size-caps);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.thread-plan .markdown p,
+.thread-plan .markdown li {
+  line-height: 1.6;
+}
+
+.reply-where {
+  margin-right: auto;
+  font-size: var(--size-small);
 }
 
 .workspace > .workspace-confirm {

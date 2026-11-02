@@ -236,9 +236,13 @@ test("Hive's live progress: the check's commands, their output as it comes, then
   await expect(page.getByRole('tooltip')).toContainText(`Checking 2/3: ${commands[1]}`);
   await page.getByRole('button', { name: 'Open the sidenav' }).click();
 
-  // The page: its head says it; the Review tab shows each command and the output as it comes.
+  // The page: its head's steps and the bar under its views say it (V89); the Review tab shows each
+  // command and the output as it comes.
   await card(page).locator('.workspace-about').click();
-  await expect(page.locator('.workspace-now')).toContainText(`Checking 2/3: ${commands[1]} · `);
+  await expect(page.locator('.head-steps')).toContainText('Check');
+  await expect(page.getByRole('region', { name: 'Agent status' })).toContainText(
+    `Checking 2/3: ${commands[1]} · `,
+  );
   await page.getByRole('tab', { name: 'Review' }).click();
   const now = page.getByRole('region', { name: 'Now' });
   const steps = now.getByRole('list', { name: 'Its steps' }).getByRole('button');

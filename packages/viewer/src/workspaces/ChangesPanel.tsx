@@ -25,9 +25,12 @@ export function useChanges(
   version: unknown,
   /** Changed to read them again now (V65: after a pick of what it is reviewed against). */
   again = 0,
+  /** False: not read (the page read them already, V89). */
+  on = true,
 ): WorkspaceChanges | string | null {
   const [changes, setChanges] = useState<WorkspaceChanges | string | null>(null);
   useEffect(() => {
+    if (!on) return;
     let live = true;
     fetch(`/api/workspaces/changes?branch=${encodeURIComponent(branch)}`)
       .then(async (response) =>
@@ -43,7 +46,7 @@ export function useChanges(
     return () => {
       live = false;
     };
-  }, [branch, version, again]);
+  }, [branch, version, again, on]);
   return changes;
 }
 
@@ -164,10 +167,13 @@ export function FileRow<File extends WorkspaceFileChange>({
 function Files({
   files,
   empty,
+  editing,
   onOpen,
 }: {
   files: { count: number; listed: WorkspaceFileChange[] };
   empty: string;
+  /** The file the agent edits now (V89): it pulses. */
+  editing?: string | undefined;
   onOpen: (file: WorkspaceFileChange) => void;
 }) {
   if (files.count === 0) return <p className="changes-empty">{empty}</p>;
@@ -176,7 +182,10 @@ function Files({
     <>
       <ul className="changes-list">
         {files.listed.map((file) => (
-          <li key={file.path}>
+          <li
+            key={file.path}
+            className={editing && isPath(editing, file.path) ? 'editing' : undefined}
+          >
             <FileRow
               file={file}
               label={`Open the changes to ${file.path} in VS Code`}
@@ -191,16 +200,26 @@ function Files({
   );
 }
 
+/** Whether a tool's subject (a path, maybe absolute) names the repo-relative `path`. */
+const isPath = (subject: string, path: string) => subject === path || subject.endsWith(`/${path}`);
+
 /**
  * A workspace's branch at the right of its terminal (V29d, decision 186): its commits since the
- * fork point and the files they change — what Review will show —, then the files its worktree has
+ * fork point and the files they change — what Review will show —, and the files its worktree has
  * not committed. A file opens as its diff in VS Code, what its row counts (V43): the branch's from
- * the fork point, one not committed from the worktree's HEAD.
+ * the fork point, one not committed from the worktree's HEAD. A workspace's side card since V89
+ * (decision 832): what its agent does now first, then what it has not committed, live, the file
+ * it edits pulsing; then its commits and files. Its changes are read by the page (`changes`), for
+ * the head's counts too; a finished workspace's (History) reads its own.
  */
 export function ChangesPanel({
   branch,
   version,
   finished = false,
+  changes: given,
+  onPicked,
+  now,
+  editing,
   onSaid,
 }: {
   branch: string;
@@ -211,11 +230,21 @@ export function ChangesPanel({
    * picked — and no worktree, so nothing not committed.
    */
   finished?: boolean;
+  /** Its changes, read by the page (V89); absent, the panel reads them. */
+  changes?: WorkspaceChanges | string | null;
+  /** What it is reviewed against was picked: the page reads its changes again. */
+  onPicked?: () => void;
+  /** What the agent does now, first (V89). */
+  now?: ReactNode;
+  /** The file the agent edits now, by its tool's subject (V89). */
+  editing?: string | undefined;
   /** How opening a file went, in words, for the workspace's head. */
   onSaid: (words: string) => void;
 }) {
   const [picks, setPicks] = useState(0);
-  const changes = useChanges(branch, version, picks);
+  const read = useChanges(branch, version, picks, given === undefined);
+  const changes = given === undefined ? read : given;
+  const picked = onPicked ?? (() => setPicks((n) => n + 1));
   const opener = (uncommitted: boolean) => (file: WorkspaceFileChange) =>
     void postJson('/api/workspaces/diff', {
       branch,
@@ -230,35 +259,46 @@ export function ChangesPanel({
     changes !== null && typeof changes !== 'string'
       ? moreText(changes.commits.count, changes.commits.listed.length)
       : null;
+  const shown = changes !== null && typeof changes !== 'string' ? changes : null;
+  const uncommitted = shown && !finished && (
+    <section className="changes-section" aria-label="Not committed" key="uncommitted">
+      <h2>
+        Not committed{' '}
+        {shown.uncommitted && <span className="changes-count">{shown.uncommitted.count}</span>}
+      </h2>
+      {shown.uncommitted ? (
+        <Files files={shown.uncommitted} empty="Nothing" editing={editing} onOpen={opener(true)} />
+      ) : (
+        <p className="changes-empty">Its worktree is gone</p>
+      )}
+    </section>
+  );
   return (
     <aside className="changes" aria-label="Changes">
+      {now}
       {changes === null && <p className="changes-empty">Reading its changes…</p>}
       {typeof changes === 'string' && <p className="changes-empty error">{changes}</p>}
-      {changes !== null && typeof changes !== 'string' && (
+      {shown && (
         <>
+          {uncommitted}
           <section className="changes-section" aria-label="Commits">
             <h2>
-              Commits <span className="changes-count">{changes.commits.count}</span>
+              Commits <span className="changes-count">{shown.commits.count}</span>
             </h2>
             {finished ? (
-              <p className="changes-against">{sinceText(changes.since)}</p>
+              <p className="changes-against">{sinceText(shown.since)}</p>
             ) : (
-              <AgainstChoice
-                branch={branch}
-                changes={changes}
-                onPicked={() => setPicks((n) => n + 1)}
-                onSaid={onSaid}
-              />
+              <AgainstChoice branch={branch} changes={shown} onPicked={picked} onSaid={onSaid} />
             )}
-            {changes.tip === null ? (
+            {shown.tip === null ? (
               <p className="changes-empty">
                 {finished ? 'Where its branch ended is not known' : 'Its branch is gone'}
               </p>
-            ) : changes.commits.count === 0 ? (
+            ) : shown.commits.count === 0 ? (
               <p className="changes-empty">No commits yet</p>
             ) : (
               <ol className="changes-list">
-                {changes.commits.listed.map((commit) => (
+                {shown.commits.listed.map((commit) => (
                   <li key={commit.sha} className="changes-commit" {...tip(commitTitle(commit))}>
                     <span className="changes-sha">{commit.sha.slice(0, 7)}</span>
                     <span className="changes-subject">{commit.subject}</span>
@@ -273,30 +313,23 @@ export function ChangesPanel({
           </section>
           <section className="changes-section" aria-label="Files">
             <h2>
-              Files <span className="changes-count">{changes.files.count}</span>
-              {changes.files.count > 0 && (
-                <Lines added={changes.files.added} removed={changes.files.removed} />
+              Files <span className="changes-count">{shown.files.count}</span>
+              {shown.files.count > 0 && (
+                <Lines added={shown.files.added} removed={shown.files.removed} />
               )}
             </h2>
-            <Files files={changes.files} empty="No files changed yet" onOpen={opener(false)} />
+            <Files files={shown.files} empty="No files changed yet" onOpen={opener(false)} />
           </section>
-          {!finished && (
-            <section className="changes-section" aria-label="Not committed">
-              <h2>
-                Not committed{' '}
-                {changes.uncommitted && (
-                  <span className="changes-count">{changes.uncommitted.count}</span>
-                )}
-              </h2>
-              {changes.uncommitted ? (
-                <Files files={changes.uncommitted} empty="Nothing" onOpen={opener(true)} />
-              ) : (
-                <p className="changes-empty">Its worktree is gone</p>
-              )}
-            </section>
-          )}
         </>
       )}
     </aside>
   );
+}
+
+/** The files a branch changed, committed or not, each once: the head's Files (V89). */
+export function changedFiles(changes: WorkspaceChanges): number {
+  const paths = new Set(changes.files.listed.map((file) => file.path));
+  for (const file of changes.uncommitted?.listed ?? []) paths.add(file.path);
+  // Lists are cut at 300: a count past that is the larger of the two.
+  return Math.max(paths.size, changes.files.count, changes.uncommitted?.count ?? 0);
 }
