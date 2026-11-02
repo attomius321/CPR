@@ -195,7 +195,7 @@ const HELP = `Usage: symbiote <command> [options]
 Commands:
   diff <base> [head]   Compare head (default: HEAD) against base
   view [<base> [head]] Same comparison, reviewed in the browser; without revisions,
-                       History: every branch, to compare or review, with workspaces
+                       Git: every branch, to compare or review, with workspaces
                        (agents' branches) beside it
   pr [<number>]        Review a GitHub pull request or GitLab merge request (alias: mr);
                        in a CI job, the job's own
@@ -234,7 +234,7 @@ Options:
 const VIEW_HELP = `Usage: symbiote view [<base> [head]] [options]
 
 Serves the graph viewer on localhost until Ctrl+C, in Symbiote's own window once the
-desktop app is set up (pnpm app:setup), else in the browser. It opens on History (h): every
+desktop app is set up (pnpm app:setup), else in the browser. It opens on Git (g): every
 branch, local and remote, as a graph. Its sidenav lists the workspaces: each a branch
 with its own worktree and agent, started from the page. In Compare mode (x), pick two commits to
 compare them (the older is the base), or one against its parent; each pair is analyzed

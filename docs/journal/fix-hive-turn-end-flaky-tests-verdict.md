@@ -47,3 +47,10 @@ guess. That case ends at the next report, as any turn does.
 - 794–795's three tests and HV4's `hive.plan` and `hive.decide` tests pass unchanged; the two
   files' 218 tests pass.
 - Not verified: a real Hive round with Claude Code listing a reported turn `working`.
+
+## Fix — `symbiote --help` says Git (2026-11-02)
+
+`symbiote --help` and `symbiote view --help` still said the view opens on "History (h)". The page
+has been Git (`g`) since V66, and since V77 `h` opens History, the finished workspaces' page. Both
+texts now say Git, and `view --help` says "opens on Git (g)". The help test (`main.test.ts`) now
+asks for Git and refuses "History" in both (red before the fix: no "Git … every branch").
