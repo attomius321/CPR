@@ -25,9 +25,18 @@ export const HIVE_ROUNDS = 3;
 /** Merges of the start branch into a workspace before Hive stops it (decisions 651, 690, 769). */
 export const HIVE_MERGES = 2;
 
+/** Hive's answers in place of the person's (a plan's OK, "no one answers") before it stops (773). */
+export const HIVE_DECIDES = 3;
+
 /** Hive's messages to the writer, by their prompt's key. */
 export type HiveMessageKey =
-  'hive.check' | 'hive.review' | 'hive.commit' | 'hive.resume' | 'hive.land';
+  | 'hive.check'
+  | 'hive.review'
+  | 'hive.commit'
+  | 'hive.resume'
+  | 'hive.land'
+  | 'hive.plan'
+  | 'hive.decide';
 
 /**
  * A message Hive sends the writer: written here first; `taken` once Claude Code took it (`reply`
@@ -41,6 +50,8 @@ export interface HiveMessage {
   taken?: string;
   copy?: string;
   sent?: true;
+  /** Sent with the writer's turn stopped: it waits on a question or a permission (HV4). */
+  stop?: true;
 }
 
 /** A Hive workspace's state on disk. */
@@ -93,6 +104,10 @@ export interface HiveFile {
   merges?: number;
   /** The branch's last push to `origin` (768). */
   pushed?: HivePush;
+  /** Hive's answers in place of the person's: a plan's OK, "no one answers" (773). */
+  decided?: number;
+  /** Times Hive started a failed writer again (773). */
+  restarted?: number;
 }
 
 /** Every Hive record's first key. */
@@ -114,6 +129,8 @@ const MESSAGE_KEYS: readonly HiveMessageKey[] = [
   'hive.commit',
   'hive.resume',
   'hive.land',
+  'hive.plan',
+  'hive.decide',
 ];
 const VERDICTS: readonly HiveReview['verdict'][] = ['approved', 'changes', 'failed', 'unavailable'];
 
@@ -346,6 +363,7 @@ export function parseHive(value: unknown): HiveFile | null {
             ...(text(message.taken) ? { taken: text(message.taken) } : {}),
             ...(text(message.copy) ? { copy: text(message.copy) } : {}),
             ...(message.sent === true ? { sent: true as const } : {}),
+            ...(message.stop === true ? { stop: true as const } : {}),
           },
         }
       : {}),
@@ -354,6 +372,8 @@ export function parseHive(value: unknown): HiveFile | null {
       ? { landings: v.landings.map(landingOf).filter((l): l is HiveLanding => l !== null) }
       : {}),
     ...(count(v.merges) ? { merges: count(v.merges) } : {}),
+    ...(count(v.decided) ? { decided: count(v.decided) } : {}),
+    ...(count(v.restarted) ? { restarted: count(v.restarted) } : {}),
     ...(pushOf(v.pushed) ? { pushed: pushOf(v.pushed) as HivePush } : {}),
   };
 }

@@ -33,6 +33,7 @@ import {
 import type { Logger } from '@symbiote/log';
 import type { HiveRecord } from './hive.js';
 import {
+  HIVE_DECIDES,
   HIVE_MERGES,
   hiveEvent,
   hiveLockPath,
@@ -86,7 +87,7 @@ export interface HiveRunner {
 }
 
 /** What the runner asks of the workspaces (`workspaces.ts`). */
-export type HiveWorkspaces = Pick<Workspaces, 'summaryOf' | 'reply' | 'stopAgent'>;
+export type HiveWorkspaces = Pick<Workspaces, 'summaryOf' | 'reply' | 'stopAgent' | 'startAgent'>;
 
 /** Lines of a check's output kept and sent, and their characters at most (a message's limit is 20,000). */
 const OUTPUT_LINES = 60;
@@ -330,10 +331,16 @@ export function hiveRunner(
     record: HiveFile,
     key: HiveMessageKey,
     values: Record<string, string>,
+    { stop = false }: { stop?: boolean } = {},
   ): Promise<HiveFile> {
     const at = stamp();
     const text = fillPrompt(readPrompts(root).text[key], values).trim();
-    const next: HiveFile = { ...record, step: 'writing', since: at, message: { key, text, at } };
+    const next: HiveFile = {
+      ...record,
+      step: 'writing',
+      since: at,
+      message: { key, text, at, ...(stop ? { stop: true as const } : {}) },
+    };
     delete next.interrupted;
     await save(where, next);
     await event(where, record.branch, 'message', { key, round: next.round });
@@ -361,6 +368,7 @@ export function hiveRunner(
           text: message.text,
           by: 'hive',
           key: message.key,
+          ...(message.stop ? { stop: true } : {}),
         }));
       } catch (error) {
         if (!failed.has(record.branch)) {
@@ -480,6 +488,61 @@ export function hiveRunner(
     return next;
   }
 
+  /**
+   * Hive answers in place of the person (773): a plan gets its OK, a question or a permission "no
+   * one answers", the writer's turn stopped to say it; after 3, Hive stops, with why.
+   */
+  async function answer(
+    where: ReviewPlace,
+    record: HiveFile,
+    key: 'hive.plan' | 'hive.decide',
+  ): Promise<void> {
+    const decided = (record.decided ?? 0) + 1;
+    if (decided > HIVE_DECIDES) {
+      const note = `the writer asked for the person ${decided} times: no one answers in Hive mode`;
+      const stuck: HiveFile = { ...record, step: 'stuck', since: stamp(), note };
+      delete stuck.message;
+      await save(where, stuck);
+      await event(where, record.branch, 'stuck', { note });
+      return;
+    }
+    const next = await queue(
+      where,
+      { ...record, decided },
+      key,
+      {},
+      { stop: key === 'hive.decide' },
+    );
+    await deliver(where, next);
+  }
+
+  /** A writer that failed or never started is started again, once (773); then Hive stops. */
+  async function restart(
+    where: ReviewPlace,
+    record: HiveFile,
+    summary: WorkspaceSummary,
+  ): Promise<void> {
+    const why = summary.agent.error?.split('\n')[0];
+    if ((record.restarted ?? 0) >= 1) {
+      const note = `its agent failed twice${why ? `: ${why}` : ''}`;
+      const stuck: HiveFile = { ...record, step: 'stuck', since: stamp(), note };
+      delete stuck.message;
+      await save(where, stuck);
+      await event(where, record.branch, 'stuck', { note });
+      return;
+    }
+    const next: HiveFile = { ...record, restarted: (record.restarted ?? 0) + 1, since: stamp() };
+    delete next.message;
+    await save(where, next);
+    await event(where, record.branch, 'restarted', { ...(why ? { why } : {}) });
+    try {
+      await workspaces.startAgent(record.branch);
+    } catch (error) {
+      const note = `its agent could not be started again: ${(error as Error).message}`;
+      await moveTo(where, next, { step: 'stuck', note }, 'stuck', { note });
+    }
+  }
+
   /** The writer's turn (decision 653). */
   async function writing(where: ReviewPlace, given: HiveFile): Promise<void> {
     let record = given;
@@ -490,6 +553,9 @@ export function hiveRunner(
     const { summary } = turn;
     const landing = await landingOf(record.branch, summary);
     if (landing) return leaveTo(where, record, landing);
+    // No gate waits for the person in Hive mode (HV4, decision 773).
+    const state = summary.agent.state;
+    if (state === 'failed' || state === 'not-started') return restart(where, record, summary);
     if (message?.taken && !message.sent && arrived(turn.thread, message)) {
       record = await seen(where, record, message);
     }
@@ -504,6 +570,8 @@ export function hiveRunner(
       }
       return;
     }
+    if (state === 'plan-ready') return answer(where, record, 'hive.plan');
+    if (state === 'needs-you') return answer(where, record, 'hive.decide');
     if (!turn.ended) return;
     await event(where, record.branch, 'turn-ended', { round: record.round });
     const changed = summary.worktree.changed ?? 0;

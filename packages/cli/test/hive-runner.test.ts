@@ -638,24 +638,6 @@ describe('Hive, on', () => {
     expect(s.fake.resume).not.toHaveBeenCalled();
   });
 
-  it('a plan first waits for the person, then the loop goes on', async () => {
-    const repo = repository(['true']);
-    const s = await setup(repo);
-    await s.turn(true);
-    const worktree = await s.start('feature/planned', { planFirst: true });
-    const runner = s.runner();
-    await s.fake.endTurn(worktree);
-    await runner.tick();
-    // A plan waits for the person's OK: no message from Hive.
-    expect(await readHive(s.where, 'feature/planned')).toMatchObject({ step: 'writing', round: 1 });
-    expect(s.fake.resume).not.toHaveBeenCalled();
-    await s.service.reply({ branch: 'feature/planned', text: 'OK' });
-    await s.fake.endTurn(worktree, { files: { 'p.txt': 'p\n' } });
-    await runner.tick();
-    await runner.idle();
-    expect((await readHive(s.where, 'feature/planned'))?.step).toBe('landing');
-  });
-
   it('refuses Codex and Hermes while Hive is on: Hive drives Claude Code only', async () => {
     const repo = repository(['true']);
     const s = await setup(repo);
@@ -2073,15 +2055,18 @@ describe('A turn Hive cannot see (decisions 718–720)', () => {
     await s.start('feature/silent');
     const runner = s.runner({ unseenMs: 10_000 });
     const session = s.fake.listed[0] as AgentSession;
-    // Its agent failed: its card says so, Hive waits as before.
+    // Its agent failed: not a turn Hive cannot see; HV4 starts it again, once (decision 773).
     Object.assign(session, { state: 'failed' });
     delete session.status;
-    // Past the delay (the clock moves a second at each read).
     for (let i = 0; i < 20; i++) s.now();
     await runner.tick();
-    expect(await readHive(s.where, 'feature/silent')).toMatchObject({ step: 'writing' });
-    // A session at work with nothing recorded since the start: a turn Hive cannot see.
-    Object.assign(session, { state: 'working', status: 'busy' });
+    expect(await readHive(s.where, 'feature/silent')).toMatchObject({
+      step: 'writing',
+      restarted: 1,
+    });
+    // The new session at work with nothing recorded since: past the delay (the clock moves a
+    // second at each read), a turn Hive cannot see.
+    for (let i = 0; i < 20; i++) s.now();
     await runner.tick();
     const stuck = await readHive(s.where, 'feature/silent');
     expect(stuck).toMatchObject({ step: 'stuck', round: 1 });
@@ -2380,6 +2365,112 @@ describe('Hive lands on its own (HV4, decisions 767–770)', () => {
     expect(await readHive(s.where, 'spike/why')).toMatchObject({ step: 'answered', checks: [] });
     expect((await s.merges?.list())?.merges).toEqual([]);
     expect(await lastVerdict(s, 'spike/why')).toBeUndefined();
+  });
+});
+
+describe('No gate before landing (HV4, decision 773)', () => {
+  it('a plan gets Hive in place of the person: its OK, and the loop goes on', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/planned', { planFirst: true });
+    const runner = s.runner();
+    await s.fake.endTurn(worktree);
+    await runner.tick();
+    await runner.idle();
+    expect(s.fake.resume).toHaveBeenCalledTimes(1);
+    expect(s.fake.resume.mock.calls[0]?.[0].text).toMatch(/^Hive OKs your plan/);
+    expect(await readHive(s.where, 'feature/planned')).toMatchObject({
+      step: 'writing',
+      decided: 1,
+      message: { key: 'hive.plan', sent: true },
+    });
+    await s.fake.endTurn(worktree, { files: { 'p.txt': 'p\n' } });
+    await runner.tick();
+    await runner.idle();
+    expect((await readHive(s.where, 'feature/planned'))?.step).toBe('landing');
+  });
+
+  it('a writer that asks the person is told no one answers, its turn stopped; the fourth ask stops it', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo, { stopWaitMs: 0 });
+    await s.turn(true);
+    const worktree = await s.start('feature/asks');
+    const runner = s.runner();
+    const ask = () =>
+      Object.assign(s.fake.sessionIn(worktree) ?? {}, {
+        state: 'blocked',
+        status: 'idle',
+        waitingFor: 'permission to run Bash',
+      });
+    for (let n = 1; n <= 3; n++) {
+      ask();
+      await runner.tick();
+      await runner.idle();
+      expect(s.fake.resume.mock.calls.at(-1)?.[0].text).toMatch(/^No person answers in Hive mode/);
+      expect(await readHive(s.where, 'feature/asks')).toMatchObject({
+        step: 'writing',
+        decided: n,
+        message: { key: 'hive.decide', sent: true },
+      });
+    }
+    expect(s.fake.stop).toHaveBeenCalledTimes(3);
+    ask();
+    await runner.tick();
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/asks')).toMatchObject({
+      step: 'stuck',
+      note: 'the writer asked for the person 4 times: no one answers in Hive mode',
+    });
+    expect(s.fake.resume).toHaveBeenCalledTimes(3);
+  });
+
+  it('a writer that failed is started again once; failing again stops it, with why', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/fails');
+    const runner = s.runner();
+    Object.assign(s.fake.sessionIn(worktree) ?? {}, { state: 'failed' });
+    delete s.fake.sessionIn(worktree)?.status;
+    await runner.tick();
+    await runner.idle();
+    expect(s.fake.start).toHaveBeenCalledTimes(2);
+    expect(await readHive(s.where, 'feature/fails')).toMatchObject({
+      step: 'writing',
+      restarted: 1,
+    });
+    Object.assign(s.fake.sessionIn(worktree) ?? {}, { state: 'failed' });
+    delete s.fake.sessionIn(worktree)?.status;
+    await runner.tick();
+    await runner.idle();
+    expect(s.fake.start).toHaveBeenCalledTimes(2);
+    expect(await readHive(s.where, 'feature/fails')).toMatchObject({
+      step: 'stuck',
+      note: 'its agent failed twice',
+    });
+  });
+
+  it("a Hive writer runs in Claude Code's auto mode, whatever the start asked", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    await s.service.start({
+      branch: 'feature/mode',
+      brief: 'x',
+      planFirst: false,
+      permissionMode: 'default',
+    });
+    expect(s.fake.start.mock.calls[0]?.[0].permissionMode).toBe('auto');
+    expect((await readRecord(s.where, 'feature/mode')).agent?.permissionMode).toBe('auto');
+    await s.turn(false);
+    await s.service.start({
+      branch: 'feature/normal',
+      brief: 'x',
+      planFirst: false,
+      permissionMode: 'default',
+    });
+    expect(s.fake.start.mock.calls[1]?.[0].permissionMode).toBe('default');
   });
 });
 
