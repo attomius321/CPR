@@ -3,8 +3,8 @@
 Symbiote shows a change as a graph of the code it touched, so you can review what changed in
 behaviour before you read lines. This guide covers a change's files, reading the graph, the
 findings, reviewing a branch or a pull request, and running Symbiote in CI. A workspace's
-**Review** button opens the same change. The [README](../../README.md) covers workspaces and
-explains the terms this guide uses.
+**Review** button opens the same change: the [workspaces guide](workspaces.md) covers
+workspaces, and the [README](../../README.md) explains the terms this guide uses.
 
 ## Open a change
 
@@ -44,7 +44,7 @@ Markdown file, is about that line only.
 
 ## Read the graph
 
-![A change in Symbiote: the change list by file, the graph, and the detail panel of one symbol with its finding, signature, diff and users](../images/review-detail.png)
+![A change in Symbiote: the findings, the graph, and the detail panel of a removed function with its finding, signature, diff, users and uses](../images/review-detail.png)
 
 The graph draws a box for each changed file. In each box are the *symbols* that changed:
 functions, classes, methods, types, and for stylesheets, rules and variables. Colours say what

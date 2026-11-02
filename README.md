@@ -1,31 +1,41 @@
 # Symbiote
 
-Symbiote runs coding agents on your machine and keeps you in charge of what they ship. Each task
-gets a *workspace*: a branch, a folder and an agent of its own, Claude Code, Codex or Hermes. You
-read the agent's plan, answer its questions, review its branch and approve it. When you ask,
-Symbiote merges the commit you approved. Once your project's check (its tests, for example) passes
-on the merge, Symbiote moves your branch to it.
+Symbiote is an app on your own machine for working with coding agents. It shows a code change
+as a graph of the functions, classes and types it touched, and marks the risky parts. It runs
+agents such as Claude Code and Codex, each on a branch and in a folder of its own. It keeps track
+of what each one needs from you. In Hive mode, it can also take a task from your goal to
+merged code with no one in the loop.
 
-![A workspace in Symbiote: the sidenav lists five workspaces by what each one needs from you, and the open one shows its agent's plan, waiting for your answer](docs/images/workspace.png)
+![A change reviewed in Symbiote: the findings on the left, and the graph of the changed functions and methods, with a removed function that is still used marked in red](docs/images/review.png)
 
-Several agents can work at once, each on its own branch, while you keep working in your own
-checkout. Everything runs locally: Symbiote is a command, `symbiote`, and an app that the command
-opens in a window of its own or in your browser.
+Use Symbiote to:
 
-[Install](#install) · [Quick start](#quick-start-your-first-workspace) ·
-[Workspaces](#workspaces) · [Other pages](#the-other-pages) ·
-[Review without an agent](#review-without-an-agent) ·
-[Files and network](#what-symbiote-writes-and-sends) · [Limits](#limits) ·
-[Development](#development)
+- **Review a change faster.** See which functions and types changed and who calls them before
+  you read the lines. Symbiote flags a function removed while code still calls it, new code that
+  nothing uses, and signatures changed under their callers.
+- **Run several agents at once.** Each task gets a *workspace*: a branch, a folder and an agent.
+  You keep working in your own checkout while the agents work in theirs.
+- **Stay in charge of what lands.** You approve a commit. Symbiote merges it only after your
+  project's tests pass on the merge.
+- **Hand a goal over completely.** In Hive mode, Symbiote runs your tests after each of the
+  agent's turns. A second agent proves bugs with failing tests. Once both pass, Symbiote merges
+  the work.
 
-## Requirements
+Everything runs locally: Symbiote is a command, `symbiote`, and an app that opens in a window of
+its own or in your browser.
+
+[Install](#install) · [Try it](#try-it) · [Review](#review-a-change-as-a-graph) ·
+[Workspaces](#run-agents-in-workspaces) · [Hive mode](#hive-mode-from-goal-to-merged-on-its-own) ·
+[Nucleus](#nucleus-ask-about-your-repository) · [Other pages](#the-other-pages) ·
+[Files and network](#what-symbiote-writes-and-sends) · [Docs](#documentation)
+
+## What you need
 
 - Linux, or Windows through WSL. macOS runs the same code but is not tested yet.
-- git, and Node 22.12 or newer. The install gets pnpm itself; no compiler is needed.
-- Claude Code, Codex or Hermes Agent, installed and set up. Symbiote starts them with your own
-  login and configuration, so their work counts against your own subscription, API key or model
-  server. Symbiote's own helper agents, the merger, Nucleus and Scribe (described below), run on
-  Claude Code or Codex.
+- git, and Node 22.12 or newer. The install gets pnpm itself, and no compiler is needed.
+- For workspaces: Claude Code, Codex or Hermes Agent, installed and logged in. Symbiote starts
+  them with your own login, so their work counts against your own subscription or API key.
+  Reviewing a change needs no agent.
 
 ## Install
 
@@ -35,23 +45,25 @@ Run this once:
 git clone https://github.com/attomius321/Symbiote.git && cd Symbiote && ./install.sh
 ```
 
-It installs Symbiote's dependencies and builds it, and adds two commands to `~/.local/bin`:
-`symbiote`, and `symbiote-nexus` (see [below](#several-symbiotes-in-one-window)). It also sets up
-Symbiote's window, which downloads Electron (about 100 MB), and adds the window to your desktop's
-app list. With `--no-app` it skips the window, and Symbiote opens in your browser. It takes about
-30 seconds with the window, 10 without, on a fast connection. If `~/.local/bin` is not on your
-`PATH`, it prints the line to add to your shell's profile. Then run `symbiote --help` to check
-the install.
+The install takes about 30 seconds on a fast connection. It does three things:
 
-To update Symbiote, run `git pull && ./install.sh` in its folder. An alias for `symbiote` from an
-older install is no longer needed: the install says so if it finds one in `~/.bashrc` or
-`~/.zshrc`.
+- It installs Symbiote's dependencies and builds it.
+- It adds two commands to `~/.local/bin`: `symbiote`, and `symbiote-nexus` (see
+  [Several Symbiotes in one window](#several-symbiotes-in-one-window)). If that folder is not on
+  your `PATH`, the install prints the line to add to your shell's profile.
+- It sets up Symbiote's window, which downloads Electron (about 100 MB), and adds the window to
+  your desktop's app list. To skip the window and use your browser, run `./install.sh --no-app`
+  (about 10 seconds).
+
+Run `symbiote --help` to check the install. To update Symbiote, run `git pull && ./install.sh`
+in its folder. If an older install left an alias for `symbiote` in `~/.bashrc` or `~/.zshrc`,
+the install says so: you can remove it.
 
 ### Symbiote's window
 
-`symbiote view` opens Symbiote's window. Closing the window stops `symbiote view`, but agents keep
-running. To use a browser tab anyway, add `--browser`. To start Symbiote from your desktop's app
-list instead of a terminal, pick **Symbiote** there.
+`symbiote view` opens Symbiote's window. Closing the window stops `symbiote view`, but agents
+keep running. To use a browser tab instead, add `--browser`. To start Symbiote without a
+terminal, pick **Symbiote** in your desktop's app list.
 
 Two limits apply to the window:
 
@@ -60,83 +72,108 @@ Two limits apply to the window:
 - On WSL, files dragged from Windows never reach the window. Use the **Add files** and **Attach
   images** buttons instead. Windows' files are under `/mnt/c`.
 
-### Several Symbiotes in one window
+## Try it
 
-Each `symbiote view` serves one repository. Symbiote nexus shows every one running on this
-machine as a tab of one window, and starts new ones in any repository on your PC. Run it anywhere:
+### See your branch as a graph
 
-```sh
-symbiote-nexus
-```
+You need a git repository with a branch that changes some TypeScript or JavaScript.
 
-The row at the top has two groups, with a line between them. On the left is the nexus's own page,
-**Symbiotes**, with its icon. After the line, each tab is one Symbiote, with a dot for its state:
-green while it runs, an empty ring once it stopped. A Symbiote's tab shows it as its own window
-would. A Symbiote you opened stays loaded while you look at another, so switching back is instant.
-A `symbiote view` started in a terminal gets its tab within 2 seconds.
+1. In the repository, run `symbiote view main`. The app opens on the change's **Files**: each
+   changed file and its diff.
+2. Press `g` for the **Graph**. Each box is a changed file, and in it are the functions, classes
+   and types that changed. Click one to see its diff and the code that uses it.
 
-**Symbiotes** shows your Symbiotes as cards: the ones you pinned first, in the order you pinned
-them, then the other running ones. A running Symbiote's card shows its folder, branch and changed
-files; click it to open its tab. A pinned repository with no Symbiote running shows its branch and
-**Open Symbiote**: click it to start one. Nothing starts on its own. To pin a Symbiote, or unpin
-it, use the pin in its card's corner; it shows when you point at the card.
+To print the same comparison in your terminal instead, run `symbiote diff main`.
 
-Under the cards are your PC's folders, one folder at a time, starting in the folder of the newest
-running Symbiote, or in your home folder. A folder's repositories come first, as cards that show
-the checked-out branch. The other folders follow as rows; click one to go into it. A repository is
-as far as you go: clicking it opens a Symbiote there, or shows the one already running. A path
-inside a repository shows the folder that holds it, with the repository picked. The places are on
-the left: your home folder, the folders your Symbiotes are in, `/`, and on WSL the Windows drives
-(`C:`). To go to any folder, hidden ones included, type its path in **Go to folder**, at the top
-right, and press Enter.
+### Start your first workspace
 
-To keep a folder at hand, pin it with the pin at the right of the folder's head. Pinned folders are
-listed under **Pinned**, below the places, and stay there the next time you open the nexus. A
-repository you pin from its card's corner joins the Symbiotes' cards instead. A pinned folder that
-was moved or deleted stays marked "not found" until you unpin it with the pin at the end of its row.
+This walks one task from start to merge. You need Claude Code or Codex. Claude Code starts only
+in a repository you have trusted. If you have never run `claude` in this repository, run it
+there once and accept its trust prompt.
 
-Closing the nexus stops no Symbiote, not even the ones it started, so their agents keep working.
-To stop a Symbiote, click the stop button on its card in **Symbiotes**, then **Stop**.
-Its terminals, and the agents working in them, stop with it. If you had opened its tab, the tab
-stays, marked stopped, with **Start again** and **Close tab**.
-
-The nexus opens like `symbiote view`: in Symbiote's window when it is set up, else in your browser.
-It takes `--browser`, `--no-open` and `--port` too.
-
-## Quick start: your first workspace
-
-This walks one task from start to merge. You need a git repository of your own, and Claude Code
-or Codex. Claude Code starts only in a repository you have trusted. Trusting the repository also
-covers its workspaces' worktrees. If you have never run `claude` in this repository, run it there
-once and accept its trust prompt. Codex needs no such step.
-
-1. In the repository, run `symbiote view`. Symbiote opens on **Git**, the repository's
-   commits and branches. The list on the left is the *sidenav*: its pages, then your workspaces,
-   and **Settings** at the bottom.
-2. Press `n`, or click **+** beside **Workspaces** in the sidenav. The **Start a workspace** page
-   opens.
+1. In the repository, run `symbiote view`. Symbiote opens on **Git**, the repository's commits
+   and branches. The column on the left is the *sidenav*: the pages, then your workspaces.
+2. Press `n`, or click **+** beside **Workspaces**. The **Start a workspace** page opens.
 3. Leave **Feature** picked. Type a **Title**, such as "Add a discount code", and describe the
    **Goal**: what it should do, and why. Leave **Plan first and wait for my OK** on.
-4. Click **Start workspace**. Symbiote creates the branch and its own folder, starts the agent
-   there, and opens the workspace on the agent's terminal.
-5. Wait for the plan. The workspace moves to **Waiting for you** in the sidenav. Read the plan in
-   the terminal, then type your answer there: "OK", or what to change.
-6. When the agent has finished, the workspace moves to **To review**. Click **Review** at the top
-   of the workspace. The branch's changes open on their files. In the **Review** tab on the left,
-   pick **Approve** and click **Finish review**.
-7. Click **Merge into**. Symbiote merges the commit you approved into the branch the workspace
-   started from, and runs your project's check. If the check passes, Symbiote *lands* the merge:
-   it moves that branch to the merge commit.
-8. The workspace moves to **Done**. Click **Clean up** to remove its folder, its branch and the
-   agent's sessions. The workspace then goes to **History** (`h`), with its brief and what its
-   agent did.
+4. Click **Start workspace**. Symbiote creates a branch and a folder for it, starts the agent
+   there, and opens the workspace.
+5. Wait for the plan. The workspace moves to **Waiting for you**. Read the plan in the
+   **Thread** tab, then answer in the **Terminal** tab: "OK", or what to change.
+6. When the agent has finished, the workspace moves to **To review**. Click **Review**, read the
+   changes, and in the **Review** tab pick **Approve** and click **Finish review**.
+7. Click **Merge into**. Symbiote merges the commit you approved into the branch you started
+   from, and runs your project's tests on the merge. If they pass, it *lands* the merge: it
+   moves that branch to the merge commit.
+8. The workspace moves to **Done**. Click **Clean up** to remove its folder and branch. It stays
+   readable in **History**.
 
-## Workspaces
+## Review a change as a graph
 
-A workspace is one task for one agent. It has a branch and a *worktree*: a second working folder
-of the same repository, checked out on that branch. It also has the agent's session and a record
-of what you asked. Agents never work in your own checkout, so you can keep working while they
-do.
+Symbiote reads the code on both sides of a change and draws what changed. Each changed file is a
+box. In it are the *symbols* that changed: functions, classes, methods and types, and for
+stylesheets, rules and variables. Green is added, red removed, amber modified. Lines between
+symbols are calls and other uses. Grey symbols did not change but call or are called by one that
+did.
+
+*Findings* mark the changes that may break something. Each one links to its symbol:
+
+| Finding | What it means |
+|---|---|
+| `removed-still-referenced` | A removed symbol is still used by code in the change. |
+| `orphan-added` | Nothing uses a new symbol. |
+| `signature-changed` | A symbol's parameters or return type changed, and other code uses it. |
+| `exported-api-changed` | A published package's export was removed or broke. |
+
+A change has two pages. **Files** lists every changed file with its diff, including files the
+graph does not read, such as Markdown. **Graph** (`g`) is the picture above. On either page,
+click a line or a symbol to comment on it. In the **Review** tab, pick **Approve**, **Request
+changes** or **Comment**, and click **Finish review**. If you review the branch again after new
+commits, only what changed since is left to look at.
+
+Open a change in one of these ways:
+
+```sh
+symbiote view main     # this branch against main, in the app
+symbiote diff main     # the same comparison, printed in the terminal
+symbiote pr 123        # a GitHub pull request or a GitLab merge request
+```
+
+On the **Git** page you can also review any branch (right-click it, **Review**) or compare two
+commits (`x`). The [review guide](docs/guide/review-and-ci.md) explains the graph, each finding,
+and what to do about it.
+
+### Pull and merge requests, and CI
+
+`symbiote pr 123` opens a pull request (GitHub) or a merge request (GitLab) the same way. It
+posts your comments to it as one review, each on its line. It needs a token, such as
+`GITHUB_TOKEN` or `GITLAB_TOKEN`. After a push, run it again: what you reviewed and did not
+change stays reviewed.
+
+To check every pull request, add Symbiote's GitHub Action or its GitLab CI template to your
+repository. They post the findings as comments on the lines they are about, and can fail the job
+on an error. The [review guide](docs/guide/review-and-ci.md#run-in-ci) has the workflow to copy.
+
+### Frameworks and stylesheets
+
+Some frameworks call code in ways plain TypeScript cannot see, such as a template that calls a
+component's method. A *plugin* teaches Symbiote one framework. Two come with it:
+
+```sh
+symbiote view main --plugin angular   # Angular templates, inputs and outputs
+symbiote view main --plugin qwik      # Qwik routes, component props and MDX pages
+```
+
+Symbiote also reads CSS and SCSS: a class removed while a component still uses it is a finding.
+See [framework plugins](docs/guide/review-and-ci.md#framework-plugins) and
+[stylesheets](docs/guide/review-and-ci.md#stylesheets).
+
+## Run agents in workspaces
+
+A *workspace* is one task for one agent. It has its own branch and its own *worktree*: a second
+working folder of your repository, checked out on that branch. Agents never work in your own
+checkout, so you can keep working while they do. Symbiote can start Claude Code, Codex or
+Hermes Agent.
 
 ### Start a workspace
 
@@ -146,59 +183,21 @@ question and names its branch with its own prefix:
 | Kind | It asks | Branch |
 |---|---|---|
 | Feature | What should it do, and why? | `feature/` |
-| Fix | What happens, and what should happen? | `fix/` |
-| Refactor | What should be restructured, and why? | `refactor/` |
-| Chore | What should change, and why now? | `chore/` |
-| Spike | What is the question, and what will the answer decide? | `spike/` |
+| Fix | What goes wrong, and what should happen instead? | `fix/` |
+| Refactor | What, and why is the current shape a problem? | `refactor/` |
+| Chore | What, and why now? | `chore/` |
+| Spike | What do you want to find out, and what will you decide with the answer? | `spike/` |
 
-A spike answers its question in a written report, which you read in its **Thread** tab. It
-commits nothing unless you ask, so it usually has nothing to merge.
+A spike answers its question in a written report and commits nothing, so it has nothing to
+merge.
 
-Every kind also takes a title, an optional **Done when** (how you will know it works), and more
-notes under **More**. If Symbiote finds your project's check, such as `npm run test`, `cargo
-test` or `pytest`, it names it under **Done when**. Under the goal, the Markdown button shows it
-as the agent's brief will read, the paperclip adds documents, and a count shows the brief's
-length (at most 20,000 characters). The form is kept as a draft until you start, so leaving the
-page loses nothing.
+![The Start a workspace page: a Feature with its title, goal and Done when, and its choices on the right: the branch it starts from, the agent, the model, the effort and Plan first](docs/images/start.png)
 
-![The Start a workspace page: a Feature with its title, goal and Done when, and the workspace's choices beside it](docs/images/start.png)
-
-The cards beside the form hold the workspace's choices:
-
-- **Start from**: the branch to start from. The default branch, unless you pick another. Its
-  list has a search: type words from a branch's name, in any order, then pick it with ↑, ↓ and
-  Enter.
-- **Branch name**: the new branch's name, made from the title. You can edit it; the button
-  beside it names it after the title again.
-- **Agent**, **Model** and **Effort**: the agent, the model it starts with, and its effort level
-  (how long the model thinks before it answers). The lists come from the agent itself.
-- **Permissions** (Claude Code): Claude Code's own permission mode, which decides what it may do
-  without asking you. Symbiote never grants the agent more than the mode you pick.
-- **Approvals** (Hermes): Hermes asks in its terminal before a dangerous command. Its card says
-  Working while it waits there.
-- **Plan first and wait for my OK**: the agent writes a plan and stops before it changes
-  anything. It is on by default.
-- **Documents**: files for the agent, such as screenshots, PDFs or samples. Up to 20 files, 20 MB
-  each.
-
-To have the model, effort and **Plan first** picked for you, write the brief and click **Suggest
-settings**. A small model (by default Haiku 5.5 for Claude Code, GPT-6 Luna for Codex) reads the
-brief, and a card proposes the settings with one sentence on why, in 3 to 5 seconds. Your cards
-change only if you click **Use these settings**; **Dismiss** keeps them. It never changes the
-agent or its permissions, and it runs only when you click. In **Settings**, **Suggest settings**
-holds the model and effort it runs on for each agent. It also holds its instructions, including
-which models it counts as small, mid and large.
-
-When you click **Start workspace** (or press Ctrl+Enter), Symbiote:
-
-1. writes the agent's *brief* (the task in words) from your answers;
-2. creates the branch and its worktree next to your checkout, in `../<repo>.worktrees/`;
-3. records the workspace in `symbiote/workspaces/<branch>.json`;
-4. starts the agent in the worktree, in the background, with the brief.
-
-Hermes has no background mode: it runs in a terminal of `symbiote view`, given the brief as its
-first message. It keeps running when you leave its tab or reload the page, and stops when
-Symbiote quits. Its Terminal tab then continues the session (`hermes --resume`).
+The cards on the right set where the branch starts, the agent, its model and its *effort* (how
+long the model thinks before it answers). **Plan first and wait for my OK** makes the agent write
+a plan and stop before it changes anything. You can give the agent documents, such as
+screenshots or a PDF. **Suggest settings** has a small model read your brief and propose the
+model, the effort and Plan first, in a few seconds.
 
 ### See what needs you
 
@@ -213,308 +212,254 @@ The sidenav lists your workspaces in groups, by what each one needs from you:
 | **Working** | Agents at work, with what each one is doing right now |
 | **Done** | Merged workspaces, ready to clean up |
 
-Each card shows the workspace's title and how long it has been in its state, what its agent is
-doing or what comes next, its kind, its facts, the model and effort its agent runs on, and its
-branch. What the agent is doing takes one line; hover it to read it whole. The facts are its
-commits, its files not committed and whether it merges cleanly; hover one to read it in words. A
-waiting card has
-**Respond**, which opens the agent's terminal. When Nucleus or Scribe waits
-for you, its page's link turns amber like this group and says **Waits**.
-
-The window's title counts everything that waits for you: workspaces, merges, Nucleus, Scribe and
-agents' asks. In Symbiote's own window, the taskbar icon also gets an amber dot while anything
-waits. When something new waits while you are in another window, Symbiote asks the desktop to
-blink its taskbar button until you come back. Desktops that blink a window asking for attention do
-so, KDE and XFCE among them. On WSL the taskbar shows the dot but cannot blink.
+The window's title counts what waits for you. In Symbiote's window, the taskbar icon also gets
+an amber dot, and on desktops that support it the taskbar button blinks.
 
 ### Work with the agent
 
-Click a workspace to open it. Its head shows the model and effort its agent runs on, such as
-**Opus 5.5 · xhigh effort**. Symbiote reads them from the agent's session: Claude Code's latest
-answer, or Codex's thread. If you change them in the terminal (`/model`, `/effort`), the head
-follows from the agent's next answer. Hover it to see how the agent started. Until the agent
-answers, it shows the model and effort it started with.
+Click a workspace to open it. Its page has four tabs:
 
-Its page has four tabs:
+- **Terminal**: the agent's own terminal. Answer its questions and permission prompts here, as
+  you would in your own terminal. To give it an image, paste it or use **Attach images**.
+- **Thread**: the agent's plans and reports, and your messages.
+- **Activity**: what the agent did, as a timeline of phases such as exploring, implementing,
+  testing and debugging. Click a phase to see each command and its output. **Export** saves it
+  as one Markdown file, for you or another agent to read.
+- **Brief**: what the agent was asked.
 
-- **Terminal**: the agent's own terminal, as Claude Code, Codex or Hermes draws it. Answer
-  questions and permission prompts here, as you would in your own terminal. Leaving the tab does
-  not stop the agent. To give the agent an image, paste it (Ctrl+V) or use **Attach images**.
-- **Thread**: the agent's plans and reports, your messages, and what it waited for.
-- **Activity**: the agent's work as phases, such as exploring the code, implementing, testing,
-  debugging and committing. Each kind of phase has its own colour on the timeline. Your messages
-  (in bubbles), the agent's questions and its reports sit between the phases. Each phase shows when
-  it started, how long it took and its status. Click a phase to see
-  its events, and click an event to see its whole command, output and exit code. While the agent
-  works, a line at the top says what it is running. **Raw events** lists every line Symbiote
-  recorded. **Export** saves the whole activity as one Markdown file, for you or another agent
-  to read, or copies it to paste into an agent's chat. `symbiote activity` prints the same file
-  in a terminal.
-- **Brief**: what the agent was asked, with the documents you gave it.
+The **+** after the tabs opens a shell in the workspace's folder. The **Changes** panel on the
+right lists the branch's commits and changed files.
 
-The **+** after the tabs opens a shell in the workspace's worktree, for tests, a dev server or git.
-Where the window is wide enough, the **Changes** panel on the right lists the branch's commits and
-changed files. Click a file to open its diff in VS Code.
+![A workspace waiting for you: its agent's plan in the Thread tab, a Respond button in the amber band above it, and the sidenav grouping the other workspaces by what they need](docs/images/workspace.png)
 
-The commits count from where the workspace started: for a workspace started from another branch,
-only its own commits, not that branch's. To review it against another branch, pick that branch in
-**since** above the commits. **Review**, the commit count, the merge check and the target of an
-approval follow the pick. Pick **where it started** to go back.
-
-The top of the page has these buttons:
-
-- **Review** opens the branch's changes for review.
-- **Stop** stops the agent, and **Start** starts it again.
-- **⋯** holds **Open in VS Code**, which opens the worktree, and **Copy the prompt**, which copies
-  the agent's first prompt.
+![A workspace's Activity tab: phases of exploring, implementing, a failed test run, debugging and a passing one, with the commits and the agent's report between them](docs/images/activity.png)
 
 ### Review the branch and tell the agent
 
-**Review** opens on the branch's **Files**: every changed file, as the workspace lists them, and
-a file's diff when you click it. Click a line of the diff to comment on it. **Graph** (`g`) shows
-the same changes as a graph. The graph draws a box for each changed file, and in it the *symbols*
-that changed: functions, classes, methods and types, coloured by what changed. Lines between
-symbols are calls and other uses. *Findings* mark the risky changes: a function removed while
-code still calls it, new code that nothing uses, or a signature changed under callers that were
-not updated. The [review guide](docs/guide/review-and-ci.md) explains the files, the graph and
-the findings.
+**Review** opens the branch's change, as in [Review a change as a graph](#review-a-change-as-a-graph).
+Comment on lines and symbols, then pick a verdict in the **Review** tab and click **Finish
+review**. If you requested changes or commented, click **Send to the agent**. Symbiote types
+your verdict and the review file's path into the agent's terminal, and you send it with Enter.
+The agent reads your comments from that file.
 
-![Review of a workspace's branch: a comment on a symbol, the Review tab with Approve picked, and the symbol's diff beside the graph](docs/images/review.png)
-
-To review:
-
-1. On **Files**, read each file's diff, and click a line to comment on it.
-2. On **Graph**, click a symbol to see its diff and who uses it. Press `r` to mark it reviewed.
-   To comment on a symbol, select it and press `c`.
-3. In the **Review** tab, pick **Approve**, **Request changes** or **Comment**, then click
-   **Finish review**.
-
-Symbiote writes your *verdict* (the decision and your comments) to
-`symbiote/reviews/<branch>/<your git email>.json`. If you approved, there is nothing to tell the
-agent: you merge next. If you requested changes or commented, click **Send to the agent**.
-Symbiote types the verdict and the review file's path into the agent's terminal, and you send it
-with Enter. The agent reads your comments from that file.
-
-After the agent adds commits, review the branch again. Only what is new or changed since your
-last review is left to look at.
+![A review of the discount code branch on the Files page: two comments in the Review tab, Request changes picked, and one comment shown under its line in the diff](docs/images/review-files.png)
 
 ### Merge
 
-After you approve a branch, **Merge into** appears in the **Review** tab, under **Merge**, and on
-the workspace's page. The target is the branch the workspace is reviewed against: the one it
-started from, unless you picked another in **since**, or pick another here. Symbiote then:
+After you approve a branch, click **Merge into**. Symbiote then:
 
-1. merges the commit you approved (not any later one) in a worktree of its own, so neither your
-   checkout nor the agent's worktree is used;
-2. runs your project's check on the merge. The check is `merge.checks` in
-   [`symbiote/config.json`](docs/reference/configuration.md), or a command Symbiote finds in the
-   project, such as a `test` script in `package.json`;
-3. lands the merge if the check passes: it moves the target branch forward to the merge commit.
+1. merges the commit you approved, in a folder of its own, so neither your checkout nor the
+   agent's is touched;
+2. runs your project's check on the merge: `merge.checks` in `symbiote/config.json`, or a test
+   command Symbiote finds, such as `npm test`;
+3. lands the merge if the check passes: it moves the target branch to the merge commit. If that
+   branch is checked out in your own checkout, your files move with it.
 
-Beside the target, pick how it lands: **with a merge commit** (the default) or **by
-fast-forward**. A fast-forward makes no new commit: the target moves to the commit you approved,
-once the check has passed on that commit. It is offered only when the target has no commits the
-branch lacks; otherwise the control says so. If the target moves while a fast-forward waits its
-turn, the merge waits for you: click **Merge commit instead**, or bring the target into the branch
-and review it again. `merge.strategy` in `symbiote/config.json` sets which one is picked first.
+Merges run one at a time, in the order you asked for them. If the check fails, nothing lands,
+and **Send to the agent** gives the failure to the branch's agent. If the branch conflicts with
+its target, an agent called the *merger* proposes a resolution. Nothing lands until you approve
+it. Symbiote pushes nothing unless you set `merge.push` in `symbiote/config.json`.
 
-If the target branch is checked out in your own checkout, landing updates your files too. If that
-would overwrite changes you have not committed, git refuses and nothing changes. The merge then
-waits until you click **Land**.
+![A landed merge: its steps (the merge, npm test and the landing) beside their output](docs/images/merge.png)
 
-Symbiote does not push unless you set `merge.push` to `true` in `symbiote/config.json`. Merges
-run one at a time, in the order you asked for them. Click one under **Merging** to see its steps
-and their output as they run. If the check fails, nothing lands, and the merge page shows the
-check's output. **Send to the agent** gives the failure to the branch's agent, which says whether
-its branch caused it. If the project has no check, the merge waits for you to click **Land**.
+### Clean up and History
 
-If the branch conflicts with the target, Symbiote gives the conflict to the *merger*, an agent
-that proposes a resolution for each conflicting part. Nothing lands until you review it. The
-merge page shows each resolved part. It marks in red the lines where either branch's change was
-lost, and in amber the lines the merger wrote itself.
+When a workspace is merged, it moves to **Done**. **Clean up** stops the agent and removes its
+folder and branch. The workspace then goes to **History** (`h`), where you can still read its
+activity, thread, brief and changes.
 
-**Approve** lands the resolution, and **Request changes** asks the merger again with your words.
-If the resolution's check failed, **Check again** runs the check again without asking the merger.
+![History: a finished workspace, its activity from the first prompt to the approval](docs/images/history.png)
 
-![A landed merge: its steps (the merge, the install, the check and the landing) beside their output](docs/images/merge.png)
+The [workspaces guide](docs/guide/workspaces.md) covers every choice on these pages: the start
+page's cards, the merge strategies, conflicts and the merger, and what a clean-up removes.
 
-### Clean up
+## Hive mode: from goal to merged on its own
 
-When a workspace is merged, it moves to **Done**. **Clean up** stops and removes the agent's
-sessions, and removes the worktree, the documents and the branch. To remove a workspace that was
-not merged, use **Clean up…** under **⋯**. Symbiote asks first and keeps the branch. Symbiote does
-not clean up a workspace while its worktree has changes that are not committed.
+In Hive mode, Symbiote drives each workspace you start from its brief to merged, with no step that
+waits for you. You turn it on per repository, in **Settings**, **Hive mode**.
 
-A cleaned-up workspace goes to **History** (`h`, under Monitor in the sidenav). History lists them
-newest first, by the day they were cleaned up. Search them by title, branch or brief, or show one
-kind of work. Pick one to read it: its **Activity**, **Thread**, **Brief** and **Changes**, as its
-page showed them, with nothing to answer or run. Its commits are still shown after its branch is
-deleted: Symbiote finds them from the commit you approved, which the merge keeps. **Open the
-change** shows those commits' files and graph, as comparing two commits in Git does. A
-workspace's old link (`/?branch=…`) opens it in History.
+- **The agent works the brief.** Hive answers its plan and its questions in your place.
+- **Symbiote runs your check** after each of the agent's turns, and sends the agent what fails.
+- **A second agent reviews the change.** Once the check passes, a fresh Claude Code with none of
+  the first agent's context runs the change in a throwaway copy. It reports only bugs it can
+  prove with a failing test, and Symbiote runs each test again before the agent sees it.
+- **Hive lands the work** once the check passes and the review finds nothing. It merges the
+  workspace into the branch it started from, runs the check on the merge, and pushes. It can
+  open a pull or merge request instead, which lands when you merge it.
+- **Hive stays within limits.** It stops after 3 rounds of fixes. It starts no agent while your
+  Claude usage is at 90 % of a window, until the window resets. It stops a workspace that reaches
+  the budget you set. Turning Hive off stops its agents, checks and reviews.
+
+![A workspace Hive landed: its Review tab with round 1 (check passed, 1 defect proven by a test) and round 2 (check passed, approved), then the landing in main, pushed](docs/images/hive.png)
+
+Start a project in normal mode, and turn Hive on once the repository has a check and tests you
+trust: what passes them lands without you. While Hive is on, the app turns ink and crimson, and
+Nucleus is called *Alpha Ceph*. Hive drives Claude Code only, and its reviews run on Linux only.
+
+![Settings' Hive mode page: how Hive lands (the merge queue or a pull request), the usage at which it pauses, and a budget per workspace](docs/images/hive-settings.png)
+
+The [Hive section of the configuration reference](docs/reference/configuration.md#hive-mode)
+explains each step, its settings and where Hive keeps its record.
+
+## Nucleus: ask about your repository
+
+*Nucleus* (`a`) is an agent you talk to in a terminal on its own page. Ask it where something is
+decided, why code works the way it does, or what waits for you. It reads your checkout and your
+workspaces' folders, so it can answer about an agent's work before it is committed. It can search
+the web and read web pages.
+
+Nucleus can also act for you: start a workspace, answer an agent, review or merge a branch. It
+never edits files. A start, a verdict, a merge or a clean-up waits until you click **Confirm** in
+the bar it shows. Its **Activity** tab records what it did.
+
+![Nucleus's page: a conversation in its terminal about what waits, and its request to start a fix, waiting in a bar with Decline and Confirm](docs/images/nucleus.png)
+
+You can give the same tools to an agent of your own, such as Claude Code in your terminal: see
+[Symbiote's tools for your own agent](docs/reference/commands.md#symbiotes-tools-for-your-own-agent).
 
 ## The other pages
 
-The sidenav also opens these pages. Each has a key.
+Each page has a key; the [commands reference](docs/reference/commands.md#keys) lists them all.
+The [pages guide](docs/guide/pages.md) describes each page in full.
 
-- **Git** (`g`): the repository's commits and branches, drawn as a graph. Select a commit to see
-  its message, author, parents and files in the details pane. Click a file to see its diff in the
-  commits' place, and **Open in VS Code** (`o`) to open that diff in VS Code; `j` and `k` step
-  through the files, `Esc` goes back to the commits. Beside **Diff**, **History** lists the
-  commits that changed the file, and **Blame** shows each line's commit; click one to go to it.
-  Right-click a commit to check it out (`c`), start a workspace from it, make a branch or a tag
-  there, cherry-pick or revert it, or reset your branch to it (your changes stay on disk).
-  Right-click a branch in the branches panel to review, rename, delete, merge or hide it, or to
-  rebase your branch onto it; a remote branch can be deleted from its remote. Double-click
-  the branch to check it out. Press `x` to compare two commits.
-  Your uncommitted changes are a row above the commits: stage files, or only the lines you pick
-  in a file's diff, write a message and commit them in the details pane. **Stash…** puts them
-  aside; the stashes are listed under the branches. When a merge, rebase or cherry-pick stops on
-  conflicts, resolve and stage the files, then **Continue** or **Abort** there. **Fetch**,
-  **Pull** (fast-forward only, merge or rebase) and **Push** are at the top, with **Find a
-  commit** (`f`) to search the messages, authors and SHAs. When a branch moves elsewhere (an
-  agent commits, say), the page lists it without closing what you look at. Symbiote never forces
-  a push or a reset, and asks before anything it does would lose changes: when git refuses, it
-  says why.
-- **Nucleus** (`a`): your orchestrator in Symbiote, an agent you talk to in its terminal on this
-  page. Ask it about the repository: where something is decided, why it works this way, or what
-  waits for you. It reads the checkout and your workspaces' worktrees, so it can answer about an
-  agent's work before it is committed. It searches the web and reads web pages, to research tools,
-  libraries and docs (see [What Symbiote writes and sends](#what-symbiote-writes-and-sends)).
-  Nucleus can also act on your workspaces for you: start one, answer an agent, review or merge a
-  branch. Before a start, it can ask for suggested settings, as **Suggest settings** does, and you
-  choose what it starts with. Nucleus never edits files. It can send a message to an agent without
-  asking you, but a start, a verdict, a merge and a clean-up each wait until you click
-  **Confirm**. To let it start workspaces at once, turn on **Start workspaces without a Confirm**
-  on Nucleus's page in **Settings**; it is on while Hive mode is on. **New conversation** starts over. Its **Activity** tab shows what it did, across
-  conversations, as a workspace's does: your messages and its answers with their tokens, every
-  command, file read, search and page with what its gate allowed or refused, each call of
-  Symbiote's tools, and each **Confirm** with your answer. **Export** takes it out as a
-  workspace's does (`symbiote activity --nucleus`). While Hive mode is on, Nucleus is called
-  Alpha Ceph, its icon is the Hive Mind, and it is told what Hive does; turning Hive on or off
-  starts its next conversation, unless it is answering or waiting on you. Nucleus was called Scout before. A
-  conversation that Scout started stays open on this page, without the web, until you press
-  **New conversation**.
-- **Skills** (`i`): the repository's *skills*, the instruction files agents load for a kind of
-  task (`.claude/skills/<name>/SKILL.md`). Search them by name or description, read and edit
-  them here (with line numbers, or as a Markdown preview), or open one in VS Code. As you type,
-  the page flags what an agent would refuse, such as a missing name or description. *Scribe*, an
-  agent on the same page, writes a new skill or improves one: you ask in its terminal, and
-  **Improve with Scribe** types the skill's path there for you. Scribe only writes in
-  `.claude/skills/` and never commits.
-  Your *skill library* is a folder of skills kept outside the repository, a plain folder or one
-  in a git repository. Set it once in Settings, and every repository's Skills page lists its
-  skills too: you edit and add them there, and Scribe writes them. If Settings says so, the page
-  also commits and pushes the library's changes.
-- **Monitor** (`m`): how the code is spread across folders and files, to spot the files that have
-  grown too large. A map shows each file sized by its lines of code, and marks the long ones.
-- **History** (`h`): the workspaces you cleaned up, with their activity, thread, brief and
-  changes. See [Clean up](#clean-up).
-- **Settings** (`s`): the prompts Symbiote gives its agents, such as a workspace agent's first
-  prompt; the model and effort of the merger, Nucleus and Scribe (set only here: their pages have no
-  such choices); the **Skill library** (its folder,
-  or a repository to clone, and who commits its changes); **Hive mode** (this repository's switch
-  for Hive, which drives each workspace you start from its brief to landed, with no step that
-  waits for you: Symbiote runs the check after each turn of its agent, a reviewer runs the change
-  in a throwaway copy and proves defects with failing tests, Symbiote sends the agent what fails
-  and answers its plans and questions, then Hive lands the workspace in the branch it started from
-  and pushes it. With **Hive lands by** set to a pull or merge request, Hive opens one on GitHub or
-  GitLab instead, and your merge there lands it. Hive starts no agent while your Claude usage is
-  at 90 % of a window or more, until it resets, and stops a workspace that reaches the budget you
-  set. In Hive mode the sidenav has two groups, **Hive** and **Done**. Start a project in
-  normal mode, and turn Hive on once the repository has a check and tests you trust; it does not
-  turn on while a workspace started in normal mode is open. See
-  [configuration](docs/reference/configuration.md#hive-mode)); and **Appearance** (dark, light or
-  your system's; the text size, Compact, Default or Large, which changes the text and not the rows;
-  and whether Git's commit details show on the right or below the commits).
+### Git
+
+**Git** (`g`) draws the repository's commits and branches as a graph. Select a commit to see its
+files and diffs, a file's history and blame. Stage and commit your changes, make branches and
+tags, merge, rebase, cherry-pick, stash, fetch, pull and push. Symbiote never forces a push and
+asks before anything that would lose changes.
+
+![The Git page: branches on the left, the commits as a graph with the workspaces' branches, and the selected merge commit's details](docs/images/git.png)
+
+### Skills and Scribe
+
+**Skills** (`i`) lists the instruction files agents load for a kind of task
+(`.claude/skills/<name>/SKILL.md`). Read and edit them, with checks for what an agent would
+refuse. *Scribe*, an agent on the same page, writes a new skill or improves one. A *skill
+library*, a folder of skills outside the repository, shows on every repository's Skills page.
+
+![The Skills page: the project's skills, one open with its text and line numbers, and Improve with Scribe](docs/images/skills.png)
+
+### Monitor
+
+**Monitor** (`m`) shows where the code is: a map of every file, sized by its lines of code, with
+the long files in warmer colours. Use it to spot the files that have grown too large.
+
+![The Monitor: the source folder as a map of files sized by their lines, the largest in amber](docs/images/monitor.png)
+
+### Settings
+
+**Settings** (`s`) holds:
+
+- the prompts Symbiote gives each agent, which you can edit, with their placeholders;
+- the model and effort of Symbiote's own agents: the merger, Nucleus and Scribe;
+- Hive mode, and the skill library;
+- **Appearance**: dark, light or your system's theme; the text size (Compact, Default or Large);
+  and where Git shows a commit's details.
+
+![Settings: the list of what Symbiote tells its agents, and the Feature prompt open with its text](docs/images/settings.png)
 
 The status bar at the bottom shows how much of your Claude and Codex subscription limits you have
 used.
 
-![Git: the branches panel, and the commits drawn as a graph, each branch labelled with its review's state](docs/images/history.png)
+## Several Symbiotes in one window
 
-## Review without an agent
-
-The graph works on any change, with or without a workspace:
+Each `symbiote view` serves one repository. *Symbiote nexus* shows every one running on this
+machine as a tab of one window, and starts new ones in any repository on your computer:
 
 ```sh
-symbiote view main     # this branch against main, as a graph
-symbiote diff main     # the same comparison, printed in the terminal
-symbiote pr 123        # a GitHub pull request or a GitLab merge request
+symbiote-nexus
 ```
 
-`symbiote pr` posts your comments to the pull request as one review. A GitHub Action and a GitLab
-CI template post the findings on the lines they are about. The
-[review guide](docs/guide/review-and-ci.md) covers these, the tokens they need, the framework
-plugins for Angular and Qwik, and CSS and SCSS. Every command and option is in the
-[commands reference](docs/reference/commands.md).
+Its **Symbiotes** page shows the running ones and the repositories you pinned as cards, and your
+folders under them. Click a repository to open a Symbiote there. Closing the nexus stops no
+Symbiote, so their agents keep working.
+
+![Symbiote nexus: two running Symbiotes and a pinned repository as cards, and the projects folder with its repositories under them](docs/images/nexus.png)
+
+## Logs
+
+Every Symbiote process writes its log lines to one folder, `~/.cache/symbiote/logs/` by default.
+To read them in Grafana, run `pnpm logs:up` in Symbiote's folder (it needs Docker). See
+[Logs](docs/reference/configuration.md#logs) in the configuration reference.
 
 ## What Symbiote writes and sends
 
-In your repository, Symbiote keeps its files in the `symbiote/` folder: workspace records,
-reviews, the agents' threads and activity, documents, the settings of the agents it starts,
-whether Hive mode is on, and where Hive is with each workspace it drives, with the tests its
-reviewer proved defects with and the output of each check and review. A review's throwaway copies are in Symbiote's cache, deleted when the
-review ends.
-An agent's activity holds each command it ran, whole up to 8 KB, and the last 2 KB of its output
-or error. Nucleus's activity, `symbiote/nucleus-activity.jsonl`, also keeps the first 2 KB of a
-page it read or a tool's answer; values of your environment variables named like secrets, and
-tokens by their shape, are replaced with `[redacted]` before anything is written. Past 4 MB it
-moves to `nucleus-activity.1.jsonl`, replacing the one before. An exported activity, a
-workspace's included, has the same values replaced before it leaves Symbiote. It also writes `symbiote/AGENTS.md`, which tells any agent how to act on a review. Symbiote's own
-`symbiote/.gitignore` keeps everything there out of git, itself included, except two files. They
-are yours to commit and share: `config.json` holds your settings, and `merge.md` your rules for
-the merger.
+In your repository, Symbiote keeps its files in the `symbiote/` folder:
 
-Two more things write elsewhere in the repository: saving a skill writes in `.claude/skills/`, and
-landing a merge updates the branch you have checked out.
+- the workspace records, your reviews, and the agents' threads and activity;
+- this repository's switches, such as Hive mode;
+- Hive's record of each workspace it drives, with the tests its reviewer wrote and the output of
+  each check;
+- `AGENTS.md`, which tells any agent how to act on a review.
+
+Symbiote's own `symbiote/.gitignore` keeps all of it out of git, except two files that are yours
+to commit and share. `config.json` holds your settings, and `merge.md` your rules for the merger.
+
+An agent's activity keeps each command it ran, whole up to 8 KB, and the last 2 KB of its output.
+Nucleus's activity, `symbiote/nucleus-activity.jsonl`, also keeps the first 2 KB of each page it
+read. Past 4 MB it moves to `nucleus-activity.1.jsonl`, replacing the one before. In Nucleus's
+activity and in any exported activity, values of your environment variables named like secrets,
+and tokens by their shape, are replaced with `[redacted]`.
+
+Two more things write elsewhere in the repository: saving a skill writes in `.claude/skills/`,
+and landing a merge moves the branch you have checked out.
 
 Outside the repository, Symbiote writes:
 
 - the workspaces' worktrees, next to your checkout, in `../<repo>.worktrees/`;
-- its cache, `~/.cache/symbiote` on Linux, with the worktrees it compares and merges in, the
-  list of merges, drafts, pasted images, its logs, the address of each running
-  `symbiote view` (Symbiote nexus reads them), the output of each Symbiote the nexus started, and
-  a copy of the hook that records each agent's thread (about 23 KB a build, kept so a session
-  never names a hook that is gone);
-- its settings for this machine, `~/.config/symbiote` on Linux: the skill library's folder, and
-  whether the intro was seen;
-- the skill library's skills, when you save, add or delete one, or Scribe writes one. Symbiote
-  commits and pushes the library only if Settings says so, and only its folder.
+- its cache, `~/.cache/symbiote` on Linux. It holds the worktrees Symbiote compares and merges
+  in, the list of merges, drafts, pasted images and logs. It also holds the address of each
+  running `symbiote view`, which the nexus reads, and the output of each Symbiote the nexus
+  started. A running review's throwaway copies are there until the review ends. So is a copy of
+  the hook that records each agent's thread, about 23 KB a build;
+- its settings for this machine, `~/.config/symbiote` on Linux: the skill library's folder, the
+  nexus's pinned folders, and whether the intro was seen;
+- the skill library's skills, when you or Scribe save one. Symbiote commits and pushes the
+  library only if Settings says so.
 
 Symbiote itself sends three things over the network:
 
-- Your Claude usage is read from `api.anthropic.com`, with the token Claude Code stored, at most
-  every 5 minutes; Hive reads it before it starts an agent. Codex's usage comes from Codex on your
-  machine. Set `SYMBIOTE_USAGE=off` to read neither.
-- `symbiote pr` and the CI jobs call the GitHub or GitLab API, and fetch the pull request. So
-  does Hive with **Hive lands by** set to a pull or merge request: it opens the request, posts
-  Symbiote's review on it and reads it once a minute until you merge or close it.
-- A merge is pushed only if you set `merge.push`.
+- **Your Claude usage** is read from `api.anthropic.com` at most every 5 minutes, with the token
+  Claude Code stored. Hive reads it before it starts an agent. Codex's usage comes from Codex on
+  your machine. Set `SYMBIOTE_USAGE=off` to read neither.
+- **Pull and merge requests.** `symbiote pr` and the CI jobs call the GitHub or GitLab API and
+  fetch the change. So does Hive when it lands through a request. It opens the request, posts
+  Symbiote's review on it, and reads it once a minute until you merge or close it.
+- **Pushes.** Symbiote pushes a merge only if you set `merge.push`, or when Hive lands it.
 
 The agents talk to their own services, as they do when you run them yourself. Symbiote's fonts
 and pages are served by `symbiote view` itself.
 
-Nucleus also searches the web and reads web pages when a question needs it. On Claude Code, the
+Nucleus searches the web and reads web pages when a question needs it. On Claude Code, the
 searches go through Anthropic, and Claude Code fetches each page from your machine. It can reach
-any address your machine can, including addresses on your own network. On Codex, OpenAI runs the
-searches and opens the pages. What leaves your machine is the search and the page's address. A
-page can hold instructions: Nucleus treats it as data, and nothing it reads can start, approve,
-merge or clean up without your **Confirm**. With **Start workspaces without a Confirm** on, or in
-Hive mode, a start no longer waits for it. To turn Nucleus's web access off, set `nucleus.web`
-to `false` in [the settings file](docs/reference/configuration.md).
-
-All settings are in the [configuration reference](docs/reference/configuration.md).
+any address your machine can, including ones on your own network. On Codex, OpenAI runs the
+searches and opens the pages. A page can hold instructions: Nucleus treats it as data, and
+nothing it reads can start, approve, merge or clean up without your **Confirm**. (A start no
+longer waits for it with **Start workspaces without a Confirm** on, or in Hive mode.) To turn
+Nucleus's web access off, set `nucleus.web` to `false` in `symbiote/config.json`.
 
 ## Limits
 
-- Workspaces start Claude Code, Codex or Hermes. Other agents are not supported yet, and Nucleus,
-  Scribe and the merger run on Claude Code or Codex only.
-- The graph reads TypeScript, JavaScript, CSS and SCSS. Other files have no symbols in the graph;
-  a review shows their diffs on its **Files** page, where you can comment on their lines.
-  Workspaces work in any git repository.
-- The analysis is static: it reads code and does not run it.
-- Symbiote is tested on Linux and WSL only, as [Requirements](#requirements) says.
+- Workspaces start Claude Code, Codex or Hermes. Nucleus, Scribe and the merger run on Claude
+  Code or Codex. Hive drives Claude Code only.
+- The graph reads TypeScript, JavaScript, CSS and SCSS. Other files show as diffs on the **Files**
+  page, where you can comment on them. Workspaces work in any git repository.
+- The analysis is static: it reads the code and does not run it.
+- Symbiote is tested on Linux and WSL only.
+
+## Documentation
+
+- [Review changes as a graph](docs/guide/review-and-ci.md): the graph, the findings, pull
+  requests, CI, framework plugins.
+- [Work with agents in workspaces](docs/guide/workspaces.md): starting, answering, reviewing,
+  merging and cleaning up, in detail.
+- [Symbiote's pages](docs/guide/pages.md): Git, Nucleus, Skills, Monitor, Settings and the nexus.
+- [Commands and keys](docs/reference/commands.md): every command, option and key, and the tools
+  for your own agent.
+- [Configuration](docs/reference/configuration.md): `symbiote/config.json`, prompts, Hive mode,
+  environment variables and logs.
+- [Graph schema](docs/graph-schema.md): the graph JSON that `symbiote diff --json` prints.
 
 ## Development
 
@@ -528,9 +473,7 @@ pnpm test:e2e     # the app's end-to-end tests, after pnpm build
 ```
 
 The code is in `packages/`. The main ones are `cli`, the `symbiote` command and its server;
-`viewer`, the app; `core`, the analysis; and `desktop`, Symbiote's window. `CLAUDE.md` holds the
-working rules for agents in this repository.
-
-- [Plan](docs/PLAN.md): every milestone, with its design and results.
-- [Journal](docs/JOURNAL.md): what each change learned and measured.
-- [Graph schema](docs/graph-schema.md): the graph JSON that `symbiote diff --json` prints.
+`viewer`, the app; `core`, the analysis; `desktop`, Symbiote's window; and `nexus`. `CLAUDE.md`
+holds the working rules for agents in this repository. The [plan](docs/PLAN.md) lists every
+milestone, with its design and results, and the [journal](docs/JOURNAL.md) what each change
+learned and measured.
