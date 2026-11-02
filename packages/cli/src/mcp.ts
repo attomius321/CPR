@@ -1395,7 +1395,10 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
    * Why `name`'s call goes without the person's Confirm (NU3, decision 784): only Nucleus's
    * `start_workspace`, while Hive mode or the person's setting says so; else undefined.
    */
-  async function startsAtOnce(name: string, caller: McpCaller): Promise<WithoutConfirm | undefined> {
+  async function startsAtOnce(
+    name: string,
+    caller: McpCaller,
+  ): Promise<WithoutConfirm | undefined> {
     if (name !== 'start_workspace' || caller.via !== 'nucleus' || !options.withoutConfirm) {
       return undefined;
     }

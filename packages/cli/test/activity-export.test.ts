@@ -483,6 +483,62 @@ Nucleus, the person's assistant in \`Symbiote\`, across its conversations. Times
   });
 });
 
+describe('Nucleus as Markdown: a start without a Confirm (NU3, decision 785)', () => {
+  it('says it started without one, and why', () => {
+    const at = (s: number) => `2026-11-02T08:00:0${s}.000Z`;
+    const text = markdown({
+      ...nucleus,
+      lines: [
+        {
+          at: at(0),
+          session: 'symbiote',
+          id: 'm1',
+          tool: 'start_workspace',
+          source: 'symbiote',
+          phase: 'start',
+          input: '{"branch":"fix/a"}',
+        },
+        {
+          at: at(1),
+          kind: 'confirm',
+          ask: 's1',
+          tool: 'start_workspace',
+          words: 'Start fix/a with Claude Code',
+          call: 'm1',
+          stage: 'skipped',
+          why: 'setting',
+        },
+        {
+          at: at(2),
+          kind: 'confirm',
+          ask: 's2',
+          tool: 'start_workspace',
+          words: 'Start fix/b with Claude Code',
+          stage: 'skipped',
+          why: 'hive',
+        },
+        {
+          at: at(3),
+          session: 'symbiote',
+          id: 'm1',
+          tool: 'start_workspace',
+          source: 'symbiote',
+          phase: 'end',
+          ms: 3_000,
+          output: '{"workspace":{"branch":"fix/a"},"withoutConfirm":"setting"}',
+        },
+      ],
+    });
+    expect(text).toContain(
+      '- 08:00:01 · Started without a Confirm (your setting): Start fix/a with Claude Code (`start_workspace`)',
+    );
+    expect(text).toContain(
+      '- 08:00:02 · Started without a Confirm (Hive mode): Start fix/b with Claude Code (`start_workspace`)',
+    );
+    expect(text).not.toContain('declined');
+  });
+});
+
 describe('what the export keeps intact (V84)', () => {
   it('fences an output in one backtick more than its longest run, and quotes text whole', () => {
     const fenced: WorkspaceSources = {

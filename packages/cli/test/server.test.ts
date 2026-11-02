@@ -3186,6 +3186,119 @@ describe('/api/hive (V82)', () => {
   });
 });
 
+describe('/api/nucleus/start-confirm (NU3, decisions 782, 783)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const servers: ViewServer[] = [];
+  const switchOf = (initial: boolean) => {
+    const record = {
+      value: initial,
+      on: () => Promise.resolve(record.value),
+      set: (value: boolean) => {
+        record.value = value;
+        return Promise.resolve();
+      },
+    };
+    return record;
+  };
+  const repository = {
+    history: new Histories({
+      state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+      stream: () => Promise.resolve(),
+      details: () => Promise.resolve([]),
+    }),
+    status: () =>
+      Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+    refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+    checkout: () => Promise.reject(new Error('no')),
+    isCommit: () => Promise.resolve(true),
+    diffs: new Diffs(() => Promise.reject(new Error('no'))),
+    readFile: () => Promise.resolve(''),
+  };
+  beforeAll(() => writeFileSync(join(viewer, 'index.html'), '<html lang="en">viewer</html>'));
+  afterAll(async () => {
+    for (const server of servers) await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+  const start = async (options: Partial<Parameters<typeof startViewServer>[0]>) => {
+    const server = await startViewServer({ viewerDir: viewer, repository, ...options });
+    servers.push(server);
+    return server;
+  };
+  const turn = (server: ViewServer, body: string) =>
+    fetch(new URL('/api/nucleus/start-confirm', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      body,
+    });
+  const read = async (server: ViewServer) =>
+    (await fetch(new URL('/api/nucleus/start-confirm', server.url))).json();
+  /** The MCP's instructions as `caller`'s bridge reads them. */
+  const instructions = async (server: ViewServer, caller?: string) => {
+    const answer = await fetch(new URL('/api/mcp', server.url), {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-symbiote': '1',
+        ...(caller ? { 'x-symbiote-caller': caller } : {}),
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize', params: {} }),
+    });
+    return ((await answer.json()) as { result: { instructions: string } }).result.instructions;
+  };
+
+  it("answers the setting and turns the person's choice on and off; the MCP follows it", async () => {
+    const own = switchOf(false);
+    const server = await start({ nucleusStart: own, hive: switchOf(false) });
+    expect(await read(server)).toEqual({ withoutConfirm: false, own: false, hive: false });
+    expect(await instructions(server, 'nucleus')).not.toContain('starts at once');
+    const turned = await turn(server, '{"on":true}');
+    expect(turned.status).toBe(200);
+    expect(await turned.json()).toEqual({ withoutConfirm: true, own: true, hive: false });
+    expect(own.value).toBe(true);
+    expect(await instructions(server, 'nucleus')).toContain('start_workspace starts at once');
+    // An agent through symbiote mcp reads today's words.
+    expect(await instructions(server)).not.toContain('starts at once');
+    expect(await (await turn(server, '{"on":false}')).json()).toEqual({
+      withoutConfirm: false,
+      own: false,
+      hive: false,
+    });
+  });
+
+  it('is on while Hive is on, and not changed then: 409, the choice kept', async () => {
+    const own = switchOf(false);
+    const hive = switchOf(true);
+    const server = await start({ nucleusStart: own, hive });
+    expect(await read(server)).toEqual({ withoutConfirm: true, own: false, hive: true });
+    expect(await instructions(server, 'nucleus')).toContain('Hive mode is on');
+    const refused = await turn(server, '{"on":true}');
+    expect(refused.status).toBe(409);
+    expect(((await refused.json()) as { error: string }).error).toContain('Hive mode is on');
+    expect(own.value).toBe(false);
+    hive.value = false;
+    expect(await read(server)).toEqual({ withoutConfirm: false, own: false, hive: false });
+  });
+
+  it("refuses a write without Symbiote's header or with a wrong body", async () => {
+    const own = switchOf(false);
+    const server = await start({ nucleusStart: own });
+    const bare = await fetch(new URL('/api/nucleus/start-confirm', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: '{"on":true}',
+    });
+    expect(bare.status).toBe(403);
+    expect((await turn(server, '{"on":"yes"}')).status).toBe(400);
+    expect(own.value).toBe(false);
+  });
+
+  it('is not there without a record', async () => {
+    const server = await start({});
+    expect((await fetch(new URL('/api/nucleus/start-confirm', server.url))).status).toBe(404);
+  });
+});
+
 describe("Nucleus's conversation follows Hive (V86, decision 750)", () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);

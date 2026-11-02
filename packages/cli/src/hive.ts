@@ -50,9 +50,22 @@ export function repositoryHive(
   cacheDir: string,
   { now = () => new Date() } = {},
 ): HiveRecord {
+  return repositorySwitch(repo, cacheDir, 'hive.json', { now });
+}
+
+/**
+ * A switch of `repo`'s kept as Hive mode is (`repositoryHive`): `name` in its `symbiote/`, never
+ * committed, a tracked one read as off. Nucleus's start without a Confirm is one too (NU3).
+ */
+export function repositorySwitch(
+  repo: GitRepo,
+  cacheDir: string,
+  name: string,
+  { now = () => new Date() } = {},
+): HiveRecord {
   const place = async () => {
     const where = await reviewPlace(repo, cacheDir);
-    return { where, record: hiveRecord(join(dirname(where.dir), 'hive.json'), { now }) };
+    return { where, record: hiveRecord(join(dirname(where.dir), name), { now }) };
   };
   return {
     async on() {
@@ -60,7 +73,7 @@ export function repositoryHive(
       if (!(await record.on())) return false;
       if (where.place === 'cache') return true;
       const main = { ...repo, root: mainWorktree(repo) };
-      return (await trackedFiles(main, 'symbiote/hive.json')).length === 0;
+      return (await trackedFiles(main, `symbiote/${name}`)).length === 0;
     },
     async set(on) {
       const { where, record } = await place();
