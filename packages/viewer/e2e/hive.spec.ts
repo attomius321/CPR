@@ -82,7 +82,7 @@ test('Hive mode: a danger to press, asked first, kept for the repository, its lo
   );
   await expect(editor(page).getByRole('heading', { level: 2 })).toHaveText('Hive mode Off');
   await expect(editor(page).getByRole('note')).toContainText(
-    "Hive runs agents and the project's check without asking you first.",
+    "Hive runs agents, the project's check and lands work without asking you.",
   );
   await expect(turnOn(page)).toHaveClass(/\bdanger\b/);
   await expect(editor(page)).toContainText(

@@ -1,6 +1,6 @@
 // Workspaces started from the commits page (V18): pure helpers for the start page and the
 // line the page shows after Start.
-import { landingWords } from './hive-rounds.js';
+import { landedLine, landingLine } from './hive-rounds.js';
 import { COMMAND_TOOLS, shownCommand } from './activity/classify.js';
 import type {
   AgentEfforts,
@@ -442,8 +442,54 @@ export function workspaceNext(
   const stopped = (text: string, c: AgentChip['mark'], tone: AgentChip['tone']) =>
     next('stopped', text, c, tone);
   if (workspace.tip === null) return stopped('Its branch is gone', '!', 'failed');
-  if (workspace.merged) return next('done', 'Merged', '✓', 'done');
   const { agent, activity, hive } = workspace;
+  /** What the agent does now, in words (V48f): "Running pnpm test", "Thinking". */
+  const doingWords = () => {
+    const doing = activity?.doing;
+    // A command's leading `cd` to the worktree left out, its paths short (V73).
+    const shown =
+      doing && 'tool' in doing && doing.subject && COMMAND_TOOLS.has(doing.tool)
+        ? { ...doing, subject: shownCommand(doing.subject, workspace.worktree.path) }
+        : doing;
+    return !shown ? undefined : 'thinking' in shown ? 'Thinking' : activityText(shown);
+  };
+  // Hive mode (HV4, decision 774): every state of a workspace Hive drives is Hive's, in its group,
+  // from its brief to landed; landed or answered, Done. Nothing waits for the person.
+  if (hive && !hive.off) {
+    const said = (text: string, mark: string, tone: AgentChip['tone']): WorkspaceNext => ({
+      ...next('hive', text, mark, tone),
+      hive: true,
+    });
+    if (workspace.merged || hive.step === 'landed') {
+      return next('done', landedLine(hive.landing), '✓', 'done');
+    }
+    if (hive.step === 'answered') return next('done', 'Answered: read its report', '✓', 'done');
+    if (hive.step === 'stuck')
+      return said(`Stopped: ${hive.note ?? 'Hive cannot go on'}`, '!', 'failed');
+    if (hive.step === 'landing') return said(landingLine(hive.landing), '⚙', 'hive');
+    if (hive.step === 'checking') return said('Hive: running the check', '⚙', 'hive');
+    if (hive.step === 'reviewing') return said('Hive: reviewing', '⚙', 'hive');
+    switch (agent.state) {
+      case 'working': {
+        // The writer's words are its agent's: its mark before them.
+        const words = doingWords();
+        return { ...next('hive', 'Writing', '⚙', 'working'), ...(words ? { doing: words } : {}) };
+      }
+      case 'ready':
+      case 'done':
+        return said('Hive: reading its turn', '⚙', 'hive');
+      case 'plan-ready':
+        return said('Hive: OKing its plan', '⚙', 'hive');
+      case 'needs-you':
+        return said('Hive: answering for you', '⚙', 'hive');
+      case 'failed':
+      case 'not-started':
+        return said('Hive: starting its agent again', '⚙', 'hive');
+      default:
+        return next('hive', 'Its agent is not running', '·', 'idle');
+    }
+  }
+  if (workspace.merged) return next('done', 'Merged', '✓', 'done');
   const waits = (text: string): WorkspaceNext => {
     const blocked = blockedOn(workspace);
     return { ...next('waiting', text, '?', 'waiting'), ...(blocked ? { blocked } : {}) };
@@ -451,7 +497,6 @@ export function workspaceNext(
   // Hive's steps (HV2): a turn that ended is Hive's to act on, not the person's to review; the
   // writer at work or waiting on the person reads as any workspace's.
   if (hive) {
-    const finished = agent.state === 'ready' || agent.state === 'done';
     if (hive.paused && agent.state !== 'working') {
       if (hive.step === 'checking')
         return stopped('Hive off: paused before the check', '·', 'idle');
@@ -459,30 +504,13 @@ export function workspaceNext(
         return stopped('Hive off: paused before the review', '·', 'idle');
       if (hive.step === 'writing') return stopped('Hive off: paused', '·', 'idle');
     }
-    // Hive at work, a state of its own (decision 698); the round is the card's fact (2/3), what
-    // runs now its own line (`HiveNow`).
-    if (!hive.paused && hive.step === 'checking') {
-      return { ...next('hive', 'Hive: running the check', '⚙', 'hive'), hive: true };
-    }
-    if (!hive.paused && hive.step === 'reviewing') {
-      return { ...next('hive', 'Hive: reviewing', '⚙', 'hive'), hive: true };
-    }
-    if (!hive.paused && hive.step === 'writing' && finished) {
-      return { ...next('hive', 'Hive: reading its turn', '⚙', 'hive'), hive: true };
-    }
     if (hive.step === 'stuck' && agent.state !== 'working') {
       return waits(`Hive stopped: ${hive.note ?? 'it needs you'}`);
     }
   }
   switch (agent.state) {
     case 'working': {
-      const doing = activity?.doing;
-      // A command's leading `cd` to the worktree left out, its paths short (V73).
-      const shown =
-        doing && 'tool' in doing && doing.subject && COMMAND_TOOLS.has(doing.tool)
-          ? { ...doing, subject: shownCommand(doing.subject, workspace.worktree.path) }
-          : doing;
-      const words = !shown ? undefined : 'thinking' in shown ? 'Thinking' : activityText(shown);
+      const words = doingWords();
       return { ...next('working', 'Working', '⚙', 'working'), ...(words ? { doing: words } : {}) };
     }
     case 'needs-you':
@@ -512,12 +540,6 @@ export function workspaceNext(
   }
   // Commits to look at: the review says what is next.
   const toReview = (text: string) => next('review', text, '●', 'ready');
-  // Landing asked in Hive mode (HV3, decision 681): no review of the person's, Land in its Review
-  // tab; once pressed, the merge queue has it.
-  if (hive?.step === 'landing' && !hive.off) {
-    const approved = review?.verdict?.event === 'approve' && review.verdict.head === workspace.tip;
-    return toReview(approved ? 'Landing: in the merge queue' : landingWords(hive));
-  }
   const since = review?.refs.find((r) => r.name === workspace.branch)?.since ?? 0;
   if (since > 0) return toReview(`${plural(since, 'commit')} since your review: review again`);
   const verdict = review?.verdict?.head === workspace.tip ? review.verdict : undefined;
@@ -654,10 +676,14 @@ export interface WorkspaceGroups {
   done: WorkspaceRow[];
 }
 
-/** The workspaces view's groups, each in the order the workspaces were started. */
+/**
+ * The workspaces view's groups, each in the order the workspaces were started. In Hive mode
+ * (`hiveMode`, HV4, decision 774) only Hive and Done: every workspace not done is Hive's.
+ */
 export function workspaceGroups(
   workspaces: readonly WorkspaceSummary[],
   reviews: BranchReviewList | null,
+  { hiveMode = false }: { hiveMode?: boolean } = {},
 ): WorkspaceGroups {
   const groups: WorkspaceGroups = {
     waiting: [],
@@ -670,7 +696,8 @@ export function workspaceGroups(
   for (const workspace of workspaces) {
     const review = reviews?.reviews.find((r) => r.branch === workspace.branch);
     const next = workspaceNext(workspace, review);
-    groups[next.group].push({ workspace, next });
+    const group = hiveMode && next.group !== 'done' ? 'hive' : next.group;
+    groups[group].push({ workspace, next });
   }
   return groups;
 }

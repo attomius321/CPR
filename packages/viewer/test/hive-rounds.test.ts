@@ -1,12 +1,14 @@
-// HV3: a Hive workspace's Review tab in words — its rounds, verdicts, findings and landing.
+// HV3, HV4: a Hive workspace's Review tab in words — its rounds, verdicts, findings and landings.
 import { describe, expect, it } from 'vitest';
-import type { HiveReview, WorkspaceHiveDetail } from '@symbiote/core';
+import type { HiveLanding, HiveReview, WorkspaceHiveDetail } from '@symbiote/core';
 import {
   checkWords,
   durationWords,
   findingWords,
   hiveRounds,
-  landingWords,
+  landedLine,
+  landingLine,
+  landingOutcome,
   stepWords,
   verdictWords,
 } from '../src/workspaces/hive-rounds.js';
@@ -18,6 +20,15 @@ const review = (over: Partial<HiveReview>): HiveReview => ({
   verdict: 'approved',
   ms: 90_000,
   findings: [],
+  ...over,
+});
+const landing = (over: Partial<HiveLanding>): HiveLanding => ({
+  round: 1,
+  at: TIP,
+  into: 'main',
+  entry: 'm1',
+  queued: '2026-11-02T10:00:00.000Z',
+  pushed: { ok: true, remote: 'origin' },
   ...over,
 });
 const detail = (over: Partial<WorkspaceHiveDetail>): WorkspaceHiveDetail => ({
@@ -67,22 +78,50 @@ describe("a Hive workspace's Review tab (HV3)", () => {
     expect(durationWords(3_900_000)).toBe('1 h 5 min');
   });
 
-  it('says where Hive is, and what landing asks', () => {
+  it('says where Hive is: its step, its landing, its stop (HV4)', () => {
     expect(stepWords(detail({ step: 'reviewing', round: 2 }))).toBe(
       'The running reviewer at work, round 2 of 3',
     );
-    expect(stepWords(detail({ step: 'landing', reviews: [review({})] }))).toBe(
-      'Checked and reviewed: land it',
+    expect(stepWords(detail({ step: 'landing' }))).toBe('Hive: landing it');
+    expect(stepWords(detail({ step: 'landing', landings: [landing({ state: 'checking' })] }))).toBe(
+      'Landing in main: checking the merge',
     );
+    expect(stepWords(detail({ step: 'landed', landings: [landing({ outcome: 'landed' })] }))).toBe(
+      'Landed in main · pushed',
+    );
+    expect(stepWords(detail({ step: 'stuck', note: 'could not land in main 3 times: x' }))).toBe(
+      'Stopped: could not land in main 3 times: x',
+    );
+    expect(stepWords(detail({ step: 'answered' }))).toBe('Answered: read its report');
     expect(stepWords(detail({ step: 'landing', on: false }))).toBe(
       'Hive is off: review and land it as any workspace',
     );
     expect(stepWords(detail({ step: 'checking', on: false }))).toBe(
       'Hive is off: checking, round 1 of 3, waits',
     );
-    expect(landingWords({ note: 'the running review failed twice: x; review it yourself' })).toBe(
-      'Not reviewed: look, then land it',
+  });
+
+  it("says a landing's place in the queue, and how it ended", () => {
+    expect(landingLine(undefined)).toBe('Hive: landing it');
+    expect(landingLine(landing({}))).toBe('Landing in main: queued');
+    expect(landingLine(landing({ state: 'merging' }))).toBe('Landing in main: merging');
+    expect(landingLine(landing({ state: 'ready' }))).toBe(
+      'Landing in main: waiting for your checkout',
     );
-    expect(landingWords({})).toBe('Checked: land it');
+    // A landing that ended: the next one is not queued yet.
+    expect(landingLine(landing({ outcome: 'conflict' }))).toBe('Hive: landing it');
+    expect(landedLine(landing({ outcome: 'landed' }))).toBe('Landed in main · pushed');
+    expect(
+      landedLine(
+        landing({ outcome: 'landed', pushed: { ok: false, remote: 'origin', error: 'no' } }),
+      ),
+    ).toBe('Landed in main · not pushed: no');
+    expect(landedLine(undefined)).toBe('Merged');
+    expect(landingOutcome(landing({ outcome: 'conflict', files: ['a.ts', 'b.ts'] }))).toBe(
+      'Conflicts with main: a.ts, b.ts',
+    );
+    expect(landingOutcome(landing({ outcome: 'check-failed', failed: 'pnpm check' }))).toBe(
+      'The check failed on the merge: pnpm check',
+    );
   });
 });

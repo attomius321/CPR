@@ -68,17 +68,46 @@ describe('transitionNotice (V48)', () => {
     });
   });
 
-  it("says Hive's check and review ended, as a writer's turn (decision 698)", () => {
+  it('says Hive landed a workspace, or stopped it; nothing between (HV4)', () => {
     const ready = { state: 'ready' as const, kind: 'claude' as const };
     const hive = { round: 1, rounds: 3 };
-    const before = rows(
+    const checking = rows(
       summary('feature/h', ready, { ahead: 2, hive: { ...hive, step: 'checking' } }),
     );
-    expect(before[0]?.next.group).toBe('hive');
-    const after = rows(
+    expect(checking[0]?.next.group).toBe('hive');
+    const landing = rows(
       summary('feature/h', ready, { ahead: 2, hive: { ...hive, step: 'landing' } }),
     );
-    expect(transitionNotice(before, after, null)?.text).toBe('h finished: Checked: land it');
+    expect(transitionNotice(checking, landing, null)).toBeNull();
+    const landed = rows(
+      summary('feature/h', ready, {
+        ahead: 2,
+        merged: true,
+        hive: {
+          ...hive,
+          step: 'landed',
+          landing: {
+            round: 1,
+            at: 'a'.repeat(40),
+            into: 'main',
+            entry: 'm1',
+            queued: '',
+            outcome: 'landed',
+            pushed: { ok: true, remote: 'origin' },
+          },
+        },
+      }),
+    );
+    expect(transitionNotice(landing, landed, null)?.text).toBe('h: Landed in main · pushed');
+    const stuck = rows(
+      summary('feature/h', ready, {
+        ahead: 2,
+        hive: { ...hive, step: 'stuck', note: 'could not land in main 3 times: a.ts' },
+      }),
+    );
+    expect(transitionNotice(landing, stuck, null)?.text).toBe(
+      'h stopped: could not land in main 3 times: a.ts',
+    );
   });
 
   it('nothing on the first read, for the workspace on screen, for a new one, or a stop asked', () => {

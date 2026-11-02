@@ -1,17 +1,13 @@
 // A Hive workspace's Review tab (HV3, decision 681): what Hive did with it — each round's check and
-// running review, their findings and the tests kept for the writer — and Land, the person's press
-// that takes the place of a branch review in Hive mode: an approval of the commit Hive checked and
-// reviewed, recorded for the person, then queued into its target as Merge into does (V26). Nothing
-// is sent to the writer, which Hive would read as the person taking over.
+// running review, their findings and the tests kept for the writer — and, since HV4, each landing
+// Hive tried and the branch's last push. Hive lands on its own (decision 767): no Land.
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import type { GitRepo, HiveLogRead, MergeEntry, WorkspaceHiveDetail } from '@symbiote/core';
+import type { GitRepo, HiveLogRead, WorkspaceHiveDetail } from '@symbiote/core';
 import type { HiveRecord } from './hive.js';
 import { hiveLive, hiveLogs, isHiveLogId } from './hive-live.js';
 import { hiveTestsDir, readHive, readHives, type HiveFile } from './hive-record.js';
-import type { Merger } from './merges.js';
-import { reviewPlace, type BranchReviews } from './reviews.js';
-import { WorkspaceRefused } from './workspace-record.js';
+import { reviewPlace } from './reviews.js';
 
 /** What the Review tab asks of a Hive workspace. */
 export interface HiveWorkspace {
@@ -19,8 +15,6 @@ export interface HiveWorkspace {
   detail(branch: string): Promise<WorkspaceHiveDetail | null>;
   /** A kept test's text: a file of a round's kept findings; null when there is none. */
   test(branch: string, round: number, path: string): Promise<string | null>;
-  /** Land: the checked and reviewed commit approved for the person, and queued. */
-  land(branch: string): Promise<MergeEntry>;
   /**
    * A check's or a review's log from byte `from` (decision 695); null when its record names no
    * such log.
@@ -36,6 +30,7 @@ const logsOf = (record: HiveFile) =>
       ...record.reviews.map((r) => r.log),
       record.check?.log,
       record.review?.log,
+      ...(record.landings ?? []).map((l) => l.log),
     ].filter((id): id is string => id !== undefined),
   );
 
@@ -43,15 +38,7 @@ const logsOf = (record: HiveFile) =>
 export function hiveWorkspace(
   repo: GitRepo,
   cacheDir: string,
-  {
-    hive,
-    reviews,
-    merges,
-  }: {
-    hive: Pick<HiveRecord, 'on'>;
-    reviews: Pick<BranchReviews, 'resolve' | 'finish'>;
-    merges: Pick<Merger, 'targets' | 'enqueue'>;
-  },
+  { hive }: { hive: Pick<HiveRecord, 'on'> },
 ): HiveWorkspace {
   const recordOf = async (branch: string) => readHive(await reviewPlace(repo, cacheDir), branch);
 
@@ -83,6 +70,8 @@ export function hiveWorkspace(
         reviews: record.reviews,
         ...(live ? { live } : {}),
         tests: join(hiveTestsDir(where, branch, 1), '..'),
+        ...(record.landings?.length ? { landings: record.landings } : {}),
+        ...(record.pushed ? { pushed: record.pushed } : {}),
       };
     },
 
@@ -97,48 +86,6 @@ export function hiveWorkspace(
       const record = await recordOf(branch);
       if (!record || !isHiveLogId(id) || !logsOf(record).has(id)) return null;
       return hiveLogs(await reviewPlace(repo, cacheDir), branch).read(id, from);
-    },
-
-    async land(branch) {
-      if (!(await hive.on().catch(() => false))) {
-        throw new WorkspaceRefused(
-          'Hive is off: review and land the branch as any workspace, from its review',
-          409,
-        );
-      }
-      const record = await recordOf(branch);
-      if (!record) throw new WorkspaceRefused(`Hive does not drive ${branch}`, 409);
-      if (record.step !== 'landing' || !record.checked) {
-        throw new WorkspaceRefused(
-          `Hive has not asked to land ${branch}: it is ${record.step} (round ${record.round} of ${record.rounds})`,
-          409,
-        );
-      }
-      const { info } = await reviews.resolve(branch);
-      if (info.head !== record.checked) {
-        throw new WorkspaceRefused(
-          `${branch} has commits after ${record.checked.slice(0, 7)}, the commit Hive checked and reviewed: Hive checks and reviews them first`,
-          409,
-        );
-      }
-      const review = record.reviews.findLast((r) => r.at === record.checked);
-      const said =
-        review?.verdict === 'approved'
-          ? `checked and reviewed by Hive at ${record.checked.slice(0, 7)} (round ${review.round})`
-          : `checked by Hive at ${record.checked.slice(0, 7)}${record.note ? `; ${record.note}` : ''}`;
-      await reviews.finish(
-        info,
-        {
-          event: 'approve',
-          body: `Landed from its Review tab in Hive mode: ${said}.`,
-          comments: [],
-        },
-        () => Promise.reject(new Error('a landing has no comment')),
-      );
-      const { into } = await merges.targets(branch);
-      const target = into ?? info.into;
-      if (!target) throw new WorkspaceRefused(`no branch to land ${branch} in`, 409);
-      return merges.enqueue({ branch, into: target });
     },
   };
 }

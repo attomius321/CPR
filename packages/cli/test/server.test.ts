@@ -4095,7 +4095,6 @@ describe('/api/workspaces/hive/log (decision 695)', () => {
   const hiveWorkspace: HiveWorkspace = {
     detail: () => Promise.resolve(null),
     test: () => Promise.resolve(null),
-    land: () => Promise.reject(new Error('no')),
     log: (branch, id, from) => {
       asked.push(`${branch} ${id} ${from}`);
       if (branch !== 'feature/a' || id !== 'L1') return Promise.resolve(null);

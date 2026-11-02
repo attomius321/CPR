@@ -685,7 +685,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     };
   }
 
-  /** `/api/workspaces/hive…` (HV3): a Hive workspace's Review tab, its kept tests, Land. */
+  /** `/api/workspaces/hive…` (HV3): a Hive workspace's Review tab, its kept tests, its logs. */
   async function hiveRoute(
     req: IncomingMessage,
     res: ServerResponse,
@@ -708,9 +708,6 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           throw new WorkspaceRefused(`no kept test ${path} in round ${round}`, 404);
         return { text };
       });
-    }
-    if (url.pathname === '/api/workspaces/hive/land') {
-      return onBranch(req, res, (branch) => answer(res, () => hiveTab.land(branch)));
     }
     if (url.pathname === '/api/workspaces/hive/log') {
       // A check's or a review's log (decision 695), streamed as a merge's is; refused from

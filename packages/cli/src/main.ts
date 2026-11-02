@@ -749,8 +749,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     terminals,
     hive: () => hive.on(),
   });
-  // Branch reviews (V15) and the merger (V26): the review pages', and Land's in a Hive workspace's
-  // Review tab (HV3).
+  // Branch reviews (V15) and the merger (V26): the review pages', and Hive's landings (HV4).
   const repoReviews = branchReviews(repo, cacheDir);
   const repoMerges = merger(repo, cacheDir, {
     onChange: mergeStates(log.log),
@@ -818,11 +817,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       }),
       terminals,
       merges: repoMerges,
-      hiveWorkspace: hiveWorkspace(repo, cacheDir, {
-        hive,
-        reviews: repoReviews,
-        merges: repoMerges,
-      }),
+      hiveWorkspace: hiveWorkspace(repo, cacheDir, { hive }),
       // Nucleus is Alpha Ceph while Hive mode is on (decision 682): its prompt's about too.
       settings: promptSettingsService(repo, { hive: () => hive.on() }),
       nucleus: nucleus(repo, cacheDir, {

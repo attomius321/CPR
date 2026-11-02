@@ -27,10 +27,17 @@ export function HivePage({ onBack }: { onBack: () => void }) {
    */
   const ask = async (next: boolean) => {
     setError(null);
-    const read = await getJson<HiveState>('/api/hive/state').catch(() => null);
+    setState(null);
+    // On: the question at once, what keeps Hive off read while it is open.
+    if (next) setAsking('on');
+    const read = await getJson<HiveState>('/api/hive/state').catch((): HiveState => ({
+      on: !next,
+      normal: [],
+      flight: [],
+    }));
     setState(read);
-    if (next) return setAsking('on');
-    if (read && read.flight.length > 0) return setAsking('off');
+    if (next) return;
+    if (read.flight.length > 0) return setAsking('off');
     return turn(false);
   };
 
@@ -128,7 +135,7 @@ export function HivePage({ onBack }: { onBack: () => void }) {
       {asking === 'on' && (
         <HiveQuestion
           busy={busy}
-          normal={state?.normal ?? []}
+          normal={state?.normal ?? null}
           onTurnOn={() => void turn(true)}
           onCancel={() => setAsking(null)}
         />
@@ -158,12 +165,12 @@ function HiveQuestion({
   onCancel,
 }: {
   busy: boolean;
-  /** Workspaces in normal mode: Hive does not turn on while any is open (decision 772). */
-  normal: HiveState['normal'];
+  /** Workspaces in normal mode: Hive does not turn on while any is open (772); null, reading. */
+  normal: HiveState['normal'] | null;
   onTurnOn: () => void;
   onCancel: () => void;
 }) {
-  const refused = onRefusal({ normal });
+  const refused = normal ? onRefusal({ normal }) : null;
   return (
     <div
       className="dialog-backdrop hive"
@@ -200,7 +207,7 @@ function HiveQuestion({
           <div className="hive-refused" role="status">
             <p>{refused}</p>
             <ul>
-              {normal.map((w) => (
+              {(normal ?? []).map((w) => (
                 <li key={w.branch}>
                   {nameOf(w)}
                   {w.title && <code>{w.branch}</code>}
@@ -213,7 +220,7 @@ function HiveQuestion({
           <button
             type="button"
             className="button danger"
-            disabled={busy || refused !== null}
+            disabled={busy || normal === null || refused !== null}
             onClick={onTurnOn}
           >
             Turn on Hive mode

@@ -6,7 +6,7 @@ import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 // Hive's running reviewer (HV3): once the check passes, the fake Claude Code as the reviewer
 // proves a defect with a failing test in its copy; Symbiote reruns that test (under bubblewrap)
 // and sends it to the writer; the fix passes the next review; the workspace's Review tab shows
-// both rounds, and Land, in place of the person's review, approves the commit and merges it.
+// both rounds; and Hive lands it on its own (HV4): its approval, the merge queue, the pushes.
 let symbiote: RunningWorkspaces;
 const errors: string[] = [];
 
@@ -48,7 +48,7 @@ const record = () =>
     message?: { sent?: true };
   };
 
-test('a defect proven by a failing test goes to the writer; its fix is approved; Land merges it', async ({
+test('a defect proven by a failing test goes to the writer; its fix is approved; Hive lands it', async ({
   page,
 }) => {
   // Symbiote reruns the reviewer's tests confined by bubblewrap, on Linux.
@@ -89,7 +89,8 @@ test('a defect proven by a failing test goes to the writer; its fix is approved;
   await startPage(page).getByRole('textbox', { name: 'Title' }).fill('One');
   await startPage(page).getByRole('textbox', { name: 'Goal' }).fill('one.txt says one.');
   await startPage(page).getByRole('textbox', { name: 'Branch name', exact: true }).fill(BRANCH);
-  await startPage(page).getByLabel('Plan first and wait for my OK').uncheck();
+  // Hive mode: no plan first to wait for (HV4).
+  await expect(startPage(page).getByLabel('Plan first and wait for my OK')).toHaveCount(0);
   await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
   await expect(startPage(page)).toBeHidden();
 
@@ -118,28 +119,31 @@ test('a defect proven by a failing test goes to the writer; its fix is approved;
   await expect(round1.locator('.hive-finding .badge')).toHaveText('Proven');
   await round1.getByText('one.test.sh', { exact: true }).click();
   await expect(round1.locator('.hive-finding pre').first()).toContainText('grep -qx one one.txt');
-  // No branch review asked in Hive mode: Land replaces it, once asked.
+  // No branch review, no Land, no Merge into in Hive mode: Hive lands it (HV4).
   const head = page.locator('.workspace-top');
   await expect(head.getByRole('button', { name: 'Review', exact: true })).toHaveCount(0);
   await expect(head.getByRole('button', { name: 'Land' })).toHaveCount(0);
+  await expect(head.getByRole('button', { name: /^Merge/ })).toHaveCount(0);
 
   // The writer adds the test and fixes it, once Hive's message is recorded (the fake logs a resume
-  // before its hooks run): the next review approves; landing is asked.
+  // before its hooks run): the next review approves, and Hive lands it with no press.
   await expect.poll(() => record().message?.sent, { timeout: 10_000 }).toBe(true);
   symbiote.commit(BRANCH, 'one.test.sh', TEST, 'Its test');
   symbiote.commit(BRANCH, 'one.txt', 'one\n', 'Fix');
   symbiote.report(BRANCH, 'Fixed, with its test.');
-  await expect(card(page)).toContainText('Checked and reviewed: land it', { timeout: 20_000 });
+  await expect.poll(() => record().step, { timeout: 40_000 }).toBe('landed');
+  await expect(card(page)).toContainText('Landed in main · pushed', { timeout: 20_000 });
+  // Done, beside Hive: the only other group in Hive mode.
+  await expect(
+    page.locator('.sidenav').getByRole('region', { name: 'Done' }).locator('.workspace-row'),
+  ).toHaveCount(1);
   expect(record().reviews.map((r) => r.verdict)).toEqual(['changes', 'approved']);
   expect(symbiote.reviewCalls()[1]?.input).toContain('In round 1, a reviewer proved');
   const round2 = page.getByRole('region', { name: 'Round 2' });
   await expect(round2).toContainText('Approved');
-  await expect(page.locator('.hive-now')).toHaveText('Checked and reviewed: land it');
-
-  // Land: the commit approved and merged into main by the merge queue.
-  await head.getByRole('button', { name: 'Land' }).click();
-  await expect(card(page)).toContainText('Merged', { timeout: 30_000 });
-  await expect.poll(() => record().step, { timeout: 10_000 }).toBe('landed');
+  await expect(page.locator('.hive-now')).toHaveText('Landed in main · pushed');
+  await expect(page.getByRole('region', { name: 'Landings' })).toContainText('Landed');
+  // Nothing more reached the writer.
   expect(sent()).toHaveLength(1);
 });
 

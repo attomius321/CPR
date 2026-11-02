@@ -13,13 +13,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import {
-  openRepo,
-  type GitRepo,
-  type HiveLogLine,
-  type MergeEntry,
-  type Verdict,
-} from '@symbiote/core';
+import { openRepo, type GitRepo, type HiveLogLine, type MergeEntry } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { repositoryHive, type HiveRecord } from '../src/hive.js';
@@ -41,7 +35,6 @@ import {
   readReview,
   reviewPath,
   reviewPlace,
-  type BranchReviews,
   type ReviewPlace,
 } from '../src/reviews.js';
 import { readThreadEnd, recordEvent } from '../src/thread.js';
@@ -1249,9 +1242,10 @@ describe("Hive's running reviewer (HV3)", () => {
     expect(s.reviewer.calls()).toEqual([]);
   });
 
-  it('the Review tab: the rounds, a kept test, and Land, which approves the reviewed commit and queues it', async () => {
+  it('the Review tab: the rounds and a kept test; once landed, its landing and the push (HV4)', async () => {
     const repo = repository(['test -f one.txt']);
-    const s = await setup(repo);
+    origin(repo);
+    const s = await setup(repo, { land: true });
     await s.turn(true);
     const worktree = await s.start('feature/tab');
     s.reviewer.answers([
@@ -1262,54 +1256,21 @@ describe("Hive's running reviewer (HV3)", () => {
       {},
     ]);
     const runner = s.runner();
-    const finish = vi.fn<BranchReviews['finish']>(() =>
-      Promise.resolve({ verdict: {} as Verdict, text: '' }),
-    );
-    const enqueue = vi.fn<Merger['enqueue']>(({ branch, into }) =>
-      Promise.resolve({ id: 'm1', branch, into, state: 'queued' } as MergeEntry),
-    );
-    const tab = hiveWorkspace(s.git, cache, {
-      hive: s.hive,
-      reviews: {
-        resolve: (branch) =>
-          Promise.resolve({
-            info: {
-              branch,
-              ref: branch,
-              base: 'base',
-              head: gitIn(worktree, 'rev-parse', 'HEAD'),
-              reviewed: null,
-              since: null,
-              into: 'main',
-            },
-            pair: {} as Awaited<ReturnType<BranchReviews['resolve']>>['pair'],
-          }),
-        finish,
-      },
-      merges: {
-        targets: () => Promise.resolve({ branches: ['main'], into: 'main', strategy: 'merge' }),
-        enqueue,
-      },
-    });
+    const tab = hiveWorkspace(s.git, cache, { hive: s.hive });
     await s.fake.endTurn(worktree, { files: { 'one.txt': 'uno\n' } });
     await runner.tick();
     await runner.idle();
     await runner.tick();
-    // Not asked yet: Land is refused.
-    await expect(tab.land('feature/tab')).rejects.toThrow(
-      /Hive has not asked to land feature\/tab: it is writing/,
-    );
     expect(await tab.test('feature/tab', 1, 'test/one.test.sh')).toBe(ONE_TEST);
     // Only a kept finding's file is read.
     expect(await tab.test('feature/tab', 1, '../../../config.json')).toBeNull();
     await s.fake.endTurn(worktree, { files: { 'one.txt': 'one\n', 'test/one.test.sh': ONE_TEST } });
-    await runner.tick();
-    await runner.idle();
+    await settle(runner, s, async () => (await stepOf(s, 'feature/tab')) === 'landed', 'landed');
     const tip = gitIn(worktree, 'rev-parse', 'HEAD');
     const detail = await tab.detail('feature/tab');
     expect(detail).toMatchObject({
       branch: 'feature/tab',
-      step: 'landing',
+      step: 'landed',
       round: 2,
       on: true,
       checked: tip,
@@ -1318,25 +1279,10 @@ describe("Hive's running reviewer (HV3)", () => {
         { round: 1, verdict: 'changes' },
         { round: 2, verdict: 'approved' },
       ],
+      landings: [{ at: tip, into: 'main', outcome: 'landed' }],
+      pushed: { sha: tip, ok: true },
     });
     expect(await tab.detail('feature/none')).toBeNull();
-
-    const entry = await tab.land('feature/tab');
-    expect(entry).toMatchObject({ branch: 'feature/tab', into: 'main' });
-    expect(finish).toHaveBeenCalledTimes(1);
-    const [info, review] = finish.mock.calls[0] ?? [];
-    expect(info?.head).toBe(tip);
-    expect(review).toMatchObject({ event: 'approve', comments: [] });
-    expect(review?.body).toContain(`checked and reviewed by Hive at ${tip.slice(0, 7)} (round 2)`);
-    // Nothing reached the writer: Hive keeps waiting for the merge.
-    const sent = s.fake.resume.mock.calls.length;
-    await runner.tick();
-    expect(s.fake.resume.mock.calls.length).toBe(sent);
-    expect((await readHive(s.where, 'feature/tab'))?.step).toBe('landing');
-
-    // Hive off: the person lands it as any workspace.
-    await s.turn(false, runner);
-    await expect(tab.land('feature/tab')).rejects.toThrow(/Hive is off/);
   });
 
   it("asks the reviewer on the project's model and level", async () => {
@@ -1377,19 +1323,8 @@ describe("Hive's live progress", () => {
       .split('\n')
       .filter(Boolean)
       .map((line) => JSON.parse(line) as HiveLogLine);
-  /** The Review tab's service, with nothing to land. */
-  const tabOf = (s: Setup) =>
-    hiveWorkspace(s.git, cache, {
-      hive: s.hive,
-      reviews: {
-        resolve: () => Promise.reject(new Error('not landed here')),
-        finish: () => Promise.reject(new Error('not landed here')),
-      },
-      merges: {
-        targets: () => Promise.reject(new Error('not landed here')),
-        enqueue: () => Promise.reject(new Error('not landed here')),
-      },
-    });
+  /** The Review tab's service. */
+  const tabOf = (s: Setup) => hiveWorkspace(s.git, cache, { hive: s.hive });
   const card = async (s: Setup, branch: string) =>
     (await s.service.list()).workspaces.find((w) => w.branch === branch)?.hive;
 

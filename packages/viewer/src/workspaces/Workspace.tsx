@@ -17,7 +17,7 @@ import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import { useNucleusName } from '../shell/names.js';
 import { ActivityTab } from './ActivityTab.js';
 import { BriefTab } from './BriefTab.js';
-import { HiveReviewTab, LandButton } from './HiveReviewTab.js';
+import { HiveReviewTab } from './HiveReviewTab.js';
 import { ChangesPanel } from './ChangesPanel.js';
 import { useChangesPanel } from './useChangesPanel.js';
 import { ReplyForm } from './ReplyForm.js';
@@ -503,10 +503,10 @@ function WorkspacePanel({
     'thread',
     'activity',
     'brief',
-    // A workspace Hive drives (HV3): its rounds, and Land in Hive mode.
+    // A workspace Hive drives (HV3): its rounds and its landings.
     ...(workspace.hive ? (['review'] as const) : []),
   ];
-  // In Hive mode a Hive workspace is landed with Land, not reviewed by the person (decision 681).
+  // In Hive mode Hive lands a workspace it drives (HV4, decision 774): no review of the person's.
   const hiveLands = workspace.hive !== undefined && !workspace.hive.off;
 
   return (
@@ -588,7 +588,10 @@ function WorkspacePanel({
                 Start the agent
               </button>
             )}
-            {workspace.ahead > 0 && !workspace.merged && <MergeControl branch={branch} />}
+            {/* Hive lands its own (HV4, decision 774): no Merge into while Hive drives it. */}
+            {workspace.ahead > 0 && !workspace.merged && !hiveLands && (
+              <MergeControl branch={branch} />
+            )}
             <button
               type="button"
               className="icon-button changes-toggle"
@@ -600,9 +603,6 @@ function WorkspacePanel({
               <ChangesIcon />
             </button>
             <MoreActions actions={more} />
-            {hiveLands && workspace.hive?.step === 'landing' && !workspace.merged && (
-              <LandButton branch={branch} />
-            )}
             {!hiveLands && workspace.ahead > 0 && workspace.tip !== null && (
               <button
                 type="button"
