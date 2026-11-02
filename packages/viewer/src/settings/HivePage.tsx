@@ -96,7 +96,7 @@ export function HivePage({ onBack }: { onBack: () => void }) {
           for up to 3 rounds, and answers its plans and questions in your place.{' '}
           {landsBy === 'request'
             ? 'Then Hive approves the commit, pushes the branch and opens a pull or merge request into the branch the workspace started from, which you merge on GitHub or GitLab. A conflict goes back to the agent.'
-            : 'Then Hive approves the commit, merges it into the branch the workspace started from through the merge queue, which checks the merge again, and pushes both branches. A conflict goes back to the agent.'}
+            : 'Then Hive approves the commit, merges it into the branch the workspace started from through the merge queue, which checks the merge again, and pushes both branches. A conflict goes back to the agent.'}{' '}
           Turning Hive off stops Hive&apos;s agents, checks and reviews; turning it on again
           continues where they stopped. Hive never force-pushes or deletes work.
         </p>

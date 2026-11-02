@@ -104,3 +104,19 @@ broken a neighbour.
 **Verification**: the reviewer's test added as it was (`hive-request-checkout.test.ts`, GitHub and
 GitLab: no forge read in ten looks within a minute, landed a minute on), red before (12 reads where
 2 were due), green after; with rounds 1 and 2's tests and the runner's suites, 88 tests.
+
+## HV8 — the running reviewer's round 1 at 41aff6f: the card while main waits, the warning's space (2026-11-02, branch `feature/hive-pull-requests`)
+
+**Learned**:
+- **Hive's own fetch makes the workspace "merged" before it lands.** After a merge on the forge,
+  Hive fetches `origin/main`, and `summary.merged` counts it; with the person's checkout refusing
+  the fast-forward, the card took its merged branch and showed "Merged" in Done while Hive still
+  waited. The card now stays in the Hive group, "Merged on GitHub: main waits for your checkout",
+  while the request is merged and its start branch not brought up.
+- **JSX drops the space before a line that follows an expression.** The warning's landing sentence
+  became an expression, and "agent.Turning Hive off" lost its space: the default's words were no
+  longer `main`'s. A `{' '}` puts it back.
+
+**Verification**: the reviewer's two tests added as they were (`hive-request-card.test.ts`, GitHub
+and GitLab; `hive-page-words.test.ts`), red before, green after; with the card's, rounds', switch's
+and the request runner suites, all pass.

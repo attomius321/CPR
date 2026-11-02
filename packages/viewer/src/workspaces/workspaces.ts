@@ -464,7 +464,11 @@ export function workspaceNext(
     });
     // HV8: by a pull or merge request, its link at the end of the card's line.
     const request = hive.landing?.via === 'request' ? hive.request : undefined;
-    if (workspace.merged || hive.step === 'landed') {
+    // Merged on the forge, Hive's fetch has origin's main at its merge (so `merged`), and the
+    // person's checkout refuses the fast-forward: Hive still waits, in its group (770, 789).
+    const waitsForCheckout =
+      hive.step === 'landing' && request?.state === 'merged' && !request.pulled?.ok;
+    if (!waitsForCheckout && (workspace.merged || hive.step === 'landed')) {
       const done = next('done', landedLine(hive.landing, request), '✓', 'done');
       if (!request || hive.landing?.outcome !== 'landed') return done;
       return {
