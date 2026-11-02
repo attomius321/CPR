@@ -35,7 +35,7 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `advisor.claude.model`, `advisor.codex.model` | `haiku` for Claude Code, `gpt-6-luna` for Codex | The model that suggests a workspace's settings when you press **Suggest settings** with that agent picked, if the agent offers it. |
 | `advisor.claude.effort`, `advisor.codex.effort` | `low` | The effort level that model runs at, if it takes that level. |
 | `merge.checks` | a command Symbiote finds | The check a merge runs before it lands: one command, or a list run in order. Put an install first if the check needs dependencies. |
-| `merge.push` | `false` | If `true`, Symbiote pushes the target branch after a merge lands: to its upstream, else to `origin`. |
+| `merge.push` | `false` | If `true`, Symbiote pushes the target branch after a merge lands: to its upstream, else to `origin`. A merge [Hive](#hive-mode) lands is pushed whatever this says. |
 | `merge.strategy` | `merge` | How a merge lands unless you pick otherwise: `merge` (a merge commit) or `fast-forward` (the target moves to the approved commit, no new commit, when the target has no commits the branch lacks). |
 | `merge.agent` | `agent.kind`, else Claude Code, else Codex | The agent that resolves conflicts: `claude` or `codex`. |
 | `merge.model` | `sonnet` for Claude Code, else the agent's own | The model the merger runs on. |
@@ -111,6 +111,9 @@ and leaves any other brace as text:
 | `hive.review` | What Hive sends the agent when the [running reviewer](#the-running-reviewer) proved defects: each defect, its test's command and files, and the last lines of Symbiote's rerun | `{findings}` (required), `{count}`, `{branch}`, `{at}`, `{round}`, `{rounds}`, `{folder}` |
 | `hive.commit` | What Hive sends the agent when it ended a turn with files not committed, or no commit | `{what}`, `{branch}` |
 | `hive.resume` | What Hive sends an agent it stopped, once Hive is on again | none |
+| `hive.land` | What Hive sends the agent when a landing failed: a conflict with the branch it lands in, the check failing on the merge, or that branch moved past a fast-forward | `{why}` (required), `{branch}`, `{at}`, `{into}`, `{merge}`, `{merges}` |
+| `hive.plan` | Hive's OK to a plan the agent wrote first, in place of yours | none |
+| `hive.decide` | What Hive sends an agent that asks you a question or for a permission: no one answers in Hive mode, so it decides | none |
 | `hive.reviewer` | The running reviewer's instructions, its system prompt. Symbiote adds the answer it reads after them, which you cannot change. In Settings it is the **Reviewer** page, with its model and effort | none |
 | `hive.nucleus` | What Alpha Ceph is told of Hive: added at the end of its instructions while Hive is on, for each conversation that starts as Alpha Ceph | `{rounds}` |
 
@@ -173,10 +176,20 @@ No agent reads the library from its folder: it is where you keep and write skill
 
 ## Hive mode
 
-In Hive mode, Symbiote drives the workspaces you start: their agent works the brief, Symbiote
-runs the project's check after each of its turns, a reviewer runs the change and proves defects
-with failing tests, Symbiote sends the agent what fails, then asks you to land the workspace. Its switch is in **Settings**, under **This repository**, **Hive mode**, and
-turning it on asks first. While Hive is on, every page is in ink and crimson, in both themes, and
+In Hive mode, Symbiote drives the workspaces you start from their brief to landed, with no step
+that waits for you: their agent works the brief, Symbiote runs the project's check after each of
+its turns, a reviewer runs the change and proves defects with failing tests, Symbiote sends the
+agent what fails, then Hive lands the workspace in the branch it started from and pushes it. Its
+switch is in **Settings**, under **This repository**, **Hive mode**, and turning it on asks first.
+
+**When to use it.** Start a project in normal mode. Turn Hive on once the repository has a check
+(`merge.checks`) and tests you trust: what passes them lands on your branch and is pushed without
+you. The choice stays yours, per repository.
+
+**Turning it on** is refused while a workspace started in normal mode is open and not merged: the
+question names them; land or clean them up first. **Turning it off** asks first while Hive works
+on a workspace (writes, checks, reviews or lands), and says what happens to each. With nothing in
+flight it turns off at once. While Hive is on, every page is in ink and crimson, in both themes, and
 the S is crimson. A honeycomb fills the background behind the pages and the sidenav: ink with faint
 crimson outlines in the dark theme, white with pale crimson outlines in the light one. Cards, menus,
 dialogs, the graph and the terminals keep their own ground.
@@ -197,49 +210,76 @@ look, the honeycomb and Alpha Ceph appear at once.
 
 ### What Hive does with a workspace
 
-Every workspace you start while Hive is on is Hive's, until it is cleaned up. Workspaces started
-before stay as they were. Hive drives Claude Code only: with Hive on, **Start a workspace** offers
-no other agent, and Nucleus's starts are Hive's too.
+Every workspace you start while Hive is on is Hive's, until it is cleaned up. Hive drives Claude
+Code only, in Claude Code's `auto` permission mode: with Hive on, **Start a workspace** offers no
+other agent, no permission choice and no **Plan first**, and Nucleus's starts are Hive's too.
 
 1. **Its agent works the brief.** Its first prompt has one more paragraph, `{hive}`: Hive drives
-   the workspace, which check Symbiote runs, and that the agent commits before it ends a turn.
-   With **Plan first**, it waits for your OK as any workspace does.
+   the workspace, which check Symbiote runs, that no person answers, and that the agent commits
+   before it ends a turn. A plan the agent writes first gets Hive's OK (`hive.plan`). A question,
+   or a permission it asks for, gets "no one answers in Hive mode: decide yourself"
+   (`hive.decide`); after 3 such answers, Hive stops. An agent that failed or never started is
+   started again once.
 2. **Symbiote runs the check** when the agent ends a turn with commits and nothing left
    uncommitted. The check is `merge.checks`, else the one Symbiote finds (see
    [the settings file](#the-settings-file-symbioteconfigjson)). It runs in the workspace's
    worktree, on the branch's last commit. If the agent left files uncommitted, or made no commit,
-   Symbiote asks it to commit instead. A spike that ends without commits goes straight to you.
+   Symbiote asks it to commit instead. A spike that ends without commits is answered: its report
+   is the answer, and there is nothing to land.
 3. **A failed check goes back to the agent**: the command and its last 60 lines. That is the next
    round.
 4. **A passed check is reviewed** by the [running reviewer](#the-running-reviewer), on the same
    commit. Defects it proves go back to the agent as failing tests: the agent adds each test and
    makes it pass, or says in one line why a test is wrong. That is the next round too.
 5. **After 3 rounds**, Hive stops and the card says why.
-6. **A check that passed and a review that found nothing ask you to land it.** The card says
-   **Checked and reviewed: land it**. Press **Land** in the workspace's head: Symbiote approves
-   that commit for you and merges it through the merge queue, as **Merge into** does. In Hive mode there is no review of yours to finish first. Once it is merged, Hive is done
-   with it.
+6. **A check that passed and a review that found nothing land it.** Hive approves that commit in
+   your review file, marked as Hive's (`"via": "hive"`, shown as **Approved by Hive**), and queues
+   it in the merge queue, into the branch the workspace started from. The queue brings that
+   branch up to its remote first (a fetch, and a fast-forward when it is behind), merges, runs the
+   check on the merge, lands it, and pushes it, whatever `merge.push` says. The workspace moves to
+   **Done**: **Landed in main · pushed**.
 
-The card shows the workspace's round (a hexagon and `2/3`). While the agent works or waits for
-you, the card says so as for any workspace. Hive never lands, pushes or deletes work: those stay
-yours. A message you send the agent while Hive waits for you starts its rounds again.
+A review that cannot run (no sandbox, or the reviewer failed twice) lands on the check alone; no
+check set or found lands on the review alone; with neither, it lands all the same. The approval
+says what ran.
+
+**A landing that fails goes back to the agent** (`hive.land`): a conflict with the branch it lands
+in (no merger agent for Hive's merges), the check failing on the merge, or a fast-forward that
+branch moved past. Hive takes its merge out of the queue, so other merges go on, and asks the
+agent to merge that branch into its own and fix it, or to say why its branch does not cause it
+(a flaky test, say): then the same commit lands again, with only the merge's check run again. The
+rounds start again. After 2 such merges, a third failure stops the workspace, with why. A branch
+that has diverged from its remote stops it at once: Hive never forces or rebases.
+
+**Your checkout.** Where the branch it lands in is checked out (your main checkout, usually),
+landing fast-forwards it there, as **Merge into** does. If your uncommitted changes are in the way,
+git refuses; Hive tries again each minute, and the card says **Landing in main: waiting for your
+checkout**.
+
+**Its branch is pushed** to `origin` after each turn that ends with commits, never forced. A push
+refused is in the Review tab, and Hive goes on.
+
+The card shows the workspace's round (a hexagon and `2/3`). A message you send the agent while
+Hive is stopped starts its rounds again. Hive never force-pushes, rebases or deletes work.
 
 Hive checks and reviews a commit once:
 
 - **A commit already checked is not checked again.** If a turn ends on a commit where the check
   (the same commands) passed, Hive goes straight to the review. If the reviewer approved that
-  commit too, Hive asks you to land it again at once. So a question you ask at landing costs no
+  commit too, Hive lands it again at once. So a question you ask at landing costs no
   check. A check that failed on a commit runs again, in case it was flaky.
 - **A branch being landed is left to the landing.** Once the branch is in the merge queue, or
   merged, Hive sends its agent nothing more and stops a check or review that runs.
 - **A turn Hive cannot see stops it.** Hive reads the agent's turns from what its hooks record. If
   no prompt is recorded within a minute of Hive's message, or Claude Code took the message into a
   copy of the session (whose hooks record nothing), Hive stops and the card says why, for example
-  "Hive stopped: the writer's turn cannot be seen: no prompt recorded after Hive's message at
+  "Stopped: the writer's turn cannot be seen: no prompt recorded after Hive's message at
   17:00 UTC".
 
-While Hive checks or reviews, the card is in the sidenav's **Hive** group, on Hive's hexagons, and
-says what runs now, its time ticking:
+In Hive mode the sidenav has two groups: **Hive**, on Hive's hexagons, with every workspace not
+done, and **Done**. Each card says where Hive is in its own words: **Writing**, **Hive: reading
+its turn**, the check or the review with its time, **Landing in main: checking the merge**, or
+**Stopped:** and why. While Hive checks or reviews, the card says what runs now, its time ticking:
 
 - **The check**: which of the check's commands runs, its place among them, and the time since the
   check started. If an earlier check of the same commands passed in this repository, the card
@@ -258,7 +298,9 @@ commands and their times, each review with its model, time and cost, and each fi
 dropped, with its test and Symbiote's rerun. While Hive checks or reviews, **Now** comes first: the
 check's commands, each done with its time, running or waiting (with the last check's time when
 there is one), or the review's steps (its install, the reviewer, each test it reruns), and the
-output as it comes. **Its log** opens a finished check's or review's output again.
+output as it comes. **Its log** opens a finished check's or review's output again. Its **Landing**
+part lists each landing Hive tried, how it ended and the merge's log, and the tab says where the
+branch was last pushed.
 
 Each check's and review's output is kept beside Hive's record, in
 `symbiote/hive/<branch>/logs/`: its first and last 512 KB of each command's output, at most.
@@ -288,22 +330,25 @@ otherwise. One review takes minutes and, by Claude Code's own count, about as mu
 work on the goal; it stops after 30 minutes or $5. Its output is kept in Symbiote's cache,
 `hive-reviews/`, and what it runs, as it runs, in the review's log beside Hive's record.
 
-If the review cannot run, Hive asks you to land the workspace with a note, and the card says
-**Not reviewed: look, then land it**:
+If the review cannot run, Hive lands the workspace on its check alone, and the approval says it
+was not reviewed:
 
 - **Claude Code's sandbox is not available.** On Linux it needs `bubblewrap` and `socat`
   (`sudo apt install bubblewrap socat`); there is none on Windows.
 - **There is no bubblewrap.** Symbiote's own rerun needs it, so reviews run on Linux only.
 - **The reviewer gave no answer twice** on the same commit.
 
-Hive runs the agent in the permission mode you pick on the Start page. An agent that asks for a
-permission waits for you.
+Hive runs the agent in Claude Code's `auto` permission mode, whatever the Start page or the
+settings file say: Claude Code's own classifier refuses a risky action instead of asking. What it
+still asks, Hive answers (`hive.decide`).
 
 ### Hive off and on
 
 - **Turning Hive off** stops every Hive agent that works or waits, and any check or review Hive
-  runs; a review's copies are deleted. Each workspace keeps its step. Its card says **Hive off: paused**. You can still talk to the agent:
-  Hive does nothing while it is off.
+  runs; a review's copies are deleted. Each workspace keeps its step. Its card says **Hive off:
+  paused**. A landing already in the merge queue goes on: the queue merges, checks, lands and
+  pushes it, and Hive records it once it is on again. You can still talk to the agent: Hive does
+  nothing while it is off.
 - **Turning Hive on again** goes on from each step. An agent Hive stopped is told it was
   interrupted and continues. A check runs again from its start, and a review from a new copy. An agent whose turn went on while
   Hive was off is checked when its turn ends.
