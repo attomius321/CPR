@@ -2616,7 +2616,7 @@ describe.each(['github', 'gitlab'] as const)(
       );
     });
 
-    it('closed without a merge: stopped, with why', async () => {
+    it("closed without a merge: stopped, with why; the person's message, a new request", async () => {
       const { forge, s } = await requesting();
       const worktree = await s.start('feature/two');
       const runner = s.runner();
@@ -2631,6 +2631,19 @@ describe.each(['github', 'gitlab'] as const)(
       expect(record?.request?.state).toBe('closed');
       expect(record?.landings?.at(-1)?.outcome).toBe('closed');
       expect(s.fake.resume).not.toHaveBeenCalled();
+
+      // The person's message starts the rounds again; the next landing opens a new request.
+      await s.service.reply({ branch: 'feature/two', text: 'Add a line, then land it again.' });
+      await runner.tick();
+      expect(await stepOf(s, 'feature/two')).toBe('writing');
+      await s.fake.endTurn(worktree, { files: { 'two.txt': '2\n22\n' } });
+      await settle(runner, s, () => Promise.resolve(forge.requests.length === 2), 'a new one');
+      const again = await readHive(s.where, 'feature/two');
+      expect(again).toMatchObject({ step: 'landing', request: { number: 13, state: 'open' } });
+      expect(again?.landings?.map((l) => [l.entry, l.outcome])).toEqual([
+        [`${sign}12`, 'closed'],
+        [`${sign}13`, undefined],
+      ]);
     });
 
     it('cannot merge: the writer merges main in, the same request updated; it lands once merged', async () => {

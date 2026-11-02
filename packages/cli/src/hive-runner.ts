@@ -1058,8 +1058,15 @@ export function hiveRunner(
     await event(where, branch, 'check-stopped', { why });
   }
 
-  /** The person's message reached the writer: its turn, the rounds counted again. */
+  /**
+   * The person's message reached the writer: its turn, the rounds counted again. A request the
+   * person closed is left behind (HV8): the next landing opens a new one.
+   */
   async function roundsAgain(where: ReviewPlace, record: HiveFile, at: string): Promise<void> {
+    if (record.request?.state === 'closed') {
+      record = { ...record };
+      delete record.request;
+    }
     await moveTo(
       where,
       record,
