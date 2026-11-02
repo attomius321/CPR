@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v89-redesign-workspace-terminal.md)
 
-**Status:** planned (3 November 2026), on branch `feature/redesign-workspace-terminal` (the
-workspace's, from `main` at `98e28e2`); approved by the person, not started.
+**Status:** built (3 November 2026), on branch `feature/redesign-workspace-terminal` (the
+workspace's, from `main` at `98e28e2`); ready for review.
 
 **Problem** (the brief: "Bring a workspace's page and its terminal view to the designs, in both
 modes. The person spends most of their time in the terminal view: weigh every change by it, and
@@ -165,3 +165,52 @@ terminal, both go through today's reply route.
 Hive page, Start in Hive mode, turning Hive on (step 5); reviews (step 3); the Overviews (step
 4); normal mode's Merge and Start screens; the terminal's own theme and size; search in the
 terminal; a tool-call count and a shell's command line, which Symbiote does not record.
+
+## As built (V89)
+
+- **The side card stays 256 px**, not the proof's 300: the bar under the terminal already takes
+  37 px of its height, and the terminal comes first. The person can drag it wider (V34).
+- **The bar costs the terminal two rows**: 103 × 39 where it was 103 × 41 at 1440 × 900; 42.3 %
+  of the window beside the side card (44.6 % before), 58.9 % without it (59.7 %). The two specs
+  that guard the terminal's room (`changes.spec`, `shell.spec`) say the new numbers; the terminal
+  still reaches the bar, and the bar the status bar.
+- **A question shows what it asks and its options in words**, from its recorded ask, with
+  "Answer in its terminal" and no keys: no real Claude Code session was run to measure its number
+  keys (repositories an agent makes are not trusted by Claude Code), so none are shown
+  (decision 829).
+- **Hive's pause is said in the bar** (found by `hive-pacing.spec`): the head's sentence that said
+  it went with `HiveNowLine`'s place; the bar takes the sidenav's words, in the paused tone.
+- **Approve plan waits for the agent's input**: typed at once, as the first build did, the text
+  reached a terminal still opening and its Enter was lost. `OpenedTerminal.submit` types once the
+  agent's input is drawn, as V78's paste does, and sends Enter as its own write. A reply of
+  several lines is typed as one line: a line break typed would send it early.
+- **The head's agent mark** (V53, in the old state line) is gone with the line; the card keeps
+  it, and the agent's tab names it.
+- **A shell's × is always shown** (term.css's `.stab .x`), 24 px: shown only on hover it was out
+  of the targets spec's sight; always shown at 20 px it failed it.
+- **Two names taken**: the side card's region is "What its agent does" (the Activity tab has a
+  "Now"), the head's "started" `.workspace-since` (the Brief tab has `.workspace-started`).
+- **The head's line**: what the agent runs on is plain text and takes only the room left (flex
+  shrinks in proportion, so no factor makes one item give way first: every item lost a pixel and
+  got an ellipsis), then the branch gives way.
+- **A pane clips its terminal**: with a gone worktree, xterm was fitted before the error line
+  above it showed and overflowed 38 px onto the bar.
+- **`WorkspaceStrip.tsx` removed**; its Respond is the bar's "Answer in its terminal" on the other
+  tabs, its Next waiting the bar's.
+- **Not built, as planned**: search in the terminal, a tool-call count, a shell's command line and
+  port. Hive stopped at the round cap was not shot (the e2e harness has no quick way there); its
+  steps are unit-tested.
+
+**Results.**
+
+- Tests first: `workspace-steps.test.ts` (14) and `terminal-bar.test.ts` (10) red on missing
+  modules, StageTrack's `you` red on its label; `terminal-view.spec.ts` (6) and the Split fit
+  red on missing parts. `pnpm check`: 2,930 tests pass; `pnpm build` passes.
+- e2e: `pnpm test:e2e` all pass: the viewer's 405, the nexus's 20 (the first full run: 25 specs failed, 21 naming what moved, 4 real faults, each fixed).
+- A key to its echo (V21's method, 30 keys, three runs): median 4 ms, max 7–9 ms before;
+  median 4 ms, max 7–8 ms after.
+- Screenshots: 34 before (this branch at `main`) and 40 after (Split, Focus and Hive in Focus are
+  new), every state of the brief at 1×, both themes, beside the proofs:
+  `spikes/v89-workspace-terminal/shots/`, and the page <https://claude.ai/artifact/PKqtWPXW8rxCtQ61Rj4gRF> (private).
+- The README's `docs/images/workspace.png` and `hive.png` show the page before V89 (the waiting
+  strip, the Terminal tab, the state line). Not retaken here.

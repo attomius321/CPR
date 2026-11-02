@@ -626,13 +626,15 @@
   font-family: var(--mono);
 }
 
+/* The branch kept whole as long as it can be: what runs it takes only the room left (flex
+   shrinks in proportion, so a factor cannot make it give way first), then the branch gives way. */
 .workspace-state-line > .workspace-ref {
   flex: 0 1 auto;
 }
 
 /* What runs it, plain on the line as the proofs write it: no chip, the line stays its height. */
 .workspace-state-line > .runs-on {
-  flex: 0 3 auto;
+  flex: 1 1 0;
   min-width: 0;
   height: auto;
   padding: 0;
@@ -786,9 +788,12 @@
   }
 }
 
+/* A pane clips its terminal: a terminal fitted before a line above it showed (its open failed:
+   a gone worktree) overflowed onto the bar under it. */
 .term-pane {
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: #050608;

@@ -399,3 +399,4 @@ merge commit.
 - 2026-11-02 [V88 spike — what the kits change, counted](journal/v88-redesign-foundation.md)
 - 2026-11-02 [V88 — the kits' colours, shared states and parts; no honeycomb](journal/v88-redesign-foundation.md)
 - 2026-11-03 [V89 spike — what the designs ask of the records](journal/v89-redesign-workspace-terminal.md)
+- 2026-11-03 [V89 — the workspace page and the terminal view, both modes](journal/v89-redesign-workspace-terminal.md)
