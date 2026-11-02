@@ -145,6 +145,10 @@ test('Settings: Hive lands by, with the forge origin names and whether a token i
   await request.click();
   await expect(request).toHaveAttribute('aria-pressed', 'true');
   await expect(part).toContainText('your merge lands it');
+  // The page's warning says it too.
+  await expect(page.locator('.hive-warning')).toContainText(
+    'opens a pull or merge request into the branch the workspace started from',
+  );
   await expect(part.locator('.hive-lands-forge.cannot')).toBeVisible();
   expect(JSON.parse(readFileSync(config(), 'utf8'))).toMatchObject({ hive: { lands: 'request' } });
 
@@ -155,5 +159,6 @@ test('Settings: Hive lands by, with the forge origin names and whether a token i
   await expect(part.locator('.hive-lands-forge.cannot')).toHaveCount(0);
   await queue.click();
   await expect(queue).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.hive-warning')).toContainText('through the merge queue');
   expect(JSON.parse(readFileSync(config(), 'utf8'))).not.toHaveProperty('hive');
 });

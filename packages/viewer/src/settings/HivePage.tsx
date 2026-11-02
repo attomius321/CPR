@@ -19,6 +19,8 @@ export function HivePage({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<HiveState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // How Hive lands (HV8): the warning says it.
+  const [landsBy, setLandsBy] = useState<HiveLandsBy>('queue');
 
   /**
    * Asks first (HV4): on, always, saying which workspaces in normal mode keep it off; off, only
@@ -91,9 +93,10 @@ export function HivePage({ onBack }: { onBack: () => void }) {
           Claude Code agent works the brief; after each turn Symbiote runs the check in its
           worktree, and once it passes a reviewer with a clean context runs the change in a
           throwaway copy and proves defects with failing tests. Symbiote sends the agent what fails,
-          for up to 3 rounds, and answers its plans and questions in your place. Then Hive approves
-          the commit, merges it into the branch the workspace started from through the merge queue,
-          which checks the merge again, and pushes both branches. A conflict goes back to the agent.
+          for up to 3 rounds, and answers its plans and questions in your place.{' '}
+          {landsBy === 'request'
+            ? 'Then Hive approves the commit, pushes the branch and opens a pull or merge request into the branch the workspace started from, which you merge on GitHub or GitLab. A conflict goes back to the agent.'
+            : 'Then Hive approves the commit, merges it into the branch the workspace started from through the merge queue, which checks the merge again, and pushes both branches. A conflict goes back to the agent.'}
           Turning Hive off stops Hive&apos;s agents, checks and reviews; turning it on again
           continues where they stopped. Hive never force-pushes or deletes work.
         </p>
@@ -132,7 +135,7 @@ export function HivePage({ onBack }: { onBack: () => void }) {
           {error}
         </p>
       )}
-      <HiveLandsBy />
+      <HiveLandsBy onRead={setLandsBy} />
       {asking === 'on' && (
         <HiveQuestion
           busy={busy}
@@ -158,8 +161,11 @@ export function HivePage({ onBack }: { onBack: () => void }) {
  * on the forge; the forge `origin` names and whether a token is found (793). `hive.lands` in the
  * project's config.
  */
-function HiveLandsBy() {
+function HiveLandsBy({ onRead }: { onRead: (by: HiveLandsBy) => void }) {
   const [setting, setSetting] = useState<HiveLandingSetting | null>(null);
+  useEffect(() => {
+    if (setting) onRead(setting.by);
+  }, [setting, onRead]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
