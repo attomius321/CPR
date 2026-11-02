@@ -392,3 +392,4 @@ merge commit.
 - 2026-11-02 [HV8 — merged on the forge while the rounds run: landed, no second request](journal/hv8-hive-pull-requests.md)
 - 2026-11-02 [HV8 — a request on record is read through the gate before any landing](journal/hv8-hive-pull-requests.md)
 - 2026-11-02 [Fix — Hive's message is not the writer asking: no `hive.decide` for a writer just resumed](journal/fix-hive-spurious-decide.md)
+- 2026-11-02 [HV5 plan — where Hive starts agents, what usage and spend Symbiote can read](journal/hv5-usage-pacing.md)
