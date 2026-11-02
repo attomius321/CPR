@@ -5,5 +5,5 @@ import base from '../../packages/viewer/playwright.config.js';
 export default defineConfig({
   ...base,
   testDir: '.',
-  testMatch: 'shoot.spec.ts',
+  testMatch: ['shoot.spec.ts', 'speed.spec.ts'],
 });
