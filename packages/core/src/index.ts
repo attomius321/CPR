@@ -328,6 +328,7 @@ export {
   type HiveFinding,
   type HiveLanding,
   type HivePush,
+  type HiveState,
   type HiveLive,
   type HiveLogLine,
   type HiveLogRead,

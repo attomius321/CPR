@@ -495,6 +495,44 @@
   box-shadow: var(--primary-shine);
 }
 
+/* HV4 (decision 772): the workspaces in normal mode that keep Hive off, named under the question. */
+.hive-refused {
+  margin: 4px 0 0;
+  padding: 8px 12px;
+  border: 1px solid color-mix(in srgb, var(--hive-red) 40%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--hive-red) 8%, transparent);
+}
+
+.dialog.hive-ink .hive-refused p {
+  margin: 0 0 4px;
+  color: var(--text);
+}
+
+.hive-refused ul,
+.hive-off-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.hive-refused code {
+  margin-left: 8px;
+  color: var(--muted);
+}
+
+/* HV4 (decision 771): what turning Hive off does to each workspace at work. */
+.hive-off-list {
+  margin: 0 0 8px;
+  color: var(--muted);
+}
+
+.hive-off-list strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
 /* Its mark in the list while it is on. */
 .settings-mark.hive-on {
   color: var(--error);

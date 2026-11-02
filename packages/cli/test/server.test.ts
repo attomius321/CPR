@@ -3184,6 +3184,78 @@ describe('/api/hive (V82)', () => {
     const server = await start({ repository });
     expect((await fetch(new URL('/api/hive', server.url))).status).toBe(404);
   });
+
+  /** Open workspaces as the list gives them: a branch, Hive's step or none, merged or not. */
+  const listing = (
+    ...open: { branch: string; hive?: string; merged?: boolean; title?: string }[]
+  ) =>
+    ({
+      list: () =>
+        Promise.resolve({
+          workspaces: open.map((w) => ({
+            branch: w.branch,
+            merged: w.merged ?? false,
+            ...(w.title ? { title: w.title } : {}),
+            ...(w.hive ? { hive: { step: w.hive, round: 1, rounds: 3 } } : {}),
+          })),
+        }),
+    }) as unknown as Workspaces;
+
+  it('refuses to turn on while a workspace started in normal mode is open and not merged (HV4, decision 772)', async () => {
+    on = false;
+    const server = await start({
+      repository: {
+        ...repository,
+        workspaces: listing(
+          { branch: 'feature/mine', title: 'Mine' },
+          { branch: 'feature/done', merged: true },
+          { branch: 'feature/hived', hive: 'stuck' },
+        ),
+      },
+      hive,
+    });
+    const state = await fetch(new URL('/api/hive/state', server.url));
+    expect(await state.json()).toEqual({
+      on: false,
+      normal: [{ branch: 'feature/mine', title: 'Mine' }],
+      flight: [],
+    });
+    const refused = await turn(server, '{"on":true}');
+    expect(refused.status).toBe(409);
+    expect(((await refused.json()) as { error: string }).error).toBe(
+      'Hive cannot turn on while a workspace is in normal mode: feature/mine. Land it or clean it up first',
+    );
+    expect(on).toBe(false);
+    // Off is never refused.
+    on = true;
+    expect((await turn(server, '{"on":false}')).status).toBe(200);
+    expect(on).toBe(false);
+  });
+
+  it('lists the Hive workspaces in flight, for the question before it turns off (HV4, decision 771)', async () => {
+    on = true;
+    const server = await start({
+      repository: {
+        ...repository,
+        workspaces: listing(
+          { branch: 'feature/a', hive: 'writing' },
+          { branch: 'feature/b', hive: 'landing', title: 'B' },
+          { branch: 'feature/c', hive: 'stuck' },
+          { branch: 'feature/d', hive: 'landed', merged: true },
+        ),
+      },
+      hive,
+    });
+    expect(await (await fetch(new URL('/api/hive/state', server.url))).json()).toEqual({
+      on: true,
+      normal: [],
+      flight: [
+        { branch: 'feature/a', step: 'writing' },
+        { branch: 'feature/b', step: 'landing', title: 'B' },
+      ],
+    });
+    expect((await turn(server, '{"on":true}')).status).toBe(200);
+  });
 });
 
 describe("Nucleus's conversation follows Hive (V86, decision 750)", () => {
