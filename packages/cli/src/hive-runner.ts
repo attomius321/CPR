@@ -123,6 +123,15 @@ const SESSION_STATES: ReadonlySet<AgentStateName> = new Set<AgentStateName>([
   'done',
 ]);
 
+/**
+ * Whether the writer asks the person (773, 794): it needs the person, and not as an interrupted
+ * turn with nothing named. Claude Code lists a session it just resumed as `working` and `idle`
+ * for a moment, which reads as an interrupted turn: every message, Hive's or the person's, is
+ * sent by a stop and a resume, and that is not the writer asking.
+ */
+const asks = (agent: WorkspaceSummary['agent']) =>
+  agent.state === 'needs-you' && (!agent.interrupted || agent.waitingFor !== undefined);
+
 /** The same commands, in the same order: a check's result holds only for the commands it ran. */
 const sameCommands = (ran: string[] | undefined, now: string[]) =>
   ran !== undefined && ran.length === now.length && ran.every((c, i) => c === now[i]);
@@ -571,7 +580,7 @@ export function hiveRunner(
       return;
     }
     if (state === 'plan-ready') return answer(where, record, 'hive.plan');
-    if (state === 'needs-you') return answer(where, record, 'hive.decide');
+    if (asks(summary.agent)) return answer(where, record, 'hive.decide');
     if (!turn.ended) return;
     await event(where, record.branch, 'turn-ended', { round: record.round });
     const changed = summary.worktree.changed ?? 0;
@@ -1033,7 +1042,10 @@ export function hiveRunner(
     await event(where, branch, 'check-stopped', { why });
   }
 
-  /** The person's message reached the writer: its turn, the rounds counted again. */
+  /**
+   * The person's message reached the writer: its turn, the rounds and Hive's answers in the
+   * person's place counted again (795).
+   */
   async function roundsAgain(where: ReviewPlace, record: HiveFile, at: string): Promise<void> {
     await moveTo(
       where,
@@ -1046,6 +1058,7 @@ export function hiveRunner(
         note: undefined,
         check: undefined,
         review: undefined,
+        decided: undefined,
       },
       'rounds-again',
       { prompt: at },

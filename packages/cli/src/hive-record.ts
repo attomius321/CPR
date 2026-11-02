@@ -104,7 +104,10 @@ export interface HiveFile {
   merges?: number;
   /** The branch's last push to `origin` (768). */
   pushed?: HivePush;
-  /** Hive's answers in place of the person's: a plan's OK, "no one answers" (773). */
+  /**
+   * Hive's answers in place of the person's: a plan's OK, "no one answers" (773); counted again
+   * from the person's message (795).
+   */
   decided?: number;
   /** Times Hive started a failed writer again (773). */
   restarted?: number;

@@ -219,8 +219,8 @@ other agent, no permission choice and no **Plan first**, and Nucleus's starts ar
    the workspace, which check Symbiote runs, that no person answers, and that the agent commits
    before it ends a turn. A plan the agent writes first gets Hive's OK (`hive.plan`). A question,
    or a permission it asks for, gets "no one answers in Hive mode: decide yourself"
-   (`hive.decide`); after 3 such answers, Hive stops. An agent that failed or never started is
-   started again once.
+   (`hive.decide`); after 3 such answers, Hive stops, and a message you send the agent then
+   counts them again. An agent that failed or never started is started again once.
 2. **Symbiote runs the check** when the agent ends a turn with commits and nothing left
    uncommitted. The check is `merge.checks`, else the one Symbiote finds (see
    [the settings file](#the-settings-file-symbioteconfigjson)). It runs in the workspace's
@@ -261,7 +261,8 @@ checkout**.
 refused is in the Review tab, and Hive goes on.
 
 The card shows the workspace's round (a hexagon and `2/3`). A message you send the agent while
-Hive is stopped starts its rounds again. Hive never force-pushes, rebases or deletes work.
+Hive is stopped starts its rounds again, and Hive's 3 answers in your place. Hive never
+force-pushes, rebases or deletes work.
 
 Hive checks and reviews a commit once:
 
