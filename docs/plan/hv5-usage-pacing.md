@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv5-usage-pacing.md)
 
-**Status:** planned (2026-11-02), on branch `feature/hv5-usage-pacing` (the workspace's, a Hive
-workspace, from `main` at `0a09ef5`); Hive drives it, so no OK is awaited.
+**Status:** built, ready for review (2026-11-02), on branch `feature/hv5-usage-pacing` (the
+workspace's, a Hive workspace, from `main` at `0a09ef5`); Hive drives it, so no OK was awaited.
+Proved with fake usage reads and a fake usage endpoint; no real Hive run paused on real usage.
 
 **Problem** (the brief: "Today a Hive workspace starts writers and reviewers whatever the
 subscription's usage says"). Decision 690 promised "a usage or budget cap (HV5)" among Hive's hard
@@ -154,8 +155,63 @@ mode untouched.
 | 800 | What is recorded | **`paused` on each held workspace's record (reason, window, percent, threshold, until, why, since), events `paused` and `goes-on`; a writer held at its start: `unstarted`, started by the runner, not a restart; the gate primed from the records at on and at a new runner** | The brief: "the pause is recorded … and survives Hive off/on and a restart"; HV8's lesson: what the card shows comes from the record |
 | 801 | The budget | **`hive.budget`, dollars per workspace, off by default: the writer's sessions by Claude Code's `cost-state` plus each review's `cost`; checked before each start; reached, the workspace stops with why; to go on, raise it and send a message** | The brief: "a stop, not a pause: stopping beats guessing"; Claude Code's own count, as the reviews' |
 | 802 | What the person sees | **The card and the Review tab: "Paused: usage 92 % of the 5-hour window, goes on at 16:10" from the record; the Review tab's spend; Settings' Pause at and Budget; the status bar's notice at a pause and at going on** | The brief's words |
+| 803 | The person's own start while Hive holds one (added while building) | **A message of the person's that reaches the writer while Hive holds its own drops Hive's, and the rounds start again (795's way); a held writer the person started (Start the agent) is theirs: no longer held, never started a second time** | Found by the screenshots: the held writer's page offers Start the agent, and the runner would then have started a second session at the reset |
 
 **Not in HV5 (later)**: each role's model and effort in Settings (HV1's sketch put it in HV5; the
 brief leaves it out); Codex and Hermes subscriptions (Hive starts Claude Code only); the merge
 queue's check and the merger; Nucleus's and Alpha Ceph's own usage; pacing by the request's forge;
 a cap across workspaces.
+
+## As built (HV5)
+
+- **The gate** (HV5a) as planned, in `hive-pacing.ts`: `readPacingConfig`/`setPacing`
+  (`hive.usage.pauseAt` 1–100 or `false`, `hive.budget` dollars; the defaults written as no key),
+  `usagePause` (pure: the windows not reset and at or over the threshold, the one that resets last;
+  unknown past 15 min or with no read), `hivePacing` (the pause held in memory until its reset, a
+  raised threshold reads again, primed from the records), and the spend (`costIn`,
+  `transcriptCosts`, `writerTranscripts`, `spendOf`). `usageService.claude(maxAgeMs)` reads
+  Claude's numbers alone, waiting for a new read once the copy is older than 5 min; the 429 wait
+  and the one read at a time are the service's own.
+- **The runner** (HV5b): `paced` is the one gate. `deliver` asks it only when a reply is about to
+  be sent (a message already in the thread is not a start); `restart` after its cap check;
+  `reviewing` after an approved commit goes to landing; `startHeld` for a writer the start held.
+  A pause is written once (compared by reason, window, reset and why), the event `paused`; the
+  first start after it removes it, `goes-on`. `moveTo` drops `paused` whenever the step changes, so
+  a landed or stuck card never says paused; the card shows it only in `writing` and `reviewing`
+  (`shownPause`).
+- **The budget's stop** goes through `moveTo` (`stuck`, the message dropped), its event with the
+  spend and the budget. The writer's spend is written to the record when it changes: at each turn's
+  end and at each ask of the gate.
+- **Not planned, decision 803**: the person's message while Hive holds its own (a pause of hours
+  makes it likely) took the turn, and Hive's message would have been sent on top of it at the
+  reset; now Hive's is dropped and the rounds start again. A held writer's page offers **Start the
+  agent**; a writer started that way is the person's, and the runner no longer starts a second one
+  (found by the screenshots, then a test, red first).
+- **Settings** writes with `POST /api/hive/pacing`, as Hive's other settings do (the plan said
+  `PUT`). The threshold is a select (never, 50–100 %, 90 % the default, the project's own value
+  kept among them); the budget a dollars field with **Save**.
+- **The card's pause** has the idle ring, not Hive's spinner: nothing runs. `workspaceNext` takes
+  `now` for the time words; `transitionNotice` says a pause and its end though the card stays in
+  Hive's group.
+- **The e2e** reloads the page after a start made through the API: the workspaces list is not
+  polled while no workspace is open.
+
+**Results.**
+
+- **Tests**: `hive-pacing.test.ts` 17 (the settings, the pause a read gives, the gate's memory, the
+  spend, Settings' service and the request's parser); `hive-pacing-runner.test.ts` 12, red first
+  (messages and reviews went while paused; a held writer started at once; no stop at the budget):
+  no message, review, restart or held writer while paused, the record's `paused`, going on after
+  the reset, nothing interrupted, the pause through Hive off/on and a new runner whose gate read
+  nothing, unknown after 15 min and going on at a good read, the budget's stop by the writer's
+  count and by the reviews', the person's message and the person's start, and the same steps,
+  events and messages as no gate at all under the threshold; `usage.test.ts` 3 new. Every HV4 and
+  HV8 runner suite unchanged and passing (`hive-runner.test.ts`, `hive-request-*.test.ts`).
+  Viewer: `hive-pacing.test.ts` 10 (the words, the card, the Review tab's head, the notices,
+  Settings' helpers).
+- **e2e**: `hive-pacing.spec.ts` 3, a real `symbiote view` on a fake usage endpoint: held at 95 %,
+  said on the card, the head and the Review tab, started by itself at the reset with the status
+  bar's notice; Settings' threshold and budget written to `symbiote/config.json`; the spend
+  against a budget. With the Hive, Settings, targets, page-frame and usage specs: 46 of 46.
+- **Screenshots** (1440×900, dark and light): the paused workspace and its Review tab, Settings'
+  Pacing part with Hive paused, the Review tab of a workspace stopped at its budget.
