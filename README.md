@@ -385,7 +385,8 @@ The sidenav also opens these pages. Each has a key.
   branch. Before a start, it can ask for suggested settings, as **Suggest settings** does, and you
   choose what it starts with. Nucleus never edits files. It can send a message to an agent without
   asking you, but a start, a verdict, a merge and a clean-up each wait until you click
-  **Confirm**. **New conversation** starts over. Its **Activity** tab shows what it did, across
+  **Confirm**. To let it start workspaces at once, turn on **Start workspaces without a Confirm**
+  on Nucleus's page in **Settings**; it is on while Hive mode is on. **New conversation** starts over. Its **Activity** tab shows what it did, across
   conversations, as a workspace's does: your messages and its answers with their tokens, every
   command, file read, search and page with what its gate allowed or refused, each call of
   Symbiote's tools, and each **Confirm** with your answer. **Export** takes it out as a
@@ -491,7 +492,8 @@ searches go through Anthropic, and Claude Code fetches each page from your machi
 any address your machine can, including addresses on your own network. On Codex, OpenAI runs the
 searches and opens the pages. What leaves your machine is the search and the page's address. A
 page can hold instructions: Nucleus treats it as data, and nothing it reads can start, approve,
-merge or clean up without your **Confirm**. To turn Nucleus's web access off, set `nucleus.web`
+merge or clean up without your **Confirm**. With **Start workspaces without a Confirm** on, or in
+Hive mode, a start no longer waits for it. To turn Nucleus's web access off, set `nucleus.web`
 to `false` in [the settings file](docs/reference/configuration.md).
 
 All settings are in the [configuration reference](docs/reference/configuration.md).

@@ -183,7 +183,8 @@ dialogs, the graph and the terminals keep their own ground.
 
 While Hive is on, Nucleus is called **Alpha Ceph**, on every page and in its own words, and its icon
 is the Hive Mind. Alpha Ceph's instructions end with what Hive does with the workspaces it starts
-(`hive.nucleus`). Its records and files keep the name `nucleus`. Turning Hive on or off ends the
+(`hive.nucleus`). It starts them without your **Confirm** (see
+[Starting workspaces without a Confirm](#starting-workspaces-without-a-confirm)). Its records and files keep the name `nucleus`. Turning Hive on or off ends the
 conversation and starts the next under the new name, unless it is answering or waiting on you: then
 it keeps its name, and its page says so until **New conversation**.
 
@@ -351,6 +352,34 @@ in `symbiote/hive/<branch>/r<round>/`, where the agent reads them.
 Before, Hive mode was one switch for the whole machine, in Symbiote's settings folder:
 `~/.config/symbiote/hive.json` on Linux. Symbiote no longer reads that file, and leaves it where
 it is. You can delete it.
+
+## Starting workspaces without a Confirm
+
+Nucleus starts a workspace only after you click **Confirm**. To let it start one at once, turn on
+**Start workspaces without a Confirm** on Nucleus's page in **Settings**. It is off by default.
+
+- **Only a start goes at once.** Starting an agent again, a verdict, every merge action and a
+  clean-up still wait for your **Confirm**. So does every tool call of your own agents through
+  `symbiote mcp`.
+- **Nucleus knows.** The description of `start_workspace` and Symbiote's instructions to Nucleus
+  say whether a start waits. A conversation that started before you changed the setting learns it
+  from its next start's answer.
+- **Each start is recorded.** Nucleus's **Activity** tab shows "Started without a Confirm", with
+  why: your setting or Hive mode.
+- **Hive mode turns it on.** While Hive is on, Alpha Ceph starts workspaces without a Confirm, and
+  Settings shows the switch on and greyed out. Your own choice is kept, and holds again when Hive
+  is off.
+- **Only you change it.** No MCP tool reads or changes it. Symbiote keeps it as it keeps Hive
+  mode: in `symbiote/nucleus-start.json` in the main checkout, never committed, and a copy that
+  git tracks reads as off.
+
+```json
+{ "on": true, "since": "2026-11-02T08:00:00.000Z" }
+```
+
+Symbiote knows Nucleus's calls by the `--as nucleus` its bridge is started with. Any program on
+your machine can start a bridge that way. With the setting on, such a program can start a
+workspace without asking you, and the start is recorded in Nucleus's activity.
 
 ## Branches hidden from Git, `symbiote/git.json`
 
