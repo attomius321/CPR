@@ -150,11 +150,17 @@ CI; Hive mode and its limits; Nucleus; several Symbiotes in one window.
   graph schema: 101 relative links and anchors, none broken (it reports a broken one when given
   one). Each of the 17 images in `docs/images/` is referenced once; plans and journals that link
   `review.png`, `merge.png`, `start.png` and `workspace.png` still resolve.
-
-- `pnpm check`: format, lint and typecheck pass; 2,899 of 2,900 unit tests pass. The one that
-  failed, `packages/cli/test/hive-request-checkout.test.ts` ("tried again each minute", 5.1 s), is a
-  timing test, and this branch changes no code; alone it passed 3 runs of 3, at a load average of
-  13.
+- `pnpm check`: format, lint and typecheck pass. The unit tests fail on two of `main`'s HV8 tests,
+  never on this branch's changes: it changes `README.md` and `docs/` only, so the suite runs the
+  same code as `main` at 609dcd7.
+  - `hive-request-checkout.test.ts` ("tried again each minute") and
+    `hive-request-merged-mid-rounds.test.ts` ("landed, no second request") have no timeout of their
+    own, so vitest's 5 s applies. In the full suite they took 5.1 s and timed out: 1 of 2,900
+    failed in my run at a load average of 13, 1 in Hive's round 1 check, and both in a third run
+    at 20–28 (other workspaces' checks).
+  - Alone, both files passed 4 runs of 4 at a load average of 20–27, each test in 1.4–2.3 s.
+  - Not patched here: the brief puts code out of scope. A fix on its own branch would give these
+    tests a timeout of their own, as `hive-runner.test.ts:1505` does (`20_000`).
 - `pnpm build` passes (it ran before the shots, which use its output).
 
 Not verified: an install from a clean clone (the install's text is unchanged in substance); macOS;
