@@ -100,3 +100,28 @@ Graph page, `g` to Files and back twice, Finish review; the review file's verdic
 `request-changes` with the summary, and the next review starts at Comment. Red on the build
 before the fix (the radio unchecked after `g`, the summary kept), green after. `reviews.spec.ts`
 passes whole.
+
+## Fix — the Git page's subjects beside long branch badges (2026-11-02)
+
+At 1,440 × 900 with the details pane open, the rows' card is 478 px and a row's subject and badges
+share 189 px. The subject was `flex: 1` from nothing, and a badge took its whole width first, so
+a long branch name left the subject a letter or none. On a repository shaped like the README's
+storefront, four rows of sixteen showed no subject at all ("Round order totals to the cent",
+"Start src/pricing/rules.ts", …); the merge's showed 86 px.
+
+**Decided**: the subject and the badges share the room by weight, none wider than its text: the
+subject 3 parts, a badge 1, HEAD's badge 3 (V11: HEAD stands out; at 1 it read "HEA…"). What is
+left goes after the subject (`margin-right: auto`), so the badges stay at the row's end and a
+wide row looks as before. A badge cut short keeps its tooltip; the branches panel lists it whole.
+
+**Verification**:
+
+- Measured on that repository at 1,440 × 900: with the details pane, the four subjects went
+  from 0 to 125 px beside their badges (54 px each), the row with two badges from 0 to 87 px,
+  HEAD's row kept "HEAD → main" whole and its subject at 86 px. Without the pane (846 px rows),
+  one subject cut to 164 of 316 px beside a 300 px badge is now whole, its badge cut to 148 px;
+  the badges stay at the row's end.
+- An e2e test (`branches.spec.ts`) at 1,440 × 900 with the details pane: every cut subject is at
+  least 3 times each badge's text beside it (HEAD's: as wide). Red on the build before ("Remote
+  wip" 63 px beside a badge of 62 px), green after; the Git page's specs pass (29).
+- Screenshots before and after, dark and light, with and without the pane.

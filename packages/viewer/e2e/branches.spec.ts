@@ -166,6 +166,49 @@ test('rows keep their date in view beside the panel: long badges shrink first', 
   }
 });
 
+test("long badges leave a row's subject readable at 1,440 px with the details pane open (fix/hive-turn-end-flaky-tests-verdict)", async ({
+  page,
+}) => {
+  await open(page);
+  await entry(page, 'a-branch-whose-name-runs-on-long-enough-to-crowd-its-row').first().click();
+  await expect(cursorSubject(page)).toHaveText('commit 298');
+  const details = page.getByRole('button', { name: /^Details/ });
+  if ((await details.getAttribute('aria-pressed')) !== 'true') await details.click();
+  await expect(details).toHaveAttribute('aria-pressed', 'true');
+  // The subject and each badge share the room 3 to 1 (their text, a badge's padding apart), HEAD's
+  // 1 to 1: a cut subject is 3 times a badge's text beside it, as wide as HEAD's. Badges at their
+  // whole width left "commit 298" none of the row.
+  const rows = await page.evaluate(() =>
+    [...document.querySelectorAll('.commit:not(.loading)')]
+      .filter((row) => row.querySelector('.ref'))
+      .map((row) => {
+        const subject = row.querySelector('.commit-subject')!;
+        return {
+          text: subject.textContent,
+          shown: subject.getBoundingClientRect().width,
+          whole: subject.scrollWidth,
+          badges: [...row.querySelectorAll<HTMLElement>('.ref')].map((b) => {
+            const style = getComputedStyle(b);
+            const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+            const text = b.getBoundingClientRect().width - padding;
+            return { text, parts: b.classList.contains('ref-head') ? 1 : 3 };
+          }),
+        };
+      }),
+  );
+  const crowded = rows.find((r) => r.text === 'commit 298');
+  expect(crowded && crowded.shown + 1 < crowded.whole, 'commit 298 is cut').toBe(true);
+  for (const row of rows) {
+    // Its whole text (scrollWidth is rounded up): nothing cut.
+    if (row.shown + 1 >= row.whole) continue;
+    for (const { text, parts } of row.badges) {
+      expect(row.shown, `${row.text} beside a badge of ${text} px`).toBeGreaterThanOrEqual(
+        parts * text - 1,
+      );
+    }
+  }
+});
+
 test('under 900 px, a button opens the panel over the rows', async ({ page }) => {
   await page.setViewportSize({ width: 760, height: 720 });
   await page.goto(`${symbiote.url}git`);
