@@ -1,3 +1,4 @@
+import { basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
 import { spinner } from './spinner.js';
@@ -256,6 +257,18 @@ const tokenColour = (page: Page, token: string) =>
     return colour;
   }, token);
 
+// V88: the sidenav's top is the S and the project's name alone, as the redesign's kits draw it; the
+// tip and the link's name keep Symbiote's, for the rail where only the S shows.
+test("the sidenav's top names the project alone, beside the S", async ({ page }) => {
+  const symbiote = await serve();
+  await page.goto(`${symbiote.url}git`);
+  const brand = sidenav(page).locator('.sidenav-brand');
+  const project = basename(symbiote.repo);
+  await expect(brand).toHaveText(project);
+  await expect(brand).toHaveAccessibleName(`Symbiote · ${project}`);
+  await expect(brand.locator('img')).toBeVisible();
+});
+
 test('each group of workspaces has its icon, in its colour; the cards keep their dots (V44)', async ({
   page,
 }) => {
@@ -307,12 +320,13 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
   symbiote.session(stopped!, { state: 'stopped' });
 
   const tones = [
-    ['Merging', '--moved'],
-    ['Waiting for you', '--warning'],
-    ['To review', '--warning'],
+    // V88 (decision 813): the agent's turn amber, the person's violet, done green.
+    ['Merging', '--run'],
+    ['Waiting for you', '--you'],
+    ['To review', '--you'],
     ['Not running', '--muted'],
-    ['Working', '--moved'],
-    ['Done', '--added'],
+    ['Working', '--run'],
+    ['Done', '--ok'],
   ] as const;
   const drawings = new Set<string>();
   for (const [name, tone] of tones) {

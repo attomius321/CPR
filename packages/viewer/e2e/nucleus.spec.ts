@@ -222,8 +222,8 @@ const token = (page: Page, name: string) =>
   }, name);
 
 // V59 (decisions 422, 423): Nucleus waiting on the person is its whole link, in Waiting for you's
-// amber band, saying so; nothing moves.
-test('Nucleus waiting for you: its whole link an amber band saying "Waits", folded and on its page too', async ({
+// band (violet since V88, decision 813), saying so; nothing moves.
+test('Nucleus waiting for you: its whole link a violet band saying "Waits", folded and on its page too', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -233,7 +233,7 @@ test('Nucleus waiting for you: its whole link an amber band saying "Waits", fold
   const link = nucleusLink(page);
   const waits = link.locator('.sidenav-waits');
   const atRest = await link.boundingBox();
-  const warning = await token(page, '--warning');
+  const warning = await token(page, '--you');
   // As at rest, once the current page's wash has gone.
   await expect.poll(async () => (await looks(link)).background, POLL).toBe('rgba(0, 0, 0, 0)');
 

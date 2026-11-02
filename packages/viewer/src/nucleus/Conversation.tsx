@@ -272,7 +272,7 @@ export function Conversation({ agent: own }: { agent: ConversationAgent }) {
   const id = `${own.className}-title`;
   return (
     <section className={own.className} aria-labelledby={id}>
-      <header className="page-agent-top">
+      <header className="card-head page-agent-top">
         <span className="page-agent-title">
           <Heading id={id}>{own.name}</Heading>
           <Help label={`About ${own.name}`}>{own.help}</Help>

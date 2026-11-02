@@ -294,6 +294,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [V85](plan/v85-hive-honeycomb-compact.md) | Hive's honeycomb stays as the app's background after the arrival; every page compact like VS Code (13 px body, 26 px controls, 22 px rows) | ✅ | 701–715 | [journal](journal/v85-hive-honeycomb-compact.md) |
 | [V86](plan/v86-alpha-ceph-transform.md) | Nucleus becomes Alpha Ceph in the sidenav after Hive's arrival: the ring breaks onto the Mind's cells, the name's letters change over; never at load. Its conversation follows Hive, Alpha Ceph told what Hive does | ✅ | 730–734, 750–752 | [journal](journal/v86-alpha-ceph-transform.md) |
 | [V87](plan/v87-readable-type.md) | Readable type at VS Code's density: 15 px body, nothing under 12 px, 24 px targets (WCAG 2.2 AA), a text-size choice in Settings | ✅ | 760–766 | [journal](journal/v87-readable-type.md) |
+| [V88](plan/v88-redesign-foundation.md) | Redesign foundation: both modes' colours from the kits (cool ink and violet, warm ink and crimson as Hive's identity), shared states (amber the agent's turn, violet the person's), the status label, stage track, buttons and heads; no honeycomb, sheen or gloss | built | 812–822 | [journal](journal/v88-redesign-foundation.md) |
 
 ### Native window
 

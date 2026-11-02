@@ -28,7 +28,7 @@ export function StartKinds({
 }) {
   const kindIndex = kinds.indexOf(current);
   return (
-    <div className="kind-row">
+    <div className="card-head kind-row">
       <div
         className="kind-picker"
         role="radiogroup"

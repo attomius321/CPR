@@ -71,7 +71,7 @@ export function GitFile({
   };
   return (
     <section className="git-shown" aria-label={`Changes to ${file.path}`}>
-      <header className="git-shown-head">
+      <header className="card-head git-shown-head">
         {/* Its name, then its folder, cut when narrow, as the pane's rows. */}
         <h2 className="git-shown-path" {...tip(file.path, { code: true })}>
           <span className="git-shown-name">{name}</span>

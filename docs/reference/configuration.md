@@ -192,10 +192,10 @@ you. The choice stays yours, per repository.
 **Turning it on** is refused while a workspace started in normal mode is open and not merged: the
 question names them; land or clean them up first. **Turning it off** asks first while Hive works
 on a workspace (writes, checks, reviews or lands), and says what happens to each. With nothing in
-flight it turns off at once. While Hive is on, every page is in ink and crimson, in both themes, and
-the S is crimson. A honeycomb fills the background behind the pages and the sidenav: ink with faint
-crimson outlines in the dark theme, white with pale crimson outlines in the light one. Cards, menus,
-dialogs, the graph and the terminals keep their own ground.
+flight it turns off at once. While Hive is on, every page is in warm neutral ink, in both themes,
+and crimson marks what is Hive's: the S, the Hive group's icon, the picked tab, its one main button
+a page. States keep their colours in both modes: amber for work in progress, green for passed or
+landed, red for failed or stopped.
 
 While Hive is on, Nucleus is called **Alpha Ceph**, on every page and in its own words, and its icon
 is the Hive Mind. Alpha Ceph's instructions end with what Hive does with the workspaces it starts
@@ -206,11 +206,11 @@ it keeps its name, and its page says so until **New conversation**.
 
 The question shows traces that route into a Hive Mind and keep moving while it is open. Turning Hive
 on, the Mind grows to the middle of the window, a shutter of hex tiles closes on it, and the tiles
-open from the Mind onto the new look; the honeycomb they leave is the background above. Once all
+open from the Mind onto the new look. Once all
 is still, Nucleus becomes Alpha Ceph in the sidenav: its ring breaks into the Mind's cells and its
 name changes over, in about a second. A reload or another window with Hive already on shows Alpha
 Ceph at once. If your system asks for reduced motion, the question shows one still picture and the
-look, the honeycomb and Alpha Ceph appear at once.
+look and Alpha Ceph appear at once.
 
 ### What Hive does with a workspace
 

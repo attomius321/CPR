@@ -31,6 +31,7 @@ import {
   spendWords,
   verdictWords,
 } from './hive-rounds.js';
+import { StatusLabel } from '../ui/StatusLabel.js';
 
 const short = (sha: string) => sha.slice(0, 7);
 const enc = encodeURIComponent;
@@ -114,11 +115,11 @@ function KeptLog({ branch, log, label }: { branch: string; log: string; label: s
  */
 function RequestRow({ request }: { request: HiveRequest }) {
   const state = requestState(request);
-  const tone = state.tone === 'ok' ? 'hive-ok' : state.tone === 'bad' ? 'badge-error' : 'hive-wait';
+  const tone = state.tone === 'ok' ? 'ok' : state.tone === 'bad' ? 'error' : 'you';
   return (
     <div className="hive-step" aria-label={`${requestKind(request)} ${requestName(request)}`}>
       <div className="hive-step-head">
-        <span className={`badge ${tone}`}>{requestKind(request)}</span>
+        <StatusLabel tone={tone}>{requestKind(request)}</StatusLabel>
         <a className="link hive-request-link" href={request.url} target="_blank" rel="noreferrer">
           {requestName(request)}
         </a>
@@ -150,9 +151,9 @@ function LandingRow({
   return (
     <div className="hive-step" aria-label={`Landing in ${landing.into}, round ${landing.round}`}>
       <div className="hive-step-head">
-        <span className={`badge ${landed || !ended ? 'hive-ok' : 'badge-error'}`}>
+        <StatusLabel tone={landed ? 'ok' : ended ? 'error' : 'run'}>
           {landed ? 'Landed' : ended ? 'Not landed' : 'Landing'}
-        </span>
+        </StatusLabel>
         <span className="hive-step-facts">
           {landingOutcome(landing, landing.via === 'request' ? request : undefined)} ·{' '}
           <code>{short(landing.at)}</code>
@@ -175,9 +176,9 @@ function CheckRow({ branch, check }: { branch: string; check: HiveCheck }) {
   return (
     <div className="hive-step" aria-label={`Check, round ${check.round}`}>
       <div className="hive-step-head">
-        <span className={`badge ${check.ok ? 'hive-ok' : 'badge-error'}`}>
+        <StatusLabel tone={check.ok ? 'ok' : 'error'}>
           {check.ok ? 'Check passed' : 'Check failed'}
-        </span>
+        </StatusLabel>
         <span className="hive-step-facts">
           {checkWords(check)} · <code>{short(check.at)}</code>
         </span>
@@ -251,7 +252,11 @@ function FindingRow({
   return (
     <li className="hive-finding">
       <div className="hive-step-head">
-        <span className={finding.kept ? 'badge badge-error' : 'chip'}>{words.text}</span>
+        {finding.kept ? (
+          <StatusLabel tone="error">{words.text}</StatusLabel>
+        ) : (
+          <span className="chip">{words.text}</span>
+        )}
         <span className="hive-defect">{finding.defect}</span>
       </div>
       <p className="hive-line">
@@ -283,8 +288,7 @@ function FindingRow({
 /** A running review of a round: its verdict, model, time and cost, what it said and found. */
 function ReviewRow({ branch, review }: { branch: string; review: HiveReview }) {
   const verdict = verdictWords(review);
-  const tone =
-    verdict.tone === 'ok' ? 'hive-ok' : verdict.tone === 'bad' ? 'badge-error' : 'badge-warning';
+  const tone = verdict.tone === 'ok' ? 'ok' : verdict.tone === 'bad' ? 'error' : 'warning';
   const facts = [
     review.model && review.effort ? `${review.model} at ${review.effort}` : review.model,
     durationWords(review.ms),
@@ -293,7 +297,7 @@ function ReviewRow({ branch, review }: { branch: string; review: HiveReview }) {
   return (
     <div className="hive-step" aria-label={`Review, round ${review.round}`}>
       <div className="hive-step-head">
-        <span className={`badge ${tone}`}>{verdict.text}</span>
+        <StatusLabel tone={tone}>{verdict.text}</StatusLabel>
         <span className="hive-step-facts">
           Running review · {facts.join(' · ')} · <code>{short(review.at)}</code>
         </span>

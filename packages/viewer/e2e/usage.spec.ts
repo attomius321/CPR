@@ -65,8 +65,9 @@ test("the status bar shows each subscription's windows, what a hover says, and n
   // 84 % is amber, 59 % green: the tone of each window.
   await expect(claude.locator('.usage-window.tone-high')).toHaveText('wk84%');
   await expect(claude.locator('.usage-window.tone-ok')).toHaveText('5h59%');
-  // The bars too: green, then amber (V29c's colours, back after V31a greyed the green).
-  expect(await filledWith(claude.locator('.usage-window.tone-ok'), '--added')).toBe(true);
+  // The bars too: green, then amber (V29c's colours, back after V31a greyed the green; V88's
+  // states: --ok, a real warning, --error).
+  expect(await filledWith(claude.locator('.usage-window.tone-ok'), '--ok')).toBe(true);
   expect(await filledWith(claude.locator('.usage-window.tone-high'), '--warning')).toBe(true);
   await expect(claude).toHaveAttribute(
     'data-tip',
@@ -106,8 +107,8 @@ test('a window at its limit is red, the bar and its number', async ({ page }) =>
   await expect(claude).toHaveText('ClaudePro5h100%wk30%', POLL);
   const full = claude.locator('.usage-window.tone-full');
   await expect(full).toHaveText('5h100%');
-  expect(await filledWith(full, '--removed')).toBe(true);
-  expect(await filledWith(claude.locator('.usage-window.tone-ok'), '--added')).toBe(true);
+  expect(await filledWith(full, '--error')).toBe(true);
+  expect(await filledWith(claude.locator('.usage-window.tone-ok'), '--ok')).toBe(true);
 });
 
 test('the start page names the plan the status bar names, not the one the token kept from login', async ({

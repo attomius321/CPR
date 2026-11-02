@@ -50,7 +50,7 @@
   padding: var(--card-pad) 8px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--side);
+  background: var(--panel);
 }
 
 .skills-search {
@@ -179,7 +179,7 @@
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--side);
+  background: var(--panel);
 }
 
 .skills-card,
@@ -476,7 +476,7 @@
   padding: 0 8px 0 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: var(--side);
+  background: var(--panel);
   color: var(--muted);
   font: inherit;
   font-size: var(--size-small);
@@ -492,7 +492,7 @@
 
 .skills-code-tools .icon-button {
   border: 1px solid var(--line);
-  background: var(--side);
+  background: var(--panel);
 }
 
 .skills-code-tools .more-menu {
@@ -540,7 +540,7 @@
   padding: var(--card-pad);
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--side);
+  background: var(--panel);
 }
 
 .skills-side-head {

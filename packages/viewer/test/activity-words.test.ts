@@ -103,10 +103,10 @@ describe('eventWords (V73)', () => {
 
 describe('statusWords and summaryParts (V73)', () => {
   it('says a status only when it is news: running, failed, stopped, waiting, no end; a test passed', () => {
-    expect(statusWords(group({ status: 'running' }))).toEqual({ text: 'Running', tone: 'info' });
+    expect(statusWords(group({ status: 'running' }))).toEqual({ text: 'Running', tone: 'run' });
     expect(statusWords(group({ status: 'failed' }))).toEqual({ text: 'Failed', tone: 'error' });
-    expect(statusWords(group({ status: 'recovered' }))).toEqual({ text: 'Passed', tone: 'added' });
-    expect(statusWords(group({ status: 'done' }))).toEqual({ text: 'Passed', tone: 'added' });
+    expect(statusWords(group({ status: 'recovered' }))).toEqual({ text: 'Passed', tone: 'ok' });
+    expect(statusWords(group({ status: 'done' }))).toEqual({ text: 'Passed', tone: 'ok' });
     expect(statusWords(group({ kind: 'implement', status: 'done' }))).toBeNull();
     expect(statusWords(group({ kind: 'explore', status: 'cancelled' }))).toEqual({
       text: 'Stopped',
@@ -114,7 +114,7 @@ describe('statusWords and summaryParts (V73)', () => {
     });
     expect(statusWords(group({ kind: 'asks', status: 'waiting' }))).toEqual({
       text: 'Waiting for you',
-      tone: 'warning',
+      tone: 'you',
     });
     expect(statusWords(group({ kind: 'explore', status: 'open' }))).toEqual({
       text: 'No end recorded',
@@ -126,7 +126,7 @@ describe('statusWords and summaryParts (V73)', () => {
     expect(summaryParts(group({ summary: 'pnpm check · 1 failed · 41 passed (exit 1)' }))).toEqual([
       { text: 'pnpm check', code: true },
       { text: '1 failed', tone: 'error' },
-      { text: '41 passed (exit 1)', tone: 'added' },
+      { text: '41 passed (exit 1)', tone: 'ok' },
     ]);
     expect(summaryParts(group({ kind: 'implement', summary: '3 files · +40 −2' }))).toEqual([
       { text: '3 files' },

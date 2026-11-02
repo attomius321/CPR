@@ -67,38 +67,49 @@
 
 /* Dark unless the person chose light or the system's (decision 179; index.html sets data-theme
    before the first paint). Symbiote's style since V31 (the symbiote-style skill's tokens.md): the content
-   darkest, the chrome lifted, colour for state and one accent. Since V61 the person's mockup
-   (decisions 437–440): near-black neutrals, the chrome a step lighter, the primary and the accent
-   the new S's violet. Text, muted and the accent at least 4.5:1 on the four backgrounds, states,
-   edges and the focus ring 3:1 (test/tokens.test.ts). Lines only separate regions: hairlines.
-   Hive mode (V82) gives its own dialog the whole dark set, Hive's over it. */
+   darkest, the chrome lifted, colour for state and one accent. V88 (decisions 812-814): the
+   redesign's kits (spikes/normal-redesign, spikes/hive-redesign): cool ink and the S's violet;
+   the states shared by both modes, as CI reads them. Text, muted and the accent at least 4.5:1
+   on the four backgrounds, states, edges and the focus ring 3:1 (test/tokens.test.ts). Lines
+   only separate regions: hairlines. Hive's question takes the whole dark set, Hive's over it. */
 :root,
 :root[data-theme='dark'],
 .hive-ink {
-  --bg: #090b0e;
-  --side: #0d1015;
-  --panel: #0d1015;
+  --bg: #090a0d;
+  --side: #0d0f13;
+  --panel: #0e1015;
   --raised: #171a21;
-  --line: #1f232c;
+  --line: #23262e;
+  /* A secondary control's edge (V88): a step over the hairline. */
+  --line-2: #2e323b;
   --edge: #5c6373;
-  --text: #edf0f5;
-  --muted: #a2abbc;
-  --faint: #737a8a;
+  --text: #eef0f5;
+  --muted: #a3aabb;
+  --faint: #767d8d;
   /* The secondary colour (V42, decision 280), violet since V61: a light step of the primary, for
-     text. Focus, the current page, what is selected or checked, a link under the pointer; never a
-     state. */
+     text. Focus, the current page, what is selected or checked, a link under the pointer. */
   --accent: #9886ff;
   --focus: #9886ff;
+  /* The states (V88, decision 813), both modes: the person's turn in the accent's violet (what
+     waits for them has the colour of the button that answers it), the agent's turn and anything in
+     progress amber, passed green, failed red, paused cyan. Amber `--warning` is only a real
+     warning: a check's, a limit near. Never colour alone: an icon and a word with it. */
+  --you: #9886ff;
+  --run: #f2b33d;
+  --ok: #3fcf8e;
+  --error: #ff6166;
+  --warning: #f2b33d;
+  --info: #5cc8d8;
+  /* Hive's crimson (V88, decision 814): its identity, never a state. Its entry in Settings and
+     Turn on Hive in normal mode too; its words in `--hive-text`. */
+  --hive: #e5243f;
+  --hive-text: #ff8090;
   --added: #81b88b;
   --removed: #c74e39;
   --modified: #e2c08d;
   /* Cyan since V42 (decision 281): the koi's blue was the accent, 6° of hue from V31's #4493f8. */
   --moved: #3fc5d6;
-  --context: #737a8a;
-  --error: #ff6568;
-  /* The mockup's amber (V61): Waiting for you, a plan ready. */
-  --warning: #f5b32a;
-  --info: #3fc5d6;
+  --context: #767d8d;
   /* OpenAI's blossom, Codex's mark (fix/codex-icon): OpenAI's white on dark, black on light. */
   --openai: #ffffff;
   /* Commit graph lanes after the current branch's (V10). The first is blue since V61: its purple
@@ -132,7 +143,7 @@
   /* States every control shares (V31): the hover a wash of the text, the selection one of the
      accent (V42), further from its ground than the hover (V37, decision 250). */
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
-  --selected: color-mix(in srgb, var(--accent) 16%, transparent);
+  --selected: color-mix(in srgb, var(--accent) 14%, transparent);
   --selected-line: color-mix(in srgb, var(--accent) 40%, var(--line));
   /* The primary colour (V61, decision 440): the mockup's violet with dark text on it, 4.89:1;
      white would be 4.01. */
@@ -140,6 +151,9 @@
   --primary-text: #0b0a1a;
   /* Under the pointer, a step lighter: dark text gains on it (5.77:1). */
   --primary-hover: #8a78fd;
+  /* Hive's crimson as a button in normal mode too (Turn on Hive): white words, 5.88:1. */
+  --hive-primary: #c8102e;
+  --hive-primary-hover: #b00d28;
   --input-bg: rgb(220 226 238 / 4%);
   /* A text field's edge at rest, about 1.5:1 (decision 246): `--edge` (3:1) on hover, `--focus`
      and the ring on focus. */
@@ -147,35 +161,35 @@
   --ring: color-mix(in srgb, var(--focus) 30%, transparent);
   /* The one on, lifted out of a raised track (a segmented control's). */
   --lifted: rgb(220 226 238 / 9%);
-  /* A picked line tab's ground (V61, the mockup's tabs): a breath above the strip. */
-  --tab-picked: color-mix(in srgb, var(--text) 4%, transparent);
-  --shadow-lift: 0 1px 2px rgb(0 0 0 / 24%);
-  --shadow-floating: 0 12px 28px rgb(0 0 0 / 45%);
+  /* A picked line tab's ground: none since V88, the kit's line under it says it. */
+  --tab-picked: transparent;
+  --shadow-lift: 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-floating: 0 16px 40px rgb(0 0 0 / 50%);
   /* The primary's lit top edge (V42): light from above. */
   --primary-shine: inset 0 1px 0 rgb(255 255 255 / 22%);
   /* The start page's arcs on its ground (V63, the person's mockup): the primary, faint. */
   --ground-arc: rgb(124 104 252 / 30%);
-  --menu-bg: rgb(13 16 21 / 82%);
+  --menu-bg: rgb(13 15 19 / 82%);
   --menu-line: rgb(220 226 238 / 12%);
   --menu-hover: rgb(220 226 238 / 10%);
   --menu-shadow: 0 16px 34px rgb(0 0 0 / 50%), inset 0 1px 0 rgb(220 226 238 / 6%);
-  --dialog-bg: rgb(13 16 21 / 96%);
+  --dialog-bg: rgb(13 15 19 / 96%);
   --dialog-shadow: 0 24px 72px rgb(0 0 0 / 60%), inset 0 1px 0 rgb(220 226 238 / 8%);
   --overlay: rgb(3 4 6 / 62%);
   /* A tooltip (V54, decision 398): the style's inverted tip, the terminal's link hint's light
      (V38). Its state dots in the light theme's colours: the dark theme's are 2:1 on it. */
   --tip-bg: #e6e9ef;
-  --tip-text: #090b0e;
+  --tip-text: #090a0d;
   --tip-muted: #4d5566;
   --tip-key: #d3d7df;
   --tip-key-text: #3b4252;
-  --tip-ok: #587c0c;
-  --tip-bad: #ad0707;
-  --tip-warn: #9a6700;
-  --tip-info: #0a7d8c;
+  --tip-ok: #137a4a;
+  --tip-bad: #cf2330;
+  --tip-warn: #8f5b00;
+  --tip-info: #0a7383;
   --tip-shadow: 0 8px 24px rgb(0 0 0 / 55%);
   /* A select's chevron (lucide's, ISC) in the muted colour: a data URI cannot read a token. */
-  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a2abbc' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3aabb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   /* A diff's lines: a ground for the line, a stronger one for its numbers. */
   --added-ground: color-mix(in srgb, var(--added) 16%, transparent);
   --added-gutter: color-mix(in srgb, var(--added) 30%, transparent);
@@ -184,26 +198,34 @@
   color-scheme: dark;
 }
 
+/* Light (V88, decision 812): a grey ground with white cards, the kit's; its line a step darker
+   than the kit's, for 1.2:1 on the ground. */
 :root[data-theme='light'] {
-  --bg: #ffffff;
-  --side: #f6f8fc;
-  --panel: #f6f8fc;
-  --raised: #e9eef7;
-  --line: #dce3ef;
+  --bg: #f3f4f7;
+  --side: #f9fafc;
+  --panel: #ffffff;
+  --raised: #eef0f5;
+  --line: #dadee7;
+  --line-2: #d0d4de;
   --edge: #7f8aa3;
-  --text: #0b1220;
-  --muted: #56627a;
-  --faint: #78839c;
+  --text: #0f1320;
+  --muted: #525c71;
+  --faint: #747e95;
   --accent: #5b3fd9;
   --focus: #5b3fd9;
+  --you: #5b3fd9;
+  --run: #8f5b00;
+  --ok: #137a4a;
+  --error: #cf2330;
+  --warning: #8f5b00;
+  --info: #0a7383;
+  --hive: #c8102e;
+  --hive-text: #b30f2a;
   --added: #587c0c;
   --removed: #ad0707;
   --modified: #895503;
   --moved: #0a7d8c;
-  --context: #78839c;
-  --error: #e40014;
-  --warning: #9a6700;
-  --info: #0a7d8c;
+  --context: #747e95;
   --lane-1: #2f62cc;
   --lane-2: #0a7f6f;
   --lane-3: #bc4c00;
@@ -223,40 +245,42 @@
   --phase-web: #6f6a00;
   --phase-symbiote: #9c2fb8;
   --phase-wash: 12%;
-  --shadow: rgb(11 18 32 / 14%);
+  --shadow: rgb(15 19 32 / 14%);
   --hover: color-mix(in srgb, var(--text) 5%, transparent);
-  --selected: color-mix(in srgb, var(--accent) 12%, transparent);
+  --selected: color-mix(in srgb, var(--accent) 10%, transparent);
   --selected-line: color-mix(in srgb, var(--accent) 35%, var(--line));
   --primary: #5b3fd9;
   --primary-text: #ffffff;
   --primary-hover: #4e33c6;
-  --input-bg: transparent;
+  --hive-primary: #c8102e;
+  --hive-primary-hover: #b00d28;
+  --input-bg: #ffffff;
   --field-line: color-mix(in srgb, var(--text) 16%, transparent);
   --ring: color-mix(in srgb, var(--focus) 25%, transparent);
   --lifted: #ffffff;
-  --tab-picked: #ffffff;
-  --shadow-lift: 0 1px 2px rgb(11 18 32 / 6%);
-  --shadow-floating: 0 10px 24px rgb(11 18 32 / 16%);
+  --tab-picked: transparent;
+  --shadow-lift: 0 1px 2px rgb(15 19 32 / 6%);
+  --shadow-floating: 0 10px 24px rgb(15 19 32 / 16%);
   --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
   --ground-arc: rgb(91 63 217 / 16%);
   --menu-bg: rgb(255 255 255 / 82%);
-  --menu-line: rgb(11 18 32 / 13%);
-  --menu-hover: rgb(11 18 32 / 7%);
-  --menu-shadow: 0 12px 28px rgb(11 18 32 / 20%), inset 0 1px 0 rgb(255 255 255 / 14%);
+  --menu-line: rgb(15 19 32 / 13%);
+  --menu-hover: rgb(15 19 32 / 7%);
+  --menu-shadow: 0 12px 28px rgb(15 19 32 / 20%), inset 0 1px 0 rgb(255 255 255 / 14%);
   --dialog-bg: rgb(255 255 255 / 96%);
-  --dialog-shadow: 0 20px 60px rgb(11 18 32 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
-  --overlay: rgb(11 18 32 / 45%);
-  --tip-bg: #0b1220;
+  --dialog-shadow: 0 20px 60px rgb(15 19 32 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
+  --overlay: rgb(15 19 32 / 45%);
+  --tip-bg: #0f1320;
   --tip-text: #ffffff;
   --tip-muted: #a3aec4;
   --tip-key: #29303d;
   --tip-key-text: #c9d1e2;
-  --tip-ok: #81b88b;
-  --tip-bad: #ff6568;
-  --tip-warn: #eab308;
-  --tip-info: #3fc5d6;
-  --tip-shadow: 0 8px 20px rgb(11 18 32 / 22%);
-  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2356627a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  --tip-ok: #3fcf8e;
+  --tip-bad: #ff6166;
+  --tip-warn: #f2b33d;
+  --tip-info: #5cc8d8;
+  --tip-shadow: 0 8px 20px rgb(15 19 32 / 22%);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23525c71' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
   --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
   --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
@@ -267,25 +291,31 @@
 
 @media (prefers-color-scheme: light) {
   :root[data-theme='system'] {
-    --bg: #ffffff;
-    --side: #f6f8fc;
-    --panel: #f6f8fc;
-    --raised: #e9eef7;
-    --line: #dce3ef;
+    --bg: #f3f4f7;
+    --side: #f9fafc;
+    --panel: #ffffff;
+    --raised: #eef0f5;
+    --line: #dadee7;
+    --line-2: #d0d4de;
     --edge: #7f8aa3;
-    --text: #0b1220;
-    --muted: #56627a;
-    --faint: #78839c;
+    --text: #0f1320;
+    --muted: #525c71;
+    --faint: #747e95;
     --accent: #5b3fd9;
     --focus: #5b3fd9;
+    --you: #5b3fd9;
+    --run: #8f5b00;
+    --ok: #137a4a;
+    --error: #cf2330;
+    --warning: #8f5b00;
+    --info: #0a7383;
+    --hive: #c8102e;
+    --hive-text: #b30f2a;
     --added: #587c0c;
     --removed: #ad0707;
     --modified: #895503;
     --moved: #0a7d8c;
-    --context: #78839c;
-    --error: #e40014;
-    --warning: #9a6700;
-    --info: #0a7d8c;
+    --context: #747e95;
     --lane-1: #2f62cc;
     --lane-2: #0a7f6f;
     --lane-3: #bc4c00;
@@ -305,40 +335,42 @@
     --phase-web: #6f6a00;
     --phase-symbiote: #9c2fb8;
     --phase-wash: 12%;
-    --shadow: rgb(11 18 32 / 14%);
+    --shadow: rgb(15 19 32 / 14%);
     --hover: color-mix(in srgb, var(--text) 5%, transparent);
-    --selected: color-mix(in srgb, var(--accent) 12%, transparent);
+    --selected: color-mix(in srgb, var(--accent) 10%, transparent);
     --selected-line: color-mix(in srgb, var(--accent) 35%, var(--line));
     --primary: #5b3fd9;
     --primary-text: #ffffff;
     --primary-hover: #4e33c6;
-    --input-bg: transparent;
+    --hive-primary: #c8102e;
+    --hive-primary-hover: #b00d28;
+    --input-bg: #ffffff;
     --field-line: color-mix(in srgb, var(--text) 16%, transparent);
     --ring: color-mix(in srgb, var(--focus) 25%, transparent);
     --lifted: #ffffff;
-    --tab-picked: #ffffff;
-    --shadow-lift: 0 1px 2px rgb(11 18 32 / 6%);
-    --shadow-floating: 0 10px 24px rgb(11 18 32 / 16%);
+    --tab-picked: transparent;
+    --shadow-lift: 0 1px 2px rgb(15 19 32 / 6%);
+    --shadow-floating: 0 10px 24px rgb(15 19 32 / 16%);
     --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
     --ground-arc: rgb(91 63 217 / 16%);
     --menu-bg: rgb(255 255 255 / 82%);
-    --menu-line: rgb(11 18 32 / 13%);
-    --menu-hover: rgb(11 18 32 / 7%);
-    --menu-shadow: 0 12px 28px rgb(11 18 32 / 20%), inset 0 1px 0 rgb(255 255 255 / 14%);
+    --menu-line: rgb(15 19 32 / 13%);
+    --menu-hover: rgb(15 19 32 / 7%);
+    --menu-shadow: 0 12px 28px rgb(15 19 32 / 20%), inset 0 1px 0 rgb(255 255 255 / 14%);
     --dialog-bg: rgb(255 255 255 / 96%);
-    --dialog-shadow: 0 20px 60px rgb(11 18 32 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
-    --overlay: rgb(11 18 32 / 45%);
-    --tip-bg: #0b1220;
+    --dialog-shadow: 0 20px 60px rgb(15 19 32 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
+    --overlay: rgb(15 19 32 / 45%);
+    --tip-bg: #0f1320;
     --tip-text: #ffffff;
     --tip-muted: #a3aec4;
     --tip-key: #29303d;
     --tip-key-text: #c9d1e2;
-    --tip-ok: #81b88b;
-    --tip-bad: #ff6568;
-    --tip-warn: #eab308;
-    --tip-info: #3fc5d6;
-    --tip-shadow: 0 8px 20px rgb(11 18 32 / 22%);
-    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2356627a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    --tip-ok: #3fcf8e;
+    --tip-bad: #ff6166;
+    --tip-warn: #f2b33d;
+    --tip-info: #5cc8d8;
+    --tip-shadow: 0 8px 20px rgb(15 19 32 / 22%);
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23525c71' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
     --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
     --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
     --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
@@ -348,128 +380,105 @@
   }
 }
 
-/* Hive mode (V82, decision 614): while it is on (`data-hive`, written by the server), ink and
-   crimson over each theme, glossy; "like Venom, but not that much". Only surfaces, words and the
-   accents change: states, lanes, kinds of work and type are the theme's. The same contrast rules
-   (test/tokens.test.ts). Dark Hive is also the Hive dialog's, whatever the theme (decision 615);
-   light Hive's sidenav is light since V85 (decision 704). */
+/* Hive mode (V82; V88, decisions 812, 814): while it is on (`data-hive`, written by the server),
+   Hive Control's warm ink over each theme, no red in its surfaces; its crimson only for what is
+   Hive's: the primary with white words (5.88:1), its words and marks (`--hive-text`, the accent),
+   the picked tab. The states, lanes, kinds of work and type are the theme's. The same contrast
+   rules (test/tokens.test.ts). Dark Hive is also the question's, whatever the theme (decision
+   615). */
 :root[data-hive]:not([data-theme='light']),
 .hive-ink {
-  --bg: #070506;
-  --side: #0d090a;
-  --panel: #0d090a;
-  --raised: #1b1214;
-  --line: #2b1d20;
-  --edge: #725b5f;
-  --text: #f7f2f2;
-  --muted: #bcaeb0;
-  --faint: #86787b;
-  /* Highlights near white, a blush of the crimson: the current page, the open entry. */
-  --accent: #ffc4cc;
-  --focus: #ffc4cc;
-  /* The crimson, for what is not text: the selection's wash, the sheen's glow, the art's edges. */
-  --hive-red: #e0243f;
-  --selected: color-mix(in srgb, var(--hive-red) 20%, transparent);
-  --selected-line: color-mix(in srgb, var(--hive-red) 45%, var(--line));
-  /* White words on it: 5.88:1, 7.16 under the pointer (a step darker, as light's). */
+  --bg: #09090b;
+  --side: #0e0e11;
+  --panel: #0f0f12;
+  --raised: #18181d;
+  --line: #24242b;
+  --line-2: #2f2f37;
+  --edge: #64626c;
+  --text: #f3f2f5;
+  --muted: #a6a4ae;
+  --faint: #7b7983;
+  --accent: #ff8090;
+  --focus: #ff8090;
+  --selected: color-mix(in srgb, var(--text) 9%, transparent);
+  --selected-line: color-mix(in srgb, var(--text) 22%, var(--line));
+  /* White words on it: 5.88:1, 7.16 under the pointer (a step darker). */
   --primary: #c8102e;
   --primary-text: #ffffff;
   --primary-hover: #b00d28;
-  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 30%);
-  --input-bg: rgb(255 240 242 / 4%);
-  --lifted: rgb(255 240 242 / 9%);
+  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 16%);
+  --input-bg: rgb(255 255 255 / 4%);
+  --lifted: rgb(255 255 255 / 9%);
   --ground-arc: rgb(200 16 46 / 32%);
-  --menu-bg: rgb(13 9 10 / 86%);
-  --menu-line: rgb(255 230 233 / 12%);
-  --menu-hover: rgb(255 230 233 / 9%);
-  --dialog-bg: rgb(13 9 10 / 96%);
-  --overlay: rgb(4 1 2 / 70%);
-  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23bcaeb0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  /* Gloss (ui/hive.css): light from above on the primary, streaks and a glow over the pages. */
-  --hive-gloss: linear-gradient(180deg, rgb(255 255 255 / 16%), transparent 55%);
-  --hive-sheen: rgb(255 255 255 / 4%);
-  --hive-streak: rgb(255 255 255 / 2.4%);
-  --hive-glow: rgb(200 16 46 / 9%);
-  /* The honeycomb behind the page (V85, decision 701): the arrival's ink, its etched outlines the
-     lamp's crimson at 12 % over it, opaque. */
-  --hive-comb-ground: #0b0102;
-  --hive-comb-line: #280609;
+  --menu-bg: rgb(14 14 17 / 86%);
+  --menu-line: rgb(255 255 255 / 12%);
+  --menu-hover: rgb(255 255 255 / 9%);
+  --dialog-bg: rgb(14 14 17 / 96%);
+  --overlay: rgb(3 3 4 / 70%);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a6a4ae' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
-/* Light Hive: the content stays white and readable, the crimson the primary, wine the accent. */
+/* Light Hive: the kit's warm grey ground and white cards; the line a step darker, as normal
+   mode's. */
 :root[data-hive][data-theme='light'] {
-  --bg: #ffffff;
-  --side: #f7f4f4;
-  --panel: #f7f4f4;
-  --raised: #ece5e6;
-  --line: #e2d8da;
-  --edge: #87787b;
-  --text: #120a0c;
-  --muted: #5e5053;
-  --faint: #84777a;
-  --accent: #9b1230;
-  --focus: #9b1230;
-  --hive-red: #c8102e;
-  --selected: color-mix(in srgb, var(--hive-red) 10%, transparent);
-  --selected-line: color-mix(in srgb, var(--hive-red) 35%, var(--line));
-  --primary: #b0102b;
+  --bg: #f3f3f5;
+  --side: #f9f9fa;
+  --panel: #ffffff;
+  --raised: #f0f0f3;
+  --line: #dcdce2;
+  --line-2: #d3d3da;
+  --edge: #85838d;
+  --text: #121216;
+  --muted: #595762;
+  --faint: #7c7a85;
+  --accent: #b30f2a;
+  --focus: #b30f2a;
+  --selected: color-mix(in srgb, var(--text) 8%, transparent);
+  --selected-line: color-mix(in srgb, var(--text) 20%, var(--line));
+  --primary: #c8102e;
   --primary-text: #ffffff;
-  --primary-hover: #960c24;
-  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 24%);
-  --input-bg: transparent;
+  --primary-hover: #b00d28;
+  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
+  --input-bg: #ffffff;
   --lifted: #ffffff;
-  --ground-arc: rgb(176 16 43 / 16%);
+  --ground-arc: rgb(200 16 46 / 16%);
   --menu-bg: rgb(255 255 255 / 82%);
-  --menu-line: rgb(18 10 12 / 13%);
-  --menu-hover: rgb(18 10 12 / 7%);
+  --menu-line: rgb(18 18 22 / 13%);
+  --menu-hover: rgb(18 18 22 / 7%);
   --dialog-bg: rgb(255 255 255 / 96%);
-  --overlay: rgb(18 10 12 / 45%);
-  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235e5053' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-  --hive-gloss: linear-gradient(180deg, rgb(255 255 255 / 14%), transparent 55%);
-  --hive-sheen: rgb(18 10 12 / 2.5%);
-  --hive-streak: rgb(18 10 12 / 1.4%);
-  --hive-glow: rgb(200 16 46 / 5%);
-  /* White, the crimson's outlines at 13 % over it, opaque (decision 704): the most that keeps
-     the states 3:1 on a line (16 % left `--context` at 2.88). */
-  --hive-comb-ground: #ffffff;
-  --hive-comb-line: #f8e0e4;
+  --overlay: rgb(18 18 22 / 45%);
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23595762' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 }
 
 @media (prefers-color-scheme: light) {
   :root[data-hive][data-theme='system'] {
-    --bg: #ffffff;
-    --side: #f7f4f4;
-    --panel: #f7f4f4;
-    --raised: #ece5e6;
-    --line: #e2d8da;
-    --edge: #87787b;
-    --text: #120a0c;
-    --muted: #5e5053;
-    --faint: #84777a;
-    --accent: #9b1230;
-    --focus: #9b1230;
-    --hive-red: #c8102e;
-    --selected: color-mix(in srgb, var(--hive-red) 10%, transparent);
-    --selected-line: color-mix(in srgb, var(--hive-red) 35%, var(--line));
-    --primary: #b0102b;
+    --bg: #f3f3f5;
+    --side: #f9f9fa;
+    --panel: #ffffff;
+    --raised: #f0f0f3;
+    --line: #dcdce2;
+    --line-2: #d3d3da;
+    --edge: #85838d;
+    --text: #121216;
+    --muted: #595762;
+    --faint: #7c7a85;
+    --accent: #b30f2a;
+    --focus: #b30f2a;
+    --selected: color-mix(in srgb, var(--text) 8%, transparent);
+    --selected-line: color-mix(in srgb, var(--text) 20%, var(--line));
+    --primary: #c8102e;
     --primary-text: #ffffff;
-    --primary-hover: #960c24;
-    --primary-shine: inset 0 1px 0 rgb(255 255 255 / 24%);
-    --input-bg: transparent;
+    --primary-hover: #b00d28;
+    --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
+    --input-bg: #ffffff;
     --lifted: #ffffff;
-    --ground-arc: rgb(176 16 43 / 16%);
+    --ground-arc: rgb(200 16 46 / 16%);
     --menu-bg: rgb(255 255 255 / 82%);
-    --menu-line: rgb(18 10 12 / 13%);
-    --menu-hover: rgb(18 10 12 / 7%);
+    --menu-line: rgb(18 18 22 / 13%);
+    --menu-hover: rgb(18 18 22 / 7%);
     --dialog-bg: rgb(255 255 255 / 96%);
-    --overlay: rgb(18 10 12 / 45%);
-    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235e5053' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-    --hive-gloss: linear-gradient(180deg, rgb(255 255 255 / 14%), transparent 55%);
-    --hive-sheen: rgb(18 10 12 / 2.5%);
-    --hive-streak: rgb(18 10 12 / 1.4%);
-    --hive-glow: rgb(200 16 46 / 5%);
-    --hive-comb-ground: #ffffff;
-    --hive-comb-line: #f8e0e4;
+    --overlay: rgb(18 18 22 / 45%);
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23595762' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
   }
 }
 

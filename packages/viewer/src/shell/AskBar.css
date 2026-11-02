@@ -11,7 +11,7 @@
   min-height: var(--height-tall);
   padding: 4px 12px 4px 16px;
   border-bottom: 1px solid var(--line);
-  background: color-mix(in srgb, var(--warning) 8%, var(--side));
+  background: color-mix(in srgb, var(--you) 8%, var(--side));
   font-size: var(--size-small);
 }
 
@@ -19,7 +19,7 @@
   flex: none;
   width: 16px;
   height: 16px;
-  color: var(--warning);
+  color: var(--you);
 }
 
 .ask-words {

@@ -309,8 +309,10 @@ input[type='checkbox'][role='switch']:checked::after {
   color: var(--muted);
 }
 
-/* Buttons (V29b): 32 px since V61's bigger type; the main action in the primary colour (V31: the
-   mockup's violet since V61, dark words on it, its top edge lit), the others outlined. */
+/* Buttons (V29b; V88, decision 819, the kits'): one constructive primary a page in the primary
+   colour (violet with dark words; crimson with white words in Hive), its top edge lit; a secondary
+   raised with a stronger hairline; a ghost; a destructive action a secondary with red words, never
+   a fill. Turn on Hive is Hive's crimson in both modes (`.hive`). */
 .button {
   display: inline-flex;
   align-items: center;
@@ -321,7 +323,9 @@ input[type='checkbox'][role='switch']:checked::after {
   border: 1px solid transparent;
   border-radius: 8px;
   background: var(--primary);
-  box-shadow: var(--primary-shine);
+  box-shadow:
+    var(--primary-shine),
+    0 1px 2px rgb(0 0 0 / 24%);
   color: var(--primary-text);
   font-size: var(--size-small);
   font-weight: 500;
@@ -342,23 +346,17 @@ input[type='checkbox'][role='switch']:checked::after {
   cursor: default;
 }
 
+/* Turning Hive on: its crimson, white words, whatever the mode (the kits' 09 and 11). */
+.button.hive {
+  background: var(--hive-primary);
+  color: #ffffff;
+}
+
+.button.hive:hover:not(:disabled) {
+  background: var(--hive-primary-hover);
+}
+
 /* Backing out stays quiet (Cancel, Clear, Discard, Keep it): a ghost button, no colour. */
-/* Losing data (Git's deletes) or a dangerous switch (Hive mode, V82): the error's colour, the
-   style's danger. */
-.button.danger {
-  background: color-mix(in srgb, var(--error) 60%, transparent);
-  box-shadow: none;
-  color: #fff;
-}
-
-.button.danger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--error) 75%, transparent);
-}
-
-:root[data-theme='light'] .button.danger {
-  background: var(--error);
-}
-
 .button.ghost {
   background: transparent;
   box-shadow: none;
@@ -371,21 +369,33 @@ input[type='checkbox'][role='switch']:checked::after {
 }
 
 .button.secondary,
-.workspace-actions .button:not(.primary),
-.merge-row-actions .button:not(.primary),
+.button.danger,
+.workspace-actions .button:not(.primary, .hive),
+.merge-row-actions .button:not(.primary, .hive),
 .workspace-confirm .button {
-  border-color: var(--line);
-  background: var(--input-bg);
+  border-color: var(--line-2);
+  background: var(--raised);
   box-shadow: var(--shadow-lift);
   color: var(--text);
 }
 
 .button.secondary:hover:not(:disabled),
-.workspace-actions .button:not(.primary):hover:not(:disabled),
-.merge-row-actions .button:not(.primary):hover:not(:disabled),
+.workspace-actions .button:not(.primary, .hive):hover:not(:disabled),
+.merge-row-actions .button:not(.primary, .hive):hover:not(:disabled),
 .workspace-confirm .button:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--muted) 35%, transparent);
-  background: var(--hover);
+  border-color: var(--edge);
+  background: color-mix(in srgb, var(--text) 4%, var(--raised));
+}
+
+/* Losing data (Git's deletes), turning Hive off: a secondary with the error's words (V88; a red
+   fill before). */
+.button.danger {
+  color: var(--error);
+}
+
+.button.danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--error) 45%, var(--line-2));
+  background: color-mix(in srgb, var(--error) 8%, var(--raised));
 }
 
 .error {

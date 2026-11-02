@@ -557,7 +557,7 @@ function WorkspacePanel({
             {live && (
               <button
                 type="button"
-                className="button"
+                className="button secondary"
                 disabled={busy}
                 onClick={() => {
                   setStopping(true);
@@ -575,7 +575,7 @@ function WorkspacePanel({
             {restartable && workspace.worktree.exists && (
               <button
                 type="button"
-                className="button"
+                className="button secondary"
                 disabled={busy}
                 onClick={() =>
                   act(() =>
@@ -607,7 +607,7 @@ function WorkspacePanel({
             {!hiveLands && workspace.ahead > 0 && workspace.tip !== null && (
               <button
                 type="button"
-                className={mergedForCard(workspace) ? 'button' : 'button primary'}
+                className={mergedForCard(workspace) ? 'button secondary' : 'button primary'}
                 disabled={busy}
                 onClick={() =>
                   act(async () => {
@@ -625,7 +625,7 @@ function WorkspacePanel({
             {mergedForCard(workspace) && (
               <button
                 type="button"
-                className="button primary"
+                className="button danger"
                 disabled={busy}
                 {...tip('Remove its sessions, its worktree and its merged branch')}
                 onClick={() => clean(false)}
@@ -662,7 +662,7 @@ function WorkspacePanel({
         <p className="workspace-confirm">
           {branch} is not merged: Clean up removes its worktree and keeps the branch and its
           commits.{' '}
-          <button type="button" className="button" onClick={() => clean(true)}>
+          <button type="button" className="button danger" onClick={() => clean(true)}>
             Clean up anyway
           </button>{' '}
           <button type="button" className="button ghost" onClick={() => setConfirming(null)}>

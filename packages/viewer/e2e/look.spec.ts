@@ -17,8 +17,8 @@ test.afterEach(() => {
 });
 
 const POLL = { timeout: 12_000 };
-const DARK = 'rgb(9, 11, 14)';
-const LIGHT = 'rgb(255, 255, 255)';
+const DARK = 'rgb(9, 10, 13)';
+const LIGHT = 'rgb(243, 244, 247)';
 const background = (page: Page) =>
   page.evaluate(() => getComputedStyle(document.body).backgroundColor);
 // Settings' Appearance (V51: an entry of its own, no longer in the head) and its Theme.
@@ -182,8 +182,8 @@ test('the chrome is lifted above the content: the sidenav and the status bar', a
       .first()
       .evaluate((e) => getComputedStyle(e).backgroundColor);
   expect(await background(page)).toBe(DARK);
-  expect(await colour('.sidenav')).toBe('rgb(13, 16, 21)');
-  expect(await colour('.statusbar')).toBe('rgb(13, 16, 21)');
+  expect(await colour('.sidenav')).toBe('rgb(13, 15, 19)');
+  expect(await colour('.statusbar')).toBe('rgb(13, 15, 19)');
   // The current page is a wash of the accent, the new S's violet (V61).
   const current = page.getByRole('link', { name: 'Git' });
   expect(await current.evaluate((e) => getComputedStyle(e).backgroundColor)).toMatch(
@@ -522,7 +522,8 @@ test("a workspace's views: the picked one a wash on the chrome, readable in ligh
   const strip = await page
     .getByRole('tablist', { name: 'Talk to the agent' })
     .evaluate((e) => getComputedStyle(e).backgroundColor);
-  expect(strip).toBe('rgb(246, 248, 252)');
+  // V88: the card's ground, white in the light theme.
+  expect(strip).toBe('rgb(255, 255, 255)');
   const [color, under] = await tab.evaluate((element) => {
     const style = getComputedStyle(element);
     return [style.color, style.backgroundColor];

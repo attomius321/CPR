@@ -49,7 +49,7 @@
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--panel);
 }
 
 /* The file's path and what changed in it, over its diff while it scrolls. */
@@ -57,15 +57,12 @@
   position: sticky;
   top: 0;
   z-index: 1;
-  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 12px;
   /* The card's head (V72): 48 px with its hairline, its words `--card-pad` in. */
-  min-height: var(--card-head);
   padding: 4px var(--card-pad);
-  border-bottom: 1px solid var(--line);
-  background: var(--bg);
+  background: var(--panel);
   font-size: var(--size-small);
 }
 
@@ -127,7 +124,7 @@
 .file-comments {
   padding: 8px 12px 8px 8.6em;
   border-block: 1px solid var(--line);
-  background: var(--side);
+  background: var(--panel);
   font-family: var(--sans);
 }
 

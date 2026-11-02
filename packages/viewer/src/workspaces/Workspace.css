@@ -144,9 +144,9 @@
 /* What the agent waits on: the warning tint. */
 .thread-waits {
   padding: 6px 10px;
-  border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--you) 25%, transparent);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  background: color-mix(in srgb, var(--you) 10%, transparent);
   font-size: var(--size-body);
   overflow-wrap: anywhere;
 }
@@ -182,12 +182,9 @@
 /* The tabs, the main card's head (V72): `--card-head` high with its hairline, the tabs on it, the
    first tab's words `--card-pad` in (a tab is 14 px wider than its words each side). */
 .workspace-views {
-  display: flex;
   gap: 2px;
-  min-height: var(--card-head);
   padding: 4px calc(var(--card-pad) - 10px) 0;
-  border-bottom: 1px solid var(--line);
-  background: var(--side);
+  background: var(--panel);
 }
 
 .workspace-views button {
@@ -297,7 +294,7 @@
   right: 0;
   display: flex;
   padding-left: 4px;
-  background: var(--side);
+  background: var(--panel);
 }
 
 .workspace-views .shell-new {
@@ -355,7 +352,7 @@
   padding: 8px 12px 8px 8px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--side);
+  background: var(--panel);
   color: var(--muted);
   font-size: var(--size-body);
 }
@@ -397,7 +394,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--panel);
 }
 
 .icon-button.changes-toggle[aria-pressed='true'] {
@@ -480,21 +477,21 @@
 }
 
 .workspace-top.tone-working {
-  --state-tone: var(--moved);
+  --state-tone: var(--run);
 }
 
-/* As the sidenav's dot: ready for review in the waiting's amber, green only once merged. */
+/* As the sidenav's dot: ready for review in the person's violet, green only once merged. */
 .workspace-top.tone-waiting,
 .workspace-top.tone-ready {
-  --state-tone: var(--warning);
+  --state-tone: var(--you);
 }
 
 .workspace-top.tone-done {
-  --state-tone: var(--added);
+  --state-tone: var(--ok);
 }
 
 .workspace-top.tone-failed {
-  --state-tone: var(--removed);
+  --state-tone: var(--error);
 }
 
 .workspace-said {
@@ -528,11 +525,11 @@
 }
 
 .strip-waiting {
-  --strip-tone: var(--warning);
+  --strip-tone: var(--you);
 }
 
 .strip-failed {
-  --strip-tone: var(--removed);
+  --strip-tone: var(--error);
 }
 
 .workspace-strip > .icon {
@@ -561,7 +558,7 @@
   padding: 8px var(--card-pad);
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--side);
+  background: var(--panel);
 }
 
 .workspace .reply {

@@ -4,6 +4,7 @@ import { setHive, useHive } from '../shell/hive.js';
 import { getJson, postJson } from '../ui/http.js';
 import { HiveJoining } from '../ui/HiveArt.js';
 import { DangerIcon } from '../ui/icons.js';
+import { StatusLabel } from '../ui/StatusLabel.js';
 import { SettingsCard } from './SettingsCard.js';
 import { pauseWords } from '../workspaces/hive-rounds.js';
 import {
@@ -20,9 +21,10 @@ import {
 } from './hive-switch.js';
 
 /**
- * Hive mode (V82, decision 613): Hive's switch, a danger to press. What Hive does (HV2–HV4), in the
- * error's tint, and a danger button that asks first, refused while a workspace is in normal mode
- * (HV4, decision 772); off asks too while Hive's work is in flight, saying what it stops (771).
+ * Hive mode (V82, decision 613): Hive's switch, asked before it turns on. What Hive does (HV2–HV4)
+ * in a note, and Turn on Hive in Hive's crimson (V88, decision 819; a danger button before) that
+ * asks first, refused while a workspace is in normal mode (HV4, decision 772); off asks too while
+ * Hive's work is in flight, saying what it stops (771).
  * Kept for this repository, out of git (decision 621).
  */
 export function HivePage({ onBack }: { onBack: () => void }) {
@@ -88,9 +90,9 @@ export function HivePage({ onBack }: { onBack: () => void }) {
       title={
         <>
           Hive mode{' '}
-          <span className={on ? 'settings-state hive-on' : 'settings-state'}>
+          <StatusLabel tone={on ? 'hive' : 'idle'} className="hive-state">
             {on ? 'On' : 'Off'}
-          </span>
+          </StatusLabel>
         </>
       }
       onBack={onBack}
@@ -121,7 +123,7 @@ export function HivePage({ onBack }: { onBack: () => void }) {
         {on ? (
           <button
             type="button"
-            className="button secondary"
+            className="button danger"
             disabled={busy}
             onClick={() => void ask(false)}
           >
@@ -130,7 +132,7 @@ export function HivePage({ onBack }: { onBack: () => void }) {
         ) : (
           <button
             type="button"
-            className="button danger"
+            className="button hive"
             disabled={busy}
             onClick={() => void ask(true)}
           >
@@ -438,7 +440,7 @@ function HiveQuestion({
         <div className="dialog-buttons">
           <button
             type="button"
-            className="button danger"
+            className="button hive"
             disabled={busy || normal === null || refused !== null}
             onClick={onTurnOn}
           >

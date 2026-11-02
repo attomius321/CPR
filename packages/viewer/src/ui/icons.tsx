@@ -743,6 +743,28 @@ export const AlertIcon = () => (
   </Icon>
 );
 
+/** In progress (V88): lucide's loader-circle, drawn still; the status label's run. */
+export const RunningIcon = () => (
+  <Icon lucide>
+    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </Icon>
+);
+
+/** Failed (V88): lucide's circle-x; the status label's error. */
+export const FailedIcon = () => (
+  <Icon lucide>
+    <circle cx="12" cy="12" r="10" />
+    <path d="m15 9-6 6M9 9l6 6" />
+  </Icon>
+);
+
+/** Not run, queued (V88): lucide's circle-dashed; the status label's idle. */
+export const IdleIcon = () => (
+  <Icon lucide>
+    <path d="M10.1 2.18a9.93 9.93 0 0 1 3.8 0M17.6 3.71a9.95 9.95 0 0 1 2.69 2.7M21.82 10.1a9.93 9.93 0 0 1 0 3.8M20.29 17.6a9.95 9.95 0 0 1-2.7 2.69M13.9 21.82a9.94 9.94 0 0 1-3.8 0M6.4 20.29a9.95 9.95 0 0 1-2.69-2.7M2.18 13.9a9.93 9.93 0 0 1 0-3.8M3.71 6.4a9.95 9.95 0 0 1 2.7-2.69" />
+  </Icon>
+);
+
 /** Stop, on an analysis's page (V71): lucide's circle-stop. */
 export const StopIcon = () => (
   <Icon lucide>

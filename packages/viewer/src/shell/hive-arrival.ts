@@ -1,13 +1,11 @@
 // Hive's arrival (decisions 632, 673): as Hive mode turns on, the question's Hive Mind grows to
 // the middle of the window while a shutter of hex tiles closes on it from every edge and traces
 // route across it into the Mind; the look changes under the cover, the Mind flares, and the tiles
-// open from it out to the edges. Then a streak of light crosses the main area; then all is still.
-// The Mind and the shutter are drawn here (`hive-art.ts`, `hive-draw.ts`), the streak is
-// `hive.css`'s under `data-hive-arriving`. The shutter's tiles stay behind the page as Hive's
-// honeycomb (V85, `HiveComb.tsx`), laid at the swap.
+// open from it out to the edges onto the page; then all is still. The Mind and the shutter are
+// drawn here (`hive-art.ts`, `hive-draw.ts`). V88 (decision 816): no hex background stays behind
+// the page and no band of light crosses it after (V85's and V82's, gone on the person's word).
 import { arrivalScale, arrivalScene } from '../ui/hive-art.js';
 import { Painter, paint, readPalette } from '../ui/hive-draw.js';
-import { layComb } from './hive-comb.js';
 
 /** Where the arrival starts: the question's Hive Mind, its middle in the window and its size. */
 export interface Origin {
@@ -19,10 +17,6 @@ export interface Origin {
 
 /** Whether the person asked for less motion: then the look changes at once. */
 export const lessMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-/** Whether `animation` is one of the arrival's in `hive.css` (`hive-arrive-*`). */
-const isArrival = (animation: Animation) =>
-  animation instanceof CSSAnimation && animation.animationName.startsWith('hive-arrive');
 
 /**
  * The Mind and the shutter from `from`; `swap` changes the look in the frame first drawn covering
@@ -55,8 +49,6 @@ export async function arrive(from: Origin, swap: () => void): Promise<void> {
             // This frame covers the window: the look changes under it, shown with it.
             swapped = true;
             root.dataset.hiveArriving = '';
-            // The honeycomb laid under the shutter on its own tiles: it opens onto them (V85).
-            layComb({ x: from.x, y: from.y, r: scene.tiles.r });
             swap();
           }
           if (scene.done) resolve();
@@ -67,13 +59,6 @@ export async function arrive(from: Origin, swap: () => void): Promise<void> {
       };
       requestAnimationFrame(frame);
     });
-    canvas.remove();
-    await Promise.all(
-      document
-        .getAnimations()
-        .filter(isArrival)
-        .map((animation) => animation.finished.catch(() => undefined)),
-    );
   } finally {
     canvas.remove();
     if (!swapped) swap();

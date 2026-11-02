@@ -106,7 +106,7 @@ export function CommitDetails({
   const parent = info.parents[0];
   return (
     <>
-      <header className="git-details-head">
+      <header className="card-head git-details-head">
         <h2 className="git-details-title">{info.subject}</h2>
         <button
           type="button"

@@ -12,7 +12,7 @@ export function frameOf(platform: string): Frame {
 }
 
 /** The window's background before the page paints: the viewer's `--bg`, in its theme (V31, V61). */
-const BACKGROUND = { dark: '#090b0e', light: '#ffffff' };
+const BACKGROUND = { dark: '#090a0d', light: '#f3f4f7' };
 
 /**
  * The title bar (N1c): Symbiote draws it, 38 px, in the viewer's `--side`; on Windows the system's
@@ -20,8 +20,8 @@ const BACKGROUND = { dark: '#090b0e', light: '#ffffff' };
  */
 export const TITLE_BAR = {
   height: 38,
-  dark: { color: '#0d1015', symbolColor: '#edf0f5' },
-  light: { color: '#f6f8fc', symbolColor: '#0b1220' },
+  dark: { color: '#0d0f13', symbolColor: '#eef0f5' },
+  light: { color: '#f9fafc', symbolColor: '#0f1320' },
 };
 
 type FrameOptions = Pick<

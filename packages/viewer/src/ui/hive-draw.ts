@@ -1,5 +1,5 @@
 // Hive mode's art drawn on a canvas (V82; decisions 665–666, 673): the machined Hive Mind, its
-// plates lit from the upper left like the pages' sheen and its chambers lit crimson from within;
+// plates lit from the upper left and its chambers lit crimson from within;
 // the question's circuit board; the arrival's hex shutter and its traces. The colours are
 // `hive.css`'s (`.hive-art`), read once.
 import {
@@ -59,7 +59,7 @@ export function readPalette(element: Element): Palette {
 
 const TAU = Math.PI * 2;
 const DEG = Math.PI / 180;
-/** Where the light comes from: the upper left, as the pages' sheen. */
+/** Where the light comes from: the upper left. */
 const LIGHT = [-0.55, -0.83] as const;
 const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(',');
 /** An alpha for `rgba()`, clamped to 0–1. */
@@ -98,7 +98,7 @@ export class Painter {
   private readonly heat: string;
   private readonly bevel: string;
   private covered: HTMLCanvasElement | null = null;
-  /** The board's etched honeycomb, made once for its scene. */
+  /** The board's etched hex cells, made once for its scene. */
   private etched: { scene: QuestionScene; path: Path2D } | null = null;
 
   constructor(palette: Palette) {

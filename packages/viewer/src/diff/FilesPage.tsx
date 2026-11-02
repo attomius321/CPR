@@ -172,7 +172,7 @@ export function FilesPage({
   return (
     <>
       <nav className="sidebar files-side" aria-label="Files">
-        <div className="tabs" role="tablist">
+        <div className="card-head tabs" role="tablist">
           <button role="tab" aria-selected={tab === 'files'} onClick={() => onTab('files')}>
             Files <span className="count">{files.length}</span>
           </button>
@@ -445,7 +445,7 @@ function FileView({
 
   return (
     <section className="file-view" aria-label={`Changes to ${file.path}`}>
-      <header className="file-head">
+      <header className="card-head file-head">
         <h2 className="file-path">{file.path}</h2>
         <span className="file-words">{changeWords(file)}</span>
         {file.added !== undefined && file.removed !== undefined && (

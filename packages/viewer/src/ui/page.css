@@ -17,6 +17,9 @@
 }
 
 /* With an end (V76c) the icon, title and actions are in `.page-head-main`. */
+/* Its icon on a tile (V88, decision 820; the kits' `.head .tile`): raised, a hairline drawn inside,
+   the icon in the accent (the S's violet; Hive's crimson words in Hive). 28 px, today's control
+   height, so the title stays at x 52 (the kit's tile is 30). */
 :is(.page-head, .page-head-main) > .page-icon {
   flex: none;
   display: inline-flex;
@@ -24,13 +27,22 @@
   justify-content: center;
   width: var(--height-control);
   height: var(--height-control);
+  border-radius: 8px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line);
   color: var(--accent);
 }
 
 :is(.page-head, .page-head-main) > .page-icon .icon {
-  width: var(--height-row);
-  height: var(--height-row);
-  stroke-width: 1.4;
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.75;
+}
+
+/* An image in its place (Symbiote's S on Start a workspace): the tile's size, no tile. */
+:is(.page-head, .page-head-main) > .page-icon:has(> img) {
+  background: none;
+  box-shadow: none;
 }
 
 .page-title {
@@ -106,7 +118,8 @@
 }
 
 /* A card's head: its tabs, or its title and actions, `--card-head` high with the hairline under
-   it. */
+   it. Every card's head takes it (V88, decision 820), with its own class for what differs: its
+   title 15 px at 600 (the kits' `.card-head h2`), its actions at the end. */
 .card-head {
   flex: none;
   display: flex;
@@ -115,4 +128,17 @@
   min-height: var(--card-head);
   padding: 0 var(--card-pad);
   border-bottom: 1px solid var(--line);
+}
+
+.card-head h2 {
+  margin: 0;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.card-head > .end {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
 }

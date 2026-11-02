@@ -52,7 +52,9 @@ import {
   summaryParts,
   tokensText,
   type Phase,
+  type Tone,
 } from './words.js';
+import { StatusLabel, type StatusTone } from '../../ui/StatusLabel.js';
 
 /** How many events an open group draws before "Show all". */
 const SHOWN = 50;
@@ -100,6 +102,16 @@ const STATUS_ICONS: Partial<Record<ActivityGroup['status'], () => ReactNode>> = 
   done: CheckIcon,
   waiting: WaitingIcon,
   cancelled: StoppedIcon,
+};
+
+/** A status's tone as the shared label draws it (V88). */
+const STATUS_TONES: Record<Tone, StatusTone> = {
+  run: 'run',
+  error: 'error',
+  ok: 'ok',
+  you: 'you',
+  warning: 'warning',
+  muted: 'idle',
 };
 
 /** The class that colours an element in a kind of work's colour (`--phase`), when it has one. */
@@ -491,10 +503,13 @@ function GroupRowView({
         )}
         <span className="activity-fill" />
         {status && (
-          <span className={`badge activity-status tone-${status.tone}`}>
-            {StatusIcon && <StatusIcon />}
+          <StatusLabel
+            tone={STATUS_TONES[status.tone]}
+            className="activity-status"
+            {...(StatusIcon ? { icon: <StatusIcon /> } : {})}
+          >
             {status.text}
-          </span>
+          </StatusLabel>
         )}
         {events.length > 1 && (
           <span className="activity-count" {...tip(`${events.length} events`)}>

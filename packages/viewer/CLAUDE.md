@@ -134,6 +134,11 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   (`--page-pad`, `--page-gap`, `--card-pad`, `--card-head`, `--field-label-gap`, `--field-gap`),
   not from px values of its own; a `Resizer` between two cards takes `gutter`. `e2e/page-frame.spec.ts` measures every page: a new
   page uses `PageHead` and the tokens, and joins that spec.
+- The redesign's shared parts (V88): a state is `ui/StatusLabel.tsx` (an icon and a word, tinted:
+  never colour alone), a workspace's steps `ui/StageTrack.tsx` (hexagons on a line), both styled
+  in `ui/status.css`; every card's head takes `.card-head` with its own class beside it. A card's
+  ground is `--panel`, the chrome's `--side`; amber (`--run`) is the agent's turn, violet (`--you`)
+  the person's, `--warning` a real warning only (guards in `test/tokens.test.ts`).
 - Tooltips (V54): never a `title` (the window system draws it: square, its own font, no theme);
   an element gets `{...tip(text, { keys, side, tone, code })}` (`src/ui/tip.ts`) and the one
   `Tooltips` (`src/ui/Tooltip.tsx`, mounted in `main.tsx`) draws it: one listener on the window,

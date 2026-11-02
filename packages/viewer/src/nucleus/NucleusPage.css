@@ -14,7 +14,6 @@
   grid-template-areas: 'title about actions';
   align-items: center;
   column-gap: 12px;
-  min-height: var(--card-head);
   box-sizing: border-box;
   padding: 4px var(--card-pad);
 }
@@ -99,7 +98,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--panel);
 }
 
 .page-agent-body {

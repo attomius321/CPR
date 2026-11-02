@@ -9,6 +9,8 @@
 @import './ui/controls.css';
 /* The page frame (V72): before the pages' parts, which add to it. */
 @import './ui/page.css';
+/* The redesign's shared parts (V88): a status, the stage track. */
+@import './ui/status.css';
 @import './ui/Resizer.css';
 @import './ui/icons.css';
 @import './ui/Help.css';
@@ -65,7 +67,5 @@
 @import './shell/frame.css';
 /* Hive mode's look (V82): after every part it tints, at their specificity. */
 @import './ui/hive.css';
-/* Hive's honeycomb (V85): after hive.css, it clears the grounds hive.css glosses. */
-@import './shell/hive-comb.css';
 /* Last: the first-time intro is over every page. */
 @import './intro/intro.css';

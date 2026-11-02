@@ -101,7 +101,7 @@
 }
 
 .merge-check-clean .icon {
-  color: var(--added);
+  color: var(--ok);
 }
 
 .merge-check-head {
@@ -231,7 +231,7 @@ p.review-result {
 }
 
 .review-result-ok {
-  --result-tone: var(--added);
+  --result-tone: var(--ok);
 }
 
 .review-result-failed {

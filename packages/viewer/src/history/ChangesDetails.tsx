@@ -239,7 +239,7 @@ export function ChangesDetails({
 
   return (
     <>
-      <header className="git-details-head">
+      <header className="card-head git-details-head">
         <h2 className="git-details-title">Uncommitted changes</h2>
         <span className="muted git-details-summary">{changesSummary(changes)}</span>
         {changes.staged.length + changes.unstaged.length > 0 && !changes.operation && (

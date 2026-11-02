@@ -392,9 +392,9 @@ const ICONS: [group: string, name: string, drawing: string, tint: string][] = [
   ['Prebuilt agents', 'Nucleus', '<circle cx="12" cy="12" r="1">', '--phase-visual'],
   ['Prebuilt agents', 'Scribe', 'M9.937 15.5', '--phase-visual'],
   ['This machine', 'Skill library', 'M20 20a2 2 0 0 0 2-2V8', '--phase-docs'],
-  // V82: Hive mode's tile in the error's red, the only one not its group's; this repository's
-  // (decision 623).
-  ['This repository', 'Hive mode', 'M21 16V8a2 2 0 0 0-1-1.73', '--error'],
+  // V82: Hive mode's tile, the only one not its group's; this repository's (decision 623). Hive's
+  // crimson since V88 (decision 814; the error's red before), its icon in Hive's words' colour.
+  ['This repository', 'Hive mode', 'M21 16V8a2 2 0 0 0-1-1.73', '--hive'],
   ['This browser', 'Appearance', 'M12 22a1 1 0 0 1 0-20', '--phase-explore'],
 ];
 
@@ -419,7 +419,8 @@ test("every entry its icon on its group's tile; the open one in the accent, draw
     const wash = `color-mix(in srgb, var(${tint}) var(--phase-wash), var(--side))`;
     await expect(tile).toHaveCSS('background-color', await colour(page, wash));
     if (name !== 'Feature') {
-      await expect(tile.locator('svg')).toHaveCSS('color', await colour(page, `var(${tint})`));
+      const icon = tint === '--hive' ? '--hive-text' : tint;
+      await expect(tile.locator('svg')).toHaveCSS('color', await colour(page, `var(${icon})`));
       await expect(tile.locator('svg')).toHaveCSS('stroke-width', '1.75px');
     }
     const box = await tile.boundingBox();

@@ -118,27 +118,30 @@ export function eventWords(event: ActivityEvent, worktree: string): EventWords {
   }
 }
 
-export type Tone = 'info' | 'error' | 'added' | 'warning' | 'muted';
+/**
+ * A tone (V88, decision 813): in progress, failed, passed, the person's turn, a real warning, none.
+ */
+export type Tone = 'run' | 'error' | 'ok' | 'you' | 'warning' | 'muted';
 
 /** A group's status as news: null when there is none to say (a phase done). */
 export function statusWords(group: ActivityGroup): { text: string; tone: Tone } | null {
   if (group.said) return group.said;
   switch (group.status) {
     case 'running':
-      return { text: 'Running', tone: 'info' };
+      return { text: 'Running', tone: 'run' };
     case 'failed':
       return { text: 'Failed', tone: 'error' };
     case 'cancelled':
       return { text: 'Stopped', tone: 'muted' };
     case 'waiting':
-      return { text: 'Waiting for you', tone: 'warning' };
+      return { text: 'Waiting for you', tone: 'you' };
     case 'open':
       return { text: 'No end recorded', tone: 'muted' };
     case 'recovered':
-      return { text: 'Passed', tone: 'added' };
+      return { text: 'Passed', tone: 'ok' };
     default:
       // A test run done passed; debugging done was not run again: nothing to say.
-      return group.kind === 'test' ? { text: 'Passed', tone: 'added' } : null;
+      return group.kind === 'test' ? { text: 'Passed', tone: 'ok' } : null;
   }
 }
 
@@ -160,7 +163,7 @@ export function summaryParts(group: ActivityGroup): SummaryPart[] {
     if (/^[\d,]+ (failed|errors?|refused)\b/.test(text) || /^failed\b/.test(text)) {
       return { text, tone: 'error' };
     }
-    if (/^[\d,]+ passed\b/.test(text) || text === 'passed') return { text, tone: 'added' };
+    if (/^[\d,]+ passed\b/.test(text) || text === 'passed') return { text, tone: 'ok' };
     if (/^[\d,]+ (flaky|warnings?)\b/.test(text)) return { text, tone: 'warning' };
     return { text };
   });

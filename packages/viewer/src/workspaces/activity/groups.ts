@@ -75,7 +75,7 @@ export interface ActivityGroup {
   /** What its decisive test run printed. */
   tests?: TestCounts;
   /** Its status in its own words, over the status's (NU2: a Confirm's end). */
-  said?: { text: string; tone: 'info' | 'error' | 'added' | 'warning' | 'muted' };
+  said?: { text: string; tone: 'run' | 'error' | 'ok' | 'you' | 'warning' | 'muted' };
   /** An answer's turn (NU2): its tokens and time, as its agent reported them. */
   tokens?: TurnTokens;
   took?: number;
@@ -669,7 +669,7 @@ function endGroup(entry: Extract<ThreadEntry, { kind: 'end' }>, codex: boolean) 
 
 /** A Confirm's end in words and tone (NU2). */
 const CONFIRM_ENDS = {
-  confirmed: { text: 'Confirmed', tone: 'added' },
+  confirmed: { text: 'Confirmed', tone: 'ok' },
   declined: { text: 'Declined', tone: 'muted' },
   expired: { text: 'No answer in time', tone: 'warning' },
   gone: { text: 'Its call ended first', tone: 'muted' },

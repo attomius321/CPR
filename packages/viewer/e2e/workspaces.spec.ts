@@ -1065,10 +1065,11 @@ test('Clean up: once merged, its sessions, worktree and branch go, and so does t
   git('merge', '--quiet', '--ff-only', branch);
   await page.reload();
   await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
-  // V55: the head's primary button, no longer under ⋯; Review a plain one beside it.
+  // V55: in the head, no longer under ⋯; Review a plain one beside it. V88 (decision 819): a
+  // destructive action, a secondary with red words, not the primary.
   const head = panel(page, branch).locator('.workspace-top');
   const cleanUp = head.getByRole('button', { name: 'Clean up', exact: true });
-  await expect(cleanUp).toHaveClass(/\bprimary\b/);
+  await expect(cleanUp).toHaveClass(/\bdanger\b/);
   await expect(head.getByRole('button', { name: 'Review', exact: true })).not.toHaveClass(
     /\bprimary\b/,
   );
@@ -2234,13 +2235,14 @@ test('Merge on an approved workspace: Symbiote merges it in its own worktree, La
   const remove = entry.getByRole('button', { name: 'Remove', exact: true });
   await expect(remove).toHaveClass(/\bprimary\b/);
   await expect(entry.getByRole('button', { name: 'More actions' })).toHaveCount(0);
-  // Merged: the workspace offers Clean up in its head (V55), and no Merge.
+  // Merged: the workspace offers Clean up in its head (V55), destructive since V88 (decision
+  // 819), and no Merge.
   await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
   await workspaceRow(page, branch)
     .getByRole('button', { name: 'Add a half function', exact: true })
     .click();
   await expect(here.getByRole('button', { name: 'Clean up', exact: true })).toHaveClass(
-    /\bprimary\b/,
+    /\bdanger\b/,
   );
   await expect(here.getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
   // The landed merge's card has the icon (V55): it removes the merge from the queue, and the
