@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v88-redesign-foundation.md)
 
-**Status:** in progress (2 November 2026), on branch `feature/redesign-foundation` (the
-workspace's, from `main` at `42b3b57`).
+**Status:** built (2 November 2026), on branch `feature/redesign-foundation` (the workspace's,
+from `main` at `42b3b57`); ready for review.
 
 **Problem** (the brief: "Bring the redesign's foundation into the viewer, so every page takes the
 new look at once and the later redesign work builds on it"). The designs are on `main`:
@@ -135,7 +135,7 @@ question keeps its circuit art and its layout and takes the warm ink.
 | 816 | The arrival without them (amends 730) | **The Mind, the shutter closing, the swap, the shutter opening onto the page; then Alpha Ceph's becoming** | the brief: keep it working; its 1.4 s redesign is later |
 | 817 | A status | **`StatusLabel`: an icon and a word, tinted, 22 px; `.badge` its shape** | never colour alone (the kit's `.pill`) |
 | 818 | The stage track | **`StageTrack` in `src/ui`, placed by the later briefs** | no page shows these steps today; the brief: only a like-for-like swap |
-| 819 | Buttons (supersedes 613's danger button) | **One primary a page (violet, dark words; crimson, white words in Hive); secondary raised; ghost; destructive a secondary with red words; Turn on Hive crimson in both modes** | the kits; the person's yes to the plan |
+| 819 | Buttons (supersedes 613's danger button; replaces 404's Clean up as the head's primary) | **One constructive primary a page (violet, dark words; crimson, white words in Hive); secondary raised; ghost; destructive a secondary with red words (Clean up, Delete, Turn off Hive); Turn on Hive crimson in both modes** | the kits; the person's yes to the plan |
 | 820 | The page head and a card's head | **The icon on a 28 px tile; a card head 37 px, its title 15 px at 600** | the kit's `.head` and `.card-head` at today's tested heights |
 | 821 | The taskbar dot | **Violet, as Waiting for you** | the person's yes to the plan |
 
@@ -168,3 +168,28 @@ scale and heights.
   (`frame.ts`), its start page's copy of the tokens (`start/start.css`), the taskbar dot violet.
 - **User docs**: the guide and the README say violet for the waiting dot and link; the
   configuration page no longer describes the honeycomb or ink and crimson pages.
+- **One primary in a workspace's head.** The audit found a merged workspace's head with three
+  violet primaries (Stop the agent, Review, Clean up): a bare `.button` draws the primary, and
+  V55's "Review plain" had lost its plain look when the head left `.workspace-actions` (V72).
+  Stop and Start the agent are secondary, Review the one primary until merged and secondary after,
+  Clean up and Clean up anyway destructive (decision 819 replaces 404's Clean up primary); a
+  skill's Delete is destructive too.
+- **Not placed**: `StageTrack` is built and tested but on no page (no page shows these steps
+  today); the Hive group in the sidenav is a plain group until its own brief.
+
+**Results.**
+
+- Tests: `tokens.test.ts` 62 (21 red before the tokens), `shared-parts.test.ts` 5 (red before the
+  components), `activity-words`, the desktop's `badge` and `frame` tests red then green;
+  `pnpm check` 2,905 tests pass; `pnpm build` passes.
+- e2e: the viewer's 394 specs ran once: 390 passed, 4 failed; 3 named the old colours (usage,
+  settings) and pass since; `hive-pacing.spec.ts:108` fails on `main` too between 23:00 and
+  midnight ("goes on tomorrow at 00:27": its pattern has no "tomorrow"), not this branch's. The
+  nexus's 20 pass.
+- First paint, Bitwarden `737ee3f` with the Angular plugin (`measure.mjs`, 3 rounds alternating
+  with `main` built from `git archive`): `main` 338, 334, 320 ms; this branch 330, 325, 304 ms.
+  Select, mark reviewed and pan the same (105–121 ms, 50 ms, 62–63 fps); the same 3,160 elements.
+- Screenshots: 82 a side, every page in both modes and both themes, at 1×, before and after, beside
+  the kits' proofs: <https://claude.ai/artifact/UHpgdwqjjVqtRGZd3RJpxm> (private).
+- The README's 17 screenshots (`docs/images/*.png`) show the look before V88: amber waiting cards,
+  the honeycomb in `hive.png` and `hive-settings.png`. Not retaken here.

@@ -39,3 +39,22 @@ head, from `src/ui`; the honeycomb, sheen, streak, glow and gloss removed. Decis
   (Alpha Ceph's e2e reads it), the wait for CSS animations went with them.
 - **Two copies of the tokens live outside the viewer**: the desktop app's window and title bar
   (`frame.ts`) and its start page (`start/start.css`); both changed with `test/frame.test.ts`.
+- **Three primaries in one head.** A bare `.button` draws the primary; V55's plain Review and the
+  head's Stop the agent had been plain only inside `.workspace-actions`, which the head left in
+  V72. A merged workspace showed Stop the agent, Review and Clean up in violet, on `main` too.
+- **A clock in a spec.** `hive-pacing.spec.ts:108` fails between 23:00 and midnight on `main` and
+  here: the page says "goes on tomorrow at 00:27" and the spec's pattern has no "tomorrow". Not
+  fixed here: a fix of its own.
+
+**Verification**: tests first (tokens 21 red, shared parts red, the desktop's badge and frame red,
+each for the old value), then `pnpm check` (2,905 tests) and `pnpm build`. e2e: 390 of the
+viewer's 394 on the first run; the 3 that named the old colours pass since; `hive-pacing:108` is
+the clock above. The nexus's 20 pass. First paint on Bitwarden `737ee3f` (3 rounds alternating
+with `main`'s `git archive` build): `main` 320–338 ms, the branch 304–330 ms; select, mark and pan
+the same. 82 screenshots a side, both modes, both themes, 1×, beside the kits' proofs (a private
+review page: https://claude.ai/artifact/UHpgdwqjjVqtRGZd3RJpxm).
+
+Not verified: the desktop app's window (its tests only, not a launched app); a loading page (a
+diff's analysis finishes too fast on the fixture to shoot); Hive's stopped and landed states in
+the sidenav (no fake drives Hive to them in the shot script); the README's screenshots are not
+retaken.

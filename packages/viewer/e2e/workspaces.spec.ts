@@ -1065,10 +1065,11 @@ test('Clean up: once merged, its sessions, worktree and branch go, and so does t
   git('merge', '--quiet', '--ff-only', branch);
   await page.reload();
   await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
-  // V55: the head's primary button, no longer under ⋯; Review a plain one beside it.
+  // V55: in the head, no longer under ⋯; Review a plain one beside it. V88 (decision 819): a
+  // destructive action, a secondary with red words, not the primary.
   const head = panel(page, branch).locator('.workspace-top');
   const cleanUp = head.getByRole('button', { name: 'Clean up', exact: true });
-  await expect(cleanUp).toHaveClass(/\bprimary\b/);
+  await expect(cleanUp).toHaveClass(/\bdanger\b/);
   await expect(head.getByRole('button', { name: 'Review', exact: true })).not.toHaveClass(
     /\bprimary\b/,
   );

@@ -749,7 +749,7 @@ function SkillEditor({
                   : ': git keeps it.'}{' '}
                 <button
                   type="button"
-                  className="button"
+                  className="button danger"
                   disabled={busy}
                   onClick={() => {
                     setDeleting(false);
