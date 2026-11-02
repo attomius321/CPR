@@ -67,6 +67,7 @@ import {
 import { respondTo } from '../workspaces/respond.js';
 import { useSecondsWhile } from '../workspaces/clock.js';
 import { liveWords } from '../workspaces/hive-live.js';
+import { useHive } from './hive.js';
 import { HiveNowCard, HiveRailTime } from '../workspaces/HiveNow.js';
 import { useStarts, type StartUnderWay } from '../workspaces/starting.js';
 import { useCardMoves } from '../workspaces/useCardMoves.js';
@@ -148,7 +149,12 @@ export function Sidenav({
   const starts = useStarts().filter(
     (start) => !list?.workspaces.some((workspace) => workspace.branch === start.branch),
   );
-  const groups = useMemo(() => workspaceGroups(list?.workspaces ?? [], reviews), [list, reviews]);
+  // Hive mode (HV4, decision 774): only Hive and Done; nothing waits for the person.
+  const hiveMode = useHive();
+  const groups = useMemo(
+    () => workspaceGroups(list?.workspaces ?? [], reviews, { hiveMode }),
+    [list, reviews, hiveMode],
+  );
   // Nucleus by its name: Alpha Ceph while Hive mode is on (decision 682).
   const nucleusName = useNucleusName();
   // Nucleus becoming Alpha Ceph as this window turned Hive on (V86): only here does it play.
@@ -416,7 +422,7 @@ export function Sidenav({
           onFocus={onFocus}
           onBlur={onBlur}
         >
-          {queued.length > 0 && (
+          {queued.length > 0 && !hiveMode && (
             <section className="workspace-group merging" aria-label="Merging">
               <h3 {...tip('Merging', { side: 'right' })}>
                 <MergingIcon />
@@ -446,7 +452,9 @@ export function Sidenav({
             />
           )}
           {GROUPS.map(([key, title, Icon]) => {
-            const making = key === 'working' ? starts : [];
+            if (hiveMode && key !== 'hive' && key !== 'done') return null;
+            // A workspace being made is at work: Hive's in Hive mode.
+            const making = key === (hiveMode ? 'hive' : 'working') ? starts : [];
             return groups[key].length + making.length === 0 ? null : (
               <WorkspaceGroupSection
                 key={key}

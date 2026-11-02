@@ -99,7 +99,8 @@ person asks you to (for example "check my review"), not because you came across 
   not part of the review.
 - \`via\` on a verdict (\`"nucleus"\`, or \`"scout"\`, its former name; or \`"mcp"\`): an agent of
   the person's wrote it through Symbiote, and the person confirmed it there. It is their
-  verdict as any other.
+  verdict as any other. \`"hive"\`: Hive approved the commit in Hive mode, to land it; its
+  summary says what was checked and reviewed. There is nothing to do.
 
 ## What each verdict asks
 
@@ -135,6 +136,12 @@ A workspace started in Symbiote is a branch with a worktree of its own and a rec
 - With \`planFirst\`, write the plan (what you will change and how you will check it), then stop
   and wait for the person's OK before changing anything.
 - Commit on the branch as you go; say when it is ready for review.
+- \`"hive": true\` in its record: Hive drives it, from its brief to landed. Hive checks and
+  reviews each turn, answers your plans and questions, lands the branch in the one it started
+  from, and pushes both; no person reviews or approves it. Follow Hive's messages, decide
+  yourself where the brief leaves a choice, and never push, merge, rebase or switch branches.
+  When Hive says a landing failed, merge that branch into yours (\`git merge <into>\`) and
+  resolve it there, as below, or say why your branch does not cause it.
 
 ## Comments
 
@@ -218,27 +225,31 @@ const HIVE_START =
   'Hive drives this workspace. When you end a turn with commits, Symbiote runs the check on ' +
   "the branch's tip ({check}) and sends you its failures; once the check passes, a reviewer runs " +
   'your change in a throwaway copy and sends you the tests it proves defects with. That is up to ' +
-  '{rounds} rounds; once both pass, the person lands the branch. Symbiote runs the whole check ' +
-  'after each of your turns: before you end one, run the tests your change touches, not the ' +
-  'whole check. Commit everything before you end a turn, end a turn only when the work is done ' +
-  'or you need the person, and never push, merge or switch branches.';
+  '{rounds} rounds; once both pass, Hive lands the branch in the one it started from and pushes ' +
+  'both. No person reviews, answers or approves anything here: where the brief leaves a choice, ' +
+  'decide yourself and say in your report what you decided and why. Symbiote runs the whole ' +
+  'check after each of your turns: before you end one, run the tests your change touches, not ' +
+  'the whole check. Commit everything before you end a turn, end a turn only when the work is ' +
+  'done, and never push, merge, rebase or switch branches.';
 
 /**
  * What Alpha Ceph is told of Hive (V86, decision 751): what Hive does with the workspaces it
  * starts, and what is Hive's to send them. At its instructions' end while Hive mode is on.
  */
 const HIVE_NUCLEUS =
-  "Hive mode is on. Every workspace you start now is Hive's: its Claude Code agent works the " +
-  'brief (Hive starts Claude Code only); after each turn with commits, Symbiote runs the ' +
-  "project's check on the branch's tip, and once the check passes, a reviewer runs the change in " +
-  'a throwaway copy and proves defects with failing tests. Hive sends the agent what fails, for ' +
-  'up to {rounds} rounds; then the workspace waits for the person to land it from its Review ' +
-  'tab.\n\n' +
-  "A workspace's hive field says where Hive is with it: writing, checking, reviewing, landing " +
-  '(it waits for the person to land it), stuck (out of rounds, or it needs the person) or ' +
-  "landed. Do not send a Hive workspace's agent its check's or review's results, or tell it to " +
-  'commit: Hive does. Report on it by its step and what its last check and review found. ' +
-  "Landing, pushing and deleting work stay the person's.";
+  "Hive mode is on. Every workspace you start now is Hive's, from its brief to landed: its Claude " +
+  'Code agent works the brief (Hive starts Claude Code only, in its auto mode); after each turn ' +
+  "with commits, Symbiote runs the project's check on the branch's tip, and once the check " +
+  'passes, a reviewer runs the change in a throwaway copy and proves defects with failing tests. ' +
+  'Hive sends the agent what fails, for up to {rounds} rounds, and answers its plans and ' +
+  'questions; then it approves the commit, lands it through the merge queue in the branch the ' +
+  "workspace started from, and pushes that branch and the workspace's. A conflict goes back to " +
+  'the agent to merge that branch in, twice at most. Nothing waits for the person.\n\n' +
+  "A workspace's hive field says where Hive is with it: writing, checking, reviewing, landing, " +
+  'stuck (stopped, its note says why), landed, or answered (a spike whose answer is its report). ' +
+  "Do not send a Hive workspace's agent its check's or review's results, or tell it to commit, " +
+  'and do not approve, merge or clean up a Hive workspace: Hive does. Report on it by its step ' +
+  'and what its last check, review and landing found. Hive never force-pushes or deletes work.';
 
 /** What Hive sends the writer when the check failed (HV2). */
 const HIVE_CHECK = [
@@ -253,6 +264,36 @@ const HIVE_CHECK = [
   'Fix the cause and run the tests that failed, and the ones your fix touches, until they pass. ' +
     'Then commit and end your turn: Symbiote runs the whole check again.',
 ].join('\n');
+
+/**
+ * What Hive sends the writer when a landing failed (HV4, decision 769): a conflict with the branch
+ * it lands in, the check failing on the merge, a fast-forward that branch outran. `{why}` holds
+ * what failed, with the files or the command and its last lines.
+ */
+const HIVE_LAND = [
+  'Hive could not land {branch} at {at} in {into}: {why}',
+  '',
+  'Say whether your branch causes it.',
+  '',
+  '- If it does: merge {into} into {branch} (`git merge {into}`, never a rebase), resolve or fix ' +
+    'it there, run the tests your change touches, commit, and end your turn. Hive checks, reviews ' +
+    'and lands it again.',
+  '- If it does not (a test your change cannot reach, a commit on {into}): say why in a few ' +
+    'lines, change nothing, and end your turn. Hive lands the same commit again.',
+  '',
+  'Hive asks this {merges} times at most; this is time {merge}.',
+].join('\n');
+
+/** Hive's OK to a plan, in place of the person's (HV4, decision 773). */
+const HIVE_PLAN =
+  'Hive OKs your plan: no person reviews plans in Hive mode. Build it now, commit as you go, and ' +
+  'end your turn when the work is done.';
+
+/** What Hive sends a writer that asks the person (HV4, decision 773). */
+const HIVE_DECIDE =
+  'No person answers in Hive mode: nobody will read a question or approve a permission. Decide ' +
+  'yourself from the brief and the repository, or do it another way inside your worktree; say in ' +
+  'your report what you decided and why, then go on.';
 
 /**
  * What Hive sends the writer when its running reviewer proved defects (HV3, decision 679): the
@@ -380,6 +421,9 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
     'You were stopped mid-turn: Hive was turned off, and is on again. Continue where you ' +
     'stopped, commit, and end your turn when the work is done.',
   'hive.review': HIVE_REVIEW,
+  'hive.land': HIVE_LAND,
+  'hive.plan': HIVE_PLAN,
+  'hive.decide': HIVE_DECIDE,
   'hive.reviewer': HIVE_REVIEWER,
   'hive.nucleus': HIVE_NUCLEUS,
 };
@@ -665,6 +709,40 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     group: 'Hive',
     title: 'Resume',
     about: 'What Hive sends a writer it stopped mid-turn when Hive was turned off, once it is on.',
+    placeholders: [],
+    max: MAX_LINE,
+  },
+  'hive.land': {
+    group: 'Hive',
+    title: 'Landing failed',
+    about:
+      'What Hive sends the writer when a landing failed: a conflict with the branch it lands in, ' +
+      'the check failing on the merge, or that branch moved past a fast-forward.',
+    placeholders: [
+      {
+        name: 'why',
+        about: 'what failed: the files, or the command and its last lines',
+        required: true,
+      },
+      { name: 'branch', about: "the workspace's branch" },
+      { name: 'at', about: 'the commit Hive tried to land, short' },
+      { name: 'into', about: 'the branch it lands in: the one the workspace started from' },
+      { name: 'merge', about: 'which time Hive asks this' },
+      { name: 'merges', about: 'how many times Hive asks before it stops: 2' },
+    ],
+    max: MAX_LINE,
+  },
+  'hive.plan': {
+    group: 'Hive',
+    title: 'Plan OK',
+    about: "Hive's OK to a plan a writer wrote first, in place of the person's.",
+    placeholders: [],
+    max: MAX_LINE,
+  },
+  'hive.decide': {
+    group: 'Hive',
+    title: 'No one to ask',
+    about: 'What Hive sends a writer that asks the person a question or for a permission.',
     placeholders: [],
     max: MAX_LINE,
   },

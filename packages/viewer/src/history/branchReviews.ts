@@ -57,8 +57,11 @@ function markOf(
     };
   const verdict = review.verdict?.head === tip ? review.verdict : undefined;
   if (verdict?.event === 'approve') {
-    // Through Nucleus or symbiote mcp, on the person's Confirm (MC1).
-    const approved = `Approved${verdict.via ? ` through ${viaName(verdict.via, nucleus)}` : ''}`;
+    // Through Nucleus or symbiote mcp, on the person's Confirm (MC1); by Hive, to land it (HV4).
+    const approved =
+      verdict.via === 'hive'
+        ? 'Approved by Hive'
+        : `Approved${verdict.via ? ` through ${viaName(verdict.via, nucleus)}` : ''}`;
     const title =
       verdict.merged && verdict.into ? `${approved} · merged into ${verdict.into}` : approved;
     return { mark: '✓', title, tone: 'approved' };

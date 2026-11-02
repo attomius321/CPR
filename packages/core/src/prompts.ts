@@ -43,7 +43,13 @@ export type PromptKey =
   /** The running reviewer's instructions, its appended system prompt (HV3). */
   | 'hive.reviewer'
   /** What Alpha Ceph is told of Hive, at its instructions' end while Hive mode is on (V86). */
-  | 'hive.nucleus';
+  | 'hive.nucleus'
+  /** What Hive sends the writer when a landing failed: a conflict, the merge's check (HV4). */
+  | 'hive.land'
+  /** Hive's OK to a plan, in place of the person's (HV4). */
+  | 'hive.plan'
+  /** What Hive sends a writer that asks the person something (HV4). */
+  | 'hive.decide';
 
 /** Every prompt, in the Settings page's order. */
 export const PROMPT_KEYS: readonly PromptKey[] = [
@@ -71,6 +77,9 @@ export const PROMPT_KEYS: readonly PromptKey[] = [
   'hive.review',
   'hive.commit',
   'hive.resume',
+  'hive.land',
+  'hive.plan',
+  'hive.decide',
   'hive.reviewer',
   'hive.nucleus',
 ];

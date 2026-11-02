@@ -389,7 +389,7 @@ export function branchReviews(
                   comments: verdict.comments.length,
                   ...(verdict.into ? { into: verdict.into } : {}),
                   merged: await mergedInto(refs, verdict),
-                  ...viaOf(verdict.via),
+                  ...(verdict.via === 'hive' ? { via: 'hive' as const } : viaOf(verdict.via)),
                 },
               }
             : {}),

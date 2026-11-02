@@ -29,6 +29,32 @@ describe('readEvery', () => {
     expect(readEvery(state({ state: 'plan-ready' }, { state: 'ready' }), 0)).toBeNull();
   });
 
+  it('also while Hive is at work on a workspace whose writer is idle: until it lands or stops (HV4)', () => {
+    const hived = (step: NonNullable<WorkspaceSummary['hive']>['step'], off = false) =>
+      ({
+        list: {
+          workspaces: [
+            {
+              agent: { state: 'ready', kind: 'claude' },
+              hive: { step, round: 1, rounds: 3, ...(off ? { off: true as const } : {}) },
+            } as WorkspaceSummary,
+          ],
+          place: 'repository',
+        },
+        reviews: null,
+        merges: null,
+        nucleus: null,
+        scribe: null,
+      }) as WorkspacesState;
+    for (const step of ['writing', 'checking', 'reviewing', 'landing'] as const) {
+      expect(readEvery(hived(step), 0)).toBe(5_000);
+    }
+    expect(readEvery(hived('landed'), 0)).toBeNull();
+    expect(readEvery(hived('stuck'), 0)).toBeNull();
+    // Hive off: nothing moves on its own.
+    expect(readEvery(hived('checking', true), 0)).toBeNull();
+  });
+
   it('also while a terminal is open: what is typed there starts a turn (V27b)', () => {
     expect(readEvery(state({ state: 'plan-ready' }), 1)).toBe(5_000);
     expect(

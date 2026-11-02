@@ -752,6 +752,14 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     terminals,
     hive: () => hive.on(),
   });
+  // Branch reviews (V15) and the merger (V26): the review pages', and Hive's landings (HV4).
+  const repoReviews = branchReviews(repo, cacheDir);
+  const repoMerges = merger(repo, cacheDir, {
+    onChange: mergeStates(log.log),
+    mergerAgent: mergerFinder(repo.root, ctx.env),
+    levels: levelsFinder(claudeOf, codexOf),
+    models: modelsFinder(claudeOf, codexOf),
+  });
   const hiveRun = hiveRunner(repo, cacheDir, {
     hive,
     workspaces: repoWorkspaces,
@@ -760,16 +768,9 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       claude: async () => (await claudeOf())?.command ?? null,
       confine: () => findConfinement(ctx.env),
     },
+    // HV4: Hive lands what it checked and reviewed through the branch reviews and the merge queue.
+    lander: { reviews: repoReviews, merges: repoMerges },
     log: log.log,
-  });
-  // Branch reviews (V15) and the merger (V26): the review pages', and Land's in a Hive workspace's
-  // Review tab (HV3).
-  const repoReviews = branchReviews(repo, cacheDir);
-  const repoMerges = merger(repo, cacheDir, {
-    onChange: mergeStates(log.log),
-    mergerAgent: mergerFinder(repo.root, ctx.env),
-    levels: levelsFinder(claudeOf, codexOf),
-    models: modelsFinder(claudeOf, codexOf),
   });
   // The branches hidden from Git's graph (decision 645): the listing, its search and the status's
   // version all leave them out, so a version read by one fits the others.
@@ -819,11 +820,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       }),
       terminals,
       merges: repoMerges,
-      hiveWorkspace: hiveWorkspace(repo, cacheDir, {
-        hive,
-        reviews: repoReviews,
-        merges: repoMerges,
-      }),
+      hiveWorkspace: hiveWorkspace(repo, cacheDir, { hive }),
       // Nucleus is Alpha Ceph while Hive mode is on (decision 682): its prompt's about too.
       settings: promptSettingsService(repo, { hive: () => hive.on() }),
       nucleus: nucleus(repo, cacheDir, {

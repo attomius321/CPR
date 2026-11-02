@@ -158,9 +158,11 @@ export { applyStash, dropStash, listStashes, stashChanges, type StashEntry } fro
 export {
   deleteRemoteBranch,
   fetchAll,
+  fetchBranch,
   pull,
   PULL_MODES,
   push,
+  pushBranch,
   syncState,
   type PullMode,
   type SyncState,
@@ -239,6 +241,7 @@ export {
   type Verdict,
   type VerdictComment,
   type VerdictEvent,
+  type VerdictVia,
 } from './git/branches.js';
 export {
   PROMPT_KEYS,
@@ -324,6 +327,9 @@ export {
   type HiveCheck,
   type HiveCheckStep,
   type HiveFinding,
+  type HiveLanding,
+  type HivePush,
+  type HiveState,
   type HiveLive,
   type HiveLogLine,
   type HiveLogRead,

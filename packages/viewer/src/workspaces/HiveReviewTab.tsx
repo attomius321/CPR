@@ -1,20 +1,19 @@
 // A Hive workspace's Review tab (HV3, decision 681): what Hive did — each round's check and running
-// review, their findings with the tests that prove them and Symbiote's rerun — and Land, which in
-// Hive mode takes the place of the person's review of the branch.
+// review, their findings with the tests that prove them and Symbiote's rerun — and, since HV4,
+// each landing Hive tried and the branch's last push. Hive lands on its own: no Land.
 import { useEffect, useState } from 'react';
 import type {
   HiveCheck,
   HiveFinding,
+  HiveLanding,
   HiveLive,
   HiveReview,
-  MergeEntry,
   WorkspaceHiveDetail,
 } from '@symbiote/core';
-import { getJson, postJson } from '../ui/http.js';
+import { getJson } from '../ui/http.js';
 import { CheckIcon, CloseIcon } from '../ui/icons.js';
 import { HiveNowLine } from './HiveNow.js';
 import { StepLog } from './StepLog.js';
-import { reloadWorkspaces } from './useWorkspaces.js';
 import {
   checkWords,
   costWords,
@@ -22,49 +21,12 @@ import {
   findingWords,
   hiveRounds,
   stepWords,
+  landingOutcome,
   verdictWords,
 } from './hive-rounds.js';
 
 const short = (sha: string) => sha.slice(0, 7);
 const enc = encodeURIComponent;
-
-/**
- * Land (HV3): the commit Hive checked and reviewed approved for the person and queued into its
- * target, as Merge into does. The workspace head's primary in Hive mode, seen from every tab.
- */
-export function LandButton({
-  branch,
-  className = 'button primary',
-}: {
-  branch: string;
-  className?: string;
-}) {
-  const [busy, setBusy] = useState(false);
-  const [said, setSaid] = useState<{ text: string; error?: true } | null>(null);
-  const land = () => {
-    setBusy(true);
-    setSaid(null);
-    postJson<MergeEntry>('/api/workspaces/hive/land', { branch })
-      .then((entry) => {
-        setSaid({ text: `Queued: Symbiote merges it into ${entry.into}` });
-        void reloadWorkspaces();
-      })
-      .catch((failed: unknown) => setSaid({ text: (failed as Error).message, error: true }))
-      .finally(() => setBusy(false));
-  };
-  return (
-    <span className="hive-land">
-      <button type="button" className={className} disabled={busy} onClick={land}>
-        {busy ? 'Landing…' : 'Land'}
-      </button>
-      {said && (
-        <span className={said.error ? 'hive-land-said error' : 'hive-land-said'} role="status">
-          {said.text}
-        </span>
-      )}
-    </span>
-  );
-}
 
 /** A Hive run's log (decision 700): `/api/workspaces/hive/log`, streamed as a merge's is. */
 const logSource = (branch: string, log: string) => (from: number) =>
@@ -140,6 +102,33 @@ function KeptLog({ branch, log, label }: { branch: string; log: string; label: s
 }
 
 /** A check of a round: passed or failed, on which commit, its failing command and last lines. */
+/** A landing Hive tried (HV4): how it ended, what failed, the merge's log kept. */
+function LandingRow({ branch, landing }: { branch: string; landing: HiveLanding }) {
+  const landed = landing.outcome === 'landed';
+  const ended = landing.outcome !== undefined;
+  return (
+    <div className="hive-step" aria-label={`Landing in ${landing.into}, round ${landing.round}`}>
+      <div className="hive-step-head">
+        <span className={`badge ${landed || !ended ? 'hive-ok' : 'badge-error'}`}>
+          {landed ? 'Landed' : ended ? 'Not landed' : 'Landing'}
+        </span>
+        <span className="hive-step-facts">
+          {landingOutcome(landing)} · <code>{short(landing.at)}</code>
+        </span>
+      </div>
+      {landing.output && (
+        <details className="hive-more">
+          <summary>Its last lines</summary>
+          <pre>{landing.output}</pre>
+        </details>
+      )}
+      {landing.log && (
+        <KeptLog branch={branch} log={landing.log} label={`The merge into ${landing.into}`} />
+      )}
+    </div>
+  );
+}
+
 function CheckRow({ branch, check }: { branch: string; check: HiveCheck }) {
   return (
     <div className="hive-step" aria-label={`Check, round ${check.round}`}>
@@ -293,7 +282,7 @@ function ReviewRow({ branch, review }: { branch: string; review: HiveReview }) {
   );
 }
 
-/** The Review tab of a workspace Hive drives: its rounds, newest first, and what Land approves. */
+/** The Review tab of a workspace Hive drives: its landings, then its rounds, newest first. */
 export function HiveReviewTab({ branch, version }: { branch: string; version: unknown }) {
   const [detail, setDetail] = useState<WorkspaceHiveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -328,20 +317,31 @@ export function HiveReviewTab({ branch, version }: { branch: string; version: un
     );
   }
   const rounds = hiveRounds(detail);
-  const asked = detail.on && detail.step === 'landing';
+  const landings = [...(detail.landings ?? [])].reverse();
+  const pushed = detail.pushed;
   return (
     <div className="hive-review">
       <div className="hive-review-head">
         <p className="hive-now">{stepWords(detail)}</p>
       </div>
-      {asked && detail.checked && (
-        <p className="hive-line hive-asked">
-          Land approves <code>{short(detail.checked)}</code>, the commit Hive checked
-          {detail.reviews.some((r) => r.at === detail.checked && r.verdict === 'approved')
-            ? ' and reviewed'
-            : ''}
-          , and queues it to merge.
+      {pushed && (
+        <p className={pushed.ok ? 'hive-line' : 'hive-line error'}>
+          {pushed.ok
+            ? `The branch pushed to origin at ${short(pushed.sha)}`
+            : `The branch not pushed to origin: ${pushed.error ?? 'refused'}`}
         </p>
+      )}
+      {landings.length > 0 && (
+        <section className="hive-round" aria-label="Landings">
+          <h2>Landing</h2>
+          {landings.map((landing) => (
+            <LandingRow
+              key={`${landing.entry}-${landing.queued}`}
+              branch={branch}
+              landing={landing}
+            />
+          ))}
+        </section>
       )}
       {detail.live && <NowSection branch={branch} live={detail.live} note={detail.note} />}
       {rounds.length === 0 && !detail.live && (

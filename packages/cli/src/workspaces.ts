@@ -1408,10 +1408,12 @@ export function workspaces(
           409,
         );
       }
-      const permissionMode = request.permissionMode ?? config().permissionMode;
-      if (!PERMISSION_MODES.includes(permissionMode)) {
-        throw new WorkspaceRefused(`unknown permission mode: ${String(permissionMode)}`, 400);
+      const asked = request.permissionMode ?? config().permissionMode;
+      if (!PERMISSION_MODES.includes(asked)) {
+        throw new WorkspaceRefused(`unknown permission mode: ${String(asked)}`, 400);
       }
+      // A Hive writer runs in Claude Code's auto mode (HV4, decision 773): no permission waits.
+      const permissionMode = hiving ? 'auto' : asked;
       const agent = hiving
         ? await found('claude')
         : request.agent

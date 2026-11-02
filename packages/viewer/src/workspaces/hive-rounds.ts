@@ -1,10 +1,10 @@
 // A Hive workspace's rounds in words (HV3, decision 681): its Review tab's checks and running
-// reviews by round, a verdict's and a finding's words, and what landing asks. Pure.
+// reviews by round, a verdict's and a finding's words, and where its landing is (HV4). Pure.
 import type {
   HiveCheck,
   HiveFinding,
+  HiveLanding,
   HiveReview,
-  WorkspaceHive,
   WorkspaceHiveDetail,
 } from '@symbiote/core';
 
@@ -68,23 +68,57 @@ export const checkWords = (check: HiveCheck) =>
   check.ok ? `Passed in ${durationWords(check.ms)}` : `Failed after ${durationWords(check.ms)}`;
 
 /**
- * What landing asks while Hive is on (HV3): Land, after what Hive did — checked and reviewed, or
- * not reviewed (no sandbox, the reviewer failed twice), or no check found.
+ * Where Hive's landing is (HV4, decision 774): "Landing in main: checking the merge"; before its
+ * entry is queued, "Hive: landing it".
  */
-export function landingWords(hive: Pick<WorkspaceHive, 'note' | 'review'>): string {
-  const note = hive.note ?? '';
-  if (note.startsWith('not reviewed') || note.startsWith('the running review failed')) {
-    return 'Not reviewed: look, then land it';
+export function landingLine(landing: HiveLanding | undefined): string {
+  if (!landing || landing.outcome) return 'Hive: landing it';
+  const at = `Landing in ${landing.into}`;
+  switch (landing.state) {
+    case 'merging':
+      return `${at}: merging`;
+    case 'checking':
+      return `${at}: checking the merge`;
+    case 'ready':
+      return `${at}: waiting for your checkout`;
+    default:
+      return `${at}: queued`;
   }
-  if (note) return 'No check ran: check, then land it';
-  if (hive.review?.verdict === 'approved') return 'Checked and reviewed: land it';
-  return 'Checked: land it';
+}
+
+/** A workspace Hive landed (HV4): where, and whether that branch was pushed. */
+export function landedLine(landing: HiveLanding | undefined): string {
+  if (landing?.outcome !== 'landed') return 'Merged';
+  const { pushed } = landing;
+  const push = !pushed ? '' : pushed.ok ? ' · pushed' : ` · not pushed: ${pushed.error}`;
+  return `Landed in ${landing.into}${push}`;
+}
+
+/** A landing that ended, in words (HV4): what became of it. */
+export function landingOutcome(landing: HiveLanding): string {
+  switch (landing.outcome) {
+    case 'landed':
+      return landedLine(landing);
+    case 'conflict':
+      return `Conflicts with ${landing.into}: ${landing.files?.join(', ') ?? ''}`;
+    case 'check-failed':
+      return `The check failed on the merge: ${landing.failed ?? ''}`;
+    case 'cannot-fast-forward':
+      return `${landing.into} moved past a fast-forward`;
+    case 'diverged':
+      return `${landing.into} and its remote have diverged`;
+    case undefined:
+      return landingLine(landing);
+    default:
+      return landing.message ?? 'Not landed';
+  }
 }
 
 /** Where Hive is, for the Review tab's head. */
 export function stepWords(detail: WorkspaceHiveDetail): string {
   const round = `round ${detail.round} of ${detail.rounds}`;
-  if (!detail.on && detail.step !== 'landed' && detail.step !== 'landing') {
+  const ended = detail.step === 'landed' || detail.step === 'answered';
+  if (!detail.on && !ended && detail.step !== 'landing') {
     return `Hive is off: ${detail.step}, ${round}, waits`;
   }
   switch (detail.step) {
@@ -94,26 +128,14 @@ export function stepWords(detail: WorkspaceHiveDetail): string {
       return `Running the check, ${round}`;
     case 'reviewing':
       return `The running reviewer at work, ${round}`;
-    case 'landing': {
+    case 'landing':
       if (!detail.on) return 'Hive is off: review and land it as any workspace';
-      const last = detail.reviews.at(-1);
-      return landingWords({
-        ...(detail.note ? { note: detail.note } : {}),
-        ...(last
-          ? {
-              review: {
-                round: last.round,
-                at: last.at,
-                verdict: last.verdict,
-                kept: last.findings.filter((f) => f.kept).length,
-              },
-            }
-          : {}),
-      });
-    }
+      return landingLine(detail.landings?.at(-1));
     case 'stuck':
-      return `Hive stopped: ${detail.note ?? 'it needs you'}`;
+      return `Stopped: ${detail.note ?? 'Hive cannot go on'}`;
+    case 'answered':
+      return 'Answered: read its report';
     default:
-      return 'Landed';
+      return landedLine(detail.landings?.at(-1));
   }
 }

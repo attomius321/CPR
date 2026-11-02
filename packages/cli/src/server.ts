@@ -24,7 +24,11 @@ import {
   type RefList,
   type RepoStatus,
   type ReviewFile,
+  type HiveState,
+  type HiveStep,
+  type WorkspaceSummary,
 } from '@symbiote/core';
+
 import type { Review } from '@symbiote/forge';
 import { silentLog, type Log } from '@symbiote/log';
 import type { CodeMap } from '@symbiote/monitor';
@@ -104,6 +108,14 @@ import {
 } from './skills.js';
 import { McpRefused, symbioteMcp, type SymbioteMcp } from './mcp.js';
 import { bridgeCaller } from './mcp-bridge.js';
+
+/** Hive's steps that turning it off stops or leaves running (HV4, decision 771). */
+const IN_FLIGHT: ReadonlySet<HiveStep> = new Set<HiveStep>([
+  'writing',
+  'checking',
+  'reviewing',
+  'landing',
+]);
 
 export { sourceFiles } from './server-requests.js';
 
@@ -391,6 +403,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/logs') return pageError(req, res);
     if (url.pathname === '/api/intro' && options.intro) return introApi(req, res, options.intro);
     if (url.pathname === '/api/hive' && options.hive) return hiveApi(req, res, options.hive);
+    if (url.pathname === '/api/hive/state' && options.hive) {
+      if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+      const hive = options.hive;
+      return answer(res, async () => ({ on: await hive.on(), ...(await hiveState()) }));
+    }
     const reviewer = options.hiveReviewer;
     if (reviewer && url.pathname === '/api/hive/reviewer/efforts') {
       return read(req, res, () => reviewer.efforts());
@@ -690,7 +707,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     };
   }
 
-  /** `/api/workspaces/hive…` (HV3): a Hive workspace's Review tab, its kept tests, Land. */
+  /** `/api/workspaces/hive…` (HV3): a Hive workspace's Review tab, its kept tests, its logs. */
   async function hiveRoute(
     req: IncomingMessage,
     res: ServerResponse,
@@ -713,9 +730,6 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
           throw new WorkspaceRefused(`no kept test ${path} in round ${round}`, 404);
         return { text };
       });
-    }
-    if (url.pathname === '/api/workspaces/hive/land') {
-      return onBranch(req, res, (branch) => answer(res, () => hiveTab.land(branch)));
     }
     if (url.pathname === '/api/workspaces/hive/log') {
       // A check's or a review's log (decision 695), streamed as a merge's is; refused from
@@ -1483,6 +1497,15 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (req.method === 'GET') return json(res, 200, { on: await hive.on() });
     return written(req, res, parseHiveChange, ({ on }) =>
       answer(res, async () => {
+        // Not while a workspace is in normal mode (HV4, decision 772): every open one is Hive's.
+        const { normal } = on ? await hiveState() : { normal: [] };
+        if (normal.length > 0) {
+          const one = normal.length === 1;
+          throw new WorkspaceRefused(
+            `Hive cannot turn on while ${one ? 'a workspace is' : 'workspaces are'} in normal mode: ${normal.map((w) => w.branch).join(', ')}. Land ${one ? 'it' : 'them'} or clean ${one ? 'it' : 'them'} up first`,
+            409,
+          );
+        }
         await hive.set(on);
         // After the answer: the arrival does not wait on an agent's start.
         void nucleusFollows(on).catch((error: unknown) =>
@@ -1491,6 +1514,26 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         return { on };
       }),
     );
+  }
+
+  /**
+   * What turning Hive on or off concerns (HV4, decisions 771, 772): the open workspaces started in
+   * normal mode and not merged, and Hive's writing, checking, reviewing or landing.
+   */
+  async function hiveState(): Promise<Pick<HiveState, 'normal' | 'flight'>> {
+    const list = await repository?.workspaces?.list();
+    const open = list?.workspaces ?? [];
+    const named = (w: WorkspaceSummary) => (w.title ? { title: w.title } : {});
+    return {
+      normal: open
+        .filter((w) => !w.hive && !w.merged)
+        .map((w) => ({ branch: w.branch, ...named(w) })),
+      flight: open.flatMap((w) =>
+        w.hive && IN_FLIGHT.has(w.hive.step)
+          ? [{ branch: w.branch, step: w.hive.step, ...named(w) }]
+          : [],
+      ),
+    };
   }
 
   /**

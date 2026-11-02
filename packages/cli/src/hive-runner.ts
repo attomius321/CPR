@@ -8,18 +8,22 @@
 // on from there. One runner drives a repository, by a pid lock beside the records.
 // fix/hive-runner-flaws: a commit is checked and reviewed once (decision 716); a branch in the
 // merge queue or merged is left to its landing (717); a message is sent once its prompt is
-// recorded (718), and a turn Hive cannot see stops it, with why (719).
+// recorded (718), and a turn Hive cannot see stops it, with why (719). HV4: Hive lands what it
+// checked and reviewed itself — its approval, the merge queue, a failed landing sent back to the
+// writer — and pushes the workspace's branch after each turn (decisions 767–770).
 import { randomBytes } from 'node:crypto';
-import { mkdir, readFile, rm, rmdir, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readFile, rm, rmdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
   git,
   mergeBase,
+  pushBranch,
   worktreeStatus,
   type AgentStateName,
   type GitRepo,
   type HiveCheck,
   type HiveCheckStep,
+  type HiveLanding,
   type HiveReview,
   type MergeEntry,
   type MergeState,
@@ -29,6 +33,8 @@ import {
 import type { Logger } from '@symbiote/log';
 import type { HiveRecord } from './hive.js';
 import {
+  HIVE_DECIDES,
+  HIVE_MERGES,
   hiveEvent,
   hiveLockPath,
   hiveTestsDir,
@@ -55,11 +61,11 @@ import {
 import { findClaude } from './claude-code.js';
 import { hiveLogId, hiveLogPath, hiveLogs } from './hive-live.js';
 import { mergeQueue } from './merge-queue.js';
-import { projectCheck } from './merges.js';
+import { projectCheck, type Merger } from './merges.js';
 import { killGroup, runGroup, type GroupRun, type RunGroup, type SpawnGroup } from './programs.js';
 import { fillPrompt, readPrompts } from './prompts.js';
 import { MAX_BRIEF } from './workspace-brief.js';
-import { reviewPlace, type ReviewPlace } from './reviews.js';
+import { reviewPlace, type BranchReviews, type ReviewPlace } from './reviews.js';
 import { readThreadEnd } from './thread.js';
 import { symbioteFolder } from './workspace-record.js';
 import type { Workspaces } from './workspaces.js';
@@ -81,7 +87,7 @@ export interface HiveRunner {
 }
 
 /** What the runner asks of the workspaces (`workspaces.ts`). */
-export type HiveWorkspaces = Pick<Workspaces, 'summaryOf' | 'reply' | 'stopAgent'>;
+export type HiveWorkspaces = Pick<Workspaces, 'summaryOf' | 'reply' | 'stopAgent' | 'startAgent'>;
 
 /** Lines of a check's output kept and sent, and their characters at most (a message's limit is 20,000). */
 const OUTPUT_LINES = 60;
@@ -152,6 +158,28 @@ export interface HiveReviewer {
   rerunMs?: number;
 }
 
+/**
+ * What Hive lands with (HV4, decision 767): the branch's review, where its approval is recorded,
+ * and the merge queue it queues the approved commit in.
+ */
+export interface HiveLander {
+  reviews: Pick<BranchReviews, 'resolve' | 'finish'>;
+  merges: Pick<Merger, 'targets' | 'enqueue' | 'land' | 'remove'>;
+}
+
+/** How long an entry the person's checkout refused waits before Hive lands it again (770). */
+const LAND_RETRY_MS = 60_000;
+
+/** The merge queue's states while a merge runs or waits its turn. */
+const MERGING: ReadonlySet<MergeState> = new Set<MergeState>([
+  'queued',
+  'merging',
+  'resolving',
+  'checking',
+]);
+
+const short = (sha: string) => sha.slice(0, 7);
+
 /** A branch as one folder's name in Symbiote's cache. */
 const slug = (branch: string) => branch.replace(/[^\w.-]+/g, '-');
 
@@ -174,6 +202,8 @@ export function hiveRunner(
     },
     merges = () => mergeQueue(join(cacheDir, 'state', repo.id)).read(),
     unseenMs = UNSEEN_MS,
+    lander,
+    landRetryMs = LAND_RETRY_MS,
     log,
   }: {
     hive: HiveRecord;
@@ -197,6 +227,13 @@ export function hiveRunner(
     merges?: () => Promise<MergeEntry[]>;
     /** How long a message taken may go without its prompt before Hive stops (decision 719). */
     unseenMs?: number;
+    /**
+     * What Hive lands with (HV4): with it, Hive approves and queues what it checked and reviewed,
+     * and pushes the workspace's branch; without it (tests of the loop), landing waits as in HV3.
+     */
+    lander?: HiveLander;
+    /** How long an entry the person's checkout refused waits before Hive lands it again. */
+    landRetryMs?: number;
     log?: Pick<Logger, 'info' | 'warn'>;
   },
 ): HiveRunner {
@@ -294,10 +331,16 @@ export function hiveRunner(
     record: HiveFile,
     key: HiveMessageKey,
     values: Record<string, string>,
+    { stop = false }: { stop?: boolean } = {},
   ): Promise<HiveFile> {
     const at = stamp();
     const text = fillPrompt(readPrompts(root).text[key], values).trim();
-    const next: HiveFile = { ...record, step: 'writing', since: at, message: { key, text, at } };
+    const next: HiveFile = {
+      ...record,
+      step: 'writing',
+      since: at,
+      message: { key, text, at, ...(stop ? { stop: true as const } : {}) },
+    };
     delete next.interrupted;
     await save(where, next);
     await event(where, record.branch, 'message', { key, round: next.round });
@@ -325,6 +368,7 @@ export function hiveRunner(
           text: message.text,
           by: 'hive',
           key: message.key,
+          ...(message.stop ? { stop: true } : {}),
         }));
       } catch (error) {
         if (!failed.has(record.branch)) {
@@ -444,6 +488,61 @@ export function hiveRunner(
     return next;
   }
 
+  /**
+   * Hive answers in place of the person (773): a plan gets its OK, a question or a permission "no
+   * one answers", the writer's turn stopped to say it; after 3, Hive stops, with why.
+   */
+  async function answer(
+    where: ReviewPlace,
+    record: HiveFile,
+    key: 'hive.plan' | 'hive.decide',
+  ): Promise<void> {
+    const decided = (record.decided ?? 0) + 1;
+    if (decided > HIVE_DECIDES) {
+      const note = `the writer asked for the person ${decided} times: no one answers in Hive mode`;
+      const stuck: HiveFile = { ...record, step: 'stuck', since: stamp(), note };
+      delete stuck.message;
+      await save(where, stuck);
+      await event(where, record.branch, 'stuck', { note });
+      return;
+    }
+    const next = await queue(
+      where,
+      { ...record, decided },
+      key,
+      {},
+      { stop: key === 'hive.decide' },
+    );
+    await deliver(where, next);
+  }
+
+  /** A writer that failed or never started is started again, once (773); then Hive stops. */
+  async function restart(
+    where: ReviewPlace,
+    record: HiveFile,
+    summary: WorkspaceSummary,
+  ): Promise<void> {
+    const why = summary.agent.error?.split('\n')[0];
+    if ((record.restarted ?? 0) >= 1) {
+      const note = `its agent failed twice${why ? `: ${why}` : ''}`;
+      const stuck: HiveFile = { ...record, step: 'stuck', since: stamp(), note };
+      delete stuck.message;
+      await save(where, stuck);
+      await event(where, record.branch, 'stuck', { note });
+      return;
+    }
+    const next: HiveFile = { ...record, restarted: (record.restarted ?? 0) + 1, since: stamp() };
+    delete next.message;
+    await save(where, next);
+    await event(where, record.branch, 'restarted', { ...(why ? { why } : {}) });
+    try {
+      await workspaces.startAgent(record.branch);
+    } catch (error) {
+      const note = `its agent could not be started again: ${(error as Error).message}`;
+      await moveTo(where, next, { step: 'stuck', note }, 'stuck', { note });
+    }
+  }
+
   /** The writer's turn (decision 653). */
   async function writing(where: ReviewPlace, given: HiveFile): Promise<void> {
     let record = given;
@@ -454,6 +553,9 @@ export function hiveRunner(
     const { summary } = turn;
     const landing = await landingOf(record.branch, summary);
     if (landing) return leaveTo(where, record, landing);
+    // No gate waits for the person in Hive mode (HV4, decision 773).
+    const state = summary.agent.state;
+    if (state === 'failed' || state === 'not-started') return restart(where, record, summary);
     if (message?.taken && !message.sent && arrived(turn.thread, message)) {
       record = await seen(where, record, message);
     }
@@ -468,6 +570,8 @@ export function hiveRunner(
       }
       return;
     }
+    if (state === 'plan-ready') return answer(where, record, 'hive.plan');
+    if (state === 'needs-you') return answer(where, record, 'hive.decide');
     if (!turn.ended) return;
     await event(where, record.branch, 'turn-ended', { round: record.round });
     const changed = summary.worktree.changed ?? 0;
@@ -486,7 +590,7 @@ export function hiveRunner(
     if (summary.ahead === 0) {
       // A spike's answer is its report: nothing to check (the start prompt says so).
       if (summary.kind === 'spike') {
-        return void (await moveTo(where, record, { step: 'landing' }, 'landing', { commits: 0 }));
+        return void (await moveTo(where, record, { step: 'answered' }, 'answered', { commits: 0 }));
       }
       return nextRound(
         where,
@@ -532,7 +636,7 @@ export function hiveRunner(
     }
     if (!check) {
       // No check, but a review all the same (decision 674): the note stays for the person.
-      const note = 'no check is set or found: check it yourself before you land it';
+      const note = 'no check is set or found';
       const next = await moveTo(
         where,
         record,
@@ -542,7 +646,12 @@ export function hiveRunner(
       );
       return reviewing(where, next);
     }
-    return act(record.branch, runCheck(where, record, tip, check.commands, summary.worktree.path));
+    return act(
+      record.branch,
+      pushOut(where, record.branch, tip).then(() =>
+        runCheck(where, record, tip, check.commands, summary.worktree.path),
+      ),
+    );
   }
 
   /**
@@ -832,7 +941,7 @@ export function hiveRunner(
         await moveTo(where, after, { step: 'reviewing' }, null);
         return;
       }
-      const note = `the running review failed twice: ${review.error ?? 'no answer'}; review it yourself`;
+      const note = `the running review failed twice: ${review.error ?? 'no answer'}`;
       await moveTo(where, after, { step: 'landing', checked: review.at, note }, 'landing', {
         note,
       });
@@ -967,6 +1076,297 @@ export function hiveRunner(
     if (moved) {
       const next = await moveTo(where, record, { step: 'checking' }, 'checking', { moved: true });
       return checking(where, next, summary);
+    }
+  }
+
+  /**
+   * Pushes the workspace's branch to `origin` at `sha` (HV4, decision 768), never forced; the push
+   * and git's words are in the record, and a refused one stops nothing.
+   */
+  async function pushOut(where: ReviewPlace, branch: string, sha: string): Promise<void> {
+    if (!lander || closed) return;
+    const remotes = await git(repo.root, ['remote']).catch(() => '');
+    const result = remotes.split('\n').includes('origin')
+      ? await pushBranch(repo, { remote: 'origin', sha, branch })
+      : { ok: false as const, error: 'no remote named origin' };
+    const fresh = await readHive(where, branch);
+    if (!fresh || closed) return;
+    const pushed = {
+      at: stamp(),
+      sha,
+      ok: result.ok,
+      ...(result.ok ? {} : { error: result.error }),
+    };
+    await save(where, { ...fresh, pushed });
+    await event(where, branch, 'pushed', {
+      commit: sha,
+      ok: result.ok,
+      ...(result.ok ? {} : { error: result.error }),
+    });
+  }
+
+  /** What Hive's approval says it rests on: the check, the review, what did not run (767). */
+  function approvalOf(record: HiveFile, tip: string): string {
+    const check = record.checks.findLast((c) => c.at === tip && c.ok);
+    const review = record.reviews.findLast((r) => r.at === tip);
+    const checked = check
+      ? `checked (${plural(check.commands?.length ?? 1, 'command')}, round ${check.round})`
+      : 'not checked: no check is set or found';
+    const reviewed =
+      review?.verdict === 'approved'
+        ? `reviewed (approved, round ${review.round})`
+        : `not reviewed${record.note && record.note !== 'no check is set or found' ? `: ${record.note.replace(/^not reviewed: /, '')}` : ''}`;
+    return `Approved by Hive at ${short(tip)}: ${checked}; ${reviewed}.`;
+  }
+
+  /**
+   * At `landing` with a lander (HV4, decisions 767–770): the landing in flight followed, else the
+   * commit Hive checked and reviewed approved and queued; new commits are checked first, and a
+   * merge of the person's is theirs (717).
+   */
+  async function landing(where: ReviewPlace, record: HiveFile): Promise<void> {
+    if (!lander) return waiting(where, record);
+    const summary = await workspaces.summaryOf(record.branch);
+    if (!summary) return;
+    const last = record.landings?.at(-1);
+    if (last && !last.outcome) return follow(where, record, last, summary);
+    if (summary.merged) return void (await moveTo(where, record, { step: 'landed' }, 'landed'));
+    const queue = await merges().catch(() => null);
+    if (!queue || queue.some((m) => m.branch === record.branch && QUEUED.has(m.state))) return;
+    const moved =
+      summary.tip !== null &&
+      record.checked !== undefined &&
+      summary.tip !== record.checked &&
+      summary.agent.state !== 'working' &&
+      (summary.worktree.changed ?? 0) === 0;
+    if (moved) {
+      const next = await moveTo(where, record, { step: 'checking' }, 'checking', { moved: true });
+      return checking(where, next, summary);
+    }
+    if (!summary.tip || summary.tip !== record.checked) return;
+    return act(record.branch, land(where, record.branch, summary));
+  }
+
+  /** Approves the checked commit as Hive's and queues it into the start branch (767). */
+  async function land(where: ReviewPlace, branch: string, summary: WorkspaceSummary) {
+    if (!lander) return;
+    const tip = summary.tip;
+    if (!tip) return;
+    let record = await readHive(where, branch);
+    if (!record || record.step !== 'landing' || closed) return;
+    if (!record.pushed?.ok || record.pushed.sha !== tip) {
+      await pushOut(where, branch, tip);
+      record = (await readHive(where, branch)) ?? record;
+    }
+    const { info } = await lander.reviews.resolve(branch);
+    if (info.head !== tip) return;
+    const targets = await lander.merges.targets(branch);
+    const into =
+      summary.from && targets.branches.includes(summary.from) ? summary.from : targets.into;
+    if (!into) {
+      const note = `no branch to land ${branch} in`;
+      await moveTo(where, record, { step: 'stuck', note }, 'stuck', { note });
+      return;
+    }
+    await lander.reviews.finish(
+      info,
+      { event: 'approve', body: approvalOf(record, tip), comments: [], via: 'hive' },
+      () => Promise.reject(new Error('a landing has no comment')),
+    );
+    const at = stamp();
+    let entry: MergeEntry;
+    try {
+      entry = await lander.merges.enqueue({ branch, into, by: 'hive' });
+    } catch (error) {
+      // Refused before it is queued: a fast-forward its target cannot take, say (V67).
+      const refused: HiveLanding = {
+        round: record.round,
+        at: tip,
+        into,
+        entry: 'none',
+        queued: at,
+        message: (error as Error).message,
+      };
+      const fresh = (await readHive(where, branch)) ?? record;
+      return landingFailed(
+        where,
+        { ...fresh, landings: [...(fresh.landings ?? []), refused] },
+        refused,
+        {
+          outcome: 'refused',
+          why: (error as Error).message,
+        },
+      );
+    }
+    const attempt: HiveLanding = {
+      round: record.round,
+      at: tip,
+      into,
+      entry: entry.id,
+      queued: entry.queued,
+      state: entry.state,
+    };
+    const fresh = (await readHive(where, branch)) ?? record;
+    await save(where, { ...fresh, landings: [...(fresh.landings ?? []), attempt] });
+    await event(where, branch, 'land-queued', { into, entry: entry.id, commit: tip });
+  }
+
+  /** The landing in flight: landed, still merging, refused by the person's checkout, or failed. */
+  async function follow(
+    where: ReviewPlace,
+    record: HiveFile,
+    last: HiveLanding,
+    summary: WorkspaceSummary,
+  ): Promise<void> {
+    if (!lander) return;
+    const queue = await merges().catch(() => null);
+    if (!queue) return;
+    const entry = queue.find((e) => e.id === last.entry);
+    const replace = (landing: HiveLanding): HiveFile => ({
+      ...record,
+      landings: [...(record.landings ?? []).slice(0, -1), landing],
+    });
+    if (!entry) {
+      if (summary.merged) {
+        const done: HiveLanding = { ...last, outcome: 'landed', ended: stamp() };
+        delete done.state;
+        await moveTo(where, replace(done), { step: 'landed' }, 'landed', { into: last.into });
+        return;
+      }
+      // Taken out of the queue by the person: stopping beats guessing.
+      const note = `its landing in ${last.into} was taken out of the merge queue`;
+      const done: HiveLanding = { ...last, outcome: 'failed', ended: stamp(), message: note };
+      delete done.state;
+      await moveTo(where, replace(done), { step: 'stuck', note }, 'stuck', { note });
+      return;
+    }
+    if (entry.state === 'landed') {
+      const done: HiveLanding = {
+        ...last,
+        outcome: 'landed',
+        ended: entry.landed ?? stamp(),
+        ...(entry.merge ? { merge: entry.merge } : {}),
+        ...(entry.pushed ? { pushed: entry.pushed } : {}),
+      };
+      delete done.state;
+      delete done.message;
+      await moveTo(where, replace(done), { step: 'landed' }, 'landed', {
+        into: last.into,
+        merge: entry.merge,
+        pushed: entry.pushed?.ok ?? false,
+      });
+      return;
+    }
+    const said = {
+      state: entry.state,
+      ...(entry.message ? { message: entry.message } : {}),
+    } as const;
+    if (MERGING.has(entry.state)) {
+      if (last.state !== entry.state || last.message !== entry.message) {
+        const now: HiveLanding = { ...last, ...said };
+        if (!entry.message) delete now.message;
+        await save(where, replace(now));
+      }
+      return;
+    }
+    if (entry.state === 'ready') {
+      // The person's checkout refused the fast-forward (770): Land again once a while has passed.
+      const due = !last.tried || now().getTime() - Date.parse(last.tried) >= landRetryMs;
+      await save(where, replace({ ...last, ...said, ...(due ? { tried: stamp() } : {}) }));
+      if (due) await lander.merges.land(entry.id).catch(() => undefined);
+      return;
+    }
+    // needs-you or failed: back to the writer (769).
+    const outcome: NonNullable<HiveLanding['outcome']> = entry.diverged
+      ? 'diverged'
+      : entry.conflicts?.length
+        ? 'conflict'
+        : entry.behind
+          ? 'cannot-fast-forward'
+          : entry.check?.ok === false
+            ? 'check-failed'
+            : 'failed';
+    const kept = await keepLog(where, record.branch, entry.id);
+    const done: HiveLanding = {
+      ...last,
+      outcome,
+      ended: stamp(),
+      ...(entry.conflicts?.length ? { files: entry.conflicts } : {}),
+      ...(entry.check?.ok === false && entry.check.failed
+        ? { failed: entry.check.failed, output: lastLines(entry.check.output ?? '') }
+        : {}),
+      ...(entry.message ? { message: entry.message } : {}),
+      ...(kept ? { log: kept } : {}),
+    };
+    delete done.state;
+    // Out of the queue first: the target is free, and a message may go (717).
+    await lander.merges.remove(entry.id);
+    return landingFailed(where, replace(done), done, { outcome, why: whyOf(done, entry.into) });
+  }
+
+  /** What failed, for the writer: the files, or the command and its last lines. */
+  function whyOf(landing: HiveLanding, into: string): string {
+    if (landing.files?.length) {
+      const n = landing.files.length;
+      return `${landing.files.join(', ')} conflict${n === 1 ? 's' : ''} with ${into}.`;
+    }
+    if (landing.failed) {
+      return `the check failed on the merge: \`${landing.failed}\`. Its last lines:\n\n\`\`\`\n${landing.output ?? ''}\n\`\`\``;
+    }
+    return `${landing.message ?? 'the merge failed'}.`;
+  }
+
+  /**
+   * A landing that failed (769): written, then `hive.land` to the writer and the rounds again;
+   * after 2 merges of the start branch, or a target diverged from its remote, Hive stops, with why.
+   */
+  async function landingFailed(
+    where: ReviewPlace,
+    record: HiveFile,
+    landing: HiveLanding,
+    { outcome, why }: { outcome: NonNullable<HiveLanding['outcome']>; why: string },
+  ): Promise<void> {
+    const done: HiveLanding = { ...landing, outcome, ended: landing.ended ?? stamp() };
+    const after: HiveFile = {
+      ...record,
+      landings: [...(record.landings ?? []).slice(0, -1), done],
+    };
+    await save(where, after);
+    await event(where, record.branch, 'land-failed', { outcome, into: done.into });
+    const merges = (record.merges ?? 0) + 1;
+    if (outcome === 'diverged' || merges > HIVE_MERGES) {
+      const plain = why.split('\n')[0]?.replace(/[.:]$/, '') ?? why;
+      const note =
+        outcome === 'diverged'
+          ? (done.message ?? plain)
+          : `could not land in ${done.into} ${HIVE_MERGES + 1} times: ${plain.replace(/`/g, '')}`;
+      const stuck: HiveFile = { ...after, step: 'stuck', since: stamp(), note };
+      delete stuck.message;
+      await save(where, stuck);
+      await event(where, record.branch, 'stuck', { note });
+      return;
+    }
+    const next = await queue(where, { ...after, merges, round: 1 }, 'hive.land', {
+      why,
+      branch: record.branch,
+      at: short(done.at),
+      into: done.into,
+      merge: String(merges),
+      merges: String(HIVE_MERGES),
+    });
+    await deliver(where, next);
+  }
+
+  /** A merge's log kept beside Hive's record, its entry about to be removed; its id. */
+  async function keepLog(where: ReviewPlace, branch: string, entry: string) {
+    const id = hiveLogId(stamp());
+    const to = hiveLogPath(where, branch, id);
+    try {
+      await mkdir(dirname(to), { recursive: true });
+      await copyFile(join(cacheDir, 'state', repo.id, 'merges', `${entry}.jsonl`), to);
+      return id;
+    } catch {
+      return undefined;
     }
   }
 
@@ -1122,7 +1522,10 @@ export function hiveRunner(
       lastOn = null;
     }
     const where = await reviewPlace(repo, cacheDir);
-    const records = (await readHives(where)).filter((r) => r.step !== 'landed');
+    // Landed and answered are ends (HV4): nothing more to drive.
+    const records = (await readHives(where)).filter(
+      (r) => r.step !== 'landed' && r.step !== 'answered',
+    );
     if (!on) {
       if (lastOn !== false) await turnOff(where, records);
       else if (toStop.size > 0) await stopWriters(where);
@@ -1147,7 +1550,8 @@ export function hiveRunner(
         if (record.step === 'writing') await writing(where, record);
         else if (record.step === 'checking') await checking(where, record);
         else if (record.step === 'reviewing') await reviewing(where, record);
-        else if (record.step === 'landing' || record.step === 'stuck') await waiting(where, record);
+        else if (record.step === 'landing') await landing(where, record);
+        else if (record.step === 'stuck') await waiting(where, record);
       } catch (error) {
         log?.warn({ branch: record.branch, error: (error as Error).message }, 'hive step failed');
       }

@@ -14,6 +14,7 @@ import {
   commitSubject,
   conflictKinds,
   defaultBranch,
+  fetchBranch,
   mergeBase,
   fastForwardBranch,
   isAncestor,
@@ -21,6 +22,7 @@ import {
   listWorktrees,
   mergeInWorktree,
   MergeStepRefused,
+  pushBranch,
   pushCommit,
   resetMergeWorktree,
   tipsIn,
@@ -406,6 +408,7 @@ export function merger(
     message: undefined,
     recheck: undefined,
     behind: undefined,
+    diverged: undefined,
   };
 
   /** A branch's tip: the local branch's, else a remote's (`origin` first); null when none. */
@@ -478,7 +481,7 @@ export function merger(
    */
   async function mergeOne(entry: MergeEntry): Promise<void> {
     const { id, merge, base } = entry;
-    const tip = tipOf(await listRefs(repo), entry.into);
+    let tip = tipOf(await listRefs(repo), entry.into);
     const recheck = entry.recheck && merge && base ? { merge, base } : null;
     if (recheck && tip?.sha === recheck.base) {
       // The same merge checked again: another merge may have used the worktree since.
@@ -499,6 +502,10 @@ export function merger(
       log.out(
         `${entry.into} moved since the merge (now ${short(tip.sha)}): merging again on its tip\n`,
       );
+    }
+    if (entry.by === 'hive' && tip?.local) {
+      if (!(await syncTarget(entry, tip.sha))) return;
+      tip = tipOf(await listRefs(repo), entry.into);
     }
     if (!tip) {
       log.out(`No branch ${entry.into}\n`);
@@ -522,6 +529,18 @@ export function merger(
       log.out(
         `${plural(n, 'file')} conflict${n === 1 ? 's' : ''}: ${outcome.conflicts.join(', ')}\n`,
       );
+      if (entry.by === 'hive') {
+        // No merger agent for Hive's merges (decision 769): its writer merges the target in.
+        log.end(false);
+        await abortMerge(worktree);
+        await set(id, {
+          state: 'needs-you',
+          conflicts: outcome.conflicts,
+          message: `${outcome.conflicts.join(', ')} conflict${n === 1 ? 's' : ''} with ${entry.into}: Hive asks ${entry.branch}'s agent to merge ${entry.into} in`,
+          again: undefined,
+        });
+        return;
+      }
       log.end(true);
       const merged = await resolve(entry, tip.sha, outcome.conflicts);
       if (merged) await checkMerge(id, tip.sha, merged, true);
@@ -601,6 +620,13 @@ export function merger(
   async function checkMerge(id: string, base: string, merged: string, resolved: boolean) {
     const log = logs.of(id);
     const check = await projectCheck(repo, root, base);
+    const hive = (await queue.read()).find((e) => e.id === id)?.by === 'hive';
+    if (!check && hive && !resolved) {
+      // Hive lands without a check when the project has none (decision 767).
+      log.out('No check to run: Hive lands it\n');
+      await landEntry(await set(id, { state: 'ready', merge: merged }));
+      return;
+    }
     if (!check) {
       const message = resolved
         ? 'no check to run: review the resolution, then Approve lands it'
@@ -873,8 +899,9 @@ export function merger(
       log.run(`${again.charAt(0).toUpperCase()}${again.slice(1)} ${into}'s tip`);
       return set(id, { ...fresh, state: 'queued', message: `${moved}: ${again} its tip` });
     }
-    // Read before landing: the landing may bring another config file into `root`.
-    const { push: pushing } = readMergeConfig(root);
+    // Read before landing: the landing may bring another config file into `root`. Hive's
+    // landings push whatever it says (decision 768).
+    const pushing = entry.by === 'hive' || readMergeConfig(root).push;
     const holder = (await listWorktrees(repo)).find((w) => w.branch === into && !w.prunable);
     try {
       await fastForwardBranch(repo, {
@@ -910,7 +937,7 @@ export function merger(
       log.end(true);
       return landed;
     }
-    const pushed = await push(into, merge);
+    const pushed = await push(into, merge, entry.by === 'hive');
     log.out(
       pushed.ok
         ? `Pushed to ${pushed.remote}\n`
@@ -920,16 +947,74 @@ export function merger(
     return set(id, { pushed });
   }
 
-  /** Pushes the landed branch to its upstream, else to `origin`. */
-  async function push(into: string, sha: string): Promise<NonNullable<MergeEntry['pushed']>> {
-    const upstream = await upstreamOf(repo, into);
+  /** Where a branch is pushed and fetched: its upstream, else `origin`, else the first remote. */
+  async function remoteOf(branch: string): Promise<{ remote: string; branch: string } | null> {
+    const upstream = await upstreamOf(repo, branch);
+    if (upstream) return { remote: upstream.remote, branch: upstream.branch };
     const refs = await listRefs(repo);
-    const remote =
-      upstream?.remote ??
-      (refs.remotes.some((r) => r.remote === 'origin') ? 'origin' : refs.remotes[0]?.remote);
-    if (!remote) return { ok: false, remote: '', error: 'no remote to push to' };
-    const result = await pushCommit(repo, { remote, sha, branch: upstream?.branch ?? into });
+    const remote = refs.remotes.some((r) => r.remote === 'origin')
+      ? 'origin'
+      : refs.remotes[0]?.remote;
+    return remote ? { remote, branch } : null;
+  }
+
+  /**
+   * Pushes the landed branch to its upstream, else to `origin`; Hive's as a network run that never
+   * waits on a prompt (decision 768).
+   */
+  async function push(
+    into: string,
+    sha: string,
+    hive = false,
+  ): Promise<NonNullable<MergeEntry['pushed']>> {
+    const to = await remoteOf(into);
+    if (!to) return { ok: false, remote: '', error: 'no remote to push to' };
+    const { remote, branch } = to;
+    const result = await (hive ? pushBranch : pushCommit)(repo, { remote, sha, branch });
     return result.ok ? { ok: true, remote } : { ok: false, remote, error: result.error };
+  }
+
+  /**
+   * A Hive entry's target brought up to its remote before the merge (decision 768): fetched, and
+   * fast-forwarded when it is behind, in the checkout that has it as a landing is. Diverged: the
+   * entry fails, saying so, and false; never a force or a rebase. A fetch that fails is said, and
+   * the merge goes on on the local tip (its push will say what the remote thinks of it).
+   */
+  async function syncTarget(entry: MergeEntry, local: string): Promise<boolean> {
+    const log = logs.of(entry.id);
+    const { into } = entry;
+    const to = await remoteOf(into);
+    if (!to) return true;
+    const name = `${to.remote}/${to.branch}`;
+    let theirs: string | null;
+    try {
+      theirs = await fetchBranch(repo, to.remote, to.branch);
+    } catch (error) {
+      log.out(`Not fetched from ${to.remote}: ${(error as Error).message}\n`);
+      return true;
+    }
+    if (!theirs || theirs === local || (await isAncestor(repo, theirs, local))) return true;
+    if (await isAncestor(repo, local, theirs)) {
+      const holder = (await listWorktrees(repo)).find((w) => w.branch === into && !w.prunable);
+      try {
+        await fastForwardBranch(repo, {
+          branch: into,
+          to: theirs,
+          from: local,
+          ...(holder ? { checkedOut: holder.path } : {}),
+        });
+        log.out(`${into} brought up to ${name} (${short(theirs)})\n`);
+      } catch (error) {
+        if (!(error instanceof MergeStepRefused)) throw error;
+        log.out(`${into} was not brought up to ${name}: ${error.message}\n`);
+      }
+      return true;
+    }
+    const message = `${into} and ${name} have diverged: Hive never forces or rebases; bring them together, then Hive lands it again`;
+    log.out(`${message}\n`);
+    log.end(false);
+    await set(entry.id, { ...fresh, state: 'failed', message, diverged: name });
+    return false;
   }
 
   /**
@@ -1026,7 +1111,7 @@ export function merger(
       return found;
     },
 
-    async enqueue({ branch, into, strategy }, { start = true } = {}) {
+    async enqueue({ branch, into, strategy, by }, { start = true } = {}) {
       if (typeof branch !== 'string' || branch === '') throw new MergeRefused('which branch?', 400);
       if (into === branch) throw new MergeRefused(`cannot merge ${branch} into itself`, 400);
       if (strategy !== undefined && !isStrategy(strategy)) {
@@ -1057,6 +1142,7 @@ export function merger(
         into,
         title: `Merge ${branch}: ${title}`,
         ...(fastForward ? { strategy: 'fast-forward' as const } : {}),
+        ...(by === 'hive' ? { by } : {}),
         state: 'queued',
         queued: at,
         updated: at,

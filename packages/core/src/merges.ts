@@ -101,6 +101,11 @@ export interface MergeEntry {
   title: string;
   /** `fast-forward` (V67); absent: a merge commit. */
   strategy?: 'fast-forward';
+  /**
+   * Queued by Hive (HV4, decisions 767–769): its target brought up to its remote first, no merger
+   * agent on a conflict, landed without a check when there is none, and pushed after landing.
+   */
+  by?: 'hive';
   state: MergeState;
   /** When it was queued, and when its state last changed. */
   queued: string;
@@ -131,6 +136,8 @@ export interface MergeEntry {
   check?: MergeCheckRun;
   /** Why it waits or failed, in git's words where git said it. */
   message?: string;
+  /** A Hive entry's target and its remote branch (`origin/main`) have diverged: not merged. */
+  diverged?: string;
   /** When it landed, and how the push went (`merge.push`). */
   landed?: string;
   pushed?: { ok: true; remote: string } | { ok: false; remote: string; error: string };
@@ -219,4 +226,6 @@ export interface MergeRequest {
   into: string;
   /** Absent: `merge.strategy`, else a merge commit (V67). */
   strategy?: MergeStrategy;
+  /** Hive's landing (HV4); never from a page's request. */
+  by?: 'hive';
 }

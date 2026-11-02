@@ -34,12 +34,14 @@ framework templates) and the calls between them, with findings on the risky part
 
 - **Normal mode** (Hive off, or a workspace started before Hive was on): every rule in this file
   holds. The person decides: ask before merging into `main`, and wait for their OK where asked.
-- **Hive mode** (a workspace started while Hive is on): Symbiote drives it. Its start prompt and
-  Hive's messages say what to do, and they win over normal mode's rules. Hive decides landing, not
-  "ask the user before merging into `main`" (today: Land on its Review tab, decision 681, until
-  HV4). From HV4, Hive pushes only the workspace's branch, never `main` (decision 690); you do
-  not push, merge or switch branches yourself. Commit everything before you end a turn; when
-  stuck, stop and say why.
+- **Hive mode** (a workspace started while Hive is on): Symbiote drives it, from its brief to
+  landed (HV4). Its start prompt and Hive's messages say what to do, and they win over normal
+  mode's rules. No person answers: no plan waits for an OK, and where the brief leaves a choice,
+  decide and say what you decided in your report. Hive lands the branch in the one it started
+  from (not "ask the user before merging into `main`") and pushes both (decision 768); you do not
+  push, merge, rebase or switch branches yourself. When Hive says a landing failed, merge that
+  branch in and fix it, or say why your branch does not cause it. Commit everything before you end
+  a turn; when stuck, stop and say why.
 - **Both modes**: the code, tests, verification and docs rules; commit messages; honest reports;
   never commit to `main` directly; never force-push or delete unmerged work (in normal mode, only
   when the person asks).
@@ -150,7 +152,7 @@ unless the change says otherwise — prove it with the comparisons.
   a "Docs: merged" commit, pushed. Run it after your own merge, or when the person asks.
 - Do not open pull requests unless asked. Commit and push as you go
   (`git push -u origin <branch>`); a session ends with everything pushed. In a Hive workspace,
-  commit and do not push (from HV4, Hive pushes the branch).
+  commit and do not push: Hive pushes the branch.
 - Commit messages: subject `<ID>: <what changed>` (or `Fix: …`, `Docs: …`, `Plan <ID>: …`), a body
   that explains why and gives measured results, then the attribution trailers the session provides.
 - Report results honestly: say what was not verified; numbers over adjectives.

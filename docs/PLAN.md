@@ -36,8 +36,9 @@ Tie-breakers when trading off:
 - **Recorded beats silent**: every step, and why it was taken, is in the workspace's record.
 - **Within limits beats faster**: Hive off, the round caps and the usage or budget cap hold.
 
-Today a Hive workspace still waits for the person's Land on its Review tab (decision 681), until
-HV4. The milestones toward this North Star are HV4–HV7, in the order they are built (Agents, below).
+Since HV4, a Hive workspace goes from its brief to landed, and pushed, with no step that waits for
+the person (decisions 767–775). The milestones toward this North Star are HV4–HV7, in the order
+they are built (Agents, below).
 
 ## How the plan is kept
 
@@ -229,7 +230,7 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [Chore](plan/hv1-hive-graph.md#chore-hives-north-star-chorehive-north-star) | Hive's North Star: two modes, normal (human-centric) and Hive (fully autonomous); Hive's hard limits; the Hive milestones in the order they are built | ✅ | 688–692 | [journal](journal/chore-hive-north-star.md) |
 | [Feature](plan/hive-live-progress.md) | Hive's live progress: the check's command running and its time against the last check's, the reviewer at work, on the card (a "Hive" group of its own) and the workspace page; every run's log, streamed to the Review tab | ✅ | 693–700 | [journal](journal/hive-live-progress.md) |
 | [Fix](plan/hv2-hive-runner.md#fix-hives-runner-three-flaws-fixhive-runner-flaws) | Hive's runner, three flaws: a commit already checked is not checked again; nothing goes to a branch in the merge queue or merged; a turn Hive cannot see stops with a note (a reply waits for the stopped session and its terminal, or Claude Code starts a copy without the hooks); the hook runs from a copy in the cache | ✅ | 716–721 | [journal](journal/fix-hive-runner-flaws.md) |
-| HV4 | Autonomous landing: a Hive workspace whose check and running review pass on one commit lands with no person; Hive pushes its branch to `origin`, never `main` (690). Text that says landing is the person's changes with it: `HivePage.tsx:61–65`, `:150–153`; README's Hive part; `configuration.md`'s Hive mode; `prompts.ts` (`symbiote/AGENTS.md` at `:80`, `{hive}`, Nucleus's and Alpha Ceph's start prompt) | planned | | |
+| [HV4](plan/hv4-autonomous-landing.md) | Hive drives a workspace from start to end: no plan first, `auto` permissions and Hive's answers in place of the person's; at landing Hive approves and queues the commit, the writer merges the start branch on a conflict, the start branch and the workspace's branch pushed; Hive on refused with normal-mode workspaces open, Hive off asks while work is in flight; the sidenav's Hive and Done groups | built, ready for review | 767–775 | [journal](journal/hv4-autonomous-landing.md) |
 | HV5 | Usage pacing: usage read before every agent starts, a pause until the window resets, a usage or budget cap; required before Hive runs unattended | planned | | |
 | HV6 | Spike: a more rigorous measurement of a graph of workspaces against one agent, on large real goals (649, 691) | planned | | |
 | HV7 | The graph: Alpha Ceph splits a goal into workspaces and orchestrates them, merges in order, stalls and new plans; only if HV6 shows a gain (691, 692) | planned | | |

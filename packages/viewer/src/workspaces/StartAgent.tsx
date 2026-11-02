@@ -146,9 +146,10 @@ export function StartAgent({
         {hive && (
           <p className="start-card-note start-hive">
             <HexagonIcon />
-            Hive is on: after each turn Symbiote runs the check and sends its failures back to the
-            agent, then asks you to land the workspace. Hive drives Claude Code only: Codex and
-            Hermes start with Hive off.
+            Hive is on: it drives this workspace from its brief to landed. After each turn Symbiote
+            runs the check and a reviewer, sends what fails back to the agent, answers its plans and
+            questions, then lands the workspace and pushes it. Hive drives Claude Code only, in its
+            auto mode: Codex and Hermes start with Hive off.
           </p>
         )}
         {agent.apiKey && (
@@ -209,7 +210,7 @@ export function StartAgent({
           />
         </StartCard>
       )}
-      {agent.kind === 'claude' ? (
+      {hive ? null : agent.kind === 'claude' ? (
         <StartCard
           icon={<PermissionIcon />}
           title={<label htmlFor="start-permission">Permissions</label>}

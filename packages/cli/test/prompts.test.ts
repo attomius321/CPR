@@ -112,7 +112,8 @@ describe('with no prompts set (V28)', () => {
     const text = readPrompts(folder()).text;
     expect(MERGER_INSTRUCTIONS).toBe(BEFORE.merger);
     expect(mergerInstructions(text.merger)).toBe(BEFORE.merger);
-    // Since V40, one line on a workspace's documents; since MC1, one on a verdict's `via`; since
+    // Since V40, one line on a workspace's documents; since MC1, one on a verdict's `via` (HV4: and
+    // Hive's); since
     // fix/initial-workspace-bug, the worktree and branch are Symbiote's, and no other is made.
     const agents = BEFORE.agents
       .replace(
@@ -128,7 +129,19 @@ describe('with no prompts set (V28)', () => {
         '  not part of the review.\n' +
           '- `via` on a verdict (`"nucleus"`, or `"scout"`, its former name; or `"mcp"`): an agent of\n' +
           "  the person's wrote it through Symbiote, and the person confirmed it there. It is their\n" +
-          '  verdict as any other.\n',
+          '  verdict as any other. `"hive"`: Hive approved the commit in Hive mode, to land it; its\n' +
+          '  summary says what was checked and reviewed. There is nothing to do.\n',
+      )
+      // HV4: a workspace Hive drives, landed by Hive.
+      .replace(
+        '- Commit on the branch as you go; say when it is ready for review.\n',
+        '- Commit on the branch as you go; say when it is ready for review.\n' +
+          '- `"hive": true` in its record: Hive drives it, from its brief to landed. Hive checks and\n' +
+          '  reviews each turn, answers your plans and questions, lands the branch in the one it started\n' +
+          "  from, and pushes both; no person reviews or approves it. Follow Hive's messages, decide\n" +
+          '  yourself where the brief leaves a choice, and never push, merge, rebase or switch branches.\n' +
+          '  When Hive says a landing failed, merge that branch into yours (`git merge <into>`) and\n' +
+          '  resolve it there, as below, or say why your branch does not cause it.\n',
       )
       // Since V60, a comment on a line no symbol holds names none.
       .replace(
@@ -625,6 +638,9 @@ describe("Nucleus's prompt (V35, NU1)", () => {
       'hive.review',
       'hive.commit',
       'hive.resume',
+      'hive.land',
+      'hive.plan',
+      'hive.decide',
       'hive.reviewer',
       'hive.nucleus',
     ]);
@@ -779,11 +795,16 @@ describe("Hive's prompts (HV2, decision 657)", () => {
       ['hive.review', 'Defects proven'],
       ['hive.commit', 'Not committed'],
       ['hive.resume', 'Resume'],
+      ['hive.land', 'Landing failed'],
+      ['hive.plan', 'Plan OK'],
+      ['hive.decide', 'No one to ask'],
       ['hive.reviewer', 'Reviewer'],
       ['hive.nucleus', 'Alpha Ceph'],
     ]);
     // HV3: the message with the proven tests needs them; the reviewer's answer is Symbiote's.
     expect(of('hive.review')?.placeholders.find((p) => p.required)?.name).toBe('findings');
+    // HV4: a landing that failed needs what failed.
+    expect(of('hive.land')?.placeholders.find((p) => p.required)?.name).toBe('why');
     expect(of('hive.reviewer')?.fixed).toBe(HIVE_REVIEW_ANSWER);
     const without = withConfig({ prompts: { hive: { review: 'Fix it.' } } });
     expect(readPrompts(without).text['hive.review']).toBe(DEFAULT_PROMPTS['hive.review']);

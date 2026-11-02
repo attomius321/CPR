@@ -13,13 +13,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import {
-  openRepo,
-  type GitRepo,
-  type HiveLogLine,
-  type MergeEntry,
-  type Verdict,
-} from '@symbiote/core';
+import { openRepo, type GitRepo, type HiveLogLine, type MergeEntry } from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { repositoryHive, type HiveRecord } from '../src/hive.js';
@@ -30,12 +24,19 @@ import {
   hiveSummary,
   hiveTestsDir,
   readHive,
+  readHives,
   writeHive,
 } from '../src/hive-record.js';
 import type { Confine } from '../src/hive-review.js';
 import { hiveWorkspace } from '../src/hive-workspace.js';
-import type { Merger } from '../src/merges.js';
-import { reviewPlace, type BranchReviews, type ReviewPlace } from '../src/reviews.js';
+import { merger, type Merger } from '../src/merges.js';
+import {
+  branchReviews,
+  readReview,
+  reviewPath,
+  reviewPlace,
+  type ReviewPlace,
+} from '../src/reviews.js';
 import { readThreadEnd, recordEvent } from '../src/thread.js';
 import {
   readRecord,
@@ -329,6 +330,8 @@ function repository(checks: string[]) {
   repo.write({ 'src/a.ts': 'export const a = 1;\n' });
   repo.commit('A');
   repo.git('config', 'user.email', 'ada@example.com');
+  // The merge queue's merge commits (HV4) need a name too.
+  repo.git('config', 'user.name', 'Ada');
   repos.push(repo);
   folders.push(join(dirname(repo.root), `${basename(repo.root)}.worktrees`));
   setChecks(repo, checks);
@@ -356,6 +359,8 @@ interface Setup {
   now: () => Date;
   /** The merge queue's entries, as the runner reads them (decision 717). */
   queue: MergeEntry[];
+  /** With `land` (HV4): the real merge queue Hive lands through. */
+  merges?: Merger;
   runner: (options?: { pid?: number; unseenMs?: number }) => HiveRunner;
   /** Turns Hive on or off as Settings does: the record, then this process's runner told. */
   turn: (on: boolean, runner?: HiveRunner) => Promise<void>;
@@ -364,7 +369,11 @@ interface Setup {
 
 async function setup(
   repo: TestRepo,
-  { confine = unconfined, stopWaitMs }: { confine?: Confine | null; stopWaitMs?: number } = {},
+  {
+    confine = unconfined,
+    stopWaitMs,
+    land = false,
+  }: { confine?: Confine | null; stopWaitMs?: number; land?: boolean } = {},
 ): Promise<Setup> {
   const git = await openRepo(repo.root);
   const now = clock();
@@ -373,6 +382,9 @@ async function setup(
   const fake = fakeClaude(symbioteFolder(where), now);
   const reviewer = fakeReviewer(join(cache, 'fake-reviewer'));
   const queue: MergeEntry[] = [];
+  // HV4: Hive lands through the real merge queue and records its approval in the branch's review.
+  const merges = land ? merger(git, cache, { now }) : undefined;
+  const reviews = land ? branchReviews(git, cache, { now }) : undefined;
   const service = workspaces(git, cache, {
     claude: () => Promise.resolve(fake.claude),
     now,
@@ -388,7 +400,8 @@ async function setup(
       workspaces: service,
       now,
       interval: 0,
-      merges: () => Promise.resolve(queue),
+      merges: merges ? () => merges.list().then((l) => l.merges) : () => Promise.resolve(queue),
+      ...(merges && reviews ? { lander: { merges, reviews }, landRetryMs: 0 } : {}),
       ...(pid ? { pid } : {}),
       ...(unseenMs === undefined ? {} : { unseenMs }),
       reviewer: {
@@ -409,6 +422,7 @@ async function setup(
     copies: join(cache, 'worktrees', git.id, 'hive-review'),
     now,
     queue,
+    ...(merges ? { merges } : {}),
     runner,
     async turn(on, made) {
       await hive.set(on);
@@ -426,6 +440,43 @@ async function setup(
     },
   };
 }
+
+/** A bare `origin` with `main` pushed and tracked. */
+function origin(repo: TestRepo): string {
+  const remote = tempDir();
+  folders.push(remote);
+  repo.git('init', '--quiet', '--bare', remote);
+  repo.git('remote', 'add', 'origin', remote);
+  repo.git('push', '--quiet', '-u', 'origin', 'main');
+  return remote;
+}
+
+/** Looks, waits for what the look started and for the merge queue, until `done` holds. */
+async function settle(
+  runner: HiveRunner,
+  s: Setup,
+  done: () => Promise<boolean>,
+  what: string,
+): Promise<void> {
+  for (let i = 0; i < 40; i++) {
+    await runner.tick();
+    await runner.idle();
+    await s.merges?.idle();
+    if (await done()) return;
+  }
+  const record = JSON.stringify(
+    (await readHives(s.where)).map((r) => [r.branch, r.step, r.note, r.landings?.at(-1)]),
+  );
+  throw new Error(`did not settle: ${what}: ${record}`);
+}
+
+/** The branch's last verdict, as Symbiote keeps it in the person's review file. */
+async function lastVerdict(s: Setup, branch: string) {
+  const file = await readReview(reviewPath(s.where.dir, branch, s.where.reviewer));
+  return file?.verdicts.at(-1);
+}
+
+const stepOf = async (s: Setup, branch: string) => (await readHive(s.where, branch))?.step;
 
 const events = (where: ReviewPlace, branch: string) =>
   existsSync(hiveEventsPath(where, branch))
@@ -566,7 +617,7 @@ describe('Hive, on', () => {
     expect((await readHive(s.where, 'feature/dirty'))?.checks).toEqual([]);
   });
 
-  it('a spike that ends without commits is asked of the person, with no check', async () => {
+  it('a spike that ends without commits is answered, with no check', async () => {
     const repo = repository(['false']);
     const s = await setup(repo);
     await s.turn(true);
@@ -576,26 +627,8 @@ describe('Hive, on', () => {
     await runner.tick();
     await runner.idle();
     const record = await readHive(s.where, 'spike/why');
-    expect(record).toMatchObject({ step: 'landing', checks: [] });
+    expect(record).toMatchObject({ step: 'answered', checks: [] });
     expect(s.fake.resume).not.toHaveBeenCalled();
-  });
-
-  it('a plan first waits for the person, then the loop goes on', async () => {
-    const repo = repository(['true']);
-    const s = await setup(repo);
-    await s.turn(true);
-    const worktree = await s.start('feature/planned', { planFirst: true });
-    const runner = s.runner();
-    await s.fake.endTurn(worktree);
-    await runner.tick();
-    // A plan waits for the person's OK: no message from Hive.
-    expect(await readHive(s.where, 'feature/planned')).toMatchObject({ step: 'writing', round: 1 });
-    expect(s.fake.resume).not.toHaveBeenCalled();
-    await s.service.reply({ branch: 'feature/planned', text: 'OK' });
-    await s.fake.endTurn(worktree, { files: { 'p.txt': 'p\n' } });
-    await runner.tick();
-    await runner.idle();
-    expect((await readHive(s.where, 'feature/planned'))?.step).toBe('landing');
   });
 
   it('refuses Codex and Hermes while Hive is on: Hive drives Claude Code only', async () => {
@@ -1116,7 +1149,7 @@ describe("Hive's running reviewer (HV3)", () => {
     expect(record?.step).toBe('landing');
     expect(record?.reviews.map((r) => r.verdict)).toEqual(['failed', 'failed']);
     expect(record?.reviews[1]?.error).toMatch(/API Error: overloaded/);
-    expect(record?.note).toMatch(/^the running review failed twice: .*review it yourself$/);
+    expect(record?.note).toMatch(/^the running review failed twice: /);
     expect(s.fake.resume).not.toHaveBeenCalled();
   });
 
@@ -1209,9 +1242,10 @@ describe("Hive's running reviewer (HV3)", () => {
     expect(s.reviewer.calls()).toEqual([]);
   });
 
-  it('the Review tab: the rounds, a kept test, and Land, which approves the reviewed commit and queues it', async () => {
+  it('the Review tab: the rounds and a kept test; once landed, its landing and the push (HV4)', async () => {
     const repo = repository(['test -f one.txt']);
-    const s = await setup(repo);
+    origin(repo);
+    const s = await setup(repo, { land: true });
     await s.turn(true);
     const worktree = await s.start('feature/tab');
     s.reviewer.answers([
@@ -1222,54 +1256,21 @@ describe("Hive's running reviewer (HV3)", () => {
       {},
     ]);
     const runner = s.runner();
-    const finish = vi.fn<BranchReviews['finish']>(() =>
-      Promise.resolve({ verdict: {} as Verdict, text: '' }),
-    );
-    const enqueue = vi.fn<Merger['enqueue']>(({ branch, into }) =>
-      Promise.resolve({ id: 'm1', branch, into, state: 'queued' } as MergeEntry),
-    );
-    const tab = hiveWorkspace(s.git, cache, {
-      hive: s.hive,
-      reviews: {
-        resolve: (branch) =>
-          Promise.resolve({
-            info: {
-              branch,
-              ref: branch,
-              base: 'base',
-              head: gitIn(worktree, 'rev-parse', 'HEAD'),
-              reviewed: null,
-              since: null,
-              into: 'main',
-            },
-            pair: {} as Awaited<ReturnType<BranchReviews['resolve']>>['pair'],
-          }),
-        finish,
-      },
-      merges: {
-        targets: () => Promise.resolve({ branches: ['main'], into: 'main', strategy: 'merge' }),
-        enqueue,
-      },
-    });
+    const tab = hiveWorkspace(s.git, cache, { hive: s.hive });
     await s.fake.endTurn(worktree, { files: { 'one.txt': 'uno\n' } });
     await runner.tick();
     await runner.idle();
     await runner.tick();
-    // Not asked yet: Land is refused.
-    await expect(tab.land('feature/tab')).rejects.toThrow(
-      /Hive has not asked to land feature\/tab: it is writing/,
-    );
     expect(await tab.test('feature/tab', 1, 'test/one.test.sh')).toBe(ONE_TEST);
     // Only a kept finding's file is read.
     expect(await tab.test('feature/tab', 1, '../../../config.json')).toBeNull();
     await s.fake.endTurn(worktree, { files: { 'one.txt': 'one\n', 'test/one.test.sh': ONE_TEST } });
-    await runner.tick();
-    await runner.idle();
+    await settle(runner, s, async () => (await stepOf(s, 'feature/tab')) === 'landed', 'landed');
     const tip = gitIn(worktree, 'rev-parse', 'HEAD');
     const detail = await tab.detail('feature/tab');
     expect(detail).toMatchObject({
       branch: 'feature/tab',
-      step: 'landing',
+      step: 'landed',
       round: 2,
       on: true,
       checked: tip,
@@ -1278,25 +1279,10 @@ describe("Hive's running reviewer (HV3)", () => {
         { round: 1, verdict: 'changes' },
         { round: 2, verdict: 'approved' },
       ],
+      landings: [{ at: tip, into: 'main', outcome: 'landed' }],
+      pushed: { sha: tip, ok: true },
     });
     expect(await tab.detail('feature/none')).toBeNull();
-
-    const entry = await tab.land('feature/tab');
-    expect(entry).toMatchObject({ branch: 'feature/tab', into: 'main' });
-    expect(finish).toHaveBeenCalledTimes(1);
-    const [info, review] = finish.mock.calls[0] ?? [];
-    expect(info?.head).toBe(tip);
-    expect(review).toMatchObject({ event: 'approve', comments: [] });
-    expect(review?.body).toContain(`checked and reviewed by Hive at ${tip.slice(0, 7)} (round 2)`);
-    // Nothing reached the writer: Hive keeps waiting for the merge.
-    const sent = s.fake.resume.mock.calls.length;
-    await runner.tick();
-    expect(s.fake.resume.mock.calls.length).toBe(sent);
-    expect((await readHive(s.where, 'feature/tab'))?.step).toBe('landing');
-
-    // Hive off: the person lands it as any workspace.
-    await s.turn(false, runner);
-    await expect(tab.land('feature/tab')).rejects.toThrow(/Hive is off/);
   });
 
   it("asks the reviewer on the project's model and level", async () => {
@@ -1337,19 +1323,8 @@ describe("Hive's live progress", () => {
       .split('\n')
       .filter(Boolean)
       .map((line) => JSON.parse(line) as HiveLogLine);
-  /** The Review tab's service, with nothing to land. */
-  const tabOf = (s: Setup) =>
-    hiveWorkspace(s.git, cache, {
-      hive: s.hive,
-      reviews: {
-        resolve: () => Promise.reject(new Error('not landed here')),
-        finish: () => Promise.reject(new Error('not landed here')),
-      },
-      merges: {
-        targets: () => Promise.reject(new Error('not landed here')),
-        enqueue: () => Promise.reject(new Error('not landed here')),
-      },
-    });
+  /** The Review tab's service. */
+  const tabOf = (s: Setup) => hiveWorkspace(s.git, cache, { hive: s.hive });
   const card = async (s: Setup, branch: string) =>
     (await s.service.list()).workspaces.find((w) => w.branch === branch)?.hive;
 
@@ -2015,15 +1990,18 @@ describe('A turn Hive cannot see (decisions 718–720)', () => {
     await s.start('feature/silent');
     const runner = s.runner({ unseenMs: 10_000 });
     const session = s.fake.listed[0] as AgentSession;
-    // Its agent failed: its card says so, Hive waits as before.
+    // Its agent failed: not a turn Hive cannot see; HV4 starts it again, once (decision 773).
     Object.assign(session, { state: 'failed' });
     delete session.status;
-    // Past the delay (the clock moves a second at each read).
     for (let i = 0; i < 20; i++) s.now();
     await runner.tick();
-    expect(await readHive(s.where, 'feature/silent')).toMatchObject({ step: 'writing' });
-    // A session at work with nothing recorded since the start: a turn Hive cannot see.
-    Object.assign(session, { state: 'working', status: 'busy' });
+    expect(await readHive(s.where, 'feature/silent')).toMatchObject({
+      step: 'writing',
+      restarted: 1,
+    });
+    // The new session at work with nothing recorded since: past the delay (the clock moves a
+    // second at each read), a turn Hive cannot see.
+    for (let i = 0; i < 20; i++) s.now();
     await runner.tick();
     const stuck = await readHive(s.where, 'feature/silent');
     expect(stuck).toMatchObject({ step: 'stuck', round: 1 });
@@ -2054,6 +2032,380 @@ describe('A turn Hive cannot see (decisions 718–720)', () => {
     }
     expect(await readHive(s.where, 'feature/old')).toMatchObject({ step: 'stuck', round: 2 });
     expect(s.fake.resume).not.toHaveBeenCalled();
+  });
+});
+
+describe('Hive lands on its own (HV4, decisions 767–770)', () => {
+  it('lands a workspace whose check and review pass, with no press: approved by Hive, merged, both branches pushed', async () => {
+    const repo = repository(['test -f one.txt']);
+    const remote = origin(repo);
+    const s = await setup(repo, { land: true });
+    await s.turn(true);
+    const worktree = await s.start('feature/one');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'one.txt': 'one\n' } });
+    await settle(runner, s, async () => (await stepOf(s, 'feature/one')) === 'landed', 'landed');
+
+    const tip = gitIn(worktree, 'rev-parse', 'HEAD');
+    const main = repo.git('rev-parse', 'main');
+    const record = await readHive(s.where, 'feature/one');
+    expect(record).toMatchObject({ step: 'landed', pushed: { sha: tip, ok: true } });
+    expect(record?.landings).toMatchObject([
+      { at: tip, into: 'main', outcome: 'landed', merge: main, pushed: { ok: true } },
+    ]);
+    expect(repo.git('log', '--format=%H', 'main')).toContain(tip);
+    // The branch it started from, and its own branch, on origin.
+    expect(repo.git('--git-dir', remote, 'rev-parse', 'main')).toBe(main);
+    expect(repo.git('--git-dir', remote, 'rev-parse', 'feature/one')).toBe(tip);
+    // The approval is Hive's, in the review the merge queue reads, saying what ran.
+    const verdict = await lastVerdict(s, 'feature/one');
+    expect(verdict).toMatchObject({ event: 'approve', head: tip, via: 'hive' });
+    expect(verdict?.summary).toMatch(/^Approved by Hive at [0-9a-f]{7}: checked .*; reviewed/);
+    // Nothing reached the writer after its turn.
+    expect(s.fake.resume).not.toHaveBeenCalled();
+    expect(events(s.where, 'feature/one')).toEqual(
+      expect.arrayContaining(['pushed', 'land-queued', 'landed']),
+    );
+  });
+
+  it('a conflict goes back to the writer, who merges main in; the next landing lands', async () => {
+    const repo = repository(['true']);
+    origin(repo);
+    const s = await setup(repo, { land: true });
+    await s.turn(true);
+    const worktree = await s.start('feature/two');
+    const runner = s.runner();
+    // main moves meanwhile, on the same line.
+    repo.write({ 'src/a.ts': 'export const a = "main";\n' });
+    repo.commit('M: a is main');
+    await s.fake.endTurn(worktree, { files: { 'src/a.ts': 'export const a = "two";\n' } });
+    await settle(
+      runner,
+      s,
+      async () => (await readHive(s.where, 'feature/two'))?.merges === 1,
+      'the conflict sent',
+    );
+    const asked = await readHive(s.where, 'feature/two');
+    expect(asked).toMatchObject({ step: 'writing', round: 1, merges: 1 });
+    expect(asked?.landings).toMatchObject([{ outcome: 'conflict', files: ['src/a.ts'] }]);
+    // Its entry is out of the queue: main is free for other merges.
+    expect((await s.merges?.list())?.merges).toEqual([]);
+    const text = s.fake.resume.mock.calls.at(-1)?.[0].text ?? '';
+    expect(text).toContain('src/a.ts conflicts with main');
+    expect(text).toContain('git merge main');
+    expect(text).toContain('this is time 1');
+
+    // The writer merges main in and resolves it there.
+    try {
+      gitIn(worktree, 'merge', 'main');
+    } catch {
+      // the conflict
+    }
+    writeFileSync(join(worktree, 'src', 'a.ts'), 'export const a = "main" + "two";\n');
+    gitIn(worktree, 'add', '-A');
+    gitIn(worktree, 'commit', '-qm', 'Merge main into feature/two');
+    await s.fake.endTurn(worktree);
+    await settle(runner, s, async () => (await stepOf(s, 'feature/two')) === 'landed', 'landed');
+    expect(readFileSync(join(repo.root, 'src', 'a.ts'), 'utf8')).toBe(
+      'export const a = "main" + "two";\n',
+    );
+    expect((await readHive(s.where, 'feature/two'))?.landings).toMatchObject([
+      { outcome: 'conflict' },
+      { outcome: 'landed' },
+    ]);
+  });
+
+  it('stops after two merges of main, with why, and sends nothing more', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo, { land: true });
+    await s.turn(true);
+    const worktree = await s.start('feature/three');
+    const record = await readHive(s.where, 'feature/three');
+    if (record) await writeHive(s.where, { ...record, merges: 2 });
+    const runner = s.runner();
+    repo.write({ 'src/a.ts': 'export const a = "main";\n' });
+    repo.commit('M');
+    await s.fake.endTurn(worktree, { files: { 'src/a.ts': 'export const a = "three";\n' } });
+    await settle(runner, s, async () => (await stepOf(s, 'feature/three')) === 'stuck', 'stuck');
+    expect((await readHive(s.where, 'feature/three'))?.note).toBe(
+      'could not land in main 3 times: src/a.ts conflicts with main',
+    );
+    expect(s.fake.resume).not.toHaveBeenCalled();
+    expect((await s.merges?.list())?.merges).toEqual([]);
+  });
+
+  it("the merge's check fails: the writer is told; answered not its branch's, the same commit lands", async () => {
+    const flag = join(cache, 'flaky-once');
+    const repo = repository([
+      `case "$PWD" in */merge) test -f ${flag} || { touch ${flag}; echo flaky e2e; exit 1; };; esac`,
+    ]);
+    const s = await setup(repo, { land: true });
+    await s.turn(true);
+    const worktree = await s.start('feature/four');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'four.txt': '4\n' } });
+    await settle(
+      runner,
+      s,
+      async () => (await readHive(s.where, 'feature/four'))?.merges === 1,
+      'the failure sent',
+    );
+    const text = s.fake.resume.mock.calls.at(-1)?.[0].text ?? '';
+    expect(text).toContain('the check failed on the merge');
+    expect(text).toContain('flaky e2e');
+    expect((await readHive(s.where, 'feature/four'))?.landings?.[0]).toMatchObject({
+      outcome: 'check-failed',
+      failed: expect.stringContaining('flaky-once') as unknown,
+    });
+    const checks = (await readHive(s.where, 'feature/four'))?.checks.length;
+    // "Not my branch's": no change.
+    await s.fake.endTurn(worktree);
+    await settle(runner, s, async () => (await stepOf(s, 'feature/four')) === 'landed', 'landed');
+    // The commit was checked and reviewed once (716): only the merge's check ran again.
+    expect((await readHive(s.where, 'feature/four'))?.checks.length).toBe(checks);
+  });
+
+  it("the person's checkout in the way: Hive lands again until it can", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo, { land: true });
+    await s.turn(true);
+    const worktree = await s.start('feature/five');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'src/a.ts': 'export const a = 5;\n' } });
+    // The person edits the same file in the main checkout.
+    writeFileSync(join(repo.root, 'src', 'a.ts'), 'export const a = 1; // mine\n');
+    await settle(
+      runner,
+      s,
+      async () => (await readHive(s.where, 'feature/five'))?.landings?.at(-1)?.state === 'ready',
+      'refused by the checkout',
+    );
+    await runner.tick();
+    await runner.idle();
+    const waiting = await readHive(s.where, 'feature/five');
+    expect(waiting?.step).toBe('landing');
+    expect(waiting?.landings?.at(-1)?.message).toMatch(/local changes/);
+    expect(waiting?.landings?.at(-1)?.tried).toBeDefined();
+
+    repo.git('checkout', '--', 'src/a.ts');
+    await settle(runner, s, async () => (await stepOf(s, 'feature/five')) === 'landed', 'landed');
+    expect(readFileSync(join(repo.root, 'src', 'a.ts'), 'utf8')).toBe('export const a = 5;\n');
+  });
+
+  it('lands on whatever ran: not reviewed, on the check; no check, on the review', async () => {
+    const repo = repository(['test -f six.txt']);
+    const s = await setup(repo, { land: true, confine: null });
+    await s.turn(true);
+    const worktree = await s.start('feature/six');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'six.txt': '6\n' } });
+    await settle(runner, s, async () => (await stepOf(s, 'feature/six')) === 'landed', 'landed');
+    expect((await lastVerdict(s, 'feature/six'))?.summary).toMatch(/checked .*; not reviewed/);
+
+    setChecks(repo, []);
+    const t = await setup(repo, { land: true });
+    await t.turn(true);
+    const other = await t.start('feature/seven');
+    const next = t.runner();
+    await t.fake.endTurn(other, { files: { 'seven.txt': '7\n' } });
+    await settle(next, t, async () => (await stepOf(t, 'feature/seven')) === 'landed', 'landed');
+    expect((await lastVerdict(t, 'feature/seven'))?.summary).toMatch(
+      /not checked: no check is set or found; reviewed/,
+    );
+  });
+
+  it('a refused push of the branch is recorded, never forced, and the loop goes on', async () => {
+    const repo = repository(['true']);
+    const remote = origin(repo);
+    writeFileSync(
+      join(remote, 'hooks', 'update'),
+      '#!/bin/sh\ncase "$1" in refs/heads/feature/*) echo "no feature branches here" >&2; exit 1;; esac\n',
+      { mode: 0o755 },
+    );
+    const s = await setup(repo, { land: true });
+    await s.turn(true);
+    const worktree = await s.start('feature/eight');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'eight.txt': '8\n' } });
+    await settle(runner, s, async () => (await stepOf(s, 'feature/eight')) === 'landed', 'landed');
+    const record = await readHive(s.where, 'feature/eight');
+    expect(record?.pushed).toMatchObject({ ok: false });
+    expect(record?.pushed?.error).toMatch(/no feature branches here/);
+    expect(repo.git('--git-dir', remote, 'rev-parse', 'main')).toBe(repo.git('rev-parse', 'main'));
+  });
+
+  it('Hive off mid-landing: the queue lands it on its own; Hive records it once on again', async () => {
+    const gate = join(cache, 'gate');
+    const repo = repository([
+      `case "$PWD" in */merge) while [ ! -f ${gate} ]; do sleep 0.05; done;; esac`,
+    ]);
+    const s = await setup(repo, { land: true });
+    await s.turn(true);
+    const worktree = await s.start('feature/nine');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'nine.txt': '9\n' } });
+    for (let i = 0; i < 20; i++) {
+      await runner.tick();
+      await runner.idle();
+      if ((await s.merges?.list())?.merges.some((e) => e.state === 'checking')) break;
+    }
+    expect((await s.merges?.list())?.merges).toMatchObject([{ state: 'checking', by: 'hive' }]);
+    await s.turn(false, runner);
+    await runner.idle();
+    writeFileSync(gate, '');
+    await s.merges?.idle();
+    expect((await s.merges?.list())?.merges).toMatchObject([{ state: 'landed' }]);
+    await runner.tick();
+    expect(await stepOf(s, 'feature/nine')).toBe('landing');
+    await s.turn(true, runner);
+    await settle(runner, s, async () => (await stepOf(s, 'feature/nine')) === 'landed', 'landed');
+    expect((await s.merges?.list())?.merges).toHaveLength(1);
+  });
+
+  it('a killed runner mid-landing: the next follows its entry, and queues no second', async () => {
+    const gate = join(cache, 'gate');
+    const repo = repository([
+      `case "$PWD" in */merge) while [ ! -f ${gate} ]; do sleep 0.05; done;; esac`,
+    ]);
+    const s = await setup(repo, { land: true });
+    await s.turn(true);
+    const worktree = await s.start('feature/ten');
+    const first = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'ten.txt': '10\n' } });
+    for (let i = 0; i < 20; i++) {
+      await first.tick();
+      await first.idle();
+      if ((await readHive(s.where, 'feature/ten'))?.landings?.length) break;
+    }
+    first.abandon();
+    const next = s.runner();
+    await next.tick();
+    await next.idle();
+    writeFileSync(gate, '');
+    await settle(next, s, async () => (await stepOf(s, 'feature/ten')) === 'landed', 'landed');
+    expect((await s.merges?.list())?.merges).toHaveLength(1);
+    expect((await readHive(s.where, 'feature/ten'))?.landings).toHaveLength(1);
+  });
+
+  it('a spike that ends without commits is answered: nothing to land', async () => {
+    const repo = repository(['false']);
+    const s = await setup(repo, { land: true });
+    await s.turn(true);
+    const worktree = await s.start('spike/why', { kind: 'spike' });
+    const runner = s.runner();
+    await s.fake.endTurn(worktree);
+    await runner.tick();
+    await runner.idle();
+    await runner.tick();
+    expect(await readHive(s.where, 'spike/why')).toMatchObject({ step: 'answered', checks: [] });
+    expect((await s.merges?.list())?.merges).toEqual([]);
+    expect(await lastVerdict(s, 'spike/why')).toBeUndefined();
+  });
+});
+
+describe('No gate before landing (HV4, decision 773)', () => {
+  it('a plan gets Hive in place of the person: its OK, and the loop goes on', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/planned', { planFirst: true });
+    const runner = s.runner();
+    await s.fake.endTurn(worktree);
+    await runner.tick();
+    await runner.idle();
+    expect(s.fake.resume).toHaveBeenCalledTimes(1);
+    expect(s.fake.resume.mock.calls[0]?.[0].text).toMatch(/^Hive OKs your plan/);
+    expect(await readHive(s.where, 'feature/planned')).toMatchObject({
+      step: 'writing',
+      decided: 1,
+      message: { key: 'hive.plan', sent: true },
+    });
+    await s.fake.endTurn(worktree, { files: { 'p.txt': 'p\n' } });
+    await runner.tick();
+    await runner.idle();
+    expect((await readHive(s.where, 'feature/planned'))?.step).toBe('landing');
+  });
+
+  it('a writer that asks the person is told no one answers, its turn stopped; the fourth ask stops it', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo, { stopWaitMs: 0 });
+    await s.turn(true);
+    const worktree = await s.start('feature/asks');
+    const runner = s.runner();
+    const ask = () =>
+      Object.assign(s.fake.sessionIn(worktree) ?? {}, {
+        state: 'blocked',
+        status: 'idle',
+        waitingFor: 'permission to run Bash',
+      });
+    for (let n = 1; n <= 3; n++) {
+      ask();
+      await runner.tick();
+      await runner.idle();
+      expect(s.fake.resume.mock.calls.at(-1)?.[0].text).toMatch(/^No person answers in Hive mode/);
+      expect(await readHive(s.where, 'feature/asks')).toMatchObject({
+        step: 'writing',
+        decided: n,
+        message: { key: 'hive.decide', sent: true },
+      });
+    }
+    expect(s.fake.stop).toHaveBeenCalledTimes(3);
+    ask();
+    await runner.tick();
+    await runner.idle();
+    expect(await readHive(s.where, 'feature/asks')).toMatchObject({
+      step: 'stuck',
+      note: 'the writer asked for the person 4 times: no one answers in Hive mode',
+    });
+    expect(s.fake.resume).toHaveBeenCalledTimes(3);
+  });
+
+  it('a writer that failed is started again once; failing again stops it, with why', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    const worktree = await s.start('feature/fails');
+    const runner = s.runner();
+    Object.assign(s.fake.sessionIn(worktree) ?? {}, { state: 'failed' });
+    delete s.fake.sessionIn(worktree)?.status;
+    await runner.tick();
+    await runner.idle();
+    expect(s.fake.start).toHaveBeenCalledTimes(2);
+    expect(await readHive(s.where, 'feature/fails')).toMatchObject({
+      step: 'writing',
+      restarted: 1,
+    });
+    Object.assign(s.fake.sessionIn(worktree) ?? {}, { state: 'failed' });
+    delete s.fake.sessionIn(worktree)?.status;
+    await runner.tick();
+    await runner.idle();
+    expect(s.fake.start).toHaveBeenCalledTimes(2);
+    expect(await readHive(s.where, 'feature/fails')).toMatchObject({
+      step: 'stuck',
+      note: 'its agent failed twice',
+    });
+  });
+
+  it("a Hive writer runs in Claude Code's auto mode, whatever the start asked", async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    await s.service.start({
+      branch: 'feature/mode',
+      brief: 'x',
+      planFirst: false,
+      permissionMode: 'default',
+    });
+    expect(s.fake.start.mock.calls[0]?.[0].permissionMode).toBe('auto');
+    expect((await readRecord(s.where, 'feature/mode')).agent?.permissionMode).toBe('auto');
+    await s.turn(false);
+    await s.service.start({
+      branch: 'feature/normal',
+      brief: 'x',
+      planFirst: false,
+      permissionMode: 'default',
+    });
+    expect(s.fake.start.mock.calls[1]?.[0].permissionMode).toBe('default');
   });
 });
 

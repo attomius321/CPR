@@ -250,7 +250,8 @@ function StartForm({
     run.permissionMode ??
     options.agents.find((a) => a.kind === 'claude')?.permissionMode ??
     'default';
-  const planFirst = run.planFirst ?? true;
+  // Hive mode (HV4, decision 773): no plan first, and Claude Code's auto mode; nothing waits for you.
+  const planFirst = hive ? false : (run.planFirst ?? true);
   // The model picked (V47), while the agent lists it; the level and its choices are that model's.
   const model = agent ? keptModel(run.model, agent) : undefined;
   const models = agent ? modelChoices(agent) : [];
@@ -736,21 +737,25 @@ function StartForm({
               efforts={efforts}
               onChoose={choose}
             />
-            <StartCard
-              icon={<PlanIcon />}
-              title={<label htmlFor="start-plan">Plan first and wait for my OK</label>}
-              control={
-                <input
-                  id="start-plan"
-                  type="checkbox"
-                  role="switch"
-                  checked={planFirst}
-                  onChange={(event) => choose({ ...run, planFirst: event.target.checked })}
-                />
-              }
-            >
-              <p className="start-card-note">Let the agent propose a plan before making changes.</p>
-            </StartCard>
+            {!hive && (
+              <StartCard
+                icon={<PlanIcon />}
+                title={<label htmlFor="start-plan">Plan first and wait for my OK</label>}
+                control={
+                  <input
+                    id="start-plan"
+                    type="checkbox"
+                    role="switch"
+                    checked={planFirst}
+                    onChange={(event) => choose({ ...run, planFirst: event.target.checked })}
+                  />
+                }
+              >
+                <p className="start-card-note">
+                  Let the agent propose a plan before making changes.
+                </p>
+              </StartCard>
+            )}
             <StartDocuments
               entries={documents}
               options={options.documents}

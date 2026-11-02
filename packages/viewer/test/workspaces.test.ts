@@ -1,6 +1,7 @@
 import type {
   AgentOption,
   BranchReviewSummary,
+  HiveLanding,
   WorkspaceAgentState,
   WorkspaceStart,
   WorkspaceHive,
@@ -841,13 +842,24 @@ describe('workspaceNext for a workspace Hive drives (HV2)', () => {
   });
   const ready = { agent: { state: 'ready' as const, kind: 'claude' as const }, ahead: 2 };
 
-  it("says Hive's step while Hive works, and the writer's own states otherwise", () => {
-    // The writer at work, or waiting on the person: as any workspace.
-    expect(next({ hive: hive() })).toEqual({ group: 'working', text: 'Working', mark: '⚙' });
-    expect(next({ hive: hive(), agent: { state: 'plan-ready', kind: 'claude' } }).text).toBe(
-      'Plan ready: read it and answer',
+  it("in Hive mode every state is Hive's, in its group; nothing waits for the person (HV4)", () => {
+    // The writer at work: its agent's words and mark, in Hive's group.
+    expect(next({ hive: hive() })).toEqual({ group: 'hive', text: 'Writing', mark: '⚙' });
+    expect(workspaceNext(summary({ hive: hive() })).hive).toBeUndefined();
+    expect(workspaceNext(summary({ hive: hive() })).chip.tone).toBe('working');
+    // What would wait for the person, Hive answers.
+    expect(next({ hive: hive(), agent: { state: 'plan-ready', kind: 'claude' } })).toEqual({
+      group: 'hive',
+      text: 'Hive: OKing its plan',
+      mark: '⚙',
+    });
+    expect(next({ hive: hive(), agent: { state: 'needs-you', kind: 'claude' } }).text).toBe(
+      'Hive: answering for you',
     );
-    // Its turn ended: Hive's to act on, not the person's to review.
+    expect(next({ hive: hive(), agent: { state: 'failed', kind: 'claude' } }).text).toBe(
+      'Hive: starting its agent again',
+    );
+    // Its turn ended: Hive's to act on.
     expect(next({ ...ready, hive: hive() })).toEqual({
       group: 'hive',
       text: 'Hive: reading its turn',
@@ -859,29 +871,78 @@ describe('workspaceNext for a workspace Hive drives (HV2)', () => {
       text: 'Hive: running the check',
       mark: '⚙',
     });
-    // Hive's words are Symbiote's: no agent's mark before them; the writer's are its agent's.
+    expect(next({ ...ready, hive: hive({ step: 'reviewing', round: 2 }) })).toEqual({
+      group: 'hive',
+      text: 'Hive: reviewing',
+      mark: '⚙',
+    });
+    // Hive's words are Symbiote's: no agent's mark before them; their tone Hive's (decision 698).
     expect(workspaceNext(summary({ ...ready, hive: hive({ step: 'checking' }) })).hive).toBe(true);
-    expect(workspaceNext(summary({ hive: hive() })).hive).toBeUndefined();
-    // Hive's steps are a state of their own (decision 698): their tone, not the writer's.
     expect(workspaceNext(summary({ ...ready, hive: hive({ step: 'checking' }) })).chip.tone).toBe(
       'hive',
     );
-    expect(workspaceNext(summary({ hive: hive() })).chip.tone).toBe('working');
+    // A stop is a stop, with why, in Hive's group.
+    expect(
+      next({
+        ...ready,
+        hive: hive({ step: 'stuck', round: 3, note: 'the check failed 3 times: pnpm check' }),
+      }),
+    ).toEqual({ group: 'hive', text: 'Stopped: the check failed 3 times: pnpm check', mark: '!' });
   });
 
-  it('asks the person to land it once checked, and says why Hive stopped', () => {
+  it('says where its landing is, then landed in Done (HV4)', () => {
+    const landing = (over: Partial<HiveLanding> = {}): HiveLanding => ({
+      round: 1,
+      at: TIP,
+      into: 'main',
+      entry: 'm1',
+      queued: '2026-11-02T10:00:00.000Z',
+      ...over,
+    });
+    expect(next({ ...ready, hive: hive({ step: 'landing' }) })).toEqual({
+      group: 'hive',
+      text: 'Hive: landing it',
+      mark: '⚙',
+    });
+    expect(
+      next({ ...ready, hive: hive({ step: 'landing', landing: landing({ state: 'checking' }) }) })
+        .text,
+    ).toBe('Landing in main: checking the merge');
+    expect(
+      next({ ...ready, hive: hive({ step: 'landing', landing: landing({ state: 'ready' }) }) })
+        .text,
+    ).toBe('Landing in main: waiting for your checkout');
+    // No review of the person's in Hive mode: a verdict changes nothing.
+    expect(
+      next({ ...ready, hive: hive({ step: 'landing' }) }, { verdict: verdict('approve') }).group,
+    ).toBe('hive');
+    const landed = hive({
+      step: 'landed',
+      landing: landing({ outcome: 'landed', pushed: { ok: true, remote: 'origin' } }),
+    });
+    expect(next({ ...ready, merged: true, hive: landed })).toEqual({
+      group: 'done',
+      text: 'Landed in main · pushed',
+      mark: '✓',
+    });
+    expect(next({ hive: hive({ step: 'answered' }) })).toEqual({
+      group: 'done',
+      text: 'Answered: read its report',
+      mark: '✓',
+    });
+  });
+
+  it('with Hive off, as on main: the person reviews and lands it (HV2, HV3)', () => {
     const checked = hive({
       step: 'landing',
       off: true,
       check: { round: 1, at: TIP, ok: true, ms: 1 },
     });
-    // Hive off since it asked: the person's review, as for any workspace (HV2's words).
     expect(next({ ...ready, hive: checked })).toEqual({
       group: 'review',
       text: 'Checked: review and land it',
       mark: '●',
     });
-    // A review in progress or a verdict says what is next, as for any workspace.
     expect(next({ ...ready, hive: checked }, { verdict: verdict('approve') }).text).toBe(
       'Approved: ask your agent to merge it',
     );
@@ -894,73 +955,43 @@ describe('workspaceNext for a workspace Hive drives (HV2)', () => {
     expect(
       next({
         ...ready,
-        hive: hive({ step: 'stuck', round: 3, note: 'the check failed 3 times: pnpm check' }),
+        hive: hive({ step: 'stuck', off: true, note: 'the check failed 3 times: pnpm check' }),
       }),
     ).toEqual({
       group: 'waiting',
       text: 'Hive stopped: the check failed 3 times: pnpm check',
       mark: '?',
     });
-  });
-
-  it('says Hive reviews it, then asks to land it with Land, in Hive mode (HV3)', () => {
-    expect(next({ ...ready, hive: hive({ step: 'reviewing', round: 2 }) })).toEqual({
-      group: 'hive',
-      text: 'Hive: reviewing',
-      mark: '⚙',
-    });
-    expect(workspaceNext(summary({ ...ready, hive: hive({ step: 'reviewing' }) })).hive).toBe(true);
-    const review = { round: 2, at: TIP, verdict: 'approved' as const, kept: 0 };
-    const landing = hive({ step: 'landing', round: 2, review });
-    expect(next({ ...ready, hive: landing })).toEqual({
-      group: 'review',
-      text: 'Checked and reviewed: land it',
-      mark: '●',
-    });
-    // No review of the person's in Hive mode: one in progress says nothing here.
-    expect(next({ ...ready, hive: landing }, {}).text).toBe('Checked and reviewed: land it');
-    // Land pressed: its approval at the tip, the merge queue has it.
-    expect(next({ ...ready, hive: landing }, { verdict: verdict('approve') }).text).toBe(
-      'Landing: in the merge queue',
-    );
-    expect(
-      next({
-        ...ready,
-        hive: hive({
-          step: 'landing',
-          note: "not reviewed: Claude Code's sandbox is not available: socat not installed",
-        }),
-      }).text,
-    ).toBe('Not reviewed: look, then land it');
-    expect(
-      next({ ...ready, hive: hive({ step: 'landing', note: 'no check is set or found' }) }).text,
-    ).toBe('No check ran: check, then land it');
-    expect(
-      next({
-        ...ready,
-        hive: hive({ step: 'stuck', round: 3, note: 'the reviewer proved defects in 3 rounds' }),
-      }).text,
-    ).toBe('Hive stopped: the reviewer proved defects in 3 rounds');
-    expect(next({ ...ready, hive: hive({ step: 'reviewing', paused: true }) })).toEqual({
+    expect(next({ ...ready, hive: hive({ step: 'reviewing', paused: true, off: true }) })).toEqual({
       group: 'stopped',
       text: 'Hive off: paused before the review',
       mark: '·',
     });
-  });
-
-  it('says Hive off has paused it, unless the person goes on with the writer', () => {
     const stopped = { agent: { state: 'stopped' as const, kind: 'claude' as const } };
-    expect(next({ ...stopped, hive: hive({ paused: true }) })).toEqual({
+    expect(next({ ...stopped, hive: hive({ paused: true, off: true }) })).toEqual({
       group: 'stopped',
       text: 'Hive off: paused',
       mark: '·',
     });
-    expect(next({ ...ready, hive: hive({ step: 'checking', paused: true }) })).toEqual({
-      group: 'stopped',
-      text: 'Hive off: paused before the check',
-      mark: '·',
-    });
-    expect(next({ hive: hive({ paused: true }) }).text).toBe('Working');
+    expect(next({ hive: hive({ paused: true, off: true }) }).text).toBe('Working');
+  });
+
+  it('in Hive mode the sidenav has only Hive and Done (HV4, decision 774)', () => {
+    const groups = workspaceGroups(
+      [
+        summary({ branch: 'feature/a', hive: hive() }),
+        summary({ branch: 'feature/b', ...ready }),
+        summary({ branch: 'feature/c', merged: true, ahead: 1 }),
+      ],
+      null,
+      { hiveMode: true },
+    );
+    expect(
+      (Object.entries(groups) as [string, readonly unknown[]][])
+        .filter(([, rows]) => rows.length > 0)
+        .map(([g]) => g),
+    ).toEqual(['hive', 'done']);
+    expect(groups.hive.map((r) => r.workspace.branch)).toEqual(['feature/a', 'feature/b']);
   });
 });
 

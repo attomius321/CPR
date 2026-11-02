@@ -414,11 +414,13 @@ The sidenav also opens these pages. Each has a key.
   prompt; the model and effort of the merger, Nucleus and Scribe (set only here: their pages have no
   such choices); the **Skill library** (its folder,
   or a repository to clone, and who commits its changes); **Hive mode** (this repository's switch
-  for Hive: while it is on, Symbiote runs the check after each turn of a workspace's agent, a
-  reviewer runs the change in a throwaway copy and proves defects with failing tests, Symbiote
-  sends the agent what fails, then asks you to land the workspace from its **Review** tab. While
-  Hive checks or reviews, its card is in the sidenav's **Hive** group and says which command runs
-  and for how long, and the Review tab shows the output as it comes; see
+  for Hive, which drives each workspace you start from its brief to landed, with no step that
+  waits for you: Symbiote runs the check after each turn of its agent, a reviewer runs the change
+  in a throwaway copy and proves defects with failing tests, Symbiote sends the agent what fails
+  and answers its plans and questions, then Hive lands the workspace in the branch it started from
+  and pushes it. In Hive mode the sidenav has two groups, **Hive** and **Done**. Start a project in
+  normal mode, and turn Hive on once the repository has a check and tests you trust; it does not
+  turn on while a workspace started in normal mode is open. See
   [configuration](docs/reference/configuration.md#hive-mode)); and **Appearance** (dark, light or
   your system's; the text size, Compact, Default or Large, which changes the text and not the rows;
   and whether Git's commit details show on the right or below the commits).

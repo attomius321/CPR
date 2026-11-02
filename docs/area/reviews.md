@@ -76,6 +76,11 @@ workspace agent's input box instead.
 Symbiote pushes nothing on Approve. The `into` an approval names is the branch the review was
 made against: the workspace's `against`, else its `from`, else the default branch.
 
+A verdict can carry `via`: `nucleus` or `mcp` when an agent of the person's wrote it on their
+Confirm, `hive` when Hive approved a workspace it drives, to land it (HV4, decision 767). Hive's
+approval is written in the person's review file, the one the merger reads; its summary says what
+was checked and reviewed, and Git's page says **Approved by Hive**.
+
 A comment carries its file, side (`head` or `base`) and line at the reviewed commit, the line's
 code, the innermost symbol holding the line, the text and an ID. A comment without a line is
 about its whole symbol.

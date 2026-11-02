@@ -3,7 +3,7 @@
 import type { VerdictEvent } from './git/branches.js';
 import type { FileChangeStatus } from './git/changed-files.js';
 import type { McpVia } from './mcp.js';
-import type { LogLine, LogRead } from './merges.js';
+import type { LogLine, LogRead, MergeEntry } from './merges.js';
 
 /** How a workspace's agent is doing, as the commits page shows it. */
 export type AgentStateName =
@@ -132,7 +132,68 @@ export interface CheckGuess {
  * Symbiote runs, the running review of a commit the check passed on (HV3, decision 674), landing
  * asked of the person; `stuck` at the round cap; `landed` once merged.
  */
-export type HiveStep = 'writing' | 'checking' | 'reviewing' | 'landing' | 'stuck' | 'landed';
+/**
+ * Where Hive is with a workspace (HV2, HV3); `answered` (HV4): a spike that ended without commits,
+ * its answer its report, nothing to land.
+ */
+export type HiveStep =
+  'writing' | 'checking' | 'reviewing' | 'landing' | 'stuck' | 'landed' | 'answered';
+
+/**
+ * A landing Hive tried (HV4, decisions 767–769): its approval queued through the merge queue, and
+ * how it ended. In flight while it has no `outcome`.
+ */
+export interface HiveLanding {
+  round: number;
+  /** The commit approved and queued. */
+  at: string;
+  /** The branch it lands in: the one the workspace started from. */
+  into: string;
+  /** The merge queue's entry. */
+  entry: string;
+  queued: string;
+  /** The queue's state as Hive last read it, while in flight; and why it waits, if it says. */
+  state?: MergeEntry['state'];
+  message?: string;
+  /** Hive's last Land of an entry the person's checkout refused (decision 770). */
+  tried?: string;
+  ended?: string;
+  outcome?:
+    | 'landed'
+    | 'conflict'
+    | 'check-failed'
+    | 'cannot-fast-forward'
+    | 'diverged'
+    | 'failed'
+    | 'refused';
+  /** Conflicting files; the command that failed and its output's end. */
+  files?: string[];
+  failed?: string;
+  output?: string;
+  /** The merge's log, kept beside Hive's record once its entry is removed. */
+  log?: string;
+  /** Landed: the merge, and the target's push. */
+  merge?: string;
+  pushed?: MergeEntry['pushed'];
+}
+
+/** `GET /api/hive/state` (HV4): what turning Hive mode on or off concerns. */
+export interface HiveState {
+  on: boolean;
+  /** Open workspaces started in normal mode and not merged: Hive does not turn on (decision 772). */
+  normal: { branch: string; title?: string }[];
+  /** Hive's workspaces writing, checking, reviewing or landing: what Hive off stops (771). */
+  flight: { branch: string; step: HiveStep; title?: string }[];
+}
+
+/** Hive's push of a workspace's branch to `origin` (HV4, decision 768). */
+export interface HivePush {
+  at: string;
+  /** The commit pushed. */
+  sha: string;
+  ok: boolean;
+  error?: string;
+}
 
 /**
  * A defect Hive's running reviewer reported with a test of its own (HV3, decision 678), and what
@@ -212,7 +273,7 @@ export interface HiveCheck {
  * A step of a Hive run's log (decision 695): one of the check's commands; in a running review, an
  * install command in its copy, the reviewer, a finding's rerun.
  */
-export type HiveLogStep = 'check' | 'install' | 'review' | 'rerun';
+export type HiveLogStep = 'check' | 'install' | 'review' | 'rerun' | 'merge' | 'resolve' | 'land';
 
 /** A line of a Hive run's log, in the merge log's format (V46a). */
 export type HiveLogLine = LogLine<HiveLogStep>;
@@ -273,6 +334,10 @@ export interface WorkspaceHive {
    * review, not by Land.
    */
   off?: true;
+  /** The landing in flight, or the last one (HV4). */
+  landing?: HiveLanding;
+  /** The branch's last push to `origin` (HV4). */
+  pushed?: HivePush;
 }
 
 /**
@@ -295,6 +360,10 @@ export interface WorkspaceHiveDetail {
   live?: HiveLive;
   /** Where the kept findings' tests are, beside Hive's record (`r<round>/<path>` below it). */
   tests: string;
+  /** Each landing Hive tried, the last in flight while it has no outcome (HV4). */
+  landings?: HiveLanding[];
+  /** The branch's last push to `origin` (HV4). */
+  pushed?: HivePush;
 }
 
 /** A workspace and its agent, for the commits page. */

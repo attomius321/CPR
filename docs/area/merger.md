@@ -33,8 +33,9 @@ Terms used below:
 1. A person approves a branch in its Review tab. The verdict records the approved commit and the
    branch to merge into (see [Reviews](reviews.md)). Nothing is merged yet.
 2. The person picks **Merge into ▾**, or runs `symbiote merge <branch>`. Symbiote queues an
-   *entry*: the branch, the approved commit, the target and the strategy. In Hive mode, **Land**
-   on a workspace's Review tab records the approval and queues the entry in one step.
+   *entry*: the branch, the approved commit, the target and the strategy. In Hive mode, Hive
+   approves the commit it checked and reviewed and queues the entry itself, with no press (see
+   [Hive's merges](#hives-merges)).
 3. The merger takes one entry at a time per repository. It resets its merge worktree to the
    target's tip and merges the approved commit with `--no-ff`. The commit's subject is
    `Merge <branch>: <the workspace's title, else the approved commit's subject>`. (With the
@@ -46,7 +47,7 @@ Terms used below:
    at once, and nobody has to act. If it fails, the entry is `failed`. If there is no check, the
    entry waits at `ready` until the person presses **Land**.
 6. To land, Symbiote moves the target by fast-forward to the merge commit. Pushing is off by
-   default: Symbiote pushes the target only if `merge.push` is `true`.
+   default: Symbiote pushes the target only if `merge.push` is `true`, or Hive queued the merge.
 
 The states an entry goes through are `queued`, `merging`, `resolving`, `checking`, `ready`,
 `needs-you`, `landed` and `failed` (`MERGE_STATES` in `packages/core/src/merges.ts`). `ready`
@@ -63,9 +64,28 @@ the order they were queued.
   old value, so a ref that moved meanwhile is refused.
 - **The target moved since the merge**: the entry goes back to `queued` and is merged again on the
   new tip.
-- **Pushing**: only with `merge.push: true`, to the target's upstream, else to `origin`.
-  Symbiote reads `merge.push` before it lands, because the landing can bring a different
-  `symbiote/config.json` into the checkout.
+- **Pushing**: only with `merge.push: true`, or for a merge Hive queued, to the target's
+  upstream, else to `origin`, never forced. Symbiote reads `merge.push` before it lands, because
+  the landing can bring a different `symbiote/config.json` into the checkout.
+
+## Hive's merges
+
+An entry Hive queues has `by: 'hive'` (HV4). Every other entry is merged as above.
+
+- **The target is brought up to its remote first**: Symbiote fetches the target's branch from its
+  upstream (else `origin`) and, when the remote is ahead, fast-forwards the target to it, in the
+  checkout that has it. If the two have diverged, the entry fails with `diverged` set, and nothing
+  is merged. A fetch that fails is logged, and the merge goes on.
+- **A conflict gets no merger agent**: the merge is aborted and the entry waits at `needs-you` with
+  its files. Hive takes it out of the queue and asks the workspace's agent to merge the target
+  into its branch.
+- **No check**: the entry lands without one.
+- **Landed**: the target is pushed whatever `merge.push` says, as a network run (ssh in batch
+  mode, 120 s), never forced. A refused push is in the entry's `pushed`.
+- **Hive follows the entry**: landed, it marks the workspace landed; `ready` because the person's
+  checkout refused, it presses Land again each minute; `failed` or `needs-you`, it copies what
+  failed and the log into its record, removes the entry (the target is free again), and tells the
+  agent. The merge page marks the entry **by Hive** and offers no **Send to the agent** on it.
 
 ## The check
 
@@ -123,7 +143,8 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 | Each entry's log, one JSON object a line | `<cache>/state/<repo-id>/merges/<id>.jsonl` (`packages/cli/src/merge-log.ts`) |
 | The merge worktree | `<cache>/worktrees/<repo-id>/merge` |
 | The merger agent's prompt and answer parsing | `packages/cli/src/merge-agent.ts` |
-| Hive's **Land**: the approval and the queued entry | `packages/cli/src/hive-workspace.ts` |
+| Hive's landing: the approval, the queued entry, what Hive does with its end | `packages/cli/src/hive-runner.ts` (`landing`, `land`, `follow`) |
+| A target fetched, a push that never prompts | `fetchBranch`, `pushBranch` in `packages/core/src/git/sync.ts` |
 | Settings: `merge.checks`, `push`, `strategy`, `agent`, `model`, `effort` | `symbiote/config.json`; defaults in [configuration](../reference/configuration.md) |
 | A project's rules for the merger agent | `symbiote/merge.md`, committed with the project |
 | **Merge into ▾** | `packages/viewer/src/workspaces/MergeControl.tsx` |
@@ -147,7 +168,7 @@ when a later decision or a fix changed it.
 | 142 | Symbiote merges; an agent only for conflicts; never the workspace's agent | [V26](../plan/v26-merger.md) |
 | 143 | The merge happens in a worktree in Symbiote's cache | V26 |
 | 144 | The target moves by fast-forward only: in the worktree that has it, else `update-ref` with the old value | V26 |
-| 145 | No push unless `merge.push` | V26 |
+| 145 | No push unless `merge.push`, or Hive queued the merge | V26, changed by [HV4](../plan/hv4-autonomous-landing.md)'s 768 |
 | 146 | A clean merge needs no agent and no review: the approval was the yes | V26 |
 | 147 | Every resolution is reviewed by the person before it lands | V26 (its rule step dropped by 164) |
 | 148 | The merger agent's model is `merge.model`, by default `sonnet` for Claude Code | V26 |
@@ -168,6 +189,10 @@ when a later decision or a fix changed it.
 | 494–497 | The merge page uses the theme's colours and the mockup's shapes; the log fills the page; a conflict's Files and Log are line tabs | [V69](../plan/v69-merge-page-mockup.md) |
 | 742 | **Send to the agent** sends a failed check to the branch's workspace, only when the person presses it | [AR2](../plan/ar2-defaults-from-ar1.md) |
 | 743 | In this repository, `docs/JOURNAL.md` merges as a union (`.gitattributes`), so it no longer conflicts | AR2 |
+| 767 | In Hive mode, Hive approves (`via: "hive"`) and queues the commit it checked and reviewed, into the branch the workspace started from; no Land | [HV4](../plan/hv4-autonomous-landing.md) |
+| 768 | Hive's merges: the target brought up to its remote first, diverged stops it; pushed after landing whatever `merge.push` | HV4 |
+| 769 | Hive's merges: no merger agent; a conflict or a failed check goes to the workspace's agent, twice at most | HV4 |
+| 770 | Hive's merge refused by the person's checkout: Land again each minute | HV4 |
 
 These no longer hold:
 
@@ -175,6 +200,9 @@ These no longer hold:
 - **147's "rule, then agent"**: V26b's rule was dropped (164).
 - **149's preselection** (`from`, the verdict's `into`, the default branch): the reviewed-against
   branch comes first since V65 (473).
+- **681's Land** on a Hive workspace's Review tab: since HV4, Hive lands it itself (767).
+- **147 and 164 for Hive's merges**: a conflict in a merge Hive queued goes to the workspace's
+  agent, not the merger agent, and no person reviews a resolution (769).
 
 ## Traps
 
@@ -187,7 +215,11 @@ These no longer hold:
   links would resolve into the main checkout, and the check would run the wrong code (V26).
 - **Hold every later merge into the same target.** A merge that waits at `ready` or `failed` and
   lands later moves the tip under the next one
-  ([the queue fix](../journal/fix-merger-queue-wrong-behaviour.md)).
+  ([the queue fix](../journal/fix-merger-queue-wrong-behaviour.md)). So a Hive merge that failed
+  must leave the queue, or it holds the target for everyone: Hive removes it before it tells the
+  agent ([HV4](../journal/hv4-autonomous-landing.md)).
+- **A merge commit needs a git user name**, which a test repository may lack: "Committer identity
+  unknown" (HV4).
 - **Read the target's tip before every start**, **Check again** included (the queue fix).
 - **The person's Claude Code hooks run in the merger's `claude -p`**: two `SessionStart` hooks a
   run here ([V46](../journal/v46-merger-logs.md)).

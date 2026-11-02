@@ -17,6 +17,11 @@ function said(row: WorkspaceRow, before: WorkspaceRow): string | null {
   // A failure; a stop the person asked for needs no word.
   if (next.group === 'stopped' && next.chip.tone === 'failed')
     return `${name} stopped: ${next.text}`;
+  // Hive mode (HV4): a card stays Hive's until it lands, or Hive stops it.
+  if (next.group === 'done' && before.next.group === 'hive') return `${name}: ${next.text}`;
+  if (next.group === 'hive' && next.chip.tone === 'failed') {
+    return `${name} ${next.text.replace(/^Stopped:/, 'stopped:')}`;
+  }
   return null;
 }
 
@@ -37,7 +42,12 @@ export function transitionNotice(
   for (const row of after) {
     const { branch } = row.workspace;
     const prior = was.get(branch);
-    if (branch === shown || !prior || prior.next.group === row.next.group) continue;
+    // In Hive's group, a stop is news though the group stays (HV4).
+    const stops =
+      row.next.group === 'hive' &&
+      row.next.chip.tone === 'failed' &&
+      prior?.next.chip.tone !== 'failed';
+    if (branch === shown || !prior || (prior.next.group === row.next.group && !stops)) continue;
     const text = said(row, prior);
     if (text) told.push({ text, branch });
   }
