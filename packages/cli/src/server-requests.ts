@@ -241,6 +241,30 @@ export function parseLandsBy(text: string): { by: 'queue' | 'request' } {
   return { by: value.by };
 }
 
+/**
+ * `{ pauseAt?, budget? }`: Hive's pacing (HV5): a percent or `false`, dollars or `null`; their
+ * ranges are the setting's to refuse.
+ */
+export function parseHivePacing(text: string): {
+  pauseAt?: number | false;
+  budget?: number | null;
+} {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (!value || typeof value !== 'object') throw new Error('{ pauseAt?, budget? }');
+  const { pauseAt, budget } = value;
+  if (pauseAt !== undefined && pauseAt !== false && typeof pauseAt !== 'number') {
+    throw new Error('pauseAt: a percent, or false');
+  }
+  if (budget !== undefined && budget !== null && typeof budget !== 'number') {
+    throw new Error('budget: dollars, or null');
+  }
+  if (pauseAt === undefined && budget === undefined) throw new Error('pauseAt or budget');
+  return {
+    ...(pauseAt !== undefined ? { pauseAt } : {}),
+    ...(budget !== undefined ? { budget } : {}),
+  };
+}
+
 /** `{ branch, text, stop? }`: a message for a workspace's agent (V18c). */
 export function parseWorkspaceReply(text: string): WorkspaceReply {
   const value = JSON.parse(text) as Record<string, unknown> | null;

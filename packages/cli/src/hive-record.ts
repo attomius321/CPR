@@ -10,6 +10,7 @@ import type {
   HiveFinding,
   HiveLanding,
   HiveLive,
+  HivePause,
   HivePush,
   HiveRequest,
   HiveReview,
@@ -114,6 +115,15 @@ export interface HiveFile {
   restarted?: number;
   /** Its pull or merge request, when Hive lands by request (HV8). */
   request?: HiveRequest;
+  /**
+   * Hive holds its next start of an agent for usage (HV5, decision 800): a window at or over the
+   * threshold until it resets, or usage unknown. Removed once the gate lets it start.
+   */
+  paused?: HivePause;
+  /** Its writer was never started: the gate held it at the workspace's start (HV5). */
+  unstarted?: true;
+  /** Its writer's spend by Claude Code's own count, as Hive last read it (HV5, decision 801). */
+  spent?: { writer: number; at: string };
 }
 
 /** Every Hive record's first key. */
@@ -351,6 +361,28 @@ function requestOf(value: unknown): HiveRequest | null {
   };
 }
 
+/** A pause as the record keeps it (HV5); null when it is not one. */
+export function pauseOf(value: unknown): HivePause | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  const reason = v.reason === 'usage' || v.reason === 'unknown' ? v.reason : null;
+  const number = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x : null);
+  const pauseAt = number(v.pauseAt);
+  if (!reason || pauseAt === null || !text(v.since)) return null;
+  const minutes = number(v.minutes);
+  const percent = number(v.percent);
+  return {
+    reason,
+    ...(minutes ? { minutes } : {}),
+    ...(text(v.scope) ? { scope: text(v.scope) } : {}),
+    ...(percent !== null ? { percent } : {}),
+    pauseAt,
+    ...(text(v.until) ? { until: text(v.until) } : {}),
+    ...(text(v.why) ? { why: text(v.why) } : {}),
+    since: text(v.since),
+  };
+}
+
 /** A push as the record keeps it (HV4); null when it is not one. */
 function pushOf(value: unknown): HivePush | null {
   if (!value || typeof value !== 'object') return null;
@@ -430,8 +462,29 @@ export function parseHive(value: unknown): HiveFile | null {
     ...(count(v.restarted) ? { restarted: count(v.restarted) } : {}),
     ...(pushOf(v.pushed) ? { pushed: pushOf(v.pushed) as HivePush } : {}),
     ...(requestOf(v.request) ? { request: requestOf(v.request) as HiveRequest } : {}),
+    ...(pauseOf(v.paused) ? { paused: pauseOf(v.paused) as HivePause } : {}),
+    ...(v.unstarted === true ? { unstarted: true as const } : {}),
+    ...(spentOf(v.spent) ? { spent: spentOf(v.spent) as { writer: number; at: string } } : {}),
   };
 }
+
+/** The writer's spend as the record keeps it (HV5); null when it is not one. */
+function spentOf(value: unknown): { writer: number; at: string } | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  return typeof v.writer === 'number' && Number.isFinite(v.writer) && v.writer >= 0
+    ? { writer: v.writer, at: text(v.at) }
+    : null;
+}
+
+/**
+ * A pause the card shows (HV5): the record's, while its step waits to start an agent (the writer's
+ * turn or the running review).
+ */
+export const shownPause = (record: HiveFile): HivePause | undefined =>
+  record.paused && (record.step === 'writing' || record.step === 'reviewing')
+    ? record.paused
+    : undefined;
 
 /** A Hive workspace's record; null when there is none, or it is not one. */
 export async function readHive(where: ReviewPlace, branch: string): Promise<HiveFile | null> {
@@ -509,6 +562,7 @@ export function hiveSummary(record: HiveFile, on: boolean, live?: HiveLive): Wor
     ...(record.landings?.length ? { landing: record.landings.at(-1) } : {}),
     ...(record.pushed ? { pushed: record.pushed } : {}),
     ...(record.request ? { request: record.request } : {}),
+    ...(shownPause(record) ? { pause: shownPause(record) } : {}),
   };
 }
 

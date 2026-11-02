@@ -615,4 +615,69 @@ describe('usageService', () => {
     expect(await usage.report()).toEqual({ subscriptions: [], off: true });
     expect(claude.reads()).toBe(0);
   });
+
+  // HV5 (decision 798): Hive's gate reads Claude's numbers through the same copy, but waits for a
+  // new read once the copy is older than it can bear, rather than answering from it.
+  describe("Claude's numbers for Hive's gate", () => {
+    it('answers from the copy while it is young enough, else waits for a new read of Claude only', async () => {
+      let now = NOW;
+      const claude = reader(
+        { subscription: sub('claude', 10) },
+        { subscription: sub('claude', 20) },
+      );
+      const codex = reader({ subscription: sub('codex', 1) });
+      const usage = usageService({ claude: claude.read, codex: codex.read }, { now: () => now });
+      expect((await usage.claude(5 * MIN)).subscription?.windows[0]?.usedPercent).toBe(10);
+      expect(codex.reads()).toBe(0);
+      now += 4 * MIN;
+      expect((await usage.claude(5 * MIN)).subscription?.windows[0]?.usedPercent).toBe(10);
+      expect(claude.reads()).toBe(1);
+      now += MIN + 1_000;
+      // Older than 5 min: the new numbers, not the copy.
+      expect((await usage.claude(5 * MIN)).subscription?.windows[0]?.usedPercent).toBe(20);
+      expect(claude.reads()).toBe(2);
+      expect(codex.reads()).toBe(0);
+    });
+
+    it('says why the last read failed, with the last numbers; nothing with usage off', async () => {
+      let now = NOW;
+      const claude = reader(
+        { subscription: sub('claude', 10) },
+        { subscription: null, failed: "Claude's usage answered 500" },
+        new Error('socket closed'),
+      );
+      const usage = usageService({ claude: claude.read, codex: claude.read }, { now: () => now });
+      expect(await usage.claude(5 * MIN)).toEqual({ subscription: sub('claude', 10) });
+      now += 5 * MIN;
+      expect(await usage.claude(5 * MIN)).toEqual({
+        subscription: { ...sub('claude', 10), note: "Claude's usage answered 500" },
+        failed: "Claude's usage answered 500",
+      });
+      now += 5 * MIN;
+      expect(await usage.claude(5 * MIN)).toMatchObject({
+        subscription: { windows: [{ usedPercent: 10 }] },
+        failed: 'socket closed',
+      });
+      const off = usageService({ claude: claude.read, codex: claude.read }, { off: true });
+      expect(await off.claude(5 * MIN)).toEqual({ subscription: null, off: true });
+    });
+
+    it('keeps the 429 wait: no read before it ends', async () => {
+      let now = NOW;
+      const claude = reader(
+        { subscription: sub('claude', 10), backoff: true },
+        { subscription: sub('claude', 30) },
+      );
+      const usage = usageService(
+        { claude: claude.read, codex: () => Promise.resolve({ subscription: null }) },
+        { now: () => now },
+      );
+      await usage.claude(MIN);
+      now += 2 * MIN;
+      expect((await usage.claude(MIN)).subscription?.windows[0]?.usedPercent).toBe(10);
+      expect(claude.reads()).toBe(1);
+      now += 3 * MIN;
+      expect((await usage.claude(MIN)).subscription?.windows[0]?.usedPercent).toBe(30);
+    });
+  });
 });

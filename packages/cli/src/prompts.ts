@@ -944,7 +944,7 @@ export function writePrompt(root: string, change: PromptChange): Promise<void> {
 export function writeConfig(
   root: string,
   path: readonly string[],
-  value: string | undefined,
+  value: string | number | boolean | undefined,
   older?: readonly string[],
 ): Promise<void> {
   return oneAtATime(async () => {
