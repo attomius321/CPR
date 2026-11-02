@@ -51,3 +51,20 @@ Hive, Settings, targets and page-frame specs, 34 of 34. Screenshots dark and lig
 Not verified: a real GitHub or GitLab (on purpose: nothing was sent to a forge); GitHub's lazy
 `mergeable` on a real request (the fake answers at once); GitLab's draft notes on a merge request
 opened seconds before; a self-hosted forge.
+
+## HV8 — the running reviewer's round 1: two defects proven (2026-11-02, branch `feature/hive-pull-requests`)
+
+**Learned**:
+- **A merge of the person's is theirs, by request too** (717). With Hive off the Review tab says
+  "review and land it as any workspace"; the person did, and on again the workspace stayed at
+  "Waiting for your merge": the request path read only the forge, never `summary.merged`. Now a
+  branch merged outside its request is landed, the attempt says so ("merged into main outside its
+  pull request #12, which stays open on GitHub"), and the request is no longer awaited; the same in
+  the other steps (`leaveTo`).
+- **The off question named the request in place of the step.** The server names an open request
+  for every step in flight, and the words then said only that it stays open, not that the writer
+  or the check is stopped. Now the step's words come first and the request after them.
+
+**Verification**: the reviewer's two tests, added as they were (`hive-request-runner.test.ts`, for
+GitHub and GitLab; `hive-off-request.test.ts`), red before the fix, green after; with the runner's
+and the switch's suites, 86 tests.

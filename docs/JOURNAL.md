@@ -383,3 +383,4 @@ merge commit.
 - 2026-11-02 [HV4 — the real runs: two workspaces landed with no press](journal/hv4-autonomous-landing.md)
 - 2026-11-02 [HV8 plan — a pull or merge request at a workspace's end](journal/hv8-hive-pull-requests.md)
 - 2026-11-02 [HV8 — Hive lands through a pull or merge request, built](journal/hv8-hive-pull-requests.md)
+- 2026-11-02 [HV8 — the running reviewer's round 1: a merge outside the request, the off question](journal/hv8-hive-pull-requests.md)

@@ -11,25 +11,26 @@ const FORGES = {
 } as const;
 
 /**
- * What turning Hive off does to a workspace at `step`, and what turning it on again does; one
- * waiting for the person's merge of its request (HV8) keeps the request open.
+ * What turning Hive off does to a workspace at `step`, and what turning it on again does; its
+ * request, when one is open (HV8), stays open on the forge whatever the step.
  */
 export function offWords(step: HiveStep, request?: HiveState['flight'][number]['request']): string {
-  if (request) {
-    const forge = FORGES[request.forge];
-    return `its ${forge.request} ${forge.sign}${request.number} stays open on ${forge.name}: merge it there; Hive reads it again once on`;
-  }
+  const open = request
+    ? `its ${FORGES[request.forge].request} ${FORGES[request.forge].sign}${request.number} stays open on ${FORGES[request.forge].name}`
+    : null;
   switch (step) {
     case 'writing':
-      return 'its agent is stopped; on again, Hive tells it to continue';
+      return `its agent is stopped; on again, Hive tells it to continue${open ? `; ${open}` : ''}`;
     case 'checking':
-      return 'its check is stopped; on again, the check runs again';
+      return `its check is stopped; on again, the check runs again${open ? `; ${open}` : ''}`;
     case 'reviewing':
-      return 'its review is stopped and its copy deleted; on again, a new review';
+      return `its review is stopped and its copy deleted; on again, a new review${open ? `; ${open}` : ''}`;
     case 'landing':
-      return 'its landing goes on: the merge queue checks, lands and pushes it; Hive records it once on again';
+      return open
+        ? `${open}: merge it there; Hive reads it again once on`
+        : 'its landing goes on: the merge queue checks, lands and pushes it; Hive records it once on again';
     default:
-      return 'nothing runs for it';
+      return open ? `nothing runs for it; ${open}` : 'nothing runs for it';
   }
 }
 

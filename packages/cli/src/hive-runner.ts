@@ -469,7 +469,7 @@ export function hiveRunner(
     const step = landing === 'merged' ? 'landed' : 'landing';
     await moveTo(
       where,
-      record,
+      landing === 'merged' ? landedOutside(record) : record,
       { step, message: undefined, check: undefined, review: undefined, interrupted: undefined },
       step,
       landing === 'queued' ? { queued: true, ...data } : data,
@@ -1404,6 +1404,13 @@ export function hiveRunner(
     last: HiveLanding,
     summary: WorkspaceSummary,
   ): Promise<void> {
+    // Merged outside the request (the person's own, with Hive off, say): theirs, landed (717).
+    if (summary.merged) {
+      return void (await moveTo(where, landedOutside(record), { step: 'landed' }, 'landed', {
+        into: last.into,
+        outside: true,
+      }));
+    }
     const turn = await turnOf(where, record.branch, record.since);
     if (turn?.prompt && turn.prompt.at > record.since && record.request?.state === 'open') {
       return roundsAgain(where, record, turn.prompt.at);
@@ -1422,6 +1429,31 @@ export function hiveRunner(
       return act(record.branch, land(where, record.branch, summary));
     }
     return watchRequest(where, record);
+  }
+
+  /**
+   * A branch merged into the start branch outside its open request (717: a merge of the person's
+   * is theirs): the request no longer awaited, its landing attempt ended as landed, saying so. The
+   * request itself stays open on the forge.
+   */
+  function landedOutside(record: HiveFile): HiveFile {
+    const request = record.request;
+    if (!request || request.state !== 'open') return record;
+    const words = FORGE_WORDS[request.forge];
+    const last = record.landings?.at(-1);
+    const after: HiveFile = { ...record };
+    delete after.request;
+    if (last?.via === 'request' && !last.outcome) {
+      const done: HiveLanding = {
+        ...last,
+        outcome: 'landed',
+        ended: stamp(),
+        message: `merged into ${last.into} outside its ${requestWords(request)}, which stays open on ${words.name}`,
+      };
+      delete done.state;
+      after.landings = [...(record.landings ?? []).slice(0, -1), done];
+    }
+    return after;
   }
 
   /** Whether the request is due a read (791). */
