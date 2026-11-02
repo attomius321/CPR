@@ -83,3 +83,20 @@ unchanged. A real hang is reported after 30 s instead of 5 s.
 **Verification**: before, the full suite at load 8–25 failed both (5,257 and 5,152 ms against
 5,000). After, the 97 tests of the six files pass at load 14–23, the slowest 1.7 s; the full
 suite's results after the change are in the last entry.
+
+## Fix — the verdict kept across `g` (2026-11-02)
+
+A verdict picked in the Graph page's Review tab was back to **Comment** after `g` to Files, so
+**Finish review** there sent a comment. The summary and the comments survived the switch: they are
+the page's draft (`useReview`). The verdict was the tab's own state (`ReviewTab.tsx`), and each
+page draws its own tab, so the switch dropped it.
+
+**Decided**: the verdict is the page's, beside the draft in `useReview`, and back to Comment for
+a new graph and once a review is posted or finished. It is not saved with the draft: a verdict is
+given to the head shown, and under `symbiote pr` a saved draft is carried to a later push.
+
+**Verification**: an e2e test first (`reviews.spec.ts`): Request changes and a summary on the
+Graph page, `g` to Files and back twice, Finish review; the review file's verdict is
+`request-changes` with the summary, and the next review starts at Comment. Red on the build
+before the fix (the radio unchecked after `g`, the summary kept), green after. `reviews.spec.ts`
+passes whole.

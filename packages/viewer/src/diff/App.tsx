@@ -93,8 +93,17 @@ export function App() {
   const graph = state.status === 'ready' ? state.graph : undefined;
   const forge = state.status === 'ready' ? state.forge : null;
   const store = state.status === 'ready' ? state.store : undefined;
-  const { marks, draft, updateDraft, toggleReviewed, addDraft, addLineDraft, removeDraft } =
-    useReview(graph, store);
+  const {
+    marks,
+    draft,
+    updateDraft,
+    verdict,
+    setVerdict,
+    toggleReviewed,
+    addDraft,
+    addLineDraft,
+    removeDraft,
+  } = useReview(graph, store);
   const served = state.status === 'ready' && state.files;
   const files = useReviewFiles(graph, served);
   // Files first (decision 431), unless the address asks for Graph or there is no diff to show:
@@ -309,8 +318,13 @@ export function App() {
           forge,
           draft,
           onBody: (body: string) => updateDraft((d) => ({ ...d, body }), 300),
+          verdict,
+          onVerdict: setVerdict,
           onRemove: removeDraft,
-          onPosted: () => updateDraft(() => ({ drafts: [], body: '' })),
+          onPosted: () => {
+            updateDraft(() => ({ drafts: [], body: '' }));
+            setVerdict('comment');
+          },
           ...(state.branchReview
             ? {
                 local: {
