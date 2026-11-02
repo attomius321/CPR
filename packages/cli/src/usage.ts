@@ -418,9 +418,24 @@ export async function readCodexUsage({
   };
 }
 
+/**
+ * Claude's subscription as Hive's gate reads it (HV5, decision 798): the numbers kept, why the last
+ * read failed, or that nothing is read (`SYMBIOTE_USAGE=off`).
+ */
+export interface ClaudeUsageRead {
+  subscription: UsageSubscription | null;
+  failed?: string;
+  off?: true;
+}
+
 /** `GET /api/usage`: the copy, read again in the background once older than 5 min. */
 export interface UsageService {
   report(): Promise<UsageReport>;
+  /**
+   * Claude's numbers for Hive's gate (HV5): the copy while younger than `maxAgeMs`, else a new read
+   * of Claude's alone, waited for; the 429 wait still holds.
+   */
+  claude(maxAgeMs: number): Promise<ClaudeUsageRead>;
   /** Resolves once the read under way (if any) is done: for tests. */
   settled(): Promise<void>;
 }
@@ -463,14 +478,17 @@ export function usageService(
     backoffMs = 300_000,
   }: { off?: boolean; now?: () => number; maxAgeMs?: number; backoffMs?: number } = {},
 ): UsageService {
-  const kept = new Map<string, { subscription: UsageSubscription | null; readAt: number }>();
+  const kept = new Map<
+    string,
+    { subscription: UsageSubscription | null; readAt: number; failed?: string }
+  >();
   const waitUntil = new Map<string, number>();
   let reading: Promise<void> | null = null;
 
   /** Reads the subscriptions whose copy is old (and not told to wait), one read at a time. */
-  const readAll = (): Promise<void> => {
+  const readAll = (agents: readonly (typeof AGENTS)[number][] = AGENTS): Promise<void> => {
     if (reading) return reading;
-    const due = AGENTS.filter((agent) => {
+    const due = agents.filter((agent) => {
       const last = kept.get(agent);
       return (!last || now() - last.readAt >= maxAgeMs) && (waitUntil.get(agent) ?? 0) <= now();
     });
@@ -481,9 +499,13 @@ export function usageService(
         try {
           const read = await readers[agent]();
           if (read.backoff) waitUntil.set(agent, now() + backoffMs);
-          kept.set(agent, { subscription: shown(last, read, now()), readAt: now() });
-        } catch {
-          kept.set(agent, { subscription: last, readAt: now() });
+          kept.set(agent, {
+            subscription: shown(last, read, now()),
+            readAt: now(),
+            ...(read.failed !== undefined ? { failed: read.failed } : {}),
+          });
+        } catch (error) {
+          kept.set(agent, { subscription: last, readAt: now(), failed: (error as Error).message });
         }
       }),
     ).then(() => {
@@ -503,6 +525,20 @@ export function usageService(
       if (kept.size === 0) await readAll();
       else void readAll();
       return report();
+    },
+    async claude(maxAgeMs) {
+      if (off) return { subscription: null, off: true };
+      const young = () => {
+        const last = kept.get('claude');
+        return last !== undefined && now() - last.readAt < maxAgeMs;
+      };
+      if (!young() && reading) await reading;
+      if (!young() && (waitUntil.get('claude') ?? 0) <= now()) await readAll(['claude']);
+      const last = kept.get('claude');
+      return {
+        subscription: last?.subscription ?? null,
+        ...(last?.failed !== undefined ? { failed: last.failed } : {}),
+      };
     },
     settled: () => reading ?? Promise.resolve(),
   };

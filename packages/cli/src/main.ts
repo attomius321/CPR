@@ -69,6 +69,7 @@ import { gitPage } from './git-page.js';
 import { frameworkHints, loadPlugins } from './plugins.js';
 import { postGraphFindings } from './post-findings.js';
 import { hiveLandingService, hiveRequests } from './hive-request.js';
+import { hivePacing, hivePacingService } from './hive-pacing.js';
 import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ChangeFiles, type ReviewTarget } from './server.js';
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
@@ -743,6 +744,23 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   const hive = repositoryHive(repo, cacheDir);
   // Nucleus's start without a Confirm (NU8): the person's setting, kept as Hive mode is.
   const nucleusStartSetting = repositoryNucleusStart(repo, cacheDir);
+  // Each subscription's windows (V29c): agents Symbiote can start, signed in to a plan.
+  const usage = usageService(
+    {
+      claude: () =>
+        readClaudeUsage({
+          installed: async () => (await findClaude(ctx.env)) !== null,
+          env: ctx.env,
+          home: homedir(),
+          // Shared by every `symbiote view` on this machine, and kept for the next run.
+          lastFile: join(cacheDir, 'usage', 'claude.json'),
+        }),
+      codex: () => readCodexUsage({ codex: codexOf, env: ctx.env, home: homedir() }),
+    },
+    { off: ctx.env.SYMBIOTE_USAGE === 'off' },
+  );
+  // HV5: one gate before every agent Hive starts, reading Claude's windows through that copy.
+  const pacing = hivePacing({ root: repo.root, usage: (maxAgeMs) => usage.claude(maxAgeMs) });
   const repoWorkspaces = workspaces(repo, cacheDir, {
     claude: claudeOf,
     codex: codexOf,
@@ -751,6 +769,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     openFolder,
     terminals,
     hive: () => hive.on(),
+    hivePacing: pacing,
   });
   // Branch reviews (V15) and the merger (V26): the review pages', and Hive's landings (HV4).
   const repoReviews = branchReviews(repo, cacheDir);
@@ -784,6 +803,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
           analyzePair(pair, { onPhase: () => undefined, signal: new AbortController().signal }),
       }),
     },
+    pacing,
     log: log.log,
   });
   // The branches hidden from Git's graph (decision 645): the listing, its search and the status's
@@ -858,26 +878,13 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         terminals,
         library,
       }),
-      // Each subscription's windows (V29c): agents Symbiote can start, signed in to a plan.
-      usage: usageService(
-        {
-          claude: () =>
-            readClaudeUsage({
-              installed: async () => (await findClaude(ctx.env)) !== null,
-              env: ctx.env,
-              home: homedir(),
-              // Shared by every `symbiote view` on this machine, and kept for the next run.
-              lastFile: join(cacheDir, 'usage', 'claude.json'),
-            }),
-          codex: () => readCodexUsage({ codex: codexOf, env: ctx.env, home: homedir() }),
-        },
-        { off: ctx.env.SYMBIOTE_USAGE === 'off' },
-      ),
+      usage,
     },
     open: vsCodeOpener(repo, ctx.env),
     intro: introOf(ctx),
     hiveReviewer: reviewerSettingsService(repo.root, claudeOf),
     hiveLanding: hiveLandingService(repo, repo.root, ctx.env),
+    hivePacing: hivePacingService(repo.root, pacing, { read: ctx.env.SYMBIOTE_USAGE !== 'off' }),
     // Settings' switch: the runner told at once (HV2), another process's change read at its tick.
     hive: {
       on: () => hive.on(),

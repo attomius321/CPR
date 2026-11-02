@@ -22,6 +22,10 @@ function said(row: WorkspaceRow, before: WorkspaceRow): string | null {
   if (next.group === 'hive' && next.chip.tone === 'failed') {
     return `${name} ${next.text.replace(/^Stopped:/, 'stopped:')}`;
   }
+  // HV5: Hive held its next start for usage, or goes on.
+  if (next.paused && !before.next.paused)
+    return `${name} ${next.text.replace(/^Paused:/, 'paused:')}`;
+  if (before.next.paused && !next.paused && next.group === 'hive') return `${name} goes on`;
   return null;
 }
 
@@ -42,12 +46,15 @@ export function transitionNotice(
   for (const row of after) {
     const { branch } = row.workspace;
     const prior = was.get(branch);
-    // In Hive's group, a stop is news though the group stays (HV4).
+    // In Hive's group, a stop is news though the group stays (HV4); a pause and its end too (HV5).
     const stops =
       row.next.group === 'hive' &&
       row.next.chip.tone === 'failed' &&
       prior?.next.chip.tone !== 'failed';
-    if (branch === shown || !prior || (prior.next.group === row.next.group && !stops)) continue;
+    const paces = prior !== undefined && Boolean(prior.next.paused) !== Boolean(row.next.paused);
+    if (branch === shown || !prior || (prior.next.group === row.next.group && !stops && !paces)) {
+      continue;
+    }
     const text = said(row, prior);
     if (text) told.push({ text, branch });
   }

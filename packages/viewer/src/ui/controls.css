@@ -19,6 +19,7 @@
 .git-field input,
 .git-field textarea,
 .git-commit-message,
+.hive-budget input,
 select,
 .start-from-field {
   border: 1px solid var(--field-line);
@@ -46,6 +47,7 @@ select,
 .git-field input:hover:not(:focus, :disabled),
 .git-field textarea:hover:not(:focus, :disabled),
 .git-commit-message:hover:not(:focus, :disabled),
+.hive-budget input:hover:not(:focus, :disabled),
 select:hover:not(:focus, :disabled),
 .start-from-field:hover:not(:focus, [aria-expanded='true']) {
   border-color: var(--edge);
@@ -66,6 +68,7 @@ select:hover:not(:focus, :disabled),
 .git-field input:focus-visible,
 .git-field textarea:focus-visible,
 .git-commit-message:focus-visible,
+.hive-budget input:focus-visible,
 select:focus-visible,
 .start-from-field:focus-visible {
   outline: none;

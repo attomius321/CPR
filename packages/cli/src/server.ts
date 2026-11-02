@@ -45,6 +45,7 @@ import {
   parseMergeChanges,
   parseHiveChange,
   parseLandsBy,
+  parseHivePacing,
   parseMergeId,
   parseMcpAnswer,
   parseMergeRequest,
@@ -87,6 +88,7 @@ import { withHive, type HiveRecord } from './hive.js';
 import { nucleusStart } from './nucleus-start.js';
 import type { ReviewerSettings } from './hive-review.js';
 import type { HiveLandingService } from './hive-request.js';
+import type { HivePacingService } from './hive-pacing.js';
 import type { HiveWorkspace } from './hive-workspace.js';
 import type { Histories } from './history.js';
 import {
@@ -186,7 +188,7 @@ export interface RepositoryOptions {
   /** Where the checkout's code is, by file (RM1): `/monitor`, `/api/monitor…`. */
   monitor?: { map(): Promise<CodeMap> };
   /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 5-min copy. */
-  usage?: UsageService;
+  usage?: Pick<UsageService, 'report' | 'settled'>;
 }
 
 export interface ViewServerOptions {
@@ -227,6 +229,8 @@ export interface ViewServerOptions {
   hiveReviewer?: ReviewerSettings;
   /** Enables `/api/hive/landing` (HV8): how Hive lands, the forge and its token. */
   hiveLanding?: HiveLandingService;
+  /** Enables `/api/hive/pacing` (HV5): the usage threshold, the budget, Hive's pause now. */
+  hivePacing?: HivePacingService;
   /**
    * Symbiote's logs (LG1): a line per request, and the pages' errors at `POST /api/logs`;
    * without it, nothing is written.
@@ -416,6 +420,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (landing && url.pathname === '/api/hive/landing') {
       if (req.method === 'GET') return read(req, res, () => landing.read());
       return written(req, res, parseLandsBy, ({ by }) => answer(res, () => landing.set(by)));
+    }
+    const pacing = options.hivePacing;
+    if (pacing && url.pathname === '/api/hive/pacing') {
+      if (req.method === 'GET') return read(req, res, () => pacing.read());
+      return written(req, res, parseHivePacing, (change) => answer(res, () => pacing.set(change)));
     }
     const reviewer = options.hiveReviewer;
     if (reviewer && url.pathname === '/api/hive/reviewer/efforts') {

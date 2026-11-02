@@ -1,7 +1,7 @@
 // A Hive workspace's Review tab (HV3, decision 681): what Hive did — each round's check and running
 // review, their findings with the tests that prove them and Symbiote's rerun — and, since HV4,
 // each landing Hive tried and the branch's last push. Hive lands on its own: no Land. HV8: the pull
-// or merge request it waits on, beside the landings.
+// or merge request it waits on, beside the landings. HV5: what it spent, by Claude Code's count.
 import { useEffect, useState } from 'react';
 import type {
   HiveCheck,
@@ -28,6 +28,7 @@ import {
   requestName,
   requestState,
   reviewWords,
+  spendWords,
   verdictWords,
 } from './hive-rounds.js';
 
@@ -360,11 +361,26 @@ export function HiveReviewTab({ branch, version }: { branch: string; version: un
   const rounds = hiveRounds(detail);
   const landings = [...(detail.landings ?? [])].reverse();
   const pushed = detail.pushed;
+  // HV5: what it spent, once it spent anything or has a budget; at its budget, as a stop.
+  const spend = detail.spend;
+  const spent = spend && (spend.total > 0 || spend.budget !== undefined) ? spend : undefined;
   return (
     <div className="hive-review">
       <div className="hive-review-head">
         <p className="hive-now">{stepWords(detail)}</p>
       </div>
+      {spent && (
+        <p
+          className={
+            spent.budget !== undefined && spent.total >= spent.budget
+              ? 'hive-line hive-spend error'
+              : 'hive-line hive-spend'
+          }
+          aria-label="Spend"
+        >
+          {spendWords(spent)}
+        </p>
+      )}
       {pushed && (
         <p className={pushed.ok ? 'hive-line' : 'hive-line error'}>
           {pushed.ok

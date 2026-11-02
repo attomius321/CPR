@@ -114,6 +114,7 @@ import {
 import type { CodexThread } from './app-server.js';
 import { activityOf, serverActivity } from './workspace-activity.js';
 import { codexRunsOn, transcriptOf, transcriptReader } from './workspace-running.js';
+import { pauseEvent, type HivePacing } from './hive-pacing.js';
 import { MAX_BRIEF, workKinds } from './workspace-brief.js';
 import { onServer, workspaceCodex } from './workspace-codex.js';
 import { hermesEntries, hermesTools, type Hermes, type HermesSession } from './hermes.js';
@@ -480,6 +481,7 @@ export function workspaces(
     advisor,
     hive,
     stopWaitMs = 10_000,
+    hivePacing,
   }: {
     /** Finds Claude Code (once a start or a list needs it); null when it is not installed. */
     claude: () => Promise<ClaudeCode | null>;
@@ -509,6 +511,11 @@ export function workspaces(
     hive?: () => Promise<boolean>;
     /** How long a reply waits for a stopped session's process to end before it resumes it. */
     stopWaitMs?: number;
+    /**
+     * Hive's gate (HV5, decision 796): a Hive writer's start waits while it says so, and Hive's
+     * runner starts it later. Without it, every start goes at once.
+     */
+    hivePacing?: Pick<HivePacing, 'usage'>;
   },
 ): Workspaces {
   const hiveOn = async () => (await hive?.().catch(() => false)) ?? false;
@@ -1483,13 +1490,25 @@ export function workspaces(
         worktree: folder,
       };
       await prepareSymbioteFolder(where, { text: readPrompts(root).text.reviews });
+      // HV5: a Hive writer starts through Hive's gate; held, Hive's runner starts it later.
+      const pause = hiving ? await hivePacing?.usage() : null;
       // Hive's record before its writer starts (decision 652): its first turn from now on.
       if (hiving) {
-        await writeHive(where, firstRecord(workspace.branch, workspace.created));
+        const first = firstRecord(workspace.branch, workspace.created);
+        await writeHive(where, pause ? { ...first, paused: pause, unstarted: true } : first);
         await hiveEvent(where, workspace.branch, workspace.created, 'started');
+        if (pause) {
+          await hiveEvent(where, workspace.branch, workspace.created, 'paused', pauseEvent(pause));
+        }
       }
       // After the folder's .gitignore: the documents are never seen by git (V40).
       if (documents.length > 0) workspace.documents = await placeDocuments(papers, documents);
+      if (pause) {
+        // Claude Code in auto at the model and level asked, not started (`startAgent` starts it).
+        workspace.agent = { kind: 'claude', permissionMode, ...startedAs({ effort, model }) };
+        await writeRecord(where, workspace);
+        return started(where, workspace, await promptOf(where, workspace));
+      }
       const prompt = await launch(where, workspace, agent, permissionMode, { effort, model });
       return started(where, workspace, prompt);
     },

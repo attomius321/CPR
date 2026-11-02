@@ -41,6 +41,8 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `merge.model` | `sonnet` for Claude Code, else the agent's own | The model the merger runs on. |
 | `merge.effort` | the agent's own | The effort level the merger runs at, if its model takes one. |
 | `hive.lands` | `queue` | How [Hive](#hive-mode) lands a workspace: `queue`, through the merge queue into the branch it started from; or `request`, through a pull request (GitHub) or merge request (GitLab) that you merge. See [Landing through a pull or merge request](#landing-through-a-pull-or-merge-request). Set it in Settings' **Hive mode** page. |
+| `hive.usage.pauseAt` | `90` | A whole percent from 1 to 100: while any window of your Claude subscription is at it or above, [Hive](#hive-mode) starts no agent until that window resets. `false`: Hive does not pause by usage. See [Pacing: usage and budget](#pacing-usage-and-budget). Set it in Settings' **Hive mode** page. |
+| `hive.budget` | none | Dollars a workspace Hive drives may spend, by Claude Code's own count: its agent's sessions and its running reviews. Reached, Hive stops the workspace. See [Pacing: usage and budget](#pacing-usage-and-budget). |
 | `hive.reviewer.model` | `opus` | The model [Hive's running reviewer](#the-running-reviewer) is asked on. |
 | `hive.reviewer.effort` | `high` | The effort level the running reviewer is asked at, if its model takes it. |
 | `prompts` | Symbiote's text | The text Symbiote gives its agents. See [Prompts](#prompts). |
@@ -390,6 +392,43 @@ Hive runs the agent in Claude Code's `auto` permission mode, whatever the Start 
 settings file say: Claude Code's own classifier refuses a risky action instead of asking. What it
 still asks, Hive answers (`hive.decide`).
 
+### Pacing: usage and budget
+
+Hive reads your Claude subscription's usage before it starts any agent: a workspace's agent at its
+start, each message it sends the agent (a message starts a turn), an agent it starts again, and
+each running review. The check, a landing and a request's watch start no agent, so they go on.
+
+- **A window at the threshold pauses Hive.** If any window of the subscription (the 5-hour
+  session, the week, or a model's own week) is at `hive.usage.pauseAt` (90 %) or above, Hive starts
+  nothing for any of its workspaces until that window resets. Then it goes on by itself. When
+  several windows are over it, Hive waits for the one that resets last. A turn or a review already
+  running finishes: Hive never stops work for usage.
+- **The card says why and until when**, for example **Paused: usage 92 % of the 5-hour window,
+  goes on at 16:10**, in your own time. So do the workspace's head, its **Review** tab and
+  Settings' **Hive mode** page. The status bar says when a workspace pauses and when it goes on.
+- **The pause is kept** in each paused workspace's record (`paused`: the window, its percent, the
+  threshold and when it resets). It holds through Hive off and on, and through a restart of
+  `symbiote view`, until the window resets. Raising the threshold above the window's use ends it at
+  the next look.
+- **Usage is read** as the status bar reads it: one read at most every 5 minutes, and none for 5
+  minutes after Claude answers 429. A read older than 5 minutes is read again before Hive decides.
+- **Usage that cannot be read**: the last read stands for 15 minutes. After that, or with no read at
+  all (no token, say), Hive pauses with **Paused: usage unknown** and why, until a read succeeds.
+  An account without usage windows (an API key) sets `hive.usage.pauseAt` to `false`. With
+  `SYMBIOTE_USAGE=off` Symbiote reads no usage, and Hive does not pause for it.
+
+**The budget** (`hive.budget`, none by default) is in dollars per workspace, by Claude Code's own
+count: what its agent's sessions cost (the `cost-state` Claude Code writes in each session's
+transcript at the end of a turn) and what each running review cost. Before each start, Hive adds
+them up; at the budget or above, it stops the workspace, and the card says
+**Stopped: its spend reached its budget: $20.40 of $20.00 (the writer $14.10, 3 reviews $6.30)**.
+A turn or a review already running finishes first, so a workspace can end a turn or a review over
+its budget. To go on, raise the budget in Settings, then send the agent a message. The **Review**
+tab says what each workspace spent: **Spent $47.20: the writer $29.18, 8 reviews $18.02**.
+
+A message you send the agent while Hive holds its own drops Hive's: your turn goes first, and the
+rounds start again.
+
 ### Hive off and on
 
 - **Turning Hive off** stops every Hive agent that works or waits, and any check or review Hive
@@ -436,7 +475,8 @@ A workspace Hive drives has `"hive": true` in its record. Hive writes its step i
 ```
 
 The steps are `writing` (the agent's turn), `checking`, `reviewing`, `landing` (asked of you),
-`stuck` (after 3 rounds) and `landed`. The record also keeps each check's result and the last lines
+`stuck` (after 3 rounds) and `landed`. A workspace whose next agent waits for usage has `paused`,
+and `spent` keeps its agent's cost as Hive last read it. The record also keeps each check's result and the last lines
 of its output, and each review with its findings. The tests of the defects a review proved are kept
 in `symbiote/hive/<branch>/r<round>/`, where the agent reads them.
 `symbiote/hive/runner.lock` names the process that drives the repository.
@@ -532,7 +572,7 @@ the same files aside.
 | `SYMBIOTE_HERMES` | The Hermes program to start. Default: `hermes` on your `PATH`. |
 | `SYMBIOTE_CODE` | The editor command that **Open in VS Code** runs, such as `cursor`. Default: VS Code's `code`. |
 | `SYMBIOTE_TERMINAL` | `off`: no agent terminals. A workspace shows its thread and a reply box instead, and Hermes is not offered. Nucleus and Scribe run only in a terminal: their pages say none runs. |
-| `SYMBIOTE_USAGE` | `off`: Symbiote does not read your subscriptions' usage, and the status bar shows none. |
+| `SYMBIOTE_USAGE` | `off`: Symbiote does not read your subscriptions' usage, the status bar shows none, and Hive does not pause by usage. |
 | `SYMBIOTE_INTRO` | `off`: no intro the first time Symbiote opens. |
 | `SYMBIOTE_APP` | `off`: always open the browser, never Symbiote's window. |
 | `SYMBIOTE_CACHE_DIR` | Where Symbiote keeps its cache. Default: `$XDG_CACHE_HOME/symbiote`, else `~/.cache/symbiote` (`~/Library/Caches/symbiote` on macOS). Symbiote nexus lists the `symbiote view` servers that use the same cache. |

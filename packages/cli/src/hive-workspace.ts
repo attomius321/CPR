@@ -6,7 +6,8 @@ import { join } from 'node:path';
 import type { GitRepo, HiveLogRead, WorkspaceHiveDetail } from '@symbiote/core';
 import type { HiveRecord } from './hive.js';
 import { hiveLive, hiveLogs, isHiveLogId } from './hive-live.js';
-import { hiveTestsDir, readHive, readHives, type HiveFile } from './hive-record.js';
+import { readPacingConfig, spendOf } from './hive-pacing.js';
+import { hiveTestsDir, readHive, readHives, shownPause, type HiveFile } from './hive-record.js';
 import { reviewPlace } from './reviews.js';
 
 /** What the Review tab asks of a Hive workspace. */
@@ -38,7 +39,14 @@ const logsOf = (record: HiveFile) =>
 export function hiveWorkspace(
   repo: GitRepo,
   cacheDir: string,
-  { hive }: { hive: Pick<HiveRecord, 'on'> },
+  {
+    hive,
+    root = repo.root,
+  }: {
+    hive: Pick<HiveRecord, 'on'>;
+    /** Where `symbiote/config.json` is read: the budget (HV5). */
+    root?: string;
+  },
 ): HiveWorkspace {
   const recordOf = async (branch: string) => readHive(await reviewPlace(repo, cacheDir), branch);
 
@@ -73,6 +81,9 @@ export function hiveWorkspace(
         ...(record.landings?.length ? { landings: record.landings } : {}),
         ...(record.pushed ? { pushed: record.pushed } : {}),
         ...(record.request ? { request: record.request } : {}),
+        ...(shownPause(record) ? { pause: shownPause(record) } : {}),
+        // What it spent (HV5): the writer as Hive last read it, the reviews, the budget.
+        spend: spendOf(record, record.spent?.writer, readPacingConfig(root).budget),
       };
     },
 

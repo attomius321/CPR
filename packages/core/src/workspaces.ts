@@ -222,6 +222,54 @@ export interface HiveLandingSetting {
   why?: string;
 }
 
+/**
+ * Hive holds its next start of an agent (HV5, decisions 797–800): a window of Claude's subscription
+ * at or over the threshold (`usage`), until it resets; or usage that could not be read for 15 min
+ * (`unknown`), until a read succeeds. Kept in Hive's record of each workspace it held (`paused`).
+ */
+export interface HivePause {
+  reason: 'usage' | 'unknown';
+  /** The window over the threshold: its length (300: 5 hours, 10,080: a week), a model's scope. */
+  minutes?: number;
+  scope?: string;
+  /** Its use, in percent, when Hive paused. */
+  percent?: number;
+  /** The threshold it paused at (`hive.usage.pauseAt`). */
+  pauseAt: number;
+  /** When Hive goes on: the window's reset; absent when not known. */
+  until?: string;
+  /** Why usage is not known: the read's words. */
+  why?: string;
+  /** When Hive paused. */
+  since: string;
+}
+
+/**
+ * What a Hive workspace spent (HV5, decision 801), in US dollars at list price by Claude Code's own
+ * count: its writer's sessions (absent when no count could be read) and its running reviews.
+ */
+export interface HiveSpend {
+  writer?: number;
+  reviews: number;
+  /** Running reviews with a cost. */
+  reviewed: number;
+  total: number;
+  /** `hive.budget`, when set. */
+  budget?: number;
+}
+
+/**
+ * `GET /api/hive/pacing` (HV5, decisions 797–801): the threshold (`false`: Hive does not pause by
+ * usage), the budget per workspace (null: none), whether usage is read (`SYMBIOTE_USAGE=off`: no),
+ * and Hive's pause now, if any.
+ */
+export interface HivePacingSetting {
+  pauseAt: number | false;
+  budget: number | null;
+  read: boolean;
+  pause?: HivePause;
+}
+
 /** `GET /api/hive/state` (HV4): what turning Hive mode on or off concerns. */
 export interface HiveState {
   on: boolean;
@@ -380,6 +428,8 @@ export interface WorkspaceHive {
   live?: HiveLive;
   /** Hive is off: the step waits for it (decision 655). */
   paused?: true;
+  /** Hive holds its next start for usage (HV5): from its record's `paused`. */
+  pause?: HivePause;
   /**
    * Hive is off, whatever the step (HV3): landing is the person's as for any workspace, from its
    * review, not by Land.
@@ -419,6 +469,10 @@ export interface WorkspaceHiveDetail {
   pushed?: HivePush;
   /** Its pull or merge request (HV8). */
   request?: HiveRequest;
+  /** Hive holds its next start for usage (HV5): from its record's `paused`. */
+  pause?: HivePause;
+  /** What it spent (HV5), and its budget. */
+  spend?: HiveSpend;
 }
 
 /** A workspace and its agent, for the commits page. */

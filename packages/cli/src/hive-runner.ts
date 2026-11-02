@@ -12,7 +12,10 @@
 // checked and reviewed itself — its approval, the merge queue, a failed landing sent back to the
 // writer — and pushes the workspace's branch after each turn (decisions 767–770). HV8: where the
 // repository lands by request, a pull or merge request in place of the queue, watched until the
-// person merges or closes it on the forge (decisions 788–792).
+// person merges or closes it on the forge (decisions 788–792). HV5: every agent Hive starts — the
+// writer's first start, each message, a restart, each running review — goes through one gate
+// (`paced`), which holds it while Claude's usage is at or over the threshold, or unknown, and stops
+// a workspace that reached its budget (decisions 796–801).
 import { randomBytes } from 'node:crypto';
 import { copyFile, mkdir, readFile, rm, rmdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -26,6 +29,7 @@ import {
   type HiveCheck,
   type HiveCheckStep,
   type HiveLanding,
+  type HivePause,
   type HiveRequest,
   type HiveReview,
   type MergeEntry,
@@ -63,6 +67,7 @@ import {
   type ReviewRun,
 } from './hive-review.js';
 import { findClaude } from './claude-code.js';
+import { pauseEvent, spendOf, type HivePacing } from './hive-pacing.js';
 import {
   bringUp,
   conflictFiles,
@@ -236,6 +241,7 @@ export function hiveRunner(
     lander,
     landRetryMs = LAND_RETRY_MS,
     requestPollMs = REQUEST_POLL_MS,
+    pacing,
     log,
   }: {
     hive: HiveRecord;
@@ -268,6 +274,11 @@ export function hiveRunner(
     landRetryMs?: number;
     /** How often an open pull or merge request is read (HV8). */
     requestPollMs?: number;
+    /**
+     * The gate before every agent Hive starts (HV5): usage and the budget. Without it (tests of
+     * the loop), every start goes as before HV5.
+     */
+    pacing?: HivePacing;
     log?: Pick<Logger, 'info' | 'warn'>;
   },
 ): HiveRunner {
@@ -394,7 +405,16 @@ export function hiveRunner(
     if (landing) return leaveTo(where, record, landing);
     const symbiote = symbioteFolder(where);
     let copy: string | undefined;
-    if (!arrived(await readThreadEnd(symbiote, record.branch), message)) {
+    const thread = await readThreadEnd(symbiote, record.branch);
+    if (!arrived(thread, message)) {
+      // HV5: while Hive held its message, the person's reached the writer: theirs is the turn,
+      // and the rounds start again (795), as at a stop.
+      const prompt = thread.findLast((e) => e.kind === 'prompt');
+      if (record.paused && prompt && prompt.at > message.at) {
+        return roundsAgain(where, record, prompt.at);
+      }
+      // A resume starts a turn: through the gate (HV5, decision 796).
+      if (!(await paced(where, record))) return;
       try {
         // Noted as Hive's (AR2, decision 741): the record says who sent it.
         ({ copy } = await workspaces.reply({
@@ -524,9 +544,109 @@ export function hiveRunner(
     for (const key of Object.keys(change) as (keyof HiveFile)[]) {
       if (change[key] === undefined) delete (next as Partial<HiveFile>)[key];
     }
+    // A pause holds a step's start (HV5): another step has none waiting.
+    if (change.step !== undefined && change.step !== record.step) delete next.paused;
     await save(where, next);
     if (kind) await event(where, record.branch, kind, data);
     return next;
+  }
+
+  /** The writer's spend by Claude Code's count, written when it changed (HV5, decision 801). */
+  async function noteSpent(
+    where: ReviewPlace,
+    record: HiveFile,
+    writer: number | undefined,
+  ): Promise<HiveFile> {
+    if (writer === undefined || record.spent?.writer === writer) return record;
+    const next: HiveFile = { ...record, spent: { writer, at: stamp() } };
+    await save(where, next);
+    return next;
+  }
+
+  /** "$1.20". */
+  const dollars = (amount: number) => `$${amount.toFixed(2)}`;
+
+  /**
+   * The one gate before an agent Hive starts (HV5, decisions 796–801): the writer's first start, a
+   * message (a resume starts a turn), a restart, a running review. At or over its budget, the
+   * workspace stops, with why. While Claude's usage is at or over the threshold, or unknown, the
+   * start waits: the pause in the record (once a pause), the step kept. Once it may start, the
+   * pause is gone. The record to start with; null: held or stopped. Without `pacing`, as before.
+   */
+  async function paced(where: ReviewPlace, given: HiveFile): Promise<HiveFile | null> {
+    if (!pacing || closed) return given;
+    const { budget } = pacing.config();
+    const thread = await readThreadEnd(symbioteFolder(where), given.branch);
+    let record = await noteSpent(where, given, await pacing.writer(thread));
+    if (budget !== null) {
+      const spend = spendOf(record, record.spent?.writer, budget);
+      if (spend.total >= budget) {
+        const writer =
+          spend.writer === undefined
+            ? "the writer's cost not read"
+            : `the writer ${dollars(spend.writer)}`;
+        const reviews = spend.reviewed
+          ? `${plural(spend.reviewed, 'review')} ${dollars(spend.reviews)}`
+          : 'no review';
+        const note = `its spend reached its budget: ${dollars(spend.total)} of ${dollars(budget)} (${writer}, ${reviews}). Raise the budget in Settings, then send it a message to go on`;
+        await moveTo(
+          where,
+          record,
+          { step: 'stuck', note, message: undefined, paused: undefined },
+          'stuck',
+          { note, spent: spend.total, budget },
+        );
+        return null;
+      }
+    }
+    const pause = await pacing.usage();
+    if (pause) {
+      if (!samePause(record.paused, pause)) {
+        await save(where, { ...record, paused: pause });
+        await event(where, record.branch, 'paused', pauseEvent(pause));
+      }
+      return null;
+    }
+    if (record.paused) {
+      const next: HiveFile = { ...record };
+      delete next.paused;
+      await save(where, next);
+      await event(where, record.branch, 'goes-on', { reason: record.paused.reason });
+      record = next;
+    }
+    return record;
+  }
+
+  /**
+   * A writer the gate held at the workspace's start (HV5): started once the gate lets it, its turn
+   * read from then on; not a restart (773). A refused start stops, with why.
+   */
+  async function startHeld(where: ReviewPlace, given: HiveFile): Promise<void> {
+    // Started meanwhile by the person (the page's Start the agent): theirs, held no more.
+    const summary = await workspaces.summaryOf(given.branch);
+    if (!summary) return;
+    const state = summary.agent.state;
+    if (SESSION_STATES.has(state) || ['failed', 'stopped', 'not-started'].includes(state)) {
+      const theirs: HiveFile = { ...given };
+      delete theirs.unstarted;
+      delete theirs.paused;
+      await save(where, theirs);
+      await event(where, given.branch, 'writer-started', { by: 'person' });
+      return;
+    }
+    const record = await paced(where, given);
+    if (!record) return;
+    const next: HiveFile = { ...record, since: stamp() };
+    delete next.unstarted;
+    await save(where, next);
+    try {
+      await workspaces.startAgent(record.branch);
+    } catch (error) {
+      const note = `its agent could not be started: ${(error as Error).message}`;
+      await moveTo(where, next, { step: 'stuck', note }, 'stuck', { note });
+      return;
+    }
+    await event(where, record.branch, 'writer-started');
   }
 
   /**
@@ -572,7 +692,9 @@ export function hiveRunner(
       await event(where, record.branch, 'stuck', { note });
       return;
     }
-    const next: HiveFile = { ...record, restarted: (record.restarted ?? 0) + 1, since: stamp() };
+    const gated = await paced(where, record);
+    if (!gated) return;
+    const next: HiveFile = { ...gated, restarted: (gated.restarted ?? 0) + 1, since: stamp() };
     delete next.message;
     await save(where, next);
     await event(where, record.branch, 'restarted', { ...(why ? { why } : {}) });
@@ -587,6 +709,7 @@ export function hiveRunner(
   /** The writer's turn (decision 653). */
   async function writing(where: ReviewPlace, given: HiveFile): Promise<void> {
     let record = given;
+    if (record.unstarted) return startHeld(where, record);
     const message = record.message;
     if (message && !message.sent && !message.taken) return deliver(where, record);
     const turn = await turnOf(where, record.branch, record.since);
@@ -615,6 +738,8 @@ export function hiveRunner(
     if (asks(summary.agent)) return answer(where, record, 'hive.decide');
     if (!turn.ended) return;
     await event(where, record.branch, 'turn-ended', { round: record.round });
+    // Claude Code wrote its count of the session at the turn's end (HV5): kept for the Review tab.
+    if (pacing) record = await noteSpent(where, record, await pacing.writer(turn.thread));
     const changed = summary.worktree.changed ?? 0;
     if (changed > 0) {
       const files = await worktreeStatus(summary.worktree.path).catch(() => []);
@@ -826,7 +951,8 @@ export function hiveRunner(
    * reviewer and the rerun run beside the tick, as a check does. A commit reviewed and approved
    * already goes to landing as it is (decision 716).
    */
-  async function reviewing(where: ReviewPlace, record: HiveFile): Promise<void> {
+  async function reviewing(where: ReviewPlace, given: HiveFile): Promise<void> {
+    let record = given;
     const summary = await workspaces.summaryOf(record.branch);
     if (!summary) return;
     const landing = await landingOf(record.branch, summary);
@@ -840,6 +966,10 @@ export function hiveRunner(
       });
       return;
     }
+    // The running reviewer is an agent: through the gate (HV5, decision 796).
+    const gated = await paced(where, record);
+    if (!gated) return;
+    record = gated;
     const [claude, confine] = await Promise.all([reviewer.claude(), reviewer.confine()]);
     const check = await projectCheck(repo, root, tip).catch(() => null);
     const passed = record.checks.findLast((c) => c.at === tip && c.ok);
@@ -1097,6 +1227,7 @@ export function hiveRunner(
         check: undefined,
         review: undefined,
         decided: undefined,
+        paused: undefined,
       },
       'rounds-again',
       { prompt: at },
@@ -2048,7 +2179,11 @@ export function hiveRunner(
       lastOn = false;
       return;
     }
-    if (lastOn !== true) await reconcile(where, records);
+    if (lastOn !== true) {
+      // HV5: the pauses recorded hold until their windows reset, whatever this process read.
+      pacing?.prime(records.flatMap((r) => (r.paused ? [r.paused] : [])));
+      await reconcile(where, records);
+    }
     lastOn = true;
     for (const listed of records) {
       if (closed) return;
@@ -2165,4 +2300,16 @@ function aliveProcess(pid: number): boolean {
   } catch (error) {
     return (error as NodeJS.ErrnoException).code === 'EPERM';
   }
+}
+
+/** The same pause as the record's: its reason, window and reset (HV5): an event once a pause. */
+function samePause(recorded: HivePause | undefined, pause: HivePause): boolean {
+  return (
+    recorded !== undefined &&
+    recorded.reason === pause.reason &&
+    recorded.until === pause.until &&
+    recorded.minutes === pause.minutes &&
+    recorded.scope === pause.scope &&
+    recorded.why === pause.why
+  );
 }
