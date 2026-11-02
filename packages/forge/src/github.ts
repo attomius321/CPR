@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { api, paged } from './http.js';
-import type { ChangeRequest, Env, Forge, Review } from './types.js';
+import type { ChangeRequest, Env, Forge, NewChangeRequest, Review } from './types.js';
 
 const TOKEN_HINT = 'GITHUB_TOKEN or GH_TOKEN, or log in with gh auth login';
 
@@ -18,42 +18,87 @@ interface PullResponse {
   draft?: boolean;
   base: { ref: string; sha: string };
   head: { ref: string; sha: string };
+  /** Whether it can be merged: null while GitHub works it out (after a push). */
+  mergeable?: boolean | null;
+  mergeable_state?: string;
+  merge_commit_sha?: string | null;
 }
 
 /** GitHub and GitHub Enterprise pull requests. */
 export class GitHubForge implements Forge {
   readonly kind = 'github';
   private readonly apiBase: string;
-  private readonly token: string | undefined;
+  private readonly secret: string | undefined;
   private readonly tokenHint: string;
 
   constructor(
     readonly host: string,
     readonly project: string,
     env: Env,
+    /** gh's token for a host (tests pass their own, so no real one is read). */
+    stored: (host: string) => string | undefined = ghToken,
   ) {
     this.apiBase = (
       env.GITHUB_API_URL ??
       (host === 'github.com' ? 'https://api.github.com' : `https://${host}/api/v3`)
     ).replace(/\/+$/, '');
-    this.token = githubToken(host, env);
+    this.secret = githubToken(host, env, stored);
     this.tokenHint = host === 'github.com' ? TOKEN_HINT : enterpriseHint(host);
   }
 
+  get token(): boolean {
+    return this.secret !== undefined;
+  }
+
   async getChangeRequest(number: number): Promise<ChangeRequest> {
-    const pull = await this.request<PullResponse>(`/repos/${this.project}/pulls/${number}`);
+    return this.fromPull(
+      await this.request<PullResponse>(`/repos/${this.project}/pulls/${number}`),
+    );
+  }
+
+  async openChangeRequest({ head, base, title, body }: NewChangeRequest): Promise<ChangeRequest> {
+    const pull = await this.request<PullResponse>(`/repos/${this.project}/pulls`, 'POST', {
+      head,
+      base,
+      title,
+      body,
+      draft: false,
+    });
+    return this.fromPull(pull);
+  }
+
+  async findOpenRequest(head: string, base: string): Promise<ChangeRequest | null> {
+    const owner = this.project.split('/')[0] ?? '';
+    const filter = `state=open&head=${encodeURIComponent(`${owner}:${head}`)}&base=${encodeURIComponent(base)}`;
+    const pulls = await paged((query) =>
+      this.request<PullResponse[]>(`/repos/${this.project}/pulls?${filter}&${query}`),
+    );
+    const found = pulls.find((pull) => pull.head.ref === head) ?? pulls[0];
+    return found ? this.fromPull(found) : null;
+  }
+
+  async updateDescription(request: ChangeRequest, body: string): Promise<void> {
+    await this.request(`/repos/${this.project}/pulls/${request.number}`, 'PATCH', { body });
+  }
+
+  private fromPull(pull: PullResponse): ChangeRequest {
+    const merged = !!pull.merged_at;
     return {
       forge: 'github',
       number: pull.number,
       title: pull.title,
       url: pull.html_url,
       author: pull.user?.login ?? 'unknown',
-      state: pull.merged_at ? 'merged' : pull.state,
+      state: merged ? 'merged' : pull.state,
       draft: pull.draft ?? false,
       base: { ref: pull.base.ref, sha: pull.base.sha },
       head: { ref: pull.head.ref, sha: pull.head.sha },
       mergeBase: null,
       refs: { base: `refs/heads/${pull.base.ref}`, head: `refs/pull/${pull.number}/head` },
+      ...(!merged && pull.mergeable === false && pull.mergeable_state === 'dirty'
+        ? { conflict: true as const }
+        : {}),
+      ...(merged && pull.merge_commit_sha ? { mergeCommit: pull.merge_commit_sha } : {}),
     };
   }
 
@@ -96,7 +141,11 @@ export class GitHubForge implements Forge {
     return lists.flat().flatMap((item) => (item.body ? [item.body] : []));
   }
 
-  private request<T>(path: string, method: 'GET' | 'POST' = 'GET', body?: unknown): Promise<T> {
+  private request<T>(
+    path: string,
+    method: 'GET' | 'POST' | 'PATCH' = 'GET',
+    body?: unknown,
+  ): Promise<T> {
     return api<T>(`${this.apiBase}${path}`, {
       method,
       body,
@@ -104,7 +153,7 @@ export class GitHubForge implements Forge {
       headers: {
         accept: 'application/vnd.github+json',
         'x-github-api-version': '2022-11-28',
-        ...(this.token ? { authorization: `Bearer ${this.token}` } : {}),
+        ...(this.secret ? { authorization: `Bearer ${this.secret}` } : {}),
       },
     });
   }

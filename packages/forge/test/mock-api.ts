@@ -15,9 +15,12 @@ export interface Reply {
 
 /**
  * A tiny JSON API: `routes['GET /path']` answers, with a fixed reply or one computed from the
- * request; every request is recorded.
+ * request; `fallback` answers any other (a fake forge that keeps state); every request is recorded.
  */
-export async function mockApi(routes: Record<string, Reply | ((request: Recorded) => Reply)>) {
+export async function mockApi(
+  routes: Record<string, Reply | ((request: Recorded) => Reply)>,
+  fallback?: (request: Recorded) => Reply | undefined,
+) {
   const requests: Recorded[] = [];
   const server = createServer((req, res) => {
     let raw = '';
@@ -32,7 +35,8 @@ export async function mockApi(routes: Record<string, Reply | ((request: Recorded
       };
       requests.push(request);
       const handler = routes[`${request.method} ${path}`];
-      const route = typeof handler === 'function' ? handler(request) : handler;
+      const route =
+        typeof handler === 'function' ? handler(request) : (handler ?? fallback?.(request));
       res.writeHead(route?.status ?? (route ? 200 : 404), { 'content-type': 'application/json' });
       res.end(JSON.stringify(route?.body ?? { message: 'Not Found' }));
     });
