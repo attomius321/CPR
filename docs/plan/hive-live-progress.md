@@ -164,7 +164,7 @@ Hive's runner (`hiveRunner` in `packages/cli/src/hive-runner.ts`, in the `symbio
 | 695 | Where a run's output goes | **A log per check and review beside Hive's record, in the merge log's line format and limits, every run's kept** | The brief: "the check's output streamed to a file beside Hive's record"; the person's answer 3 |
 | 696 | The reviewer's stream while it runs | **Its events into the review's log as they come (`claudeLine`), the raw stream kept as HV3** | HV3 wrote it only at the end; "what it runs now, from its kept stream" |
 | 697 | The expected time | **The latest passing check of the same commands in the repository; else none** | The person's answer 1: never a guess |
-| 698 | Hive's steps on the card | **A tone and group "Hive" of their own, before Working, with the hexagons of Hive's look** | The brief: "a state of its own, told apart from the writer working"; the person's answer 2 |
+| 698 | Hive's steps on the card *(partly superseded by 815 of V88)* | **A tone and group "Hive" of their own, before Working, with the hexagons of Hive's look** | The brief: "a state of its own, told apart from the writer working"; the person's answer 2 |
 | 699 | The card's words | **The command, its place among several, the elapsed time against the expected; the reviewer's last tool call** | Whatever the repository's check is; one command has no "1/1" |
 | 700 | The Review tab's live part | **The merge log's view shared: steps and a streaming terminal, for the running check or review and each kept log** | One way to read a run's log in Symbiote |
 

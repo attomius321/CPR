@@ -138,13 +138,13 @@ its type; the title bar's 38 px (the window's own).
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 701 | What stays after the arrival | **The shutter's last frame: the art's ink and the etched outlines (lamp crimson at 12 %, 1 px, radius r − 1.5), on the arrival's own lattice** | the person's words; no seam needs the same tiles |
-| 702 | How it is drawn | **One inline SVG path from a shared pure lattice, drawn once; a resize adds tiles** | crisp at any pixel ratio, never redrawn; a pattern or tile drifts from the canvas's tiles |
-| 703 | Where it shows | **The ground: margins, gutters, heads, the sidenav; cards opaque; chrome, menus, dialogs, the graph's canvas and the terminals keep theirs** | 80 % cards show 2.4 % of the line; a still comb under a panning graph reads as the graph's |
-| 704 | Light Hive | **The sidenav takes the page's light set (615 kept for the question only), the comb white with crimson outlines at 16 %** | asked: "keep the sidenav white also, with honeycomb behind" |
+| 701 | What stays after the arrival *(superseded by 815 of V88)* | **The shutter's last frame: the art's ink and the etched outlines (lamp crimson at 12 %, 1 px, radius r − 1.5), on the arrival's own lattice** | the person's words; no seam needs the same tiles |
+| 702 | How it is drawn *(superseded by 815 of V88)* | **One inline SVG path from a shared pure lattice, drawn once; a resize adds tiles** | crisp at any pixel ratio, never redrawn; a pattern or tile drifts from the canvas's tiles |
+| 703 | Where it shows *(superseded by 815 of V88)* | **The ground: margins, gutters, heads, the sidenav; cards opaque; chrome, menus, dialogs, the graph's canvas and the terminals keep theirs** | 80 % cards show 2.4 % of the line; a still comb under a panning graph reads as the graph's |
+| 704 | Light Hive *(superseded by 815 of V88)* | **The sidenav takes the page's light set (615 kept for the question only), the comb white with crimson outlines at 16 %** | asked: "keep the sidenav white also, with honeycomb behind" |
 | 705 | Traces | **None** | they end at a Mind that is gone |
-| 706 | The hand-over and a reload | **At the swap, the scene's centre and radius; after a reload, the window's middle** | the arrival's own rule without a question |
-| 707 | Hive off | **The comb unmounted; the narrow drawer opaque** | off is `main`'s look |
+| 706 | The hand-over and a reload *(superseded by 815 of V88)* | **At the swap, the scene's centre and radius; after a reload, the window's middle** | the arrival's own rule without a question |
+| 707 | Hive off *(superseded by 815 of V88)* | **The comb unmounted; the narrow drawer opaque** | off is `main`'s look |
 | 708 | The type scale | **11 / 11 / 12 / 13 / 16; nothing under 11 px** | VS Code's 13 / 12 / 11; the person chose it on mockups |
 | 709 | Code and terminals | **`--size-code` 13, `--size-term` 14** | VS Code's editor and terminal 14; code beside 13 px words |
 | 710 | Controls | **`--control-h` 26 px** | VS Code's buttons ~26 |

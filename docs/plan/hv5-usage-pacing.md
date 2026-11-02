@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv5-usage-pacing.md)
 
-**Status:** built, ready for review (2026-11-02), on branch `feature/hv5-usage-pacing` (the
+**Status:** merged into `main` on 2026-11-02 (built 2026-11-02), on branch `feature/hv5-usage-pacing` (the
 workspace's, a Hive workspace, from `main` at `0a09ef5`); Hive drives it, so no OK was awaited.
 Proved with fake usage reads and a fake usage endpoint; no real Hive run paused on real usage.
 

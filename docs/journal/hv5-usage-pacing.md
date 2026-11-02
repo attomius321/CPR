@@ -68,3 +68,5 @@ Not verified: a real Hive run paused by real usage (the brief: tests never read 
 no real run was made); a real 5-hour window resetting; the `cost-state` line in Claude Code
 versions other than 2.1.316; a writer whose session was forked into a copy (its transcript is
 counted on its own); the time words in a time zone other than this machine's.
+
+Merged into main (2026-11-02).

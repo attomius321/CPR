@@ -130,7 +130,7 @@ copy of the tokens (`packages/desktop/start/start.css`).
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 437 | The light theme | **Only the primary and the accent move to violet**; its surfaces stay | The brief asks for the black theme; one brand colour in both |
+| 437 | The light theme *(superseded by 812 of V88)* | **Only the primary and the accent move to violet**; its surfaces stay | The brief asks for the black theme; one brand colour in both |
 | 438 | The graph's text | **Today's sizes** | The graph zooms; its layout is estimated from characters and stays `main`'s |
 | 439 | The first-time intro | **Kept as it is** | The person's animation; it ends on the koi S, theirs to change |
 | 440 | The primary's text | **Dark, its hover lighter** | White on the mockup's violet is 4.01:1, under 4.5 |

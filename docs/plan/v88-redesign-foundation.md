@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/v88-redesign-foundation.md)
 
 **Status:** built (2 November 2026), on branch `feature/redesign-foundation` (the workspace's,
-from `main` at `42b3b57`); ready for review.
+from `main` at `42b3b57`); merged into `main` on 2026-11-02.
 
 **Problem** (the brief: "Bring the redesign's foundation into the viewer, so every page takes the
 new look at once and the later redesign work builds on it"). The designs are on `main`:

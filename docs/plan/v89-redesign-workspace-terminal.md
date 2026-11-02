@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/v89-redesign-workspace-terminal.md)
 
 **Status:** built (3 November 2026), on branch `feature/redesign-workspace-terminal` (the
-workspace's, from `main` at `98e28e2`); ready for review.
+workspace's, from `main` at `98e28e2`); merged into `main` on 2026-11-03.
 
 **Problem** (the brief: "Bring a workspace's page and its terminal view to the designs, in both
 modes. The person spends most of their time in the terminal view: weigh every change by it, and

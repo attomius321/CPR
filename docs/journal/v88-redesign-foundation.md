@@ -60,3 +60,5 @@ Not verified: the desktop app's window (its tests only, not a launched app); a l
 diff's analysis finishes too fast on the fixture to shoot); Hive's stopped and landed states in
 the sidenav (no fake drives Hive to them in the shot script); the README's screenshots are not
 retaken.
+
+Merged into main (2026-11-02).

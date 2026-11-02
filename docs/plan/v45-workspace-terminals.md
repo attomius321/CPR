@@ -137,7 +137,7 @@ screenshots. One branch.
 | 294 | What a new terminal in a workspace runs | **The person's shell (`$SHELL`, else `/bin/sh`) in the worktree; the agent keeps its one terminal** | Covers tests, a dev server, git, and a second `claude` if the person wants one. A second `attach` to the agent's session draws the same session twice, at the newest client's size (V21 spike). |
 | 295 | A shell's lifetime | **Until its ×, its `exit`, Clean up or `symbiote view` exiting; never hung up for having no reader, never closed to make room** | A hang-up ends a shell's jobs (measured: both `sleep`s gone in 0.5 s); a dev server must survive a look at the thread or a reload. |
 | 296 | How many | **8 per workspace, outside the limit of 4 terminals** | 9 MB a shell against 140 MB an `attach` (measured); the limit of 4 was set for `attach`. |
-| 297 | Where shells are in the panel | **Tabs after the agent's (`Shell 1`, `Shell 2`, the lowest free number), a `+` at the end, `&shell=<n>` in the address** | The agent's tabs keep their place and names ("We only extend"); a reload comes back to the shell. |
+| 297 | Where shells are in the panel *(partly superseded by 827 of V89)* | **Tabs after the agent's (`Shell 1`, `Shell 2`, the lowest free number), a `+` at the end, `&shell=<n>` in the address** | The agent's tabs keep their place and names ("We only extend"); a reload comes back to the shell. |
 | 298 | Closing a shell with a program in it | **Asked first, naming the program** | Closing ends it (decision 295); node-pty names the foreground program (`sleep`, then `/bin/bash`, measured). |
 
 **Not in V45 (later)**: terminals side by side (split); shells that outlive `symbiote view`

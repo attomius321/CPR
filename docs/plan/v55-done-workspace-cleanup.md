@@ -108,7 +108,7 @@ and their keyboard order.
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 403 | Removing a done workspace or a landed merge from the sidenav | **A trash icon button on its card, shown on hover and focus (always without hover), over the chip and the time; one click, no question; Done and landed cards only** | The person asked for icons on their cards; the style shows a row's actions on hover; the menus ask nothing for these today |
-| 404 | A merged workspace's and a landed merge's head | **Clean up, Remove: the head's primary button; Review plain; ⋯ not drawn when empty** | The person asked for the action in the head, as a primary; one primary in a view |
+| 404 | A merged workspace's and a landed merge's head *(partly superseded by 819 of V88)* | **Clean up, Remove: the head's primary button; Review plain; ⋯ not drawn when empty** | The person asked for the action in the head, as a primary; one primary in a view |
 | 405 | A merge not landed | **Removed from its own page only, under ⋯, as today; no icon on its card** | The person: "if it is still merging, it should not be displayed. This should be forced from its view page" |
 | 406 | What the main area shows after its workspace or merge is removed | **History, the status bar saying what was removed** | As Clean up from a workspace's page does; a page saying "No merge of …" helps no one |
 

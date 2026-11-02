@@ -114,7 +114,7 @@ wiring, the e2e, the measurements.
 |---|---|---|---|
 | 465 | What counts as waiting | **Everything that waits on the person**: workspaces in Waiting for you, merges that need you, Scout and Scribe waiting, each ask through `symbiote mcp`; the title says the same number, the sidenav's Workspaces count its own section's (workspaces and merges) | The person: "Yes, everything"; Scout, Scribe and the asks have their own marks in the sidenav |
 | 466 | How the app learns it | **The page says it** (`symbioteApp.waiting`), from the window's own server only, a whole number 0–999; 0 on the start page | The count is the viewer's (`workspaceGroups`, merges, asks); the main process reading the API itself would copy that logic |
-| 467 | What the icon shows | **An amber dot, top-right, no number**, drawn at run time from `symbiote.png` | The person chose the dot; WSLg's mark takes the bottom-right; one source image |
+| 467 | What the icon shows *(superseded by 813 of V88)* | **An amber dot, top-right, no number**, drawn at run time from `symbiote.png` | The person chose the dot; WSLg's mark takes the bottom-right; one source image |
 | 468 | When it blinks | **When the count rises while the window is not focused**, until it is | The person: "blink is mandatory where it can do it"; a blink for every read would never stop |
 | 469 | Reads while hidden | **In the app, on**; in a browser as before | A minimized window would otherwise never get its dot |
 | 470 | A page hidden for 5 minutes | **Chromium's intensive wake-up throttling off in the app** (`--disable-features=IntensiveWakeUpThrottling`) | Measured (As built): with it, a hidden page's 5 s reads came once a minute after 5 minutes |

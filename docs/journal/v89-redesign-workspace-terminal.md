@@ -55,3 +55,5 @@ state, both modes, both themes, 1×, before and after, beside the proofs.
 
 Not verified: a question's number keys on a real Claude Code session (none shown); Hive stopped at
 the round cap on screen (unit-tested only); the desktop app's window (the e2e runs in Chromium).
+
+Merged into main (2026-11-03).

@@ -174,3 +174,5 @@ zooms. The cut is laid out, which V8a kept off zoom frames: it reads `--symbiote
 - **Not verified**: a real Hive round with Claude Code listing a reported turn `working` (item 1
   rests on the job timeline, the thread and the fake); the HV8 tests at load 44 with the new 30 s
   (they took 21 s there; the suite then fails elsewhere anyway).
+
+Merged into main (2026-11-02).
