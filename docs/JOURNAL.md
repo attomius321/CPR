@@ -396,3 +396,4 @@ merge commit.
 - 2026-11-02 [HV5 — Hive paces itself: one gate, a pause until the window resets, a budget cap](journal/hv5-usage-pacing.md)
 - 2026-11-02 [Chore — A README a person can read: every feature, fresh screenshots](journal/chore-readme-remake.md)
 - 2026-11-02 [Fix — a report ends the turn, whatever Claude Code lists: Hive waited 819 s on a reported turn read as interrupted](journal/fix-hive-turn-end-flaky-tests-verdict.md)
+- 2026-11-02 [V88 spike — what the kits change, counted](journal/v88-redesign-foundation.md)
