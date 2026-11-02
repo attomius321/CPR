@@ -71,14 +71,29 @@ export async function originForge(
   env: Env,
   make: (url: string, env: Env) => Forge = (url, e) => detectForge(url, e),
 ): Promise<{ forge: Forge } | { why: string; forge?: Forge }> {
-  const url = (await git(repo.root, ['remote', 'get-url', 'origin']).catch(() => '')).trim();
-  if (!url.trim()) return { why: 'the repository has no remote named origin' };
-  let forge: Forge;
-  try {
-    forge = make(url.trim(), env);
-  } catch (error) {
-    return { why: `origin is not a GitHub or GitLab repository: ${(error as Error).message}` };
+  // As git reaches it (`insteadOf` expanded), else as it is written: an alias or a mirror that
+  // git reaches in place of the forge's address still names that forge.
+  const read = (args: string[]) =>
+    git(repo.root, args).then(
+      (url) => url.trim(),
+      () => '',
+    );
+  const urls = [
+    await read(['remote', 'get-url', 'origin']),
+    await read(['config', '--get', 'remote.origin.url']),
+  ].filter((url, i, all) => url && all.indexOf(url) === i);
+  if (urls.length === 0) return { why: 'the repository has no remote named origin' };
+  let forge: Forge | undefined;
+  let refused = '';
+  for (const url of urls) {
+    try {
+      forge = make(url, env);
+      break;
+    } catch (error) {
+      refused ||= (error as Error).message;
+    }
   }
+  if (!forge) return { why: `origin is not a GitHub or GitLab repository: ${refused}` };
   if (!forge.token) {
     const set =
       forge.kind === 'github'

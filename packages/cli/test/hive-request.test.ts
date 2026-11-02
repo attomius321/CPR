@@ -79,6 +79,18 @@ describe("origin's forge", () => {
       forge: { kind: 'github', host: 'github.com', project: 'acme/app' },
       token: true,
     });
+    // A forge's address git reaches elsewhere (`insteadOf`): the forge it names.
+    repo.git('remote', 'set-url', 'origin', 'https://github.com/acme/app.git');
+    repo.git('config', 'url./srv/git/app.git.insteadOf', 'https://github.com/acme/app.git');
+    expect(
+      (
+        await landingSetting(git, repo.root, {}, (url) => {
+          if (!url.includes('github.com')) throw new Error(`not a forge: ${url}`);
+          return make(true)(url);
+        })
+      ).forge,
+    ).toEqual({ kind: 'github', host: 'github.com', project: 'acme/app' });
+    repo.git('config', '--unset', 'url./srv/git/app.git.insteadOf');
     repo.git('remote', 'set-url', 'origin', 'https://gitlab.com/acme/app.git');
     expect(await landingSetting(git, repo.root, {}, make(false))).toEqual({
       by: 'queue',

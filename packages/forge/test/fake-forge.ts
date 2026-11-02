@@ -1,9 +1,10 @@
-// A fake GitHub or GitLab (HV8) over the forge package's fake API: requests opened, listed, read,
-// updated and reviewed, kept in memory; a merge made on the bare `origin` as the forge would make
-// it. Nothing leaves the machine.
+// A fake GitHub or GitLab (HV8) over the fake API: requests opened, listed, read, updated and
+// reviewed, kept in memory; a merge made on the bare `origin` as the forge would make it. Nothing
+// leaves the machine. Imports nothing of the forge's sources: the viewer's e2e serves it too.
 import { execFileSync } from 'node:child_process';
-import { GitHubForge, GitLabForge, type Forge, type ForgeKind } from '@symbiote/forge';
-import { mockApi, type Recorded, type Reply } from '../../forge/test/mock-api.js';
+import { mockApi, type Recorded, type Reply } from './mock-api.js';
+
+export type FakeForgeKind = 'github' | 'gitlab';
 
 export interface FakeRequest {
   number: number;
@@ -18,15 +19,16 @@ export interface FakeRequest {
 }
 
 export interface FakeForge {
-  kind: ForgeKind;
+  kind: FakeForgeKind;
+  /** Its API's address: `GITHUB_API_URL` or `GITLAB_API_URL`. */
   url: string;
+  /** Its repository: a bare one, as `origin` is (set later where it is made later). */
+  remote: string;
   requests: FakeRequest[];
   /** Every call the forge got. */
   calls: Recorded[];
   /** The reviews posted: their event and summary. */
   reviews: { number: number; event: string; body: string }[];
-  /** A forge client on this fake, with a token or without. */
-  forge(token?: boolean): Forge;
   /** The person's merge on the forge: a merge commit of the branch on `origin`'s base. */
   merge(number: number): string;
   close(number: number): void;
@@ -49,12 +51,12 @@ const gitIn = (dir: string, ...args: string[]) =>
   }).trim();
 
 /** A fake forge of `kind` whose repository is the bare `remote`. */
-export async function fakeForge(kind: ForgeKind, remote: string): Promise<FakeForge> {
+export async function fakeForge(kind: FakeForgeKind, remote = ''): Promise<FakeForge> {
   const requests: FakeRequest[] = [];
   const reviews: FakeForge['reviews'] = [];
   const tip = (branch: string) => {
     try {
-      return gitIn(remote, 'rev-parse', `refs/heads/${branch}`);
+      return gitIn(fake.remote, 'rev-parse', `refs/heads/${branch}`);
     } catch {
       return '0'.repeat(40);
     }
@@ -196,33 +198,22 @@ export async function fakeForge(kind: ForgeKind, remote: string): Promise<FakeFo
   };
 
   const api = await mockApi({}, answer);
-  return {
+  const fake: FakeForge = {
     kind,
     url: api.url,
+    remote,
     requests,
     calls: api.requests,
     reviews,
-    forge(token = true) {
-      return kind === 'github'
-        ? new GitHubForge(
-            'github.com',
-            PROJECT,
-            { GITHUB_API_URL: api.url, ...(token ? { GITHUB_TOKEN: 'ghp_fake' } : {}) },
-            () => undefined,
-          )
-        : new GitLabForge('gitlab.com', PROJECT, {
-            GITLAB_API_URL: api.url,
-            ...(token ? { GITLAB_TOKEN: 'glpat-fake' } : {}),
-          });
-    },
     merge(number) {
       const r = find(number);
       if (!r) throw new Error(`no request ${number}`);
       const base = tip(r.base);
       const head = tip(r.head);
-      const tree = gitIn(remote, 'merge-tree', '--write-tree', base, head).split('\n')[0] ?? '';
+      const tree =
+        gitIn(fake.remote, 'merge-tree', '--write-tree', base, head).split('\n')[0] ?? '';
       const merge = gitIn(
-        remote,
+        fake.remote,
         'commit-tree',
         tree,
         '-p',
@@ -232,7 +223,7 @@ export async function fakeForge(kind: ForgeKind, remote: string): Promise<FakeFo
         '-m',
         `Merge ${kind === 'github' ? 'pull request #' : 'branch'}${r.number}`,
       );
-      gitIn(remote, 'update-ref', `refs/heads/${r.base}`, merge, base);
+      gitIn(fake.remote, 'update-ref', `refs/heads/${r.base}`, merge, base);
       r.state = 'merged';
       r.merge = merge;
       return merge;
@@ -247,4 +238,5 @@ export async function fakeForge(kind: ForgeKind, remote: string): Promise<FakeFo
     },
     close_: api.close,
   };
+  return fake;
 }

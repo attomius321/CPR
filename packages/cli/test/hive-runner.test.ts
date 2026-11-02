@@ -36,7 +36,8 @@ import {
 import type { Confine } from '../src/hive-review.js';
 import { hiveWorkspace } from '../src/hive-workspace.js';
 import { hiveRequests, type HiveRequests } from '../src/hive-request.js';
-import { fakeForge, type FakeForge } from './fake-forge.js';
+import { GitHubForge, GitLabForge, type Forge } from '@symbiote/forge';
+import { fakeForge, type FakeForge } from '../../forge/test/fake-forge.js';
 import { merger, type Merger } from '../src/merges.js';
 import {
   branchReviews,
@@ -2488,6 +2489,21 @@ function readRecordSync(where: ReviewPlace, branch: string): WorkspaceFile {
   return JSON.parse(readFileSync(file, 'utf8')) as WorkspaceFile;
 }
 
+/** A forge client on the fake forge, with a token or without; gh's token never read. */
+function clientOf(fake: FakeForge, token: boolean): Forge {
+  return fake.kind === 'github'
+    ? new GitHubForge(
+        'github.com',
+        'acme/app',
+        { GITHUB_API_URL: fake.url, ...(token ? { GITHUB_TOKEN: 'ghp_fake' } : {}) },
+        () => undefined,
+      )
+    : new GitLabForge('gitlab.com', 'acme/app', {
+        GITLAB_API_URL: fake.url,
+        ...(token ? { GITLAB_TOKEN: 'glpat-fake' } : {}),
+      });
+}
+
 /** A graph with one warning, as the view server's analysis would give it (HV8's review). */
 const flagged = (head: string) =>
   ({
@@ -2528,7 +2544,7 @@ describe.each(['github', 'gitlab'] as const)(
       const requests = hiveRequests(git, {
         env: {},
         graphOf: ({ head }) => Promise.resolve(flagged(head)),
-        ...(noForge ? {} : { make: () => forge.forge(token) }),
+        ...(noForge ? {} : { make: () => clientOf(forge, token) }),
       });
       const s = await setup(repo, {
         land: true,

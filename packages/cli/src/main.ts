@@ -769,6 +769,10 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       confine: () => findConfinement(ctx.env),
     },
     // HV4: Hive lands what it checked and reviewed through the branch reviews and the merge queue.
+    // HV8: how often an open request is read; 60 s unless set (the viewer's e2e sets it).
+    ...(Number(ctx.env.SYMBIOTE_HIVE_REQUEST_MS) > 0
+      ? { requestPollMs: Number(ctx.env.SYMBIOTE_HIVE_REQUEST_MS) }
+      : {}),
     lander: {
       reviews: repoReviews,
       merges: repoMerges,
