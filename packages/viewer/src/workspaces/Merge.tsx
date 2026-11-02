@@ -98,7 +98,11 @@ export function MergeView({ branch }: { branch: string }) {
           Another Symbiote in this repository merges these: it shows them as it goes.
         </p>
       )}
-      <MergeEntryView key={entry.id} entry={entry} send={sendable(list, entry.branch)} />
+      <MergeEntryView
+        key={entry.id}
+        entry={entry}
+        send={entry.by !== 'hive' && sendable(list, entry.branch)}
+      />
     </div>
   );
 }
@@ -216,6 +220,8 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
             {entry.strategy === 'fast-forward' && (
               <span className="merge-how">by fast-forward</span>
             )}
+            {/* Queued by Hive (HV4): it lands, pushes and sends a failure itself. */}
+            {entry.by === 'hive' && <span className="merge-how">by Hive</span>}
             <span className="merge-chip merge-label">
               <ToneIcon />
               {mergeLabel(entry)}
