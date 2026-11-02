@@ -30,6 +30,8 @@ const screens = named.length
       '08-terminal',
       '09-terminal-split',
       '08-terminal@light',
+      '10-review-loading',
+      '10-review-loading@light',
     ];
 
 const browser = await chromium.launch();

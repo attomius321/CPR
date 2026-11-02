@@ -2,7 +2,7 @@
 
 The second half of the redesign on `feature/redesign-of-the-app` (2 November 2026): after
 [Hive Control](../hive-redesign/README.md), the person asked for "one for normal mode… i really like
-the new design". Eight screens and a kit, static HTML and CSS rendered by Chromium at 1440 × 900, 1×.
+the new design". Nine screens and a kit, static HTML and CSS rendered by Chromium at 1440 × 900, 1×.
 No viewer code was changed.
 
 The review page, with the before and after and the screens at 2×:
@@ -32,12 +32,13 @@ and a change's kinds, which keep VS Code's colours (V42) but for a brighter remo
 | [02-plan-ready](proofs/02-plan-ready.webp) | Today's `docs/images/workspace.png`, redesigned: the steps (Plan, Your OK, Build, Review, Merge), the plan typeset, Approve plan and Send reply under it |
 | [03-review-graph](proofs/03-review-graph.webp) | Today's `docs/images/review.png`, redesigned: findings with progress, a removed function still used picked in the graph, its dangling call drawn over the nodes, its detail beside |
 | [04-review-files](proofs/04-review-files.webp) | Today's `docs/images/review-files.png`, redesigned: files with their viewed state, your review and verdict, comments under their lines |
+| [10-review-loading](proofs/10-review-loading.webp) | A review while its change is analyzed: the six steps with their times, the agent's report and commits; ready now on the right: the files, the brief, what waits for the graph |
 | [05-merge](proofs/05-merge.webp) | A merge in the queue on Hive's stage track: approved, merged, checking, land; the log beside it |
 | [06-start](proofs/06-start.webp) | Start a workspace: the brief, then source, agent, permissions, effort and Plan first, and where you come in |
 | [08-terminal](proofs/08-terminal.webp) | The terminal view: Claude Code asks permission; its tab and row turn violet; a bar under the terminal says what it asks and the keys that answer it; the files it changed, live, beside it |
 | [09-terminal-split](proofs/09-terminal-split.webp) | Split, new: the agent and a shell running the dev server side by side |
 | [07-kit](proofs/07-kit.webp) | Tokens with their contrast, the shared states, a change's kinds, findings, graph nodes, controls |
-| [01-overview-light](proofs/01-overview-light.webp), [03-review-graph-light](proofs/03-review-graph-light.webp), [08-terminal-light](proofs/08-terminal-light.webp) | The light theme (the terminal stays dark, as today) |
+| [01-overview-light](proofs/01-overview-light.webp), [03-review-graph-light](proofs/03-review-graph-light.webp), [08-terminal-light](proofs/08-terminal-light.webp), [10-review-loading-light](proofs/10-review-loading-light.webp) | The light theme (the terminal stays dark, as today) |
 
 ![The Overview](proofs/01-overview.webp)
 
@@ -74,6 +75,12 @@ The states (`--run`, `--ok`, `--fail`, `--info`) are Hive Control's.
   keys Claude Code offers, never a button that answers for you. Split and Focus are new; the side
   card shows what the agent does now and its uncommitted files, live. The terminal's styles are
   `../hive-redesign/src/term.css`, shared with Hive.
+- **Opening a review** (the person: "one more for normal mode, the to review loading screen"):
+  today `DiffProgress.tsx` shows a card on the start page's arcs, with the steps, the seconds and
+  Stop, and nothing to read. The redesign keeps the six steps of `analysis-steps.ts` as a timeline
+  with each one's time (as the page sees the phase change: it asks every 500 ms) and shows what
+  needs no graph at once: the files (git's, as the Files page reads them), the commits, the agent's
+  report and the brief. The arcs and the comet leave this page.
 - **Graph nodes** carry a mark for the kind (+, −, ~) and a count of findings; no coloured text or
   bars. The picked symbol's calls are drawn above the other nodes.
 - **Not redesigned:** Git, Nucleus, Skills, Monitor, History and Settings would take the tokens as
@@ -85,7 +92,7 @@ The states (`--run`, `--ok`, `--fail`, `--info`) are Hive Control's.
 |---|---|
 | `src/normal.css` | Normal mode's tokens (dark, light) and its own parts: the inbox, the plan, the graph, a file's diff |
 | `src/nkit.js` | The sidenav with today's groups, the review's icon rail, the status bar, the graph's edges |
-| `src/01-…09-*.html` | One screen each |
+| `src/01-…10-*.html` | One screen each |
 | `shoot.mjs` | Renders the screens to `proofs/` |
 | `proofs/*.webp` | The proofs, 1×, lossless |
 
