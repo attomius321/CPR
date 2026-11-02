@@ -73,7 +73,8 @@ Large changes stay readable in three ways:
 
 - If more than 8 unchanged symbols use a changed symbol, or are used by it, they are drawn as one
   box, such as "390 users in 220 files". Click the box to open it.
-- Zoomed out, the graph becomes a map of file names. Click a name to zoom in.
+- Zoomed out, the graph becomes a map of file names. A name longer than its file's box is cut
+  short; point at the box to see the file's path. Click a name to zoom in.
 - The change list has a search (`/`). It keeps the symbols whose path and name hold every word you
   type.
 

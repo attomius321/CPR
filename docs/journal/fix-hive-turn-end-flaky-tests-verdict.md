@@ -125,3 +125,35 @@ wide row looks as before. A badge cut short keeps its tooltip; the branches pane
   least 3 times each badge's text beside it (HEAD's: as wide). Red on the build before ("Remote
   wip" 63 px beside a badge of 62 px), green after; the Git page's specs pass (29).
 - Screenshots before and after, dark and light, with and without the pane.
+
+## Fix — a file's name kept off the next file's box on the map (2026-11-02)
+
+The README writer's storefront change, with a symbol's detail panel open, Context off and Fit the
+view: the canvas is 530 px wide and the fit zoom 0.21, the map. A map name keeps its size on
+screen (V8a), so `checkout.ts`'s name, 100 px, ran past its 51 px box over 31 × 22 px of `cart.ts`'s
+box and name; `money.ts`'s ran 16 px past its own. None of the e2e fixtures reaches the map at Fit
+the view; the storefront change was rebuilt from the README writer's scripts in a folder of mine.
+
+**Decided**: a map name is cut with an ellipsis at its box's edge (`max-width`: the box's width
+times the zoom), and the file box names the file on hover (the tooltip moved from the name, which
+takes no pointer on the map). A name can still run below a box shorter than it, at the lowest
+zooms. The cut is laid out, which V8a kept off zoom frames: it reads `--symbiote-cut`, which
+`mapZoomStyle` writes at once on the first look at the map and then once the zoom has rested
+120 ms. While the view zooms out, a name may run past its box until the zoom stops.
+
+**Verification**:
+
+- Measured: on the storefront map, no name over another box (`checkout.ts` cut to 50 px in its
+  51 px box, `cart.ts` readable); the box's tooltip reads `src/checkout/checkout.ts`.
+- Cost, Chrome's own counters (CDP `Performance.getMetrics`) on Bitwarden's map (737ee3f, 60
+  names drawn), 60 wheel steps, both builds alternated, 3 rounds: the cut on every frame took
+  63–72 ms of layout against 5 ms before (1.1 ms a step), so it was moved to the rest. With
+  it: layout 5 ms on both builds, style 136–153 ms against 123–129 ms, task 409–441 ms against
+  360–375 ms (10–18 % more, under 1.1 ms a step). `interactions.mjs` (2 runs of 3 rounds each,
+  the cut on every frame): zoom out ×20 and zoom in ×10 1,032 and 532 ms on both builds, no
+  frame over 50 ms.
+- Tests first: `mapzoom.test.ts`, the cut written at once on the map, then only after the zoom
+  rests 120 ms, nothing after `remove` (red: no `--symbiote-cut`); `large-graph.spec.ts`, every
+  map name ends inside its box and the box's tooltip names the file (red on the build before: 32
+  names 6.5 px past their boxes). The graph specs pass (24).
+- Screenshots before and after at 1,440 × 900, dark and light.
