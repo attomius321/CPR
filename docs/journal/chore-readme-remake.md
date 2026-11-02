@@ -159,6 +159,10 @@ CI; Hive mode and its limits; Nucleus; several Symbiotes in one window.
     failed in my run at a load average of 13, 1 in Hive's round 1 check, and both in a third run
     at 20–28 (other workspaces' checks).
   - Alone, both files passed 4 runs of 4 at a load average of 20–27, each test in 1.4–2.3 s.
+  - Hive's round 2 check failed both variants of the first one again. The full suite with
+    `--testTimeout=60000`, at a load average of 12–25, passed all 2,900 tests: the four test cases
+    took 4.9–5.6 s. They do not hang; their margin under the full suite is below vitest's 5 s
+    default on this machine.
   - Not patched here: the brief puts code out of scope. A fix on its own branch would give these
     tests a timeout of their own, as `hive-runner.test.ts:1505` does (`20_000`).
 - `pnpm build` passes (it ran before the shots, which use its output).
