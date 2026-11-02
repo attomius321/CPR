@@ -150,5 +150,5 @@ is Nucleus's; telling a running conversation of a changed setting other than in 
 4 of the API (`server.test.ts`), 1 of the export, 1 of the Activity tab, 2 of Settings' words;
 `pnpm check` 195 files, 2,771 tests. e2e: `mcp.spec.ts` 3 of 3, the new one (off asks; on in
 Settings starts at once, recorded "Started without a Confirm", `restart_agent` still asks; Hive on:
-the switch on and disabled, the choice kept). Not verified: a real Nucleus conversation reading the
+the switch on and disabled, the choice kept); `pnpm test:e2e` 388 and 20 (nexus) passed. Settings → Nucleus seen off, on and with Hive on, in both themes. Not verified: a real Nucleus conversation reading the
 new description (the e2e's bridge is the spec itself), Codex's Nucleus.

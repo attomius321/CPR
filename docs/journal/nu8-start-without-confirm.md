@@ -45,6 +45,7 @@ in Settings, on and disabled while Hive is on. Decisions 782–787.
 
 **Verification**: tests first (red for the right reason: the starts waited for an ask, the texts
 did not change, the route was missing), `pnpm check` (195 files, 2,771 tests), `pnpm build`,
-`mcp.spec.ts` 3 of 3.
+`mcp.spec.ts` 3 of 3, `pnpm test:e2e` 388 and 20 (nexus) passed; Settings → Nucleus seen
+off, on and with Hive on (Alpha Ceph's), dark and light.
 
 Not verified: a real Nucleus conversation on Claude Code or Codex reading the new texts.
