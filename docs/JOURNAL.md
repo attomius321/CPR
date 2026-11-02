@@ -388,3 +388,4 @@ merge commit.
 - 2026-11-02 [HV8 — round 3: one gate to the forge](journal/hv8-hive-pull-requests.md)
 - 2026-11-02 [HV8 — the card while main waits for your checkout; the warning's space](journal/hv8-hive-pull-requests.md)
 - 2026-11-02 [HV8 — the card waits for your checkout in any step](journal/hv8-hive-pull-requests.md)
+- 2026-11-02 [HV8 — no push onto an open request before the rounds](journal/hv8-hive-pull-requests.md)

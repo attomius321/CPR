@@ -678,11 +678,12 @@ export function hiveRunner(
       );
       return reviewing(where, next);
     }
+    // HV8: with a request open, a push would put an unchecked commit on it; the landing pushes
+    // what the rounds passed, and the request updates then (769's rounds before the push).
+    const push = awaiting(record.request) ? Promise.resolve() : pushOut(where, record.branch, tip);
     return act(
       record.branch,
-      pushOut(where, record.branch, tip).then(() =>
-        runCheck(where, record, tip, check.commands, summary.worktree.path),
-      ),
+      push.then(() => runCheck(where, record, tip, check.commands, summary.worktree.path)),
     );
   }
 

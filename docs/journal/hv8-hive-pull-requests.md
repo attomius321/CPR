@@ -152,3 +152,20 @@ fetch moved.
 and GitLab), red before, green after; a unit test of the card in every step and with Hive off;
 the viewer's suites and every earlier reviewer test, 860 tests; e2e: the request, Hive review and
 the workspaces' Clean up and Merge specs, 10 of 10.
+
+## HV8 — no push onto an open request before the rounds (2026-11-02, branch `feature/hive-pull-requests`)
+
+The running reviewer at `7bd889b`: Hive still pushed the branch before each check (HV4's push after
+every turn), so with a request open the writer's merge of the start branch reached the request
+before its check ran; once that check failed, the request showed the failed commit, mergeable from
+its link, its description still "Approved by Hive at" the older commit.
+
+**Learned**:
+- **A push is a publication once a request is open.** HV4 pushed after each turn because nothing
+  read the branch on `origin` but Hive. With a request open, the forge shows whatever is pushed.
+  Now the check's push is skipped while a request is awaited; the landing pushes the commit the
+  rounds passed, and the request and its description update then.
+
+**Verification**: the reviewer's test added unchanged (`hive-request-unchecked-push.test.ts`,
+GitHub and GitLab), red before, green after; with every earlier reviewer test and the runner
+suites, 94 tests.

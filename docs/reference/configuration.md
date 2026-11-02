@@ -288,6 +288,9 @@ does not push the branch it lands in. Instead:
 
 An approval on the forge alone changes nothing: your merge is what lands it.
 
+While a request is open, Hive pushes the branch only once its rounds have passed a commit, not after
+each turn: the request never shows a commit the check or the review has not passed.
+
 - **Closed without a merge**: Hive stops the workspace, and the card says why. If you send the
   agent a message, its rounds start again, and the next landing opens a new request.
 - **Cannot be merged** (a conflict with the branch it lands in): Hive brings that branch up to
