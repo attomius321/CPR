@@ -87,7 +87,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--panel);
 }
 
 .canvas-card > .react-flow {
@@ -137,7 +137,7 @@
   gap: 14px;
   padding: 6px var(--card-pad);
   border-top: 1px solid var(--line);
-  background: var(--bg);
+  background: var(--panel);
   color: var(--muted);
   font-size: var(--size-caption);
   flex-wrap: wrap;

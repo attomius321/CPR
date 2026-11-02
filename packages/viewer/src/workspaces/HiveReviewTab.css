@@ -143,16 +143,6 @@
   white-space: pre-wrap;
 }
 
-/* A state: approved, a check passed. */
-.hive-ok {
-  --badge: var(--added);
-}
-
-/* Open, waiting for the person's merge (HV8): a wait's colour. */
-.hive-wait {
-  --badge: var(--warning);
-}
-
 /* The request Hive waits on (HV8), on the card's line and in the Review tab: the forge's page, a
    `.link` (the accent under the pointer), underlined to read as one. */
 .hive-request-link {
@@ -211,11 +201,11 @@
 }
 
 .hive-check-steps .passed .hive-check-mark {
-  color: var(--added);
+  color: var(--ok);
 }
 
 .hive-check-steps .failed .hive-check-mark {
-  color: var(--removed);
+  color: var(--error);
 }
 
 @media (max-width: 699px) {

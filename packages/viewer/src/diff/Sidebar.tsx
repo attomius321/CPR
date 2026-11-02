@@ -119,7 +119,7 @@ export function Sidebar({
 
   return (
     <nav className="sidebar" aria-label="Review">
-      <div className="tabs" role="tablist">
+      <div className="card-head tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'changes'} onClick={() => setTab('changes')}>
           Changes{' '}
           <span className="count">

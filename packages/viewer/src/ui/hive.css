@@ -1,5 +1,5 @@
-/* Hive mode's look (V82, decisions 614–616): the gloss and the dialog; its tokens
-   are in `ui/base.css`. Everything here is under `:root[data-hive]`, but Hive mode's own page and
+/* Hive mode's look (V82, decisions 614–616; V88: no gloss, sheen or glow, decision 815): the
+   question, the art and Hive's own page; its tokens are in `ui/base.css`. Everything here is under `:root[data-hive]`, but Hive mode's own page and
    question, which look the same whether it is on: off, the interface is main's. Last in the
    cascade (`styles.css`). */
 
@@ -7,38 +7,6 @@
    (Light Hive's sidenav was ink too until V85, decision 704.) */
 .hive-ink {
   color: var(--text);
-}
-
-/* The primary lit from above, glossy. */
-:root[data-hive] .button:not(.secondary, .ghost, .danger) {
-  background-image: var(--hive-gloss);
-}
-
-/* The sheen: two faint streaks of light on wet black and a crimson glow from the far corner, over
-   the main area and what it shows (the pointer goes through). One layer, never redrawn: the graph
-   pans under it. Under the menus (20) and the dialogs. */
-:root[data-hive] .shell-main::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 19;
-  pointer-events: none;
-  background:
-    linear-gradient(112deg, transparent 9%, var(--hive-streak) 13%, transparent 16%),
-    linear-gradient(112deg, transparent 21%, var(--hive-streak) 22.5%, transparent 24%),
-    radial-gradient(70% 45% at 0% 0%, var(--hive-sheen), transparent 70%),
-    radial-gradient(55% 50% at 100% 100%, var(--hive-glow), transparent 70%);
-}
-
-/* The sidenav: light from above, a crimson glow at its foot. */
-:root[data-hive] .sidenav {
-  background-image:
-    linear-gradient(170deg, var(--hive-sheen), transparent 40%),
-    radial-gradient(
-      90% 30% at 50% 100%,
-      color-mix(in srgb, var(--hive-red) 16%, transparent),
-      transparent 100%
-    );
 }
 
 /* The art's colours (decisions 665, 666): the Hive Mind's gunmetal and glass, the board's lamps,
@@ -294,7 +262,7 @@
   }
 }
 
-/* --- Hive's arrival (decision 673): the Mind and a hex shutter, then the light; then still --- */
+/* --- Hive's arrival (decision 673; V88, decision 816): the Mind and a hex shutter; then still --- */
 
 /* The shutter over the whole window, the question's too, under the window's edge (frame.css,
    100); drawn at most 0.9 megapixels and stretched. */
@@ -308,60 +276,10 @@
   pointer-events: none;
 }
 
-/* The sheen comes in, and a streak of light crosses the main area once. */
-:root[data-hive-arriving] .shell-main::before {
-  animation: hive-arrive-sheen 900ms ease-out 400ms both;
-}
-
-:root[data-hive-arriving] .shell-main::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 19;
-  pointer-events: none;
-  background: linear-gradient(
-    112deg,
-    transparent 40%,
-    rgb(255 255 255 / 7%) 48%,
-    color-mix(in srgb, var(--hive-red) 12%, transparent) 51%,
-    transparent 58%
-  );
-  background-size: 300% 100%;
-  animation: hive-arrive-streak 1100ms cubic-bezier(0.45, 0, 0.25, 1) 350ms both;
-}
-
-@keyframes hive-arrive-sheen {
-  from {
-    opacity: 0;
-  }
-}
-
-@keyframes hive-arrive-streak {
-  from {
-    background-position: 100% 0;
-  }
-
-  80% {
-    opacity: 1;
-  }
-
-  to {
-    background-position: 0% 0;
-    opacity: 0;
-  }
-}
-
 /* Off: the page fades to main's look (a view transition). */
 :root[data-hive-leaving]::view-transition-old(root),
 :root[data-hive-leaving]::view-transition-new(root) {
   animation-duration: 250ms;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  :root[data-hive-arriving] .shell-main::before,
-  :root[data-hive-arriving] .shell-main::after {
-    animation: none;
-  }
 }
 
 /* Settings' tiles one ink in Hive: the groups' five colours fight the crimson. */
@@ -371,27 +289,23 @@
 
 /* --- Hive mode's page (decision 613), the same whether it is on --- */
 
-/* Its entry's tile in the error's red, the only one not its group's. */
+/* Its entry's tile in Hive's crimson (V88, decision 814: the error's red before), the only one not
+   its group's; the icon in its words' colour. */
 .settings-list .settings-tile.hive-tile {
-  --tint: var(--error);
+  --tint: var(--hive);
+
+  color: var(--hive-text);
 }
 
-.settings-state.hive-on {
-  --badge: var(--error);
-  border: 1px solid color-mix(in srgb, var(--badge) 25%, transparent);
-  background: color-mix(in srgb, var(--badge) 10%, transparent);
-  color: var(--badge);
-}
-
-/* What Hive will do, in the error's tint (the style's state tint). */
+/* What Hive will do (V88): a neutral note, as the kit's; not a failure, so not the error's red. */
 .hive-warning {
   display: flex;
   gap: 12px;
   margin: 0 0 var(--field-gap);
   padding: 14px var(--card-pad);
-  border: 1px solid color-mix(in srgb, var(--error) 30%, transparent);
+  border: 1px solid var(--line);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--error) 8%, transparent);
+  background: var(--raised);
 }
 
 .hive-warning > .icon {
@@ -399,7 +313,7 @@
   width: 18px;
   height: 18px;
   margin-top: 2px;
-  color: var(--error);
+  color: var(--warning);
 }
 
 .hive-warning p {
@@ -409,7 +323,7 @@
 .hive-warning strong {
   display: block;
   margin-bottom: 4px;
-  color: var(--error);
+  color: var(--text);
   font-weight: 600;
 }
 
@@ -456,7 +370,7 @@
 }
 
 .hive-paused-now {
-  color: var(--warning);
+  color: var(--info);
 }
 
 .hive-budget {
@@ -488,7 +402,7 @@
 /* No blur behind it or in it while its art moves: in software (the app on WSL) the compositor blurs
    the whole window again each frame, a core's work at 16–31 fps (decision 631). */
 .dialog-backdrop.hive {
-  background: radial-gradient(60% 60% at 50% 50%, rgb(70 4 16 / 55%), rgb(2 0 1 / 82%));
+  background: var(--overlay);
   backdrop-filter: none;
 }
 
@@ -496,26 +410,12 @@
   position: relative;
   overflow: hidden;
   padding-top: 0;
-  border-color: color-mix(in srgb, var(--hive-red) 45%, transparent);
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--hive-red) 6%, var(--side)),
-    var(--bg) 60%
-  );
+  border-color: var(--line-2);
+  background: var(--panel);
   box-shadow:
     0 24px 80px rgb(0 0 0 / 70%),
-    0 0 48px color-mix(in srgb, var(--hive-red) 22%, transparent),
-    inset 0 1px 0 rgb(255 255 255 / 10%);
+    inset 0 1px 0 rgb(255 255 255 / 6%);
   backdrop-filter: none;
-}
-
-/* A streak of light across it, as over the pages. */
-.dialog.hive-ink::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background: linear-gradient(112deg, transparent 30%, var(--hive-streak) 34%, transparent 37%);
 }
 
 .dialog.hive-ink > * {
@@ -541,26 +441,20 @@
 .dialog.hive-ink h2 .icon {
   width: 18px;
   height: 18px;
-  color: var(--hive-red);
+  color: var(--hive);
 }
 
 .dialog.hive-ink p {
   color: var(--muted);
 }
 
-.dialog.hive-ink .button.danger {
-  background: var(--primary);
-  background-image: var(--hive-gloss);
-  box-shadow: var(--primary-shine);
-}
-
 /* HV4 (decision 772): the workspaces in normal mode that keep Hive off, named under the question. */
 .hive-refused {
   margin: 4px 0 0;
   padding: 8px 12px;
-  border: 1px solid color-mix(in srgb, var(--hive-red) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--hive-red) 8%, transparent);
+  background: color-mix(in srgb, var(--error) 8%, transparent);
 }
 
 .dialog.hive-ink .hive-refused p {
@@ -594,5 +488,5 @@
 
 /* Its mark in the list while it is on. */
 .settings-mark.hive-on {
-  color: var(--error);
+  color: var(--hive-text);
 }

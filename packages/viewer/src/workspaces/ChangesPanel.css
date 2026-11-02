@@ -14,7 +14,7 @@
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--side);
+  background: var(--panel);
   font-size: var(--size-small);
 }
 

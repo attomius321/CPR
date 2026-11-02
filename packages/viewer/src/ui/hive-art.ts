@@ -609,8 +609,8 @@ export const combRadius = (width: number, height: number) =>
 
 /**
  * The honeycomb of hex tiles (a point up) centred on `at`, every point of the `width` × `height`
- * window in a tile: the arrival's shutter (decision 673) and, kept, the background while Hive is
- * on (V85, decision 702). A given `r` keeps a lattice as the window grows.
+ * window in a tile: the arrival's shutter (decision 673). A given `r` keeps a lattice as the
+ * window grows.
  */
 export function combLattice(
   width: number,

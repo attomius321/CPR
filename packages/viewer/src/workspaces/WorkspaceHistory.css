@@ -41,7 +41,7 @@
   min-height: 0;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--panel);
 }
 
 /* Nothing to list or nothing picked: the card's words 16 px in, as every card's. */
@@ -64,7 +64,7 @@
   padding: var(--card-pad) 8px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--side);
+  background: var(--panel);
 }
 
 .history-filters {
@@ -224,26 +224,8 @@
   text-overflow: ellipsis;
 }
 
-/* What became of its branch: merged in Done's green tint; kept or not merged a quiet chip. */
-.history-outcome {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 8px;
-  border-radius: 9999px;
-  background: var(--raised);
-  color: var(--muted);
-  font-size: var(--size-caption);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.history-outcome.outcome-merged {
-  border: 1px solid color-mix(in srgb, var(--added) 30%, transparent);
-  background: color-mix(in srgb, var(--added) 12%, transparent);
-  color: var(--added);
-}
+/* What became of its branch (V88): the shared status label, merged green, kept or not merged
+   idle. */
 
 /* The picked workspace: its head (the kind's icon in a raised square, its name and kind, its
    facts, Open the change), its tabs, the tab to the bottom. */
@@ -259,7 +241,7 @@
   align-items: center;
   gap: 8px 12px;
   padding: var(--card-pad) var(--card-pad) 8px;
-  background: var(--side);
+  background: var(--panel);
 }
 
 .history-workspace-head + .workspace-views {

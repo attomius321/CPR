@@ -52,7 +52,7 @@ export function WorkspaceTabs({
   return (
     <div
       ref={stripRef}
-      className="workspace-views"
+      className="card-head workspace-views"
       role="tablist"
       aria-label="Talk to the agent"
       onWheel={(event) => {

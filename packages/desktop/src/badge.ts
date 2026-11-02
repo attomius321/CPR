@@ -1,6 +1,6 @@
 /**
- * The dot on the window's icon while something waits for the person (N2): the viewer's amber of
- * Waiting for you (`--warning`), in a ring of its `--bg` that stands it off the S. At the icon's
+ * The dot on the window's icon while something waits for the person (N2): the viewer's violet of
+ * Waiting for you (`--you`, V88; amber before), in a ring of its `--bg` that stands it off the S. At the icon's
  * top-right: WSLg blends its own mark over the bottom-right quarter. Its centre and sizes are
  * fractions of the icon's side; the dot is 38 % across, 9 px on a 24 px taskbar icon.
  */
@@ -9,8 +9,8 @@ export const DOT = {
   y: 0.23,
   radius: 0.19,
   ring: 0.04,
-  color: [0xf5, 0xb3, 0x2a],
-  ringColor: [0x09, 0x0b, 0x0e],
+  color: [0x98, 0x86, 0xff],
+  ringColor: [0x09, 0x0a, 0x0d],
 } as const;
 
 /**

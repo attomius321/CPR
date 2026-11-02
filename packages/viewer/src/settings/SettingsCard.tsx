@@ -26,7 +26,7 @@ export function SettingsCard({
   return (
     <section className={`settings-editor${className ? ` ${className}` : ''}`} aria-label={label}>
       <BackToList onBack={onBack} />
-      <div className="settings-head">
+      <div className="card-head settings-head">
         <h2>{title}</h2>
         {actions}
       </div>

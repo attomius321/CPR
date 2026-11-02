@@ -18,8 +18,9 @@ const at = (pixels: Uint8Array, side: number, x: number, y: number) => {
   return [...pixels.slice(i, i + 4)];
 };
 // BGRA, as Electron's bitmaps are.
-const AMBER = [0x2a, 0xb3, 0xf5, 255];
-const RING = [0x0e, 0x0b, 0x09, 255];
+// V88 (decision 821): the person's violet, as the viewer's Waiting for you.
+const VIOLET = [0xff, 0x86, 0x98, 255];
+const RING = [0x0d, 0x0a, 0x09, 255];
 const BLUE = [255, 0, 0, 255];
 
 describe("the taskbar icon's dot (N2)", () => {
@@ -27,9 +28,9 @@ describe("the taskbar icon's dot (N2)", () => {
   const cx = DOT.x * side;
   const cy = DOT.y * side;
 
-  it('is amber at its centre, in a dark ring, at the top-right', () => {
+  it('is violet at its centre, in a dark ring, at the top-right', () => {
     const dotted = withDot(icon(side), side, side);
-    expect(at(dotted, side, Math.floor(cx), Math.floor(cy))).toEqual(AMBER);
+    expect(at(dotted, side, Math.floor(cx), Math.floor(cy))).toEqual(VIOLET);
     // Between the dot's edge and the ring's.
     const ring = Math.floor(cy - (DOT.radius + DOT.ring / 2) * side);
     expect(at(dotted, side, Math.floor(cx), ring)).toEqual(RING);
@@ -58,16 +59,16 @@ describe("the taskbar icon's dot (N2)", () => {
 
   it('is opaque where the icon was clear', () => {
     const dotted = withDot(icon(side, 40), side, side);
-    expect(at(dotted, side, Math.floor(cx), Math.floor(cy))).toEqual(AMBER);
+    expect(at(dotted, side, Math.floor(cx), Math.floor(cy))).toEqual(VIOLET);
   });
 
-  it('has smooth edges: between amber and its ring only on the dot’s rim', () => {
+  it('has smooth edges: between violet and its ring only on the dot’s rim', () => {
     const dotted = withDot(icon(side), side, side);
     let blended = 0;
     for (let y = 0; y < side; y++) {
       for (let x = 0; x < side; x++) {
         const red = at(dotted, side, x, y)[2] as number;
-        if (red <= RING[2]! || red >= AMBER[2]!) continue;
+        if (red <= RING[2]! || red >= VIOLET[2]!) continue;
         blended++;
         const off = Math.abs(Math.hypot(x + 0.5 - cx, y + 0.5 - cy) - DOT.radius * side);
         expect(off).toBeLessThan(1);

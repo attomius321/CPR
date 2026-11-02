@@ -112,6 +112,6 @@
 }
 
 .check {
-  color: var(--added);
+  color: var(--ok);
   font-weight: 700;
 }

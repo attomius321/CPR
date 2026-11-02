@@ -52,7 +52,7 @@
   width: var(--height-row);
   height: var(--height-row);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--phase, var(--muted)) var(--phase-wash), var(--bg));
+  background: color-mix(in srgb, var(--phase, var(--muted)) var(--phase-wash), var(--panel));
   color: var(--phase, var(--muted));
 }
 
@@ -141,8 +141,8 @@
 }
 
 .activity-live.waiting {
-  border-color: color-mix(in srgb, var(--warning) 30%, transparent);
-  background: color-mix(in srgb, var(--warning) 5%, var(--panel));
+  border-color: color-mix(in srgb, var(--you) 30%, transparent);
+  background: color-mix(in srgb, var(--you) 5%, var(--panel));
 }
 
 .activity-live .state-dot {
@@ -279,18 +279,18 @@
   position: absolute;
   top: 4px;
   left: 0;
-  box-shadow: 0 0 0 3px var(--bg);
+  box-shadow: 0 0 0 3px var(--panel);
   transition: box-shadow 150ms;
 }
 
 /* A milestone: a stronger tile, its edge drawn; the person's words and the agent's in the text's
-   colour, a question in the waiting amber. */
+   colour, a question in the person's violet (V88). */
 .activity-group.milestone {
   --phase: var(--text);
 }
 
 .activity-group.kind-asks {
-  --phase: var(--warning);
+  --phase: var(--you);
 }
 
 .activity-group.kind-commit {
@@ -299,7 +299,7 @@
 
 .activity-group.milestone .activity-rail .activity-tile {
   box-shadow:
-    0 0 0 3px var(--bg),
+    0 0 0 3px var(--panel),
     inset 0 0 0 1px color-mix(in srgb, var(--phase) 45%, transparent);
 }
 
@@ -312,7 +312,7 @@
   background: var(--bg);
   color: var(--faint);
   box-shadow:
-    0 0 0 3px var(--bg),
+    0 0 0 3px var(--panel),
     inset 0 0 0 1px var(--line);
 }
 
@@ -322,18 +322,18 @@
 }
 
 .activity-group.status-running {
-  --status-ring: var(--info);
+  --status-ring: var(--run);
 }
 
 .activity-group.status-waiting {
-  --status-ring: var(--warning);
+  --status-ring: var(--you);
 }
 
 .activity-group.status-failed .activity-rail .activity-tile,
 .activity-group.status-running .activity-rail .activity-tile,
 .activity-group.status-waiting .activity-rail .activity-tile {
   box-shadow:
-    0 0 0 3px var(--bg),
+    0 0 0 3px var(--panel),
     inset 0 0 0 1.5px var(--status-ring);
 }
 
@@ -411,36 +411,9 @@
   flex: 1;
 }
 
+/* Its status (V88): the shared status label, its own icon in it. */
 .activity-status {
   flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.activity-status .icon {
-  width: 12px;
-  height: 12px;
-}
-
-.activity-status.tone-info {
-  --badge: var(--info);
-}
-
-.activity-status.tone-error {
-  --badge: var(--error);
-}
-
-.activity-status.tone-added {
-  --badge: var(--added);
-}
-
-.activity-status.tone-warning {
-  --badge: var(--warning);
-}
-
-.activity-status.tone-muted {
-  --badge: var(--muted);
 }
 
 .activity-count {
@@ -486,8 +459,8 @@
   color: var(--error);
 }
 
-.activity-part.tone-added {
-  color: var(--added);
+.activity-part.tone-ok {
+  color: var(--ok);
 }
 
 .activity-part.tone-warning {
@@ -663,7 +636,7 @@
 }
 
 .activity-event.running .activity-event-icon {
-  color: var(--info);
+  color: var(--run);
 }
 
 .activity-event-words {
@@ -711,7 +684,7 @@
 }
 
 .activity-exit.badge-info {
-  --badge: var(--info);
+  --badge: var(--run);
 }
 
 .activity-event-took,

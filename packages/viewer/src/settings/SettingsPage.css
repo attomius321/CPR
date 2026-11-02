@@ -54,7 +54,7 @@
   padding: var(--card-pad) 8px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--side);
+  background: var(--panel);
 }
 
 .settings-list section + section {
@@ -202,16 +202,13 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--side);
+  background: var(--panel);
 }
 
 .settings-head {
-  flex: none;
-  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  min-height: var(--card-head);
   padding: 4px var(--card-pad);
   border-bottom: 1px solid var(--line);
 }

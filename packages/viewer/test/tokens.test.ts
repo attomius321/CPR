@@ -52,8 +52,14 @@ function contrast(a: string, b: string): number {
 
 const BACKGROUNDS = ['--bg', '--side', '--panel', '--raised'];
 // V42: the accent marks a link under the pointer and the current page's name: read as text.
-const TEXT = ['--text', '--muted', '--accent'];
+// V88: the person's turn (`--you`) and Hive's words (`--hive-text`) are read as text too.
+const TEXT = ['--text', '--muted', '--accent', '--you', '--hive-text'];
+// V88 (decision 813): the states both modes share, as CI reads them — amber in progress (the
+// agent's turn), green passed, red failed, cyan paused — and Hive's crimson as a mark.
 const STATES = [
+  '--run',
+  '--ok',
+  '--hive',
   '--added',
   '--removed',
   '--modified',
@@ -129,17 +135,20 @@ describe('the tokens (V29b)', () => {
   });
 
   // V31: Symbiote's style (the symbiote-style skill's tokens.md): the content darkest, the chrome
-  // lifted. V61: the person's mockup, near-black neutrals in place of V42's navy water.
-  it('are the mockup’s near blacks in the dark theme, a step lighter for the chrome', () => {
+  // lifted. V61: the person's mockup, near-black neutrals in place of V42's navy water. V88
+  // (decision 812): normal mode's kit (spikes/normal-redesign), cool ink.
+  it('are the kit’s cool ink in the dark theme, a step lighter for the chrome', () => {
     expect(Object.fromEntries(BACKGROUNDS.map((t) => [t, dark.get(t)]))).toEqual({
-      '--bg': '#090b0e',
-      '--side': '#0d1015',
-      '--panel': '#0d1015',
+      '--bg': '#090a0d',
+      '--side': '#0d0f13',
+      '--panel': '#0e1015',
       '--raised': '#171a21',
     });
-    expect(dark.get('--text')).toBe('#edf0f5');
-    expect(dark.get('--muted')).toBe('#a2abbc');
-    expect(dark.get('--line')).toBe('#1f232c');
+    expect(dark.get('--text')).toBe('#eef0f5');
+    expect(dark.get('--muted')).toBe('#a3aabb');
+    expect(dark.get('--faint')).toBe('#767d8d');
+    expect(dark.get('--line')).toBe('#23262e');
+    expect(dark.get('--line-2')).toBe('#2e323b');
     // V54: the terminal's link hint's light, now every tip's in the dark theme.
     expect(dark.get('--tip-bg')).toBe('#e6e9ef');
     // The mockup's step from the content to the chrome: smaller than V31's 1.1, the cards' hairline
@@ -147,43 +156,73 @@ describe('the tokens (V29b)', () => {
     expect(contrast(dark.get('--bg')!, dark.get('--side')!)).toBeGreaterThanOrEqual(1.03);
   });
 
-  it('are the koi’s in the light theme: a white page, cool chrome, navy text', () => {
+  // V88 (decision 812): a grey ground with white cards; the kit's line a step darker, for 1.2:1 on
+  // the ground (the kit's #e0e3eb is 1.17 there).
+  it('are the kit’s in the light theme: a grey ground, white cards, navy text', () => {
     expect(Object.fromEntries(BACKGROUNDS.map((t) => [t, light.get(t)]))).toEqual({
-      '--bg': '#ffffff',
-      '--side': '#f6f8fc',
-      '--panel': '#f6f8fc',
-      '--raised': '#e9eef7',
+      '--bg': '#f3f4f7',
+      '--side': '#f9fafc',
+      '--panel': '#ffffff',
+      '--raised': '#eef0f5',
     });
-    expect(light.get('--text')).toBe('#0b1220');
-    expect(light.get('--tip-bg')).toBe('#0b1220');
+    expect(light.get('--text')).toBe('#0f1320');
+    expect(light.get('--line')).toBe('#dadee7');
+    expect(light.get('--tip-bg')).toBe('#0f1320');
   });
 
-  // V42 (decision 281): the moved kind and info in cyan. V61 (decisions 437, 440): the mockup's
-  // violet for the primary and the accent in both themes; dark text on the dark theme's primary,
-  // where white is 4.01:1.
-  it('take the mockup’s violet for the primary and the accent, and cyan for moved and info', () => {
+  // V42 (decision 281): the moved kind in cyan. V61 (decisions 437, 440): the mockup's violet for
+  // the primary and the accent in both themes; dark text on the dark theme's primary, where white
+  // is 4.01:1. V88 (decision 813): the person's turn in the accent's violet, the agent's in amber;
+  // a real warning keeps the amber; Hive's crimson named in both modes (its Settings entry, Turn
+  // on Hive).
+  it('take the kit’s violet for the primary, the accent and the person’s turn; CI’s states', () => {
     const pick = (theme: Map<string, string>) =>
       Object.fromEntries(
-        ['--primary', '--primary-text', '--accent', '--focus', '--moved', '--info'].map((t) => [
-          t,
-          theme.get(t),
-        ]),
+        [
+          '--primary',
+          '--primary-text',
+          '--accent',
+          '--focus',
+          '--you',
+          '--run',
+          '--ok',
+          '--error',
+          '--warning',
+          '--info',
+          '--moved',
+          '--hive',
+          '--hive-text',
+        ].map((t) => [t, theme.get(t)]),
       );
     expect(pick(dark)).toEqual({
       '--primary': '#7c68fc',
       '--primary-text': '#0b0a1a',
       '--accent': '#9886ff',
       '--focus': '#9886ff',
+      '--you': '#9886ff',
+      '--run': '#f2b33d',
+      '--ok': '#3fcf8e',
+      '--error': '#ff6166',
+      '--warning': '#f2b33d',
+      '--info': '#5cc8d8',
       '--moved': '#3fc5d6',
-      '--info': '#3fc5d6',
+      '--hive': '#e5243f',
+      '--hive-text': '#ff8090',
     });
     expect(pick(light)).toEqual({
       '--primary': '#5b3fd9',
       '--primary-text': '#ffffff',
       '--accent': '#5b3fd9',
       '--focus': '#5b3fd9',
+      '--you': '#5b3fd9',
+      '--run': '#8f5b00',
+      '--ok': '#137a4a',
+      '--error': '#cf2330',
+      '--warning': '#8f5b00',
+      '--info': '#0a7383',
       '--moved': '#0a7d8c',
-      '--info': '#0a7d8c',
+      '--hive': '#c8102e',
+      '--hive-text': '#b30f2a',
     });
   });
 
@@ -233,6 +272,13 @@ describe('the tokens (V29b)', () => {
       '--ring',
       // V42: the secondary colour, the koi's blue light (decision 280).
       '--accent',
+      // V88: a secondary button's edge; the states; Hive's crimson.
+      '--line-2',
+      '--you',
+      '--run',
+      '--ok',
+      '--hive',
+      '--hive-text',
     ]) {
       expect([name, dark.has(name), light.has(name)]).toEqual([name, true, true]);
     }
@@ -262,6 +308,11 @@ describe('the tokens (V29b)', () => {
 
       it('writes its text on the primary at 4.5:1 at least, under the pointer too', () => {
         expect(under(theme, ['--primary-text'], ['--primary', '--primary-hover'], 4.5)).toEqual([]);
+        // V88: Turn on Hive, white on Hive's crimson in normal mode too.
+        const white = new Map([...theme, ['--white', '#ffffff']]);
+        expect(under(white, ['--white'], ['--hive-primary', '--hive-primary-hover'], 4.5)).toEqual(
+          [],
+        );
       });
 
       it('gives text at least 4.5:1 on every background', () => {
@@ -282,7 +333,8 @@ describe('the tokens (V29b)', () => {
         expect(under(theme, PHASES, BACKGROUNDS, 3)).toEqual([]);
         const share = Number.parseFloat(theme.get('--phase-wash')!) / 100;
         const low = PHASES.flatMap((phase) => {
-          const tile = mixed(theme.get(phase)!, share, theme.get('--bg')!);
+          // On the Activity tab's card (V88: `--panel`, the page's ground before).
+          const tile = mixed(theme.get(phase)!, share, theme.get('--panel')!);
           const ratio = contrast(theme.get(phase)!, tile);
           return ratio < 3 ? [`${phase} on its tile: ${ratio.toFixed(2)}`] : [];
         });
@@ -618,10 +670,10 @@ describe('the fonts (V29b, decision 180)', () => {
   });
 });
 
-// V82 (decisions 614, 615): Hive mode's ink and crimson, over each theme while it is on. Its blocks
-// name only what changes; the Hive dialog takes dark Hive's (light Hive's sidenav is light since
-// V85, decision 704).
-describe('Hive mode (V82)', () => {
+// V82 (decisions 614, 615): Hive mode's tokens over each theme while it is on. V88 (decisions 812,
+// 814): Hive Control's warm ink, no red in its surfaces; crimson its identity only. Its blocks name
+// only what changes; the question takes dark Hive's whatever the theme.
+describe('Hive mode (V82, V88)', () => {
   const hiveDark = tokens(":root[data-hive]:not([data-theme='light']),\n.hive-ink");
   const hiveLight = tokens(":root[data-hive][data-theme='light']");
   const hiveSystemLight = tokens("  :root[data-hive][data-theme='system']");
@@ -629,44 +681,71 @@ describe('Hive mode (V82)', () => {
     dark: new Map([...dark, ...hiveDark]),
     light: new Map([...light, ...hiveLight]),
   };
+  const NEUTRALS = [...BACKGROUNDS, '--line', '--line-2', '--edge', '--text', '--muted', '--faint'];
 
   it('names the same tokens in both themes, and the system light is its light', () => {
     expect([...hiveLight.keys()].sort()).toEqual([...hiveDark.keys()].sort());
     expect(hiveSystemLight).toEqual(hiveLight);
   });
 
-  it('is ink with a breath of red, words near white, the primary crimson', () => {
+  it('is the kit’s warm ink, the primary crimson with white words, its text the accent', () => {
     const pick = (theme: Map<string, string>) =>
       Object.fromEntries(
-        [...BACKGROUNDS, '--text', '--accent', '--primary', '--primary-text'].map((t) => [
-          t,
-          theme.get(t),
-        ]),
+        [
+          ...BACKGROUNDS,
+          '--line',
+          '--text',
+          '--muted',
+          '--faint',
+          '--accent',
+          '--primary',
+          '--primary-text',
+        ].map((t) => [t, theme.get(t)]),
       );
     expect(pick(hive.dark)).toEqual({
-      '--bg': '#070506',
-      '--side': '#0d090a',
-      '--panel': '#0d090a',
-      '--raised': '#1b1214',
-      '--text': '#f7f2f2',
-      '--accent': '#ffc4cc',
+      '--bg': '#09090b',
+      '--side': '#0e0e11',
+      '--panel': '#0f0f12',
+      '--raised': '#18181d',
+      '--line': '#24242b',
+      '--text': '#f3f2f5',
+      '--muted': '#a6a4ae',
+      '--faint': '#7b7983',
+      '--accent': '#ff8090',
       '--primary': '#c8102e',
       '--primary-text': '#ffffff',
     });
     expect(pick(hive.light)).toEqual({
-      '--bg': '#ffffff',
-      '--side': '#f7f4f4',
-      '--panel': '#f7f4f4',
-      '--raised': '#ece5e6',
-      '--text': '#120a0c',
-      '--accent': '#9b1230',
-      '--primary': '#b0102b',
+      '--bg': '#f3f3f5',
+      '--side': '#f9f9fa',
+      '--panel': '#ffffff',
+      '--raised': '#f0f0f3',
+      '--line': '#dcdce2',
+      '--text': '#121216',
+      '--muted': '#595762',
+      '--faint': '#7c7a85',
+      '--accent': '#b30f2a',
+      '--primary': '#c8102e',
       '--primary-text': '#ffffff',
     });
   });
 
+  // The brief: "Hive's neutrals carry no red". Red no more than two steps over green or blue.
+  it('carries no red in its neutrals', () => {
+    const red = Object.entries(hive).flatMap(([name, theme]) =>
+      NEUTRALS.filter((t) => {
+        const n = Number.parseInt(theme.get(t)!.slice(1), 16);
+        const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+        return r - Math.max(g, b) > 2;
+      }).map((t) => `${name} ${t}: ${theme.get(t)}`),
+    );
+    expect(red).toEqual([]);
+  });
+
   it('keeps the states, lanes, kinds of work and type: only surfaces, words and accents change', () => {
-    const kept = [...STATES, ...LANES, ...PHASES, '--phase-wash'].filter((t) => hiveDark.has(t));
+    const kept = [...STATES, ...LANES, ...PHASES, '--phase-wash', '--you'].filter((t) =>
+      hiveDark.has(t),
+    );
     expect(kept).toEqual([]);
     expect([...hiveDark.keys()].filter((t) => t.startsWith('--size-'))).toEqual([]);
   });
@@ -686,20 +765,13 @@ describe('Hive mode (V82)', () => {
         expect(under(theme, LANES, ['--bg', '--raised'], 3)).toEqual([]);
       });
 
-      // V85 (decisions 701, 704): the honeycomb behind the page; words over a line's pixel too.
-      it("keeps words readable on the honeycomb's ground and on its lines", () => {
-        const comb = ['--hive-comb-ground', '--hive-comb-line'];
-        expect(comb.filter((t) => !theme.has(t))).toEqual([]);
-        expect(under(theme, TEXT, comb, 4.5)).toEqual([]);
-        expect(under(theme, [...STATES, '--focus', '--faint'], comb, 3)).toEqual([]);
-      });
-
       it('separates regions with lines that show', () => {
         expect(under(theme, ['--line'], ['--bg', '--side', '--panel'], 1.2)).toEqual([]);
       });
 
-      it('draws the selection, a crimson wash, further from its ground than the hover', () => {
-        expect(theme.get('--selected')).toMatch(/var\(--hive-red\) \d+%, transparent/);
+      // V88: the selection a neutral wash, as the kit's; crimson is not a surface.
+      it('draws the selection, a neutral wash, further from its ground than the hover', () => {
+        expect(theme.get('--selected')).toMatch(/var\(--text\) \d+%, transparent/);
         const close = ['--bg', '--side'].flatMap((back) => {
           const ground = theme.get(back)!;
           const hover = contrast(washed(theme, '--hover', back), ground);
@@ -710,12 +782,15 @@ describe('Hive mode (V82)', () => {
       });
 
       // Settings' tiles one ink in Hive (the groups' five colours fight the crimson), Hive mode's
-      // own in the error's red.
-      it("draws Settings' icons 3:1 on their tiles: ink, Hive mode's red, the open one's", () => {
+      // own in its crimson (V88: `--hive`, the error's red before).
+      it("draws Settings' icons 3:1 on their tiles: ink, Hive's crimson, the open one's", () => {
         const share = Number.parseFloat(theme.get('--phase-wash')!) / 100;
-        const low = ['--muted', '--error'].flatMap((tint) => {
-          const tile = mixed(theme.get(tint)!, share, theme.get('--side')!);
-          return [tint, '--accent'].flatMap((front) => {
+        const low = [
+          ['--muted', '--muted'],
+          ['--hive', '--hive-text'],
+        ].flatMap(([tint, icon]) => {
+          const tile = mixed(theme.get(tint!)!, share, theme.get('--side')!);
+          return [icon!, '--accent'].flatMap((front) => {
             const ratio = contrast(theme.get(front)!, tile);
             return ratio < 3 ? [`${front} on ${tint}'s tile: ${ratio.toFixed(2)}`] : [];
           });
@@ -725,14 +800,51 @@ describe('Hive mode (V82)', () => {
     });
   }
 
-  // Off, Hive mode's entry is the only red tile in the list.
-  it("draws Hive mode's icon 3:1 on its red tile in both themes", () => {
+  // Off, Hive mode's entry is the only crimson tile in the list.
+  it("draws Hive mode's icon 3:1 on its crimson tile in both themes", () => {
     const low = Object.entries({ dark, light }).flatMap(([name, theme]) => {
       const share = Number.parseFloat(theme.get('--phase-wash')!) / 100;
-      const tile = mixed(theme.get('--error')!, share, theme.get('--side')!);
-      const ratio = contrast(theme.get('--error')!, tile);
+      const tile = mixed(theme.get('--hive')!, share, theme.get('--side')!);
+      const ratio = contrast(theme.get('--hive-text')!, tile);
       return ratio < 3 ? [`${name}: ${ratio.toFixed(2)}`] : [];
     });
     expect(low).toEqual([]);
   });
+});
+
+// V88 (decision 815): the person's "the honeycomb goes": no comb, sheen, streak, glow or gloss over
+// the pages, the sidenav or the question, and no token or file of them left.
+describe('no honeycomb or light over the pages (V88)', () => {
+  const GONE =
+    /hive-comb|HiveComb|layComb|--hive-(red|gloss|sheen|streak|glow|cells)|hive-arrive-(sheen|streak)|hive-cells-streak/;
+
+  it('names none of them in any source', () => {
+    const named = sources(/\.(css|tsx?)$/)
+      .filter(([, text]) => GONE.test(text))
+      .map(([file, text]) => `${file}: ${GONE.exec(text)![0]}`);
+    expect(named).toEqual([]);
+  });
+});
+
+// V88 (decision 813): a state's colour says whose turn it is. Each token only in rules whose
+// selector names its meaning.
+describe('the states say whose turn it is (V88)', () => {
+  const MEANING: Record<string, RegExp> = {
+    // The person's: waiting for them, ready to review, asked, a plan to answer, how many need
+    // them; `from` is the wait's flash (a keyframe's rule).
+    '--you': /wait|ready|review|ask|you|respond|plan|page-count|^from$/,
+    // A real warning: a check's, a limit near, advice, something stale or gone, a merge's
+    // conflicts, a fast-forward that cannot be.
+    '--warning': /warning|stale|gone|tone-high|advice|merge-check-head|merge-control-why/,
+  };
+
+  for (const [token, meaning] of Object.entries(MEANING)) {
+    it(`uses ${token} only where its selector says so`, () => {
+      const off = rules
+        .filter((rule) => rule.body.includes(`var(${token})`) && !rule.selector.startsWith(':root'))
+        .filter((rule) => !meaning.test(rule.selector))
+        .map((rule) => rule.selector.split('\n')[0]);
+      expect(off).toEqual([]);
+    });
+  }
 });

@@ -62,7 +62,7 @@ export function CodeList({
 
   return (
     <section className="monitor-list" aria-label="Ranked">
-      <div className="tabs" role="tablist" aria-label="What to rank">
+      <div className="card-head tabs" role="tablist" aria-label="What to rank">
         <button
           type="button"
           role="tab"

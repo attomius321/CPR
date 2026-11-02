@@ -24,24 +24,24 @@ a.workspace-mark:hover {
 }
 
 .workspace-mark-working {
-  --workspace-tone: var(--moved);
+  --workspace-tone: var(--run);
 }
 
-/* Hive at work (decision 698): its crimson, as the sidenav's dot. */
+/* Hive at work (decision 698): in progress's amber, as the sidenav's dot (V88; crimson before). */
 .workspace-mark-hive {
-  --workspace-tone: var(--hive-red, var(--removed));
+  --workspace-tone: var(--run);
 }
 
-/* As the sidenav's dot (V48): ready for review in the waiting's amber, green only once merged. */
+/* As the sidenav's dot (V48): ready for review in the person's violet, green only once merged. */
 .workspace-mark-waiting,
 .workspace-mark-ready {
-  --workspace-tone: var(--warning);
+  --workspace-tone: var(--you);
 }
 
 .workspace-mark-failed {
-  --workspace-tone: var(--removed);
+  --workspace-tone: var(--error);
 }
 
 .workspace-mark-done {
-  --workspace-tone: var(--added);
+  --workspace-tone: var(--ok);
 }

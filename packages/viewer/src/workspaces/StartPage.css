@@ -245,11 +245,12 @@
   margin-top: 2px;
 }
 
-/* A subscription's crown, in the warning's amber as the mockup's. */
+/* A subscription's crown: muted (V88, decision 813: amber is for the agent's turn and a real
+   warning, the mockup's crown neither). */
 .start-account .icon {
   width: 14px;
   height: 14px;
-  color: var(--warning);
+  color: var(--muted);
 }
 
 .start-card select {
@@ -323,10 +324,8 @@
    the card; the info at the row's end (V24c). */
 .kind-row {
   position: relative;
-  display: flex;
   align-items: center;
   gap: 8px;
-  min-height: var(--card-head);
   margin: 0 calc(-1 * var(--card-pad));
   padding: 0 var(--card-pad);
   border-bottom: 1px solid var(--line);

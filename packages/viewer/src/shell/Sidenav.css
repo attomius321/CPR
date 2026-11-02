@@ -8,14 +8,14 @@
 
 /* ---- workspaces (V18b) ------------------------------------------------------------------ */
 
-/* How many workspaces need the person: the waiting colour. */
-/* How many need you: a count in the warning's tint, round as the groups' counts (V37). */
+/* How many need you: a count in the person's violet (V88, decision 813; amber before), round as
+   the groups' counts (V37). */
 .page-count {
   min-width: 20px;
   padding: 0 6px;
   border-radius: 9999px;
-  background: color-mix(in srgb, var(--warning) 16%, transparent);
-  color: var(--warning);
+  background: color-mix(in srgb, var(--you) 16%, transparent);
+  color: var(--you);
   font-size: var(--size-caption);
   font-weight: 600;
   line-height: calc(var(--size-caption) + 7px);
@@ -225,22 +225,23 @@ button.workspace-about {
 }
 
 /* Nucleus or Scribe waiting on the person (V59): the whole link is Waiting for you's band (V48) —
-   its amber wash, its edge a ring drawn as a shadow so nothing moves —, the icon amber, the words
-   at full strength, "Waits" for the dot. One flash as it starts to wait, then still: the link
-   stays across the shell's pages, so it flashes once a document. */
+   its wash in the person's violet (V88; amber before), its edge a ring drawn as a shadow so
+   nothing moves —, the icon violet, the words at full strength, "Waits" for the dot. One flash
+   as it starts to wait, then still: the link stays across the shell's pages, so it flashes once
+   a document. */
 .sidenav-pages a[data-state='waiting'] {
-  background: color-mix(in srgb, var(--warning) 10%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 32%, transparent);
+  background: color-mix(in srgb, var(--you) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--you) 32%, transparent);
   color: var(--text);
   animation: wait-flash 1.2s ease-out;
 }
 
 .sidenav-pages a[data-state='waiting']:hover {
-  background: color-mix(in srgb, var(--warning) 15%, transparent);
+  background: color-mix(in srgb, var(--you) 15%, transparent);
 }
 
 .sidenav-pages a[data-state='waiting'] .icon {
-  color: var(--warning);
+  color: var(--you);
   stroke-width: 1.8;
 }
 
@@ -255,17 +256,17 @@ button.workspace-about {
 
 @keyframes wait-flash {
   from {
-    background: color-mix(in srgb, var(--warning) 32%, transparent);
+    background: color-mix(in srgb, var(--you) 32%, transparent);
   }
 }
 
-/* Its word, round in the warning's tint as the count by Workspaces; its dot is the rail's. */
+/* Its word, round in the person's violet as the count by Workspaces; its dot is the rail's. */
 .sidenav-waits {
   margin-left: auto;
   padding: 0 8px;
   border-radius: 9999px;
-  background: color-mix(in srgb, var(--warning) 16%, transparent);
-  color: var(--warning);
+  background: color-mix(in srgb, var(--you) 16%, transparent);
+  color: var(--you);
   font-size: var(--size-caption);
   font-weight: 600;
   line-height: calc(var(--size-caption) + 7px);
@@ -413,20 +414,21 @@ button.workspace-about {
   color: var(--group-tone, var(--faint));
 }
 
-/* The person's move (V48): an agent waiting, and work to look at, in the warning's amber. */
+/* The person's move (V48): an agent waiting, and work to look at, in the person's violet (V88,
+   decision 813; the warning's amber before). */
 .sidenav .group-waiting,
 .sidenav .group-review {
-  --group-tone: var(--warning);
+  --group-tone: var(--you);
 }
 
-/* Waiting for you (V48): after the merges, in its own amber card; its cards say what they ask,
+/* Waiting for you (V48): after the merges, in its own card in the person's violet; its cards say what they ask,
    each a card inside it (V61, the mockup). */
 .sidenav .group-waiting {
   margin: 10px 0 4px;
   padding: 0 0 6px;
-  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  border: 1px solid color-mix(in srgb, var(--you) 30%, transparent);
   border-radius: 14px;
-  background: color-mix(in srgb, var(--warning) 5%, transparent);
+  background: color-mix(in srgb, var(--you) 5%, transparent);
 }
 
 .sidenav .group-waiting h3 {
@@ -479,85 +481,14 @@ button.workspace-about {
 
 .sidenav .group-working,
 .sidenav .merging {
-  --group-tone: var(--moved);
+  --group-tone: var(--run);
 }
 
-/* Hive at work (decision 698): its own card, as Waiting for you's, in Hive's crimson, on the
-   etched hexagons of its arrival's shutter; a streak of light crosses them every few seconds, as
-   over Hive's pages (ui/hive.css). The hexagons are a mask over a layer of the crimson: they take
-   the theme's. */
+/* Hive at work (decision 698): a group of its own before Working, its icon in Hive's crimson (its
+   identity); its cards' spinners amber, as any work in progress (V88, decisions 813-815: no
+   crimson card, no etched cells, no streak). */
 .sidenav .group-hive {
-  --group-tone: var(--hive-red, var(--removed));
-  --hive-cells: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='45'%3E%3Cpath d='M13 0L26 7.5L26 22.5L13 30L0 22.5L0 7.5Z M13 30L13 45' fill='none' stroke='%23000' stroke-width='1'/%3E%3C/svg%3E");
-
-  position: relative;
-  isolation: isolate;
-  margin: 10px 0 4px;
-  padding: 0 0 6px;
-  overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--group-tone) 35%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--group-tone) 5%, transparent);
-}
-
-.sidenav .group-hive::before,
-.sidenav .group-hive::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  mask: var(--hive-cells) 0 0 / 26px 45px repeat;
-}
-
-/* The cells, etched. */
-.sidenav .group-hive::before {
-  background: color-mix(in srgb, var(--group-tone) 16%, transparent);
-}
-
-/* The streak: a band of light lights the cells it crosses. */
-.sidenav .group-hive::after {
-  background: linear-gradient(
-    112deg,
-    transparent 42%,
-    color-mix(in srgb, var(--group-tone) 70%, transparent) 50%,
-    transparent 58%
-  );
-  background-size: 300% 100%;
-  animation: hive-cells-streak 5s cubic-bezier(0.45, 0, 0.25, 1) infinite;
-}
-
-@keyframes hive-cells-streak {
-  from {
-    background-position: 100% 0;
-  }
-
-  60%,
-  to {
-    background-position: 0% 0;
-  }
-}
-
-.sidenav .group-hive h3 {
-  margin: 10px 8px 8px 13px;
-  color: var(--text);
-}
-
-.sidenav .group-hive .workspace-row {
-  margin: 0 6px;
-  background: color-mix(in srgb, var(--bg) 72%, transparent);
-}
-
-.sidenav .group-hive .workspace-row + .workspace-row {
-  margin-top: 6px;
-}
-
-.sidenav .group-hive .workspace-row:not(.picked):hover {
-  background: color-mix(in srgb, var(--bg) 55%, transparent);
-}
-
-.sidenav .group-hive .workspace-row.picked {
-  background: color-mix(in srgb, var(--group-tone) 18%, var(--bg));
+  --group-tone: var(--hive);
 }
 
 /* What Hive runs now (decision 699): its step and time, then the command or the reviewer's call,
@@ -589,7 +520,7 @@ button.workspace-about {
 }
 
 .sidenav .group-done {
-  --group-tone: var(--added);
+  --group-tone: var(--ok);
 }
 
 .sidenav .workspace-group .branches-count {
@@ -733,11 +664,11 @@ button.workspace-about {
 }
 
 .sidenav .fact-clean {
-  color: var(--added);
+  color: var(--ok);
 }
 
 .sidenav .fact-conflicts {
-  color: var(--removed);
+  color: var(--error);
 }
 
 .sidenav .fact-gone {
@@ -811,13 +742,9 @@ button.workspace-about {
    its state changes. Only its transform moves: the compositor turns it, nothing is laid out
    again. */
 .state-dot.tone-working,
-.state-dot.tone-starting {
-  --dot: var(--moved);
-}
-
-/* Hive at work (decision 698): the working spinner, in Hive's crimson. */
+.state-dot.tone-starting,
 .state-dot.tone-hive {
-  --dot: var(--hive-red, var(--removed));
+  --dot: var(--run);
 }
 
 .state-dot.tone-hive,
@@ -856,25 +783,25 @@ button.workspace-about {
   }
 }
 
-/* Waiting (V48): a steady halo, seen without motion. */
+/* Waiting (V48): a steady halo, seen without motion, in the person's violet (V88). */
 .state-dot.tone-waiting {
-  --dot: var(--warning);
+  --dot: var(--you);
 
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 32%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--you) 32%, transparent);
 }
 
-/* Commits to review need the person as a question does: Needs you's amber, now To review's.
+/* Commits to review need the person as a question does: Needs you's violet, now To review's.
    Green is Done's (as fix/needs-you-workspaces-fix draws it). */
 .state-dot.tone-ready {
-  --dot: var(--warning);
+  --dot: var(--you);
 }
 
 .state-dot.tone-done {
-  --dot: var(--added);
+  --dot: var(--ok);
 }
 
 .state-dot.tone-failed {
-  --dot: var(--removed);
+  --dot: var(--error);
 }
 
 /* Not running (V48): an empty ring. */
@@ -886,11 +813,6 @@ button.workspace-about {
 /* Without motion, the spinner holds still: a comet, its own shape beside waiting's halo and
    stopped's ring; its head at the top right, as Loader2's gap, not a "C" beside the name. */
 @media (prefers-reduced-motion: reduce) {
-  .sidenav .group-hive::after {
-    animation: none;
-    opacity: 0;
-  }
-
   .state-dot.tone-hive::after,
   .state-dot.tone-working::after,
   .state-dot.tone-starting::after,
@@ -1077,7 +999,7 @@ button.workspace-about {
     min-width: 16px;
     margin: 0;
     padding: 0 4px;
-    background: var(--warning);
+    background: var(--you);
     color: var(--bg);
     line-height: calc(var(--size-caption) + 3px);
   }
@@ -1086,20 +1008,8 @@ button.workspace-about {
     margin: 0 2px;
   }
 
-  /* Hive at work, folded: its band and hexagons kept, each card its dot and its time under it
-     (decision 699); its tip says the rest. */
-  .sidenav.rail .group-hive {
-    margin: 6px 0 2px;
-  }
-
-  .sidenav.rail .group-hive h3 {
-    margin: 8px 4px 2px;
-  }
-
-  .sidenav.rail .group-hive .workspace-row {
-    margin: 0 2px;
-  }
-
+  /* Hive at work, folded: each card its dot and its time under it (decision 699); its tip says
+     the rest. */
   .sidenav.rail .group-hive .workspace-head {
     flex-direction: column;
     align-items: center;

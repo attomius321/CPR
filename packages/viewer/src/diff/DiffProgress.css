@@ -177,7 +177,7 @@
 }
 
 .analysis-chip.failed {
-  --chip-tone: var(--removed);
+  --chip-tone: var(--error);
 }
 
 .analysis-chip .icon {

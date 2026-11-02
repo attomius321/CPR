@@ -45,7 +45,7 @@
 }
 
 .graph .commit-dot.merge {
-  fill: var(--bg);
+  fill: var(--panel);
   stroke: currentColor;
   stroke-width: 1.6;
 }

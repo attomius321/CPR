@@ -10,6 +10,7 @@ import type {
   WorkspaceSummary,
 } from '@symbiote/core';
 import { BranchIcon, HistoryIcon, SearchIcon } from '../ui/icons.js';
+import { StatusLabel } from '../ui/StatusLabel.js';
 import { PageHead } from '../ui/PageHead.js';
 import { getJson } from '../ui/http.js';
 import { tip } from '../ui/tip.js';
@@ -284,7 +285,12 @@ function HistoryRow({
       <span className="history-row-text">
         <span className="history-row-line">
           <span className="history-row-name">{workspaceName(row)}</span>
-          <span className={`history-outcome outcome-${row.outcome}`}>{outcomeWord(row)}</span>
+          <StatusLabel
+            tone={row.outcome === 'merged' ? 'ok' : 'idle'}
+            className={`history-outcome outcome-${row.outcome}`}
+          >
+            {outcomeWord(row)}
+          </StatusLabel>
         </span>
         <span className="history-row-facts">
           <span className="history-row-branch">{row.branch}</span>
@@ -351,7 +357,12 @@ function FinishedCard({
           <h2>
             <span {...tip(briefTip(entry.brief))}>{workspaceName(entry)}</span>
             {entry.kind && <span className="kind-tag">{entry.kind}</span>}
-            <span className={`history-outcome outcome-${entry.outcome}`}>{outcomeText(entry)}</span>
+            <StatusLabel
+              tone={entry.outcome === 'merged' ? 'ok' : 'idle'}
+              className={`history-outcome outcome-${entry.outcome}`}
+            >
+              {outcomeText(entry)}
+            </StatusLabel>
           </h2>
           <p className="history-facts">
             <span className="history-facts-branch">{entry.branch}</span>
@@ -376,7 +387,7 @@ function FinishedCard({
           </button>
         )}
       </div>
-      <div className="workspace-views" role="tablist" aria-label="What it did">
+      <div className="card-head workspace-views" role="tablist" aria-label="What it did">
         {HISTORY_VIEWS.map((name) => (
           <button
             key={name}

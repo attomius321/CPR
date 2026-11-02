@@ -9,7 +9,6 @@ import './styles.css';
 import { App } from './diff/App.js';
 import { askIntro, startIntro } from './intro/intro.js';
 import { isHive, showTabIcon } from './shell/hive.js';
-import { HiveComb } from './shell/HiveComb.js';
 import { reportPageErrors } from './ui/report.js';
 import { Tooltips } from './ui/Tooltip.js';
 
@@ -51,8 +50,6 @@ void Promise.all([
       : {},
   ).render(
     <StrictMode>
-      {/* Hive's honeycomb (V85): once for every page, so it stays on its tiles as pages change. */}
-      <HiveComb />
       <App />
       <Tooltips />
     </StrictMode>,

@@ -1416,7 +1416,7 @@ function History({
         >
           {/* The header above the box that scrolls (V66): the scrollbar runs beside the rows only. */}
           <div className="commits-card">
-            <div className="commits-title" inert={!!fileShown}>
+            <div className="card-head commits-title" inert={!!fileShown}>
               <button
                 type="button"
                 className="branches-toggle"

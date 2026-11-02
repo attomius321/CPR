@@ -91,7 +91,7 @@ export function NucleusPage() {
       {/* The page's card (V61), in the page frame since V72: its terminal, and since NU2 what it
           did, as line tabs on the card's head as a workspace's are. */}
       <div className="nucleus-card">
-        <div className="workspace-views" role="tablist" aria-label={name}>
+        <div className="card-head workspace-views" role="tablist" aria-label={name}>
           {(['terminal', 'activity'] as const).map((name) => (
             <button
               key={name}

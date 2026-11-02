@@ -1,0 +1,110 @@
+/* ---- the redesign's shared parts (V88, decisions 817, 818) ------------------------------- */
+
+/* A status (`StatusLabel`, the kits' `.pill`): its icon and its word in its tone's colour, on a
+   12 % wash of it with a 28 % edge drawn inside, round; 22 px, so it sits in a 24 px row. */
+.status-label {
+  --tone: var(--muted);
+
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px 0 7px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 28%, transparent);
+  color: var(--tone);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.status-label > .icon {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  stroke-width: 2.25;
+}
+
+.status-label[data-tone='run'] {
+  --tone: var(--run);
+}
+
+.status-label[data-tone='ok'] {
+  --tone: var(--ok);
+}
+
+.status-label[data-tone='error'] {
+  --tone: var(--error);
+}
+
+.status-label[data-tone='info'] {
+  --tone: var(--info);
+}
+
+.status-label[data-tone='you'] {
+  --tone: var(--you);
+}
+
+.status-label[data-tone='warning'] {
+  --tone: var(--warning);
+}
+
+/* Hive's own (its mode, a step it took): its words' crimson, its identity, never a state. */
+.status-label[data-tone='hive'] {
+  --tone: var(--hive-text);
+}
+
+/* The stage track (`StageTrack`, the kits' `.track`): hexagons on a line; done green and joined in
+   green, now amber, failed red, to come an outline. */
+.stage-track {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.stage-step {
+  display: inline-flex;
+  align-items: center;
+}
+
+.stage-hex {
+  flex: none;
+  width: 12px;
+  height: 13px;
+}
+
+.stage-hex polygon {
+  fill: var(--raised);
+  stroke: var(--faint);
+  stroke-width: 1.5;
+}
+
+.stage-hex.done polygon {
+  fill: var(--ok);
+  stroke: var(--ok);
+}
+
+.stage-hex.now polygon {
+  fill: color-mix(in srgb, var(--run) 30%, transparent);
+  stroke: var(--run);
+  stroke-width: 2;
+}
+
+.stage-hex.bad polygon {
+  fill: var(--error);
+  stroke: var(--error);
+}
+
+.stage-link {
+  width: 10px;
+  height: 2px;
+  background: var(--line-2);
+}
+
+.stage-link.done {
+  background: color-mix(in srgb, var(--ok) 55%, transparent);
+}

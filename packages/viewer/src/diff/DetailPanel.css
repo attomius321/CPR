@@ -8,7 +8,7 @@
   padding: 0 16px 24px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--side);
+  background: var(--panel);
 }
 
 .panel-head {
@@ -19,7 +19,7 @@
   justify-content: space-between;
   gap: 8px;
   padding: 12px 0 10px;
-  background: var(--side);
+  background: var(--panel);
   border-bottom: 1px solid var(--line);
 }
 
@@ -97,11 +97,11 @@
 }
 
 .sig-del {
-  background: color-mix(in srgb, var(--removed) 18%, var(--bg));
+  background: color-mix(in srgb, var(--removed) 18%, var(--panel));
 }
 
 .sig-add {
-  background: color-mix(in srgb, var(--added) 16%, var(--bg));
+  background: color-mix(in srgb, var(--added) 16%, var(--panel));
 }
 
 .code {
@@ -244,8 +244,8 @@
 }
 
 .review.done {
-  border-color: var(--added);
-  color: var(--added);
+  border-color: var(--ok);
+  color: var(--ok);
 }
 
 .more {

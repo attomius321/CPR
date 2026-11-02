@@ -116,7 +116,7 @@ test('a defect proven by a failing test goes to the writer; its fix is approved;
   await expect(round1).toContainText('Check passed');
   await expect(round1).toContainText('1 defect proven');
   await expect(round1).toContainText('one.txt says uno, not one');
-  await expect(round1.locator('.hive-finding .badge')).toHaveText('Proven');
+  await expect(round1.locator('.hive-finding .status-label')).toHaveText('Proven');
   await round1.getByText('one.test.sh', { exact: true }).click();
   await expect(round1.locator('.hive-finding pre').first()).toContainText('grep -qx one one.txt');
   // No branch review, no Land, no Merge into in Hive mode: Hive lands it (HV4).

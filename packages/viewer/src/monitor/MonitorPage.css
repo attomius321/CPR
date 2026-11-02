@@ -208,7 +208,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--panel);
 }
 
 /* The treemap: tiles placed by `layoutTreemap`, a 1 px gap of the canvas between them. */
@@ -229,7 +229,7 @@
   gap: 2px;
   padding: 4px 6px;
   overflow: hidden;
-  border: 1px solid var(--bg);
+  border: 1px solid var(--panel);
   border-radius: 4px;
   background: var(--kind-fill, var(--raised));
   font-size: var(--size-caption);
@@ -275,7 +275,7 @@
    2 px: the labels keep the room `labelOf` counts on. */
 .monitor-tile.level-1 {
   border-width: 3px;
-  border-color: var(--bg);
+  border-color: var(--panel);
   padding: 2px 4px;
 }
 
@@ -368,7 +368,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--side);
+  background: var(--panel);
 }
 
 .monitor.resizing {

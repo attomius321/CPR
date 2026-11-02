@@ -44,7 +44,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--panel);
 }
 
 .commits-scroll {
@@ -62,16 +62,12 @@
   position: sticky;
   top: 0;
   z-index: 3;
-  flex: none;
-  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px 12px;
-  min-height: var(--card-head);
   margin: 0;
   padding: 4px var(--card-pad);
-  border-bottom: 1px solid var(--line);
-  background: var(--side);
+  background: var(--panel);
   font-size: var(--size-body);
   font-weight: normal;
 }
@@ -244,7 +240,7 @@
 
 .checkout-notice {
   margin: 8px 16px;
-  color: var(--added);
+  color: var(--ok);
 }
 
 .commit-sha {
@@ -371,7 +367,7 @@
   align-items: center;
   gap: 12px;
   padding: 8px 16px;
-  background: var(--side);
+  background: var(--panel);
   border-top: 1px solid var(--line);
 }
 
@@ -417,11 +413,11 @@
 }
 
 .ref-review-approved {
-  --review-tone: var(--added);
+  --review-tone: var(--ok);
 }
 
 .ref-review-changes {
-  --review-tone: var(--removed);
+  --review-tone: var(--error);
 }
 
 /* Before the subject of a commit added to a reviewed branch since its review. */

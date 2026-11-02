@@ -84,7 +84,7 @@
 }
 
 .usage-window.tone-ok {
-  --tone: var(--added);
+  --tone: var(--ok);
 }
 
 .usage-window.tone-high {
@@ -92,11 +92,11 @@
 }
 
 .usage-window.tone-full {
-  --tone: var(--removed);
+  --tone: var(--error);
 }
 
 .usage-window.tone-full .usage-percent {
-  color: var(--removed);
+  color: var(--error);
 }
 
 /* A copy the agent kept: dimmer, with its age. */

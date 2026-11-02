@@ -59,7 +59,7 @@
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
+  background: var(--panel);
 }
 
 /* Under the rows, the rows keep 180 px (their header and four rows) in a short window. */
@@ -100,14 +100,10 @@
 
 /* The pane's head: as tall as the rows' header beside it, on the card's chrome. */
 .git-details-head {
-  flex: none;
-  display: flex;
   align-items: center;
   gap: 8px 12px;
-  min-height: var(--card-head);
   padding: 4px 8px 4px var(--card-pad);
-  border-bottom: 1px solid var(--line);
-  background: var(--side);
+  background: var(--panel);
 }
 
 .git-details-title {
@@ -269,19 +265,15 @@
   z-index: 4;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: var(--panel);
 }
 
 /* As tall as the pane's head beside it, on the card's chrome. */
 .git-shown-head {
-  flex: none;
-  display: flex;
   align-items: center;
   gap: 12px;
-  min-height: var(--card-head);
   padding: 4px 8px 4px var(--card-pad);
-  border-bottom: 1px solid var(--line);
-  background: var(--side);
+  background: var(--panel);
   font-size: var(--size-small);
 }
 
@@ -428,7 +420,7 @@
 }
 
 .graph .working-dot {
-  fill: var(--bg);
+  fill: var(--panel);
   stroke: var(--muted);
   stroke-width: 1.5;
   stroke-dasharray: 2 2;
@@ -602,7 +594,7 @@
   margin: -12px -16px 8px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--line);
-  background: var(--side);
+  background: var(--panel);
   font-size: var(--size-small);
 }
 
@@ -614,7 +606,7 @@
 .git-hunk {
   padding: 2px 8px;
   border-top: 1px solid var(--line);
-  background: var(--side);
+  background: var(--panel);
   font: var(--size-caption) / 1.6 var(--sans);
 }
 

@@ -9,19 +9,19 @@
 }
 
 .merge-tone-wait {
-  --merge-tone: var(--moved);
+  --merge-tone: var(--run);
 }
 
 .merge-tone-you {
-  --merge-tone: var(--warning);
+  --merge-tone: var(--you);
 }
 
 .merge-tone-done {
-  --merge-tone: var(--added);
+  --merge-tone: var(--ok);
 }
 
 .merge-tone-bad {
-  --merge-tone: var(--removed);
+  --merge-tone: var(--error);
 }
 
 /* A file whose resolution has lines the agent wrote (V46c), as its "new" count. */
@@ -206,11 +206,11 @@
 }
 
 .merge-flag-ok {
-  --merge-flag: var(--added);
+  --merge-flag: var(--ok);
 }
 
 .merge-flag-bad {
-  --merge-flag: var(--removed);
+  --merge-flag: var(--error);
 }
 
 .merge-flag-new {
@@ -219,7 +219,7 @@
 
 /* The region the merger agent's question names: the person's turn. */
 .merge-flag-you {
-  --merge-flag: var(--warning);
+  --merge-flag: var(--you);
 }
 
 .merge-counts {
@@ -444,7 +444,7 @@
   top: 0;
   z-index: 2;
   margin: 0 calc(-1 * var(--page-pad));
-  background: var(--bg);
+  background: var(--panel);
 }
 
 /* The branch and its target as the title: chips, not the title's size. */

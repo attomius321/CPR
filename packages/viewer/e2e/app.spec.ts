@@ -434,9 +434,9 @@ test.describe('the title bar', () => {
     await page.getByRole('button', { name: 'Appearance', exact: true }).click();
     await page.getByRole('button', { name: 'Light', exact: true }).click();
     // The text's colour, Symbiote's style since V31, in the koi's colours since V42.
-    await expect.poll(colour).toBe('rgb(11, 18, 32)');
+    await expect.poll(colour).toBe('rgb(15, 19, 32)');
     await page.getByRole('button', { name: 'Dark', exact: true }).click();
-    await expect.poll(colour).toBe('rgb(237, 240, 245)');
+    await expect.poll(colour).toBe('rgb(238, 240, 245)');
     // The overlay is the system's buttons' on Windows: none on Linux.
     expect(await app.evaluate(() => (globalThis as { overlay?: unknown[] }).overlay?.length)).toBe(
       0,
@@ -451,7 +451,7 @@ test.describe('the title bar', () => {
     await expect(html).toHaveAttribute('data-window', 'normal');
     // The page carries the window's background and corners; around it, the window is clear.
     expect(await style(page, 'html', 'background-color')).toBe('rgba(0, 0, 0, 0)');
-    expect(await style(page, '#root', 'background-color')).toBe('rgb(9, 11, 14)');
+    expect(await style(page, '#root', 'background-color')).toBe('rgb(9, 10, 13)');
     expect(await style(page, '#root', 'border-radius')).toBe('10px');
 
     const bar = page.locator('.titlebar');
@@ -559,7 +559,8 @@ test.describe('what waits for you, on the taskbar (N2)', () => {
   })();
   test.skip(!xprop, "reads the window's icon from X11: xprop");
 
-  const AMBER = 'fff5b32a';
+  // V88 (decision 821): the person's violet, as Waiting for you.
+  const VIOLET = 'ff9886ff';
   /** A property of the window, as numbers (xprop's `format`: `32c`, `32i`); none when unset. */
   const property = (id: string, name: string, format: string) => {
     const text = execFileSync(
@@ -602,7 +603,7 @@ test.describe('what waits for you, on the taskbar (N2)', () => {
       ).toContain('IntensiveWakeUpThrottling');
       // The S: opaque, not amber, where the dot goes.
       expect(dot(id)).toMatch(/^ff/);
-      expect(dot(id)).not.toBe(AMBER);
+      expect(dot(id)).not.toBe(VIOLET);
       await page.getByRole('link', { name: 'Start a workspace' }).click();
       const starting = page.getByRole('region', { name: 'Start a workspace' });
       await starting.getByRole('textbox', { name: 'Title' }).fill('Add clamp');
@@ -618,7 +619,7 @@ test.describe('what waits for you, on the taskbar (N2)', () => {
         elsewhere.focus();
       });
       served.session('feature/add-clamp', { state: 'blocked', waitingFor: 'permission prompt' });
-      await expect.poll(() => dot(id), { timeout: 15_000 }).toBe(AMBER);
+      await expect.poll(() => dot(id), { timeout: 15_000 }).toBe(VIOLET);
       expect(urgent(id)).toBe(true);
 
       // Back in Symbiote's window: no more blink; the dot stays while it waits.
@@ -629,11 +630,11 @@ test.describe('what waits for you, on the taskbar (N2)', () => {
           ?.focus();
       });
       await expect.poll(() => urgent(id)).toBe(false);
-      expect(dot(id)).toBe(AMBER);
+      expect(dot(id)).toBe(VIOLET);
 
       // Answered: the plain S again.
       served.session('feature/add-clamp', { state: 'working' });
-      await expect.poll(() => dot(id), { timeout: 15_000 }).not.toBe(AMBER);
+      await expect.poll(() => dot(id), { timeout: 15_000 }).not.toBe(VIOLET);
     } finally {
       served.stop();
     }

@@ -307,12 +307,13 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
   symbiote.session(stopped!, { state: 'stopped' });
 
   const tones = [
-    ['Merging', '--moved'],
-    ['Waiting for you', '--warning'],
-    ['To review', '--warning'],
+    // V88 (decision 813): the agent's turn amber, the person's violet, done green.
+    ['Merging', '--run'],
+    ['Waiting for you', '--you'],
+    ['To review', '--you'],
     ['Not running', '--muted'],
-    ['Working', '--moved'],
-    ['Done', '--added'],
+    ['Working', '--run'],
+    ['Done', '--ok'],
   ] as const;
   const drawings = new Set<string>();
   for (const [name, tone] of tones) {
