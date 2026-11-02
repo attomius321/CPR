@@ -108,6 +108,24 @@ export async function landingSetting(
   };
 }
 
+/** Settings' "Hive lands by" (decision 793): read, and set. */
+export interface HiveLandingService {
+  read(): Promise<HiveLandingSetting>;
+  set(by: HiveLandsBy): Promise<HiveLandingSetting>;
+}
+
+/** The setting of the project at `root`, `origin` read in `repo`. */
+export function hiveLandingService(repo: GitRepo, root: string, env: Env): HiveLandingService {
+  const read = () => landingSetting(repo, root, env);
+  return {
+    read,
+    async set(by) {
+      await setLandsBy(root, by);
+      return read();
+    },
+  };
+}
+
 /** What the runner asks of the forge (HV8): the setting, `origin`'s forge, the graph review. */
 export interface HiveRequests {
   /** How Hive lands now: read at each landing. */

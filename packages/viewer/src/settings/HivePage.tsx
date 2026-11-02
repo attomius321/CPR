@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import type { HiveState } from '@symbiote/core';
+import { useEffect, useState } from 'react';
+import type { HiveLandingSetting, HiveLandsBy, HiveState } from '@symbiote/core';
 import { setHive, useHive } from '../shell/hive.js';
-import { getJson } from '../ui/http.js';
+import { getJson, postJson } from '../ui/http.js';
 import { HiveJoining } from '../ui/HiveArt.js';
 import { DangerIcon } from '../ui/icons.js';
 import { SettingsCard } from './SettingsCard.js';
-import { nameOf, offWords, onRefusal } from './hive-switch.js';
+import { forgeWords, LANDS_BY, landsByWords, nameOf, offWords, onRefusal } from './hive-switch.js';
 
 /**
  * Hive mode (V82, decision 613): Hive's switch, a danger to press. What Hive does (HV2–HV4), in the
@@ -132,6 +132,7 @@ export function HivePage({ onBack }: { onBack: () => void }) {
           {error}
         </p>
       )}
+      <HiveLandsBy />
       {asking === 'on' && (
         <HiveQuestion
           busy={busy}
@@ -149,6 +150,77 @@ export function HivePage({ onBack }: { onBack: () => void }) {
         />
       )}
     </SettingsCard>
+  );
+}
+
+/**
+ * How Hive lands (HV8, decision 788): the merge queue, or a pull or merge request the person merges
+ * on the forge; the forge `origin` names and whether a token is found (793). `hive.lands` in the
+ * project's config.
+ */
+function HiveLandsBy() {
+  const [setting, setSetting] = useState<HiveLandingSetting | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    getJson<HiveLandingSetting>('/api/hive/landing')
+      .then((read) => live && setSetting(read))
+      .catch((failed: unknown) => live && setError((failed as Error).message));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const pick = async (by: HiveLandsBy) => {
+    setBusy(true);
+    setError(null);
+    try {
+      setSetting(await postJson<HiveLandingSetting>('/api/hive/landing', { by }));
+    } catch (failed) {
+      setError(`Hive lands by could not be set: ${(failed as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const forge = setting ? forgeWords(setting) : null;
+  return (
+    <section className="hive-lands" aria-label="Hive lands by">
+      <h3 id="hive-lands-by">Hive lands by</h3>
+      <span className="scopes" role="group" aria-labelledby="hive-lands-by">
+        {LANDS_BY.map((choice) => (
+          <button
+            key={choice.by}
+            type="button"
+            className={setting?.by === choice.by ? 'scope active' : 'scope'}
+            aria-pressed={setting?.by === choice.by}
+            disabled={busy || !setting}
+            onClick={() => void pick(choice.by)}
+          >
+            {choice.label}
+          </button>
+        ))}
+      </span>
+      {setting && <p className="settings-row-note">{landsByWords(setting.by)}</p>}
+      {forge && (
+        <p
+          className={
+            forge.ok || setting?.by !== 'request'
+              ? 'settings-row-note hive-lands-forge'
+              : 'settings-row-note hive-lands-forge cannot'
+          }
+        >
+          {forge.text}
+        </p>
+      )}
+      <p className="settings-row-note">
+        For this repository: <code>hive.lands</code> in <code>symbiote/config.json</code>.
+      </p>
+      {error && (
+        <p className="settings-notice error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -278,7 +350,7 @@ function HiveOffQuestion({
         <ul className="hive-off-list">
           {flight.map((w) => (
             <li key={w.branch}>
-              <strong>{nameOf(w)}</strong>: {offWords(w.step)}.
+              <strong>{nameOf(w)}</strong>: {offWords(w.step, w.request)}.
             </li>
           ))}
         </ul>

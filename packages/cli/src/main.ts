@@ -68,7 +68,7 @@ import { Histories, slowListingHint } from './history.js';
 import { gitPage } from './git-page.js';
 import { frameworkHints, loadPlugins } from './plugins.js';
 import { postGraphFindings } from './post-findings.js';
-import { hiveRequests } from './hive-request.js';
+import { hiveLandingService, hiveRequests } from './hive-request.js';
 import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ChangeFiles, type ReviewTarget } from './server.js';
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
@@ -873,6 +873,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     open: vsCodeOpener(repo, ctx.env),
     intro: introOf(ctx),
     hiveReviewer: reviewerSettingsService(repo.root, claudeOf),
+    hiveLanding: hiveLandingService(repo, repo.root, ctx.env),
     // Settings' switch: the runner told at once (HV2), another process's change read at its tick.
     hive: {
       on: () => hive.on(),

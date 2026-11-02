@@ -228,7 +228,13 @@ export interface HiveState {
   /** Open workspaces started in normal mode and not merged: Hive does not turn on (decision 772). */
   normal: { branch: string; title?: string }[];
   /** Hive's workspaces writing, checking, reviewing or landing: what Hive off stops (771). */
-  flight: { branch: string; step: HiveStep; title?: string }[];
+  flight: {
+    branch: string;
+    step: HiveStep;
+    title?: string;
+    /** Waiting for the person's merge of this request on the forge (HV8): Hive off leaves it open. */
+    request?: { forge: 'github' | 'gitlab'; number: number };
+  }[];
 }
 
 /** Hive's push of a workspace's branch to `origin` (HV4, decision 768). */

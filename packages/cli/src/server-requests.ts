@@ -234,6 +234,13 @@ export function parseHiveChange(text: string): { on: boolean } {
   return { on: value.on };
 }
 
+/** `{ by }`: how Hive lands, the merge queue or a pull or merge request (HV8). */
+export function parseLandsBy(text: string): { by: 'queue' | 'request' } {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (value?.by !== 'queue' && value?.by !== 'request') throw new Error('by: "queue" or "request"');
+  return { by: value.by };
+}
+
 /** `{ branch, text, stop? }`: a message for a workspace's agent (V18c). */
 export function parseWorkspaceReply(text: string): WorkspaceReply {
   const value = JSON.parse(text) as Record<string, unknown> | null;

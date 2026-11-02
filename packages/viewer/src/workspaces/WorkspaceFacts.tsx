@@ -25,6 +25,7 @@ import {
   shortAge,
   workspaceFacts,
   type WorkspaceFact,
+  type WorkspaceNext,
   type WorkspaceRow,
 } from './workspaces.js';
 import { tip } from '../ui/tip.js';
@@ -79,11 +80,33 @@ export function WorkspaceState({
       ) : (
         agent && <ClaudeMark />
       )}
-      <strong>{live ? <HiveNowLine hive={live} /> : said}</strong>
+      <strong>{live ? <HiveNowLine hive={live} /> : <Said text={said} link={next.link} />}</strong>
       {facts.map((fact) => (
         <span key={fact}> · {fact}</span>
       ))}
     </p>
+  );
+}
+
+/**
+ * What is next, its link at its end when it has one (HV8: the pull or merge request Hive waits
+ * on); the link opens the forge's page, not the card.
+ */
+function Said({ text, link }: { text: string; link: WorkspaceNext['link'] }) {
+  if (!link || !text.endsWith(link.text)) return text;
+  return (
+    <>
+      {text.slice(0, text.length - link.text.length)}
+      <a
+        className="link hive-request-link"
+        href={link.href}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(event) => event.stopPropagation()}
+      >
+        {link.text}
+      </a>
+    </>
   );
 }
 

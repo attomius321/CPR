@@ -4,6 +4,7 @@ import type {
   HiveCheck,
   HiveFinding,
   HiveLanding,
+  HiveRequest,
   HiveReview,
   WorkspaceHiveDetail,
 } from '@symbiote/core';
@@ -67,12 +68,52 @@ export const findingWords = (finding: HiveFinding) =>
 export const checkWords = (check: HiveCheck) =>
   check.ok ? `Passed in ${durationWords(check.ms)}` : `Failed after ${durationWords(check.ms)}`;
 
+const FORGES = {
+  github: { name: 'GitHub', sign: '#', kind: 'Pull request' },
+  gitlab: { name: 'GitLab', sign: '!', kind: 'Merge request' },
+} as const;
+
+/** A request as its forge names it (HV8): "#12 on GitHub", "!12 on GitLab". */
+export const requestName = (request: Pick<HiveRequest, 'forge' | 'number'>) =>
+  `${FORGES[request.forge].sign}${request.number} on ${FORGES[request.forge].name}`;
+
+/** "Pull request" or "Merge request". */
+export const requestKind = (request: Pick<HiveRequest, 'forge'>) => FORGES[request.forge].kind;
+
+/** A request's state, for the Review tab (HV8). */
+export function requestState(request: HiveRequest): {
+  text: string;
+  tone: 'ok' | 'bad' | 'hive';
+} {
+  if (request.state === 'merged') return { text: 'Merged', tone: 'ok' };
+  if (request.state === 'closed') return { text: 'Closed without a merge', tone: 'bad' };
+  if (request.conflict)
+    return { text: `Cannot be merged: a conflict with ${request.into}`, tone: 'bad' };
+  return { text: 'Open: waiting for your merge', tone: 'hive' };
+}
+
+/** What became of Symbiote's graph review on the request (HV8, decision 790). */
+export function reviewWords(request: HiveRequest): string {
+  const { review } = request;
+  const at = 'Symbiote’s review';
+  if (!review) return `${at}: not posted yet`;
+  if (review.error) return `${at}: not posted: ${review.error}`;
+  if (review.posted === 0) return `${at}: no new findings to post`;
+  return `${at}: ${plural(review.posted, 'finding')} posted`;
+}
+
 /**
  * Where Hive's landing is (HV4, decision 774): "Landing in main: checking the merge"; before its
- * entry is queued, "Hive: landing it".
+ * entry is queued, "Hive: landing it". By request (HV8): "Waiting for your merge: #12 on GitHub".
  */
-export function landingLine(landing: HiveLanding | undefined): string {
+export function landingLine(landing: HiveLanding | undefined, request?: HiveRequest): string {
   if (!landing || landing.outcome) return 'Hive: landing it';
+  if (landing.via === 'request' && request) {
+    if (request.state === 'merged') {
+      return `Merged on ${FORGES[request.forge].name}: ${request.into} waits for your checkout`;
+    }
+    return `Waiting for your merge: ${requestName(request)}`;
+  }
   const at = `Landing in ${landing.into}`;
   switch (landing.state) {
     case 'merging':
@@ -86,20 +127,36 @@ export function landingLine(landing: HiveLanding | undefined): string {
   }
 }
 
-/** A workspace Hive landed (HV4): where, and whether that branch was pushed. */
-export function landedLine(landing: HiveLanding | undefined): string {
+/** A workspace Hive landed (HV4): where, and whether that branch was pushed; by request, where. */
+export function landedLine(landing: HiveLanding | undefined, request?: HiveRequest): string {
   if (landing?.outcome !== 'landed') return 'Merged';
+  if (landing.via === 'request' && request) {
+    const sign = `${FORGES[request.forge].sign}${request.number}`;
+    const pulled =
+      request.pulled && !request.pulled.ok
+        ? ` · ${request.into} not brought up: ${request.pulled.error ?? 'not fetched'}`
+        : '';
+    return `Landed in ${landing.into} on ${FORGES[request.forge].name} · ${sign}${pulled}`;
+  }
   const { pushed } = landing;
   const push = !pushed ? '' : pushed.ok ? ' · pushed' : ` · not pushed: ${pushed.error}`;
   return `Landed in ${landing.into}${push}`;
 }
 
 /** A landing that ended, in words (HV4): what became of it. */
-export function landingOutcome(landing: HiveLanding): string {
+export function landingOutcome(landing: HiveLanding, request?: HiveRequest): string {
+  const forge = landing.via === 'request' && request ? FORGES[request.forge].name : null;
   switch (landing.outcome) {
     case 'landed':
-      return landedLine(landing);
+      return landedLine(landing, request);
     case 'conflict':
+      if (forge) {
+        const files = landing.files ?? [];
+        const n = files.length;
+        return n
+          ? `Cannot be merged on ${forge}: ${files.join(', ')} conflict${n === 1 ? 's' : ''} with ${landing.into}`
+          : `Cannot be merged on ${forge}: a conflict with ${landing.into}`;
+      }
       return `Conflicts with ${landing.into}: ${landing.files?.join(', ') ?? ''}`;
     case 'check-failed':
       return `The check failed on the merge: ${landing.failed ?? ''}`;
@@ -107,8 +164,10 @@ export function landingOutcome(landing: HiveLanding): string {
       return `${landing.into} moved past a fast-forward`;
     case 'diverged':
       return `${landing.into} and its remote have diverged`;
+    case 'closed':
+      return `Closed on ${forge ?? 'the forge'} without a merge`;
     case undefined:
-      return landingLine(landing);
+      return landingLine(landing, request);
     default:
       return landing.message ?? 'Not landed';
   }
@@ -130,12 +189,12 @@ export function stepWords(detail: WorkspaceHiveDetail): string {
       return `The running reviewer at work, ${round}`;
     case 'landing':
       if (!detail.on) return 'Hive is off: review and land it as any workspace';
-      return landingLine(detail.landings?.at(-1));
+      return landingLine(detail.landings?.at(-1), detail.request);
     case 'stuck':
       return `Stopped: ${detail.note ?? 'Hive cannot go on'}`;
     case 'answered':
       return 'Answered: read its report';
     default:
-      return landedLine(detail.landings?.at(-1));
+      return landedLine(detail.landings?.at(-1), detail.request);
   }
 }

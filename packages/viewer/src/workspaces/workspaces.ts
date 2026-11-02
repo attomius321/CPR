@@ -1,6 +1,6 @@
 // Workspaces started from the commits page (V18): pure helpers for the start page and the
 // line the page shows after Start.
-import { landedLine, landingLine } from './hive-rounds.js';
+import { landedLine, landingLine, requestName } from './hive-rounds.js';
 import { COMMAND_TOOLS, shownCommand } from './activity/classify.js';
 import type {
   AgentEfforts,
@@ -414,6 +414,8 @@ export interface WorkspaceNext {
   doing?: string;
   /** Hive's words (HV2): Symbiote's, so no agent's mark before them. */
   hive?: true;
+  /** A link at the end of `text` (HV8): the request Hive waits on, or landed through. */
+  link?: { href: string; text: string };
 }
 
 const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip => ({
@@ -460,13 +462,25 @@ export function workspaceNext(
       ...next('hive', text, mark, tone),
       hive: true,
     });
+    // HV8: by a pull or merge request, its link at the end of the card's line.
+    const request = hive.landing?.via === 'request' ? hive.request : undefined;
     if (workspace.merged || hive.step === 'landed') {
-      return next('done', landedLine(hive.landing), '✓', 'done');
+      const done = next('done', landedLine(hive.landing, request), '✓', 'done');
+      if (!request || hive.landing?.outcome !== 'landed') return done;
+      return {
+        ...done,
+        link: { href: request.url, text: `${requestName(request).split(' ')[0]}` },
+      };
     }
     if (hive.step === 'answered') return next('done', 'Answered: read its report', '✓', 'done');
     if (hive.step === 'stuck')
       return said(`Stopped: ${hive.note ?? 'Hive cannot go on'}`, '!', 'failed');
-    if (hive.step === 'landing') return said(landingLine(hive.landing), '⚙', 'hive');
+    if (hive.step === 'landing') {
+      const text = landingLine(hive.landing, request);
+      const asked = said(text, '⚙', 'hive');
+      if (!request || !text.endsWith(requestName(request))) return asked;
+      return { ...asked, link: { href: request.url, text: requestName(request) } };
+    }
     if (hive.step === 'checking') return said('Hive: running the check', '⚙', 'hive');
     if (hive.step === 'reviewing') return said('Hive: reviewing', '⚙', 'hive');
     switch (agent.state) {

@@ -1,12 +1,14 @@
 // A Hive workspace's Review tab (HV3, decision 681): what Hive did — each round's check and running
 // review, their findings with the tests that prove them and Symbiote's rerun — and, since HV4,
-// each landing Hive tried and the branch's last push. Hive lands on its own: no Land.
+// each landing Hive tried and the branch's last push. Hive lands on its own: no Land. HV8: the pull
+// or merge request it waits on, beside the landings.
 import { useEffect, useState } from 'react';
 import type {
   HiveCheck,
   HiveFinding,
   HiveLanding,
   HiveLive,
+  HiveRequest,
   HiveReview,
   WorkspaceHiveDetail,
 } from '@symbiote/core';
@@ -22,6 +24,10 @@ import {
   hiveRounds,
   stepWords,
   landingOutcome,
+  requestKind,
+  requestName,
+  requestState,
+  reviewWords,
   verdictWords,
 } from './hive-rounds.js';
 
@@ -101,9 +107,43 @@ function KeptLog({ branch, log, label }: { branch: string; log: string; label: s
   );
 }
 
+/**
+ * The pull or merge request Hive opened (HV8): its link, its state, the commit it is at, and what
+ * became of Symbiote's graph review on it.
+ */
+function RequestRow({ request }: { request: HiveRequest }) {
+  const state = requestState(request);
+  const tone = state.tone === 'ok' ? 'hive-ok' : state.tone === 'bad' ? 'badge-error' : 'hive-wait';
+  return (
+    <div className="hive-step" aria-label={`${requestKind(request)} ${requestName(request)}`}>
+      <div className="hive-step-head">
+        <span className={`badge ${tone}`}>{requestKind(request)}</span>
+        <a className="link hive-request-link" href={request.url} target="_blank" rel="noreferrer">
+          {requestName(request)}
+        </a>
+        <span className="hive-step-facts">
+          {state.text} · into {request.into} · <code>{short(request.at)}</code>
+        </span>
+      </div>
+      <p className={request.review?.error ? 'hive-line error' : 'hive-line'}>
+        {reviewWords(request)}
+      </p>
+      {request.error && <p className="hive-line error">Not read: {request.error}</p>}
+    </div>
+  );
+}
+
 /** A check of a round: passed or failed, on which commit, its failing command and last lines. */
 /** A landing Hive tried (HV4): how it ended, what failed, the merge's log kept. */
-function LandingRow({ branch, landing }: { branch: string; landing: HiveLanding }) {
+function LandingRow({
+  branch,
+  landing,
+  request,
+}: {
+  branch: string;
+  landing: HiveLanding;
+  request: HiveRequest | undefined;
+}) {
   const landed = landing.outcome === 'landed';
   const ended = landing.outcome !== undefined;
   return (
@@ -113,7 +153,8 @@ function LandingRow({ branch, landing }: { branch: string; landing: HiveLanding 
           {landed ? 'Landed' : ended ? 'Not landed' : 'Landing'}
         </span>
         <span className="hive-step-facts">
-          {landingOutcome(landing)} · <code>{short(landing.at)}</code>
+          {landingOutcome(landing, landing.via === 'request' ? request : undefined)} ·{' '}
+          <code>{short(landing.at)}</code>
         </span>
       </div>
       {landing.output && (
@@ -334,11 +375,13 @@ export function HiveReviewTab({ branch, version }: { branch: string; version: un
       {landings.length > 0 && (
         <section className="hive-round" aria-label="Landings">
           <h2>Landing</h2>
+          {detail.request && <RequestRow request={detail.request} />}
           {landings.map((landing) => (
             <LandingRow
               key={`${landing.entry}-${landing.queued}`}
               branch={branch}
               landing={landing}
+              request={detail.request}
             />
           ))}
         </section>

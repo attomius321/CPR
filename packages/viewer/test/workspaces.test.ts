@@ -2,6 +2,7 @@ import type {
   AgentOption,
   BranchReviewSummary,
   HiveLanding,
+  HiveRequest,
   WorkspaceAgentState,
   WorkspaceStart,
   WorkspaceHive,
@@ -929,6 +930,50 @@ describe('workspaceNext for a workspace Hive drives (HV2)', () => {
       group: 'done',
       text: 'Answered: read its report',
       mark: '✓',
+    });
+  });
+
+  it('by request: waits for your merge with its link, then landed on the forge (HV8)', () => {
+    const request: HiveRequest = {
+      forge: 'github',
+      number: 12,
+      url: 'https://github.com/acme/app/pull/12',
+      into: 'main',
+      at: TIP,
+      opened: '2026-11-02T10:00:00.000Z',
+      state: 'open',
+    };
+    const waiting: HiveLanding = {
+      round: 1,
+      at: TIP,
+      into: 'main',
+      entry: '#12',
+      queued: '2026-11-02T10:00:00.000Z',
+      via: 'request',
+    };
+    const asked = workspaceNext(
+      summary({ ...ready, hive: hive({ step: 'landing', landing: waiting, request }) }),
+    );
+    expect(asked).toMatchObject({
+      group: 'hive',
+      text: 'Waiting for your merge: #12 on GitHub',
+      link: { href: request.url, text: '#12 on GitHub' },
+    });
+    const landed = workspaceNext(
+      summary({
+        ...ready,
+        merged: true,
+        hive: hive({
+          step: 'landed',
+          landing: { ...waiting, outcome: 'landed' },
+          request: { ...request, state: 'merged', pulled: { at: '', ok: true } },
+        }),
+      }),
+    );
+    expect(landed).toMatchObject({
+      group: 'done',
+      text: 'Landed in main on GitHub · #12',
+      link: { href: request.url, text: '#12' },
     });
   });
 
