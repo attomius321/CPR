@@ -532,6 +532,15 @@ function nucleusEntryPiece(entry: NucleusEntry, zone: string): Piece | null {
     case 'renewed':
       return item(at, zone, 'New conversation: this one ended');
     case 'confirm':
+      if (entry.stage === 'skipped') {
+        // NU8 (decision 785): none asked, by the person's setting or while Hive mode is on.
+        const why = entry.why === 'hive' ? 'Hive mode' : 'your setting';
+        return item(
+          at,
+          zone,
+          `Started without a Confirm (${why}): ${entry.words} (${code(entry.tool)})`,
+        );
+      }
       return entry.stage === 'asked'
         ? item(at, zone, `Confirm asked: ${entry.words} (${code(entry.tool)})`)
         : item(at, zone, `${CONFIRM_ENDS[entry.answer]} after ${duration(entry.ms)}`);

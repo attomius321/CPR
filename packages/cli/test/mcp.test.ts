@@ -1293,3 +1293,156 @@ describe("Symbiote's MCP: Nucleus's calls recorded (NU2, decision 607)", () => {
     expect(lines).toEqual([]);
   });
 });
+
+describe("Symbiote's MCP: Nucleus starts without a Confirm (NU8, decisions 782-787)", () => {
+  const request = {
+    kind: 'fix',
+    title: 'The button',
+    branch: 'fix/the-button',
+    parts: { happens: 'It does nothing' },
+    planFirst: true,
+    agent: 'codex',
+  };
+  const recorder = () => {
+    const lines: NucleusActivityLine[] = [];
+    return { lines, record: (line: NucleusActivityLine) => void lines.push(line) };
+  };
+  /** The tools' descriptions and the instructions, as `caller` reads them. */
+  async function texts(mcp: Mcp, caller: McpCaller = NUCLEUS) {
+    const listed = (await mcp.handle({ jsonrpc: '2.0', id: 1, method: 'tools/list' }, caller)) as {
+      result: { tools: { name: string; description: string }[] };
+    };
+    const init = (await mcp.handle(
+      { jsonrpc: '2.0', id: 2, method: 'initialize', params: {} },
+      caller,
+    )) as { result: { instructions: string } };
+    return { tools: listed.result.tools, instructions: init.result.instructions };
+  }
+
+  it('starts at once with the setting on: no ask, recorded as started without one', async () => {
+    const { services, calls } = fakes();
+    const { lines, record } = recorder();
+    const mcp = server(services, { record, withoutConfirm: () => Promise.resolve('setting') });
+    const done = await call(mcp, 'start_workspace', request);
+    expect(done.isError).toBe(false);
+    expect(done.value).toMatchObject({
+      workspace: { branch: 'fix/the-button' },
+      withoutConfirm: 'setting',
+    });
+    expect(calls).toContainEqual(['start', { ...request, via: 'nucleus' }]);
+    expect(mcp.asks().asks).toEqual([]);
+    expect(lines.map((l) => ('kind' in l ? `${l.kind}` : l.phase))).toEqual([
+      'start',
+      'confirm',
+      'end',
+    ]);
+    expect(lines[1]).toEqual({
+      at: expect.any(String) as unknown,
+      kind: 'confirm',
+      ask: expect.any(String) as unknown,
+      tool: 'start_workspace',
+      words: 'Start fix/the-button, "The button", with Codex, plan first',
+      call: (lines[0] as { id?: string }).id,
+      stage: 'skipped',
+      why: 'setting',
+    });
+    expect(lines[2]).toMatchObject({ phase: 'end' });
+    expect(lines[2]).not.toHaveProperty('failed');
+  });
+
+  it('starts at once while Hive is on, and says so', async () => {
+    const { services } = fakes();
+    const mcp = server(services, { withoutConfirm: () => Promise.resolve('hive') });
+    const done = await call(mcp, 'start_workspace', request);
+    expect(done.value).toMatchObject({ withoutConfirm: 'hive' });
+    expect(mcp.asks().asks).toEqual([]);
+  });
+
+  it('reads the setting at each call: off again, the start asks', async () => {
+    let why: 'setting' | undefined = 'setting';
+    const { services } = fakes();
+    const mcp = server(services, { withoutConfirm: () => Promise.resolve(why) });
+    await call(mcp, 'start_workspace', request);
+    why = undefined;
+    const pending = call(mcp, 'start_workspace', { ...request, branch: 'fix/two' });
+    const id = await askOf(mcp);
+    await mcp.answer({ id, yes: true });
+    expect((await pending).value).not.toHaveProperty('withoutConfirm');
+  });
+
+  it('still checks the start first: a wrong brief starts nothing', async () => {
+    const { services, calls } = fakes();
+    const mcp = server(services, { withoutConfirm: () => Promise.resolve('setting') });
+    const done = await call(mcp, 'start_workspace', { ...request, kind: 'nope' });
+    expect(done.isError).toBe(true);
+    expect(calls.some((c) => c[0] === 'start')).toBe(false);
+  });
+
+  it("asks the person's own agents through symbiote mcp, whatever the setting", async () => {
+    const { services } = fakes();
+    const mcp = server(services, { withoutConfirm: () => Promise.resolve('setting') });
+    const pending = call(mcp, 'start_workspace', request, { via: 'mcp', client: 'codex' });
+    const id = await askOf(mcp);
+    await mcp.answer({ id, yes: true });
+    expect((await pending).value).not.toHaveProperty('withoutConfirm');
+  });
+
+  it('still asks for every other asked tool', async () => {
+    const { services } = fakes({ merges: [entry()] });
+    const mcp = server(services, { withoutConfirm: () => Promise.resolve('setting') });
+    const asked: [string, Record<string, unknown>][] = [
+      ['restart_agent', { branch: 'fix/a' }],
+      ['clean_workspace', { branch: 'fix/a' }],
+      ['finish_review', { branch: 'fix/a', event: 'approve', summary: 'Good' }],
+      ['queue_merge', { branch: 'fix/a' }],
+      ['land_merge', { id: 'm1' }],
+      ['retry_merge', { id: 'm1' }],
+      ['recheck_merge', { id: 'm1' }],
+      ['remove_merge', { id: 'm1' }],
+    ];
+    for (const [name, args] of asked) {
+      const pending = call(mcp, name, args);
+      const id = await askOf(mcp);
+      expect(mcp.asks().asks[0]?.tool).toBe(name);
+      await mcp.answer({ id, yes: false });
+      expect((await pending).text).toContain('The person declined');
+    }
+  });
+
+  it("says in start_workspace's description and the instructions, for Nucleus only", async () => {
+    const before = await texts(server(fakes().services));
+    const off = await texts(
+      server(fakes().services, { withoutConfirm: () => Promise.resolve(undefined) }),
+    );
+    expect(off).toEqual(before);
+
+    const on = server(fakes().services, { withoutConfirm: () => Promise.resolve('setting') });
+    const nucleus = await texts(on);
+    const start = nucleus.tools.find((t) => t.name === 'start_workspace');
+    expect(start?.description).toContain("Starts at once, without the person's Confirm");
+    expect(start?.description).not.toContain("Waits for the person's Confirm");
+    expect(start?.description).toContain('Settings');
+    for (const tool of nucleus.tools.filter((t) => t.name !== 'start_workspace')) {
+      expect(tool.description).toBe(before.tools.find((t) => t.name === tool.name)?.description);
+    }
+    expect(nucleus.instructions).toContain('start_workspace starts at once');
+    expect(nucleus.instructions).not.toBe(before.instructions);
+    // Another caller reads today's texts.
+    expect(await texts(on, { via: 'mcp', client: 'codex' })).toEqual(
+      await texts(server(fakes().services), { via: 'mcp', client: 'codex' }),
+    );
+
+    const hive = await texts(
+      server(fakes().services, { withoutConfirm: () => Promise.resolve('hive') }),
+    );
+    expect(hive.tools.find((t) => t.name === 'start_workspace')?.description).toContain(
+      'Hive mode is on',
+    );
+  });
+
+  it('has no tool that reads or changes the setting', () => {
+    for (const tool of MCP_TOOLS) {
+      expect(`${tool.name} ${tool.description}`).not.toMatch(/without a Confirm|nucleus-start/i);
+    }
+  });
+});

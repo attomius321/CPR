@@ -282,6 +282,7 @@ export type {
   NucleusEntry,
   TurnTokens,
   WebPage,
+  WithoutConfirm,
 } from './nucleus-activity.js';
 export {
   AGENT_KINDS,

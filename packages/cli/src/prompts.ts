@@ -389,7 +389,8 @@ function nucleusAbout(name: string): string {
   return (
     `${name}'s system prompt, from a conversation's start: appended to Claude Code's, Codex's ` +
     "developer instructions. The person's words follow, in its terminal. Whatever it says, it " +
-    'changes no file, and starts, approves or merges only on your Confirm.'
+    'changes no file, and approves or merges only on your Confirm; it starts a workspace only on ' +
+    'it too, unless Start workspaces without a Confirm is on, above, or Hive mode is.'
   );
 }
 

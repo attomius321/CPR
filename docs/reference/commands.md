@@ -183,7 +183,7 @@ agent finds on your `PATH`. If `symbiote` is only an alias, write the full comma
 | `overview` | What needs you: workspaces that wait or are ready, merges that wait | |
 | `workspaces`, `workspace`, `thread` | The workspaces; one workspace with its brief, its worktree's folder, commits and files; its agent's thread | |
 | `activity` | A workspace's activity (or, with `nucleus: true`, Nucleus's) as [an exported activity](#an-exported-activity): its newest messages within 60 KB | |
-| `start_options`, `start_workspace` | What a start takes here; a start. Its **Confirm** names the model and the effort it starts with | Yes, to start |
+| `start_options`, `start_workspace` | What a start takes here; a start. Its **Confirm** names the model and the effort it starts with | Yes, to start; not Nucleus's start while [Start workspaces without a Confirm](configuration.md#starting-workspaces-without-a-confirm) or Hive mode is on |
 | `suggest_settings` | Suggested settings for a brief, as **Suggest settings** on the Start page: a model, an effort level, plan first and why. It runs one turn of the agent's small model and starts nothing | |
 | `reply`, `stop_agent`, `restart_agent` | Send a message to a workspace's agent; stop it; start it again | Yes, to start again |
 | `clean_workspace` | Clean a workspace up | Yes |
@@ -196,3 +196,7 @@ agent finds on your `PATH`. If `symbiote` is only an alias, write the full comma
 When a tool asks, a bar on every page of the app says which agent asks and what it will do, with
 **Decline** and **Confirm**. Nothing happens before you click **Confirm**. If you click
 **Decline**, or do not answer within 10 minutes, the agent is told that nothing was done.
+Only Nucleus's `start_workspace` can go without one, while
+[Start workspaces without a Confirm](configuration.md#starting-workspaces-without-a-confirm) or
+Hive mode is on. Its description and Symbiote's instructions to Nucleus say so, and its answer has
+`withoutConfirm`: `setting` or `hive`.

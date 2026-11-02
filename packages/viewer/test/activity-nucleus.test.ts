@@ -341,6 +341,57 @@ describe("Nucleus's groups (NU2)", () => {
   });
 });
 
+describe("Nucleus's start without a Confirm (NU8, decision 785)", () => {
+  const skipped = (why: 'setting' | 'hive'): NucleusActivityLine[] => [
+    {
+      at: at(1),
+      session: 'symbiote',
+      id: 'm1',
+      tool: 'start_workspace',
+      source: 'symbiote',
+      phase: 'start',
+    },
+    {
+      at: at(1.1),
+      kind: 'confirm',
+      ask: 's1',
+      tool: 'start_workspace',
+      words: 'Start fix/a, with Claude Code',
+      call: 'm1',
+      stage: 'skipped',
+      why,
+    },
+    {
+      at: at(3),
+      session: 'symbiote',
+      id: 'm1',
+      tool: 'start_workspace',
+      source: 'symbiote',
+      phase: 'end',
+      ms: 2000,
+      output: '{"workspace":{"branch":"fix/a"},"withoutConfirm":"setting"}',
+    },
+  ];
+
+  it('is a milestone of its own, said started without one and why, never waiting', () => {
+    for (const [why, said] of [
+      ['setting', 'Your setting'],
+      ['hive', 'Hive mode'],
+    ] as const) {
+      const events = nucleusEvents(skipped(why));
+      const groups = activityGroups(events, { agent: working, worktree: ROOT, nucleus: true });
+      const confirm = groups.find((g) => g.kind === 'confirm');
+      expect(confirm?.title).toBe('Started without a Confirm: Start fix/a, with Claude Code');
+      expect(confirm?.status).toBe('done');
+      expect(confirm?.detail).toContain('fix/a');
+      expect(confirm && statusWords(confirm)).toEqual({ text: said, tone: 'muted' });
+      // Its call is no failure, and nothing waits for the person.
+      expect(groups.find((g) => g.kind === 'symbiote')?.failures).toBe(0);
+      expect(liveActivity(working, ROOT, events, groups)?.text ?? '').not.toContain('Confirm');
+    }
+  });
+});
+
 describe("Nucleus's conversation as an agent's state (NU2)", () => {
   it.each([
     ['working', { state: 'working', kind: 'codex' }],

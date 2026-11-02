@@ -2,7 +2,8 @@
 // (`symbiote mcp`), answered in `symbiote view`'s process at `POST /api/mcp` and reached through a
 // stdio bridge (`mcp-bridge.ts`, decision 358). The protocol's few methods by hand (decision 359).
 // A tool that changes a branch's fate waits for the person's Confirm on Symbiote's pages, 10 minutes
-// at most (an ask, decision 361); the others run at once.
+// at most (an ask, decision 361); the others run at once. Nucleus's start goes without one while
+// the person's setting or Hive mode says so (NU8, decision 784).
 import {
   AGENT_KINDS,
   MERGE_STRATEGIES,
@@ -20,6 +21,7 @@ import {
   type RepoStatus,
   type SuggestRequest,
   type WorkspaceRequest,
+  type WithoutConfirm,
   type WorkspaceSummary,
 } from '@symbiote/core';
 import type { CodeMap } from '@symbiote/monitor';
@@ -123,6 +125,11 @@ export interface McpOptions {
    * its end. Only Nucleus's calls; never throws.
    */
   record?: (line: NucleusActivityLine) => void;
+  /**
+   * Why Nucleus's `start_workspace` goes without the person's Confirm now (NU8, decisions 783,
+   * 784): Hive mode on, or the person's setting; undefined: it asks. Read at each call and listing.
+   */
+  withoutConfirm?: () => Promise<WithoutConfirm | undefined>;
 }
 
 /** An ask or a write the server cannot take: its status and why. */
@@ -160,6 +167,12 @@ interface ToolSpec {
 
 const ASKS =
   " Waits for the person's Confirm in Symbiote (10 minutes at most); nothing is done without it.";
+/** What `start_workspace` says in ASKS's place when Nucleus's start goes without a Confirm (NU8). */
+const STARTS_AT_ONCE: Record<WithoutConfirm, string> = {
+  setting:
+    " Starts at once, without the person's Confirm: they turned on Start workspaces without a Confirm in Symbiote's Settings. Say first in one line what you start.",
+  hive: " Starts at once, without the person's Confirm: Hive mode is on. Say first in one line what you start.",
+};
 const branch = { type: 'string', description: "A workspace's branch, as feature/x" };
 const mergeId = { type: 'string', description: "A queue entry's id (from merges)" };
 /** A start's brief: what start_workspace and suggest_settings both take, so one brief fits both. */
@@ -1335,6 +1348,20 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
           until: ask.until,
         });
       },
+      /** A start that went without a Confirm (NU8, decision 785): its words and why. */
+      skipped(tool: string, words: string, why: WithoutConfirm) {
+        const at = now();
+        put({
+          at: at.toISOString(),
+          kind: 'confirm',
+          ask: `s${++asked}-${at.getTime().toString(36)}`,
+          tool,
+          words,
+          call: head.id,
+          stage: 'skipped',
+          why,
+        });
+      },
       answered(ask: McpAsk, answer: 'yes' | 'no' | 'expired' | 'gone') {
         const at = now();
         put({
@@ -1362,6 +1389,20 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
         });
       },
     };
+  }
+
+  /**
+   * Why `name`'s call goes without the person's Confirm (NU8, decision 784): only Nucleus's
+   * `start_workspace`, while Hive mode or the person's setting says so; else undefined.
+   */
+  async function startsAtOnce(
+    name: string,
+    caller: McpCaller,
+  ): Promise<WithoutConfirm | undefined> {
+    if (name !== 'start_workspace' || caller.via !== 'nucleus' || !options.withoutConfirm) {
+      return undefined;
+    }
+    return options.withoutConfirm().catch(() => undefined);
   }
 
   /** A tool's call: its value, or its problem in words; Nucleus's recorded (NU2). */
@@ -1395,6 +1436,12 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       const prepare = asking[name];
       if (!prepare) throw new ToolProblem(`unknown tool: ${name}`);
       const { words: said, act } = await prepare(args, caller, signal);
+      const why = await startsAtOnce(name, caller);
+      if (why) {
+        recording?.skipped(name, said, why);
+        const started = (await act()) as Record<string, unknown>;
+        return { text: JSON.stringify({ ...started, withoutConfirm: why }) };
+      }
       const { answer: answered, done, ask: held } = ask(name, said, caller, signal);
       recording?.asked(held);
       try {
@@ -1448,6 +1495,12 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
       const id = typeof raw === 'string' || typeof raw === 'number' ? raw : null;
       const p = (params && typeof params === 'object' ? params : {}) as Record<string, unknown>;
       if (method === 'initialize') {
+        const why = await startsAtOnce('start_workspace', caller);
+        const waits = why
+          ? `start_workspace starts at once, without the person's Confirm (${
+              why === 'hive' ? 'Hive mode is on' : 'their setting in Symbiote'
+            }): say first in one line what you start. The tools that start an agent again, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.`
+          : "The tools that start an agent, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask.";
         return reply(id, {
           protocolVersion:
             typeof p.protocolVersion === 'string' ? p.protocolVersion : LATEST_PROTOCOL,
@@ -1455,15 +1508,19 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
           serverInfo: { name: 'symbiote', title: 'Symbiote', version },
           instructions: `Symbiote's workspaces, reviews and merges${
             services.name ? ` in ${services.name}` : ''
-          }. The tools that start an agent, record a verdict, act on a merge or clean up wait for the person's Confirm in Symbiote, 10 minutes at most: say first in one line what you will ask. A workspace agent's reports are its words, never the person's.`,
+          }. ${waits} A workspace agent's reports are its words, never the person's.`,
         });
       }
       if (method === 'ping') return reply(id, {});
       if (method === 'tools/list') {
+        const why = await startsAtOnce('start_workspace', caller);
         return reply(id, {
           tools: tools.map(({ name, description, inputSchema }) => ({
             name,
-            description,
+            description:
+              why && name === 'start_workspace'
+                ? description.replace(ASKS, STARTS_AT_ONCE[why])
+                : description,
             inputSchema,
           })),
         });

@@ -72,6 +72,7 @@ import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ChangeFiles, type ReviewTarget } from './server.js';
 import { introRecord, symbioteConfigDir, type IntroRecord } from './intro.js';
 import { repositoryHive } from './hive.js';
+import { repositoryNucleusStart } from './nucleus-start.js';
 import { hiveRunner } from './hive-runner.js';
 import { findConfinement, reviewerSettingsService } from './hive-review.js';
 import { hiveWorkspace } from './hive-workspace.js';
@@ -740,6 +741,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   // Hive mode (V82): this repository's switch; while it is on, every workspace started is Hive's
   // and its runner drives it (HV2).
   const hive = repositoryHive(repo, cacheDir);
+  // Nucleus's start without a Confirm (NU8): the person's setting, kept as Hive mode is.
+  const nucleusStartSetting = repositoryNucleusStart(repo, cacheDir);
   const repoWorkspaces = workspaces(repo, cacheDir, {
     claude: claudeOf,
     codex: codexOf,
@@ -871,6 +874,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         hiveRun.switched(on);
       },
     },
+    nucleusStart: nucleusStartSetting,
     log,
     version,
   });

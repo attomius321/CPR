@@ -57,10 +57,18 @@ export interface NucleusCall extends ActivityEntry, Omit<Of, 'at' | 'turn'> {
   refused?: string;
 }
 
-/** A Confirm Symbiote asked the person for one of Nucleus's calls (decision 361), and its end. */
+/**
+ * A Confirm Symbiote asked the person for one of Nucleus's calls (decision 361), and its end; or
+ * none asked (NU8, decision 785): a start that went without one, by the person's setting or while
+ * Hive mode is on.
+ */
 export type ConfirmStage =
   | { stage: 'asked'; until: string }
-  | { stage: 'ended'; answer: 'confirmed' | 'declined' | 'expired' | 'gone'; ms: number };
+  | { stage: 'ended'; answer: 'confirmed' | 'declined' | 'expired' | 'gone'; ms: number }
+  | { stage: 'skipped'; why: WithoutConfirm };
+
+/** Why Nucleus's `start_workspace` goes without a Confirm (NU8): the person's setting, or Hive mode. */
+export type WithoutConfirm = 'setting' | 'hive';
 
 /** Anything else that happened in a conversation. */
 export type NucleusEntry = Of &

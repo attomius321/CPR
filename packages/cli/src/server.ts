@@ -79,6 +79,7 @@ import { parsePromptChange, PromptRefused, type PromptSettingsService } from './
 import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';
 import { withHive, type HiveRecord } from './hive.js';
+import { nucleusStart } from './nucleus-start.js';
 import type { ReviewerSettings } from './hive-review.js';
 import type { HiveWorkspace } from './hive-workspace.js';
 import type { Histories } from './history.js';
@@ -200,6 +201,11 @@ export interface ViewServerOptions {
   intro?: IntroRecord;
   /** Enables `/api/hive` (V82): Hive mode, on every page from its first paint. */
   hive?: HiveRecord;
+  /**
+   * Enables `/api/nucleus/start-confirm` (NU8): the person's setting with which Nucleus's
+   * `start_workspace` goes without a Confirm, on while `hive` is; the MCP reads it at each call.
+   */
+  nucleusStart?: HiveRecord;
   /**
    * Enables `/api/hive/reviewer/…` (HV3): the running reviewer's model and level, as the
    * merger's.
@@ -344,6 +350,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
    * a time), from the pages and from Symbiote's MCP alike.
    */
   const busy = new Set<string>();
+  /** Nucleus's start without a Confirm (NU8): the person's setting with Hive mode over it. */
+  const startSetting = options.nucleusStart
+    ? nucleusStart(options.nucleusStart, options.hive)
+    : undefined;
   /** Symbiote's MCP (MC1): its tools over the repository's services; the asks it holds. */
   const mcp: SymbioteMcp | undefined = repository
     ? symbioteMcp(repository, {
@@ -352,6 +362,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         exclusive,
         // Nucleus's calls and their Confirms, in its activity (NU2, decision 607).
         ...(repository.nucleus?.record ? { record: repository.nucleus.record } : {}),
+        // Its start without a Confirm: the person's setting, or Hive mode (NU8, decision 784).
+        ...(startSetting ? { withoutConfirm: () => startSetting.why() } : {}),
       })
     : undefined;
   /** Terminals' output streams (V21), ended when the server closes. */
@@ -502,6 +514,16 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
     if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
     if (mcp && url.pathname.startsWith('/api/mcp')) return mcpRoute(req, res, url, mcp);
+    // Settings' switch (NU8, decision 782): the person's alone, never an MCP tool's.
+    if (startSetting && url.pathname === '/api/nucleus/start-confirm') {
+      if (req.method === 'GET') return answer(res, () => startSetting.read());
+      return written(req, res, parseHiveChange, ({ on }) =>
+        answer(res, async () => {
+          await startSetting.set(on);
+          return startSetting.read();
+        }),
+      );
+    }
     const { workspaces, nucleus, scribe, skills, monitor, settings, usage, merges } = repository;
     if (workspaces) {
       // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves

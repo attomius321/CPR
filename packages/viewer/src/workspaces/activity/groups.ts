@@ -675,6 +675,12 @@ const CONFIRM_ENDS = {
   gone: { text: 'Its call ended first', tone: 'muted' },
 } as const;
 
+/** Why a start went without a Confirm (NU8), in words and tone. */
+const WITHOUT_CONFIRM = {
+  setting: { text: 'Your setting', tone: 'muted' },
+  hive: { text: 'Hive mode', tone: 'muted' },
+} as const;
+
 type Base = Pick<ActivityGroup, 'key' | 'start' | 'end' | 'failures' | 'events'>;
 
 /** A Confirm (NU2): asked, waiting for the person until it ends; what the yes did, its detail. */
@@ -684,8 +690,22 @@ function confirmGroup(
   context: Context,
 ): ActivityGroup {
   const words = (event.asked ?? event.ended)?.words ?? '';
-  const answer = event.ended?.stage === 'ended' ? event.ended.answer : undefined;
   const did = event.did?.output;
+  // None asked (NU8, decision 785): the person's setting or Hive mode started it at once.
+  if (event.ended?.stage === 'skipped') {
+    return {
+      ...base,
+      ...times([event]),
+      kind: 'confirm',
+      milestone: true,
+      title: `Started without a Confirm: ${words}`,
+      summary: event.ended.tool,
+      ...(did ? { detail: did } : {}),
+      status: 'done',
+      said: WITHOUT_CONFIRM[event.ended.why],
+    };
+  }
+  const answer = event.ended?.stage === 'ended' ? event.ended.answer : undefined;
   // Unanswered while Nucleus works on: it waits for the person; else its end was never recorded.
   const live = context.agent.state === 'working' || context.agent.state === 'needs-you';
   return {
