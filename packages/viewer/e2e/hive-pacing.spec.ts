@@ -123,7 +123,7 @@ test("Settings' Hive page: the threshold, Hive's pause now, and the budget, in s
   await expect(pauseAt).toHaveValue('90');
   await expect(part).toContainText('is at 90 % or more, Hive starts no agent for any workspace');
   await expect(part.locator('.hive-paused-now')).toHaveText(
-    /^Hive is paused now\. Paused: usage 93 % of the 5-hour window, goes on at \d\d:\d\d\.$/,
+    /^Hive is paused now: usage 93 % of the 5-hour window, goes on at \d\d:\d\d\.$/,
   );
   await pauseAt.selectOption('80');
   await expect(part.getByRole('status').last()).toHaveText('Hive pauses at 80 %.');

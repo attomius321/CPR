@@ -84,6 +84,10 @@ describe('the spend in words', () => {
     expect(spendWords({ writer: 1.2, reviews: 0, reviewed: 0, total: 1.2, budget: 1 })).toBe(
       'Spent $1.20 of a $1.00 budget: the writer $1.20, no review',
     );
+    // Nothing ran yet: nothing to say of the writer.
+    expect(spendWords({ reviews: 0, reviewed: 0, total: 0, budget: 20 })).toBe(
+      'Spent nothing yet of a $20.00 budget',
+    );
     expect(spendWords({ reviews: 0.6, reviewed: 1, total: 0.6 })).toBe(
       'Spent $0.60: the writer’s cost not read, 1 review $0.60',
     );

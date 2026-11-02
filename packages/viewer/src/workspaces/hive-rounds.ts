@@ -231,6 +231,8 @@ export function pauseWords(pause: HivePause, now: number): string {
  * $18.02"; with a budget, "Spent $47.20 of a $60.00 budget: …".
  */
 export function spendWords(spend: HiveSpend): string {
+  const budget = spend.budget !== undefined ? ` of a ${costWords(spend.budget)} budget` : '';
+  if (spend.writer === undefined && spend.reviewed === 0) return `Spent nothing yet${budget}`;
   const writer =
     spend.writer === undefined
       ? 'the writer’s cost not read'
@@ -238,7 +240,6 @@ export function spendWords(spend: HiveSpend): string {
   const reviews = spend.reviewed
     ? `${plural(spend.reviewed, 'review')} ${costWords(spend.reviews)}`
     : 'no review';
-  const budget = spend.budget !== undefined ? ` of a ${costWords(spend.budget)} budget` : '';
   return `Spent ${costWords(spend.total)}${budget}: ${writer}, ${reviews}`;
 }
 

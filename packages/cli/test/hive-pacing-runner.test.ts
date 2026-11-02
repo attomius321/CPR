@@ -472,6 +472,28 @@ describe('at or over the threshold', () => {
     ]);
   });
 
+  it('a writer the person started while Hive held it is theirs: Hive starts no second one', async () => {
+    const repo = repository(['true']);
+    const s = await setup(repo);
+    await s.turn(true);
+    s.usage.at(97, RESETS);
+    await s.start('feature/mine');
+    const runner = s.runner();
+    await look(runner);
+    // The page's Start the agent, pressed by the person.
+    await s.service.startAgent('feature/mine');
+    expect(s.fake.start).toHaveBeenCalledTimes(1);
+    await look(runner, 2);
+    const record = await readHive(s.where, 'feature/mine');
+    expect(record?.unstarted).toBeUndefined();
+    expect(record?.paused).toBeUndefined();
+    jump(2 * HOUR);
+    s.usage.at(2, RESETS + 5 * HOUR);
+    await look(runner, 2);
+    expect(s.fake.start).toHaveBeenCalledTimes(1);
+    expect(kinds(s.where, 'feature/mine')).toEqual(['started', 'paused', 'writer-started']);
+  });
+
   it('interrupts no turn and no review already running', async () => {
     const repo = repository(['true']);
     const s = await setup(repo);

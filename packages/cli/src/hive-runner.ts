@@ -622,6 +622,18 @@ export function hiveRunner(
    * read from then on; not a restart (773). A refused start stops, with why.
    */
   async function startHeld(where: ReviewPlace, given: HiveFile): Promise<void> {
+    // Started meanwhile by the person (the page's Start the agent): theirs, held no more.
+    const summary = await workspaces.summaryOf(given.branch);
+    if (!summary) return;
+    const state = summary.agent.state;
+    if (SESSION_STATES.has(state) || ['failed', 'stopped', 'not-started'].includes(state)) {
+      const theirs: HiveFile = { ...given };
+      delete theirs.unstarted;
+      delete theirs.paused;
+      await save(where, theirs);
+      await event(where, given.branch, 'writer-started', { by: 'person' });
+      return;
+    }
     const record = await paced(where, given);
     if (!record) return;
     const next: HiveFile = { ...record, since: stamp() };

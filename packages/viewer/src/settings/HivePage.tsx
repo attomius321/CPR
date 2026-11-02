@@ -313,7 +313,7 @@ function HivePacing() {
       {setting && <p className="settings-row-note">{pauseAtWords(setting)}</p>}
       {setting?.pause && (
         <p className="settings-row-note hive-paused-now" role="status">
-          Hive is paused now. {pauseWords(setting.pause, Date.now())}.
+          Hive is paused now: {pauseWords(setting.pause, Date.now()).replace(/^Paused: /, '')}.
         </p>
       )}
       <h3>
