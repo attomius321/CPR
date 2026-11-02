@@ -32,6 +32,7 @@ const screens = named.length
       '08-terminal@light',
       '10-review-loading',
       '10-review-loading@light',
+      '11-settings-hive',
     ];
 
 const browser = await chromium.launch();
@@ -41,7 +42,10 @@ const page = await browser.newPage({
 });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-page.on('requestfailed', (r) => errors.push(`${r.url()}: ${r.failure()?.errorText}`));
+// A load the page itself replaces (an iframe given a new address) is aborted, not failed.
+page.on('requestfailed', (r) => {
+  if (r.failure()?.errorText !== 'net::ERR_ABORTED') errors.push(`${r.url()}: ${r.failure()?.errorText}`);
+});
 for (const screen of screens) {
   const [name, theme] = screen.split('@');
   await page.goto(`file://${here}/src/${name}.html${theme ? `?theme=${theme}` : ''}`);

@@ -90,11 +90,16 @@
       <div class="nav-sep"></div>
       <div class="nav-head">Workspaces<span class="icon-button">${svg('plus')}</span></div>
       <div class="nav-scroll">
-        ${group('Merging', WS.merging)}
+        ${
+          // `data-only="done"`: nothing open, only what was done today.
+          nav.dataset.only === 'done'
+            ? `${group('Done today', WS.done, small)}`
+            : `${group('Merging', WS.merging)}
         ${group('Waiting for you', WS.waiting)}
         ${group('To review', WS.review)}
         ${group('Working', WS.working)}
-        <div class="nav-group">${svg('chevron-right', 's14')}Done today <span class="count">${WS.done.length}</span></div>
+        <div class="nav-group">${svg('chevron-right', 's14')}Done today <span class="count">${WS.done.length}</span></div>`
+        }
       </div>
       <div class="nav-foot">${item('settings', 'Settings', svg('settings'))}</div>`;
   }
@@ -111,6 +116,9 @@
   }
 
   function statusbar(bar) {
+    if (document.querySelector('nav.nav[data-only="done"]')) {
+      WS.waiting.length = WS.review.length = WS.working.length = 0;
+    }
     bar.innerHTML = `
       <span class="seg">${svg('branch', 's12')}main <span class="mono" style="font-size:12px">7aeb0ad</span></span>
       <span class="seg you">${svg('bell', 's12')}${WS.waiting.length + WS.review.length} wait for you</span>
@@ -125,6 +133,9 @@
   function render() {
     const theme = new URLSearchParams(location.search).get('theme');
     if (theme) document.documentElement.dataset.theme = theme;
+    // `?ws=all`: every group, whatever the screen's `data-only`.
+    if (new URLSearchParams(location.search).get('ws') === 'all')
+      document.querySelectorAll('nav.nav').forEach((n) => delete n.dataset.only);
     document.querySelectorAll('nav.nav').forEach(sidenav);
     document.querySelectorAll('nav.rail').forEach(rail);
     document.querySelectorAll('footer.status').forEach(statusbar);

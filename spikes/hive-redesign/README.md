@@ -36,6 +36,9 @@ and why, and what it cost.
 | [04-settings](proofs/04-settings.webp) | Settings, Hive mode: Landing, Limits, Running reviewer (today's `docs/images/hive-settings.png`) |
 | [05-new-goal](proofs/05-new-goal.webp) | Start a workspace in Hive mode: no plan-first or permissions (Hive's), the check it will run, how Hive runs it |
 | [08-terminal](proofs/08-terminal.webp) | The writer's terminal, focused (the rail, no side card): the steps, round, time and spend in the head; session tabs; Hive's message as the prompt the writer answers; a bar saying Hive drives the writer |
+| [09-turn-on](proofs/09-turn-on.webp) | The question, over normal mode's Settings: the circuit art kept, what Hive will do as its four steps, what it checks before it starts |
+| [09-turn-on.webm](proofs/09-turn-on.webm) and the frames [0260](proofs/09-turn-on-0260.webp), [0560](proofs/09-turn-on-0560.webp), [0800](proofs/09-turn-on-0800.webp), [1000](proofs/09-turn-on-1000.webp), [1600](proofs/09-turn-on-1600.webp) | Turning on, 1.4 s: the track arms, the question folds into the Mind, Hive's look opens out from it behind a crimson ring, the Hive pill lights |
+| [09-turn-on-refused](proofs/09-turn-on-refused.webp) | The question when two normal-mode workspaces are open: they are named and Turn on Hive is off |
 | [06-kit](proofs/06-kit.webp) | Tokens with their contrast, states, the stage track, type, controls, sidenav rows, a metric, a gauge |
 | [01-overview-light](proofs/01-overview-light.webp), [03-run-landed-light](proofs/03-run-landed-light.webp), [08-terminal-light](proofs/08-terminal-light.webp) | The light theme (the terminal stays dark, as today) |
 
@@ -76,8 +79,17 @@ uppercase labels (V37). Page actions are 30 px with an 8 px radius and cards 10 
 
 Hive drove this workspace and nobody was asked, so these were the designer's calls:
 
-- **The honeycomb background leaves the working screens.** The arrival animation and Hive's question
-  (the circuit board) are unchanged. The comb could come back as a choice in Appearance.
+- **The honeycomb background goes** (the person's decision, 2 November): the hexagon stays in the
+  stage track and the mark.
+- **Turning Hive on** (the person: "i need a redesign for the hive dialog and the animation also",
+  then "I like the animation from the dialog"): the question keeps its circuit art as it is (its
+  faint board included), captured from today's app in `src/assets/circuit-art@2x.png`. Around it,
+  what Hive will do (the four steps) and what it checks before it starts (a check is set, no
+  normal-mode workspace open, the limits, full access); Turn on Hive is off while a check fails.
+  The arrival is 1.4 s: the steps arm (0–0.42 s), the question folds into the Mind (0.39–0.53 s),
+  Hive's look opens from it in a growing circle behind a crimson ring (0.56–1.18 s), the Hive pill
+  lights (1.16–1.54 s). Opacity, transform and one clip-path: the View Transitions API can carry it.
+  The shutter, the blackout, the streak and the comb behind the pages go. Reduced motion: at once.
 - **The crimson primary stays**, one per page, for constructive actions. Clean up moves to the ⋯
   menu; Turn off Hive is secondary with red words.
 - **In progress is amber**, so Hive's crimson and the failure red stop standing for each other.
@@ -100,7 +112,10 @@ Hive drove this workspace and nobody was asked, so these were the designer's cal
 | `src/run.css` | A workspace's page: the pipeline, the run's timeline, the side card |
 | `src/term.css` | The terminal view, both modes: the inline steps, session tabs, the terminal, Split, the bar under it |
 | `src/01-…08-*.html` | One screen each |
-| `shoot.mjs` | Renders the screens to `proofs/` |
+| `src/09-turn-on.html` | Turning Hive on: normal mode's Settings and Hive's as two frames, the question over them, the arrival as CSS animations; `?t=<ms>` stops it there, `?play` plays it, `?state=refused` |
+| `src/assets/circuit-art@2x.png` | Today's circuit art, captured from the question at 3 s |
+| `shoot.mjs` | Renders the screens to `proofs/` (`name?t=560` names a frame) |
+| `film.mjs` | Films the turn-on at 30 frames a second (the prototype, or today's app under Playwright's clock) to WebM |
 | `proofs/*.webp` | The proofs, 1×, lossless |
 
 ## Rendering it

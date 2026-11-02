@@ -185,7 +185,16 @@
       `<div class="ws ${open && open === w.branch ? 'on' : ''}">${svg(w.icon, w.cls)}<div class="t">${w.title}</div><div class="m">${w.meta}</div></div>`;
     const landedRow = (w) =>
       `<div class="ws small ${open && open === w.branch ? 'on' : ''}">${svg(w.answered ? 'answered' : 'circle-check', w.answered ? 'faint s14' : 'ok s14')}<div class="t">${w.title}</div><span class="when">${w.when}</span></div>`;
-    const flight = nav.dataset.flight ? WS.flight.slice(0, +nav.dataset.flight) : WS.flight;
+    // `?fresh=1`: Hive just turned on: nothing in flight, today's normal-mode merges landed.
+    const fresh = nav.dataset.fresh === '1';
+    const flight = fresh ? [] : nav.dataset.flight ? WS.flight.slice(0, +nav.dataset.flight) : WS.flight;
+    const landed = fresh
+      ? [
+          { title: 'Email a receipt after checkout', when: '11:20' },
+          { title: 'Rename the cart’s coupon field', when: '10:02' },
+          { title: 'Retry failed payment webhooks', when: '09:41' },
+        ]
+      : WS.landed;
     nav.innerHTML = `
       <div class="nav-top">
         <img class="mark" src="../../../packages/viewer/src/ui/mark-hive-96.png" alt="">
@@ -205,14 +214,14 @@
       <div class="nav-head">Workspaces<span class="icon-button">${svg('plus')}</span></div>
       <div class="nav-scroll">
         <div class="nav-group">In flight <span class="count">${flight.length}</span></div>
-        ${flight.map(wsRow).join('')}
+        ${fresh ? '<div class="ws small"><span></span><div class="t" style="color: var(--faint)">Nothing yet: start a goal</div></div>' : flight.map(wsRow).join('')}
         ${
-          nav.dataset.stopped === 'no'
+          nav.dataset.stopped === 'no' || fresh
             ? ''
             : `<div class="nav-group">Stopped <span class="count">1</span></div>${WS.stopped.map(wsRow).join('')}`
         }
-        <div class="nav-group">Landed today <span class="count">${WS.landed.length}</span></div>
-        ${WS.landed.map(landedRow).join('')}
+        <div class="nav-group">Landed today <span class="count">${landed.length}</span></div>
+        ${landed.map(landedRow).join('')}
       </div>
       <div class="nav-foot">${item('settings', 'Settings', svg('settings'))}</div>`;
   }
@@ -222,7 +231,7 @@
     bar.innerHTML = `
       <span class="seg"><span class="dot" style="${paused ? 'background:var(--run)' : ''}"></span>${paused ? 'Hive paused by usage' : 'Hive on'}</span>
       <span class="seg">${svg('spin', 's12 spin')}${bar.dataset.flight ?? 4} in flight</span>
-      <span class="seg">${svg('merge', 's12')}5 landed today</span>
+      <span class="seg">${svg('merge', 's12')}${bar.dataset.landed ?? 5} landed today</span>
       <span class="seg">${svg('branch', 's12')}main</span>
       <span class="right">
         <span class="seg"><b style="font-weight:600;color:var(--text)">Claude</b> Pro</span>
@@ -234,6 +243,13 @@
   function render() {
     const theme = new URLSearchParams(location.search).get('theme');
     if (theme) document.documentElement.dataset.theme = theme;
+    if (new URLSearchParams(location.search).get('fresh')) {
+      document.querySelectorAll('nav.nav').forEach((n) => (n.dataset.fresh = '1'));
+      document.querySelectorAll('footer.status').forEach((b) => {
+        b.dataset.flight = '0';
+        b.dataset.landed = '3';
+      });
+    }
     document.querySelectorAll('nav.nav').forEach(sidenav);
     document.querySelectorAll('footer.status').forEach(statusbar);
     document.querySelectorAll('[data-i]').forEach((el) => {

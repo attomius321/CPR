@@ -29,6 +29,13 @@ const screens = named.length
       '03-run-landed@light',
       '08-terminal',
       '08-terminal@light',
+      '09-turn-on',
+      '09-turn-on?t=0260',
+      '09-turn-on?t=0560',
+      '09-turn-on?t=0800',
+      '09-turn-on?t=1000',
+      '09-turn-on?t=1600',
+      '09-turn-on?state=refused',
     ];
 
 const browser = await chromium.launch();
@@ -38,13 +45,21 @@ const page = await browser.newPage({
 });
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
-page.on('requestfailed', (r) => errors.push(`${r.url()}: ${r.failure()?.errorText}`));
+// A load the page itself replaces (an iframe given a new address) is aborted, not failed.
+page.on('requestfailed', (r) => {
+  if (r.failure()?.errorText !== 'net::ERR_ABORTED') errors.push(`${r.url()}: ${r.failure()?.errorText}`);
+});
 for (const screen of screens) {
-  const [name, theme] = screen.split('@');
-  await page.goto(`file://${here}/src/${name}.html${theme ? `?theme=${theme}` : ''}`);
-  await page.evaluate(() => document.fonts.ready);
+  // `name@light`, or `name?t=560`: the query goes to the page and names the proof.
+  const [spec, query = ''] = screen.split('?');
+  const [name, theme] = spec.split('@');
+  const search = new URLSearchParams(query);
+  if (theme) search.set('theme', theme);
+  await page.goto(`file://${here}/src/${name}.html${search.size ? `?${search}` : ''}`);
+  for (const frame of page.frames()) await frame.evaluate(() => document.fonts.ready);
+  const tag = query ? `-${[...new URLSearchParams(query).values()].join('-')}` : '';
   const png = await page.screenshot({ fullPage: name.endsWith('kit') });
-  const base = `${here}/proofs/${name}${theme ? `-${theme}` : ''}${scale === 1 ? '' : `@${scale}x`}`;
+  const base = `${here}/proofs/${name}${tag}${theme ? `-${theme}` : ''}${scale === 1 ? '' : `@${scale}x`}`;
   if (flag('--png')) {
     writeFileSync(`${base}.png`, png);
     console.log(`${base}.png`);

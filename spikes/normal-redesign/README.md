@@ -37,6 +37,7 @@ and a change's kinds, which keep VS Code's colours (V42) but for a brighter remo
 | [06-start](proofs/06-start.webp) | Start a workspace: the brief, then source, agent, permissions, effort and Plan first, and where you come in |
 | [08-terminal](proofs/08-terminal.webp) | The terminal view: Claude Code asks permission; its tab and row turn violet; a bar under the terminal says what it asks and the keys that answer it; the files it changed, live, beside it |
 | [09-terminal-split](proofs/09-terminal-split.webp) | Split, new: the agent and a shell running the dev server side by side |
+| [11-settings-hive](proofs/11-settings-hive.webp) | Settings, Hive mode off: where Hive is turned on (the page under Hive's question), with nothing open in the sidenav |
 | [07-kit](proofs/07-kit.webp) | Tokens with their contrast, the shared states, a change's kinds, findings, graph nodes, controls |
 | [01-overview-light](proofs/01-overview-light.webp), [03-review-graph-light](proofs/03-review-graph-light.webp), [08-terminal-light](proofs/08-terminal-light.webp), [10-review-loading-light](proofs/10-review-loading-light.webp) | The light theme (the terminal stays dark, as today) |
 
@@ -92,7 +93,7 @@ The states (`--run`, `--ok`, `--fail`, `--info`) are Hive Control's.
 |---|---|
 | `src/normal.css` | Normal mode's tokens (dark, light) and its own parts: the inbox, the plan, the graph, a file's diff |
 | `src/nkit.js` | The sidenav with today's groups, the review's icon rail, the status bar, the graph's edges |
-| `src/01-…10-*.html` | One screen each |
+| `src/01-…11-*.html` | One screen each |
 | `shoot.mjs` | Renders the screens to `proofs/` |
 | `proofs/*.webp` | The proofs, 1×, lossless |
 
