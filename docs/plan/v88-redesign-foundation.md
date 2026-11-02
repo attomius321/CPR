@@ -143,3 +143,28 @@ question keeps its circuit art and its layout and takes the warm ink.
 the two Overview pages, Hive's pages and sidenav groups, turning Hive on in 1.4 s, Approve plan, the
 terminal's theme, the change kinds' colours, lanes, the Activity tab's phase colours, the type
 scale and heights.
+
+## As built (V88)
+
+- **Cards on `--panel`, the chrome alone on `--side`.** Until V88 `--panel` equalled `--side`, and
+  cards painted their ground with either, or with `--bg`. With the kits' light theme (a grey
+  ground, white cards) that showed as grey cards and grey panes inside white ones (Hive's Review
+  tab in the first after-shots). 28 `--side` grounds and 11 `--bg` grounds of cards and card heads
+  became `--panel`; the sidenav, status bar, title bar and the narrow drawer stay `--side`; code,
+  pre, the graph's canvas and the thread's items stay `--bg`. Rings and hollow fills that stand a
+  mark off its card (the Activity tab's tiles, Git's merge and working dots, the Monitor's tile
+  borders, a signature's diff wash) follow the card. The Activity tab's tile test reads `--panel`.
+- **The picked tab** keeps its 3 px line in `--primary` (crimson in Hive: the kit's `--hive` is
+  a step lighter) and loses its ground (`--tab-picked` transparent), as the kits draw it.
+- **`--warning`'s guard** names the two warnings whose selectors do not say so:
+  `.merge-check-head` (a merge's conflicts) and `.merge-control-why` (cannot fast-forward). A
+  subscription's crown on Start was amber for the mockup's sake; neither a turn nor a warning, it
+  is muted now.
+- **The Activity tab's tones** (`words.ts`) are the states' names: `run`, `ok`, `you`, `warning`,
+  `error`, `muted`; its status a `StatusLabel` with its own icon.
+- **What Hive will do** on Settings' Hive page is a neutral note with its triangle in
+  `--warning`; the refused list in the question keeps the error's tint (a refusal).
+- **The desktop app** takes the new grounds too: its window background and title bar
+  (`frame.ts`), its start page's copy of the tokens (`start/start.css`), the taskbar dot violet.
+- **User docs**: the guide and the README say violet for the waiting dot and link; the
+  configuration page no longer describes the honeycomb or ink and crimson pages.

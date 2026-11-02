@@ -220,8 +220,8 @@ The sidenav lists your workspaces in groups, by what each one needs from you:
 | **Working** | Agents at work, with what each one is doing right now |
 | **Done** | Merged workspaces, ready to clean up |
 
-The window's title counts what waits for you. In Symbiote's window, the taskbar icon also gets an
-amber dot, and on desktops that support it the taskbar button blinks.
+The window's title counts what waits for you. In Symbiote's window, the taskbar icon also gets a
+violet dot, and on desktops that support it the taskbar button blinks.
 
 ### Work with the agent
 
@@ -307,7 +307,8 @@ mode*, where you decide. You turn Hive on per repository, in **Settings**, **Hiv
 ![A workspace Hive landed: its Review tab with round 1 (check passed, 1 defect proven by a test) and round 2 (check passed, approved), then the landing in main, pushed](docs/images/hive.png)
 
 Start a project in normal mode, and turn Hive on once the repository has a check and tests you
-trust: what passes them lands without you. While Hive is on, the app turns ink and crimson, and
+trust: what passes them lands without you. While Hive is on, the app turns warm ink with crimson
+for Hive's own marks, and
 Nucleus, the agent [below](#nucleus-ask-about-your-repository), is called *Alpha Ceph*: the same
 agent, told what Hive does. Hive drives Claude Code only, and its reviews run on Linux only.
 

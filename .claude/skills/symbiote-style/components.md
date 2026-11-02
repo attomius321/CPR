@@ -41,56 +41,54 @@ A theme switch flips every token at once; transitions then fade parts of the pag
 speeds. A class that sets every `transition: none !important` for one frame around the switch
 avoids it: add it in `setTheme` (`src/shell/theme.ts`) if a transition shows.
 
-## Buttons
+## Buttons (V88, decision 819; `ui/controls.css`)
 
-The variants, in priority order: primary (the one affirmative action in a flow), secondary,
-outline (standalone toolbar actions), ghost (icon buttons, row triggers, Cancel), link, danger.
+The kits' four: one constructive primary a page, secondary, ghost, destructive. Symbiote's classes
+are `.button` (the primary), `.button.secondary`, `.button.ghost`, `.button.danger`, and
+`.button.hive` for Turn on Hive.
 
 ```css
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 32px;
-  padding: 0 12px;
+.button {                       /* the primary: violet, dark words; crimson, white words in Hive */
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: var(--height-control);          /* 28; a page's actions --height-tall, 30 */
+  padding: 0 14px;
   border: 1px solid transparent;
   border-radius: 8px;
-  background: transparent;
-  color: var(--text);
-  font-weight: 500;
-  white-space: nowrap;
-  transition:
-    background-color 150ms,
-    color 150ms,
-    border-color 150ms;
+  background: var(--primary);
+  box-shadow: var(--primary-shine), 0 1px 2px rgb(0 0 0 / 24%);
+  color: var(--primary-text);
+  font-size: var(--size-small); font-weight: 500;
 }
-.btn .icon { width: 16px; height: 16px; }
-.btn:disabled { opacity: 0.5; pointer-events: none; }
+.button:hover:not(:disabled) { background: var(--primary-hover); }
+.button:disabled { opacity: 0.5; }
 
-.btn-primary { background: var(--primary); box-shadow: var(--primary-shine); color: var(--primary-text); }
-.btn-primary:hover { background: var(--primary-hover); }   /* dark: lighter, its dark words gain (V61) */
+.button.secondary, .button.danger {          /* raised, a stronger hairline */
+  border-color: var(--line-2);
+  background: var(--raised);
+  box-shadow: var(--shadow-lift);
+  color: var(--text);
+}
+.button.secondary:hover:not(:disabled) { border-color: var(--edge); background: color-mix(in srgb, var(--text) 4%, var(--raised)); }
 
-.btn-secondary { background: var(--raised); }
-.btn-secondary:hover { background: color-mix(in srgb, var(--raised) 80%, transparent); }
+.button.danger { color: var(--error); }      /* destructive: a secondary with red words, never a fill */
+.button.danger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--error) 45%, var(--line-2));
+  background: color-mix(in srgb, var(--error) 8%, var(--raised));
+}
 
-.btn-outline { border-color: var(--line); background: var(--input-bg); box-shadow: var(--shadow-lift); }
-.btn-outline:hover { border-color: color-mix(in srgb, var(--muted) 35%, transparent); background: var(--hover); }
+.button.ghost { background: transparent; box-shadow: none; color: var(--muted); }
+.button.ghost:hover:not(:disabled) { background: var(--hover); color: var(--text); }
 
-.btn-ghost { color: var(--muted); }
-.btn-ghost:hover { background: var(--hover); color: var(--text); }
-
-.btn-danger { background: color-mix(in srgb, var(--error) 60%, transparent); color: #fff; } /* dark; light: var(--error) */
-
-.btn-sm { height: 28px; padding: 0 10px; gap: 4px; font-size: var(--size-small); }   /* in a sidenav card */
-.btn-xs { height: 24px; padding: 0 8px; gap: 4px; font-size: var(--size-small); }    /* in a 28 px row */
-.btn-icon { width: 28px; height: 28px; padding: 0; }                     /* 24 px in rows */
+.button.hive { background: var(--hive-primary); color: #ffffff; }   /* Turn on Hive, both modes */
+.button.hive:hover:not(:disabled) { background: var(--hive-primary-hover); }
 ```
 
-- Cancel, Dismiss, Close and Discard are ghost: no colour, no keycap. Danger only loses data.
-  Symbiote's class is `.button.ghost` (V37: they were text links beside a filled button).
-- One primary per view. A Save that is disabled until a change stays primary, at 50 %.
-- Match the button to its row: never a 32 px button in a 28 px row.
+- One primary a page, and only for a constructive action (Approve, Start, Save, Respond). Clean
+  up, Delete, Turn off Hive are `.danger`: a secondary with red words. No gloss in Hive (V88).
+- Cancel, Dismiss, Close and Discard are ghost: no colour, no keycap (V37).
+- A Save that is disabled until a change stays primary, at 50 %.
+- Match the button to its row: never a 28 px button in a 24 px row. The kits' 30 px buttons are
+  a page's actions only (`--height-tall`); the kits' 26 px small button is 24 (`--height-row`).
 
 ## Text fields
 
@@ -266,13 +264,45 @@ lasted in 13 px `--muted` at that row's end. What it does or what is next in 14 
 lines then "…", the agent's mark before it while it works. Its facts' row: the kind chip (the open
 one's in the accent, V61), then each fact as a 15 px icon and a number or a word in 14 px
 `--muted` (commits, files not committed), the merge check in its state's colour ("clean" in
-`--added`, "n conflicts" in `--removed`), each named in words in its tip and its `aria-label`.
+`--ok`, "n conflicts" in `--error`), each named in words in its tip and its `aria-label`.
 Last, the branch in 14 px `--muted` sans and its review mark. Until V79 a card was three rows in
 72 px, 1 px apart, each cut to one line: 5 of 9 names and 6 of 9 states read "…". Waiting for you
-(V48, V61): the group an amber card (14 px radius, a 30 % `--warning` edge, a 5 % wash), each
+(V48, V61; violet since V88): the group a card in the person's violet (14 px radius, a 30 % `--you`
+edge, a 5 % wash), each
 workspace a card inside it (a 4 % wash of the text), what it asks on two lines at most, Respond
 the primary at 28 px then its kind. A group's icon stands over its cards' dots and its name over
-theirs. Folded, the rail draws the dots alone, without the wash.
+theirs. Folded, the rail draws the dots alone, without the wash. The dots (V88): working,
+starting, merging and Hive at work amber, waiting and ready violet, done green, failed red. The
+Hive group (decision 698) is a plain group since V88, its hexagon in `--hive`: no crimson card, no
+etched cells or streak (its new groups are a later brief).
+
+## A status, the stage track (V88, decisions 817, 818; `ui/StatusLabel.tsx`, `ui/StageTrack.tsx`, `ui/status.css`)
+
+A state is never colour alone: `StatusLabel` is the kits' `.pill`, its icon and its word in the
+tone's colour on a 12 % wash with a 28 % edge drawn inside, 22 px, round. Tones: `run` (amber, a
+loader arc), `ok` (green, circle-check), `error` (red, circle-x), `info` (cyan, pause), `idle`
+(muted, dashed circle), `you` (violet, bell), `warning` (amber, alert), `hive` (`--hive-text`,
+hexagon). `icon` replaces the tone's; `className` is the place's own (its tests find it by it).
+
+```tsx
+<StatusLabel tone="ok" className="history-outcome">Merged</StatusLabel>
+<StatusLabel tone={check.ok ? 'ok' : 'error'}>{check.ok ? 'Check passed' : 'Check failed'}</StatusLabel>
+```
+
+Used by Hive's Review tab (checks, landings, requests, reviews, a proven defect), the Activity
+tab's statuses, History's outcomes and Hive mode's On/Off. A finding's severity and its counts
+stay `.badge` (same tint, a 1 px border). A card's dot in the sidenav keeps its shape (V48, V53).
+
+`StageTrack` is the kits' `.track`: a step a hexagon (12 × 13), joined by 10 px lines; done green
+and joined in green, now amber, failed red, to come an outline in `--faint`. Its words are its
+accessible name ("Write done, Check now, Review and Land to come"). `HIVE_STAGES` (Write, Check,
+Review, Land), `NORMAL_STAGES` (Plan, Your OK, Build, Review, Merge; Plan and Your OK only with
+Plan first). No page shows these steps today: the redesign's page briefs place it.
+
+```tsx
+<StageTrack steps={HIVE_STAGES} at={1} />              {/* Write done, Check now */}
+<StageTrack steps={HIVE_STAGES} at={1} state="bad" />  {/* stopped at the check */}
+```
 
 ## Chips, badges, counts, keycaps
 
@@ -293,7 +323,7 @@ theirs. Folded, the rail draws the dots alone, without the wash.
   gap: 4px;
   height: 18px;
   padding: 0 8px;
-  border: 1px solid color-mix(in srgb, var(--badge) 25%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge) 25%, transparent);   /* a status: StatusLabel */
   border-radius: 9999px;
   background: color-mix(in srgb, var(--badge) 10%, transparent);
   color: var(--badge);
@@ -335,11 +365,12 @@ kbd {
 
 Line tabs (V61, decision 445, the person's mockup): a workspace's views, the diff sidebar's Changes
 / Findings. A strip on the card's chrome, its bottom hairline in `--line`; tabs 40 px, 15 px
-weight 500 in `--muted`, 8 px top corners; the picked one in `--text` on `--tab-picked` with a
-3 px `--primary` line along its bottom, inset 8–10 px; a hairline divider before "+".
+weight 500 in `--muted`, 8 px top corners; the picked one in `--text` with a 3 px `--primary`
+line along its bottom (violet, crimson in Hive), inset 8–10 px, no ground since V88; a hairline
+divider before "+". The strip is the card's head (`.card-head`) on the card's `--panel`.
 
 ```css
-.tabs { display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--line); background: var(--side); }
+.tabs { display: flex; gap: 2px; padding: 0 8px; border-bottom: 1px solid var(--line); background: var(--panel); }
 .tabs > button { height: 40px; padding: 0 12px; border: 0; border-radius: 8px 8px 0 0; background: none; color: var(--muted); }
 .tabs > button:hover { background: var(--hover); color: var(--text); }
 .tabs > button[aria-selected='true'] { position: relative; background: var(--tab-picked); color: var(--text); }
@@ -444,28 +475,33 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
   raised square), the pages as 36 px rows with 18 px icons, the section header, the groups and
   their cards; at the bottom, Settings alone, a page's row over a `--line` hairline (6 × 8 px
   around it) that the list scrolls under, its icon at the rail's bottom when folded.
-- Page head (V72, `ui/PageHead.tsx` and `ui/page.css`): every page's, on the page's ground
-  (`--bg`), no line under it. The page's icon (28 px, `--accent`) in a 32 px square 16 px in,
-  then the title (17 px, weight 600) with what goes beside it (its "?", a kind's chip, a merge's
-  state), a `--muted` 14 px line under it, cut to one line. The actions sit at the right as
-  32 px buttons; they go under the title when the title would keep less than 200 px. The head is
-  76 px high, so the title stands at x 60 and the cards start at y 76 on every page. A
-  workspace's icon is its kind's; a review's the eye; Start's the S; a merge's the merge icon.
+- Page head (V72, `ui/PageHead.tsx` and `ui/page.css`; the kits' `.head` since V88, decision
+  820): every page's, on the page's ground (`--bg`), no line under it. The page's icon (16 px,
+  `--accent`: violet, Hive's crimson words in Hive) on a 28 px tile (`--raised`, a `--line`
+  hairline drawn inside, 8 px radius; an image, Start's S, without the tile) 12 px in, then the
+  title (`--size-title`, weight 600) with what goes beside it (its "?", a kind's chip, a merge's
+  state), a `--muted` line under it, cut to one line. The actions sit at the right as 30 px
+  buttons; they go under the title when the title would keep less than 200 px. The head is 64 px
+  high, so the title stands at x 52 and the cards start at y 64 on every page (the kit's tile is
+  30 px: 28 keeps x 52). A workspace's icon is its kind's; a review's the eye; Start's the S; a
+  merge's the merge icon.
 - Panels as cards (V61; the frame since V72): under the head, each panel a card (`--line`
-  hairline, 10 px radius, `overflow: hidden`), 16 px from each other and from the main area's
-  sides and bottom (`--page-pad`, `--page-gap`); the content's card on `--bg`, a side panel's on
-  `--side`. A `Resizer` between two cards takes `gutter`: it is the 16 px gap itself, its line in
+  hairline, 10 px radius, `overflow: hidden`), 8 px from each other and 12 from the main area's
+  sides and bottom (`--page-pad`, `--page-gap`); every card on `--panel` (V88: white in light,
+  a step over the ground in dark), the chrome alone on `--side`. A `Resizer` between two cards takes `gutter`: it is the 16 px gap itself, its line in
   the middle. A strip that asks something of the person (a workspace waiting, failed) is a card
   of its own in its tone: a 30 % edge, an 8 % wash, the primary at its right.
 - Inside a card (V72): the words start 16 px in (`--card-pad`), a list's row wash 8 px in with
-  its words at 16. A card's head is 48 px with its hairline (`.card-head`): tabs stand on the
-  hairline with the first tab's words 16 px in; a head of controls (Nucleus's model and effort,
+  its words at 16. A card's head is `--card-head` (37 px) with its hairline: `.card-head` from
+  `ui/page.css` on every one (V88), its own class for what differs — its title an `h2` at 15 px
+  600, its actions in `.end` at its right; tabs stand on the hairline with the first tab's words
+  12 px in; a head of controls (Nucleus's model and effort,
   the Monitor's place) has its first control 16 px in. Git's rows card keeps its toolbar head,
   which wraps on a narrow card.
 - Status bar: 24 px, `--side`, `--line` above, 13 px; each segment a button (2 × 4 px padding, 4 px
   radius, hover `color-mix(in srgb, var(--raised) 70%, transparent)`). Usage bars: 4 px high,
-  round, track `--raised`, fill `--added` under 80 %, `--warning` from 80 % or when the vendor
-  warns, `--removed` at 100 % or a reached limit (V29c's tones: the person wants the colours, not
+  round, track `--raised`, fill `--ok` under 80 %, `--warning` from 80 % or when the vendor
+  warns, `--error` at 100 % or a reached limit (V29c's tones: the person wants the colours, not
   grey).
 - Brand: the person's S (`SymbioteMark`, `ui/mark.png`, cut round by `scripts/desktop/icon.mjs`)
   at 32 px before the name, a `--line` ring.
@@ -505,7 +541,7 @@ Floating surfaces are the only ones with blur and large shadows: a handful of el
 - A page that waits (a diff's analysis, V71): one card (560 px at most) in the middle of the main
   area, a state rather than a page to work in (V72 left it centred). Its head is the start
   page's (the S lit, the title with its verb in `--muted`, a line, a state chip at the right); its steps as the merge log's rows with the sidenav's state dots
-  (done `--added`, running working's cyan comet, to come an empty ring); its buttons Start's head
+  (done `--ok`, running the agent's amber comet, to come an empty ring); its buttons Start's head
   actions (36 px, a 14 px icon). The arcs (`ui/ground.css`, `.ground` and `.ground-ring`, shared
   with Start) centred on the card and clear of it, over the whole area; a comet turns on the
   inner one while it runs — the ground's, not a state — still once it ended or without motion.

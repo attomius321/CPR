@@ -87,10 +87,10 @@ Each card shows these, from the top:
 - its branch.
 
 A waiting card has **Respond**, which opens the agent's terminal. When Nucleus or Scribe waits
-for you, its page's link turns amber like this group and says **Waits**.
+for you, its page's link turns violet like this group and says **Waits**.
 
 The window's title counts everything that waits for you: workspaces, merges, Nucleus, Scribe and
-agents' requests to use a tool. In Symbiote's own window, the taskbar icon also gets an amber dot
+agents' requests to use a tool. In Symbiote's own window, the taskbar icon also gets a violet dot
 while anything waits. When something new waits while you are in another window, Symbiote asks
 the desktop to blink its taskbar button until you come back. Desktops that blink a window asking
 for attention do so, KDE and XFCE among them. On WSL the taskbar shows the dot but cannot blink.

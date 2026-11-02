@@ -23,14 +23,18 @@ the primary), every page's panels as cards on its ground, line tabs, and type a 
 
 ## The style in six rules
 
-1. **Quiet, near black (V61).** Neutral near-blacks with a breath of blue, not V42's navy.
-   Colour is for state — diff kinds, findings' severity, an agent's status, git lanes, the
-   Activity tab's kinds of work (V74: a tile each, never a word's colour) — and for one accent,
-   the S's violet, in named roles (rule 3). Reach for muted/raised/line before a colour.
-2. **The content is darkest; the chrome is lifted; panels are cards.** Canvas and page ground
-   `#090b0e` (the graph, History's rows, a thread; the terminal `#050608`); sidenav, status bar
-   and the cards' chrome (a tab strip, the changes panel) `#0d1015`; chips, counts and raised
-   squares `#171a21`. Never one black for everything. Every page has one frame (V72, decisions
+1. **Quiet, near black (V61, V88).** The redesign's kits (`spikes/normal-redesign`,
+   `spikes/hive-redesign`): normal mode cool ink with a breath of blue, Hive mode warm neutral
+   ink, no red in its surfaces. Colour is for state — one set in both modes since V88 (decision
+   813): amber the agent's turn and in progress, violet the person's turn, green passed, red
+   failed, cyan paused; never colour alone (`StatusLabel`: an icon and a word) — and for diff
+   kinds, findings' severity, git lanes, the Activity tab's kinds of work; and for one accent,
+   the S's violet, in named roles (rule 3); Hive's crimson is its identity only. Reach for
+   muted/raised/line before a colour.
+2. **The ground is darkest; panels are cards on it.** The page's ground and the graph's canvas
+   `#090a0d` (the terminal `#050608`); cards `--panel` `#0e1015` (white in light, on a grey
+   `#f3f4f7` ground since V88); sidenav, status bar and title bar `--side` `#0d0f13`; chips,
+   counts, a secondary button and raised squares `#171a21`. Never one black for everything. Every page has one frame (V72, decisions
    507–511, the layout tokens in [tokens.md](tokens.md)). The page fills the main area at any
    width: nothing is centred. Its head (`PageHead`) sits on the ground: the page's icon in the
    accent, the title, a muted line under it, the actions at the right. The title stands at x 52
@@ -42,10 +46,12 @@ the primary), every page's panels as cards on its ground, line tabs, and type a 
    seven cards with accent icons, a skill's text with line numbers, the merge's chips.
 3. **The accent marks what a person acts with.** The primary action (`--primary`, `#7c68fc`,
    dark words on it: white is 4.01:1), focus, what is checked, the current page, the selection (a
-   16 % wash of `--accent`), the open workspace's kind, the selected node, a link under the
+   14 % wash of `--accent`), the open workspace's kind, the selected node, a link under the
    pointer, the picked tab's line (`--primary`), a page's icon in its head (V62) and the start
-   page's card icons (V63). Never a state: moved and info are cyan (V42),
-   and a guard in `tokens.test.ts` keeps `--accent` to its roles. The hover stays a wash of the
+   page's card icons (V63). Never a state: the person's turn is `--you`, the accent's violet as
+   a state token of its own (V88), and a guard in `tokens.test.ts` keeps `--accent` to its roles.
+   In Hive the accent is Hive's crimson words (`--hive-text`) and the primary crimson with white
+   words; one constructive primary a page, destructive actions a secondary with red words. The hover stays a wash of the
    text.
 4. **Hierarchy by weight and opacity, not by colour or size.** 15 px for rows and nav, 14 px
    secondary, 13 px captions, 12 px uppercase labels, nothing smaller (the `--size-*` scale, V32,
@@ -118,13 +124,20 @@ What V31 replaced, measured on `main` before it; the same patterns tend to come 
 | Hover and selection 2 points apart (8 and 10 %) (V37) | Hover 5 %, selection 10 % (`tokens.test.ts` keeps them 3 apart) |
 | Help as paragraphs, `title`s and a `ⓘ` (V37) | One `Help` button: a tooltip on hover or focus, kept by a click |
 | Folder tabs; capitals for section headings (V37) | Flat buttons, the picked one `--selected`; sentence case and a round count |
+| A honeycomb, sheen streaks and a glow behind every page; red-tinted cards; Hive's red as accent, primary and error at once (V82–V87) | Neutral ink surfaces; crimson for Hive's identity only, the hexagon in the stage track and the mark (V88) |
+| Amber for "waiting for you" and for in progress alike; a state as a coloured word | Violet for the person's turn, amber for the agent's; a status an icon and a word (`StatusLabel`, V88) |
+| A destructive action as a red fill | A secondary with red words (`.button.danger`, V88) |
 
 ## Traps found applying it (V31)
 
-- **`--panel` equals `--side`** in the dark theme. A hover or selection painted with a surface
-  token (`--panel`, `--raised`) vanishes or jumps: use `--hover` and `--selected` (V31a moved 13
-  rules).
-- **Guards in `test/tokens.test.ts`**: `--moved` only in state rules (an allowlist of selectors:
+- **`--panel` and `--side` were equal until V88**, and code used them, and `--bg`, for a card's
+  ground interchangeably. Since V88 a card is `--panel` (white in light), the chrome alone `--side`,
+  code and the canvas inside a card `--bg`: a ring or a fill that stands a mark off its ground
+  (`0 0 0 3px var(--…)`, a hollow dot's fill) takes the ground it sits on. A hover or selection
+  painted with a surface token vanishes or jumps: use `--hover` and `--selected`.
+- **Guards in `test/tokens.test.ts`**: `--you` only where a selector names the person's turn and
+  `--warning` only where it names a warning (V88: add the selector's word to `MEANING`, after
+  checking it is that); no comb, sheen, streak, glow or gloss name anywhere in `src/`; `--moved` only in state rules (an allowlist of selectors:
   add a new state there, never an accent), `--accent` only in its roles (`ACCENT_ROLES`: add a
   role's selector, never a state's), no coloured side bar (`border-left` 2–4 px or an inset
   bar; a blockquote's `--line` is allowed), no `accent-color`, every radius on the scale

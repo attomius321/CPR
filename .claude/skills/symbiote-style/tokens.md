@@ -1,62 +1,74 @@
 # Tokens
 
-Symbiote's tokens (`packages/viewer/src/ui/base.css`), their roles and values in both themes: the
-person's mockup since V61 (the koi's colours V42–V60). Ratios: the lowest over the backgrounds
-`test/tokens.test.ts` checks (WCAG 2), from `palette-check.mjs`.
+Symbiote's tokens (`packages/viewer/src/ui/base.css`), their roles and values in both themes and
+both modes: the redesign's kits since V88 (the person's mockup V61–V87, the koi's colours
+V42–V60). Ratios: the lowest over the backgrounds `test/tokens.test.ts` checks (WCAG 2).
 
-## Where the colours come from (V61)
+## Where the colours come from (V88)
 
-Sampled from the person's mockup of a workspace (`docs/journal/v61-complete-revamp.md`): the
-thread's ground `#090b0e`, the sidenav and the cards' chrome `#0d1015`, chips and raised squares
-`#15181f`–`#1c1f26`, the text `#ffffff`/`#ecf4fe`, secondary text `#a3afc1`, "Respond" `#7d68fd`
-with `#020214` words on it, the waiting amber `#f6b42b`. The violet is the new S's
+The redesign's two kits, on `main`: `spikes/normal-redesign` (normal mode: cool ink with a breath
+of blue, the S's violet) and `spikes/hive-redesign` (Hive Control: warm neutral ink, crimson as
+Hive's identity only). Their READMEs hold the direction, their proofs (`proofs/06-kit.webp`,
+`proofs/07-kit.webp`) the token and component sheets. The violet is the S's
 (`scripts/desktop/logo.png`). A new colour starts from these.
 
 ## Surfaces, text, lines (tested; `#rrggbb`)
 
+Cards are `--panel` on the page's `--bg`; the chrome (sidenav, status bar, title bar) is `--side`.
+In light the ground is grey and the cards white (V88; the page was white and the cards grey).
+Code, a terminal's page, the graph's canvas stay `--bg` inside a card.
+
 | Token | Role | Dark | Light | Lowest ratio dark / light |
 |---|---|---|---|---|
-| `--bg` | Canvas and the page's ground: graph, History's rows, a thread, gutters | `#090b0e` | `#ffffff` | — |
-| `--side` | Sidenav, status bar, a card's chrome (tab strip, changes panel) | `#0d1015` | `#f6f8fc` | 1.03 over `--bg` (the cards' hairline carries the edge) |
-| `--panel` | Panels beside the canvas, file boxes, cards | `#0d1015` | `#f6f8fc` | — |
-| `--raised` | Chips, counts, segmented track, raised squares | `#171a21` | `#e9eef7` | — |
-| `--line` | Region hairlines, a card's edge | `#1f232c` | `#dce3ef` | 1.21 / 1.21 (≥ 1.2) |
-| `--edge` | A field's edge on hover; a checkbox's edge | `#5c6373` | `#7f8aa3` | 3.16 / 3.26 (≥ 3) |
-| `--text` | Text | `#edf0f5` | `#0b1220` | 15.24 / 16.08 |
-| `--muted` | Secondary text, idle nav and its icons, placeholders | `#a2abbc` | `#56627a` | 7.53 / 5.27 (≥ 4.5) |
-| `--accent` | The secondary colour: current page, selection, links on hover | `#9886ff` | `#5b3fd9` | 5.96 / 5.71 (≥ 4.5) |
-| `--faint` | Captions on hover rows, a group's icon at rest | `#737a8a` | `#78839c` | 4.05 / 3.26 (≥ 3) |
-| `--focus` | Focus ring (the accent) | `#9886ff` | `#5b3fd9` | 5.96 / 5.71 (≥ 3) |
+| `--bg` | The page's ground, the graph's canvas, code and pre inside a card | `#090a0d` | `#f3f4f7` | — |
+| `--side` | Sidenav, status bar, title bar | `#0d0f13` | `#f9fafc` | — |
+| `--panel` | Cards and their heads | `#0e1015` | `#ffffff` | — |
+| `--raised` | Chips, counts, a secondary button, the page head's tile | `#171a21` | `#eef0f5` | — |
+| `--line` | Region hairlines, a card's edge | `#23262e` | `#dadee7` | 1.26 / 1.23 (≥ 1.2; the kit's light `#e0e3eb` is 1.17 on the ground) |
+| `--line-2` | A secondary button's edge, the stage track's links | `#2e323b` | `#d0d4de` | — |
+| `--edge` | A field's edge on hover; a checkbox's edge | `#5c6373` | `#7f8aa3` | 3.16 / 3.15 on bg, side, panel (≥ 3) |
+| `--text` | Text | `#eef0f5` | `#0f1320` | 15.27 / 16.24 |
+| `--muted` | Secondary text, idle nav and its icons, placeholders | `#a3aabb` | `#525c71` | 7.48 / 5.89 (≥ 4.5) |
+| `--accent` | Current page, selection, links on hover, the page head's icon | `#9886ff` | `#5b3fd9` | 5.96 / 5.83 (≥ 4.5) |
+| `--faint` | Marks only: icons, separators, disabled (V87) | `#767d8d` | `#747e95` | 4.22 / 3.57 (≥ 3) |
+| `--focus` | Focus ring (the accent) | `#9886ff` | `#5b3fd9` | 5.96 / 5.83 (≥ 3) |
 
-A light blue-grey near white (`#f5f7fb`) is about 1.07:1 on white: a hover or a cursor drawn
-with it vanishes. Hence `--raised` `#e9eef7` and the mixes below for hover and selection.
-
-## The primary and the accent (V61, decisions 437 and 440)
+## The primary and the accent (V61; V88, decision 819)
 
 | Token | Dark | Light | |
 |---|---|---|---|
-| `--primary` | `#7c68fc` | `#5b3fd9` | The one affirmative action; checked boxes, the stepper's thumb, the picked tab's line |
-| `--primary-text` | `#0b0a1a` | `#ffffff` | 4.89 / 6.65 on the primary (≥ 4.5, tested). White on the dark theme's violet is 4.01 |
-| `--primary-hover` | `#8a78fd` | `#4e33c6` | Dark: a step lighter, dark words gain (5.77); light: a step darker, white gains |
-| `--accent` | `#9886ff` | `#5b3fd9` | Its roles only (a guard in `tokens.test.ts`): `aria-current`, selected, checked, focus, a link under the pointer, `::selection`, the open workspace's kind |
-| `--tab-picked` | text 4 % | `#ffffff` | A picked line tab's ground |
+| `--primary` | `#7c68fc` | `#5b3fd9` | One constructive action a page; checked boxes, the picked tab's line |
+| `--primary-text` | `#0b0a1a` | `#ffffff` | 4.89 / 6.65 on the primary (≥ 4.5, tested). White on the dark violet is 4.01 |
+| `--primary-hover` | `#8a78fd` | `#4e33c6` | Dark: a step lighter, dark words gain (5.77); light: a step darker |
+| `--hive-primary` / `--hive-primary-hover` | `#c8102e` / `#b00d28` | the same | Turn on Hive (`.button.hive`) in normal mode: white words 5.88 / 7.16 |
+| `--accent` | `#9886ff` | `#5b3fd9` | Its roles only (a guard in `tokens.test.ts`): `aria-current`, selected, checked, focus, a link under the pointer, `::selection`, the page head's icon |
+| `--tab-picked` | transparent | transparent | A picked line tab: no ground since V88, its line says it |
 
-## States (tested, ≥ 3:1 on the four backgrounds)
+## States (tested, ≥ 3:1 on the four backgrounds; V88, decision 813)
 
-| Token | Dark | Light | Lowest dark / light |
-|---|---|---|---|
-| `--added` | `#81b88b` | `#587c0c` | 7.60 / 4.19 |
-| `--removed` | `#c74e39` | `#ad0707` | 3.79 / 6.42 |
-| `--modified` | `#e2c08d` | `#895503` | 10.08 / 5.36 |
-| `--moved` | `#3fc5d6` | `#0a7d8c` | 8.43 / 4.17 |
-| `--context` | `#737a8a` | `#78839c` | 4.05 / 3.26 |
-| `--error` | `#ff6568` | `#e40014` | 6.06 / 4.19 |
-| `--warning` | `#f5b32a` | `#9a6700` | 9.42 / 4.18 |
-| `--info` | `#3fc5d6` | `#0a7d8c` | 8.43 / 4.17 |
+One set in both modes, as CI reads them; always an icon and a word with the colour
+(`StatusLabel`). `--you` and `--hive-text` are read as text (≥ 4.5).
 
-Moved and info are cyan since V42 (decision 281): the koi's blue is 6° of hue from V31's
-`#4493f8`, and a moved node would have read as selected. What shares their hue goes with them: an
-agent working, "since", History's current lane.
+| Token | Means | Dark | Light | Lowest dark / light |
+|---|---|---|---|---|
+| `--run` | In progress, the agent's turn: working, merging, checking, Hive at work | `#f2b33d` | `#8f5b00` | 9.36 / 5.03 |
+| `--you` | The person's turn: waiting for you, to review, a plan to answer, asked | `#9886ff` | `#5b3fd9` | 5.96 / 5.83 |
+| `--ok` | Passed, landed, merged, done | `#3fcf8e` | `#137a4a` | 8.73 / 4.71 |
+| `--error` | Failed, stopped, a real error | `#ff6166` | `#cf2330` | 5.93 / 4.68 |
+| `--warning` | A real warning only: a check's, usage near its limit, advice, stale, conflicts | `#f2b33d` | `#8f5b00` | 9.36 / 5.03 |
+| `--info` | Paused, information | `#5cc8d8` | `#0a7383` | 8.88 / 4.86 |
+| `--hive` | Hive's identity (the mark, the Hive group's icon, its Settings tile), never a state | `#e5243f` | `#c8102e` | 3.86 / 5.16 |
+| `--hive-text` | Hive's words and marks on a page (its On label, its tile's icon) | `#ff8090` | `#b30f2a` | 7.25 / 6.10 |
+
+Guards in `tokens.test.ts`: `--you` only in rules whose selector names the person's turn (wait,
+ready, review, ask, respond, plan…), `--warning` only where it names a warning. `--you` is the
+accent's value: what waits for you has the colour of the button that answers it (normal kit's
+decision); it is a state token of its own so the accent's guard still holds.
+
+A change's kinds keep VS Code's colours (V42) and are not states: `--added #81b88b / #587c0c`,
+`--removed #c74e39 / #ad0707`, `--modified #e2c08d / #895503`, `--moved #3fc5d6 / #0a7d8c`,
+`--context` (`--faint`'s value). A state drawn with one of them before V88 (done in `--added`,
+failed in `--removed`, working in `--moved`) takes `--ok`, `--error`, `--run`.
 
 History's lanes, ≥ 3:1 on `--bg` and `--raised`. Dark: `--lane-1 #6aa8ff`, `--lane-2 #40b0a6`,
 `--lane-3 #ffb000`, `--lane-4 #dc267f`, `--lane-5 #ce9178`, `--lane-6 #8ccf3e` (lowest 3.84,
@@ -90,30 +102,30 @@ accent keeps its roles.
 Each is in the dark block, the light block and the system-light block (the test checks that light
 and system-light are equal and that both themes have the same names). The translucent ones are
 tinted with a cool white, `rgb(220 226 238)`, in dark (V42's white koi until V61) and the navy
-text's `rgb(11 18 32)` in light, not pure white or black.
+text's `rgb(15 19 32)` in light, not pure white or black.
 
 ```css
 /* dark */
 --hover: color-mix(in srgb, var(--text) 5%, transparent);        /* a wash of the text */
---selected: color-mix(in srgb, var(--accent) 16%, transparent);   /* a wash of the accent (V42) */
+--selected: color-mix(in srgb, var(--accent) 14%, transparent);   /* a wash of the accent (V42) */
 --selected-line: color-mix(in srgb, var(--accent) 40%, var(--line));
 --input-bg: rgb(220 226 238 / 4%);
 --field-line: color-mix(in srgb, var(--text) 15%, transparent);  /* a field at rest, ~1.5:1 (decision 246) */
 --ring: color-mix(in srgb, var(--focus) 30%, transparent);       /* a focused field's 3 px ring */
 --lifted: rgb(220 226 238 / 9%);                                 /* the choice in a segmented control */
---tab-picked: color-mix(in srgb, var(--text) 4%, transparent);   /* a picked line tab's ground (V61) */
---shadow-lift: 0 1px 2px rgb(0 0 0 / 24%);
---shadow-floating: 0 12px 28px rgb(0 0 0 / 45%);
+--tab-picked: transparent;                                       /* a picked line tab: its line only (V88) */
+--shadow-lift: 0 1px 2px rgb(0 0 0 / 30%);
+--shadow-floating: 0 16px 40px rgb(0 0 0 / 50%);
 --primary-shine: inset 0 1px 0 rgb(255 255 255 / 22%);           /* the primary's lit top edge */
 --ground-arc: rgb(124 104 252 / 30%);                            /* the arcs: Start (V63), an analysis (V71) */
---menu-bg: rgb(13 16 21 / 82%);
+--menu-bg: rgb(13 15 19 / 82%);
 --menu-line: rgb(220 226 238 / 12%);
 --menu-hover: rgb(220 226 238 / 10%);
 --menu-shadow: 0 16px 34px rgb(0 0 0 / 50%), inset 0 1px 0 rgb(220 226 238 / 6%);
---dialog-bg: rgb(13 16 21 / 96%);
+--dialog-bg: rgb(13 15 19 / 96%);
 --dialog-shadow: 0 24px 72px rgb(0 0 0 / 60%), inset 0 1px 0 rgb(220 226 238 / 8%);
 --overlay: rgb(3 4 6 / 62%);
---chevron: url("data:image/svg+xml,…stroke='%23a2abbc'…");      /* a select's arrow, in --muted */
+--chevron: url("data:image/svg+xml,…stroke='%23a3aabb'…");      /* a select's arrow, in --muted */
 --added-ground: color-mix(in srgb, var(--added) 16%, transparent);
 --added-gutter: color-mix(in srgb, var(--added) 30%, transparent);
 --removed-ground: color-mix(in srgb, var(--removed) 18%, transparent);
@@ -121,25 +133,25 @@ text's `rgb(11 18 32)` in light, not pure white or black.
 
 /* light */
 --hover: color-mix(in srgb, var(--text) 5%, transparent);
---selected: color-mix(in srgb, var(--accent) 12%, transparent);
+--selected: color-mix(in srgb, var(--accent) 10%, transparent);
 --selected-line: color-mix(in srgb, var(--accent) 35%, var(--line));
---input-bg: transparent;
+--input-bg: #ffffff;
 --field-line: color-mix(in srgb, var(--text) 16%, transparent);
 --ring: color-mix(in srgb, var(--focus) 25%, transparent);
 --lifted: #ffffff;
---tab-picked: #ffffff;
---shadow-lift: 0 1px 2px rgb(11 18 32 / 6%);
---shadow-floating: 0 10px 24px rgb(11 18 32 / 16%);
+--tab-picked: transparent;
+--shadow-lift: 0 1px 2px rgb(15 19 32 / 6%);
+--shadow-floating: 0 10px 24px rgb(15 19 32 / 16%);
 --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
 --ground-arc: rgb(91 63 217 / 16%);
 --menu-bg: rgb(255 255 255 / 82%);
---menu-line: rgb(11 18 32 / 13%);
---menu-hover: rgb(11 18 32 / 7%);
---menu-shadow: 0 12px 28px rgb(11 18 32 / 20%), inset 0 1px 0 rgb(255 255 255 / 14%);
+--menu-line: rgb(15 19 32 / 13%);
+--menu-hover: rgb(15 19 32 / 7%);
+--menu-shadow: 0 12px 28px rgb(15 19 32 / 20%), inset 0 1px 0 rgb(255 255 255 / 14%);
 --dialog-bg: rgb(255 255 255 / 96%);
---dialog-shadow: 0 20px 60px rgb(11 18 32 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
---overlay: rgb(11 18 32 / 45%);
---chevron: url("data:image/svg+xml,…stroke='%2356627a'…");
+--dialog-shadow: 0 20px 60px rgb(15 19 32 / 26%), inset 0 1px 0 rgb(255 255 255 / 8%);
+--overlay: rgb(15 19 32 / 45%);
+--chevron: url("data:image/svg+xml,…stroke='%23525c71'…");
 --added-ground: color-mix(in srgb, var(--added) 13%, transparent);
 --added-gutter: color-mix(in srgb, var(--added) 26%, transparent);
 --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
@@ -147,45 +159,46 @@ text's `rgb(11 18 32)` in light, not pure white or black.
 ```
 
 The test keeps the selection further from its ground than the hover on `--bg` and `--side`
-(composited, by contrast), in both themes: hover 5 % of the text, selection 16 % (12 % light) of
-the accent.
+(composited, by contrast), in both themes: hover 5 % of the text, selection 14 % (10 % light) of
+the accent; in Hive a neutral wash of the text, 9 % (8 % light).
 
-A state tint is mixed from its state, never a new hex: `color-mix(in srgb, var(--added) 10%,
-transparent)` for a fill, `25%` for its edge.
+A state tint is mixed from its state, never a new hex: `color-mix(in srgb, var(--ok) 12%,
+transparent)` for a fill, `28%` for its edge (the status label's).
 
-## Hive mode (V82, decisions 614–616, 624)
+## Hive mode (V82; V88, decisions 812, 814, 815)
 
-While Hive mode is on (`data-hive="on"` on `<html>`, written by the server), ink and crimson over
-each theme. Three blocks after the themes in `ui/base.css`: dark Hive
-(`:root[data-hive]:not([data-theme='light'])`, also light Hive's `.sidenav` and the Hive dialog's
-`.hive-ink`), light Hive and its system-light copy (equal, tested; the same names as dark Hive's).
-The theme's dark block also matches `:root[data-hive] .sidenav` and `.hive-ink`: an ink element in
-light Hive needs the whole dark set (states, lanes), not only Hive's names. Change a theme's
-surface or words and check Hive's still pass (`tokens.test.ts`, "Hive mode").
+While Hive mode is on (`data-hive="on"` on `<html>`, written by the server), Hive Control's warm
+ink over each theme, no red in its surfaces (tested: red no more than 2 over green or blue in
+every neutral). Three blocks after the themes in `ui/base.css`: dark Hive
+(`:root[data-hive]:not([data-theme='light'])`, also the question's `.hive-ink`), light Hive and
+its system-light copy (equal, tested; the same names as dark Hive's). The theme's dark block also
+matches `.hive-ink`: the question needs the whole dark set, not only Hive's names. Change a
+theme's surface or words and check Hive's still pass (`tokens.test.ts`, "Hive mode").
 
 | Token | Hive dark | Hive light | Lowest dark / light |
 |---|---|---|---|
-| `--bg` / `--side` / `--raised` | `#070506` / `#0d090a` / `#1b1214` | `#ffffff` / `#f7f4f4` / `#ece5e6` | — |
-| `--line` / `--edge` | `#2b1d20` / `#725b5f` | `#e2d8da` / `#87787b` | 1.23, 3.07 / 1.27, 3.84 |
-| `--text` / `--muted` / `--faint` | `#f7f2f2` / `#bcaeb0` / `#86787b` | `#120a0c` / `#5e5053` / `#84777a` | 16.57, 8.59 / 15.74, 6.16 |
-| `--accent`, `--focus` | `#ffc4cc` | `#9b1230` | 12.26 / 6.71 |
-| `--primary` / `--primary-hover` | `#c8102e` / `#b00d28`, white words | `#b0102b` / `#960c24`, white words | 5.88 / 7.11 |
-| `--hive-red` | `#e0243f` | `#c8102e` | not text: the selection's wash (20 % / 10 %), the art's edges, glows |
+| `--bg` / `--side` / `--panel` / `--raised` | `#09090b` / `#0e0e11` / `#0f0f12` / `#18181d` | `#f3f3f5` / `#f9f9fa` / `#ffffff` / `#f0f0f3` | — |
+| `--line` / `--line-2` / `--edge` | `#24242b` / `#2f2f37` / `#64626c` | `#dcdce2` / `#d3d3da` / `#85838d` | 1.24, 3.19 / 1.23, 3.37 |
+| `--text` / `--muted` / `--faint` | `#f3f2f5` / `#a6a4ae` / `#7b7983` | `#121216` / `#595762` / `#7c7a85` | 15.86, 7.20 / 16.43, 6.23 |
+| `--accent`, `--focus` | `#ff8090` (`--hive-text`) | `#b30f2a` | 7.36 / 6.12 |
+| `--primary` / `--primary-hover` | `#c8102e` / `#b00d28`, white words | the same | 5.88 / 7.16 |
+| `--selected` | text 9 % | text 8 % | a neutral wash: crimson is not a surface |
 
-States, lanes, kinds of work and type are the theme's. Not tokens: `--hive-gloss` (the primary's
-light from above), `--hive-sheen`, `--hive-streak`, `--hive-glow` (the layer over `.shell-main`).
-The art's own colours (`.hive-ink-*` stops) are in `ui/hive.css`: it is always drawn on ink. The
-ink that takes the page as Hive turns on (`.hive-flood`, decision 624) carries `.hive-ink` too: it
-is drawn before the page has Hive's tokens. Light Hive's wine accent is 1.71:1 from `--error`: a
-selection is a wash, never red words.
+Crimson is Hive's identity only (decision 814): the mark, the Hive group's icon, its Settings
+tile, the On label, the picked tab's line, one constructive primary a page. In progress is amber,
+failure red, never crimson. States, lanes, kinds of work and type are the theme's. Gone since V88
+(decision 815; a guard in `tokens.test.ts`): `--hive-red`, `--hive-gloss`, `--hive-sheen`,
+`--hive-streak`, `--hive-glow`, `--hive-comb-*`. The art's own colours (`.hive-art`) are in
+`ui/hive.css`: it is always drawn on ink.
 
 ## Outside the tokens
 
 Kept in step by hand, each with a comment pointing here: the terminal's theme
 (`workspaces/terminal.ts`, `#050608`, a step under the canvas, its selection violet `#2c2757`;
-`AgentTerminal.css`, `MergeLog.css`); the app's window background and title bar
-(`packages/desktop/src/frame.ts`, `test/frame.test.ts`); the app's start page
-(`packages/desktop/start/start.css`, its own copy of the tokens and sizes).
+`AgentTerminal.css`, its link hint `#090a0d` on `#e6e9ef`; `MergeLog.css`); the app's window
+background and title bar (`packages/desktop/src/frame.ts`, `test/frame.test.ts`); the app's start
+page (`packages/desktop/start/start.css`, its own copy of the tokens and sizes); the taskbar's
+waiting dot (`packages/desktop/src/badge.ts`, `--you`'s violet since V88).
 
 ## Type scale (V32, V61, V87; on `:root`, both themes)
 
