@@ -59,7 +59,7 @@ page sets both. Decisions 796–803 (803 added while building).
 while paused, a review started, a writer started, no stop at the budget), then green; the gate's
 17, the runner's 12, `usage.test.ts` 3 new, the viewer's 10; `hive-runner.test.ts` and the
 `hive-request-*` suites unchanged; `packages/cli` 1,426 tests before the wiring; the viewer's 775
-unit tests; `tsc -p packages/cli`. e2e `hive-pacing.spec.ts` 3 of 3, and with the Hive, Settings,
+unit tests; `tsc -p packages/cli`; `pnpm check` 2,900 tests, and `pnpm build`. e2e `hive-pacing.spec.ts` 3 of 3, and with the Hive, Settings,
 targets, page-frame and usage specs 46 of 46. Screenshots dark and light of the paused workspace,
 Settings' Pacing and a workspace stopped at its budget (`packages/viewer/coverage/hv5-shots/`, not
 committed).

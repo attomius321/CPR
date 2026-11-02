@@ -583,7 +583,7 @@ export function hiveRunner(
       if (spend.total >= budget) {
         const writer =
           spend.writer === undefined
-            ? "the writer's not read"
+            ? "the writer's cost not read"
             : `the writer ${dollars(spend.writer)}`;
         const reviews = spend.reviewed
           ? `${plural(spend.reviewed, 'review')} ${dollars(spend.reviews)}`

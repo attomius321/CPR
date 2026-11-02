@@ -208,7 +208,7 @@ a cap across workspaces.
   events and messages as no gate at all under the threshold; `usage.test.ts` 3 new. Every HV4 and
   HV8 runner suite unchanged and passing (`hive-runner.test.ts`, `hive-request-*.test.ts`).
   Viewer: `hive-pacing.test.ts` 10 (the words, the card, the Review tab's head, the notices,
-  Settings' helpers).
+  Settings' helpers). `pnpm check`: 2,900 tests; `pnpm build`.
 - **e2e**: `hive-pacing.spec.ts` 3, a real `symbiote view` on a fake usage endpoint: held at 95 %,
   said on the card, the head and the Review tab, started by itself at the reset with the status
   bar's notice; Settings' threshold and budget written to `symbiote/config.json`; the spend
