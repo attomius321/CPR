@@ -2,9 +2,8 @@
 // the middle of the window while a shutter of hex tiles closes on it from every edge and traces
 // route across it into the Mind; the look changes under the cover, the Mind flares, and the tiles
 // open from it out to the edges onto the page; then all is still. The Mind and the shutter are
-// drawn here (`hive-art.ts`, `hive-draw.ts`). V88 (decision 816): no honeycomb stays behind the
-// page and no streak crosses it after (V85's and V82's, gone with the person's "the honeycomb
-// goes").
+// drawn here (`hive-art.ts`, `hive-draw.ts`). V88 (decision 816): no hex background stays behind
+// the page and no band of light crosses it after (V85's and V82's, gone on the person's word).
 import { arrivalScale, arrivalScene } from '../ui/hive-art.js';
 import { Painter, paint, readPalette } from '../ui/hive-draw.js';
 

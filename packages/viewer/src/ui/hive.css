@@ -1,6 +1,7 @@
-/* Hive mode's look (V82, decisions 614–616; V88: no gloss, sheen or glow, decision 815): the
-   question, the art and Hive's own page; its tokens are in `ui/base.css`. Everything here is under `:root[data-hive]`, but Hive mode's own page and
-   question, which look the same whether it is on: off, the interface is main's. Last in the
+/* Hive mode's look (V82, decisions 614–616; V88: nothing over the pages, decision 815): the
+   question, the art and Hive's own page; its tokens are in `ui/base.css`. Everything here is
+   under `:root[data-hive]`, but Hive mode's own page and question, which look the same whether
+   it is on: off, the interface is main's. Last in the
    cascade (`styles.css`). */
 
 /* The dialog is ink: its words take its own tokens, not the colour the page's body passed down.

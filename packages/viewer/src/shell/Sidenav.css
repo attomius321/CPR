@@ -486,7 +486,7 @@ button.workspace-about {
 
 /* Hive at work (decision 698): a group of its own before Working, its icon in Hive's crimson (its
    identity); its cards' spinners amber, as any work in progress (V88, decisions 813-815: no
-   crimson card, no etched cells, no streak). */
+   crimson card, no etched cells, no moving light). */
 .sidenav .group-hive {
   --group-tone: var(--hive);
 }
