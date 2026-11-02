@@ -625,6 +625,9 @@ describe("Nucleus's prompt (V35, NU1)", () => {
       'hive.review',
       'hive.commit',
       'hive.resume',
+      'hive.land',
+      'hive.plan',
+      'hive.decide',
       'hive.reviewer',
       'hive.nucleus',
     ]);
@@ -779,11 +782,16 @@ describe("Hive's prompts (HV2, decision 657)", () => {
       ['hive.review', 'Defects proven'],
       ['hive.commit', 'Not committed'],
       ['hive.resume', 'Resume'],
+      ['hive.land', 'Landing failed'],
+      ['hive.plan', 'Plan OK'],
+      ['hive.decide', 'No one to ask'],
       ['hive.reviewer', 'Reviewer'],
       ['hive.nucleus', 'Alpha Ceph'],
     ]);
     // HV3: the message with the proven tests needs them; the reviewer's answer is Symbiote's.
     expect(of('hive.review')?.placeholders.find((p) => p.required)?.name).toBe('findings');
+    // HV4: a landing that failed needs what failed.
+    expect(of('hive.land')?.placeholders.find((p) => p.required)?.name).toBe('why');
     expect(of('hive.reviewer')?.fixed).toBe(HIVE_REVIEW_ANSWER);
     const without = withConfig({ prompts: { hive: { review: 'Fix it.' } } });
     expect(readPrompts(without).text['hive.review']).toBe(DEFAULT_PROMPTS['hive.review']);

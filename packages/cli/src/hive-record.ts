@@ -8,7 +8,9 @@ import type {
   HiveCheck,
   HiveCheckStep,
   HiveFinding,
+  HiveLanding,
   HiveLive,
+  HivePush,
   HiveReview,
   HiveStep,
   WorkspaceHive,
@@ -20,8 +22,12 @@ import { symbioteFolder, workspacePath } from './workspace-record.js';
 /** Rounds of the writer before Hive stops for the person (decision 651). */
 export const HIVE_ROUNDS = 3;
 
+/** Merges of the start branch into a workspace before Hive stops it (decisions 651, 690, 769). */
+export const HIVE_MERGES = 2;
+
 /** Hive's messages to the writer, by their prompt's key. */
-export type HiveMessageKey = 'hive.check' | 'hive.review' | 'hive.commit' | 'hive.resume';
+export type HiveMessageKey =
+  'hive.check' | 'hive.review' | 'hive.commit' | 'hive.resume' | 'hive.land';
 
 /**
  * A message Hive sends the writer: written here first; `taken` once Claude Code took it (`reply`
@@ -81,6 +87,12 @@ export interface HiveFile {
   message?: HiveMessage;
   /** Why it stopped for the person; that no check was found. */
   note?: string;
+  /** Each landing Hive tried (HV4, decision 767), the last in flight while it has no outcome. */
+  landings?: HiveLanding[];
+  /** Merges of the start branch Hive asked the writer for after a landing failed (769). */
+  merges?: number;
+  /** The branch's last push to `origin` (768). */
+  pushed?: HivePush;
 }
 
 /** Every Hive record's first key. */
@@ -94,12 +106,14 @@ const STEPS: readonly HiveStep[] = [
   'landing',
   'stuck',
   'landed',
+  'answered',
 ];
 const MESSAGE_KEYS: readonly HiveMessageKey[] = [
   'hive.check',
   'hive.review',
   'hive.commit',
   'hive.resume',
+  'hive.land',
 ];
 const VERDICTS: readonly HiveReview['verdict'][] = ['approved', 'changes', 'failed', 'unavailable'];
 
@@ -220,6 +234,65 @@ function reviewOf(value: unknown): HiveReview | null {
 }
 
 /** A record's fields Symbiote knows, or null when it is not one. */
+const OUTCOMES: readonly NonNullable<HiveLanding['outcome']>[] = [
+  'landed',
+  'conflict',
+  'check-failed',
+  'cannot-fast-forward',
+  'diverged',
+  'failed',
+  'refused',
+];
+
+/** A landing as the record keeps it (HV4); null when it is not one. */
+function landingOf(value: unknown): HiveLanding | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  if (!text(v.at) || !text(v.into) || !text(v.entry)) return null;
+  const outcome = OUTCOMES.find((o) => o === v.outcome);
+  const pushed = v.pushed as Record<string, unknown> | undefined;
+  const optional = (
+    key: 'state' | 'message' | 'tried' | 'ended' | 'failed' | 'output' | 'log' | 'merge',
+  ) => (text(v[key]) ? { [key]: text(v[key]) } : {});
+  return {
+    round: count(v.round) || 1,
+    at: text(v.at),
+    into: text(v.into),
+    entry: text(v.entry),
+    queued: text(v.queued),
+    ...(optional('state') as Pick<HiveLanding, 'state'>),
+    ...optional('message'),
+    ...optional('tried'),
+    ...optional('ended'),
+    ...(outcome ? { outcome } : {}),
+    ...(Array.isArray(v.files) ? { files: texts(v.files) } : {}),
+    ...optional('failed'),
+    ...optional('output'),
+    ...optional('log'),
+    ...optional('merge'),
+    ...(pushed && typeof pushed.ok === 'boolean'
+      ? {
+          pushed: pushed.ok
+            ? { ok: true as const, remote: text(pushed.remote) }
+            : { ok: false as const, remote: text(pushed.remote), error: text(pushed.error) },
+        }
+      : {}),
+  };
+}
+
+/** A push as the record keeps it (HV4); null when it is not one. */
+function pushOf(value: unknown): HivePush | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  if (!text(v.sha) || typeof v.ok !== 'boolean') return null;
+  return {
+    at: text(v.at),
+    sha: text(v.sha),
+    ok: v.ok,
+    ...(text(v.error) ? { error: text(v.error) } : {}),
+  };
+}
+
 export function parseHive(value: unknown): HiveFile | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const v = value as Record<string, unknown>;
@@ -277,6 +350,11 @@ export function parseHive(value: unknown): HiveFile | null {
         }
       : {}),
     ...(text(v.note) ? { note: text(v.note) } : {}),
+    ...(Array.isArray(v.landings)
+      ? { landings: v.landings.map(landingOf).filter((l): l is HiveLanding => l !== null) }
+      : {}),
+    ...(count(v.merges) ? { merges: count(v.merges) } : {}),
+    ...(pushOf(v.pushed) ? { pushed: pushOf(v.pushed) as HivePush } : {}),
   };
 }
 
@@ -353,6 +431,8 @@ export function hiveSummary(record: HiveFile, on: boolean, live?: HiveLive): Wor
     ...(on && live ? { live } : {}),
     ...(!on && waits ? { paused: true as const } : {}),
     ...(!on ? { off: true as const } : {}),
+    ...(record.landings?.length ? { landing: record.landings.at(-1) } : {}),
+    ...(record.pushed ? { pushed: record.pushed } : {}),
   };
 }
 

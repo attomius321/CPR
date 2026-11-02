@@ -241,6 +241,7 @@ export {
   type Verdict,
   type VerdictComment,
   type VerdictEvent,
+  type VerdictVia,
 } from './git/branches.js';
 export {
   PROMPT_KEYS,
@@ -325,6 +326,8 @@ export {
   type HiveCheck,
   type HiveCheckStep,
   type HiveFinding,
+  type HiveLanding,
+  type HivePush,
   type HiveLive,
   type HiveLogLine,
   type HiveLogRead,

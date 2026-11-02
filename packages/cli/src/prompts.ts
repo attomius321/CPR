@@ -255,6 +255,36 @@ const HIVE_CHECK = [
 ].join('\n');
 
 /**
+ * What Hive sends the writer when a landing failed (HV4, decision 769): a conflict with the branch
+ * it lands in, the check failing on the merge, a fast-forward that branch outran. `{why}` holds
+ * what failed, with the files or the command and its last lines.
+ */
+const HIVE_LAND = [
+  'Hive could not land {branch} at {at} in {into}: {why}',
+  '',
+  'Say whether your branch causes it.',
+  '',
+  '- If it does: merge {into} into {branch} (`git merge {into}`, never a rebase), resolve or fix ' +
+    'it there, run the tests your change touches, commit, and end your turn. Hive checks, reviews ' +
+    'and lands it again.',
+  '- If it does not (a test your change cannot reach, a commit on {into}): say why in a few ' +
+    'lines, change nothing, and end your turn. Hive lands the same commit again.',
+  '',
+  'Hive asks this {merges} times at most; this is time {merge}.',
+].join('\n');
+
+/** Hive's OK to a plan, in place of the person's (HV4, decision 773). */
+const HIVE_PLAN =
+  'Hive OKs your plan: no person reviews plans in Hive mode. Build it now, commit as you go, and ' +
+  'end your turn when the work is done.';
+
+/** What Hive sends a writer that asks the person (HV4, decision 773). */
+const HIVE_DECIDE =
+  'No person answers in Hive mode: nobody will read a question or approve a permission. Decide ' +
+  'yourself from the brief and the repository, or do it another way inside your worktree; say in ' +
+  'your report what you decided and why, then go on.';
+
+/**
  * What Hive sends the writer when its running reviewer proved defects (HV3, decision 679): the
  * failing tests, each one rerun by Symbiote on a fresh copy of the commit.
  */
@@ -380,6 +410,9 @@ export const DEFAULT_PROMPTS: Readonly<Record<PromptKey, string>> = {
     'You were stopped mid-turn: Hive was turned off, and is on again. Continue where you ' +
     'stopped, commit, and end your turn when the work is done.',
   'hive.review': HIVE_REVIEW,
+  'hive.land': HIVE_LAND,
+  'hive.plan': HIVE_PLAN,
+  'hive.decide': HIVE_DECIDE,
   'hive.reviewer': HIVE_REVIEWER,
   'hive.nucleus': HIVE_NUCLEUS,
 };
@@ -664,6 +697,40 @@ const SPECS: Readonly<Record<PromptKey, PromptSpec>> = {
     group: 'Hive',
     title: 'Resume',
     about: 'What Hive sends a writer it stopped mid-turn when Hive was turned off, once it is on.',
+    placeholders: [],
+    max: MAX_LINE,
+  },
+  'hive.land': {
+    group: 'Hive',
+    title: 'Landing failed',
+    about:
+      'What Hive sends the writer when a landing failed: a conflict with the branch it lands in, ' +
+      'the check failing on the merge, or that branch moved past a fast-forward.',
+    placeholders: [
+      {
+        name: 'why',
+        about: 'what failed: the files, or the command and its last lines',
+        required: true,
+      },
+      { name: 'branch', about: "the workspace's branch" },
+      { name: 'at', about: 'the commit Hive tried to land, short' },
+      { name: 'into', about: 'the branch it lands in: the one the workspace started from' },
+      { name: 'merge', about: 'which time Hive asks this' },
+      { name: 'merges', about: 'how many times Hive asks before it stops: 2' },
+    ],
+    max: MAX_LINE,
+  },
+  'hive.plan': {
+    group: 'Hive',
+    title: 'Plan OK',
+    about: "Hive's OK to a plan a writer wrote first, in place of the person's.",
+    placeholders: [],
+    max: MAX_LINE,
+  },
+  'hive.decide': {
+    group: 'Hive',
+    title: 'No one to ask',
+    about: 'What Hive sends a writer that asks the person a question or for a permission.',
     placeholders: [],
     max: MAX_LINE,
   },

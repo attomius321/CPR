@@ -749,16 +749,6 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     terminals,
     hive: () => hive.on(),
   });
-  const hiveRun = hiveRunner(repo, cacheDir, {
-    hive,
-    workspaces: repoWorkspaces,
-    // The running reviewer (HV3): the workspaces' Claude Code, bubblewrap for its reruns.
-    reviewer: {
-      claude: async () => (await claudeOf())?.command ?? null,
-      confine: () => findConfinement(ctx.env),
-    },
-    log: log.log,
-  });
   // Branch reviews (V15) and the merger (V26): the review pages', and Land's in a Hive workspace's
   // Review tab (HV3).
   const repoReviews = branchReviews(repo, cacheDir);
@@ -767,6 +757,18 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     mergerAgent: mergerFinder(repo.root, ctx.env),
     levels: levelsFinder(claudeOf, codexOf),
     models: modelsFinder(claudeOf, codexOf),
+  });
+  const hiveRun = hiveRunner(repo, cacheDir, {
+    hive,
+    workspaces: repoWorkspaces,
+    // The running reviewer (HV3): the workspaces' Claude Code, bubblewrap for its reruns.
+    reviewer: {
+      claude: async () => (await claudeOf())?.command ?? null,
+      confine: () => findConfinement(ctx.env),
+    },
+    // HV4: Hive lands what it checked and reviewed through the branch reviews and the merge queue.
+    lander: { reviews: repoReviews, merges: repoMerges },
+    log: log.log,
   });
   // The branches hidden from Git's graph (decision 645): the listing, its search and the status's
   // version all leave them out, so a version read by one fits the others.

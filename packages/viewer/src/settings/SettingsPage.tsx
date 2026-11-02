@@ -303,6 +303,10 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   'hive.review': BugIcon,
   'hive.commit': CommitIcon,
   'hive.resume': PlayIcon,
+  // HV4: a landing that failed, Hive's OK to a plan, no one to ask.
+  'hive.land': MergeIcon,
+  'hive.plan': ApprovedIcon,
+  'hive.decide': WhereIcon,
   'hive.reviewer': FlaskIcon,
   // What Alpha Ceph is told of Hive (V86): its own icon, the Hive Mind.
   'hive.nucleus': NucleusIcon,

@@ -3,6 +3,12 @@ import { listRefs, type RefList } from './refs.js';
 import type { GitRepo } from './repo.js';
 import type { McpVia } from '../mcp.js';
 
+/**
+ * Who recorded a verdict besides the person in Symbiote: Nucleus or `symbiote mcp` on their
+ * Confirm (MC1), or Hive, which approves what it checked and reviewed to land it (HV4, 767).
+ */
+export type VerdictVia = McpVia | 'hive';
+
 /** A ref of a reviewed branch (the local branch or a remote's) and the commits since review. */
 export interface BranchReviewRef {
   name: string;
@@ -42,7 +48,7 @@ export interface Verdict {
   into?: string;
   summary: string;
   /** Recorded through Symbiote's tools (MC1, decision 362): by Nucleus, or through `symbiote mcp`. */
-  via?: McpVia;
+  via?: VerdictVia;
 }
 
 /** `POST ./api/review` on a branch review: the verdict, and the drafts as comments. */
@@ -51,7 +57,7 @@ export interface LocalReview {
   body: string;
   comments: (Omit<VerdictComment, 'code'> & { otherPath?: string })[];
   /** Finished through Symbiote's tools (MC1), on the person's Confirm. */
-  via?: McpVia;
+  via?: VerdictVia;
 }
 
 /** What finishing answers: the verdict, and its text for a chat. */
@@ -88,7 +94,7 @@ export interface BranchReviewSummary {
     into?: string;
     merged: boolean;
     /** Recorded through Symbiote's tools (MC1). */
-    via?: McpVia;
+    via?: VerdictVia;
   };
 }
 
