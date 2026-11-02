@@ -467,9 +467,15 @@ export function hiveRunner(
     data: Record<string, unknown> = {},
   ): Promise<void> {
     const step = landing === 'merged' ? 'landed' : 'landing';
+    let outside: string | undefined;
+    if (landing === 'merged' && record.request?.state === 'open') {
+      const read = await mergedOnItsForge(where, record);
+      if (read.merged) return;
+      outside = read.why;
+    }
     await moveTo(
       where,
-      landing === 'merged' ? landedOutside(record) : record,
+      landing === 'merged' ? landedOutside(record, outside) : record,
       { step, message: undefined, check: undefined, review: undefined, interrupted: undefined },
       step,
       landing === 'queued' ? { queued: true, ...data } : data,
@@ -1406,10 +1412,16 @@ export function hiveRunner(
   ): Promise<void> {
     // Merged outside the request (the person's own, with Hive off, say): theirs, landed (717).
     if (summary.merged) {
-      return void (await moveTo(where, landedOutside(record), { step: 'landed' }, 'landed', {
-        into: last.into,
-        outside: true,
-      }));
+      // Main may have the forge's merge already (a pull, another request's fetch): ask it first.
+      const read = await mergedOnItsForge(where, record);
+      if (read.merged) return;
+      return void (await moveTo(
+        where,
+        landedOutside(record, read.why),
+        { step: 'landed' },
+        'landed',
+        { into: last.into, outside: true },
+      ));
     }
     const turn = await turnOf(where, record.branch, record.since);
     if (turn?.prompt && turn.prompt.at > record.since && record.request?.state === 'open') {
@@ -1432,14 +1444,41 @@ export function hiveRunner(
   }
 
   /**
+   * The forge asked whether the open request is merged, once its branch is in the start branch
+   * (789): merged there, it is landed by its request (`mergedOnForge`); else, open, it was merged
+   * outside it; a read that fails says why.
+   */
+  async function mergedOnItsForge(
+    where: ReviewPlace,
+    record: HiveFile,
+  ): Promise<{ merged: true } | { merged: false; why?: string }> {
+    const request = record.request;
+    const requests = lander?.requests;
+    if (!request || !requests) return { merged: false };
+    const found = await requests.forge();
+    if ('why' in found) return { merged: false, why: found.why };
+    try {
+      const read = await found.forge.getChangeRequest(request.number);
+      if (read.state !== 'merged') return { merged: false };
+      await mergedOnForge(where, record, read.mergeCommit);
+      return { merged: true };
+    } catch (error) {
+      return { merged: false, why: (error as Error).message };
+    }
+  }
+
+  /**
    * A branch merged into the start branch outside its open request (717: a merge of the person's
    * is theirs): the request no longer awaited, its landing attempt ended as landed, saying so. The
    * request itself stays open on the forge.
    */
-  function landedOutside(record: HiveFile): HiveFile {
+  function landedOutside(record: HiveFile, unread?: string): HiveFile {
     const request = record.request;
     if (!request || request.state !== 'open') return record;
     const words = FORGE_WORDS[request.forge];
+    const said = unread
+      ? `merged into ${request.into}; its ${requestWords(request)} could not be read on ${words.name}: ${unread}`
+      : `merged into ${request.into} outside its ${requestWords(request)}, which stays open on ${words.name}`;
     const last = record.landings?.at(-1);
     const after: HiveFile = { ...record };
     delete after.request;
@@ -1448,7 +1487,7 @@ export function hiveRunner(
         ...last,
         outcome: 'landed',
         ended: stamp(),
-        message: `merged into ${last.into} outside its ${requestWords(request)}, which stays open on ${words.name}`,
+        message: said,
       };
       delete done.state;
       after.landings = [...(record.landings ?? []).slice(0, -1), done];

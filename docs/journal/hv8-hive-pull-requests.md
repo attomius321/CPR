@@ -68,3 +68,17 @@ opened seconds before; a self-hosted forge.
 **Verification**: the reviewer's two tests, added as they were (`hive-request-runner.test.ts`, for
 GitHub and GitLab; `hive-off-request.test.ts`), red before the fix, green after; with the runner's
 and the switch's suites, 86 tests.
+
+## HV8 — the running reviewer's round 2: a forge's merge taken for one outside it (2026-11-02, branch `feature/hive-pull-requests`)
+
+**Learned**:
+- **The start branch can have the forge's merge before Hive reads the forge.** `summary.merged`
+  counts `origin/main` too, so a `git pull` after merging on the forge, or Hive's own fetch for
+  another request merged at the same time, made round 1's fix record a forge merge as "merged
+  outside its request, which stays open". Now, once the branch is in the start branch, the forge is
+  asked first: merged there, the workspace lands by its request (its link and "on GitHub" kept);
+  open, it was merged outside it; a failed read says why rather than "stays open".
+
+**Verification**: the reviewer's test added as it was (`hive-request-merged-forge.test.ts`, for
+GitHub and GitLab: a pull after the forge's merge, two requests merged together), red before the
+fix, green after; with both runner suites, 83 tests.
