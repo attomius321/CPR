@@ -27,6 +27,9 @@ const screens = named.length
       '07-kit',
       '01-overview@light',
       '03-review-graph@light',
+      '08-terminal',
+      '09-terminal-split',
+      '08-terminal@light',
     ];
 
 const browser = await chromium.launch();

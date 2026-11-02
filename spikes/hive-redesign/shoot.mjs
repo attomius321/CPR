@@ -27,6 +27,8 @@ const screens = named.length
       '07-run-stopped',
       '01-overview@light',
       '03-run-landed@light',
+      '08-terminal',
+      '08-terminal@light',
     ];
 
 const browser = await chromium.launch();

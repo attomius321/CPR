@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Hive — the writer's terminal</title>
+    <link rel="stylesheet" href="kit.css" />
+    <link rel="stylesheet" href="run.css" />
+    <link rel="stylesheet" href="term.css" />
+    <script src="kit.js"></script>
+    <style>
+      /* Focused: the sidenav folded to its rail, the side card hidden, the terminal at full width. */
+      .app.railed {
+        grid-template-columns: 52px 1fr;
+      }
+      .rail {
+        grid-row: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        padding: 12px 0 10px;
+        background: var(--side);
+        border-right: 1px solid var(--line);
+      }
+      .rail img {
+        width: 26px;
+        height: 26px;
+        border-radius: 50%;
+        margin-bottom: 10px;
+        box-shadow: 0 0 0 1px var(--line-2);
+      }
+      .rail .r {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 34px;
+        height: 32px;
+        border-radius: var(--radius-control);
+        color: var(--muted);
+      }
+      .rail .r.on {
+        background: var(--selected);
+        color: var(--hive-text);
+      }
+      .rail .badge {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        min-width: 15px;
+        height: 15px;
+        padding: 0 4px;
+        border-radius: 999px;
+        background: var(--raised);
+        box-shadow: inset 0 0 0 1px var(--line-2);
+        color: var(--text);
+        font-size: var(--size-caps);
+        font-weight: 600;
+        line-height: 15px;
+        text-align: center;
+      }
+      .rail .badge.fail {
+        background: var(--fail);
+        box-shadow: none;
+        color: #ffffff;
+      }
+      .rail .sep {
+        width: 22px;
+        height: 1px;
+        background: var(--line);
+        margin: 6px 0;
+      }
+      .rail .end {
+        margin-top: auto;
+      }
+      .hive-said {
+        display: block;
+        margin: 0 -16px;
+        padding: 4px 16px;
+        color: var(--tty-dim);
+        background: rgb(255 255 255 / 5%);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app railed">
+      <nav class="rail">
+        <img src="../../../packages/viewer/src/ui/mark-hive-96.png" alt="" />
+        <span class="r"><i data-i="panel"></i></span>
+        <span class="r"><i data-i="overview"></i></span>
+        <span class="r"><i data-i="mind"></i></span>
+        <span class="r"><i data-i="git"></i></span>
+        <span class="r"><i data-i="skills"></i></span>
+        <span class="r"><i data-i="monitor"></i></span>
+        <span class="r"><i data-i="history"></i></span>
+        <span class="sep"></span>
+        <span class="r"><i data-i="plus"></i></span>
+        <span class="r on"><i data-i="spin" class="spin"></i><span class="badge">4</span></span>
+        <span class="r"><i data-i="stopped"></i><span class="badge fail">1</span></span>
+        <span class="r"><i data-i="circle-check"></i><span class="badge">5</span></span>
+        <span class="end r"><i data-i="settings"></i></span>
+      </nav>
+      <main class="main">
+        <header class="head">
+          <span class="tile"><i data-i="fix"></i></span>
+          <div style="min-width: 0">
+            <h1>Retry failed payment webhooks</h1>
+            <div class="sub">
+              <span class="mono">fix/payment-webhook-retry</span><span class="sep">·</span>from
+              <span class="mono">main</span><span class="sep">·</span>started 12:34 by Alpha Ceph
+              <span class="sep">·</span><span class="row" style="gap: 5px"><i data-i="model" class="s14 faint"></i>Opus · default effort · auto</span>
+            </div>
+          </div>
+          <div class="actions">
+            <div class="steps-inline">
+              <span data-track="now,todo,todo,todo"></span>
+              <span class="word run">Write</span><span class="k">round 2 of 3</span>
+              <span class="sep"></span>
+              <span class="k">Time</span><b>14:02</b>
+              <span class="k">Spend</span><b>$1.48</b><span class="k">of $5</span>
+            </div>
+            <span class="icon-button boxed"><i data-i="vscode"></i></span>
+            <span class="icon-button boxed"><i data-i="more"></i></span>
+          </div>
+        </header>
+
+        <div class="tbody wide">
+          <section class="card term-card">
+            <div class="stabs">
+              <span class="stab on"><i data-i="tty" class="s14"></i>Writer<span class="what">Claude Code</span><span class="live run"></span></span>
+              <span class="stab"><i data-i="hexagon" class="s14"></i>Run</span>
+              <span class="stab"><i data-i="thread" class="s14"></i>Thread</span>
+              <span class="stab"><i data-i="activity" class="s14"></i>Activity</span>
+              <span class="stab"><i data-i="file" class="s14"></i>Brief</span>
+              <span class="div"></span>
+              <span class="stab"><i data-i="terminal" class="s14"></i>Shell 1<span class="what">bash</span><span class="x"><i data-i="x" class="s12"></i></span></span>
+              <span class="stab" style="padding: 0 6px"><i data-i="plus" class="s14"></i></span>
+              <div class="end">
+                <span class="icon-button"><i data-i="image" class="s14"></i></span>
+                <span class="icon-button"><i data-i="search" class="s14"></i></span>
+                <span class="icon-button"><i data-i="columns" class="s14"></i></span>
+                <span class="icon-button" style="background: var(--selected); color: var(--hive-text)"><i data-i="maximize" class="s14"></i></span>
+              </div>
+            </div>
+            <div class="tty-wrap">
+<pre class="tty"><span class="hive-said">&gt; Hive · round 1 of 3: the running reviewer proved 1 defect with a test that fails.
+  1. A webhook the provider calls gone (410) is still retried.
+     Test: test/review/webhook-410.test.ts · run: pnpm vitest run test/review/webhook-410.test.ts
+     Its rerun: AssertionError: expected no retry to be scheduled, got 1
+  Fix it, keep the test, and commit. Hive checks and reviews again.</span>
+<span class="w">●</span> I'll reproduce it first.
+
+<span class="g">●</span> <span class="w">Bash</span>(pnpm vitest run test/review/webhook-410.test.ts)
+  <span class="d">⎿</span>  <span class="r">FAIL</span>  test/review/webhook-410.test.ts &gt; a 410 is not retried
+     <span class="r">AssertionError: expected no retry to be scheduled, got 1</span>
+
+<span class="g">●</span> <span class="w">Read</span>(<span class="link">src/payments/retry.ts</span>)
+  <span class="d">⎿  Read 41 lines</span>
+
+<span class="g">●</span> <span class="w">Update</span>(src/payments/retry.ts)
+  <span class="d">⎿  Updated src/payments/retry.ts with 3 additions</span>
+     <span class="d">18</span> <span class="add">+   if (response.status === 410) {                          </span>
+     <span class="d">19</span> <span class="add">+     return { retry: false, reason: 'gone' };              </span>
+     <span class="d">20</span> <span class="add">+   }                                                        </span>
+
+<span class="g">●</span> <span class="w">Bash</span>(pnpm vitest run test/review/webhook-410.test.ts)
+  <span class="d">⎿</span>  <span class="g">✓</span> test/review/webhook-410.test.ts <span class="d">(1 test) 12ms</span>
+     <span class="d">Test Files</span>  <span class="g">1 passed</span> <span class="d">(1)</span>
+
+<span class="g">●</span> <span class="w">Bash</span>(git commit -am "Stop retrying a webhook the provider says is gone")
+  <span class="d">⎿  [fix/payment-webhook-retry a91f3c2] Stop retrying a webhook the provider says is gone</span>
+
+<span class="w">●</span> Now the retry suite's own test, so a 410 stays covered when the reviewer's test is gone.
+
+<span class="c">✻ Writing the 410 case in test/webhook-retry.test.ts…</span> <span class="d">(1m 12s · ↓ 3.4k tokens · esc to interrupt)</span>
+
+<span class="rule">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+&gt; <span class="cursor"></span>
+<span class="rule">──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────</span>
+  <span class="v">⏵⏵ auto mode on</span></pre>
+            </div>
+            <div class="tty-bar">
+              <i data-i="hexagon" class="s14" style="color: var(--hive-text)"></i>
+              <span><b style="font-weight: 600">Hive drives this writer</b></span>
+              <span class="faint">· it answers the writer's questions and sends it what the check and the reviewer found</span>
+              <span class="keys">
+                <span>What you type reaches the writer too, recorded as yours</span>
+                <span><kbd>Ctrl</kbd><kbd>Click</kbd>opens a path</span>
+              </span>
+            </div>
+          </section>
+        </div>
+      </main>
+      <footer class="status"></footer>
+    </div>
+    <script>
+      Kit.render();
+    </script>
+  </body>
+</html>

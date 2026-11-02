@@ -35,8 +35,9 @@ and why, and what it cost.
 | [07-run-stopped](proofs/07-run-stopped.webp) | A workspace Hive stopped at the round cap: why, the failing output, Message the writer |
 | [04-settings](proofs/04-settings.webp) | Settings, Hive mode: Landing, Limits, Running reviewer (today's `docs/images/hive-settings.png`) |
 | [05-new-goal](proofs/05-new-goal.webp) | Start a workspace in Hive mode: no plan-first or permissions (Hive's), the check it will run, how Hive runs it |
+| [08-terminal](proofs/08-terminal.webp) | The writer's terminal, focused (the rail, no side card): the steps, round, time and spend in the head; session tabs; Hive's message as the prompt the writer answers; a bar saying Hive drives the writer |
 | [06-kit](proofs/06-kit.webp) | Tokens with their contrast, states, the stage track, type, controls, sidenav rows, a metric, a gauge |
-| [01-overview-light](proofs/01-overview-light.webp), [03-run-landed-light](proofs/03-run-landed-light.webp) | The light theme |
+| [01-overview-light](proofs/01-overview-light.webp), [03-run-landed-light](proofs/03-run-landed-light.webp), [08-terminal-light](proofs/08-terminal-light.webp) | The light theme (the terminal stays dark, as today) |
 
 ![The Overview](proofs/01-overview.webp)
 
@@ -81,6 +82,12 @@ Hive drove this workspace and nobody was asked, so these were the designer's cal
   menu; Turn off Hive is secondary with red words.
 - **In progress is amber**, so Hive's crimson and the failure red stop standing for each other.
 - **The Review tab is renamed Run** in Hive mode: nobody reviews by hand there.
+- **The terminal view** (added on the person's word: "Most of the time i use the terminal view"):
+  the steps join the head on one line; the tabs name each session (the writer, then the views,
+  then the shells, each with what runs in it); a bar under the terminal says what waits, or who
+  drives. Focus (the rail, no side card) and Split (the agent and a shell side by side) are new.
+  The terminal keeps 14 px (V85, V87) and its dark theme in both themes. What Claude Code draws
+  inside the terminal is its own: Symbiote does not colour it.
 - **Not redesigned:** Git, Skills, Monitor, History and Alpha Ceph's page would take the new tokens
   as they are.
 
@@ -91,7 +98,8 @@ Hive drove this workspace and nobody was asked, so these were the designer's cal
 | `src/kit.css` | The tokens (dark, light) and every component |
 | `src/kit.js` | Lucide's icons (ISC), the shared sidenav and status bar, the stage track |
 | `src/run.css` | A workspace's page: the pipeline, the run's timeline, the side card |
-| `src/01-…07-*.html` | One screen each |
+| `src/term.css` | The terminal view, both modes: the inline steps, session tabs, the terminal, Split, the bar under it |
+| `src/01-…08-*.html` | One screen each |
 | `shoot.mjs` | Renders the screens to `proofs/` |
 | `proofs/*.webp` | The proofs, 1×, lossless |
 

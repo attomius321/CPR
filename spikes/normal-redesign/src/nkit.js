@@ -52,6 +52,19 @@
   function sidenav(nav) {
     const page = nav.dataset.page;
     const open = nav.dataset.open;
+    // A screen's own state of a row: `data-meta='{"<branch>": ["<icon>", "<class>", "<meta>"]}'`.
+    const over = JSON.parse(nav.dataset.meta ?? '{}');
+    // A fourth item moves the row to another group (`working`, `waiting`, …).
+    for (const [key, list] of Object.entries(WS))
+      for (const w of [...list]) {
+        const o = w.branch && over[w.branch];
+        if (!o) continue;
+        [w.icon, w.cls, w.meta] = o;
+        if (o[3] && o[3] !== key) {
+          list.splice(list.indexOf(w), 1);
+          WS[o[3]].unshift(w);
+        }
+      }
     const item = (key, label, icon) =>
       `<div class="nav-item ${page === key ? 'on' : ''}">${icon}<span>${label}</span></div>`;
     const row = (w) =>
@@ -100,8 +113,8 @@
   function statusbar(bar) {
     bar.innerHTML = `
       <span class="seg">${svg('branch', 's12')}main <span class="mono" style="font-size:12px">7aeb0ad</span></span>
-      <span class="seg you">${svg('bell', 's12')}4 wait for you</span>
-      <span class="seg">${svg('spin', 's12 spin')}2 agents working</span>
+      <span class="seg you">${svg('bell', 's12')}${WS.waiting.length + WS.review.length} wait for you</span>
+      <span class="seg">${svg('spin', 's12 spin')}${WS.working.length} agents working</span>
       <span class="right">
         <span class="seg"><b style="font-weight:600;color:var(--text)">Claude</b> Pro</span>
         <span class="seg">5h <span class="meter"><i style="width:34%"></i></span> 34%</span>
