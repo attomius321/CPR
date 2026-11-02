@@ -48,7 +48,8 @@ head, from `src/ui`; the honeycomb, sheen, streak, glow and gloss removed. Decis
 
 **Verification**: tests first (tokens 21 red, shared parts red, the desktop's badge and frame red,
 each for the old value), then `pnpm check` (2,905 tests) and `pnpm build`. e2e: 390 of the
-viewer's 394 on the first run; the 3 that named the old colours pass since; `hive-pacing:108` is
+viewer's 394 on the first run, 392 on the last; the specs that named the old colours or Clean up
+as the primary pass since; `hive-pacing:108` is
 the clock above. The nexus's 20 pass. First paint on Bitwarden `737ee3f` (3 rounds alternating
 with `main`'s `git archive` build): `main` 320–338 ms, the branch 304–330 ms; select, mark and pan
 the same. 82 screenshots a side, both modes, both themes, 1×, beside the kits' proofs (a private

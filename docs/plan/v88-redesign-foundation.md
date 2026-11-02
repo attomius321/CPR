@@ -182,8 +182,8 @@ scale and heights.
 - Tests: `tokens.test.ts` 62 (21 red before the tokens), `shared-parts.test.ts` 5 (red before the
   components), `activity-words`, the desktop's `badge` and `frame` tests red then green;
   `pnpm check` 2,905 tests pass; `pnpm build` passes.
-- e2e: the viewer's 394 specs ran once: 390 passed, 4 failed; 3 named the old colours (usage,
-  settings) and pass since; `hive-pacing.spec.ts:108` fails on `main` too between 23:00 and
+- e2e: the viewer's 394 specs, on the finished branch: 392 passed, 2 failed; one still expected
+  Clean up as the primary (`workspaces.spec.ts:2175`, updated, passes since); `hive-pacing.spec.ts:108` fails on `main` too between 23:00 and
   midnight ("goes on tomorrow at 00:27": its pattern has no "tomorrow"), not this branch's. The
   nexus's 20 pass.
 - First paint, Bitwarden `737ee3f` with the Angular plugin (`measure.mjs`, 3 rounds alternating

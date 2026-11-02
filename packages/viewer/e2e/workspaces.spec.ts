@@ -2235,13 +2235,14 @@ test('Merge on an approved workspace: Symbiote merges it in its own worktree, La
   const remove = entry.getByRole('button', { name: 'Remove', exact: true });
   await expect(remove).toHaveClass(/\bprimary\b/);
   await expect(entry.getByRole('button', { name: 'More actions' })).toHaveCount(0);
-  // Merged: the workspace offers Clean up in its head (V55), and no Merge.
+  // Merged: the workspace offers Clean up in its head (V55), destructive since V88 (decision
+  // 819), and no Merge.
   await expect(workspaceRow(page, branch)).toContainText('Merged', POLL);
   await workspaceRow(page, branch)
     .getByRole('button', { name: 'Add a half function', exact: true })
     .click();
   await expect(here.getByRole('button', { name: 'Clean up', exact: true })).toHaveClass(
-    /\bprimary\b/,
+    /\bdanger\b/,
   );
   await expect(here.getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
   // The landed merge's card has the icon (V55): it removes the merge from the queue, and the
