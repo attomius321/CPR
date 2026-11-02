@@ -374,3 +374,7 @@ merge commit.
 - 2026-11-01 [V87c — Settings' text size, built](journal/v87-readable-type.md)
 - 2026-11-01 [HV4 plan — from the brief to landed, with no person](journal/hv4-autonomous-landing.md)
 - 2026-11-02 [HV4 — Hive from the brief to landed, built](journal/hv4-autonomous-landing.md)
+- 2026-11-01 [The milestone, regression-check and viewer-check skills for workspaces](journal/chore-milestone-skill-workspaces.md)
+- 2026-11-01 [Fix — mark-merged and journals several branches wrote in](journal/fix-mark-merged-shared-journals.md)
+- 2026-11-01 [Living docs: area pages, replaced decisions marked, the register, branches](journal/chore-living-docs.md)
+- 2026-11-01 [Living docs' gaps: AGENTS.md, the lookup, stale pages, Prettier](journal/chore-living-docs-gaps.md)

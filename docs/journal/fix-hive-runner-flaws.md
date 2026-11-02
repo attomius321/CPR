@@ -81,3 +81,5 @@ the waits were measured with the script, which does what the reply does. A `clau
 person runs in their own shell cannot be waited for: a copy then is noticed (decision 719), not
 prevented. The Haiku sessions' transcripts stay in Claude Code's own folder
 (`~/.claude/projects/-home-anton-projects-cpr-spike-v18c/`).
+
+Merged into main (2026-11-01).

@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nu2-nucleus-activity.md)
 
-**Status:** ready for review (2026-10-30), on branch `feature/nucleus-activity` (a workspace
+**Status:** merged into `main` on 2026-10-30 (built 2026-10-30), on branch `feature/nucleus-activity` (a workspace
 started in Symbiote, from `main` at `c88b237`; `main` merged in at `55314f3`, docs only). The
 person asked to start implementing with the plan's three recommendations: the real runs keep their
 records in a cache of the job's own, as NU1's did (the person's live Nucleus conversation

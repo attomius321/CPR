@@ -2,6 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v16-finish-review.md)
 
+> What holds now: [Reviews](../area/reviews.md). This plan is kept as it was written.
+
 **Status:** merged into main (2026-10-14, from branch `milestone/v16-finish-review`). As built
 and results: "As built — V16" below.
 
@@ -189,7 +191,7 @@ on branch reviews, badges, copy, push results), on one branch.
 | 77 | Where the agent finds feedback | **In the review's JSON (`verdicts`, last entry), plus "Copy for the agent" as text** | Asked ("Wouldn't it be better to save it as a JSON"): one file, structured fields, stable for git; text only for a chat. |
 | 78 | What a comment carries | **File, side and line at the reviewed tip, the symbol, the code line, the comment, an id** | Lines move when the agent commits again; the symbol and the line's text still find it. |
 | 79 | Badge marks | **"+n" commits since; else "✓" approved, "✗" changes requested, "…" in progress** | The badge should say the outcome, not only that something was marked. |
-| 80 | What Approve does | **Pushes the reviewed commit (by SHA) to the branch's upstream, else `origin/<branch>` with the upstream set; never forced; nothing on the other verdicts** | Asked ("after approve, it should be pushed to the origin, only in this case"); by SHA so nothing unreviewed goes out. |
+| 80 | What Approve does *(superseded by 82 of V17)* | **Pushes the reviewed commit (by SHA) to the branch's upstream, else `origin/<branch>` with the upstream set; never forced; nothing on the other verdicts** | Asked ("after approve, it should be pushed to the origin, only in this case"); by SHA so nothing unreviewed goes out. |
 | 81 | The default branch (supersedes 74 there) | **Reviewable when it has an upstream: from where it was last pushed to its tip** | Asked: the agent's local commits against a past commit; on the default branch that past commit is the last one pushed. |
 
 **Not in V16 (later)**: comments and verdicts on compare-mode pairs and `symbiote view <base>

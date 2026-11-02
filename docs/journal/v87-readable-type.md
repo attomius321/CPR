@@ -112,3 +112,4 @@ The merge brought no font size, line height or height in px. **Verification**: `
 2,736 tests; `pnpm test:e2e` 387 of 387 viewer and 20 of 20 nexus (before the merge, on V87 alone:
 380 of 380 and 20 of 20); Git with Hive on at 1440 × 900, Alpha Ceph's entry at the new sizes.
 
+Merged into main (2026-11-01).

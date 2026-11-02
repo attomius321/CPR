@@ -190,8 +190,9 @@ New message keys `hive.land`, `hive.plan`, `hive.decide`.
 - `CLAUDE.md`'s "Which rules are which mode's": a Hive workspace's agent never asks the person;
   Hive pushes the branch and the start branch.
 - `docs/PLAN.md`: the North Star's "until HV4" line; HV4's row; the merged rows marked ✅ (HV2,
-  HV3, the North Star chore, live progress, the runner flaws' fix). Decisions 658, 681, 689 and
-  690 say what HV4 changes, in their plans.
+  HV3, the North Star chore, live progress, the runner flaws' fix). HV4's rows say which of 658,
+  681, 689 and 690 they replace; the older rows stay as written (the living-docs chore's rule),
+  and `docs/area/merger.md` and `reviews.md` say what holds now.
 
 ## Verification
 
@@ -253,14 +254,14 @@ New message keys `hive.land`, `hive.plan`, `hive.decide`.
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 767 | What lands, and when | **At `landing`, the commit at the branch's tip, on whatever ran (the check and the review, either alone, or neither): Hive approves it (`via: 'hive'`, the person's review file) and queues it (`by: 'hive'`) into the branch the workspace started from; no Land in Hive mode** | The person: not fully verified "should be automatically"; "land anyway if there are no tests"; the queue reads the person's file |
-| 768 | Pushing | **The workspace's branch to `origin` after each turn with commits; the start branch after landing, whatever `merge.push`, after a fetch that fast-forwards it when behind; diverged stops the landing; never forced** (amends 690) | The person: "Pushing should be done back to the branch from where the workspace started, automatically in hive mode" |
+| 767 | What lands, and when | **At `landing`, the commit at the branch's tip, on whatever ran (the check and the review, either alone, or neither): Hive approves it (`via: 'hive'`, the person's review file) and queues it (`by: 'hive'`) into the branch the workspace started from; no Land in Hive mode; replaces 681's Land, 689's "until HV4 is built, Land stays the person's press"** | The person: not fully verified "should be automatically"; "land anyway if there are no tests"; the queue reads the person's file |
+| 768 | Pushing | **The workspace's branch to `origin` after each turn with commits; the start branch after landing, whatever `merge.push`, after a fetch that fast-forwards it when behind; diverged stops the landing; never forced; replaces 690's "never `main`"** | The person: "Pushing should be done back to the branch from where the workspace started, automatically in hive mode" |
 | 769 | A landing that fails | **No merger for Hive's entries; the entry removed; `hive.land` to the writer: merge the start branch in and fix, or say it is not the branch's (716 retries); 2 merges of the start branch, the third stops** | The person's answer 2; AR1: 17 of 148 merges would still conflict, 12 of 89 merge checks failed on timing tests |
 | 770 | The person's checkout | **`--ff-only` where the target is checked out, as today; refused: retried each minute, the card says why** | The person's answer 5 |
 | 771 | Hive off | **Asks first while a Hive workspace writes, checks, reviews or lands, listing what stops and what goes on; a landing in the queue finishes on its own; nothing in flight: off at once** | The person: "Hive off needs a dialog that would say what would happen if i would turn it off during an active flow"; answer 7, "fully automatically" |
 | 772 | Hive on | **Refused while a workspace started in normal mode is open and not merged; the question and the server list them** | The person: "Can't turn Hive mode on if there are workspaces in normal mode" |
-| 773 | No gate before landing | **Plan first not offered in Hive mode, `hive.plan` for a plan that comes; the writer in `auto` (amends 658); `hive.decide` for anything that asks, 3 a workspace; a failed writer started again once; a stop is a stop, with why (689)** | The person: "a fully autonomous system. From the start to the end"; AR1: 121 of 131 plan first, 29 permission prompts, 20 questions |
-| 774 | The sidenav in Hive mode | **Two groups: Hive (every workspace not done, Hive's words) and Done (landed or merged); no Review, Land or Merge into on a Hive workspace's head (amends 681)** | The person: "Only Done exists beside Hive in Hive mode" |
+| 773 | No gate before landing | **Plan first not offered in Hive mode, `hive.plan` for a plan that comes; the writer in `auto`; `hive.decide` for anything that asks, 3 a workspace; a failed writer started again once; a stop is a stop, with why (689); replaces 658's permission mode picked on Start** | The person: "a fully autonomous system. From the start to the end"; AR1: 121 of 131 plan first, 29 permission prompts, 20 questions |
+| 774 | The sidenav in Hive mode | **Two groups: Hive (every workspace not done, Hive's words) and Done (landed or merged); no Review, Land or Merge into on a Hive workspace's head** | The person: "Only Done exists beside Hive in Hive mode" |
 | 775 | What agents and people are told | **`hive.start`, `hive.land`, `hive.plan`, `hive.decide`, `hive.nucleus`, AGENTS.md's `via: "hive"`; the dialogs, README and `configuration.md` say Hive lands and pushes, and when to use Hive** | The brief; the person's words of 2026-10-31 |
 
 The writer's tests (the brief's parked question) were settled by AR2 (decision 739): the failing

@@ -61,3 +61,5 @@ mode, 1440 and 800 px. `git diff --stat main`: `packages/nexus`, the docs, the R
 
 Not verified: macOS and Windows outside WSL; the person's WSLg window (Xvfb only); two nexuses
 pinning in the same few milliseconds; a reader test of the README's paragraph.
+
+Merged into main (2026-10-30).

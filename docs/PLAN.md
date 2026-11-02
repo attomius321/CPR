@@ -42,8 +42,15 @@ they are built (Agents, below).
 
 ## How the plan is kept
 
-- **Read** the North Star and the index below, then only the files of your area. A decision by
-  its number: `grep -rn '^| 246 |' docs/plan`; a term: `grep -rln <term> docs/plan docs/journal`.
+- **Read** the North Star and the index below. If your area has a page in [area/](area/),
+  read it next: it says what holds now, checked against the code, with the decisions in force
+  and the traps. Then read only the plans and journals you need for why. A decision by its
+  number, with any newer row that replaces it:
+  `grep -rnE '^\| 246 \||^\| [0-9]+ \|.*(supersedes|replaces)[^|]*\b246\b' docs/plan`
+  A term: `grep -rln <term> docs/plan docs/journal`.
+- **Plans and journals are kept as written**: each says what was decided or learned on its day.
+  An area's page says what holds now, and is changed in the commit that changes the code it
+  describes. Reviews and The merger have pages; the other areas get theirs one at a time.
 - **A milestone** has a plan, `plan/<id>-<slug>.md` (status, problem, goal, design,
   verification, risks, decisions; after it is built, "As built" and results), and a journal of
   the same name, `journal/<id>-<slug>.md` (its spike, parts and merge: what was measured and
@@ -54,7 +61,11 @@ they are built (Agents, below).
   [plan/design.md](plan/design.md); the phases, their milestone tables and "Proposed next" as
   it stood at V44 in [plan/roadmap.md](plan/roadmap.md).
 - **Decisions** are numbered across the project and kept in their milestone's plan; the index
-  gives each milestone's. 242 and 243 are each used twice (a V26 fix and V36).
+  gives each milestone's. 242 and 243 are each used twice (a V26 fix and V36). A decision that
+  replaces an older one says so in its row (`supersedes 80`, `replaces 446's centring`);
+  `scripts/plan/consolidate.mjs --write` then marks the older row
+  (`*(superseded by 82 of V17)*`) and regenerates [decisions.md](decisions.md), every decision
+  with its status. It runs on `main` with `mark-merged.mjs`, in the "Docs: merged" commit.
 - **The index**: one row per milestone, fix and chore, by area, in the order they were built.
   ✅ is merged into `main`. The ID links the plan.
 
@@ -127,10 +138,12 @@ they are built (Agents, below).
 | Fix | Compare mode's toggle stays put with wider fonts | ✅ | | [journal](journal/fix-compare-toggle-wrap.md) |
 | [V66](plan/v66-git-page.md) | Git: History renamed; a commit's details, changes staged and committed, branches and tags, fetch/pull/push, find a commit | ✅ | 475–484 | [journal](journal/v66-git-page.md) |
 | [V70](plan/v70-git-file-view.md) | Git: a commit's file shown in the rows' place; Open in VS Code (its diff) from the pane | ✅ | 498–501 | [journal](journal/v70-git-file-view.md) |
-| [Fix](plan/v66-git-page.md#fix-the-page-lists-in-place-more-of-git-fixgit-page-feature-extend) | Git lists in place (the file shown kept); continue/abort, cherry-pick, revert, merge, rebase, stash, reset, discard, hunks and lines, a file's history and blame, remote branches deleted, branches hidden | built, in review | 634–645 | [journal](journal/fix-git-page-feature-extend.md) |
-| Fix | A commit's menu opens at once: no Review in it (the branches panel keeps its own), so no wait for every branch review | ready for review | | [journal](journal/fix-git-right-click-on-commit.md) |
+| [Fix](plan/v66-git-page.md#fix-the-page-lists-in-place-more-of-git-fixgit-page-feature-extend) | Git lists in place (the file shown kept); continue/abort, cherry-pick, revert, merge, rebase, stash, reset, discard, hunks and lines, a file's history and blame, remote branches deleted, branches hidden | ✅ | 634–645 | [journal](journal/fix-git-page-feature-extend.md) |
+| Fix | A commit's menu opens at once: no Review in it (the branches panel keeps its own), so no wait for every branch review | ✅ | | [journal](journal/fix-git-right-click-on-commit.md) |
 
 ### Reviews
+
+What holds now: [Reviews](area/reviews.md) · its decisions: [the register](decisions.md#reviews).
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
@@ -177,8 +190,8 @@ they are built (Agents, below).
 | Fix | Suggest settings could not read the agents' models: `symbiote view` serves the pages it started with, not a newer build's on its older API | ✅ | | [journal](journal/fix-suggest-settings-models.md) |
 | [V77](plan/v77-workspace-history.md) | History: finished workspaces under Monitor, each with its activity, thread, brief and changes | ✅ | 561–567 | [journal](journal/v77-workspace-history.md) |
 | [V79](plan/v79-workspace-cards.md) | Workspace cards one can read: whole names, the state on its own lines, the facts as icons, cards apart; the sidenav 300 px | ✅ | 576–581, 585 | [journal](journal/v79-workspace-cards.md) |
-| [V83](plan/v83-workspace-running-model.md) | What a workspace's agent runs on — its model and effort, read back from the session — in its head and on its card; a card's state on one line | built | 659–664 | [journal](journal/v83-workspace-running-model.md) |
-| [V84](plan/v84-activity-export.md) | Export activity: a workspace's or Nucleus's as Markdown (or JSON Lines), from the tab, `symbiote activity` or the MCP | ready for review | 668–672 | [journal](journal/v84-activity-export.md) |
+| [V83](plan/v83-workspace-running-model.md) | What a workspace's agent runs on — its model and effort, read back from the session — in its head and on its card; a card's state on one line | ✅ | 659–664 | [journal](journal/v83-workspace-running-model.md) |
+| [V84](plan/v84-activity-export.md) | Export activity: a workspace's or Nucleus's as Markdown (or JSON Lines), from the tab, `symbiote activity` or the MCP | ✅ | 668–672 | [journal](journal/v84-activity-export.md) |
 
 ### Agents
 
@@ -210,7 +223,7 @@ they are built (Agents, below).
 | [MC2](plan/mc2-mcp-suggest-settings.md) | `suggest_settings`: the advisor's proposal through Symbiote's MCP, before a start Scout makes | ✅ | 582–584 | [journal](journal/mc2-mcp-suggest-settings.md) |
 | [V80](plan/v80-scout-reads-worktrees.md) | Scout reads the workspaces' worktrees: their files and uncommitted changes, by its gate at each call; still read-only | ✅ | 596–599 | [journal](journal/v80-scout-reads-worktrees.md) |
 | [NU1](plan/nu1-nucleus.md) | Nucleus: Scout renamed, with the agents' web search and pages; its next steps planned | ✅ | 589–595 | [journal](journal/nu1-nucleus.md) |
-| [NU2](plan/nu2-nucleus-activity.md) | Nucleus's Activity tab: its messages, calls, the gate's decisions, Symbiote's tools and Confirms, recorded across conversations | ready for review | 604–610 | [journal](journal/nu2-nucleus-activity.md) |
+| [NU2](plan/nu2-nucleus-activity.md) | Nucleus's Activity tab: its messages, calls, the gate's decisions, Symbiote's tools and Confirms, recorded across conversations | ✅ | 604–610 | [journal](journal/nu2-nucleus-activity.md) |
 | [HV1](plan/hv1-hive-graph.md) | Spike: Hive's agentic graph — a runner of Symbiote's own; a graph of workspaces against one agent (no gain, twice the cost); a reviewer that runs code (4 of 4 defects) | measured | 646–651 | [journal](journal/hv1-hive-graph.md) |
 | [HV2](plan/hv2-hive-runner.md) | Hive's runner and record: workspaces started while Hive is on are driven to landing asked — the writer's turns, the check, its failures sent back; Hive off stops them, on or a restart resumes | ✅ | 652–658 | [journal](journal/hv2-hive-runner.md) |
 | [HV3](plan/hv3-running-reviewer.md) | Hive's running reviewer: after a passing check, a clean-context Claude Code in a throwaway copy proves defects with failing tests, which Symbiote reruns and sends the writer; the workspace's Review tab and Land in place of a human review | ✅ | 674–681 | [journal](journal/hv3-running-reviewer.md) |
@@ -222,9 +235,11 @@ they are built (Agents, below).
 | HV6 | Spike: a more rigorous measurement of a graph of workspaces against one agent, on large real goals (649, 691) | planned | | |
 | HV7 | The graph: Alpha Ceph splits a goal into workspaces and orchestrates them, merges in order, stalls and new plans; only if HV6 shows a gain (691, 692) | planned | | |
 | [AR1](plan/ar1-activity-review.md) | Spike: Symbiote's own record — 131 workspaces, Nucleus and Starknet measured; the time goes to checks and journal conflicts; seven changes ranked (a union merge for the journal, the flaky e2e tests, Hive's check messages, a failed merge sent to the agent, the record's labels, the spike line, the reviewer reading later words) | measured; its changes 1–6 built in AR2 | 735–737 | [journal](journal/ar1-activity-review.md) |
-| [AR2](plan/ar2-defaults-from-ar1.md) | The changes AR1 found: the journal merged as a union, Hive's check messages, the spike's answer kept, who sent a message in the record, a failed merge check sent to the agent, the flaky e2e tests | built, ready for review | 738–744 | [journal](journal/ar2-defaults-from-ar1.md) |
+| [AR2](plan/ar2-defaults-from-ar1.md) | The changes AR1 found: the journal merged as a union, Hive's check messages, the spike's answer kept, who sent a message in the record, a failed merge check sent to the agent, the flaky e2e tests | ✅ | 738–744 | [journal](journal/ar2-defaults-from-ar1.md) |
 
 ### The merger
+
+What holds now: [The merger](area/merger.md) · its decisions: [the register](decisions.md#the-merger).
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
@@ -267,15 +282,15 @@ they are built (Agents, below).
 | [V71](plan/v71-analyzing-page.md) | The analyzing page in the style: a card on the start page's arcs, the phases as steps, a review named | ✅ | 502–506 | [journal](journal/v71-analyzing-page.md) |
 | [V72](plan/v72-page-frame.md) | One page frame: every page the whole main area, one head, 16 px margins and gutters, the same insets inside cards | ✅ | 507–512 | [journal](journal/v72-page-frame.md) |
 | [V81](plan/v81-settings-list-icons.md) | Settings' list scanned: a lucide icon per entry, on a tile tinted by its group | ✅ | 600–603 | [journal](journal/v81-settings-list-icons.md) |
-| [V82](plan/v82-hive-mode.md) | Hive mode: a dangerous switch in Settings and an ink and crimson look while it is on | ready for review | 611–616 | [journal](journal/v82-hive-mode.md) |
-| [Fix](plan/v82-hive-mode.md#fix-hive-per-repository-fixhive-per-symbiote) | Hive mode per repository, never on the nexus; Settings readable under the tendrils; the ink takes the page as it turns on | ready for review | 621–624 | [journal](journal/v82-hive-mode.md) |
-| [Feature](plan/v82-hive-mode.md#feature-hive-tentacles-featurehive-tentacles) | Hive's tendrils alive: Carnage's red and black in the question and the sidenav, a Hive Mind they grab and hold, turning on as the Mind and a blackout, then a boom | ready for review | 629–633 | [journal](journal/v82-hive-mode.md) |
-| [Fix](plan/v82-hive-mode.md#fix-no-tendrils-in-the-sidenav-fixremove-hive-tendrils-from-sidenav) | No Hive tendrils in the sidenav (633 withdrawn) | ready for review | | [journal](journal/fix-remove-hive-tendrils-from-sidenav.md) |
-| [Feature](plan/v82-hive-mode.md#feature-hives-question-a-circuit-featurehive-mode-dialog-prompt) | Hive's question as a circuit board: traces route into a machined Hive Mind; turning on as a hex shutter; the Swarm kept for later | ready for review | 665–667, 673 | [journal](journal/v82-hive-mode.md) |
-| [Feature](plan/v82-hive-mode.md#feature-alpha-ceph-nucleus-in-hive-mode-featurealpha-ceph-hive-name) | Alpha Ceph: Nucleus's name and icon while Hive is on — the Hive Mind as its icon, the name in its prompt and gate; Hive off as before | built, ready for review | 682–687 | [journal](journal/v82-hive-mode.md) |
-| [V85](plan/v85-hive-honeycomb-compact.md) | Hive's honeycomb stays as the app's background after the arrival; every page compact like VS Code (13 px body, 26 px controls, 22 px rows) | built, ready for review | 701–715 | [journal](journal/v85-hive-honeycomb-compact.md) |
-| [V86](plan/v86-alpha-ceph-transform.md) | Nucleus becomes Alpha Ceph in the sidenav after Hive's arrival: the ring breaks onto the Mind's cells, the name's letters change over; never at load. Its conversation follows Hive, Alpha Ceph told what Hive does | built, ready for review | 730–734, 750–752 | [journal](journal/v86-alpha-ceph-transform.md) |
-| [V87](plan/v87-readable-type.md) | Readable type at VS Code's density: 15 px body, nothing under 12 px, 24 px targets (WCAG 2.2 AA), a text-size choice in Settings | built, ready for review | 760–766 | [journal](journal/v87-readable-type.md) |
+| [V82](plan/v82-hive-mode.md) | Hive mode: a dangerous switch in Settings and an ink and crimson look while it is on | ✅ | 611–616 | [journal](journal/v82-hive-mode.md) |
+| [Fix](plan/v82-hive-mode.md#fix-hive-per-repository-fixhive-per-symbiote) | Hive mode per repository, never on the nexus; Settings readable under the tendrils; the ink takes the page as it turns on | ✅ | 621–624 | [journal](journal/v82-hive-mode.md) |
+| [Feature](plan/v82-hive-mode.md#feature-hive-tentacles-featurehive-tentacles) | Hive's tendrils alive: Carnage's red and black in the question and the sidenav, a Hive Mind they grab and hold, turning on as the Mind and a blackout, then a boom | ✅ | 629–633 | [journal](journal/v82-hive-mode.md) |
+| [Fix](plan/v82-hive-mode.md#fix-no-tendrils-in-the-sidenav-fixremove-hive-tendrils-from-sidenav) | No Hive tendrils in the sidenav (633 withdrawn) | ✅ | | [journal](journal/fix-remove-hive-tendrils-from-sidenav.md) |
+| [Feature](plan/v82-hive-mode.md#feature-hives-question-a-circuit-featurehive-mode-dialog-prompt) | Hive's question as a circuit board: traces route into a machined Hive Mind; turning on as a hex shutter; the Swarm kept for later | ✅ | 665–667, 673 | [journal](journal/v82-hive-mode.md) |
+| [Feature](plan/v82-hive-mode.md#feature-alpha-ceph-nucleus-in-hive-mode-featurealpha-ceph-hive-name) | Alpha Ceph: Nucleus's name and icon while Hive is on — the Hive Mind as its icon, the name in its prompt and gate; Hive off as before | ✅ | 682–687 | [journal](journal/v82-hive-mode.md) |
+| [V85](plan/v85-hive-honeycomb-compact.md) | Hive's honeycomb stays as the app's background after the arrival; every page compact like VS Code (13 px body, 26 px controls, 22 px rows) | ✅ | 701–715 | [journal](journal/v85-hive-honeycomb-compact.md) |
+| [V86](plan/v86-alpha-ceph-transform.md) | Nucleus becomes Alpha Ceph in the sidenav after Hive's arrival: the ring breaks onto the Mind's cells, the name's letters change over; never at load. Its conversation follows Hive, Alpha Ceph told what Hive does | ✅ | 730–734, 750–752 | [journal](journal/v86-alpha-ceph-transform.md) |
+| [V87](plan/v87-readable-type.md) | Readable type at VS Code's density: 15 px body, nothing under 12 px, 24 px targets (WCAG 2.2 AA), a text-size choice in Settings | ✅ | 760–766 | [journal](journal/v87-readable-type.md) |
 
 ### Native window
 
@@ -294,9 +309,9 @@ they are built (Agents, below).
 | [NX1](plan/nx1-nexus.md) | Symbiote nexus: every running `symbiote view` found, as tabs in one window or browser tab | ✅ | 519–527 | [journal](journal/nx1-nexus.md) |
 | [NX2](plan/nx2-open-from-folders.md) | Open a Symbiote from the nexus: this PC's folders, Open Symbiote, Stop and Start again | ✅ | 539–543 | [journal](journal/nx2-open-from-folders.md) |
 | [NX3](plan/nx3-nexus-look.md) | The nexus's own tabs apart from the Symbiotes', fuller pages, a repository the end of Folders | ✅ | 551–555 | [journal](journal/nx3-nexus-look.md) |
-| [NX4](plan/nx4-pinned-folders.md) | Pinned folders: the person's folders and repositories kept in Folders' places from one run to the next | ready for review | 617–620 | [journal](journal/nx4-pinned-folders.md) |
-| [Fix](plan/nx2-open-from-folders.md#fix-a-symbiote-framed-once-this-browser-reaches-it-fixfirst-time-symbiote-from-nexus) | A Symbiote opened from the nexus in Chrome on Windows is framed once Chrome reaches it, not left on Chrome's error page | ready for review | 625 | [journal](journal/fix-first-time-symbiote-from-nexus.md) |
-| [Fix](plan/nx4-pinned-folders.md#fix-pinned-symbiotes-on-symbiotes-the-folders-under-them-fixnexus-pinned-symbiotes) | Pinned repositories among Symbiotes' cards, first; Folders no tab: this PC's folders under the Symbiotes | ready for review | 626–628 | [journal](journal/fix-nexus-pinned-symbiotes.md) |
+| [NX4](plan/nx4-pinned-folders.md) | Pinned folders: the person's folders and repositories kept in Folders' places from one run to the next | ✅ | 617–620 | [journal](journal/nx4-pinned-folders.md) |
+| [Fix](plan/nx2-open-from-folders.md#fix-a-symbiote-framed-once-this-browser-reaches-it-fixfirst-time-symbiote-from-nexus) | A Symbiote opened from the nexus in Chrome on Windows is framed once Chrome reaches it, not left on Chrome's error page | ✅ | 625 | [journal](journal/fix-first-time-symbiote-from-nexus.md) |
+| [Fix](plan/nx4-pinned-folders.md#fix-pinned-symbiotes-on-symbiotes-the-folders-under-them-fixnexus-pinned-symbiotes) | Pinned repositories among Symbiotes' cards, first; Folders no tab: this PC's folders under the Symbiotes | ✅ | 626–628 | [journal](journal/fix-nexus-pinned-symbiotes.md) |
 
 ### Repository monitoring
 
@@ -324,6 +339,10 @@ they are built (Agents, below).
 | [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | ✅ | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
 | [Refactor](plan/refactor-readability.md) | The CLI's services and the viewer's pages in modules one can read | ✅ | 344–348 | [journal](journal/refactor-readability.md) |
 | [IN1](plan/in1-one-command-install.md) | Install in one command (`./install.sh`), with no native build: the agents' terminal prebuilt | ✅ | 532–538 | [journal](journal/in1-one-command-install.md) |
+| Chore | The milestone, regression-check and viewer-check skills for workspaces: where you are, plan first, how work reaches `main`; merged work marked by `scripts/plan/mark-merged.mjs` | ✅ | | [journal](journal/chore-milestone-skill-workspaces.md) |
+| Fix | `mark-merged.mjs`: a row with no plan waits for every branch its journal names; a journal's last line is its last entry's | ✅ | | [journal](journal/fix-mark-merged-shared-journals.md) |
+| [Chore](plan/chore-living-docs.md) | Living docs: a page per area of what holds now (Reviews and The merger first), replaced decisions marked on both rows, a register of every decision; merged branches deleted, unmerged ones kept as `archive/` tags | ✅ | 776–781 | [journal](journal/chore-living-docs.md) |
+| Chore | Living docs' gaps: a root `AGENTS.md` for Codex and Hermes; a decision lookup that finds its replacement before `consolidate.mjs` marks it; a note for an area page whose code changed after it; Prettier leaves Symbiote's local files out | ✅ | | [journal](journal/chore-living-docs-gaps.md) |
 
 ### Across the app
 

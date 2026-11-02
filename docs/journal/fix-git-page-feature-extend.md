@@ -104,3 +104,5 @@ being written" (red: `s.close is not a function`), and the server waiting for th
 185 passed; `pnpm check` 2,527 unit tests; the stress loop again 0 of 18. Not verified: the
 failure itself never came here, before or after, so its absence after the change proves little
 on its own.
+
+Merged into main (2026-10-31).

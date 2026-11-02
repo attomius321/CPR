@@ -54,3 +54,4 @@ merged tree two timed waits failed under load and passed alone (the plan's resul
 Not verified: a running Codex workspace on its app server and a running Hermes workspace; the
 desktop app's download and Copy; Firefox and Safari; a fresh agent reading an export.
 
+Merged into main (2026-10-31).

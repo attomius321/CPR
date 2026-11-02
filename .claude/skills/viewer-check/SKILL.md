@@ -25,29 +25,35 @@ catching clicks, a group opened off screen) were found there, not in unit tests.
 Make graph JSON with the CLI (`--out`) on a real repo, e.g. the regression clones:
 
 ```sh
+out=$(mktemp -d /tmp/viewer-check-XXXXXX) && echo "$out"   # a folder of your own: sessions run side by side
 cd ~/.cache/symbiote-regression/bitwarden
-node /path/to/Symbiote/packages/cli/dist/bin.js diff 737ee3f~1 737ee3f --no-merge-base --plugin angular --out /tmp/g/737ee3f.json
+node /path/to/Symbiote/packages/cli/dist/bin.js diff 737ee3f~1 737ee3f --no-merge-base --plugin angular --out "$out/737ee3f.json"
 ```
 
-Then measure and screenshot (serves `packages/viewer/dist` with the graph via `?graph=`):
+No graph JSON is kept in the clones: making Bitwarden's takes about a minute. Then measure and
+screenshot (serves the `packages/viewer/dist` beside the script, with the graph via `?graph=`):
 
 ```sh
-node scripts/viewer/measure.mjs /tmp/g/737ee3f.json [more.json…] --shot /tmp/shots
+node scripts/viewer/measure.mjs "$out/737ee3f.json" [more.json…] --shot "$out/shots"
 ```
 
 One JSON line per graph: `firstPaint`, `select` (open the first change from the list), `review`
-(press r), `panFps`, DOM counts, page `errors`. Reference (V6, idle 4-core container, Bitwarden
-`737ee3f` with the Angular plugin): first paint ≈ 0.65 s, mark reviewed ≈ 72 ms, pan ≈ 60 fps,
-≈ 3,900 page elements. Run the same graphs on the baseline build (`git worktree add --detach`, as
-in the regression-check skill) for a before/after; timings vary ±30 % under load, so compare runs
-made back to back.
+(press r), `panFps`, DOM counts, page `errors`. A graph with no changes has nothing to open: the
+script waits until killed. Reference (V6, idle 4-core container, Bitwarden `737ee3f` with the
+Angular plugin): first paint ≈ 0.65 s, mark reviewed ≈ 72 ms, pan ≈ 60 fps, ≈ 3,900 page
+elements.
+
+For a before/after, build `main` from `git archive` in a folder of your own (the regression-check
+skill's step 2: a workspace may not add a worktree) and run **that copy's**
+`scripts/viewer/measure.mjs` on the same graphs: each script serves its own build. Timings vary
+±30 % under load, so alternate the two builds, 3 rounds each, back to back.
 
 For how interactions feel — open, pan, zoom, select, j, mark, context, project — run
 `node scripts/viewer/interactions.mjs <graph.json>… [--dist <other build>] [--rounds 3]`: per
 interaction the time, the main-thread blocking (long animation frames over 50 ms) and the worst
 frame, plus on the map the share of file-box clicks reaching the file and the page elements by
-kind. Compare against `main`'s build (`--dist` of a worktree) back to back; use medians — runs
-vary up to 3× on a busy machine.
+kind. Compare against `main`'s build (`--dist "$base/packages/viewer/dist"`, the `git archive`
+copy) back to back; use medians — runs vary up to 3× on a busy machine.
 
 For a custom view (a zoom level, a selection), write a short Playwright script on the same page;
 `page.goto(<base>/index.html?graph=<url>)` loads any graph.
@@ -63,3 +69,15 @@ For a custom view (a zoom level, a selection), write a short Playwright script o
 - No page errors in any spec (each spec's `afterEach` checks it).
 - Playwright uses the preinstalled Chromium (`/opt/pw-browsers/chromium`); never run
   `playwright install` in such a container.
+
+## Side by side with other workspaces
+
+Other workspaces run their checks on the same machine while you run yours.
+
+- A timing spec that fails only under their load (`intro.spec.ts`'s animation against the wall
+  clock; journals `hv2-hive-runner.md`, `ar2-defaults-from-ar1.md`) is not your branch's fault until
+  it fails alone too: run it alone, repeated (`--repeat-each 5`), then the whole check. If it
+  passes, report it as flaky; do not change tests outside your brief.
+- `app.spec.ts` starts an Xvfb from `:99` up. A spike's own display takes a number from 160 up
+  whose `/tmp/.X<n>-lock` is absent, and is stopped by its PID, never `pkill` by name: that can
+  stop another session's run.

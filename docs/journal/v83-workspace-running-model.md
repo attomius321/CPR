@@ -96,3 +96,5 @@ unchanged, 0.35–0.41 ms grown, 1.24 ms (7.68 cold) the first read; the list's 
 Not verified: a Codex workspace through the list with the real Codex; Codex by `exec` and Hermes
 (unchanged); a session from before V83 taking the path at its next prompt, with the person's
 build.
+
+Merged into main (2026-10-31).

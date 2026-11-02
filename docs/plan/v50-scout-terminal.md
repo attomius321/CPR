@@ -144,8 +144,8 @@ question box where no terminal runs (no `node-pty`, `SYMBIOTE_TERMINAL=off`).
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 383 | Where Scout's instructions go | **The system prompt** (Claude Code `--append-system-prompt`, Codex `developerInstructions`); the person's words are the first message | A start needs no question and runs no turn; the spike's answers followed them, after a wake too |
-| 384 | A model or level picked in a running conversation | **A copy on it, its turns kept** (Claude Code's `--resume` with flags; Codex's `thread/fork`), the original removed | Both keep the conversation (spike); typing `/model` into the person's terminal would mix with what they typed, and Codex's `/model` is a picker |
-| 385 | What New conversation starts on | **The project's model and level** (Settings'), not the head's last pick | Settings says what each conversation starts on (V47, `fix/scout-effort-level`); the head is this conversation's |
+| 384 | A model or level picked in a running conversation *(partly superseded by 391 of V52)* | **A copy on it, its turns kept** (Claude Code's `--resume` with flags; Codex's `thread/fork`), the original removed | Both keep the conversation (spike); typing `/model` into the person's terminal would mix with what they typed, and Codex's `/model` is a picker |
+| 385 | What New conversation starts on *(superseded by 392 of V52)* | **The project's model and level** (Settings'), not the head's last pick | Settings says what each conversation starts on (V47, `fix/scout-effort-level`); the head is this conversation's |
 
 **Not in V50 (later)**: Scribe as a terminal first; the model `/model` set in the terminal shown
 in the head (Claude Code does not list a session's model).

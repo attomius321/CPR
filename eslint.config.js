@@ -10,8 +10,10 @@ export default defineConfig(
       '**/coverage/**',
       'packages/*/test/fixtures/**',
       'spikes/**',
-      // Files given to a workspace's agent with its brief (V40): the person's, not linted.
-      'symbiote/documents/**',
+      // Symbiote's own files in this checkout, which symbiote/.gitignore keeps out of git: the
+      // documents given with a brief (V40), and Hive's records, which keep the tests its reviewer
+      // wrote in a throwaway copy (`symbiote/hive/<branch>/r1/packages/…`). Not this project's code.
+      'symbiote/**',
     ],
   },
   js.configs.recommended,

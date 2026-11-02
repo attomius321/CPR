@@ -114,3 +114,5 @@ in `e2e/hive-comb.spec.ts`, the third left out.
 **Verification**: the reviewer's two tests red at `e8d986c` (the Monitor's head `rgb(7, 5, 6)` and
 white; the review's lattice at y 450), green after; `pnpm check` 2,653 tests; `pnpm test:e2e` 374
 viewer and 20 nexus tests.
+
+Merged into main (2026-11-01).

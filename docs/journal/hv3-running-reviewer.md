@@ -120,3 +120,5 @@ repository), the kept test in `hive/feature/g3/r1/`, the review copies' folder e
 stream (8 tool calls, no denial); screenshots of the real Review tab, dark and light.
 
 Not verified: Land on the real run (the e2e lands one through the merge queue).
+
+Merged into main (2026-10-31).

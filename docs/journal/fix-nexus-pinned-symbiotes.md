@@ -36,3 +36,5 @@ dark and light, 1440 and 800 px.
 
 Not verified: macOS and Windows outside WSL; the person's WSLg window (Xvfb only); a pinned
 repository on `/mnt/c` started from its card; a reader test of the README's section.
+
+Merged into main (2026-10-30).

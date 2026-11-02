@@ -7,12 +7,17 @@ framework templates) and the calls between them, with findings on the risky part
 - North Star and the index of every milestone, fix and chore by area: `docs/PLAN.md`. Each
   milestone's plan (design, decisions, "As built", results): `docs/plan/<id>-<slug>.md`; the v1
   design and decisions 1–19: `docs/plan/design.md`.
+- What holds now in an area, checked against the code: `docs/area/<area>.md` (Reviews and The
+  merger so far). Read your area's page before changing it: its decisions in force and its traps,
+  most of them found the hard way. Plans and journals are records of their day, kept as written.
 - What each milestone learned and measured: `docs/journal/`, under its plan's name (by date:
-  `docs/JOURNAL.md`). Read the journal files of the area you touch before changing it — most
-  traps there were found the hard way.
-- Read the index, then only your area's files; find a decision or a term by grep
-  (`grep -rn '^| 246 |' docs/plan`, `grep -rln <term> docs/plan docs/journal`), not by reading
-  the folders.
+  `docs/JOURNAL.md`). Without an area page, read the journal files of the area you touch.
+- Read the index, then your area's page, then only the files you need; find a decision or a term
+  by grep, not by reading the folders. A decision with any newer row that replaces it:
+  `grep -rnE '^\| 246 \||^\| [0-9]+ \|.*(supersedes|replaces)[^|]*\b246\b' docs/plan`
+  A term: `grep -rln <term> docs/plan docs/journal`. A replaced decision's row says what replaced
+  it (`*(superseded by …)*`) once `consolidate.mjs` has run on `main`; the grep finds the
+  replacement before that. Every decision's status: `docs/decisions.md`.
 - Graph JSON contract: `docs/graph-schema.md`.
 
 **Two modes, two North Stars** (`docs/PLAN.md`, decision 688).
@@ -128,12 +133,23 @@ unless the change says otherwise — prove it with the comparisons.
 - Work is organized in **milestones** listed in `docs/PLAN.md`'s index (IDs like W1, Q2, V7). Use
   the `milestone` skill: measure on real data, plan in `docs/plan/`, branch, failing tests first,
   implement, verify, record in `docs/journal/`.
-- One branch per milestone: `milestone/<id>-<slug>` (e.g. `milestone/v7-app-boundaries`); fixes on
-  `fix/<slug>` from `main`; docs and tooling on `chore/<slug>`. Never commit to `main` directly.
+- Branches: in a Symbiote workspace, the branch Symbiote made for it (its record:
+  `symbiote/workspaces/<branch>.json`), never another branch or worktree. Outside a workspace, one
+  branch per milestone, `milestone/<id>-<slug>` (e.g. `milestone/v7-app-boundaries`); fixes on
+  `fix/<slug>` from `main`; docs and tooling on `chore/<slug>`. Never commit to `main` directly,
+  except the "Docs: merged" commit below.
+- A workspace started with plan first (`planFirst`): the plan is your final message; commit
+  nothing, not even the plan, before the person's OK. A commit turns its card from "Plan ready"
+  to "Ready for review".
 - IMPORTANT: **ask the user before merging into `main`** (normal mode; in a Hive workspace, Hive
-  decides landing). An Approve in Symbiote, when the user asks you to act on the review
-  (`symbiote-review` skill), is that yes. Then merge with `--no-ff` ("Merge <ID>: …"), verify
-  `main` (`pnpm check`, build, e2e), push, and add a "Docs: <ID> merged" commit.
+  decides landing). In a workspace, say the branch is ready and merge nothing: the person's
+  Approve in Symbiote has Symbiote's merger merge it (it runs `merge.checks` and pushes); so does
+  an Approve of any branch (`symbiote-review` skill). Merge yourself only when the user asks you
+  to: then merge with `--no-ff` ("Merge <ID>: …"), verify `main` (`pnpm check`, build, e2e) and
+  push.
+- Merged work is marked merged on `main`, not on its branch: `node scripts/plan/mark-merged.mjs
+  --write` (✅, the plan's Status, the journal's last line) for every merged branch at once, then
+  a "Docs: merged" commit, pushed. Run it after your own merge, or when the person asks.
 - Do not open pull requests unless asked. Commit and push as you go
   (`git push -u origin <branch>`); a session ends with everything pushed. In a Hive workspace,
   commit and do not push: Hive pushes the branch.
@@ -149,6 +165,9 @@ unless the change says otherwise — prove it with the comparisons.
 - `docs/journal/<id>-<slug>.md` (a fix on its own branch: `fix-<slug>.md`): one entry per
   milestone part or fix — what was learned, how it was verified, and "Merged into main (date)";
   each entry a line in `docs/JOURNAL.md`. Templates: the `milestone` skill.
+- `docs/area/<area>.md`, if your area has one: what holds now, changed in the same commit as the
+  code it describes (a decision that replaces another, a new trap, a moved file). A new decision
+  that replaces an older one says so in its row (`supersedes 80`, `replaces 446's centring`).
 - User docs: `README.md` for what a user does (install, workspaces, the pages), short;
   `docs/reference/commands.md` (commands, options, keys, MCP tools) and `configuration.md`
   (`symbiote/config.json`, prompts, environment variables); `docs/guide/review-and-ci.md` (the
@@ -162,13 +181,16 @@ unless the change says otherwise — prove it with the comparisons.
 - `pkill -f <pattern>` can match and kill your own shell: find PIDs with `pgrep -f '[n]ode …'`.
 - The CLI keeps worktrees in its cache (`SYMBIOTE_CACHE_DIR`, else `~/.cache/symbiote` on Linux). A worktree
   with `main` checked out blocks `git checkout main`: add worktrees with `git worktree add --detach`.
+  A workspace adds none: build `main` for a before/after from `git archive` in a folder of your
+  own (`regression-check` skill).
 - Viewer TypeScript (e.g. `packages/viewer/src/graph/flow.ts`) runs in scripts with
   `node --experimental-strip-types`.
 - Real-repo runs take minutes: run them in the background and keep working.
 
 ## Skills (`.claude/skills/`)
 
-- `milestone` — plan and deliver a milestone the way this repository does.
+- `milestone` — plan and deliver a milestone the way this repository does, in a workspace or
+  outside one; how it reaches `main` and is marked merged.
 - `regression-check` — compare a branch with `main` on ky, zod, vite, RealWorld, Bitwarden, Qwik.
 - `framework-plugin` — add or change a framework plugin (`@symbiote/plugin-*`).
 - `viewer-check` — check viewer changes in a browser: e2e, screenshots, first paint on real graphs.

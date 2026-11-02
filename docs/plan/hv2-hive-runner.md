@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv2-hive-runner.md)
 
-**Status:** built, ready for review (2026-10-31), on branch `feature/hv2-hive-runner` (the
+**Status:** merged into `main` on 2026-10-31 (built 2026-10-31), on branch `feature/hv2-hive-runner` (the
 workspace's, from `main` at `6250957`); the person's OK on the plan ("Ok, go for it"), with the
 recommended answers to its five questions. The real run went from its start to landing asked, in 3
 rounds, through a killed `symbiote view` and a Hive off and on (see Results).
@@ -203,7 +203,7 @@ merges of `main` in HV7.
 | 655 | Hive off, on, and a restart | **Off: Hive's sessions stopped, a check's group killed, the step kept (`interrupted`); on or a restart: what the session shows first — a turn ended goes on, a stopped writer gets `hive.resume`, a check runs again; a restart never stops a `--bg` session** | HV1's trap: a killed call is not a finished step; `--bg` sessions outlive `symbiote view` |
 | 656 | Who drives | **One runner per repository, by a pid lock beside the records; another view reads only** | Two `symbiote view`s of one repository share its `symbiote/`; the merge queue's lock (V26) |
 | 657 | Hive's prompts | **`{hive}` in the start prompts (its line gone when not Hive's, the text added at a project prompt's end), and `hive.start`, `hive.check`, `hive.commit`, `hive.resume` in a Hive group listed only in Hive mode** | The person's answers: new keys in a Hive group; a `{hive}` line only for Hive workspaces; Hive's settings only in Hive mode |
-| 658 | Which agents Hive drives | **Claude Code only; a start that picks Codex or Hermes while Hive is on is refused (409); the writer in the permission mode picked, no `bypassPermissions`** (HV4, decision 773: the writer in Claude Code's `auto` mode, whatever was picked) | The brief: Claude only for now; "every workspace started while Hive is on" stays true; the person's answers to questions 2 and 4 |
+| 658 | Which agents Hive drives | **Claude Code only; a start that picks Codex or Hermes while Hive is on is refused (409); the writer in the permission mode picked, no `bypassPermissions`** | The brief: Claude only for now; "every workspace started while Hive is on" stays true; the person's answers to questions 2 and 4 |
 | 716 | A commit already checked (fix/hive-runner-flaws) | **A turn that ends on a commit where a check of the same commands passed goes to the review with no check; a commit a review approved goes to landing with no review. A check that failed on the commit runs again** | HV3's record: three checks of `6da7d5a` after it passed at 13:59:20, the last one failing on a flaky e2e test; a flaky failure still gets its retry |
 | 717 | A branch being landed (fix/hive-runner-flaws) | **Merged, or in the merge queue (any state but `landed` and `failed`): Hive sends nothing (a message not sent yet is dropped), starts no check or review and stops one that runs, keeping no result; queued → `landing`, merged → `landed`. A check or review that ends meanwhile is kept, and nothing is sent** | HV3's record: the failure was sent at 14:19:23 while the merge queue checked the merge; `main` moved at 14:22:42, so "merged" alone would not have caught it. The person: queued counts |
 | 718 | What `sent` means (fix/hive-runner-flaws) | **Its prompt is in the thread; Claude Code's answer alone is `taken`** | The honeycomb record said `sent` for a message no hook ever recorded |

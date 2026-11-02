@@ -97,3 +97,5 @@ its own; a chore correcting the "about 2.5 min" above `CHECK_TIMEOUT_MS`):
 Not verified: a real merge to `landed` (the workspace `chore/check-timeout-comment` waits for the
 person: land it or clean it up); a writer stopped mid-turn by a real Hive off; a real stuck
 workspace. The tests cover each with the fakes.
+
+Merged into main (2026-10-31).

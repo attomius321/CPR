@@ -2,6 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v17-approve-means-merge.md)
 
+> What holds now: [Reviews](../area/reviews.md). This plan is kept as it was written.
+
 **Status:** merged into main (2026-10-14, from branch `milestone/v17-approve-means-merge`). As
 built and results: "As built — V17" below.
 
@@ -136,7 +138,7 @@ then V17b (the viewer), then V17c (README, this repository's skill and CLAUDE.md
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 82 | What Approve does (supersedes 80) | **Records the approved commit and `into`, the default branch; Symbiote pushes and merges nothing; the agent merges that commit when asked to act on the review** | Asked ("Aprove is just a metadata...that will tell the agent to merge"; "not automatically"); 0 of 4 approvals' pushes did anything; 4 of 4 were followed by asking for the merge in chat. |
+| 82 | What Approve does (supersedes 80) *(partly superseded by 142 of V26, 473 of V65)* | **Records the approved commit and `into`, the default branch; Symbiote pushes and merges nothing; the agent merges that commit when asked to act on the review** | Asked ("Aprove is just a metadata...that will tell the agent to merge"; "not automatically"); 0 of 4 approvals' pushes did anything; 4 of 4 were followed by asking for the merge in chat. |
 | 83 | Commits since a review | **Only the branch's own: not those reachable from the default branch** | Merging the default branch into a branch showed "+6" for one commit. |
 | 84 | Checking the merge | **`git merge-tree` in the background on a branch review, shown in the Review tab, not stored** | Touches no checkout, index or ref; 3 ms median on Bitwarden but up to 5.2 s on Qwik, so never on the commits page or in the way. |
 | 85 | Where agents learn what a verdict means | **`symbiote/AGENTS.md`, written by Symbiote beside the reviews; `about` in every review file** (no `symbiote/CLAUDE.md`: Claude Code loads a folder's AGENTS.md itself, checked) | "This tool should be used on any other project": the rules lived in this repository's skill only. |

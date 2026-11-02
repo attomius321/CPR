@@ -22,3 +22,5 @@ on, after a reload, with reduced motion: red on `main` (3 of 5 tests, "expected 
 green after. `pnpm check` (2,481 unit tests), `pnpm build`, `pnpm test:e2e` (351 viewer, 20 nexus,
 all passed). Screenshots with Hive on, dark and light, at 1280 and 700 px: no canvas on the page,
 the sidenav's glow kept. Not verified: the app's window (Electron).
+
+Merged into main (2026-10-31).

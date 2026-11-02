@@ -127,9 +127,9 @@ narrow layout (the list, then a page with All settings), the prompt's font, the 
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 446 | Where Settings stands | **The whole main area: two cards to its bottom, 24 px margins, 16 apart; centred past 1,400 px** | the mockup; V51's 760 px left 206 px of ground each side at its size |
+| 446 | Where Settings stands *(partly superseded by 507 of V72)* | **The whole main area: two cards to its bottom, 24 px margins, 16 apart; centred past 1,400 px** | the mockup; V51's 760 px left 206 px of ground each side at its size |
 | 447 | The head | **The Settings icon, the title, its "?" and the mockup's line; the git note beside Save** | the mockup; the person's answer |
-| 448 | The list | **A card, hairlines between groups, no icons, the open entry in the accent** ("no icons" superseded by [V81](v81-settings-list-icons.md)'s decision 600) | the mockup and the brief |
+| 448 | The list *(partly superseded by 600 of V81)* | **A card, hairlines between groups, no icons, the open entry in the accent** ("no icons" superseded by [V81](v81-settings-list-icons.md)'s decision 600) | the mockup and the brief |
 | 449 | A page | **One card: its head (name, chip, Reset) over a hairline, sections with a line of what they are** | the mockup; the prompt's `about` read without a click |
 | 450 | The controls | **Save changes, Cancel, Reset to default (shown as today); placeholders round accent chips in two columns** | the mockup; the person's answer on when they show |
 

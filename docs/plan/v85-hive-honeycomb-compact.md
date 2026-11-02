@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v85-hive-honeycomb-compact.md)
 
-**Status:** built, ready for review (2026-10-31), on branch `feature/hive-honeycomb-background` (a
+**Status:** merged into `main` on 2026-11-01 (built 2026-10-31), on branch `feature/hive-honeycomb-background` (a
 Hive workspace started in Symbiote, from `main` at `cd1956a`). Its "As built" and results below. The person approved the plan with its
 recommendations ("Good, go for it") after three rounds of mockups: a white light sidenav, then
 smaller type, then VS Code's density.

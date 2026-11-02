@@ -2,6 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v69-merge-page-mockup.md)
 
+> What holds now: [The merger](../area/merger.md). This plan is kept as it was written.
+
 **Status:** merged into `main` on 2026-10-27 (built 2026-10-27), on branch `feature/merger-page-revamp`. Its "As built"
 and results below.
 

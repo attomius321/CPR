@@ -68,3 +68,5 @@ Not verified:
 around the same `reply` call this one gives a sender to; both changes were kept. The journal
 merged with no conflict, by the union attribute added here. On the merged tree: `pnpm check`
 (2,707 unit tests), `pnpm build`, the full e2e (viewer 378, nexus 20).
+
+Merged into main (2026-11-01).

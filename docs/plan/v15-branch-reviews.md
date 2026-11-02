@@ -2,6 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v15-branch-reviews.md)
 
+> What holds now: [Reviews](../area/reviews.md). This plan is kept as it was written.
+
 **Status:** merged into main (2026-10-14, from branch `milestone/v15-branch-reviews`). As built
 and results: "As built — V15" below.
 
@@ -189,7 +191,7 @@ commits page shows progress); V15c (`symbiote/config.json`). One branch.
 | 71 | Where reviews live | **`symbiote/reviews/` at the repository's root, kept out of git by a `symbiote/.gitignore` Symbiote writes once (`*`, `!config.json`) and never changes after; deleting it shares reviews through commits; Symbiote never stages or commits** | Asked: a folder at the root, then "gitignore it". `.git` cannot be shared and the cache is cleared with caches; `symbiote/config.json` must still reach CI. Pytest and ruff keep their folders out of git the same way. |
 | 72 | What a branch review is keyed by | **The branch name without its remote; marks checked by fingerprint** | Measured: 97.7 % of marks still valid after a new commit; per pair, none. |
 | 73 | Whose review a file is | **One file per reviewer, named by `git config user.email`** | Two reviewers never write one file; the email is already in their commits. |
-| 74 | Where a branch review starts | **The fork point with the default branch, recomputed each time; not offered on the default branch** | What a pull request of the branch would show; the default branch has no fork point. |
+| 74 | Where a branch review starts *(partly superseded by 81 of V16)* | **The fork point with the default branch, recomputed each time; not offered on the default branch** | What a pull request of the branch would show; the default branch has no fork point. |
 | 75 | What stays in the cache | **Compare-mode pairs and `symbiote pr` reviews** | A picked pair is a look, not a branch's review; `symbiote pr`'s review goes to the forge, and its marks already outlive pushes. |
 
 **Not in V15 (later)**: feedback to the agent (drafts as a prompt or file it reads); agent

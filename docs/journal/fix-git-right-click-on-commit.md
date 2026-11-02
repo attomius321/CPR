@@ -43,3 +43,5 @@ checkout's 1.5–2.2 s: on the checkout the menu waited that long.
 failed are `commits.spec.ts`'s Git keys help (it still said "r reviews", fixed, 12/12 since) and
 `workspaces.spec.ts:959` (a sidenav card 7 px off mid-transition under the full run's load; 3/3
 alone, nothing of the Git page).
+
+Merged into main (2026-10-31).
