@@ -614,7 +614,7 @@ Each level has one colour everywhere: crashes are purple, errors red and warning
 **Process** filters every panel, **Text** filters every list of lines, and **Level** filters the
 last list. **Logs Drilldown** and **Explore** open the same lines.
 
-![The Symbiote dashboard in Grafana over two days: the counts, the problems over time by level and by kind, the newest warning with the start of its stack](../images/logs-dashboard.png)
+![The Symbiote dashboard in Grafana over an hour: the counts, the problems over time and by kind, and the newest warnings](../images/logs-dashboard.png)
 
 ## Older names
 
