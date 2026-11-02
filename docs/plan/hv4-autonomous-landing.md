@@ -4,8 +4,8 @@
 
 **Status:** built, ready for review (2026-11-02), on branch `feature/hv4-autonomous-landing` (the
 workspace's, from `main` at `6aed550`, `main` merged in at `4cdce3b`). The person's answers are in
-the decisions below; "Go for it" on 2026-11-02. Not done: the real run, which waits for the person
-to trust the scratch repository in Claude Code (see Results).
+the decisions below; "Go for it" on 2026-11-02. Two real Hive workspaces landed in a scratch
+repository with no press, one through a conflict (see Results).
 
 **Problem** (the brief: "Build HV4: autonomous landing"; the person, 2026-11-01: "the North star of
 Hive mode is a fully autonomous system. From the start to the end"). A Hive workspace still waits
@@ -337,10 +337,28 @@ Code's "not trusted" question in a new repository, answered once by the person.
   the list answered by `page.route`): the sidenav's Hive and Done groups, a landed workspace's
   Review tab with a failed and a landed landing, the Start page in Hive mode, the Hive mode page
   and its off question.
-- **The real run, started**: this branch's `symbiote view` on a scratch repository (HV1's `loc`
-  seed, a bare `origin`, a check of `tsc` and vitest, 15 tests in 0.2 s), Hive on, one workspace.
-  Claude Code refused to start in a folder no one had trusted; Hive started the writer again once
-  (06:27:26) and stopped it, with why (06:27:29): "its agent failed twice: Workspace not trusted.
-  Run `claude` in … once and accept the trust prompt". The rest (a writer's turns to `landed` with
-  no press) waits for the person to trust the folder.
+- **The real runs** (the person trusted the scratch repository in Claude Code): this branch's
+  `symbiote view` on HV1's `loc` seed with its own `symbiote/` and cache, a bare `origin`,
+  `merge.push: false`, a check of `tsc` and vitest (under 2 s), Hive on; the writer on Sonnet at
+  low effort (in `auto` mode, as decided), the reviewer on Sonnet at medium.
 
+  | Time (UTC) | What happened |
+  |---|---|
+  | 06:53:19 | `feature/lua-comments` started (Lua's `--` and `--[[ ]]` comments) |
+  | 06:53:54 | The writer's turn ended (35 s), one commit; the branch pushed to `origin`; the check passed (1.8 s) |
+  | 06:54:19 | The review approved (23 s, $0.12); `landing` |
+  | 06:54:20 | Approved by Hive and queued into `main` |
+  | 06:54:22 | **Landed**: `main` at the merge `0952237`, and `origin/main` too although `merge.push` is `false`; the queue's check on the merge 1.1 s. 63 s from start, no press |
+  | 06:54:49 | `feature/readme-languages` started (a languages section in `README.md`); a conflicting rewrite of `README.md` committed on `main` while it works |
+  | 06:55:55 | Its turn (44 s), the check and the review (21 s, $0.07) passed; queued at 06:55:57 |
+  | 06:55:59 | The merge conflicts in `README.md`: no merger agent; the entry out of the queue, its log kept; `hive.land` sent (06:56:01) |
+  | 06:56:28 | The writer: "My branch caused the conflict": `git merge main`, the conflict resolved keeping main's new intro and its own table, committed `a4ce7c2` (27 s) |
+  | 06:56:43 | The check (0.8 s) and the review (15 s, $0.06) passed on the merge commit |
+  | 06:56:48 | **Landed**: `main` and `origin/main` at `c864320`; `merges: 1`. 2 min from start |
+
+  Both approvals read "Approved by Hive at …: checked (2 commands, round 1); reviewed (approved,
+  round 1)." in the person's review file. The reviews cost $0.25 in all by Claude Code's count.
+  Before the trust, the first attempt showed HV4c's stop: Claude Code refused to start in an
+  untrusted folder; Hive started the writer again once and stopped it, with why, in 3 s.
+  Screenshots of the real Review tab (the failed landing and its log, then the landing) and the
+  sidenav's Done group, dark and light.

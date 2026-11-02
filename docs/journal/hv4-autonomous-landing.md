@@ -76,6 +76,30 @@ its fix the Hive, Alpha Ceph, merges and Settings specs 48 of 48, then the whole
 sidenav, a Review tab with its landings, Start, and the Hive page and its off question, dark and
 light, over this branch's view on the scratch repository.
 
-Not verified: a real writer from Start to `landed` (it waits for the person to trust the scratch
-repository in Claude Code); a real conflict and a real push to GitHub; the `auto` mode's behaviour
-in a `--bg` session (nothing in this repository's records asked in it, AR1); macOS and Windows.
+Not verified: a push to GitHub (the real runs pushed to a local bare `origin`); a real merge
+check that fails; a writer that asks in `auto` mode (none did); macOS and Windows.
+
+## HV4 — the real runs: two workspaces landed with no press (2026-11-02, branch `feature/hv4-autonomous-landing`)
+
+Once the person trusted the scratch repository (HV1's `loc` seed, a bare `origin`,
+`merge.push: false`), this branch's view drove two workspaces with Hive on, the writer on Sonnet
+at low effort in `auto` mode, the reviewer on Sonnet at medium. `feature/lua-comments` landed 63 s
+after its start: one turn, the check (1.8 s), an approving review (23 s, $0.12), Hive's approval
+and the queue's merge, check and push. `feature/readme-languages` met a conflicting `README.md`
+rewrite on `main`: the queue stopped at the conflict with no merger agent, Hive took the entry out
+and sent `hive.land`; the writer answered "My branch caused the conflict", merged `main` in and
+kept both sides' intents; the check and review passed again and it landed 2 min after its start,
+`merges: 1`. Both pushed `main` and their branch to `origin`. The plan has the timeline.
+
+**Learned**:
+- **The writer reads `hive.land` as meant**: it said whose fault the conflict was, merged, and
+  resolved in 27 s, with no rebase and no push of its own.
+- **After `hive.land` the rounds start again**: the second check and review are listed in round 1
+  on the Review tab, beside the first; the landings say which came first.
+- **A real landing here costs seconds, not minutes**: the queue's check on the merge took 1.1 s on
+  a 1 s check. In this repository the same step is about 6 minutes (AR1).
+
+**Verification**: the records and events (`symbiote/hive/feature/*.json(l)`), `main`'s graph and
+`origin`'s refs in the scratch repository, the person's review file (`via: "hive"`), the queue's
+entries (`by: "hive"`, `pushed` ok), the review copies removed (only their streams kept);
+screenshots of the real Review tab and the Done group, dark and light.

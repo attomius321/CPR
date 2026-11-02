@@ -378,3 +378,4 @@ merge commit.
 - 2026-11-01 [Fix — mark-merged and journals several branches wrote in](journal/fix-mark-merged-shared-journals.md)
 - 2026-11-01 [Living docs: area pages, replaced decisions marked, the register, branches](journal/chore-living-docs.md)
 - 2026-11-01 [Living docs' gaps: AGENTS.md, the lookup, stale pages, Prettier](journal/chore-living-docs-gaps.md)
+- 2026-11-02 [HV4 — the real runs: two workspaces landed with no press](journal/hv4-autonomous-landing.md)
