@@ -169,3 +169,21 @@ its link, its description still "Approved by Hive at" the older commit.
 **Verification**: the reviewer's test added unchanged (`hive-request-unchecked-push.test.ts`,
 GitHub and GitLab), red before, green after; with every earlier reviewer test and the runner
 suites, 94 tests.
+
+## HV8 — merged on the forge while the rounds run: landed, no second request (2026-11-02, branch `feature/hive-pull-requests`)
+
+The running reviewer at `e5a79d1`: after the person's message the rounds ran with request #12 open;
+the tick reads no request while a check or review runs, and the person merged #12 on the forge then.
+At the next landing `openRequest` read #12 as merged, a state it handled neither as open nor as
+closed: it found no open request and opened #13, overwriting #12 in the record. The workspace
+waited on #13 and `main` was never brought up to the forge's merge.
+
+**Learned**:
+- **Every read must handle every state.** The landing's read of the prior request now hands
+  "merged" to `mergedOnForge`, the gate's own action: landed by #12, the start branch fetched and
+  fast-forwarded, its read stamped. A prior request known merged (its start branch not brought up
+  yet) goes to the gate and is never replaced by a new one.
+
+**Verification**: the reviewer's test added unchanged (`hive-request-merged-mid-rounds.test.ts`,
+GitHub and GitLab), red at `e5a79d1`, green after; with every earlier reviewer test and the
+runner suites, 96 tests.

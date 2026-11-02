@@ -1295,6 +1295,8 @@ export function hiveRunner(
       void (await moveTo(where, record, { step: 'stuck', note }, 'stuck', { note }));
     if (prior?.state === 'closed')
       return stop(`its ${requestWords(prior)} was closed without a merge`);
+    // Merged on the forge already, its start branch not brought up: the gate's, not a new request.
+    if (prior?.state === 'merged') return awaiting(prior) ? watchRequest(where, record) : undefined;
     const words = FORGE_WORDS[forge.kind];
     const body = requestBody(record, {
       brief: summary.brief,
@@ -1309,6 +1311,13 @@ export function hiveRunner(
         if (read.state === 'open') request = read;
         if (read.state === 'closed') {
           return stop(`its ${requestWords(prior)} was closed without a merge`);
+        }
+        if (read.state === 'merged') {
+          // The person merged it on the forge while the rounds ran (no read while a check or
+          // review runs): landed by it, as the gate lands it; never a second request.
+          const stamped: HiveFile = { ...record, request: { ...prior, read: stamp() } };
+          await save(where, stamped);
+          return mergedOnForge(where, stamped, read.mergeCommit);
         }
       }
       request ??= await forge.findOpenRequest(branch, into);
