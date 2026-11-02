@@ -10,7 +10,9 @@
 // merge queue or merged is left to its landing (717); a message is sent once its prompt is
 // recorded (718), and a turn Hive cannot see stops it, with why (719). HV4: Hive lands what it
 // checked and reviewed itself — its approval, the merge queue, a failed landing sent back to the
-// writer — and pushes the workspace's branch after each turn (decisions 767–770).
+// writer — and pushes the workspace's branch after each turn (decisions 767–770). HV8: where the
+// repository lands by request, a pull or merge request in place of the queue, watched until the
+// person merges or closes it on the forge (decisions 788–792).
 import { randomBytes } from 'node:crypto';
 import { copyFile, mkdir, readFile, rm, rmdir, stat, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
@@ -24,12 +26,14 @@ import {
   type HiveCheck,
   type HiveCheckStep,
   type HiveLanding,
+  type HiveRequest,
   type HiveReview,
   type MergeEntry,
   type MergeState,
   type ThreadEntry,
   type WorkspaceSummary,
 } from '@symbiote/core';
+import type { ChangeRequest, Forge } from '@symbiote/forge';
 import type { Logger } from '@symbiote/log';
 import type { HiveRecord } from './hive.js';
 import {
@@ -59,6 +63,13 @@ import {
   type ReviewRun,
 } from './hive-review.js';
 import { findClaude } from './claude-code.js';
+import {
+  bringUp,
+  conflictFiles,
+  FORGE_WORDS,
+  requestBody,
+  type HiveRequests,
+} from './hive-request.js';
 import { hiveLogId, hiveLogPath, hiveLogs } from './hive-live.js';
 import { mergeQueue } from './merge-queue.js';
 import { projectCheck, type Merger } from './merges.js';
@@ -174,10 +185,21 @@ export interface HiveReviewer {
 export interface HiveLander {
   reviews: Pick<BranchReviews, 'resolve' | 'finish'>;
   merges: Pick<Merger, 'targets' | 'enqueue' | 'land' | 'remove'>;
+  /** Landing by a pull or merge request, where the repository says so (HV8, decision 788). */
+  requests?: HiveRequests;
 }
 
 /** How long an entry the person's checkout refused waits before Hive lands it again (770). */
 const LAND_RETRY_MS = 60_000;
+
+/**
+ * How often an open request is read (decision 791): one call a minute a request, 1.2 % of GitHub's
+ * 5,000 an hour with a token; GitLab.com allows 2,000 a minute.
+ */
+const REQUEST_POLL_MS = 60_000;
+
+/** Times Hive posts its graph review on a commit before it gives up on it (790). */
+const REVIEW_TRIES = 3;
 
 /** The merge queue's states while a merge runs or waits its turn. */
 const MERGING: ReadonlySet<MergeState> = new Set<MergeState>([
@@ -213,6 +235,7 @@ export function hiveRunner(
     unseenMs = UNSEEN_MS,
     lander,
     landRetryMs = LAND_RETRY_MS,
+    requestPollMs = REQUEST_POLL_MS,
     log,
   }: {
     hive: HiveRecord;
@@ -243,6 +266,8 @@ export function hiveRunner(
     lander?: HiveLander;
     /** How long an entry the person's checkout refused waits before Hive lands it again. */
     landRetryMs?: number;
+    /** How often an open pull or merge request is read (HV8). */
+    requestPollMs?: number;
     log?: Pick<Logger, 'info' | 'warn'>;
   },
 ): HiveRunner {
@@ -451,6 +476,13 @@ export function hiveRunner(
     data: Record<string, unknown> = {},
   ): Promise<void> {
     const step = landing === 'merged' ? 'landed' : 'landing';
+    if (landing === 'merged' && awaiting(record.request)) {
+      // HV8: merged on its forge or outside its request, the forge says which: at its next read.
+      const kept: HiveFile = { ...record };
+      for (const key of ['message', 'check', 'review', 'interrupted'] as const) delete kept[key];
+      if (Object.keys(kept).length !== Object.keys(record).length) await save(where, kept);
+      return void (await watchRequest(where, kept));
+    }
     await moveTo(
       where,
       record,
@@ -655,11 +687,12 @@ export function hiveRunner(
       );
       return reviewing(where, next);
     }
+    // HV8: with a request open, a push would put an unchecked commit on it; the landing pushes
+    // what the rounds passed, and the request updates then (769's rounds before the push).
+    const push = awaiting(record.request) ? Promise.resolve() : pushOut(where, record.branch, tip);
     return act(
       record.branch,
-      pushOut(where, record.branch, tip).then(() =>
-        runCheck(where, record, tip, check.commands, summary.worktree.path),
-      ),
+      push.then(() => runCheck(where, record, tip, check.commands, summary.worktree.path)),
     );
   }
 
@@ -987,7 +1020,7 @@ export function hiveRunner(
    */
   async function stoppedReview(where: ReviewPlace, branch: string, why: Stop): Promise<void> {
     const record = await readHive(where, branch);
-    if (!record) return;
+    if (!record || record.step === 'landed') return;
     if (why === 'merged' || why === 'queued') {
       return leaveTo(where, record, why, { stopped: 'review' });
     }
@@ -1027,7 +1060,7 @@ export function hiveRunner(
   /** A check stopped before its end: no result; the step kept, the person's turn, or the landing. */
   async function stoppedCheck(where: ReviewPlace, branch: string, why: Stop): Promise<void> {
     const record = await readHive(where, branch);
-    if (!record) return;
+    if (!record || record.step === 'landed') return;
     if (why === 'merged' || why === 'queued') {
       return leaveTo(where, record, why, { stopped: 'check' });
     }
@@ -1044,9 +1077,14 @@ export function hiveRunner(
 
   /**
    * The person's message reached the writer: its turn, the rounds and Hive's answers in the
-   * person's place counted again (795).
+   * person's place counted again (795). A request the person closed is left behind (HV8): the
+   * next landing opens a new one.
    */
   async function roundsAgain(where: ReviewPlace, record: HiveFile, at: string): Promise<void> {
+    if (record.request?.state === 'closed') {
+      record = { ...record };
+      delete record.request;
+    }
     await moveTo(
       where,
       record,
@@ -1142,7 +1180,12 @@ export function hiveRunner(
     const summary = await workspaces.summaryOf(record.branch);
     if (!summary) return;
     const last = record.landings?.at(-1);
+    if (last?.via === 'request' && !last.outcome)
+      return waitingForMerge(where, record, last, summary);
     if (last && !last.outcome) return follow(where, record, last, summary);
+    if (summary.merged && awaiting(record.request)) {
+      return void (await watchRequest(where, record, summary));
+    }
     if (summary.merged) return void (await moveTo(where, record, { step: 'landed' }, 'landed'));
     const queue = await merges().catch(() => null);
     if (!queue || queue.some((m) => m.branch === record.branch && QUEUED.has(m.state))) return;
@@ -1167,25 +1210,49 @@ export function hiveRunner(
     if (!tip) return;
     let record = await readHive(where, branch);
     if (!record || record.step !== 'landing' || closed) return;
+    // HV8: by a pull or merge request where the repository says so, read at each landing.
+    const requests = lander.requests?.by() === 'request' ? lander.requests : undefined;
     if (!record.pushed?.ok || record.pushed.sha !== tip) {
       await pushOut(where, branch, tip);
       record = (await readHive(where, branch)) ?? record;
+    }
+    const stop = async (note: string) =>
+      void (await moveTo(where, record, { step: 'stuck', note }, 'stuck', { note }));
+    if (requests && (!record.pushed?.ok || record.pushed.sha !== tip)) {
+      // A request needs the branch on the forge (792).
+      return stop(`the branch was not pushed to origin: ${record.pushed?.error ?? 'not pushed'}`);
     }
     const { info } = await lander.reviews.resolve(branch);
     if (info.head !== tip) return;
     const targets = await lander.merges.targets(branch);
     const into =
       summary.from && targets.branches.includes(summary.from) ? summary.from : targets.into;
-    if (!into) {
-      const note = `no branch to land ${branch} in`;
-      await moveTo(where, record, { step: 'stuck', note }, 'stuck', { note });
-      return;
+    if (!into) return stop(`no branch to land ${branch} in`);
+    let forge: Forge | undefined;
+    let seen: ChangeRequest | undefined;
+    if (requests) {
+      const found = await requests.forge();
+      if ('why' in found) return stop(`Hive lands by pull or merge request, but ${found.why}`);
+      forge = found.forge;
+      // A request on record is read through the one gate first (791): merged lands the workspace,
+      // closed stops it, open is updated below; not due or not read, the landing waits its turn.
+      const prior = record.request;
+      if (prior?.state === 'closed') {
+        return stop(`its ${requestWords(prior)} was closed without a merge`);
+      }
+      if (prior) {
+        const gate = await watchRequest(where, record, summary, { landing: true });
+        if (gate.seen !== 'open') return;
+        seen = gate.read;
+      }
     }
     await lander.reviews.finish(
       info,
       { event: 'approve', body: approvalOf(record, tip), comments: [], via: 'hive' },
       () => Promise.reject(new Error('a landing has no comment')),
     );
+    if (requests && forge)
+      return openRequest(where, branch, summary, { into, tip, forge, requests, seen });
     const at = stamp();
     let entry: MergeEntry;
     try {
@@ -1222,6 +1289,442 @@ export function hiveRunner(
     const fresh = (await readHive(where, branch)) ?? record;
     await save(where, { ...fresh, landings: [...(fresh.landings ?? []), attempt] });
     await event(where, branch, 'land-queued', { into, entry: entry.id, commit: tip });
+  }
+
+  /** "pull request #12" or "merge request !12", for the notes a person reads (HV8). */
+  const requestWords = (request: Pick<HiveRequest, 'forge' | 'number'>) => {
+    const words = FORGE_WORDS[request.forge];
+    return `${words.request} ${words.sign}${request.number}`;
+  };
+
+  /**
+   * Opens the branch's pull or merge request into `into` (HV8, decisions 788, 790), or updates the
+   * one open; ready, its description the brief and what ran; then Symbiote's graph review on it.
+   * Recorded as a landing attempt that waits for the person's merge on the forge.
+   */
+  async function openRequest(
+    where: ReviewPlace,
+    branch: string,
+    summary: WorkspaceSummary,
+    {
+      into,
+      tip,
+      forge,
+      requests,
+      seen,
+    }: {
+      into: string;
+      tip: string;
+      forge: Forge;
+      requests: HiveRequests;
+      /** The recorded request as the gate just read it, open. */
+      seen: ChangeRequest | undefined;
+    },
+  ): Promise<void> {
+    const record = await readHive(where, branch);
+    if (!record || closed) return;
+    const prior = record.request;
+    const stop = async (note: string) =>
+      void (await moveTo(where, record, { step: 'stuck', note }, 'stuck', { note }));
+    if (prior?.state === 'closed')
+      return stop(`its ${requestWords(prior)} was closed without a merge`);
+    // Never a new request while the record holds one not seen closed: only the one the gate read
+    // open is updated; a merged one is the gate's to land.
+    if (prior && (prior.state !== 'open' || seen?.number !== prior.number)) return;
+    const words = FORGE_WORDS[forge.kind];
+    const body = requestBody(record, {
+      brief: summary.brief,
+      approval: approvalOf(record, tip),
+      kind: forge.kind,
+    });
+    let request;
+    let opened = false;
+    try {
+      request = prior ? seen : await forge.findOpenRequest(branch, into);
+      if (request) {
+        await forge.updateDescription(request, body);
+      } else {
+        request = await forge.openChangeRequest({
+          head: branch,
+          base: into,
+          title: summary.title ?? branch,
+          body,
+        });
+        opened = true;
+      }
+    } catch (error) {
+      return stop(
+        `the ${words.request} could not be opened on ${words.name}: ${(error as Error).message}`,
+      );
+    }
+    const fresh = (await readHive(where, branch)) ?? record;
+    const same = prior?.number === request.number && prior.state === 'open';
+    const kept: HiveRequest = {
+      forge: forge.kind,
+      number: request.number,
+      url: request.url,
+      into,
+      at: tip,
+      opened: same ? prior.opened : stamp(),
+      state: 'open',
+      read: stamp(),
+      ...(same && prior.review ? { review: prior.review } : {}),
+    };
+    const attempt: HiveLanding = {
+      round: fresh.round,
+      at: tip,
+      into,
+      entry: `${words.sign}${request.number}`,
+      queued: stamp(),
+      via: 'request',
+    };
+    // Written meanwhile (a gate's read, a merge): a request on record not seen closed is never
+    // replaced by another; its attempt is replaced only by its own.
+    const held = fresh.request;
+    if (held && held.state !== 'closed' && held.number !== request.number) return;
+    const last = fresh.landings?.at(-1);
+    const earlier =
+      last?.via === 'request' && !last.outcome && last.entry === attempt.entry
+        ? (fresh.landings ?? []).slice(0, -1)
+        : (fresh.landings ?? []);
+    await save(where, { ...fresh, request: kept, landings: [...earlier, attempt] });
+    await event(where, branch, opened ? 'request-opened' : 'request-updated', {
+      into,
+      commit: tip,
+      number: request.number,
+      url: request.url,
+    });
+    await reviewRequest(where, branch, forge, requests, request);
+  }
+
+  /**
+   * Symbiote's graph review on the request (decision 790), once a commit: its new findings posted
+   * as a comment review; a failure recorded and tried again at the next reads, 3 times at most.
+   */
+  async function reviewRequest(
+    where: ReviewPlace,
+    branch: string,
+    forge: Forge,
+    requests: HiveRequests,
+    read: ChangeRequest,
+  ): Promise<void> {
+    const record = await readHive(where, branch);
+    const request = record?.request;
+    if (!record || !request || request.state !== 'open' || closed) return;
+    const before = request.review?.at === request.at ? request.review : undefined;
+    if (before && (!before.error || (before.tries ?? 1) >= REVIEW_TRIES)) return;
+    const tries = (before?.tries ?? 0) + 1;
+    let review: NonNullable<HiveRequest['review']>;
+    try {
+      const base = (await mergeBase(repo, request.into, request.at)) ?? request.into;
+      const posted = await requests.review(forge, read, base, request.at);
+      review = {
+        at: request.at,
+        posted: posted.posted,
+        ...(posted.url ? { url: posted.url } : {}),
+      };
+    } catch (error) {
+      review = { at: request.at, posted: 0, error: (error as Error).message, tries };
+    }
+    const fresh = (await readHive(where, branch)) ?? record;
+    if (!fresh.request || fresh.request.number !== request.number) return;
+    await save(where, { ...fresh, request: { ...fresh.request, review } });
+    await event(where, branch, review.error ? 'request-review-failed' : 'request-reviewed', {
+      posted: review.posted,
+      ...(review.error ? { error: review.error } : {}),
+    });
+  }
+
+  /**
+   * At `landing`, waiting for the person's merge on the forge (HV8): its branch in the start branch
+   * already is the gate's to tell (merged on the forge, or outside its request); else the person's
+   * message starts the rounds again (the request stays open); new commits are checked first; a
+   * commit checked since updates the request; else the gate reads it when due (791).
+   */
+  async function waitingForMerge(
+    where: ReviewPlace,
+    record: HiveFile,
+    last: HiveLanding,
+    summary: WorkspaceSummary,
+  ): Promise<void> {
+    if (summary.merged) return void (await watchRequest(where, record, summary));
+    const turn = await turnOf(where, record.branch, record.since);
+    if (turn?.prompt && turn.prompt.at > record.since && record.request?.state === 'open') {
+      return roundsAgain(where, record, turn.prompt.at);
+    }
+    const moved =
+      summary.tip !== null &&
+      record.checked !== undefined &&
+      summary.tip !== record.checked &&
+      summary.agent.state !== 'working' &&
+      (summary.worktree.changed ?? 0) === 0;
+    if (moved) {
+      const next = await moveTo(where, record, { step: 'checking' }, 'checking', { moved: true });
+      return checking(where, next, summary);
+    }
+    if (summary.tip && summary.tip === record.checked && record.checked !== last.at) {
+      return act(record.branch, land(where, record.branch, summary));
+    }
+    return void (await watchRequest(where, record, summary));
+  }
+
+  /**
+   * A branch merged into the start branch outside its open request (717: a merge of the person's
+   * is theirs): the request no longer awaited, its landing attempt ended as landed, saying so. The
+   * request itself stays open on the forge; `unread`: the forge could not say.
+   */
+  function landedOutside(record: HiveFile, unread?: string): HiveFile {
+    const request = record.request;
+    if (!request || request.state !== 'open') return record;
+    const words = FORGE_WORDS[request.forge];
+    const said = unread
+      ? `merged into ${request.into}; its ${requestWords(request)} could not be read on ${words.name}: ${unread}`
+      : `merged into ${request.into} outside its ${requestWords(request)}, which stays open on ${words.name}`;
+    const last = record.landings?.at(-1);
+    const after: HiveFile = { ...record };
+    delete after.request;
+    if (last?.via === 'request' && !last.outcome) {
+      const done: HiveLanding = { ...last, outcome: 'landed', ended: stamp(), message: said };
+      delete done.state;
+      after.landings = [...(record.landings ?? []).slice(0, -1), done];
+    }
+    return after;
+  }
+
+  /** A request Hive still waits on: open, or merged with the start branch not brought up yet. */
+  function awaiting(request: HiveRequest | undefined): request is HiveRequest {
+    return (
+      request !== undefined &&
+      (request.state === 'open' || (request.state === 'merged' && !request.pulled?.ok))
+    );
+  }
+
+  /**
+   * What the gate saw: no request it awaits; not due a read yet; a read that failed; an end it
+   * acted on (merged, closed, merged outside it, cannot merge); or the request open, as read.
+   */
+  type GateSeen =
+    { seen: 'none' | 'not-due' | 'failed' | 'ended' } | { seen: 'open'; read: ChangeRequest };
+
+  /** Whether the request is due a read (791). */
+  const dueRead = (request: HiveRequest) =>
+    !request.read || now().getTime() - Date.parse(request.read) >= requestPollMs;
+
+  /** A check or review still running ends: the branch landed (717). */
+  function stopRunning(branch: string): void {
+    const running = checks.get(branch);
+    if (running && !running.stopped) {
+      running.stopped = 'merged';
+      running.run.kill();
+    }
+    const reviewing = reviews.get(branch);
+    if (reviewing && !reviewing.stopped) {
+      reviewing.stopped = 'merged';
+      reviewing.run.stop();
+    }
+  }
+
+  /**
+   * The one gate to the forge for a request Hive waits on (HV8, decisions 789, 791): every read of
+   * it, and every fetch of the start branch after its merge, goes through here, at most once a
+   * `requestPollMs` (its `read`, stamped before anything else). Reached from the landing step, the
+   * watch in each other step, a branch merged into the start branch (`leaveTo`, `landing`), and
+   * the person's checkout in the way. What it finds:
+   * - merged before, its start branch's fast-forward refused: the fetch and fast-forward again;
+   * - merged on the forge: landed by its request, the start branch brought up;
+   * - closed: stopped at landing;
+   * - open, its branch in the start branch already: merged outside it, landed (717);
+   * - open and cannot merge, at landing: back to the writer (769);
+   * - open: its graph review posted if it is not yet.
+   * A failed read is recorded and tried again when due; with the branch merged already, it lands,
+   * saying the forge could not be read.
+   */
+  async function watchRequest(
+    where: ReviewPlace,
+    given: HiveFile,
+    known?: WorkspaceSummary,
+    { landing = false }: { landing?: boolean } = {},
+  ): Promise<GateSeen> {
+    const requests = lander?.requests;
+    if (!requests || closed || !awaiting(given.request)) return { seen: 'none' };
+    if (!dueRead(given.request)) return { seen: 'not-due' };
+    const record = (await readHive(where, given.branch)) ?? given;
+    const request = record.request;
+    if (!awaiting(request)) return { seen: 'none' };
+    if (!dueRead(request)) return { seen: 'not-due' };
+    // Its read stamped first: whatever follows, the next waits its turn.
+    const stamped: HiveFile = { ...record, request: { ...request, read: stamp() } };
+    await save(where, stamped);
+    const ended = (done: Promise<void>) => done.then((): GateSeen => ({ seen: 'ended' }));
+    if (request.state === 'merged') return ended(mergedOnForge(where, stamped, request.merge));
+    const merged = async () =>
+      (known ?? (await workspaces.summaryOf(record.branch).catch(() => null)))?.merged ?? false;
+    const outside = async (unread?: string) => {
+      stopRunning(record.branch);
+      await moveTo(
+        where,
+        landedOutside(stamped, unread),
+        {
+          step: 'landed',
+          message: undefined,
+          check: undefined,
+          review: undefined,
+          note: undefined,
+        },
+        'landed',
+        { into: request.into, outside: true },
+      );
+    };
+    const failed = async (error: string): Promise<GateSeen> => {
+      if (await merged()) return ended(outside(error));
+      const fresh = (await readHive(where, record.branch)) ?? stamped;
+      if (fresh.request) await save(where, { ...fresh, request: { ...fresh.request, error } });
+      return { seen: 'failed' };
+    };
+    const found = await requests.forge();
+    if ('why' in found) return failed(found.why);
+    let read: ChangeRequest;
+    try {
+      read = await found.forge.getChangeRequest(request.number);
+    } catch (error) {
+      return failed((error as Error).message);
+    }
+    if (read.state === 'merged') return ended(mergedOnForge(where, stamped, read.mergeCommit));
+    if (read.state === 'closed') return ended(closedOnForge(where, stamped));
+    if (await merged()) return ended(outside());
+    const last = stamped.landings?.at(-1);
+    // At a landing the request is about to be updated with a newer commit: its conflict or review
+    // is of the commit it shows now, read again once it has the new one.
+    const waiting =
+      !landing && stamped.step === 'landing' && last?.via === 'request' && !last.outcome;
+    if (waiting && read.conflict && read.head.sha === request.at && last) {
+      return ended(conflictOnForge(where, stamped, last));
+    }
+    const fresh = (await readHive(where, record.branch)) ?? stamped;
+    if (fresh.request) {
+      const now: HiveRequest = { ...fresh.request };
+      delete now.error;
+      if (read.conflict) now.conflict = true;
+      else delete now.conflict;
+      await save(where, { ...fresh, request: now });
+    }
+    if (waiting) await reviewRequest(where, record.branch, found.forge, requests, read);
+    return { seen: 'open', read };
+  }
+
+  /**
+   * Merged on the forge: the start branch fetched and fast-forwarded (770); the person's checkout
+   * in the way, tried again at the gate's next turn (`watchRequest`); else landed — diverged, too:
+   * the forge merged it. Called only by the gate.
+   */
+  async function mergedOnForge(where: ReviewPlace, record: HiveFile, merge?: string) {
+    const request = record.request;
+    if (!request) return;
+    const result = await bringUp(repo, request.into);
+    const pulled = {
+      at: stamp(),
+      ok: result.ok,
+      ...(result.ok ? {} : { error: result.error }),
+    };
+    const now: HiveRequest = {
+      ...request,
+      state: 'merged',
+      ...(merge ? { merge } : {}),
+      pulled,
+    };
+    delete now.conflict;
+    delete now.error;
+    const last = record.landings?.at(-1);
+    const open = last?.via === 'request' && !last.outcome ? last : undefined;
+    if (!result.ok && result.refused) {
+      const landings = open
+        ? [
+            ...(record.landings ?? []).slice(0, -1),
+            { ...open, state: 'ready' as const, message: result.error },
+          ]
+        : record.landings;
+      await save(where, { ...record, request: now, ...(landings ? { landings } : {}) });
+      if (request.state !== 'merged') {
+        await event(where, record.branch, 'request-merged', { pulled: false, error: result.error });
+      }
+      return;
+    }
+    const done: HiveLanding | undefined = open
+      ? { ...open, outcome: 'landed', ended: stamp(), ...(merge ? { merge } : {}) }
+      : undefined;
+    if (done) {
+      delete done.state;
+      delete done.message;
+    }
+    const landings = done ? [...(record.landings ?? []).slice(0, -1), done] : record.landings;
+    stopRunning(record.branch);
+    await moveTo(
+      where,
+      { ...record, request: now, ...(landings ? { landings } : {}) },
+      { step: 'landed', message: undefined, check: undefined, review: undefined, note: undefined },
+      'landed',
+      {
+        into: request.into,
+        request: request.number,
+        ...(merge ? { merge } : {}),
+        pulled: result.ok,
+        ...(result.ok ? {} : { error: result.error }),
+      },
+    );
+  }
+
+  /** Closed without a merge (789): stopped at landing, with why; at other steps, at the next one. */
+  async function closedOnForge(where: ReviewPlace, record: HiveFile) {
+    const request = record.request;
+    if (!request) return;
+    const now: HiveRequest = { ...request, state: 'closed' };
+    delete now.error;
+    delete now.conflict;
+    const last = record.landings?.at(-1);
+    const landings =
+      last?.via === 'request' && !last.outcome
+        ? [
+            ...(record.landings ?? []).slice(0, -1),
+            { ...last, outcome: 'closed' as const, ended: stamp() },
+          ]
+        : record.landings;
+    const after: HiveFile = { ...record, request: now, ...(landings ? { landings } : {}) };
+    await event(where, record.branch, 'request-closed', { number: request.number });
+    if (record.step !== 'landing') return save(where, after);
+    const note = `its ${requestWords(request)} was closed without a merge`;
+    await moveTo(where, after, { step: 'stuck', note }, 'stuck', { note });
+  }
+
+  /**
+   * The forge cannot merge it (789, as 769): the start branch brought up to the forge's, the files
+   * found locally, `hive.land` to the writer; the request stays open and updates on the next push.
+   */
+  async function conflictOnForge(where: ReviewPlace, record: HiveFile, last: HiveLanding) {
+    const request = record.request;
+    if (!request) return;
+    await bringUp(repo, request.into);
+    const files = await conflictFiles(repo, request.into, request.at);
+    const words = FORGE_WORDS[request.forge];
+    const n = files.length;
+    const what = n
+      ? `${files.join(', ')} conflict${n === 1 ? 's' : ''} with ${request.into}`
+      : `it conflicts with ${request.into}`;
+    const why = `its ${requestWords(request)} cannot be merged on ${words.name}: ${what}.`;
+    const done: HiveLanding = {
+      ...last,
+      outcome: 'conflict',
+      ended: stamp(),
+      ...(n ? { files } : {}),
+      message: why,
+    };
+    const now: HiveRequest = { ...request, conflict: true };
+    delete now.error;
+    const after: HiveFile = {
+      ...record,
+      request: now,
+      landings: [...(record.landings ?? []).slice(0, -1), done],
+    };
+    return landingFailed(where, after, done, { outcome: 'conflict', why });
   }
 
   /** The landing in flight: landed, still merging, refused by the person's checkout, or failed. */
@@ -1549,7 +2052,18 @@ export function hiveRunner(
     lastOn = true;
     for (const listed of records) {
       if (closed) return;
-      const record = (await readHive(where, listed.branch)) ?? listed;
+      let record = (await readHive(where, listed.branch)) ?? listed;
+      // HV8: a request Hive waits on is read whatever the step, through the one gate (when due);
+      // at landing, by the landing step.
+      if (record.request && record.step !== 'landing' && !actions.has(record.branch)) {
+        try {
+          await watchRequest(where, record);
+        } catch (error) {
+          log?.warn({ branch: record.branch, error: (error as Error).message }, 'hive step failed');
+        }
+        record = (await readHive(where, listed.branch)) ?? record;
+        if (record.step === 'landed') continue;
+      }
       if (checks.has(record.branch)) {
         await watchCheck(where, record);
         continue;

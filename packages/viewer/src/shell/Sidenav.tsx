@@ -77,6 +77,7 @@ import {
   workspaceName,
   type WorkspaceGroup,
   type WorkspaceRow,
+  mergedForCard,
 } from '../workspaces/workspaces.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 import { tip } from '../ui/tip.js';
@@ -675,7 +676,9 @@ function WorkspaceCard({
   // Being cleaned up (V57): disabled, saying so, until the list drops it.
   const cleaning = useRemoving(workspaceKey(workspace.branch));
   const cleanable = cleanableOnCard(row) && !cleaning;
-  const goes = workspace.merged ? 'its worktree and its branch' : 'its worktree; the branch stays';
+  const goes = mergedForCard(workspace)
+    ? 'its worktree and its branch'
+    : 'its worktree; the branch stays';
 
   // Picked from elsewhere (a link, a start): in view.
   useLayoutEffect(() => {

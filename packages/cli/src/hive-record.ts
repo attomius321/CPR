@@ -11,6 +11,7 @@ import type {
   HiveLanding,
   HiveLive,
   HivePush,
+  HiveRequest,
   HiveReview,
   HiveStep,
   WorkspaceHive,
@@ -111,6 +112,8 @@ export interface HiveFile {
   decided?: number;
   /** Times Hive started a failed writer again (773). */
   restarted?: number;
+  /** Its pull or merge request, when Hive lands by request (HV8). */
+  request?: HiveRequest;
 }
 
 /** Every Hive record's first key. */
@@ -262,6 +265,7 @@ const OUTCOMES: readonly NonNullable<HiveLanding['outcome']>[] = [
   'diverged',
   'failed',
   'refused',
+  'closed',
 ];
 
 /** A landing as the record keeps it (HV4); null when it is not one. */
@@ -280,6 +284,7 @@ function landingOf(value: unknown): HiveLanding | null {
     into: text(v.into),
     entry: text(v.entry),
     queued: text(v.queued),
+    ...(v.via === 'request' ? { via: 'request' as const } : {}),
     ...(optional('state') as Pick<HiveLanding, 'state'>),
     ...optional('message'),
     ...optional('tried'),
@@ -295,6 +300,52 @@ function landingOf(value: unknown): HiveLanding | null {
           pushed: pushed.ok
             ? { ok: true as const, remote: text(pushed.remote) }
             : { ok: false as const, remote: text(pushed.remote), error: text(pushed.error) },
+        }
+      : {}),
+  };
+}
+
+/** A pull or merge request as the record keeps it (HV8); null when it is not one. */
+function requestOf(value: unknown): HiveRequest | null {
+  if (!value || typeof value !== 'object') return null;
+  const v = value as Record<string, unknown>;
+  const forge = v.forge === 'github' || v.forge === 'gitlab' ? v.forge : null;
+  const state = v.state === 'open' || v.state === 'merged' || v.state === 'closed' ? v.state : null;
+  if (!forge || !state || !count(v.number) || !text(v.url) || !text(v.into)) return null;
+  const review = v.review as Record<string, unknown> | undefined;
+  const pulled = v.pulled as Record<string, unknown> | undefined;
+  const optional = (key: 'read' | 'error' | 'merge') =>
+    text(v[key]) ? { [key]: text(v[key]) } : {};
+  return {
+    forge,
+    number: count(v.number),
+    url: text(v.url),
+    into: text(v.into),
+    at: text(v.at),
+    opened: text(v.opened),
+    state,
+    ...(v.conflict === true ? { conflict: true as const } : {}),
+    ...optional('read'),
+    ...optional('error'),
+    ...optional('merge'),
+    ...(review && text(review.at)
+      ? {
+          review: {
+            at: text(review.at),
+            posted: count(review.posted),
+            ...(text(review.url) ? { url: text(review.url) } : {}),
+            ...(text(review.error) ? { error: text(review.error) } : {}),
+            ...(count(review.tries) ? { tries: count(review.tries) } : {}),
+          },
+        }
+      : {}),
+    ...(pulled && typeof pulled.ok === 'boolean'
+      ? {
+          pulled: {
+            at: text(pulled.at),
+            ok: pulled.ok,
+            ...(text(pulled.error) ? { error: text(pulled.error) } : {}),
+          },
         }
       : {}),
   };
@@ -378,6 +429,7 @@ export function parseHive(value: unknown): HiveFile | null {
     ...(count(v.decided) ? { decided: count(v.decided) } : {}),
     ...(count(v.restarted) ? { restarted: count(v.restarted) } : {}),
     ...(pushOf(v.pushed) ? { pushed: pushOf(v.pushed) as HivePush } : {}),
+    ...(requestOf(v.request) ? { request: requestOf(v.request) as HiveRequest } : {}),
   };
 }
 
@@ -456,6 +508,7 @@ export function hiveSummary(record: HiveFile, on: boolean, live?: HiveLive): Wor
     ...(!on ? { off: true as const } : {}),
     ...(record.landings?.length ? { landing: record.landings.at(-1) } : {}),
     ...(record.pushed ? { pushed: record.pushed } : {}),
+    ...(record.request ? { request: record.request } : {}),
   };
 }
 

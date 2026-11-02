@@ -1,7 +1,7 @@
 import { SymbioteError } from '@symbiote/core';
 
 export interface ApiOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   headers: Record<string, string>;
   /** Names the token variables, for the authentication error message. */

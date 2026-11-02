@@ -1299,6 +1299,7 @@ export async function serveWorkspaces({
   plan = 'claude_pro',
   usage,
   shell = '/bin/sh',
+  env: more = {},
 }: {
   agent?: boolean;
   terminal?: boolean;
@@ -1319,6 +1320,8 @@ export async function serveWorkspaces({
   usage?: { claude: unknown; status?: number; last?: unknown };
   /** The shell workspaces' shells run (V45): /bin/sh with a plain prompt unless another is given. */
   shell?: string;
+  /** More of `symbiote view`'s environment (HV8: a fake forge's address and token). */
+  env?: Record<string, string>;
 } = {}): Promise<RunningWorkspaces> {
   const { repo } = fixtureRepo('callers');
   git(repo, 'checkout', '-q', '-B', 'main');
@@ -1365,6 +1368,7 @@ export async function serveWorkspaces({
     // V21: terminals turned off, as where node-pty cannot run.
     ...(terminal ? {} : { SYMBIOTE_TERMINAL: 'off' }),
     ...(usageEndpoint?.env ?? {}),
+    ...more,
   };
   let running = await startSymbiote(['view'], repo, env);
   const lines = (file: string) =>

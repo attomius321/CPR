@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import type { HiveState } from '@symbiote/core';
+import { useEffect, useState } from 'react';
+import type { HiveLandingSetting, HiveLandsBy, HiveState } from '@symbiote/core';
 import { setHive, useHive } from '../shell/hive.js';
-import { getJson } from '../ui/http.js';
+import { getJson, postJson } from '../ui/http.js';
 import { HiveJoining } from '../ui/HiveArt.js';
 import { DangerIcon } from '../ui/icons.js';
 import { SettingsCard } from './SettingsCard.js';
-import { nameOf, offWords, onRefusal } from './hive-switch.js';
+import { forgeWords, LANDS_BY, landsByWords, nameOf, offWords, onRefusal } from './hive-switch.js';
 
 /**
  * Hive mode (V82, decision 613): Hive's switch, a danger to press. What Hive does (HV2–HV4), in the
@@ -19,6 +19,8 @@ export function HivePage({ onBack }: { onBack: () => void }) {
   const [state, setState] = useState<HiveState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // How Hive lands (HV8): the warning says it.
+  const [landsBy, setLandsBy] = useState<HiveLandsBy>('queue');
 
   /**
    * Asks first (HV4): on, always, saying which workspaces in normal mode keep it off; off, only
@@ -91,9 +93,10 @@ export function HivePage({ onBack }: { onBack: () => void }) {
           Claude Code agent works the brief; after each turn Symbiote runs the check in its
           worktree, and once it passes a reviewer with a clean context runs the change in a
           throwaway copy and proves defects with failing tests. Symbiote sends the agent what fails,
-          for up to 3 rounds, and answers its plans and questions in your place. Then Hive approves
-          the commit, merges it into the branch the workspace started from through the merge queue,
-          which checks the merge again, and pushes both branches. A conflict goes back to the agent.
+          for up to 3 rounds, and answers its plans and questions in your place.{' '}
+          {landsBy === 'request'
+            ? 'Then Hive approves the commit, pushes the branch and opens a pull or merge request into the branch the workspace started from, which you merge on GitHub or GitLab. A conflict goes back to the agent.'
+            : 'Then Hive approves the commit, merges it into the branch the workspace started from through the merge queue, which checks the merge again, and pushes both branches. A conflict goes back to the agent.'}{' '}
           Turning Hive off stops Hive&apos;s agents, checks and reviews; turning it on again
           continues where they stopped. Hive never force-pushes or deletes work.
         </p>
@@ -132,6 +135,7 @@ export function HivePage({ onBack }: { onBack: () => void }) {
           {error}
         </p>
       )}
+      <HiveLandsBy onRead={setLandsBy} />
       {asking === 'on' && (
         <HiveQuestion
           busy={busy}
@@ -149,6 +153,80 @@ export function HivePage({ onBack }: { onBack: () => void }) {
         />
       )}
     </SettingsCard>
+  );
+}
+
+/**
+ * How Hive lands (HV8, decision 788): the merge queue, or a pull or merge request the person merges
+ * on the forge; the forge `origin` names and whether a token is found (793). `hive.lands` in the
+ * project's config.
+ */
+function HiveLandsBy({ onRead }: { onRead: (by: HiveLandsBy) => void }) {
+  const [setting, setSetting] = useState<HiveLandingSetting | null>(null);
+  useEffect(() => {
+    if (setting) onRead(setting.by);
+  }, [setting, onRead]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    getJson<HiveLandingSetting>('/api/hive/landing')
+      .then((read) => live && setSetting(read))
+      .catch((failed: unknown) => live && setError((failed as Error).message));
+    return () => {
+      live = false;
+    };
+  }, []);
+  const pick = async (by: HiveLandsBy) => {
+    setBusy(true);
+    setError(null);
+    try {
+      setSetting(await postJson<HiveLandingSetting>('/api/hive/landing', { by }));
+    } catch (failed) {
+      setError(`Hive lands by could not be set: ${(failed as Error).message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const forge = setting ? forgeWords(setting) : null;
+  return (
+    <section className="hive-lands" aria-label="Hive lands by">
+      <h3 id="hive-lands-by">Hive lands by</h3>
+      <span className="scopes" role="group" aria-labelledby="hive-lands-by">
+        {LANDS_BY.map((choice) => (
+          <button
+            key={choice.by}
+            type="button"
+            className={setting?.by === choice.by ? 'scope active' : 'scope'}
+            aria-pressed={setting?.by === choice.by}
+            disabled={busy || !setting}
+            onClick={() => void pick(choice.by)}
+          >
+            {choice.label}
+          </button>
+        ))}
+      </span>
+      {setting && <p className="settings-row-note">{landsByWords(setting.by)}</p>}
+      {forge && (
+        <p
+          className={
+            forge.ok || setting?.by !== 'request'
+              ? 'settings-row-note hive-lands-forge'
+              : 'settings-row-note hive-lands-forge cannot'
+          }
+        >
+          {forge.text}
+        </p>
+      )}
+      <p className="settings-row-note">
+        For this repository: <code>hive.lands</code> in <code>symbiote/config.json</code>.
+      </p>
+      {error && (
+        <p className="settings-notice error" role="alert">
+          {error}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -278,7 +356,7 @@ function HiveOffQuestion({
         <ul className="hive-off-list">
           {flight.map((w) => (
             <li key={w.branch}>
-              <strong>{nameOf(w)}</strong>: {offWords(w.step)}.
+              <strong>{nameOf(w)}</strong>: {offWords(w.step, w.request)}.
             </li>
           ))}
         </ul>

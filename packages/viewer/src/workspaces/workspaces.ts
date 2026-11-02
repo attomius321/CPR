@@ -1,6 +1,12 @@
 // Workspaces started from the commits page (V18): pure helpers for the start page and the
 // line the page shows after Start.
-import { landedLine, landingLine } from './hive-rounds.js';
+import {
+  checkoutLine,
+  landedLine,
+  landingLine,
+  requestName,
+  waitsForCheckout,
+} from './hive-rounds.js';
 import { COMMAND_TOOLS, shownCommand } from './activity/classify.js';
 import type {
   AgentEfforts,
@@ -414,6 +420,8 @@ export interface WorkspaceNext {
   doing?: string;
   /** Hive's words (HV2): Symbiote's, so no agent's mark before them. */
   hive?: true;
+  /** A link at the end of `text` (HV8): the request Hive waits on, or landed through. */
+  link?: { href: string; text: string };
 }
 
 const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip => ({
@@ -423,6 +431,15 @@ const chip = (mark: string, tone: AgentChip['tone'], title: string): AgentChip =
 });
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/**
+ * Merged, as the pages count it: not while Hive's request, merged on its forge, waits for the
+ * person's checkout (HV8). `merged` counts `origin`'s branch, which Hive's own fetch moved, while
+ * the person's own branch has not moved and Hive has not landed it.
+ */
+export const mergedForCard = (workspace: Pick<WorkspaceSummary, 'merged' | 'hive'>): boolean =>
+  workspace.merged &&
+  !(workspace.hive && workspace.hive.step !== 'landed' && waitsForCheckout(workspace.hive.request));
 
 /**
  * What a workspace needs next: merged, it is done; while its agent works, nothing; while it waits,
@@ -460,13 +477,34 @@ export function workspaceNext(
       ...next('hive', text, mark, tone),
       hive: true,
     });
-    if (workspace.merged || hive.step === 'landed') {
-      return next('done', landedLine(hive.landing), '✓', 'done');
+    // HV8: by a pull or merge request, its link at the end of the card's line.
+    const request = hive.landing?.via === 'request' ? hive.request : undefined;
+    // Merged on the forge and the person's checkout refusing the fast-forward: Hive still waits,
+    // in its group, whatever the step (770, 789); `merged` is its own fetch of origin's branch.
+    if (hive.step !== 'landed' && waitsForCheckout(hive.request)) {
+      const waiting = hive.request;
+      return {
+        ...said(checkoutLine(waiting), '⚙', 'hive'),
+        link: { href: waiting.url, text: requestName(waiting) },
+      };
+    }
+    if (mergedForCard(workspace) || hive.step === 'landed') {
+      const done = next('done', landedLine(hive.landing, request), '✓', 'done');
+      if (!request || hive.landing?.outcome !== 'landed') return done;
+      return {
+        ...done,
+        link: { href: request.url, text: `${requestName(request).split(' ')[0]}` },
+      };
     }
     if (hive.step === 'answered') return next('done', 'Answered: read its report', '✓', 'done');
     if (hive.step === 'stuck')
       return said(`Stopped: ${hive.note ?? 'Hive cannot go on'}`, '!', 'failed');
-    if (hive.step === 'landing') return said(landingLine(hive.landing), '⚙', 'hive');
+    if (hive.step === 'landing') {
+      const text = landingLine(hive.landing, request);
+      const asked = said(text, '⚙', 'hive');
+      if (!request || !text.endsWith(requestName(request))) return asked;
+      return { ...asked, link: { href: request.url, text: requestName(request) } };
+    }
     if (hive.step === 'checking') return said('Hive: running the check', '⚙', 'hive');
     if (hive.step === 'reviewing') return said('Hive: reviewing', '⚙', 'hive');
     switch (agent.state) {
@@ -488,6 +526,10 @@ export function workspaceNext(
       default:
         return next('hive', 'Its agent is not running', '·', 'idle');
     }
+  }
+  // Hive off while its merged request waits for the person's checkout (HV8): not done yet.
+  if (hive && waitsForCheckout(hive.request) && hive.step !== 'landed') {
+    return stopped(`Hive off: ${checkoutLine(hive.request)}`, '·', 'idle');
   }
   if (workspace.merged) return next('done', 'Merged', '✓', 'done');
   const waits = (text: string): WorkspaceNext => {

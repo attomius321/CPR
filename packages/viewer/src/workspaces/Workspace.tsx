@@ -56,6 +56,7 @@ import {
   talkCommand,
   verdictToSend,
   type WorkspaceRow,
+  mergedForCard,
 } from './workspaces.js';
 import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
@@ -486,7 +487,7 @@ function WorkspacePanel({
         }),
     },
     // Merged, Clean up is the head's primary button (V55).
-    ...(!workspace.merged && !live
+    ...(!mergedForCard(workspace) && !live
       ? [
           {
             label: 'Clean up…',
@@ -589,7 +590,7 @@ function WorkspacePanel({
               </button>
             )}
             {/* Hive lands its own (HV4, decision 774): no Merge into while Hive drives it. */}
-            {workspace.ahead > 0 && !workspace.merged && !hiveLands && (
+            {workspace.ahead > 0 && !mergedForCard(workspace) && !hiveLands && (
               <MergeControl branch={branch} />
             )}
             <button
@@ -606,7 +607,7 @@ function WorkspacePanel({
             {!hiveLands && workspace.ahead > 0 && workspace.tip !== null && (
               <button
                 type="button"
-                className={workspace.merged ? 'button' : 'button primary'}
+                className={mergedForCard(workspace) ? 'button' : 'button primary'}
                 disabled={busy}
                 onClick={() =>
                   act(async () => {
@@ -621,7 +622,7 @@ function WorkspacePanel({
                 Review
               </button>
             )}
-            {workspace.merged && (
+            {mergedForCard(workspace) && (
               <button
                 type="button"
                 className="button primary"

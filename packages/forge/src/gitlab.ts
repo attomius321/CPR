@@ -1,7 +1,7 @@
 import { SymbioteError } from '@symbiote/core';
 import { hostOf } from './github.js';
 import { api, paged } from './http.js';
-import type { ChangeRequest, Env, Forge, Review } from './types.js';
+import type { ChangeRequest, Env, Forge, NewChangeRequest, Review } from './types.js';
 
 const TOKEN_HINT = 'GITLAB_TOKEN (a personal or project access token with api scope)';
 
@@ -17,6 +17,10 @@ interface MergeRequestResponse {
   target_branch: string;
   sha: string;
   diff_refs: { base_sha: string; head_sha: string; start_sha: string } | null;
+  has_conflicts?: boolean;
+  detailed_merge_status?: string;
+  merge_commit_sha?: string | null;
+  squash_commit_sha?: string | null;
 }
 
 /**
@@ -56,21 +60,37 @@ export class GitLabForge implements Forge {
     // requests, but the pipeline's variables say all that is needed.
     const pipeline = this.env.GITLAB_TOKEN ? undefined : fromPipeline(this.env, number);
     if (pipeline) return pipeline;
-    const mr = await this.request<MergeRequestResponse>(`/merge_requests/${number}`);
-    const refs = mr.diff_refs;
-    return {
-      forge: 'gitlab',
-      number: mr.iid,
-      title: mr.title,
-      url: mr.web_url,
-      author: mr.author?.username ?? 'unknown',
-      state: mr.state === 'opened' || mr.state === 'locked' ? 'open' : mr.state,
-      draft: mr.draft ?? mr.work_in_progress ?? false,
-      base: { ref: mr.target_branch, sha: refs?.start_sha ?? '' },
-      head: { ref: mr.source_branch, sha: refs?.head_sha ?? mr.sha },
-      mergeBase: refs?.base_sha ?? null,
-      refs: { base: `refs/heads/${mr.target_branch}`, head: `refs/merge-requests/${mr.iid}/head` },
-    };
+    return fromMergeRequest(await this.request<MergeRequestResponse>(`/merge_requests/${number}`));
+  }
+
+  get token(): boolean {
+    return !!this.env.GITLAB_TOKEN && 'private-token' in this.headers;
+  }
+
+  async openChangeRequest({ head, base, title, body }: NewChangeRequest): Promise<ChangeRequest> {
+    this.requireToken('Opening a merge request');
+    const mr = await this.request<MergeRequestResponse>('/merge_requests', 'POST', {
+      source_branch: head,
+      target_branch: base,
+      title,
+      description: body,
+    });
+    return fromMergeRequest(mr);
+  }
+
+  /** The list's items lack the diff refs: the one found is read whole. */
+  async findOpenRequest(head: string, base: string): Promise<ChangeRequest | null> {
+    const filter = `state=opened&source_branch=${encodeURIComponent(head)}&target_branch=${encodeURIComponent(base)}`;
+    const list = await paged((query) =>
+      this.request<{ iid: number }[]>(`/merge_requests?${filter}&${query}`),
+    );
+    const found = list[0];
+    return found ? this.getChangeRequest(found.iid) : null;
+  }
+
+  async updateDescription(request: ChangeRequest, body: string): Promise<void> {
+    this.requireToken('Editing a merge request');
+    await this.request(`/merge_requests/${request.number}`, 'PUT', { description: body });
   }
 
   /**
@@ -157,7 +177,7 @@ export class GitLabForge implements Forge {
   /** Project-scoped API path; the project is addressed by its URL-encoded full path. */
   private request<T>(
     path: string,
-    method: 'GET' | 'POST' | 'DELETE' = 'GET',
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
     body?: unknown,
   ): Promise<T> {
     const project = encodeURIComponent(this.project);
@@ -198,5 +218,29 @@ function fromPipeline(env: Env, number: number): ChangeRequest | undefined {
     },
     mergeBase,
     refs: { base: `refs/heads/${target}`, head: `refs/merge-requests/${number}/head` },
+  };
+}
+
+/** A merge request as the API returns it, as Symbiote reads it. */
+function fromMergeRequest(mr: MergeRequestResponse): ChangeRequest {
+  const refs = mr.diff_refs;
+  const merged = mr.state === 'merged';
+  const conflict =
+    !merged && (mr.has_conflicts === true || mr.detailed_merge_status === 'conflict');
+  const mergeCommit = mr.merge_commit_sha || mr.squash_commit_sha;
+  return {
+    forge: 'gitlab',
+    number: mr.iid,
+    title: mr.title,
+    url: mr.web_url,
+    author: mr.author?.username ?? 'unknown',
+    state: mr.state === 'opened' || mr.state === 'locked' ? 'open' : mr.state,
+    draft: mr.draft ?? mr.work_in_progress ?? false,
+    base: { ref: mr.target_branch, sha: refs?.start_sha ?? '' },
+    head: { ref: mr.source_branch, sha: refs?.head_sha ?? mr.sha },
+    mergeBase: refs?.base_sha ?? null,
+    refs: { base: `refs/heads/${mr.target_branch}`, head: `refs/merge-requests/${mr.iid}/head` },
+    ...(conflict ? { conflict: true as const } : {}),
+    ...(merged && mergeCommit ? { mergeCommit } : {}),
   };
 }

@@ -72,6 +72,7 @@ export function hiveWorkspace(
         tests: join(hiveTestsDir(where, branch, 1), '..'),
         ...(record.landings?.length ? { landings: record.landings } : {}),
         ...(record.pushed ? { pushed: record.pushed } : {}),
+        ...(record.request ? { request: record.request } : {}),
       };
     },
 

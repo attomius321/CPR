@@ -19,6 +19,18 @@ export interface ChangeRequest {
   mergeBase: string | null;
   /** Remote refs to fetch so both commits exist locally. */
   refs: { base: string; head: string };
+  /** The forge says it cannot be merged: it conflicts with its base (HV8); absent when not known. */
+  conflict?: true;
+  /** The commit its merge made, once merged (HV8). */
+  mergeCommit?: string;
+}
+
+/** A pull or merge request to open (HV8): from `head` into `base`, ready, not a draft. */
+export interface NewChangeRequest {
+  head: string;
+  base: string;
+  title: string;
+  body: string;
 }
 
 export type ReviewEvent = 'comment' | 'approve' | 'request-changes';
@@ -52,6 +64,14 @@ export interface Forge {
   submitReview(request: ChangeRequest, review: Review): Promise<{ url: string }>;
   /** The text of every comment, review and note on the change request so far. */
   commentBodies(request: ChangeRequest): Promise<string[]>;
+  /** Whether a token for this host's API is found (HV8): without one, nothing is opened. */
+  readonly token: boolean;
+  /** Opens a request from `head` into `base`, ready for review (HV8). */
+  openChangeRequest(request: NewChangeRequest): Promise<ChangeRequest>;
+  /** The open request from `head` into `base`, read whole, or null (HV8). */
+  findOpenRequest(head: string, base: string): Promise<ChangeRequest | null>;
+  /** Replaces the request's description (HV8). */
+  updateDescription(request: ChangeRequest, body: string): Promise<void>;
 }
 
 /** What a forge adapter reads from the environment: tokens and API URL overrides. */

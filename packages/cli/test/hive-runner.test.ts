@@ -13,7 +13,13 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
-import { openRepo, type GitRepo, type HiveLogLine, type MergeEntry } from '@symbiote/core';
+import {
+  openRepo,
+  type GitRepo,
+  type Graph,
+  type HiveLogLine,
+  type MergeEntry,
+} from '@symbiote/core';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { repositoryHive, type HiveRecord } from '../src/hive.js';
@@ -29,6 +35,9 @@ import {
 } from '../src/hive-record.js';
 import type { Confine } from '../src/hive-review.js';
 import { hiveWorkspace } from '../src/hive-workspace.js';
+import { hiveRequests, type HiveRequests } from '../src/hive-request.js';
+import { GitHubForge, GitLabForge, type Forge } from '@symbiote/forge';
+import { fakeForge, type FakeForge } from '../../forge/test/fake-forge.js';
 import { merger, type Merger } from '../src/merges.js';
 import {
   branchReviews,
@@ -381,7 +390,14 @@ async function setup(
     confine = unconfined,
     stopWaitMs,
     land = false,
-  }: { confine?: Confine | null; stopWaitMs?: number; land?: boolean } = {},
+    requests,
+  }: {
+    confine?: Confine | null;
+    stopWaitMs?: number;
+    land?: boolean;
+    /** HV8: how Hive lands by request, with the fake forge. */
+    requests?: HiveRequests;
+  } = {},
 ): Promise<Setup> {
   const git = await openRepo(repo.root);
   const now = clock();
@@ -409,7 +425,13 @@ async function setup(
       now,
       interval: 0,
       merges: merges ? () => merges.list().then((l) => l.merges) : () => Promise.resolve(queue),
-      ...(merges && reviews ? { lander: { merges, reviews }, landRetryMs: 0 } : {}),
+      ...(merges && reviews
+        ? {
+            lander: { merges, reviews, ...(requests ? { requests } : {}) },
+            landRetryMs: 0,
+            requestPollMs: 0,
+          }
+        : {}),
       ...(pid ? { pid } : {}),
       ...(unseenMs === undefined ? {} : { unseenMs }),
       reviewer: {
@@ -2585,3 +2607,349 @@ function readRecordSync(where: ReviewPlace, branch: string): WorkspaceFile {
   const file = join(symbioteFolder(where), 'workspaces', ...`${branch}.json`.split('/'));
   return JSON.parse(readFileSync(file, 'utf8')) as WorkspaceFile;
 }
+
+/** A forge client on the fake forge, with a token or without; gh's token never read. */
+function clientOf(fake: FakeForge, token: boolean): Forge {
+  return fake.kind === 'github'
+    ? new GitHubForge(
+        'github.com',
+        'acme/app',
+        { GITHUB_API_URL: fake.url, ...(token ? { GITHUB_TOKEN: 'ghp_fake' } : {}) },
+        () => undefined,
+      )
+    : new GitLabForge('gitlab.com', 'acme/app', {
+        GITLAB_API_URL: fake.url,
+        ...(token ? { GITLAB_TOKEN: 'glpat-fake' } : {}),
+      });
+}
+
+/** A graph with one warning, as the view server's analysis would give it (HV8's review). */
+const flagged = (head: string) =>
+  ({
+    findings: [
+      {
+        rule: 'breaking-change',
+        symbol: 'src/a.ts#a',
+        severity: 'warning',
+        message: `a changed at ${head.slice(0, 7)}`,
+      },
+    ],
+    nodes: [],
+    files: [],
+  }) as unknown as Graph;
+
+describe.each(['github', 'gitlab'] as const)(
+  'Hive lands through a %s request (HV8, decisions 788–792)',
+  (kind) => {
+    const forges: FakeForge[] = [];
+    afterEach(async () => {
+      for (const forge of forges.splice(0)) await forge.close_();
+    });
+
+    /** A repository whose Hive lands by request on a fake forge over a bare `origin`. */
+    async function requesting(
+      checks: string[] = ['true'],
+      {
+        token = true,
+        by = 'request',
+        noForge = false,
+      }: { token?: boolean; by?: 'queue' | 'request'; noForge?: boolean } = {},
+    ) {
+      const repo = repository(checks);
+      const remote = origin(repo);
+      const forge = await fakeForge(kind, remote);
+      forges.push(forge);
+      const git = await openRepo(repo.root);
+      const requests = hiveRequests(git, {
+        env: {},
+        graphOf: ({ head }) => Promise.resolve(flagged(head)),
+        ...(noForge ? {} : { make: () => clientOf(forge, token) }),
+      });
+      const s = await setup(repo, {
+        land: true,
+        requests: { ...requests, by: () => by },
+      });
+      await s.turn(true);
+      return { repo, remote, forge, s };
+    }
+
+    const sign = kind === 'github' ? '#' : '!';
+
+    it('opens a ready request into the start branch, posts the graph review; merged on the forge, landed and main fast-forwarded', async () => {
+      const { repo, remote, forge, s } = await requesting(['test -f one.txt']);
+      const worktree = await s.start('feature/one');
+      const runner = s.runner();
+      const before = repo.git('rev-parse', 'main');
+      await s.fake.endTurn(worktree, { files: { 'one.txt': 'one\n' } });
+      await settle(
+        runner,
+        s,
+        async () => (await readHive(s.where, 'feature/one'))?.request?.review !== undefined,
+        'the request opened and reviewed',
+      );
+      const tip = gitIn(worktree, 'rev-parse', 'HEAD');
+      expect(forge.requests).toMatchObject([
+        { head: 'feature/one', base: 'main', title: 'feature/one', draft: false, state: 'open' },
+      ]);
+      const body = forge.requests[0]?.body ?? '';
+      expect(body).toContain('Write feature/one.');
+      expect(body).toContain('the check passed (1 command: `test -f one.txt`)');
+      expect(body).toContain('the running review approved');
+      expect(body).toMatch(/Approved by Hive at [0-9a-f]{7}: checked/);
+      // The graph review: a comment, never an approval (the token's user is the author).
+      expect(forge.reviews).toMatchObject([{ number: 12 }]);
+      expect(forge.reviews[0]?.body).toContain('breaking-change');
+      if (kind === 'github') expect(forge.reviews[0]?.event).toBe('COMMENT');
+      const record = await readHive(s.where, 'feature/one');
+      expect(record).toMatchObject({
+        step: 'landing',
+        pushed: { sha: tip, ok: true },
+        request: { forge: kind, number: 12, into: 'main', at: tip, state: 'open' },
+      });
+      expect(record?.request?.review).toMatchObject({ at: tip, posted: 1 });
+      expect(record?.landings).toMatchObject([
+        { via: 'request', entry: `${sign}12`, at: tip, into: 'main' },
+      ]);
+      // No merge-queue entry, main neither moved nor pushed; the branch on origin.
+      expect((await s.merges?.list())?.merges).toEqual([]);
+      expect(repo.git('rev-parse', 'main')).toBe(before);
+      expect(repo.git('--git-dir', remote, 'rev-parse', 'main')).toBe(before);
+      expect(repo.git('--git-dir', remote, 'rev-parse', 'feature/one')).toBe(tip);
+      expect((await lastVerdict(s, 'feature/one'))?.via).toBe('hive');
+      // An approval on the forge would change nothing: only the merge lands it.
+      await runner.tick();
+      await runner.idle();
+      expect(await stepOf(s, 'feature/one')).toBe('landing');
+
+      const merge = forge.merge(12);
+      await settle(runner, s, async () => (await stepOf(s, 'feature/one')) === 'landed', 'landed');
+      expect(repo.git('rev-parse', 'main')).toBe(merge);
+      expect(readFileSync(join(repo.root, 'one.txt'), 'utf8')).toBe('one\n');
+      const landed = await readHive(s.where, 'feature/one');
+      expect(landed?.request).toMatchObject({ state: 'merged', merge, pulled: { ok: true } });
+      expect(landed?.landings).toMatchObject([{ outcome: 'landed', merge }]);
+      expect(forge.requests).toHaveLength(1);
+      expect(s.fake.resume).not.toHaveBeenCalled();
+      expect(events(s.where, 'feature/one')).toEqual(
+        expect.arrayContaining(['request-opened', 'request-reviewed', 'landed']),
+      );
+    });
+
+    it("closed without a merge: stopped, with why; the person's message, a new request", async () => {
+      const { forge, s } = await requesting();
+      const worktree = await s.start('feature/two');
+      const runner = s.runner();
+      await s.fake.endTurn(worktree, { files: { 'two.txt': '2\n' } });
+      await settle(runner, s, () => Promise.resolve(forge.requests.length === 1), 'opened');
+      forge.close(12);
+      await settle(runner, s, async () => (await stepOf(s, 'feature/two')) === 'stuck', 'stuck');
+      const record = await readHive(s.where, 'feature/two');
+      expect(record?.note).toBe(
+        `its ${kind === 'github' ? 'pull' : 'merge'} request ${sign}12 was closed without a merge`,
+      );
+      expect(record?.request?.state).toBe('closed');
+      expect(record?.landings?.at(-1)?.outcome).toBe('closed');
+      expect(s.fake.resume).not.toHaveBeenCalled();
+
+      // The person's message starts the rounds again; the next landing opens a new request.
+      await s.service.reply({ branch: 'feature/two', text: 'Add a line, then land it again.' });
+      await runner.tick();
+      expect(await stepOf(s, 'feature/two')).toBe('writing');
+      await s.fake.endTurn(worktree, { files: { 'two.txt': '2\n22\n' } });
+      await settle(runner, s, () => Promise.resolve(forge.requests.length === 2), 'a new one');
+      const again = await readHive(s.where, 'feature/two');
+      expect(again).toMatchObject({ step: 'landing', request: { number: 13, state: 'open' } });
+      expect(again?.landings?.map((l) => [l.entry, l.outcome])).toEqual([
+        [`${sign}12`, 'closed'],
+        [`${sign}13`, undefined],
+      ]);
+    });
+
+    it('cannot merge: the writer merges main in, the same request updated; it lands once merged', async () => {
+      const { repo, remote, forge, s } = await requesting();
+      const worktree = await s.start('feature/three');
+      const runner = s.runner();
+      await s.fake.endTurn(worktree, { files: { 'src/a.ts': 'export const a = "three";\n' } });
+      await settle(runner, s, () => Promise.resolve(forge.requests.length === 1), 'opened');
+      // main moves on the forge, on the same line: the request conflicts.
+      repo.write({ 'src/a.ts': 'export const a = "main";\n' });
+      repo.commit('M: a is main');
+      repo.git('push', '--quiet', 'origin', 'main');
+      repo.git('reset', '--quiet', '--hard', 'HEAD~1');
+      forge.conflict(12);
+      await settle(
+        runner,
+        s,
+        async () => (await readHive(s.where, 'feature/three'))?.merges === 1,
+        'the conflict sent',
+      );
+      const asked = await readHive(s.where, 'feature/three');
+      expect(asked).toMatchObject({ step: 'writing', merges: 1 });
+      expect(asked?.landings).toMatchObject([{ outcome: 'conflict', files: ['src/a.ts'] }]);
+      // main brought up to the forge's, so the writer merges what the request is against.
+      expect(repo.git('rev-parse', 'main')).toBe(
+        repo.git('--git-dir', remote, 'rev-parse', 'main'),
+      );
+      const text = s.fake.resume.mock.calls.at(-1)?.[0].text ?? '';
+      expect(text).toContain(`${sign}12 cannot be merged`);
+      expect(text).toContain('src/a.ts');
+      expect(text).toContain('git merge main');
+
+      try {
+        gitIn(worktree, 'merge', 'main');
+      } catch {
+        // the conflict
+      }
+      writeFileSync(join(worktree, 'src', 'a.ts'), 'export const a = "main" + "three";\n');
+      gitIn(worktree, 'add', '-A');
+      gitIn(worktree, 'commit', '-qm', 'Merge main into feature/three');
+      forge.conflict(12, false);
+      await s.fake.endTurn(worktree);
+      const tip = gitIn(worktree, 'rev-parse', 'HEAD');
+      await settle(
+        runner,
+        s,
+        async () => (await readHive(s.where, 'feature/three'))?.request?.review?.at === tip,
+        'the request updated',
+      );
+      // The same request: pushed, its description updated, no second one.
+      expect(forge.requests).toHaveLength(1);
+      expect(repo.git('--git-dir', remote, 'rev-parse', 'feature/three')).toBe(tip);
+      expect(forge.requests[0]?.body).toContain(`Approved by Hive at ${tip.slice(0, 7)}`);
+      const merge = forge.merge(12);
+      await settle(
+        runner,
+        s,
+        async () => (await stepOf(s, 'feature/three')) === 'landed',
+        'landed',
+      );
+      expect(repo.git('rev-parse', 'main')).toBe(merge);
+      expect((await readHive(s.where, 'feature/three'))?.landings).toMatchObject([
+        { outcome: 'conflict' },
+        { outcome: 'landed' },
+      ]);
+    });
+
+    it('cannot merge after two merges of main: stopped, with why, nothing sent', async () => {
+      const { forge, s } = await requesting();
+      const worktree = await s.start('feature/four');
+      const record = await readHive(s.where, 'feature/four');
+      if (record) await writeHive(s.where, { ...record, merges: 2 });
+      const runner = s.runner();
+      await s.fake.endTurn(worktree, { files: { 'four.txt': '4\n' } });
+      await settle(runner, s, () => Promise.resolve(forge.requests.length === 1), 'opened');
+      forge.conflict(12);
+      await settle(runner, s, async () => (await stepOf(s, 'feature/four')) === 'stuck', 'stuck');
+      expect((await readHive(s.where, 'feature/four'))?.note).toMatch(
+        new RegExp(`^could not land in main 3 times: .*${sign}12 cannot be merged`),
+      );
+      expect(s.fake.resume).not.toHaveBeenCalled();
+    });
+
+    it('no token: stopped with why, nothing opened, never the queue', async () => {
+      const { forge, s } = await requesting(['true'], { token: false });
+      const worktree = await s.start('feature/five');
+      const runner = s.runner();
+      await s.fake.endTurn(worktree, { files: { 'five.txt': '5\n' } });
+      await settle(runner, s, async () => (await stepOf(s, 'feature/five')) === 'stuck', 'stuck');
+      expect((await readHive(s.where, 'feature/five'))?.note).toContain(
+        kind === 'github' ? 'no GitHub token for github.com' : 'no GitLab token for gitlab.com',
+      );
+      expect(forge.calls).toEqual([]);
+      expect((await s.merges?.list())?.merges).toEqual([]);
+    });
+
+    it('a restart resumes the watch and opens no second request; one lost before its record is found', async () => {
+      const { repo, forge, s } = await requesting();
+      const worktree = await s.start('feature/six');
+      const first = s.runner();
+      await s.fake.endTurn(worktree, { files: { 'six.txt': '6\n' } });
+      await settle(first, s, () => Promise.resolve(forge.requests.length === 1), 'opened');
+      first.abandon();
+      // A runner killed after the forge opened it, before the record said so.
+      const record = await readHive(s.where, 'feature/six');
+      if (record) {
+        const lost = { ...record, landings: [] };
+        delete lost.request;
+        await writeHive(s.where, lost);
+      }
+      const next = s.runner();
+      await settle(
+        next,
+        s,
+        async () => (await readHive(s.where, 'feature/six'))?.request?.number === 12,
+        'found again',
+      );
+      expect(forge.requests).toHaveLength(1);
+      const merge = forge.merge(12);
+      await settle(next, s, async () => (await stepOf(s, 'feature/six')) === 'landed', 'landed');
+      expect(repo.git('rev-parse', 'main')).toBe(merge);
+    });
+
+    it('Hive off: the request stays open and is not read; on again, merged meanwhile, landed', async () => {
+      const { repo, forge, s } = await requesting();
+      const worktree = await s.start('feature/seven');
+      const runner = s.runner();
+      await s.fake.endTurn(worktree, { files: { 'seven.txt': '7\n' } });
+      await settle(
+        runner,
+        s,
+        async () => (await readHive(s.where, 'feature/seven'))?.request?.review !== undefined,
+        'opened',
+      );
+      await s.turn(false, runner);
+      await runner.idle();
+      const calls = forge.calls.length;
+      const merge = forge.merge(12);
+      for (let i = 0; i < 3; i++) {
+        await runner.tick();
+        await runner.idle();
+      }
+      expect(forge.calls).toHaveLength(calls);
+      expect(await stepOf(s, 'feature/seven')).toBe('landing');
+      await s.turn(true, runner);
+      await settle(
+        runner,
+        s,
+        async () => (await stepOf(s, 'feature/seven')) === 'landed',
+        'landed',
+      );
+      expect(repo.git('rev-parse', 'main')).toBe(merge);
+    });
+
+    it('the default, the merge queue: lands as HV4 does, the forge never called', async () => {
+      const { repo, forge, s } = await requesting(['true'], { by: 'queue' });
+      const worktree = await s.start('feature/eight');
+      const runner = s.runner();
+      await s.fake.endTurn(worktree, { files: { 'eight.txt': '8\n' } });
+      await settle(
+        runner,
+        s,
+        async () => (await stepOf(s, 'feature/eight')) === 'landed',
+        'landed',
+      );
+      expect(forge.calls).toEqual([]);
+      expect((await readHive(s.where, 'feature/eight'))?.request).toBeUndefined();
+      expect(repo.git('log', '--format=%s', '-1', 'main')).toMatch(/^Merge feature\/eight/);
+    });
+  },
+);
+
+describe('Hive lands by request without a forge (HV8, decision 792)', () => {
+  it('an origin that is neither GitHub nor GitLab: stopped with why', async () => {
+    const repo = repository(['true']);
+    origin(repo);
+    const git = await openRepo(repo.root);
+    const requests = hiveRequests(git, { env: {}, graphOf: () => Promise.reject(new Error('no')) });
+    const s = await setup(repo, { land: true, requests: { ...requests, by: () => 'request' } });
+    await s.turn(true);
+    const worktree = await s.start('feature/nine');
+    const runner = s.runner();
+    await s.fake.endTurn(worktree, { files: { 'nine.txt': '9\n' } });
+    await settle(runner, s, async () => (await stepOf(s, 'feature/nine')) === 'stuck', 'stuck');
+    expect((await readHive(s.where, 'feature/nine'))?.note).toMatch(
+      /^Hive lands by pull or merge request, but origin is not a GitHub or GitLab repository/,
+    );
+    expect((await s.merges?.list())?.merges).toEqual([]);
+  });
+});

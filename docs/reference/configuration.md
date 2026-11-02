@@ -40,6 +40,7 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `merge.agent` | `agent.kind`, else Claude Code, else Codex | The agent that resolves conflicts: `claude` or `codex`. |
 | `merge.model` | `sonnet` for Claude Code, else the agent's own | The model the merger runs on. |
 | `merge.effort` | the agent's own | The effort level the merger runs at, if its model takes one. |
+| `hive.lands` | `queue` | How [Hive](#hive-mode) lands a workspace: `queue`, through the merge queue into the branch it started from; or `request`, through a pull request (GitHub) or merge request (GitLab) that you merge. See [Landing through a pull or merge request](#landing-through-a-pull-or-merge-request). Set it in Settings' **Hive mode** page. |
 | `hive.reviewer.model` | `opus` | The model [Hive's running reviewer](#the-running-reviewer) is asked on. |
 | `hive.reviewer.effort` | `high` | The effort level the running reviewer is asked at, if its model takes it. |
 | `prompts` | Symbiote's text | The text Symbiote gives its agents. See [Prompts](#prompts). |
@@ -259,6 +260,51 @@ checkout**.
 
 **Its branch is pushed** to `origin` after each turn that ends with commits, never forced. A push
 refused is in the Review tab, and Hive goes on.
+
+#### Landing through a pull or merge request
+
+With **Hive lands by** set to **A pull or merge request** (`hive.lands: "request"`), step 6 above
+changes. Hive still approves the commit it checked and reviewed. It does not queue the commit and
+does not push the branch it lands in. Instead:
+
+1. **Hive opens a request.** It pushes the workspace's branch, then opens a pull request on
+   GitHub, or a merge request on GitLab, from that branch into the branch the workspace started
+   from. The request is ready for review, not a draft. Its title is the workspace's. Its
+   description is the brief, what Hive ran round by round, and its approval
+   ("Approved by Hive at …"). If one is already open for the branch, Hive updates its description
+   instead of opening another.
+2. **Hive posts Symbiote's review on it.** The review covers the change and its warnings and
+   errors, as `symbiote pr --post-findings warning` posts them. It goes as a comment, never as an
+   approval: the token's user is the request's author, and GitHub refuses an approval from the
+   author. Hive does not wait for the forge's CI.
+3. **You review and merge it on the forge.** The card says **Waiting for your merge: #12 on
+   GitHub**, with a link to the request. The Review tab shows the request beside the landings: its
+   link, its state and the review posted. Hive reads the request once a minute. That is 60 calls an
+   hour per open request, about 1 % of GitHub's 5,000 an hour.
+4. **Merged: the workspace is landed.** Hive fetches the branch it landed in from `origin` and
+   fast-forwards your copy of it, where it is checked out too. If your uncommitted changes are in
+   the way, Hive tries again each minute, and the card says **Merged on GitHub: main waits for your
+   checkout**. Then the workspace moves to **Done**: **Landed in main on GitHub · #12**.
+
+An approval on the forge alone changes nothing: your merge is what lands it.
+
+While a request is open, Hive pushes the branch only once its rounds have passed a commit, not after
+each turn: the request never shows a commit the check or the review has not passed.
+
+- **Closed without a merge**: Hive stops the workspace, and the card says why. If you send the
+  agent a message, its rounds start again, and the next landing opens a new request.
+- **Cannot be merged** (a conflict with the branch it lands in): Hive brings that branch up to
+  `origin`'s copy, finds the conflicting files, and sends the agent `hive.land`, as for a failed
+  landing above. The agent merges that branch into its own. Hive checks, reviews and pushes it,
+  and the request updates itself. After 2 such merges, a third conflict stops the workspace.
+- **No request can be opened**: Hive stops the workspace and says why. That happens when there is
+  no `origin`, when `origin` is neither GitHub nor GitLab, when no token is found, or when the push
+  or the forge refuses. Hive never lands it through the merge queue instead. Settings' **Hive
+  mode** page says which forge and project `origin` names, and whether a token is found. Tokens are
+  read as for `symbiote pr` (see [Environment variables](#environment-variables)).
+- **Hive off, or `symbiote view` restarted**, while a request is open: the request stays open on
+  the forge, and Hive reads nothing while it is off. Once Hive is on again, it reads the request
+  again. If you merged it meanwhile, the workspace is landed then.
 
 The card shows the workspace's round (a hexagon and `2/3`). A message you send the agent while
 Hive is stopped starts its rounds again, and Hive's 3 answers in your place. Hive never
@@ -493,11 +539,12 @@ the same files aside.
 | `SYMBIOTE_LOG` | `off`: Symbiote writes no logs. |
 | `SYMBIOTE_LOG_LEVEL` | The lowest level a log line must have to be written: `debug`, `info` (default), `warn` or `error`. |
 | `SYMBIOTE_LOG_DIR` | Where the logs go. Default: `logs` in the cache folder. |
-| `GITHUB_TOKEN`, `GH_TOKEN` | The GitHub token for `symbiote pr`. It goes to github.com, to the host a GitHub Actions job runs on (`GITHUB_SERVER_URL`), or to `GITHUB_API_URL` when that is set. For any other host, Symbiote asks `gh auth token` for that host. |
+| `GITHUB_TOKEN`, `GH_TOKEN` | The GitHub token for `symbiote pr`, and for Hive's pull requests. It goes to github.com, to the host a GitHub Actions job runs on (`GITHUB_SERVER_URL`), or to `GITHUB_API_URL` when that is set. For any other host, Symbiote asks `gh auth token` for that host. |
 | `GH_ENTERPRISE_TOKEN`, `GH_HOST` | A GitHub Enterprise token, and the host it is for, as `gh` reads them. |
-| `GITLAB_TOKEN` | The GitLab token for `symbiote pr`. It goes to gitlab.com, to GitLab CI's own server, to `GITLAB_API_URL` when that is set, or to the host `GITLAB_HOST` names. |
+| `GITLAB_TOKEN` | The GitLab token for `symbiote pr`, and for Hive's merge requests. It goes to gitlab.com, to GitLab CI's own server, to `GITLAB_API_URL` when that is set, or to the host `GITLAB_HOST` names. |
 | `GITHUB_API_URL`, `GITLAB_API_URL` | The forge's API address, for a self-hosted GitHub or GitLab. |
 | `SYMBIOTE_FORGE` | `github` or `gitlab`, as `--forge` does. |
+| `SYMBIOTE_HIVE_REQUEST_MS` | How often Hive reads a pull or merge request it waits on, in milliseconds. Default: 60000. |
 
 The CI templates read a few more variables. The [review guide](../guide/review-and-ci.md#run-in-ci)
 lists them.

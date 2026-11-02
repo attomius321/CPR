@@ -7,6 +7,7 @@ export type {
   Env,
   Forge,
   ForgeKind,
+  NewChangeRequest,
   Review,
   ReviewComment,
   ReviewEvent,

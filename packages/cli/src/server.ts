@@ -44,6 +44,7 @@ import {
   parseLocalReview,
   parseMergeChanges,
   parseHiveChange,
+  parseLandsBy,
   parseMergeId,
   parseMcpAnswer,
   parseMergeRequest,
@@ -85,6 +86,7 @@ import type { IntroRecord } from './intro.js';
 import { withHive, type HiveRecord } from './hive.js';
 import { nucleusStart } from './nucleus-start.js';
 import type { ReviewerSettings } from './hive-review.js';
+import type { HiveLandingService } from './hive-request.js';
 import type { HiveWorkspace } from './hive-workspace.js';
 import type { Histories } from './history.js';
 import {
@@ -223,6 +225,8 @@ export interface ViewServerOptions {
    * merger's.
    */
   hiveReviewer?: ReviewerSettings;
+  /** Enables `/api/hive/landing` (HV8): how Hive lands, the forge and its token. */
+  hiveLanding?: HiveLandingService;
   /**
    * Symbiote's logs (LG1): a line per request, and the pages' errors at `POST /api/logs`;
    * without it, nothing is written.
@@ -407,6 +411,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (req.method !== 'GET') return send(res, 405, 'method not allowed');
       const hive = options.hive;
       return answer(res, async () => ({ on: await hive.on(), ...(await hiveState()) }));
+    }
+    const landing = options.hiveLanding;
+    if (landing && url.pathname === '/api/hive/landing') {
+      if (req.method === 'GET') return read(req, res, () => landing.read());
+      return written(req, res, parseLandsBy, ({ by }) => answer(res, () => landing.set(by)));
     }
     const reviewer = options.hiveReviewer;
     if (reviewer && url.pathname === '/api/hive/reviewer/efforts') {
@@ -1530,7 +1539,17 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         .map((w) => ({ branch: w.branch, ...named(w) })),
       flight: open.flatMap((w) =>
         w.hive && IN_FLIGHT.has(w.hive.step)
-          ? [{ branch: w.branch, step: w.hive.step, ...named(w) }]
+          ? [
+              {
+                branch: w.branch,
+                step: w.hive.step,
+                ...named(w),
+                // HV8: waiting for the person's merge on the forge, which Hive off leaves open.
+                ...(w.hive.request?.state === 'open'
+                  ? { request: { forge: w.hive.request.forge, number: w.hive.request.number } }
+                  : {}),
+              },
+            ]
           : [],
       ),
     };

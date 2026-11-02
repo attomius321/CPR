@@ -149,8 +149,10 @@ export interface HiveLanding {
   at: string;
   /** The branch it lands in: the one the workspace started from. */
   into: string;
-  /** The merge queue's entry. */
+  /** The merge queue's entry; a request's number, `#12` or `!12` (HV8). */
   entry: string;
+  /** Landed through a pull or merge request (HV8): the person's merge on the forge is awaited. */
+  via?: 'request';
   queued: string;
   /** The queue's state as Hive last read it, while in flight; and why it waits, if it says. */
   state?: MergeEntry['state'];
@@ -165,7 +167,8 @@ export interface HiveLanding {
     | 'cannot-fast-forward'
     | 'diverged'
     | 'failed'
-    | 'refused';
+    | 'refused'
+    | 'closed';
   /** Conflicting files; the command that failed and its output's end. */
   files?: string[];
   failed?: string;
@@ -177,13 +180,61 @@ export interface HiveLanding {
   pushed?: MergeEntry['pushed'];
 }
 
+/**
+ * Hive's pull or merge request of a workspace (HV8, decisions 788–791): opened at landing when the
+ * repository's Hive lands by request, watched until the person merges or closes it on the forge.
+ */
+export interface HiveRequest {
+  forge: 'github' | 'gitlab';
+  number: number;
+  url: string;
+  /** The branch it merges into: the one the workspace started from. */
+  into: string;
+  /** The commit it was opened or last updated for, and when it was opened. */
+  at: string;
+  opened: string;
+  state: 'open' | 'merged' | 'closed';
+  /** The forge says it cannot be merged: a conflict with `into`. */
+  conflict?: true;
+  /** When Hive last read it, and why that read failed, if it did. */
+  read?: string;
+  error?: string;
+  /** Merged: the merge's commit, when the forge says it. */
+  merge?: string;
+  /** Symbiote's graph review on it (790): of which commit, how many findings, where; or why not. */
+  review?: { at: string; posted: number; url?: string; error?: string; tries?: number };
+  /** Merged: the start branch brought up to the forge's, or why not (770). */
+  pulled?: { at: string; ok: boolean; error?: string };
+}
+
+/** How Hive lands a repository's workspaces (HV8, decision 788): the merge queue, or a request. */
+export type HiveLandsBy = 'queue' | 'request';
+
+/**
+ * `GET /api/hive/landing` (HV8, decision 793): how Hive lands, and with a request, the forge and
+ * project `origin` names and whether a token is found; why not, when it cannot.
+ */
+export interface HiveLandingSetting {
+  by: HiveLandsBy;
+  forge?: { kind: 'github' | 'gitlab'; host: string; project: string };
+  token: boolean;
+  /** Why a request could not be opened now: no `origin`, no forge, no token. */
+  why?: string;
+}
+
 /** `GET /api/hive/state` (HV4): what turning Hive mode on or off concerns. */
 export interface HiveState {
   on: boolean;
   /** Open workspaces started in normal mode and not merged: Hive does not turn on (decision 772). */
   normal: { branch: string; title?: string }[];
   /** Hive's workspaces writing, checking, reviewing or landing: what Hive off stops (771). */
-  flight: { branch: string; step: HiveStep; title?: string }[];
+  flight: {
+    branch: string;
+    step: HiveStep;
+    title?: string;
+    /** Waiting for the person's merge of this request on the forge (HV8): Hive off leaves it open. */
+    request?: { forge: 'github' | 'gitlab'; number: number };
+  }[];
 }
 
 /** Hive's push of a workspace's branch to `origin` (HV4, decision 768). */
@@ -338,6 +389,8 @@ export interface WorkspaceHive {
   landing?: HiveLanding;
   /** The branch's last push to `origin` (HV4). */
   pushed?: HivePush;
+  /** Its pull or merge request (HV8). */
+  request?: HiveRequest;
 }
 
 /**
@@ -364,6 +417,8 @@ export interface WorkspaceHiveDetail {
   landings?: HiveLanding[];
   /** The branch's last push to `origin` (HV4). */
   pushed?: HivePush;
+  /** Its pull or merge request (HV8). */
+  request?: HiveRequest;
 }
 
 /** A workspace and its agent, for the commits page. */

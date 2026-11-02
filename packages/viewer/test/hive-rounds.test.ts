@@ -1,6 +1,6 @@
 // HV3, HV4: a Hive workspace's Review tab in words — its rounds, verdicts, findings and landings.
 import { describe, expect, it } from 'vitest';
-import type { HiveLanding, HiveReview, WorkspaceHiveDetail } from '@symbiote/core';
+import type { HiveLanding, HiveRequest, HiveReview, WorkspaceHiveDetail } from '@symbiote/core';
 import {
   checkWords,
   durationWords,
@@ -9,6 +9,10 @@ import {
   landedLine,
   landingLine,
   landingOutcome,
+  requestKind,
+  requestName,
+  requestState,
+  reviewWords,
   stepWords,
   verdictWords,
 } from '../src/workspaces/hive-rounds.js';
@@ -122,6 +126,84 @@ describe("a Hive workspace's Review tab (HV3)", () => {
     );
     expect(landingOutcome(landing({ outcome: 'check-failed', failed: 'pnpm check' }))).toBe(
       'The check failed on the merge: pnpm check',
+    );
+  });
+});
+
+describe('a pull or merge request (HV8)', () => {
+  const request = (more: Partial<HiveRequest> = {}): HiveRequest => ({
+    forge: 'github',
+    number: 12,
+    url: 'https://github.com/acme/app/pull/12',
+    into: 'main',
+    at: 'a'.repeat(40),
+    opened: '2026-11-02T10:00:00Z',
+    state: 'open',
+    ...more,
+  });
+  const waiting = landing({ via: 'request', entry: '#12' });
+
+  it('names it as its forge does', () => {
+    expect(requestName(request())).toBe('#12 on GitHub');
+    expect(requestName(request({ forge: 'gitlab' }))).toBe('!12 on GitLab');
+    expect(requestKind(request())).toBe('Pull request');
+    expect(requestKind(request({ forge: 'gitlab' }))).toBe('Merge request');
+  });
+
+  it('says it waits for your merge, then where it landed', () => {
+    expect(landingLine(waiting, request())).toBe('Waiting for your merge: #12 on GitHub');
+    expect(
+      landingLine(
+        { ...waiting, state: 'ready' },
+        request({ state: 'merged', pulled: { at: '', ok: false, error: 'local changes' } }),
+      ),
+    ).toBe('Merged on GitHub: main waits for your checkout');
+    const landed = landing({ via: 'request', entry: '#12', outcome: 'landed' });
+    expect(landedLine(landed, request({ state: 'merged', pulled: { at: '', ok: true } }))).toBe(
+      'Landed in main on GitHub · #12',
+    );
+    expect(
+      landedLine(
+        landed,
+        request({
+          state: 'merged',
+          pulled: { at: '', ok: false, error: 'main and origin/main have diverged' },
+        }),
+      ),
+    ).toBe(
+      'Landed in main on GitHub · #12 · main not brought up: main and origin/main have diverged',
+    );
+    expect(
+      landingOutcome(landing({ via: 'request', entry: '#12', outcome: 'closed' }), request()),
+    ).toBe('Closed on GitHub without a merge');
+    expect(
+      landingOutcome(
+        landing({ via: 'request', entry: '#12', outcome: 'conflict', files: ['a.ts'] }),
+        request(),
+      ),
+    ).toBe('Cannot be merged on GitHub: a.ts conflicts with main');
+  });
+
+  it('its state in words, for the Review tab', () => {
+    expect(requestState(request())).toEqual({ text: 'Open: waiting for your merge', tone: 'hive' });
+    expect(requestState(request({ conflict: true }))).toEqual({
+      text: 'Cannot be merged: a conflict with main',
+      tone: 'bad',
+    });
+    expect(requestState(request({ state: 'merged' }))).toEqual({ text: 'Merged', tone: 'ok' });
+    expect(requestState(request({ state: 'closed' }))).toEqual({
+      text: 'Closed without a merge',
+      tone: 'bad',
+    });
+    expect(reviewWords(request())).toBe('Symbiote’s review: not posted yet');
+    expect(reviewWords(request({ review: { at: 'a', posted: 2 } }))).toBe(
+      'Symbiote’s review: 2 findings posted',
+    );
+    expect(reviewWords(request({ review: { at: 'a', posted: 0 } }))).toBe(
+      'Symbiote’s review: no new findings to post',
+    );
+    expect(reviewWords(request({ review: { at: 'a', posted: 0, error: 'no' } }))).toBe(
+      'Symbiote’s review: not posted: no',
     );
   });
 });

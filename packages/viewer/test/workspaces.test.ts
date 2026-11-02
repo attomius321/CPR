@@ -2,6 +2,7 @@ import type {
   AgentOption,
   BranchReviewSummary,
   HiveLanding,
+  HiveRequest,
   WorkspaceAgentState,
   WorkspaceStart,
   WorkspaceHive,
@@ -27,6 +28,7 @@ import {
   workspaceFacts,
   workspaceGroups,
   workspaceName,
+  mergedForCard,
   workspaceNext,
   workspacesFirst,
   proposeBranch,
@@ -930,6 +932,85 @@ describe('workspaceNext for a workspace Hive drives (HV2)', () => {
       text: 'Answered: read its report',
       mark: '✓',
     });
+  });
+
+  it('by request: waits for your merge with its link, then landed on the forge (HV8)', () => {
+    const request: HiveRequest = {
+      forge: 'github',
+      number: 12,
+      url: 'https://github.com/acme/app/pull/12',
+      into: 'main',
+      at: TIP,
+      opened: '2026-11-02T10:00:00.000Z',
+      state: 'open',
+    };
+    const waiting: HiveLanding = {
+      round: 1,
+      at: TIP,
+      into: 'main',
+      entry: '#12',
+      queued: '2026-11-02T10:00:00.000Z',
+      via: 'request',
+    };
+    const asked = workspaceNext(
+      summary({ ...ready, hive: hive({ step: 'landing', landing: waiting, request }) }),
+    );
+    expect(asked).toMatchObject({
+      group: 'hive',
+      text: 'Waiting for your merge: #12 on GitHub',
+      link: { href: request.url, text: '#12 on GitHub' },
+    });
+    const landed = workspaceNext(
+      summary({
+        ...ready,
+        merged: true,
+        hive: hive({
+          step: 'landed',
+          landing: { ...waiting, outcome: 'landed' },
+          request: { ...request, state: 'merged', pulled: { at: '', ok: true } },
+        }),
+      }),
+    );
+    expect(landed).toMatchObject({
+      group: 'done',
+      text: 'Landed in main on GitHub · #12',
+      link: { href: request.url, text: '#12' },
+    });
+  });
+
+  it('merged on the forge, main waiting for your checkout: in the Hive group in any step, not Done (HV8)', () => {
+    const request: HiveRequest = {
+      forge: 'gitlab',
+      number: 3,
+      url: 'https://gitlab.com/acme/app/-/merge_requests/3',
+      into: 'main',
+      at: TIP,
+      opened: '2026-11-02T10:00:00.000Z',
+      state: 'merged',
+      pulled: { at: '', ok: false, error: 'your local changes would be overwritten' },
+    };
+    for (const step of ['writing', 'checking', 'reviewing', 'landing', 'stuck'] as const) {
+      const card = workspaceNext(
+        summary({ ...ready, merged: true, hive: hive({ step, request }) }),
+      );
+      expect([step, card.group, card.text]).toEqual([
+        step,
+        'hive',
+        'Merged on GitLab: main waits for your checkout',
+      ]);
+      expect(card.link).toEqual({ href: request.url, text: '!3 on GitLab' });
+      expect(mergedForCard(summary({ merged: true, hive: hive({ step, request }) }))).toBe(false);
+    }
+    // Hive off: not done either; once brought up, done as before.
+    expect(
+      workspaceNext(
+        summary({ ...ready, merged: true, hive: hive({ step: 'writing', off: true, request }) }),
+      ).group,
+    ).toBe('stopped');
+    const pulled = { ...request, pulled: { at: '', ok: true } };
+    expect(
+      mergedForCard(summary({ merged: true, hive: hive({ step: 'landed', request: pulled }) })),
+    ).toBe(true);
   });
 
   it('with Hive off, as on main: the person reviews and lands it (HV2, HV3)', () => {
