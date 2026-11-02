@@ -635,7 +635,7 @@ describe('Hive, on', () => {
     await runner.tick();
     await runner.idle();
     expect((await readHive(s.where, 'feature/cap'))?.step).toBe('landing');
-  });
+  }, 30_000);
 
   it('asks the writer to commit what it left, and checks only a clean tree', async () => {
     const repo = repository(['true']);
@@ -2812,7 +2812,7 @@ describe.each(['github', 'gitlab'] as const)(
         [`${sign}12`, 'closed'],
         [`${sign}13`, undefined],
       ]);
-    });
+    }, 30_000);
 
     it('cannot merge: the writer merges main in, the same request updated; it lands once merged', async () => {
       const { repo, remote, forge, s } = await requesting();
@@ -2877,7 +2877,7 @@ describe.each(['github', 'gitlab'] as const)(
         { outcome: 'conflict' },
         { outcome: 'landed' },
       ]);
-    });
+    }, 30_000);
 
     it('cannot merge after two merges of main: stopped, with why, nothing sent', async () => {
       const { forge, s } = await requesting();

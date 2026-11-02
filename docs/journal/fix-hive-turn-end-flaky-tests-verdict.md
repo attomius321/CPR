@@ -54,3 +54,32 @@ guess. That case ends at the next report, as any turn does.
 has been Git (`g`) since V66, and since V77 `h` opens History, the finished workspaces' page. Both
 texts now say Git, and `view --help` says "opens on Git (g)". The help test (`main.test.ts`) now
 asks for Git and refuses "History" in both (red before the fix: no "Git … every branch").
+
+## Fix — HV8's timing tests get their own timeout (2026-11-02)
+
+`hive-request-checkout.test.ts` and `hive-request-merged-mid-rounds.test.ts` failed Hive's check
+on `chore/readme-remake` (round 1) and its writer's own runs 3 of 3: vitest's 5 s default.
+
+**Learned**:
+
+- **Measured here, the full unit suite with per-test times**: at load 8–25 both failed, at
+  5,257 ms and 5,152 ms (and passed at 4,812 ms and 4,277 ms in their GitLab runs). The tests
+  sharing their harness were close behind: `hive-request-unchecked-push` 4.4 s,
+  `hive-request-merged-forge` 4.1 s, three of `hive-runner.test.ts`'s at 3.5–3.8 s,
+  `hive-request-card-rounds` 3.1 s. Alone, the five HV8 files and `hive-runner.test.ts` (97 tests)
+  take at most 1.7 s a test.
+- **At load 33–44** (another session's HV6 runs, 32 cores), the same suite failed 34 tests, most
+  with no Hive harness (`install.test.ts` 12.9 s, `plan-consolidate.test.ts` 15.3 s): no timeout
+  in these files makes a check pass at that load. The two tests took 21.0 s and 21.3 s there.
+- Each test drives the runner, the merge queue, git and a fake forge. Making them faster would
+  mean a different harness, not a fix of these tests.
+
+**Decided**: every test of the six files measured over 3 s in the loaded run gets its own 30 s:
+the two named, the four sibling HV8 tests (both of `hive-request-merged-forge`'s), and
+`hive-runner.test.ts`'s three. That is 9 test definitions, 14 runs with GitHub and GitLab. 30 s,
+not `hive-runner.test.ts:1510`'s 20 s, because the two took 21 s at load 44; that 20 s is
+unchanged. A real hang is reported after 30 s instead of 5 s.
+
+**Verification**: before, the full suite at load 8–25 failed both (5,257 and 5,152 ms against
+5,000). After, the 97 tests of the six files pass at load 14–23, the slowest 1.7 s; the full
+suite's results after the change are in the last entry.

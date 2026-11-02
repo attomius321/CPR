@@ -2,6 +2,9 @@
 // start branch in and fixes it; then "the rounds again, push; the request updates itself" (the
 // brief). The open request is what the person merges from its link, so a commit the check has not
 // passed must not reach it. The harness is hive-runner.test.ts's.
+// Each test drives the runner, the merge queue, git and a fake forge: 1.4-2.3 s alone, up to
+// 5.3 s in the full suite at load 8-25 and 21 s at load 44, so it has its own 30 s
+// (fix/hive-turn-end-flaky-tests-verdict), as hive-runner.test.ts's slowest have their own.
 import { execFileSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
@@ -545,6 +548,6 @@ describe.each(['github', 'gitlab'] as const)(
       const record = await readHive(s.where, 'feature/three');
       expect(record?.request).toMatchObject({ number: 12, state: 'open', at: approved });
       expect(repo.git('--git-dir', remote, 'rev-parse', 'feature/three')).toBe(approved);
-    });
+    }, 30_000);
   },
 );

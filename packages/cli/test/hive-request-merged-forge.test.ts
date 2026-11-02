@@ -3,6 +3,9 @@
 // for another request. Not "merged outside its request, which stays open": it is merged on the
 // forge, and the record keeps it so (the Done card's "Landed in main on GitHub · #12", the Review
 // tab's request). The harness is hive-runner.test.ts's, as hive-request-runner.test.ts copies it.
+// Each test drives the runner, the merge queue, git and a fake forge: 1.4-2.3 s alone, up to
+// 5.3 s in the full suite at load 8-25 and 21 s at load 44, so it has its own 30 s
+// (fix/hive-turn-end-flaky-tests-verdict), as hive-runner.test.ts's slowest have their own.
 import { execFileSync } from 'node:child_process';
 import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
@@ -517,7 +520,7 @@ describe.each(['github', 'gitlab'] as const)(
       const landed = await readHive(s.where, 'feature/nine');
       expect(landed?.landings?.at(-1)?.message ?? '').not.toContain('stays open');
       expect(landed?.request).toMatchObject({ number, state: 'merged' });
-    });
+    }, 30_000);
 
     it('two requests merged on the forge: each landed by its merged request, neither said to stay open', async () => {
       const { forge, s } = await requesting();
@@ -547,6 +550,6 @@ describe.each(['github', 'gitlab'] as const)(
         expect(landed?.landings?.at(-1)?.message ?? '').not.toContain('stays open');
         expect(landed?.request).toMatchObject({ state: 'merged' });
       }
-    });
+    }, 30_000);
   },
 );
