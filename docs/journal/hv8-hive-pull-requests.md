@@ -120,3 +120,12 @@ GitLab: no forge read in ten looks within a minute, landed a minute on), red bef
 **Verification**: the reviewer's two tests added as they were (`hive-request-card.test.ts`, GitHub
 and GitLab; `hive-page-words.test.ts`), red before, green after; with the card's, rounds', switch's
 and the request runner suites, all pass.
+
+## HV8 — the check's round 2: a merge log e2e failure that is not this branch's (2026-11-02, branch `feature/hive-pull-requests`)
+
+`pnpm test:e2e` at `2c7dedf` failed 1 of 391: `merges.spec.ts:202`, the merge log's steps while
+a merge runs (V46a). This branch changes nothing of the merger, its queue, its log or that spec
+(`git diff 0e4e4b2..HEAD` of `merges.ts`, `merge-queue.ts`, `merge-log.ts`, `MergeLog.tsx`,
+`merges.spec.ts` is empty). Rerun after `pnpm build`: alone 3 of 3 (`--repeat-each=3`), the whole
+spec 13 of 13. A timing-sensitive e2e test under the check's load, as AR1 and AR2 measured for this
+suite; left as it is, not patched here.
