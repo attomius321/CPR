@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Normal mode — the kit</title>
+    <link rel="stylesheet" href="../../hive-redesign/src/kit.css" />
+    <link rel="stylesheet" href="normal.css" />
+    <script src="../../hive-redesign/src/kit.js"></script>
+    <script src="nkit.js"></script>
+    <style>
+      body {
+        height: auto;
+        padding: 24px 28px 28px;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 18px;
+      }
+      .top img {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        box-shadow: 0 0 0 1px var(--line-2);
+      }
+      .top h1 {
+        margin: 0;
+        font-size: var(--size-title);
+        font-weight: 600;
+      }
+      .top .sub {
+        color: var(--muted);
+        font-size: var(--size-small);
+      }
+      .board {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr 1fr;
+        gap: 12px;
+        align-items: start;
+      }
+      .stack {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .box {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: var(--radius-card);
+        padding: 14px 16px 16px;
+      }
+      .box h2 {
+        margin: 0 0 10px;
+        font-size: var(--size-small);
+        font-weight: 600;
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+      .box h2 span {
+        color: var(--faint);
+        font-weight: 400;
+        font-size: var(--size-caption);
+      }
+      .sw {
+        display: grid;
+        grid-template-columns: 30px 30px 1fr auto;
+        align-items: center;
+        column-gap: 10px;
+        height: 34px;
+        font-size: var(--size-caption);
+      }
+      .sw i {
+        width: 30px;
+        height: 22px;
+        border-radius: 6px;
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 10%);
+      }
+      .sw b {
+        font-weight: 500;
+        font-size: var(--size-small);
+      }
+      .sw .hex {
+        font-family: var(--mono);
+        font-size: var(--size-caps);
+        color: var(--faint);
+        text-align: right;
+      }
+      .sw .r {
+        color: var(--muted);
+      }
+      .rowc {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+      }
+      .notes {
+        margin: 6px 0 0;
+        padding-left: 16px;
+        color: var(--muted);
+        font-size: var(--size-caption);
+        line-height: 1.6;
+      }
+      .nodes {
+        position: relative;
+        height: 196px;
+        border-radius: 8px;
+        background-color: var(--canvas);
+        background-image: radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 0);
+        background-size: 22px 22px;
+        box-shadow: inset 0 0 0 1px var(--line);
+      }
+      .mini-nav {
+        padding: 6px;
+        border-radius: var(--radius-card);
+        background: var(--side);
+        box-shadow: inset 0 0 0 1px var(--line);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="top">
+      <img src="../../../packages/viewer/src/ui/mark-96.png" alt="" />
+      <div>
+        <h1>Normal mode · the kit</h1>
+        <div class="sub">
+          The same system as Hive Control: cool ink in place of warm, the S’s violet in place of the
+          crimson. States, type, spacing and every control are shared.
+        </div>
+      </div>
+    </div>
+
+    <div class="board">
+      <div class="stack">
+        <section class="box">
+          <h2>Surfaces <span>dark · light · role</span></h2>
+          <div class="sw"><i style="background: #090a0d"></i><i style="background: #f3f4f7"></i><b>--bg <span class="r">ground</span></b><span class="hex">#090a0d · #f3f4f7</span></div>
+          <div class="sw"><i style="background: #0d0f13"></i><i style="background: #f9fafc"></i><b>--side <span class="r">sidenav, rail</span></b><span class="hex">#0d0f13 · #f9fafc</span></div>
+          <div class="sw"><i style="background: #0e1015"></i><i style="background: #ffffff"></i><b>--panel <span class="r">cards</span></b><span class="hex">#0e1015 · #ffffff</span></div>
+          <div class="sw"><i style="background: #171a21"></i><i style="background: #eef0f5"></i><b>--raised <span class="r">chips, fields</span></b><span class="hex">#171a21 · #eef0f5</span></div>
+          <div class="sw"><i style="background: #07080b"></i><i style="background: #f7f8fb"></i><b>--canvas <span class="r">the graph, diffs</span></b><span class="hex">#07080b · #f7f8fb</span></div>
+        </section>
+        <section class="box">
+          <h2>Text <span>lowest ratio on the four grounds</span></h2>
+          <div class="sw"><i style="background: #eef0f5"></i><i style="background: #0f1320"></i><b>--text</b><span class="hex">15.3 · 16.2 : 1</span></div>
+          <div class="sw"><i style="background: #a3aabb"></i><i style="background: #525c71"></i><b>--muted</b><span class="hex">7.5 · 5.9 : 1</span></div>
+          <div class="sw"><i style="background: #767d8d"></i><i style="background: #747e95"></i><b>--faint</b><span class="hex">4.2 · 3.6 : 1</span></div>
+        </section>
+        <section class="box">
+          <h2>The S’s violet <span>what you act with, and what waits for you</span></h2>
+          <div class="sw"><i style="background: #7c68fc"></i><i style="background: #5b3fd9"></i><b>--primary <span class="r">one per page</span></b><span class="hex">dark words 4.9 · white 6.7</span></div>
+          <div class="sw"><i style="background: #9886ff"></i><i style="background: #5b3fd9"></i><b>--you <span class="r">waiting for you, picked</span></b><span class="hex">6.0 · 5.8 : 1</span></div>
+          <ul class="notes">
+            <li>Violet marks the person’s turn: a plan, a question, a review. The agent’s turn is amber.</li>
+            <li>Approve and Finish review are the primary; Take out of the queue is secondary.</li>
+          </ul>
+        </section>
+      </div>
+
+      <div class="stack">
+        <section class="box">
+          <h2>States <span>shared with Hive</span></h2>
+          <div class="rowc">
+            <span class="pill you"><i data-i="bell"></i>Plan ready</span>
+            <span class="pill you"><i data-i="question"></i>Asks you</span>
+            <span class="pill you"><i data-i="eye"></i>To review</span>
+            <span class="pill run"><i data-i="spin"></i>Working</span>
+            <span class="pill run"><i data-i="merge"></i>Merging</span>
+            <span class="pill ok"><i data-i="merge"></i>Merged</span>
+            <span class="pill fail"><i data-i="circle-x"></i>Check failed</span>
+            <span class="pill idle"><i data-i="circle-pause"></i>Not running</span>
+          </div>
+        </section>
+        <section class="box">
+          <h2>A change’s kinds <span>VS Code’s, kept from today</span></h2>
+          <div class="sw"><i style="background: #81b88b"></i><i style="background: #587c0c"></i><b>--added</b><span class="hex">7.6 · 4.3</span></div>
+          <div class="sw"><i style="background: #e5664f"></i><i style="background: #ad0707"></i><b>--removed <span class="r">brighter for counts</span></b><span class="hex">5.3 · 6.6</span></div>
+          <div class="sw"><i style="background: #e2c08d"></i><i style="background: #895503"></i><b>--modified</b><span class="hex">10.1 · 5.5</span></div>
+          <div class="sw"><i style="background: #3fc5d6"></i><i style="background: #0a7d8c"></i><b>--moved</b><span class="hex">8.4 · 4.3</span></div>
+        </section>
+        <section class="box">
+          <h2>Findings <span>severity as an icon and a word</span></h2>
+          <div class="finding-card on" style="margin-bottom: 6px">
+            <div class="top"><i data-i="circle-x" class="s14 fail"></i>legacyCoupon is removed but still used</div>
+            <div class="rule">removed-still-referenced</div>
+          </div>
+          <div class="finding-card">
+            <div class="top"><i data-i="danger" class="s14 run"></i>Nothing calls the new Cart.applyCode</div>
+            <div class="rule">orphan-added</div>
+          </div>
+        </section>
+      </div>
+
+      <div class="stack">
+        <section class="box">
+          <h2>Graph nodes <span>a mark for the kind, never a side bar</span></h2>
+          <div class="nodes">
+            <div class="node" style="left: 12px; top: 12px; width: 176px">
+              <div class="k"><span class="kd">method</span><span class="mark a">+</span></div>
+              <div class="n">Cart.applyCode</div><div class="s">applyCode(code: string)</div>
+            </div>
+            <div class="node removed picked" style="left: 200px; top: 12px; width: 176px">
+              <div class="k"><span class="kd">function</span><span class="fb">1</span><span class="mark r" style="margin-left: 0">−</span></div>
+              <div class="n">legacyCoupon</div><div class="s">picked · 1 error</div>
+            </div>
+            <div class="node" style="left: 12px; top: 102px; width: 176px">
+              <div class="k"><span class="kd">method</span><span class="mark m">~</span></div>
+              <div class="n">Cart.total</div><div class="s">total(): number</div>
+            </div>
+            <div class="node ctx" style="left: 200px; top: 102px; width: 176px">
+              <div class="k"><span class="kd">function</span><span class="faint" style="margin-left: auto">unchanged</span></div>
+              <div class="n">roundCents</div><div class="s">context</div>
+            </div>
+          </div>
+        </section>
+        <section class="box">
+          <h2>Actions</h2>
+          <div class="rowc" style="margin-bottom: 8px">
+            <span class="btn primary"><i data-i="check" class="s14"></i>Approve plan</span>
+            <span class="btn"><i data-i="send" class="s14"></i>Send reply</span>
+            <span class="btn ghost">Cancel</span>
+          </div>
+          <div class="rowc">
+            <span class="segmented"><span>Files</span><span class="on">Graph</span></span>
+            <span class="btn small">Respond</span>
+            <span class="btn small">Review</span>
+          </div>
+        </section>
+        <section class="box">
+          <h2>Sidenav rows</h2>
+          <div class="mini-nav">
+            <div class="ws on"><i data-i="bell" class="you"></i><div class="t">Save a cart for later</div><div class="m"><b>Plan ready</b> · 4m</div></div>
+            <div class="ws"><i data-i="spin" class="spin"></i><div class="t">Show stock levels on product pages</div><div class="m"><b>Running tests</b> · 3:05</div></div>
+          </div>
+        </section>
+      </div>
+    </div>
+    <script>
+      NKit.render();
+    </script>
+  </body>
+</html>

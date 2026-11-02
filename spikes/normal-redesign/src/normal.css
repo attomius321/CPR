@@ -1,0 +1,603 @@
+/* Normal mode in the same system as Hive Control (../../hive-redesign/src/kit.css, loaded first):
+   only the identity and the neutrals' temperature change. Hive is warm ink and crimson; normal
+   mode is cool ink with a breath of blue (V61) and the S's violet. States are the same. Then the
+   parts only normal mode has: the inbox, the plan and its reply, the graph, a file's diff. */
+
+:root {
+  --bg: #090a0d;
+  --side: #0d0f13;
+  --panel: #0e1015;
+  --raised: #171a21;
+  --line: #23262e;
+  --line-2: #2e323b;
+  --text: #eef0f5;
+  --muted: #a3aabb;
+  --faint: #767d8d;
+  --hover: rgb(220 226 238 / 4%);
+  --selected: rgb(152 134 255 / 13%);
+  --code-bg: #07080b;
+  --canvas: #07080b;
+
+  /* The S's violet: what a person acts with (V61, rule 3), and what waits for them. */
+  --hive: #7c68fc;
+  --hive-text: #9886ff;
+  --hive-wash: rgb(124 104 252 / 14%);
+  --hive-edge: rgb(124 104 252 / 38%);
+  --primary: #7c68fc;
+  --primary-text: #0b0a1a;
+  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 22%);
+  --you: #9886ff;
+
+  /* A change's kinds (VS Code's, V42), apart from the states. */
+  --added: #81b88b;
+  --removed: #e5664f;
+  --modified: #e2c08d;
+  --moved: #3fc5d6;
+  --warn: #f2b33d;
+}
+
+:root[data-theme='light'] {
+  --bg: #f3f4f7;
+  --side: #f9fafc;
+  --panel: #ffffff;
+  --raised: #eef0f5;
+  --line: #e0e3eb;
+  --line-2: #d0d4de;
+  --text: #0f1320;
+  --muted: #525c71;
+  --faint: #747e95;
+  --hover: rgb(15 19 32 / 4%);
+  --selected: rgb(91 63 217 / 9%);
+  --code-bg: #fafbfc;
+  --canvas: #f7f8fb;
+  --hive: #5b3fd9;
+  --hive-text: #5b3fd9;
+  --hive-wash: rgb(91 63 217 / 8%);
+  --hive-edge: rgb(91 63 217 / 28%);
+  --primary: #5b3fd9;
+  --primary-text: #ffffff;
+  --primary-shine: inset 0 1px 0 rgb(255 255 255 / 18%);
+  --you: #5b3fd9;
+  --added: #587c0c;
+  --removed: #ad0707;
+  --modified: #895503;
+  --moved: #0a7d8c;
+  --warn: #8f5b00;
+}
+
+.you {
+  color: var(--you);
+}
+.pill.you {
+  --c: var(--you);
+}
+.pill.warn {
+  --c: var(--warn);
+}
+.add {
+  color: var(--added);
+}
+.del {
+  color: var(--removed);
+}
+
+/* The narrow rail a review opens in (today's diff shell): icons only. */
+.app.railed {
+  grid-template-columns: 52px 1fr;
+}
+.rail {
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 0 10px;
+  background: var(--side);
+  border-right: 1px solid var(--line);
+}
+.rail img {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  margin-bottom: 10px;
+  box-shadow: 0 0 0 1px var(--line-2);
+}
+.rail .r {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 32px;
+  border-radius: var(--radius-control);
+  color: var(--muted);
+}
+.rail .r.on {
+  background: var(--selected);
+  color: var(--hive-text);
+}
+.rail .r .badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--you);
+  color: var(--primary-text);
+  font-size: var(--size-caps);
+  font-weight: 600;
+  line-height: 15px;
+  text-align: center;
+}
+:root[data-theme='light'] .rail .r .badge {
+  color: #ffffff;
+}
+.rail .sep {
+  width: 22px;
+  height: 1px;
+  background: var(--line);
+  margin: 6px 0;
+}
+.rail .end {
+  margin-top: auto;
+}
+
+/* The inbox: what waits for the person, each with the one action it needs. */
+.inbox .th,
+.inbox .tr {
+  grid-template-columns: minmax(0, 1fr) 330px 40px 104px;
+}
+.need {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--size-small);
+  color: var(--muted);
+}
+.need b {
+  color: var(--text);
+  font-weight: 500;
+}
+.need .q {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.facts-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--size-caption);
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* The plan, typeset: the agent's report as a document. */
+.doc {
+  max-width: 760px;
+  padding: 18px 24px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: var(--size-body);
+  line-height: 1.55;
+}
+.doc .who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--faint);
+  font-size: var(--size-caption);
+}
+.doc h3 {
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+.doc h4 {
+  margin: 4px 0 -6px;
+  font-size: var(--size-caps);
+  font-weight: 600;
+  color: var(--faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.doc p {
+  margin: 0;
+  color: var(--muted);
+}
+.doc p b,
+.doc li b {
+  color: var(--text);
+  font-weight: 500;
+}
+.doc ol,
+.doc ul {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+}
+.doc code,
+.code-chip {
+  font-family: var(--mono);
+  font-size: var(--size-caption);
+  color: var(--text);
+  background: var(--raised);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 12px 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-card);
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+.composer .ph {
+  color: var(--faint);
+  font-size: var(--size-body);
+  min-height: 44px;
+}
+.composer .acts {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The graph: frames for files, nodes for symbols, the change's kinds as marks, never side bars. */
+.canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  background-color: var(--canvas);
+  background-image: radial-gradient(circle at 1px 1px, var(--line) 1px, transparent 0);
+  background-size: 22px 22px;
+  overflow: hidden;
+}
+.canvas svg.edges.top {
+  z-index: 3;
+}
+.canvas svg.edges {
+  z-index: 1;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.canvas svg.edges path {
+  fill: none;
+  stroke-width: 1.5;
+}
+.canvas svg.edges path.ctx {
+  stroke: var(--line-2);
+}
+.canvas svg.edges path.added {
+  stroke: color-mix(in srgb, var(--added) 75%, transparent);
+}
+.canvas svg.edges path.removed {
+  stroke: var(--removed);
+  stroke-dasharray: 5 4;
+}
+.canvas svg.edges path.hot {
+  stroke-width: 2.25;
+}
+.frame {
+  z-index: 0;
+  position: absolute;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.frame > .fname {
+  position: absolute;
+  top: 6px;
+  left: 10px;
+  font-family: var(--mono);
+  font-size: var(--size-caps);
+  color: var(--faint);
+}
+.node {
+  z-index: 2;
+  position: absolute;
+  width: 184px;
+  padding: 6px 9px 7px;
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow:
+    inset 0 0 0 1px var(--line-2),
+    0 1px 2px rgb(0 0 0 / 25%);
+}
+.node .k {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--size-caps);
+  line-height: 1.3;
+}
+.node .k .kd {
+  color: var(--faint);
+  font-size: var(--size-caps);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.node .k .mark {
+  margin-left: auto;
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  font-family: var(--mono);
+  font-size: var(--size-caps);
+  font-weight: 600;
+}
+.mark.a {
+  color: var(--added);
+  background: color-mix(in srgb, var(--added) 16%, transparent);
+}
+.mark.m {
+  color: var(--modified);
+  background: color-mix(in srgb, var(--modified) 16%, transparent);
+}
+.mark.r {
+  color: var(--removed);
+  background: color-mix(in srgb, var(--removed) 16%, transparent);
+}
+.node .k .fb {
+  margin-left: auto;
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--fail);
+  color: #ffffff;
+  font-size: var(--size-caps);
+  font-weight: 600;
+}
+.node .k .fb.w {
+  background: var(--warn);
+  color: #1a1204;
+}
+:root[data-theme='light'] .node .k .fb.w {
+  color: #ffffff;
+}
+.node .n {
+  margin-top: 2px;
+  font-family: var(--mono);
+  font-size: var(--size-caption);
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.node .s {
+  font-family: var(--mono);
+  font-size: var(--size-caps);
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.node.ctx {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.node.ctx .n {
+  color: var(--muted);
+  font-weight: 500;
+}
+.node.removed .n {
+  text-decoration: line-through;
+  text-decoration-color: var(--removed);
+}
+.node.picked {
+  box-shadow:
+    inset 0 0 0 1px var(--hive-text),
+    0 0 0 3px var(--hive-wash);
+}
+.node.reviewed {
+  opacity: 0.55;
+}
+.zoom {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+}
+.zoom span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--muted);
+}
+.zoom span + span {
+  border-top: 1px solid var(--line);
+}
+.minimap {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 150px;
+  height: 92px;
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  overflow: hidden;
+}
+.minimap i {
+  position: absolute;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--line-2);
+}
+.minimap .view {
+  position: absolute;
+  inset: 12px 18px 14px 14px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--hive-edge);
+  background: var(--hive-wash);
+}
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 34px;
+  flex: none;
+  padding: 0 14px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+.legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.legend .sw {
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+}
+
+/* Findings: severity as an icon and a word; the rule's name in mono, quietly. */
+.finding-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.finding-card.on {
+  background: var(--selected);
+  box-shadow: inset 0 0 0 1px var(--hive-edge);
+}
+.finding-card .top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+.finding-card .why {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  line-height: 1.45;
+  padding-left: 22px;
+}
+.finding-card .rule {
+  padding-left: 22px;
+  font-family: var(--mono);
+  font-size: var(--size-caps);
+  color: var(--faint);
+}
+
+/* A file's diff: two gutters, the change's grounds, a comment under its line. */
+.diff {
+  font: 400 var(--size-caption) / 1.65 var(--mono);
+  margin: 0 12px 12px;
+  border-radius: var(--radius-control);
+  box-shadow: inset 0 0 0 1px var(--line);
+  overflow: hidden;
+}
+.dl {
+  display: grid;
+  grid-template-columns: 44px 44px 18px 1fr;
+  white-space: pre;
+}
+.dl .ln {
+  text-align: right;
+  padding-right: 10px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+.dl .sg {
+  color: var(--faint);
+}
+.dl.a {
+  background: color-mix(in srgb, var(--added) 12%, transparent);
+}
+.dl.a .sg,
+.dl.a .ln:nth-child(2) {
+  color: var(--added);
+}
+.dl.r {
+  background: color-mix(in srgb, var(--removed) 12%, transparent);
+}
+.dl.r .sg,
+.dl.r .ln:first-child {
+  color: var(--removed);
+}
+.dl.fold {
+  grid-template-columns: 1fr;
+  padding-left: 106px;
+  color: var(--faint);
+  font-family: var(--sans);
+  background: var(--raised);
+}
+.tok-k {
+  color: #c792ea;
+}
+.tok-s {
+  color: #c3e88d;
+}
+.tok-c {
+  color: var(--faint);
+}
+.tok-f {
+  color: #82aaff;
+}
+:root[data-theme='light'] .tok-k {
+  color: #7a3db8;
+}
+:root[data-theme='light'] .tok-s {
+  color: #3c6e0a;
+}
+:root[data-theme='light'] .tok-f {
+  color: #1f5fbf;
+}
+.comment {
+  margin: 6px 12px 8px 106px;
+  padding: 10px 12px;
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  box-shadow:
+    inset 0 0 0 1px var(--hive-edge),
+    0 1px 2px rgb(0 0 0 / 20%);
+  font-family: var(--sans);
+  white-space: normal;
+}
+.comment .who {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--faint);
+  font-size: var(--size-caption);
+}
+.comment .who b {
+  color: var(--text);
+  font-weight: 600;
+}
+.comment p {
+  margin: 4px 0 0;
+  font-size: var(--size-small);
+  color: var(--text);
+  line-height: 1.5;
+}

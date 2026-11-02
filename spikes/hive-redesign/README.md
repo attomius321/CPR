@@ -6,7 +6,8 @@ screens and a kit, written as static HTML and CSS and rendered by Chromium at 14
 Geist at the viewer's own sizes (V87: 15 px body, nothing under 12 px). No viewer code was changed.
 
 The review page, with the before and after and the screens at 2×:
-<https://claude.ai/artifact/7vxMJBeM676zMVBWkHaxm9> (private to its owner until shared).
+<https://claude.ai/artifact/7vxMJBeM676zMVBWkHaxm9> (private to its owner until shared). Normal mode
+in the same system: [spikes/normal-redesign](../normal-redesign/README.md).
 
 ## The direction
 
