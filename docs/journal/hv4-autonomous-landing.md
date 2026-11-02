@@ -35,3 +35,47 @@ Not built: "Plan, but don't start implementing. We don't have enough weekly sess
 
 Not verified: everything; nothing is built. The `auto` permission mode's behaviour in a `--bg`
 session, and a fetch and push against a bare remote, are the first things to measure.
+
+## HV4 — Hive from the brief to landed, built (2026-11-02, branch `feature/hv4-autonomous-landing`)
+
+At `landing` Hive approves the commit as its own (`via: "hive"`) and queues it into the branch the
+workspace started from; the queue brings that branch up to its remote, merges, checks, lands and
+pushes it. A conflict, a failed merge check or a fast-forward outrun goes back to the writer
+(`hive.land`), twice at most. The branch is pushed after each turn. Plans, questions and
+permissions get Hive's answer; a failed writer is restarted once. Hive won't turn on while a
+normal-mode workspace is open, and asks before it turns off while it works. In Hive mode the
+sidenav has Hive and Done only. Decisions 767–775.
+
+**Learned**:
+- **A stuck Hive landing would hold `main`.** The queue holds its target while an entry is `ready`,
+  `needs-you` or `failed`; Hive takes its failed entries out of the queue before it tells the
+  writer, which is also what lets the message go (decision 717 sends nothing to a branch in the
+  queue).
+- **The merge commits need a git user name**, which the runner's test repositories had never set:
+  the first landing failed "Committer identity unknown", and the failure path sent it to the writer
+  as it should.
+- **"Not mine" is a cheap retry.** With decision 716, a writer that answers a failed merge check
+  with no change sends the same commit straight back to landing: only the merge's check runs again,
+  not Hive's check or the review (tested with a check that fails once in the merge's worktree).
+- **The sidenav stopped reading the list while Hive worked.** It read only while an agent worked or
+  waited, or a merge ran; a Hive workspace whose writer is idle moved on unread. Found by the full
+  e2e run (a card left at "Merged"), not by the spec alone, which passed 3 of 3: under load, the
+  last read fell between the queue's landing and Hive's record of it.
+- **A question that reads before it opens loses clicks**: Turn on first read the list, then opened
+  its question; the Hive page's e2e clicked beside the question before it was there.
+- **Claude Code's trust question stops a real run before any token**: in a scratch repository no one
+  had trusted, the writer did not start; Hive started it again once and stopped it, with why, in
+  3 seconds. HV4c's path, seen for real.
+
+**Verification**: tests first, each red for the reason it names (no `by`, the merger asked, no push,
+no fetch; no lander, no `answered`; no answer to a plan, a question or a failure; no
+`/api/hive/state`); `merges.test.ts` 94, `hive-runner.test.ts` 60, `pnpm check` 2,763 tests.
+e2e: the viewer's 388, 387 passed on the first run, the one failure the polling flaw above; after
+its fix the Hive, Alpha Ceph, merges and Settings specs 48 of 48, then the whole suite 388 of 388
+(6.1 min); nexus 20 of 20. Screenshots of the
+sidenav, a Review tab with its landings, Start, and the Hive page and its off question, dark and
+light, over this branch's view on the scratch repository.
+
+Not verified: a real writer from Start to `landed` (it waits for the person to trust the scratch
+repository in Claude Code); a real conflict and a real push to GitHub; the `auto` mode's behaviour
+in a `--bg` session (nothing in this repository's records asked in it, AR1); macOS and Windows.

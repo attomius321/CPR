@@ -373,3 +373,4 @@ merge commit.
 - 2026-11-01 [V87a, V87b — design B and the target check, built](journal/v87-readable-type.md)
 - 2026-11-01 [V87c — Settings' text size, built](journal/v87-readable-type.md)
 - 2026-11-01 [HV4 plan — from the brief to landed, with no person](journal/hv4-autonomous-landing.md)
+- 2026-11-02 [HV4 — Hive from the brief to landed, built](journal/hv4-autonomous-landing.md)

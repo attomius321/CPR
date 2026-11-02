@@ -2,10 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/hv4-autonomous-landing.md)
 
-**Status:** planned (2026-11-01), on branch `feature/hv4-autonomous-landing` (the workspace's,
-from `main` at `6aed550`, `main` merged in at `4cdce3b`); not started. The person's answers are in
-the decisions below. Not built yet, by the person's choice: "Plan, but don't start implementing.
-We don't have enough weekly session."
+**Status:** built, ready for review (2026-11-02), on branch `feature/hv4-autonomous-landing` (the
+workspace's, from `main` at `6aed550`, `main` merged in at `4cdce3b`). The person's answers are in
+the decisions below; "Go for it" on 2026-11-02. Not done: the real run, which waits for the person
+to trust the scratch repository in Claude Code (see Results).
 
 **Problem** (the brief: "Build HV4: autonomous landing"; the person, 2026-11-01: "the North star of
 Hive mode is a fully autonomous system. From the start to the end"). A Hive workspace still waits
@@ -270,3 +270,76 @@ tests and those the change touches; Symbiote runs the whole check.
 (the person's, from Done); Alpha Ceph's Confirm on a start (HV7); usage pacing (HV5); skipping the
 queue's check when the merge's tree is the one Hive checked (about 6 min a landing here); Claude
 Code's "not trusted" question in a new repository, answered once by the person.
+
+## As built (HV4)
+
+- **The queue for Hive's entries** (`merges.ts`, HV4a) as planned: `by: 'hive'`, the target fetched
+  and fast-forwarded to its remote when behind (core's `fetchBranch`, a network run: ssh in batch
+  mode, 120 s), `failed` with `diverged: 'origin/main'` when the two diverged, no merger agent on a
+  conflict (the merge aborted, `needs-you` with its files), landed without a check when there is
+  none, and the target pushed after landing whatever `merge.push` says (core's `pushBranch`, never
+  forced). No `stop(id)`: the person's answer to the off question was that a landing in the queue
+  goes on (771), so the queue needs none.
+- **Landing in the runner** (HV4b): the approval is a verdict `via: 'hive'` (core's `VerdictVia`)
+  in the person's review file, its summary what ran ("Approved by Hive at abc1234: checked (2
+  commands, round 1); reviewed (approved, round 1)."). The entry's id, its state while in flight,
+  how it ended, the failed command and output, and the merge's log copied beside Hive's record
+  (`symbiote/hive/<branch>/logs/`, before the entry is removed) are the record's `landings`. Two
+  ways to fail that the plan did not name: a queue that refuses the request outright (a fast-forward
+  the target cannot take) is a `refused` landing, sent back as the others; an entry the person took
+  out of the queue stops the workspace, with why (stopping beats guessing). The branch is pushed
+  before the check of each turn with commits, and again before a landing if its last push was not
+  of the commit landing.
+- **No gate before landing** (HV4c) is Hive mode's, not the lander's: with Hive on, a plan gets
+  `hive.plan`, a writer waiting on a question or a permission gets `hive.decide` with its turn
+  stopped (`reply` with `stop`), 3 such answers a workspace (`decided`), and a writer that failed
+  or never started is started again once (`startAgent`, `restarted`). Decision 719's test changed
+  with it: a failed first turn is now started again before an unseen one is noticed.
+- **Hive on and off** (HV4d): `GET /api/hive/state` gives the open normal-mode workspaces not
+  merged and Hive's workspaces in flight. Turn on opens its question at once and reads the list
+  while it is open (first built the other way, the e2e's quick clicks beside the question came
+  before it opened).
+- **The viewer** (HV4e): in Hive mode the sidenav has Hive and Done only (no Merging either); a
+  Hive card says Hive's words in every state; the head has no Review, Land or Merge into; Land and
+  `/api/workspaces/hive/land` are gone; the Review tab lists the landings and the branch's last
+  push; the Start page has no Plan first and no Permissions card; the merge page marks Hive's
+  merges and offers no Send to the agent on them. A notice in the status bar says when Hive landed
+  or stopped a workspace (`<name>: Landed in main · pushed`).
+- **Found by the full e2e run**: the sidenav read the list only while an agent worked or waited, or
+  a merge ran. A Hive workspace whose writer is idle while Hive checks, reviews or lands moved on
+  unread, and a card kept "Merged" from the seconds between the queue landing it and Hive recording
+  it. A Hive step at work now keeps the list read every 5 s, until the workspace lands or stops.
+- **Not built**: the landing's time on the card and the merge's log streaming under the Review
+  tab's Now while it runs (the card says "Landing in main: checking the merge"; the log is kept and
+  opens once the landing ends).
+
+**Results.**
+
+- **Tests**: `merges.test.ts` 94 (86 on `main`; 8 new: Hive's entry kept, a conflict with no
+  merger, no check, the target pushed with `merge.push: false`, the person's merge unchanged, a
+  target behind its remote, diverged, a push refused); `hive-runner.test.ts` 60 (47 on `main`):
+  landed with no press against the real merge queue and a bare `origin` (both branches pushed, the
+  approval `via: 'hive'`, nothing sent), a conflict merged in by the writer, the third failure
+  stopping, a flaky merge check answered "not mine" landing on the retry with no check or review
+  run again, the person's checkout in the way, landed on the check alone and on the review alone, a
+  refused branch push, Hive off mid-landing, a killed runner mid-landing, a spike answered, a plan
+  OK'd, a question answered and the fourth stopping, a failed writer restarted once, `auto` mode;
+  `server.test.ts` 2 (Hive on refused, the list in flight); prompts, `AGENTS.md`; the viewer's card
+  words, the two groups, the landing lines, the switch's words, notices and the list's reads. Each
+  new test red first for the reason it names. `pnpm check`: 2,763 tests pass.
+- **e2e**: the viewer's 388 ran once, 387 passed: `hive-review.spec.ts` failed on the polling flaw
+  above (alone, 3 of 3 passed before the fix). After the fix: the Hive, Alpha Ceph, merges and
+  Settings specs 48 of 48; the whole suite again 388 of 388. Nexus: 20 of 20. New:
+  `hive-review.spec.ts` lands the reviewed workspace with no press, into Done; a spec for Hive on
+  refused and Hive off asking.
+- **Screenshots** (1440×900, dark and light, over this branch's view on the scratch repository,
+  the list answered by `page.route`): the sidenav's Hive and Done groups, a landed workspace's
+  Review tab with a failed and a landed landing, the Start page in Hive mode, the Hive mode page
+  and its off question.
+- **The real run, started**: this branch's `symbiote view` on a scratch repository (HV1's `loc`
+  seed, a bare `origin`, a check of `tsc` and vitest, 15 tests in 0.2 s), Hive on, one workspace.
+  Claude Code refused to start in a folder no one had trusted; Hive started the writer again once
+  (06:27:26) and stopped it, with why (06:27:29): "its agent failed twice: Workspace not trusted.
+  Run `claude` in … once and accept the trust prompt". The rest (a writer's turns to `landed` with
+  no press) waits for the person to trust the folder.
+
