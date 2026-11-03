@@ -436,7 +436,8 @@ export function Sidenav({
             : Symbiote does not answer. Trying again.
           </p>
         )}
-        {empty && (
+        {/* In Hive mode, In flight says it (V92): "Nothing yet: start a goal". */}
+        {empty && !hiveMode && (
           <p className="hint workspaces-empty">
             No workspaces yet.
             <Help label="About workspaces">

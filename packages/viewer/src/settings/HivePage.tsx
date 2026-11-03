@@ -11,11 +11,10 @@ import { HIVE_STAGES } from '../ui/StageTrack.js';
 import { effortChoices, keptEffort, keptModel, modelChoices } from '../workspaces/workspaces.js';
 import { setHive, useHive } from '../shell/hive.js';
 import { getJson, postJson } from '../ui/http.js';
-import { HiveJoining } from '../ui/HiveArt.js';
+import { HiveQuestion } from './HiveQuestion.js';
 import {
   AlertIcon,
   CheckIcon,
-  DangerIcon,
   DocumentsIcon,
   HexagonIcon,
   MergeIcon,
@@ -25,14 +24,7 @@ import { StatusLabel } from '../ui/StatusLabel.js';
 import { TurnOffHive } from './HiveOff.js';
 import { SettingsCard } from './SettingsCard.js';
 import { pauseWords } from '../workspaces/hive-rounds.js';
-import {
-  budgetOf,
-  LANDS_BY,
-  nameOf,
-  onRefusal,
-  pauseAtWords,
-  pauseChoices,
-} from './hive-switch.js';
+import { budgetOf, LANDS_BY, pauseAtWords, pauseChoices } from './hive-switch.js';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const two = (n: number) => String(n).padStart(2, '0');
@@ -138,20 +130,9 @@ export function HivePage({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      // The question's Hive Mind grows from its middle as the shutter closes (decision 673).
-      const art = document.querySelector('.hive-joining')?.getBoundingClientRect();
-      await setHive(next, {
-        ...(art
-          ? {
-              from: {
-                x: art.x + art.width / 2,
-                y: art.y + art.height / 2,
-                scale: art.width / 520,
-              },
-            }
-          : {}),
-        then: () => setAsking(null),
-      });
+      // The question folds into its Mind and Hive's look opens from it (V92, decision 874); it
+      // closes once the arrival no longer draws it.
+      await setHive(next, { then: () => setAsking(null) });
     } catch (failed) {
       setError(
         `Hive mode could not be turned ${next ? 'on' : 'off'}: ${(failed as Error).message}`,
@@ -251,7 +232,7 @@ export function HivePage({ onBack }: { onBack: () => void }) {
       {asking === 'on' && (
         <HiveQuestion
           busy={busy}
-          normal={state?.normal ?? null}
+          state={state}
           onTurnOn={() => void turn(true)}
           onCancel={() => setAsking(null)}
         />
@@ -605,87 +586,5 @@ function ReviewerLevels({ onSaid }: { onSaid: (said: Said) => void }) {
         </select>
       )}
     </Row>
-  );
-}
-
-/**
- * Turning Hive mode on asks first (decision 615), in Hive's own look whatever the theme and the
- * mode: a circuit routes into the Hive Mind over the question and lives while it is open
- * (decision 665).
- * Cancel is focused; Escape and a click beside the dialog cancel.
- */
-function HiveQuestion({
-  busy,
-  normal,
-  onTurnOn,
-  onCancel,
-}: {
-  busy: boolean;
-  /** Workspaces in normal mode: Hive does not turn on while any is open (772); null, reading. */
-  normal: HiveState['normal'] | null;
-  onTurnOn: () => void;
-  onCancel: () => void;
-}) {
-  const refused = normal ? onRefusal({ normal }) : null;
-  return (
-    <div
-      className="dialog-backdrop hive"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onCancel();
-      }}
-    >
-      <div
-        className="dialog hive-ink"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="hive-question"
-        aria-describedby="hive-detail"
-        onKeyDown={(event) => {
-          if (event.key !== 'Escape') return;
-          event.preventDefault();
-          event.stopPropagation();
-          onCancel();
-        }}
-      >
-        <HiveJoining />
-        <h2 id="hive-question">
-          <DangerIcon />
-          Turn on Hive mode?
-        </h2>
-        <p id="hive-detail">
-          Hive will start your workspaces&apos; agents again, run the project&apos;s check, and land
-          and push each workspace it drives without asking you first. Turn it on once this
-          repository has a check and tests you trust. Every workspace you start while it is on is
-          Hive&apos;s. Nucleus becomes Alpha Ceph and is told what Hive does: its conversation
-          starts again, unless it is answering or waiting on you.
-        </p>
-        {refused && (
-          <div className="hive-refused" role="status">
-            <p>{refused}</p>
-            <ul>
-              {(normal ?? []).map((w) => (
-                <li key={w.branch}>
-                  {nameOf(w)}
-                  {w.title && <code>{w.branch}</code>}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div className="dialog-buttons">
-          <button
-            type="button"
-            className="button hive"
-            disabled={busy || normal === null || refused !== null}
-            onClick={onTurnOn}
-          >
-            Turn on Hive mode
-          </button>
-          <button type="button" className="button secondary" autoFocus onClick={onCancel}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }

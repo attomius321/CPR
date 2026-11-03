@@ -1,18 +1,8 @@
 // Hive mode's art drawn on a canvas (V82; decisions 665–666, 673): the machined Hive Mind, its
 // plates lit from the upper left and its chambers lit crimson from within;
-// the question's circuit board; the arrival's hex shutter and its traces. The colours are
+// the question's circuit board (the arrival's shutter went in V92, decision 874). The colours are
 // `hive.css`'s (`.hive-art`), read once.
-import {
-  ARRIVAL,
-  pointAt,
-  RING,
-  TAIL,
-  type ArrivalScene,
-  type Path,
-  type Mind,
-  type QuestionScene,
-  type Trace,
-} from './hive-art.js';
+import { pointAt, TAIL, type Path, type Mind, type QuestionScene, type Trace } from './hive-art.js';
 
 /** Hive's art colours, `#rrggbb`, from `hive.css`'s custom properties on the canvas. */
 export interface Palette {
@@ -97,7 +87,6 @@ export class Painter {
   private readonly spec: string;
   private readonly heat: string;
   private readonly bevel: string;
-  private covered: HTMLCanvasElement | null = null;
   /** The board's etched hex cells, made once for its scene. */
   private etched: { scene: QuestionScene; path: Path2D } | null = null;
 
@@ -362,168 +351,6 @@ export class Painter {
     span(ctx, trace, Math.min(a, b), Math.max(a, b));
     ctx.stroke();
     this.spot(ctx, x1, y1, 6, this.spec, 0.9, colour, 0.3);
-  }
-
-  /**
-   * Turning on (decision 673): the hex tiles shut from the edges, the front's edges lit, traces
-   * drawn across them to the closing front, the Mind and its ring on top. Covered, the window is
-   * one picture taken once; the Mind flares and the traces surge; then the tiles open from the
-   * Mind out, the picture seen only through the tiles still shut, a ring of light ahead of them.
-   */
-  arrival(ctx: CanvasRenderingContext2D, scene: ArrivalScene): void {
-    const { width, height, mind, tiles } = scene;
-    const [mx, my] = scene.at;
-    const extent = Math.max(width, height);
-    const view = scene.view();
-    const t = scene.t;
-    const line = Math.max(1.5, Math.min(width, height) / 520);
-    const drawMind = () => {
-      ctx.save();
-      ctx.translate(mx, my);
-      ctx.scale(scene.mindScale, scene.mindScale);
-      this.ring(ctx, 0, 0, RING, t, Math.min(1, Math.max(0, (t - 0.05) / 0.5)));
-      this.mind(ctx, mind, t);
-      ctx.restore();
-    };
-    const traces = (surge: number) => {
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      for (const trace of scene.traces) {
-        const reached = scene.reached(trace);
-        if (reached <= 0) continue;
-        const head = reached * trace.length;
-        ctx.beginPath();
-        span(ctx, trace, 0, head);
-        ctx.strokeStyle = `rgba(${this.glow},${alpha(0.14 + 0.3 * surge)})`;
-        ctx.lineWidth = line * 3;
-        ctx.stroke();
-        const lit = surge > 0 ? this.lampHot : this.lamp;
-        ctx.strokeStyle = `rgba(${lit},${alpha(0.6 + 0.4 * surge)})`;
-        ctx.lineWidth = line;
-        ctx.stroke();
-        if (reached < 1) {
-          const [x, y] = pointAt(trace.points, trace.arcs, head);
-          this.spot(ctx, x, y, line * 7, this.spec, 0.95, this.lamp, 0.6);
-        }
-      }
-    };
-    if (t < ARRIVAL.cover) {
-      // The shut tiles, a little larger so they meet; the front's popping in, edges lit.
-      const shut = new Path2D();
-      const etched = new Path2D();
-      const front = [new Path2D(), new Path2D(), new Path2D()];
-      tiles.centres.forEach(([x, y], i) => {
-        const s = scene.shut(i);
-        if (s <= 0) return;
-        if (s >= 1) {
-          hexagon(x, y, tiles.r + 0.75, shut);
-          hexagon(x, y, tiles.r - 1.5, etched);
-          return;
-        }
-        const grown = outCubic(s);
-        hexagon(x, y, (tiles.r + 0.75) * grown, shut);
-        hexagon(x, y, (tiles.r - 1.5) * grown, front[Math.min(2, Math.floor(s * 3))]);
-      });
-      ctx.fillStyle = this.palette.ink;
-      ctx.fill(shut);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = `rgba(${this.lamp},0.12)`;
-      ctx.stroke(etched);
-      ctx.lineWidth = line;
-      front.forEach((path, k) => {
-        ctx.strokeStyle = `rgba(${k ? this.lamp : this.lampHot},${alpha(0.85 - 0.25 * k)})`;
-        ctx.stroke(path);
-      });
-      traces(0);
-      drawMind();
-      return;
-    }
-    if (!this.covered) {
-      // The first covered frame: every pixel ink, so the look may change under it.
-      ctx.fillStyle = this.palette.ink;
-      ctx.fillRect(-10, -10, width + 20, height + 20);
-      const etched = new Path2D();
-      for (const [x, y] of tiles.centres) hexagon(x, y, tiles.r - 1.5, etched);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = `rgba(${this.lamp},0.12)`;
-      ctx.stroke(etched);
-      traces(0);
-      drawMind();
-      this.covered = document.createElement('canvas');
-      this.covered.width = ctx.canvas.width;
-      this.covered.height = ctx.canvas.height;
-      this.covered.getContext('2d')?.drawImage(ctx.canvas, 0, 0);
-      return;
-    }
-    const picture = this.covered;
-    const opened = view.boom > 0;
-    // The picture, seen through the tiles still shut (all of them until the boom).
-    ctx.save();
-    if (opened) {
-      const still = new Path2D();
-      tiles.centres.forEach(([x, y], i) => {
-        const s = scene.shut(i);
-        if (s > 0) hexagon(x, y, (tiles.r + 0.75) * (s >= 1 ? 1 : outCubic(s)), still);
-      });
-      ctx.clip(still);
-    }
-    const fit = ctx.getTransform();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.drawImage(picture, 0, 0);
-    ctx.setTransform(fit);
-    // The traces surge as the Mind flares, on the tiles still shut only.
-    if (view.heat > 0) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = view.heat;
-      traces(1);
-    }
-    ctx.restore();
-    const reach = mind.reach * scene.mindScale;
-    if (view.heat > 0) {
-      const g = ctx.createRadialGradient(mx, my, 0, mx, my, reach * 1.6);
-      g.addColorStop(0, `rgba(${this.spec},${alpha(0.85 * view.heat)})`);
-      g.addColorStop(0.18, `rgba(${this.heat},${alpha(0.7 * view.heat)})`);
-      g.addColorStop(0.55, `rgba(${this.glow},${alpha(0.35 * view.heat)})`);
-      g.addColorStop(1, `rgba(${this.glow},0)`);
-      ctx.fillStyle = g;
-      ctx.fillRect(mx - reach * 1.7, my - reach * 1.7, reach * 3.4, reach * 3.4);
-    }
-    if (!opened) return;
-    // The tiles opening: their edges lit, white at the front.
-    const edges = [new Path2D(), new Path2D()];
-    tiles.centres.forEach(([x, y], i) => {
-      const s = scene.shut(i);
-      if (s <= 0 || s >= 1) return;
-      hexagon(x, y, (tiles.r - 1.5) * outCubic(s), edges[s < 0.5 ? 0 : 1]);
-    });
-    ctx.lineWidth = line * 1.5;
-    ctx.strokeStyle = `rgba(${this.spec},${alpha(0.9 * (1 - view.boom))})`;
-    ctx.stroke(edges[0]!);
-    ctx.strokeStyle = `rgba(${this.lamp},${alpha(0.9 * (1 - view.boom))})`;
-    ctx.stroke(edges[1]!);
-    // A ring of crimson light ahead of the opening, over the new look.
-    const ring = view.tear * 1.02 + extent * 0.02;
-    const g = ctx.createRadialGradient(
-      mx,
-      my,
-      Math.max(0, ring - extent * 0.05),
-      mx,
-      my,
-      ring + extent * 0.02,
-    );
-    g.addColorStop(0, `rgba(${this.glow},0)`);
-    g.addColorStop(0.7, `rgba(${this.heat},${alpha((1 - view.boom) * 0.45)})`);
-    g.addColorStop(1, `rgba(${this.glow},0)`);
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, width, height);
-    const flash = Math.max(0, 1 - view.boom * 3);
-    if (flash > 0) {
-      const f = ctx.createRadialGradient(mx, my, 0, mx, my, view.tear * 0.9 + 1);
-      f.addColorStop(0, `rgba(${this.spec},${alpha(0.35 * flash)})`);
-      f.addColorStop(1, `rgba(${this.glow},0)`);
-      ctx.fillStyle = f;
-      ctx.fillRect(0, 0, width, height);
-    }
   }
 }
 
