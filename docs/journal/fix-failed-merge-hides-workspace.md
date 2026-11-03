@@ -51,3 +51,5 @@ page's head with the branch as a link, its tip "Open its workspace", the workspa
 To review and the merge's row under Merging; after Send, the workspace's page with its card picked
 under Working and the notice in the status bar. Not verified: Hive mode, whose sidenav
 (`HiveSidenav`) never used Merging alone and is unchanged.
+
+Merged into main (2026-11-03).

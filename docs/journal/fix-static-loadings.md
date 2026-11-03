@@ -57,3 +57,5 @@ Not verified: the desktop app's window (the pictures are headless Chromium).
 no ink, no growing" failed in the merger's check (423 of 424). On this branch alone it passed 3 of
 3; whether `main`'s newer commits or load made it fail was not established. Hive's arrival under
 reduced motion has no e2e test now.
+
+Merged into main (2026-11-03).
