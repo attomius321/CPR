@@ -7,6 +7,7 @@ import {
   MiniMap,
   Panel,
   ReactFlow,
+  getViewportForBounds,
   useReactFlow,
   useStore,
   useStoreApi,
@@ -179,8 +180,25 @@ export function Canvas({
       fitted.current = scope;
       const first = !framed.current && layoutNodes.length > 0;
       if (first) framed.current = true;
-      if (first && !reveal) void fitView(FIT_OPTIONS);
-      else if (reveal)
+      if (first && !reveal) {
+        // Only when React Flow's own first fit framed another layout: a second fit of the same
+        // one would only move the view again.
+        const [width = 0, height = 0] = size.split('x').map(Number);
+        const want = getViewportForBounds(
+          getNodesBounds(layoutNodes.map((node) => node.id)),
+          width,
+          height,
+          0.05,
+          FIT_OPTIONS.maxZoom,
+          0.1,
+        );
+        const now = getViewport();
+        const off =
+          Math.abs(want.zoom - now.zoom) > 0.01 ||
+          Math.abs(want.x - now.x) > 2 ||
+          Math.abs(want.y - now.y) > 2;
+        if (off) void fitView(FIT_OPTIONS);
+      } else if (reveal)
         void fitView({ nodes: reveal.map((id) => ({ id })), duration: 300, maxZoom: 1.1 });
       else if (focus || rescoped) void fitView({ duration: 300, maxZoom: 1.1 });
       else if (selected) {
