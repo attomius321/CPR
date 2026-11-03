@@ -3215,6 +3215,40 @@ describe('/api/hive (V82)', () => {
     expect((await fetch(new URL('/api/hive', server.url))).status).toBe(404);
   });
 
+  it('says since when it is on, and the check Hive would run (V92, decisions 870, 872)', async () => {
+    on = true;
+    const server = await start({
+      repository,
+      hive: { ...hive, since: () => Promise.resolve('2026-11-02T09:02:00.000Z') },
+      hiveCheck: () =>
+        Promise.resolve({ commands: ['npm test'], source: 'symbiote/config.json (merge.checks)' }),
+    });
+    expect(await (await fetch(new URL('/api/hive', server.url))).json()).toEqual({
+      on: true,
+      since: '2026-11-02T09:02:00.000Z',
+    });
+    expect(await (await fetch(new URL('/api/hive/state', server.url))).json()).toEqual({
+      on: true,
+      since: '2026-11-02T09:02:00.000Z',
+      normal: [],
+      flight: [],
+      check: { commands: ['npm test'], source: 'symbiote/config.json (merge.checks)' },
+    });
+    // No check found: none said; a check that cannot be read is none too.
+    const none = await start({ repository, hive, hiveCheck: () => Promise.resolve(null) });
+    expect(await (await fetch(new URL('/api/hive/state', none.url))).json()).toEqual({
+      on: true,
+      normal: [],
+      flight: [],
+    });
+    const broken = await start({
+      repository,
+      hive,
+      hiveCheck: () => Promise.reject(new Error('no tree')),
+    });
+    expect((await fetch(new URL('/api/hive/state', broken.url))).status).toBe(200);
+  });
+
   /** Open workspaces as the list gives them: a branch, Hive's step or none, merged or not. */
   const listing = (
     ...open: { branch: string; hive?: string; merged?: boolean; title?: string }[]

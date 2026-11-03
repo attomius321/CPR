@@ -472,13 +472,22 @@ export function hiveMocks(
       workspaces: [
         ...flight,
         stopped,
-        ...landed.map(([branch, title]) =>
+        ...landed.map(([branch, title, minutes, , rounds, , merged]) =>
           summary(branch, title, ago(200), {
             merged: true,
             ahead: 1,
-            hive: hive({ step: 'landed' }),
+            // When it landed, as the list carries it (V92: the sidenav's Landed today).
+            hive: hive({
+              step: 'landed',
+              round: rounds,
+              landing: { ...landedAt(minutes), round: rounds, merge: sha(merged) },
+            }),
           }),
         ),
+        summary('spike/drop-lodash', 'Can we drop lodash?', ago(230), {
+          lastAction: iso(ago(205)),
+          hive: hive({ step: 'answered' }),
+        }),
       ],
       place: 'repository',
     },
