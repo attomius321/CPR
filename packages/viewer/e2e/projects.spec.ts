@@ -54,7 +54,7 @@ test('draws each project as a frame around its files', async ({ page }) => {
 
   // Both apps' calls to the library cross a boundary, and the legend says what that looks like.
   await expect(page.locator('.react-flow__edge.edge-cross')).toHaveCount(2);
-  await expect(page.locator('.legend')).toContainText('edge between projects');
+  await expect(page.locator('.legend')).toContainText('call between projects');
   await expect(page.locator('.legend')).toContainText('project (app or library)');
 });
 

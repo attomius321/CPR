@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import type { Graph } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { diffRows, excerpt, symbolDetail } from '../src/diff/detail.js';
+import { diffRows, excerpt, neighbourGroups, symbolDetail } from '../src/diff/detail.js';
 
 const graph = JSON.parse(
   readFileSync(
@@ -9,6 +9,22 @@ const graph = JSON.parse(
     'utf8',
   ),
 ) as Graph;
+
+describe('neighbourGroups (V90, decision 841)', () => {
+  const groups = (id: string) =>
+    neighbourGroups(symbolDetail(graph, id)!).map(
+      (g) => `${g.title}: ${g.items.map((i) => i.id.slice(i.id.indexOf('#') + 1)).join(', ')}`,
+    );
+
+  it('says who still uses a removed symbol, by its finding, apart from who used it before', () => {
+    expect(groups('src/math.ts#legacy')).toEqual(['Still used by: old', 'No longer uses: add']);
+  });
+
+  it("splits a symbol's users and uses by side: before the change only, or still", () => {
+    expect(groups('src/math.ts#add')).toEqual(['Used by: total, triple', 'Used before by: legacy']);
+    expect(groups('src/math.ts#triple')).toEqual(['Uses: add']);
+  });
+});
 
 describe('symbolDetail', () => {
   it('lists users, callees and findings', () => {

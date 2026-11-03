@@ -1,16 +1,20 @@
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
-import type { SymbolData } from './flow.js';
+import { findingCount, kindMark, type SymbolData } from './flow.js';
+import { CheckIcon, ForwardIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
 
-const SEVERITIES = ['error', 'warning', 'info'] as const;
 const TONES = { error: 'bad', warning: 'warn', info: 'info' } as const;
+const KIND_WORDS = { added: 'added', removed: 'removed', modified: 'modified', moved: 'moved' };
 
-/** "2 errors", "1 warning", "3 info". */
-const findingsTip = (n: number, severity: (typeof SEVERITIES)[number]) =>
-  severity === 'info' || n === 1 ? `${n} ${severity}` : `${n} ${severity}s`;
-
+/**
+ * A changed symbol or a neighbour (V90, decision 835): a neutral card, its kind in caps, one count
+ * of its findings and a mark for its kind of change on the first line, its name, its signature.
+ * No coloured text, ground or side bar: the mark carries the kind.
+ */
 export function SymbolNode({ data, selected }: NodeProps<Node<SymbolData, 'symbol'>>) {
-  const { node, tone, label, file, tags, findings, reviewed, settled } = data;
+  const { node, tone, label, file, findings, reviewed, settled } = data;
+  const mark = kindMark(tone);
+  const count = findingCount(findings);
   return (
     <div
       className={`symbol tone-${tone}${selected ? ' selected' : ''}${reviewed ? ' reviewed' : ''}${settled ? ' settled' : ''}`}
@@ -19,33 +23,37 @@ export function SymbolNode({ data, selected }: NodeProps<Node<SymbolData, 'symbo
       <Handle type="target" position={Position.Left} />
       <div className="symbol-head">
         <span className="symbol-kind">{node.kind}</span>
-        <span className="symbol-name">{label}</span>
-        {reviewed && <span className="check">✓</span>}
-        {SEVERITIES.map((severity) =>
-          findings[severity] > 0 ? (
-            <span
-              key={severity}
-              className={`badge badge-${severity}`}
-              {...tip(findingsTip(findings[severity], severity), { tone: TONES[severity] })}
-            >
-              {findings[severity]}
-            </span>
-          ) : null,
-        )}
-      </div>
-      <div className="symbol-file">
-        <span>{file}</span>
-        {tags.map((tag) => (
-          <span key={tag} className={`tag tag-${tag}`}>
-            {tag}
-          </span>
-        ))}
         {(node.since === 'new' || node.since === 'updated') && (
-          <span className="tag tag-since" {...tip('Compared with the earlier version')}>
+          <span className="symbol-since" {...tip('Compared with the earlier version')}>
             {node.since}
           </span>
         )}
+        {tone === 'context' && <span className="symbol-unchanged">unchanged</span>}
+        {reviewed && (
+          <span className="check" aria-label="Reviewed">
+            <CheckIcon />
+          </span>
+        )}
+        {count && (
+          <span
+            className={`symbol-count count-${count.severity}`}
+            {...tip(count.words, { tone: TONES[count.severity] })}
+          >
+            {count.count}
+          </span>
+        )}
+        {mark && (
+          <span
+            className={`symbol-mark mark-${mark.kind}`}
+            role="img"
+            aria-label={KIND_WORDS[mark.kind]}
+          >
+            {mark.glyph ?? <ForwardIcon />}
+          </span>
+        )}
       </div>
+      <div className="symbol-name">{label}</div>
+      <div className="symbol-file">{file}</div>
       <Handle type="source" position={Position.Right} />
     </div>
   );

@@ -66,7 +66,7 @@ test('opened with --since, walks only what changed since the previous push', asy
   await expect(page.locator('.list-link')).toHaveText(['volume']);
   await page.keyboard.press('j');
   await expect(page.locator('.panel-title')).toHaveText('volume');
-  await expect(page.locator('.panel-kind')).toContainText('updated since');
+  await expect(page.locator('.panel-tags')).toContainText('updated since');
 
   await only.uncheck();
   await expect(page.locator('.list-link')).toHaveCount(8);

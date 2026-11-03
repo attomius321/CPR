@@ -2,52 +2,91 @@
 
 .panel {
   flex: 0 1 auto;
-  width: var(--panel-width, min(520px, 45vw));
+  width: var(--panel-width, min(400px, 36vw));
   min-width: min(320px, 45vw);
   overflow: auto;
-  padding: 0 16px 24px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel);
 }
 
+/* The picked symbol's head (V90, decision 841; proof 03's `.detail-head`): its kind in caps, its
+   name in mono, its kind of change as a pill; where it is under them. */
 .panel-head {
   position: sticky;
   top: 0;
   z-index: 1;
   display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 12px 0 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px var(--card-pad) 10px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
 }
 
-.panel-kind {
+.panel-head-line {
   display: flex;
-  gap: 6px;
   align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.panel-kind {
+  flex: none;
   color: var(--muted);
   font-size: var(--size-caps);
   font-weight: 500;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.status {
-  color: var(--tone);
-  font-weight: 600;
+  letter-spacing: 0.04em;
 }
 
 .panel-title {
-  margin: 4px 0 2px;
-  font: 600 var(--size-title) var(--mono);
-  word-break: break-all;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font: 600 var(--size-body) var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.panel-title.removed {
+  text-decoration: line-through;
+  text-decoration-color: var(--removed);
+}
+
+/* Its kind of change: the kind's colour, tinted, as a badge (an icon-less status: the word says
+   it). */
+.kind-pill {
+  flex: none;
+  margin-left: auto;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--tone) 30%, transparent);
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+  color: var(--tone);
+  font-size: var(--size-caption);
+  font-weight: 500;
+  line-height: calc(1em + 7px);
+  white-space: nowrap;
+}
+
+.kind-pill.tone-context,
+.kind-pill.tone-external,
+.kind-pill.tone-unknown {
+  color: var(--muted);
+}
+
+.panel-where {
+  color: var(--muted);
+  font-size: var(--size-caption);
 }
 
 .panel-file {
+  display: inline;
   color: var(--muted);
-  font: var(--size-code) var(--mono);
+  font: var(--size-caption) var(--mono);
   word-break: break-all;
 }
 
@@ -56,11 +95,36 @@
   font-weight: 600;
 }
 
+.panel-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* A block of the panel: under a hairline, the card's inset. */
+.panel-block {
+  padding: 10px var(--card-pad) 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-block:last-child {
+  border-bottom: 0;
+}
+
 .panel h3 {
-  margin: 16px 0 8px;
-  font-size: var(--size-caption);
-  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 8px;
   color: var(--muted);
+  font-size: var(--size-caps);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.neighbours-group + .neighbours-group h3 {
+  margin-top: 12px;
 }
 
 .close {
@@ -155,20 +219,56 @@
   user-select: none;
 }
 
+/* A finding as an alert in its severity's tint (V90; proof 03's `.alert`). */
 .finding {
-  padding: 8px 10px;
-  margin-bottom: 6px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--bg);
+  --severity: var(--info);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--severity) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--severity) 28%, var(--line));
 }
 
-.finding p {
-  margin: 4px 0 0;
+.finding + .finding {
+  margin-top: 6px;
+}
+
+.finding-error {
+  --severity: var(--error);
+}
+
+.finding-warning {
+  --severity: var(--warning);
+}
+
+.finding-message {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--size-small);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+.finding-message .finding-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  height: calc(var(--size-small) * 1.45);
+  color: var(--severity);
+}
+
+.finding-message .finding-icon svg {
+  width: 14px;
+  height: 14px;
 }
 
 .finding-rule {
-  font-weight: 500;
+  padding-left: 22px;
+  color: var(--muted);
+  font: var(--size-caps) / 1.4 var(--mono);
 }
 
 /* Used by, Uses: rows, not a bulleted list (V37). */
@@ -192,10 +292,31 @@
 }
 
 .neighbours li > .muted {
+  min-width: 0;
   overflow: hidden;
-  font-size: var(--size-small);
+  font-size: var(--size-caption);
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.neighbour-icon {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  align-self: center;
+}
+
+.neighbour-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.group-error .neighbour-icon {
+  color: var(--error);
+}
+
+.group-ok .neighbour-icon {
+  color: var(--ok);
 }
 
 .neighbours-count {
@@ -221,8 +342,26 @@
 
 .panel-actions {
   display: flex;
-  gap: 8px;
+  flex-direction: column;
   align-items: flex-start;
+  gap: 10px;
+}
+
+.mark-reviewed kbd {
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--muted);
+  font: var(--size-caption) var(--mono);
+}
+
+.mark-reviewed.done {
+  color: var(--ok);
+}
+
+.mark-reviewed svg {
+  width: 14px;
+  height: 14px;
 }
 
 .review {
@@ -294,24 +433,25 @@
   font-size: var(--size-small);
 }
 
+.comment-actions > button {
+  flex: none;
+  white-space: nowrap;
+}
+
+.panel-actions > .comments {
+  width: 100%;
+}
+
+.panel-actions .comments h3 {
+  margin-top: 0;
+}
+
 .review:disabled {
   opacity: 0.5;
   cursor: default;
 }
 
 /* ---- open in VS Code ---------------------------------------------------------------- */
-
-/* The file line and the button beside it; the button wraps under a long path. */
-.panel-where {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-}
-
-.panel-where .panel-file {
-  min-width: 0;
-}
 
 .open-editor {
   display: inline-flex;

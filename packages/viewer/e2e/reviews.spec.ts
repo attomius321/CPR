@@ -61,6 +61,8 @@ const git = (...args: string[]) =>
   }).trim();
 const changesTab = (page: Page) => page.getByRole('tab', { name: /Changes/ });
 const reviewTab = (page: Page) => page.getByRole('tab', { name: /Review/ });
+/** How far the review is, under the tabs (V90). */
+const progress = (page: Page) => page.locator('.review-progress');
 const originGit = (...args: string[]) => git('--git-dir', symbiote.origin, ...args);
 /** Reviews `branch` from Git's branches panel: its menu's Review (a commit's menu has none). */
 const review = async (page: Page, branch: string) => {
@@ -91,12 +93,12 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await expect(page.locator('.revisions')).toHaveText(`${short(base)} → ${short(cube)}`);
   await showGraph(page);
   await changesTab(page).click();
-  await expect(changesTab(page)).toContainText('0/2');
+  await expect(progress(page)).toContainText('0 of 2');
   for (let i = 0; i < 2; i++) {
     await page.keyboard.press('j');
     await page.keyboard.press('r');
   }
-  await expect(changesTab(page)).toContainText('2/2');
+  await expect(progress(page)).toContainText('2 of 2');
 
   // In symbiote/reviews/, out of git, written mark by mark: read once both have landed.
   const read = () =>
@@ -141,7 +143,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await expect(page.locator('.revisions')).toHaveText(`${short(base)} → ${short(tip)}`);
   await showGraph(page);
   await changesTab(page).click();
-  await expect(changesTab(page)).toContainText('1/3');
+  await expect(progress(page)).toContainText('1 of 3');
   await expect(page.locator('.stale-note')).toContainText('1 symbol changed since you reviewed it');
 
   // A new `symbiote view` (another port) finds the review in the repository.
@@ -149,7 +151,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await page.goto(`${url}review/agent/`);
   await showGraph(page);
   await changesTab(page).click();
-  await expect(changesTab(page)).toContainText('1/3');
+  await expect(progress(page)).toContainText('1 of 3');
 });
 
 test('keeps the verdict picked on the Graph page through g to Files: Finish review sends it (fix/hive-turn-end-flaky-tests-verdict)', async ({

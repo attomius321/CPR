@@ -1,22 +1,20 @@
 /* ---- file boxes --------------------------------------------------------------------- */
 
+/* A file's frame (V90, decision 837; normal.css's `.frame`): the card's ground, a hairline, its
+   path quiet at the top. A changed file is told by its symbols' marks, not a coloured edge. */
 .file-box {
   height: 100%;
-  border: 1px solid var(--line);
   border-radius: 10px;
-  background: color-mix(in srgb, var(--panel) 45%, transparent);
-}
-
-.file-box.changed {
-  border-color: color-mix(in srgb, var(--modified) 55%, var(--line));
+  background: color-mix(in srgb, var(--panel) 70%, transparent);
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .file-label {
   direction: rtl;
   text-align: left;
-  padding: 6px 12px;
+  padding: 7px 10px;
   color: var(--muted);
-  font: var(--size-small) var(--mono);
+  font: var(--size-caps) / 1.3 var(--mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

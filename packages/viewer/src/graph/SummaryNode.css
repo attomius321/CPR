@@ -1,16 +1,17 @@
 /* ---- summary nodes: many neighbours of one changed symbol ---------------------------- */
 
+/* As a neighbour's node (V90): no ground, a dashed hairline. */
 .summary-node {
   height: 100%;
   padding: 6px 10px;
-  background: color-mix(in srgb, var(--panel) 70%, transparent);
-  border: 1px dashed var(--context);
+  background: transparent;
+  border: 1px dashed var(--line-2);
   border-radius: 8px;
   cursor: pointer;
 }
 
 .summary-node:hover {
-  border-color: color-mix(in srgb, var(--text) 40%, var(--line));
+  border-color: var(--edge);
 }
 
 .summary-node.expanded {

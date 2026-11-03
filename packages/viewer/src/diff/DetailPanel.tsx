@@ -9,8 +9,15 @@ import {
   type Draft,
   type Side,
 } from './comments.js';
-import { diffRows, excerpt, symbolDetail, type DiffRow, type Neighbour } from './detail.js';
-import { groupOf, label, tone } from '../graph/flow.js';
+import {
+  diffRows,
+  excerpt,
+  neighbourGroups,
+  symbolDetail,
+  type DiffRow,
+  type NeighbourGroup,
+} from './detail.js';
+import { groupOf, label, tone, type Tone } from '../graph/flow.js';
 import {
   anchorTarget,
   describeOpen,
@@ -21,7 +28,7 @@ import {
 } from './open.js';
 import { OpenIcon } from './OpenIcon.js';
 import { pathInProject, projectOf } from '../graph/projects.js';
-import { CloseIcon } from '../ui/icons.js';
+import { AlertIcon, CheckIcon, CloseIcon, FailedIcon, HelpIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
 
 const sources = new Map<string, Promise<string>>();
@@ -128,7 +135,8 @@ export function DetailPanel({
     return () => clearTimeout(timer);
   }, [note]);
   if (!detail) return null;
-  const { node, users, callees, findings, mentions } = detail;
+  const { node, findings, mentions } = detail;
+  const groups = neighbourGroups(detail);
   const rows = diff.status === 'ready' ? diff.rows : [];
   const anchor = picked !== undefined ? picked : defaultAnchor(graph, node, rows);
   const members = graph.nodes.filter((n) => n.container === node.id && n.status !== 'unchanged');
@@ -143,12 +151,45 @@ export function DetailPanel({
   // The button (and `o`): the line picked for a comment, else the symbol's first line.
   const openTarget = canOpen ? (picked ? anchorTarget(picked) : symbolTarget(node)) : null;
 
+  const kind = tone(node);
+  const where = (node.head ?? node.base)?.range.start.line;
+  const at = node.head ? graph.revisions.head.sha : graph.revisions.base.sha;
+  const codeWord =
+    node.status === 'removed'
+      ? 'Its code, removed'
+      : node.status === 'added'
+        ? 'Its code, added'
+        : node.status === 'unchanged'
+          ? 'Its code'
+          : 'Its code, changed';
+
+  // The proof's order (V90, decision 841): what it is and where, its findings, who uses it and
+  // what it uses, its signature and members, its code, then the comment box and Mark reviewed.
   return (
     <aside className="panel" aria-label="Symbol detail">
       <header className="panel-head">
-        <div>
-          <div className="panel-kind">
-            {node.kind} · <span className={`status tone-${tone(node)}`}>{tone(node)}</span>
+        <div className="panel-head-line">
+          <span className="panel-kind">{node.kind}</span>
+          <h2 className={`panel-title${node.status === 'removed' ? ' removed' : ''}`}>
+            {label(node)}
+          </h2>
+          <span className={`kind-pill tone-${kind}`}>{KIND_PILLS[kind]}</span>
+          <button className="close" onClick={onClose} aria-label="Close">
+            <CloseIcon />
+          </button>
+        </div>
+        <div className="panel-where">
+          <FileLine node={node} projects={projects} moved={moved} />
+          {where !== undefined && (
+            <span className="panel-at">
+              {' '}
+              · line {where}
+              {at ? ` at ${at.slice(0, 7)}` : ''}
+            </span>
+          )}
+        </div>
+        {(node.since === 'new' || node.since === 'updated' || node.delta) && (
+          <div className="panel-tags">
             {(node.since === 'new' || node.since === 'updated') && (
               <span className="tag tag-since">
                 {node.since} since {graph.since?.sha.slice(0, 7)}
@@ -163,49 +204,32 @@ export function DetailPanel({
                   </span>
                 ))}
           </div>
-          <h2 className="panel-title">{label(node)}</h2>
-          {openTarget ? (
-            <div className="panel-where">
-              <FileLine node={node} projects={projects} moved={moved} />
-              <button
-                id="open-in-editor"
-                type="button"
-                className="open-editor"
-                {...tip(`Open line ${openTarget.line} of ${openTarget.side} in VS Code`, {
-                  keys: 'o',
-                })}
-                onClick={() => open(openTarget)}
-              >
-                <OpenIcon />
-                Open in VS Code
-                <kbd aria-hidden="true">o</kbd>
-              </button>
-            </div>
-          ) : (
-            <FileLine node={node} projects={projects} moved={moved} />
-          )}
-          {canOpen && (
-            <div className={`open-note${note?.error ? ' open-error' : ''}`} role="status">
-              {note?.text}
-            </div>
-          )}
-          {stale && <div className="stale-note">↻ Changed since you reviewed it</div>}
-        </div>
-        <div className="panel-actions">
-          {node.status !== 'unchanged' && (
-            <button className={`review${reviewed ? ' done' : ''}`} onClick={onToggleReviewed}>
-              {reviewed ? '✓ Reviewed' : 'Mark reviewed'}
-            </button>
-          )}
-          <button className="close" onClick={onClose} aria-label="Close">
-            <CloseIcon />
+        )}
+        {openTarget && (
+          <button
+            id="open-in-editor"
+            type="button"
+            className="open-editor"
+            {...tip(`Open line ${openTarget.line} of ${openTarget.side} in VS Code`, {
+              keys: 'o',
+            })}
+            onClick={() => open(openTarget)}
+          >
+            <OpenIcon />
+            Open in VS Code
+            <kbd aria-hidden="true">o</kbd>
           </button>
-        </div>
+        )}
+        {canOpen && (
+          <div className={`open-note${note?.error ? ' open-error' : ''}`} role="status">
+            {note?.text}
+          </div>
+        )}
+        {stale && <div className="stale-note">↻ Changed since you reviewed it</div>}
       </header>
 
       {findings.length + mentions.length > 0 && (
-        <section>
-          <h3>Findings</h3>
+        <section className="panel-block">
           {findings.map((f) => (
             <FindingItem key={f.id} finding={f} onSelect={onSelect} />
           ))}
@@ -215,8 +239,16 @@ export function DetailPanel({
         </section>
       )}
 
+      {groups.length > 0 && (
+        <section className="panel-block">
+          {groups.map((group) => (
+            <Neighbours key={group.title} group={group} onSelect={onSelect} />
+          ))}
+        </section>
+      )}
+
       {signatures.length > 0 && (
-        <section>
+        <section className="panel-block">
           <h3>Signature</h3>
           {node.base && node.head && node.base.signature !== node.head.signature ? (
             <>
@@ -230,9 +262,9 @@ export function DetailPanel({
       )}
 
       {members.length > 0 && (
-        <section>
+        <section className="panel-block">
           <h3>
-            Changed members <span className="muted">({members.length})</span>
+            Changed members <span className="neighbours-count">{members.length}</span>
           </h3>
           <ul className="neighbours">
             {members.map((member) => (
@@ -248,8 +280,8 @@ export function DetailPanel({
       )}
 
       {showsCode && (
-        <section>
-          <h3>Code</h3>
+        <section className="panel-block">
+          <h3>{codeWord}</h3>
           <SymbolDiff
             state={diff}
             anchor={comments ? anchor : null}
@@ -263,20 +295,42 @@ export function DetailPanel({
         </section>
       )}
 
-      {comments && (
-        <CommentBox
-          comments={comments}
-          anchor={anchor}
-          ready={!showsCode || !hasSources || diff.status !== 'loading'}
-          pickable={rows.some((r) => r.type !== 'same')}
-        />
-      )}
-
-      <Neighbours title="Used by" items={users} onSelect={onSelect} />
-      <Neighbours title="Uses" items={callees} onSelect={onSelect} />
+      <section className="panel-block panel-actions">
+        {comments && (
+          <CommentBox
+            comments={comments}
+            anchor={anchor}
+            name={label(node)}
+            ready={!showsCode || !hasSources || diff.status !== 'loading'}
+            pickable={rows.some((r) => r.type !== 'same')}
+          />
+        )}
+        {node.status !== 'unchanged' && (
+          <button
+            className={`button secondary mark-reviewed${reviewed ? ' done' : ''}`}
+            onClick={onToggleReviewed}
+            {...tip(reviewed ? 'Mark it not reviewed' : 'Mark it reviewed', { keys: 'r' })}
+          >
+            <CheckIcon />
+            {reviewed ? 'Reviewed' : 'Mark reviewed'}
+            <kbd aria-hidden="true">r</kbd>
+          </button>
+        )}
+      </section>
     </aside>
   );
 }
+
+/** A symbol's kind of change in its pill (V90): its word. */
+const KIND_PILLS: Record<Tone, string> = {
+  added: 'Added',
+  removed: 'Removed',
+  modified: 'Modified',
+  moved: 'Moved',
+  context: 'Unchanged',
+  external: 'Package',
+  unknown: 'Dynamic',
+};
 
 /** Long symbols show this many rows until expanded. */
 const MAX_ROWS = 300;
@@ -376,11 +430,14 @@ function isAnchor(row: DiffRow, anchor: Anchor | null): boolean {
 function CommentBox({
   comments,
   anchor,
+  name,
   ready,
   pickable,
 }: {
   comments: Comments;
   anchor: Anchor | null;
+  /** The symbol's name, in the box's placeholder. */
+  name: string;
   /** False while the code (and so the default line) is loading. */
   ready: boolean;
   pickable: boolean;
@@ -417,7 +474,7 @@ function CommentBox({
         id="comment-input"
         className="comment-input"
         aria-label="Comment"
-        placeholder="Leave a comment (sent with the review)"
+        placeholder={`Comment on ${name}…`}
         rows={3}
         value={text}
         onChange={(e) => setText(e.target.value)}
@@ -428,7 +485,12 @@ function CommentBox({
           {describeAnchor(anchor)}
           {pickable ? ' · click a +/− line to move it' : ''}
         </span>
-        <button className="review" onClick={add} disabled={!ready || !text.trim()}>
+        <button
+          className="button secondary"
+          onClick={add}
+          disabled={!ready || !text.trim()}
+          {...tip('Add the comment, sent with the review', { keys: 'Ctrl+Enter' })}
+        >
           Add comment
         </button>
       </div>
@@ -436,6 +498,9 @@ function CommentBox({
   );
 }
 
+const SEVERITY_ICONS = { error: FailedIcon, warning: AlertIcon, info: HelpIcon } as const;
+
+/** A finding as an alert in its severity's tint (V90): its icon and message, its rule quiet. */
 function FindingItem({
   finding,
   onSelect,
@@ -445,10 +510,17 @@ function FindingItem({
   onSelect: (id: string) => void;
   mention?: boolean;
 }) {
+  const Icon = SEVERITY_ICONS[finding.severity];
   return (
     <div className={`finding finding-${finding.severity}`}>
+      <p className="finding-message">
+        <span className="finding-icon" aria-label={finding.severity}>
+          <Icon />
+        </span>
+        <span>{finding.message}</span>
+      </p>
       <div className="finding-rule">
-        <span className={`badge badge-${finding.severity}`}>{finding.severity}</span> {finding.rule}
+        {finding.rule}
         {mention && (
           <>
             {' '}
@@ -459,42 +531,51 @@ function FindingItem({
           </>
         )}
       </div>
-      <p>{finding.message}</p>
     </div>
   );
 }
 
+/**
+ * A group of neighbours (V90, decision 841): still used by (red), used before by (green, no
+ * longer), used by and uses; each its name, its file and line.
+ */
 function Neighbours({
-  title,
-  items,
+  group,
   onSelect,
 }: {
-  title: string;
-  items: Neighbour[];
+  group: NeighbourGroup;
   onSelect: (id: string) => void;
 }) {
-  if (items.length === 0) return null;
+  const { title, tone: groupTone, items } = group;
   return (
-    <section>
+    <div className={`neighbours-group${groupTone ? ` group-${groupTone}` : ''}`}>
       <h3>
         {title} <span className="neighbours-count">{items.length}</span>
       </h3>
       <ul className="neighbours">
-        {items.map((item) => (
-          <li key={`${item.id}|${item.kind}`}>
-            <button className="link" onClick={() => onSelect(item.id)} disabled={!item.node}>
-              {item.node ? label(item.node) : item.id}
-            </button>
-            <span className="muted">
-              {' '}
-              {item.kind}
-              {item.possible ? ' · possible' : ''}
-              {item.side === 'base' ? ' · removed' : item.side === 'head' ? ' · new' : ''}
-            </span>
-          </li>
-        ))}
+        {items.map((item) => {
+          const decl = item.node && (item.node.head ?? item.node.base);
+          return (
+            <li key={`${item.id}|${item.kind}`}>
+              {groupTone && (
+                <span className="neighbour-icon" aria-hidden="true">
+                  {groupTone === 'error' ? <FailedIcon /> : <CheckIcon />}
+                </span>
+              )}
+              <button className="link" onClick={() => onSelect(item.id)} disabled={!item.node}>
+                {item.node ? label(item.node) : item.id}
+              </button>
+              <span className="muted">
+                {decl ? `${decl.file}:${decl.range.start.line}` : item.kind}
+                {item.kind !== 'call' ? ` · ${item.kind}` : ''}
+                {item.side === 'head' ? ' · new' : ''}
+                {item.possible ? ' · possible' : ''}
+              </span>
+            </li>
+          );
+        })}
       </ul>
-    </section>
+    </div>
   );
 }
 

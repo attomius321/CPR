@@ -50,6 +50,40 @@ export function symbolDetail(graph: Graph, id: string): SymbolDetail | undefined
   };
 }
 
+/** A group of a symbol's neighbours in the detail (V90, decision 841): its title and its tone. */
+export interface NeighbourGroup {
+  title: string;
+  /** `error`: still uses a removed symbol; `ok`: no longer does; none: as it is. */
+  tone?: 'error' | 'ok';
+  items: Neighbour[];
+}
+
+/**
+ * A symbol's users and uses by side: those that still use a removed symbol (its
+ * `removed-still-referenced` finding's), those that used it before the change only, those that do
+ * now; what it uses now, and no longer.
+ */
+export function neighbourGroups({ users, callees, findings }: SymbolDetail): NeighbourGroup[] {
+  const still = new Set(
+    findings.filter((f) => f.rule === 'removed-still-referenced').flatMap((f) => f.related),
+  );
+  const groups: NeighbourGroup[] = [
+    { title: 'Still used by', tone: 'error', items: users.filter((u) => still.has(u.id)) },
+    {
+      title: 'Used by',
+      items: users.filter((u) => !still.has(u.id) && u.side !== 'base'),
+    },
+    {
+      title: 'Used before by',
+      tone: 'ok',
+      items: users.filter((u) => !still.has(u.id) && u.side === 'base'),
+    },
+    { title: 'Uses', items: callees.filter((c) => c.side !== 'base') },
+    { title: 'No longer uses', tone: 'ok', items: callees.filter((c) => c.side === 'base') },
+  ];
+  return groups.filter((group) => group.items.length > 0);
+}
+
 export interface Excerpt {
   /** 1-based number of the first line. */
   firstLine: number;
