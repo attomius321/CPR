@@ -301,6 +301,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [V92](plan/v92-redesign-hive-pages.md) | Redesign step 5: Hive's pages — the Run tab (the round on a timeline, check commands against the last passing run, the log's tail, defects as cards, stopped and landed), the sidenav's In flight, Stopped, Landed today, Settings' Hive mode page as grouped rows, Start in Hive mode, the question with readiness and a 1.4 s arrival | ✅ | 860–874 | [journal](journal/v92-redesign-hive-pages.md) |
 | [V93](plan/v93-redesign-finish.md) | Redesign finished: every page as its proof — the sidenav at 260 px with two-line rows in both modes, the status bar, normal mode's Merge and Start, the pipeline card, a 300 px side card, a review's framing, detail, Open ↗ and syntax colours, Settings' list | ✅ | 875–896 | [journal](journal/v93-redesign-finish.md) |
 | Fix | Hive's question, its dim, the Mind, its glow and the ring never drawn again once their layers end: they flashed back from 1.18 to 1.54 s of the arrival | ✅ | | [journal](journal/fix-hive-question-reappears.md) |
+| Fix | The Overview fits the main area and never scrolls as a page: each list scrolls in its card under its head, the inbox (Hive: in flight) keeps its rows first, a column scrolls only when its cards' minimums do not fit | ready for review | | [journal](journal/fix-overview-fits-the-page.md) |
 
 ### Native window
 
