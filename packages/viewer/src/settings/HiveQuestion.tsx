@@ -9,10 +9,10 @@ import { useShell } from '../shell/shell-context.js';
 import { HiveJoining } from '../ui/HiveArt.js';
 import { getJson } from '../ui/http.js';
 import {
-  AlertIcon,
   CheckIcon,
   ChecksIcon,
   CloseIcon,
+  DangerIcon,
   HexagonIcon,
   MergeIcon,
   PencilIcon,
@@ -34,7 +34,8 @@ const HEX = '12,1 23,7 23,19 12,25 1,19 1,7';
 const MARKS: Record<ReadyItem['mark'], () => ReactNode> = {
   ok: CheckIcon,
   fail: CloseIcon,
-  warn: AlertIcon,
+  // A danger, as proof 09 marks Full access: the triangle (V93).
+  warn: DangerIcon,
 };
 
 /** The question, open while Settings asks it; `state` null while it is read. */
