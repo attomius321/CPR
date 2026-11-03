@@ -61,3 +61,5 @@ alone, and the Checks page drew "Reading the check…" as a plain hint. `main` m
 row and the viewer's `CLAUDE.md` row kept from both), the line drawn with `Loading` as the other
 Settings pages draw theirs. `pnpm check`: 227 files, 3,087 tests; `settings.spec.ts`,
 `look.spec.ts` and Hive's Settings test in `hive-loop.spec.ts` 29 of 29.
+
+Merged into main (2026-11-03).
