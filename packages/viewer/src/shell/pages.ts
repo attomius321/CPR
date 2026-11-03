@@ -32,6 +32,7 @@ export type Route =
   /** Start a workspace (V30a), at `/start`: at the default branch's tip, or at the commit `at`. */
   | { page: 'start'; at?: string };
 
+export const OVERVIEW_PAGE = '/overview';
 export const GIT_PAGE = '/git';
 /** Git's address until V66, moved to `GIT_PAGE` with its query. */
 const HISTORY_PAGE = '/history';
@@ -65,6 +66,8 @@ export function routeTitle(
   nucleus = 'Nucleus',
 ): string {
   switch (route.page) {
+    case 'overview':
+      return pageTitle('Overview', repo);
     case 'git':
       return pageTitle('Git', repo);
     case 'nucleus':
@@ -131,6 +134,8 @@ const OLD_WORKSPACES = new Set(['/workspaces', '/features']);
 /** The address of a route, the one `routeOf` reads back. */
 export function hrefOf(route: Route): string {
   switch (route.page) {
+    case 'overview':
+      return OVERVIEW_PAGE;
     case 'git':
       return GIT_PAGE;
     case 'nucleus':
@@ -158,9 +163,11 @@ export function hrefOf(route: Route): string {
 
 /**
  * What the shell shows at `pathname` and `search`; `moved` is the address to show instead: the root
- * alone is Git, History's old address is Git's, and an old address of Workspaces is today's.
+ * alone is the Overview (V91, decision 848; Git before), History's old address is Git's, and an old
+ * address of Workspaces is today's.
  */
 export function routeOf(pathname: string, search: string): { route: Route; moved?: string } {
+  if (pathname === OVERVIEW_PAGE) return { route: { page: 'overview' } };
   if (pathname === GIT_PAGE) return { route: { page: 'git' } };
   if (pathname === HISTORY_PAGE) return { route: { page: 'git' }, moved: `${GIT_PAGE}${search}` };
   if (pathname === SETTINGS_PAGE) return { route: { page: 'settings' } };
@@ -190,12 +197,13 @@ export function routeOf(pathname: string, search: string): { route: Route; moved
     return old ? { route, moved: `/${search}` } : { route };
   }
   if (merge && !old) return { route: { page: 'merge', branch: merge } };
-  return { route: { page: 'git' }, moved: GIT_PAGE };
+  return { route: { page: 'overview' }, moved: OVERVIEW_PAGE };
 }
 
 /** Whether a same-origin address is one the shell shows in place (without loading the page). */
 export function inShell(url: URL): boolean {
   return (
+    url.pathname === OVERVIEW_PAGE ||
     url.pathname === GIT_PAGE ||
     url.pathname === HISTORY_PAGE ||
     url.pathname === SETTINGS_PAGE ||
@@ -212,7 +220,8 @@ export function inShell(url: URL): boolean {
 
 /**
  * A diff's way back: to the page it was opened from (`referrer`, which outlives a reload), with
- * its address — Git, a workspace, History (V77) —; else Git, where comparisons are picked.
+ * its address — the Overview (V91), Git, a workspace, History (V77) —; else Git, where
+ * comparisons are picked.
  */
 export function backLink(referrer: string, origin: string): { href: string; label: string } {
   let from: URL | null = null;
@@ -226,6 +235,9 @@ export function backLink(referrer: string, origin: string): { href: string; labe
       return { href: `${GIT_PAGE}${from.search}`, label: 'Git' };
     }
     const { route } = routeOf(from.pathname, from.search);
+    // The Overview's address, or the root that opens it: not any address routeOf falls back on.
+    const overview = from.pathname === OVERVIEW_PAGE || from.pathname === '/';
+    if (route.page === 'overview' && overview) return { href: OVERVIEW_PAGE, label: 'Overview' };
     if (route.page === 'workspace') return { href: hrefOf(route), label: 'Workspace' };
     if (route.page === 'workspace-history') {
       return { href: `${from.pathname}${from.search}`, label: 'History' };

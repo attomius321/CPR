@@ -5,6 +5,7 @@ import { getJson, postJson } from '../ui/http.js';
 import { HiveJoining } from '../ui/HiveArt.js';
 import { DangerIcon } from '../ui/icons.js';
 import { StatusLabel } from '../ui/StatusLabel.js';
+import { TurnOffHive } from './HiveOff.js';
 import { SettingsCard } from './SettingsCard.js';
 import { pauseWords } from '../workspaces/hive-rounds.js';
 import {
@@ -14,7 +15,6 @@ import {
   LANDS_BY,
   landsByWords,
   nameOf,
-  offWords,
   onRefusal,
   pauseAtWords,
   pauseChoices,
@@ -29,7 +29,7 @@ import {
  */
 export function HivePage({ onBack }: { onBack: () => void }) {
   const on = useHive();
-  const [asking, setAsking] = useState<'on' | 'off' | null>(null);
+  const [asking, setAsking] = useState<'on' | null>(null);
   const [state, setState] = useState<HiveState | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -37,24 +37,19 @@ export function HivePage({ onBack }: { onBack: () => void }) {
   const [landsBy, setLandsBy] = useState<HiveLandsBy>('queue');
 
   /**
-   * Asks first (HV4): on, always, saying which workspaces in normal mode keep it off; off, only
-   * while Hive's work is in flight, saying what happens to each. Unread, on asks as before and
-   * off turns off at once.
+   * Turning on asks first (HV4), always, saying which workspaces in normal mode keep it off; read
+   * while the question is open. Turning off is `TurnOffHive`'s, the Overview's too (V91).
    */
-  const ask = async (next: boolean) => {
+  const ask = async () => {
     setError(null);
     setState(null);
-    // On: the question at once, what keeps Hive off read while it is open.
-    if (next) setAsking('on');
+    setAsking('on');
     const read = await getJson<HiveState>('/api/hive/state').catch((): HiveState => ({
-      on: !next,
+      on: false,
       normal: [],
       flight: [],
     }));
     setState(read);
-    if (next) return;
-    if (read.flight.length > 0) return setAsking('off');
-    return turn(false);
   };
 
   const turn = async (next: boolean) => {
@@ -121,21 +116,9 @@ export function HivePage({ onBack }: { onBack: () => void }) {
       </p>
       <div className="hive-control">
         {on ? (
-          <button
-            type="button"
-            className="button danger"
-            disabled={busy}
-            onClick={() => void ask(false)}
-          >
-            Turn off Hive mode
-          </button>
+          <TurnOffHive label="Turn off Hive mode" onError={setError} />
         ) : (
-          <button
-            type="button"
-            className="button hive"
-            disabled={busy}
-            onClick={() => void ask(true)}
-          >
+          <button type="button" className="button hive" disabled={busy} onClick={() => void ask()}>
             Turn on Hive mode
           </button>
         )}
@@ -156,14 +139,6 @@ export function HivePage({ onBack }: { onBack: () => void }) {
           busy={busy}
           normal={state?.normal ?? null}
           onTurnOn={() => void turn(true)}
-          onCancel={() => setAsking(null)}
-        />
-      )}
-      {asking === 'off' && state && (
-        <HiveOffQuestion
-          busy={busy}
-          flight={state.flight}
-          onTurnOff={() => void turn(false)}
           onCancel={() => setAsking(null)}
         />
       )}
@@ -445,68 +420,6 @@ function HiveQuestion({
             onClick={onTurnOn}
           >
             Turn on Hive mode
-          </button>
-          <button type="button" className="button secondary" autoFocus onClick={onCancel}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Turning Hive off while its work is in flight asks first (HV4, decision 771): each workspace and
- * what happens to it, then and when Hive is on again. Cancel is focused; Escape and a click
- * beside the dialog cancel.
- */
-function HiveOffQuestion({
-  busy,
-  flight,
-  onTurnOff,
-  onCancel,
-}: {
-  busy: boolean;
-  flight: HiveState['flight'];
-  onTurnOff: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <div
-      className="dialog-backdrop"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onCancel();
-      }}
-    >
-      <div
-        className="dialog hive-off-question"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="hive-off-question"
-        aria-describedby="hive-off-detail"
-        onKeyDown={(event) => {
-          if (event.key !== 'Escape') return;
-          event.preventDefault();
-          event.stopPropagation();
-          onCancel();
-        }}
-      >
-        <h2 id="hive-off-question">Turn off Hive mode?</h2>
-        <p id="hive-off-detail">
-          Hive is at work on {flight.length === 1 ? 'a workspace' : `${flight.length} workspaces`}.
-          Turning it off:
-        </p>
-        <ul className="hive-off-list">
-          {flight.map((w) => (
-            <li key={w.branch}>
-              <strong>{nameOf(w)}</strong>: {offWords(w.step, w.request)}.
-            </li>
-          ))}
-        </ul>
-        <p>Alpha Ceph becomes Nucleus again. Nothing that was done is undone.</p>
-        <div className="dialog-buttons">
-          <button type="button" className="button danger" disabled={busy} onClick={onTurnOff}>
-            Turn off Hive mode
           </button>
           <button type="button" className="button secondary" autoFocus onClick={onCancel}>
             Cancel

@@ -409,6 +409,30 @@ button.workspace-about {
   color: var(--group-tone, var(--faint));
 }
 
+/* A group that folds (V91, decision 859: normal mode's Done): its heading a button, a chevron in
+   place of its icon, the whole heading its target. */
+.sidenav .workspace-group h3 .group-fold {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--height-row);
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sidenav .workspace-group h3 .group-fold:hover {
+  color: var(--text);
+}
+
+.sidenav .workspace-group h3 .group-fold .icon.chevron {
+  color: var(--faint);
+}
+
 /* The person's move (V48): an agent waiting, and work to look at, in the person's violet (V88,
    decision 813; the warning's amber before). */
 .sidenav .group-waiting,

@@ -43,6 +43,7 @@ import { cleanUp } from './cleanup.js';
 import { useRemoving, workspaceKey } from './removing.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { MergeControl } from './MergeControl.js';
+import { openReview } from './review-open.js';
 import { ThreadTab, useThread } from './ThreadTab.js';
 import { KindTag, RunsOn, WorkspaceBranch } from './WorkspaceFacts.js';
 import { RESPOND_EVENT, respondTo } from './respond.js';
@@ -121,7 +122,7 @@ export function WorkspaceView({ branch }: { branch: string }) {
   const marks = useMemo(() => reviewMarks(reviews, nucleusName).marks, [reviews, nucleusName]);
   const row = allRows(groups).find((r) => r.workspace.branch === branch);
   const notify = useCallback((notice: Notice | null) => shell?.notify(notice), [shell]);
-  const onGone = useCallback(() => shell?.navigate({ page: 'git' }), [shell]);
+  const onGone = useCallback(() => shell?.navigate({ page: 'overview' }), [shell]);
   if (!list) return <p className="hint main-hint">Listing workspaces…</p>;
   if (!row) return <NotListed branch={branch} />;
   return (
@@ -757,10 +758,7 @@ function WorkspacePanel({
                 disabled={busy}
                 onClick={() =>
                   act(async () => {
-                    const { url } = await postJson<{ url: string }>('/api/reviews', {
-                      ref: branch,
-                    });
-                    window.location.assign(url);
+                    await openReview(branch);
                     return null;
                   })
                 }

@@ -1,0 +1,356 @@
+/* The Overview (V91; proofs 01-overview of `spikes/normal-redesign` and `spikes/hive-redesign`):
+   the figures across the top, then two columns, the work on the left and the day on the right;
+   one column on a narrow window. The page frame's tokens (V72). */
+
+.overview {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.overview-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-gap);
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 var(--page-pad) var(--page-pad);
+}
+
+.overview-card {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+/* The figures' card is a grid of its own (`ui/figures.css`). */
+.overview-card.figures {
+  display: grid;
+}
+
+.overview-grid {
+  flex: 1 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  align-items: start;
+  gap: var(--page-gap);
+}
+
+.overview-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-gap);
+  min-width: 0;
+}
+
+/* Under 1,100 px of main area: one column, the day after the work. */
+@media (max-width: 1340px) {
+  .overview-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.overview-count {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.overview-end-note {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.overview-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  text-decoration: none;
+}
+
+.overview-link > .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.overview-empty {
+  margin: 0;
+  padding: 14px var(--card-pad);
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.overview-error {
+  margin: 0;
+}
+
+.overview-name {
+  text-decoration: none;
+}
+
+.overview-sha,
+.overview-ref {
+  font-family: var(--mono);
+  font-size: var(--size-caption);
+}
+
+.overview-time {
+  font-size: var(--size-body);
+}
+
+/* What a row waits on, or what an agent does: its icon, its words in bold, what after them. */
+.need {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.need > .icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.need b {
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.need-detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+code.need-detail,
+.cell-sub code {
+  font-family: var(--mono);
+  font-size: var(--size-caption);
+}
+
+/* The inbox (normal.css's `.inbox`): violet, the person's turn (V88). */
+.inbox .table-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 330px) 40px auto;
+}
+
+.need.for-you > .icon {
+  color: var(--you);
+}
+
+.inbox-action .button {
+  min-height: var(--height-row);
+  padding: 0 10px;
+}
+
+.inbox-action .merge-control {
+  flex-wrap: nowrap;
+  margin: 0;
+}
+
+/* Agents at work and the merges: the agent's turn amber (V88). */
+.work .table-row,
+.merging .table-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto 56px;
+}
+
+.work .need > .icon {
+  color: var(--run);
+}
+
+.run-words {
+  color: var(--run);
+}
+
+.overview-chip {
+  max-width: 180px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: var(--height-row);
+  padding: 0 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-chip > .icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.merged .table-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 150px) minmax(0, 130px) 48px;
+}
+
+.merged .cell-line > .icon,
+.landed .cell-line > .icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--ok);
+}
+
+/* A stage track and its word (the kits' `.stage`), the word in its state's colour. */
+.overview-stage {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.overview-stage-word {
+  font-size: var(--size-small);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.overview-stage-word.stage-run {
+  color: var(--run);
+}
+
+.overview-stage-word.stage-you {
+  color: var(--you);
+}
+
+.overview-stage-word.stage-bad,
+.overview-stage-word.stage-error {
+  color: var(--error);
+}
+
+.overview-stage-word.stage-info {
+  color: var(--info);
+}
+
+.overview-stage-word.stage-ok {
+  color: var(--ok);
+}
+
+/* Usage and Hive's limits: each window, its gauge, when it resets. */
+.overview-usage {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px var(--card-pad) 14px;
+}
+
+.overview-limit-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: var(--size-small);
+}
+
+.overview-limit-top b {
+  margin-left: auto;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.overview-limit-help {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.overview-facts {
+  border-top: 1px solid var(--line);
+}
+
+.overview-paused {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 0 var(--card-pad) 12px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* Hive's tables (the proof's columns). */
+.flight .table-head,
+.flight .table-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 272px) 44px 64px 64px;
+}
+
+.landed .table-head,
+.landed .table-row {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 190px) minmax(0, 150px) 64px 48px;
+}
+
+.overview-kinds {
+  height: var(--height-row);
+  padding: 0 6px;
+  border: 1px solid var(--field-line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--size-small);
+}
+
+/* A workspace Hive stopped, called out (decision 857): its why beside a red edge's tint. */
+.stopped-card {
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 14px;
+  border-color: color-mix(in srgb, var(--error) 30%, var(--line));
+}
+
+.stopped-card > .icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--error);
+}
+
+.stopped-words {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.stopped-why {
+  margin: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.overview-more {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}

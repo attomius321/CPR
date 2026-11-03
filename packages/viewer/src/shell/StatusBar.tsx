@@ -1,5 +1,4 @@
-import { useEffect, useState } from 'react';
-import type { UsageReport } from '@symbiote/core';
+import { useState } from 'react';
 import { relativeDate } from '../history/commits.js';
 import type { Notice } from './shell-context.js';
 import {
@@ -11,6 +10,7 @@ import {
   windowLabel,
 } from './usage.js';
 import { tip } from '../ui/tip.js';
+import { useUsage } from './useUsage.js';
 
 /**
  * The shell's status bar (V29a): on the left the last thing said (a start, a checkout, an
@@ -64,46 +64,6 @@ function NoticeLine({ notice }: { notice: Notice }) {
       )}
     </p>
   );
-}
-
-/**
- * How often the page asks `symbiote view`, which answers from its copy and reads the vendors at
- * most every 5 minutes (decision 175): a new read shows within a minute.
- */
-const USAGE_EVERY_MS = 60_000;
-
-/** `symbiote view`'s usage (`GET /api/usage`): asked every minute while the page shows, and on
- * focus. */
-function useUsage(): UsageReport | null {
-  const [report, setReport] = useState<UsageReport | null>(null);
-  useEffect(() => {
-    let live = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const read = () => {
-      fetch('/api/usage')
-        .then((response) => (response.ok ? (response.json() as Promise<UsageReport>) : null))
-        .then((read) => live && read && setReport(read))
-        .catch(() => {});
-    };
-    const tick = () => {
-      if (document.visibilityState !== 'hidden') read();
-      timer = setTimeout(tick, USAGE_EVERY_MS);
-    };
-    const onShown = () => {
-      if (document.visibilityState !== 'hidden') read();
-    };
-    read();
-    timer = setTimeout(tick, USAGE_EVERY_MS);
-    window.addEventListener('focus', onShown);
-    document.addEventListener('visibilitychange', onShown);
-    return () => {
-      live = false;
-      clearTimeout(timer);
-      window.removeEventListener('focus', onShown);
-      document.removeEventListener('visibilitychange', onShown);
-    };
-  }, []);
-  return report;
 }
 
 /** Each subscription: its plan and windows, a thin bar each; on hover, resets and age. */

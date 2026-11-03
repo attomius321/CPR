@@ -11,6 +11,8 @@
 @import './ui/page.css';
 /* The redesign's shared parts (V88): a status, the stage track. */
 @import './ui/status.css';
+/* The kits' figures, tables, feed, facts and gauge (V91): shared by the Overviews. */
+@import './ui/figures.css';
 @import './ui/Resizer.css';
 @import './ui/icons.css';
 @import './ui/Help.css';
@@ -58,6 +60,7 @@
 @import './settings/SettingsPage.css';
 @import './skills/SkillsPage.css';
 @import './monitor/MonitorPage.css';
+@import './overview/Overview.css';
 @import './shell/Sidenav.css';
 /* After Sidenav.css: under 900 px the shell hides the sidenav, a flex column otherwise. */
 @import './shell/Shell.css';
