@@ -65,4 +65,7 @@ test fixed here.
 6. Hive's test was not reproduced (24 runs alone, and 60 runs of `hive.spec.ts` and
 `hive-pages.spec.ts` together, under that load) and its error was not kept. With reduced
 motion `arrive()` swaps the look at once, and its other checks retry for 15 s, so it is left as it
-is: no change without a cause.
+is: no change without a cause. The whole viewer e2e under 48 busy loops: 422 of 424 in 9.6 min,
+Hive's and Split's tests passed; two others failed under that load, neither in the merge's check:
+`reviews.spec.ts:90` ("1 of 2" reviewed where "2 of 2" was waited for) and
+`workspaces.spec.ts:1355` (Finish review's click past the 60 s test timeout). Not chased here.
