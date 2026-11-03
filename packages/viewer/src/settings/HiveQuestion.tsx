@@ -140,7 +140,10 @@ export function HiveQuestion({
               );
             })}
           </ul>
-          <p className="hq-note">Nucleus becomes Alpha Ceph, and its conversation starts again.</p>
+          <p className="hq-note">
+            Nucleus becomes Alpha Ceph and is told what Hive does: its conversation starts again,
+            unless it is answering or waiting on you.
+          </p>
         </div>
         <div className="hq-foot">
           <span>Turn it off any time; nothing done is undone.</span>
