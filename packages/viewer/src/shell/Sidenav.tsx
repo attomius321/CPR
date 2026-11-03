@@ -31,6 +31,8 @@ import {
   WaitingIcon,
   WorkingIcon,
   HexagonIcon,
+  OverviewIcon,
+  ChevronIcon,
 } from '../ui/icons.js';
 import { cleanUp, removeMerge } from '../workspaces/cleanup.js';
 import { mergeState, removableOnCard } from '../workspaces/merges.js';
@@ -45,6 +47,7 @@ import {
   SKILLS_PAGE,
   START_PAGE,
   WORKSPACE_HISTORY_PAGE,
+  OVERVIEW_PAGE,
 } from './pages.js';
 import { Resizer } from '../ui/Resizer.js';
 import { nextNucleusMark, type NucleusMark } from '../nucleus/page-agent.js';
@@ -260,6 +263,22 @@ export function Sidenav({
         </button>
       </div>
       <nav className="sidenav-pages" aria-label="Pages">
+        {/* The Overview (V91, decision 848): first, the page `/` opens. */}
+        <a
+          href={OVERVIEW_PAGE}
+          aria-label="Overview"
+          {...tip(
+            hiveMode
+              ? "Overview\nHive's work: in flight, stopped, landed today, its limits"
+              : 'Overview\nWhat waits for you, the agents at work, the merges and the day',
+            { keys: 't', side: 'right' },
+          )}
+          aria-current={route?.page === 'overview' ? 'page' : undefined}
+        >
+          <OverviewIcon />
+          <span className="sidenav-label">Overview</span>
+          <kbd aria-hidden="true">t</kbd>
+        </a>
         <a
           href={GIT_PAGE}
           aria-label="Git"
@@ -464,6 +483,8 @@ export function Sidenav({
                 Icon={Icon}
                 rows={groups[key]}
                 starts={making}
+                // Normal mode's Done folds (V91, decision 859): the Overview lists what merged.
+                foldable={key === 'done' && !hiveMode}
                 {...cards}
               />
             );
@@ -553,6 +574,25 @@ export function DrawerStrip({ open, onToggle }: { open: boolean; onToggle: () =>
   );
 }
 
+const DONE_KEY = 'symbiote.viewer.done';
+
+/** Whether the person folded normal mode's Done group (V91, decision 859): folded until opened. */
+function loadDoneFolded(): boolean {
+  try {
+    return window.localStorage.getItem(DONE_KEY) !== 'open';
+  } catch {
+    return true;
+  }
+}
+
+function saveDoneFolded(folded: boolean): void {
+  try {
+    window.localStorage.setItem(DONE_KEY, folded ? 'folded' : 'open');
+  } catch {
+    // Storage blocked: the choice lasts until the page closes.
+  }
+}
+
 /** A group of workspaces (V44): its icon in its state's colour, its name, how many, its cards. */
 function WorkspaceGroupSection({
   group,
@@ -560,6 +600,7 @@ function WorkspaceGroupSection({
   Icon,
   rows,
   starts = [],
+  foldable = false,
   folded,
   marks,
   picked,
@@ -573,6 +614,8 @@ function WorkspaceGroupSection({
   rows: WorkspaceRow[];
   /** Workspaces being made (V48): their cards after the group's. */
   starts?: readonly StartUnderWay[];
+  /** Its cards fold under its heading (V91, decision 859), kept in this browser. */
+  foldable?: boolean;
   /** The sidenav folded to its rail: a card is its dot, its tip says the rest. */
   folded: boolean;
   marks: Map<string, ReviewMark>;
@@ -582,16 +625,44 @@ function WorkspaceGroupSection({
   onPick: (branch: string) => void;
   onRespond: (branch: string) => void;
 }) {
+  const [shut, setShut] = useState(() => foldable && loadDoneFolded());
+  // On the rail every card is a dot: nothing folds there.
+  const closed = foldable && shut && !folded;
+  // Folded, the workspace open in the main area keeps its card.
+  const shown = closed ? rows.filter((row) => row.workspace.branch === picked) : rows;
+  const toggle = () =>
+    setShut((now) => {
+      saveDoneFolded(!now);
+      return !now;
+    });
   return (
     <section className={`workspace-group group-${group}`} aria-label={title}>
       {/* Its tip names it in the rail, where only the icon shows. */}
-      <h3 {...tip(title, { side: 'right' })}>
-        <Icon />
-        <span className="sidenav-label">{title}</span>{' '}
-        <span className="branches-count">{rows.length + starts.length}</span>
-      </h3>
+      {foldable && !folded ? (
+        // Its icon as every group's (V44), then its name, count and chevron as the fold's button.
+        <h3>
+          <Icon />
+          <button
+            type="button"
+            className="group-fold"
+            aria-expanded={!closed}
+            {...tip(closed ? `Show ${title}` : `Fold ${title}`, { side: 'right' })}
+            onClick={toggle}
+          >
+            <span className="sidenav-label">{title}</span>{' '}
+            <span className="branches-count">{rows.length + starts.length}</span>
+            <ChevronIcon open={!closed} />
+          </button>
+        </h3>
+      ) : (
+        <h3 {...tip(title, { side: 'right' })}>
+          <Icon />
+          <span className="sidenav-label">{title}</span>{' '}
+          <span className="branches-count">{rows.length + starts.length}</span>
+        </h3>
+      )}
       <ul className="workspace-list">
-        {rows.map((row) => (
+        {shown.map((row) => (
           <WorkspaceCard
             key={row.workspace.branch}
             row={row}
@@ -858,7 +929,7 @@ function MergeCard({
  * A done workspace's or a landed merge's way out of the sidenav (V55): a bin at the card's end, on
  * its hover or focus. It runs at once, as the action does on its page; meanwhile the card is
  * disabled and the bin not drawn (V57). The card goes with the list's next read, the status bar
- * saying so, or why not. The one shown gives way to History.
+ * saying so, or why not. The one shown gives way to the Overview (V91; History before).
  */
 function CardRemove({
   label,
@@ -884,7 +955,7 @@ function CardRemove({
         run().then(
           (notice) => {
             shell?.notify(notice);
-            if (shown) shell?.navigate({ page: 'git' });
+            if (shown) shell?.navigate({ page: 'overview' });
           },
           (e: unknown) => shell?.notify({ text: (e as Error).message, error: true }),
         );

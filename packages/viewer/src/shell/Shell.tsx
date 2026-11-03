@@ -7,6 +7,7 @@ import {
   GIT_PAGE,
   MONITOR_PAGE,
   NUCLEUS_PAGE,
+  OVERVIEW_PAGE,
   SETTINGS_PAGE,
   SKILLS_PAGE,
   WORKSPACE_HISTORY_PAGE,
@@ -17,6 +18,7 @@ import {
   type Route,
 } from './pages.js';
 import { NucleusPage } from '../nucleus/NucleusPage.js';
+import { OverviewPage } from '../overview/OverviewPage.js';
 import { useNucleusName } from './names.js';
 import { SettingsPage } from '../settings/SettingsPage.js';
 import { SkillsPage } from '../skills/SkillsPage.js';
@@ -154,12 +156,13 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     (sha?: string) => navigate({ page: 'start', ...(sha ? { at: sha } : {}) }),
     [navigate],
   );
-  // Leaving the start page: back to the page of Symbiote's it was opened from, else Git.
+  // Leaving the start page: back to the page of Symbiote's it was opened from, else the
+  // Overview, the page `/` opens (V91; Git before).
   const leaveStart = useCallback(() => {
     const here = window.navigation?.currentEntry;
     const before = here ? window.navigation?.entries()[here.index - 1] : undefined;
     if (before?.url && new URL(before.url).origin === window.location.origin) window.history.back();
-    else navigate({ page: 'git' }, { replace: true });
+    else navigate({ page: 'overview' }, { replace: true });
   }, [navigate]);
 
   // Back and Forward: the route at the address.
@@ -204,7 +207,8 @@ export function Shell({ repo }: { repo?: string | undefined }) {
     return () => document.removeEventListener('click', onClick, true);
   }, [go]);
 
-  // g (Git; h until V66) and s go to the pages, a to Nucleus (V35; on its page, to its question or its terminal), i to
+  // t to the Overview (V91: "today"; the one letter no page binds), g (Git; h until V66) and s go
+  // to the pages, a to Nucleus (V35; on its page, to its question or its terminal), i to
   // Skills (V41), m to the Monitor (RM1), h to History (V77), w to
   // the workspaces (the arrows between them), n starts one (on its page, back to its title), [
   // folds the sidenav. Attached before the first paint, as History's keys are: a key pressed as
@@ -212,7 +216,8 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   useLayoutEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (keyIsTaken(event)) return;
-      if (event.key === 'g') go(GIT_PAGE);
+      if (event.key === 't') go(OVERVIEW_PAGE);
+      else if (event.key === 'g') go(GIT_PAGE);
       else if (event.key === 's') go(SETTINGS_PAGE);
       else if (event.key === 'i') go(SKILLS_PAGE);
       else if (event.key === 'm') go(MONITOR_PAGE);
@@ -254,6 +259,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
         <Sidenav repo={repo} folded={railed} onFold={fold} flashed={flashed} />
         {sidenav.handle}
         <main className="shell-main">
+          {route.page === 'overview' && <OverviewPage />}
           {route.page === 'git' && <HistoryPage key={visit} />}
           {route.page === 'nucleus' && <NucleusPage />}
           {route.page === 'skills' && <SkillsPage />}

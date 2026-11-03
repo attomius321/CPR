@@ -29,7 +29,8 @@ const firstTime = () =>
 const record = () => join(home, '.config', 'symbiote', 'intro.json');
 
 const intro = (page: Page) => page.locator('.intro');
-const rows = (page: Page) => page.locator('.commit');
+/** The first page, beneath the intro: the Overview, which `/` opens (V91; Git's rows before). */
+const rows = (page: Page) => page.locator('.overview');
 
 /** Every audio context the page makes, kept where the spec can read their states. */
 const watchAudio = (page: Page) =>
@@ -89,7 +90,7 @@ test('plays over the first page, the page there beneath it, once: the next visit
   await page.goto(symbiote.url);
   await expect(intro(page)).toBeVisible();
   await expect(intro(page).locator('canvas')).toBeVisible();
-  // History is drawn beneath while the koi swim.
+  // The first page is drawn beneath while the koi swim.
   await expect(rows(page).first()).toBeAttached();
   // Seen as soon as it is shown: a reload in the middle does not start it again.
   await expect.poll(() => existsSync(record())).toBe(true);

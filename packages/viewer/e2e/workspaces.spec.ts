@@ -19,6 +19,14 @@ let symbiote: RunningWorkspaces;
 const errors: string[] = [];
 
 test.beforeEach(({ page }) => {
+  // Normal mode's Done group folds by default (V91, decision 859): these specs are about its cards.
+  void page.addInitScript(() => {
+    try {
+      localStorage.setItem('symbiote.viewer.done', 'open');
+    } catch {
+      // A page with no storage keeps it folded.
+    }
+  });
   errors.length = 0;
   page.on('pageerror', (error) => errors.push(error.message));
 });
@@ -1084,7 +1092,8 @@ test('Clean up: once merged, its sessions, worktree and branch go, and so does t
   expect(existsSync(symbiote.folder(branch))).toBe(false);
   expect(git('branch', '--list', branch)).toBe('');
   await expect(page.getByText('No workspaces yet')).toBeVisible();
-  await expect(page).toHaveURL(`${symbiote.url}git`);
+  // Its page gone, the Overview (V91; Git before).
+  await expect(page).toHaveURL(`${symbiote.url}overview`);
   await expect(page.getByRole('contentinfo', { name: 'Status bar' })).toContainText(
     `Cleaned up ${branch}: its worktree is removed.`,
   );
@@ -1166,7 +1175,7 @@ test("a done card's icon cleans it up from the sidenav: on hover or focus, witho
   expect(existsSync(symbiote.folder(branch))).toBe(false);
   expect(git('branch', '--list', branch)).toBe('');
 
-  // The one shown, cleaned up from its card: History takes its place.
+  // The one shown, cleaned up from its card: the Overview takes its place (V91; Git before).
   git('merge', '--quiet', '--no-ff', '-m', `Merge ${other}`, other);
   await expect(workspaceRow(page, other)).toContainText('Merged', POLL);
   await workspaceRow(page, other).hover();
@@ -1174,7 +1183,8 @@ test("a done card's icon cleans it up from the sidenav: on hover or focus, witho
     .getByRole('button', { name: 'Clean up Add a double function' })
     .click();
   await expect(workspaceRow(page, other)).toHaveCount(0, POLL);
-  await expect(page).toHaveURL(`${symbiote.url}git`);
+  // The one shown gives way to the Overview (V91; Git before).
+  await expect(page).toHaveURL(`${symbiote.url}overview`);
   await expect(page.getByText('No workspaces yet')).toBeVisible();
 });
 
@@ -1354,7 +1364,8 @@ test("Clean up from a workspace's head: Cleaning up…, and its card disabled un
     'Cleaning up · its worktree and its branch',
   );
   go();
-  await expect(page).toHaveURL(`${symbiote.url}git`, POLL);
+  // Its page gone, the Overview (V91; Git before).
+  await expect(page).toHaveURL(`${symbiote.url}overview`, POLL);
   await expect(card).toHaveCount(0, POLL);
   await expect(page.getByText('No workspaces yet')).toBeVisible();
 });

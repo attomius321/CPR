@@ -58,18 +58,22 @@ describe('routeOf (V29a: no Workspaces page)', () => {
     expect(routeOf('/', '?merge=fix%2Fy')).toEqual({ route: { page: 'merge', branch: 'fix/y' } });
   });
 
-  it('opens Git at the root alone, shown at its own address', () => {
-    expect(routeOf('/', '')).toEqual({ route: { page: 'git' }, moved: '/git' });
-    expect(routeOf('/', '?branch=')).toEqual({ route: { page: 'git' }, moved: '/git' });
+  it('opens the Overview at the root alone, shown at its own address (V91, decision 848)', () => {
+    expect(routeOf('/', '')).toEqual({ route: { page: 'overview' }, moved: '/overview' });
+    expect(routeOf('/', '?branch=')).toEqual({ route: { page: 'overview' }, moved: '/overview' });
+    expect(routeOf('/overview', '')).toEqual({ route: { page: 'overview' } });
+    expect(hrefOf({ page: 'overview' })).toBe('/overview');
+    expect(inShell(new URL('http://symbiote/overview'))).toBe(true);
+    expect(routeTitle({ page: 'overview' }, 'symbiote')).toBe('Overview · symbiote — Symbiote');
   });
 
-  it("moves the old addresses of Workspaces: a workspace to today's, the rest to Git", () => {
+  it("moves the old addresses of Workspaces: a workspace to today's, the rest to the Overview", () => {
     for (const old of ['/workspaces', '/features']) {
       expect(routeOf(old, '?branch=feature%2Fx&thread')).toEqual({
         route: { page: 'workspace', branch: 'feature/x' },
         moved: '/?branch=feature%2Fx&thread',
       });
-      expect(routeOf(old, '')).toEqual({ route: { page: 'git' }, moved: '/git' });
+      expect(routeOf(old, '')).toEqual({ route: { page: 'overview' }, moved: '/overview' });
     }
   });
 });
@@ -120,6 +124,12 @@ describe('backLink (V25)', () => {
       href: '/?branch=a',
       label: 'Workspace',
     });
+    // Opened from the Overview's inbox (V91), at its address or at the root that opens it.
+    expect(backLink(`${origin}/overview`, origin)).toEqual({
+      href: '/overview',
+      label: 'Overview',
+    });
+    expect(backLink(`${origin}/`, origin)).toEqual({ href: '/overview', label: 'Overview' });
     // A finished workspace's change, opened from History (V77): back to it there, its tab kept.
     expect(backLink(`${origin}/workspace-history?branch=feature%2Fx&changes`, origin)).toEqual({
       href: '/workspace-history?branch=feature%2Fx&changes',
@@ -130,7 +140,6 @@ describe('backLink (V25)', () => {
   it('goes to Git when it does not know: a bookmark, another site, another diff', () => {
     const history = { href: '/git', label: 'Git' };
     expect(backLink('', origin)).toEqual(history);
-    expect(backLink(`${origin}/`, origin)).toEqual(history);
     expect(backLink('https://github.com/acme/widgets/pull/7', origin)).toEqual(history);
     expect(backLink(`${origin}/diff/a..b/`, origin)).toEqual(history);
     expect(backLink('not a url', origin)).toEqual(history);

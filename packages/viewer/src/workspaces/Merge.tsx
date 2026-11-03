@@ -152,7 +152,7 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
     removeMerge(entry)
       .then((notice) => {
         shell?.notify(notice);
-        shell?.navigate({ page: 'git' });
+        shell?.navigate({ page: 'overview' });
       })
       .catch((e: unknown) => setError((e as Error).message))
       .finally(() => setBusy(false));

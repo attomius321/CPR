@@ -46,6 +46,7 @@ import type { OpenRequest, OpenResult } from '../src/editor.js';
 import { ReviewRefused, type BranchReviews } from '../src/reviews.js';
 import type { Workspaces } from '../src/workspaces.js';
 import type { HiveWorkspace } from '../src/hive-workspace.js';
+import type { WorkspaceDayService } from '../src/workspace-day.js';
 import { WorkspaceRefused } from '../src/workspace-record.js';
 import { MergeRefused, type Merger } from '../src/merges.js';
 import type { PageAgent } from '../src/page-agent.js';
@@ -4313,5 +4314,68 @@ describe('/api/workspaces/hive/log (decision 695)', () => {
         })
       ).status,
     ).toBe(403);
+  });
+});
+
+describe('/api/workspaces/day (V91, decision 852) and /overview', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  let server: ViewServer;
+  const asked: string[] = [];
+  const day: WorkspaceDayService = {
+    read: (since) => {
+      asked.push(since);
+      return Promise.resolve({
+        since,
+        into: 'main',
+        events: [],
+        merges: [],
+        started: {},
+        hive: [],
+      });
+    },
+  };
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        workspaces: {} as Workspaces,
+        day,
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+  const get = (path: string) => fetch(new URL(path, server.url));
+
+  it('reads the day from the page’s `since`; refuses one that is not a time', async () => {
+    const since = '2026-10-27T22:00:00.000Z';
+    const response = await get(`/api/workspaces/day?since=${encodeURIComponent(since)}`);
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { since: string }).since).toBe(since);
+    expect(asked).toEqual([since]);
+    expect((await get('/api/workspaces/day?since=yesterday')).status).toBe(400);
+    expect((await get('/api/workspaces/day')).status).toBe(400);
+  });
+
+  it('serves the Overview as a page of the shell', async () => {
+    const response = await get('/overview');
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('viewer');
   });
 });

@@ -8,7 +8,7 @@ explains the terms this page uses: workspace, merger, verdict, Nucleus and the o
 
 | Command | What it does |
 |---|---|
-| `symbiote view [<base> [head]]` | Opens the app. Without revisions, it opens on Git, with your workspaces in the sidenav. With revisions, it opens on that comparison. It runs until you press Ctrl+C or close its window. It serves the pages it started with: after Symbiote is built again (`pnpm build`, `./install.sh`), start it again to get the new ones. |
+| `symbiote view [<base> [head]]` | Opens the app. Without revisions, it opens on the Overview (`/overview`), with your workspaces in the sidenav. With revisions, it opens on that comparison. It runs until you press Ctrl+C or close its window. It serves the pages it started with: after Symbiote is built again (`pnpm build`, `./install.sh`), start it again to get the new ones. |
 | `symbiote diff <base> [head]` | Compares `head` (default `HEAD`) with `base` and prints the changed symbols and the findings. |
 | `symbiote pr [<number>]` | Opens a GitHub pull request or a GitLab merge request for review. `symbiote mr` is the same command. |
 | `symbiote merge <branch>` | Merges the commit that your review of `branch` approved, as **Merge into** does in the app, and prints each step. |
@@ -130,11 +130,12 @@ toolbar.
 | g | | The Graph page | The Files page |
 | Esc | Back to the commits from a file shown; leave compare mode | Close the comment box | Close the detail panel |
 
-These keys work on Git, Nucleus, Skills, Monitor, History, Settings and a workspace's page. In a
-change, only n and [ work.
+These keys work on the Overview, Git, Nucleus, Skills, Monitor, History, Settings and a
+workspace's page. In a change, only n and [ work.
 
 | Key | What it does |
 |---|---|
+| t | The Overview: what waits for you and the day; Hive's day in Hive mode |
 | n | Open **Start a workspace** |
 | g, s | Git, Settings |
 | a | Nucleus |

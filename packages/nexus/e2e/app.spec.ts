@@ -124,7 +124,7 @@ test('shows the nexus in Symbiote’s window: its buttons, and a Symbiote framed
     .getByRole('tab', { name: /^alpha/ })
     .click();
   const framed = page.frameLocator('iframe[title="alpha"]');
-  await expect(framed.getByText('second', { exact: true }).first()).toBeVisible();
+  await expect(framed.locator('.overview')).toBeVisible();
   const frame = page.frame({ url: (url) => url.href.startsWith(alpha.url) });
   expect(await frame?.evaluate(() => document.documentElement.dataset.app ?? null)).toBeNull();
   await expect(framed.locator('.titlebar')).toBeHidden();
@@ -152,9 +152,7 @@ test('opens a Symbiote from the folders in Symbiote’s window (NX2)', async () 
     page.on('pageerror', (error) => errors.push(error.message));
     await page.locator('.nexus-folder-open', { hasText: 'projects' }).click();
     await page.getByRole('button', { name: 'Open Symbiote in beta' }).click();
-    await expect(
-      page.frameLocator('iframe[title="beta"]').locator('.commit').first(),
-    ).toBeVisible();
+    await expect(page.frameLocator('iframe[title="beta"]').locator('.overview')).toBeVisible();
     await expect
       .poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getTitle()))
       .toBe('beta · main — Symbiote nexus');

@@ -1,6 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
+import { hiveMocks, mockOverview, normalMocks } from './overview-data.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // One page frame (V72, decisions 507–509): every page of the shell and a review takes the whole
@@ -132,6 +133,14 @@ test("the shell's pages: the whole main area, one head, cards 12 px from its edg
   page,
 }) => {
   symbiote = await serveWorkspaces();
+  // The Overview (V91): the figures, then the inbox and the day; as tall as its cards.
+  await expectPage(
+    page,
+    'the Overview',
+    'overview',
+    ['.overview-card.figures', '.overview-card.inbox', '.overview-card.usage-card'],
+    { bottom: false },
+  );
   await expectPage(page, 'Git', 'git', ['.branches', '.commits-card', '.git-details']);
   // The brief and the run's seven cards, each 16 apart; the body scrolls when the run is taller.
   await expectPage(
@@ -167,6 +176,37 @@ test("the shell's pages: the whole main area, one head, cards 12 px from its edg
     }),
   );
   await expectPage(page, 'History', 'workspace-history', ['.history-list', '.history-workspace']);
+});
+
+// V91: the Overview in both modes, its records the proofs' (overview-data.ts): the same frame.
+test('the Overview, normal mode and Hive, full: the same frame', async ({ page }) => {
+  symbiote = await serveWorkspaces();
+  await mockOverview(page, normalMocks());
+  await expectPage(
+    page,
+    'the Overview, normal mode',
+    'overview',
+    ['.overview-card.figures', '.overview-card.inbox', '.overview-card.usage-card'],
+    { bottom: false },
+  );
+  await page.goto(`${symbiote.url}git`);
+  await page.evaluate(() =>
+    fetch('/api/hive', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      body: JSON.stringify({ on: true }),
+    }),
+  );
+  await page.unrouteAll();
+  await mockOverview(page, hiveMocks());
+  await expectPage(
+    page,
+    'the Overview, Hive mode',
+    'overview',
+    // The stopped card first: the frame is measured once it is drawn, after the list's read.
+    ['.overview-card.stopped-card', '.overview-card.figures', '.overview-card.limits'],
+    { bottom: false },
+  );
 });
 
 // V89 (decisions 823, 830, 831): the terminal view, with the steps in its head and the bar under

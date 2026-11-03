@@ -958,3 +958,47 @@ export const AppearanceIcon = () => (
     <circle cx="8.5" cy="7.5" r=".5" fill="currentColor" />
   </Icon>
 );
+
+/** The Overview (V91): lucide's layout-dashboard. */
+export const OverviewIcon = () => (
+  <Icon lucide>
+    <rect width="7" height="9" x="3" y="3" rx="1" />
+    <rect width="7" height="5" x="14" y="3" rx="1" />
+    <rect width="7" height="9" x="14" y="12" rx="1" />
+    <rect width="7" height="5" x="3" y="16" rx="1" />
+  </Icon>
+);
+
+/** A time taken (V91's Time to merge, Time to land): lucide's clock. */
+export const ClockIcon = () => (
+  <Icon lucide>
+    <circle cx="12" cy="12" r="10" />
+    <polyline points="12 6 12 12 16 14" />
+  </Icon>
+);
+
+/** What was spent (V91): lucide's coins. */
+export const CoinsIcon = () => (
+  <Icon lucide>
+    <circle cx="8" cy="8" r="6" />
+    <path d="M18.09 10.37A6 6 0 1 1 10.34 18" />
+    <path d="M7 6h1v4" />
+    <path d="m16.71 13.88.7.71-2.82 2.82" />
+  </Icon>
+);
+
+/** Turning Hive off (V91): lucide's power. */
+export const PowerIcon = () => (
+  <Icon lucide>
+    <path d="M12 2v10" />
+    <path d="M18.4 6.6a9 9 0 1 1-12.77.04" />
+  </Icon>
+);
+
+/** Answered with a report, no commits (V91): lucide's message-circle-check. */
+export const AnsweredIcon = () => (
+  <Icon lucide>
+    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+    <path d="m9 12 2 2 4-4" />
+  </Icon>
+);

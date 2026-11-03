@@ -156,7 +156,8 @@ test('a conflict: the merger agent answers, you ask again, then approve, and it 
   // Landed (V55): Remove, the head's primary button, takes it from the queue; History shows.
   await expect(entry.getByRole('button', { name: 'More actions' })).toHaveCount(0);
   await entry.getByRole('button', { name: 'Remove', exact: true }).click();
-  await expect(page).toHaveURL(`${symbiote.url}git`);
+  // Its page gone, the Overview (V91; Git before).
+  await expect(page).toHaveURL(`${symbiote.url}overview`);
   await expect(page.locator('.sidenav [data-merge="agent"]')).toHaveCount(0);
   await expect(page.getByRole('contentinfo', { name: 'Status bar' })).toContainText(
     'Removed the merge of agent from the queue.',

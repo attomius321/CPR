@@ -79,6 +79,7 @@ import { repositoryNucleusStart } from './nucleus-start.js';
 import { hiveRunner } from './hive-runner.js';
 import { findConfinement, reviewerSettingsService } from './hive-review.js';
 import { hiveWorkspace } from './hive-workspace.js';
+import { workspaceDay } from './workspace-day.js';
 import { repositoryHiddenBranches } from './git-hidden.js';
 import { libraryService, type LibraryService } from './library.js';
 import { terminals as agentTerminals } from './terminal.js';
@@ -857,6 +858,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       terminals,
       merges: repoMerges,
       hiveWorkspace: hiveWorkspace(repo, cacheDir, { hive }),
+      // The Overview's read of the days (V91, decision 852).
+      day: workspaceDay(repo, cacheDir),
       // Nucleus is Alpha Ceph while Hive mode is on (decision 682): its prompt's about too.
       settings: promptSettingsService(repo, { hive: () => hive.on() }),
       nucleus: nucleus(repo, cacheDir, {

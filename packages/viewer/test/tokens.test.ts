@@ -489,6 +489,8 @@ describe('the type scale (V32)', () => {
       '--size-body': '15px',
       '--size-title': '18px',
       '--size-code': '14px',
+      // V91: a figure's number on the Overviews, the kits' one added size.
+      '--size-figure': '26px',
     });
   });
 
@@ -575,6 +577,7 @@ describe('the type scale (V32)', () => {
       '--size-body': '14px',
       '--size-title': '17px',
       '--size-code': '14px',
+      '--size-figure': '24px',
     });
     expect(Object.fromEntries(tokens(":root[data-text-size='large']"))).toEqual({
       '--size-caps': '13px',
@@ -583,6 +586,7 @@ describe('the type scale (V32)', () => {
       '--size-body': '16px',
       '--size-title': '19px',
       '--size-code': '15px',
+      '--size-figure': '28px',
     });
   });
 
