@@ -20,8 +20,16 @@ test.afterEach(() => {
 });
 
 const list = (page: Page) => page.getByRole('navigation', { name: 'Settings' });
-const entry = (page: Page, name: string) => list(page).getByRole('button', { name });
-const agents = (page: Page) => list(page).getByRole('region', { name: 'Prebuilt agents' });
+const entry = (page: Page, name: string | RegExp) => list(page).getByRole('button', { name });
+const agents = (page: Page) => list(page).getByRole('region', { name: 'Agents' });
+/** A group of prompts under Prompts (fix/settings-page), opened when it is folded. */
+const group = async (page: Page, name: string) => {
+  const fold = list(page).getByRole('region', { name, exact: true });
+  const head = fold.locator('.settings-fold-head');
+  if ((await head.getAttribute('aria-expanded')) === 'false') await head.click();
+  await expect(head).toHaveAttribute('aria-expanded', 'true');
+  return fold;
+};
 const editor = (page: Page) => page.locator('.settings-editor');
 /** The open page's name in its card's head (V62): a prompt's with its chip. */
 const title = (page: Page) => editor(page).getByRole('heading', { level: 2 });
@@ -59,41 +67,48 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
     'aria-current',
     'page',
   );
-  // Beside Save since V62 (the head has the mockup's line).
-  await expect(page.locator('.settings-git')).toHaveText(
-    "No prompt changed: every agent is told Symbiote's text.",
-  );
-  // 14 prompts (Documents since V40, Suggest settings since V75) and the three prebuilt agents,
-  // each one page of its settings (fix/scout-merger-scribe-settings); this machine's Skill library
-  // (SK1) and Hive mode (V82); this browser's Appearance last (V51).
-  await expect(list(page).getByRole('button')).toHaveCount(20);
-  await expect(entry(page, 'Documents')).toBeVisible();
-  await expect(entry(page, 'Suggest settings')).toBeVisible();
-  // The first is open; each group in its order.
-  await expect(entry(page, 'Feature')).toHaveAttribute('aria-current', 'true');
+  // By what is set (fix/settings-page): this repository's check and Hive mode, the agents (each
+  // one page of its settings), the prompts in two folded groups, the Skill library (SK1) and
+  // Appearance (V51): 10 rows, where 20 were all open before.
+  await expect(list(page).getByRole('button')).toHaveCount(10);
   await expect(list(page).getByRole('heading')).toHaveText([
-    'Workspaces',
-    'Reviews',
-    'Prebuilt agents',
     'This repository',
+    'Agents',
+    'Prompts',
     'This machine',
     'This browser',
   ]);
-  await expect(agents(page).getByRole('button')).toHaveText(['Merger', 'Nucleus', 'Scribe']);
-  // An entry's icon under its group's heading's words (V93, proofs 04 and 11: 15 px into the card;
-  // V81 put a tile in line with them), its wash further out.
-  const heading = await list(page).getByRole('heading', { name: 'Workspaces' }).boundingBox();
-  const tile = await entry(page, 'Feature').locator('.settings-tile').boundingBox();
-  const first = await entry(page, 'Feature').boundingBox();
+  await expect(agents(page).getByRole('button')).toHaveText([
+    'Nucleus',
+    'Merger',
+    'Scribe',
+    'Suggest settings',
+  ]);
+  // The first is open: the check.
+  await expect(entry(page, /^Checks/)).toHaveAttribute('aria-current', 'true');
+  await expect(list(page).locator('.settings-fold-head')).toHaveText(['Workspaces8', 'Reviews5']);
+  // An entry's icon under its section's heading's words (V93, proofs 04 and 11: 15 px into the
+  // card; V81 put a tile in line with them), its wash further out.
+  const heading = await list(page).getByRole('heading', { name: 'This repository' }).boundingBox();
+  const tile = await entry(page, /^Checks/)
+    .locator('.settings-tile')
+    .boundingBox();
+  const first = await entry(page, /^Checks/).boundingBox();
   const card = await list(page).boundingBox();
   expect(Math.abs((tile?.x ?? 0) - (heading?.x ?? 0) - 8)).toBeLessThanOrEqual(1);
   expect(Math.abs((tile?.x ?? 0) - (card?.x ?? 0) - 15)).toBeLessThanOrEqual(1);
   expect(first?.x).toBeLessThan(tile?.x ?? 0);
 
+  await group(page, 'Workspaces');
+  await expect(entry(page, 'Documents')).toBeVisible();
   await entry(page, 'Fix').click();
   await expect(page).toHaveURL(`${symbiote.url}settings?prompt=start.fix`);
   await expect(title(page)).toHaveText("Workspaces: FixSymbiote's");
   await expect(text(page, 'Fix')).toHaveValue(/Reproduce it first, with a failing test/);
+  // Beside Save since V62 (the head has the mockup's line).
+  await expect(editor(page).locator('.settings-git')).toHaveText(
+    "No prompt changed: every agent is told Symbiote's text.",
+  );
 
   await text(page, 'Fix').fill(FIX);
   await expect(entry(page, 'Fix')).toContainText('not saved');
@@ -166,7 +181,7 @@ test('keeps drafts across prompts, asks before leaving with one, and refuses a s
   // the shell asks, in a dialog of Symbiote's own (N1c), not the browser's.
   await page.getByRole('link', { name: 'Git' }).click();
   const asking = page.getByRole('alertdialog', { name: 'Leave Settings?' });
-  await expect(asking).toContainText('A prompt is changed and not saved.');
+  await expect(asking).toContainText('A change is not saved.');
   await asking.getByRole('button', { name: 'Stay' }).click();
   await expect(asking).toBeHidden();
   await expect(page).toHaveURL(`${symbiote.url}settings?prompt=start.spike`);
@@ -238,6 +253,7 @@ test('on a phone, the list first; a prompt or an agent takes the page, and comes
   await page.goto(`${symbiote.url}settings`);
   await expect(list(page)).toBeVisible();
   await expect(editor(page)).toBeHidden();
+  await group(page, 'Reviews');
   await entry(page, 'symbiote/AGENTS.md').click();
   await expect(list(page)).toBeHidden();
   await expect(text(page, 'symbiote/AGENTS.md')).toHaveValue(/^# Symbiote reviews/);
@@ -279,7 +295,7 @@ test("the mockup: two cards to the main area's bottom, the page a head over its 
     [1440, 900],
   ] as const) {
     await page.setViewportSize({ width, height });
-    await page.goto(`${symbiote.url}settings`);
+    await page.goto(`${symbiote.url}settings?prompt=start.feature`);
     await expect(text(page, 'Feature')).toBeVisible();
     const { area, l, e } = await boxes();
     // The page frame since V72 (decision 508): 12 px from the area's edges, 8 apart since V85
@@ -296,7 +312,7 @@ test("the mockup: two cards to the main area's bottom, the page a head over its 
   await page.goto(`${symbiote.url}settings?prompt=appearance`);
   await expect(entry(page, 'Appearance')).toHaveAttribute('aria-current', 'true');
   await expect(entry(page, 'Appearance')).toBeInViewport({ ratio: 1 });
-  await page.goto(`${symbiote.url}settings`);
+  await page.goto(`${symbiote.url}settings?prompt=start.feature`);
   await expect(text(page, 'Feature')).toBeVisible();
   // Cards, the style's 10 px.
   await expect(list(page)).toHaveCSS('border-top-left-radius', '10px');
@@ -309,7 +325,9 @@ test("the mockup: two cards to the main area's bottom, the page a head over its 
   // The head: the page's icon, its title and the mockup's line.
   const head = page.locator('.settings-bar');
   await expect(head.locator('.page-icon svg')).toBeVisible();
-  await expect(head).toContainText('What Symbiote tells its agents, and how this repository works');
+  await expect(head).toContainText(
+    'How this repository is checked, and what Symbiote tells its agents',
+  );
 
   // The page's head: its name and chip; its sections, each with a line of what it is.
   await expect(title(page)).toHaveText("Workspaces: FeatureSymbiote's");
@@ -383,19 +401,21 @@ const ICONS: [group: string, name: string, drawing: string, tint: string][] = [
   ['Workspaces', 'Plan first', 'M12 6v6l4 2', '--phase-implement'],
   ['Workspaces', 'Plan without', 'M4.6 11a8', '--phase-implement'],
   ['Workspaces', 'Documents', 'M14 2v4', '--phase-implement'],
-  ['Workspaces', 'Suggest settings', 'M9 18h6', '--phase-implement'],
   ['Reviews', 'Approved', 'm16 9-5.5 5.5', '--phase-test'],
   ['Reviews', 'Approved to push', 'M4 14.899', '--phase-test'],
   ['Reviews', 'Changes or comments', 'M22 17a2', '--phase-test'],
   ['Reviews', 'Where the review is', 'M20 10c0 4.993', '--phase-test'],
   ['Reviews', 'symbiote/AGENTS.md', 'M19 17V5', '--phase-test'],
-  ['Prebuilt agents', 'Merger', 'M6 21V9a9 9 0 0 0 9 9', '--phase-visual'],
-  ['Prebuilt agents', 'Nucleus', '<circle cx="12" cy="12" r="2.5">', '--phase-visual'],
-  ['Prebuilt agents', 'Scribe', 'M9.937 15.5', '--phase-visual'],
+  ['Agents', 'Nucleus', '<circle cx="12" cy="12" r="2.5">', '--phase-visual'],
+  ['Agents', 'Merger', 'M6 21V9a9 9 0 0 0 9 9', '--phase-visual'],
+  ['Agents', 'Scribe', 'M9.937 15.5', '--phase-visual'],
+  ['Agents', 'Suggest settings', 'M9 18h6', '--phase-implement'],
   ['This machine', 'Skill library', 'M20 20a2 2 0 0 0 2-2V8', '--phase-docs'],
   // V82: Hive mode's tile, the only one not its group's; this repository's (decision 623). Hive's
   // crimson since V88 (decision 814; the error's red before), its icon in Hive's words' colour.
   ['This repository', 'Hive mode', 'M21 16V8a2 2 0 0 0-1-1.73', '--hive'],
+  // fix/settings-page: the check, a shield with its tick (the merger's Check failed's before).
+  ['This repository', 'Checks', 'm9 12 2 2 4-4', '--hive'],
   ['This browser', 'Appearance', 'M12 22a1 1 0 0 1 0-20', '--phase-explore'],
 ];
 
@@ -404,13 +424,16 @@ test('every entry its icon, plain and muted; the open one in the accent (V81, V9
 }) => {
   symbiote = await serveWorkspaces();
   await page.setViewportSize({ width: 1700, height: 925 });
-  await page.goto(`${symbiote.url}settings`);
+  await page.goto(`${symbiote.url}settings?prompt=start.feature`);
   await expect(text(page, 'Feature')).toBeVisible();
-  await expect(list(page).getByRole('button')).toHaveCount(ICONS.length);
-  for (const [group, name, drawing] of ICONS) {
+  await group(page, 'Reviews');
+  // Every entry, and the two groups' heads.
+  await expect(list(page).getByRole('button')).toHaveCount(ICONS.length + 2);
+  for (const [section, name, drawing] of ICONS) {
     const row = list(page)
-      .getByRole('region', { name: group })
-      .getByRole('button', { name, exact: true });
+      .getByRole('region', { name: section, exact: true })
+      // The check's entry carries its mark ("none" here) in its name.
+      .getByRole('button', name === 'Checks' ? { name: /^Checks/ } : { name, exact: true });
     const tile = row.locator('.settings-tile');
     await expect(tile).toHaveAttribute('aria-hidden', 'true');
     await expect(tile.locator('svg')).toHaveCount(1);
@@ -453,7 +476,7 @@ test('Appearance is an entry of its own: the theme and the intro; listed when th
 }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}settings`);
-  await expect(text(page, 'Feature')).toBeVisible();
+  await expect(title(page)).toHaveText(/^Checks/);
   const head = page.locator('.settings-bar');
   // The proofs' head: its line, no button (V93).
   await expect(head.getByRole('button')).toHaveCount(0);
@@ -468,12 +491,20 @@ test('Appearance is an entry of its own: the theme and the intro; listed when th
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'light');
   await expect(editor(page).getByRole('button', { name: 'Play the intro' })).toBeVisible();
 
-  // Without the prompts, Appearance is still there, and open.
+  // Without the prompts, the settings that are not prompts are still listed (the check first,
+  // open), and Appearance opens.
   await page.route('**/api/settings/prompts', (route) =>
     route.fulfill({ status: 500, body: 'broken' }),
   );
   await page.goto(`${symbiote.url}settings`);
   await expect(page.getByRole('alert')).toContainText('The prompts could not be read');
+  await expect(list(page).getByRole('heading')).toHaveText([
+    'This repository',
+    'This machine',
+    'This browser',
+  ]);
+  await expect(title(page)).toHaveText(/^Checks/);
+  await entry(page, 'Appearance').click();
   await expect(theme.getByRole('button', { name: 'Light' })).toHaveAttribute(
     'aria-pressed',
     'true',
@@ -825,4 +856,140 @@ test("Suggest settings' page: a Model and an Effort for each agent, saved as adv
   await expect(claude.getByRole('region', { name: 'Model' }).getByRole('alert')).toHaveText(
     'advisor.claude.model is gpt-6-luna, which Claude Code does not list: Suggest settings asks on the default.',
   );
+});
+
+// fix/settings-page: the check, one for the merger and Hive, set from Settings in both modes.
+const command = (page: Page, n: number) =>
+  editor(page).getByRole('textbox', { name: `Command ${n}` });
+const merge = () =>
+  (JSON.parse(readFileSync(config(), 'utf8')) as { merge?: Record<string, unknown> }).merge;
+const setHive = (page: Page, on: boolean) =>
+  page.evaluate(async (on) => {
+    const response = await fetch('/api/hive', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      body: JSON.stringify({ on }),
+    });
+    if (!response.ok) throw new Error(await response.text());
+  }, on);
+
+test('the check: set from Settings as merge.checks, kept, shown on the Hive page; Reset removes it', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}settings`);
+  // This repository first, the check its first entry: opened by default.
+  const repository = list(page).getByRole('region', { name: 'This repository' });
+  await expect(repository.getByRole('button')).toHaveText([/^Checks/, /^Hive mode/]);
+  await expect(entry(page, /^Checks/)).toHaveAttribute('aria-current', 'true');
+  // The callers fixture has no check to find: none, said in the list and on the page.
+  await expect(entry(page, /^Checks/)).toContainText('none');
+  await expect(title(page)).toHaveText('ChecksNone');
+  await expect(editor(page)).toContainText('None is set or found');
+  await expect(save(page)).toBeDisabled();
+
+  await command(page, 1).fill('git diff --check');
+  // Enter adds a command after it.
+  await command(page, 1).press('Enter');
+  await expect(command(page, 2)).toBeFocused();
+  await command(page, 2).fill('test -f README.md');
+  await expect(entry(page, /^Checks/)).toContainText('not saved');
+  await editor(page).getByRole('button', { name: 'Move command 2 up' }).click();
+  await expect(command(page, 1)).toHaveValue('test -f README.md');
+  await expect(command(page, 2)).toHaveValue('git diff --check');
+  await save(page).click();
+  await expect(editor(page).getByRole('status')).toHaveText(
+    'Saved. The next merge runs these 2 commands.',
+  );
+  expect(merge()).toEqual({ checks: ['test -f README.md', 'git diff --check'] });
+  await expect(title(page)).toHaveText("ChecksThe project's");
+  await expect(entry(page, /^Checks/)).not.toContainText('not saved');
+
+  // Kept: read again on a reload.
+  await page.reload();
+  await expect(command(page, 1)).toHaveValue('test -f README.md');
+  // The Hive mode page shows it, from merge.checks, and its Change opens the Checks page.
+  await entry(page, 'Hive mode').click();
+  const row = editor(page).getByRole('group', { name: 'The check' });
+  await expect(row.locator('code')).toHaveText([
+    'merge.checks',
+    'test -f README.md',
+    'git diff --check',
+  ]);
+  await row.getByRole('link', { name: 'Change' }).click();
+  await expect(page).toHaveURL(/\?prompt=checks$/);
+  await expect(title(page)).toHaveText("ChecksThe project's");
+
+  // A command removed, then the change cancelled: nothing saved.
+  await editor(page).getByRole('button', { name: 'Remove command 2' }).click();
+  await expect(command(page, 2)).toHaveCount(0);
+  await editor(page).getByRole('button', { name: 'Cancel' }).click();
+  await expect(command(page, 2)).toHaveValue('git diff --check');
+
+  // Reset asks first; then merge.checks leaves the file, and none is found again.
+  await editor(page).getByRole('button', { name: 'Reset to found' }).click();
+  await editor(page).getByRole('button', { name: 'Reset', exact: true }).click();
+  await expect(editor(page).getByRole('status')).toHaveText(
+    'merge.checks removed: none is found, so a merge waits for you to land it.',
+  );
+  expect(merge()).toBeUndefined();
+  await expect(title(page)).toHaveText('ChecksNone');
+});
+
+test('in Hive mode, the same list: the check under This repository, Alpha Ceph and the reviewer among the agents, prompts in groups that fold', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}settings?prompt=checks`);
+  await command(page, 1).fill('git diff --check');
+  await save(page).click();
+  await expect(editor(page).getByRole('status')).toContainText('Saved.');
+  await setHive(page, true);
+  await page.reload();
+
+  await expect(list(page).getByRole('heading', { level: 2 })).toHaveText([
+    'This repository',
+    'Agents',
+    'Prompts',
+    'This machine',
+    'This browser',
+  ]);
+  await expect(
+    list(page).getByRole('region', { name: 'This repository' }).getByRole('button'),
+  ).toHaveText([/^Checks/, /^Hive modeOn/]);
+  await expect(list(page).getByRole('region', { name: 'Agents' }).getByRole('button')).toHaveText([
+    'Alpha Ceph',
+    'Merger',
+    'Scribe',
+    'Reviewer',
+    'Suggest settings',
+  ]);
+  // The prompts' groups folded, Hive's first; the open entry's group opens with it.
+  const prompts = list(page).getByRole('region', { name: 'Prompts' });
+  const heads = prompts.locator('.settings-fold-head');
+  await expect(heads).toHaveText(['Hive9', 'Workspaces8', 'Reviews5']);
+  await expect(heads.first()).toHaveAttribute('aria-expanded', 'false');
+  await heads.first().click();
+  await expect(heads.first()).toHaveAttribute('aria-expanded', 'true');
+  await prompts.getByRole('button', { name: 'Check failed' }).click();
+  await expect(title(page)).toHaveText(/^Hive: Check failed/);
+  // The fold is kept: open after a reload.
+  await page.reload();
+  await expect(heads.first()).toHaveAttribute('aria-expanded', 'true');
+
+  // The page says Hive runs it on every commit.
+  await entry(page, /^Checks/).click();
+  await expect(editor(page)).toContainText('What Hive runs on every commit, and the merger');
+
+  // The filter: a setting's config key, a theme, nothing.
+  const find = list(page).getByRole('searchbox', { name: 'Find a setting' });
+  await find.fill('theme');
+  await expect(list(page).getByRole('button')).toHaveText(['Appearance']);
+  await find.fill('check');
+  await expect(list(page).locator('li button')).toHaveText([/^Checks/, 'Merger', 'Check failed']);
+  await find.fill('zzz');
+  await expect(list(page).getByRole('status')).toHaveText('No setting matches “zzz”.');
+  await find.press('Escape');
+  await expect(find).toHaveValue('');
+  await setHive(page, false);
 });

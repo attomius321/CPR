@@ -34,7 +34,7 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `nucleus.web` | `true` | Whether Nucleus searches the web and reads web pages. With `false`, its next conversation has neither; a running one keeps what it started with. See [What Symbiote writes and sends](../../README.md#what-symbiote-writes-and-sends). |
 | `advisor.claude.model`, `advisor.codex.model` | `haiku` for Claude Code, `gpt-6-luna` for Codex | The model that suggests a workspace's settings when you press **Suggest settings** with that agent picked, if the agent offers it. |
 | `advisor.claude.effort`, `advisor.codex.effort` | `low` | The effort level that model runs at, if it takes that level. |
-| `merge.checks` | a command Symbiote finds | The check a merge runs before it lands: one command, or a list run in order. Put an install first if the check needs dependencies. |
+| `merge.checks` | a command Symbiote finds | The check a merge runs before it lands, and [Hive](#hive-mode) on every commit: one command, or a list run in order. Put an install first if the check needs dependencies. Set it in Settings' **Checks** page. |
 | `merge.push` | `false` | If `true`, Symbiote pushes the target branch after a merge lands: to its upstream, else to `origin`. A merge [Hive](#hive-mode) lands is pushed whatever this says. |
 | `merge.strategy` | `merge` | How a merge lands unless you pick otherwise: `merge` (a merge commit) or `fast-forward` (the target moves to the approved commit, no new commit, when the target has no commits the branch lacks). |
 | `merge.agent` | `agent.kind`, else Claude Code, else Codex | The agent that resolves conflicts: `claude` or `codex`. |
@@ -57,7 +57,7 @@ these in order:
 - a `check` or `test` target in a Makefile;
 - `scripts/test.sh`, `cargo test`, `go test ./...` or `pytest`.
 
-The **Start a workspace** page names the check it found.
+The **Start a workspace** page and Settings' **Checks** page name the check it found.
 
 ## Rules for the merger, `symbiote/merge.md`
 

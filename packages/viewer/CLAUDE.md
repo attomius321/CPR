@@ -30,7 +30,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 | `workspaces/` | A workspace, its agent's terminal, its changes, merges, Start a workspace |
 | `shell/` | The shell: sidenav, title bar, status bar and usage, pages, theme, the desktop window |
 | `ui/` | Shared: the tokens and controls' CSS, `Help`, `Tooltips`, `Resizer`, icons, menus, Markdown, HTTP; `Loading` (anything under way: the turning arc and its words, never words alone, `test/loading.test.ts`) |
-| `nucleus/`, `settings/` | Nucleus (Scout until NU1), Settings; `nucleus/Conversation.tsx` is a page agent's conversation, Nucleus's page and Scribe's pane (V41) |
+| `nucleus/`, `settings/` | Nucleus (Scout until NU1), Settings; `nucleus/Conversation.tsx` is a page agent's conversation, Nucleus's page and Scribe's pane (V41); Settings' list is `settingsNav` (`settings.ts`, pure: sections, folding prompt groups, the filter), its Checks page `ChecksPage.tsx` (`checks.ts`, pure; `/api/settings/checks`) |
 | `skills/` | Skills (V41): the checkout's skills, their checks (`skills.ts`, pure), Scribe's pane |
 | `monitor/` | The Monitor (RM1, RM2): the folder tree, concentration and heat (`codemap.ts`), the treemap layout (`treemap.ts`), both pure; the picture `TreemapView.tsx` |
 | `intro/` | The first-time intro (V39): the koi engine, its rig and images, the overlay |

@@ -89,6 +89,7 @@ import { branchReviews } from './reviews.js';
 import { merger, MergeRefused, projectCheck } from './merges.js';
 import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
 import { promptSettingsService } from './prompts.js';
+import { checkSettingService } from './check-setting.js';
 import { nucleus } from './nucleus.js';
 import { scribe } from './scribe.js';
 import { skillsService } from './skills.js';
@@ -862,6 +863,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       day: workspaceDay(repo, cacheDir),
       // Nucleus is Alpha Ceph while Hive mode is on (decision 682): its prompt's about too.
       settings: promptSettingsService(repo, { hive: () => hive.on() }),
+      // One check for both modes: the merger's and Hive's (fix/settings-page).
+      checks: checkSettingService(repo, repo.root),
       nucleus: nucleus(repo, cacheDir, {
         claude: claudeOf,
         codex: codexOf,

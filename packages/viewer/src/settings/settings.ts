@@ -83,6 +83,142 @@ export function promptGroups(
   return [hiveGroup, ...listed.filter((g) => g !== hiveGroup)];
 }
 
+/** The entries that are not prompts (fix/settings-page): their keys in `?prompt=`. */
+export const CHECKS = 'checks';
+export const HIVE = 'hive-mode';
+export const LIBRARY = 'skill-library';
+export const APPEARANCE = 'appearance';
+export type EntryKey = PromptKey | typeof CHECKS | typeof HIVE | typeof LIBRARY | typeof APPEARANCE;
+
+/** An entry of Settings' list: a prompt's, an agent's (all its prompts), or a setting's. */
+export interface NavEntry {
+  key: EntryKey;
+  name: string;
+  /** The prompts on its page; none on a setting's. */
+  prompts: PromptSetting[];
+  /** The prebuilt agent whose page it is. */
+  agent?: PrebuiltAgent;
+  /** What else finds it in the list's filter: its config keys, what is on its page. */
+  terms?: readonly string[];
+}
+
+/** A group of prompts under Prompts, folding: Hive's, Workspaces', Reviews'. */
+export interface NavFold {
+  group: string;
+  entries: NavEntry[];
+}
+
+/** A section of the list: its entries, then its folding groups (Prompts' only). */
+export interface NavSection {
+  name: string;
+  entries: NavEntry[];
+  folds: NavFold[];
+}
+
+const setting = (key: EntryKey, name: string, terms: readonly string[]): NavEntry => ({
+  key,
+  name,
+  prompts: [],
+  terms,
+});
+const REPOSITORY: NavEntry[] = [
+  setting(CHECKS, 'Checks', ['merge.checks', 'tests', 'commands']),
+  setting(HIVE, 'Hive mode', ['hive.lands', 'landing', 'limits', 'budget', 'pause', 'rounds']),
+];
+const MACHINE = [setting(LIBRARY, 'Skill library', ['skills', 'folder'])];
+const BROWSER = [
+  setting(APPEARANCE, 'Appearance', ['theme', 'dark', 'light', 'text size', 'intro']),
+];
+
+/** The agents in the list's order: the person's own first, Hive's reviewer after Symbiote's. */
+const AGENT_ORDER: readonly PrebuiltAgent[] = ['Nucleus', 'Merger', 'Scribe', 'Reviewer'];
+
+/**
+ * Settings' list (fix/settings-page) by what is set, in both modes: This repository (its check,
+ * one for the merger and Hive, and Hive mode), Agents (each its page; Suggest settings', the
+ * advisor's, last), Prompts in folding groups (Hive's first while it is on), This machine, This
+ * browser. Without the prompts (`null`), the settings that are not prompts.
+ */
+export function settingsNav(
+  prompts: readonly PromptSetting[] | null,
+  { hive = false, alpha = hive }: { hive?: boolean; alpha?: boolean } = {},
+): NavSection[] {
+  const repository = { name: 'This repository', entries: REPOSITORY, folds: [] };
+  const rest = [
+    { name: 'This machine', entries: MACHINE, folds: [] },
+    { name: 'This browser', entries: BROWSER, folds: [] },
+  ];
+  if (!prompts) return [repository, ...rest];
+  const agents: NavEntry[] = [];
+  const advisor: NavEntry[] = [];
+  const folds: NavFold[] = [];
+  for (const { group, entries } of promptGroups(prompts, { hive, alpha })) {
+    const own = entries.filter((e) => !e.agent && e.key !== 'advisor');
+    agents.push(...entries.filter((e) => e.agent));
+    advisor.push(...entries.filter((e) => e.key === 'advisor'));
+    if (own.length > 0 && group !== PREBUILT_GROUP) folds.push({ group, entries: own });
+  }
+  const rank = (e: NavEntry) => AGENT_ORDER.indexOf(e.agent ?? 'Nucleus');
+  return [
+    repository,
+    {
+      name: 'Agents',
+      entries: [...agents.sort((a, b) => rank(a) - rank(b)), ...advisor],
+      folds: [],
+    },
+    { name: 'Prompts', entries: [], folds },
+    ...rest,
+  ];
+}
+
+/** Whether `entry` is found by `query` (lower case): its name, its prompts' titles, its terms. */
+const finds = (entry: NavEntry, query: string) =>
+  [entry.name, ...entry.prompts.map((p) => p.title), ...(entry.terms ?? [])].some((text) =>
+    text.toLowerCase().includes(query),
+  );
+
+/**
+ * The list as the filter leaves it: the entries found by name, an agent's prompt titles or a
+ * setting's config keys; a section's or a group's name keeps all of it. Empty sections go.
+ */
+export function filterNav(sections: readonly NavSection[], query: string): NavSection[] {
+  const q = query.trim().toLowerCase();
+  if (q === '') return [...sections];
+  const kept: NavSection[] = [];
+  for (const section of sections) {
+    if (section.name.toLowerCase().includes(q)) {
+      kept.push(section);
+      continue;
+    }
+    const entries = section.entries.filter((e) => finds(e, q));
+    const folds = section.folds
+      .map((fold) =>
+        fold.group.toLowerCase().includes(q)
+          ? fold
+          : { ...fold, entries: fold.entries.filter((e) => finds(e, q)) },
+      )
+      .filter((fold) => fold.entries.length > 0);
+    if (entries.length > 0 || folds.length > 0) kept.push({ ...section, entries, folds });
+  }
+  return kept;
+}
+
+/**
+ * Whether a group of prompts is open: every one while filtering; else as the person left it
+ * (`kept`, by group), else when it holds the entry open.
+ */
+export function foldOpen(
+  fold: NavFold,
+  {
+    open,
+    kept,
+    query,
+  }: { open: string | null; kept: Readonly<Record<string, boolean>>; query: string },
+): boolean {
+  if (query.trim() !== '') return true;
+  return kept[fold.group] ?? fold.entries.some((e) => e.key === open);
+}
+
 /** The entry's mark in the list, for any of its prompts: not saved, not used, then changed. */
 export function markOf(
   prompts: readonly PromptSetting[],

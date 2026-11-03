@@ -8,6 +8,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import {
   abortMerge,
+  resolveCommit,
   analyzeGit,
   commitResolution,
   commitsBetween,
@@ -142,7 +143,20 @@ export async function projectCheck(
 ): Promise<Pick<MergeCheckRun, 'commands' | 'source'> | null> {
   const { checks } = readMergeConfig(root);
   if (checks) return { commands: checks, source: `${configFile(root)} (merge.checks)` };
-  const guess = await guessCheck(await treeAt(repo, at));
+  return foundCheck(repo, at);
+}
+
+/**
+ * The check Symbiote finds in the commit `at`'s files (V24b; a SHA or a ref), `merge.checks` aside: what runs
+ * when the project sets none, as Settings shows it (fix/settings-page); null when there is none.
+ */
+export async function foundCheck(
+  repo: GitRepo,
+  at: string,
+): Promise<Pick<MergeCheckRun, 'commands' | 'source'> | null> {
+  // A ref resolved first: the tree is read by SHA only, and Hive's page asks at HEAD.
+  const sha = /^[0-9a-f]{40,64}$/i.test(at) ? at : await resolveCommit(repo, at);
+  const guess = await guessCheck(await treeAt(repo, sha));
   if (!guess) return null;
   // A package script needs the dependencies, which Symbiote's worktree does not have at first.
   if (guess.source.startsWith('package.json')) {

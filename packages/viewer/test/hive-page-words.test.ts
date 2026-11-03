@@ -18,7 +18,9 @@ function wordsOf(html: string): string {
 
 // V92 (decision 870): off, the page says what Hive does, then its settings as grouped rows.
 describe("Settings' Hive mode page, Hive off (V92)", () => {
-  const words = wordsOf(renderToStaticMarkup(createElement(HivePage, { onBack: () => {} })));
+  const words = wordsOf(
+    renderToStaticMarkup(createElement(HivePage, { onBack: () => {}, onChecks: () => {} })),
+  );
 
   it('says what Hive does, and how to start', () => {
     expect(words).toContain(
