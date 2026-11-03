@@ -98,7 +98,7 @@ export function Canvas({
   onToggleSummary,
   reveal,
 }: CanvasProps) {
-  const { fitView, screenToFlowPosition } = useReactFlow();
+  const { fitView, screenToFlowPosition, getNodesBounds, getViewport, setCenter } = useReactFlow();
   // Zoomed out, the canvas is a map; labels scale with `--symbiote-zoom`, set without re-rendering
   // and only where they read it.
   const map = useStore((state) => state.transform[2] < MAP_ZOOM);
@@ -172,10 +172,43 @@ export function Canvas({
       if (reveal)
         void fitView({ nodes: reveal.map((id) => ({ id })), duration: 300, maxZoom: 1.1 });
       else if (focus || rescoped) void fitView({ duration: 300, maxZoom: 1.1 });
-      else if (selected) void fitView({ nodes: [{ id: selected }], duration: 300, maxZoom: 1.1 });
+      else if (selected) {
+        // The picked symbol in view at the zoom the person has (V93, decision 886: the canvas as
+        // proof 03 frames it; V90 zoomed to it): moved only when it is not already in view.
+        const bounds = getNodesBounds([selected]);
+        const { x, y, zoom } = getViewport();
+        const [width = 0, height = 0] = size.split('x').map(Number);
+        const left = -x / zoom;
+        const top = -y / zoom;
+        const shown =
+          bounds.width > 0 &&
+          bounds.x >= left &&
+          bounds.y >= top &&
+          bounds.x + bounds.width <= left + width / zoom &&
+          bounds.y + bounds.height <= top + height / zoom;
+        if (!shown && bounds.width > 0) {
+          void setCenter(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, {
+            zoom,
+            duration: 300,
+          });
+        }
+      }
     });
     return () => cancelAnimationFrame(frame);
-  }, [selected, focus, scope, layoutNodes, size, reveal, resizing, pending, fitView]);
+  }, [
+    selected,
+    focus,
+    scope,
+    layoutNodes,
+    size,
+    reveal,
+    resizing,
+    pending,
+    fitView,
+    getNodesBounds,
+    getViewport,
+    setCenter,
+  ]);
 
   const theme = useTheme();
   return (

@@ -336,6 +336,12 @@ describe('the tokens (V29b)', () => {
 
       // V81 (decision 600) and V93 (decision 891, proof 11): an entry's icon, plain, muted on
       // the list card; the open entry's in the accent.
+      // V93 (decision 889): a diff's syntax colours, read as text on the code's ground and a card.
+      it('writes the syntax colours at 4.5:1 on the code and its card', () => {
+        const syntax = ['--syntax-keyword', '--syntax-string', '--syntax-call'];
+        expect(under(theme, syntax, ['--bg', '--panel'], 4.5)).toEqual([]);
+      });
+
       it("draws Settings' icons at least 3:1 on the list's card, the open one's accent too", () => {
         expect(under(theme, ['--muted', '--accent'], ['--panel'], 3)).toEqual([]);
       });

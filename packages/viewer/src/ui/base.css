@@ -119,6 +119,10 @@
   --context: #767d8d;
   /* OpenAI's blossom, Codex's mark (fix/codex-icon): OpenAI's white on dark, black on light. */
   --openai: #ffffff;
+  /* A diff's syntax (V93, decision 889; proofs 03, 04): keywords, strings, called names. */
+  --syntax-keyword: #c792ea;
+  --syntax-string: #c3e88d;
+  --syntax-call: #82aaff;
   /* Commit graph lanes after the current branch's (V10). The first is blue since V61: its purple
      was 1.09:1 from the violet accent, a branch read as selected. */
   --lane-1: #6aa8ff;
@@ -293,6 +297,9 @@
   --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
   --removed-gutter: color-mix(in srgb, var(--removed) 22%, transparent);
   --openai: #000000;
+  --syntax-keyword: #7a3db8;
+  --syntax-string: #3c6e0a;
+  --syntax-call: #1f5fbf;
   color-scheme: light;
 }
 
@@ -383,6 +390,9 @@
     --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
     --removed-gutter: color-mix(in srgb, var(--removed) 22%, transparent);
     --openai: #000000;
+    --syntax-keyword: #7a3db8;
+    --syntax-string: #3c6e0a;
+    --syntax-call: #1f5fbf;
     color-scheme: light;
   }
 }

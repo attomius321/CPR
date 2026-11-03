@@ -243,3 +243,24 @@
   align-items: center;
   gap: 12px;
 }
+
+/* A diff's syntax colours (V93, decision 889; proofs 03, 04): on every diff's code, the Files
+   page's and a symbol's. Comments muted (faint is for marks, decision 765); numbers as the text. */
+.code .tok-kw,
+.code .tok-tag {
+  color: var(--syntax-keyword);
+}
+
+.code .tok-str {
+  color: var(--syntax-string);
+}
+
+.code .tok-call,
+.code .tok-attr {
+  color: var(--syntax-call);
+}
+
+.code .tok-com {
+  color: var(--muted);
+  font-style: italic;
+}

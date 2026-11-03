@@ -2,7 +2,8 @@
 
 .panel {
   flex: 0 1 auto;
-  width: var(--panel-width, min(400px, 36vw));
+  /* 336 px at first, as proof 03 draws it (V93, decision 887; 400 from V90, 520 before). */
+  width: var(--panel-width, min(336px, 36vw));
   min-width: min(320px, 45vw);
   overflow: auto;
   border: 1px solid var(--line);
@@ -514,4 +515,18 @@
 
 .open-note.open-error {
   color: var(--error);
+}
+
+/* A use's Open ↗ (V93, decision 888): at its row's end. */
+.neighbour-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: var(--size-caption);
+}
+
+.neighbour-open .icon {
+  width: 12px;
+  height: 12px;
 }

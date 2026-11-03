@@ -28,7 +28,15 @@ import {
 } from './open.js';
 import { OpenIcon } from './OpenIcon.js';
 import { pathInProject, projectOf } from '../graph/projects.js';
-import { AlertIcon, CheckIcon, CloseIcon, FailedIcon, HelpIcon } from '../ui/icons.js';
+import {
+  AlertIcon,
+  CheckIcon,
+  CloseIcon,
+  ExternalIcon,
+  FailedIcon,
+  HelpIcon,
+} from '../ui/icons.js';
+import { CodeText, useTokens } from '../ui/CodeText.js';
 import { tip } from '../ui/tip.js';
 
 const sources = new Map<string, Promise<string>>();
@@ -242,7 +250,12 @@ export function DetailPanel({
       {groups.length > 0 && (
         <section className="panel-block">
           {groups.map((group) => (
-            <Neighbours key={group.title} group={group} onSelect={onSelect} />
+            <Neighbours
+              key={group.title}
+              group={group}
+              onSelect={onSelect}
+              {...(canOpen ? { onOpen: (target: OpenTarget | null) => open(target) } : {})}
+            />
           ))}
         </section>
       )}
@@ -284,6 +297,7 @@ export function DetailPanel({
           <h3>{codeWord}</h3>
           <SymbolDiff
             state={diff}
+            path={(node.head ?? node.base)?.file}
             anchor={comments ? anchor : null}
             {...(comments
               ? { onPick: (row: DiffRow) => setPicked(anchorFor(graph, node, row)) }
@@ -337,6 +351,8 @@ const MAX_ROWS = 300;
 
 interface SymbolDiffProps {
   state: SourceState;
+  /** Its file: the language its colours are read in (V93). */
+  path?: string | undefined;
   /** The line the next comment goes on, highlighted. */
   anchor: Anchor | null;
   /** Picks a changed line for the next comment. */
@@ -345,8 +361,11 @@ interface SymbolDiffProps {
   onOpen?: (row: DiffRow, side?: Side) => void;
 }
 
-function SymbolDiff({ state, anchor, onPick, onOpen }: SymbolDiffProps) {
+const NO_ROWS: DiffRow[] = [];
+
+function SymbolDiff({ state, anchor, onPick, onOpen, path }: SymbolDiffProps) {
   const [all, setAll] = useState(false);
+  const tokens = useTokens(state.status === 'ready' ? state.rows : NO_ROWS, path);
   if (state.status === 'loading') return <p className="muted">Loading source…</p>;
   if (state.status === 'none') {
     return (
@@ -379,7 +398,7 @@ function SymbolDiff({ state, anchor, onPick, onOpen }: SymbolDiffProps) {
               <span className="mark">
                 {row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}
               </span>
-              <span className="text">{row.text}</span>
+              <CodeText text={row.text} tokens={tokens?.get(row)} />
             </div>
           );
         })}
@@ -542,9 +561,12 @@ function FindingItem({
 function Neighbours({
   group,
   onSelect,
+  onOpen,
 }: {
   group: NeighbourGroup;
   onSelect: (id: string) => void;
+  /** Opens a use in VS Code (V93, decision 888: proof 03's Open ↗ beside each). */
+  onOpen?: (target: OpenTarget | null) => void;
 }) {
   const { title, tone: groupTone, items } = group;
   return (
@@ -572,6 +594,17 @@ function Neighbours({
                 {item.side === 'head' ? ' · new' : ''}
                 {item.possible ? ' · possible' : ''}
               </span>
+              {onOpen && item.node && symbolTarget(item.node) && (
+                <button
+                  type="button"
+                  className="link neighbour-open"
+                  {...tip(`Open ${label(item.node)} in VS Code`)}
+                  onClick={() => item.node && onOpen(symbolTarget(item.node))}
+                >
+                  Open
+                  <ExternalIcon />
+                </button>
+              )}
             </li>
           );
         })}

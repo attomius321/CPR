@@ -535,6 +535,15 @@ export const BranchIcon = () => (
   </Icon>
 );
 
+/** Open elsewhere (V93, proof 03's Open ↗): lucide's external-link. */
+export const ExternalIcon = () => (
+  <Icon lucide>
+    <path d="M15 3h6v6" />
+    <path d="M10 14 21 3" />
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+  </Icon>
+);
+
 /** Send a reply (V93, proof 02): lucide's send. */
 export const SendIcon = () => (
   <Icon lucide>
