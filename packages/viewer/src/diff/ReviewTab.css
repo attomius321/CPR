@@ -35,14 +35,28 @@
 .draft,
 .draft-row {
   margin-bottom: 8px;
-  padding: 6px 8px;
+  padding: 8px 10px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: color-mix(in srgb, var(--text) 5%, transparent);
+  background: none;
 }
 
 .draft-row {
   margin: 0;
+}
+
+/* "on Cart.total · line 34" (V90, decision 844): what a comment is on, quiet; the name in mono. */
+.draft-on {
+  min-width: 0;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.draft-on .list-link {
+  display: inline;
+  padding: 0;
+  color: var(--text);
+  font: 600 var(--size-caption) var(--mono);
 }
 
 .draft-where {
@@ -177,12 +191,48 @@
   padding: 0;
 }
 
-.events label {
+/* A verdict as a card (V90, decision 844; proof 04's `.verdict`): its name, what it asks of the
+   agent under it; the one picked in the person's violet. */
+.events label.event {
   display: flex;
-  gap: 8px;
-  align-items: center;
+  gap: 10px;
+  align-items: flex-start;
   min-height: 24px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
   cursor: pointer;
+}
+
+.events label.event:hover {
+  background: var(--hover);
+}
+
+.review-section .events label.event.picked {
+  border-color: color-mix(in srgb, var(--you) 45%, var(--line));
+  background: color-mix(in srgb, var(--you) 8%, transparent);
+}
+
+.events label.event input {
+  flex: none;
+  margin-top: 3px;
+}
+
+.event-words {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.event-name {
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.event-hint {
+  color: var(--muted);
+  font-size: var(--size-caption);
 }
 
 /* Finish review, and where the verdict goes behind its help (V37). */
@@ -194,6 +244,15 @@
 
 .review-submit .button {
   flex: 1;
+}
+
+/* The key that finishes, on the primary: its words' colour, a quiet box. */
+.review-submit .button kbd {
+  padding: 0 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentcolor 14%, transparent);
+  color: inherit;
+  font: var(--size-caps) var(--mono);
 }
 
 /* What finishing or posting did (V76): a box in its state's tint, as a queued merge's line

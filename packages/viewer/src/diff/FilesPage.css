@@ -13,8 +13,52 @@
   flex: none;
 }
 
+/* One card since V90 (decision 842): the files, then the review under them, one scroll. */
+.files-scroll {
+  padding: 6px 0 0;
+}
+
 .files-list {
+  margin: 0 0 6px;
   font-size: var(--size-small);
+}
+
+/* A file's row: its viewed state (✓, or the eye on the one open), then a workspace's row. */
+.files-item {
+  display: flex;
+  align-items: center;
+  padding-left: 8px;
+}
+
+.files-item > .changes-file {
+  flex: 1;
+  min-width: 0;
+}
+
+.files-state {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  width: 18px;
+  color: var(--muted);
+}
+
+.files-state svg {
+  width: 14px;
+  height: 14px;
+}
+
+.files-state.viewed {
+  color: var(--ok);
+}
+
+/* The file being reviewed: the person's turn, their violet. */
+.files-state.reviewing {
+  color: var(--you);
+}
+
+.files-scroll > .review-tab {
+  border-top: 1px solid var(--line);
 }
 
 .files-side .changes-file[aria-current='true'] {
@@ -77,6 +121,41 @@
   color: var(--muted);
 }
 
+.file-head .kind-pill {
+  margin-left: 0;
+}
+
+.file-position {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.icon-button.boxed {
+  border: 1px solid var(--line-2);
+}
+
+.icon-button.boxed:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.icon-button.boxed svg {
+  width: 14px;
+  height: 14px;
+}
+
+.file-viewed svg {
+  width: 14px;
+  height: 14px;
+}
+
+.file-viewed.viewed {
+  border-color: color-mix(in srgb, var(--ok) 45%, var(--line-2));
+  color: var(--ok);
+}
+
 .file-head .open-note {
   margin: 0;
 }
@@ -120,12 +199,35 @@
   color: var(--text);
 }
 
-/* A line's comments and the one being written, under it, in the page's own type. */
+/* A line's comments and the one being written, under it, in the page's own type: each a card on
+   the diff (V90, decision 844; proof 04's `.comment`). */
 .file-comments {
-  padding: 8px 12px 8px 8.6em;
-  border-block: 1px solid var(--line);
-  background: var(--panel);
+  padding: 6px 12px 8px 8.6em;
   font-family: var(--sans);
+  white-space: normal;
+}
+
+.file-draft {
+  padding: 10px 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
+}
+
+.draft-who {
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.draft-who strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.draft-actions {
+  display: flex;
+  gap: 12px;
 }
 
 .file-comments .draft:last-child {

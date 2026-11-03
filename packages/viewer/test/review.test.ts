@@ -5,6 +5,7 @@ import { toFlow } from '../src/graph/flow.js';
 import {
   byProject,
   changeList,
+  fileViewed,
   filterChanges,
   fingerprint,
   neighbourhood,
@@ -14,6 +15,7 @@ import {
   reviewKey,
   reviewStatus,
   stepChange,
+  toggleFileMark,
   toggleMark,
   withoutCollapsed,
 } from '../src/diff/review.js';
@@ -275,5 +277,38 @@ describe('since an earlier version', () => {
     expect(settled({ sinceOnly: false })).toEqual([]);
     expect(settled({ sinceOnly: true })).not.toContain(add);
     expect(settled({ sinceOnly: true }).length).toBeGreaterThan(0);
+  });
+});
+
+describe("a file's viewed mark (V90, decision 843)", () => {
+  const graph = golden('callers');
+  const file = { status: 'modified' as const, path: 'src/math.ts', blob: 'b1'.repeat(20) };
+
+  it('marks a file viewed by its blob, and unmarks it', () => {
+    const marks = toggleFileMark({}, file);
+    expect(marks).toEqual({ 'file:src/math.ts': file.blob });
+    expect(fileViewed(marks, file)).toBe(true);
+    expect(toggleFileMark(marks, file)).toEqual({});
+  });
+
+  it('shows a file changed since unviewed, and marks its new blob', () => {
+    const marks = toggleFileMark({}, file);
+    const pushed = { ...file, blob: 'c2'.repeat(20) };
+    expect(fileViewed(marks, pushed)).toBe(false);
+    expect(toggleFileMark(marks, pushed)).toEqual({ 'file:src/math.ts': pushed.blob });
+  });
+
+  it('cannot mark a file git gave no blob for', () => {
+    const bare = { status: file.status, path: file.path };
+    expect(toggleFileMark({}, bare)).toEqual({});
+    expect(fileViewed({ 'file:src/math.ts': 'x' }, bare)).toBe(false);
+  });
+
+  it("keeps the files' marks when a symbol is marked, and the symbols' when a file is", () => {
+    const viewed = toggleFileMark({}, file);
+    const both = toggleMark(graph, viewed, 'src/math.ts#add');
+    expect(Object.keys(both).sort()).toEqual(['file:src/math.ts', 'src/math.ts#add']);
+    expect(reviewStatus(graph, both).reviewed).toEqual(new Set(['src/math.ts#add']));
+    expect(Object.keys(toggleFileMark(both, file))).toEqual(['src/math.ts#add']);
   });
 });

@@ -36,13 +36,7 @@ import { DiffShell } from './DiffShell.js';
 import { Shell } from '../shell/Shell.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { DetailPanel } from './DetailPanel.js';
-import {
-  FilesKeys,
-  FilesPage,
-  useReviewFiles,
-  type FileFocus,
-  type FilesTab,
-} from './FilesPage.js';
+import { FilesKeys, FilesPage, useReviewFiles, type FileFocus } from './FilesPage.js';
 import { stepFile } from './file-diff.js';
 import type { Draft } from './comments.js';
 import { decorate } from '../graph/flow.js';
@@ -90,7 +84,6 @@ export function App() {
   const [asked, setAsked] = useState<DiffView | null>(() => diffView(window.location.search));
   /** The file the Files page shows (null: the first), its tab, and a line to bring into view. */
   const [openFile, setOpenFile] = useState<string | null>(null);
-  const [filesTab, setFilesTab] = useState<FilesTab>('files');
   const [fileFocus, setFileFocus] = useState<FileFocus | null>(null);
   const [widths, setWidths] = useState<Widths>(loadWidths);
   /** A panel is being resized: the canvas waits for the drop to centre the selection again. */
@@ -110,8 +103,10 @@ export function App() {
     verdict,
     setVerdict,
     toggleReviewed,
+    toggleViewed,
     addDraft,
     addLineDraft,
+    editDraft,
     removeDraft,
   } = useReview(graph, store);
   const analyzing = state.status === 'analyzing' ? state : undefined;
@@ -189,7 +184,6 @@ export function App() {
         files.find((f) => (at.side === 'head' ? f.path : (f.previousPath ?? f.path)) === at.path);
       if (!at || !file) return;
       showPage('files');
-      setFilesTab('files');
       setOpenFile(file.path);
       setFileFocus({ path: file.path, key: `${at.side}:${at.line}` });
     },
@@ -241,6 +235,11 @@ export function App() {
               )
               ?.click();
         } else if (event.key === 'o') document.getElementById('open-in-editor')?.click();
+        else if (event.key === 'v' && state.status === 'ready' && forge) {
+          // The file shown, viewed or not (V90, decision 843).
+          const shown = files.find((f) => f.path === openFile) ?? files[0];
+          if (shown) toggleViewed(shown);
+        }
       } else if (event.key === 'c' && document.getElementById('comment-input')) {
         event.preventDefault();
         document.getElementById('comment-input')?.focus();
@@ -260,7 +259,20 @@ export function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [changes, walked, selected, toggleReviewed, state.status, page, showPage, files, served]);
+  }, [
+    changes,
+    walked,
+    selected,
+    toggleReviewed,
+    toggleViewed,
+    state.status,
+    page,
+    showPage,
+    files,
+    served,
+    forge,
+    openFile,
+  ]);
 
   const load = useCallback(async (file: File) => {
     try {
@@ -485,8 +497,7 @@ export function App() {
             onOpenFile={openTheFile}
             served={served}
             canOpen={false}
-            tab="files"
-            onTab={setFilesTab}
+            marks={marks}
             onOpenDraft={openDraft}
             focus={null}
             handle={sidebarHandle}
@@ -502,8 +513,8 @@ export function App() {
             onOpenFile={openTheFile}
             served={served}
             canOpen={state.open}
-            tab={reviewProps ? filesTab : 'files'}
-            onTab={setFilesTab}
+            marks={marks}
+            onToggleViewed={reviewProps ? toggleViewed : undefined}
             review={reviewProps}
             comments={
               reviewProps
@@ -511,6 +522,7 @@ export function App() {
                     drafts: draft.drafts,
                     unchanged: forge === 'local',
                     onAdd: addLineDraft,
+                    onEdit: editDraft,
                     onRemove: removeDraft,
                   }
                 : undefined

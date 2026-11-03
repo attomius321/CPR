@@ -47,7 +47,7 @@ test('keeps the review across a new push and flags what changed', async ({ page 
   await expect(page.getByLabel('Mark Canvas.clear reviewed')).toBeChecked();
 
   await page.getByRole('tab', { name: /Review/ }).click();
-  await expect(page.locator('.draft-row')).toContainText('on line 16 of src/shapes.ts');
+  await expect(page.locator('.draft-row')).toContainText('on volume · line 16');
   await expect(page.locator('.draft-row')).toContainText('Cube only?');
 });
 

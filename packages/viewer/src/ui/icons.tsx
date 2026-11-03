@@ -386,6 +386,19 @@ export const ChevronIcon = ({ open }: { open: boolean }) => (
   </Icon>
 );
 
+/** The file before and after on the Files page (V90). */
+export const ArrowUpIcon = () => (
+  <Icon>
+    <path d="M8 13V3M4 7l4-4 4 4" />
+  </Icon>
+);
+
+export const ArrowDownIcon = () => (
+  <Icon>
+    <path d="M8 3v10M4 9l4 4 4-4" />
+  </Icon>
+);
+
 export const CloseIcon = () => (
   <Icon>
     <path d="M4 4l8 8M12 4l-8 8" />

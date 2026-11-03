@@ -8,7 +8,7 @@ import {
   type ReviewDraft,
   type ReviewEvent,
 } from './comments.js';
-import { toggleMark, type Marks } from './review.js';
+import { toggleFileMark, toggleMark, type Marks } from './review.js';
 import { asMarks, asReviewDraft, type Store } from './store.js';
 
 /**
@@ -62,6 +62,18 @@ export function useReview(graph: Graph | undefined, store: Store | undefined) {
     [graph, store],
   );
 
+  /** A file viewed on the Files page, or not (V90): a mark by its blob. */
+  const toggleViewed = useCallback(
+    (file: { path: string; blob?: string }) => {
+      setMarks((current) => {
+        const next = toggleFileMark(current, file);
+        if (next !== current) store?.save('review', next);
+        return next;
+      });
+    },
+    [store],
+  );
+
   const addDraft = useCallback(
     (symbol: string, anchor: Anchor | null, body: string) => {
       const node = graph?.nodes.find((n) => n.id === symbol);
@@ -78,6 +90,15 @@ export function useReview(graph: Graph | undefined, store: Store | undefined) {
     },
     [graph, updateDraft],
   );
+  /** A draft's text written again (V90): Edit on a comment under its line. */
+  const editDraft = useCallback(
+    (id: string, body: string) =>
+      updateDraft((d) => ({
+        ...d,
+        drafts: d.drafts.map((x) => (x.id === id ? { ...x, body } : x)),
+      })),
+    [updateDraft],
+  );
   const removeDraft = useCallback(
     (id: string) => updateDraft((d) => ({ ...d, drafts: d.drafts.filter((x) => x.id !== id) })),
     [updateDraft],
@@ -89,8 +110,10 @@ export function useReview(graph: Graph | undefined, store: Store | undefined) {
     verdict,
     setVerdict,
     toggleReviewed,
+    toggleViewed,
     addDraft,
     addLineDraft,
+    editDraft,
     removeDraft,
   };
 }

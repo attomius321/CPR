@@ -41,7 +41,8 @@ the repository reads the same folder.
   project itself. The tooltip on "Review of <branch>" says why.
 - **The fields**: `about` first (what an agent should read), then `base`, `branch`, `drafts`,
   `head`, `marks`, `reviewer`, `summary`, `updated` and `verdicts`. A mark is a symbol's ID with
-  its fingerprint, so a symbol that changed since is no longer marked.
+  its fingerprint, so a symbol that changed since is no longer marked; a file viewed is
+  `file:<path>` with its blob (V90).
 
 ## Where a review starts
 
@@ -102,12 +103,19 @@ opens it in VS Code. The result is not stored.
 
 ## The Files page
 
-A review opens on its **Files** page, which lists every changed file in git's order. A file shows
-git's diff of the whole file, folded to 3 lines of context. **Graph** is one switch away (key
+A review opens on its **Files** page. One card at the left lists every changed file in git's
+order, and the review under them: its comments, the summary, the verdict and the merge check. A
+file shows git's diff of the whole file, folded to 3 lines of context. **Graph** is one switch away (key
 `g`), and `?view=graph` keeps it on reload. On a branch review, every line shown takes a comment.
 Under `symbiote pr`, only added and removed lines take one, because forges accept comments only in
 their own hunks. A diff over 5 MB is not sent, and a file's diff draws 2,000 rows before **Show
 all**.
+
+A file is marked **Viewed** with its button or `v`. The mark is kept in the review's `marks` as
+`file:<path>`, valued with the file's blob (`git diff --raw`, its base blob for a deleted file),
+so a file changed since shows unviewed again. Marking a symbol keeps the files' marks. A comment
+under its line can be written again with **Edit**, and Ctrl+Enter in the summary finishes the
+review.
 
 ## Opening a review
 
@@ -161,10 +169,12 @@ when a later decision or a fix changed it.
 | 431–436 | The Files page: the default view, git's whole-file diff, which lines take comments, the symbol a comment names, the limits | [V60](../plan/v60-files-page.md) |
 | 471–474 | A workspace's review starts where it started, or at the fork point with a picked branch; an approval merges into that branch | [V65](../plan/v65-review-against.md) |
 | 557–560, 568 | The Review tab in three sections; **Merge into** fits the panel; the result of a finished review in a tinted box | [V76](../plan/v76-review-tab-layout.md) |
+| 842–844 | The Files page in one card, the review under the files (replaces 435's tabs); a file viewed as a `file:<path>` mark by its blob; comments under their lines with Edit; Ctrl+Enter finishes | [V90](../plan/v90-redesign-reviews.md) |
 | 846–847 | Opening a review: the steps as a timeline with their times as the page saw them; the files (served from the pair), a workspace's report, commits and brief at once; the Files page read only meanwhile | [V90](../plan/v90-redesign-reviews.md) |
 
 These no longer hold:
 
+- **435's "tabs Files and Review"**: one card since V90 (842), the review under the files.
 - **80, Approve pushes the reviewed commit**: replaced by 82 a day later. In 4 approvals out of
   4, the agent had already pushed the commit, so the push did nothing.
 - **82's "the agent merges the approved commit when asked"**: [the merger](merger.md) merges it
