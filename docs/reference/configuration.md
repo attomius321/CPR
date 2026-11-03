@@ -43,7 +43,7 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `hive.lands` | `queue` | How [Hive](#hive-mode) lands a workspace: `queue`, through the merge queue into the branch it started from; or `request`, through a pull request (GitHub) or merge request (GitLab) that you merge. See [Landing through a pull or merge request](#landing-through-a-pull-or-merge-request). Set it in Settings' **Hive mode** page. |
 | `hive.usage.pauseAt` | `90` | A whole percent from 1 to 100: while any window of your Claude subscription is at it or above, [Hive](#hive-mode) starts no agent until that window resets. `false`: Hive does not pause by usage. See [Pacing: usage and budget](#pacing-usage-and-budget). Set it in Settings' **Hive mode** page. |
 | `hive.budget` | none | Dollars a workspace Hive drives may spend, by Claude Code's own count: its agent's sessions and its running reviews. Reached, Hive stops the workspace. See [Pacing: usage and budget](#pacing-usage-and-budget). |
-| `hive.reviewer.model` | `opus` | The model [Hive's running reviewer](#the-running-reviewer) is asked on. |
+| `hive.reviewer.model` | `opus` | The model [Hive's running reviewer](#the-running-reviewer) is asked on. Set it in Settings' **Hive mode** page, under **Running reviewer**. |
 | `hive.reviewer.effort` | `high` | The effort level the running reviewer is asked at, if its model takes it. |
 | `prompts` | Symbiote's text | The text Symbiote gives its agents. See [Prompts](#prompts). |
 
@@ -117,7 +117,7 @@ and leaves any other brace as text:
 | `hive.land` | What Hive sends the agent when a landing failed: a conflict with the branch it lands in, the check failing on the merge, or that branch moved past a fast-forward | `{why}` (required), `{branch}`, `{at}`, `{into}`, `{merge}`, `{merges}` |
 | `hive.plan` | Hive's OK to a plan the agent wrote first, in place of yours | none |
 | `hive.decide` | What Hive sends an agent that asks you a question or for a permission: no one answers in Hive mode, so it decides | none |
-| `hive.reviewer` | The running reviewer's instructions, its system prompt. Symbiote adds the answer it reads after them, which you cannot change. In Settings it is the **Reviewer** page, with its model and effort | none |
+| `hive.reviewer` | The running reviewer's instructions, its system prompt. Symbiote adds the answer it reads after them, which you cannot change. In Settings it is the **Reviewer** page; its model and effort are on the **Hive mode** page | none |
 | `hive.nucleus` | What Alpha Ceph is told of Hive: added at the end of its instructions while Hive is on, for each conversation that starts as Alpha Ceph | `{rounds}` |
 
 Settings lists Hive's prompts, in a group of their own, only while Hive is on. Settings lists what
@@ -189,11 +189,15 @@ switch is in **Settings**, under **This repository**, **Hive mode**, and turning
 (`merge.checks`) and tests you trust: what passes them lands on your branch and is pushed without
 you. The choice stays yours, per repository.
 
-**Turning it on** is refused while a workspace started in normal mode is open and not merged: the
-question names them; land or clean them up first. **Turning it off** asks first while Hive works
+**Turning it on** asks first. The question says what Hive will do, then what it checks before it
+starts: a check is set (`merge.checks`, or one Symbiote finds in the repository), no workspace
+started in normal mode is open, the limits (the usage pause, the budget, 3 rounds), and that its
+agents get full access to this machine. **Turn on Hive** stays off while no check is set or a
+workspace in normal mode is open, and the question names those workspaces: land or clean them up
+first. **Turning it off** asks first while Hive works
 on a workspace (writes, checks, reviews or lands), and says what happens to each. With nothing in
 flight it turns off at once. While Hive is on, every page is in warm neutral ink, in both themes,
-and crimson marks what is Hive's: the S, the Hive group's icon, the picked tab, its one main button
+and crimson marks what is Hive's: the S, the **Hive** pill by the project's name, the picked tab, its one main button
 a page. States keep their colours in both modes: amber for work in progress, green for passed or
 landed, red for failed or stopped.
 
@@ -205,9 +209,9 @@ conversation and starts the next under the new name, unless it is answering or w
 it keeps its name, and its page says so until **New conversation**.
 
 The question shows traces that route into a Hive Mind and keep moving while it is open. Turning Hive
-on, the Mind grows to the middle of the window, a shutter of hex tiles closes on it, and the tiles
-open from the Mind onto the new look. Once all
-is still, Nucleus becomes Alpha Ceph in the sidenav: its ring breaks into the Mind's cells and its
+on takes 1.4 seconds: the question's four steps light up, the question folds into its Mind, Hive's
+look opens from the Mind in a growing circle behind a crimson ring, and the **Hive** pill lights.
+Once all is still, Nucleus becomes Alpha Ceph in the sidenav: its ring breaks into the Mind's cells and its
 name changes over, in about a second. A reload or another window with Hive already on shows Alpha
 Ceph at once. If your system asks for reduced motion, the question shows one still picture and the
 look and Alpha Ceph appear at once.
@@ -241,7 +245,7 @@ other agent, no permission choice and no **Plan first**, and Nucleus's starts ar
    it in the merge queue, into the branch the workspace started from. The queue brings that
    branch up to its remote first (a fetch, and a fast-forward when it is behind), merges, runs the
    check on the merge, lands it, and pushes it, whatever `merge.push` says. The workspace moves to
-   **Done**: **Landed in main · pushed**.
+   **Landed today**, with the time it landed.
 
 A review that cannot run (no sandbox, or the reviewer failed twice) lands on the check alone; no
 check set or found lands on the review alone; with neither, it lands all the same. The approval
@@ -261,11 +265,11 @@ git refuses; Hive tries again each minute, and the card says **Landing in main: 
 checkout**.
 
 **Its branch is pushed** to `origin` after each turn that ends with commits, never forced. A push
-refused is in the Review tab, and Hive goes on.
+refused is in the **Run** tab, and Hive goes on.
 
 #### Landing through a pull or merge request
 
-With **Hive lands by** set to **A pull or merge request** (`hive.lands: "request"`), step 6 above
+With **Lands through** set to **Pull request** (`hive.lands: "request"`), step 6 above
 changes. Hive still approves the commit it checked and reviewed. It does not queue the commit and
 does not push the branch it lands in. Instead:
 
@@ -280,13 +284,13 @@ does not push the branch it lands in. Instead:
    approval: the token's user is the request's author, and GitHub refuses an approval from the
    author. Hive does not wait for the forge's CI.
 3. **You review and merge it on the forge.** The card says **Waiting for your merge: #12 on
-   GitHub**, with a link to the request. The Review tab shows the request beside the landings: its
+   GitHub**, with a link to the request. The **Run** tab shows the request above the rounds: its
    link, its state and the review posted. Hive reads the request once a minute. That is 60 calls an
    hour per open request, about 1 % of GitHub's 5,000 an hour.
 4. **Merged: the workspace is landed.** Hive fetches the branch it landed in from `origin` and
    fast-forwards your copy of it, where it is checked out too. If your uncommitted changes are in
    the way, Hive tries again each minute, and the card says **Merged on GitHub: main waits for your
-   checkout**. Then the workspace moves to **Done**: **Landed in main on GitHub · #12**.
+   checkout**. Then the workspace moves to **Landed today**: **Landed · into main · #12 on GitHub**.
 
 An approval on the forge alone changes nothing: your merge is what lands it.
 
@@ -326,10 +330,12 @@ Hive checks and reviews a commit once:
   "Stopped: the writer's turn cannot be seen: no prompt recorded after Hive's message at
   17:00 UTC".
 
-In Hive mode the sidenav has two groups: **Hive**, on Hive's hexagons, with every workspace not
-done, and **Done**. Each card says where Hive is in its own words: **Writing**, **Hive: reading
-its turn**, the check or the review with its time, **Landing in main: checking the merge**, or
-**Stopped:** and why. While Hive checks or reviews, the card says what runs now, its time ticking:
+In Hive mode the sidenav has four groups: **In flight** (writing, checking, reviewing, landing,
+or paused), **Stopped**, **Landed today** (since midnight, your time, each with when) and
+**Earlier**, folded until you open it. Each row has two lines: the workspace's title, then its
+state in its colour, its round and its time, for example **Checking 4/4 · round 2 · 7:23** or
+**Stopped · 3 of 3 rounds**. While Hive checks or reviews, the workspace's head says what runs
+now, its time ticking:
 
 - **The check**: which of the check's commands runs, its place among them, and the time since the
   check started. If an earlier check of the same commands passed in this repository, the card
@@ -340,15 +346,19 @@ its turn**, the check or the review with its time, **Landing in main: checking t
   `Reviewing · 1:05 · Bash: pnpm vitest run test/csv.test.ts`. Without a check set or found, it
   says `no check found`.
 
-Folded, the sidenav shows the card's dot and its time under it, and its tip says the rest. The
-workspace's head says the same line.
+Folded, the sidenav shows each row's icon, and its tip says the rest.
 
-The workspace's **Review** tab shows what Hive did, round by round: each check with each of its
-commands and their times, each review with its model, time and cost, and each finding, proven or
-dropped, with its test and Symbiote's rerun. While Hive checks or reviews, **Now** comes first: the
-check's commands, each done with its time, running or waiting (with the last check's time when
-there is one), or the review's steps (its install, the reviewer, each test it reruns), and the
-output as it comes. **Its log** opens a finished check's or review's output again. Its **Landing**
+The workspace's **Run** tab shows what Hive did (its **Review** tab before; old links with
+`&review` open it). Each round is a timeline: the writer's commits and their lines, the check
+with each command and its time, the running review with its model, time, cost and summary, and
+in the round Hive is on, the landing. While the check runs, the command running shows its time
+against the last passing run's and a bar, and the log's last lines come under the commands. A
+defect proven by a test is a card: the defect, the test, its command and Symbiote's rerun.
+Older rounds fold to one line; click one to open it. **Full log** opens a check's or review's
+output. A workspace Hive stopped starts with why, the failing output and **Message the
+writer**, which opens the **Thread** tab's box: a message starts its rounds again. A landed
+one starts with where it landed and what was pushed. The side card shows the run's facts
+(stage, writer, reviewer, where it lands, the last push) and its spend against the budget. Its **Landing**
 part lists each landing Hive tried, how it ended and the merge's log, and the tab says where the
 branch was last pushed.
 
@@ -375,8 +385,8 @@ none of the agent's context:
   added, under bubblewrap (writes in the copy only, no network). A defect is kept only when its test
   fails there and the output names the test.
 
-It is asked on Opus at high effort unless Settings' **Reviewer** page (in the Hive group) says
-otherwise. One review takes minutes and, by Claude Code's own count, about as much as the agent's
+It is asked on Opus at high effort unless Settings' **Hive mode** page, under **Running
+reviewer**, says otherwise. One review takes minutes and, by Claude Code's own count, about as much as the agent's
 work on the goal; it stops after 30 minutes or $5. Its output is kept in Symbiote's cache,
 `hive-reviews/`, and what it runs, as it runs, in the review's log beside Hive's record.
 
@@ -404,7 +414,7 @@ each running review. The check, a landing and a request's watch start no agent, 
   several windows are over it, Hive waits for the one that resets last. A turn or a review already
   running finishes: Hive never stops work for usage.
 - **The card says why and until when**, for example **Paused: usage 92 % of the 5-hour window,
-  goes on at 16:10**, in your own time. So do the workspace's head, its **Review** tab and
+  goes on at 16:10**, in your own time. So do the workspace's head, its **Run** tab and
   Settings' **Hive mode** page. The status bar says when a workspace pauses and when it goes on.
 - **The pause is kept** in each paused workspace's record (`paused`: the window, its percent, the
   threshold and when it resets). It holds through Hive off and on, and through a restart of

@@ -21,9 +21,16 @@ test.afterEach(() => {
 });
 
 const BRANCH = 'feature/halve';
-const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
+// In Hive mode the start page is New goal (V92, decision 871).
+const startPage = (page: Page) => page.getByRole('region', { name: 'New goal' });
 /** The workspace's card in the sidenav. */
 const card = (page: Page) => page.locator(`.sidenav .workspace-row[data-branch="${BRANCH}"]`);
+/** A workspace's row under Landed today (V92, decision 868). */
+const landed = (page: Page, branch: string) =>
+  page
+    .locator('.sidenav')
+    .getByRole('region', { name: 'Landed today' })
+    .locator(`.hive-row[data-branch="${branch}"]`);
 /** Turns Hive on or off as Settings does: `POST /api/hive`. */
 const hive = (page: Page, on: boolean) =>
   page.evaluate(async (on) => {
@@ -70,8 +77,8 @@ test('Hive drives a workspace: the check, its failure sent back, Hive off and on
   await page.goto(`${symbiote.url}start`);
   await expect(startPage(page).locator('.start-value')).toHaveText('Claude Code');
   await expect(startPage(page).getByRole('combobox', { name: 'Agent' })).toHaveCount(0);
-  await expect(startPage(page).locator('.start-hive')).toContainText(
-    'Hive is on: it drives this workspace from its brief to landed.',
+  await expect(startPage(page).getByRole('region', { name: 'How Hive runs it' })).toContainText(
+    'Merge queue into main, then both pushed.',
   );
   // Nothing to ask the person: no permission choice (HV4).
   await expect(startPage(page).getByRole('combobox', { name: 'Permissions' })).toHaveCount(0);
@@ -79,7 +86,7 @@ test('Hive drives a workspace: the check, its failure sent back, Hive off and on
   await startPage(page).getByRole('textbox', { name: 'Goal' }).fill('Return a / 2.');
   await startPage(page).getByRole('textbox', { name: 'Branch name', exact: true }).fill(BRANCH);
   await expect(startPage(page).getByLabel('Plan first and wait for my OK')).toHaveCount(0);
-  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
+  await startPage(page).getByRole('button', { name: 'Start goal' }).click();
   await expect(startPage(page)).toBeHidden();
   const first =
     symbiote
@@ -88,9 +95,7 @@ test('Hive drives a workspace: the check, its failure sent back, Hive off and on
       ?.args.at(-1) ?? '';
   expect(first).toContain('Hive drives this workspace.');
   expect(first).toContain('(`test -f fixed.txt`)');
-  await expect(card(page).locator('.fact-hive')).toHaveAccessibleName(
-    'Hive drives it: round 1 of 3',
-  );
+  await expect(card(page).locator('.hive-row-state')).toContainText('round 1');
 
   // Its turn ends with a commit: the check fails, and its failure goes back to the writer.
   symbiote.commit(BRANCH, 'half.ts', 'export const half = (a: number) => a / 2;\n', 'Halve');
@@ -98,9 +103,7 @@ test('Hive drives a workspace: the check, its failure sent back, Hive off and on
   await expect.poll(sent, { timeout: 20_000 }).toHaveLength(1);
   expect(sent()[0]).toContain('`test -f fixed.txt` failed');
   expect(sent()[0]).toContain('(round 1 of 3)');
-  await expect(card(page).locator('.fact-hive')).toHaveAccessibleName(
-    'Hive drives it: round 2 of 3',
-  );
+  await expect(card(page).locator('.hive-row-state')).toContainText('round 2');
 
   // Hive off mid-turn: the writer stopped, the step kept, the card says so.
   await hive(page, false);
@@ -108,7 +111,7 @@ test('Hive drives a workspace: the check, its failure sent back, Hive off and on
   // Written once the stop answered.
   await expect.poll(() => record().interrupted).toBe(true);
   expect(record()).toMatchObject({ step: 'writing', round: 2 });
-  await expect(card(page)).toContainText('Hive off: paused');
+  await expect(card(page)).toContainText('Hive off · paused · round 2');
 
   // Hive on: the writer is told to continue.
   await hive(page, true);
@@ -120,7 +123,9 @@ test('Hive drives a workspace: the check, its failure sent back, Hive off and on
   // The fix: the check passes, the running reviewer (HV3) finds nothing, and Hive lands it (HV4).
   symbiote.commit(BRANCH, 'fixed.txt', 'yes\n', 'Fix');
   symbiote.report(BRANCH, 'Done: fixed.txt.');
-  await expect(card(page)).toContainText('Landed in main', { timeout: 40_000 });
+  await expect(landed(page, BRANCH)).toBeVisible({ timeout: 40_000 });
+  // Listed once merged; Hive's record says landed once its entry has ended.
+  await expect.poll(() => record().step, { timeout: 10_000 }).toBe('landed');
   expect(record()).toMatchObject({ step: 'landed', round: 2 });
   expect(sent()).toHaveLength(2);
 });
@@ -132,7 +137,7 @@ async function startHive(page: Page, branch: string, title: string) {
   await startPage(page).getByRole('textbox', { name: 'Goal' }).fill('Return a / 2.');
   await startPage(page).getByRole('textbox', { name: 'Branch name', exact: true }).fill(branch);
   await expect(startPage(page).getByLabel('Plan first and wait for my OK')).toHaveCount(0);
-  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
+  await startPage(page).getByRole('button', { name: 'Start goal' }).click();
   await expect(startPage(page)).toBeHidden();
 }
 
@@ -158,7 +163,7 @@ test('a turn Hive cannot see: its message taken into a copy of the session, the 
   expect(record().message).toBeUndefined();
   // The copy works on and finishes, unseen: the card says why Hive stopped, not "reading its turn".
   symbiote.report(BRANCH, 'Done: fixed.txt.');
-  await expect(card(page)).toContainText("Stopped: the writer's turn cannot be seen", {
+  await expect(card(page)).toContainText("Stopped · the writer's turn cannot be seen", {
     timeout: 20_000,
   });
   expect(record().note).toMatch(/a copy of its session, fake\d+, whose hooks record nothing\)$/);
@@ -212,28 +217,20 @@ test("Hive's live progress: the check's commands, their output as it comes, then
   symbiote.commit(BRANCH, 'half.ts', 'export const half = (a: number) => a / 2;\n', 'Halve');
   symbiote.report(BRANCH, 'Done: half.ts.');
 
-  // The card: in the Hive group, the command running, its time ticking; no expected time on a
-  // first check.
-  const group = page.locator('.sidenav').getByRole('region', { name: 'Hive', exact: true });
+  // The row: In flight, the step running in amber, its round and time ticking (V92).
+  const group = page.locator('.sidenav').getByRole('region', { name: 'In flight', exact: true });
   await expect(group.locator(`[data-branch="${BRANCH}"]`)).toBeVisible({ timeout: 20_000 });
-  await expect(card(page).locator('.hive-live-head')).toContainText('Checking 2/3', {
-    timeout: 10_000,
-  });
-  await expect(card(page).locator('.hive-live-detail')).toHaveText(commands[1] ?? '');
-  await expect(card(page).locator('.state-dot')).toHaveClass(/tone-hive/);
-  const time = card(page).locator('.hive-live-time');
-  await expect(time).toHaveText(/^ · \d+:\d\d$/);
-  const before = await time.textContent();
-  await expect(time).not.toHaveText(before ?? '', { timeout: 5_000 });
-  await expect(card(page).locator('.fact-hive')).toHaveAccessibleName(
-    'Hive drives it: round 1 of 3',
-  );
+  const state = card(page).locator('.hive-row-state');
+  await expect(state).toContainText('Checking 2/3', { timeout: 10_000 });
+  await expect(card(page)).toHaveAttribute('data-tone', 'run');
+  await expect(state).toHaveText(/ · round 1 · \d+:\d\d$/);
+  const before = await state.textContent();
+  await expect(state).not.toHaveText(before ?? '', { timeout: 5_000 });
 
-  // Folded: its dot and its time; its tip says it whole.
+  // Folded: its icon; its tip says the rest.
   await page.getByRole('button', { name: 'Fold the sidenav' }).click();
-  await expect(card(page).locator('.hive-rail-time')).toHaveText(/^\d+:\d\d$/);
   await card(page).hover();
-  await expect(page.getByRole('tooltip')).toContainText(`Checking 2/3: ${commands[1]}`);
+  await expect(page.getByRole('tooltip')).toContainText('Checking 2/3 · round 1');
   await page.getByRole('button', { name: 'Open the sidenav' }).click();
 
   // The page: its head's steps and the bar under its views say it (V89); the Review tab shows each
@@ -243,42 +240,31 @@ test("Hive's live progress: the check's commands, their output as it comes, then
   await expect(page.getByRole('region', { name: 'Agent status' })).toContainText(
     `Checking 2/3: ${commands[1]} · `,
   );
-  await page.getByRole('tab', { name: 'Review' }).click();
-  const now = page.getByRole('region', { name: 'Now' });
-  const steps = now.getByRole('list', { name: 'Its steps' }).getByRole('button');
-  await expect(steps).toHaveCount(3);
-  await expect(steps.nth(0)).toHaveAccessibleName(/^echo installing: passed/);
-  await expect(steps.nth(1)).toHaveAccessibleName(/: running, \d/);
-  await expect(steps.nth(2)).toHaveAccessibleName('echo built: waiting');
-  await expect(now.getByRole('log', { name: 'What it wrote' })).toContainText('checking-lines');
+  // The Run tab (V92): the round's check, each command done, running or waiting, the log's tail.
+  await page.getByRole('tab', { name: 'Run' }).click();
+  const round = page.getByRole('region', { name: 'Round 1' });
+  const commandsShown = round.getByRole('listitem', { name: 'Check' }).locator('.run-command');
+  await expect(commandsShown).toHaveCount(3);
+  await expect(commandsShown.nth(0)).toHaveClass(/is-passed/);
+  await expect(commandsShown.nth(1)).toHaveClass(/is-running/);
+  await expect(commandsShown.nth(2)).toHaveClass(/is-waiting/);
+  await expect(round.locator('.run-log-tail')).toContainText('checking-lines');
 
   // The check passes: the running review, what the reviewer runs now from its stream.
   writeFileSync(checkGate, '');
-  await expect(card(page).locator('.hive-live-head')).toContainText('Reviewing', {
-    timeout: 20_000,
-  });
-  await expect(card(page).locator('.hive-live-detail')).toHaveText(
+  await expect(state).toContainText('Reviewing', { timeout: 20_000 });
+  await expect(round.getByRole('listitem', { name: 'Running review' })).toContainText(
     'Bash: pnpm vitest run half.test.ts',
-  );
-  await expect(now.getByRole('status')).toContainText('Reviewing · ');
-  await expect(now.getByRole('status')).toContainText('Bash: pnpm vitest run half.test.ts');
-  await expect(
-    now.getByRole('list', { name: 'Its steps' }).getByRole('button'),
-  ).toHaveAccessibleName(/^The reviewer: running/);
-  await expect(now.getByRole('log', { name: 'What it wrote' })).toContainText(
-    'Bash pnpm vitest run half.test.ts',
   );
 
   // It approves: Hive lands it, nothing running; the round keeps each command and its log.
   writeFileSync(reviewGate, '');
-  await expect(card(page)).toContainText('Landed in main', { timeout: 40_000 });
-  await expect(page.getByRole('region', { name: 'Now' })).toHaveCount(0);
-  const round = page.getByRole('region', { name: 'Round 1' });
-  await expect(round.getByRole('list', { name: 'Its commands' }).getByRole('listitem')).toHaveCount(
+  await expect(landed(page, BRANCH)).toBeVisible({ timeout: 40_000 });
+  const check = round.getByRole('listitem', { name: 'Check' });
+  await expect(check.getByRole('list', { name: 'Its commands' }).getByRole('listitem')).toHaveCount(
     3,
   );
-  const check = round.getByLabel('Check, round 1');
-  await check.getByText('Its log').click();
+  await check.getByRole('button', { name: 'Full log' }).click();
   await expect(check.getByRole('log', { name: 'What it wrote' })).toContainText(
     'checking-lines-done',
   );
@@ -299,11 +285,12 @@ test('a check of one command: no place among others; the next check of it, its e
   await startHive(page, BRANCH, 'Halve it');
   symbiote.commit(BRANCH, 'half.ts', 'export const half = (a: number) => a / 2;\n', 'Halve');
   symbiote.report(BRANCH, 'Done: half.ts.');
-  await expect(card(page).locator('.hive-live-head')).toHaveText(/^Checking · \d+:\d\d$/, {
-    timeout: 20_000,
-  });
+  await expect(card(page).locator('.hive-row-state')).toHaveText(
+    /^Checking · round 1 · \d+:\d\d$/,
+    { timeout: 20_000 },
+  );
   writeFileSync(gate, '');
-  await expect(card(page)).toContainText('Landed in main', { timeout: 40_000 });
+  await expect(landed(page, BRANCH)).toBeVisible({ timeout: 40_000 });
   rmSync(gate);
 
   const other = 'feature/third';
@@ -311,11 +298,14 @@ test('a check of one command: no place among others; the next check of it, its e
   symbiote.commit(other, 'third.ts', 'export const third = (a: number) => a / 3;\n', 'Third');
   symbiote.report(other, 'Done: third.ts.');
   const second = page.locator(`.sidenav .workspace-row[data-branch="${other}"]`);
-  await expect(second.locator('.hive-live-time')).toHaveText(/^ · \d+:\d\d of ~\d+ s$/, {
-    timeout: 20_000,
-  });
+  // Its expected time, from the last passing check of the command, in its head (V89, V92).
+  await expect(second.locator('.hive-row-state')).toContainText('Checking', { timeout: 20_000 });
+  await second.locator('.workspace-about').click();
+  await expect(page.getByRole('region', { name: 'Agent status' })).toContainText(
+    /\d+:\d\d of ~\d+ s/,
+  );
   writeFileSync(gate, '');
-  await expect(second).toContainText('Landed in main', { timeout: 40_000 });
+  await expect(landed(page, other)).toBeVisible({ timeout: 40_000 });
 });
 
 test('Hive will not turn on while a workspace is in normal mode; off asks while Hive works (HV4, decisions 771, 772)', async ({
@@ -336,31 +326,33 @@ test('Hive will not turn on while a workspace is in normal mode; off asks while 
       },
       [path, body] as const,
     );
+  // A check set: Hive turns on only with one (V92, decision 872).
+  setChecks(['true']);
   await page.goto(`${symbiote.url}git`);
   // A workspace in normal mode, Hive off.
   await post('/api/workspaces', { branch: 'feature/mine', brief: 'Mine.', planFirst: false });
   await page.goto(`${symbiote.url}settings?prompt=hive-mode`);
   const editor = page.getByRole('region', { name: 'Hive mode' });
   await editor.getByRole('button', { name: 'Turn on Hive mode' }).click();
-  const question = page.getByRole('alertdialog', { name: 'Turn on Hive mode?' });
-  await expect(question.getByRole('status')).toContainText(
-    'Hive cannot turn on while a workspace is in normal mode. Land it or clean it up first:',
-  );
-  await expect(question.getByRole('status')).toContainText('feature/mine');
-  await expect(question.getByRole('button', { name: 'Turn on Hive mode' })).toBeDisabled();
+  const question = page.getByRole('alertdialog', { name: 'Turn on Hive mode' });
+  const ready = question.getByRole('list', { name: 'Before it starts' });
+  const turnOn = question.getByRole('button', { name: 'Turn on Hive', exact: true });
+  await expect(ready).toContainText('1 workspace in normal mode is open');
+  await expect(ready.locator('.chip')).toHaveText(['feature/mine']);
+  await expect(turnOn).toBeDisabled();
   await question.getByRole('button', { name: 'Cancel' }).click();
 
   // Cleaned up: Hive turns on.
   await post('/api/workspaces/clean', { branch: 'feature/mine', unmerged: true });
   await editor.getByRole('button', { name: 'Turn on Hive mode' }).click();
-  await expect(question.getByRole('status')).toHaveCount(0);
-  await question.getByRole('button', { name: 'Turn on Hive mode' }).click();
+  await expect(ready).toContainText('No workspace in normal mode is open');
+  await turnOn.click();
   await expect(page.locator('html')).toHaveAttribute('data-hive', 'on');
 
   // A Hive workspace at work: turning off asks, and says what it stops.
   await startHive(page, BRANCH, 'Halve it');
   await page.goto(`${symbiote.url}settings?prompt=hive-mode`);
-  await editor.getByRole('button', { name: 'Turn off Hive mode' }).click();
+  await editor.getByRole('button', { name: 'Turn off Hive', exact: true }).click();
   const off = page.getByRole('alertdialog', { name: 'Turn off Hive mode?' });
   await expect(off).toContainText(
     'Halve it: its agent is stopped; on again, Hive tells it to continue.',
@@ -369,7 +361,7 @@ test('Hive will not turn on while a workspace is in normal mode; off asks while 
   await page.keyboard.press('Escape');
   await expect(off).toBeHidden();
   await expect(page.locator('html')).toHaveAttribute('data-hive', 'on');
-  await editor.getByRole('button', { name: 'Turn off Hive mode' }).click();
+  await editor.getByRole('button', { name: 'Turn off Hive', exact: true }).click();
   await off.getByRole('button', { name: 'Turn off Hive mode' }).click();
   await expect(page.locator('html')).not.toHaveAttribute('data-hive');
 });

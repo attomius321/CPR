@@ -22,7 +22,7 @@ calendar day, from your midnight.
   the week), the defects Hive's reviews proved today, the median time from brief to landed, and
   what was spent since midnight: each review's cost when it ran, and the writer's from Claude Code's
   own counts in its session files. A workspace Hive stopped is called out with why, and **Read
-  why** opens its Review tab. Each workspace in flight shows its steps, what runs now, its round,
+  why** opens its Run tab. Each workspace in flight shows its steps, what runs now, its round,
   time and spend; then what landed today. Beside them, the usage at which Hive pauses, the budget
   per workspace, the reviewer and how Hive lands, then today's events. **Turn off Hive** asks as
   Settings does.

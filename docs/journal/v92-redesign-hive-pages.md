@@ -24,3 +24,35 @@ scratch repository (Hive off, no workspace), headless Chromium 1440 × 900.
   look swapped at 1.08 s; the same with `--disable-gpu --disable-gpu-compositing`. Headless
   `requestAnimationFrame` is paced at 60 whatever the compositor does, so the comparison that
   counts is the app's window (Electron on a private Xvfb), measured with V92's build.
+
+## V92 — Hive's pages: Run, the sidenav, Settings, Start, turning on (3 November 2026, branch `feature/redesign-hive-pages`)
+
+Built as planned, decisions 860–874: the Run tab (the round on a timeline, check commands against
+the last passing run, the log's tail, defects as cards, old rounds folded, a stop or a landing
+first, the run's facts and spend in the side card), the sidenav's In flight, Stopped, Landed today
+and Earlier with rows of two lines and a Hive pill, Settings' Hive mode page as grouped rows (the
+reviewer's model and effort moved there), Start's New goal, and the question with its readiness
+and a 1.4 s arrival in one View Transition. No record changed.
+
+**Learned**:
+- **A scaled layer the window's size costs frames in software, its blur does not**: in the app
+  (Electron, `disabled_software` compositing, Xvfb, 1440 × 900) the arrival dropped 3–5 single
+  frames (33 ms) during the reveal, 55.6–57.5 fps over its 1.6 s. Without the ring: 58.8–59.4 fps;
+  without the clip-path or the Mind: no better than with them. The ring without its blurred
+  shadows, or as a gradient: still 56.9–58.1 fps. A 480 px ring scaled up to the farthest corner:
+  58.8–59.4 fps over three runs, no frame of the reveal slow. Main's arrival: 60.0 fps, none slow.
+- **A View Transition's capture is one slow frame**: 33–50 ms at 55–70 ms after the click, in every
+  run, headless and in the app; the old shutter had none. It is where the steps begin to arm.
+- **A named element's new image is live**: the question kept in the new state as a layer of its
+  own lets its steps arm inside the transition, while its old image is never shown; the page's new
+  root is live too, so the pill's light runs on it inside the circle.
+- **`document.getAnimations()` holds the transition's pseudo-elements' animations**: pausing them
+  all and setting `currentTime` gives exact frames (`coverage/v92/frames.spec.ts`), and the e2e
+  reads the arrival's end (≤ 1540 ms) and its keyframes' properties from them. They exist only
+  once `transition.ready` resolves; `data-hive-arriving` is set then.
+- **`.run-words` was the Overview's**: a class of the Run tab took the Overview's amber; renamed
+  `.run-said` (class names are global).
+- **`pgrep -f` with a bracket still matched this shell**: the shell's own command line held the
+  restart's text after the pattern; kill a view by a PID checked with `ps` first.
+- **The token guards caught the proof's habits**: `--faint` text, 2 px radii, a 30 px row and
+  `--warning` outside a warning selector, each replaced by the tokens the guards ask for.

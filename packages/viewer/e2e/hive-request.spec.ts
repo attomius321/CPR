@@ -30,7 +30,8 @@ const GITHUB = 'https://github.com/acme/app.git';
 const git = (cwd: string, ...args: string[]) =>
   execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 const card = (page: Page) => page.locator(`.sidenav .workspace-row[data-branch="${BRANCH}"]`);
-const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
+// In Hive mode the start page is New goal (V92, decision 871).
+const startPage = (page: Page) => page.getByRole('region', { name: 'New goal' });
 const hive = (page: Page, on: boolean) =>
   page.evaluate(async (on) => {
     const response = await fetch('/api/hive', {
@@ -77,7 +78,7 @@ test('by a pull request: opened at landing, waits for your merge with its link, 
   await startPage(page).getByRole('textbox', { name: 'Title' }).fill('One');
   await startPage(page).getByRole('textbox', { name: 'Goal' }).fill('one.txt says one.');
   await startPage(page).getByRole('textbox', { name: 'Branch name', exact: true }).fill(BRANCH);
-  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
+  await startPage(page).getByRole('button', { name: 'Start goal' }).click();
   await expect(startPage(page)).toBeHidden();
   const main = git(symbiote.repo, 'rev-parse', 'main');
 
@@ -93,38 +94,34 @@ test('by a pull request: opened at landing, waits for your merge with its link, 
   expect(forge.requests[0]?.body).toContain('one.txt says one.');
   expect(forge.requests[0]?.body).toMatch(/Approved by Hive at [0-9a-f]{7}/);
 
-  // The card: in Hive's group, waiting for the person's merge, the request a link.
-  await expect(card(page)).toContainText('Waiting for your merge: #12 on GitHub', {
-    timeout: 20_000,
-  });
-  const link = card(page).getByRole('link', { name: '#12 on GitHub' });
-  await expect(link).toHaveAttribute('href', 'https://github.com/acme/app/pull/12');
-  await expect(link).toHaveAttribute('target', '_blank');
+  // The row: waiting for the person's merge, the person's turn (V92); the link is the Run tab's.
+  await expect(card(page).locator('.hive-row-state')).toHaveText(
+    'Waiting for your merge · #12 on GitHub',
+    { timeout: 20_000 },
+  );
+  await expect(card(page)).toHaveAttribute('data-tone', 'you');
   // Nothing landed locally: main neither moved nor pushed.
   expect(git(symbiote.repo, 'rev-parse', 'main')).toBe(main);
   expect(git(forge.remote, 'rev-parse', 'main')).toBe(main);
 
-  // The Review tab: the request beside the landings.
+  // The Run tab: the request above the rounds, its link the forge's page.
   await card(page).getByRole('button', { name: 'One' }).click();
   const tabs = page.getByRole('tablist', { name: 'Talk to the agent' });
-  await tabs.getByRole('tab', { name: 'Review' }).click();
-  const landings = page.getByRole('region', { name: 'Landings' });
-  const request = landings.getByLabel('Pull request #12 on GitHub');
+  await tabs.getByRole('tab', { name: 'Run' }).click();
+  const request = page.locator('.run-tab').getByLabel('Pull request #12 on GitHub');
   await expect(request).toContainText('Open: waiting for your merge');
-  await expect(request.getByRole('link', { name: '#12 on GitHub' })).toHaveAttribute(
-    'href',
-    'https://github.com/acme/app/pull/12',
-  );
-  await expect(page.locator('.hive-now')).toHaveText('Waiting for your merge: #12 on GitHub');
+  const link = request.getByRole('link', { name: '#12 on GitHub' });
+  await expect(link).toHaveAttribute('href', 'https://github.com/acme/app/pull/12');
+  await expect(link).toHaveAttribute('target', '_blank');
 
   // The person merges it on the forge: landed, main fast-forwarded to the forge's merge.
   const merge = forge.merge(12);
-  await expect(card(page)).toContainText('Landed in main on GitHub · #12', { timeout: 20_000 });
-  await expect(
-    page.locator('.sidenav').getByRole('region', { name: 'Done' }).locator('.workspace-row'),
-  ).toHaveCount(1);
+  const today = page.locator('.sidenav').getByRole('region', { name: 'Landed today' });
+  await expect(today.locator('.hive-row')).toHaveCount(1, { timeout: 20_000 });
   expect(git(symbiote.repo, 'rev-parse', 'main')).toBe(merge);
-  await expect(request).toContainText('Merged');
+  await expect(
+    page.locator('.run-tab').getByRole('status', { name: 'Landed in main' }),
+  ).toContainText('Merged on GitHub through #12');
   expect(forge.requests).toHaveLength(1);
 });
 

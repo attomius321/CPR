@@ -845,7 +845,7 @@ export function hiveRowWords(workspace: WorkspaceSummary, now = Date.now()): Hiv
         : note;
     return { word: 'Stopped', tone: 'fail', detail };
   }
-  if (hive.off) return { word: 'Hive off', tone: 'idle', detail: `${hive.step} · ${round}` };
+  if (hive.off) return { word: 'Hive off', tone: 'idle', detail: `paused · ${round}` };
   if (hive.pause && workspace.agent.state !== 'working') {
     return {
       word: 'Paused',
@@ -870,6 +870,11 @@ export function hiveRowWords(workspace: WorkspaceSummary, now = Date.now()): Hiv
     case 'reviewing':
       return { word: 'Reviewing', tone: 'run', detail: round };
     case 'landing': {
+      // By request (HV8): its merge on the forge is the person's turn.
+      const request = hive.landing?.via === 'request' ? hive.request : undefined;
+      if (request && request.state === 'open' && !hive.landing?.outcome) {
+        return { word: 'Waiting for your merge', tone: 'you', detail: requestName(request) };
+      }
       const line = landingLine(
         hive.landing,
         hive.landing?.via === 'request' ? hive.request : undefined,

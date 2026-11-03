@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v92-redesign-hive-pages.md)
 
-**Status:** planned (3 November 2026), on branch `feature/redesign-hive-pages` (the workspace's,
+**Status:** built (3 November 2026), on branch `feature/redesign-hive-pages` (the workspace's,
 from `main` at `20c06e8`); the person's OK with choices 1 record `since`, 2 line counts, 3 the
 reviewer's model and effort on the Hive mode page, 4 "New goal".
 
@@ -207,3 +207,34 @@ and the arrival; verification and docs.
 **Not in V92 (later)**: normal mode's Merge and Start screens (05-merge, 06-start); the pipeline
 card of proofs 02, 03, 07 (V89's inline steps kept, the person's OK); the status bar's Hive line;
 the terminal's theme.
+
+## As built (V92)
+
+- **No record changes at all**: `hive.json` already wrote `since` when Hive turned on (V82's
+  `hiveRecord`); nothing read it. V92 adds `HiveRecord.since()` and serves it from `/api/hive`
+  and `/api/hive/state`. The check is `projectCheck(repo, repo.root, 'HEAD')`, the runner's own;
+  one that cannot be read is none. Each commit's lines are one `git log --no-walk --numstat`
+  (`commitLineCounts` in core) beside the changes read's commit details.
+- **The writer's time in the round Hive checks now** ends at the running check's start
+  (`live.started`), not a recorded check's: the round has none yet.
+- **Message the writer** opens the Thread tab and focuses its box (the one way to message), not the
+  terminal: the person reads the stop first, then writes.
+- **The sidenav's rows** are their own component (`shell/HiveSidenav.tsx`); the rail shows each
+  row's state icon. With no workspace, In flight says "Nothing yet: start a goal" in place of the
+  sidenav's "No workspaces yet". Earlier folds as 859's Done, kept under its own key.
+- **Settings**: the Lands through choices read **Merge queue** and **Pull request**, as the proof;
+  `landsByWords`, `forgeWords` and `onRefusal` went with the paragraphs they wrote. The reviewer's
+  selects say their defaults short ("Opus 5.5 (default)", "High (default)"): the long labels
+  wrapped the row. The shell's context carries the repository's name for "for <repo> since …".
+- **Start**: in Hive mode Clear and the "Be specific" tip are left out, as the proof; Documents
+  move under the brief. Normal mode's page is as it was.
+- **The arrival's layers**: the question and its dim are named in both states, their old images
+  never shown and their new ones live, so the steps arm inside the transition; the Mind, its glow
+  and the ring are made in the update callback, new only. `data-hive-arrival` carries the
+  transition's rules from its first frame, `data-hive-arriving` is set once it is ready (its
+  animations exist). The pill's light runs on the live page inside the revealed circle. The ring
+  is a 480 px layer scaled to the window's farthest corner, its line and light drawn a third as
+  thick: a layer the window's size dropped 3–5 frames of the reveal in software (below).
+- **The shutter's code went**: `arrivalScene`, `arrivalScale`, `combLattice` and the rest of
+  `hive-art.ts`'s arrival, `Painter.arrival`, and their tests (decision 874 supersedes 816; 632's
+  and 673's shutter replaced). The question's art is untouched.

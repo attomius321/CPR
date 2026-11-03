@@ -75,7 +75,10 @@ function HiveRow({
 }) {
   const item = useRef<HTMLLIElement>(null);
   // What Hive runs now ticks each second; a landed row is still.
-  const now = useSecondsWhile(workspace.hive?.live !== undefined);
+  const ticking = workspace.hive?.live !== undefined;
+  const clock = useSecondsWhile(ticking);
+  // Still, the time of this draw: a pause's "goes on at" is said against today.
+  const now = ticking ? clock : Date.now();
   const words = hiveRowWords(workspace, now);
   const name = workspaceName(workspace);
   const answered = workspace.hive?.step === 'answered';

@@ -239,4 +239,27 @@ describe("a Hive row's second line (decision 869)", () => {
       ),
     ).toEqual({ word: 'Landed', tone: 'ok', detail: 'into main' });
   });
+
+  it("says a request waiting for the person's merge in the person's violet (HV8)", () => {
+    expect(
+      words(
+        summary('q', {
+          agent: { state: 'ready', kind: 'claude' },
+          hive: hive({
+            step: 'landing',
+            landing: { ...landed(at(3, 13)), ended: undefined, outcome: undefined, via: 'request' },
+            request: {
+              forge: 'github',
+              number: 12,
+              url: 'https://github.com/acme/app/pull/12',
+              into: 'main',
+              at: TIP,
+              opened: at(3, 13),
+              state: 'open',
+            },
+          }),
+        }),
+      ),
+    ).toEqual({ word: 'Waiting for your merge', tone: 'you', detail: '#12 on GitHub' });
+  });
 });

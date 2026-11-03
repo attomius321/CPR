@@ -22,7 +22,8 @@ test.afterEach(() => {
 
 const BRANCH = 'feature/one';
 const TEST = 'grep -qx one one.txt || { echo "FAIL one says one"; exit 1; }\n';
-const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
+// In Hive mode the start page is New goal (V92, decision 871).
+const startPage = (page: Page) => page.getByRole('region', { name: 'New goal' });
 const card = (page: Page) => page.locator(`.sidenav .workspace-row[data-branch="${BRANCH}"]`);
 const hive = (page: Page, on: boolean) =>
   page.evaluate(async (on) => {
@@ -91,7 +92,7 @@ test('a defect proven by a failing test goes to the writer; its fix is approved;
   await startPage(page).getByRole('textbox', { name: 'Branch name', exact: true }).fill(BRANCH);
   // Hive mode: no plan first to wait for (HV4).
   await expect(startPage(page).getByLabel('Plan first and wait for my OK')).toHaveCount(0);
-  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
+  await startPage(page).getByRole('button', { name: 'Start goal' }).click();
   await expect(startPage(page)).toBeHidden();
 
   // The check passes; the reviewer proves the defect; its test reaches the writer.
@@ -104,21 +105,23 @@ test('a defect proven by a failing test goes to the writer; its fix is approved;
   const [review] = symbiote.reviewCalls();
   expect(review?.input).toContain('one.txt says one.');
   expect(review?.cwd).not.toBe(symbiote.folder(BRANCH));
-  await expect(card(page).locator('.fact-hive')).toHaveAccessibleName(
-    'Hive drives it: round 2 of 3',
-  );
+  await expect(card(page).locator('.hive-row-state')).toContainText('round 2');
 
   // The Review tab shows round 1: the check passed, the defect proven, its test.
   await card(page).click();
   const tabs = page.getByRole('tablist', { name: 'Talk to the agent' });
-  await tabs.getByRole('tab', { name: 'Review' }).click();
+  // The Run tab (V92): round 2 open, round 1 folded to a line; opened, its check passed and
+  // its defect a card with its test.
+  await tabs.getByRole('tab', { name: 'Run' }).click();
+  const folded1 = page.locator('.run-tab').getByRole('button', { name: /^Round 1\b/ });
+  await expect(folded1).toContainText('1 defect proven');
+  await folded1.click();
   const round1 = page.getByRole('region', { name: 'Round 1' });
-  await expect(round1).toContainText('Check passed');
-  await expect(round1).toContainText('1 defect proven');
+  await expect(round1.getByRole('listitem', { name: 'Check' })).toContainText('passed on');
   await expect(round1).toContainText('one.txt says uno, not one');
-  await expect(round1.locator('.hive-finding .status-label')).toHaveText('Proven');
+  await expect(round1.locator('.run-defect .status-label')).toHaveText('Proven');
   await round1.getByText('one.test.sh', { exact: true }).click();
-  await expect(round1.locator('.hive-finding pre').first()).toContainText('grep -qx one one.txt');
+  await expect(round1.locator('.run-defect pre').first()).toContainText('grep -qx one one.txt');
   // No branch review, no Land, no Merge into in Hive mode: Hive lands it (HV4).
   const head = page.locator('.workspace-top');
   await expect(head.getByRole('button', { name: 'Review', exact: true })).toHaveCount(0);
@@ -132,22 +135,22 @@ test('a defect proven by a failing test goes to the writer; its fix is approved;
   symbiote.commit(BRANCH, 'one.txt', 'one\n', 'Fix');
   symbiote.report(BRANCH, 'Fixed, with its test.');
   await expect.poll(() => record().step, { timeout: 40_000 }).toBe('landed');
-  await expect(card(page)).toContainText('Landed in main · pushed', { timeout: 20_000 });
-  // Done, beside Hive: the only other group in Hive mode.
-  await expect(
-    page.locator('.sidenav').getByRole('region', { name: 'Done' }).locator('.workspace-row'),
-  ).toHaveCount(1);
+  // Landed today (V92, decision 868), its time at the row's end.
+  const today = page.locator('.sidenav').getByRole('region', { name: 'Landed today' });
+  await expect(today.locator('.hive-row')).toHaveCount(1, { timeout: 20_000 });
+  await expect(today.locator('.hive-row-time')).toHaveText(/^\d\d:\d\d$/);
   expect(record().reviews.map((r) => r.verdict)).toEqual(['changes', 'approved']);
   expect(symbiote.reviewCalls()[1]?.input).toContain('In round 1, a reviewer proved');
   const round2 = page.getByRole('region', { name: 'Round 2' });
   await expect(round2).toContainText('Approved');
-  await expect(page.locator('.hive-now')).toHaveText('Landed in main · pushed');
-  await expect(page.getByRole('region', { name: 'Landings' })).toContainText('Landed');
+  const landed = page.locator('.run-tab').getByRole('status', { name: 'Landed in main' });
+  await expect(landed).toContainText('Merged through the merge queue as');
+  await expect(landed).toContainText(`pushed main and ${BRANCH} to origin`);
   // Nothing more reached the writer.
   expect(sent()).toHaveLength(1);
 });
 
-test("Settings: the running reviewer's page in Hive's group, Opus at high by default", async ({
+test("Settings: the running reviewer's model and effort on the Hive mode page, Opus at high by default; its prompt on its page", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -159,14 +162,15 @@ test("Settings: the running reviewer's page in Hive's group, Opus at high by def
     .getByRole('region', { name: 'Hive', exact: true });
   await group.getByRole('button', { name: 'Reviewer' }).click();
   const reviewer = page.getByRole('region', { name: 'Reviewer' });
-  await expect(reviewer.getByRole('combobox', { name: 'Model' })).toContainText(
-    "Symbiote's default (Opus 5.5)",
-  );
-  await expect(reviewer.getByRole('slider', { name: 'Effort' })).toHaveAttribute(
-    'aria-valuetext',
-    "Symbiote's default (high)",
-  );
   await expect(reviewer.getByRole('textbox', { name: 'Reviewer prompt' })).toHaveValue(
     /Report only a defect that a test of yours shows failing/,
   );
+  // Its model and effort are set with Hive's limits (V92, decision 870).
+  await expect(reviewer.getByRole('combobox', { name: 'Model' })).toHaveCount(0);
+  await reviewer.getByRole('link', { name: 'Hive mode' }).click();
+  const rows = page
+    .getByRole('region', { name: 'Hive mode' })
+    .getByRole('group', { name: 'Running reviewer' });
+  await expect(rows.getByRole('combobox', { name: 'Model' })).toContainText('Opus 5.5 (default)');
+  await expect(rows.getByRole('combobox', { name: 'Effort' })).toContainText('High (default)');
 });

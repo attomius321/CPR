@@ -61,17 +61,16 @@ const review = (over: Partial<HiveReview> & Pick<HiveReview, 'round' | 'at'>): H
   ...over,
 });
 
-const detail = (over: Partial<WorkspaceHiveDetail> & Pick<WorkspaceHiveDetail, 'branch'>) =>
-  ({
-    step: 'writing',
-    round: 1,
-    rounds: 3,
-    on: true,
-    checks: [],
-    reviews: [],
-    tests: `/s/hive/${over.branch}`,
-    ...over,
-  }) as WorkspaceHiveDetail;
+const detail = (over: Partial<WorkspaceHiveDetail> & Pick<WorkspaceHiveDetail, 'branch'>) => ({
+  step: 'writing',
+  round: 1,
+  rounds: 3,
+  on: true,
+  checks: [],
+  reviews: [],
+  tests: `/s/hive/${over.branch}`,
+  ...over,
+});
 
 /** The three workspaces of the proofs: checking round 2, landed in 2 rounds, stopped at 3. */
 export function hivePages(now = Date.now()) {

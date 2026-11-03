@@ -416,7 +416,7 @@ function HivePacing({ onSaid }: { onSaid: (said: Said) => void }) {
         help={
           setting?.pause
             ? `Hive is paused now: ${pauseWords(setting.pause, Date.now()).replace(/^Paused: /, '')}.`
-            : setting && !setting.read
+            : setting && (!setting.read || setting.pauseAt === false)
               ? pauseAtWords(setting)
               : 'No agent starts while a window of your Claude plan is at it or over, until it resets.'
         }

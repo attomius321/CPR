@@ -125,6 +125,20 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   (`shell/useUsage.ts`). The kits' figure, table, feed, facts and gauge are shared parts
   (`ui/Figures.tsx`, `ui/figures.css`). `e2e/overview-data.ts` holds the proofs' records for
   `page.route`, used by `overview.spec.ts` and `page-frame.spec.ts`.
+- Hive mode's own pages (V92, decisions 860–874), each from what Hive records, the derivations
+  pure and tested: a Hive workspace's **Run** tab (`workspaces/HiveRunTab.tsx`, `View` `'run'`,
+  `&run`; `&review` still opens it, `tab-address.ts`) draws `run-timeline.ts`'s rounds (the
+  writer's commits split at each check's commit, from the changes read the side card shares) and
+  puts `RunFacts` first in the side card; the sidenav's In flight, Stopped, Landed today, Earlier
+  (`shell/HiveSidenav.tsx`, `hiveGroups`/`hiveRowWords` in `workspaces.ts`); Settings' Hive mode
+  page as grouped rows (`settings/HivePage.tsx`; the reviewer's model and effort are set there, not
+  on its Reviewer page); Start's New goal (`workspaces/StartHive.tsx`); the question
+  (`settings/HiveQuestion.tsx`, its readiness `hiveReadiness` in `hive-switch.ts`). The arrival
+  (`shell/hive-arrival.ts`, `ui/hive.css`) is one View Transition: the new root revealed through
+  one clip-path, the question, its dim, the Mind, its glow and the ring layers of their own moved by
+  opacity and transform only; `e2e/hive-pages.spec.ts` refuses a `filter` or `width` among its
+  keyframes. Keep the ring a small layer scaled up (480 px): one the window's size dropped 3–5
+  frames of the reveal in the app's software compositing.
 - `src/monitor/` — the Monitor (RM1), at `/monitor` (absolute `/api/monitor`, the `CodeMap` of
   `@symbiote/monitor`, whose **types** only it imports). `codemap.ts` builds the folder tree of the
   kinds turned on, says the concentration in words and gives a file's heat step by its lines
