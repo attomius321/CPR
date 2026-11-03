@@ -50,7 +50,8 @@ test("a failed merge check: Send to the agent types it into the branch's agent, 
   await page.goto(`${symbiote.url}${at}`);
   const panel = page.getByRole('region', { name: `Workspace ${branch}` });
   await panel.getByRole('button', { name: 'Review', exact: true }).click();
-  await page.getByRole('tab', { name: /Review/ }).click();
+  // The review is under the files on the Files page (V90): nothing to open.
+  await expect(page.locator('.files-side .review-tab')).toBeVisible();
   await page.getByLabel('Approve').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText('Approved', POLL);

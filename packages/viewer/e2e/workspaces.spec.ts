@@ -978,7 +978,8 @@ test('Send the verdict: a review fills the box, from the panel and from the Revi
 
   // Changes requested in its review; the Review tab sends them to the agent's box.
   await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
-  await page.getByRole('tab', { name: /Review/ }).click();
+  // The review is under the files on the Files page (V90): nothing to open.
+  await expect(page.locator('.files-side .review-tab')).toBeVisible();
   await page.getByLabel('Review summary').fill('Name it halve.');
   await page.getByLabel('Request changes').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
@@ -1365,7 +1366,8 @@ const screen = (page: Page, branch: string) => terminal(page, branch).locator('.
 /** Requests changes in the branch's review (V16), from its panel. */
 const requestChanges = async (page: Page, branch: string) => {
   await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
-  await page.getByRole('tab', { name: /Review/ }).click();
+  // The review is under the files on the Files page (V90): nothing to open.
+  await expect(page.locator('.files-side .review-tab')).toBeVisible();
   await page.getByLabel('Review summary').fill('Name it halve.');
   await page.getByLabel('Request changes').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
@@ -2192,7 +2194,8 @@ test('Merge on an approved workspace: Symbiote merges it in its own worktree, La
   await expect(panel(page, branch).getByRole('button', { name: /^Merge into/ })).toHaveCount(0);
 
   await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
-  await page.getByRole('tab', { name: /Review/ }).click();
+  // The review is under the files on the Files page (V90): nothing to open.
+  await expect(page.locator('.files-side .review-tab')).toBeVisible();
   await page.getByLabel('Approve').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText(`Approved ${short(tip)}`);
@@ -2288,7 +2291,8 @@ test('Merge into merges into the branch picked in its dropdown, not main', async
   symbiote.report(branch, 'Done: half() in src/half.ts.');
   await expect(workspaceRow(page, branch)).toContainText('Ready for review', POLL);
   await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
-  await page.getByRole('tab', { name: /Review/ }).click();
+  // The review is under the files on the Files page (V90): nothing to open.
+  await expect(page.locator('.files-side .review-tab')).toBeVisible();
   await page.getByLabel('Approve').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText(`Approved ${short(tip)}`);
@@ -2331,7 +2335,8 @@ async function approvedWorkspace(page: Page) {
   symbiote.report(branch, 'Done: half() in src/half.ts.');
   await expect(workspaceRow(page, branch)).toContainText('Ready for review', POLL);
   await panel(page, branch).getByRole('button', { name: 'Review', exact: true }).click();
-  await page.getByRole('tab', { name: /Review/ }).click();
+  // The review is under the files on the Files page (V90): nothing to open.
+  await expect(page.locator('.files-side .review-tab')).toBeVisible();
   await page.getByLabel('Approve').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText(`Approved ${short(tip)}`);

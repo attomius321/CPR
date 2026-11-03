@@ -234,7 +234,7 @@ test("a workspace, its review's two views and its merge: the same frame", async 
   const review = new URL(page.url()).pathname.slice(1);
   // Their cards' heads (V72e): `HEAD`, the first word `INSET` in.
   for (const [name, card, part] of [
-    ['A review: Files', '.files-side', '.tabs'],
+    // The files' card has no head since V90 (one card: the files, then the review).
     ['A review: Files', '.file-view', '.file-head'],
   ] as const) {
     const got = await head(page, card, part, 'text');
@@ -261,7 +261,8 @@ test("a workspace, its review's two views and its merge: the same frame", async 
 
   // Approved and merging: the merge's steps and log, cards in the same frame.
   await page.goto(`${symbiote.url}${review}`);
-  await page.getByRole('tab', { name: /Review/ }).click();
+  // The review is under the files on the Files page (V90): nothing to open.
+  await expect(page.locator('.files-side .review-tab')).toBeVisible();
   await page.getByLabel('Approve').check();
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText('Approved', POLL);
