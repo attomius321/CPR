@@ -348,3 +348,117 @@ test('the arrival: 1.4 s of opacity, transform and one clip-path, ended by 1.54 
   await expect(question).toBeHidden();
   await expect(page.locator('html')).not.toHaveAttribute('data-arrived');
 });
+
+/**
+ * The arrival's animations paused the moment they exist (`data-hive-arriving`), as V92's frames
+ * were taken: then `seek(t)` draws its frame at t ms.
+ */
+const pauseArrival = (page: Page) =>
+  page.addInitScript(() => {
+    new MutationObserver(() => {
+      if (!document.documentElement.hasAttribute('data-hive-arriving')) return;
+      const w = window as unknown as { arrival?: Animation[] };
+      if (w.arrival) return;
+      w.arrival = document.getAnimations();
+      for (const animation of w.arrival) animation.pause();
+      // The document, not its element: there is none yet when the script runs.
+    }).observe(document, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ['data-hive-arriving'],
+    });
+  });
+
+/**
+ * The arrival at `t` ms: each paused animation at t; once t is past all of the View Transition's,
+ * they finish and its layers go, as they do at 1.18 s; once past the pill's light too, it ends
+ * and the question closes, as at 1.54 s.
+ */
+const seek = (page: Page, t: number) =>
+  page.evaluate((t) => {
+    const all = (window as unknown as { arrival: Animation[] }).arrival;
+    const end = (a: Animation) => Number(a.effect?.getComputedTiming().endTime ?? 0);
+    const layer = (a: Animation) =>
+      ((a.effect as KeyframeEffect | null)?.pseudoElement ?? '').startsWith('::view-transition');
+    const transition = all.filter(layer);
+    const rest = all.filter((a) => !layer(a));
+    const past = (group: Animation[]) => group.every((a) => t >= end(a));
+    for (const group of [transition, rest]) {
+      for (const animation of group) {
+        // Ended (finished, or cancelled with its layer): never started again.
+        if (animation.playState === 'idle' || animation.playState === 'finished') continue;
+        if (past(group)) animation.finish();
+        else animation.currentTime = Math.min(t, end(animation));
+      }
+    }
+    return past(transition);
+  }, t);
+
+/**
+ * What starts once the arrival ends (Nucleus becoming Alpha Ceph) held still too: only the
+ * question may change a frame between its two pictures.
+ */
+const holdStill = (page: Page) =>
+  page.evaluate(() => {
+    const all = (window as unknown as { arrival: Animation[] }).arrival;
+    for (const animation of document.getAnimations()) {
+      if (!all.includes(animation)) animation.pause();
+    }
+  });
+
+/** Whether the View Transition still draws its layers. */
+const layersDrawn = (page: Page) =>
+  page.evaluate(() =>
+    document
+      .getAnimations()
+      .some((a) =>
+        ((a.effect as KeyframeEffect | null)?.pseudoElement ?? '').startsWith('::view-transition'),
+      ),
+  );
+
+// Fix (hive-question-reappears): the question folds into its Mind by 0.53 s and its dim is gone by
+// 0.86 s; neither is drawn again, though the live dialog stays until the pill's light ends
+// (1.54 s). Each frame from the fold to the end is drawn twice under Playwright's clock: as it
+// is, and with the question (from 0.86 s its dim too) hidden. The same pixels: it is not drawn.
+test('the question is never drawn again once it folded: every 50 ms from 550 to 1700 ms', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  setCheck();
+  await pauseArrival(page);
+  await page.clock.install();
+  await page.goto(`${symbiote.url}settings?prompt=hive-mode`);
+  const editor = page.getByRole('region', { name: 'Hive mode' });
+  await editor.getByRole('button', { name: 'Turn on Hive mode' }).click();
+  const question = page.getByRole('alertdialog', { name: 'Turn on Hive mode' });
+  await expect(question.getByRole('button', { name: 'Turn on Hive' })).toBeEnabled();
+  await question.getByRole('button', { name: 'Turn on Hive' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-hive-arriving', '');
+  // JS timers and rAF still from here (the question's art among them): only `seek` moves a frame.
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
+
+  const drawn: number[] = [];
+  for (let t = 550; t <= 1700; t += 50) {
+    const transitionOver = await seek(page, t);
+    if (transitionOver) await expect.poll(() => layersDrawn(page)).toBe(false);
+    if (t >= 1550) {
+      await expect(page.locator('html')).not.toHaveAttribute('data-hive-arriving');
+      await expect(page.locator('.hq-backdrop')).toHaveCount(0);
+      await expect(page.locator('.sidenav .hive-mind-icon.becoming')).toBeVisible();
+    }
+    await holdStill(page);
+    const hidden = t >= 860 ? '.hq-backdrop' : '.hq';
+    const shown = await page.screenshot();
+    const style = await page.addStyleTag({
+      content: `${hidden} { visibility: hidden !important; }`,
+    });
+    const without = await page.screenshot();
+    await style.evaluate((element: Element) => {
+      element.remove();
+    });
+    if (!shown.equals(without)) drawn.push(t);
+  }
+  expect(drawn, 'frames (ms) that draw the folded question or its dim').toEqual([]);
+  await expect(page.locator('.hq')).toHaveCount(0);
+  await expect(page.locator('html')).toHaveAttribute('data-hive', 'on');
+});
