@@ -1879,6 +1879,12 @@ describe('symbiote view: workspaces (V18)', () => {
   const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
   const request = { brief: 'Export a review as CSV', branch: 'feature/csv', planFirst: true };
 
+  it('serves the findings of the graphs it analyzed, none while none is kept (V93, decision 892)', async () => {
+    const answer = await get('/api/workspaces/findings');
+    expect(answer.status).toBe(200);
+    expect(await answer.json()).toEqual({ graphs: [] });
+  });
+
   it('lists workspaces and what the start dialog needs', async () => {
     expect(await (await get('/api/workspaces')).json()).toEqual({
       workspaces: [summary],

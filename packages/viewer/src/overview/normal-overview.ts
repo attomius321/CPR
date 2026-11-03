@@ -315,3 +315,34 @@ export function mergeSteps(entry: MergeEntry): MergeSteps {
       return step(3, 'now', 'Landed');
   }
 }
+
+/** A kept graph's findings, counted (`/api/workspaces/findings`, decision 892). */
+export interface CountedFindings {
+  head: string;
+  errors: number;
+  warnings: number;
+}
+
+/** A workspace's change's findings, by its tip: when its graph was analyzed (V93, decision 892). */
+export function findingsOf(
+  tip: string | null,
+  graphs: readonly CountedFindings[],
+): { errors: number; warnings: number } | undefined {
+  const graph = tip ? graphs.find((g) => g.head === tip) : undefined;
+  return graph ? { errors: graph.errors, warnings: graph.warnings } : undefined;
+}
+
+/**
+ * The Overview's "Findings to read" (V93, proof 01): the errors and warnings of the reviews whose
+ * change was analyzed, by their tips, and how many such reviews; none when none was.
+ */
+export function findingsToRead(
+  tips: readonly (string | null)[],
+  graphs: readonly CountedFindings[],
+): { count: number; reviews: number; errors: number; warnings: number } | null {
+  const found = tips.flatMap((tip) => findingsOf(tip, graphs) ?? []);
+  if (found.length === 0) return null;
+  const errors = found.reduce((sum, f) => sum + f.errors, 0);
+  const warnings = found.reduce((sum, f) => sum + f.warnings, 0);
+  return { count: errors + warnings, reviews: found.length, errors, warnings };
+}

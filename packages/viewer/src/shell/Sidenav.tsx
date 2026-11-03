@@ -51,6 +51,8 @@ import { HiveSidenavGroups } from './HiveSidenav.js';
 import { useStarts, type StartUnderWay } from '../workspaces/starting.js';
 import { useCardMoves } from '../workspaces/useCardMoves.js';
 import { doneGroups } from '../workspaces/row-words.js';
+import { findingsOf } from '../overview/normal-overview.js';
+import { useFindings } from '../workspaces/useFindings.js';
 import { workspaceGroups, type WorkspaceRow } from '../workspaces/workspaces.js';
 import { DoneRowItem, MergeRowItem, WorkspaceRowItem } from './SidenavRow.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
@@ -128,6 +130,8 @@ export function Sidenav({
     () => workspaceGroups(list?.workspaces ?? [], reviews, { hiveMode }),
     [list, reviews, hiveMode],
   );
+  // The findings of the changes analyzed in this run (V93, decision 892), by each tip.
+  const graphs = useFindings();
   // Done today and Earlier (decision 877): a landed merge says when.
   const done = useMemo(
     () => doneGroups(groups.done, merges?.merges ?? [], Date.now()),
@@ -473,6 +477,7 @@ export function Sidenav({
                           folded={folded}
                           picked={cards.picked === r.workspace.branch}
                           flashed={r.workspace.branch === flashed}
+                          findings={findingsOf(r.workspace.tip, graphs)}
                           onPick={() => cards.onPick(r.workspace.branch)}
                           onRespond={() => cards.onRespond(r.workspace.branch)}
                         />

@@ -27,10 +27,10 @@ const POLL = { timeout: 15_000 };
 // (decision 761): the head's lines and controls a step taller for 15 px text.
 const PAD = 12;
 const GAP = 8;
-/** The head: 12 px, its two lines (`--page-head`, 40 px), 12 px. */
-const CARDS_FROM = 64;
-/** The page's icon in a 28 px square 12 px in, 12 px before the title. */
-const TITLE_AT = 52;
+/** The head: the kits' 64 px (`--height-head`, V93; 12 + 40 + 12 before), then `--page-gap`. */
+const CARDS_FROM = 72;
+/** The page's icon on a 30 px tile 14 px in, 12 px before the title (V93; 28 at 12 before). */
+const TITLE_AT = 56;
 /** A card's head (`--card-head`) and its first word: the card's 1 px edge, then `--card-pad`. */
 // The kits' card head (V93; 37 from V85).
 const HEAD = 40;

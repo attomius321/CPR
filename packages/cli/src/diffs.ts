@@ -37,6 +37,12 @@ export interface DiffsOptions {
 
 export const pairKey = ({ base, head }: Pair): string => `${base}..${head}`;
 
+/** A kept graph's findings, counted (`GET /api/workspaces/findings`). */
+export interface DiffFindings extends Pair {
+  errors: number;
+  warnings: number;
+}
+
 /**
  * The diffs `symbiote view` serves: analyzed one at a time in the order asked (an analysis takes up
  * to 90 s and most of the machine's memory), kept while the server runs.
@@ -97,6 +103,27 @@ export class Diffs {
         this.entries.delete(key);
       }
     }
+  }
+
+  /**
+   * Each graph analyzed and kept, its pair and its findings' errors and warnings (V93, decision
+   * 892): what a workspace's row and the Overview say of its change, its tip the pair's head.
+   * Nothing is analyzed for it.
+   */
+  findings(): DiffFindings[] {
+    const counted: DiffFindings[] = [];
+    for (const [key, entry] of this.entries) {
+      if (entry.state !== 'done') continue;
+      const [base = '', head = ''] = key.split('..');
+      const findings = entry.graph.findings ?? [];
+      counted.push({
+        base,
+        head,
+        errors: findings.filter((f) => f.severity === 'error').length,
+        warnings: findings.filter((f) => f.severity === 'warning').length,
+      });
+    }
+    return counted;
   }
 
   status(pair: Pair): DiffStatus | undefined {

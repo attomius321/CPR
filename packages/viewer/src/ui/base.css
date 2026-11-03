@@ -43,6 +43,7 @@
   --height-bar: 36px; /* a bar over a card (34; 44) */
   --height-top: 40px; /* the Monitor's bar (52 before V85) */
   --height-nav-top: 52px; /* the sidenav's top: the kits' `.nav-top` (V93) */
+  --height-head: 64px; /* a page's head: the kits' `.head` (V93) */
   --height-table-row: 54px; /* a table's row of two lines (V91, the kits' `.tr`) */
   --height-table-line: 40px; /* a table's row of one line (V91, the kits' `.tr.compact`) */
   /* lucide's chevron-right (ISC) as a mask, drawn in the text's colour: a submenu's, a <summary>'s. */

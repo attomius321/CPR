@@ -573,6 +573,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/status') return read(req, res, () => repository.status());
     if (url.pathname === '/api/refs') return read(req, res, () => repository.refs());
     if (url.pathname === '/api/checkout') return checkoutTarget(req, res, repository);
+    // The kept graphs' findings, counted (V93, decision 892): a workspace's row by its tip.
+    if (url.pathname === '/api/workspaces/findings') {
+      return read(req, res, () => Promise.resolve({ graphs: repository.diffs.findings() }));
+    }
     if (url.pathname === '/api/diffs') return startDiff(req, res, repository);
     if (url.pathname === '/api/diffs/stop') return stopDiff(req, res, repository);
     if (mcp && url.pathname.startsWith('/api/mcp')) return mcpRoute(req, res, url, mcp);

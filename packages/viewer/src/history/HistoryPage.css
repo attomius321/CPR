@@ -73,7 +73,6 @@
 }
 
 .monitor-bar {
-  min-height: var(--height-top);
   border-bottom: 0;
   background: var(--bg);
 }

@@ -16,6 +16,7 @@ import type {
   UsageReport,
   WorkspaceDay,
   WorkspaceHive,
+  WorkspaceFindings,
   WorkspaceList,
   WorkspaceSummary,
 } from '@symbiote/core';
@@ -80,6 +81,8 @@ export interface OverviewMocks {
   pacing?: HivePacingSetting;
   landing?: HiveLandingSetting;
   reviewer?: AgentLevels;
+  /** The kept graphs' findings (V93, decision 892). */
+  findings?: WorkspaceFindings;
 }
 
 const usage = (now: number, five: number, week: number): UsageReport => {
@@ -163,6 +166,8 @@ export function normalMocks(now = overviewNow(), { empty = false } = {}): Overvi
       },
     }),
     summary('feature/discount-code', 'Add a discount code', ago(40), {
+      // V93: its own tip, whose analyzed graph has the proof's findings.
+      tip: 'd'.repeat(40),
       ahead: 3,
       agent: { state: 'ready', kind: 'claude' },
       activity: { since: iso(ago(6)) },
@@ -302,6 +307,7 @@ export function normalMocks(now = overviewNow(), { empty = false } = {}): Overvi
       hive: [],
     },
     usage: usage(now, 34, 58),
+    findings: { graphs: [{ base: 'a'.repeat(40), head: 'd'.repeat(40), errors: 1, warnings: 2 }] },
   };
 }
 
@@ -574,4 +580,5 @@ export async function mockOverview(page: Page, mocks: OverviewMocks): Promise<vo
   if (mocks.pacing) await answer('**/api/hive/pacing', mocks.pacing);
   if (mocks.landing) await answer('**/api/hive/landing', mocks.landing);
   if (mocks.reviewer) await answer('**/api/hive/reviewer/efforts', mocks.reviewer);
+  if (mocks.findings) await answer('**/api/workspaces/findings', mocks.findings);
 }

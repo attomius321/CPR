@@ -735,6 +735,14 @@ export interface WorkspaceList {
   terminal?: TerminalAvailability;
 }
 
+/**
+ * `GET /api/workspaces/findings` (V93, decision 892): the graphs `symbiote view` analyzed and keeps,
+ * each pair's findings counted; a workspace's change is the one whose `head` is its tip.
+ */
+export interface WorkspaceFindings {
+  graphs: { base: string; head: string; errors: number; warnings: number }[];
+}
+
 /** A commit on a workspace's branch, as its changes panel lists it (V29d). */
 export interface WorkspaceCommit {
   sha: string;

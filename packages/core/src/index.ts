@@ -318,6 +318,7 @@ export {
   type WorkspaceCommit,
   type WorkspaceDocument,
   type WorkspaceFileChange,
+  type WorkspaceFindings,
   type WorkspaceHistory,
   type WorkspaceList,
   type WorkspaceOutcome,

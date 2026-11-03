@@ -152,7 +152,11 @@ test("normal mode's sections: the figures, agents at work, the merge, merged tod
   );
   await expect(figure(page, 'Waiting for you')).toContainText('2 answers · 2 reviews');
   await expect(figure(page, 'Agents working')).toContainText('Claude Code · Codex');
-  await expect(figure(page, 'To review')).toContainText('3 commits');
+  // The findings of a review analyzed in this run (V93, decision 892): proof 01's figure, and the
+  // review's row says them.
+  await expect(figure(page, 'Findings to read')).toContainText('3in 1 review');
+  await expect(figure(page, 'Findings to read')).toContainText('1 error · 2 warnings');
+  await expect(card(page, 'Waiting for you')).toContainText('· 1 error · 2 warnings');
   await expect(figure(page, 'Merged this week')).toContainText('8');
   await expect(figure(page, 'Merged this week')).toContainText('3 today, into main');
   await expect(figure(page, 'Time to merge')).toContainText('h median');

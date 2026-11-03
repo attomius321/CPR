@@ -20,7 +20,10 @@ import {
   QuestionIcon,
   ReviewIcon,
   RunningIcon,
+  ChevronIcon,
+  AlertIcon,
 } from '../ui/icons.js';
+import { hrefOf } from '../shell/pages.js';
 import { PageHead } from '../ui/PageHead.js';
 import { StageTrack } from '../ui/StageTrack.js';
 import { tip } from '../ui/tip.js';
@@ -42,7 +45,17 @@ import {
 } from '../workspaces/workspaces.js';
 import { clockOf, isToday } from './day.js';
 import { normalFeed } from './feed.js';
-import { inbox, mergedRows, mergeSteps, normalFigures, type InboxRow } from './normal-overview.js';
+import {
+  findingsOf,
+  findingsToRead,
+  inbox,
+  mergedRows,
+  mergeSteps,
+  normalFigures,
+  type CountedFindings,
+  type InboxRow,
+} from './normal-overview.js';
+import { useFindings } from '../workspaces/useFindings.js';
 import { Empty, Feed, OverviewCard } from './parts.js';
 
 /** An agent's short name on a chip: Claude, Codex; Hermes as it is. */
@@ -59,6 +72,16 @@ export function NormalOverview() {
   const queue = useMemo(() => merges?.merges ?? [], [merges]);
   const groups = useMemo(() => workspaceGroups(workspaces, reviews), [workspaces, reviews]);
   const rows = useMemo(() => inbox(groups, queue, reviews), [groups, queue, reviews]);
+  // The findings of the changes analyzed in this run (V93, decision 892), by each tip.
+  const graphs = useFindings();
+  const tips = useMemo(
+    () => new Map(workspaces.map((w) => [w.branch, w.tip] as const)),
+    [workspaces],
+  );
+  const toRead = findingsToRead(
+    groups.review.map(({ workspace }) => workspace.tip),
+    graphs,
+  );
   const merged = useMemo(
     () => mergedRows(day, queue, workspaces, reviews),
     [day, queue, workspaces, reviews],
@@ -130,19 +153,41 @@ export function NormalOverview() {
             value={figures.working.count}
             note={figures.working.agents.join(' · ') || 'none at work'}
           />
-          <Figure
-            icon={<ReviewIcon />}
-            label="To review"
-            value={figures.toReview.workspaces}
-            {...(figures.toReview.commits > 0
-              ? { unit: plural(figures.toReview.commits, 'commit') }
-              : {})}
-            note={
-              figures.toReview.sinceReview > 0
-                ? `${plural(figures.toReview.sinceReview, 'commit')} since your review`
-                : 'workspaces with commits'
-            }
-          />
+          {toRead ? (
+            // Proof 01's: the findings of the reviews analyzed in this run, by severity.
+            <Figure
+              icon={<AlertIcon />}
+              label="Findings to read"
+              value={toRead.count}
+              unit={`in ${plural(toRead.reviews, 'review')}`}
+              note={
+                <>
+                  {toRead.errors > 0 && (
+                    <span className="figure-error">{plural(toRead.errors, 'error')}</span>
+                  )}
+                  {toRead.errors > 0 && toRead.warnings > 0 && ' · '}
+                  {toRead.warnings > 0 && (
+                    <span className="figure-warning">{plural(toRead.warnings, 'warning')}</span>
+                  )}
+                  {toRead.count === 0 && 'none found'}
+                </>
+              }
+            />
+          ) : (
+            <Figure
+              icon={<ReviewIcon />}
+              label="To review"
+              value={figures.toReview.workspaces}
+              {...(figures.toReview.commits > 0
+                ? { unit: plural(figures.toReview.commits, 'commit') }
+                : {})}
+              note={
+                figures.toReview.sinceReview > 0
+                  ? `${plural(figures.toReview.sinceReview, 'commit')} since your review`
+                  : 'workspaces with commits'
+              }
+            />
+          )}
           <Figure
             icon={<MergeIcon />}
             label="Merged this week"
@@ -164,7 +209,7 @@ export function NormalOverview() {
         </section>
         <div className="overview-grid">
           <div className="overview-col">
-            <Inbox rows={rows} />
+            <Inbox rows={rows} graphs={graphs} tips={tips} />
             <OverviewCard title="Agents at work" count={groups.working.length} className="work">
               {groups.working.length === 0 ? (
                 <Empty>No agent is at work.</Empty>
@@ -177,7 +222,20 @@ export function NormalOverview() {
               )}
             </OverviewCard>
             {merging.length > 0 && (
-              <OverviewCard title="Merging" count={merging.length} className="merging">
+              <OverviewCard
+                title="Merging"
+                count={merging.length}
+                className="merging"
+                end={
+                  <a
+                    className="link overview-link"
+                    href={hrefOf({ page: 'merge', branch: merging[0]?.branch ?? '' })}
+                  >
+                    The queue
+                    <ChevronIcon open={false} />
+                  </a>
+                }
+              >
                 <div className="data-table">
                   {merging.map((entry) => (
                     <MergingRow key={entry.id} entry={entry} />
@@ -192,6 +250,7 @@ export function NormalOverview() {
               end={
                 <a className="link overview-link" href="/workspace-history">
                   History
+                  <ChevronIcon open={false} />
                 </a>
               }
             >
@@ -231,6 +290,7 @@ export function NormalOverview() {
               end={
                 <a className="link overview-link" href="/workspace-history">
                   History
+                  <ChevronIcon open={false} />
                 </a>
               }
             >
@@ -252,8 +312,30 @@ const KIND_ICONS: Record<InboxRow['kind'], () => ReactNode> = {
   merge: MergeIcon,
 };
 
+/** A review's findings after its commits (proof 01): errors red, warnings amber; none unknown. */
+function FindingWords({ found }: { found: { errors: number; warnings: number } | undefined }) {
+  if (!found || found.errors + found.warnings === 0) return null;
+  return (
+    <span className="need-detail">
+      {found.errors > 0 && <span className="figure-error"> · {plural(found.errors, 'error')}</span>}
+      {found.warnings > 0 && (
+        <span className="figure-warning"> · {plural(found.warnings, 'warning')}</span>
+      )}
+    </span>
+  );
+}
+
 /** The inbox (decision 854): each that waits for the person, the oldest first, its one action. */
-function Inbox({ rows }: { rows: readonly InboxRow[] }) {
+function Inbox({
+  rows,
+  graphs,
+  tips,
+}: {
+  rows: readonly InboxRow[];
+  /** The kept graphs' findings (decision 892): a review row says its own. */
+  graphs: readonly CountedFindings[];
+  tips: ReadonlyMap<string, string | null>;
+}) {
   const now = useNow();
   return (
     <OverviewCard
@@ -278,6 +360,9 @@ function Inbox({ rows }: { rows: readonly InboxRow[] }) {
                   <Icon />
                   <b>{row.words}</b>
                   {row.detail && <span className="need-detail">{row.detail}</span>}
+                  {row.kind === 'review' && (
+                    <FindingWords found={findingsOf(tips.get(row.branch) ?? null, graphs)} />
+                  )}
                 </div>
                 <span className="cell-muted cell-num cell-end">
                   {row.since ? shortAge(row.since, now) : ''}

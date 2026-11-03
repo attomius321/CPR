@@ -120,3 +120,21 @@ describe('Diffs', () => {
     expect(diffs.status(pair(7))).toMatchObject({ status: 'done' });
   });
 });
+
+describe('Diffs.findings (V93, decision 892)', () => {
+  it("counts each analyzed graph's errors and warnings, by its pair; none while it runs", async () => {
+    const { run, runs } = fakeRunner();
+    const diffs = new Diffs(run);
+    expect(diffs.findings()).toEqual([]);
+    diffs.start(pair(1));
+    diffs.start(pair(3));
+    expect(diffs.findings()).toEqual([]);
+    const severities = ['error', 'warning', 'warning', 'info'];
+    runs[0]?.resolve({
+      ...graphOf(pair(1)),
+      findings: severities.map((severity) => ({ severity })),
+    } as unknown as Graph);
+    await settle();
+    expect(diffs.findings()).toEqual([{ ...pair(1), errors: 1, warnings: 2 }]);
+  });
+});
