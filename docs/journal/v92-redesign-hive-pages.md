@@ -56,3 +56,19 @@ and a 1.4 s arrival in one View Transition. No record changed.
   restart's text after the pattern; kill a view by a PID checked with `ps` first.
 - **The token guards caught the proof's habits**: `--faint` text, 2 px radii, a 30 px row and
   `--warning` outside a warning selector, each replaced by the tokens the guards ask for.
+- **A still clock is not now**: a row with nothing ticking took `useSecondsWhile(false)`'s value,
+  and a pause's "goes on at 11:12" read as another day ("Tue 3 Nov at 11:12"); found by
+  `hive-pacing.spec.ts`.
+- **The landed row comes before Hive's record says so**: the merge reaches `main` a moment
+  before Hive writes `landed`; a spec that waited on the row then read the record too early.
+
+**Verification**: tests first (red: 4 unit files, 3 CLI tests, 8 of 8 e2e); `pnpm check` 220
+files, 3,008 tests; `pnpm build`; `pnpm test:e2e` 418 passed, then the 5 failures fixed or
+explained (four `alpha-ceph` on the old question, updated; `codex.spec.ts:148` passes alone). The
+arrival's five frames beside the proof's; its end at 1,540 ms; reduced motion at once. In the app:
+58.8–59.4 fps against main's 60.0. First paint on Bitwarden: 321–338 ms against main's own build's
+325–355 ms, alternated. Screenshots before, after and the proofs, both themes and 390 px:
+<https://claude.ai/artifact/FKeVN1DAvHw2jdGc2NJPia>.
+
+Not verified: a real Hive run; WSLg's own display; the README's `hive.png` and
+`hive-settings.png` are out of date (they show the pages before V92).

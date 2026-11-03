@@ -238,3 +238,30 @@ the terminal's theme.
 - **The shutter's code went**: `arrivalScene`, `arrivalScale`, `combLattice` and the rest of
   `hive-art.ts`'s arrival, `Painter.arrival`, and their tests (decision 874 supersedes 816; 632's
   and 673's shutter replaced). The question's art is untouched.
+- **A row waiting for the person's merge** (HV8) is the person's turn: "Waiting for your merge ·
+  #12 on GitHub" in violet; the request's link is the Run tab's, not the row's.
+- **The older Hive specs** (`hive`, `hive-loop`, `hive-pacing`, `hive-review`, `hive-request`,
+  `alpha-ceph`) asserted HV4's cards, the Review tab, the shutter and the old question; they read
+  the new pages now, and their repositories set a check.
+
+**Results.**
+
+- Tests first, seen failing: 4 unit files and 3 CLI tests (missing modules and functions), and
+  8 of 8 e2e in `hive-pages.spec.ts` on missing elements. Now `pnpm check`: 220 files, 3,008
+  tests pass. `pnpm test:e2e`: 418 passed, 5 failed on the first full run: four in
+  `alpha-ceph.spec.ts` on the old question (updated, 8 of 8 then pass) and
+  `codex.spec.ts:148`, a normal-mode Codex card V92 does not touch, which passes alone.
+- **The arrival's frames** at 260, 560, 800, 1000 and 1600 ms, every animation paused at the
+  same time, match the proof's frames (the review page shows them side by side); its last
+  animation ends at 1,540 ms (e2e); reduced motion turns on with no transition (e2e).
+- **Its frame rate in the app** (Electron 44, software compositing as on WSL, Xvfb, 1440 × 900,
+  3 runs over the first 1.6 s): 58.8, 58.8 and 59.4 fps, the only slow frame the transition's
+  capture at the click (33–50 ms). Main's shutter: 60.0 fps, none slow.
+- **First paint** (Bitwarden `737ee3f`, `scripts/viewer/measure.mjs`, this branch and `main`'s
+  own build at `20c06e8` alternated, 3 rounds): 334, 338, 321 ms against 355, 328, 325 ms.
+- Screenshots before (main's build) and after, both themes, beside the proofs; more states
+  (paused, budget reached, a request waiting, Hive on with none, 390 px):
+  <https://claude.ai/artifact/FKeVN1DAvHw2jdGc2NJPia> (private until shared).
+- Not done: a real Hive run (the e2e's fake agent and seeded records only); WSLg's own display
+  (the app measured on Xvfb). The README's `docs/images/hive.png` and `hive-settings.png` show
+  the pages before V92 and are out of date.
