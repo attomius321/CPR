@@ -42,3 +42,27 @@ Red first on `main`'s markup (bar 51.4 px, not 41); green with the fix. `page.te
 `coverage/`) at 1400 px in both themes: Symbiotes and six Symbiotes on one row, the picked line,
 hover. At 560 px the Symbiotes scroll under the sticky own group. A stopped tab shows its ×.
 `pnpm check`: 225 files, 3,060 tests. Not verified: WSLg's own display, where the person saw it.
+
+### The merge's check: Split's attach count under load
+
+Symbiote's merge of this fix into `main` ran `pnpm test:e2e`: 422 passed, 2 failed in the
+viewer, `terminal-view.spec.ts:165` (Split) and `hive.spec.ts:332` (Hive with reduced motion).
+Neither reaches the nexus: both passed alone on this branch, 3 of 3. The person asked for the
+test fixed here.
+
+**Learned**:
+- **Split's count read the reload's own attach too early.** A reload attaches the agent's pane
+  once (1 → 2 attaches, measured), and the test took its count once the shell's pane showed
+  `right-2`. Under load the agent's pane attached after that, so the reload's attach was counted
+  as Split's: `["fake0", "fake0"]` against 1, the check's error at line 207. It is the "known
+  flake" of V93's and fix/hive-question-reappears' checks. The test now waits for the agent's
+  pane to draw (the fake writes it after recording the attach), checks the reload attached
+  exactly once, then counts.
+- **Load reproduces it here**: 96 busy loops on 32 cores and 16 workers, 24 runs of each test:
+  Split failed 5 of 24 with the check's error, Hive passed 24 of 24.
+
+**Verification**: under that load, Split 24 of 24 with the fix, then 64 of 64; the file alone 6 of
+6. Hive's test was not reproduced (24 runs alone, and 60 runs of `hive.spec.ts` and
+`hive-pages.spec.ts` together, under that load) and its error was not kept. With reduced
+motion `arrive()` swaps the look at once, and its other checks retry for 15 s, so it is left as it
+is: no change without a cause.
