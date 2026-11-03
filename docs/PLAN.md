@@ -296,6 +296,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [V87](plan/v87-readable-type.md) | Readable type at VS Code's density: 15 px body, nothing under 12 px, 24 px targets (WCAG 2.2 AA), a text-size choice in Settings | ✅ | 760–766 | [journal](journal/v87-readable-type.md) |
 | [V88](plan/v88-redesign-foundation.md) | Redesign foundation: both modes' colours from the kits (cool ink and violet, warm ink and crimson as Hive's identity), shared states (amber the agent's turn, violet the person's), the status label, stage track, buttons and heads; no honeycomb, sheen or gloss | ✅ | 812–822 | [journal](journal/v88-redesign-foundation.md) |
 | [V89](plan/v89-redesign-workspace-terminal.md) | Redesign step 2: a workspace's page and its terminal view in both modes — the steps in the head, named session tabs, the bar under the terminal, Focus, Split, the live side card, a plan typeset with Approve plan | ✅ | 823–834 | [journal](journal/v89-redesign-workspace-terminal.md) |
+| [V90](plan/v90-redesign-reviews.md) | Redesign step 3: a review's pages — graph nodes with a mark for the kind and a count of findings, the picked symbol's calls above the nodes, the Files page in one card with viewed files, opening a review as a timeline with what needs no graph | planned | 835–847 | [journal](journal/v90-redesign-reviews.md) |
 
 ### Native window
 
