@@ -136,6 +136,17 @@ describe('hivePipeline', () => {
     expect(pipeline.ended).toBe(at(49));
   });
 
+  it('held for usage: its step says paused, the pill too', () => {
+    const held = detail({
+      step: 'writing',
+      round: 1,
+      pause: { reason: 'usage', until: at(60) } as never,
+    });
+    const pipeline = words(held, 0);
+    expect(pipeline.steps[0]).toMatchObject({ state: 'now', detail: 'paused' });
+    expect(pipeline.pill).toBe('Paused · round 1 of 3');
+  });
+
   it('writing its first round: nothing reviewed yet, the reviewer not named', () => {
     const writing = detail({ step: 'writing', round: 1 });
     const pipeline = words(writing, 0);

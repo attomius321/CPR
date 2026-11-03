@@ -375,7 +375,10 @@ test("Settings lists Hive's prompts only while Hive is on", async ({ page }) => 
   await hive(page, true);
   await page.reload();
   const group = list.getByRole('region', { name: 'Hive', exact: true });
+  // Hive mode and its reviewer first, as proof 04 lists them (V93, decision 896).
   await expect(group.getByRole('button')).toHaveText([
+    'Hive modeOn',
+    'Reviewer',
     'Start',
     'Check failed',
     'Defects proven',
@@ -384,7 +387,6 @@ test("Settings lists Hive's prompts only while Hive is on", async ({ page }) => 
     'Landing failed',
     'Plan OK',
     'No one to ask',
-    'Reviewer',
     // What Alpha Ceph is told of Hive (V86, decision 751).
     'Alpha Ceph',
   ]);

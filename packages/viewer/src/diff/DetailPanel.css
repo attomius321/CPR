@@ -517,13 +517,26 @@
   color: var(--error);
 }
 
-/* A use's Open ↗ (V93, decision 888): at its row's end. */
+/* A use's Open ↗ (V93, decision 888): at its row's end, a link's look without `.link` (that
+   class is the use's name). */
 .neighbour-open {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   margin-left: auto;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
   font-size: var(--size-caption);
+  cursor: pointer;
+}
+
+.neighbour-open:hover {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .neighbour-open .icon {

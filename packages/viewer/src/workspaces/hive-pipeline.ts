@@ -107,6 +107,8 @@ export function hivePipeline(
     if (i > at) return { name, state: 'todo' as const, detail: todo[name]?.() ?? '' };
     if (stopped || model.mark === 'bad')
       return { name, state: 'bad' as const, detail: bad[name]?.() ?? '' };
+    // Held (Hive off, or for usage): the step says so, as hiveSteps does.
+    if (detail.pause) return { name, state: model.mark, detail: 'paused' };
     return { name, state: model.mark, ...(now[name]?.() ?? { detail: model.detail }) };
   });
 

@@ -196,13 +196,14 @@ test('the whole main area at any width, the head over the cards; the run as rows
     expect(Math.abs(right - 12)).toBeLessThanOrEqual(1);
     // Right under the head, on a tall window too (V49 lowered the cards by up to 240 px).
     expect(Math.abs(b.y - area.y)).toBeLessThanOrEqual(1);
-    // The head's contents in the cards' width: its icon over the brief, Start over the run.
+    // The head's contents in the cards' width, 2 px further in (V93, the kits' head): its icon over
+    // the brief, Start over the run.
     const mark = await page.locator('.start-top .page-icon').boundingBox();
     const go = await start(page)
       .getByRole('button', { name: /^Start workspace/ })
       .boundingBox();
-    expect(Math.abs((mark?.x ?? 0) - b.x)).toBeLessThanOrEqual(1);
-    expect(Math.abs((go?.x ?? 0) + (go?.width ?? 0) - (r.x + r.width))).toBeLessThanOrEqual(1);
+    expect(Math.abs((mark?.x ?? 0) - b.x - 2)).toBeLessThanOrEqual(1);
+    expect(Math.abs((go?.x ?? 0) + (go?.width ?? 0) - (r.x + r.width - 2))).toBeLessThanOrEqual(1);
   }
   // A row: the name at the left, its control beside it on the same line.
   const name = await run.getByText('Starts from', { exact: true }).boundingBox();

@@ -1,7 +1,7 @@
 # The merger
 
 [Index](../PLAN.md) · [Its decisions](../decisions.md#the-merger) · Checked against the code on
-2026-11-02
+2026-11-03
 
 This page says how Symbiote's merger works today. Read it before you change the merger. The plans
 listed in the index under "The merger" say why each part was built, as it was decided then. If a
@@ -100,6 +100,11 @@ there is none, Symbiote guesses one from the target's files, such as a package s
 package manager's install. The merge worktree keeps ignored files, such as `node_modules`,
 between merges.
 
+Since V93 (decision 881) the merger also records, read only for the page, when the check started
+(`check.started`), each command's time and result (`check.steps`: `command`, `ms`, `ok`) and how
+long the merge step took (`mergeMs`). A command's expected time is derived in the viewer from the
+last passing check of the same commands; nothing the merger does depends on these fields.
+
 If no check is set or found, a clean merge waits at `ready` for **Land**, and a resolved one at
 `needs-you`. A clean merge whose check fails is `failed`. The person can then **Retry**, **Send
 to the agent** (Symbiote types the `merge.failed` prompt into the branch's workspace), or
@@ -155,7 +160,7 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 | Settings: `merge.checks`, `push`, `strategy`, `agent`, `model`, `effort` | `symbiote/config.json`; defaults in [configuration](../reference/configuration.md) |
 | A project's rules for the merger agent | `symbiote/merge.md`, committed with the project |
 | **Merge into ▾** | `packages/viewer/src/workspaces/MergeControl.tsx` |
-| The merge page: state, files, log | `packages/viewer/src/workspaces/Merge.tsx` |
+| The merge page: state, files, log | `packages/viewer/src/workspaces/Merge.tsx`; its words from `merge-steps.ts` (pure, `test/merge-steps.test.ts`); the pipeline card `ui/Pipeline.tsx` |
 | HTTP | `/api/merges…` in `packages/cli/src/server.ts`; the log as server-sent events |
 | Command line | `symbiote merge <branch>`, with `--into`, `--strategy`, `--land`, `--approve` and `--again` |
 | MCP tools | `merges`, `merge_log`, `queue_merge`, `land_merge`, `merge_resolution`, `retry_merge`, `recheck_merge`, `remove_merge` |
@@ -193,8 +198,11 @@ when a later decision or a fix changed it.
 | 319 | `merge.effort`, set in Settings; if absent, the agent's own level | V46 |
 | 473 | The target is the branch reviewed against: the workspace's `against`, else its `from`, else the verdict's `into`, else the default branch | [V65](../plan/v65-review-against.md) |
 | 485–489 | Fast-forward lands the approved commit, only if the target's tip is in it; otherwise `needs-you`; the check runs first; picked per merge; no squash or rebase | [V67](../plan/v67-merge-strategies.md) |
-| 494–497 | The merge page uses the theme's colours and the mockup's shapes; the log fills the page; a conflict's Files and Log are line tabs | [V69](../plan/v69-merge-page-mockup.md) |
+| 494–497 | The merge page uses the theme's colours; a conflict's files and the log are line tabs (the layout is 880's since V93) | [V69](../plan/v69-merge-page-mockup.md), changed by V93's 880 |
 | 742 | **Send to the agent** sends a failed check to the branch's workspace, only when the person presses it | [AR2](../plan/ar2-defaults-from-ar1.md) |
+| 880 | The merge page is proof 05's: head and pill, a pipeline card (Approved, Merge, Check, Land) with Queue and Time, the Steps, then Log, Changes and Conflicts as tabs; Take out of the queue only while queued | [V93](../plan/v93-redesign-finish.md), replaces 494–497's layout |
+| 881 | The merger records the check's start, each command's time and result, and the merge step's time, for the page only | V93 |
+| 882 | Which review approved: the review list serves the verdict's number and text ("your review, 2nd") | V93 |
 | 743 | In this repository, `docs/JOURNAL.md` merges as a union (`.gitattributes`), so it no longer conflicts | AR2 |
 | 767 | In Hive mode, Hive approves (`via: "hive"`) and queues the commit it checked and reviewed, into the branch the workspace started from; no Land | [HV4](../plan/hv4-autonomous-landing.md) |
 | 768 | Hive's merges: the target brought up to its remote first, diverged stops it; pushed after landing whatever `merge.push` | HV4 |

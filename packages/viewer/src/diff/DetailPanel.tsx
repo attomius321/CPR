@@ -597,7 +597,7 @@ function Neighbours({
               {onOpen && item.node && symbolTarget(item.node) && (
                 <button
                   type="button"
-                  className="link neighbour-open"
+                  className="neighbour-open"
                   {...tip(`Open ${label(item.node)} in VS Code`)}
                   onClick={() => item.node && onOpen(symbolTarget(item.node))}
                 >
