@@ -17,7 +17,10 @@ function cssUnder(dir: string): string {
 
 /** The viewer's classes the page's markup takes its look from. */
 const VIEWER_CLASSES = [
-  'workspace-views',
+  // The row's tabs: the viewer's session tabs since V89 (`.workspace-tabs .stab`, fix/fix-nexus-
+  // top-left); V61's `.workspace-views` buttons lost their look there.
+  'workspace-tabs',
+  'stab',
   'selected',
   'shell-tab',
   'shell-close',
