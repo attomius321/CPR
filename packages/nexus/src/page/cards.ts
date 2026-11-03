@@ -3,7 +3,7 @@
 // the way down: the whole card opens its Symbiote, or shows the one running; it never goes in. On
 // Folders its corner holds its pin (NX4, decision 620), beside the card: a button holds no button.
 import type { Folder } from '../folders.js';
-import { BRANCH, el, FOLDER_GIT, icon, pinButton } from './dom.js';
+import { BRANCH, el, FOLDER_GIT, icon, loading, pinButton } from './dom.js';
 import { checkoutWords } from './folders-tab.js';
 
 export interface RepositoryCard {
@@ -40,7 +40,7 @@ export function repositoryCard({ folder, running, busy, act, pin }: RepositoryCa
       'span',
       { class: 'nexus-repo-action' },
       running && el('span', { class: 'state-dot nexus-live', 'aria-hidden': 'true' }),
-      busy ? 'Starting…' : running ? 'Running · Show' : 'Open Symbiote',
+      busy ? loading('Starting…') : running ? 'Running · Show' : 'Open Symbiote',
     ),
   );
   card.addEventListener('click', act);

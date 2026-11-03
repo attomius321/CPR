@@ -16,6 +16,8 @@
 @import './ui/figures.css';
 @import './ui/Resizer.css';
 @import './ui/icons.css';
+/* Whatever is under way moves (fix/static-loadings): the loader arc, a loading line, outlines. */
+@import './ui/loading.css';
 @import './ui/Help.css';
 @import './ui/Tooltip.css';
 @import './ui/MoreActions.css';

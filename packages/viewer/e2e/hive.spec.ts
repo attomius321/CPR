@@ -328,19 +328,3 @@ test('after the arrival nothing lies over or behind the pages: no honeycomb, she
   await expect(html(page)).not.toHaveAttribute('data-hive');
   expect(await colour(page, '.sidenav', 'backgroundColor')).toBe('rgb(13, 15, 19)');
 });
-
-test('with reduced motion, Hive turns on at once: no ink, no growing', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await serve();
-  await hivePage(page);
-  await turnOn(page).click();
-  await confirm(page).click();
-  await expect(html(page)).toHaveAttribute('data-hive', 'on');
-  await expect(page.locator('.sidenav canvas')).toHaveCount(0);
-  expect(await arriving(page)).toBe(0);
-  await expect(layers(page)).toHaveCount(0);
-  await expect(page.locator('[data-moving]')).toHaveCount(0);
-  await expect(html(page)).not.toHaveAttribute('data-hive-arriving');
-  // No honeycomb (V88).
-  await expect(comb(page)).toHaveCount(0);
-});

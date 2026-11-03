@@ -37,6 +37,7 @@ import {
 import { useWorkspaces } from './useWorkspaces.js';
 import { AGENT_NAMES, briefTip, startedWith, workspaceName } from './workspaces.js';
 import { useNucleusName } from '../shell/names.js';
+import { Loading } from '../ui/Loading.js';
 
 const TAB_NAMES: Record<HistoryView, string> = {
   activity: 'Activity',
@@ -169,7 +170,7 @@ export function WorkspaceHistory({ branch }: { branch: string | undefined }) {
         </p>
       )}
       {!read ? (
-        !error && <p className="hint history-note">Reading the finished workspaces…</p>
+        !error && <Loading className="hint history-note">Reading the finished workspaces…</Loading>
       ) : all.length === 0 ? (
         <div className="history-body empty">
           <div className="history-card history-none">
@@ -383,7 +384,7 @@ function FinishedCard({
             {...tip('Its commits as a change: its files, and the graph of what changed')}
             onClick={openChange}
           >
-            {opening ? 'Opening…' : 'Open the change'}
+            {opening ? <Loading inline>Opening…</Loading> : 'Open the change'}
           </button>
         )}
       </div>
@@ -403,7 +404,9 @@ function FinishedCard({
       </div>
       <div className="workspace-body">
         {typeof summary === 'string' && <p className="history-note error">{summary}</p>}
-        {!workspace && summary === null && <p className="hint history-reading">Reading it…</p>}
+        {!workspace && summary === null && (
+          <Loading className="hint history-reading">Reading it…</Loading>
+        )}
         {workspace && view === 'activity' && (
           <div className="workspace-activity">
             <ActivityTab workspace={workspace} thread={thread} version={entry} />

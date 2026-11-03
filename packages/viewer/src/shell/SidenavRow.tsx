@@ -147,7 +147,7 @@ export function WorkspaceRowItem({
       {...tip(words.tip, { side: 'right' })}
       onClick={cleaning ? undefined : open}
     >
-      <span className={`ws-row-icon${words.icon === 'spin' ? ' spinning' : ''}`} aria-hidden="true">
+      <span className="ws-row-icon" aria-hidden="true">
         <Icon />
       </span>
       <button

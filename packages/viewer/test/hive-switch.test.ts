@@ -106,6 +106,9 @@ describe("Hive's readiness, before it turns on (V92, decision 872)", () => {
     );
     expect(loose.items[2]?.detail).toBe('no pause · no budget · 3 rounds');
     // Not read yet: nothing passes, nothing turns on.
-    expect(hiveReadiness({ state: null, pacing: null, rounds: 3 }).ready).toBe(false);
+    const reading = hiveReadiness({ state: null, pacing: null, rounds: 3 });
+    expect(reading.ready).toBe(false);
+    // The check is still read: its detail is drawn as a loading (fix/static-loadings).
+    expect(reading.items[0]).toMatchObject({ detail: 'reading…', reading: true });
   });
 });

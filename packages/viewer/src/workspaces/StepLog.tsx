@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { IMarker, Terminal } from '@xterm/xterm';
 import type { LogLine, LogRead } from '@symbiote/core';
 import {
@@ -65,7 +65,7 @@ export function StepLog({
   label?: string;
   className?: string;
   /** What its steps say before any came. */
-  waitingWords?: string;
+  waitingWords?: ReactNode;
   /** Kept, streaming, while another view is shown (V46c). */
   hidden?: boolean;
   onLogged?: () => void;

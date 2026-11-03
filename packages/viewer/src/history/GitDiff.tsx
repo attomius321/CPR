@@ -7,6 +7,7 @@ import { foldRows, parseFileDiff, type FileDiff } from '../diff/file-diff.js';
 import { LineNumber } from '../diff/DetailPanel.js';
 import { changeRuns, picksIn } from './actions.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 type Loaded =
   | { status: 'loading' }
@@ -72,7 +73,8 @@ export function GitDiff({
   const folds = useMemo(() => foldRows(rows, opened), [rows, opened]);
   const runs = useMemo(() => (staging ? changeRuns(rows) : []), [rows, staging]);
   const runAt = useMemo(() => new Map(runs.map((run) => [run.start, run])), [runs]);
-  if (loaded.status === 'loading') return <p className="hint git-diff-note">Reading the diff…</p>;
+  if (loaded.status === 'loading')
+    return <Loading className="hint git-diff-note">Reading the diff…</Loading>;
   if (loaded.status === 'failed')
     return <p className="hint error git-diff-note">Could not read the diff: {loaded.error}</p>;
   if (loaded.diff.kind === 'binary')
@@ -120,7 +122,11 @@ export function GitDiff({
                 disabled={busy}
                 onClick={() => send(lines)}
               >
-                {busy ? 'Working…' : `${verb} ${lines.length === 1 ? 'it' : 'them'}`}
+                {busy ? (
+                  <Loading inline>Working…</Loading>
+                ) : (
+                  `${verb} ${lines.length === 1 ? 'it' : 'them'}`
+                )}
               </button>
               <button
                 type="button"

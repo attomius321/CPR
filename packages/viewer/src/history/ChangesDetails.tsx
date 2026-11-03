@@ -27,6 +27,7 @@ import {
 import { FileRow } from '../workspaces/ChangesPanel.js';
 import { fileFacts } from '../workspaces/changes.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 /** The uncommitted files with their lines, each side apart (V70: the pane's and the file shown). */
 export interface ChangesRead {
@@ -312,7 +313,7 @@ export function ChangesDetails({
                 keys: 'Ctrl+Enter',
               })}
             >
-              {busy ? 'Working…' : amend ? 'Amend' : 'Commit'}
+              {busy ? <Loading inline>Working…</Loading> : amend ? 'Amend' : 'Commit'}
             </button>
           </div>
           {error && (

@@ -131,10 +131,18 @@
   width: 1em;
 }
 
+/* A row not read yet: its outlines pulse (ui/loading.css), still without motion. */
 .loading-bar {
   height: 8px;
   border-radius: 4px;
   background: var(--raised);
+  animation: outline-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .loading-bar {
+    animation: none;
+  }
 }
 
 .sha-bar {

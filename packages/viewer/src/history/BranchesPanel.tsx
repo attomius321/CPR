@@ -8,6 +8,7 @@ import { WorkspaceMark } from '../workspaces/WorkspaceMark.js';
 import { shortAge, type AgentChip, type FirstBranch } from '../workspaces/workspaces.js';
 import { ChevronIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 type BranchEntry = Extract<PanelEntry, { kind: 'branch' }>;
 
@@ -129,7 +130,7 @@ export const BranchesPanel = memo(function BranchesPanel({
         }}
       />
       {!refs ? (
-        <p className="hint">Listing branches…</p>
+        <Loading className="hint">Listing branches…</Loading>
       ) : entries.length === 0 ? (
         <p className="hint">{filter ? 'No branch matches' : 'No branches'}</p>
       ) : (

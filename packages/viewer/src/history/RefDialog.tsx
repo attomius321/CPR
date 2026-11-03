@@ -10,6 +10,7 @@ import {
   renameBranch,
 } from './git-api.js';
 import { shortSha } from './commits.js';
+import { Loading } from '../ui/Loading.js';
 
 /** What the dialog does: at a commit, or to a branch or tag by name. */
 export type RefAction =
@@ -169,7 +170,7 @@ export function RefDialog({
             autoFocus={!named}
             disabled={running || (named && name.trim() === '')}
           >
-            {running ? 'Working…' : verb}
+            {running ? <Loading inline>Working…</Loading> : verb}
           </button>
         </div>
       </form>

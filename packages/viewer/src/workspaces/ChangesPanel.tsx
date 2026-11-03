@@ -15,6 +15,7 @@ import { getJson, postJson, serverWords } from '../ui/http.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
 import { shortAge } from './workspaces.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 /**
  * A workspace's changes (V29d), read when it is picked and with every read of the list (on focus,
@@ -309,7 +310,7 @@ export function ChangesPanel({
     <aside className="changes" aria-label="Changes">
       {page ? facts : now}
       {page && briefSection}
-      {changes === null && <p className="changes-empty">Reading its changes…</p>}
+      {changes === null && <Loading className="changes-empty">Reading its changes…</Loading>}
       {typeof changes === 'string' && <p className="changes-empty error">{changes}</p>}
       {shown && (
         <>

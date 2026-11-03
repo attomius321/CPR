@@ -3,6 +3,7 @@
 import type { RefObject } from 'react';
 import { SearchIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 export function FindBox({
   inputRef,
@@ -23,15 +24,15 @@ export function FindBox({
 }) {
   const words = query.trim();
   const count =
-    words === ''
-      ? null
-      : matches === null
-        ? 'Finding…'
-        : matches.length === 0
-          ? 'None'
-          : at >= 0
-            ? `${at + 1} of ${matches.length}`
-            : `${matches.length} found`;
+    words === '' ? null : matches === null ? (
+      <Loading inline>Finding…</Loading>
+    ) : matches.length === 0 ? (
+      'None'
+    ) : at >= 0 ? (
+      `${at + 1} of ${matches.length}`
+    ) : (
+      `${matches.length} found`
+    );
   return (
     <label
       className="git-find"

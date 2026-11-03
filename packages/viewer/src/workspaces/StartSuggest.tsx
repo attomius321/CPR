@@ -11,6 +11,7 @@ import { tip } from '../ui/tip.js';
 import { StartCard } from './StartCard.js';
 import { proposalWords, withProposal } from './suggest.js';
 import type { RunChoices } from './workspaces.js';
+import { Loading } from '../ui/Loading.js';
 
 /** Where a suggestion is: none asked, asked, proposed, or failed with the server's words. */
 export type Asked =
@@ -75,8 +76,14 @@ export function SuggestButton({
       )}
       onClick={onPress}
     >
-      {asking ? <span className="state-dot tone-working" aria-hidden="true" /> : <SparklesIcon />}
-      {asking ? 'Suggesting…' : 'Suggest settings'}
+      {asking ? (
+        <Loading inline>Suggesting…</Loading>
+      ) : (
+        <>
+          <SparklesIcon />
+          Suggest settings
+        </>
+      )}
     </button>
   );
 }
@@ -121,7 +128,9 @@ export function SuggestionCard({
       }
     >
       <div className="start-proposal" aria-live="polite">
-        {asked.state === 'asking' && <p className="start-proposal-why">Reading the brief…</p>}
+        {asked.state === 'asking' && (
+          <Loading className="start-proposal-why">Reading the brief…</Loading>
+        )}
         {proposal && (
           <>
             <p className="start-proposal-words">{proposal.words}</p>

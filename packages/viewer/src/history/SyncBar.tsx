@@ -5,6 +5,7 @@ import type { PullMode, SyncState } from '@symbiote/core';
 import { syncWords } from './details.js';
 import { ChevronIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 export type SyncRun = 'fetch' | 'pull' | 'push';
 
@@ -51,7 +52,7 @@ export function SyncBar({
       window.removeEventListener('keydown', key, true);
     };
   }, [open]);
-  const words = sync ? syncWords(sync) : 'Reading the branch’s upstream…';
+  const words = sync ? syncWords(sync) : 'Its upstream is not read yet';
   const detached = sync?.branch === null;
   const noRemote = sync !== null && sync.remotes.length === 0;
   const busy = running !== null;
@@ -68,7 +69,7 @@ export function SyncBar({
         )}
         onClick={() => onRun('fetch')}
       >
-        {running === 'fetch' ? 'Fetching…' : 'Fetch'}
+        {running === 'fetch' ? <Loading inline>Fetching…</Loading> : 'Fetch'}
       </button>
       <span className="git-pull" ref={box}>
         <button
@@ -80,7 +81,7 @@ export function SyncBar({
           {...tip(words)}
           onClick={() => setOpen((o) => !o)}
         >
-          {running === 'pull' ? 'Pulling…' : 'Pull'}
+          {running === 'pull' ? <Loading inline>Pulling…</Loading> : 'Pull'}
           {!!sync?.behind && <span className="git-count">↓{sync.behind}</span>}
           <ChevronIcon open />
         </button>
@@ -110,7 +111,7 @@ export function SyncBar({
         {...tip(words)}
         onClick={() => onRun('push')}
       >
-        {running === 'push' ? 'Pushing…' : 'Push'}
+        {running === 'push' ? <Loading inline>Pushing…</Loading> : 'Push'}
         {!!sync?.ahead && <span className="git-count">↑{sync.ahead}</span>}
       </button>
     </span>
