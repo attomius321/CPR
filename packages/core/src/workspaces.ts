@@ -724,6 +724,11 @@ export interface WorkspaceActivity {
    * ended, or none running (`thinking`).
    */
   doing?: ToolActivity | { thinking: true };
+  /**
+   * While it works or asks and its tools are recorded (V93, decision 893): how many tools it
+   * started this turn; absent when none.
+   */
+  tools?: number;
 }
 
 export interface WorkspaceList {
@@ -733,6 +738,14 @@ export interface WorkspaceList {
   note?: string;
   /** Whether an agent's session can be shown in a terminal (V21); only with workspaces. */
   terminal?: TerminalAvailability;
+}
+
+/**
+ * `GET /api/workspaces/findings` (V93, decision 892): the graphs `symbiote view` analyzed and keeps,
+ * each pair's findings counted; a workspace's change is the one whose `head` is its tip.
+ */
+export interface WorkspaceFindings {
+  graphs: { base: string; head: string; errors: number; warnings: number }[];
 }
 
 /** A commit on a workspace's branch, as its changes panel lists it (V29d). */

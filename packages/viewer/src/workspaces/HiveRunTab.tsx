@@ -46,6 +46,7 @@ import {
 } from './hive-rounds.js';
 import { checkRows, landedWords, runRounds, stopWords, type RunRound } from './run-timeline.js';
 import { modelName } from './workspaces.js';
+import { ChecksMark, Item, type ItemState } from './RunItem.js';
 
 const short = (sha: string) => sha.slice(0, 7);
 const enc = encodeURIComponent;
@@ -61,7 +62,6 @@ const logSource = (branch: string, log: string) => (from: number) =>
   `/api/workspaces/hive/log?branch=${enc(branch)}&log=${enc(log)}&from=${from}`;
 
 /** A step on the timeline: done, running, failed or still to come. */
-type ItemState = 'ok' | 'run' | 'fail' | 'warning' | 'todo';
 const TONES: Record<RunRound['status']['tone'], StatusTone> = {
   run: 'run',
   ok: 'ok',
@@ -227,39 +227,6 @@ function Defect({
   );
 }
 
-/** A step of a round on the timeline: its mark, its name and words, what it ran beneath. */
-function Item({
-  name,
-  state,
-  icon,
-  words,
-  end,
-  last = false,
-  children,
-}: {
-  name: string;
-  state: ItemState;
-  icon: ReactNode;
-  words?: ReactNode;
-  end?: ReactNode;
-  last?: boolean;
-  children?: ReactNode;
-}) {
-  return (
-    <li className={`run-item is-${state}${last ? ' last' : ''}`} aria-label={name}>
-      <span className="run-dot" aria-hidden="true">
-        {icon}
-      </span>
-      <div className="run-top">
-        <b>{name}</b>
-        {words && <span className="run-said">{words}</span>}
-        {end && <span className="run-end">{end}</span>}
-      </div>
-      {children && <div className="run-content">{children}</div>}
-    </li>
-  );
-}
-
 /** The writer's commits in a round, its lines and its time. */
 function WriterItem({ round, running }: { round: RunRound; running: boolean }) {
   const { writer } = round;
@@ -321,12 +288,6 @@ function Commands({ check }: { check: HiveCheck }) {
     </ul>
   );
 }
-
-const ChecksMark = () => (
-  <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-    <path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" strokeWidth="2" />
-  </svg>
-);
 
 /** The running check's commands (decision 862): done, running with its bar, waiting. */
 function LiveCommands({ live }: { live: Extract<HiveLive, { kind: 'check' }> }) {
@@ -914,8 +875,24 @@ export function RunFacts({
             };
   const review = detail.reviews.at(-1);
   const into = landed?.into ?? workspace.from ?? 'main';
+  // Landed or stopped, the first row says when and how, as proofs 03 and 07 (V93).
+  const lastCheck = detail.checks.at(-1);
+  const stoppedAt =
+    lastCheck?.started !== undefined ? Date.parse(lastCheck.started) + lastCheck.ms : undefined;
+  const why = detail.note?.startsWith('its spend reached its budget')
+    ? 'budget'
+    : detail.round >= detail.rounds
+      ? 'round cap'
+      : 'stopped';
+  const how = detail.request ? requestKind(detail.request).toLowerCase() : 'merge queue';
+  const first: [string, ReactNode, string?] =
+    landed && !stop
+      ? ['Landed', landed.ended ? `${hm(landed.ended)} · ${how}` : how, 'ok']
+      : stop
+        ? ['Stopped', stoppedAt !== undefined ? `${hm(stoppedAt)} · ${why}` : why, 'fail']
+        : ['Stage', stage.text, stage.tone];
   const facts: [string, ReactNode, string?][] = [
-    ['Stage', stage.text, stage.tone],
+    first,
     [
       'Writer',
       `Claude Code${workspace.agent.model ? ` · ${modelName(workspace.agent.model)}` : ''}`,
@@ -926,13 +903,16 @@ export function RunFacts({
           string,
         ][])
       : []),
-    [
-      'Lands in',
-      <>
-        <code>{into}</code> ·{' '}
-        {detail.request ? requestKind(detail.request).toLowerCase() : 'merge queue'}
-      </>,
-    ],
+    ...(landed || stop
+      ? []
+      : ([
+          [
+            'Lands in',
+            <>
+              <code>{into}</code> · {how}
+            </>,
+          ],
+        ] as [string, ReactNode][])),
     ...(landed?.merge
       ? ([
           [
@@ -958,6 +938,7 @@ export function RunFacts({
           ],
         ] as [string, ReactNode, string?][])
       : []),
+    ...(stop ? ([['Landed', 'nothing']] as [string, ReactNode][]) : []),
   ];
   const spend = detail.spend;
   const budget = spend?.budget;

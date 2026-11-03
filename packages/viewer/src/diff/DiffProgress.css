@@ -366,6 +366,8 @@
 
 .opening-read {
   width: 100%;
+  /* Clear of the files over it (V93, proof 10): the list's own margin is reset elsewhere. */
+  margin-top: 10px;
 }
 
 .opening-waits {

@@ -152,7 +152,11 @@ test("normal mode's sections: the figures, agents at work, the merge, merged tod
   );
   await expect(figure(page, 'Waiting for you')).toContainText('2 answers · 2 reviews');
   await expect(figure(page, 'Agents working')).toContainText('Claude Code · Codex');
-  await expect(figure(page, 'To review')).toContainText('3 commits');
+  // The findings of a review analyzed in this run (V93, decision 892): proof 01's figure, and the
+  // review's row says them.
+  await expect(figure(page, 'Findings to read')).toContainText('3in 1 review');
+  await expect(figure(page, 'Findings to read')).toContainText('1 error · 2 warnings');
+  await expect(card(page, 'Waiting for you')).toContainText('· 1 error · 2 warnings');
   await expect(figure(page, 'Merged this week')).toContainText('8');
   await expect(figure(page, 'Merged this week')).toContainText('3 today, into main');
   await expect(figure(page, 'Time to merge')).toContainText('h median');
@@ -191,17 +195,19 @@ test("normal mode's sections: the figures, agents at work, the merge, merged tod
   await expect(card(page, 'Today')).toContainText('Plan ready');
   await expect(card(page, 'Today')).toContainText('Merged into main, pushed');
 
-  // Normal mode's Done folds (decision 859), kept in this browser.
+  // Normal mode's Done today folds (decision 859; V93's name), kept in this browser; its rows say
+  // when each merged.
   const done = page.locator('.sidenav .group-done');
-  await expect(done.getByRole('button', { name: /Done/ })).toHaveAttribute(
+  await expect(done.getByRole('button', { name: /Done today/ })).toHaveAttribute(
     'aria-expanded',
     'false',
   );
   await expect(done.locator('.workspace-row')).toHaveCount(0);
-  await done.getByRole('button', { name: /Done/ }).click();
-  await expect(done.locator('.workspace-row')).toHaveCount(2);
+  await done.getByRole('button', { name: /Done today/ }).click();
+  await expect(done.locator('.workspace-row')).toHaveCount(3);
+  await expect(done.locator('.ws-row-when').first()).toHaveText(/^\d\d:\d\d$/);
   await page.reload();
-  await expect(done.locator('.workspace-row')).toHaveCount(2);
+  await expect(done.locator('.workspace-row')).toHaveCount(3);
 });
 
 test("Hive mode's sections: five figures, a stopped one with why, in flight, landed today, limits, events", async ({

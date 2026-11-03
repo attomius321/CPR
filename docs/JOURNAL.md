@@ -406,3 +406,5 @@ merge commit.
 - 2026-11-03 [V91 — the Overview, both modes](journal/v91-redesign-overview.md)
 - 2026-11-03 [V92 spike — Hive's pages against the proofs](journal/v92-redesign-hive-pages.md)
 - 2026-11-03 [V92 — Hive's pages: Run, the sidenav, Settings, Start, turning on](journal/v92-redesign-hive-pages.md)
+- 2026-11-03 [V93 spike — the app beside the proofs](journal/v93-redesign-finish.md)
+- 2026-11-03 [V93 — every page as its proof](journal/v93-redesign-finish.md)

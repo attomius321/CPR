@@ -4,7 +4,17 @@
 // close button, and a new shell's button; at the strip's end, attaching images, Split and Focus.
 import type { ReactNode, RefObject } from 'react';
 import type { WorkspaceAgentState, WorkspaceShell } from '@symbiote/core';
-import { CloseIcon, ExpandIcon, PlusIcon, SplitIcon, TerminalIcon } from '../ui/icons.js';
+import {
+  ActivityIcon,
+  CloseIcon,
+  ExpandIcon,
+  FileIcon,
+  HexagonIcon,
+  PlusIcon,
+  SplitIcon,
+  TerminalIcon,
+  ThreadIcon,
+} from '../ui/icons.js';
 import { MAX_SHELLS, shellName } from './shells.js';
 import { terminalHint } from './workspaces.js';
 import { agentDot } from './workspace-steps.js';
@@ -19,6 +29,14 @@ const TAB_NAMES: Record<Exclude<AgentView, 'terminal'>, string> = {
   activity: 'Activity',
   brief: 'Brief',
   run: 'Run',
+};
+
+/** Each tab's icon, as the proofs draw them (V93). */
+const TAB_ICONS: Record<Exclude<AgentView, 'terminal'>, () => ReactNode> = {
+  thread: ThreadIcon,
+  activity: ActivityIcon,
+  brief: FileIcon,
+  run: HexagonIcon,
 };
 
 /** The strip of a workspace's tabs: `view` picked, a shell's by its number. */
@@ -107,6 +125,7 @@ export function WorkspaceTabs({
               className={`stab${selected ? ' selected' : ''}`}
               onClick={() => onShow(name)}
             >
+              {TAB_ICONS[name]()}
               {TAB_NAMES[name]}
             </button>
           );

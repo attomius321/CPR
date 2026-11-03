@@ -30,14 +30,17 @@ is kept as a draft until you start, so leaving the page loses nothing.
 
 ### The workspace's choices
 
-The cards beside the form hold the workspace's choices:
+The kinds are tabs over the form; the form also says which check the merge will run. The cards
+beside it hold the workspace's choices, and **What happens next** says the steps your choices
+make (plan first or not, the agent, where it merges):
 
 - **Start from**: the branch to start from, the default branch unless you pick another. Its list
   has a search: type words from a branch's name, in any order, then pick it with ↑, ↓ and Enter.
 - **Branch name**: the new branch's name, made from the title. You can edit it; the button
   beside it names it after the title again.
-- **Agent**, **Model** and **Effort**: the agent, the model it starts with, and its effort level
-  (how long the model thinks before it answers). The lists come from the agent itself.
+- **Agent**, **Model** and **Effort**: the agent, the model it starts with (its description in its
+  tip), and its effort level, how long the model thinks before it answers, as a row of steps
+  (arrow keys move it). The lists come from the agent itself.
 - **Permissions** (Claude Code): Claude Code's own permission mode, which decides what it may do
   without asking you. Symbiote never grants the agent more than the mode you pick.
 - **Approvals** (Hermes): Hermes asks in its terminal before a dangerous command. Its card says
@@ -74,20 +77,20 @@ Symbiote quits. Its **Terminal** tab then continues the session (`hermes --resum
 ## See what needs you
 
 The sidenav lists your workspaces in groups, by what each one needs from you: **Merging**,
-**Waiting for you**, **To review**, **Not running**, **Working** and **Done**. The
-[README](../../README.md#see-what-needs-you) says what is in each.
+**Waiting for you**, **To review**, **Not running**, **Working**, then **Done today** and
+**Earlier**, folded. The [README](../../README.md#see-what-needs-you) says what is in each.
 
-Each card shows these, from the top:
+Each workspace is a row of two lines:
 
-- the workspace's title, and how long it has been in its state;
-- what its agent is doing, or what comes next. Hover the line to read it whole;
-- its kind and its facts: its commits, its files not committed, and whether it merges cleanly.
-  Hover a fact to read it in words;
-- the model and effort its agent runs on;
-- its branch.
+- its state's icon (violet when it waits for you, an amber spinner while its agent works) and its
+  title;
+- its state in a word, such as **Plan ready** or **Running**, then its facts (commits, findings,
+  what runs) and how long it has been so.
 
-A waiting card has **Respond**, which opens the agent's terminal. When Nucleus or Scribe waits
-for you, its page's link turns violet like this group and says **Waits**.
+Hover a row for the rest: its kind, branch, agent, model and effort, and its state in full. Enter
+on a row opens it; **Respond** is on the Overview's list of what waits and in the bar under the
+agent's terminal. When Nucleus or Scribe waits for you, its page's link turns violet and says
+**Waits**.
 
 The window's title counts everything that waits for you: workspaces, merges, Nucleus, Scribe and
 agents' requests to use a tool. In Symbiote's own window, the taskbar icon also gets a violet dot
@@ -97,7 +100,10 @@ for attention do so, KDE and XFCE among them. On WSL the taskbar shows the dot b
 
 ## Work with the agent
 
-Click a workspace to open it. Its head shows the model and effort its agent runs on, such as
+Click a workspace to open it. Under its head a card shows its steps, the current one amber while
+the agent works and violet when it waits for you, with whose turn it is and its commits (in Hive
+mode: the round, the time and the spend). On the agent's terminal the steps sit in the head
+instead. The head shows the model and effort its agent runs on, such as
 **Opus · high effort**. Symbiote reads them from the agent's session: Claude Code's latest answer,
 or Codex's thread. If you change them in the terminal (`/model`, `/effort`), the head follows from
 the agent's next answer. Until the agent answers, it shows what the agent started with; hover it
@@ -126,7 +132,9 @@ The **+** after the tabs opens a shell in the workspace's worktree, for tests, a
 ### The Changes panel
 
 Where the window is wide enough, the **Changes** panel on the right lists the branch's commits and
-changed files. Click a file to open its diff in VS Code. `]` hides or shows the panel.
+changed files. Beside the terminal it starts with what the agent does now, how long, and how many
+tools it ran this turn; beside the other tabs, with the workspace's kind, agent, model and Plan
+first, and its brief. Click a file to open its diff in VS Code. `]` hides or shows the panel.
 
 The commits count from where the workspace started. For a workspace started from another branch,
 that means only its own commits, not that branch's. To review it against another branch, pick
@@ -136,9 +144,9 @@ target of an approval follow the pick. Pick **where it started** to go back.
 The top of the page has these buttons:
 
 - **Review** opens the branch's changes for review.
-- **Stop** stops the agent, and **Start** starts it again.
-- **⋯** holds **Open in VS Code**, which opens the worktree, and **Copy the prompt**, which copies
-  the agent's first prompt.
+- **‹›** opens the worktree in VS Code.
+- **⋯** holds **Stop the agent** (**Start the agent** is in the head once it stopped) and **Copy
+  the prompt**, which copies the agent's first prompt.
 
 ## Review the branch and tell the agent
 
@@ -175,7 +183,10 @@ started from, unless you picked another in **since**. You can pick another here 
 3. lands the merge if the check passes: it moves the target branch forward to the merge commit.
 
 Merges run one at a time, in the order you asked for them. Click one under **Merging** to see its
-steps and their output as they run. Symbiote does not push unless you set `merge.push` to `true`.
+page: its steps on a card (approved, merge, check, land) with its place in the queue and its
+time; the steps with who approved it, each check command's time against the last passing run, and
+what a failure does; and the merge's log, its changes, and its conflicts when it has some. While it
+waits its turn, **Take out of the queue** removes it. Symbiote does not push unless you set `merge.push` to `true`.
 
 ### Merge commit or fast-forward
 

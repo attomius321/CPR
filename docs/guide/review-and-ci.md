@@ -33,7 +33,8 @@ are no diffs to show.
 status (`A` added, `M` modified, `D` deleted, `R` renamed), its name and folder, and the lines
 added and removed. Files the graph has no symbols for, such as Markdown, JSON or images, are
 listed too. Click a file, or press `j` and `k`, to see its diff. The diff is git's: its lines are
-the ones the list counts. Unchanged lines are folded to three around each change; click a fold to
+the ones the list counts. TypeScript, JavaScript and HTML are in colour: keywords, strings,
+comments and called names. Unchanged lines are folded to three around each change; click a fold to
 open it. To open the file in VS Code at its first change, press `o`. To open one line, Ctrl+click
 it.
 
@@ -66,8 +67,9 @@ its findings.
 
 Click a symbol, or press `j` and `k` to walk the change list. The detail panel opens beside the
 graph with the symbol's findings, its old and new signature, a diff of only that symbol, and the
-symbols that use it and that it uses. To open the symbol in VS Code, press `o`. To open one line,
-Ctrl+click it.
+symbols that use it and that it uses, each with **Open ↗** to open it in VS Code. The graph moves
+only to bring the symbol into view, keeping its zoom; picked on the map, it comes to full size. To
+open the symbol in VS Code, press `o`. To open one line, Ctrl+click it.
 
 Large changes stay readable in three ways:
 

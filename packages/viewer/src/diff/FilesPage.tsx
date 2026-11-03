@@ -19,6 +19,7 @@ import {
   RunningIcon,
 } from '../ui/icons.js';
 import { fileViewed, type Marks } from './review.js';
+import { CodeText, useTokens } from '../ui/CodeText.js';
 import { tip } from '../ui/tip.js';
 import { FileRow, Lines } from '../workspaces/ChangesPanel.js';
 import { fileFacts } from '../workspaces/changes.js';
@@ -351,6 +352,8 @@ function FileView({
     () => (state.status === 'ready' && state.diff.kind === 'rows' ? state.diff.rows : []),
     [state],
   );
+  // Its syntax colours (V93, decision 889).
+  const tokens = useTokens(rows, file.path);
   /** Folds opened, by where they start. */
   const [opened, setOpened] = useState<ReadonlySet<number>>(new Set());
   const [all, setAll] = useState(false);
@@ -447,7 +450,7 @@ function FileView({
             onOpen={canOpen ? (r, side) => open(rowOpen(file, r, side)) : undefined}
           />
           <span className="mark">{row.type === 'add' ? '+' : row.type === 'del' ? '−' : ' '}</span>
-          <span className="text">{row.text}</span>
+          <CodeText text={row.text} tokens={tokens?.get(row)} />
         </div>
         {(drafts.length > 0 || here) && (
           <div className="file-comments">

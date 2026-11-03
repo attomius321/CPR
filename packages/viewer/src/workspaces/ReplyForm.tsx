@@ -4,6 +4,7 @@
 // OK; with its terminal, both are typed there and sent.
 import type { WorkspaceThread } from '@symbiote/core';
 import type { replyMode } from './workspaces.js';
+import { AttachIcon, CheckIcon, SendIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
 
 /** The box under the Thread tab, with Send the verdict and Send (or Stop and send). */
@@ -21,6 +22,7 @@ export function ReplyForm({
   onSend,
   onApprove,
   onCancel,
+  onAttach,
 }: {
   hidden: boolean;
   text: string;
@@ -42,6 +44,8 @@ export function ReplyForm({
   /** Sends the plan's OK. */
   onApprove?: () => void;
   onCancel: () => void;
+  /** Attach images (V78) from the composer, as proof 02 draws it; none without a terminal. */
+  onAttach?: (() => void) | undefined;
 }) {
   const approve = plan && onApprove;
   return (
@@ -59,7 +63,7 @@ export function ReplyForm({
           approve ? 'Reply to the agent, or approve the plan as it is…' : 'Reply to the agent…'
         }
         value={text}
-        rows={3}
+        rows={2}
         disabled={mode === 'none'}
         onChange={(event) => onText(event.target.value)}
         onKeyDown={(event) => {
@@ -72,6 +76,19 @@ export function ReplyForm({
         }}
       />
       <div className="reply-actions">
+        {/* The composer's Attach (V93, proof 02): files go to its terminal, where the agent reads
+            them; its tip says where. */}
+        {onAttach && (
+          <button
+            type="button"
+            className="button ghost reply-attach"
+            {...tip('Attach images\nPasted into its terminal')}
+            onClick={onAttach}
+          >
+            <AttachIcon />
+            Attach
+          </button>
+        )}
         {verdict && (
           <button
             type="button"
@@ -112,6 +129,7 @@ export function ReplyForm({
                 approve ? {} : { keys: 'Ctrl+Enter' },
               )}
             >
+              <SendIcon />
               {approve ? 'Send reply' : mode === 'stop-and-send' ? 'Stop and send' : 'Send'}
             </button>
             {approve && (
@@ -127,7 +145,11 @@ export function ReplyForm({
                 )}
                 onClick={onApprove}
               >
+                <CheckIcon />
                 Approve plan
+                <kbd className="reply-keys" aria-hidden="true">
+                  Ctrl ↵
+                </kbd>
               </button>
             )}
           </>

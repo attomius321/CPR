@@ -35,45 +35,37 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  /* 300 px since V81 (decision 602; 280 before): a tile before each name, and the longest name
-     open beside its widest mark ("Changes or comments", "not saved") still whole. */
-  grid-template-columns: 300px minmax(0, 1fr);
+  /* 270 px since V93 (proof 11; 300 from V81, 280 before): an icon before each name, the
+     longest name ("Changes or comments") still whole. */
+  grid-template-columns: 270px minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   gap: var(--page-gap);
   padding: 0 var(--page-pad) var(--page-pad);
 }
 
-/* The list (decision 448): a card, a hairline between its groups, `--card-pad` in, the entries'
-   wash 8 px out; since V81 (decision 600) an icon on a tile before each name, the tiles in line
-   with their group's heading. */
+/* The list (decision 448; V93, decision 891: proof 11): a card, its groups a muted heading over
+   their entries, each an icon (no tile) and its name on a 30 px row; the open one on the
+   selection's wash, its icon in the accent. */
 .settings-list {
   min-height: 0;
   overflow: auto;
   /* An entry scrolled to stops clear of the card's edge. */
   scroll-padding: 16px 0;
-  padding: var(--card-pad) 8px;
+  padding: 10px 6px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel);
 }
 
 .settings-list section + section {
-  position: relative;
-  margin-top: 12px;
-  padding-top: 12px;
-}
-
-.settings-list section + section::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 8px;
-  left: 8px;
-  border-top: 1px solid var(--line);
+  margin-top: 8px;
 }
 
 .settings-list section h2 {
-  margin: 0 0 6px;
+  display: flex;
+  align-items: center;
+  min-height: var(--height-row);
+  margin: 0 0 2px;
   padding: 0 8px;
   color: var(--muted);
   font-size: var(--size-caption);
@@ -95,13 +87,15 @@
   align-items: center;
   gap: 8px;
   width: 100%;
-  min-height: var(--height-control);
-  padding: 0 8px;
+  min-height: var(--height-tall);
+  /* Its icon under the group's name, as proofs 04 and 11 indent it (V93). */
+  padding: 0 6px 0 8px;
   border: 0;
   border-radius: 8px;
   background: none;
-  color: inherit;
-  font-size: var(--size-body);
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
   transition:
@@ -111,60 +105,34 @@
 
 .settings-list button:hover {
   background: var(--hover);
+  color: var(--text);
 }
 
-/* The open entry: the selection's wash, its words in the accent (the mockup). */
+/* The open entry: the selection's wash, its words in the text's colour, its icon the accent's. */
 .settings-list button[aria-current='true'] {
   background: var(--selected);
-  color: var(--accent);
-  font-weight: 500;
+  color: var(--text);
 }
 
-/* A group's tint (V81, decision 601): the Activity tab's kinds of work, one hue in both themes;
-   not git's (the accent's violet) nor debug's (beside the docs' amber). Any other group: muted. */
-.settings-list section[data-tint='workspaces'] {
-  --tint: var(--phase-implement);
-}
-
-.settings-list section[data-tint='reviews'] {
-  --tint: var(--phase-test);
-}
-
-.settings-list section[data-tint='agents'] {
-  --tint: var(--phase-visual);
-}
-
-.settings-list section[data-tint='machine'] {
-  --tint: var(--phase-docs);
-}
-
-.settings-list section[data-tint='browser'] {
-  --tint: var(--phase-explore);
-}
-
-/* An entry's tile (decision 602): a wash of its group's colour, opaque so the open row's wash does
-   not tint it; the icon in the colour, the sidenav's strokes, the open one's in the accent. */
+/* An entry's icon (V81's, decision 600; on a tinted tile until V93): plain, muted. */
 .settings-tile {
   flex: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--tint, var(--muted)) var(--phase-wash), var(--side));
-  color: var(--tint, var(--muted));
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
 }
 
 .settings-tile .icon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   stroke-width: 1.75;
 }
 
-.settings-list button[aria-current='true'] .settings-tile .icon {
+.settings-list button[aria-current='true'] .settings-tile {
   color: var(--accent);
-  stroke-width: 2.25;
 }
 
 .settings-name {
@@ -193,6 +161,19 @@
   color: var(--warning);
 }
 
+/* Hive mode's entry: On or Off as a small pill, as proofs 04 and 11 (V93). */
+.settings-mark.hive-on,
+.settings-mark.hive-off {
+  padding: 1px 7px;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+.settings-mark.hive-off {
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--muted);
+}
+
 /* The open page (decision 449): one card, its head over a hairline, its body scrolling under it. */
 .settings-editor {
   display: flex;
@@ -209,7 +190,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  padding: 4px var(--card-pad);
+  /* The proofs' head: 56 px, its title 16 px in (V93). */
+  padding: 12px calc(var(--card-pad) + 4px);
   border-bottom: 1px solid var(--line);
 }
 

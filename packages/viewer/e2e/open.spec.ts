@@ -117,3 +117,12 @@ test('offers nothing for a graph file opened without symbiote (?graph=)', async 
   await page.keyboard.press('o');
   expect(opened()).toEqual([]);
 });
+
+test('a use opens where it is with its own Open (V93, decision 888)', async ({ page }) => {
+  const panel = await select(page, 'add');
+  // triple calls add (head lines 5–7): its row in Used by has its Open.
+  const use = panel.locator('.neighbours-group li', { hasText: 'triple' });
+  await use.getByRole('button', { name: /^Open/ }).click();
+  await expect(panel.getByRole('status')).toHaveText(/^Opened in VS Code at line 5/);
+  expect(opened()).toEqual([goto(5)]);
+});

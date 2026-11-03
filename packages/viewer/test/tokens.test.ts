@@ -85,13 +85,6 @@ const PHASES = [
 ];
 
 /** V81 (decision 601): Settings' groups' tints, `section[data-tint=…] { --tint: var(…) }`. */
-const SETTINGS_TINTS = Object.fromEntries(
-  [...css.matchAll(/\[data-tint='([\w-]+)'\]\s*\{\s*--tint:\s*var\((--[\w-]+)\);/g)].map((m) => [
-    m[1]!,
-    m[2]!,
-  ]),
-);
-
 /** Each pair of `fronts` on `backs` under `min`, as "front on back: ratio". */
 function under(theme: Map<string, string>, fronts: string[], backs: string[], min: number) {
   const low: string[] = [];
@@ -341,25 +334,16 @@ describe('the tokens (V29b)', () => {
         expect(low).toEqual([]);
       });
 
-      // V81 (decisions 601, 602): an entry's icon on its group's tile, a wash of the group's
-      // colour over the list card's ground; the open entry's icon in the accent.
-      it("draws Settings' icons at least 3:1 on their group's tile, the open one's accent too", () => {
-        expect(SETTINGS_TINTS).toEqual({
-          workspaces: '--phase-implement',
-          reviews: '--phase-test',
-          agents: '--phase-visual',
-          machine: '--phase-docs',
-          browser: '--phase-explore',
-        });
-        const share = Number.parseFloat(theme.get('--phase-wash')!) / 100;
-        const low = Object.values(SETTINGS_TINTS).flatMap((tint) => {
-          const tile = mixed(theme.get(tint)!, share, theme.get('--side')!);
-          return [tint, '--accent'].flatMap((front) => {
-            const ratio = contrast(theme.get(front)!, tile);
-            return ratio < 3 ? [`${front} on ${tint}'s tile: ${ratio.toFixed(2)}`] : [];
-          });
-        });
-        expect(low).toEqual([]);
+      // V81 (decision 600) and V93 (decision 891, proof 11): an entry's icon, plain, muted on
+      // the list card; the open entry's in the accent.
+      // V93 (decision 889): a diff's syntax colours, read as text on the code's ground and a card.
+      it('writes the syntax colours at 4.5:1 on the code and its card', () => {
+        const syntax = ['--syntax-keyword', '--syntax-string', '--syntax-call'];
+        expect(under(theme, syntax, ['--bg', '--panel'], 4.5)).toEqual([]);
+      });
+
+      it("draws Settings' icons at least 3:1 on the list's card, the open one's accent too", () => {
+        expect(under(theme, ['--muted', '--accent'], ['--panel'], 3)).toEqual([]);
       });
 
       // RM2 (decision 332): the Monitor's long files, yellow, orange, red; their lines are
@@ -600,7 +584,7 @@ describe('the type scale (V32)', () => {
 // the tokens, a step below V72's; the page frame's tokens tighter. V87 (decision 761): rows and
 // small controls 24 px, WCAG 2.2's target size (2.5.8); the rest a step for 15 px text.
 describe('the density (V85)', () => {
-  it("is near VS Code's: 28 px controls, 24 px rows, 37 px card heads, 12 px margins", () => {
+  it("is near VS Code's: 28 px controls, 24 px rows, 40 px card heads (the kits', V93), 12 px margins", () => {
     const pick = (names: string[]) => Object.fromEntries(names.map((n) => [n, base.get(n)]));
     expect(
       pick([
@@ -625,7 +609,7 @@ describe('the density (V85)', () => {
       '--height-tab': '32px',
       '--height-bar': '36px',
       '--height-top': '40px',
-      '--card-head': '37px',
+      '--card-head': '40px',
       '--page-head': '40px',
       '--page-pad': '12px',
       '--page-gap': '8px',

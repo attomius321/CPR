@@ -1,15 +1,15 @@
-// The kind of work on the start page (V24c): a radio group (keys 1–5 and the arrows), and what
-// each kind is for behind its "?". Drawn as the mockup's tabs since V63, an icon each.
+// The kind of work on the start page (V24c): a radio group (keys 1–5 and the arrows), what each
+// kind is for in its tip. Line tabs in the brief's card head since V93 (proof 06-start; V63's
+// mockup tabs before, with a "?" for the kinds).
 import type { ReactNode } from 'react';
 import type { WorkKind, WorkKindSpec } from '@symbiote/core';
-import { Help } from '../ui/Help.js';
-import { BranchIcon, ChoreIcon, FixIcon, RefactorIcon, SpikeIcon } from '../ui/icons.js';
+import { ChoreIcon, SparkIcon, FixIcon, RefactorIcon, SpikeIcon } from '../ui/icons.js';
 import { KIND_ABOUT } from './brief.js';
 import { tip } from '../ui/tip.js';
 
 /** Each kind's icon: its tab here, a workspace's head (V72). */
 export const KIND_ICONS: Record<WorkKind, ReactNode> = {
-  feature: <BranchIcon />,
+  feature: <SparkIcon />,
   fix: <FixIcon />,
   refactor: <RefactorIcon />,
   chore: <ChoreIcon />,
@@ -58,7 +58,7 @@ export function StartKinds({
             aria-checked={kind.kind === current.kind}
             tabIndex={kind.kind === current.kind ? 0 : -1}
             className="kind"
-            {...tip(kind.name, { keys: `${i + 1}` })}
+            {...tip(`${kind.name}\n${KIND_ABOUT[kind.kind]}`, { keys: `${i + 1}` })}
             onClick={() => onPick(kind)}
           >
             {KIND_ICONS[kind.kind]}
@@ -66,16 +66,6 @@ export function StartKinds({
           </button>
         ))}
       </div>
-      <Help label="About the kinds of work" id="kind-about">
-        <dl className="kind-about">
-          {kinds.map((kind) => (
-            <div key={kind.kind} className={kind.kind === current.kind ? 'current' : undefined}>
-              <dt>{kind.name}</dt>
-              <dd>{KIND_ABOUT[kind.kind]}</dd>
-            </div>
-          ))}
-        </dl>
-      </Help>
     </div>
   );
 }

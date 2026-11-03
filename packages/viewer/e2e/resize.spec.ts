@@ -52,35 +52,36 @@ async function openPanel(page: Page): Promise<void> {
 }
 
 test('drags both panels wider and narrower, and remembers their widths', async ({ page }) => {
-  expect(await width(sidebar(page))).toBe(300);
+  // 320 px at first, proof 03's (V93; 300 before).
+  expect(await width(sidebar(page))).toBe(320);
   const wide = await width(canvas(page));
 
   await drag(page, sidebarHandle(page), 100);
-  await expect.poll(() => width(sidebar(page))).toBe(400);
+  await expect.poll(() => width(sidebar(page))).toBe(420);
   expect(await width(canvas(page))).toBe(wide - 100);
 
   // The panel is on the right: dragging its edge left widens it.
-  // 400 px by default since V90 (proof 03 draws 336): the canvas keeps the room.
+  // 336 px by default, as proof 03 draws it (V93, decision 887; 400 in V90).
   await openPanel(page);
-  expect(await width(panel(page))).toBe(400);
+  expect(await width(panel(page))).toBe(336);
   await drag(page, panelHandle(page), -150);
-  await expect.poll(() => width(panel(page))).toBe(550);
+  await expect.poll(() => width(panel(page))).toBe(486);
 
   // Kept across a reload, and for the next symbol opened.
   await page.reload();
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
-  expect(await width(sidebar(page))).toBe(400);
+  expect(await width(sidebar(page))).toBe(420);
   await openPanel(page);
-  expect(await width(panel(page))).toBe(550);
+  expect(await width(panel(page))).toBe(486);
 
   // A double-click restores the default, and that is kept too.
   await sidebarHandle(page).dblclick();
-  await expect.poll(() => width(sidebar(page))).toBe(300);
+  await expect.poll(() => width(sidebar(page))).toBe(320);
   await panelHandle(page).dblclick();
-  await expect.poll(() => width(panel(page))).toBe(400);
+  await expect.poll(() => width(panel(page))).toBe(336);
   await page.reload();
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
-  expect(await width(sidebar(page))).toBe(300);
+  expect(await width(sidebar(page))).toBe(320);
 });
 
 test('stops at each panel’s narrowest, and leaves the canvas room', async ({ page }) => {
@@ -102,14 +103,14 @@ test('stops at each panel’s narrowest, and leaves the canvas room', async ({ p
 test('resizes from the keyboard', async ({ page }) => {
   const handle = sidebarHandle(page);
   await handle.focus();
-  await expect(handle).toHaveAttribute('aria-valuenow', '300');
+  await expect(handle).toHaveAttribute('aria-valuenow', '320');
   await expect(handle).toHaveAttribute('aria-valuemin', '240');
 
   await page.keyboard.press('ArrowRight');
-  await expect.poll(() => width(sidebar(page))).toBe(316);
+  await expect.poll(() => width(sidebar(page))).toBe(336);
   await page.keyboard.press('Shift+ArrowRight');
-  await expect.poll(() => width(sidebar(page))).toBe(380);
-  await expect(handle).toHaveAttribute('aria-valuenow', '380');
+  await expect.poll(() => width(sidebar(page))).toBe(400);
+  await expect(handle).toHaveAttribute('aria-valuenow', '400');
   await page.keyboard.press('Home');
   await expect.poll(() => width(sidebar(page))).toBe(240);
   await page.keyboard.press('End');
@@ -121,7 +122,7 @@ test('resizes from the keyboard', async ({ page }) => {
   await openPanel(page);
   await panelHandle(page).focus();
   await page.keyboard.press('ArrowLeft');
-  await expect.poll(() => width(panel(page))).toBe(416);
+  await expect.poll(() => width(panel(page))).toBe(352);
 });
 
 test('the selection is in view again once a resize ends', async ({ page }) => {

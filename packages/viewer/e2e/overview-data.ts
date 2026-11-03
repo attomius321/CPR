@@ -16,6 +16,7 @@ import type {
   UsageReport,
   WorkspaceDay,
   WorkspaceHive,
+  WorkspaceFindings,
   WorkspaceList,
   WorkspaceSummary,
 } from '@symbiote/core';
@@ -80,6 +81,8 @@ export interface OverviewMocks {
   pacing?: HivePacingSetting;
   landing?: HiveLandingSetting;
   reviewer?: AgentLevels;
+  /** The kept graphs' findings (V93, decision 892). */
+  findings?: WorkspaceFindings;
 }
 
 const usage = (now: number, five: number, week: number): UsageReport => {
@@ -163,13 +166,18 @@ export function normalMocks(now = overviewNow(), { empty = false } = {}): Overvi
       },
     }),
     summary('feature/discount-code', 'Add a discount code', ago(40), {
+      // V93: its own tip, whose analyzed graph has the proof's findings.
+      tip: 'd'.repeat(40),
       ahead: 3,
       agent: { state: 'ready', kind: 'claude' },
       activity: { since: iso(ago(6)) },
     }),
     summary('spike/catalog-search', 'Which search library fits the catalog?', ago(20), {
       agent: { state: 'done', kind: 'claude' },
-      activity: { since: iso(ago(2)) },
+      activity: {
+        since: iso(ago(2)),
+        report: { at: iso(ago(2)), text: 'Meilisearch fits: typo tolerance and facets.' },
+      },
     }),
     summary('feature/stock-levels', 'Show stock levels on product pages', ago(15), {
       agent: {
@@ -183,15 +191,24 @@ export function normalMocks(now = overviewNow(), { empty = false } = {}): Overvi
       agent: { state: 'working', kind: 'codex', effort: 'high' },
       activity: { since: iso(ago(7.5)), doing: { tool: 'Edit', subject: 'src/orders/list.ts' } },
     }),
+    // V93: merged today, Done today's rows (when its agent last acted).
     summary('feature/receipt', 'Email a receipt after checkout', ago(170), {
       merged: true,
       ahead: 2,
       agent: { state: 'done', kind: 'claude' },
+      lastAction: iso(ago(60)),
     }),
     summary('fix/coupon-field', 'Rename the cart’s coupon field', ago(160), {
       merged: true,
       ahead: 1,
       agent: { state: 'done', kind: 'claude' },
+      lastAction: iso(ago(100)),
+    }),
+    summary('fix/webhooks', 'Retry failed payment webhooks', ago(300), {
+      merged: true,
+      ahead: 2,
+      agent: { state: 'done', kind: 'claude' },
+      lastAction: iso(ago(120)),
     }),
   ];
   const events: DayEvent[] = [
@@ -243,7 +260,11 @@ export function normalMocks(now = overviewNow(), { empty = false } = {}): Overvi
           state: 'checking',
           queued: iso(ago(2)),
           updated: iso(ago(1)),
-          check: { commands: ['npm test'], source: 'symbiote/config.json' },
+          check: {
+            commands: ['npm test'],
+            source: 'symbiote/config.json',
+            started: iso(now - 12_000),
+          },
         }),
       ],
     },
@@ -286,6 +307,7 @@ export function normalMocks(now = overviewNow(), { empty = false } = {}): Overvi
       hive: [],
     },
     usage: usage(now, 34, 58),
+    findings: { graphs: [{ base: 'a'.repeat(40), head: 'd'.repeat(40), errors: 1, warnings: 2 }] },
   };
 }
 
@@ -497,7 +519,8 @@ export function hiveMocks(
       place: 'repository',
       reviews: [],
     },
-    merges: { merges: [] },
+    // The repository's merge pushes (`merge.push`), as the proofs' "merge queue → main, push".
+    merges: { merges: [], push: true },
     day: {
       since: iso(now - 7 * 86_400_000),
       into: 'main',
@@ -558,4 +581,5 @@ export async function mockOverview(page: Page, mocks: OverviewMocks): Promise<vo
   if (mocks.pacing) await answer('**/api/hive/pacing', mocks.pacing);
   if (mocks.landing) await answer('**/api/hive/landing', mocks.landing);
   if (mocks.reviewer) await answer('**/api/hive/reviewer/efforts', mocks.reviewer);
+  if (mocks.findings) await answer('**/api/workspaces/findings', mocks.findings);
 }

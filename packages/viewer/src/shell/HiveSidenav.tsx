@@ -4,12 +4,12 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import type { BranchReviewList, WorkspaceSummary } from '@symbiote/core';
 import {
+  AlertIcon,
   AnsweredIcon,
   ChevronIcon,
   DoneIcon,
-  FailedIcon,
   IdleIcon,
-  RunningIcon,
+  SpinIcon,
   StoppedIcon,
   WaitingIcon,
 } from '../ui/icons.js';
@@ -24,9 +24,9 @@ import {
 } from '../workspaces/workspaces.js';
 
 const ICONS: Record<HiveRowWords['tone'], () => ReactNode> = {
-  run: RunningIcon,
+  run: SpinIcon,
   ok: DoneIcon,
-  fail: FailedIcon,
+  fail: AlertIcon,
   info: StoppedIcon,
   idle: IdleIcon,
   you: WaitingIcon,
@@ -89,18 +89,21 @@ function HiveRow({
   return (
     <li
       ref={item}
-      className={`workspace-row hive-row${at ? ' landed' : ''}${picked ? ' picked' : ''}`}
+      className={`workspace-row ws-row hive-row${at ? ' landed small' : ''}${picked ? ' picked' : ''}`}
       data-branch={workspace.branch}
-      data-tone={words.tone}
+      data-tone={answered ? 'idle' : words.tone}
       {...(folded ? tip(`${name}\n${words.word} · ${words.detail}`, { side: 'right' }) : {})}
       onClick={onPick}
     >
-      <span className="hive-row-icon" aria-hidden="true">
+      <span
+        className={`ws-row-icon hive-row-icon${words.tone === 'run' && !answered ? ' spinning' : ''}`}
+        aria-hidden="true"
+      >
         <Icon />
       </span>
       <button
         type="button"
-        className="workspace-about hive-row-title"
+        className="workspace-about ws-row-title hive-row-title"
         aria-current={picked ? 'true' : undefined}
         onClick={(event) => {
           event.stopPropagation();
@@ -110,10 +113,10 @@ function HiveRow({
         {name}
       </button>
       {at ? (
-        <span className="hive-row-time">{hm(at)}</span>
+        <span className="ws-row-when hive-row-time">{hm(at)}</span>
       ) : (
         !folded && (
-          <span className="hive-row-state">
+          <span className="ws-row-state hive-row-state">
             <b>{words.word}</b>
             {words.detail && <span> · {words.detail}</span>}
           </span>

@@ -18,6 +18,7 @@ import {
   type MergedRow,
   type NormalFigures,
 } from '../src/overview/normal-overview.js';
+import { findingsOf, findingsToRead } from '../src/overview/normal-overview.js';
 
 const zone = process.env.TZ;
 beforeAll(() => {
@@ -384,5 +385,24 @@ describe('a merge on its track', () => {
     ).toEqual([1, 'bad', 'Check failed']);
     expect(at({ state: 'failed' })).toEqual([0, 'bad', 'Failed']);
     expect(at({ state: 'landed' })).toEqual([3, 'now', 'Landed']);
+  });
+});
+
+describe('findingsToRead (V93, decision 892)', () => {
+  it('sums the findings of the reviews whose change was analyzed, by their tips', () => {
+    const graphs = [
+      { base: 'a', head: 'tip-1', errors: 1, warnings: 2 },
+      { base: 'a', head: 'tip-9', errors: 4, warnings: 0 },
+    ];
+    expect(findingsToRead(['tip-1', 'tip-2', null], graphs)).toEqual({
+      count: 3,
+      reviews: 1,
+      errors: 1,
+      warnings: 2,
+    });
+    // None analyzed: nothing to say.
+    expect(findingsToRead(['tip-2'], graphs)).toBeNull();
+    expect(findingsOf('tip-9', graphs)).toEqual({ errors: 4, warnings: 0 });
+    expect(findingsOf(null, graphs)).toBeUndefined();
   });
 });

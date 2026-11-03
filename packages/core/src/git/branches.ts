@@ -95,6 +95,10 @@ export interface BranchReviewSummary {
     merged: boolean;
     /** Recorded through Symbiote's tools (MC1). */
     via?: VerdictVia;
+    /** Its place among the branch's verdicts, from 1 (V93: the Merge page's "your review, 2nd"). */
+    number?: number;
+    /** Its summary, at most 300 characters (V93: the Merge page quotes an approval). */
+    summary?: string;
   };
 }
 

@@ -29,7 +29,7 @@
   --page-gap: 8px; /* between two cards; a resizer lies in it */
   --page-head: 40px; /* the head's two lines: the title and the line under it */
   --card-pad: 12px; /* a card's edge to its contents, its head's and its body's */
-  --card-head: 37px; /* a card's head: its tabs, or a title and actions (VS Code's tabs: 35) */
+  --card-head: 40px; /* a card's head: its tabs, or a title and actions (V93: the kits' 40; 37 from V85) */
   --field-label-gap: 4px; /* a label to its field */
   --field-gap: 14px; /* a field to the next label */
   /* Heights (V85, decisions 710–712): VS Code's density, each a step below V72's. V87 (decision
@@ -41,7 +41,9 @@
   --height-tall: 30px; /* a tall control: a page's actions, a sidenav entry (28; 36) */
   --height-tab: 32px; /* tabs and kinds in a head, a tile (30; 40) */
   --height-bar: 36px; /* a bar over a card (34; 44) */
-  --height-top: 40px; /* the sidenav's top, the Monitor's bar (52 before V85) */
+  --height-top: 40px; /* the Monitor's bar (52 before V85) */
+  --height-nav-top: 52px; /* the sidenav's top: the kits' `.nav-top` (V93) */
+  --height-head: 64px; /* a page's head: the kits' `.head` (V93) */
   --height-table-row: 54px; /* a table's row of two lines (V91, the kits' `.tr`) */
   --height-table-line: 40px; /* a table's row of one line (V91, the kits' `.tr.compact`) */
   /* lucide's chevron-right (ISC) as a mask, drawn in the text's colour: a submenu's, a <summary>'s. */
@@ -117,6 +119,10 @@
   --context: #767d8d;
   /* OpenAI's blossom, Codex's mark (fix/codex-icon): OpenAI's white on dark, black on light. */
   --openai: #ffffff;
+  /* A diff's syntax (V93, decision 889; proofs 03, 04): keywords, strings, called names. */
+  --syntax-keyword: #c792ea;
+  --syntax-string: #c3e88d;
+  --syntax-call: #82aaff;
   /* Commit graph lanes after the current branch's (V10). The first is blue since V61: its purple
      was 1.09:1 from the violet accent, a branch read as selected. */
   --lane-1: #6aa8ff;
@@ -291,6 +297,9 @@
   --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
   --removed-gutter: color-mix(in srgb, var(--removed) 22%, transparent);
   --openai: #000000;
+  --syntax-keyword: #7a3db8;
+  --syntax-string: #3c6e0a;
+  --syntax-call: #1f5fbf;
   color-scheme: light;
 }
 
@@ -381,6 +390,9 @@
     --removed-ground: color-mix(in srgb, var(--removed) 11%, transparent);
     --removed-gutter: color-mix(in srgb, var(--removed) 22%, transparent);
     --openai: #000000;
+    --syntax-keyword: #7a3db8;
+    --syntax-string: #3c6e0a;
+    --syntax-call: #1f5fbf;
     color-scheme: light;
   }
 }

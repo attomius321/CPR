@@ -6,13 +6,45 @@
   align-items: center;
   gap: 16px;
   min-width: 0;
-  min-height: 24px;
+  min-height: 26px;
   padding: 0 12px;
   border-top: 1px solid var(--line);
   background: var(--side);
   color: var(--muted);
-  font-size: var(--size-small);
+  font-size: var(--size-caption);
   font-variant-numeric: tabular-nums;
+}
+
+/* Where the checkout is, what waits, what works (V93, decision 879; the kits' `.seg`). */
+.statusbar-seg {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.statusbar-seg .icon {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2;
+}
+
+.statusbar-seg.you {
+  color: var(--you);
+}
+
+.statusbar-sha {
+  font-family: var(--mono);
+  font-size: var(--size-caps);
+}
+
+/* Hive on: its crimson dot (its identity). */
+.statusbar-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hive);
 }
 
 /* Wrapped, not cut: a notice can say what to do (trust a folder, copy the prompt). */
@@ -30,7 +62,7 @@
 }
 
 .statusbar .link {
-  font-size: var(--size-small);
+  font-size: var(--size-caption);
 }
 
 /* Each subscription's windows (V29c), at the status bar's right: a thin bar per window. */
@@ -38,7 +70,7 @@
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 2px 16px;
+  gap: 2px 14px;
   margin: 0 0 0 auto;
   padding: 3px 0;
   list-style: none;
@@ -52,25 +84,28 @@
   cursor: default;
 }
 
+.usage-subscription {
+  gap: 14px;
+}
+
 .usage-subscription strong {
   color: var(--text);
-  font-weight: 500;
+  font-weight: 600;
+}
+
+/* "Claude Pro": the plan close to its agent's name, the windows 14 px apart (the kits'). */
+.usage-plan {
+  margin-left: -10px;
 }
 
 .usage-window {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-}
-
-.usage-plan::after,
-.usage-window:not(:last-of-type)::after {
-  content: '·';
-  margin-left: 6px;
+  gap: 6px;
 }
 
 .usage-bar {
-  width: 36px;
+  width: 44px;
   height: 4px;
   overflow: hidden;
   border-radius: 9999px;
@@ -83,8 +118,9 @@
   background: var(--tone);
 }
 
+/* Under 80 %: the kits' muted meter; amber and red keep saying a limit near (V29c). */
 .usage-window.tone-ok {
-  --tone: var(--ok);
+  --tone: var(--muted);
 }
 
 .usage-window.tone-high {
@@ -106,4 +142,12 @@
 
 .usage-age {
   color: var(--muted);
+}
+
+/* A narrow window (the sidenav a drawer): the notice and the usage only; the segments would
+   squeeze the notice into a tall column. */
+@media (max-width: 899px) {
+  .statusbar-seg {
+    display: none;
+  }
 }

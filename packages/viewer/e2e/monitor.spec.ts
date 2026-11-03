@@ -259,8 +259,9 @@ test("the head: the frame's, the commit under the title, what counts at the righ
   const commit = await page.locator('.monitor-commit').boundingBox();
   const colour = await page.locator('.monitor-colour').boundingBox();
   if (!main || !title || !commit || !colour) throw new Error('no box');
-  expect(Math.round(title.x - main.x)).toBe(52);
-  expect(Math.round(commit.x - main.x)).toBe(52);
+  // The frame's title at x 56 and its actions 14 px in (V93, the kits' head; 52 and 12 before).
+  expect(Math.round(title.x - main.x)).toBe(56);
+  expect(Math.round(commit.x - main.x)).toBe(56);
   expect(commit.y).toBeGreaterThanOrEqual(title.y + title.height);
-  expect(Math.round(main.x + main.width - (colour.x + colour.width))).toBe(12);
+  expect(Math.round(main.x + main.width - (colour.x + colour.width))).toBe(14);
 });

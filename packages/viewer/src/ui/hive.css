@@ -551,14 +551,6 @@
 
 /* --- Hive mode's page (decision 613), the same whether it is on --- */
 
-/* Its entry's tile in Hive's crimson (V88, decision 814: the error's red before), the only one not
-   its group's; the icon in its words' colour. */
-.settings-list .settings-tile.hive-tile {
-  --tint: var(--hive);
-
-  color: var(--hive-text);
-}
-
 /* Settings' Hive mode page (V92, decision 870; proofs 04-settings and normal mode's
    11-settings-hive): a callout, then grouped rows — a name and one line of help at the left, the
    control at the right — in one bordered box a group, a hairline between rows. */
@@ -686,6 +678,9 @@
 
 .hive-setting-control select {
   min-width: 116px;
+  /* As narrow as proofs 04 and 11 draw them (V93): a long choice is cut. */
+  max-width: 168px;
+  text-overflow: ellipsis;
 }
 
 .hive-setting-control .scope .icon {
@@ -1035,5 +1030,6 @@
 
 /* Its mark in the list while it is on. */
 .settings-mark.hive-on {
-  color: var(--hive-text);
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  color: var(--ok);
 }

@@ -8,21 +8,6 @@
 
 /* ---- workspaces (V18b) ------------------------------------------------------------------ */
 
-/* How many need you: a count in the person's violet (V88, decision 813; amber before), round as
-   the groups' counts (V37). */
-.page-count {
-  min-width: 20px;
-  padding: 0 6px;
-  border-radius: 9999px;
-  background: color-mix(in srgb, var(--you) 16%, transparent);
-  color: var(--you);
-  font-size: var(--size-caption);
-  font-weight: 600;
-  line-height: calc(var(--size-caption) + 7px);
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-
 .workspace-list {
   margin: 0;
   padding: 0;
@@ -111,17 +96,20 @@ button.workspace-about {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
+  padding: 0 8px 8px;
   border-right: 1px solid var(--line);
   background: var(--side);
 }
 
-/* The mark, Symbiote and the repository, the fold at the right (V61: the mockup's 52 px row). */
+/* The mark and the repository, the fold at the right (V93, decision 878: the kits' `.nav-top`, a
+   52 px row). */
 .sidenav-top {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: var(--height-top);
-  padding: 8px 10px 4px 12px;
+  gap: 10px;
+  height: var(--height-nav-top);
+  flex: none;
+  padding: 0 8px 0 6px;
 }
 
 .sidenav-brand {
@@ -132,23 +120,39 @@ button.workspace-about {
   gap: 10px;
   overflow: hidden;
   color: var(--text);
-  font-size: var(--size-title);
+  font-size: var(--size-body);
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
 }
 
-/* The fold and Start a workspace: raised squares on the chrome (V61, the mockup). */
-.sidenav-fold,
-.sidenav-heading .icon-button {
-  border: 1px solid var(--line);
-  background: var(--raised);
-  color: var(--text);
+.sidenav-brand .symbiote-mark {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--line-2);
 }
 
-.sidenav-fold {
-  width: var(--height-control);
-  height: var(--height-control);
+/* The fold and Start a workspace: bare icon buttons, muted (the kits' `.icon-button`). */
+.sidenav-fold,
+.sidenav-heading .icon-button {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  background: none;
+  color: var(--muted);
+}
+
+/* Open is the fold's rest: no wash (the icon buttons' open state is a menu's). */
+.sidenav-fold[aria-expanded='true']:not(:hover) {
+  background: none;
+  color: var(--muted);
+}
+
+.sidenav-fold:hover,
+.sidenav-heading .icon-button:hover {
+  background: var(--hover);
+  color: var(--text);
 }
 
 .sidenav-brand .sidenav-label {
@@ -156,11 +160,12 @@ button.workspace-about {
   text-overflow: ellipsis;
 }
 
+/* The pages (the kits' `.nav-list`): 30 px rows, 1 px apart. */
 .sidenav-pages {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 6px 8px 4px;
+  gap: 1px;
+  flex: none;
 }
 
 /* Settings, under the workspaces at the bottom: a page's row, over a hairline the list scrolls
@@ -168,18 +173,20 @@ button.workspace-about {
 .sidenav-foot {
   display: flex;
   flex-direction: column;
-  padding: 6px 8px;
+  flex: none;
+  padding-top: 8px;
   border-top: 1px solid var(--line);
 }
 
 :is(.sidenav-pages, .sidenav-foot) a {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   height: var(--height-tall);
   padding: 0 10px;
   border-radius: 8px;
   color: var(--muted);
+  font-size: var(--size-body);
   font-weight: 500;
   text-decoration: none;
   transition:
@@ -188,10 +195,10 @@ button.workspace-about {
 }
 
 :is(.sidenav-pages, .sidenav-foot) a .icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   color: var(--muted);
-  stroke-width: 1.4;
+  stroke-width: 1.75;
 }
 
 :is(.sidenav-pages, .sidenav-foot) a:hover {
@@ -207,7 +214,6 @@ button.workspace-about {
 /* The current page's icon in the accent (V42). */
 :is(.sidenav-pages, .sidenav-foot) a[aria-current='page'] .icon {
   color: var(--accent);
-  stroke-width: 1.8;
 }
 
 /* Nucleus's mark (V35): after its name; in the rail, on its icon's corner. */
@@ -301,17 +307,28 @@ button.workspace-about {
   min-height: 0;
   display: flex;
   flex-direction: column;
-  margin-top: 16px;
 }
 
+/* The hairline between the pages and the workspaces (the kits' `.nav-sep`). */
+.sidenav-workspaces::before {
+  content: '';
+  flex: none;
+  height: 1px;
+  margin: 10px 6px;
+  background: var(--line);
+}
+
+/* Workspaces and its + (the kits' `.nav-head`): 28 px, 14 px 600. */
 .sidenav-heading {
   display: flex;
   align-items: center;
   gap: 6px;
+  height: var(--height-control);
+  flex: none;
   margin: 0;
-  padding: 0 10px 0 18px;
+  padding: 0 4px 0 10px;
   color: var(--text);
-  font-size: var(--size-body);
+  font-size: var(--size-small);
   font-weight: 600;
 }
 
@@ -340,7 +357,7 @@ button.workspace-about {
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 0 8px 12px;
+  padding: 0 0 8px;
 }
 
 /* Before the first read (V48): three cards' outlines, after 150 ms so a fast read draws none. */
@@ -391,32 +408,29 @@ button.workspace-about {
   font-size: var(--size-small);
 }
 
-/* A group: its icon in its state's colour (V44), its name and how many. The icon stands over the
-   cards' dots and the name over their names; the count keeps 6 px. */
+/* A group's heading (V93, decision 877; the kits' `.nav-group`): its name and a count pill, no
+   icon; 26 px, 6 px under the group before it. Muted, not the kits' faint: faint is for marks
+   (V87, decision 765). */
 .sidenav .workspace-group h3 {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 20px 8px 8px 7px;
+  height: 26px;
+  margin: 6px 0 0;
+  padding: 0 10px;
   color: var(--muted);
-  font-size: var(--size-body);
+  font-size: var(--size-caption);
   font-weight: 500;
 }
 
-.sidenav .workspace-group h3 .icon {
-  width: 16px;
-  height: 16px;
-  color: var(--group-tone, var(--faint));
-}
-
-/* A group that folds (V91, decision 859: normal mode's Done): its heading a button, a chevron in
-   place of its icon, the whole heading its target. */
+/* A group that folds (Done today, Earlier): its heading a button, its chevron first. */
 .sidenav .workspace-group h3 .group-fold {
   display: flex;
   align-items: center;
   gap: 6px;
-  min-height: var(--height-row);
-  padding: 0;
+  height: 26px;
+  margin-left: -4px;
+  padding: 0 4px;
   border: 0;
   border-radius: 8px;
   background: none;
@@ -430,309 +444,190 @@ button.workspace-about {
 }
 
 .sidenav .workspace-group h3 .group-fold .icon.chevron {
+  width: 14px;
+  height: 14px;
   color: var(--faint);
 }
 
-/* The person's move (V48): an agent waiting, and work to look at, in the person's violet (V88,
-   decision 813; the warning's amber before). */
-.sidenav .group-waiting,
-.sidenav .group-review {
-  --group-tone: var(--you);
-}
-
-/* Waiting for you (V48): after the merges, in its own card in the person's violet; its cards say what they ask,
-   each a card inside it (V61, the mockup). */
-.sidenav .group-waiting {
-  margin: 10px 0 4px;
-  padding: 0 0 6px;
-  border: 1px solid color-mix(in srgb, var(--you) 30%, transparent);
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--you) 5%, transparent);
-}
-
-.sidenav .group-waiting h3 {
-  margin: 10px 8px 8px 13px;
-  color: var(--text);
-}
-
-.sidenav .group-waiting .workspace-row {
-  margin: 0 6px;
-  background: color-mix(in srgb, var(--text) 4%, transparent);
-}
-
-.sidenav .group-waiting .workspace-row + .workspace-row {
-  margin-top: 6px;
-}
-
-.sidenav .group-waiting .workspace-row:not(.picked):hover {
-  background: color-mix(in srgb, var(--text) 7%, transparent);
-}
-
-/* What it asks: two lines at most, all of it in the title. */
-.sidenav .workspace-blocked {
-  display: -webkit-box;
-  margin: 4px 0 0 17px;
-  overflow: hidden;
-  color: var(--text);
-  font-size: var(--size-small);
-  line-height: calc(var(--size-small) + 6px);
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-/* Its answer, then its kind (V79: how long it has waited is at its name's row's end). */
-.sidenav .workspace-respond {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 8px 0 2px 17px;
-}
-
-.sidenav .button.respond {
-  min-height: var(--height-row);
-  padding: 0 14px;
-}
-
-.sidenav .group-stopped {
-  --group-tone: var(--muted);
-}
-
-.sidenav .group-working,
-.sidenav .merging {
-  --group-tone: var(--run);
-}
-
-/* Hive at work (decision 698): a group of its own before Working, its icon in Hive's crimson (its
-   identity); its cards' spinners amber, as any work in progress (V88, decisions 813-815: no
-   crimson card, no etched cells, no moving light). */
-.sidenav .group-hive {
-  --group-tone: var(--hive);
-}
-
-/* What Hive runs now (decision 699): its step and time, then the command or the reviewer's call,
-   each on its line, cut at its end; the time's figures do not jump as they tick. */
-.sidenav .hive-live {
-  min-width: 0;
-}
-
-.hive-live-time {
-  font-variant-numeric: tabular-nums;
-}
-
-.sidenav .hive-live-detail {
-  margin: 2px 0 0;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: var(--size-small);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sidenav .hive-live-detail.command {
-  font-family: var(--mono);
-}
-
-/* On the folded rail, under the dot: how long Hive's run has lasted. Only there. */
-.hive-rail-time {
-  display: none;
-}
-
-.sidenav .group-done {
-  --group-tone: var(--ok);
-}
-
+/* How many (the kits' `.count`): a pill, 18 px. */
 .sidenav .workspace-group .branches-count {
+  display: inline-grid;
+  margin-left: 0;
+  place-items: center;
   min-width: 20px;
-  margin: 0 0 0 4px;
+  height: 18px;
   padding: 0 6px;
   border-radius: 9999px;
   background: var(--raised);
   color: var(--muted);
-  font-size: var(--size-caption);
+  font-size: var(--size-caps);
   font-weight: 500;
-  line-height: calc(var(--size-caption) + 7px);
-  text-align: center;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-/* A card (V79): four rows — the dot, the name and its time; what it does or what is next; its
-   kind and its facts; its branch — on 20 px lines, 10 × 12 px in, 6 px apart, each on a wash of
-   the text as Waiting for you's cards are. A name or a state takes two lines, then "…". Until V79
-   three rows in 72 px, 1 px apart, each cut to one line. */
-.sidenav .workspace-row {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--text) 3.5%, transparent);
+.sidenav .workspace-group .workspace-list {
+  display: flex;
+  flex-direction: column;
+}
+
+/* A row of two lines (V93, decision 876; the kits' `.ws`): its state's icon, its title; under it
+   its state's word, then its facts and time. Both modes. */
+.sidenav .workspace-row.ws-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: start;
+  column-gap: 10px;
+  padding: 6px 10px 7px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background-color 150ms;
 }
 
-.sidenav .workspace-row + .workspace-row {
-  margin-top: 6px;
+.sidenav .workspace-row.ws-row:hover {
+  background: var(--hover);
 }
 
-.sidenav .workspace-row:hover {
-  background: color-mix(in srgb, var(--text) 7%, transparent);
-}
-
-/* The one shown: a wash of the text, as the current page (V37: no edge or shadow of its own). */
-.sidenav .workspace-row.picked {
+.sidenav .workspace-row.ws-row.picked {
   background: var(--selected);
 }
 
-/* The dot on the name's first line, 10 px from it: every row's words start 17 px in. */
-.sidenav .workspace-head {
-  align-items: flex-start;
-  gap: 10px;
-  line-height: calc(var(--size-body) + 7px);
+.sidenav .ws-row-icon {
+  display: inline-flex;
+  margin-top: 3px;
+  color: var(--row-tone, var(--muted));
 }
 
-.sidenav .workspace-head > .state-dot {
-  margin-top: 7.5px;
+.sidenav .ws-row-icon .icon {
+  width: 16px;
+  height: 16px;
+  stroke-width: 1.75;
 }
 
-/* Two lines, then "…"; its tip (the rail's) or its page says the rest. */
-.sidenav .workspace-about {
-  display: -webkit-box;
+.sidenav .ws-row[data-tone='run'] {
+  --row-tone: var(--run);
+}
+
+.sidenav .ws-row[data-tone='you'] {
+  --row-tone: var(--you);
+}
+
+.sidenav .ws-row[data-tone='fail'] {
+  --row-tone: var(--error);
+}
+
+.sidenav .ws-row[data-tone='gone'] {
+  --row-tone: var(--warning);
+}
+
+.sidenav .ws-row[data-tone='ok'] {
+  --row-tone: var(--ok);
+}
+
+/* Answered, idle: a faint mark (the kits' `faint` speech bubble). */
+.sidenav .ws-row[data-tone='idle'] {
+  --row-tone: var(--faint);
+}
+
+.sidenav .ws-row[data-tone='info'] {
+  --row-tone: var(--info);
+}
+
+/* At work: its arc turns, a turn a second; still without motion. */
+.sidenav .ws-row-icon.spinning .icon {
+  animation: state-spin 1s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sidenav .ws-row-icon.spinning .icon {
+    animation: none;
+  }
+}
+
+.sidenav .ws-row .workspace-about.ws-row-title,
+.sidenav .ws-row .ws-row-title {
+  display: block;
+  grid-column: 2 / -1;
+  min-width: 0;
   overflow: hidden;
-  font-size: var(--size-body);
-  font-weight: 600;
-  overflow-wrap: anywhere;
-  white-space: normal;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  color: var(--text);
+  font-size: var(--size-small);
+  font-weight: 500;
+  line-height: calc(var(--size-small) + 7px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-/* How long its state has lasted, at the name's row's end (V79; under the kind until then). */
-.sidenav .workspace-head .commit-date {
+/* The second line (the kits' `.m`): the word in 500, the rest after it; one line, cut at its end. */
+.sidenav .ws-row-state {
+  grid-column: 2 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  line-height: calc(var(--size-caption) + 5px);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sidenav .ws-row-state b {
   flex: none;
-  width: auto;
-  margin-left: auto;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.sidenav .ws-row-state > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Done today's row (the kits' `.ws.small`): one line, the check 14 px, the title muted, when. */
+.sidenav .workspace-row.ws-row.small {
+  align-items: center;
+  padding: 4px 10px;
+}
+
+.sidenav .ws-row.small .ws-row-icon {
+  margin-top: 0;
+}
+
+.sidenav .ws-row.small .ws-row-icon .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.sidenav .ws-row.small .ws-row-title {
+  grid-column: 2;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.sidenav .ws-row-when {
+  grid-column: 3;
   color: var(--muted);
   font-size: var(--size-caption);
   font-variant-numeric: tabular-nums;
 }
 
-.sidenav .workspace-line,
-.sidenav .workspace-branch {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  margin: 4px 0 0 17px;
-  font-size: var(--size-small);
-  line-height: calc(var(--size-small) + 6px);
-}
-
-/* What it does or what is next: one line, cut with "…" at its end, not at a word (a command's
-   path is one long word); its tip says it whole. Two lines from V79 until V83 (decision 663): a
-   card grew and shrank as its agent's action changed. */
-.sidenav .workspace-state {
-  flex: 1;
-  min-width: 0;
-  margin: 0;
+/* The row's words whole, for screen readers: its tip says them to the pointer. */
+.sidenav .ws-row-said {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
-  font-size: var(--size-small);
-  text-overflow: ellipsis;
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 
-.sidenav .workspace-state strong {
-  color: var(--muted);
-  font-weight: 400;
-}
-
-/* The agent's mark leads its words, inline so a second line starts under it. */
-.sidenav .workspace-state .agent-mark {
-  margin-right: 6px;
-  vertical-align: -2px;
-}
-
-/* Its kind, then its facts (V79): the kinds a column down the list, under the state's words. */
-.sidenav .workspace-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 10px;
-  min-width: 0;
-  min-height: 22px;
-  margin: 6px 0 0 17px;
+.sidenav .hive-none {
+  padding: 4px 10px 4px 36px;
   color: var(--muted);
   font-size: var(--size-small);
-  line-height: calc(var(--size-small) + 6px);
-  font-variant-numeric: tabular-nums;
-}
-
-.sidenav :is(.workspace-meta, .workspace-respond) .kind-tag {
-  flex: none;
-  margin: 0;
-}
-
-/* A fact: its icon and a number or a word, on one line; a row too short for them wraps. */
-.sidenav .card-fact {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  white-space: nowrap;
-}
-
-.sidenav .card-fact .icon {
-  width: 15px;
-  height: 15px;
-}
-
-.sidenav .fact-clean {
-  color: var(--ok);
-}
-
-.sidenav .fact-conflicts {
-  color: var(--error);
-}
-
-.sidenav .fact-gone {
-  color: var(--warning);
-}
-
-/* What its agent runs on (V83): a row of its own on every card, as the facts' words, the icon
-   15 px as theirs; one line, its tip says it whole. In the facts' row it would wrap on some
-   cards and not others, and when the merge check comes. */
-.sidenav .workspace-runs {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 0;
-  margin: 4px 0 0 17px;
-  color: var(--muted);
-  font-size: var(--size-small);
-  line-height: calc(var(--size-small) + 6px);
-}
-
-.sidenav .workspace-runs .icon {
-  flex: none;
-  width: 15px;
-  height: 15px;
-}
-
-/* The branch as git names it: plain, not History's badge; in the text's font (V31). */
-.sidenav .workspace-branch .ref-branch {
-  padding: 0;
-  border: 0;
-  border-radius: 0;
-  background: none;
-  color: var(--muted);
-  font: var(--size-small) / calc(var(--size-small) + 6px) var(--sans);
-}
-
-/* The link to Git is a target inside the card's (V87b): its box reaches WCAG 2.2's 24 px over the
-   line, which keeps its height. */
-.sidenav .workspace-branch a.ref-branch {
-  padding-block: calc((var(--height-row) - var(--size-small) - 6px) / 2);
-  margin-block: calc((var(--size-small) + 6px - var(--height-row)) / 2);
-}
-
-.sidenav .workspace-branch a.ref-branch:hover {
-  color: var(--text);
 }
 
 .sidenav a.workspace-about {
@@ -846,7 +741,7 @@ button.workspace-about {
   }
 }
 
-/* A card's button holds the focus: the whole card shows it (V48). */
+/* A row's button holds the focus: the whole row shows it (V48). */
 .sidenav .workspace-row:has(.workspace-about:focus-visible) {
   outline: 2px solid var(--focus);
   outline-offset: -2px;
@@ -860,80 +755,50 @@ button.workspace-about {
   cursor: default;
 }
 
-/* Its name as a card's is drawn, in a block so the card keeps a card's height; not a button. */
-.sidenav .starting-name {
-  display: -webkit-box;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  font-size: var(--size-body);
-  font-weight: 600;
-  line-height: calc(var(--size-body) + 7px);
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.merge-card .state-dot {
-  --dot: var(--merge-tone);
-}
-
-/* A done workspace's or a landed merge's bin (V55): at the end of the name's row, over its time,
-   which gives way while it shows (V79: the kind is in its own row); nothing else moves. */
-.sidenav .workspace-row.removable {
-  position: relative;
-}
-
+/* A done workspace's or a landed merge's bin (V55): over the row's end, its time giving way while
+   it shows. */
 .sidenav .card-remove {
   position: absolute;
-  top: 9px;
-  right: 6px;
+  top: 50%;
+  right: 4px;
   width: 24px;
   height: 24px;
+  transform: translateY(-50%);
 }
 
-/* A merge card has no chip or time there: its lines keep the bin's room. */
-.sidenav .merge-card.removable {
+.sidenav .ws-row.merge-card.removable {
   padding-right: 32px;
 }
 
 /* Without hover (a touch screen) the bin always shows: the time gives way for good. */
-.sidenav .removable .workspace-head .commit-date {
+.sidenav .removable .ws-row-when {
   visibility: hidden;
 }
 
-/* With hover, on the card's hover or its keyboard focus only: transparent, not hidden, so it keeps
+/* With hover, on the row's hover or its keyboard focus only: transparent, not hidden, so it keeps
    its name for screen readers and its place in the Tab order. */
 @media (hover: hover) {
   .sidenav .removable:not(:hover, :has(:focus-visible)) .card-remove {
     opacity: 0;
   }
 
-  .sidenav .removable:not(:hover, :has(:focus-visible)) .workspace-head .commit-date {
+  .sidenav .removable:not(:hover, :has(:focus-visible)) .ws-row-when {
     visibility: visible;
   }
 }
 
-/* A card being cleaned up or its merge removed (V57), until the list drops it: disabled. Its words
-   at half, as a disabled button's (the name 4.7:1 dark, 3.5:1 light); not its line, which says
-   what happens, nor its dot, a grey comet: Symbiote at work on a card that goes. No hover. */
+/* A row being cleaned up or its merge removed (V57), until the list drops it: disabled, its words
+   at half; no hover. */
 .sidenav .workspace-row.removing {
   cursor: default;
 }
 
-/* No hover: its wash at rest stays under the pointer (V79). */
 .sidenav .workspace-row.removing:not(.picked):hover {
-  background: color-mix(in srgb, var(--text) 3.5%, transparent);
+  background: transparent;
 }
 
-.sidenav .removing .workspace-head > :not(.state-dot),
-.sidenav .removing .workspace-meta,
-.sidenav .removing .workspace-branch {
+.sidenav .removing .ws-row-title {
   opacity: 0.5;
-}
-
-.sidenav .state-dot.tone-cleaning {
-  --dot: var(--faint);
 }
 
 /* Hive's pill by the project's name (V92, decision 869; the kits' `.mode-pill`): Hive's crimson
@@ -961,141 +826,22 @@ button.workspace-about {
   fill: var(--hive);
 }
 
-/* Hive's groups (V92, decision 868; the kit's `.nav-group`): a name and its count, no icon. */
-.sidenav .hive-group h3 {
-  margin: 14px 8px 4px 10px;
-  color: var(--muted);
-  font-size: var(--size-small);
-  font-weight: 500;
-}
-
-.sidenav .hive-group .workspace-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-/* A row of two lines (decision 869; the kit's `.ws`): the state's icon, the title; under it the
-   state's word in its tone, then the round and time. Landed: one line, when at its end. */
-.sidenav .workspace-row.hive-row {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr) auto;
-  align-items: center;
-  column-gap: 10px;
-  row-gap: 1px;
-  padding: 6px 10px 7px;
-  border-radius: 8px;
-  background: transparent;
-}
-
-.sidenav .workspace-row.hive-row + .workspace-row.hive-row {
-  margin-top: 0;
-}
-
-.sidenav .workspace-row.hive-row:hover {
-  background: var(--hover);
-}
-
-.sidenav .workspace-row.hive-row.picked {
-  background: var(--selected);
-}
-
-.sidenav .hive-row-icon {
-  display: inline-flex;
-  color: var(--hive-tone, var(--muted));
-}
-
-.sidenav .hive-row-icon .icon {
-  width: 16px;
-  height: 16px;
-}
-
-.sidenav .hive-row[data-tone='run'] {
-  --hive-tone: var(--run);
-}
-
-.sidenav .hive-row[data-tone='ok'] {
-  --hive-tone: var(--ok);
-}
-
-.sidenav .hive-row[data-tone='fail'] {
-  --hive-tone: var(--error);
-}
-
-.sidenav .hive-row[data-tone='info'] {
-  --hive-tone: var(--info);
-}
-
-.sidenav .hive-row[data-tone='you'] {
-  --hive-tone: var(--you);
-}
-
-.sidenav .hive-row .workspace-about.hive-row-title {
-  display: block;
-  grid-column: 2 / -1;
-  min-width: 0;
-  overflow: hidden;
-  font-size: var(--size-small);
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  -webkit-line-clamp: unset;
-}
-
-.sidenav .hive-row.landed .workspace-about.hive-row-title {
-  grid-column: 2;
-  color: var(--muted);
-  font-weight: 400;
-}
-
-.sidenav .hive-row-state {
-  grid-column: 2 / -1;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: var(--size-caption);
-  font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sidenav .hive-row-state b {
-  color: var(--hive-tone, var(--muted));
-  font-weight: 500;
-}
-
-.sidenav .hive-row-time {
-  color: var(--muted);
-  font-size: var(--size-caption);
-  font-variant-numeric: tabular-nums;
-}
-
-.sidenav .hive-none {
-  padding: 4px 10px 4px 36px;
-  color: var(--muted);
-  font-size: var(--size-small);
-}
-
-/* Folded (wide windows only): a rail of icons and each workspace's mark. */
+/* Folded (wide windows only): a rail of icons, each workspace its state's icon. */
 @media (min-width: 900px) {
+  .sidenav.rail {
+    padding: 0 6px 8px;
+  }
+
   .sidenav.rail .sidenav-label,
   .sidenav.rail kbd,
-  .sidenav.rail .page-count,
   .sidenav.rail .sidenav-waits,
   .sidenav.rail .branches-count,
-  .sidenav.rail .workspace-line,
-  .sidenav.rail .workspace-meta,
-  .sidenav.rail .workspace-head .commit-date,
-  .sidenav.rail .workspace-blocked,
-  .sidenav.rail .workspace-respond,
-  .sidenav.rail .workspace-branch,
-  .sidenav.rail .workspace-runs,
+  .sidenav.rail .ws-row-state,
+  .sidenav.rail .ws-row-when,
   .sidenav.rail .workspaces-empty,
   .sidenav.rail .workspaces-note,
   .sidenav.rail .sidenav-hint,
-  .sidenav.rail .workspace-state,
-  .sidenav.rail .hive-row-time,
   .sidenav.rail .hive-none,
-  .sidenav.rail .workspace-head .kind-tag,
   .sidenav.rail .card-remove {
     display: none;
   }
@@ -1103,15 +849,25 @@ button.workspace-about {
   .sidenav.rail .sidenav-top,
   .sidenav.rail .sidenav-heading {
     flex-direction: column;
+    height: auto;
     padding: 6px 0;
+  }
+
+  /* The proofs' rail (V93): its mark 12 px down, its icons 32 px and 4 apart. */
+  .sidenav.rail .sidenav-top {
+    padding: 12px 0 6px;
+  }
+
+  .sidenav.rail .sidenav-pages {
+    gap: 4px;
+  }
+
+  .sidenav.rail :is(.sidenav-pages, .sidenav-foot) a {
+    height: var(--height-tab);
   }
 
   .sidenav.rail .sidenav-brand {
     flex: none;
-  }
-
-  .sidenav.rail :is(.sidenav-pages, .sidenav-foot) {
-    padding: 4px 6px;
   }
 
   .sidenav.rail :is(.sidenav-pages, .sidenav-foot) a {
@@ -1131,82 +887,22 @@ button.workspace-about {
     display: block;
   }
 
-  .sidenav.rail .sidenav-list {
-    padding: 0 6px 12px;
-  }
-
-  /* A group's icon stands for it where its name was (V44). */
+  /* A group's heading is a hairline between its icons. */
   .sidenav.rail .workspace-group h3 {
-    justify-content: center;
-    margin: 10px 4px 4px;
+    height: 1px;
+    margin: 8px 6px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--line);
   }
 
-  /* Folded, the band keeps its colour and its bell how many wait (V48). */
-  .sidenav.rail .group-waiting {
-    margin: 6px 0 2px;
+  .sidenav.rail .workspace-group h3 > * {
+    display: none;
   }
 
-  .sidenav.rail .group-waiting h3 {
-    position: relative;
-    margin: 8px 4px 2px;
-  }
-
-  .sidenav.rail .group-waiting .branches-count {
-    display: block;
-    position: absolute;
-    top: -8px;
-    left: calc(50% + 4px);
-    min-width: 16px;
-    margin: 0;
-    padding: 0 4px;
-    background: var(--you);
-    color: var(--bg);
-    line-height: calc(var(--size-caption) + 3px);
-  }
-
-  .sidenav.rail .group-waiting .workspace-row {
-    margin: 0 2px;
-  }
-
-  /* Hive at work, folded: each card its dot and its time under it (decision 699); its tip says
-     the rest. */
-  .sidenav.rail .group-hive .workspace-head {
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .sidenav.rail .hive-rail-time {
-    display: block;
-    color: var(--text);
-    font-size: var(--size-caption);
-    line-height: calc(var(--size-caption) + 3px);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .sidenav.rail .workspace-row {
-    padding: 8px 0;
-  }
-
-  .sidenav.rail .workspace-row + .workspace-row {
-    margin-top: 4px;
-  }
-
-  /* The dots alone, as before V79: no wash at rest; the hover's and the open one's stay. */
-  .sidenav.rail .workspace-row:not(:hover, .picked) {
-    background: transparent;
-  }
-
-  .sidenav.rail .workspace-head {
-    justify-content: center;
-  }
-
-  .sidenav.rail .workspace-head > .state-dot {
-    margin-top: 0;
-  }
-
-  /* Its name stays for screen readers and the keyboard; the mark is what shows. */
-  .sidenav.rail .workspace-about {
+  /* Its title stays for screen readers and the keyboard; the icon is what shows. */
+  .sidenav.rail .workspace-about,
+  .sidenav.rail .ws-row-title {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -1214,10 +910,13 @@ button.workspace-about {
     clip-path: inset(50%);
   }
 
-  /* Hive's rows on the rail: the state's icon alone, its tip the rest (V92). */
-  .sidenav.rail .workspace-row.hive-row {
+  .sidenav.rail .workspace-row.ws-row {
     grid-template-columns: 1fr;
     justify-items: center;
     padding: 8px 0;
+  }
+
+  .sidenav.rail .ws-row-icon {
+    margin-top: 0;
   }
 }

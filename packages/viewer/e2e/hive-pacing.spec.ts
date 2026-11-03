@@ -85,11 +85,10 @@ test("over the threshold, a workspace's writer waits for the window's reset, sai
 
   // The workspace's page and its Review tab say it.
   await card(page).click();
-  // The bar under its views says it (V89); the head's steps, paused.
-  await expect(page.locator('.head-steps')).toContainText('paused');
-  await expect(page.getByRole('region', { name: 'Agent status' })).toContainText(
-    'Paused: usage 95 % of the 5-hour window, goes on at',
-  );
+  // The pipeline card and the head's pill, paused (V93); the Run tab, first, says why (it has no
+  // bar under it since V93).
+  await expect(page.getByRole('region', { name: 'Its steps' })).toContainText('paused');
+  await expect(page.locator('.workspace-pill')).toContainText('Paused');
   await page
     .getByRole('tablist', { name: 'Talk to the agent' })
     .getByRole('tab', { name: 'Run' })

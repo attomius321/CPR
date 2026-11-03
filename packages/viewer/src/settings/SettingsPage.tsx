@@ -30,9 +30,9 @@ import {
   promptGroups,
   promptOfUrl,
   sizeOf,
-  PREBUILT_GROUP,
   agentName,
   type PrebuiltAgent,
+  HIVE_GROUP,
 } from './settings.js';
 import { nucleusName, useAlphaCeph } from '../shell/names.js';
 import {
@@ -48,10 +48,10 @@ import {
   AgentsFileIcon,
   AppearanceIcon,
   ApprovedIcon,
-  BranchIcon,
   BugIcon,
   ChecksIcon,
   ChoreIcon,
+  SparkIcon,
   CommentIcon,
   CommitIcon,
   DocumentsIcon,
@@ -281,7 +281,7 @@ type EntryKey = PromptKey | typeof LIBRARY | typeof APPEARANCE | typeof HIVE;
  * every entry has one, Scribe's `library` prompt is not an entry.
  */
 const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
-  'start.feature': BranchIcon,
+  'start.feature': SparkIcon,
   'start.fix': FixIcon,
   'start.refactor': RefactorIcon,
   'start.chore': ChoreIcon,
@@ -316,23 +316,11 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   [APPEARANCE]: AppearanceIcon,
 } satisfies Record<Exclude<EntryKey, 'library'>, () => ReactNode>;
 
-/** A group's tint in the list (decision 601): `SettingsPage.css` gives each its colour. */
-const TINTS: Record<string, string> = {
-  Workspaces: 'workspaces',
-  Reviews: 'reviews',
-  [PREBUILT_GROUP]: 'agents',
-  [MACHINE_GROUP]: 'machine',
-  [BROWSER_GROUP]: 'browser',
-};
-
-/** An entry's icon on its group's tile, before its name (Hive mode's red); decorative. */
+/** An entry's icon before its name (V93: plain, no tile); decorative. */
 function Tile({ entry }: { entry: EntryKey }) {
   const Drawn = ICONS[entry];
   return Drawn ? (
-    <span
-      className={entry === HIVE ? 'settings-tile hive-tile' : 'settings-tile'}
-      aria-hidden="true"
-    >
+    <span className="settings-tile" aria-hidden="true">
       <Drawn />
     </span>
   ) : null;
@@ -490,6 +478,23 @@ export function SettingsPage() {
     />
   );
   const current = groups.flatMap((g) => g.entries).find((e) => e.key === open);
+  const hiveEntry = (
+    <li>
+      <button
+        type="button"
+        aria-current={open === HIVE ? 'true' : undefined}
+        // Its name, and "on" while it is: Off, the default, is the pill alone.
+        aria-label={hive ? 'Hive mode, on' : 'Hive mode'}
+        onClick={() => show(HIVE)}
+      >
+        <Tile entry={HIVE} />
+        <span className="settings-name">Hive mode</span>
+        <span className={`settings-mark ${hive ? 'hive-on' : 'hive-off'}`} aria-hidden="true">
+          {hive ? 'On' : 'Off'}
+        </span>
+      </button>
+    </li>
+  );
   return (
     <div className="settings">
       {/* The person's mockup (V62): the page's icon, its title and a line under it. */}
@@ -497,13 +502,12 @@ export function SettingsPage() {
         className="settings-bar"
         icon={<SettingsIcon />}
         title="Settings"
-        beside={
-          <Help label="About Settings">
-            What Symbiote tells each agent · Symbiote&apos;s text until you change it · saved in{' '}
-            {settings?.file ?? 'symbiote/config.json'}, for everyone once committed
-          </Help>
+        // The proofs' line, by mode (V93, proofs 04 and 11): where each prompt is kept, its page.
+        line={
+          hive
+            ? 'How Hive runs this repository, and what Symbiote tells its agents'
+            : 'What Symbiote tells its agents, and how this repository works'
         }
-        line="Configure Symbiote to match your workflow and preferences."
       />
       {error && (
         <p className="commits-error error" role="alert">
@@ -521,9 +525,10 @@ export function SettingsPage() {
         <div className={`settings-body${picked ? ' picked' : ''}`}>
           <nav ref={list} className="settings-list" aria-label="Settings">
             {groups.map(({ group, entries }) => (
-              <section key={group} aria-label={group} data-tint={TINTS[group]}>
+              <section key={group} aria-label={group}>
                 <h2>{group}</h2>
                 <ul>
+                  {hive && group === HIVE_GROUP && hiveEntry}
                   {entries.map((entry) => {
                     const mark = markOf(entry.prompts, edited);
                     return (
@@ -543,24 +548,13 @@ export function SettingsPage() {
                 </ul>
               </section>
             ))}
-            {/* Untinted: its one entry's tile is Hive mode's red. */}
-            <section aria-label={REPOSITORY_GROUP}>
-              <h2>{REPOSITORY_GROUP}</h2>
-              <ul>
-                <li>
-                  <button
-                    type="button"
-                    aria-current={open === HIVE ? 'true' : undefined}
-                    onClick={() => show(HIVE)}
-                  >
-                    <Tile entry={HIVE} />
-                    <span className="settings-name">Hive mode</span>
-                    {hive && <span className="settings-mark hive-on">on</span>}
-                  </button>
-                </li>
-              </ul>
-            </section>
-            <section aria-label={MACHINE_GROUP} data-tint={TINTS[MACHINE_GROUP]}>
+            {!(hive && groups.some((g) => g.group === HIVE_GROUP)) && (
+              <section aria-label={REPOSITORY_GROUP}>
+                <h2>{REPOSITORY_GROUP}</h2>
+                <ul>{hiveEntry}</ul>
+              </section>
+            )}
+            <section aria-label={MACHINE_GROUP}>
               <h2>{MACHINE_GROUP}</h2>
               <ul>
                 <li>
@@ -575,7 +569,7 @@ export function SettingsPage() {
                 </li>
               </ul>
             </section>
-            <section aria-label={BROWSER_GROUP} data-tint={TINTS[BROWSER_GROUP]}>
+            <section aria-label={BROWSER_GROUP}>
               <h2>{BROWSER_GROUP}</h2>
               <ul>
                 <li>

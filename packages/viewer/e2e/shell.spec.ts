@@ -1,7 +1,6 @@
 import { basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
-import { spinner } from './spinner.js';
 import { graphPage, serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // The shell (V29a): no Workspaces page; a sidenav with the pages and, under them, the workspaces;
@@ -63,10 +62,10 @@ test('symbiote view opens the Overview in the shell: the pages, then the workspa
   // The pages one works in; Settings is at the sidenav's bottom, after the workspaces.
   const links = pages(page).getByRole('link');
   await expect(links).toHaveCount(6);
-  // The Overview first (V91).
+  // The Overview first (V91), then Nucleus and Git, as the proofs (V93).
   await expect(links.nth(0)).toHaveAccessibleName('Overview');
-  await expect(links.nth(1)).toHaveAccessibleName('Git');
-  await expect(links.nth(2)).toHaveAccessibleName('Nucleus');
+  await expect(links.nth(1)).toHaveAccessibleName('Nucleus');
+  await expect(links.nth(2)).toHaveAccessibleName('Git');
   await expect(links.nth(3)).toHaveAccessibleName('Skills');
   await expect(links.nth(4)).toHaveAccessibleName('Monitor');
   // History (V77): the cleaned-up workspaces, under Monitor.
@@ -271,11 +270,11 @@ test("the sidenav's top names the project alone, beside the S", async ({ page })
   await expect(brand.locator('img')).toBeVisible();
 });
 
-test('each group of workspaces has its icon, in its colour; the cards keep their dots (V44)', async ({
+test("each group is a name and a count; each row its state's icon, in its colour (V93)", async ({
   page,
 }) => {
   const symbiote = await serve();
-  // Done's cards shown (V91 folds Done by default, decision 859): this is about the cards' dots.
+  // Done today shown (V91 folds Done by default, decision 859): this is about the rows' icons.
   await page.addInitScript(() => localStorage.setItem('symbiote.viewer.done', 'open'));
   // A merge in the queue, for the Merging group.
   await page.route('**/api/merges', (route) =>
@@ -324,57 +323,42 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
   symbiote.session(stopped!, { state: 'stopped' });
 
   const tones = [
-    // V88 (decision 813): the agent's turn amber, the person's violet, done green.
+    // V88 (decision 813): the agent's turn amber, the person's violet, done green; not running a
+    // faint mark (V93, decision 876).
     ['Merging', '--run'],
     ['Waiting for you', '--you'],
     ['To review', '--you'],
-    ['Not running', '--muted'],
+    ['Not running', '--faint'],
     ['Working', '--run'],
-    ['Done', '--ok'],
+    ['Done today', '--ok'],
   ] as const;
-  const drawings = new Set<string>();
   for (const [name, tone] of tones) {
-    const icon = group(page, name).locator('h3 > svg.icon');
+    // No group icon (decision 877): its name and its count.
+    await expect(group(page, name).locator('h3 svg.icon:not(.chevron)')).toHaveCount(0, POLL);
+    await expect(group(page, name).locator('h3 .branches-count')).toBeVisible();
+    // Each row its state's icon, in its tone.
+    const icon = group(page, name).locator('.ws-row-icon').first();
     await expect(icon).toBeVisible(POLL);
     await expect(icon).toHaveCSS('color', await tokenColour(page, tone));
-    drawings.add(await icon.innerHTML());
-    // Only the group has the icon: its cards keep their state's dot. A done card's bin (V55) is
-    // an action, and the icons of its facts' row (V79) and of what its agent runs on (V83) are
-    // facts, not its state.
-    await expect(
-      group(page, name).locator(
-        '.workspace-row .icon:not(.card-remove .icon, .card-fact .icon, .workspace-runs .icon)',
-      ),
-    ).toHaveCount(0);
-    await expect(group(page, name).locator('.workspace-row .state-dot')).toBeVisible();
   }
-  // The merges first, above Waiting for you, whatever waits (fix/merging-status); one at work spins
-  // as a working agent's dot does.
+  // The merges first, above Waiting for you, whatever waits (fix/merging-status).
   await expect(sidenav(page).locator('.workspace-group h3 .sidenav-label')).toHaveText(
     tones.map(([name]) => name),
   );
-  const merging = group(page, 'Merging').locator('.state-dot');
-  await expect
-    .poll(() => spinner(merging))
-    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
-  // Six drawings, each its own.
-  drawings.add(await pages(page).getByRole('link', { name: 'Git' }).locator('svg').innerHTML());
-  expect(drawings.size).toBe(7);
+  // At work, its arc turns; a merge at work is its merge icon in amber (the proofs).
+  await expect(group(page, 'Working').locator('.ws-row-icon.spinning .icon')).toHaveCSS(
+    'animation-name',
+    'state-spin',
+  );
 
-  // Folded to the rail: each icon stands for its group, named in its tooltip; the merge shows
-  // only its dot, as a workspace does.
+  // Folded to the rail: each row its icon, named in its tooltip; a group a hairline.
   await sidenav(page).getByRole('button', { name: 'Fold the sidenav' }).click();
   await expect(sidenav(page)).toHaveClass(/rail/);
   for (const [name] of tones) {
-    const heading = group(page, name).locator('h3');
-    await expect(heading.locator('> svg.icon')).toBeVisible();
-    await expect(heading.locator('.sidenav-label')).toBeHidden();
-    await expect(heading).toHaveAttribute('data-tip', name);
+    await expect(group(page, name).locator('h3 .sidenav-label')).toBeHidden();
+    await expect(group(page, name).locator('.ws-row-icon').first()).toBeVisible();
+    await expect(group(page, name).locator('.ws-row-state')).toHaveCount(0);
   }
-  await expect(group(page, 'Merging').locator('.workspace-state')).toBeHidden();
-  await expect
-    .poll(() => spinner(merging))
-    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
 });
 
 test('the terminal fills the main area, down to the status bar', async ({ page }) => {

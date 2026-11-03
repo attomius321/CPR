@@ -46,6 +46,20 @@ export interface MergeCheckRun {
   failed?: string;
   /** The last 60 lines of its output. */
   output?: string;
+  /** When it started (V93, decision 881): the Merge page's clock while it runs. */
+  started?: string;
+  /**
+   * Each command run so far (V93, decision 881), in order: its time and whether it passed. Merges
+   * checked before V93 have none.
+   */
+  steps?: MergeCheckStep[];
+}
+
+/** A check command as the merger ran it (V93): the Merge page's step and its time. */
+export interface MergeCheckStep {
+  command: string;
+  ms: number;
+  ok: boolean;
 }
 
 /** A conflict region as the merger agent was given it (V26c). */
@@ -114,6 +128,8 @@ export interface MergeEntry {
   base?: string;
   /** The merge commit; a fast-forward's, the approved commit (V67). */
   merge?: string;
+  /** How long the merge step took (V93, decision 881), the merge worktree's reset included. */
+  mergeMs?: number;
   /**
    * A fast-forward `into` can no longer take (V67): its commits the approved commit lacks. It
    * waits for the person (`needs-you`): a merge commit instead, or Remove.
@@ -148,6 +164,8 @@ export interface MergeList {
   merges: MergeEntry[];
   /** Another Symbiote process is merging in this repository: the queue is shown, it merges. */
   elsewhere?: true;
+  /** `merge.push` is set: a landing is pushed (V93, the Merge page's Land). */
+  push?: true;
 }
 
 /** `GET /api/merges/targets?branch=`: what Merge into ▾ offers, and why Merge is not offered. */

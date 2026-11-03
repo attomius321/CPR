@@ -27,12 +27,13 @@ const POLL = { timeout: 15_000 };
 // (decision 761): the head's lines and controls a step taller for 15 px text.
 const PAD = 12;
 const GAP = 8;
-/** The head: 12 px, its two lines (`--page-head`, 40 px), 12 px. */
-const CARDS_FROM = 64;
-/** The page's icon in a 28 px square 12 px in, 12 px before the title. */
-const TITLE_AT = 52;
+/** The head: the kits' 64 px (`--height-head`, V93; 12 + 40 + 12 before), then `--page-gap`. */
+const CARDS_FROM = 72;
+/** The page's icon on a 30 px tile 14 px in, 12 px before the title (V93; 28 at 12 before). */
+const TITLE_AT = 56;
 /** A card's head (`--card-head`) and its first word: the card's 1 px edge, then `--card-pad`. */
-const HEAD = 37;
+// The kits' card head (V93; 37 from V85).
+const HEAD = 40;
 const INSET = 13;
 const SIZES = [
   [1440, 900],
@@ -259,10 +260,12 @@ test("a workspace, its review's two views and its merge: the same frame", async 
     POLL,
   );
   const at = `?branch=${encodeURIComponent(branch)}`;
-  await expectPage(page, 'A workspace', at, ['.workspace-main', '.changes']);
+  // The pipeline card first outside the terminal view (V93, decision 884).
+  await expectPage(page, 'A workspace', at, ['.card.pipeline, .workspace-main', '.changes']);
   const tabs = await head(page, '.workspace-main', '.workspace-views', 'text');
   expect.soft(tabs?.height, "A workspace: its tabs' height").toBe(HEAD);
-  expect.soft(Math.round(tabs?.inset ?? 0), 'A workspace: its first tab').toBe(INSET);
+  // Its icon first since V93 (the proofs' tabs): 14 px, then 7 px to its word.
+  expect.soft(Math.round(tabs?.inset ?? 0), 'A workspace: its first tab').toBe(INSET + 14 + 7);
 
   // Its review: Files and Graph start and end at the same places (the Graph's bar wrapped at
   // 1440 and its legend sat under its card).
@@ -309,9 +312,11 @@ test("a workspace, its review's two views and its merge: the same frame", async 
   await page.goto(`${symbiote.url}${at}`);
   await panel.getByRole('button', { name: 'Merge into', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Merging' })).toBeVisible(POLL);
+  // The pipeline, then the Steps card and the log's beside it (V93, proof 05).
   await expectPage(page, 'A merge', `?merge=${encodeURIComponent(branch)}`, [
-    '.merge-steps',
-    '.merge-terminal',
+    '.card.pipeline',
+    '.merge-steps-card',
+    '.merge-output-card',
   ]);
 });
 
@@ -350,10 +355,10 @@ function rhythm(page: Page, fields: string) {
       (f) => f.getBoundingClientRect().height > 0,
     );
     return all.map((field, i) => {
-      const label = field.querySelector('.field-label')?.getBoundingClientRect();
-      const control = field
-        .querySelector('.field-label')
-        ?.nextElementSibling?.getBoundingClientRect();
+      // A label and its "?" in `.field-label`, or a label alone (Start since V93).
+      const name = field.querySelector('.field-label') ?? field.querySelector(':scope > label');
+      const label = name?.getBoundingClientRect();
+      const control = name?.nextElementSibling?.getBoundingClientRect();
       const next = all[i + 1]?.getBoundingClientRect();
       return {
         over: label && control ? control.y - (label.y + label.height) : null,
@@ -368,15 +373,18 @@ function rhythm(page: Page, fields: string) {
 // V72e (decision 508): inside the cards, one inset and one head — before it, a card's head was 40,
 // 41, 48 or 64 px and its words 12 to 24 px in — and one form rhythm (a label 5, 9 or 13 px over
 // its field, 13 or 21 px to the next). V85: 35 px heads, 12 px in, a label 4 px over, 14 to the next.
-// V87: 37 px heads.
-test('inside the cards: heads 37 px, their words or controls 12 px in; a label 4 px over its field, 14 to the next', async ({
+// V87: 37 px heads. V93: the kits' 40 px heads; Start's brief as proof 06 (its line tabs 8 px in, a
+// label 6 px over its field, 16 to the next).
+test('inside the cards: heads 40 px, their words or controls 12 px in; a label 4 px over its field, 14 to the next', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces({ terminal: false });
-  const heads: [string, string, string, string, 'text' | 'box'][] = [
+  const heads: [string, string, string, string, 'text' | 'box', number?, number?][] = [
     ['git', 'Git', '.git-details', '.git-details-head', 'text'],
-    ['start', 'Start a workspace', '.start-brief', '.kind-row', 'box'],
-    ['settings', 'Settings', '.settings-editor', '.settings-head', 'text'],
+    // The kits' tab strip: 8 px in, its tabs' own 10 px padding after.
+    ['start', 'Start a workspace', '.start-brief', '.kind-row', 'box', 9],
+    // Proofs 04 and 11 (V93): Settings' page head 12 px over and under its title, 16 px in.
+    ['settings', 'Settings', '.settings-editor', '.settings-head', 'text', INSET + 4, 51],
     ['monitor', 'the Monitor', '.monitor-map-card', '.monitor-place', 'box'],
     ['monitor', 'the Monitor', '.monitor-side', '.tabs', 'text'],
   ];
@@ -385,27 +393,27 @@ test('inside the cards: heads 37 px, their words or controls 12 px in; a label 4
       .soft(Math.abs((value ?? -99) - expected), `${what} is ${value ?? 'missing'}`)
       .toBeLessThanOrEqual(1);
   await page.setViewportSize({ width: 1440, height: 900 });
-  for (const [path, name, card, part, first] of heads) {
+  for (const [path, name, card, part, first, inset = INSET, height = HEAD] of heads) {
     await page.goto(`${symbiote.url}${path}`);
     await expect(page.locator(`${card} ${part}`).first()).toBeVisible(POLL);
     const got = await head(page, card, part, first);
-    near(`${name}: ${part}'s height`, got?.height, HEAD);
+    near(`${name}: ${part}'s height`, got?.height, height);
     // The card's 1 px edge, then `--card-pad`.
-    near(`${name}: ${part}'s first ${first === 'text' ? 'word' : 'control'}`, got?.inset, INSET);
+    near(`${name}: ${part}'s first ${first === 'text' ? 'word' : 'control'}`, got?.inset, inset);
   }
 
   // Forms: the brief, a new skill, a dialog (Nucleus's question went in V78: it is a terminal).
-  const forms: [string, string, string][] = [
-    ['start', 'Start a workspace', '.start-brief > .workspace-field'],
-    ['skills', 'New skill', '.skills-new > .skills-field'],
+  const forms: [string, string, string, number, number][] = [
+    ['start', 'Start a workspace', '.start-form > .workspace-field', 6, 16],
+    ['skills', 'New skill', '.skills-new > .skills-field', 4, 14],
   ];
-  for (const [path, name, fields] of forms) {
+  for (const [path, name, fields, over4, next14] of forms) {
     await page.goto(`${symbiote.url}${path}`);
     await expect(page.locator(fields).first()).toBeVisible(POLL);
     const gaps = await rhythm(page, fields);
     gaps.forEach(({ over, next }, i) => {
-      near(`${name}: field ${i + 1}'s label over it`, over, 4);
-      if (next !== null) near(`${name}: field ${i + 1} to the next label`, next, 14);
+      near(`${name}: field ${i + 1}'s label over it`, over, over4);
+      if (next !== null) near(`${name}: field ${i + 1} to the next label`, next, next14);
     });
   }
   await page.goto(`${symbiote.url}git`);

@@ -89,12 +89,12 @@ describe("promptGroups and Hive's prompts (HV2)", () => {
   it('lists the Hive group only in Hive mode, each prompt an entry', () => {
     expect(names(false)).toEqual(['Workspaces', 'Prebuilt agents']);
     expect(promptGroups(prompts).map((g) => g.group)).toEqual(['Workspaces', 'Prebuilt agents']);
-    expect(names(true)).toEqual(['Workspaces', 'Prebuilt agents', 'Hive']);
-    expect(
-      promptGroups(prompts, { hive: true })
-        .at(-1)
-        ?.entries.map((e) => e.name),
-    ).toEqual(['Start', 'Check failed']);
+    // First in Hive mode, as proof 04 lists it (V93).
+    expect(names(true)).toEqual(['Hive', 'Workspaces', 'Prebuilt agents']);
+    expect(promptGroups(prompts, { hive: true })[0]?.entries.map((e) => e.name)).toEqual([
+      'Start',
+      'Check failed',
+    ]);
   });
 
   it("gives the running reviewer an agent's page in the Hive group, only in Hive mode (HV3)", () => {
@@ -103,13 +103,14 @@ describe("promptGroups and Hive's prompts (HV2)", () => {
       prompt({ key: 'hive.review', group: 'Hive', title: 'Defects proven' }),
       prompt({ key: 'hive.reviewer', group: 'Hive', title: 'Reviewer' }),
     ];
-    const hive = promptGroups(withReviewer, { hive: true }).at(-1);
+    const hive = promptGroups(withReviewer, { hive: true })[0];
     expect(hive?.group).toBe('Hive');
+    // Its reviewer first, then Hive's prompts (V93, proof 04).
     expect(hive?.entries.map((e) => [e.name, e.agent ?? null])).toEqual([
+      ['Reviewer', 'Reviewer'],
       ['Start', null],
       ['Check failed', null],
       ['Defects proven', null],
-      ['Reviewer', 'Reviewer'],
     ]);
     expect(promptGroups(withReviewer).flatMap((g) => g.entries.map((e) => e.name))).not.toContain(
       'Reviewer',

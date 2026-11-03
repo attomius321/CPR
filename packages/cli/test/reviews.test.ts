@@ -536,13 +536,16 @@ describe('finishing a branch review (V16, V17)', () => {
         '',
       ].join('\n'),
     );
-    // The commits page and the review page see the outcome.
+    // The commits page and the review page see the outcome; the Merge page which review it was
+    // and its words (V93, decision 882).
     expect((await reviews.list()).reviews[0]?.verdict).toEqual({
       event: 'request-changes',
       head: shas.W2,
       at: NOW.toISOString(),
       comments: 2,
       merged: false,
+      number: 1,
+      summary: 'Two things.',
     });
     expect((await reviews.resolve('agent')).info.verdict).toEqual({
       event: 'request-changes',
@@ -659,6 +662,7 @@ describe('finishing a branch review (V16, V17)', () => {
       comments: 0,
       into: 'main',
       merged: false,
+      number: 1,
     });
 
     // The agent merges the approved commit: the commits page says so.

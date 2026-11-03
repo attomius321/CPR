@@ -1,6 +1,5 @@
 import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
-import { dragTo, stops } from './stepper.js';
 import { graphPage, serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 
 // Start a workspace as a page (V30a): /start in the main area, right of the sidenav; the brief and
@@ -31,9 +30,12 @@ const startLink = (page: Page) => sidenav(page).getByRole('link', { name: 'Start
 const start = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
 const title = (page: Page) => start(page).getByRole('textbox', { name: 'Title' });
 const goal = (page: Page) => start(page).getByRole('textbox', { name: 'Goal' });
-const effort = (page: Page) => start(page).getByRole('slider', { name: 'Effort' });
+// Effort (V93, proof 06): a segmented control, a radio a level, its word short, its name whole.
+const effort = (page: Page) => start(page).getByRole('radiogroup', { name: 'Effort' });
+const effortStops = (page: Page) => effort(page).getByRole('radio');
+const picked = (page: Page) => effort(page).getByRole('radio', { checked: true });
 // Start from (V68): a button that opens a search over the branches.
-const from = (page: Page) => start(page).getByRole('button', { name: /^Start from/ });
+const from = (page: Page) => start(page).getByRole('button', { name: /^Starts from/ });
 const branchSearch = (page: Page) => start(page).getByRole('combobox', { name: 'Search branches' });
 const branchList = (page: Page) => start(page).getByRole('listbox', { name: 'Branches' });
 const pickFrom = async (page: Page, name: string) => {
@@ -138,7 +140,7 @@ test('the brief and the run side by side; More closed fits 1440 × 1000, More op
   const brief = page.locator('.start-brief');
   const run = page.locator('.start-run');
   const body = page.locator('.start-body');
-  const go = start(page).getByRole('button', { name: 'Start workspace' });
+  const go = start(page).getByRole('button', { name: /^Start workspace/ });
   let b = await brief.boundingBox();
   let r = await run.boundingBox();
   expect(r?.x ?? 0).toBeGreaterThanOrEqual((b?.x ?? 0) + (b?.width ?? 0));
@@ -162,7 +164,7 @@ test('the brief and the run side by side; More closed fits 1440 × 1000, More op
   await run.scrollIntoViewIfNeeded();
   await expect(go).toBeInViewport();
   // The five kinds on one line: their icons hide.
-  const kinds = start(page).getByRole('radio');
+  const kinds = start(page).getByRole('radiogroup', { name: 'Kind of work' }).getByRole('radio');
   const first = await kinds.first().boundingBox();
   const last = await kinds.last().boundingBox();
   expect(Math.abs((last?.y ?? 0) - (first?.y ?? 0))).toBeLessThanOrEqual(1);
@@ -194,14 +196,17 @@ test('the whole main area at any width, the head over the cards; the run as rows
     expect(Math.abs(right - 12)).toBeLessThanOrEqual(1);
     // Right under the head, on a tall window too (V49 lowered the cards by up to 240 px).
     expect(Math.abs(b.y - area.y)).toBeLessThanOrEqual(1);
-    // The head's contents in the cards' width: the S over the brief, Start over the run.
-    const mark = await page.locator('.start-top .symbiote-mark').boundingBox();
-    const go = await start(page).getByRole('button', { name: 'Start workspace' }).boundingBox();
-    expect(Math.abs((mark?.x ?? 0) - b.x)).toBeLessThanOrEqual(1);
-    expect(Math.abs((go?.x ?? 0) + (go?.width ?? 0) - (r.x + r.width))).toBeLessThanOrEqual(1);
+    // The head's contents in the cards' width, 2 px further in (V93, the kits' head): its icon over
+    // the brief, Start over the run.
+    const mark = await page.locator('.start-top .page-icon').boundingBox();
+    const go = await start(page)
+      .getByRole('button', { name: /^Start workspace/ })
+      .boundingBox();
+    expect(Math.abs((mark?.x ?? 0) - b.x - 2)).toBeLessThanOrEqual(1);
+    expect(Math.abs((go?.x ?? 0) + (go?.width ?? 0) - (r.x + r.width - 2))).toBeLessThanOrEqual(1);
   }
   // A row: the name at the left, its control beside it on the same line.
-  const name = await run.getByText('Start from', { exact: true }).boundingBox();
+  const name = await run.getByText('Starts from', { exact: true }).boundingBox();
   const field = await from(page).boundingBox();
   if (!name || !field) throw new Error('no box');
   expect(field.x).toBeGreaterThan(name.x + name.width);
@@ -214,62 +219,65 @@ test('the whole main area at any width, the head over the cards; the run as rows
   expect((await goal(page).boundingBox())?.height ?? 0).toBeGreaterThan(short + 80);
 });
 
-// V63: the person's mockup, at its own size (its main area: 1641 × 959 less the sidenav).
-test("as the person's mockup: the S and a line in the head, the kinds as tabs, the run as seven cards", async ({
+// V93 (decision 883): proof 06-start — the + in the head and its line, the kinds as line tabs, the
+// brief's fields, More and Documents as rows, the run as Source, Agent and What happens next.
+test('as proof 06: the head, the kinds as line tabs, Documents a row, the run as three cards', async ({
   page,
 }) => {
   const symbiote = await serve();
-  await page.setViewportSize({ width: 1641, height: 959 });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(`${symbiote.url}start`);
   const head = page.locator('.start-top');
-  await expect(head.locator('.symbiote-mark')).toBeVisible();
+  await expect(head.locator('.page-icon svg')).toHaveCount(1);
   await expect(head.getByRole('heading', { name: 'Start a workspace' })).toBeVisible();
-  await expect(head).toContainText('Create a new workspace from a branch with an AI agent');
-  for (const name of ['Cancel', 'Clear', 'Suggest settings']) {
-    await expect(head.getByRole('button', { name })).toHaveClass(/secondary/);
-  }
-  await expect(head.getByRole('button', { name: 'Start workspace' })).toHaveClass(/primary/);
+  await expect(head).toContainText(
+    'An agent works on a branch of its own; you review it before it merges',
+  );
+  await expect(head.getByRole('button', { name: 'Cancel' })).toHaveClass(/ghost/);
+  await expect(head.getByRole('button', { name: 'Clear' })).toHaveCount(0);
+  await expect(head.getByRole('button', { name: 'Suggest settings' })).toBeVisible();
+  const go = head.getByRole('button', { name: /^Start workspace/ });
+  await expect(go).toHaveClass(/primary/);
+  await expect(go.locator('kbd')).toHaveText('Ctrl ↵');
 
-  // The kinds: tabs with an icon each, still a radio group.
+  // The kinds: line tabs with an icon each, still a radio group; what each is for in its tip.
   const kinds = start(page).getByRole('radiogroup', { name: 'Kind of work' }).getByRole('radio');
   await expect(kinds).toHaveText(['Feature', 'Fix', 'Refactor', 'Chore', 'Spike']);
   for (const kind of await kinds.all()) await expect(kind.locator('svg.icon')).toHaveCount(1);
-  // A "?" beside each of the brief's fields; the mockup's advice; More a framed row, optional.
-  for (const name of ['About the title', 'About the goal', 'About Done when']) {
-    await expect(start(page).getByRole('button', { name })).toBeVisible();
-  }
-  await expect(start(page).getByText('Be specific for better results')).toBeVisible();
-  await expect(start(page).getByRole('button', { name: /^More/ })).toContainText('Optional');
+  await expect(kinds.first()).toHaveAttribute('data-tip', /^Feature\n/);
+  // No "?" and no advice: the fields' words are in their tips.
+  await expect(start(page).locator('.help-button')).toHaveCount(0);
+  await expect(start(page).getByText('Be specific for better results')).toHaveCount(0);
+  await expect(start(page).getByRole('button', { name: /^More/ })).toContainText('optional');
+  await expect(start(page).getByRole('group', { name: 'Documents' })).toContainText(
+    '(optional) mockups, specs, logs',
+  );
 
-  // The run: seven cards, an icon and a heading each.
+  // The run: Source, Agent, What happens next; Plan first at the Agent card's foot.
   const cards = page.locator('.start-run > .start-card');
-  await expect(cards.locator('h2')).toHaveText([
-    'Source',
-    'Agent',
-    'Model',
-    'Effort',
-    'Permissions',
-    'Plan first and wait for my OK',
-    'Documents (optional)',
-  ]);
-  for (const card of await cards.all()) {
-    await expect(card.locator('.start-card-icon svg')).toHaveCount(1);
-  }
-  await expect(cards.first()).toContainText(
+  await expect(cards.locator('.card-head h2')).toHaveText(['Source', 'Agent', 'What happens next']);
+  await expect(start(page)).toContainText(
     `Will be created from main at ${short(symbiote.shas.at(-1))} as feature/new`,
   );
-  await expect(start(page)).toContainText('Let the agent propose a plan before making changes.');
-  await expect(start(page)).toContainText('Add context files, docs, mockups, or requirements.');
+  await expect(cards.nth(1)).toContainText('The agent proposes a plan before it changes anything.');
+  await expect(cards.nth(2).getByRole('listitem')).toHaveText([
+    'The agent writes its plan in its own worktree',
+    'You read it and answer: Waiting for you',
+    'You review its commits on their graph',
+    'Your Approve merges it into main',
+  ]);
+  // Plan first off: no plan, no answer.
+  await start(page).getByRole('switch', { name: 'Plan first and wait for my OK' }).uncheck();
+  await expect(cards.nth(2).getByRole('listitem')).toHaveCount(3);
 
-  // The mockup's proportion, 821 : 470, over the whole area (V72); the run `--page-gap` (8 px since
-  // V85) from the brief, both `--page-pad` (12) from the area's sides.
+  // The run 380 px, `--page-gap` (8 px) from the brief, both `--page-pad` (12) from the sides.
   const area = await page.locator('.start-body').boundingBox();
   const b = await page.locator('.start-brief').boundingBox();
   const r = await page.locator('.start-run').boundingBox();
   if (!area || !b || !r) throw new Error('no box');
   expect(Math.abs(b.x - area.x - 12)).toBeLessThanOrEqual(1);
   expect(Math.abs(area.x + area.width - r.x - r.width - 12)).toBeLessThanOrEqual(1);
-  expect(Math.abs(r.width / b.width - 470 / 821)).toBeLessThan(0.01);
+  expect(Math.round(r.width)).toBe(380);
   expect(Math.abs(r.x - (b.x + b.width) - 8)).toBeLessThanOrEqual(1);
 });
 
@@ -280,11 +288,11 @@ test("the goal's tools: the brief's length against its limit, a Markdown preview
   await page.goto(`${symbiote.url}start`);
   const tools = start(page).getByRole('toolbar', { name: 'Goal tools' });
   const count = tools.locator('.start-count');
-  await expect(count).toHaveText(/^[\d,]+\/20,000$/);
-  const before = Number((await count.textContent())?.split('/')[0]?.replaceAll(',', ''));
+  await expect(count).toHaveText(/^[\d,]+ \/ 20,000$/);
+  const before = Number((await count.textContent())?.split('/')[0]?.replaceAll(',', '').trim());
   await goal(page).fill('Clamp a **value**.');
   // The goal's section joins the brief: a blank line, "## Goal" and its text.
-  await expect(count).toHaveText(`${before + 2 + '## Goal\n'.length + 18}/20,000`);
+  await expect(count).toHaveText(`${before + 2 + '## Goal\n'.length + 18} / 20,000`);
 
   // The preview: the goal as Markdown; again, back to writing it.
   const preview = tools.getByRole('button', { name: 'Preview' });
@@ -313,7 +321,8 @@ test('Branch name: ⤨ names it after the title again', async ({ page }) => {
   const again = start(page).getByRole('button', { name: 'Name it after the title' });
   await title(page).fill('Add clamp');
   await expect(branch).toHaveValue('feature/add-clamp');
-  await expect(again).toBeDisabled();
+  // Shown once the branch is edited (V93, proof 06: none until then).
+  await expect(again).toHaveCount(0);
   await branch.fill('feature/clamp-it');
   await expect(start(page)).toContainText(
     `Will be created from main at ${short(symbiote.shas.at(-1))} as feature/clamp-it`,
@@ -321,7 +330,7 @@ test('Branch name: ⤨ names it after the title again', async ({ page }) => {
   await expect(again).toBeEnabled();
   await again.click();
   await expect(branch).toHaveValue('feature/add-clamp');
-  await expect(again).toBeDisabled();
+  await expect(again).toHaveCount(0);
   // It follows the title again.
   await title(page).fill('Add clamp twice');
   await expect(branch).toHaveValue('feature/add-clamp-twice');
@@ -371,26 +380,19 @@ test("Effort: the agent's default or a level it lists; a level reaches Claude Co
 }) => {
   const symbiote = await serve();
   await page.goto(`${symbiote.url}start`);
-  await expect(stops(effort(page))).toHaveText([
-    'Default',
-    'Low',
-    'Medium',
-    'High',
-    'xHigh',
-    'Max',
-  ]);
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
+  await expect(effortStops(page)).toHaveText(['Default', 'Low', 'Medium', 'High', 'xHigh', 'Max']);
+  await expect(picked(page)).toHaveAccessibleName("Claude Code's default");
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
   // A stop's word picks it.
-  await stops(effort(page))
+  await effortStops(page)
     .filter({ hasText: /^High$/ })
     .click();
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
+  await expect(picked(page)).toHaveAccessibleName('high');
   // Leaving keeps it, as the rest of the form.
   await title(page).press('Escape');
   await startLink(page).click();
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
+  await expect(picked(page)).toHaveAccessibleName('high');
   await goal(page).press('Control+Enter');
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-clamp`);
   const args = symbiote.calls().at(-1)?.args ?? [];
@@ -406,7 +408,7 @@ test("Effort: the agent's default or a level it lists; a level reaches Claude Co
 
   // For that session only: the next workspace starts at the default, and passes no level.
   await startLink(page).click();
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
+  await expect(picked(page)).toHaveAccessibleName("Claude Code's default");
   await title(page).fill('Add round');
   await goal(page).fill('Round a value.');
   await goal(page).press('Control+Enter');
@@ -419,24 +421,17 @@ test("Effort for Codex on its app server: its model's levels and its default; th
 }) => {
   const symbiote = await serve({ codex: true, appServer: true });
   await page.goto(`${symbiote.url}start`);
-  await dragTo(page, effort(page), 3);
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
+  await effortStops(page).nth(3).click();
+  await expect(picked(page)).toHaveAccessibleName('high');
   // Codex takes high too: kept when the agent changes; its default named with its level.
   await start(page).getByLabel('Agent').selectOption({ label: 'Codex' });
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
-  await expect(stops(effort(page))).toHaveText([
-    'Default',
-    'Low',
-    'Medium',
-    'High',
-    'xHigh',
-    'Max',
-  ]);
-  await expect(stops(effort(page)).first()).toHaveAttribute('data-tip', "Codex's default (medium)");
-  await effort(page).press('Home');
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', "Codex's default (medium)");
-  await effort(page).press('ArrowRight');
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'low');
+  await expect(picked(page)).toHaveAccessibleName('high');
+  await expect(effortStops(page)).toHaveText(['Default', 'Low', 'Medium', 'High', 'xHigh', 'Max']);
+  await expect(effortStops(page).first()).toHaveAttribute('data-tip', "Codex's default (medium)");
+  await picked(page).press('Home');
+  await expect(picked(page)).toHaveAccessibleName("Codex's default (medium)");
+  await picked(page).press('ArrowRight');
+  await expect(picked(page)).toHaveAccessibleName('low');
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
   await goal(page).press('Control+Enter');
@@ -464,28 +459,27 @@ test("Model: Claude Code's own list after its default; the levels follow the mod
   await expect(model(page)).toHaveValue('');
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
-  await stops(effort(page))
+  await effortStops(page)
     .filter({ hasText: /^xHigh$/ })
     .click();
   // Opus 4.6 takes no xhigh: its own levels, the level back to the default; its words under it.
   await model(page).selectOption({ label: 'Opus 4.6' });
-  await expect(stops(effort(page))).toHaveText(['Default', 'Low', 'Medium', 'High', 'Max']);
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', "Claude Code's default");
-  await expect(start(page).locator('.start-model-note')).toHaveText(
-    'Best for everyday, complex tasks',
-  );
+  await expect(effortStops(page)).toHaveText(['Default', 'Low', 'Medium', 'High', 'Max']);
+  await expect(picked(page)).toHaveAccessibleName("Claude Code's default");
+  // The model's words in its tip (V93; under it before).
+  await expect(model(page)).toHaveAttribute('data-tip', 'Best for everyday, complex tasks');
   // Haiku 4.5 takes none: no Effort.
   await model(page).selectOption({ label: 'Haiku 4.5' });
   await expect(effort(page)).toHaveCount(0);
   await model(page).selectOption({ label: 'Sonnet 5.5' });
-  await stops(effort(page))
+  await effortStops(page)
     .filter({ hasText: /^High$/ })
     .click();
   // Leaving keeps both, as the rest of the form.
   await title(page).press('Escape');
   await startLink(page).click();
   await expect(model(page)).toHaveValue('sonnet');
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
+  await expect(picked(page)).toHaveAccessibleName('high');
   await goal(page).press('Control+Enter');
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-clamp`);
   const args = symbiote.calls().at(-1)?.args ?? [];
@@ -526,13 +520,14 @@ test("Model for Codex on its app server: its list, its configured model named; a
     'GPT-5.6-Luna',
   ]);
   await expect(model(page)).toHaveValue('');
-  await expect(start(page).locator('.start-model-note')).toHaveText(
+  await expect(model(page)).toHaveAttribute(
+    'data-tip',
     'Fast and affordable model for easier tasks.',
   );
   // GPT-5.6-Terra has one more level.
   await model(page).selectOption({ label: 'GPT-5.6-Terra' });
-  await expect(stops(effort(page)).last()).toHaveText('Ultra');
-  await effort(page).press('End');
+  await expect(effortStops(page).last()).toHaveText('Ultra');
+  await picked(page).press('End');
   await title(page).fill('Add clamp');
   await goal(page).fill('Clamp a value.');
   await goal(page).press('Control+Enter');
@@ -595,7 +590,7 @@ test('Suggest settings: a proposal only on a press; the cards change only when i
   expect(call?.input).toContain('<task>\n# Feature: Move workspace records to SQLite');
   await use.click();
   await expect(model(page)).toHaveValue('opus');
-  await expect(effort(page)).toHaveAttribute('aria-valuetext', 'high');
+  await expect(picked(page)).toHaveAccessibleName('high');
   await expect(plan).toBeChecked();
   await expect(card).toHaveCount(0);
 
@@ -793,7 +788,7 @@ test('Start from: typing narrows the branches to those holding every word; the k
   await expect(branchSearch(page)).toHaveValue('');
   await page.keyboard.press('Tab');
   await expect(branchList(page)).toHaveCount(0);
-  await expect(start(page).getByRole('button', { name: 'Where its worktree goes' })).toBeFocused();
+  await expect(start(page).getByRole('textbox', { name: 'Branch name' })).toBeFocused();
   await expect(from(page)).toHaveText('feature/old-start');
   await expect(start(page)).toContainText(
     `Will be created from feature/old-start at ${short(base)}`,
@@ -860,7 +855,7 @@ test('Documents: chosen, dropped and pasted files go beside the record, and the 
   await expect(rows).toHaveCount(4);
 
   // Too large: listed with why, Start waits until it is removed.
-  const startButton = start(page).getByRole('button', { name: 'Start workspace' });
+  const startButton = start(page).getByRole('button', { name: /^Start workspace/ });
   await documents
     .getByLabel('Add files')
     .setInputFiles([

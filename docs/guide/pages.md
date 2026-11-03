@@ -145,8 +145,10 @@ to spot the files that have grown too large.
   The text size changes the text and not the rows. Appearance also sets whether Git's commit details
   show on the right or below the commits.
 
-The status bar at the bottom of every page shows how much of your Claude and Codex subscription
-limits you have used. To read no usage, set `SYMBIOTE_USAGE=off`.
+The status bar at the bottom of every page shows, at the left, the checkout's branch and commit,
+how many things wait for you and how many agents work (in Hive mode: Hive on, the workspaces in
+flight and landed today). At the right, how much of your Claude and Codex subscription limits you
+have used. To read no usage, set `SYMBIOTE_USAGE=off`.
 
 ## Symbiote nexus
 

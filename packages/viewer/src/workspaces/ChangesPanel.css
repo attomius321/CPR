@@ -1,14 +1,13 @@
 /* ---- a workspace's changes (V29d) ---------------------------------------------------------- */
 
-/* 256 px at the right of the terminal, where the workspace's area is at least 1,200 px wide: at
-   1440 with the sidenav the terminal keeps 56 % of the window (decision 186). The redesign draws
-   it at 300 px; V89 keeps 256, the terminal first. */
+/* 300 px at the right of the terminal, as the redesign draws it (V93, decision 885; V89 kept 256,
+   the terminal first), where the workspace's area is at least 1,200 px wide. */
 .changes {
   flex: none;
   /* As wide as the person dragged it (V34), the terminal keeping 480 px; past the cards' margins
      and the gutter between them (V61; 16 px each since V72). */
   width: min(
-    var(--changes-width, 256px),
+    var(--changes-width, 300px),
     calc(100cqi - 480px - 2 * var(--page-pad) - var(--page-gap))
   );
   min-height: 0;
@@ -30,7 +29,8 @@
 }
 
 .changes-section {
-  padding: 10px 0 6px;
+  /* The kits' rhythm (V93, run.css's `.side`): 12 px above a section, its rows 9 apart. */
+  padding: 12px 0 10px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -44,11 +44,22 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 0 4px;
+  margin: 0 0 8px;
   padding: 0 var(--card-pad);
   color: var(--muted);
-  font-size: var(--size-small);
+  font-size: var(--size-caps);
   font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* The brief's first words (V93, proofs 02 and 08). */
+.changes-brief {
+  margin: 0;
+  padding: 2px var(--card-pad) 4px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  line-height: 1.5;
 }
 
 .changes-count {
@@ -213,7 +224,7 @@ button.changes-file:hover {
 .changes-facts {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 6px 12px;
+  gap: 9px 16px;
   margin: 4px 0 4px;
   padding: 0 var(--card-pad);
 }

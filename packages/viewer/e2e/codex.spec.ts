@@ -24,8 +24,8 @@ const BRANCH = 'feature/add-a-half-function';
 const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
 const panel = (page: Page, branch = BRANCH) =>
   page.getByRole('region', { name: `Workspace ${branch}` });
-/** A card's dot: its tone says its agent works, whatever it runs (V48f). */
-const working = (row: Locator) => row.locator('.state-dot');
+/** A row: its tone says its agent works, whatever it runs (V48f; V93's rows). */
+const working = (row: Locator) => row;
 const workspaceRow = (page: Page, branch = BRANCH) =>
   page.locator(`.workspace-row[data-branch="${branch}"]`);
 const box = (page: Page) => panel(page).getByRole('textbox', { name: 'Reply to the agent' });
@@ -98,7 +98,7 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   await page.goto(`${symbiote.url}?branch=${encodeURIComponent(BRANCH)}`);
   const here = panel(page);
   await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
-  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
+  await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
   await expect(here.getByRole('tab', { name: 'Codex' })).toHaveCount(0);
   // A shell in its worktree all the same (V45): shells need no agent's session.
   await expect(here.getByRole('button', { name: 'New shell' })).toBeEnabled();
@@ -136,7 +136,7 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
     cwd: folder,
   });
   await expect(here.locator('.thread-line')).toHaveText('Continued');
-  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
+  await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
 
   // It commits and reports: ready for review.
   symbiote.commit(BRANCH, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
@@ -145,31 +145,21 @@ test('a workspace with Codex: picked when it starts, its plan in the thread, a r
   await expect(workspaceRow(page)).toContainText('Ready for review', POLL);
 });
 
-test('a working Codex card shows Codex’s mark: OpenAI’s blossom, in OpenAI’s white on the dark theme (V53)', async ({
+test('a working Codex row names Codex in its tip; its tab names it on its page (V93)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces({ codex: true });
   await page.goto(`${symbiote.url}git`);
   await startWithCodex(page);
   await page.goto(`${symbiote.url}?branch=${encodeURIComponent(BRANCH)}`);
-  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
-  const state = workspaceRow(page).locator('.workspace-state');
-  const mark = state.getByRole('img', { name: 'Codex' });
-  await expect(mark).toBeVisible();
-  await expect(state.getByRole('img', { name: 'Claude Code' })).toHaveCount(0);
-  await expect(state.locator('> :first-child')).toHaveClass(/agent-mark/);
-  // The card's: OpenAI's blossom in OpenAI's white on the dark theme. The heading shows the steps
-  // since V89, no mark.
-  const fills = await page
-    .locator('.agent-mark.codex')
-    .evaluateAll((marks) => marks.map((svg) => getComputedStyle(svg.querySelector('path')!).fill));
-  expect(fills).toEqual(['rgb(255, 255, 255)']);
+  await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
+  await expect(workspaceRow(page)).toHaveAttribute('data-tip', /Codex · /);
+  await expect(workspaceRow(page)).not.toHaveAttribute('data-tip', /Claude Code/);
 
-  // It reports with a commit: ready for review, no mark.
+  // It reports with a commit: ready for review.
   symbiote.commit(BRANCH, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
   symbiote.codexTurn(BRANCH, { text: 'Added half, committed.' });
   await expect(workspaceRow(page)).toContainText('Ready for review', POLL);
-  await expect(page.locator('.agent-mark')).toHaveCount(0);
 });
 
 test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean up archives its thread", async ({
@@ -179,16 +169,17 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
   await page.goto(`${symbiote.url}`);
   await startWithCodex(page);
   const here = panel(page);
-  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
+  await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
   await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
 
   // Stop: the run ends (its process group), the thread says so.
-  await here.getByRole('button', { name: 'Stop the agent' }).click();
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await here.getByRole('menuitem', { name: 'Stop the agent' }).click();
   await expect(workspaceRow(page)).toContainText('Stopped', POLL);
 
   // Started again: a new run, which fails in Codex's words.
   await here.getByRole('button', { name: 'Start the agent' }).click();
-  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
+  await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
   expect(symbiote.codexCalls()).toHaveLength(2);
   symbiote.codexTurn(BRANCH, { fail: 'unexpected status 401 Unauthorized' });
   await expect(workspaceRow(page)).toContainText(

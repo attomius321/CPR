@@ -30,6 +30,7 @@ import {
   RunningIcon,
   SettingsIcon,
   StoppedIcon,
+  ChevronIcon,
 } from '../ui/icons.js';
 import { PageHead } from '../ui/PageHead.js';
 import { StageTrack } from '../ui/StageTrack.js';
@@ -264,6 +265,7 @@ export function HiveOverview() {
               end={
                 <a className="link overview-link" href="/workspace-history">
                   History
+                  <ChevronIcon open={false} />
                 </a>
               }
             >
@@ -327,6 +329,7 @@ export function HiveOverview() {
               end={
                 <a className="link overview-link" href="/workspace-history">
                   History
+                  <ChevronIcon open={false} />
                 </a>
               }
             >

@@ -212,6 +212,14 @@ const isPath = (subject: string, path: string) => subject === path || subject.en
  * it edits pulsing; then its commits and files. Its changes are read by the page (`changes`), for
  * the head's counts too; a finished workspace's (History) reads its own.
  */
+/** A commit's time: today's as the time of day, as the proofs write it (V93); older, its age. */
+function commitTime(iso: string, now: number): string {
+  const date = new Date(iso);
+  if (date.toDateString() !== new Date(now).toDateString()) return shortAge(iso, now);
+  const two = (n: number) => String(n).padStart(2, '0');
+  return `${two(date.getHours())}:${two(date.getMinutes())}`;
+}
+
 export function ChangesPanel({
   branch,
   version,
@@ -221,6 +229,10 @@ export function ChangesPanel({
   now,
   editing,
   onSaid,
+  page = false,
+  facts,
+  brief,
+  run = false,
 }: {
   branch: string;
   /** The list as last read: the changes are read again with it. */
@@ -240,6 +252,18 @@ export function ChangesPanel({
   editing?: string | undefined;
   /** How opening a file went, in words, for the workspace's head. */
   onSaid: (words: string) => void;
+  /**
+   * Outside the terminal view (V93, proof 02): the workspace's facts first, then its brief, its
+   * commits and its files; in it (proof 08), what the agent does, what is not committed, its
+   * commits and its brief.
+   */
+  page?: boolean;
+  /** The workspace's facts (Kind, Agent, Model, Plan first, Permissions), outside the terminal. */
+  facts?: ReactNode;
+  /** Its brief's first lines (V93). */
+  brief?: string | undefined;
+  /** Beside a Hive workspace's Run tab (V93). */
+  run?: boolean;
 }) {
   const [picks, setPicks] = useState(0);
   const read = useChanges(branch, version, picks, given === undefined);
@@ -260,7 +284,9 @@ export function ChangesPanel({
       ? moreText(changes.commits.count, changes.commits.listed.length)
       : null;
   const shown = changes !== null && typeof changes !== 'string' ? changes : null;
-  const uncommitted = shown && !finished && (
+  // The Run tab's side card leaves out an empty worktree, as proof 02 draws it (V93).
+  const nothingUncommitted = shown?.uncommitted?.count === 0;
+  const uncommitted = shown && !finished && !(run && nothingUncommitted) && (
     <section className="changes-section" aria-label="Not committed" key="uncommitted">
       <h2>
         Not committed{' '}
@@ -273,14 +299,21 @@ export function ChangesPanel({
       )}
     </section>
   );
+  const briefSection = brief && (
+    <section className="changes-section" aria-label="Brief" key="brief">
+      <h2>Brief</h2>
+      <p className="changes-brief">{brief}</p>
+    </section>
+  );
   return (
     <aside className="changes" aria-label="Changes">
-      {now}
+      {page ? facts : now}
+      {page && briefSection}
       {changes === null && <p className="changes-empty">Reading its changes…</p>}
       {typeof changes === 'string' && <p className="changes-empty error">{changes}</p>}
       {shown && (
         <>
-          {uncommitted}
+          {!page && uncommitted}
           <section className="changes-section" aria-label="Commits">
             <h2>
               Commits <span className="changes-count">{shown.commits.count}</span>
@@ -303,7 +336,7 @@ export function ChangesPanel({
                     <span className="changes-sha">{commit.sha.slice(0, 7)}</span>
                     <span className="changes-subject">{commit.subject}</span>
                     <time className="changes-age" dateTime={commit.date}>
-                      {shortAge(commit.date, Date.now())}
+                      {commitTime(commit.date, Date.now())}
                     </time>
                   </li>
                 ))}
@@ -311,15 +344,19 @@ export function ChangesPanel({
             )}
             {commitsMore && <p className="changes-empty">{commitsMore}</p>}
           </section>
-          <section className="changes-section" aria-label="Files">
-            <h2>
-              Files <span className="changes-count">{shown.files.count}</span>
-              {shown.files.count > 0 && (
-                <Lines added={shown.files.added} removed={shown.files.removed} />
-              )}
-            </h2>
-            <Files files={shown.files} empty="No files changed yet" onOpen={opener(false)} />
-          </section>
+          {!page && briefSection}
+          {/* The terminal's side card lists its files once it has some (proof 08 draws none). */}
+          {(page || shown.files.count > 0) && (
+            <section className="changes-section" aria-label="Files">
+              <h2>
+                Files <span className="changes-count">{shown.files.count}</span>
+                {shown.files.count > 0 && (
+                  <Lines added={shown.files.added} removed={shown.files.removed} />
+                )}
+              </h2>
+              <Files files={shown.files} empty="No files changed yet" onOpen={opener(false)} />
+            </section>
+          )}
         </>
       )}
     </aside>

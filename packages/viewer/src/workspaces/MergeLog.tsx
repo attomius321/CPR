@@ -29,6 +29,8 @@ export function MergeLog({
       }}
       live={mergeLive([entry])}
       hidden={hidden}
+      // The Merge page's Steps card lists the steps (V93, proof 05): the log is its terminal.
+      className="merge-log-bare"
       {...(onLogged ? { onLogged } : {})}
     />
   );

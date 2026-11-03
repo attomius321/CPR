@@ -187,6 +187,14 @@ describe('readMergeConfig (V26a)', () => {
 });
 
 describe('queueing a merge (V26a)', () => {
+  it('says in its list whether it pushes what lands (V93: the Merge page says "then pushed")', async () => {
+    const { repo } = setup();
+    const m = await make(repo);
+    expect((await m.list()).push).toBeUndefined();
+    config(repo, { push: true });
+    expect((await m.list()).push).toBe(true);
+  });
+
   it('takes only an approved branch whose tip is the approved commit', async () => {
     const { repo, shas } = setup();
     const m = await make(repo);
@@ -267,7 +275,14 @@ describe('merging, checking and landing (V26a)', () => {
       commands: ['pnpm install', 'pnpm check'],
       source: 'symbiote/config.json (merge.checks)',
       ok: true,
+      // V93 (decision 881): when it started and each command's time, for the Merge page.
+      started: NOW.toISOString(),
+      steps: [
+        { command: 'pnpm install', ok: true, ms: expect.any(Number) as number },
+        { command: 'pnpm check', ok: true, ms: expect.any(Number) as number },
+      ],
     });
+    expect(entry?.mergeMs).toEqual(expect.any(Number));
     const merge = entry?.merge ?? '';
     expect(repo.git('rev-parse', 'main')).toBe(merge);
     expect(parents(repo, merge)).toEqual([shas.M, shas.T]);
@@ -293,6 +308,10 @@ describe('merging, checking and landing (V26a)', () => {
     const [entry] = (await m.list()).merges;
     expect(entry?.state).toBe('failed');
     expect(entry?.check).toMatchObject({ ok: false, failed: 'then fail' });
+    expect(entry?.check?.steps?.map(({ command, ok }) => [command, ok])).toEqual([
+      ['first', true],
+      ['then fail', false],
+    ]);
     const lines = entry?.check?.output?.split('\n') ?? [];
     expect(lines).toHaveLength(60);
     expect(lines.at(-1)).toBe('line 80');

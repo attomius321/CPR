@@ -11,6 +11,7 @@
 @import './ui/page.css';
 /* The redesign's shared parts (V88): a status, the stage track. */
 @import './ui/status.css';
+@import './ui/pipeline.css';
 /* The kits' figures, tables, feed, facts and gauge (V91): shared by the Overviews. */
 @import './ui/figures.css';
 @import './ui/Resizer.css';

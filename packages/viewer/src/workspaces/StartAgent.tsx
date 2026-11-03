@@ -1,20 +1,10 @@
 // The agent on the start page (V20a, V30b, V47): which one, its account, the model and the level
 // its session starts on, and Claude Code's permission mode, Codex's sandbox or where Hermes asks
 // (V58). Since V63 each is a card of the run's, as the person's mockup draws them.
+import type { ReactNode } from 'react';
 import type { AgentKind, AgentOption, PermissionMode } from '@symbiote/core';
-import { Help } from '../ui/Help.js';
-import {
-  AgentIcon,
-  ClaudeMark,
-  CodexMark,
-  EffortIcon,
-  HexagonIcon,
-  HermesMark,
-  ModelIcon,
-  PermissionIcon,
-  SubscriptionIcon,
-} from '../ui/icons.js';
-import { EffortStepper } from './EffortStepper.js';
+import { ClaudeMark, CodexMark, HermesMark } from '../ui/icons.js';
+import { EffortSegments } from './EffortSegments.js';
 import { StartCard } from './StartCard.js';
 import {
   AGENT_NAMES,
@@ -60,6 +50,7 @@ export function StartAgent({
   effort,
   efforts,
   onChoose,
+  planFirst,
 }: {
   agents: AgentOption[];
   /** Hive mode is on (HV2): Hive drives the workspace, with Claude Code only. */
@@ -73,10 +64,12 @@ export function StartAgent({
   effort: string | undefined;
   efforts: ReturnType<typeof effortChoices>;
   onChoose: (run: RunChoices) => void;
+  /** Plan first's row, at the card's foot (V93, proof 06). */
+  planFirst?: ReactNode;
 }) {
   if (!agent && hive) {
     return (
-      <StartCard icon={<AgentIcon />} title="Agent">
+      <StartCard title="Agent">
         <p className="error start-card-note">
           Hive drives Claude Code, which is not installed here (<code>claude</code> on PATH, or{' '}
           <code>SYMBIOTE_CLAUDE</code>): turn Hive off to start without it.
@@ -86,7 +79,7 @@ export function StartAgent({
   }
   if (!agent) {
     return (
-      <StartCard icon={<AgentIcon />} title="Agent">
+      <StartCard title="Agent">
         <p className="start-card-note">
           No agent found (Claude Code: <code>claude</code> on PATH, or <code>SYMBIOTE_CLAUDE</code>;
           Codex: <code>codex</code> on PATH, or <code>SYMBIOTE_CODEX</code>; Hermes:{' '}
@@ -97,82 +90,64 @@ export function StartAgent({
     );
   }
   const described = models.find((m) => m.value === (model ?? ''))?.description;
+  // The agent's card (V93, decision 883; proof 06-start): its rows, the effort as a segmented
+  // control, Plan first at its foot; its account at the head's end.
   return (
-    <>
-      <StartCard icon={<AgentIcon />} title="Agent">
-        <div className="workspace-field start-row">
-          {agents.length > 1 ? (
-            <>
-              <label htmlFor="start-agent">Agent</label>
-              <div className="start-select">
-                <AgentMark kind={agent.kind} />
-                <select
-                  id="start-agent"
-                  value={agent.kind}
-                  {...tip(agent.command, { code: true })}
-                  onChange={(event) => {
-                    const kind = event.target.value as AgentKind;
-                    const next = agents.find((a) => a.kind === kind);
-                    // A model is one agent's: the other starts on its default (V47). A level
-                    // its default model takes stays; else its default.
-                    const kept = next ? keptEffort(run.effort, next) : undefined;
-                    onChoose(atLevel(onModel({ ...run, agent: kind }, undefined), kept));
-                  }}
-                >
-                  {agents.map((a) => (
-                    <option key={a.kind} value={a.kind}>
-                      {AGENT_NAMES[a.kind]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </>
-          ) : (
-            <>
-              <span className="start-row-name">Agent</span>
-              <span className="start-value" {...tip(agent.command, { code: true })}>
-                <AgentMark kind={agent.kind} />
-                {AGENT_NAMES[agent.kind]}
-              </span>
-            </>
-          )}
-          {agent.account && (
-            <p className="start-row-note start-account">
-              {/subscription/.test(agent.account) && <SubscriptionIcon />}
-              {agent.account}
-            </p>
-          )}
-        </div>
-        {hive && (
-          <p className="start-card-note start-hive">
-            <HexagonIcon />
-            Hive is on: it drives this workspace from its brief to landed. After each turn Symbiote
-            runs the check and a reviewer, sends what fails back to the agent, answers its plans and
-            questions, then lands the workspace and pushes it. Hive drives Claude Code only, in its
-            auto mode: Codex and Hermes start with Hive off.
-          </p>
+    <section className="start-card start-agent">
+      <div className="card-head">
+        <h2>Agent</h2>
+        {agent.account && (
+          <span className="end start-account" {...tip(agent.account)}>
+            {agent.account}
+          </span>
         )}
-        {agent.apiKey && (
-          <p className="error start-card-note">
-            ANTHROPIC_API_KEY is set where symbiote view runs: the agent may use that key instead of{' '}
-            {agent.account ?? 'your account'}.
-          </p>
+      </div>
+      <div className="start-rows">
+        {agents.length > 1 ? (
+          <>
+            <label htmlFor="start-agent">Agent</label>
+            <div className="start-select">
+              <AgentMark kind={agent.kind} />
+              <select
+                id="start-agent"
+                value={agent.kind}
+                {...tip(agent.command, { code: true })}
+                onChange={(event) => {
+                  const kind = event.target.value as AgentKind;
+                  const next = agents.find((a) => a.kind === kind);
+                  // A model is one agent's: the other starts on its default (V47). A level
+                  // its default model takes stays; else its default.
+                  const kept = next ? keptEffort(run.effort, next) : undefined;
+                  onChoose(atLevel(onModel({ ...run, agent: kind }, undefined), kept));
+                }}
+              >
+                {agents.map((a) => (
+                  <option key={a.kind} value={a.kind}>
+                    {AGENT_NAMES[a.kind]}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </>
+        ) : (
+          <>
+            <span className="start-row-name">Agent</span>
+            <span className="start-value" {...tip(agent.command, { code: true })}>
+              <AgentMark kind={agent.kind} />
+              {AGENT_NAMES[agent.kind]}
+            </span>
+          </>
         )}
-      </StartCard>
-      {models.length > 0 && (
-        <StartCard
-          icon={<ModelIcon />}
-          title={<label htmlFor="start-model">Model</label>}
-          help={
-            <Help label="About the model">
-              The model its session starts on, from {AGENT_NAMES[agent.kind]}&apos;s own list;
-              change it later in its terminal (<code>/model</code>).
-            </Help>
-          }
-          control={
+        {models.length > 0 && (
+          <>
+            <label htmlFor="start-model">Model</label>
             <select
               id="start-model"
               value={model ?? ''}
+              {...tip(
+                described ??
+                  `The model its session starts on, from ${AGENT_NAMES[agent.kind]}'s own list; change it later in its terminal (/model)`,
+              )}
               onChange={(event) => {
                 const next = event.target.value || undefined;
                 // A level the new model takes stays; else its default.
@@ -186,35 +161,11 @@ export function StartAgent({
                 </option>
               ))}
             </select>
-          }
-        >
-          {described && <p className="start-card-note start-model-note">{described}</p>}
-        </StartCard>
-      )}
-      {efforts.length > 0 && (
-        <StartCard
-          icon={<EffortIcon />}
-          title="Effort"
-          className="start-effort"
-          help={
-            <Help label="About the effort">
-              The level its session starts at; change it later in its terminal.
-            </Help>
-          }
-        >
-          <EffortStepper
-            label="Effort"
-            choices={efforts}
-            value={effort ?? ''}
-            onChange={(level) => onChoose(atLevel(run, level || undefined))}
-          />
-        </StartCard>
-      )}
-      {hive ? null : agent.kind === 'claude' ? (
-        <StartCard
-          icon={<PermissionIcon />}
-          title={<label htmlFor="start-permission">Permissions</label>}
-          control={
+          </>
+        )}
+        {agent.kind === 'claude' ? (
+          <>
+            <label htmlFor="start-permission">Permissions</label>
             <select
               id="start-permission"
               value={mode}
@@ -228,37 +179,54 @@ export function StartAgent({
                 </option>
               ))}
             </select>
-          }
-        />
-      ) : agent.kind === 'hermes' ? (
-        <StartCard
-          icon={<PermissionIcon />}
-          title="Approvals"
-          help={
-            <Help label="About Hermes's approvals">
-              Hermes runs in a terminal in Symbiote, in its worktree, with your Hermes configuration
-              (its model, provider and tools). It asks there before a dangerous command; Symbiote
-              does not answer for you, and its card says Working while it waits. It stops when
-              Symbiote quits; its terminal then continues the session.
-            </Help>
-          }
-          control={<span className="start-value">In its terminal</span>}
-        />
-      ) : (
-        <StartCard
-          icon={<PermissionIcon />}
-          title="Sandbox"
-          help={
-            <Help label="About Codex's sandbox">
-              Codex&apos;s workspace-write sandbox: it writes in its worktree and may commit on its
-              branch; nothing else in git. Codex then marks this repository trusted in your Codex
-              configuration, as it does for any writable sandbox.
-            </Help>
-          }
-          control={<span className="start-value">Its worktree and branch</span>}
-        />
+          </>
+        ) : agent.kind === 'hermes' ? (
+          <>
+            <span className="start-row-name">Approvals</span>
+            <span
+              className="start-value"
+              {...tip(
+                'Hermes runs in a terminal in Symbiote, in its worktree, with your Hermes configuration. It asks there before a dangerous command; Symbiote does not answer for you.',
+              )}
+            >
+              In its terminal
+            </span>
+          </>
+        ) : (
+          <>
+            <span className="start-row-name">Sandbox</span>
+            <span
+              className="start-value"
+              {...tip(
+                "Codex's workspace-write sandbox: it writes in its worktree and may commit on its branch; nothing else in git.",
+              )}
+            >
+              Its worktree and branch
+            </span>
+          </>
+        )}
+      </div>
+      {efforts.length > 0 && (
+        <div className="start-effort">
+          <span className="start-effort-name" id="start-effort-label">
+            Effort
+          </span>
+          <EffortSegments
+            label="Effort"
+            choices={efforts}
+            value={effort ?? ''}
+            onChange={(level) => onChoose(atLevel(run, level || undefined))}
+          />
+        </div>
       )}
-    </>
+      {agent.apiKey && (
+        <p className="error start-card-note">
+          ANTHROPIC_API_KEY is set where symbiote view runs: the agent may use that key instead of{' '}
+          {agent.account ?? 'your account'}.
+        </p>
+      )}
+      {planFirst}
+    </section>
   );
 }
 
@@ -283,23 +251,22 @@ export function StartAgentRows({
   efforts: ReturnType<typeof effortChoices>;
   onChoose: (run: RunChoices) => void;
 }) {
+  // Rows of the Where and who card's grid (V93: its name, then its control).
   return (
     <>
-      <div className="workspace-field start-row">
-        <span className="start-row-name">Agent</span>
-        <span className="start-value" {...tip(agent.command, { code: true })}>
-          <AgentMark kind={agent.kind} />
-          {AGENT_NAMES[agent.kind]}
-        </span>
-        {agent.apiKey && (
-          <p className="error start-row-note">
-            ANTHROPIC_API_KEY is set where symbiote view runs: the agent may use that key instead of{' '}
-            {agent.account ?? 'your account'}.
-          </p>
-        )}
-      </div>
+      <span className="start-row-name">Agent</span>
+      <span className="start-value" {...tip(agent.command, { code: true })}>
+        <AgentMark kind={agent.kind} />
+        {AGENT_NAMES[agent.kind]}
+      </span>
+      {agent.apiKey && (
+        <p className="error start-row-note">
+          ANTHROPIC_API_KEY is set where symbiote view runs: the agent may use that key instead of{' '}
+          {agent.account ?? 'your account'}.
+        </p>
+      )}
       {models.length > 0 && (
-        <div className="workspace-field start-row">
+        <>
           <label htmlFor="start-model">Model</label>
           <select
             id="start-model"
@@ -316,10 +283,10 @@ export function StartAgentRows({
               </option>
             ))}
           </select>
-        </div>
+        </>
       )}
       {efforts.length > 0 && (
-        <div className="workspace-field start-row">
+        <>
           <label htmlFor="start-effort">Effort</label>
           <select
             id="start-effort"
@@ -332,7 +299,7 @@ export function StartAgentRows({
               </option>
             ))}
           </select>
-        </div>
+        </>
       )}
     </>
   );

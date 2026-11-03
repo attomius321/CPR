@@ -157,14 +157,30 @@
   text-align: center;
 }
 
+/* The composer (V93, proof 02): one card, the text without a frame of its own, Attach at the
+   left of its foot, the words and the buttons at the right. */
 .reply {
-  margin-top: 12px;
+  margin: 12px var(--card-pad) var(--card-pad);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--raised);
+}
+
+.reply:focus-within {
+  border-color: var(--focus);
 }
 
 .reply textarea {
   box-sizing: border-box;
   width: 100%;
+  border: 0;
+  background: none;
+  box-shadow: none;
   font-size: var(--size-body);
+}
+
+.reply textarea:focus-visible {
+  box-shadow: none;
 }
 
 .reply-actions {
@@ -172,8 +188,36 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px 14px;
+  gap: 4px 8px;
+  padding: 6px 8px 8px;
   font-size: var(--size-body);
+}
+
+.reply-actions .button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.reply-attach {
+  margin-right: auto;
+}
+
+/* Its words beside the buttons: none of a page hint's 24 px (it made the foot 82 px). */
+.reply-actions .hint {
+  padding: 0 8px 0 0;
+}
+
+/* The key in Approve plan (the proof's `.kbd`). */
+.reply-keys {
+  margin-left: 2px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentcolor 14%, transparent);
+  color: inherit;
+  font-size: var(--size-caps);
+  line-height: 1.5;
+  box-shadow: none;
 }
 
 /* The session tabs (V21, V45; named since V89, decision 827, term.css's `.stabs`): the agent's
@@ -203,7 +247,8 @@
   flex: none;
 }
 
-.workspace-tabs .stab {
+.workspace-tabs .stab,
+.workspace-views > [role='tab'] {
   position: relative;
   display: flex;
   align-items: center;
@@ -220,18 +265,23 @@
   transition: color 150ms;
 }
 
-.workspace-tabs .stab .icon {
+.workspace-tabs .stab .icon,
+.workspace-views > [role='tab'] .icon {
   width: 14px;
   height: 14px;
 }
 
 .workspace-tabs .stab:hover,
-.workspace-tabs .stab.selected {
+.workspace-tabs .stab.selected,
+.workspace-views > [role='tab']:hover,
+.workspace-views > [role='tab'][aria-selected='true'] {
   color: var(--text);
 }
 
-/* The picked tab's line, in the identity's colour (V88). Two are picked in Split. */
-.workspace-tabs .stab.selected::after {
+/* The picked tab's line, in the identity's colour (V88). Two are picked in Split. History's and
+   Nucleus's tabs, straight in the strip, take the same (V93: they had lost it with V89's strip). */
+.workspace-tabs .stab.selected::after,
+.workspace-views > [role='tab'][aria-selected='true']::after {
   content: '';
   position: absolute;
   right: 8px;
@@ -410,6 +460,11 @@
   container: workspace / inline-size;
 }
 
+/* The pipeline card (V93, decision 884): the page's margins, `--page-gap` over the tabs' card. */
+.workspace > .card.pipeline {
+  margin: 0 var(--page-pad) var(--page-gap);
+}
+
 .workspace-split {
   flex: 1;
   min-height: 0;
@@ -451,7 +506,8 @@
   border-radius: 0;
   background: none;
   color: var(--muted);
-  font: var(--size-small) var(--sans);
+  /* In git's mono, as the proofs write a branch (V93). */
+  font: var(--size-small) / 1 var(--mono);
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -624,6 +680,7 @@
 
 .workspace-from .mono {
   font-family: var(--mono);
+  line-height: 1;
 }
 
 /* The branch kept whole as long as it can be: what runs it takes only the room left (flex
@@ -864,7 +921,6 @@
 }
 
 .reply-where {
-  margin-right: auto;
   font-size: var(--size-small);
 }
 
@@ -878,7 +934,7 @@
 
 .workspace .reply {
   flex: none;
-  padding: 0 var(--card-pad) var(--card-pad);
+  padding: 0;
 }
 
 /* The files given with the brief (V40), under it: where they are, then their names. */
@@ -919,4 +975,15 @@
 
 .workspace-documents .icon {
   color: var(--faint);
+}
+
+/* The head's icon buttons boxed, as the proofs draw them (V93; the kits' `.icon-button.boxed`). */
+.workspace-top .page-actions .icon-button {
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  background: var(--raised);
+}
+
+.workspace-top .page-actions .icon-button:hover,
+.workspace-top .page-actions .icon-button[aria-expanded='true'] {
+  background: var(--hover);
 }

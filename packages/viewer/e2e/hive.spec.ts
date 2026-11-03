@@ -121,7 +121,13 @@ test('Hive mode: a danger to press, asked first, kept for the repository, its lo
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
   expect(await colour(page, 'body', 'backgroundColor')).toBe('rgb(9, 9, 11)');
   await expect(editor(page).getByRole('heading', { level: 2 })).toContainText('Hive mode On');
-  await expect(repository.getByRole('button', { name: 'Hive mode on' })).toBeVisible();
+  // On, its entry leads the Hive group, as proof 04 lists it (V93).
+  await expect(
+    page
+      .getByRole('navigation', { name: 'Settings' })
+      .getByRole('region', { name: 'Hive' })
+      .getByRole('button', { name: 'Hive mode, on' }),
+  ).toBeVisible();
   await expect(page.locator('.sidenav canvas')).toHaveCount(0);
   await expect(page.locator('.sidenav-brand img')).toHaveAttribute('src', /mark-hive/);
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /favicon-hive/);

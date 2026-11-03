@@ -105,7 +105,6 @@ export function SuggestionCard({
       : null;
   return (
     <StartCard
-      icon={<SparklesIcon />}
       title="Suggested settings"
       help={
         <Help label="About suggested settings">

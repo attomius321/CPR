@@ -56,9 +56,10 @@ export function NucleusIcon({ becoming }: { becoming?: boolean } = {}) {
   return useAlphaCeph() ? (
     <HiveMindIcon becoming={becoming} />
   ) : (
+    // The kits' `nucleus` (V93): a ring and its core.
     <Icon lucide>
-      <circle cx="12" cy="12" r="10" />
-      <circle cx="12" cy="12" r="1" />
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="2.5" />
     </Icon>
   );
 }
@@ -175,19 +176,21 @@ export const ShieldIcon = () => (
 
 /** Skills (V41): an open book, after lucide's book-open (ISC). */
 export const SkillsIcon = () => (
-  <Icon>
-    <path d="M8 4.7V14" />
-    <path d="M2 12V2.7h3.3A2.7 2.7 0 0 1 8 5.3a2.7 2.7 0 0 1 2.7-2.6H14V12h-4a2 2 0 0 0-2 2 2 2 0 0 0-2-2z" />
+  // Lucide's book-open, as the kits draw it (V93).
+  <Icon lucide>
+    <path d="M12 7v14" />
+    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
   </Icon>
 );
 
-/** The Monitor (RM1): unequal blocks, a treemap, after lucide's layout-dashboard (ISC). */
+/** The Monitor (RM1): four blocks, after lucide's layout-grid (ISC). */
 export const MonitorIcon = () => (
-  <Icon>
-    <rect x="2" y="2" width="4.7" height="6" rx="0.7" />
-    <rect x="9.3" y="2" width="4.7" height="3.3" rx="0.7" />
-    <rect x="9.3" y="8" width="4.7" height="6" rx="0.7" />
-    <rect x="2" y="10.7" width="4.7" height="3.3" rx="0.7" />
+  // Four blocks, lucide's layout-grid, as the kits draw it (V93).
+  <Icon lucide>
+    <rect width="7" height="7" x="3" y="3" rx="1" />
+    <rect width="7" height="7" x="14" y="3" rx="1" />
+    <rect width="7" height="7" x="14" y="14" rx="1" />
+    <rect width="7" height="7" x="3" y="14" rx="1" />
   </Icon>
 );
 
@@ -201,9 +204,10 @@ export const HistoryIcon = () => (
 );
 
 export const SettingsIcon = () => (
-  <Icon>
-    <circle cx="8" cy="8" r="2" />
-    <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" />
+  // Lucide's settings, as the kits draw it (V93).
+  <Icon lucide>
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+    <circle cx="12" cy="12" r="3" />
   </Icon>
 );
 
@@ -239,11 +243,11 @@ export const WorkingIcon = () => (
   </Icon>
 );
 
-/** The sidenav's To review group (V48): work to look at, after lucide's eye (ISC). */
+/** Work to look at (V48), lucide's eye on its 24 grid as the kits draw it (V93). */
 export const ReviewIcon = () => (
-  <Icon>
-    <path d="M1.37 8.23a.67.67 0 0 1 0-.46 7.17 7.17 0 0 1 13.26 0 .67.67 0 0 1 0 .46 7.17 7.17 0 0 1-13.26 0" />
-    <circle cx="8" cy="8" r="2" />
+  <Icon lucide>
+    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+    <circle cx="12" cy="12" r="3" />
   </Icon>
 );
 
@@ -531,39 +535,69 @@ export const BranchIcon = () => (
   </Icon>
 );
 
-/** Fix: lucide's scissors. */
+/** Open elsewhere (V93, proof 03's Open ↗): lucide's external-link. */
+export const ExternalIcon = () => (
+  <Icon lucide>
+    <path d="M15 3h6v6" />
+    <path d="M10 14 21 3" />
+    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+  </Icon>
+);
+
+/** Send a reply (V93, proof 02): lucide's send. */
+export const SendIcon = () => (
+  <Icon lucide>
+    <path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+    <path d="m21.854 2.147-10.94 10.939" />
+  </Icon>
+);
+
+/** Start a workspace (V93, proof 06): lucide's arrow-right. */
+export const ArrowRightIcon = () => (
+  <Icon lucide>
+    <path d="M5 12h14" />
+    <path d="m12 5 7 7-7 7" />
+  </Icon>
+);
+
+/** A four-pointed spark: a Feature (V93, the kits' `feature`). */
+export const SparkIcon = () => (
+  <Icon lucide>
+    <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
+  </Icon>
+);
+
+/** Fix: lucide's wrench (V93, the kits'). */
 export const FixIcon = () => (
   <Icon lucide>
-    <circle cx="6" cy="6" r="3" />
-    <path d="M8.12 8.12 12 12" />
-    <path d="M20 4 8.12 15.88" />
-    <circle cx="6" cy="18" r="3" />
-    <path d="M14.8 14.8 20 20" />
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
   </Icon>
 );
 
-/** Refactor: lucide's blocks. */
+/** Refactor: lucide's code-xml (V93, the kits'). */
 export const RefactorIcon = () => (
   <Icon lucide>
-    <rect width="7" height="7" x="14" y="3" rx="1" />
-    <path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3" />
+    <path d="m18 16 4-4-4-4" />
+    <path d="m6 8-4 4 4 4" />
+    <path d="m14.5 4-5 16" />
   </Icon>
 );
 
-/** Chore: lucide's power. */
+/** Chore: lucide's list-checks (V93, the kits'). */
 export const ChoreIcon = () => (
   <Icon lucide>
-    <path d="M12 2v10" />
-    <path d="M18.4 6.6a9 9 0 1 1-12.77.04" />
+    <path d="m3 17 2 2 4-4" />
+    <path d="m3 7 2 2 4-4" />
+    <path d="M13 6h8" />
+    <path d="M13 12h8" />
+    <path d="M13 18h8" />
   </Icon>
 );
 
-/** Spike: lucide's route. */
+/** Spike: lucide's zap (V93, the kits'). */
 export const SpikeIcon = () => (
   <Icon lucide>
-    <circle cx="6" cy="19" r="3" />
-    <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
-    <circle cx="18" cy="5" r="3" />
+    <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
   </Icon>
 );
 
@@ -768,6 +802,16 @@ export const AlertIcon = () => (
 export const RunningIcon = () => (
   <Icon lucide>
     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </Icon>
+);
+
+/**
+ * At work in a sidenav row (V93, the kits' `spin`): a faint ring and the arc that turns on it.
+ */
+export const SpinIcon = () => (
+  <Icon lucide>
+    <circle cx="12" cy="12" r="9" opacity="0.28" />
+    <path d="M21 12a9 9 0 0 0-9-9" />
   </Icon>
 );
 
@@ -1000,5 +1044,27 @@ export const AnsweredIcon = () => (
   <Icon lucide>
     <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
     <path d="m9 12 2 2 4-4" />
+  </Icon>
+);
+
+/** A workspace's Thread tab (V93, proofs 02 and 08): lucide's message-square, as the proofs. */
+export const ThreadIcon = () => (
+  <Icon lucide>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </Icon>
+);
+
+/** A workspace's Activity tab (V93): lucide's activity. */
+export const ActivityIcon = () => (
+  <Icon lucide>
+    <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
+  </Icon>
+);
+
+/** Open in VS Code (V93, the proofs' `vscode`): lucide's code, two chevrons. */
+export const EditorIcon = () => (
+  <Icon lucide>
+    <path d="m18 16 4-4-4-4" />
+    <path d="m6 8-4 4 4 4" />
   </Icon>
 );

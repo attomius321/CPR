@@ -35,7 +35,7 @@ import { tip } from '../ui/tip.js';
  * Whether a workspace with commits merges into the branch it is reviewed against (V17's check,
  * V65), read once per tip and pick; not at all where it is not shown (`read` false).
  */
-function useMergeCheck(workspace: WorkspaceSummary, read = true): BranchMerge | null {
+export function useMergeCheck(workspace: WorkspaceSummary, read = true): BranchMerge | null {
   const [merge, setMerge] = useState<BranchMerge | null>(null);
   const wanted = read && workspace.ahead > 0 && !mergedForCard(workspace) && workspace.tip !== null;
   useEffect(() => {

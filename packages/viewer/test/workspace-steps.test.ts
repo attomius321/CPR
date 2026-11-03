@@ -13,6 +13,8 @@ import {
   hiveSteps,
   normalSteps,
   planAnswered,
+  pipelineSteps,
+  type StepsModel,
 } from '../src/workspaces/workspace-steps.js';
 
 // V89 (decisions 823–827): the steps in a workspace's head, derived from what Symbiote records.
@@ -294,5 +296,74 @@ describe("the agent's tab (V89, decision 827)", () => {
     expect(agentDot({ state: 'working' })).toBe('run');
     expect(agentDot({ state: 'stopped' })).toBeNull();
     expect(agentDot({ state: 'ready' })).toBeNull();
+  });
+});
+
+describe('pipelineSteps (V93, decision 884: the pipeline card)', () => {
+  const model = (over: Partial<StepsModel>): StepsModel => ({
+    steps: ['Plan', 'Your OK', 'Build', 'Review', 'Merge'],
+    at: 1,
+    mark: 'you',
+    tone: 'you',
+    word: 'Your OK',
+    detail: 'waiting',
+    ...over,
+  });
+
+  it("normal mode, plan first: each step's words, the current one its own, the person's violet", () => {
+    expect(pipelineSteps(model({}), { into: 'main', commits: 0 })).toEqual([
+      { name: 'Plan', state: 'done', detail: 'written' },
+      { name: 'Your OK', state: 'you', detail: 'waiting' },
+      { name: 'Build', state: 'todo', detail: 'the agent commits' },
+      { name: 'Review', state: 'todo', detail: 'yours, on its graph' },
+      { name: 'Merge', state: 'todo', detail: 'queue → main' },
+    ]);
+  });
+
+  it('building, then merged: its commits once built, every step done', () => {
+    const building = pipelineSteps(
+      model({ at: 2, mark: 'now', tone: 'run', word: 'Build', detail: 'working' }),
+      {
+        into: 'main',
+        commits: 3,
+      },
+    );
+    expect(building.map((s) => [s.state, s.detail])).toEqual([
+      ['done', 'written'],
+      ['done', 'answered'],
+      ['now', 'working'],
+      ['todo', 'yours, on its graph'],
+      ['todo', 'queue → main'],
+    ]);
+    const merged = pipelineSteps(
+      model({ at: 5, mark: 'now', tone: 'ok', word: 'Merged', detail: '' }),
+      {
+        into: 'main',
+        commits: 3,
+      },
+    );
+    expect(merged.map((s) => s.state)).toEqual(['done', 'done', 'done', 'done', 'done']);
+    expect(merged[2]?.detail).toBe('3 commits');
+    expect(merged[4]?.detail).toBe('into main');
+  });
+
+  it("Hive's: Write, Check, Review, Land; a stop red where it stopped", () => {
+    const stopped = pipelineSteps(
+      {
+        steps: ['Write', 'Check', 'Review', 'Land'],
+        at: 1,
+        mark: 'bad',
+        tone: 'error',
+        word: 'Check',
+        detail: 'stopped',
+      },
+      { into: 'main', commits: 2 },
+    );
+    expect(stopped.map((s) => [s.name, s.state, s.detail])).toEqual([
+      ['Write', 'done', '2 commits'],
+      ['Check', 'bad', 'stopped'],
+      ['Review', 'todo', 'proves defects'],
+      ['Land', 'todo', 'into main'],
+    ]);
   });
 });

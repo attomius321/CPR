@@ -316,3 +316,12 @@
   background: var(--text);
   opacity: 0.55;
 }
+
+/* A review's findings by severity (V93, proof 01): an error red, a warning amber. */
+.figure-error {
+  color: var(--error);
+}
+
+.figure-warning {
+  color: var(--warning);
+}

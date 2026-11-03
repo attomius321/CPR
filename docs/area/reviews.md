@@ -117,6 +117,13 @@ so a file changed since shows unviewed again. Marking a symbol keeps the files' 
 under its line can be written again with **Edit**, and Ctrl+Enter in the summary finishes the
 review.
 
+Since V93 a diff of TypeScript, JavaScript or HTML is in colour, the Files page's and a symbol's in
+the detail panel (decision 889, replacing 845's "none"): `ui/syntax.ts`, a tokenizer of our own,
+line by line with a block comment or a template string carried over; 2,000 rows in 2.8 ms
+median. On the Graph page the first layout is fitted whole at most at 1×, and a pick moves the
+canvas only when the symbol is out of view, or comes to 1× from the map (886); the detail panel
+is 336 px (887) and each use has **Open ↗** (888). A finding's title is its message (890).
+
 ## Opening a review
 
 While a review's change is analyzed, its page shows the six steps of the analysis as a timeline
@@ -171,10 +178,13 @@ when a later decision or a fix changed it.
 | 557–560, 568 | The Review tab in three sections; **Merge into** fits the panel; the result of a finished review in a tinted box | [V76](../plan/v76-review-tab-layout.md) |
 | 842–844 | The Files page in one card, the review under the files (replaces 435's tabs); a file viewed as a `file:<path>` mark by its blob; comments under their lines with Edit; Ctrl+Enter finishes | [V90](../plan/v90-redesign-reviews.md) |
 | 846–847 | Opening a review: the steps as a timeline with their times as the page saw them; the files (served from the pair), a workspace's report, commits and brief at once; the Files page read only meanwhile | [V90](../plan/v90-redesign-reviews.md) |
+| 886–890 | A review as proof 03: the first fit whole (≤ 1×), no zoom to a pick but from the map; the detail 336 px; Open ↗ per use; syntax colours from our own tokenizer (supersedes 845); a finding's message as its title | [V93](../plan/v93-redesign-finish.md) |
 
 These no longer hold:
 
 - **435's "tabs Files and Review"**: one card since V90 (842), the review under the files.
+- **845's "no syntax colours"**: since V93 (889) our own tokenizer colours TS, JS and HTML.
+- **V90's zoom to a picked symbol**: since V93 (886) a pick only brings it into view.
 - **80, Approve pushes the reviewed commit**: replaced by 82 a day later. In 4 approvals out of
   4, the agent had already pushed the commit, so the push did nothing.
 - **82's "the agent merges the approved commit when asked"**: [the merger](merger.md) merges it

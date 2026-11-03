@@ -248,10 +248,11 @@ test('uses the whole main area: the list at its left, the skill to its right and
     expect(Math.abs(card.x - (l.x + l.width) - 8)).toBeLessThanOrEqual(1);
     expect(Math.abs(e.x + e.width - (main.x + main.width - 12))).toBeLessThanOrEqual(1);
     expect(Math.abs(e.y + e.height - (main.y + main.height - 12))).toBeLessThanOrEqual(1);
-    // The head as Settings': its icon over the list's edge, New skill over the skill's.
-    expect(Math.abs(icon.x - l.x)).toBeLessThanOrEqual(1);
+    // The head as Settings': its icon over the list's edge, New skill over the skill's, 2 px
+    // further in (V93, the kits' head).
+    expect(Math.abs(icon.x - l.x - 2)).toBeLessThanOrEqual(1);
     expect(heading.x).toBeGreaterThan(icon.x + icon.width);
-    expect(Math.abs(add.x + add.width - (e.x + e.width))).toBeLessThanOrEqual(1);
+    expect(Math.abs(add.x + add.width - (e.x + e.width - 2))).toBeLessThanOrEqual(1);
     if (width >= 1920) {
       expect(checks.x).toBeGreaterThanOrEqual(card.x + card.width + 7);
       expect(Math.abs(checks.y - card.y)).toBeLessThanOrEqual(1);

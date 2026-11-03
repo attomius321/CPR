@@ -4,7 +4,8 @@
   display: flex;
   flex: 0 1 auto;
   flex-direction: column;
-  width: var(--sidebar-width, 300px);
+  /* 320 px at first, as proof 03 draws it (V93; 300 before). */
+  width: var(--sidebar-width, 320px);
   min-width: 240px;
   overflow: hidden;
   border: 1px solid var(--line);

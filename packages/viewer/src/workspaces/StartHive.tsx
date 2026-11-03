@@ -9,7 +9,6 @@ import {
   ChecksIcon,
   ClockIcon,
   CoinsIcon,
-  HexagonIcon,
   MergeIcon,
   PencilIcon,
   ReviewIcon,
@@ -102,10 +101,7 @@ export function HiveHow({
   ];
   return (
     <section className="start-card start-hive-how" aria-labelledby="start-hive-how">
-      <div className="start-card-head">
-        <span className="start-card-icon" aria-hidden="true">
-          <HexagonIcon />
-        </span>
+      <div className="card-head">
         <h2 id="start-hive-how">How Hive runs it</h2>
       </div>
       <ol className="start-hive-steps">
