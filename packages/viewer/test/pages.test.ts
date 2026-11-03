@@ -125,7 +125,10 @@ describe('backLink (V25)', () => {
       label: 'Workspace',
     });
     // Opened from the Overview's inbox (V91), at its address or at the root that opens it.
-    expect(backLink(`${origin}/overview`, origin)).toEqual({ href: '/overview', label: 'Overview' });
+    expect(backLink(`${origin}/overview`, origin)).toEqual({
+      href: '/overview',
+      label: 'Overview',
+    });
     expect(backLink(`${origin}/`, origin)).toEqual({ href: '/overview', label: 'Overview' });
     // A finished workspace's change, opened from History (V77): back to it there, its tab kept.
     expect(backLink(`${origin}/workspace-history?branch=feature%2Fx&changes`, origin)).toEqual({
