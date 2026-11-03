@@ -48,6 +48,7 @@ for (const size of ['default', 'compact', 'large'] as const) {
     }, size);
     await page.setViewportSize({ width: 1440, height: 900 });
 
+    await visit(page, 'the Overview', 'overview', '.overview-card.inbox');
     await visit(page, 'Git', 'git', '.commit');
     await page.locator('.commit').nth(1).click();
     await expect(page.locator('.git-details')).toBeVisible(POLL);
@@ -87,6 +88,8 @@ for (const size of ['default', 'compact', 'large'] as const) {
     symbiote.report(branch, 'Done: half() in src/half.ts.');
     const card = page.locator(`.workspace-row[data-branch="${branch}"]`);
     await expect(card).toContainText('Ready for review', POLL);
+    // The Overview with a row to review: its action in the inbox (V91).
+    await visit(page, 'the Overview, a review waiting', 'overview', '.inbox .table-row');
     await visit(page, 'A workspace', `?branch=${encodeURIComponent(branch)}`, '.workspace-main');
     const panel = page.getByRole('region', { name: `Workspace ${branch}` });
     await panel.getByRole('button', { name: 'Review', exact: true }).click();

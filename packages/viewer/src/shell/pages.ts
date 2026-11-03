@@ -1,12 +1,14 @@
 import type { Graph } from '@symbiote/core';
 
 /**
- * `symbiote view`'s pages and what its sidenav opens (V29a): Git (History until V66), Nucleus (V35),
- * Skills (V41), Monitor (RM1), History (V77), Settings, a workspace or a merge, and Start a
- * workspace (V30a), each shown in the shell's main area. There is no Workspaces page since V29a: the workspaces are in the
- * sidenav, and `/` alone opens Git.
+ * `symbiote view`'s pages and what its sidenav opens (V29a): the Overview (V91), Git (History until
+ * V66), Nucleus (V35), Skills (V41), Monitor (RM1), History (V77), Settings, a workspace or a merge,
+ * and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces page
+ * since V29a: the workspaces are in the sidenav, and `/` alone opens the Overview (Git until V91).
  */
 export type Route =
+  /** What waits for the person, or Hive's work, and the day (V91), at `/overview`. */
+  | { page: 'overview' }
   /** The repository's history and git's work on it (V66), at `/git`. */
   | { page: 'git' }
   /** Nucleus (V35; Scout until NU1), at `/nucleus`: the person's orchestrator in Symbiote. */
