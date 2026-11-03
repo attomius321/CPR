@@ -29,7 +29,7 @@
   --page-gap: 8px; /* between two cards; a resizer lies in it */
   --page-head: 40px; /* the head's two lines: the title and the line under it */
   --card-pad: 12px; /* a card's edge to its contents, its head's and its body's */
-  --card-head: 37px; /* a card's head: its tabs, or a title and actions (VS Code's tabs: 35) */
+  --card-head: 40px; /* a card's head: its tabs, or a title and actions (V93: the kits' 40; 37 from V85) */
   --field-label-gap: 4px; /* a label to its field */
   --field-gap: 14px; /* a field to the next label */
   /* Heights (V85, decisions 710–712): VS Code's density, each a step below V72's. V87 (decision

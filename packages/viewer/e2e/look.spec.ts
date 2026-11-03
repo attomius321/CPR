@@ -321,7 +321,12 @@ test("fields and buttons take the page's font and spacing on every page", async 
         if (style.letterSpacing !== body.letterSpacing) {
           off.push(`${name}: letter-spacing ${style.letterSpacing}`);
         }
-        if (element.matches(controls) && style.fontFamily !== body.fontFamily) {
+        // A branch's name is literal: Start's in the code's font, as proof 06 draws it (V93).
+        if (
+          element.matches(controls) &&
+          !element.matches('#start-branch') &&
+          style.fontFamily !== body.fontFamily
+        ) {
           off.push(`${name}: ${style.fontFamily}`);
         }
       }
@@ -364,7 +369,8 @@ test("fields and buttons take the page's font and spacing on every page", async 
 });
 
 // V37 (decision 246): a field's edge is quiet at rest, the 3:1 edge on hover, the focus colour and a
-// ring on focus; fields and selects one height; no resize grip, a textarea grows with its text.
+// ring on focus; fields and selects their row's height; no resize grip, a textarea grows with its
+// text.
 test('text fields: a quiet edge, a stronger one on hover, a ring on focus, one height', async ({
   page,
 }) => {
@@ -385,11 +391,11 @@ test('text fields: a quiet edge, a stronger one on hover, a ring on focus, one h
   await title.focus();
   expect(await style(title, 'outline-style')).toBe('none');
   await expect.poll(() => style(title, 'box-shadow')).toContain('0px 0px 0px 3px');
-  for (const field of [title, form.getByRole('textbox', { name: 'Branch name' })]) {
-    expect((await field.boundingBox())?.height).toBe(28);
-  }
+  // V93 (proof 06): the brief's fields 32 px, the run's rows 30 (28 on the page before).
+  expect((await title.boundingBox())?.height).toBe(32);
+  expect((await form.getByRole('textbox', { name: 'Branch name' }).boundingBox())?.height).toBe(30);
   for (const select of await form.getByRole('combobox').all()) {
-    expect((await select.boundingBox())?.height).toBe(28);
+    expect((await select.boundingBox())?.height).toBe(30);
   }
   expect(await style(goal, 'resize')).toBe('none');
   const before = (await goal.boundingBox())?.height ?? 0;

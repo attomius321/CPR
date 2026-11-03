@@ -70,33 +70,6 @@
   color: var(--text);
 }
 
-.start-documents-add {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px 12px;
-  margin: 10px 0 0;
-  padding: 8px 12px;
-  border: 1px dashed var(--field-line);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--input-bg) 60%, transparent);
-  font-weight: normal;
-}
-
-.start-documents-hint {
-  color: var(--muted);
-  font-size: var(--size-small);
-}
-
-.start-documents-about {
-  flex-basis: 100%;
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--size-small);
-  text-align: center;
-}
-
 /* Files dragged over the page: dropped anywhere, they are added. */
 .start-drop {
   position: absolute;

@@ -48,10 +48,10 @@ import {
   AgentsFileIcon,
   AppearanceIcon,
   ApprovedIcon,
-  BranchIcon,
   BugIcon,
   ChecksIcon,
   ChoreIcon,
+  SparkIcon,
   CommentIcon,
   CommitIcon,
   DocumentsIcon,
@@ -281,7 +281,7 @@ type EntryKey = PromptKey | typeof LIBRARY | typeof APPEARANCE | typeof HIVE;
  * every entry has one, Scribe's `library` prompt is not an entry.
  */
 const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
-  'start.feature': BranchIcon,
+  'start.feature': SparkIcon,
   'start.fix': FixIcon,
   'start.refactor': RefactorIcon,
   'start.chore': ChoreIcon,

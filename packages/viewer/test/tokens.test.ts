@@ -600,7 +600,7 @@ describe('the type scale (V32)', () => {
 // the tokens, a step below V72's; the page frame's tokens tighter. V87 (decision 761): rows and
 // small controls 24 px, WCAG 2.2's target size (2.5.8); the rest a step for 15 px text.
 describe('the density (V85)', () => {
-  it("is near VS Code's: 28 px controls, 24 px rows, 37 px card heads, 12 px margins", () => {
+  it("is near VS Code's: 28 px controls, 24 px rows, 40 px card heads (the kits', V93), 12 px margins", () => {
     const pick = (names: string[]) => Object.fromEntries(names.map((n) => [n, base.get(n)]));
     expect(
       pick([
@@ -625,7 +625,7 @@ describe('the density (V85)', () => {
       '--height-tab': '32px',
       '--height-bar': '36px',
       '--height-top': '40px',
-      '--card-head': '37px',
+      '--card-head': '40px',
       '--page-head': '40px',
       '--page-pad': '12px',
       '--page-gap': '8px',

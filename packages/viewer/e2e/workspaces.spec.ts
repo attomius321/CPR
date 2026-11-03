@@ -67,11 +67,8 @@ test('starts a workspace from the header: its branch, its worktree, the agent th
   await expect(branch(page)).toHaveValue('feature/add-a-half-function');
   const folder = `${symbiote.repo}.worktrees/feature-add-a-half-function`;
   await expect(startPage(page)).toContainText(`Will be created from main at ${short(main)}`);
-  // The worktree's path is in Branch's help (V37, decision 248).
-  await startPage(page).getByRole('button', { name: 'Where its worktree goes' }).click();
-  await expect(page.getByRole('tooltip')).toContainText(folder);
-  await page.keyboard.press('Escape');
-  await expect(page.getByRole('tooltip')).toBeHidden();
+  // The worktree's path is in the branch's tip (V93; Branch's help since V37, decision 248).
+  expect(await branch(page).getAttribute('data-tip')).toContain(folder);
   // The agent, the only one installed, and whose account it runs on.
   await expect(startPage(page).locator('.start-value')).toHaveText('Claude Code');
   await expect(startPage(page)).toContainText('your Pro subscription');
@@ -147,13 +144,13 @@ test('n starts one too; a name in use is refused before Start; Escape cancels', 
   await expect(startPage(page)).toBeHidden();
   expect(symbiote.calls()).toEqual([]);
 
-  // Escape keeps the draft (V24c), the branch typed included; Clear empties it.
+  // Escape keeps the draft (V24c), the branch typed included. No Clear since V93 (proof 06): the
+  // fields written over, ⤨ names the branch after the title again.
   await page.keyboard.press('n');
   await expect(title(page)).toHaveValue('Something');
   await expect(branch(page)).toHaveValue('feature/something');
-  await startPage(page).getByRole('button', { name: 'Clear' }).click();
-  await expect(title(page)).toHaveValue('');
   await fillWork(page, 'Something else');
+  await startPage(page).getByRole('button', { name: 'Name it after the title' }).click();
   await startPage(page).getByLabel('permission').selectOption({ label: 'Auto' });
   await title(page).press('Control+Enter');
   await expect(page.getByRole('status')).toContainText('Started feature/something-else');
@@ -1802,9 +1799,7 @@ const kind = (page: Page, name: string) => startPage(page).getByRole('radio', { 
 const part = (page: Page, name: string) => startPage(page).getByRole('textbox', { name });
 const doneWhen = (page: Page) => part(page, 'Done when (optional)');
 const startButton = (page: Page) =>
-  startPage(page).getByRole('button', { name: 'Start workspace' });
-const info = (page: Page) =>
-  startPage(page).getByRole('button', { name: 'About the kinds of work' });
+  startPage(page).getByRole('button', { name: /^Start workspace/ });
 
 test('each kind starts a workspace: its brief, its line, its branch, its tag (V24c)', async ({
   page,
@@ -1862,8 +1857,9 @@ test('Done when names the check guessed at the start commit; switching kinds kee
   // A Feature has no Done when of its own; the check is offered as an example.
   await expect(doneWhen(page)).toHaveValue('');
   await expect(doneWhen(page)).toHaveAttribute('placeholder', /e\.g\. `npm run check` passes/);
+  // The merge's check under Done when (V93, proof 06).
   await expect(startPage(page)).toContainText(
-    'Check: npm run check, from package.json (scripts.check)',
+    "The merge's check: npm run check from package.json (scripts.check)",
   );
 
   await kind(page, 'Fix').click();
@@ -1940,7 +1936,7 @@ test('the draft outlives Escape and a reload; after a start only the kind is kep
   await expect(part(page, 'What happens')).toHaveValue('');
 });
 
-test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, title, part and its tools, Done when, More, start from, branch, model and effort, permission, documents, each field after its help (V24c, V30, V33, V37, V40, V47, V63)', async ({
+test('the keyboard: digits and arrows pick a kind; Tab goes kind, title, part and its tools, Done when, More, starts from, branch, model, effort, permission, plan first, documents (V24c, V30, V33, V40, V47, V93)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -1948,11 +1944,7 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
   await expect(page.locator('.commit').first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(title(page)).toBeFocused();
-  // V63: the title's help, before it.
-  await page.keyboard.press('Shift+Tab');
-  await expect(startPage(page).getByRole('button', { name: 'About the title' })).toBeFocused();
-  await page.keyboard.press('Shift+Tab');
-  await expect(info(page)).toBeFocused();
+  // V93: no "?" before a field (proof 06): the kinds are right before the title.
   await page.keyboard.press('Shift+Tab');
   await expect(kind(page, 'Feature')).toBeFocused();
   await page.keyboard.press('2');
@@ -1963,31 +1955,24 @@ test('the keyboard: digits and arrows pick a kind; Tab goes kind, its info, titl
   await page.keyboard.press('5');
   await expect(kind(page, 'Spike')).toHaveAttribute('aria-checked', 'true');
   for (const next of [
-    info(page),
-    startPage(page).getByRole('button', { name: 'About the title' }),
     title(page),
-    startPage(page).getByRole('button', { name: 'About the question' }),
     part(page, 'Question'),
-    // V63: the part's tools, in its frame.
-    startPage(page).getByRole('button', { name: 'Preview' }),
+    // The part's tools, in its frame.
     startPage(page).getByRole('button', { name: 'Attach files' }),
-    startPage(page).getByRole('button', { name: 'About Done when' }),
+    startPage(page).getByRole('button', { name: 'Preview' }),
     doneWhen(page),
     startPage(page).getByRole('button', { name: /More:/ }),
-    startPage(page).getByLabel('Start from'),
-    // V37: a field's help is a button before it, in the Tab order.
-    startPage(page).getByRole('button', { name: 'Where its worktree goes' }),
-    branch(page),
-    // V47: the model, under the agent.
-    startPage(page).getByRole('button', { name: 'About the model' }),
-    startPage(page).getByLabel('Model', { exact: true }),
-    startPage(page).getByRole('button', { name: 'About the effort' }),
-    startPage(page).getByLabel('Effort', { exact: true }),
-    startPage(page).getByLabel('Permission'),
-    startPage(page).getByLabel('Plan first and wait for my OK'),
-    // V40: the documents' help, then Add files (its file input is not a stop).
-    startPage(page).getByRole('button', { name: 'About documents' }),
+    // V93: Add files in the brief's Documents row.
     startPage(page).getByRole('button', { name: 'Add files' }),
+    startPage(page).getByRole('button', { name: /^Starts from/ }),
+    branch(page),
+    startPage(page).getByLabel('Model', { exact: true }),
+    startPage(page).getByLabel('Permissions'),
+    // The effort: its picked level, one stop for the group.
+    startPage(page)
+      .getByRole('radiogroup', { name: 'Effort' })
+      .getByRole('radio', { checked: true }),
+    startPage(page).getByLabel('Plan first and wait for my OK'),
   ]) {
     await page.keyboard.press('Tab');
     await expect(next).toBeFocused();
@@ -2054,41 +2039,17 @@ test('the Brief tab draws the brief as Markdown: its headings, lists and code', 
   await expect(brief.locator('b')).toHaveCount(0);
 });
 
-test('the kinds explained: a tooltip after the picker, on hover, focus or a tap (V24c)', async ({
+test("the kinds explained: each tab's tip says what it is for, on hover or focus (V24c, V93)", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}git`);
   await page.getByRole('link', { name: 'Start a workspace' }).click();
-  await kind(page, 'Fix').click();
-  // A help's tip is drawn on the page's body (V37), named by the button's aria-describedby.
-  const about = page.locator('#kind-about[role="tooltip"]');
-  await expect(about).toBeHidden();
-  await info(page).hover();
-  await expect(about).toBeVisible();
-  await expect(about.locator('dt')).toHaveText(['Feature', 'Fix', 'Refactor', 'Chore', 'Spike']);
-  await expect(about).toContainText('Something that goes wrong');
-  await expect(about).toContainText('A question to answer');
-  // The kind picked is marked.
-  await expect(about.locator('.current dt')).toHaveText('Fix');
-  await expect(info(page)).toHaveAttribute('aria-describedby', 'kind-about');
-  await title(page).hover();
-  await expect(about).toBeHidden();
-
-  // From the keyboard: shown while the button has the focus; Escape hides it, and the page stays.
-  await kind(page, 'Fix').focus();
-  await page.keyboard.press('Tab');
-  await expect(info(page)).toBeFocused();
-  await expect(about).toBeVisible();
-  await page.keyboard.press('Escape');
-  await expect(about).toBeHidden();
-  await expect(startPage(page)).toBeVisible();
-  await page.keyboard.press('Tab');
-  await expect(about).toBeHidden();
-
-  // A tap (no hover on a phone) shows it too.
-  await info(page).click();
-  await expect(about).toBeVisible();
+  // The proof's line tabs: what each kind is for is its tab's tip (a "?" after them until V93).
+  await expect(kind(page, 'Fix')).toHaveAttribute('data-tip', /^Fix\nSomething that goes wrong/);
+  await expect(kind(page, 'Spike')).toHaveAttribute('data-tip', /^Spike\nA question to answer/);
+  await kind(page, 'Fix').hover();
+  await expect(page.getByRole('tooltip')).toContainText('Something that goes wrong');
 });
 
 test('Merge on an approved workspace: Symbiote merges it in its own worktree, Land moves main (V26a)', async ({

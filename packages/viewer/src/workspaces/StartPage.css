@@ -1,13 +1,11 @@
-/* Start a workspace, a page of the shell's (V30a), drawn as the person's mockup since V63, in the
-   page frame since V72 (decision 507): the head — the S, the title and its line, the buttons —
-   then the brief, one card, and the run, seven cards, side by side where the main area has the
-   room (821 : 470, as the mockup), the run under the brief where not; the whole main area at any
-   width, the cards right under the head on any window. The body scrolls under the head, which
-   keeps Start workspace in view. */
+/* Start a workspace, a page of the shell's (V30a), in the page frame since V72 (decision 507), as
+   proof 06-start draws it since V93 (decision 883): the head — its icon, the title and its line,
+   the buttons — then the brief, one card with the kinds as line tabs in its head, and the run
+   beside it, 380 px, where the main area has the room; under it where not. The body scrolls under
+   the head, which keeps Start workspace in view. */
 .start-page {
-  /* A run row's name, and the head of a card that is one choice: their controls line up. From the
-     text size (V87): 124 px at the default, so "Branch name" and its "?" stay one line at Large. */
-  --start-name: calc(8.25 * var(--size-body));
+  /* A run row's name: its controls line up (the proof's 100 px at the default text size). */
+  --start-name: calc(6.7 * var(--size-body));
   position: relative;
   isolation: isolate;
   flex: 1;
@@ -17,41 +15,22 @@
   container: start / inline-size;
 }
 
-/* The mockup's arc (decision 455; the rings are `ui/ground.css`'s): a ring around the head's S.
-   Its two rings at the right of the cards stood in the ground beside a centred page: the cards
-   reach the area's edge since V72, so the layer draws no `::after`. */
-.start-ground::after {
-  display: none;
-}
-
-.start-ground::before {
-  top: -795px;
-  left: -445px;
-  width: 990px;
-  height: 990px;
-  background: radial-gradient(
-    closest-side,
-    transparent 72%,
-    color-mix(in srgb, var(--ground-arc) 18%, transparent)
-  );
-}
-
-/* The S on its plate, lit as the mockup's. */
-.start-top .symbiote-mark {
-  box-shadow:
-    0 0 0 1px var(--line),
-    0 0 24px var(--ground-arc);
-}
-
-/* The page's actions a step taller than a row's, as the mockup's. */
-.start-top .button {
-  min-height: var(--height-tall);
-  padding: 0 16px;
-}
-
 .start-top .button .icon {
   width: 14px;
   height: 14px;
+}
+
+/* Start workspace's key, in its button (the proof's `.kbd`). */
+.start-keys {
+  margin-left: 2px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentcolor 14%, transparent);
+  color: inherit;
+  font-size: var(--size-caps);
+  line-height: 1.5;
+  box-shadow: none;
 }
 
 .start-error {
@@ -63,112 +42,93 @@
 .start-body {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
   overflow: auto;
   padding: 0 var(--page-pad) var(--page-pad);
 }
 
 .start-columns {
+  flex: 1 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--page-gap);
 }
 
-/* Wide, the mockup's two columns (decision 454): its proportion, the run at least 412 px — its
-   width at 1440 beside V61's 264 px sidenav, so its seven cards keep their lines beside V79's 300
-   (decision 585; 380 before: at 398 px Plan first's line wrapped and the column ran 12 px past
-   1440 × 1000). */
+/* Wide, the proof's two columns: the brief, then the run at 380 px. */
 @container start (min-width: 1000px) {
   .start-columns {
-    grid-template-columns: minmax(0, 821fr) minmax(412px, 470fr);
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr) 380px;
+    align-items: stretch;
   }
 }
 
-/* The brief: one card. */
+/* The brief: one card, down to the page's end. */
 .start-brief {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
-  padding: 0 var(--card-pad) var(--card-pad);
+  overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--panel);
   box-shadow: var(--shadow-lift);
 }
 
-/* The run: seven cards, each an icon in the accent and a heading (decision 453). */
+/* Its fields (the proof's `.form`): 16 px in, 16 apart. */
+.start-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+}
+
+/* The run: its cards, 8 px apart. */
 .start-run {
-  display: grid;
-  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: var(--page-gap);
   min-width: 0;
 }
 
 .start-card {
   min-width: 0;
-  padding: var(--card-pad);
+  overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--panel);
   box-shadow: var(--shadow-lift);
 }
 
-.start-card-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: var(--height-row);
+.start-card .card-head {
+  min-height: var(--card-head);
 }
 
-.start-card-icon {
-  display: inline-flex;
-  color: var(--accent);
-}
-
-.start-card-icon .icon {
-  width: 20px;
-  height: 20px;
-  stroke-width: 1.9;
-}
-
-.start-card-head h2 {
-  margin: 0;
-  color: var(--text);
-  font-size: var(--size-body);
-  font-weight: 600;
-}
-
-/* A card that is one choice: its control on the head's line, where the rows' controls are. */
 .start-card-control {
-  flex: 0 1 calc(100% - var(--start-name) - 12px);
-  display: flex;
-  align-items: center;
   min-width: 0;
-  margin-left: auto;
 }
 
-/* A switch keeps its own width, at the line's end. */
-.start-card-control:has(> [role='switch']) {
-  flex: none;
+.start-card-body {
+  padding: 14px;
 }
 
-/* Words under a card's heading, in line with it (past the icon). */
+/* Words in a card: muted, small. */
 .start-card-note {
-  margin: 2px 0 0 30px;
+  margin: 0;
   color: var(--muted);
-  font-size: var(--size-small);
+  font-size: var(--size-caption);
+  line-height: 1.45;
   overflow-wrap: anywhere;
 }
 
-/* Under a choice's control: the model's description. */
 .start-model-note {
-  margin-left: calc(var(--start-name) + 12px);
+  margin-top: 6px;
 }
 
-/* Suggested settings (V75): the proposal, a card while it is open, in line with the notes past
-   the icon; its button is the head's. */
+/* Suggested settings (V75): the proposal, a card while it is open. */
 .start-proposal {
   display: grid;
   gap: 4px;
-  margin: 8px 0 0 30px;
   overflow-wrap: anywhere;
 }
 
@@ -193,75 +153,63 @@
   margin-top: 8px;
 }
 
-/* A row (V49): the name at the left in --muted, the control at the right; a note under its
-   control. Over `.workspace-field`'s margin and weight. */
-.start-card > .start-row {
+/* A card's rows (the proof's `.kv`): the name at the left, muted, the control at the right. */
+.start-rows {
+  display: grid;
   grid-template-columns: var(--start-name) minmax(0, 1fr);
   align-items: center;
   column-gap: 12px;
-  row-gap: 4px;
-  margin: 10px 0 0;
-  color: var(--muted);
+  row-gap: 10px;
+  padding: 14px;
+  font-size: var(--size-small);
 }
 
-.start-card > .start-row + .start-row {
-  margin-top: 8px;
+.start-rows > label,
+.start-rows > .start-row-name {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.start-rows select,
+.start-rows input,
+.start-rows .branch-pick {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  min-height: var(--height-tall);
+  font-size: var(--size-small);
+  text-overflow: ellipsis;
 }
 
 .start-row-note {
   grid-column: 2;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  column-gap: 4px;
-  margin: 0;
-  font-size: var(--size-small);
-  /* Inside a field, where the name's weight would carry. */
+  margin: -4px 0 0;
+  font-size: var(--size-caption);
   font-weight: normal;
   overflow-wrap: anywhere;
 }
 
-.start-row-note.start-base {
-  display: block;
+/* Where it starts, said to screen readers: the branch's tip says it to the pointer. */
+.start-base {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
-.start-base strong {
-  color: var(--text);
-  font-weight: 500;
-}
-
-/* Hive on (HV2): what Hive does with the workspace, its hexagon before the words. */
-.start-hive {
-  display: flex;
-  gap: 6px;
-  align-items: flex-start;
-  margin-top: 8px;
-}
-
-.start-hive .icon {
-  flex: none;
-  width: 14px;
-  height: 14px;
-  margin-top: 2px;
-}
-
-/* A subscription's crown: muted (V88, decision 813: amber is for the agent's turn and a real
-   warning, the mockup's crown neither). */
-.start-account .icon {
-  width: 14px;
-  height: 14px;
-  color: var(--muted);
-}
-
-.start-card select {
-  box-sizing: border-box;
-  width: 100%;
+/* Its account, at the Agent card head's end: muted, cut. */
+.start-account {
   min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-caption);
   text-overflow: ellipsis;
-  font-weight: normal;
+  white-space: nowrap;
 }
 
-/* A select with an icon in its frame: a branch, an agent's mark. */
+/* A select with an icon in its frame: an agent's mark. */
 .start-select {
   position: relative;
   min-width: 0;
@@ -296,76 +244,152 @@
   height: 16px;
 }
 
-/* Branch name: the field, and the button that names it after the title again. */
-.start-branch {
+/* Branch: in the code's font (the proof's), and the button that names it after the title again
+   once it was edited. */
+.start-rows .start-branch {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
+  margin: 0;
 }
 
 .start-branch input {
   flex: 1;
-  min-width: 0;
+  font-family: var(--mono);
+  font-size: var(--size-caption);
 }
 
 .start-rename {
   flex: none;
-  width: var(--height-control);
-  padding: 0;
+  align-self: center;
 }
 
-/* The stepper wants the card's width (its six words overlap at a row's 220 px). */
-.start-effort .effort-stepper {
-  max-width: none;
-  margin: 8px 0 0;
+/* The effort (the proof's `.effort`): its name over a segmented control, a level a segment. */
+.start-effort {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 14px 14px;
 }
 
-/* The kinds as the mockup's tabs (decision 452): the brief card's head (V72), its hairline across
-   the card; the info at the row's end (V24c). */
-.kind-row {
-  position: relative;
+.start-effort-name {
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.effort-segments {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 10px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.effort-segments button {
+  min-height: var(--height-row);
+  padding: 0 4px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--size-caption);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.effort-segments button:hover {
+  color: var(--text);
+}
+
+.effort-segments button[aria-checked='true'] {
+  background: var(--panel);
+  color: var(--text);
+  box-shadow:
+    var(--shadow-lift),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.effort-segments button:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: -2px;
+}
+
+/* Plan first, at the Agent card's foot (the proof's `.toggle`): its name and help, the switch. */
+.start-plan-first {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 8px;
-  margin: 0 calc(-1 * var(--card-pad));
-  padding: 0 var(--card-pad);
-  border-bottom: 1px solid var(--line);
+  column-gap: 14px;
+  padding: 14px;
+  border-top: 1px solid var(--line);
 }
 
-/* The kinds, explained in their help (V24c; a tip of Help's since V37). */
-.help-tip:has(.kind-about) {
-  max-width: min(480px, calc(100vw - 16px));
+.start-plan-first label {
+  font-size: var(--size-body);
+  font-weight: 500;
 }
 
-.kind-about {
+.start-plan-first .start-card-note {
+  margin-top: 2px;
+}
+
+/* What happens next: a mark and a line each, the person's marks violet. */
+.start-next-steps {
   display: grid;
-  gap: 4px;
+  gap: 12px;
   margin: 0;
+  padding: 14px;
+  list-style: none;
+  font-size: var(--size-small);
 }
 
-.kind-about > div {
+.start-next-steps li {
   display: grid;
-  grid-template-columns: 5.5em 1fr;
-  gap: 8px;
-}
-
-.kind-about dt {
-  font-weight: 600;
-}
-
-.kind-about dd {
-  margin: 0;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
   color: var(--muted);
 }
 
-.kind-about .current dd {
+.start-next-steps .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--faint);
+}
+
+.start-next-steps li.you .icon {
+  color: var(--you);
+}
+
+.start-next-steps b {
   color: var(--text);
+  font-weight: 500;
+}
+
+.start-hive {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+/* The kinds as line tabs (V93, proof 06: the kits' `.tabs`): the brief card's head, its picked one
+   on a 2 px line of the primary over the hairline. */
+.kind-row {
+  position: relative;
+  flex: none;
+  align-items: stretch;
+  min-height: var(--card-head);
+  padding: 0 8px;
+  border-bottom: 1px solid var(--line);
 }
 
 .kind-picker {
   flex: 1;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  gap: 2px;
   min-width: 0;
 }
 
@@ -373,63 +397,46 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  height: var(--height-tab);
-  padding: 0 14px;
+  gap: 7px;
+  padding: 0 10px;
   border: 0;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--raised) 60%, transparent);
+  background: none;
   color: var(--muted);
-  font-size: var(--size-body);
+  font: inherit;
+  font-size: var(--size-small);
   font-weight: 500;
   cursor: pointer;
-  transition:
-    background-color 150ms,
-    color 150ms;
+  transition: color 150ms;
 }
 
 .kind:hover {
-  background: var(--raised);
   color: var(--text);
 }
 
-/* The picked kind: the accent's wash and words, the primary's line on the row's hairline. */
 .kind[aria-checked='true'] {
-  background: var(--selected);
-  color: var(--accent);
+  color: var(--text);
 }
 
-/* On the head's hairline: the tab is 40 px in the head's 48. */
 .kind[aria-checked='true']::after {
   content: '';
   position: absolute;
-  right: 0;
-  bottom: calc((40px - var(--card-head)) / 2 - 1px);
-  left: 0;
-  height: 3px;
-  border-radius: 9999px;
+  right: 8px;
+  bottom: -1px;
+  left: 8px;
+  height: 2px;
+  border-radius: 4px;
   background: var(--primary);
 }
 
 .kind .icon {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 
-/* The five and their info on one line on a phone (390 px: 334 for them): words only, closer;
-   never a smaller size (the person's eyes). */
+/* The five on one line on a phone: words only, closer; never a smaller size. */
 @media (max-width: 480px) {
-  .kind-picker {
-    gap: 2px;
-  }
-
   .kind {
-    height: var(--height-tall);
     padding: 0 6px;
-  }
-
-  .kind[aria-checked='true']::after {
-    bottom: calc((36px - var(--card-head)) / 2 - 1px);
   }
 
   .kind .icon {
@@ -441,9 +448,8 @@
   outline-offset: -2px;
 }
 
-/* The brief's fields: a name and its "?" over each. */
-/* The form's rhythm (V72): a label `--field-label-gap` over its field, `--field-gap` from a field
-   to the next label; the first field `--card-pad` under the kinds. */
+/* A field: its name over it (the proof's `.field`: 6 px apart). The page's other forms keep the
+   form rhythm (V72). */
 .workspace-field {
   display: grid;
   gap: var(--field-label-gap);
@@ -451,8 +457,11 @@
   font-weight: 500;
 }
 
-.kind-row + .workspace-field {
-  margin-top: var(--card-pad);
+.start-form .workspace-field {
+  gap: 6px;
+  margin: 0;
+  font-size: var(--size-small);
+  font-weight: 600;
 }
 
 .workspace-field textarea,
@@ -467,6 +476,22 @@
   padding: 0 10px;
 }
 
+/* The proof's fields: 32 px, a hairline of `--line-2`, the body's size. */
+.start-form .workspace-field input {
+  height: var(--height-tab);
+  font-size: var(--size-body);
+}
+
+.start-form .workspace-field textarea {
+  padding: 8px 10px;
+  font-size: var(--size-body);
+  line-height: 1.5;
+}
+
+#start-done {
+  min-height: 76px;
+}
+
 .workspace-field [aria-invalid='true'],
 .workspace-field [aria-invalid='true']:hover {
   border-color: var(--error);
@@ -476,15 +501,43 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--error) 30%, transparent);
 }
 
-.workspace-check-guess {
-  margin: 0;
-  font-size: var(--size-small);
+.field-optional {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* The merge's check under Done when (the proof's `.checkline`): its command a chip in code. */
+.start-check-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -6px 0 0;
+  color: var(--muted);
+  font-size: var(--size-caption);
   font-weight: normal;
   overflow-wrap: anywhere;
 }
 
-/* The goal and its tools (decision 452): the preview, 📎 and the brief's length in its frame,
-   over the text's last 44 px. */
+.start-check-line .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--faint);
+}
+
+.start-check-line code {
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: var(--raised);
+  font: var(--size-caps) / 1.5 var(--mono);
+}
+
+.start-check-line .mono {
+  font-family: var(--mono);
+}
+
+/* The goal and its tools: 📎, the preview and the brief's length in its frame, over the text's
+   last 36 px (the proof's `.counter`). */
 .start-goal-frame {
   position: relative;
   min-width: 0;
@@ -495,11 +548,10 @@
   /* A block: inline, the frame would add a line's descent under it, and the tools cover its
      bottom edge. */
   display: block;
-  min-height: calc(7lh + 18px + 36px);
-  padding-bottom: 44px;
+  min-height: 212px;
+  padding-bottom: 40px;
 }
 
-/* The frame's hover, the tools' too. */
 .start-goal-frame:hover .start-goal:not(:focus, :disabled) {
   border-color: var(--edge);
 }
@@ -512,10 +564,9 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 4px 12px 6px 6px;
+  padding: 4px 10px 6px 6px;
   border-radius: 0 0 8px 8px;
-  /* The field's own colour, opaque: the input's wash is translucent, over the card. A long goal
-     scrolls under it. */
+  /* The field's own colour, opaque: a long goal scrolls under it. */
   background: linear-gradient(var(--input-bg), var(--input-bg)) var(--panel);
   font-weight: normal;
 }
@@ -561,68 +612,54 @@
   }
 }
 
-/* The mockup's advice under the parts. */
-.start-advice {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  margin: 20px 0 0;
-  padding: 12px 16px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--raised) 55%, transparent);
-}
-
-.start-advice > .icon {
-  width: 20px;
-  height: 20px;
-  color: var(--warning);
-}
-
-.start-advice p {
-  margin: 0;
-  color: var(--muted);
-  font-size: var(--size-small);
-}
-
-.start-advice strong {
-  display: block;
-  color: var(--text);
-  font-weight: 500;
-}
-
-/* More: a framed row, its parts opening inside it. */
+/* More (the proof's `.more`): a 40 px framed row, its parts opening under its line. */
 .start-more {
-  margin: 16px 0 0;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--raised) 35%, transparent);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--line);
 }
 
 .start-more-toggle {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   box-sizing: border-box;
   width: 100%;
   min-height: var(--card-head);
-  padding: 0 12px 0 16px;
+  padding: 0 12px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: none;
-  color: var(--text);
+  color: var(--muted);
   font: inherit;
-  font-weight: 500;
+  font-size: var(--size-small);
+  font-weight: 400;
   text-align: left;
   cursor: pointer;
 }
 
 .start-more-toggle:hover {
   background: var(--hover);
+  color: var(--text);
+}
+
+.start-more-toggle .icon.chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--faint);
 }
 
 .start-more-words {
   flex: 1;
   min-width: 0;
+}
+
+/* "optional" at the row's end, as the proof's. */
+.start-more-toggle .start-chip {
+  padding: 0;
+  background: none;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 400;
 }
 
 .start-chip {
@@ -635,11 +672,48 @@
 }
 
 .start-more > .workspace-field {
-  margin: 4px 16px 16px;
+  margin: 4px 12px 12px;
+}
+
+/* Documents (the proof's `.drop`): a 40 px row framed in `--line-2`, Add files at its end. */
+.start-documents-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: var(--card-head);
+  padding: 0 8px 0 12px;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.start-documents-row > .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.start-documents-hint {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.start-documents-row .button.small {
+  min-height: var(--height-row);
+  padding: 0 10px;
+  font-size: var(--size-caption);
+}
+
+.start-documents-row .button.small .icon {
+  width: 14px;
+  height: 14px;
 }
 
 .start-too-long {
-  margin: 12px 0 0;
+  margin: 0;
 }
 
 /* Start in Hive mode (V92, decision 871; proof 05-new-goal): Hive's check under Done when, its
@@ -649,9 +723,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  margin: 8px 0 0;
+  margin: -6px 0 0;
   color: var(--muted);
-  font-size: var(--size-small);
+  font-size: var(--size-caption);
 }
 
 .start-hive-check > .icon {
@@ -660,12 +734,11 @@
 }
 
 .start-hive-check code {
-  padding: 1px 6px;
+  padding: 2px 7px;
   border-radius: 4px;
   background: var(--raised);
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--text);
-  font-size: var(--size-caption);
+  color: var(--muted);
+  font: var(--size-caps) / 1.5 var(--mono);
 }
 
 .start-hive-check.none {
@@ -676,8 +749,8 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-  margin: 12px 0 0;
-  padding: 0;
+  margin: 0;
+  padding: 14px;
   list-style: none;
 }
 
@@ -723,8 +796,8 @@
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin: 16px 0 0;
-  padding-top: 12px;
+  margin: 0;
+  padding: 12px 14px 14px;
   border-top: 1px solid var(--line);
 }
 

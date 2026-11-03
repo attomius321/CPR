@@ -1,14 +1,12 @@
 import type { RefObject } from 'react';
 import type { WorkspaceOptions } from '@symbiote/core';
-import { Help } from '../ui/Help.js';
-import { CloseIcon, DocumentsIcon, FileIcon, ImageIcon, PlusIcon } from '../ui/icons.js';
+import { AttachIcon, CloseIcon, FileIcon, ImageIcon, PlusIcon } from '../ui/icons.js';
 import { documentSize, isImageName, type DocumentEntry } from './documents.js';
-import { StartCard } from './StartCard.js';
 import { tip } from '../ui/tip.js';
 
 /**
- * The start page's Documents (V40), the run's last card since V63: the files given with the
- * brief, each listed with its size once kept, "Adding…" on its way, or why it was not added; ✕
+ * The start page's Documents (V40): a row in the brief since V93 (the run's last card from V63),
+ * the files given with the brief, each listed with its size once kept, "Adding…" on its way, or why it was not added; ✕
  * takes one off. Add files picks more (`input`, the page's one picker: the goal's 📎 opens it
  * too); a drop or a paste anywhere on the page adds them as well (StartPage).
  */
@@ -28,29 +26,42 @@ export function StartDocuments({
   onAdd: (files: File[]) => void;
   onRemove: (key: string) => void;
 }) {
+  // One row in the brief (V93, proofs 05-new-goal and 06-start): what it is, Add files at its end;
+  // the files listed under it.
   return (
-    <StartCard
-      icon={<DocumentsIcon />}
-      id="start-documents-label"
-      className="start-documents-card"
-      title={
-        <>
-          Documents <span className="field-optional">(optional)</span>
-        </>
-      }
-      help={
-        <Help label="About documents">
-          <p>
-            Files for the agent: screenshots, PDFs, notes, samples. At the start they go beside the
-            workspace&apos;s record, in <code>{folder}</code>, and its first prompt names each one.
-          </p>
-          <p>
-            Up to {options.maxFiles} files, {documentSize(options.maxBytes)} each,{' '}
-            {documentSize(options.maxTotal)} in all. Clean up removes them.
-          </p>
-        </Help>
-      }
-    >
+    <div className="start-documents-card" role="group" aria-labelledby="start-documents-label">
+      <div className="start-documents-row">
+        <AttachIcon />
+        <span
+          id="start-documents-label"
+          className="start-documents-name"
+          {...tip(
+            `Files for the agent: screenshots, PDFs, notes, samples. At the start they go beside the workspace's record, in ${folder}, and its first prompt names each one.\nUp to ${options.maxFiles} files, ${documentSize(options.maxBytes)} each, ${documentSize(options.maxTotal)} in all; drop or paste them anywhere on the page. Clean up removes them.`,
+          )}
+        >
+          Documents
+        </span>
+        <span className="start-documents-hint">(optional) mockups, specs, logs</span>
+        <button
+          type="button"
+          className="button secondary small start-documents-add"
+          onClick={() => input.current?.click()}
+        >
+          <PlusIcon /> Add files
+        </button>
+        <input
+          ref={input}
+          type="file"
+          multiple
+          hidden
+          aria-label="Add files"
+          onChange={(event) => {
+            onAdd(Array.from(event.target.files ?? []));
+            // The same file picked again is a change.
+            event.target.value = '';
+          }}
+        />
+      </div>
       {entries.length > 0 && (
         <ul className="start-documents">
           {entries.map((entry) => (
@@ -79,25 +90,6 @@ export function StartDocuments({
           ))}
         </ul>
       )}
-      <div className="start-documents-add">
-        <button type="button" className="button secondary" onClick={() => input.current?.click()}>
-          <PlusIcon /> Add files
-        </button>
-        <span className="start-documents-hint">or drop or paste them</span>
-        <p className="start-documents-about">Add context files, docs, mockups, or requirements.</p>
-        <input
-          ref={input}
-          type="file"
-          multiple
-          hidden
-          aria-label="Add files"
-          onChange={(event) => {
-            onAdd(Array.from(event.target.files ?? []));
-            // The same file picked again is a change.
-            event.target.value = '';
-          }}
-        />
-      </div>
-    </StartCard>
+    </div>
   );
 }

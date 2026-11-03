@@ -535,39 +535,52 @@ export const BranchIcon = () => (
   </Icon>
 );
 
-/** Fix: lucide's scissors. */
+/** Start a workspace (V93, proof 06): lucide's arrow-right. */
+export const ArrowRightIcon = () => (
+  <Icon lucide>
+    <path d="M5 12h14" />
+    <path d="m12 5 7 7-7 7" />
+  </Icon>
+);
+
+/** A four-pointed spark: a Feature (V93, the kits' `feature`). */
+export const SparkIcon = () => (
+  <Icon lucide>
+    <path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z" />
+  </Icon>
+);
+
+/** Fix: lucide's wrench (V93, the kits'). */
 export const FixIcon = () => (
   <Icon lucide>
-    <circle cx="6" cy="6" r="3" />
-    <path d="M8.12 8.12 12 12" />
-    <path d="M20 4 8.12 15.88" />
-    <circle cx="6" cy="18" r="3" />
-    <path d="M14.8 14.8 20 20" />
+    <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
   </Icon>
 );
 
-/** Refactor: lucide's blocks. */
+/** Refactor: lucide's code-xml (V93, the kits'). */
 export const RefactorIcon = () => (
   <Icon lucide>
-    <rect width="7" height="7" x="14" y="3" rx="1" />
-    <path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3" />
+    <path d="m18 16 4-4-4-4" />
+    <path d="m6 8-4 4 4 4" />
+    <path d="m14.5 4-5 16" />
   </Icon>
 );
 
-/** Chore: lucide's power. */
+/** Chore: lucide's list-checks (V93, the kits'). */
 export const ChoreIcon = () => (
   <Icon lucide>
-    <path d="M12 2v10" />
-    <path d="M18.4 6.6a9 9 0 1 1-12.77.04" />
+    <path d="m3 17 2 2 4-4" />
+    <path d="m3 7 2 2 4-4" />
+    <path d="M13 6h8" />
+    <path d="M13 12h8" />
+    <path d="M13 18h8" />
   </Icon>
 );
 
-/** Spike: lucide's route. */
+/** Spike: lucide's zap (V93, the kits'). */
 export const SpikeIcon = () => (
   <Icon lucide>
-    <circle cx="6" cy="19" r="3" />
-    <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
-    <circle cx="18" cy="5" r="3" />
+    <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
   </Icon>
 );
 
