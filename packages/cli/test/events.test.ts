@@ -329,3 +329,100 @@ describe('what a write touches (V94a)', () => {
     expect(partsOfWrite('/api/events/ping')).toEqual([]);
   });
 });
+
+describe("a terminal's output on the page's stream (V94b, decision 903)", () => {
+  /** A terminal that keeps what it printed and replays it to each new listener, as terminal.ts. */
+  function fakeTerminals() {
+    const listeners = new Map<string, Set<{ out(d: string): void; exit(c: number): void }>>();
+    const kept = new Map<string, string>([['t1', 'kept ']]);
+    return {
+      listeners,
+      listen(id: string, listener: { out(d: string): void; exit(c: number): void }) {
+        if (!kept.has(id)) return undefined;
+        if (kept.get(id)) listener.out(kept.get(id) ?? '');
+        const set = listeners.get(id) ?? new Set();
+        set.add(listener);
+        listeners.set(id, set);
+        return () => set.delete(listener);
+      },
+      print(id: string, data: string) {
+        kept.set(id, (kept.get(id) ?? '') + data);
+        for (const l of listeners.get(id) ?? []) l.out(data);
+      },
+      exit(id: string, code: number) {
+        for (const l of listeners.get(id) ?? []) l.exit(code);
+        listeners.delete(id);
+        kept.delete(id);
+      },
+    };
+  }
+
+  async function serveWithTerminals() {
+    const terminals = fakeTerminals();
+    stream = eventStream({
+      read: { asks: () => Promise.resolve({ asks: [] }) },
+      terminals,
+      timing: { first: 5, between: 100, safety: 60_000, alive: 25_000 },
+    });
+    const events = stream;
+    server = createServer((req, res) => void events.open(req, res));
+    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', () => resolve()));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/events`;
+    return { terminals, url, stream: events };
+  }
+
+  it("sends a listened terminal's replay, then its output, then its end", async () => {
+    const { terminals, url, stream } = await serveWithTerminals();
+    const page = await listen(url);
+    const { id } = (await page.next('id')).data as { id: string };
+    expect(stream.listen(id, 't1')).toBe('ok');
+    terminals.print('t1', 'more');
+    terminals.exit('t1', 0);
+    await page.next('exit');
+    expect(page.events.filter((e) => e.name !== 'state' && e.name !== 'id')).toEqual([
+      { name: 'listening', data: { terminal: 't1' } },
+      { name: 'out', data: { terminal: 't1', data: 'kept ' } },
+      { name: 'out', data: { terminal: 't1', data: 'more' } },
+      { name: 'exit', data: { terminal: 't1', code: 0 } },
+    ]);
+    page.close();
+  });
+
+  it('says which is unknown: the stream, or the terminal', async () => {
+    const { url, stream } = await serveWithTerminals();
+    const page = await listen(url);
+    const { id } = (await page.next('id')).data as { id: string };
+    expect(stream.listen('nope', 't1')).toBe('no-stream');
+    expect(stream.listen(id, 'gone')).toBe('no-terminal');
+    page.close();
+  });
+
+  it('sends one copy for two tabs listening on one stream, and stops when both stop', async () => {
+    const { terminals, url, stream } = await serveWithTerminals();
+    const page = await listen(url);
+    const { id } = (await page.next('id')).data as { id: string };
+    stream.listen(id, 't1');
+    stream.listen(id, 't1');
+    expect(terminals.listeners.get('t1')?.size).toBe(1);
+    terminals.print('t1', 'x');
+    await wait(30);
+    expect(
+      page.events.filter((e) => e.name === 'out' && (e.data as { data: string }).data === 'x'),
+    ).toHaveLength(1);
+    expect(stream.listen(id, 't1', true)).toBe('ok');
+    expect(terminals.listeners.get('t1')?.size).toBe(1);
+    stream.listen(id, 't1', true);
+    expect(terminals.listeners.get('t1')?.size).toBe(0);
+    page.close();
+  });
+
+  it('stops listening when the page goes', async () => {
+    const { terminals, url, stream } = await serveWithTerminals();
+    const page = await listen(url);
+    const { id } = (await page.next('id')).data as { id: string };
+    stream.listen(id, 't1');
+    page.close();
+    await wait(50);
+    expect(terminals.listeners.get('t1')?.size).toBe(0);
+  });
+});

@@ -43,6 +43,17 @@ export interface EventStreamOptions {
    */
   roots?: () => Promise<string[]>;
   timing?: Partial<EventTiming>;
+  /**
+   * The terminals whose output a page may listen to on its stream (V94b, decision 903): one
+   * connection per browser, not one per terminal. `listen` gives what it kept first, as
+   * `/api/terminals/<id>` does.
+   */
+  terminals?: {
+    listen(
+      id: string,
+      listener: { out(data: string): void; exit(code: number): void },
+    ): (() => void) | undefined;
+  };
   /** A line for each read that sent a change, at debug (LG1). */
   log?: { debug(fields: Record<string, unknown>, message: string): void };
 }
@@ -52,6 +63,11 @@ export interface EventStream {
   open(req: IncomingMessage, res: ServerResponse): Promise<void>;
   /** Something may have changed `parts`: they are read, and what changed is sent. */
   changed(parts: Iterable<EventPart>, why: string): void;
+  /**
+   * Sends a terminal's output on stream `stream` (`POST /api/events/listen`), or stops (`stop`)
+   * once no tab of that browser shows it: `listening`, what it kept, then `out` and `exit`.
+   */
+  listen(stream: string, terminal: string, stop?: boolean): 'ok' | 'no-stream' | 'no-terminal';
   /** A write request this server answered (below 400): the parts it may have changed. */
   wrote(pathname: string): void;
   /** How many pages listen. */
@@ -115,6 +131,11 @@ export function eventStream(options: EventStreamOptions): EventStream {
    */
   let opening = 0;
   const listening = () => clients.size + opening > 0;
+  /** Each open stream, from its first byte: the terminals it carries, each with its tabs' count. */
+  const connections = new Map<
+    string,
+    { res: ServerResponse; terminals: Map<string, { tabs: number; stop: () => void }> }
+  >();
   /** Each part's last JSON sent (or read for a page's state). */
   const last = new Map<EventPart, string>();
   /** Each part's reads in the order they started: an older read's answer never replaces a newer. */
@@ -258,10 +279,13 @@ export function eventStream(options: EventStreamOptions): EventStream {
         connection: 'keep-alive',
       });
       res.write(`retry: 1000\n\n${event('id', JSON.stringify({ id }))}`);
+      connections.set(id, { res, terminals: new Map() });
       let gone = false;
       req.on('close', () => {
         gone = true;
         clients.delete(id);
+        for (const listened of connections.get(id)?.terminals.values() ?? []) listened.stop();
+        connections.delete(id);
         if (!listening()) {
           pending.clear();
           schedule();
@@ -289,6 +313,40 @@ export function eventStream(options: EventStreamOptions): EventStream {
       schedule();
     },
     changed,
+    listen(stream, terminal, stop = false) {
+      const connection = connections.get(stream);
+      if (!connection) return 'no-stream';
+      const listened = connection.terminals.get(terminal);
+      if (stop) {
+        if (listened && --listened.tabs <= 0) {
+          listened.stop();
+          connection.terminals.delete(terminal);
+        }
+        return 'ok';
+      }
+      // Another tab of the browser shows it too: one copy of its output, its replay again for it.
+      listened?.stop();
+      const { res } = connection;
+      const send = (name: string, data: unknown) => res.write(event(name, JSON.stringify(data)));
+      // What it kept comes as it is listened to: sent after `listening`, once it is known to be.
+      let replay: string[] | null = [];
+      const unlisten = options.terminals?.listen(terminal, {
+        out: (data) => (replay ? replay.push(data) : send('out', { terminal, data })),
+        exit: (code) => {
+          send('exit', { terminal, code });
+          connection.terminals.delete(terminal);
+        },
+      });
+      if (!unlisten) {
+        connection.terminals.delete(terminal);
+        return 'no-terminal';
+      }
+      send('listening', { terminal });
+      for (const data of replay) send('out', { terminal, data });
+      replay = null;
+      connection.terminals.set(terminal, { tabs: (listened?.tabs ?? 0) + 1, stop: unlisten });
+      return 'ok';
+    },
     wrote(pathname) {
       const parts = partsOfWrite(pathname);
       if (parts.length > 0) changed(parts, `wrote ${pathname}`);
@@ -302,7 +360,11 @@ export function eventStream(options: EventStreamOptions): EventStream {
       clearInterval(alive);
       clearInterval(safety);
       unlisten();
-      for (const res of clients.values()) res.end();
+      for (const connection of connections.values()) {
+        for (const listened of connection.terminals.values()) listened.stop();
+        connection.res.end();
+      }
+      connections.clear();
       clients.clear();
       pending.clear();
     },

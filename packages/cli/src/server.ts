@@ -64,6 +64,7 @@ import {
   parseWorkspaceAgainst,
   parseWorkspaceClean,
   parseWorkspaceDiff,
+  parseEventsListen,
   parseWorkspaceOpen,
   parseWorkspaceReply,
   parseWorkspaceSent,
@@ -435,6 +436,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         ...(mcp ? { asks: () => Promise.resolve(mcp.asks()) } : {}),
       },
       ...(repository.recordFolders ? { roots: repository.recordFolders } : {}),
+      // Terminals' output on the browser's one stream (V94b, decision 903).
+      ...(repository.terminals ? { terminals: repository.terminals } : {}),
       log: log.log,
     });
   }
@@ -466,6 +469,19 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (req.method !== 'GET') return send(res, 405, 'method not allowed');
       if (!sameSite(req)) return send(res, 403, 'forbidden');
       return events.open(req, res);
+    }
+    if (events && url.pathname === '/api/events/listen') {
+      const stream = events;
+      return written(req, res, parseEventsListen, ({ stream: id, terminal, stop }) => {
+        const listened = stream.listen(id, terminal, stop);
+        if (listened === 'no-stream') {
+          return Promise.resolve(send(res, 409, `no stream ${id}: listen on the one open now`));
+        }
+        if (listened === 'no-terminal') return Promise.resolve(send(res, 404, 'no such terminal'));
+        res.writeHead(204);
+        res.end();
+        return Promise.resolve();
+      });
     }
     if (url.pathname === '/api/intro' && options.intro) return introApi(req, res, options.intro);
     if (url.pathname === '/api/hive' && options.hive) return hiveApi(req, res, options.hive);

@@ -283,12 +283,14 @@ function WorkspacePanel({
   // Hive drives it (HV4): its steps, its writer, its bar.
   const hiveDrives = workspace.hive !== undefined && !workspace.hive.off;
   // V45: shells in its worktree, in tabs after the agent's, whatever its agent; kept by the server
-  // until closed. Read when the panel opens and with every read of the list (V89): their tabs say
-  // what runs in them.
+  // until closed. Read when the panel opens, with every change of the list (V89), and when a shown
+  // shell's output stops (V94b): their tabs say what runs in them.
   const shellsCan = terminal?.available === true && workspace.worktree.exists;
   const [shells, setShells] = useState<WorkspaceShell[] | null>(null);
   // Bumped by every change made here: a read begun before it is older than what is shown.
   const shellsChanged = useRef(0);
+  // Bumped when a shown shell's output stops (V94b): what runs in it may have changed.
+  const [shellsQuiet, setShellsQuiet] = useState(0);
   const [shellShown, setShellShown] = useState(() => shellOfUrl(window.location.search));
   const [closing, setClosing] = useState<{ shell: WorkspaceShell; question: string } | null>(null);
   const [chosen, setChosen] = useState(viewOfUrl);
@@ -359,7 +361,7 @@ function WorkspacePanel({
     return () => {
       gone = true;
     };
-  }, [branch, shellsCan, version]);
+  }, [branch, shellsCan, version, shellsQuiet]);
   // Focus folds the sidenav to its rail while this page shows it (decision 830).
   const setFocused = shell?.setFocused;
   useEffect(() => {
@@ -1102,6 +1104,7 @@ function WorkspacePanel({
                         key={shownShell.id}
                         id={shownShell.id}
                         onEnded={() => forgetShell(shownShell.id)}
+                        onQuiet={() => setShellsQuiet((n) => n + 1)}
                       />
                     </div>,
                     `shell-${shownShell.id}`,

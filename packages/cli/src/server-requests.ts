@@ -437,6 +437,22 @@ export function parseWorkspaceAgainst(text: string): { branch: string; against: 
 }
 
 /** `{ branch }`: a workspace's worktree to open. */
+/**
+ * `{ stream, terminal, stop? }` (V94b): a terminal's output on the browser's stream, `/api/events`,
+ * whose ID its `id` event gave; `stop` once no tab of that browser shows it.
+ */
+export function parseEventsListen(text: string): {
+  stream: string;
+  terminal: string;
+  stop: boolean;
+} {
+  const value = JSON.parse(text) as Record<string, unknown> | null;
+  if (typeof value?.stream !== 'string' || typeof value.terminal !== 'string') {
+    throw new Error("stream: the stream's ID; terminal: a terminal's ID");
+  }
+  return { stream: value.stream, terminal: value.terminal, stop: value.stop === true };
+}
+
 export function parseWorkspaceOpen(text: string): { branch: string } {
   const value = JSON.parse(text) as Record<string, unknown> | null;
   if (typeof value?.branch !== 'string') throw new Error("branch: a workspace's branch");

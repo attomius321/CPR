@@ -2,7 +2,14 @@
 // connect, then the parts that changed; a part whose JSON did not change keeps its object; polling
 // as today when there is no stream. A fake EventSource stands for the browser's.
 import { describe, expect, it } from 'vitest';
-import { pushStore, type Parts, type PushEnv, type Status } from '../src/shell/events.js';
+import {
+  pushStore,
+  type ChannelLike,
+  type Parts,
+  type PushEnv,
+  type Status,
+  type TerminalHandlers,
+} from '../src/shell/events.js';
 
 type Listener = (event: MessageEvent<string>) => void;
 
@@ -43,7 +50,9 @@ function made(search = '') {
   let ids = 0;
   const env: PushEnv = {
     EventSource: FakeSource as unknown as typeof EventSource,
+    host: '127.0.0.1:4000',
     search,
+    post: () => Promise.resolve(204),
     now: () => now,
     setTimeout: (run, ms) => {
       const id = ++ids;
@@ -130,6 +139,8 @@ describe('the pushed state (V94a)', () => {
     expect(refused.store.status()).toBe('unavailable');
     expect(refused.seen.at(-1)).toEqual({ parts: {}, status: 'unavailable' });
     const none = pushStore({
+      host: '',
+      post: () => Promise.resolve(204),
       search: '',
       now: () => 0,
       setTimeout: () => 0,
@@ -175,5 +186,285 @@ describe('the pushed state (V94a)', () => {
     const late: { parts: Parts; status: Status }[] = [];
     store.subscribe((parts, status) => late.push({ parts, status }));
     expect(late).toEqual([{ parts: STATE.parts, status: 'streaming' }]);
+  });
+});
+
+/**
+ * One browser: a clock, a lock manager and channels shared by its tabs, as Chrome's are. Messages
+ * and grants arrive after the current task, as the browser's do.
+ */
+function browser() {
+  FakeSource.made = [];
+  let now = 1_000;
+  const timers: { at: number; run: () => void; id: number }[] = [];
+  let ids = 0;
+  const channels = new Set<FakeChannel>();
+  class FakeChannel implements ChannelLike {
+    onmessage: ((event: MessageEvent) => void) | null = null;
+    constructor(readonly name: string) {
+      channels.add(this);
+    }
+    postMessage(message: unknown): void {
+      const copy = structuredClone(message);
+      for (const other of channels) {
+        if (other !== this && other.name === this.name) {
+          queueMicrotask(() => other.onmessage?.({ data: copy } as MessageEvent));
+        }
+      }
+    }
+    close(): void {
+      channels.delete(this);
+    }
+  }
+  /** Who holds each lock, and who waits for it, in order. */
+  const held = new Map<string, number>();
+  const waiting: { name: string; tab: number; grant: () => void }[] = [];
+  let tabs = 0;
+  const posts: { tab: number; path: string; body: unknown }[] = [];
+  const answers = new Map<string, number>();
+  function tab() {
+    const me = ++tabs;
+    const env: PushEnv = {
+      EventSource: FakeSource as unknown as typeof EventSource,
+      locks: {
+        request(name, callback) {
+          const grant = () => {
+            held.set(name, me);
+            queueMicrotask(() => void callback());
+          };
+          if (held.has(name)) waiting.push({ name, tab: me, grant });
+          else grant();
+          return Promise.resolve();
+        },
+      },
+      Channel: FakeChannel,
+      host: '127.0.0.1:4000',
+      search: '',
+      now: () => now,
+      setTimeout: (run, ms) => {
+        const id = ++ids;
+        timers.push({ at: now + ms, run, id });
+        return id;
+      },
+      clearTimeout: (id) => {
+        const i = timers.findIndex((t) => t.id === id);
+        if (i >= 0) timers.splice(i, 1);
+      },
+      post: (path, body) => {
+        posts.push({ tab: me, path, body });
+        const terminal = (body as { terminal: string }).terminal;
+        return Promise.resolve(answers.get(terminal) ?? 204);
+      },
+    };
+    const store = pushStore(env);
+    const seen: { parts: Parts; status: Status }[] = [];
+    store.subscribe((parts, status) => seen.push({ parts, status }));
+    const sources = new Set<FakeSource>();
+    return {
+      me,
+      store,
+      seen,
+      /** Closes the tab: its stream, channel and lock go. */
+      close() {
+        store.close();
+        for (const [name, holder] of held) {
+          if (holder !== me) continue;
+          held.delete(name);
+          const next = waiting.findIndex((w) => w.name === name);
+          if (next >= 0) waiting.splice(next, 1)[0]!.grant();
+        }
+        for (let i = waiting.length - 1; i >= 0; i--)
+          if (waiting[i]?.tab === me) waiting.splice(i, 1);
+      },
+      sources,
+    };
+  }
+  return {
+    tab,
+    posts,
+    answers,
+    flush: async () => {
+      for (let i = 0; i < 5; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+    },
+    advance: async (ms: number) => {
+      const until = now + ms;
+      for (;;) {
+        const next = timers.filter((t) => t.at <= until).sort((a, b) => a.at - b.at)[0];
+        if (!next) break;
+        now = next.at;
+        timers.splice(timers.indexOf(next), 1);
+        next.run();
+        for (let i = 0; i < 3; i++) await new Promise((resolve) => setTimeout(resolve, 0));
+      }
+      now = until;
+    },
+  };
+}
+
+describe('one stream per browser (V94b)', () => {
+  it('the tab holding the lock opens the one stream; a tab that joins gets its whole state', async () => {
+    const b = browser();
+    const first = b.tab();
+    await b.flush();
+    expect(first.store.role()).toBe('holder');
+    expect(FakeSource.made).toHaveLength(1);
+    FakeSource.made[0]!.emit('id', { id: 's1' });
+    FakeSource.made[0]!.emit('state', STATE);
+    await b.flush();
+    const second = b.tab();
+    await b.flush();
+    expect(second.store.role()).toBe('follower');
+    expect(FakeSource.made).toHaveLength(1);
+    expect(second.store.status()).toBe('streaming');
+    expect(second.store.parts()).toEqual(STATE.parts);
+  });
+
+  it('relays each change to every tab, which keeps the objects of the other parts', async () => {
+    const b = browser();
+    const tabs = [b.tab(), b.tab(), b.tab()];
+    await b.flush();
+    const source = FakeSource.made[0]!;
+    source.emit('state', STATE);
+    await b.flush();
+    const reviews = tabs.map((t) => t.store.parts().reviews);
+    source.emit('change', { parts: { merges: { merges: [{ id: 'm1' }] } } });
+    await b.flush();
+    for (const [i, t] of tabs.entries()) {
+      expect(t.seen.at(-1)).toEqual({
+        parts: { merges: { merges: [{ id: 'm1' }] } },
+        status: 'streaming',
+      });
+      expect(t.store.parts().reviews).toBe(reviews[i]);
+    }
+    expect(FakeSource.made).toHaveLength(1);
+  });
+
+  it('hands the stream on when its tab closes: the next tab takes the lock and opens it', async () => {
+    const b = browser();
+    const [first, second, third] = [b.tab(), b.tab(), b.tab()];
+    await b.flush();
+    FakeSource.made[0]!.emit('state', STATE);
+    await b.flush();
+    first.close();
+    await b.flush();
+    expect(second.store.role()).toBe('holder');
+    expect(FakeSource.made).toHaveLength(2);
+    FakeSource.made[1]!.emit('state', {
+      parts: { ...STATE.parts, asks: { asks: [{ id: 'a1' }] } },
+    });
+    await b.flush();
+    expect(third.store.parts().asks).toEqual({ asks: [{ id: 'a1' }] });
+    expect(third.store.role()).toBe('follower');
+  });
+
+  it('a tab that hears nothing from the holder for 30 s opens its own; the beat keeps it from that', async () => {
+    const b = browser();
+    const [first, second] = [b.tab(), b.tab()];
+    await b.flush();
+    FakeSource.made[0]!.emit('state', STATE);
+    await b.flush();
+    // The holder beats every 10 s: a minute passes with one stream.
+    for (let i = 0; i < 6; i++) {
+      FakeSource.made[0]!.emit('alive', {});
+      await b.advance(10_000);
+    }
+    expect(FakeSource.made).toHaveLength(1);
+    // The holder freezes: nothing from it any more.
+    first.store.close();
+    await b.advance(29_000);
+    expect(FakeSource.made).toHaveLength(1);
+    await b.advance(2_000);
+    expect(second.store.role()).toBe('alone');
+    expect(FakeSource.made).toHaveLength(2);
+  });
+
+  it("follows the holder's status: polling everywhere when the holder has no stream", async () => {
+    const b = browser();
+    const [first, second] = [b.tab(), b.tab()];
+    await b.flush();
+    FakeSource.made[0]!.fail(true);
+    await b.flush();
+    expect(first.store.status()).toBe('unavailable');
+    expect(second.store.status()).toBe('unavailable');
+  });
+});
+
+describe("a terminal's output on the browser's stream (V94b)", () => {
+  const handlers = () => {
+    const got: string[] = [];
+    const h: TerminalHandlers = {
+      listening: () => got.push('listening'),
+      out: (data) => got.push(`out ${data}`),
+      exit: (code) => got.push(`exit ${code}`),
+      lost: () => got.push('lost'),
+    };
+    return { got, h };
+  };
+
+  it('listens by the stream’s ID, from the tab that shows it; the output reaches that tab', async () => {
+    const b = browser();
+    const [first, second] = [b.tab(), b.tab()];
+    await b.flush();
+    const source = FakeSource.made[0]!;
+    source.emit('id', { id: 's1' });
+    source.emit('state', STATE);
+    await b.flush();
+    const shown = handlers();
+    second.store.listenTerminal('t1', shown.h);
+    await b.flush();
+    expect(b.posts).toEqual([
+      { tab: second.me, path: '/api/events/listen', body: { stream: 's1', terminal: 't1' } },
+    ]);
+    source.emit('listening', { terminal: 't1' });
+    source.emit('out', { terminal: 't1', data: 'hi' });
+    source.emit('exit', { terminal: 't1', code: 0 });
+    await b.flush();
+    expect(shown.got).toEqual(['listening', 'out hi', 'exit 0']);
+    void first;
+  });
+
+  it('listens again on the next stream when the holder changes; says when the terminal is gone', async () => {
+    const b = browser();
+    const [first, second] = [b.tab(), b.tab()];
+    await b.flush();
+    FakeSource.made[0]!.emit('id', { id: 's1' });
+    FakeSource.made[0]!.emit('state', STATE);
+    await b.flush();
+    const shown = handlers();
+    second.store.listenTerminal('t1', shown.h);
+    await b.flush();
+    first.close();
+    await b.flush();
+    // The second tab holds the lock now, and its own stream says its ID.
+    FakeSource.made[1]!.emit('id', { id: 's2' });
+    await b.flush();
+    expect(b.posts.map((p) => p.body)).toEqual([
+      { stream: 's1', terminal: 't1' },
+      { stream: 's2', terminal: 't1' },
+    ]);
+    b.answers.set('t2', 404);
+    const gone = handlers();
+    second.store.listenTerminal('t2', gone.h);
+    await b.flush();
+    expect(gone.got).toEqual(['lost']);
+  });
+
+  it('stops listening once no view in the tab shows it', async () => {
+    const b = browser();
+    const only = b.tab();
+    await b.flush();
+    FakeSource.made[0]!.emit('id', { id: 's1' });
+    await b.flush();
+    const one = handlers();
+    const two = handlers();
+    const stopOne = only.store.listenTerminal('t1', one.h);
+    const stopTwo = only.store.listenTerminal('t1', two.h);
+    stopOne();
+    expect(b.posts.map((p) => p.body)).toEqual([{ stream: 's1', terminal: 't1' }]);
+    stopTwo();
+    expect(b.posts.map((p) => p.body)).toEqual([
+      { stream: 's1', terminal: 't1' },
+      { stream: 's1', terminal: 't1', stop: true },
+    ]);
   });
 });

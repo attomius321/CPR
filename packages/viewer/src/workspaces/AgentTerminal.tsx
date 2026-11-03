@@ -23,6 +23,7 @@ import {
   type LinkTarget,
 } from './terminal.js';
 import { holdReads } from './useWorkspaces.js';
+import { terminalOutput } from '../shell/events.js';
 import { tip } from '../ui/tip.js';
 
 const WRITE_HEADERS = { 'content-type': 'application/json', 'x-symbiote': '1' };
@@ -40,6 +41,8 @@ const HINT_DELAY_MS = 400;
  * long after it first printed, or this long after its first print if it keeps printing.
  */
 const QUIET_MS = 300;
+/** How long its output stops before `onQuiet` (a command started or ended in a shell). */
+const QUIET_AFTER_MS = 500;
 const TYPE_WAIT_MS = 3_000;
 
 /** The hint over a link (V38): what it opens and its keys, by the pointer, above its row. */
@@ -105,12 +108,18 @@ export function AgentTerminal({
   id: kept,
   onOpened = () => {},
   onEnded,
+  onQuiet,
 }: {
   branch?: string;
   url?: string;
   id?: string;
   onOpened?: (opened: OpenedTerminal | null) => void;
   onEnded: (why: string) => void;
+  /**
+   * Its output stopped for a moment (V94b): what runs in it may have changed, where the shell's
+   * tab says it. Polling read it with every read of the list; pushed, the list does not change.
+   */
+  onQuiet?: () => void;
 }) {
   const root = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null);
@@ -119,8 +128,8 @@ export function AgentTerminal({
   const [dropping, setDropping] = useState(false);
   const [hint, setHint] = useState<Hint | null>(null);
   // The latest callbacks, without opening the terminal again when they change.
-  const told = useRef({ onOpened, onEnded });
-  told.current = { onOpened, onEnded };
+  const told = useRef({ onOpened, onEnded, onQuiet });
+  told.current = { onOpened, onEnded, onQuiet };
 
   useEffect(() => {
     const release = kept === undefined ? holdReads() : () => {};
@@ -128,13 +137,15 @@ export function AgentTerminal({
     let id: string | null = null;
     // The server keeps it (Hermes, V58): left, not closed.
     let serverKept = false;
-    let events: EventSource | null = null;
+    // Its output (V94b): on the browser's one stream where Symbiote pushes, else its own.
+    let stopOutput = () => {};
     let term: Terminal | null = null;
     let observer: ResizeObserver | null = null;
     let resizing: ReturnType<typeof setTimeout> | undefined;
+    let quieting: ReturnType<typeof setTimeout> | undefined;
     let unlisten = () => {};
     const ended = (why: string) => {
-      events?.close();
+      stopOutput();
       told.current.onOpened(null);
       told.current.onEnded(why);
     };
@@ -184,24 +195,26 @@ export function AgentTerminal({
       }
       const shown = term;
       const terminal = (id = opened.id);
-      events = new EventSource(`/api/terminals/${terminal}`);
       let connected = false;
       // When it first printed and last printed: `type` waits for its input to be drawn.
       let firstPrinted = 0;
       let printed = 0;
-      // A dropped stream reconnects and gets what was printed again: drawn anew.
-      events.addEventListener('open', () => {
-        if (connected) shown.reset();
-        connected = true;
-      });
-      events.addEventListener('out', (event) => {
-        printed = Date.now();
-        firstPrinted ||= printed;
-        shown.write(JSON.parse((event as MessageEvent<string>).data) as string);
-      });
-      events.addEventListener('exit', () => ended('exited'));
-      events.addEventListener('error', () => {
-        if (events?.readyState === EventSource.CLOSED) ended('lost');
+      stopOutput = terminalOutput(terminal, {
+        // A dropped stream reconnects (or a new tab holds the browser's) and gets what was
+        // printed again: drawn anew.
+        listening: () => {
+          if (connected) shown.reset();
+          connected = true;
+        },
+        out: (data) => {
+          printed = Date.now();
+          firstPrinted ||= printed;
+          shown.write(data);
+          clearTimeout(quieting);
+          quieting = setTimeout(() => told.current.onQuiet?.(), QUIET_AFTER_MS);
+        },
+        exit: () => ended('exited'),
+        lost: () => ended('lost'),
       });
       const send = keySender(
         (data) => toTerminal(terminal, 'in', { data }),
@@ -472,9 +485,10 @@ export function AgentTerminal({
       release();
       gone = true;
       clearTimeout(resizing);
+      clearTimeout(quieting);
       unlisten();
       observer?.disconnect();
-      events?.close();
+      stopOutput();
       term?.dispose();
       if (id && kept === undefined && !serverKept) void toTerminal(id, 'close', {}).catch(() => {});
       told.current.onOpened(null);
