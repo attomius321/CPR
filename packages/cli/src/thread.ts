@@ -518,6 +518,9 @@ function labelPrompts(lines: readonly (ThreadEntry | SentNote)[], whole: boolean
   return out;
 }
 
+/** A whole thread file's entries, as `readThread` gives them (V91: the day read keeps them). */
+export const threadEntries = (content: string): ThreadEntry[] => parseThread(content);
+
 /** A thread file's entries, as `readThread` describes them; `whole`: the file from its start. */
 function parseThread(content: string, whole = true): ThreadEntry[] {
   const lines: (ThreadEntry | SentNote)[] = [];

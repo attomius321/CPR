@@ -5,7 +5,7 @@
 // writer's `cost-state` and its running reviews' `cost` — against `hive.budget`. The runner
 // (`hive-runner.ts`, `paced`) and the workspaces' start record what it answers.
 import { existsSync, readFileSync } from 'node:fs';
-import { stat } from 'node:fs/promises';
+import { open, stat } from 'node:fs/promises';
 import { isAbsolute, join } from 'node:path';
 import type {
   HivePacingSetting,
@@ -343,6 +343,81 @@ export function hivePacingService(
     async set(change) {
       await setPacing(root, change);
       return read();
+    },
+  };
+}
+
+/** A total by Claude Code's count (decision 856) and its time. */
+export interface TimedCost {
+  at: string;
+  total: number;
+}
+
+/** A line's `"timestamp"`, read without parsing the line: most lines are long messages. */
+const TIMESTAMP = /"timestamp":"([^"]+)"/;
+
+/**
+ * A transcript's `cost-state` totals (V91, decision 856), each timed by the nearest line before it
+ * with a `timestamp`: Claude Code writes the total at a turn's end, after the turn's last line
+ * (`turn_duration` for 41 of 63 on this repository's Hive writers). One with no time before it is
+ * left out. `before`: the time the text's first line follows, when it is read on from an offset.
+ */
+export function costPointsIn(text: string, before?: string): TimedCost[] {
+  const points: TimedCost[] = [];
+  let last = before;
+  for (const line of text.split('\n')) {
+    if (line.includes('"cost-state"')) {
+      const total = costIn(line);
+      if (total !== undefined && last !== undefined) points.push({ at: last, total });
+      continue;
+    }
+    const at = TIMESTAMP.exec(line)?.[1];
+    if (at && Number.isFinite(Date.parse(at))) last = at;
+  }
+  return points;
+}
+
+/**
+ * Reads transcripts' timed totals (V91), each from where the last read ended: a transcript only
+ * grows. Its whole lines are read; a line still being written waits for the next read.
+ */
+export function transcriptPoints(): { of(path: string): Promise<TimedCost[]> } {
+  const reads = new Map<
+    string,
+    { read: number; mtimeMs: number; last?: string; points: TimedCost[] }
+  >();
+  return {
+    async of(path) {
+      const before = reads.get(path);
+      const file = await stat(path).catch(() => null);
+      if (!file) return before?.points ?? [];
+      if (before && before.mtimeMs === file.mtimeMs && before.read <= file.size)
+        return before.points;
+      // Shorter than read: written anew; read it whole.
+      const from = before && before.read <= file.size ? before.read : 0;
+      const handle = await open(path, 'r');
+      try {
+        const buffer = Buffer.alloc(file.size - from);
+        await handle.read(buffer, 0, buffer.length, from);
+        const end = buffer.lastIndexOf(0x0a) + 1;
+        const text = buffer.subarray(0, end).toString('utf8');
+        const kept = from === 0 ? undefined : before;
+        const points = [...(kept?.points ?? []), ...costPointsIn(text, kept?.last)];
+        let last = kept?.last;
+        for (const line of text.split('\n')) {
+          const at = TIMESTAMP.exec(line)?.[1];
+          if (at && !line.includes('"cost-state"') && Number.isFinite(Date.parse(at))) last = at;
+        }
+        reads.set(path, {
+          read: from + end,
+          mtimeMs: file.mtimeMs,
+          ...(last ? { last } : {}),
+          points,
+        });
+        return points;
+      } finally {
+        await handle.close();
+      }
     },
   };
 }

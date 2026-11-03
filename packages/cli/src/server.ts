@@ -81,6 +81,7 @@ import type { Workspaces } from './workspaces.js';
 import { STATE_NAMES, type StateName, type StateStore } from './state.js';
 import { MAX_DOCUMENT_BYTES } from './workspace-documents.js';
 import { WorkspaceRefused } from './workspace-record.js';
+import type { WorkspaceDayService } from './workspace-day.js';
 import { MergeRefused, sendFailure, type Merger } from './merges.js';
 import { parsePromptChange, PromptRefused, type PromptSettingsService } from './prompts.js';
 import type { UsageService } from './usage.js';
@@ -177,6 +178,11 @@ export interface RepositoryOptions {
    * (`/api/workspaces/hive…`).
    */
   hiveWorkspace?: HiveWorkspace;
+  /**
+   * The Overview's read of the days (V91): `/api/workspaces/day?since=`, what Symbiote and git
+   * recorded since the page's local midnight six days back.
+   */
+  day?: WorkspaceDayService;
   /** Every agent's prompts (V28): `/api/settings/prompts`. */
   settings?: PromptSettingsService;
   /**
@@ -542,6 +548,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     // Git (V66); History's old address too, which the page moves to /git.
     if (url.pathname === '/git' || url.pathname === '/history')
       return serveSite(req, res, url, '/', undefined);
+    // The Overview (V91), a page of the shell's, the one `/` opens.
+    if (url.pathname === '/overview') return serveSite(req, res, url, '/', undefined);
     if (url.pathname === '/api/history') return historyRows(req, res, url, repository);
     if (url.pathname === '/api/history/shape') return historyShape(req, res, url, repository);
     if (url.pathname === '/api/history/refs') return historyRefs(req, res, url, repository);
@@ -574,6 +582,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/start') return serveSite(req, res, url, '/', undefined);
       // History, the finished workspaces (V77), a page of the shell's.
       if (url.pathname === '/workspace-history') return serveSite(req, res, url, '/', undefined);
+      // The Overview's day (V91): a `since` that is not a time is the page's mistake.
+      if (repository.day && url.pathname === '/api/workspaces/day') {
+        const since = url.searchParams.get('since') ?? '';
+        if (!Number.isFinite(Date.parse(since))) return send(res, 400, 'since is not a time');
+        const { day } = repository;
+        return read(req, res, () => day.read(since));
+      }
       const hiveTab = repository.hiveWorkspace;
       if (hiveTab && url.pathname.startsWith('/api/workspaces/hive')) {
         return hiveRoute(req, res, url, hiveTab);
