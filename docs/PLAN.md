@@ -322,6 +322,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [NX4](plan/nx4-pinned-folders.md) | Pinned folders: the person's folders and repositories kept in Folders' places from one run to the next | ✅ | 617–620 | [journal](journal/nx4-pinned-folders.md) |
 | [Fix](plan/nx2-open-from-folders.md#fix-a-symbiote-framed-once-this-browser-reaches-it-fixfirst-time-symbiote-from-nexus) | A Symbiote opened from the nexus in Chrome on Windows is framed once Chrome reaches it, not left on Chrome's error page | ✅ | 625 | [journal](journal/fix-first-time-symbiote-from-nexus.md) |
 | [Fix](plan/nx4-pinned-folders.md#fix-pinned-symbiotes-on-symbiotes-the-folders-under-them-fixnexus-pinned-symbiotes) | Pinned repositories among Symbiotes' cards, first; Folders no tab: this PC's folders under the Symbiotes | ✅ | 626–628 | [journal](journal/fix-nexus-pinned-symbiotes.md) |
+| Fix | The nexus's tabs drawn as the viewer's session tabs again (`.workspace-tabs`, `.stab`): since V89 they were the browser's grey buttons, as high as their words, the Symbiotes on a line under Symbiotes | in review | | [journal](journal/fix-fix-nexus-top-left.md) |
 
 ### Repository monitoring
 

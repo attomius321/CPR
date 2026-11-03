@@ -88,8 +88,10 @@ const mark = () =>
     draggable: 'false',
   });
 
+// The row's tabs are the viewer's session tabs (V89's `.workspace-tabs`, `.stab`): its line tabs'
+// look lives on those classes only (fix/fix-nexus-top-left).
 const strip = el('div', {
-  class: 'workspace-views nexus-tabs',
+  class: 'workspace-tabs nexus-tabs',
   role: 'tablist',
   'aria-label': 'Running Symbiotes',
 });
@@ -193,7 +195,7 @@ function drawStrip(): void {
     'div',
     { class: 'nexus-own' },
     list,
-    tabs.length > 0 && el('span', { class: 'views-divider nexus-divider', 'aria-hidden': 'true' }),
+    tabs.length > 0 && el('span', { class: 'views-divider', 'aria-hidden': 'true' }),
   );
   const children: HTMLElement[] = [own];
   for (const tab of tabs) {
@@ -234,7 +236,7 @@ function tabButton(root: string | null, ...children: Child[]): HTMLButtonElement
     {
       type: 'button',
       role: 'tab',
-      class: picked ? 'selected' : '',
+      class: picked ? 'stab selected' : 'stab',
       'aria-selected': picked ? 'true' : 'false',
       tabindex: picked ? '0' : '-1',
       'data-tab': root ?? '',
