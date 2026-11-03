@@ -4,12 +4,22 @@ import {
   useEffect,
   useMemo,
   useState,
+  Fragment,
   type CSSProperties,
   type DragEvent,
+  type ReactNode,
 } from 'react';
 import { flushSync } from 'react-dom';
-import type { BranchReviewInfo, Graph } from '@symbiote/core';
-import { BackLink, DiffProgress, reviewSince } from './DiffProgress.js';
+import type { BranchReviewInfo, Graph, ReviewFile } from '@symbiote/core';
+import {
+  BackLink,
+  DiffProgress,
+  FileTotals,
+  analysisState,
+  pairLabel,
+  reviewSince,
+} from './DiffProgress.js';
+import { StatusLabel } from '../ui/StatusLabel.js';
 import { Canvas } from './Canvas.js';
 import { useDiffGraph } from './useDiffGraph.js';
 import { useReview } from './useReview.js';
@@ -26,13 +36,7 @@ import { DiffShell } from './DiffShell.js';
 import { Shell } from '../shell/Shell.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { DetailPanel } from './DetailPanel.js';
-import {
-  FilesKeys,
-  FilesPage,
-  useReviewFiles,
-  type FileFocus,
-  type FilesTab,
-} from './FilesPage.js';
+import { FilesKeys, FilesPage, useReviewFiles, type FileFocus } from './FilesPage.js';
 import { stepFile } from './file-diff.js';
 import type { Draft } from './comments.js';
 import { decorate } from '../graph/flow.js';
@@ -51,7 +55,7 @@ import { Resizer } from '../ui/Resizer.js';
 import { DiffKeys, Sidebar, type SidebarTab } from './Sidebar.js';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
-import { ReviewIcon, SymbioteMark } from '../ui/icons.js';
+import { ForwardIcon, ReviewIcon, RunningIcon, SymbioteMark } from '../ui/icons.js';
 import { browserStore } from './store.js';
 import { WindowButtons } from '../shell/TitleBar.js';
 import { useLayout } from '../graph/useLayout.js';
@@ -80,7 +84,6 @@ export function App() {
   const [asked, setAsked] = useState<DiffView | null>(() => diffView(window.location.search));
   /** The file the Files page shows (null: the first), its tab, and a line to bring into view. */
   const [openFile, setOpenFile] = useState<string | null>(null);
-  const [filesTab, setFilesTab] = useState<FilesTab>('files');
   const [fileFocus, setFileFocus] = useState<FileFocus | null>(null);
   const [widths, setWidths] = useState<Widths>(loadWidths);
   /** A panel is being resized: the canvas waits for the drop to centre the selection again. */
@@ -100,15 +103,29 @@ export function App() {
     verdict,
     setVerdict,
     toggleReviewed,
+    toggleViewed,
     addDraft,
     addLineDraft,
+    editDraft,
     removeDraft,
   } = useReview(graph, store);
-  const served = state.status === 'ready' && state.files;
-  const files = useReviewFiles(graph, served);
+  const analyzing = state.status === 'analyzing' ? state : undefined;
+  const analyzedPair = analyzing?.loaded.pair;
+  const served = (state.status === 'ready' || state.status === 'analyzing') && state.files;
+  // While the pair is analyzed, git's files from it (V90, decision 847).
+  const files = useReviewFiles(
+    graph,
+    served,
+    analyzedPair && `${analyzedPair.base}..${analyzedPair.head}`,
+  );
   // Files first (decision 431), unless the address asks for Graph or there is no diff to show:
-  // a graph opened from a file has no server.
-  const page: DiffView = asked ?? (state.status === 'ready' && !state.files ? 'graph' : 'files');
+  // a graph opened from a file has no server. While it is analyzed, the steps (V90) unless the
+  // Files page is asked for and its files are served.
+  const page: DiffView = analyzing
+    ? asked === 'files' && served
+      ? 'files'
+      : 'graph'
+    : (asked ?? (state.status === 'ready' && !state.files ? 'graph' : 'files'));
   const showPage = useCallback((next: DiffView) => {
     setAsked(next);
     window.history.replaceState(window.history.state, '', withDiffView(window.location.href, next));
@@ -167,7 +184,6 @@ export function App() {
         files.find((f) => (at.side === 'head' ? f.path : (f.previousPath ?? f.path)) === at.path);
       if (!at || !file) return;
       showPage('files');
-      setFilesTab('files');
       setOpenFile(file.path);
       setFileFocus({ path: file.path, key: `${at.side}:${at.line}` });
     },
@@ -197,7 +213,10 @@ export function App() {
         if (event.key === 'Escape') target.blur();
         return;
       }
-      if (event.key === 'g' && state.status === 'ready') {
+      if (
+        event.key === 'g' &&
+        (state.status === 'ready' || (state.status === 'analyzing' && served))
+      ) {
         showPage(page === 'files' ? 'graph' : 'files');
       } else if (page === 'files') {
         if (event.key === 'j' || event.key === 'k') {
@@ -216,6 +235,11 @@ export function App() {
               )
               ?.click();
         } else if (event.key === 'o') document.getElementById('open-in-editor')?.click();
+        else if (event.key === 'v' && state.status === 'ready' && forge) {
+          // The file shown, viewed or not (V90, decision 843).
+          const shown = files.find((f) => f.path === openFile) ?? files[0];
+          if (shown) toggleViewed(shown);
+        }
       } else if (event.key === 'c' && document.getElementById('comment-input')) {
         event.preventDefault();
         document.getElementById('comment-input')?.focus();
@@ -235,7 +259,20 @@ export function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [changes, walked, selected, toggleReviewed, state.status, page, showPage, files]);
+  }, [
+    changes,
+    walked,
+    selected,
+    toggleReviewed,
+    toggleViewed,
+    state.status,
+    page,
+    showPage,
+    files,
+    served,
+    forge,
+    openFile,
+  ]);
 
   const load = useCallback(async (file: File) => {
     try {
@@ -350,16 +387,24 @@ export function App() {
       onDrag={setResizing}
     />
   );
-  // The head's title; before its graph a review's in the shell (being analyzed: V71's card under
-  // it), else Symbiote's window with its name, as the bar had it.
+  // The head's title; while it is analyzed the review's branch or the pair (V90), else
+  // Symbiote's window with its name, as the bar had it.
   const title =
     state.status === 'ready' ? (
       <DiffName graph={state.graph} review={state.branchReview} />
+    ) : analyzing?.branchReview ? (
+      <span className="review-of">
+        Review of <strong>{analyzing.branchReview.branch}</strong>
+      </span>
+    ) : analyzedPair ? (
+      <span className="revisions">{pairLabel(analyzedPair)}</span>
     ) : inView ? (
       'Review'
     ) : (
       'Symbiote'
     );
+  const opening =
+    analyzing && analyzing.loaded.pair ? analysisState(analyzing.loaded, analyzing.seen) : null;
   const content = (
     <div
       className={inView ? 'app' : 'app alone'}
@@ -374,19 +419,35 @@ export function App() {
         icon={inView ? <ReviewIcon /> : <SymbioteMark />}
         title={title}
         line={
-          state.status === 'ready' ? (
-            <span className="diff-facts">
-              {state.branchReview && <ReviewAfter review={state.branchReview} />}
-              {/* The commits compared, unless they are the title. */}
-              <Summary
-                graph={state.graph}
-                revisions={Boolean(state.branchReview ?? state.graph.changeRequest)}
-              />
-            </span>
+          analyzing && analyzedPair ? (
+            <HeadFacts
+              review={analyzing.branchReview}
+              revisions={analyzing.branchReview ? pairLabel(analyzedPair) : undefined}
+              files={files}
+            />
+          ) : state.status === 'ready' ? (
+            // The commits compared, unless they are the title.
+            <HeadFacts
+              review={state.branchReview}
+              revisions={
+                (state.branchReview ?? state.graph.changeRequest)
+                  ? revisionsLabel(state.graph)
+                  : undefined
+              }
+              files={files}
+              graph={state.graph}
+            />
           ) : undefined
         }
         actions={
           <>
+            {opening && (
+              <StatusLabel tone={opening.tone} className="analysis-state">
+                {opening.words}
+              </StatusLabel>
+            )}
+            {state.status === 'ready' && <FindingPills graph={state.graph} />}
+            {analyzing && inView && <BackLink />}
             {state.status === 'ready' && state.commits && <BackLink />}
             {state.status === 'ready' && page === 'files' && (
               <Help label="This page's keys">
@@ -399,46 +460,6 @@ export function App() {
             )}
             {state.status === 'ready' && page === 'graph' && (
               <>
-                {state.graph.since && (
-                  <label
-                    className="toggle"
-                    {...tip('Leave out symbols changed the same way as in the earlier version')}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={sinceOnly}
-                      onChange={(e) => setSinceOnly(e.target.checked)}
-                    />
-                    Only changes since {state.graph.since.sha.slice(0, 7)}
-                  </label>
-                )}
-                <label
-                  className="toggle"
-                  {...tip('Show only the selected symbol and its neighbours', { keys: 'f' })}
-                >
-                  <input
-                    type="checkbox"
-                    checked={focus}
-                    onChange={(e) => setFocus(e.target.checked)}
-                  />
-                  Focus
-                </label>
-                <label className="toggle">
-                  <input
-                    type="checkbox"
-                    checked={context}
-                    onChange={(e) => setContext(e.target.checked)}
-                  />
-                  Context
-                </label>
-                <label className="toggle">
-                  <input
-                    type="checkbox"
-                    checked={typeReferences}
-                    onChange={(e) => setTypeReferences(e.target.checked)}
-                  />
-                  Type references
-                </label>
                 <Help label="This page's keys">
                   <DiffKeys
                     grouped={changes.some((file) => file.project)}
@@ -456,25 +477,44 @@ export function App() {
           // Files and Graph at the head's end (V76c, decision 568): the actions before it change
           // with the page, and wrap under the title on their own; it stays put. The window's
           // buttons stay last.
-          state.status === 'ready' || !inView ? (
+          state.status === 'ready' || !inView || (analyzing && served) ? (
             <>
-              {state.status === 'ready' && <PageSwitch page={page} onPage={showPage} />}
+              {(state.status === 'ready' || (analyzing && served)) && (
+                <PageSwitch page={page} onPage={showPage} building={!!analyzing} />
+              )}
               {!inView && <WindowButtons />}
             </>
           ) : undefined
         }
       />
-      {state.status === 'ready' && page === 'files' ? (
+      {analyzing && analyzedPair && page === 'files' ? (
+        <main className={`files-main${resizing ? ' resizing' : ''}`} style={widthStyle}>
+          <FilesPage
+            graph={undefined}
+            head={analyzedPair.head}
+            files={files}
+            open={openFile}
+            onOpenFile={openTheFile}
+            served={served}
+            canOpen={false}
+            marks={marks}
+            onOpenDraft={openDraft}
+            focus={null}
+            handle={sidebarHandle}
+          />
+        </main>
+      ) : state.status === 'ready' && page === 'files' ? (
         <main className={`files-main${resizing ? ' resizing' : ''}`} style={widthStyle}>
           <FilesPage
             graph={state.graph}
+            head={state.graph.revisions.head.sha ?? state.graph.revisions.head.ref}
             files={files}
             open={openFile}
             onOpenFile={openTheFile}
             served={served}
             canOpen={state.open}
-            tab={reviewProps ? filesTab : 'files'}
-            onTab={setFilesTab}
+            marks={marks}
+            onToggleViewed={reviewProps ? toggleViewed : undefined}
             review={reviewProps}
             comments={
               reviewProps
@@ -482,6 +522,7 @@ export function App() {
                     drafts: draft.drafts,
                     unchanged: forge === 'local',
                     onAdd: addLineDraft,
+                    onEdit: editDraft,
                     onRemove: removeDraft,
                   }
                 : undefined
@@ -498,7 +539,17 @@ export function App() {
             <DropZone error={state.error} onFile={(file) => void load(file)} />
           )}
           {state.status === 'analyzing' && (
-            <DiffProgress loaded={state.loaded} review={state.branchReview} onRetry={retry} />
+            <DiffProgress
+              loaded={state.loaded}
+              seen={state.seen}
+              review={state.branchReview}
+              files={files}
+              onRetry={retry}
+              onReadFiles={(path) => {
+                if (path) openTheFile(path);
+                showPage('files');
+              }}
+            />
           )}
           {state.status === 'ready' && (
             <ReactFlowProvider>
@@ -548,7 +599,51 @@ export function App() {
                     Laying out…
                   </p>
                 )}
-                {layout && <Legend frames={layout.nodes[0]?.type === 'project'} />}
+                {layout && (
+                  <Legend frames={layout.nodes[0]?.type === 'project'}>
+                    {/* The view's toggles at the legend's end (V90, decision 838). */}
+                    {state.graph.since && (
+                      <label
+                        className="toggle"
+                        {...tip('Leave out symbols changed the same way as in the earlier version')}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={sinceOnly}
+                          onChange={(e) => setSinceOnly(e.target.checked)}
+                        />
+                        Only changes since {state.graph.since.sha.slice(0, 7)}
+                      </label>
+                    )}
+                    <label
+                      className="toggle"
+                      {...tip('Show only the selected symbol and its neighbours', { keys: 'f' })}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={focus}
+                        onChange={(e) => setFocus(e.target.checked)}
+                      />
+                      Focus
+                    </label>
+                    <label className="toggle" {...tip('Show unchanged neighbours and packages')}>
+                      <input
+                        type="checkbox"
+                        checked={context}
+                        onChange={(e) => setContext(e.target.checked)}
+                      />
+                      Context
+                    </label>
+                    <label className="toggle" {...tip('Show the uses of types')}>
+                      <input
+                        type="checkbox"
+                        checked={typeReferences}
+                        onChange={(e) => setTypeReferences(e.target.checked)}
+                      />
+                      Type references
+                    </label>
+                  </Legend>
+                )}
               </div>
               {selected && (
                 <Resizer
@@ -597,8 +692,19 @@ export function App() {
   return inView && diff ? <DiffShell repo={inView.repo}>{content}</DiffShell> : content;
 }
 
-/** The diff's two pages (V60, decision 431): Files and Graph, `g` between them. */
-function PageSwitch({ page, onPage }: { page: DiffView; onPage: (page: DiffView) => void }) {
+/**
+ * The diff's two pages (V60, decision 431): Files and Graph, `g` between them; while it is
+ * analyzed (`building`, V90) Graph is its steps, a spinner beside its name.
+ */
+function PageSwitch({
+  page,
+  onPage,
+  building = false,
+}: {
+  page: DiffView;
+  onPage: (page: DiffView) => void;
+  building?: boolean;
+}) {
   const views: [DiffView, string, string][] = [
     ['files', 'Files', 'The changed files and their diffs'],
     ['graph', 'Graph', 'The changed symbols and the calls between them'],
@@ -615,6 +721,7 @@ function PageSwitch({ page, onPage }: { page: DiffView; onPage: (page: DiffView)
           {...tip(words, { keys: 'g' })}
           onClick={() => onPage(view)}
         >
+          {building && view === 'graph' && <RunningIcon />}
           {name}
         </button>
       ))}
@@ -648,49 +755,107 @@ function DiffName({ graph, review }: { graph: Graph; review: BranchReviewInfo | 
 }
 
 /**
- * "2 commits since your last review" (V15), and the workspace this branch is, a link to it (V18b):
- * the head's line, before the commits compared.
+ * The head's line (V90, decision 839): the workspace this branch is (a link to it, V18b), the
+ * branch it goes into, how it stands against the last review (V15), the commits compared, and the
+ * change in git's files and lines (else its symbols, for a graph with no server).
  */
-function ReviewAfter({ review }: { review: BranchReviewInfo }) {
-  const { branch, since } = review;
-  const workspace = useWorkspaces().list?.workspaces.find((f) => f.branch === branch);
+function HeadFacts({
+  review,
+  revisions,
+  files,
+  graph,
+}: {
+  review: BranchReviewInfo | undefined;
+  revisions: string | undefined;
+  files: readonly ReviewFile[];
+  graph?: Graph;
+}) {
+  const lines = files.some((f) => f.added !== undefined);
+  const parts: [string, ReactNode][] = [];
+  if (review?.into) parts.push(['into', <span>into {review.into}</span>]);
+  if (review)
+    parts.push(['since', <span className="review-after">{reviewSince(review.since)}</span>]);
+  if (revisions) parts.push(['revisions', <span className="revisions">{revisions}</span>]);
+  const count = graph?.stats.filesChanged ?? files.length;
+  if (count > 0 || graph) {
+    parts.push([
+      'change',
+      <span className="summary">
+        <span className="summary-files">
+          {count} file{count === 1 ? '' : 's'}
+        </span>
+        {lines ? (
+          <FileTotals files={files} />
+        ) : (
+          graph && (
+            <>
+              <span className="chip-added">+{graph.stats.symbols.added}</span>
+              <span className="chip-removed">−{graph.stats.symbols.removed}</span>
+              <span className="chip-modified">~{graph.stats.symbols.modified}</span>
+            </>
+          )
+        )}
+        {graph?.since && <SinceChip graph={graph} />}
+      </span>,
+    ]);
+  }
   return (
-    <span className="review-after">
-      {reviewSince(since)}
-      {workspace && (
-        <>
-          {' · '}
-          <a
-            className="review-workspace"
-            href={workspaceHref(branch)}
-            {...tip(briefTip(workspace.brief))}
-          >
-            Workspace: {workspaceName(workspace)}
-          </a>
-        </>
-      )}
+    <span className="diff-facts">
+      {/* Only a review reads the workspaces: a diff of two commits asks nothing more. */}
+      {review && <WorkspaceLink branch={review.branch} />}
+      {parts.map(([key, part], i) => (
+        <Fragment key={key}>
+          {i > 0 && (
+            <span className="facts-sep" aria-hidden="true">
+              ·
+            </span>
+          )}
+          {part}
+        </Fragment>
+      ))}
     </span>
   );
 }
 
-function Summary({ graph, revisions }: { graph: Graph; revisions: boolean }) {
-  const { added, removed, modified } = graph.stats.symbols;
-  const severity = (s: string) => graph.findings.filter((f) => f.severity === s).length;
+/** The workspace a reviewed branch is, a link to it (V18b), then the line's next separator. */
+function WorkspaceLink({ branch }: { branch: string }) {
+  const workspace = useWorkspaces().list?.workspaces.find((f) => f.branch === branch);
+  if (!workspace) return null;
   return (
-    <div className="summary">
-      {revisions && <span className="revisions">{revisionsLabel(graph)}</span>}
-      <span className="chip">{graph.stats.filesChanged} files</span>
-      <span className="chip chip-added">+{added}</span>
-      <span className="chip chip-removed">−{removed}</span>
-      <span className="chip chip-modified">~{modified}</span>
-      {severity('error') > 0 && (
-        <span className="badge badge-error">{plural(severity('error'), 'error')}</span>
+    <>
+      <a
+        className="review-workspace"
+        href={workspaceHref(branch)}
+        aria-label={`Workspace: ${workspaceName(workspace)}`}
+        {...tip(briefTip(workspace.brief))}
+      >
+        {workspaceName(workspace)}
+      </a>
+      <span className="facts-sep" aria-hidden="true">
+        ·
+      </span>
+    </>
+  );
+}
+
+/** The change's findings in the head (V90): an error and a warning pill, each its icon and word. */
+function FindingPills({ graph }: { graph: Graph }) {
+  const severity = (s: string) => graph.findings.filter((f) => f.severity === s).length;
+  const errors = severity('error');
+  const warnings = severity('warning');
+  return (
+    <>
+      {errors > 0 && (
+        <StatusLabel tone="error" className="finding-pill pill-error">
+          {plural(errors, 'error')}
+        </StatusLabel>
       )}
-      {severity('warning') > 0 && (
-        <span className="badge badge-warning">{plural(severity('warning'), 'warning')}</span>
+      {warnings > 0 && (
+        <StatusLabel tone="warning" className="finding-pill pill-warning">
+          {plural(warnings, 'warning')}
+        </StatusLabel>
       )}
-      {graph.since && <SinceChip graph={graph} />}
-    </div>
+    </>
   );
 }
 
@@ -744,22 +909,35 @@ function DropZone({ error, onFile }: { error?: string | undefined; onFile: (file
   );
 }
 
-/** `frames`: the canvas draws projects' frames, so their parts are explained too. */
-function Legend({ frames }: { frames: boolean }) {
+/**
+ * The canvas's foot (V90): the marks for a change's kinds, the edges, the frames' parts when
+ * drawn; the view's toggles (`children`) at its end. `frames`: the canvas draws projects' frames.
+ */
+function Legend({ frames, children }: { frames: boolean; children: ReactNode }) {
   return (
     <footer className="legend">
-      {(['added', 'removed', 'modified', 'moved', 'context', 'external', 'unknown'] as const).map(
-        (tone) => (
-          <span key={tone} className={`legend-item tone-${tone}`}>
-            {tone}
+      {(
+        [
+          ['added', '+'],
+          ['removed', '−'],
+          ['modified', '~'],
+          ['moved', null],
+        ] as const
+      ).map(([kind, glyph]) => (
+        <span key={kind} className={`legend-item tone-${kind}`}>
+          <span className={`symbol-mark mark-${kind}`} aria-hidden="true">
+            {glyph ?? <ForwardIcon />}
           </span>
-        ),
-      )}
-      <span className="legend-edge edge-head">added edge</span>
-      <span className="legend-edge edge-base">removed edge</span>
-      {frames && <span className="legend-edge edge-cross">edge between projects</span>}
+          {kind}
+        </span>
+      ))}
+      <span className="legend-item legend-context">unchanged</span>
+      <span className="legend-edge edge-head">added call</span>
+      <span className="legend-edge edge-base">removed call</span>
+      {frames && <span className="legend-edge edge-cross">call between projects</span>}
       <span className="legend-item legend-summary">many neighbours, grouped</span>
       {frames && <span className="legend-item legend-project">project (app or library)</span>}
+      <span className="legend-toggles">{children}</span>
     </footer>
   );
 }

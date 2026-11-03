@@ -61,7 +61,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   `comments.ts` (draft comments and anchors), `store.ts` (server or browser state).
 - `src/history/commits.ts` (**pure**: picking, which end is the base, diverged picks' fork point found from
   the shape (V10c; checked against git by `scripts/viewer/compare-check.mjs`), the label, reading `api/graph`'s
-  202/502/404 while a diff is analyzed), `HistoryPage.tsx` (the Git page; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case), its calls in `api.ts` (the diff's page imports `startDiff` and `fetchGraph` from there), `CommitRow.tsx`, `CompareBar.tsx`. A diff's progress is `diff/DiffProgress.tsx` (V71: a card on the arcs; its steps `analysis-steps.ts`, pure).
+  202/502/404 while a diff is analyzed), `HistoryPage.tsx` (the Git page; never `Commits.tsx` beside `commits.ts`: macOS file systems ignore case), its calls in `api.ts` (the diff's page imports `startDiff` and `fetchGraph` from there), `CommitRow.tsx`, `CompareBar.tsx`. A diff's progress is `diff/DiffProgress.tsx` (V90: the steps as a timeline with their times as the page saw them, `analysis-steps.ts`, pure, the clock kept by `useDiffGraph`; the files from the pair and a workspace's report, commits and brief beside them).
 - `src/history/` since V66 (the Git page): `git-api.ts` (`/api/git/…`: a commit, the changes, the
   upstream, a search, git's writes), `details.ts` (**pure** but for the pane's place, kept in the
   browser as the theme is: lines, the changes' words, why Commit is off, the upstream in words, a
@@ -213,7 +213,12 @@ symbol glyph. Measure first paint (`/git`) and Bitwarden's graph after any font 
   decides what it gets: on the map one edge per pair of linked file boxes (`fileEdges`; file
   boxes carry unseen handles for them), while the view of a large graph moves (over
   `MOVING_EDGE_LIMIT` edges) only the selected symbol's. A move starts at `onMove`, not
-  `onMoveStart` (which comes with every click).
+  `onMoveStart` (which comes with every click). The selected symbol's edges are drawn above every
+  node (V90, `decorateEdges`: `RAISED_EDGE_Z`, `.edge-raised` with no pointer, so a node under one
+  keeps its click); only they change identity on a selection.
+- A graph node (V90, `SymbolNode`) is a neutral card: the kind of change is a mark (`kindMark`),
+  findings one count (`findingCount`), never a tinted ground or coloured name; `--tone` stays for
+  the map's blocks and the marks.
 - Anything `<ReactFlow>` hands to every node (`onNodeClick`, the minimap's `nodeClassName`) keeps
   its identity across renders (`useCallback`, module-level): a new function re-renders every node.
 - Import only **types** from `@symbiote/core`; anything else must work in a browser.

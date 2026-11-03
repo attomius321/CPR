@@ -58,7 +58,8 @@ test('opens a review on its files; a comment on a line of a note is recorded wit
 }) => {
   await page.goto(`${symbiote.url}review/agent/`);
   const files = page.getByRole('navigation', { name: 'Files' });
-  await expect(files.getByRole('tab', { name: /Files/ })).toHaveAttribute('aria-selected', 'true');
+  // One card since V90: the files, then the review under them; no tabs.
+  await expect(files.getByRole('tab')).toHaveCount(0);
   await expect(page.locator('.page-switch .scope.active')).toHaveText('Files');
   await expect(page.locator('.react-flow')).toHaveCount(0);
 
@@ -74,7 +75,7 @@ test('opens a review on its files; a comment on a line of a note is recorded wit
 
   // A click on a line opens a comment box under it.
   await line(page, 'Half comes later.').click();
-  const box = page.getByLabel('Comment');
+  const box = page.getByRole('textbox', { name: 'Comment' });
   await expect(box).toBeFocused();
   await expect(page.locator('.file-comment-form .comment-actions')).toContainText(
     'on line 4 of docs/notes.md',
@@ -85,13 +86,11 @@ test('opens a review on its files; a comment on a line of a note is recorded wit
   await page.keyboard.type('When?');
   await page.keyboard.press('Control+Enter');
   await expect(page.locator('.file-comments .draft-body')).toHaveText('When?');
-  await expect(page.locator('.file-comments .draft-where')).toContainText('On this line');
+  await expect(page.locator('.file-comments .draft-where')).toContainText('You on this line');
   await expect(fileRow(page, 'docs/notes.md').locator('.files-commented')).toHaveText('1');
 
-  // The review's tab lists it by its place, and finishes the review.
-  const reviewTab = files.getByRole('tab', { name: /Review/ });
-  await expect(reviewTab).toContainText('1');
-  await reviewTab.click();
+  // The review under the files lists it by its place, and finishes the review.
+  await expect(files.locator('.review-tab .review-head').first()).toContainText('1');
   await expect(page.locator('.draft-row .list-link')).toHaveText('docs/notes.md:4');
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText('Comments recorded');
@@ -134,7 +133,7 @@ test("a comment in a function names it, and the Graph page shows it in the symbo
   await line(page, 'return a * a;').first().click();
   await page.keyboard.type('Why not a ** 2?');
   await page.getByRole('button', { name: 'Add comment' }).click();
-  await expect(page.locator('.file-comments .draft-where')).toContainText('On square');
+  await expect(page.locator('.file-comments .draft-where')).toContainText('You on square');
 
   // g: the Graph page, kept on reload; the comment is in square's panel.
   await page.keyboard.press('g');
@@ -167,7 +166,7 @@ test('under symbiote pr, only changed lines take a comment, posted on the forge'
     await diff(page).locator('.row-add').first().click();
     await page.keyboard.type('Named well.');
     await page.keyboard.press('Control+Enter');
-    await page.getByRole('tab', { name: /Review/ }).click();
+    // The review is under the files (V90).
     await page.getByRole('button', { name: 'Submit review to GitHub' }).click();
     await expect(page.locator('.posted')).toContainText('Review posted.');
     const posted = pr.requests.filter((r) => r.method === 'POST');
@@ -196,6 +195,9 @@ test("the Files and Graph switch stays put between the two pages, at the head's 
     };
   };
   await page.goto(`${symbiote.url}review/agent/`);
+  // The switch is there while the change is analyzed too (V90): measured once it is.
+  await expect(page.locator('.file-path')).toBeVisible();
+  await expect(page.locator('.analysis-state')).toHaveCount(0);
   // At 700 the Graph page's actions wrap under the title, the Files page's do not (under 640 the
   // diff's page is wider than the window).
   for (const width of [1440, 820, 700]) {
@@ -212,4 +214,81 @@ test("the Files and Graph switch stays put between the two pages, at the head's 
     const graph = await at();
     expect({ width, x: graph.x, y: graph.y }).toEqual({ width, x: files.x, y: files.y });
   }
+});
+
+// V90 (decisions 842-844): a file viewed is a mark by its blob, in the review; a comment under its
+// line is written again with Edit; Ctrl+Enter in the summary finishes the review.
+test('marks a file viewed by its version, edits a comment, finishes from the summary', async ({
+  page,
+}) => {
+  const marks = () =>
+    existsSync(reviewFile())
+      ? (JSON.parse(readFileSync(reviewFile(), 'utf8')) as { marks: Record<string, string> }).marks
+      : {};
+  await page.goto(`${symbiote.url}review/agent/`);
+  const files = page.getByRole('navigation', { name: 'Files' });
+  await expect(files.locator('.review-tab')).toBeVisible();
+  await expect(page.locator('.file-position')).toHaveText('1 of 2');
+  await expect(page.getByRole('button', { name: 'The file before' })).toBeDisabled();
+  await page.getByRole('button', { name: 'The file after' }).click();
+  await expect(page.locator('.file-path')).toHaveText('src/math.ts');
+  await expect(page.locator('.file-position')).toHaveText('2 of 2');
+  // The file shown has the eye; none is viewed yet.
+  const state = (path: string) =>
+    page.locator('.files-item', { has: fileRow(page, path) }).locator('.files-state');
+  await expect(state('src/math.ts')).toHaveClass(/reviewing/);
+  await expect(page.locator('.files-state.viewed')).toHaveCount(0);
+
+  const viewed = page.getByRole('button', { name: 'Viewed' });
+  await expect(viewed).toHaveAttribute('aria-pressed', 'false');
+  await viewed.click();
+  await expect(viewed).toHaveAttribute('aria-pressed', 'true');
+  await expect(state('src/math.ts')).toHaveClass(/viewed/);
+  const blob = execFileSync('git', ['rev-parse', 'agent:src/math.ts'], {
+    cwd: symbiote.repo,
+    encoding: 'utf8',
+  }).trim();
+  await expect.poll(() => marks()['file:src/math.ts']).toBe(blob);
+  // `v` unmarks it, and marks it again.
+  await page.keyboard.press('v');
+  await expect(viewed).toHaveAttribute('aria-pressed', 'false');
+  await expect.poll(() => marks()['file:src/math.ts']).toBeUndefined();
+  await page.keyboard.press('v');
+  await expect(viewed).toHaveAttribute('aria-pressed', 'true');
+
+  // A comment, written again with Edit.
+  await line(page, 'export function cube').click();
+  await page.keyboard.type('Firts');
+  await page.keyboard.press('Control+Enter');
+  await expect(page.locator('.file-comments .draft-body')).toHaveText('Firts');
+  await page.getByRole('button', { name: /^Edit comment/ }).click();
+  const box = page.getByRole('textbox', { name: 'Comment' });
+  await expect(box).toHaveValue('Firts');
+  await box.fill('First');
+  await page.getByRole('button', { name: 'Save comment' }).click();
+  await expect(page.locator('.file-comments .draft-body')).toHaveText(['First']);
+
+  // Viewed is kept: a reload shows it.
+  await page.reload();
+  await fileRow(page, 'src/math.ts').click();
+  await expect(page.getByRole('button', { name: 'Viewed' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+
+  // Ctrl+Enter in the summary finishes the review.
+  await page.getByLabel('Request changes').check();
+  await page.getByLabel('Review summary').fill('One typo.');
+  await page.getByLabel('Review summary').press('Control+Enter');
+  await expect(page.locator('.finished')).toBeVisible();
+  const verdicts = () =>
+    existsSync(reviewFile())
+      ? (JSON.parse(readFileSync(reviewFile(), 'utf8')) as { verdicts: unknown[] }).verdicts
+      : [];
+  await expect.poll(() => verdicts().length).toBe(1);
+  expect(verdicts()[0]).toMatchObject({
+    event: 'request-changes',
+    summary: 'One typo.',
+    comments: [{ body: 'First', path: 'src/math.ts' }],
+  });
 });

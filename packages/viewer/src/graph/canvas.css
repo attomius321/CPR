@@ -19,18 +19,22 @@
 
 /* ---- edges -------------------------------------------------------------------------- */
 
+/* normal.css's strokes (V90, decision 837): a call on both sides quiet, an added call green, a
+   removed one dashed red, 1.5 px; the picked symbol's 2.25 px, above every node. */
 .react-flow__edge.edge-both path.react-flow__edge-path {
-  stroke: var(--context);
+  stroke: color-mix(in srgb, var(--context) 60%, var(--bg));
+  stroke-width: 1.5;
 }
 
 .react-flow__edge.edge-head path.react-flow__edge-path {
-  stroke: var(--added);
-  stroke-width: 2;
+  stroke: color-mix(in srgb, var(--added) 75%, transparent);
+  stroke-width: 1.5;
 }
 
 .react-flow__edge.edge-base path.react-flow__edge-path {
   stroke: var(--removed);
-  stroke-dasharray: 6 4;
+  stroke-width: 1.5;
+  stroke-dasharray: 5 4;
 }
 
 .react-flow__edge.edge-type-reference path.react-flow__edge-path,
@@ -106,8 +110,17 @@
 }
 
 .react-flow__edge.edge-active path.react-flow__edge-path {
-  stroke-width: 2.5;
+  stroke-width: 2.25;
   stroke-opacity: 1;
+}
+
+.react-flow__edge.edge-active.edge-both path.react-flow__edge-path {
+  stroke: var(--muted);
+}
+
+/* Drawn above the nodes (decorateEdges' z-index): a node under one still takes its click. */
+.react-flow__edge.edge-raised {
+  pointer-events: none;
 }
 
 /* Between two projects: what one app or library asks of another. */

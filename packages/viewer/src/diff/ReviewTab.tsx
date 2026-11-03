@@ -59,6 +59,21 @@ type Submission =
 
 const short = (sha: string) => sha.slice(0, 7);
 
+/** The key that finishes from the summary (V90). */
+const FINISH_KEYS = /Mac|iPhone|iPad/.test(navigator.userAgent) ? '⌘+Enter' : 'Ctrl+Enter';
+
+/**
+ * What each verdict asks of the agent on a branch review (areas/reviews.md's table), under its
+ * name (V90, decision 844); `into`: the branch an approval merges into.
+ */
+function verdictHint(value: ReviewEvent, into: string | undefined): string {
+  if (value === 'comment') return 'the agent answers each comment';
+  if (value === 'request-changes') return 'the agent fixes each comment in new commits';
+  return into
+    ? `then Merge: Symbiote's merger merges it into ${into}`
+    : 'these commits may be pushed';
+}
+
 /**
  * What a comment is on, for its row: its symbol; a line no symbol holds by its path and line
  * (V60).
@@ -112,6 +127,10 @@ export function ReviewTab({
     }
   };
 
+  const ready =
+    submission.status !== 'posting' &&
+    (local ? canFinish : canSubmit)(draft.drafts, event, draft.body);
+
   return (
     <div className="list review-tab">
       <section className="review-section" aria-labelledby={`${id}-comments`}>
@@ -126,12 +145,19 @@ export function ReviewTab({
         )}
         {draft.drafts.map((d) => {
           const name = draftName(d, nodes);
+          const line = (d.anchor ?? d.was)?.line;
           return (
-            <div key={d.id} className="draft-row">
+            <div key={d.id} className="draft-row" {...tip(describeDraft(d))}>
               <div className="draft-where">
-                <button className="list-link" onClick={() => onOpen(d)}>
-                  {name}
-                </button>
+                <span className="draft-on">
+                  on{' '}
+                  <button className="list-link" onClick={() => onOpen(d)}>
+                    {name}
+                  </button>
+                  {line !== undefined && d.symbol !== undefined && (
+                    <span className="draft-line"> · line {line}</span>
+                  )}
+                </span>
                 <button
                   className="link"
                   aria-label={`Delete comment on ${name}`}
@@ -140,7 +166,6 @@ export function ReviewTab({
                   Delete
                 </button>
               </div>
-              <div className="muted small">{describeDraft(d)}</div>
               <p className="draft-body">{d.body}</p>
             </div>
           );
@@ -165,22 +190,41 @@ export function ReviewTab({
               className="comment-input"
               aria-label="Review summary"
               rows={3}
+              placeholder="A summary for the agent (optional)"
               value={draft.body}
               onChange={(e) => review.onBody(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter' || !(e.ctrlKey || e.metaKey) || !ready) return;
+                e.preventDefault();
+                void submit();
+              }}
             />
           </div>
           <fieldset className="events">
             <legend>Verdict</legend>
             {EVENTS.map((option) => (
-              <label key={option.value}>
+              <label
+                key={option.value}
+                className={`event${event === option.value ? ' picked' : ''}`}
+              >
+                {/* Named by the verdict; what it asks of the agent describes it. */}
                 <input
                   type="radio"
                   name="event"
                   value={option.value}
+                  aria-label={option.label}
+                  {...(local ? { 'aria-describedby': `${id}-${option.value}` } : {})}
                   checked={event === option.value}
                   onChange={() => review.onVerdict(option.value)}
                 />
-                {option.label}
+                <span className="event-words">
+                  <span className="event-name">{option.label}</span>
+                  {local && (
+                    <span className="event-hint" id={`${id}-${option.value}`}>
+                      {verdictHint(option.value, into)}
+                    </span>
+                  )}
+                </span>
               </label>
             ))}
           </fieldset>
@@ -190,14 +234,7 @@ export function ReviewTab({
             </p>
           )}
           <div className="review-submit">
-            <button
-              type="submit"
-              className="button"
-              disabled={
-                submission.status === 'posting' ||
-                !(local ? canFinish : canSubmit)(draft.drafts, event, draft.body)
-              }
-            >
+            <button type="submit" className="button" disabled={!ready}>
               {submission.status === 'posting'
                 ? local
                   ? 'Finishing…'
@@ -205,6 +242,10 @@ export function ReviewTab({
                 : local
                   ? 'Finish review'
                   : `Submit review to ${site}`}
+              {/* The key on Finish review; Submit review to GitHub is long enough without it. */}
+              {local && submission.status !== 'posting' && (
+                <kbd aria-hidden="true">{FINISH_KEYS}</kbd>
+              )}
             </button>
             {local && (
               <Help label="Where the verdict goes">

@@ -12,6 +12,7 @@ import {
   type BranchReviewInfo,
   type CheckoutResult,
   type BranchMerge,
+  type ChangedBlob,
   type ChangedFile,
   type FinishResult,
   type LocalReview,
@@ -133,6 +134,8 @@ export interface ReviewTarget {
 export interface ChangeFiles {
   /** Lines added and removed per file from `from` to `to`, renames detected. */
   lines(from: string, to: string): Promise<LineCount[]>;
+  /** The files that differ from `from` to `to`, each with its blob (V90). */
+  blobs(from: string, to: string): Promise<ChangedBlob[]>;
   /** One file's diff from `from` to `to`, the whole file as context. */
   diff(from: string, to: string, file: ChangedFile): Promise<string>;
 }
@@ -362,6 +365,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   // a site per graph and branch, whose state is the branch's review.
   const opened = new Map<string, { info: BranchReviewInfo; pair: Pair }>();
   const reviewSites = new WeakMap<Graph, Map<string, Site>>();
+  /** Each pair's files while it is analyzed (V90), by `pairKey`; dropped once its graph is. */
+  const pairSites = new Map<string, SiteFiles>();
   let hosts: Set<string> = new Set();
   let address = '';
   let checkingOut = false;
@@ -1111,22 +1116,37 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         return send(res, 404, 'unknown source');
       }
     }
-    if (path === '/api/files') {
-      if (!site?.files) return send(res, 404, 'no files here');
-      return send(res, 200, JSON.stringify(await site.files.list()), TYPES['.json']);
-    }
-    if (path === '/api/file') {
-      const wanted = url.searchParams.get('path');
-      const file = site?.graph.files.find((f) => f.path === wanted);
-      if (!site?.files || !file) return send(res, 404, 'unknown file');
-      const diff = await site.files.diff(file);
-      if (Buffer.byteLength(diff) > MAX_FILE_DIFF_BYTES) {
-        return send(res, 413, `a diff of at most ${MAX_FILE_DIFF_BYTES / 2 ** 20} MB`);
-      }
-      return send(res, 200, diff, 'text/plain; charset=utf-8');
+    if (path === '/api/files' || path === '/api/file') {
+      if (!site?.files)
+        return send(res, 404, path === '/api/files' ? 'no files here' : 'unknown file');
+      return serveFiles(res, url, path, site.files, site.graph.files);
     }
     if (path.startsWith('/api/')) return send(res, 404, 'not found');
     return serveFile(res, path);
+  }
+
+  /**
+   * `./api/files` (the change's files with git's lines) and `./api/file?path=` (one of `changed`'s
+   * diffs, a path in the change only), V60.
+   */
+  async function serveFiles(
+    res: ServerResponse,
+    url: URL,
+    path: '/api/files' | '/api/file',
+    files: SiteFiles,
+    changed: readonly ChangedFile[],
+  ): Promise<void> {
+    if (path === '/api/files') {
+      return send(res, 200, JSON.stringify(await files.list()), TYPES['.json']);
+    }
+    const wanted = url.searchParams.get('path');
+    const file = changed.find((f) => f.path === wanted);
+    if (!file) return send(res, 404, 'unknown file');
+    const diff = await files.diff(file);
+    if (Buffer.byteLength(diff) > MAX_FILE_DIFF_BYTES) {
+      return send(res, 413, `a diff of at most ${MAX_FILE_DIFF_BYTES / 2 ** 20} MB`);
+    }
+    return send(res, 200, diff, 'text/plain; charset=utf-8');
   }
 
   /**
@@ -1168,6 +1188,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   ): Promise<void> {
     const status = repo.diffs.status(pair);
     if (status?.status === 'done') {
+      pairSites.delete(pairKey(pair));
       const site = review
         ? reviewSite(repo, status.graph, review.info, review.reviews)
         : diffSite(repo, status.graph);
@@ -1177,6 +1198,14 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (!status) return json(res, 404, { ...pair, error: 'not analyzed' });
       if (status.status === 'failed') return json(res, 502, { ...pair, error: status.error });
       return json(res, 202, { ...pair, ...status });
+    }
+    // Its files do not wait for the graph (V90): git's, from the pair, while it is analyzed.
+    if ((path === '/api/files' || path === '/api/file') && req.method === 'GET' && repo.files) {
+      const key = pairKey(pair);
+      let files = pairSites.get(key);
+      if (!files) pairSites.set(key, (files = pairFiles(pair, repo.files)));
+      const changed = path === '/api/file' ? await files.list() : [];
+      return serveFiles(res, url, path, files, changed);
     }
     return serveSite(req, res, url, path, undefined, true, review?.info);
   }
@@ -2317,11 +2346,24 @@ function siteFiles(graph: Graph, files: ChangeFiles | undefined): SiteFiles | un
   const from = graph.revisions.from;
   const to = graph.revisions.head.sha;
   if (!files || !from || !to) return undefined;
+  return readFiles(files, from, to, () => Promise.resolve(graph.files));
+}
+
+/**
+ * The files from `from` to `to` (`changed`: the graph's, or git's while it is analyzed), with
+ * git's lines and blobs, read once; a failed read is read again next time.
+ */
+function readFiles(
+  files: ChangeFiles,
+  from: string,
+  to: string,
+  changed: (blobs: ChangedBlob[]) => Promise<Graph['files']>,
+): SiteFiles {
   let listed: Promise<ReviewFile[]> | undefined;
   return {
     list: () =>
-      (listed ??= files.lines(from, to).then(
-        (counts) => withLines(graph.files, counts),
+      (listed ??= Promise.all([files.lines(from, to), files.blobs(from, to)]).then(
+        async ([counts, blobs]) => withLines(await changed(blobs), counts, blobs),
         (error: unknown) => {
           listed = undefined;
           throw error;
@@ -2329,4 +2371,13 @@ function siteFiles(graph: Graph, files: ChangeFiles | undefined): SiteFiles | un
       )),
     diff: (file) => files.diff(from, to, file),
   };
+}
+
+/**
+ * A pair's files before its graph exists (V90, decision 847): git's, so the page being analyzed
+ * lists them and the Files page reads them meanwhile.
+ */
+function pairFiles(pair: Pair, files: ChangeFiles): SiteFiles {
+  // git's files carry their blobs already; `withLines` gives them again.
+  return readFiles(files, pair.base, pair.head, (blobs) => Promise.resolve(blobs));
 }

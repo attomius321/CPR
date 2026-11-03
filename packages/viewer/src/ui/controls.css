@@ -455,6 +455,9 @@ kbd {
 }
 
 .scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   height: 26px;
   padding: 0 12px;
   border: 1px solid transparent;
@@ -467,6 +470,11 @@ kbd {
 
 .scope:hover {
   color: var(--text);
+}
+
+.scope > svg {
+  width: 14px;
+  height: 14px;
 }
 
 .scope.active {

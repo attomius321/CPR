@@ -47,7 +47,7 @@ test('keeps the review across a new push and flags what changed', async ({ page 
   await expect(page.getByLabel('Mark Canvas.clear reviewed')).toBeChecked();
 
   await page.getByRole('tab', { name: /Review/ }).click();
-  await expect(page.locator('.draft-row')).toContainText('on line 16 of src/shapes.ts');
+  await expect(page.locator('.draft-row')).toContainText('on volume · line 16');
   await expect(page.locator('.draft-row')).toContainText('Cube only?');
 });
 
@@ -66,7 +66,7 @@ test('opened with --since, walks only what changed since the previous push', asy
   await expect(page.locator('.list-link')).toHaveText(['volume']);
   await page.keyboard.press('j');
   await expect(page.locator('.panel-title')).toHaveText('volume');
-  await expect(page.locator('.panel-kind')).toContainText('updated since');
+  await expect(page.locator('.panel-tags')).toContainText('updated since');
 
   await only.uncheck();
   await expect(page.locator('.list-link')).toHaveCount(8);

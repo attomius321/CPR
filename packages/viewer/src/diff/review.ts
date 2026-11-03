@@ -163,8 +163,31 @@ export function fingerprint(node: GraphNode): string {
   return `${side(node.base)}|${side(node.head)}`;
 }
 
-/** Reviewed marks: symbol ID → its fingerprint when it was marked. */
+/**
+ * Reviewed marks: symbol ID → its fingerprint when it was marked; a file viewed on the Files page,
+ * `file:<path>` → its blob when it was (V90, decision 843).
+ */
 export type Marks = Readonly<Record<string, string>>;
+
+const FILE_MARK = 'file:';
+
+/** Whether `file` was marked viewed at the blob it has now. */
+export function fileViewed(marks: Marks, file: { path: string; blob?: string }): boolean {
+  return file.blob !== undefined && marks[`${FILE_MARK}${file.path}`] === file.blob;
+}
+
+/**
+ * Marks `file` viewed at its blob, or unmarks it; a file viewed at another blob (changed since) is
+ * marked again at this one. A file git gave no blob for cannot be marked.
+ */
+export function toggleFileMark(marks: Marks, file: { path: string; blob?: string }): Marks {
+  if (file.blob === undefined) return marks;
+  const key = `${FILE_MARK}${file.path}`;
+  const next: Record<string, string> = { ...marks };
+  if (marks[key] === file.blob) delete next[key];
+  else next[key] = file.blob;
+  return next;
+}
 
 /**
  * Where review state is kept: per change request under `symbiote pr`, so it outlives new pushes;
@@ -192,7 +215,10 @@ export function reviewStatus(graph: Graph, marks: Marks): ReviewStatus {
   return status;
 }
 
-/** Marks or unmarks a symbol; marks of symbols no longer in the change are dropped. */
+/**
+ * Marks or unmarks a symbol; marks of symbols no longer in the change are dropped, files' viewed
+ * marks kept (the Files page keeps them).
+ */
 export function toggleMark(graph: Graph, marks: Marks, id: string): Marks {
   const changed = new Map(
     graph.nodes.filter((n) => n.status !== 'unchanged').map((n) => [n.id, n]),
@@ -200,7 +226,9 @@ export function toggleMark(graph: Graph, marks: Marks, id: string): Marks {
   const node = changed.get(id);
   if (!node) return marks;
   const next: Record<string, string> = {};
-  for (const [key, mark] of Object.entries(marks)) if (changed.has(key)) next[key] = mark;
+  for (const [key, mark] of Object.entries(marks)) {
+    if (changed.has(key) || key.startsWith(FILE_MARK)) next[key] = mark;
+  }
   if (marks[id] === fingerprint(node)) delete next[id];
   else next[id] = fingerprint(node);
   return next;

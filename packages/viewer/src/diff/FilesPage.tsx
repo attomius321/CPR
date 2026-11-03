@@ -10,7 +10,15 @@ import {
 } from 'react';
 import type { Graph, ReviewFile } from '@symbiote/core';
 import { label } from '../graph/flow.js';
-import { CommentIcon } from '../ui/icons.js';
+import {
+  ArrowDownIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  CommentIcon,
+  ReviewIcon,
+  RunningIcon,
+} from '../ui/icons.js';
+import { fileViewed, type Marks } from './review.js';
 import { tip } from '../ui/tip.js';
 import { FileRow, Lines } from '../workspaces/ChangesPanel.js';
 import { fileFacts } from '../workspaces/changes.js';
@@ -36,14 +44,14 @@ const MAX_ROWS = 2000;
 /** How long "Opened in VS Code …" stays; an error stays until the next open. */
 const NOTE_MS = 8000;
 
-export type FilesTab = 'files' | 'review';
-
 /** The review's comments on the Files page: the drafts, and which lines take one. */
 export interface FileComments {
   drafts: readonly Draft[];
   /** Unchanged lines take comments (a branch review); a forge's only its changed ones. */
   unchanged: boolean;
   onAdd: (anchor: Anchor, body: string) => void;
+  /** A draft's text written again (V90): Edit on a comment under its line. */
+  onEdit: (id: string, body: string) => void;
   onRemove: (id: string) => void;
 }
 
@@ -55,13 +63,18 @@ export interface FileFocus {
 
 /**
  * The change's files with git's lines (`./api/files`), read once per graph; meanwhile, and where
- * the server has none (a graph opened from a file), the graph's own files without lines.
+ * the server has none (a graph opened from a file), the graph's own files without lines. While the
+ * pair is analyzed (`analyzing`, its key), git's files from the pair (V90, decision 847).
  */
-export function useReviewFiles(graph: Graph | undefined, served: boolean): ReviewFile[] {
+export function useReviewFiles(
+  graph: Graph | undefined,
+  served: boolean,
+  analyzing?: string,
+): ReviewFile[] {
   const [files, setFiles] = useState<ReviewFile[]>(graph?.files ?? []);
   useEffect(() => {
     setFiles(graph?.files ?? []);
-    if (!graph || !served) return;
+    if ((!graph && !analyzing) || !served) return;
     let live = true;
     fetch('./api/files')
       .then((response) => (response.ok ? (response.json() as Promise<ReviewFile[]>) : null))
@@ -72,7 +85,7 @@ export function useReviewFiles(graph: Graph | undefined, served: boolean): Revie
     return () => {
       live = false;
     };
-  }, [graph, served]);
+  }, [graph, served, analyzing]);
   return files;
 }
 
@@ -86,8 +99,8 @@ type DiffState =
 /** Each file's diff, read once per page: by the head reviewed and the path. */
 const diffs = new Map<string, Promise<FileDiff>>();
 
-function fetchFileDiff(graph: Graph, path: string): Promise<FileDiff> {
-  const key = `${graph.revisions.head.sha ?? graph.revisions.head.ref}:${path}`;
+function fetchFileDiff(head: string, path: string): Promise<FileDiff> {
+  const key = `${head}:${path}`;
   let diff = diffs.get(key);
   if (!diff) {
     diff = fetch(`./api/file?path=${encodeURIComponent(path)}`).then(async (response) => {
@@ -102,25 +115,29 @@ function fetchFileDiff(graph: Graph, path: string): Promise<FileDiff> {
   return diff;
 }
 
-function useFileDiff(graph: Graph, path: string, served: boolean): DiffState {
+/** `head`: the commit reviewed, which keys the diffs read. */
+function useFileDiff(head: string, path: string, served: boolean): DiffState {
   const [state, setState] = useState<DiffState>({ status: served ? 'loading' : 'none' });
   useEffect(() => {
     if (!served) return setState({ status: 'none' });
     let live = true;
     setState({ status: 'loading' });
-    fetchFileDiff(graph, path).then(
+    fetchFileDiff(head, path).then(
       (diff) => live && setState({ status: 'ready', diff }),
       (error: unknown) => live && setState({ status: 'failed', error: (error as Error).message }),
     );
     return () => {
       live = false;
     };
-  }, [graph, path, served]);
+  }, [head, path, served]);
   return state;
 }
 
 interface Props {
-  graph: Graph;
+  /** Absent while the pair is analyzed: the page reads git's files and diffs only (V90). */
+  graph: Graph | undefined;
+  /** The commit reviewed. */
+  head: string;
   files: readonly ReviewFile[];
   /** The file shown, by path; null for the first. */
   open: string | null;
@@ -129,9 +146,11 @@ interface Props {
   served: boolean;
   /** The server opens files in VS Code (`/api/open`). */
   canOpen: boolean;
-  tab: FilesTab;
-  onTab: (tab: FilesTab) => void;
-  /** Present where the page takes a review: its tab, and comments on lines. */
+  /** The review's marks: a file viewed is one (`file:<path>`, V90). */
+  marks: Marks;
+  /** Marks a file viewed, or not; absent where the page takes no review. */
+  onToggleViewed?: ((file: ReviewFile) => void) | undefined;
+  /** Present where the page takes a review: its section under the files, and comments on lines. */
   review?: ReviewProps | undefined;
   comments?: FileComments | undefined;
   /** Shows what a comment in the review tab is on. */
@@ -142,18 +161,20 @@ interface Props {
 }
 
 /**
- * The Files page (V60, decision 431): the change's files at the left, drawn as a workspace's
- * changes panel draws them, and the review's tab; the file picked, its diff, beside them.
+ * The Files page (V60, decision 431; one card since V90, decision 842): the change's files at the
+ * left, each with its viewed state, and the review under them; the file picked, its diff, beside
+ * them.
  */
 export function FilesPage({
   graph,
+  head,
   files,
   open,
   onOpenFile,
   served,
   canOpen,
-  tab,
-  onTab,
+  marks,
+  onToggleViewed,
   review,
   comments,
   onOpenDraft,
@@ -169,63 +190,75 @@ export function FilesPage({
     }
     return counts;
   }, [files, comments?.drafts]);
+  const at = shown ? files.indexOf(shown) : -1;
   return (
     <>
       <nav className="sidebar files-side" aria-label="Files">
-        <div className="card-head tabs" role="tablist">
-          <button role="tab" aria-selected={tab === 'files'} onClick={() => onTab('files')}>
-            Files <span className="count">{files.length}</span>
-          </button>
-          {review && (
-            <button role="tab" aria-selected={tab === 'review'} onClick={() => onTab('review')}>
-              Review <span className="count">{review.draft.drafts.length}</span>
-            </button>
+        <div className="list files-scroll">
+          {files.length === 0 ? (
+            <p className="muted pad">No file changed.</p>
+          ) : (
+            <ul className="changes-list files-list">
+              {files.map((file) => {
+                const count = commented.get(file.path);
+                const viewed = fileViewed(marks, file);
+                const current = file === shown;
+                return (
+                  <li key={file.path} className="files-item">
+                    <span
+                      className={`files-state${viewed ? ' viewed' : current ? ' reviewing' : ''}`}
+                      {...(viewed ? { 'aria-label': 'Viewed' } : {})}
+                    >
+                      {viewed ? <CheckIcon /> : current ? <ReviewIcon /> : null}
+                    </span>
+                    <FileRow
+                      file={file}
+                      label={`Show the changes to ${file.path}`}
+                      hover={fileFacts(file)}
+                      current={current}
+                      after={
+                        count !== undefined && (
+                          <span
+                            className="files-commented"
+                            aria-label={`${count} comment${count === 1 ? '' : 's'}`}
+                          >
+                            <CommentIcon />
+                            {count}
+                          </span>
+                        )
+                      }
+                      onOpen={() => onOpenFile(file.path)}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {!graph && (
+            <p className="files-waiting">
+              <RunningIcon /> Comments open once the graph is built.
+            </p>
+          )}
+          {/* Your review under the files (V90, decision 842; 435's tabs before). */}
+          {review && graph && (
+            <ReviewTab graph={graph} review={review} onOpen={onOpenDraft} canOpen={canOpen} />
           )}
         </div>
-        {tab === 'review' && review ? (
-          <ReviewTab graph={graph} review={review} onOpen={onOpenDraft} canOpen={canOpen} />
-        ) : (
-          <div className="list">
-            {files.length === 0 ? (
-              <p className="muted pad">No file changed.</p>
-            ) : (
-              <ul className="changes-list files-list">
-                {files.map((file) => {
-                  const count = commented.get(file.path);
-                  return (
-                    <li key={file.path}>
-                      <FileRow
-                        file={file}
-                        label={`Show the changes to ${file.path}`}
-                        hover={fileFacts(file)}
-                        current={file === shown}
-                        after={
-                          count !== undefined && (
-                            <span
-                              className="files-commented"
-                              aria-label={`${count} comment${count === 1 ? '' : 's'}`}
-                            >
-                              <CommentIcon />
-                              {count}
-                            </span>
-                          )
-                        }
-                        onOpen={() => onOpenFile(file.path)}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        )}
       </nav>
       {handle}
       {shown ? (
         <FileView
           key={shown.path}
           graph={graph}
+          head={head}
           file={shown}
+          position={{ at: at + 1, of: files.length }}
+          onStep={(step) => {
+            const next = files[at + step];
+            if (next) onOpenFile(next.path);
+          }}
+          viewed={fileViewed(marks, shown)}
+          onToggleViewed={onToggleViewed && (() => onToggleViewed(shown))}
           served={served}
           canOpen={canOpen}
           comments={comments}
@@ -237,6 +270,16 @@ export function FilesPage({
     </>
   );
 }
+
+/** A file's kind of change as a node's tone: its pill's colour (V90). */
+const STATUS_TONES: Record<ReviewFile['status'], string> = {
+  added: 'added',
+  deleted: 'removed',
+  modified: 'modified',
+  renamed: 'moved',
+  copied: 'added',
+  'type-changed': 'modified',
+};
 
 /** Where a file opens in VS Code from its head: its first change, head's side if it has one. */
 function firstChange(file: ReviewFile, rows: readonly DiffRow[]): OpenTarget {
@@ -278,20 +321,32 @@ function noRows(file: ReviewFile, state: DiffState): string | null {
 /** One file's diff: its head, its rows folded to the changes, and the comments on its lines. */
 function FileView({
   graph,
+  head,
   file,
+  position,
+  onStep,
+  viewed,
+  onToggleViewed,
   served,
   canOpen,
   comments,
   focus,
 }: {
-  graph: Graph;
+  graph: Graph | undefined;
+  head: string;
   file: ReviewFile;
+  /** Its place in the list: "2 of 5". */
+  position: { at: number; of: number };
+  /** Shows the file before (-1) or after (1) it. */
+  onStep: (step: -1 | 1) => void;
+  viewed: boolean;
+  onToggleViewed: (() => void) | undefined;
   served: boolean;
   canOpen: boolean;
   comments: FileComments | undefined;
   focus: FileFocus | null;
 }) {
-  const state = useFileDiff(graph, file.path, served);
+  const state = useFileDiff(head, file.path, served);
   const rows = useMemo(
     () => (state.status === 'ready' && state.diff.kind === 'rows' ? state.diff.rows : []),
     [state],
@@ -299,8 +354,12 @@ function FileView({
   /** Folds opened, by where they start. */
   const [opened, setOpened] = useState<ReadonlySet<number>>(new Set());
   const [all, setAll] = useState(false);
-  /** The line a comment is being written on, and what it says so far. */
-  const [writing, setWriting] = useState<{ key: string; anchor: Anchor } | null>(null);
+  /** The line a comment is being written on (`editing`: a draft written again), and its text. */
+  const [writing, setWriting] = useState<{
+    key: string;
+    anchor: Anchor;
+    editing?: string;
+  } | null>(null);
   const [text, setText] = useState('');
   const [note, setNote] = useState<{ text: string; error: boolean } | null>(null);
   useEffect(() => {
@@ -342,7 +401,8 @@ function FileView({
   };
   const add = () => {
     if (!writing || !comments || !text.trim()) return;
-    comments.onAdd(writing.anchor, text);
+    if (writing.editing) comments.onEdit(writing.editing, text);
+    else comments.onAdd(writing.anchor, text);
     setText('');
     setWriting(null);
   };
@@ -353,7 +413,7 @@ function FileView({
     } else if (event.key === 'Escape') setWriting(null);
   };
   const empty = noRows(file, state);
-  const nodes = new Map(graph.nodes.map((n) => [n.id, n]));
+  const nodes = new Map(graph?.nodes.map((n) => [n.id, n]));
 
   const row = (fold: Fold & { kind: 'row' }) => {
     const { row } = fold;
@@ -361,7 +421,10 @@ function FileView({
     const anchor = comments ? lineAnchor(file, row, comments.unchanged) : null;
     const onClick = (event: MouseEvent) => {
       if (canOpen && (event.ctrlKey || event.metaKey)) return open(rowOpen(file, row));
-      if (anchor) setWriting({ key, anchor });
+      if (anchor && writing?.key !== key) {
+        setWriting({ key, anchor });
+        setText('');
+      }
     };
     const drafts = byLine.get(key) ?? [];
     const here = writing?.key === key;
@@ -389,18 +452,34 @@ function FileView({
         {(drafts.length > 0 || here) && (
           <div className="file-comments">
             {drafts.map((draft) => {
+              if (writing?.editing === draft.id) return null;
               const node = draft.symbol === undefined ? undefined : nodes.get(draft.symbol);
               return (
-                <div key={draft.id} className="draft">
+                <div key={draft.id} className="draft file-draft">
                   <div className="draft-where">
-                    <span className="muted">{node ? `On ${label(node)}` : 'On this line'}</span>
-                    <button
-                      className="link"
-                      aria-label={`Delete comment on line ${draft.anchor?.line ?? ''}`}
-                      onClick={() => comments?.onRemove(draft.id)}
-                    >
-                      Delete
-                    </button>
+                    <span className="draft-who">
+                      <strong>You</strong> {node ? `on ${label(node)}` : 'on this line'} · draft
+                    </span>
+                    <span className="draft-actions">
+                      <button
+                        className="link"
+                        aria-label={`Edit comment on line ${draft.anchor?.line ?? ''}`}
+                        onClick={() => {
+                          if (!draft.anchor) return;
+                          setWriting({ key, anchor: draft.anchor, editing: draft.id });
+                          setText(draft.body);
+                        }}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="link"
+                        aria-label={`Delete comment on line ${draft.anchor?.line ?? ''}`}
+                        onClick={() => comments?.onRemove(draft.id)}
+                      >
+                        Delete
+                      </button>
+                    </span>
                   </div>
                   <p className="draft-body">{draft.body}</p>
                 </div>
@@ -426,12 +505,14 @@ function FileView({
                       Cancel
                     </button>
                     <button
-                      className="review"
+                      className="button secondary"
                       onClick={add}
                       disabled={!text.trim()}
-                      {...tip('Add the comment', { keys: 'Ctrl+Enter' })}
+                      {...tip(writing.editing ? 'Save the comment' : 'Add the comment', {
+                        keys: 'Ctrl+Enter',
+                      })}
                     >
-                      Add comment
+                      {writing.editing ? 'Save comment' : 'Add comment'}
                     </button>
                   </span>
                 </div>
@@ -447,10 +528,35 @@ function FileView({
     <section className="file-view" aria-label={`Changes to ${file.path}`}>
       <header className="card-head file-head">
         <h2 className="file-path">{file.path}</h2>
-        <span className="file-words">{changeWords(file)}</span>
+        <span className={`file-words kind-pill tone-${STATUS_TONES[file.status]}`}>
+          {changeWords(file)}
+        </span>
         {file.added !== undefined && file.removed !== undefined && (
           <Lines added={file.added} removed={file.removed} />
         )}
+        <span className="file-position">
+          {position.at} of {position.of}
+        </span>
+        <button
+          type="button"
+          className="icon-button boxed"
+          aria-label="The file before"
+          disabled={position.at <= 1}
+          {...tip('The file before', { keys: 'k' })}
+          onClick={() => onStep(-1)}
+        >
+          <ArrowUpIcon />
+        </button>
+        <button
+          type="button"
+          className="icon-button boxed"
+          aria-label="The file after"
+          disabled={position.at >= position.of}
+          {...tip('The file after', { keys: 'j' })}
+          onClick={() => onStep(1)}
+        >
+          <ArrowDownIcon />
+        </button>
         {canOpen && (
           <button
             id="open-in-editor"
@@ -462,6 +568,26 @@ function FileView({
             <OpenIcon />
             Open in VS Code
             <kbd aria-hidden="true">o</kbd>
+          </button>
+        )}
+        {onToggleViewed && (
+          <button
+            type="button"
+            className={`button secondary file-viewed${viewed ? ' viewed' : ''}`}
+            aria-pressed={viewed}
+            disabled={!file.blob}
+            {...tip(
+              file.blob
+                ? viewed
+                  ? 'Viewed: mark it not viewed'
+                  : 'Mark it viewed; a change to it since shows it unviewed again'
+                : 'git gave no version of it to mark',
+              { keys: 'v' },
+            )}
+            onClick={onToggleViewed}
+          >
+            <CheckIcon />
+            Viewed
           </button>
         )}
         {canOpen && note && (

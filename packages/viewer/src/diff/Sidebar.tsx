@@ -1,11 +1,19 @@
 import type { Finding, Graph, GraphNode, Project } from '@symbiote/core';
 import type { ReactNode } from 'react';
-import { groupOf, label, tone } from '../graph/flow.js';
+import { groupOf, kindMark, label, tone } from '../graph/flow.js';
 import { pathInProject, projectOf } from '../graph/projects.js';
 import { byProject, type FileChanges } from './review.js';
 import { ReviewTab, type ReviewProps } from './ReviewTab.js';
 import type { Draft } from './comments.js';
-import { ChevronIcon, CloseIcon } from '../ui/icons.js';
+import {
+  AlertIcon,
+  ChevronIcon,
+  CloseIcon,
+  CommentIcon,
+  FailedIcon,
+  ForwardIcon,
+  HelpIcon,
+} from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
 
 const SEVERITY_ORDER = { error: 0, warning: 1, info: 2 } as const;
@@ -121,10 +129,7 @@ export function Sidebar({
     <nav className="sidebar" aria-label="Review">
       <div className="card-head tabs" role="tablist">
         <button role="tab" aria-selected={tab === 'changes'} onClick={() => setTab('changes')}>
-          Changes{' '}
-          <span className="count">
-            {done}/{total}
-          </span>
+          Changes <span className="count">{total}</span>
         </button>
         <button role="tab" aria-selected={tab === 'findings'} onClick={() => setTab('findings')}>
           Findings <span className="count">{graph.findings.length}</span>
@@ -135,8 +140,17 @@ export function Sidebar({
           </button>
         )}
       </div>
-      <div className="progress" aria-label={`${done} of ${total} reviewed`}>
-        <div style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+      {/* How far the review is (V90, decision 840): in words, and a bar. */}
+      <div className="review-progress">
+        <div className="review-progress-words">
+          <span>
+            {done} of {total} changed symbol{total === 1 ? '' : 's'} reviewed
+          </span>
+          <span className="review-progress-keys">j / k next</span>
+        </div>
+        <div className="progress" aria-label={`${done} of ${total} reviewed`}>
+          <div style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+        </div>
       </div>
 
       {tab === 'changes' ? (
@@ -266,6 +280,19 @@ export function Sidebar({
           {findings.length === 0 && <p className="muted pad">No findings.</p>}
         </div>
       )}
+      {review && tab !== 'review' && (
+        <footer className="sidebar-foot">
+          <CommentIcon />
+          <span>
+            {review.draft.drafts.length === 0
+              ? 'No comment drafted'
+              : `${review.draft.drafts.length} comment${review.draft.drafts.length === 1 ? '' : 's'} drafted`}
+          </span>
+          <button type="button" className="button sidebar-finish" onClick={() => setTab('review')}>
+            Finish review
+          </button>
+        </footer>
+      )}
     </nav>
   );
 }
@@ -344,8 +371,9 @@ function ChangeItem({
         onChange={() => onToggleReviewed(node.id)}
         aria-label={`Mark ${label(node)} reviewed`}
       />
+      {/* Beside the name, not in it: the button is named by the symbol alone. */}
+      <KindMark node={node} />
       <button className="list-link" onClick={() => onSelect(node.id)}>
-        <span className="dot" />
         {label(node)}
       </button>
       {stale && (
@@ -367,6 +395,19 @@ function ChangeItem({
   );
 }
 
+/** A changed symbol's kind as on its node (V90): `+`, `−`, `~`, an arrow for moved. */
+function KindMark({ node }: { node: GraphNode }) {
+  const mark = kindMark(tone(node));
+  if (!mark) return null;
+  return (
+    <span className={`symbol-mark mark-${mark.kind}`} role="img" aria-label={mark.kind}>
+      {mark.glyph ?? <ForwardIcon />}
+    </span>
+  );
+}
+
+const SEVERITY_ICONS = { error: FailedIcon, warning: AlertIcon, info: HelpIcon } as const;
+
 function FindingRow({
   finding,
   project,
@@ -379,17 +420,21 @@ function FindingRow({
   current: boolean;
   onSelect: (id: string) => void;
 }) {
+  const Icon = SEVERITY_ICONS[finding.severity];
   return (
     <button
       className={`finding-row finding-${finding.severity}${current ? ' current' : ''}`}
       onClick={() => onSelect(finding.symbol)}
     >
-      <span className={`badge badge-${finding.severity}`}>{finding.severity}</span>
+      {/* Its severity as an icon and, for a reader, a word (V90, decision 840). */}
+      <span className={`finding-icon severity-${finding.severity}`} aria-label={finding.severity}>
+        <Icon />
+      </span>
+      <span className="finding-row-message">{finding.message}</span>
       <span className="finding-row-rule">
         {finding.rule}
         {project && <span className="finding-row-project">{project}</span>}
       </span>
-      <span className="finding-row-message">{finding.message}</span>
     </button>
   );
 }

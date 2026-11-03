@@ -5,7 +5,10 @@ import {
   decorate,
   decorateEdges,
   edgesToDraw,
+  findingCount,
+  kindMark,
   label,
+  RAISED_EDGE_Z,
   layoutFlow,
   projectAt,
   MOVING_EDGE_LIMIT,
@@ -554,6 +557,53 @@ describe('decorate', () => {
       'src/math.ts#triple → src/math.ts#add',
     ]);
     expect(decorateEdges(edges, null).some((e) => e.className.includes('edge-active'))).toBe(false);
+  });
+
+  it("draws the selected symbol's edges above every node, taking no pointer, the rest untouched (V90)", () => {
+    const { edges } = layoutFlow(golden('callers'));
+    const decorated = decorateEdges(edges, 'src/math.ts#legacy');
+    const raised = decorated.filter((e) => e.zIndex !== undefined);
+    expect(raised.map((e) => `${e.source} → ${e.target}`).sort()).toEqual([
+      'src/app.ts#old → src/math.ts#legacy',
+      'src/math.ts#legacy → src/math.ts#add',
+    ]);
+    for (const e of raised) {
+      expect(e.zIndex).toBe(RAISED_EDGE_Z);
+      expect(e.className).toContain('edge-raised');
+    }
+    // Every other edge is the layout's own object: React Flow draws it again only if it changed.
+    decorated.forEach((e, i) => {
+      if (e.zIndex === undefined) expect(e).toBe(edges[i]);
+    });
+    // Above React Flow's selected node (1000 over its depth).
+    expect(RAISED_EDGE_Z).toBeGreaterThanOrEqual(1000);
+  });
+});
+
+describe("a node's marks (V90, decision 835)", () => {
+  it('marks the kind of change: +, −, ~, moved; nothing on context', () => {
+    expect(kindMark('added')).toEqual({ kind: 'added', glyph: '+' });
+    expect(kindMark('removed')).toEqual({ kind: 'removed', glyph: '−' });
+    expect(kindMark('modified')).toEqual({ kind: 'modified', glyph: '~' });
+    expect(kindMark('moved')).toEqual({ kind: 'moved', glyph: null });
+    expect(kindMark('context')).toBeNull();
+    expect(kindMark('external')).toBeNull();
+    expect(kindMark('unknown')).toBeNull();
+  });
+
+  it('counts findings once, in the worst severity', () => {
+    expect(findingCount({ error: 0, warning: 0, info: 0 })).toBeNull();
+    expect(findingCount({ error: 0, warning: 2, info: 1 })).toEqual({
+      count: 3,
+      severity: 'warning',
+      words: '2 warnings, 1 info',
+    });
+    expect(findingCount({ error: 1, warning: 0, info: 0 })).toEqual({
+      count: 1,
+      severity: 'error',
+      words: '1 error',
+    });
+    expect(findingCount({ error: 0, warning: 0, info: 2 })?.severity).toBe('info');
   });
 });
 

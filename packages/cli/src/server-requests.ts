@@ -10,6 +10,7 @@ import {
   type CheckoutTarget,
   type Graph,
   type HistoryScope,
+  type ChangedBlob,
   type LineCount,
   type LocalReview,
   type McpAnswer,
@@ -683,16 +684,25 @@ export function parseReview(text: string, allowed: Record<Side, Set<string>>): R
 }
 
 /**
- * The graph's files with git's lines (V60), matched by path (where a file is, or was for a deleted
- * one); a file git counts no lines of is binary.
+ * The graph's files with git's lines (V60) and blobs (V90), matched by path (where a file is, or
+ * was for a deleted one); a file git counts no lines of is binary.
  */
-export function withLines(files: Graph['files'], counts: readonly LineCount[]): ReviewFile[] {
+export function withLines(
+  files: Graph['files'],
+  counts: readonly LineCount[],
+  blobs: readonly ChangedBlob[] = [],
+): ReviewFile[] {
   const byPath = new Map(counts.map((count) => [count.path, count]));
+  const blobOf = new Map(blobs.map((file) => [file.path, file.blob]));
   return files.map((file) => {
     const count = byPath.get(file.path);
-    if (!count) return file;
-    if (count.added === null || count.removed === null) return { ...file, binary: true };
-    return { ...file, added: count.added, removed: count.removed };
+    const blob = blobOf.get(file.path);
+    const lines = !count
+      ? {}
+      : count.added === null || count.removed === null
+        ? { binary: true as const }
+        : { added: count.added, removed: count.removed };
+    return { ...file, ...lines, ...(blob ? { blob } : {}) };
   });
 }
 

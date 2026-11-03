@@ -1,5 +1,5 @@
-/* The start page's arcs (V63, decision 455), shared with an analysis's page since V71 (decision
-   502): rings of the primary, faint, lit inside and out, on a layer under the page's content,
+/* The start page's arcs (V63, decision 455); an analysis's page had them from V71 (decision 502)
+   to V90 (decision 846): rings of the primary, faint, lit inside and out, on a layer under the page's content,
    clipped to it, still while the page scrolls. Each page places its own: the layer's `::before`
    and `::after`, and any `.ground-ring` inside it. */
 .ground {

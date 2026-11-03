@@ -76,14 +76,40 @@
   font-weight: 400;
 }
 
-.progress {
-  height: 2px;
-  background: var(--line);
+/* How far the review is (V90, decision 840; proof 03's `.progress`): words, then a bar. */
+.review-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px var(--card-pad);
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--size-caption);
 }
 
-.progress > div {
+.review-progress-words {
+  display: flex;
+  gap: 8px;
+}
+
+.review-progress-keys {
+  flex: none;
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.progress {
+  height: 4px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--raised);
+}
+
+/* The person's review, in their violet. */
+.review-progress .progress > div {
   height: 100%;
-  background: var(--ok);
+  border-radius: 9999px;
+  background: var(--you);
   transition: width 0.2s;
 }
 
@@ -266,22 +292,16 @@
   white-space: nowrap;
 }
 
-.dot {
-  flex: none;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--tone);
-}
-
+/* A finding as a card (V90, decision 840; proof 03's `.finding-card`): its severity's icon, its
+   message, the rule quiet in mono under it; the picked one in the selection's violet. */
 .finding-row {
   display: grid;
-  grid-template-columns: auto 1fr;
+  grid-template-columns: 16px minmax(0, 1fr);
   gap: 4px 8px;
-  width: calc(100% - 12px);
-  margin: 1px 6px;
-  padding: 8px 10px;
-  border: 1px solid transparent;
+  width: calc(100% - 20px);
+  margin: 0 10px 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
   border-radius: 8px;
   background: none;
   color: var(--text);
@@ -299,15 +319,36 @@
   background: var(--selected);
 }
 
-/* Its severity at the top of its line, its own height: a grid item stretched to a rule that wraps
-   (a long rule beside a project) drew a tall amber blob (seen on Bitwarden, V61). */
-.finding-row > .badge {
+.finding-icon {
+  display: inline-grid;
+  place-items: center;
   align-self: start;
-  margin-top: 1px;
+  height: calc(var(--size-small) * 1.45);
+}
+
+.finding-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.finding-icon.severity-error {
+  color: var(--error);
+}
+
+.finding-icon.severity-warning {
+  color: var(--warning);
+}
+
+.finding-icon.severity-info {
+  color: var(--info);
 }
 
 .finding-row-rule {
-  font-weight: 500;
+  grid-column: 2;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font: var(--size-caps) / 1.4 var(--mono);
 }
 
 .finding-row-project {
@@ -321,9 +362,34 @@
 }
 
 .finding-row-message {
-  grid-column: 1 / -1;
-  color: var(--muted);
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--size-small);
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+/* The foot (V90): the comments drafted and Finish review, which opens the Review tab. */
+.sidebar-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding: 10px var(--card-pad);
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.sidebar-foot > svg {
+  width: 14px;
+  height: 14px;
+}
+
+.sidebar-finish {
+  flex: none;
+  margin-left: auto;
+  white-space: nowrap;
 }
 
 /* A diff's keys, in its bar's help (V37). */

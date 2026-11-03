@@ -94,6 +94,9 @@ const fileOf = (id: string) => id.slice(0, id.indexOf('#'));
 const node = (page: Page, id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
 const box = (page: Page, file: string) => node(page, `group:file:${file}`);
 const panel = (page: Page) => page.getByRole('complementary', { name: 'Symbol detail' });
+/** A group of the detail's neighbours by its heading (V90). */
+const group = (page: Page, heading: RegExp) =>
+  panel(page).locator('.neighbours-group', { has: page.getByRole('heading', { name: heading }) });
 const sidebar = (page: Page) => page.getByRole('navigation', { name: 'Review' });
 
 /** Opens a symbol from the change list; the canvas zooms to it. */
@@ -103,11 +106,11 @@ async function open(page: Page, label: string): Promise<void> {
   await expect(panel(page).locator('.panel-title')).toHaveText(label);
 }
 
-/** The colour a status is drawn in: the legend's swatch for it. */
+/** The colour a status is drawn in: the legend's mark for it (V90). */
 const swatch = (page: Page, tone: string) =>
   page
-    .locator(`.legend-item.tone-${tone}`)
-    .evaluate((el) => getComputedStyle(el, '::before').backgroundColor);
+    .locator(`.legend-item.tone-${tone} .symbol-mark`)
+    .evaluate((el) => getComputedStyle(el).color);
 
 /** A symbol's colour on the canvas: its tone, which its ground and edge are mixed from (V31). */
 const colourOf = (symbol: Locator) =>
@@ -151,9 +154,11 @@ test('the header counts the change and its findings', async ({ page }) => {
   await expect(page.locator('.bar .revisions')).toHaveText(
     /^HEAD~1 \([0-9a-f]{7}\) → HEAD \([0-9a-f]{7}\)$/,
   );
-  await expect(summary.locator('.chip')).toHaveText(['3 files', '+2', '−1', '~4']);
-  // The info finding has no badge of its own.
-  await expect(summary.locator('.badge')).toHaveText(['1 error', '1 warning']);
+  // git's files and lines (V90, decision 839).
+  await expect(summary.locator('.summary-files')).toHaveText('3 files');
+  await expect(summary.locator('.file-totals')).toHaveText(/^\+\d+ −\d+$/);
+  // The info finding has no pill of its own.
+  await expect(page.locator('.bar .finding-pill')).toHaveText(['1 error', '1 warning']);
 });
 
 test('findings open first, worst first, and lead to their symbol', async ({ page }) => {
@@ -163,7 +168,10 @@ test('findings open first, worst first, and lead to their symbol', async ({ page
   );
   await expect(page.getByRole('tab', { name: /Findings/ })).toContainText('3');
   const rows = page.locator('.finding-row');
-  await expect(rows.locator('.badge')).toHaveText(['error', 'warning', 'info']);
+  // Each severity an icon, named for a reader (V90).
+  for (const [i, severity] of ['error', 'warning', 'info'].entries()) {
+    await expect(rows.nth(i).locator('.finding-icon')).toHaveAttribute('aria-label', severity);
+  }
   await expect(rows.locator('.finding-row-rule')).toHaveText([
     'removed-still-referenced',
     'orphan-added',
@@ -179,18 +187,23 @@ test('findings open first, worst first, and lead to their symbol', async ({ page
   await rows.first().click();
   const detail = panel(page);
   await expect(detail.locator('.panel-title')).toHaveText('HeroesComponent.onSelect');
-  await expect(detail.locator('.panel-kind')).toHaveText('method · removed');
-  await expect(detail.locator('.panel-kind .tag')).toHaveCount(0);
+  await expect(detail.locator('.panel-kind')).toHaveText('method');
+  await expect(detail.locator('.kind-pill')).toHaveText('Removed');
+  await expect(detail.locator('.panel-tags .tag')).toHaveCount(0);
   await expect(detail.locator('.finding')).toContainText('removed-still-referenced');
   await expect(detail.locator('.sig')).toHaveText('onSelect(hero: Hero): void');
-  const usedBy = detail.locator('section', { has: page.getByRole('heading', { name: /Used by/ }) });
-  await expect(usedBy.locator('li')).toHaveText(['heroes.component.html call · removed']);
+  // The template still calls it: by the finding, it still uses it (V90, decision 841).
+  const still = group(page, /^Still used by/);
+  await expect(still.locator('li .link')).toHaveText(['heroes.component.html']);
   await expect(node(page, CHANGED[4]!.id).locator('.symbol')).toHaveClass(/selected/);
 });
 
 test('the change list holds every changed symbol, by file, in its colour', async ({ page }) => {
   await page.getByRole('tab', { name: /Changes/ }).click();
-  await expect(page.getByRole('tab', { name: /Changes/ })).toContainText(`0/${CHANGED.length}`);
+  await expect(page.getByRole('tab', { name: /Changes/ })).toContainText(`${CHANGED.length}`);
+  await expect(sidebar(page).locator('.review-progress')).toContainText(
+    `0 of ${CHANGED.length} changed symbols reviewed`,
+  );
   await expect(sidebar(page).locator('.list-file-name')).toHaveText([SERVICE, HTML, HEROES]);
   await expect(sidebar(page).locator('.list-link')).toHaveText(CHANGED.map((s) => s.label));
   const items = sidebar(page).locator('.list-item');
@@ -268,10 +281,13 @@ test('zoomed in, each symbol reads as what changed in it', async ({ page }) => {
     await expect(drawn.locator('.symbol-name')).toHaveText(symbol.label);
     await expect(drawn.locator('.symbol-name')).toBeVisible();
     await expect(drawn.locator('.symbol-file')).toContainText(symbol.signature);
-    await expect(drawn.locator('.symbol-file .tag')).toHaveText(symbol.delta);
-    await expect(drawn.locator('.badge')).toHaveText(symbol.finding ? ['1'] : []);
+    // Its kind a mark, its findings one count (V90, decision 835); what changed in it, the panel's.
+    await expect(drawn.locator('.symbol-mark')).toHaveClass(new RegExp(`mark-${symbol.tone}`));
+    await expect(drawn.locator('.symbol-count')).toHaveText(symbol.finding ? ['1'] : []);
     if (symbol.finding) {
-      await expect(drawn.locator('.badge')).toHaveClass(new RegExp(`badge-${symbol.finding}`));
+      await expect(drawn.locator('.symbol-count')).toHaveClass(
+        new RegExp(`count-${symbol.finding}`),
+      );
     }
     const decoration = await drawn
       .locator('.symbol-name')
@@ -281,12 +297,9 @@ test('zoomed in, each symbol reads as what changed in it', async ({ page }) => {
     );
 
     const detail = panel(page);
-    await expect(detail.locator('.panel-kind')).toHaveText(
-      `${symbol.kind} · ${symbol.tone}${symbol.delta.join('')}`,
-    );
-    await expect(detail.locator('.panel-kind .status')).toHaveClass(
-      new RegExp(`\\btone-${symbol.tone}\\b`),
-    );
+    await expect(detail.locator('.panel-kind')).toHaveText(symbol.kind);
+    await expect(detail.locator('.kind-pill')).toHaveClass(new RegExp(`\\btone-${symbol.tone}\\b`));
+    await expect(detail.locator('.panel-tags .tag')).toHaveText(symbol.delta);
     await expect(detail.locator('.panel-file')).toHaveText(fileOf(symbol.id));
   }
   await test
@@ -307,15 +320,16 @@ test('a changed signature reads old against new, with the line diff', async ({ p
     '  getHeroes(limit: number): Hero[] {',
     '    return this.heroes.slice(0, limit);',
   ]);
-  const usedBy = detail.locator('section', { has: page.getByRole('heading', { name: /Used by/ }) });
-  await expect(usedBy.locator('li')).toHaveText(['HeroesComponent.ngOnInit call']);
+  await expect(group(page, /^Used by/).locator('li .link')).toHaveText([
+    'HeroesComponent.ngOnInit',
+  ]);
 });
 
 test('an Angular 11 template opens with its own diff and what it uses', async ({ page }) => {
   await open(page, 'heroes.component.html');
   const detail = panel(page);
-  await expect(detail.locator('.panel-kind .status')).toHaveText('modified');
-  await expect(detail.locator('.panel-kind .tag')).toHaveText(['body']);
+  await expect(detail.locator('.kind-pill')).toHaveText('Modified');
+  await expect(detail.locator('.panel-tags .tag')).toHaveText(['body']);
   await expect(detail.locator('.sig')).toHaveText('template of HeroesComponent');
 
   // Lines added and removed, in the file's own numbering; `@` in text is text in Angular 11.
@@ -339,15 +353,20 @@ test('an Angular 11 template opens with its own diff and what it uses', async ({
   );
 
   // What the template places, binds and calls: onSelect is gone, so its call no longer resolves.
-  const uses = detail.locator('section', { has: page.getByRole('heading', { name: /^Uses/ }) });
-  await expect(uses.locator('li')).toHaveText([
-    'HeroDetailComponent call',
-    'HeroDetailComponent.hero reference',
-    'HeroesComponent.add call · new',
-    'HeroesComponent.heroes reference',
-    'HeroesComponent.onSelect call · removed',
-    'HeroesComponent.selectedHero reference',
-    'this.onSelect call · new',
+  // By side (V90): what it uses now, a new use said so; what it no longer does apart.
+  await expect(group(page, /^Uses/).locator('li .link')).toHaveText([
+    'HeroDetailComponent',
+    'HeroDetailComponent.hero',
+    'HeroesComponent.add',
+    'HeroesComponent.heroes',
+    'HeroesComponent.selectedHero',
+    'this.onSelect',
+  ]);
+  await expect(
+    group(page, /^Uses/).locator('li', { hasText: 'HeroesComponent.add' }),
+  ).toContainText('· new');
+  await expect(group(page, /^No longer uses/).locator('li .link')).toHaveText([
+    'HeroesComponent.onSelect',
   ]);
   await test.info().attach('template', { body: await page.screenshot(), contentType: 'image/png' });
 });

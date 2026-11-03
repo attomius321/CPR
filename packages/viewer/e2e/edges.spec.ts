@@ -148,3 +148,49 @@ test('a small graph keeps its edges while the view moves', async ({ page }) => {
   await expect(edges(page)).toHaveCount(4);
   await page.mouse.up();
 });
+
+// V90 (decision 836): the picked symbol's calls are drawn above every node, and take no pointer
+// there, so the node under one still takes its click; the other edges stay under the nodes.
+test("draws the picked symbol's calls above every node, the pointer passing through", async ({
+  page,
+}) => {
+  await open(page, manyEdges());
+  await page.getByRole('tab', { name: /Changes/ }).click();
+  await page.locator('.list-link', { hasText: 'first' }).click();
+  await expect(page.locator('.panel-title')).toHaveText('first');
+  const raised = edges(page, '.edge-raised');
+  await expect.poll(() => raised.count()).toBeGreaterThan(0);
+  await expect(edges(page, '.edge-raised:not(.edge-active)')).toHaveCount(0);
+
+  const stack = await page.evaluate(() => {
+    const z = (el: Element) => Number(getComputedStyle(el).zIndex) || 0;
+    const svgs = [...document.querySelectorAll('.react-flow__edges > svg')];
+    const nodes = [...document.querySelectorAll('.react-flow__node')];
+    const lifted = svgs.filter((svg) => svg.querySelector('.edge-raised'));
+    const others = svgs.filter((svg) => !svg.querySelector('.edge-raised'));
+    return {
+      lowestRaised: Math.min(...lifted.map(z)),
+      highestNode: Math.max(...nodes.map(z)),
+      highestOther: Math.max(...others.map(z)),
+      lowestNode: Math.min(...nodes.map(z)),
+      pointer: lifted.map(
+        (svg) => getComputedStyle(svg.querySelector('.edge-raised')!).pointerEvents,
+      ),
+    };
+  });
+  expect(stack.lowestRaised).toBeGreaterThan(stack.highestNode);
+  expect(stack.highestOther).toBeLessThanOrEqual(stack.lowestNode + 2);
+  expect(new Set(stack.pointer)).toEqual(new Set(['none']));
+
+  // A point on a raised call: what is under the pointer there is not the call.
+  const hit = await page.evaluate(() => {
+    const path = document.querySelector<SVGPathElement>('.edge-raised path.react-flow__edge-path');
+    if (!path) return null;
+    const point = path.getPointAtLength(path.getTotalLength() / 2);
+    const matrix = path.getScreenCTM();
+    if (!matrix) return null;
+    const at = new DOMPoint(point.x, point.y).matrixTransform(matrix);
+    return document.elementFromPoint(at.x, at.y)?.closest('.edge-raised') ? 'edge' : 'under';
+  });
+  expect(hit).toBe('under');
+});

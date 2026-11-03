@@ -60,23 +60,24 @@ test('drags both panels wider and narrower, and remembers their widths', async (
   expect(await width(canvas(page))).toBe(wide - 100);
 
   // The panel is on the right: dragging its edge left widens it.
+  // 400 px by default since V90 (proof 03 draws 336): the canvas keeps the room.
   await openPanel(page);
-  expect(await width(panel(page))).toBe(520);
+  expect(await width(panel(page))).toBe(400);
   await drag(page, panelHandle(page), -150);
-  await expect.poll(() => width(panel(page))).toBe(670);
+  await expect.poll(() => width(panel(page))).toBe(550);
 
   // Kept across a reload, and for the next symbol opened.
   await page.reload();
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
   expect(await width(sidebar(page))).toBe(400);
   await openPanel(page);
-  expect(await width(panel(page))).toBe(670);
+  expect(await width(panel(page))).toBe(550);
 
   // A double-click restores the default, and that is kept too.
   await sidebarHandle(page).dblclick();
   await expect.poll(() => width(sidebar(page))).toBe(300);
   await panelHandle(page).dblclick();
-  await expect.poll(() => width(panel(page))).toBe(520);
+  await expect.poll(() => width(panel(page))).toBe(400);
   await page.reload();
   await expect(page.locator('.react-flow__node-symbol').first()).toBeVisible();
   expect(await width(sidebar(page))).toBe(300);
@@ -120,7 +121,7 @@ test('resizes from the keyboard', async ({ page }) => {
   await openPanel(page);
   await panelHandle(page).focus();
   await page.keyboard.press('ArrowLeft');
-  await expect.poll(() => width(panel(page))).toBe(536);
+  await expect.poll(() => width(panel(page))).toBe(416);
 });
 
 test('the selection is in view again once a resize ends', async ({ page }) => {

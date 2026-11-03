@@ -106,6 +106,8 @@ export interface FlowEdge {
   source: string;
   target: string;
   className: string;
+  /** The selected symbol's edges only (V90): drawn above every node. */
+  zIndex?: number;
   /**
    * The graph's edge; `null` for the edge between a summary and its symbol, and for a file
    * pair's edge, which has the `count` of symbol edges it stands for.
@@ -623,14 +625,63 @@ export function edgesToDraw(
   return decorateEdges(drawn, selected);
 }
 
-/** Edges of the selected symbol stand out, so its users and uses can be followed. */
+/**
+ * Over React Flow's selected node (its depth over 1000, `elevateNodesOnSelect`): an edge's z-index
+ * is this plus its nested nodes', so the selected symbol's calls are drawn above every node.
+ */
+export const RAISED_EDGE_Z = 1000;
+
+/**
+ * Edges of the selected symbol stand out, so its users and uses can be followed: drawn above the
+ * other nodes (V90, decision 836), taking no pointer there (`edge-raised`), so a node under one
+ * still takes its click. Every other edge keeps its identity: only these are drawn again.
+ */
 export function decorateEdges(edges: readonly FlowEdge[], selected: string | null): FlowEdge[] {
   if (!selected) return [...edges];
   return edges.map((e) =>
     e.source === selected || e.target === selected
-      ? { ...e, className: `${e.className} edge-active` }
+      ? { ...e, className: `${e.className} edge-active edge-raised`, zIndex: RAISED_EDGE_Z }
       : e,
   );
+}
+
+/** A node's mark for its kind of change (V90, decision 835): a glyph, an icon for moved. */
+export function kindMark(
+  tone: Tone,
+): { kind: 'added' | 'removed' | 'modified' | 'moved'; glyph: string | null } | null {
+  switch (tone) {
+    case 'added':
+      return { kind: tone, glyph: '+' };
+    case 'removed':
+      return { kind: tone, glyph: '−' };
+    case 'modified':
+      return { kind: tone, glyph: '~' };
+    case 'moved':
+      return { kind: tone, glyph: null };
+    default:
+      return null;
+  }
+}
+
+const SEVERITIES: readonly Severity[] = ['error', 'warning', 'info'];
+const severityWords = (n: number, severity: Severity) =>
+  severity === 'info' || n === 1 ? `${n} ${severity}` : `${n} ${severity}s`;
+
+/**
+ * A node's findings as one count in the worst severity's colour, and each severity in words for
+ * its tip (V90, decision 835); null without findings.
+ */
+export function findingCount(
+  findings: Record<Severity, number>,
+): { count: number; severity: Severity; words: string } | null {
+  const present = SEVERITIES.filter((severity) => findings[severity] > 0);
+  const worst = present[0];
+  if (!worst) return null;
+  return {
+    count: present.reduce((n, severity) => n + findings[severity], 0),
+    severity: worst,
+    words: present.map((severity) => severityWords(findings[severity], severity)).join(', '),
+  };
 }
 
 interface Neighbours {
@@ -894,12 +945,16 @@ export function label(node: GraphNode): string {
   return local;
 }
 
-/** Second line of a node: its signature (the file is the box around it). */
+/** A signature's characters a node keeps (V90): more than its widest box shows, never laid out
+ * whole (a generated type's runs to thousands). */
+const SIGNATURE_CHARS = 80;
+
+/** Last line of a node: its signature (the file is the box around it). */
 export function fileOf(node: GraphNode): string {
   if (node.kind === 'unknown') return 'dynamic call';
   if (node.kind === 'external') return 'package export';
   if (node.kind === 'module') return 'code outside declarations';
-  return (node.head ?? node.base)?.signature ?? '';
+  return ((node.head ?? node.base)?.signature ?? '').slice(0, SIGNATURE_CHARS);
 }
 
 /** Wide enough for `KIND name` in monospace plus finding badges; signatures may truncate. */

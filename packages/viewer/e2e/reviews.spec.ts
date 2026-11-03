@@ -61,6 +61,16 @@ const git = (...args: string[]) =>
   }).trim();
 const changesTab = (page: Page) => page.getByRole('tab', { name: /Changes/ });
 const reviewTab = (page: Page) => page.getByRole('tab', { name: /Review/ });
+/**
+ * The review: the Graph page's Review tab; on the Files page it is under the files (V90), nothing
+ * to open.
+ */
+const showReview = async (page: Page) => {
+  await page.locator('.files-side .review-tab, .sidebar [role="tab"]').first().waitFor();
+  if ((await page.locator('.files-side').count()) === 0) await reviewTab(page).click();
+};
+/** How far the review is, under the tabs (V90). */
+const progress = (page: Page) => page.locator('.review-progress');
 const originGit = (...args: string[]) => git('--git-dir', symbiote.origin, ...args);
 /** Reviews `branch` from Git's branches panel: its menu's Review (a commit's menu has none). */
 const review = async (page: Page, branch: string) => {
@@ -91,12 +101,12 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await expect(page.locator('.revisions')).toHaveText(`${short(base)} → ${short(cube)}`);
   await showGraph(page);
   await changesTab(page).click();
-  await expect(changesTab(page)).toContainText('0/2');
+  await expect(progress(page)).toContainText('0 of 2');
   for (let i = 0; i < 2; i++) {
     await page.keyboard.press('j');
     await page.keyboard.press('r');
   }
-  await expect(changesTab(page)).toContainText('2/2');
+  await expect(progress(page)).toContainText('2 of 2');
 
   // In symbiote/reviews/, out of git, written mark by mark: read once both have landed.
   const read = () =>
@@ -141,7 +151,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await expect(page.locator('.revisions')).toHaveText(`${short(base)} → ${short(tip)}`);
   await showGraph(page);
   await changesTab(page).click();
-  await expect(changesTab(page)).toContainText('1/3');
+  await expect(progress(page)).toContainText('1 of 3');
   await expect(page.locator('.stale-note')).toContainText('1 symbol changed since you reviewed it');
 
   // A new `symbiote view` (another port) finds the review in the repository.
@@ -149,7 +159,7 @@ test('reviews a branch, then only what the agent changed since', async ({ page }
   await page.goto(`${url}review/agent/`);
   await showGraph(page);
   await changesTab(page).click();
-  await expect(changesTab(page)).toContainText('1/3');
+  await expect(progress(page)).toContainText('1 of 3');
 });
 
 test('keeps the verdict picked on the Graph page through g to Files: Finish review sends it (fix/hive-turn-end-flaky-tests-verdict)', async ({
@@ -160,7 +170,7 @@ test('keeps the verdict picked on the Graph page through g to Files: Finish revi
   await review(page, 'agent');
   await expect(page).toHaveURL(/\/review\/agent\/$/);
   await showGraph(page);
-  await reviewTab(page).click();
+  await showReview(page);
   await page.getByLabel('Review summary').fill('Return early for 0.');
   await page.getByLabel('Request changes').check();
   // `g` is a key of the page, not of the summary: out of the text box first.
@@ -170,15 +180,15 @@ test('keeps the verdict picked on the Graph page through g to Files: Finish revi
     'aria-selected',
     'true',
   );
-  await reviewTab(page).click();
+  await showReview(page);
   await expect(page.getByLabel('Review summary')).toHaveValue('Return early for 0.');
   await expect(page.getByLabel('Request changes')).toBeChecked();
   // And back: still the verdict picked.
   await page.keyboard.press('g');
-  await reviewTab(page).click();
+  await showReview(page);
   await expect(page.getByLabel('Request changes')).toBeChecked();
   await page.keyboard.press('g');
-  await reviewTab(page).click();
+  await showReview(page);
   await page.getByRole('button', { name: 'Finish review' }).click();
   await expect(page.locator('.finished')).toContainText('Changes requested');
   const verdicts = (
@@ -214,7 +224,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await page.keyboard.type('Return early for 0.');
   await page.keyboard.press('Control+Enter');
   await expect(panel.locator('.draft-body')).toHaveText('Return early for 0.');
-  await reviewTab(page).click();
+  await showReview(page);
   await expect(reviewTab(page)).toContainText('1');
   await page.getByLabel('Review summary').fill('One thing.');
   await page.getByLabel('Request changes').check();
@@ -287,7 +297,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
   await review(page, 'agent');
   await expect(page.locator('.review-of')).toHaveText('Review of agent');
   await expect(page.locator('.review-after')).toHaveText('1 commit since your last review');
-  await reviewTab(page).click();
+  await showReview(page);
   await expect(page.locator('.merge-check')).toHaveText('Merges cleanly into main.');
   await page.getByLabel('Approve').check();
   // Where the verdict goes, behind the help beside Finish review (V37).
@@ -340,7 +350,7 @@ test('finishes a review: changes requested for the agent, then approved to merge
 
   // Symbiote merges the approved commit (V26a): Merge into ▾ on the review, preselected main.
   await review(page, 'agent');
-  await reviewTab(page).click();
+  await showReview(page);
   const target = page.getByLabel('Branch to merge into');
   await expect(target).toHaveValue('main');
   await expect(target.locator('option')).toHaveText(['main']);
@@ -390,7 +400,7 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   git('commit', '-q', '-am', 'Main: add double');
   await page.goto(`${symbiote.url}git`);
   await review(page, 'agent');
-  await reviewTab(page).click();
+  await showReview(page);
   // Each file on its line, its folder beside it, and a button that opens it in VS Code.
   const check = page.locator('.merge-check');
   await expect(check.locator('.merge-check-head')).toHaveText(
@@ -442,7 +452,7 @@ test('says a branch will conflict with main; resolved on the branch, only its co
 
   // Reviewed again: the merge into main is clean now.
   await review(page, 'agent');
-  await reviewTab(page).click();
+  await showReview(page);
   await expect(page.locator('.merge-check')).toHaveText('Merges cleanly into main.');
 });
 
@@ -458,7 +468,7 @@ test("reviews the agent's commits on main itself; an approval says they may be p
   await expect(page).toHaveURL(/\/review\/main\/$/);
   await expect(page.locator('.review-of')).toHaveText('Review of main');
   await expect(page.locator('.review-after')).toHaveText('first review');
-  await reviewTab(page).click();
+  await showReview(page);
   // Nothing to merge into: no merge check.
   await expect(page.locator('.merge-check')).toHaveCount(0);
   await page.getByLabel('Approve').check();
@@ -488,7 +498,7 @@ test("the Review tab in sections at the sidebar's width; Merge into's dropdowns 
 
   // The Graph page's three tabs are wider than the sidebar: picking Review scrolls their strip,
   // never the sidebar under it (it slid 26 px left).
-  await reviewTab(page).click();
+  await showReview(page);
   const sidebar = page.getByRole('navigation', { name: 'Review' });
   const tab = sidebar.locator('.review-tab');
   await expect(tab).toBeVisible();
@@ -541,7 +551,7 @@ test("the Review tab in sections at the sidebar's width; Merge into's dropdowns 
     localStorage.setItem('symbiote.viewer.widths', JSON.stringify({ sidebar: 480 })),
   );
   await page.reload();
-  await reviewTab(page).click();
+  await showReview(page);
   const [wb, wt, wh] = await Promise.all([box(button), box(target), box(how)]);
   expect(wt.x).toBeGreaterThan(wb.x + wb.width);
   expect(wh.x).toBeCloseTo(wt.x, 0);

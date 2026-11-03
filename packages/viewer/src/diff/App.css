@@ -30,17 +30,14 @@
 .diff-facts {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
-}
-
-.diff-facts > .review-after::after {
-  content: ' ·';
+  white-space: nowrap;
 }
 
 .summary {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   min-width: 0;
 }
@@ -134,38 +131,54 @@
 .legend {
   flex: none;
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 4px;
   padding: 6px var(--card-pad);
   border-top: 1px solid var(--line);
   background: var(--panel);
   color: var(--muted);
   font-size: var(--size-caption);
-  flex-wrap: wrap;
 }
 
-.legend-item::before {
+/* A kind's mark as on a node (SymbolNode.css's `.symbol-mark`), then its word. */
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-context::before,
+.legend-summary::before,
+.legend-project::before {
   content: '';
   display: inline-block;
-  width: 8px;
-  height: 8px;
-  margin-right: 5px;
-  border-radius: 50%;
-  background: var(--tone);
-  vertical-align: -1px;
+  width: 14px;
+  height: 12px;
+  border: 1px solid var(--line-2);
+  border-radius: 4px;
 }
 
 .legend-summary::before {
-  background: transparent;
-  border: 1px dashed var(--context);
+  border-style: dashed;
+}
+
+.legend-project::before {
+  border-color: color-mix(in srgb, var(--text) 16%, var(--line));
+}
+
+.legend-edge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .legend-edge::before {
   content: '';
   display: inline-block;
-  width: 18px;
-  margin-right: 5px;
-  vertical-align: 3px;
-  border-top: 2px solid var(--added);
+  width: 16px;
+  border-top: 2px solid color-mix(in srgb, var(--added) 75%, transparent);
 }
 
 .legend-edge.edge-base::before {
@@ -176,11 +189,28 @@
   border-top: 3px solid var(--context);
 }
 
-.legend-project::before {
-  width: 14px;
-  background: transparent;
-  border: 1px solid color-mix(in srgb, var(--text) 16%, var(--line));
-  border-radius: 4px;
+/* The view's toggles at the legend's end (V90, decision 838). */
+.legend-toggles {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-left: auto;
+}
+
+/* The head's line (V90, decision 839): its facts parted by middle dots. */
+.facts-sep {
+  color: var(--muted);
+}
+
+.summary-files {
+  color: var(--muted);
+}
+
+.summary .file-totals,
+.summary .chip-added,
+.summary .chip-removed,
+.summary .chip-modified {
+  font-variant-numeric: tabular-nums;
 }
 
 .request {
