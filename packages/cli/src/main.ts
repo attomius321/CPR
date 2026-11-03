@@ -26,6 +26,7 @@ import {
   listRefs,
   MERGE_STRATEGIES,
   listChangedLines,
+  listChangedBlobs,
   listLineCounts,
   NoMergeBaseError,
   openRepo,
@@ -640,6 +641,7 @@ function libraryOf(ctx: CliContext): LibraryService {
 function changeFiles(repo: GitRepo): ChangeFiles {
   return {
     lines: (from, to) => listLineCounts(repo, from, to),
+    blobs: (from, to) => listChangedBlobs(repo, from, to),
     diff: (from, to, file) => fileDiff(repo, from, to, file),
   };
 }

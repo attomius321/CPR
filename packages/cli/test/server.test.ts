@@ -304,6 +304,13 @@ describe('GET /api/files and /api/file (V60)', () => {
             { path: 'b.png', previousPath: 'a.png', added: null, removed: null },
           ]);
         },
+        blobs: (from, to) => {
+          asked.push(`blobs ${from[0] ?? ''}..${to[0] ?? ''}`);
+          return Promise.resolve([
+            { status: 'modified', path: 'src/math.ts', blob: '1'.repeat(40) },
+            { status: 'added', path: 'docs/notes.md', blob: '2'.repeat(40) },
+          ]);
+        },
         diff: (from, to, file) => {
           asked.push(
             `diff ${from[0] ?? ''}..${to[0] ?? ''} ${file.previousPath ?? ''}>${file.path}`,
@@ -341,12 +348,20 @@ describe('GET /api/files and /api/file (V60)', () => {
     const first = await get('/api/files');
     expect(first.status).toBe(200);
     expect(JSON.parse(first.body)).toEqual([
-      { status: 'modified', path: 'src/math.ts', added: 2, removed: 1 },
-      { status: 'added', path: 'docs/notes.md', ignored: true, added: 3, removed: 0 },
+      { status: 'modified', path: 'src/math.ts', added: 2, removed: 1, blob: '1'.repeat(40) },
+      {
+        status: 'added',
+        path: 'docs/notes.md',
+        ignored: true,
+        added: 3,
+        removed: 0,
+        blob: '2'.repeat(40),
+      },
+      // A file git gave no blob for has none: it is never marked viewed.
       { status: 'renamed', path: 'b.png', previousPath: 'a.png', similarity: 90, binary: true },
     ]);
     expect(JSON.parse((await get('/api/files')).body)).toHaveLength(3);
-    expect(asked).toEqual(['lines f..h']);
+    expect(asked).toEqual(['lines f..h', 'blobs f..h']);
     expect((await get('/api/files', { method: 'POST' })).status).toBe(405);
   });
 
@@ -793,6 +808,14 @@ describe('symbiote view: commits and diffs', () => {
             Promise.resolve([
               { path: `src/math.ts`, added: from === A && to === B ? 1 : 9, removed: 0 },
             ]),
+          blobs: (from, to) =>
+            Promise.resolve([
+              {
+                status: 'modified',
+                path: 'src/math.ts',
+                blob: `${from[0] ?? ''}${to[0] ?? ''}`.repeat(20),
+              },
+            ]),
           diff: (from, to, file) =>
             Promise.resolve(`${file.path} ${from[0] ?? ''}..${to[0] ?? ''}`),
         },
@@ -1177,6 +1200,12 @@ describe('symbiote view: commits and diffs', () => {
       phase: 'loadHead',
     });
     expect((await get(`/diff/${A}..${B}/api/source?side=head&file=src/math.ts`)).status).toBe(404);
+    // Its files and a file's diff do not wait (V90, decision 847): git's, from the pair.
+    expect(JSON.parse((await get(`/diff/${A}..${B}/api/files`)).body)).toEqual([
+      { status: 'modified', path: 'src/math.ts', added: 1, removed: 0, blob: 'ab'.repeat(20) },
+    ]);
+    expect((await get(`/diff/${A}..${B}/api/file?path=src/math.ts`)).body).toBe('src/math.ts a..b');
+    expect((await get(`/diff/${A}..${B}/api/file?path=src/other.ts`)).status).toBe(404);
 
     runs[0]?.resolve(graphOf({ base: A, head: B }));
     await settle();
@@ -1194,7 +1223,7 @@ describe('symbiote view: commits and diffs', () => {
 
     // Its files and a file's diff at the pair's commits (V60).
     expect(JSON.parse((await get(`/diff/${A}..${B}/api/files`)).body)).toEqual([
-      { status: 'modified', path: 'src/math.ts', added: 1, removed: 0 },
+      { status: 'modified', path: 'src/math.ts', added: 1, removed: 0, blob: 'ab'.repeat(20) },
     ]);
     expect((await get(`/diff/${A}..${B}/api/file?path=src/math.ts`)).body).toBe('src/math.ts a..b');
 

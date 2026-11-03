@@ -1,7 +1,7 @@
 # Reviews
 
 [Index](../PLAN.md) · [Its decisions](../decisions.md#reviews) · Checked against the code on
-2026-11-01
+2026-11-03
 
 This page says how branch reviews work today. Read it before you change them. The plans listed
 in the index under "Reviews" say why each part was built, as it was decided then. If a plan and
@@ -109,6 +109,17 @@ Under `symbiote pr`, only added and removed lines take one, because forges accep
 their own hunks. A diff over 5 MB is not sent, and a file's diff draws 2,000 rows before **Show
 all**.
 
+## Opening a review
+
+While a review's change is analyzed, its page shows the six steps of the analysis as a timeline
+(`DiffProgress.tsx`, V90). Each step's time is what the page saw: it asks every 500 ms, so a step
+that started and ended between two asks has no time, and the step before holds it. Beside the
+steps, what needs no graph: the change's files, which the server reads from git for the pair
+before the graph exists, and for a workspace's branch the agent's newest report, its commits and
+its brief. The commits show only when the workspace's changes start at the review's own base. The
+Files page opens meanwhile, read only: comments wait for the graph, because a comment names the
+symbol holding its line.
+
 ## Where things are
 
 | What | Where |
@@ -119,6 +130,8 @@ all**.
 | The Review tab | `packages/viewer/src/diff/ReviewTab.tsx` |
 | The marks, the drafts and the verdict picked, for both pages | `packages/viewer/src/diff/useReview.ts` |
 | The Files page and its diff | `packages/viewer/src/diff/FilesPage.tsx`, `packages/viewer/src/diff/file-diff.ts` |
+| Opening a review: the steps, their times, what needs no graph | `packages/viewer/src/diff/DiffProgress.tsx`, `analysis-steps.ts` |
+| The files before the graph exists | `pairFiles` in `packages/cli/src/server.ts` |
 | Comments and sending a verdict | `packages/viewer/src/diff/comments.ts` (`POST /api/review`) |
 | The reviews list | `GET /api/reviews` in `packages/cli/src/server.ts` |
 
@@ -148,6 +161,7 @@ when a later decision or a fix changed it.
 | 431–436 | The Files page: the default view, git's whole-file diff, which lines take comments, the symbol a comment names, the limits | [V60](../plan/v60-files-page.md) |
 | 471–474 | A workspace's review starts where it started, or at the fork point with a picked branch; an approval merges into that branch | [V65](../plan/v65-review-against.md) |
 | 557–560, 568 | The Review tab in three sections; **Merge into** fits the panel; the result of a finished review in a tinted box | [V76](../plan/v76-review-tab-layout.md) |
+| 846–847 | Opening a review: the steps as a timeline with their times as the page saw them; the files (served from the pair), a workspace's report, commits and brief at once; the Files page read only meanwhile | [V90](../plan/v90-redesign-reviews.md) |
 
 These no longer hold:
 

@@ -196,6 +196,9 @@ test("the Files and Graph switch stays put between the two pages, at the head's 
     };
   };
   await page.goto(`${symbiote.url}review/agent/`);
+  // The switch is there while the change is analyzed too (V90): measured once it is.
+  await expect(page.locator('.file-path')).toBeVisible();
+  await expect(page.locator('.analysis-state')).toHaveCount(0);
   // At 700 the Graph page's actions wrap under the title, the Files page's do not (under 640 the
   // diff's page is wider than the window).
   for (const width of [1440, 820, 700]) {

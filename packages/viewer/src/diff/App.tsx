@@ -9,7 +9,15 @@ import {
 } from 'react';
 import { flushSync } from 'react-dom';
 import type { BranchReviewInfo, Graph } from '@symbiote/core';
-import { BackLink, DiffProgress, reviewSince } from './DiffProgress.js';
+import {
+  BackLink,
+  DiffProgress,
+  FileTotals,
+  analysisState,
+  pairLabel,
+  reviewSince,
+} from './DiffProgress.js';
+import { StatusLabel } from '../ui/StatusLabel.js';
 import { Canvas } from './Canvas.js';
 import { useDiffGraph } from './useDiffGraph.js';
 import { useReview } from './useReview.js';
@@ -51,7 +59,7 @@ import { Resizer } from '../ui/Resizer.js';
 import { DiffKeys, Sidebar, type SidebarTab } from './Sidebar.js';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
-import { ReviewIcon, SymbioteMark } from '../ui/icons.js';
+import { ReviewIcon, RunningIcon, SymbioteMark } from '../ui/icons.js';
 import { browserStore } from './store.js';
 import { WindowButtons } from '../shell/TitleBar.js';
 import { useLayout } from '../graph/useLayout.js';
@@ -104,11 +112,23 @@ export function App() {
     addLineDraft,
     removeDraft,
   } = useReview(graph, store);
-  const served = state.status === 'ready' && state.files;
-  const files = useReviewFiles(graph, served);
+  const analyzing = state.status === 'analyzing' ? state : undefined;
+  const analyzedPair = analyzing?.loaded.pair;
+  const served = (state.status === 'ready' || state.status === 'analyzing') && state.files;
+  // While the pair is analyzed, git's files from it (V90, decision 847).
+  const files = useReviewFiles(
+    graph,
+    served,
+    analyzedPair && `${analyzedPair.base}..${analyzedPair.head}`,
+  );
   // Files first (decision 431), unless the address asks for Graph or there is no diff to show:
-  // a graph opened from a file has no server.
-  const page: DiffView = asked ?? (state.status === 'ready' && !state.files ? 'graph' : 'files');
+  // a graph opened from a file has no server. While it is analyzed, the steps (V90) unless the
+  // Files page is asked for and its files are served.
+  const page: DiffView = analyzing
+    ? asked === 'files' && served
+      ? 'files'
+      : 'graph'
+    : (asked ?? (state.status === 'ready' && !state.files ? 'graph' : 'files'));
   const showPage = useCallback((next: DiffView) => {
     setAsked(next);
     window.history.replaceState(window.history.state, '', withDiffView(window.location.href, next));
@@ -197,7 +217,10 @@ export function App() {
         if (event.key === 'Escape') target.blur();
         return;
       }
-      if (event.key === 'g' && state.status === 'ready') {
+      if (
+        event.key === 'g' &&
+        (state.status === 'ready' || (state.status === 'analyzing' && served))
+      ) {
         showPage(page === 'files' ? 'graph' : 'files');
       } else if (page === 'files') {
         if (event.key === 'j' || event.key === 'k') {
@@ -235,7 +258,7 @@ export function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [changes, walked, selected, toggleReviewed, state.status, page, showPage, files]);
+  }, [changes, walked, selected, toggleReviewed, state.status, page, showPage, files, served]);
 
   const load = useCallback(async (file: File) => {
     try {
@@ -350,16 +373,24 @@ export function App() {
       onDrag={setResizing}
     />
   );
-  // The head's title; before its graph a review's in the shell (being analyzed: V71's card under
-  // it), else Symbiote's window with its name, as the bar had it.
+  // The head's title; while it is analyzed the review's branch or the pair (V90), else
+  // Symbiote's window with its name, as the bar had it.
   const title =
     state.status === 'ready' ? (
       <DiffName graph={state.graph} review={state.branchReview} />
+    ) : analyzing?.branchReview ? (
+      <span className="review-of">
+        Review of <strong>{analyzing.branchReview.branch}</strong>
+      </span>
+    ) : analyzedPair ? (
+      <span className="revisions">{pairLabel(analyzedPair)}</span>
     ) : inView ? (
       'Review'
     ) : (
       'Symbiote'
     );
+  const opening =
+    analyzing && analyzing.loaded.pair ? analysisState(analyzing.loaded, analyzing.seen) : null;
   const content = (
     <div
       className={inView ? 'app' : 'app alone'}
@@ -374,7 +405,25 @@ export function App() {
         icon={inView ? <ReviewIcon /> : <SymbioteMark />}
         title={title}
         line={
-          state.status === 'ready' ? (
+          analyzing && analyzedPair ? (
+            <span className="diff-facts">
+              {analyzing.branchReview && <ReviewAfter review={analyzing.branchReview} />}
+              <span className="summary">
+                {analyzing.branchReview?.into && (
+                  <span className="muted">into {analyzing.branchReview.into}</span>
+                )}
+                {analyzing.branchReview && (
+                  <span className="revisions">{pairLabel(analyzedPair)}</span>
+                )}
+                {files.length > 0 && (
+                  <span className="muted">
+                    {files.length} file{files.length === 1 ? '' : 's'}
+                  </span>
+                )}
+                <FileTotals files={files} />
+              </span>
+            </span>
+          ) : state.status === 'ready' ? (
             <span className="diff-facts">
               {state.branchReview && <ReviewAfter review={state.branchReview} />}
               {/* The commits compared, unless they are the title. */}
@@ -387,6 +436,12 @@ export function App() {
         }
         actions={
           <>
+            {opening && (
+              <StatusLabel tone={opening.tone} className="analysis-state">
+                {opening.words}
+              </StatusLabel>
+            )}
+            {analyzing && inView && <BackLink />}
             {state.status === 'ready' && state.commits && <BackLink />}
             {state.status === 'ready' && page === 'files' && (
               <Help label="This page's keys">
@@ -456,18 +511,38 @@ export function App() {
           // Files and Graph at the head's end (V76c, decision 568): the actions before it change
           // with the page, and wrap under the title on their own; it stays put. The window's
           // buttons stay last.
-          state.status === 'ready' || !inView ? (
+          state.status === 'ready' || !inView || (analyzing && served) ? (
             <>
-              {state.status === 'ready' && <PageSwitch page={page} onPage={showPage} />}
+              {(state.status === 'ready' || (analyzing && served)) && (
+                <PageSwitch page={page} onPage={showPage} building={!!analyzing} />
+              )}
               {!inView && <WindowButtons />}
             </>
           ) : undefined
         }
       />
-      {state.status === 'ready' && page === 'files' ? (
+      {analyzing && analyzedPair && page === 'files' ? (
+        <main className={`files-main${resizing ? ' resizing' : ''}`} style={widthStyle}>
+          <FilesPage
+            graph={undefined}
+            head={analyzedPair.head}
+            files={files}
+            open={openFile}
+            onOpenFile={openTheFile}
+            served={served}
+            canOpen={false}
+            tab="files"
+            onTab={setFilesTab}
+            onOpenDraft={openDraft}
+            focus={null}
+            handle={sidebarHandle}
+          />
+        </main>
+      ) : state.status === 'ready' && page === 'files' ? (
         <main className={`files-main${resizing ? ' resizing' : ''}`} style={widthStyle}>
           <FilesPage
             graph={state.graph}
+            head={state.graph.revisions.head.sha ?? state.graph.revisions.head.ref}
             files={files}
             open={openFile}
             onOpenFile={openTheFile}
@@ -498,7 +573,17 @@ export function App() {
             <DropZone error={state.error} onFile={(file) => void load(file)} />
           )}
           {state.status === 'analyzing' && (
-            <DiffProgress loaded={state.loaded} review={state.branchReview} onRetry={retry} />
+            <DiffProgress
+              loaded={state.loaded}
+              seen={state.seen}
+              review={state.branchReview}
+              files={files}
+              onRetry={retry}
+              onReadFiles={(path) => {
+                if (path) openTheFile(path);
+                showPage('files');
+              }}
+            />
           )}
           {state.status === 'ready' && (
             <ReactFlowProvider>
@@ -597,8 +682,19 @@ export function App() {
   return inView && diff ? <DiffShell repo={inView.repo}>{content}</DiffShell> : content;
 }
 
-/** The diff's two pages (V60, decision 431): Files and Graph, `g` between them. */
-function PageSwitch({ page, onPage }: { page: DiffView; onPage: (page: DiffView) => void }) {
+/**
+ * The diff's two pages (V60, decision 431): Files and Graph, `g` between them; while it is
+ * analyzed (`building`, V90) Graph is its steps, a spinner beside its name.
+ */
+function PageSwitch({
+  page,
+  onPage,
+  building = false,
+}: {
+  page: DiffView;
+  onPage: (page: DiffView) => void;
+  building?: boolean;
+}) {
   const views: [DiffView, string, string][] = [
     ['files', 'Files', 'The changed files and their diffs'],
     ['graph', 'Graph', 'The changed symbols and the calls between them'],
@@ -615,6 +711,7 @@ function PageSwitch({ page, onPage }: { page: DiffView; onPage: (page: DiffView)
           {...tip(words, { keys: 'g' })}
           onClick={() => onPage(view)}
         >
+          {building && view === 'graph' && <RunningIcon />}
           {name}
         </button>
       ))}

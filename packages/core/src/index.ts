@@ -9,10 +9,13 @@ export {
   type ResolvedRevisions,
 } from './git/revisions.js';
 export {
+  listChangedBlobs,
   listChangedFiles,
   listLineCounts,
   parseNameStatus,
   parseNumstat,
+  parseRaw,
+  type ChangedBlob,
   type ChangedFile,
   type FileChangeStatus,
   type LineCount,

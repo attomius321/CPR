@@ -71,6 +71,65 @@ export function parseNameStatus(output: string): ChangedFile[] {
   return files;
 }
 
+/** A changed file with its blob: the head's, the base's for a deleted file (V90). */
+export type ChangedBlob = ChangedFile & { blob: string };
+
+/**
+ * `listChangedFiles`' files, each with its blob (`git diff --raw`): what a file's "viewed" mark
+ * is kept against (V90, decision 843), so a file changed since shows unviewed again.
+ */
+export async function listChangedBlobs(
+  repo: GitRepo,
+  from: string,
+  to: string,
+): Promise<ChangedBlob[]> {
+  const output = await git(repo.root, [
+    'diff',
+    '--raw',
+    '--no-abbrev',
+    '-z',
+    '-M',
+    '--no-color',
+    '--no-ext-diff',
+    '--no-relative',
+    from,
+    to,
+    '--',
+  ]);
+  return parseRaw(output);
+}
+
+/**
+ * Parses `git diff --raw --no-abbrev -z`: `:<mode> <mode> <blob> <blob> <code>\0<path>\0`, or for a
+ * rename or copy `…R<score>\0<old>\0<new>\0`.
+ */
+export function parseRaw(output: string): ChangedBlob[] {
+  const fields = output.split('\0');
+  const files: ChangedBlob[] = [];
+  let i = 0;
+  const next = () => {
+    const field = fields[i++];
+    if (field === undefined) throw new Error('truncated git diff --raw output');
+    return field;
+  };
+  while (i < fields.length) {
+    const record = next();
+    if (record === '') continue;
+    const match = /^:\d+ \d+ ([0-9a-f]+) ([0-9a-f]+) ([A-Z])(\d*)$/.exec(record);
+    const status = match && STATUS[match[3] ?? ''];
+    if (!match || !status) throw new Error(`unexpected git diff --raw record '${record}'`);
+    const [, before = '', after = '', , score = ''] = match;
+    const blob = status === 'deleted' ? before : after;
+    if (status === 'renamed' || status === 'copied') {
+      const previousPath = next();
+      files.push({ status, path: next(), previousPath, similarity: Number(score), blob });
+    } else {
+      files.push({ status, path: next(), blob });
+    }
+  }
+  return files;
+}
+
 /** A file's lines added and removed (V29d); null for a binary file. */
 export interface LineCount {
   /** Repo-relative POSIX path: in `to`, or in `from` for a deleted file. */

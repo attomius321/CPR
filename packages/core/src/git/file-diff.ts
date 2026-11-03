@@ -11,6 +11,8 @@ export type ReviewFile = ChangedFile & {
   added?: number;
   removed?: number;
   binary?: true;
+  /** Its blob (`git diff --raw`): the head's, the base's for a deleted file (V90). */
+  blob?: string;
 };
 
 /**

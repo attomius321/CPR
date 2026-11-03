@@ -6,6 +6,7 @@ import {
   fileChangedSince,
   fileForCheckout,
   fileInIndex,
+  listChangedBlobs,
   listChangedFiles,
   listChangedLines,
   listLineCounts,
@@ -14,6 +15,7 @@ import {
   parseChangedLines,
   parseNameStatus,
   parseNumstat,
+  parseRaw,
   resolveRevisions,
   type ChangedFile,
 } from '../src/index.js';
@@ -183,6 +185,55 @@ describe('parseNumstat (V29d)', () => {
 
   it('rejects output it cannot read', () => {
     expect(() => parseNumstat('3\tsrc/a.ts\0')).toThrow('unexpected git diff --numstat record');
+  });
+});
+
+describe('parseRaw (V90)', () => {
+  const z = (n: string) => n.repeat(40);
+  it("reads each file's status, paths and blob: the head's, the base's for a deleted file", () => {
+    const output = [
+      `:100644 100644 ${z('a')} ${z('b')} M`,
+      'src/a b.ts',
+      `:000000 100644 ${z('0')} ${z('c')} A`,
+      'src/added.ts',
+      `:100644 000000 ${z('d')} ${z('0')} D`,
+      'src/gone.ts',
+      `:100644 100644 ${z('e')} ${z('f')} R090`,
+      'src/old.ts',
+      'src/new.ts',
+      '',
+    ].join('\0');
+    expect(parseRaw(output)).toEqual([
+      { status: 'modified', path: 'src/a b.ts', blob: z('b') },
+      { status: 'added', path: 'src/added.ts', blob: z('c') },
+      { status: 'deleted', path: 'src/gone.ts', blob: z('d') },
+      {
+        status: 'renamed',
+        path: 'src/new.ts',
+        previousPath: 'src/old.ts',
+        similarity: 90,
+        blob: z('f'),
+      },
+    ]);
+    expect(parseRaw('')).toEqual([]);
+  });
+
+  it('rejects output it cannot read', () => {
+    expect(() => parseRaw(':100644 M\0a.ts\0')).toThrow('unexpected git diff --raw record');
+  });
+});
+
+describe('listChangedBlobs (V90)', () => {
+  const { repo, shas } = createBranchedRepo();
+  afterAll(() => repo.cleanup());
+
+  it("gives listChangedFiles' files, each with its blob", async () => {
+    const opened = await openRepo(repo.root);
+    const blobs = await listChangedBlobs(opened, shas.root, shas.feature);
+    const files = await listChangedFiles(opened, shas.root, shas.feature);
+    expect(byPath(blobs)).toMatchObject(byPath(files));
+    expect(blobs).toHaveLength(files.length);
+    for (const file of blobs) expect(file.blob).toMatch(/^[0-9a-f]{40}$/);
   });
 });
 

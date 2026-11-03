@@ -264,7 +264,8 @@ test('picks two commits, analyzes them, and goes back', async ({ page }) => {
   await page.getByRole('button', { name: 'Compare', exact: true }).click();
 
   await expect(page).toHaveURL(`${symbiote.url}diff/${head}..${cube}/`);
-  await expect(page.getByRole('status')).toContainText(`Analyzing ${short(head)} → ${short(cube)}`);
+  // Named by its pair while it is analyzed and once it is (V90).
+  await expect(page.locator('.page-name-line h1')).toContainText(`${short(head)} → ${short(cube)}`);
   // It opens on its files (V60); the graph is a click away.
   await expect(page.locator('.files-list .changes-file')).toHaveCount(1);
   await expect(page.locator('.file-path')).toHaveText('src/math.ts');

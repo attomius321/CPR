@@ -10,7 +10,7 @@ import {
 } from 'react';
 import type { Graph, ReviewFile } from '@symbiote/core';
 import { label } from '../graph/flow.js';
-import { CommentIcon } from '../ui/icons.js';
+import { CommentIcon, RunningIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
 import { FileRow, Lines } from '../workspaces/ChangesPanel.js';
 import { fileFacts } from '../workspaces/changes.js';
@@ -55,13 +55,18 @@ export interface FileFocus {
 
 /**
  * The change's files with git's lines (`./api/files`), read once per graph; meanwhile, and where
- * the server has none (a graph opened from a file), the graph's own files without lines.
+ * the server has none (a graph opened from a file), the graph's own files without lines. While the
+ * pair is analyzed (`analyzing`, its key), git's files from the pair (V90, decision 847).
  */
-export function useReviewFiles(graph: Graph | undefined, served: boolean): ReviewFile[] {
+export function useReviewFiles(
+  graph: Graph | undefined,
+  served: boolean,
+  analyzing?: string,
+): ReviewFile[] {
   const [files, setFiles] = useState<ReviewFile[]>(graph?.files ?? []);
   useEffect(() => {
     setFiles(graph?.files ?? []);
-    if (!graph || !served) return;
+    if ((!graph && !analyzing) || !served) return;
     let live = true;
     fetch('./api/files')
       .then((response) => (response.ok ? (response.json() as Promise<ReviewFile[]>) : null))
@@ -72,7 +77,7 @@ export function useReviewFiles(graph: Graph | undefined, served: boolean): Revie
     return () => {
       live = false;
     };
-  }, [graph, served]);
+  }, [graph, served, analyzing]);
   return files;
 }
 
@@ -86,8 +91,8 @@ type DiffState =
 /** Each file's diff, read once per page: by the head reviewed and the path. */
 const diffs = new Map<string, Promise<FileDiff>>();
 
-function fetchFileDiff(graph: Graph, path: string): Promise<FileDiff> {
-  const key = `${graph.revisions.head.sha ?? graph.revisions.head.ref}:${path}`;
+function fetchFileDiff(head: string, path: string): Promise<FileDiff> {
+  const key = `${head}:${path}`;
   let diff = diffs.get(key);
   if (!diff) {
     diff = fetch(`./api/file?path=${encodeURIComponent(path)}`).then(async (response) => {
@@ -102,25 +107,29 @@ function fetchFileDiff(graph: Graph, path: string): Promise<FileDiff> {
   return diff;
 }
 
-function useFileDiff(graph: Graph, path: string, served: boolean): DiffState {
+/** `head`: the commit reviewed, which keys the diffs read. */
+function useFileDiff(head: string, path: string, served: boolean): DiffState {
   const [state, setState] = useState<DiffState>({ status: served ? 'loading' : 'none' });
   useEffect(() => {
     if (!served) return setState({ status: 'none' });
     let live = true;
     setState({ status: 'loading' });
-    fetchFileDiff(graph, path).then(
+    fetchFileDiff(head, path).then(
       (diff) => live && setState({ status: 'ready', diff }),
       (error: unknown) => live && setState({ status: 'failed', error: (error as Error).message }),
     );
     return () => {
       live = false;
     };
-  }, [graph, path, served]);
+  }, [head, path, served]);
   return state;
 }
 
 interface Props {
-  graph: Graph;
+  /** Absent while the pair is analyzed: the page reads git's files and diffs only (V90). */
+  graph: Graph | undefined;
+  /** The commit reviewed. */
+  head: string;
   files: readonly ReviewFile[];
   /** The file shown, by path; null for the first. */
   open: string | null;
@@ -147,6 +156,7 @@ interface Props {
  */
 export function FilesPage({
   graph,
+  head,
   files,
   open,
   onOpenFile,
@@ -182,7 +192,7 @@ export function FilesPage({
             </button>
           )}
         </div>
-        {tab === 'review' && review ? (
+        {tab === 'review' && review && graph ? (
           <ReviewTab graph={graph} review={review} onOpen={onOpenDraft} canOpen={canOpen} />
         ) : (
           <div className="list">
@@ -217,6 +227,11 @@ export function FilesPage({
                 })}
               </ul>
             )}
+            {!graph && (
+              <p className="files-waiting">
+                <RunningIcon /> Comments open once the graph is built.
+              </p>
+            )}
           </div>
         )}
       </nav>
@@ -225,6 +240,7 @@ export function FilesPage({
         <FileView
           key={shown.path}
           graph={graph}
+          head={head}
           file={shown}
           served={served}
           canOpen={canOpen}
@@ -278,20 +294,22 @@ function noRows(file: ReviewFile, state: DiffState): string | null {
 /** One file's diff: its head, its rows folded to the changes, and the comments on its lines. */
 function FileView({
   graph,
+  head,
   file,
   served,
   canOpen,
   comments,
   focus,
 }: {
-  graph: Graph;
+  graph: Graph | undefined;
+  head: string;
   file: ReviewFile;
   served: boolean;
   canOpen: boolean;
   comments: FileComments | undefined;
   focus: FileFocus | null;
 }) {
-  const state = useFileDiff(graph, file.path, served);
+  const state = useFileDiff(head, file.path, served);
   const rows = useMemo(
     () => (state.status === 'ready' && state.diff.kind === 'rows' ? state.diff.rows : []),
     [state],
@@ -353,7 +371,7 @@ function FileView({
     } else if (event.key === 'Escape') setWriting(null);
   };
   const empty = noRows(file, state);
-  const nodes = new Map(graph.nodes.map((n) => [n.id, n]));
+  const nodes = new Map(graph?.nodes.map((n) => [n.id, n]));
 
   const row = (fold: Fold & { kind: 'row' }) => {
     const { row } = fold;

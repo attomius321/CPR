@@ -6,6 +6,7 @@ import type { BranchReviewInfo, Graph } from '@symbiote/core';
 import { fetchGraph, startDiff } from '../history/api.js';
 import type { Loaded, Pair } from '../history/commits.js';
 import { browserStore, serverStore, type Store } from './store.js';
+import { seePhase, type Seen } from './analysis-steps.js';
 
 export type State =
   | { status: 'loading' }
@@ -21,6 +22,10 @@ export type State =
       status: 'analyzing';
       loaded: Exclude<Loaded, { kind: 'graph' }>;
       branchReview?: BranchReviewInfo;
+      /** When the page first saw each phase (V90, decision 846): its steps' times. */
+      seen: Seen;
+      /** The server gives the pair's files meanwhile (`./api/files`, `./api/file`; V90). */
+      files: boolean;
     }
   /**
    * `sources`: opened through `symbiote view`, so `/api/source` exists. `forge`: opened through
@@ -105,6 +110,13 @@ export function useDiffGraph() {
       }
       let opened = attempt === 0;
       const review = capabilities?.branchReview ? { branchReview: capabilities.branchReview } : {};
+      let seen: Seen = {};
+      const analyzing = (loaded: Exclude<Loaded, { kind: 'graph' }>) => {
+        if (loaded.kind === 'progress') {
+          seen = seePhase(seen, loaded.phase, performance.now(), loaded.queued);
+        }
+        setState({ status: 'analyzing', loaded, ...review, seen, files: !!capabilities?.files });
+      };
       const poll = async (): Promise<void> => {
         const loaded = await fetchGraph(url);
         if (!live) return;
@@ -122,11 +134,11 @@ export function useDiffGraph() {
             ...review,
           });
         } else if (loaded.kind === 'progress' || loaded.kind === 'failed') {
-          setState({ status: 'analyzing', loaded, ...review });
+          analyzing(loaded);
           if (loaded.kind === 'progress') timer = setTimeout(() => void poll(), POLL_MS);
         } else if (loaded.pair && capabilities?.commits) {
           // A diff's page opened anew (a bookmark, a restarted server): analyze it.
-          if (!opened) return setState({ status: 'analyzing', loaded, ...review });
+          if (!opened) return analyzing(loaded);
           opened = false;
           await startDiff(loaded.pair).catch(() => undefined);
           if (live) await poll();
