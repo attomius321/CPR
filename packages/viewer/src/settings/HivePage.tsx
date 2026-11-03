@@ -1,43 +1,117 @@
-import { useEffect, useState } from 'react';
-import type { HiveLandingSetting, HiveLandsBy, HivePacingSetting, HiveState } from '@symbiote/core';
+import { useEffect, useState, type ReactNode } from 'react';
+import type {
+  AgentLevels,
+  HiveLandingSetting,
+  HiveLandsBy,
+  HivePacingSetting,
+  HiveState,
+} from '@symbiote/core';
+import { useShell } from '../shell/shell-context.js';
+import { HIVE_STAGES } from '../ui/StageTrack.js';
+import { effortChoices, keptEffort, keptModel, modelChoices } from '../workspaces/workspaces.js';
 import { setHive, useHive } from '../shell/hive.js';
 import { getJson, postJson } from '../ui/http.js';
-import { HiveJoining } from '../ui/HiveArt.js';
-import { DangerIcon } from '../ui/icons.js';
+import { HiveQuestion } from './HiveQuestion.js';
+import {
+  AlertIcon,
+  CheckIcon,
+  DocumentsIcon,
+  HexagonIcon,
+  MergeIcon,
+  ShieldIcon,
+} from '../ui/icons.js';
 import { StatusLabel } from '../ui/StatusLabel.js';
 import { TurnOffHive } from './HiveOff.js';
 import { SettingsCard } from './SettingsCard.js';
 import { pauseWords } from '../workspaces/hive-rounds.js';
-import {
-  budgetOf,
-  budgetWords,
-  forgeWords,
-  LANDS_BY,
-  landsByWords,
-  nameOf,
-  onRefusal,
-  pauseAtWords,
-  pauseChoices,
-} from './hive-switch.js';
+import { budgetOf, LANDS_BY, pauseAtWords, pauseChoices } from './hive-switch.js';
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const two = (n: number) => String(n).padStart(2, '0');
+
+/** When Hive was turned on, as Settings' head says it: "2 Nov, 09:02". */
+export function sinceWords(iso: string): string {
+  const at = new Date(iso);
+  return `${at.getDate()} ${MONTHS[at.getMonth()]}, ${two(at.getHours())}:${two(at.getMinutes())}`;
+}
+
+/** A row of the page (V92, decision 870): its name, one line of help, its control. */
+function Row({
+  name,
+  help,
+  id,
+  tone,
+  children,
+}: {
+  name: string;
+  help: ReactNode;
+  id: string;
+  tone?: 'fail';
+  children?: ReactNode;
+}) {
+  return (
+    <div className="hive-setting" role="group" aria-labelledby={id}>
+      <div className="hive-setting-words">
+        <span className="hive-setting-name" id={id}>
+          {name}
+        </span>
+        <span className={`hive-setting-help${tone ? ' is-fail' : ''}`}>{help}</span>
+      </div>
+      {children && <div className="hive-setting-control">{children}</div>}
+    </div>
+  );
+}
+
+/** A group of rows: its name, what it is about, its rows in one bordered box. */
+function Group({ name, about, children }: { name: string; about: string; children: ReactNode }) {
+  const id = `hive-group-${name.toLowerCase().replace(/\s+/g, '-')}`;
+  return (
+    <section className="hive-group-set" role="group" aria-labelledby={id}>
+      <h3 id={id}>
+        {name} <span>{about}</span>
+      </h3>
+      <div className="hive-settings">{children}</div>
+    </section>
+  );
+}
+
+/** What a page's save said: one line for the page. */
+type Said = { text: string; error?: boolean } | null;
 
 /**
- * Hive mode (V82, decision 613): Hive's switch, asked before it turns on. What Hive does (HV2–HV4)
- * in a note, and Turn on Hive in Hive's crimson (V88, decision 819; a danger button before) that
- * asks first, refused while a workspace is in normal mode (HV4, decision 772); off asks too while
- * Hive's work is in flight, saying what it stops (771).
- * Kept for this repository, out of git (decision 621).
+ * Hive mode (V82, decision 613; V92, decision 870): Hive's switch and its settings as grouped
+ * rows — Landing, Limits, Running reviewer — in both modes. Off, what Hive does and Turn on Hive
+ * mode in Hive's crimson, which asks first; on, since when, the access it gives, and Turn off Hive
+ * (a secondary with red words), which asks while Hive's work is in flight (771). Kept for this
+ * repository, out of git (decision 621).
  */
 export function HivePage({ onBack }: { onBack: () => void }) {
   const on = useHive();
+  const repo = useShell()?.repo;
   const [asking, setAsking] = useState<'on' | null>(null);
   const [state, setState] = useState<HiveState | null>(null);
+  const [since, setSince] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // How Hive lands (HV8): the warning says it.
-  const [landsBy, setLandsBy] = useState<HiveLandsBy>('queue');
+  const [said, setSaid] = useState<Said>(null);
+
+  // Since when it is on, and the check Hive would run: read again as it turns on or off.
+  useEffect(() => {
+    let live = true;
+    getJson<HiveState>('/api/hive/state')
+      .then((read) => {
+        if (!live) return;
+        setState(read);
+        setSince(read.since ?? null);
+      })
+      .catch(() => live && setState({ on, normal: [], flight: [] }));
+    return () => {
+      live = false;
+    };
+  }, [on]);
 
   /**
-   * Turning on asks first (HV4), always, saying which workspaces in normal mode keep it off; read
+   * Turning on asks first (HV4), always, with what Hive checks before it starts (V92, 872); read
    * while the question is open. Turning off is `TurnOffHive`'s, the Overview's too (V91).
    */
   const ask = async () => {
@@ -56,20 +130,9 @@ export function HivePage({ onBack }: { onBack: () => void }) {
     setBusy(true);
     setError(null);
     try {
-      // The question's Hive Mind grows from its middle as the shutter closes (decision 673).
-      const art = document.querySelector('.hive-joining')?.getBoundingClientRect();
-      await setHive(next, {
-        ...(art
-          ? {
-              from: {
-                x: art.x + art.width / 2,
-                y: art.y + art.height / 2,
-                scale: art.width / 520,
-              },
-            }
-          : {}),
-        then: () => setAsking(null),
-      });
+      // The question folds into its Mind and Hive's look opens from it (V92, decision 874); it
+      // closes once the arrival no longer draws it.
+      await setHive(next, { then: () => setAsking(null) });
     } catch (failed) {
       setError(
         `Hive mode could not be turned ${next ? 'on' : 'off'}: ${(failed as Error).message}`,
@@ -82,62 +145,94 @@ export function HivePage({ onBack }: { onBack: () => void }) {
   return (
     <SettingsCard
       label="Hive mode"
+      className="hive-page"
       title={
         <>
           Hive mode{' '}
-          <StatusLabel tone={on ? 'hive' : 'idle'} className="hive-state">
+          <StatusLabel tone={on ? 'ok' : 'idle'} className="hive-state">
             {on ? 'On' : 'Off'}
-          </StatusLabel>
+          </StatusLabel>{' '}
+          <span className="hive-for">
+            for {repo ?? 'this repository'}
+            {on && since ? ` since ${sinceWords(since)}` : ''}
+          </span>
         </>
+      }
+      actions={
+        on ? (
+          <TurnOffHive label="Turn off Hive" icon onError={setError} />
+        ) : (
+          <button type="button" className="button hive" disabled={busy} onClick={() => void ask()}>
+            <HexagonIcon />
+            Turn on Hive mode
+          </button>
+        )
       }
       onBack={onBack}
     >
-      <div className="hive-warning" role="note">
-        <DangerIcon />
-        <p>
-          <strong>
-            Hive runs agents, the project&apos;s check and lands work without asking you.
-          </strong>
-          Every workspace you start while Hive is on is Hive&apos;s, from its brief to landed: its
-          Claude Code agent works the brief; after each turn Symbiote runs the check in its
-          worktree, and once it passes a reviewer with a clean context runs the change in a
-          throwaway copy and proves defects with failing tests. Symbiote sends the agent what fails,
-          for up to 3 rounds, and answers its plans and questions in your place.{' '}
-          {landsBy === 'request'
-            ? 'Then Hive approves the commit, pushes the branch and opens a pull or merge request into the branch the workspace started from, which you merge on GitHub or GitLab. A conflict goes back to the agent.'
-            : 'Then Hive approves the commit, merges it into the branch the workspace started from through the merge queue, which checks the merge again, and pushes both branches. A conflict goes back to the agent.'}{' '}
-          Turning Hive off stops Hive&apos;s agents, checks and reviews; turning it on again
-          continues where they stopped. Hive never force-pushes or deletes work.
-        </p>
-      </div>
-      <p className="settings-row-note">
-        Start a project in normal mode, and turn Hive on once this repository has a check and tests
-        you trust. Hive cannot turn on while a workspace started in normal mode is open.
-      </p>
-      <div className="hive-control">
-        {on ? (
-          <TurnOffHive label="Turn off Hive mode" onError={setError} />
-        ) : (
-          <button type="button" className="button hive" disabled={busy} onClick={() => void ask()}>
-            Turn on Hive mode
-          </button>
-        )}
-        <p className="settings-row-note">
-          For this repository: every window of its symbiote view. Kept with its reviews, never
-          committed.
-        </p>
-      </div>
+      {on ? (
+        <div className="hive-callout" role="note">
+          <ShieldIcon />
+          <p>
+            <strong>Hive runs agents with full access to this machine.</strong> It never
+            force-pushes or deletes work. Off stops every agent, check and review; on again goes on
+            where they stopped.
+          </p>
+        </div>
+      ) : (
+        <div className="hive-callout" role="note">
+          <p>
+            <strong>Hive drives every workspace you start, from its brief to landed.</strong> Your
+            agents write, Symbiote runs the check, a reviewer proves defects with failing tests, and
+            Hive merges and pushes. No step waits for you. Set it up below, then turn it on.
+          </p>
+          <span className="hive-callout-track" aria-hidden="true">
+            {HIVE_STAGES.map((stage) => (
+              <svg key={stage} viewBox="0 0 12 13">
+                <polygon points="6,0.5 11.5,3.5 11.5,9.5 6,12.5 0.5,9.5 0.5,3.5" />
+              </svg>
+            ))}
+          </span>
+        </div>
+      )}
       {error && (
         <p className="settings-notice error" role="alert">
           {error}
         </p>
       )}
-      <HiveLandsBy onRead={setLandsBy} />
-      <HivePacing />
+      <Group name="Landing" about="where finished work goes">
+        <HiveLanding check={state?.check} checkRead={state !== null} onSaid={setSaid} />
+        <Row
+          id="hive-rounds"
+          name="Rounds"
+          help="Check and review rounds before Hive stops a workspace and records why."
+        >
+          <span className="hive-value">3 per workspace</span>
+        </Row>
+      </Group>
+      <Group name="Limits" about="what Hive may spend">
+        <HivePacing onSaid={setSaid} />
+      </Group>
+      <Group name="Running reviewer" about="proves defects with failing tests">
+        <ReviewerLevels onSaid={setSaid} />
+      </Group>
+      {said && (
+        <p className={`settings-notice${said.error ? ' error' : ''}`} role="status">
+          {said.text}
+        </p>
+      )}
+      <p className="hive-foot">
+        <DocumentsIcon />
+        <span>
+          Kept in <code>symbiote/config.json</code> as <code>hive.lands</code>,{' '}
+          <code>hive.usage.pauseAt</code>, <code>hive.budget</code> and <code>hive.reviewer.*</code>
+          . On or off: <code>symbiote/hive.json</code>, never committed.
+        </span>
+      </p>
       {asking === 'on' && (
         <HiveQuestion
           busy={busy}
-          normal={state?.normal ?? null}
+          state={state}
           onTurnOn={() => void turn(true)}
           onCancel={() => setAsking(null)}
         />
@@ -147,117 +242,166 @@ export function HivePage({ onBack }: { onBack: () => void }) {
 }
 
 /**
- * How Hive lands (HV8, decision 788): the merge queue, or a pull or merge request the person merges
- * on the forge; the forge `origin` names and whether a token is found (793). `hive.lands` in the
- * project's config.
+ * Landing's rows (HV8, decision 788; V92): how Hive lands — the merge queue or a pull or merge
+ * request the person merges on the forge (`hive.lands`) —, the check it runs, the forge `origin`
+ * names and whether a token is found (793).
  */
-function HiveLandsBy({ onRead }: { onRead: (by: HiveLandsBy) => void }) {
+function HiveLanding({
+  check,
+  checkRead,
+  onSaid,
+}: {
+  check: HiveState['check'];
+  checkRead: boolean;
+  onSaid: (said: Said) => void;
+}) {
   const [setting, setSetting] = useState<HiveLandingSetting | null>(null);
-  useEffect(() => {
-    if (setting) onRead(setting.by);
-  }, [setting, onRead]);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
     getJson<HiveLandingSetting>('/api/hive/landing')
       .then((read) => live && setSetting(read))
-      .catch((failed: unknown) => live && setError((failed as Error).message));
+      .catch((failed: unknown) => live && onSaid({ text: (failed as Error).message, error: true }));
     return () => {
       live = false;
     };
-  }, []);
+  }, [onSaid]);
   const pick = async (by: HiveLandsBy) => {
     setBusy(true);
-    setError(null);
     try {
       setSetting(await postJson<HiveLandingSetting>('/api/hive/landing', { by }));
+      onSaid({
+        text: `Saved. Hive lands ${by === 'request' ? 'through a request' : 'through the merge queue'}.`,
+      });
     } catch (failed) {
-      setError(`Hive lands by could not be set: ${(failed as Error).message}`);
+      onSaid({ text: `Lands through could not be set: ${(failed as Error).message}`, error: true });
     } finally {
       setBusy(false);
     }
   };
-  const forge = setting ? forgeWords(setting) : null;
+  const forge = setting?.forge;
+  const forgeName = forge ? (forge.kind === 'github' ? 'GitHub' : 'GitLab') : null;
   return (
-    <section className="hive-lands" aria-label="Hive lands by">
-      <h3 id="hive-lands-by">Hive lands by</h3>
-      <span className="scopes" role="group" aria-labelledby="hive-lands-by">
-        {LANDS_BY.map((choice) => (
-          <button
-            key={choice.by}
-            type="button"
-            className={setting?.by === choice.by ? 'scope active' : 'scope'}
-            aria-pressed={setting?.by === choice.by}
-            disabled={busy || !setting}
-            onClick={() => void pick(choice.by)}
-          >
-            {choice.label}
-          </button>
-        ))}
-      </span>
-      {setting && <p className="settings-row-note">{landsByWords(setting.by)}</p>}
-      {forge && (
-        <p
-          className={
-            forge.ok || setting?.by !== 'request'
-              ? 'settings-row-note hive-lands-forge'
-              : 'settings-row-note hive-lands-forge cannot'
+    <>
+      <Row
+        id="hive-lands-by"
+        name="Lands through"
+        help={
+          setting?.by === 'request'
+            ? 'A pull or merge request into the branch the workspace started from; your merge lands it.'
+            : 'Into the branch the workspace started from; both branches are pushed.'
+        }
+      >
+        <span className="scopes" role="group" aria-label="Lands through">
+          {LANDS_BY.map((choice) => (
+            <button
+              key={choice.by}
+              type="button"
+              className={setting?.by === choice.by ? 'scope active' : 'scope'}
+              aria-pressed={setting?.by === choice.by}
+              disabled={busy || !setting}
+              onClick={() => void pick(choice.by)}
+            >
+              <MergeIcon />
+              {choice.label}
+            </button>
+          ))}
+        </span>
+      </Row>
+      <Row
+        id="hive-check"
+        name="The check"
+        tone={checkRead && !check ? 'fail' : undefined}
+        help={
+          !checkRead ? (
+            'Reading…'
+          ) : check ? (
+            <>
+              What Hive runs on every commit, from <code>{checkSource(check.source)}</code>.
+            </>
+          ) : (
+            <>
+              None is set or found: set <code>merge.checks</code> in{' '}
+              <code>symbiote/config.json</code>. Hive turns on only with one.
+            </>
+          )
+        }
+      >
+        {check && (
+          <span className="hive-commands">
+            {check.commands.map((command) => (
+              <code key={command}>{command}</code>
+            ))}
+          </span>
+        )}
+      </Row>
+      {setting && (setting.by === 'request' || forge) && (
+        <Row
+          id="hive-requests"
+          name="Pull and merge requests"
+          help={
+            forge ? (
+              <>
+                origin is <code>{forge.project}</code> on {forgeName}
+              </>
+            ) : (
+              'origin names no GitHub or GitLab project'
+            )
           }
         >
-          {forge.text}
-        </p>
+          {setting.why ? (
+            <span className="hive-value is-warning">
+              <AlertIcon />
+              {setting.why.replace(/\.$/, '')}
+            </span>
+          ) : (
+            <span className="hive-value is-ok">
+              <CheckIcon />A token is found
+            </span>
+          )}
+        </Row>
       )}
-      <p className="settings-row-note">
-        For this repository: <code>hive.lands</code> in <code>symbiote/config.json</code>.
-      </p>
-      {error && (
-        <p className="settings-notice error" role="alert">
-          {error}
-        </p>
-      )}
-    </section>
+    </>
   );
 }
 
+/** Where the check comes from, short: `merge.checks`, else the file it was found in. */
+const checkSource = (source: string) =>
+  source.includes('(merge.checks)') ? 'merge.checks' : source;
+
 /**
- * Hive's pacing (HV5, decisions 797–801): the usage threshold every start waits under, Hive's
- * pause now, and a budget per workspace; `hive.usage.pauseAt` and `hive.budget` in the project's
- * config.
+ * Limits' rows (HV5, decisions 797–801): the usage threshold every start waits under, Hive's
+ * pause now, and a budget per workspace; `hive.usage.pauseAt` and `hive.budget`.
  */
-function HivePacing() {
+function HivePacing({ onSaid }: { onSaid: (said: Said) => void }) {
   const [setting, setSetting] = useState<HivePacingSetting | null>(null);
   const [budget, setBudget] = useState('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [saved, setSaved] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
     getJson<HivePacingSetting>('/api/hive/pacing')
       .then((read) => {
         if (!live) return;
         setSetting(read);
-        setBudget(read.budget === null ? '' : String(read.budget));
+        setBudget(read.budget === null ? '' : read.budget.toFixed(2));
       })
-      .catch((failed: unknown) => live && setError((failed as Error).message));
+      .catch((failed: unknown) => live && onSaid({ text: (failed as Error).message, error: true }));
     return () => {
       live = false;
     };
-  }, []);
+  }, [onSaid]);
   const save = async (
     change: { pauseAt?: number | false; budget?: number | null },
     said: string,
   ) => {
     setBusy(true);
-    setError(null);
-    setSaved(null);
     try {
       const answer = await postJson<HivePacingSetting>('/api/hive/pacing', change);
       setSetting(answer);
-      setBudget(answer.budget === null ? '' : String(answer.budget));
-      setSaved(said);
+      setBudget(answer.budget === null ? '' : answer.budget.toFixed(2));
+      onSaid({ text: `Saved. ${said}` });
     } catch (failed) {
-      setError(`Hive's pacing could not be set: ${(failed as Error).message}`);
+      onSaid({ text: `Hive's limits could not be set: ${(failed as Error).message}`, error: true });
     } finally {
       setBusy(false);
     }
@@ -265,167 +409,182 @@ function HivePacing() {
   const typed = budgetOf(budget);
   const changed = 'value' in typed && setting !== null && typed.value !== setting.budget;
   return (
-    <section className="hive-lands hive-pacing" aria-label="Pacing">
-      <h3 id="hive-pause-at">Pause by usage</h3>
-      <select
-        aria-labelledby="hive-pause-at"
-        value={setting ? String(setting.pauseAt === false ? 'off' : setting.pauseAt) : ''}
-        disabled={busy || !setting}
-        onChange={(event) => {
-          const value = event.target.value;
-          const pauseAt = value === 'off' ? false : Number(value);
-          void save(
-            { pauseAt },
-            pauseAt === false ? 'Hive no longer pauses by usage.' : `Hive pauses at ${pauseAt} %.`,
-          );
-        }}
+    <>
+      <Row
+        id="hive-pause-at"
+        name="Pause by usage"
+        help={
+          setting?.pause
+            ? `Hive is paused now: ${pauseWords(setting.pause, Date.now()).replace(/^Paused: /, '')}.`
+            : setting && (!setting.read || setting.pauseAt === false)
+              ? pauseAtWords(setting)
+              : 'No agent starts while a window of your Claude plan is at it or over, until it resets.'
+        }
       >
-        {setting &&
-          pauseChoices(setting.pauseAt).map((choice) => (
-            <option key={choice.value} value={choice.value}>
-              {choice.label}
-            </option>
-          ))}
-      </select>
-      {setting && <p className="settings-row-note">{pauseAtWords(setting)}</p>}
-      {setting?.pause && (
-        <p className="settings-row-note hive-paused-now" role="status">
-          Hive is paused now: {pauseWords(setting.pause, Date.now()).replace(/^Paused: /, '')}.
-        </p>
-      )}
-      <h3>
-        <label htmlFor="hive-budget">Budget per workspace</label>
-      </h3>
-      <form
-        className="hive-budget"
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (!('value' in typed)) return;
-          void save(
-            { budget: typed.value },
-            typed.value === null ? 'No budget.' : `The budget is $${typed.value.toFixed(2)}.`,
-          );
-        }}
-      >
-        <span className="hive-budget-sign" aria-hidden="true">
-          $
-        </span>
-        <input
-          id="hive-budget"
-          inputMode="decimal"
-          placeholder="None"
-          value={budget}
+        <select
+          aria-labelledby="hive-pause-at"
+          value={setting ? String(setting.pauseAt === false ? 'off' : setting.pauseAt) : ''}
           disabled={busy || !setting}
-          aria-invalid={'problem' in typed}
-          aria-describedby="hive-budget-note"
           onChange={(event) => {
-            setBudget(event.target.value);
-            setSaved(null);
+            const value = event.target.value;
+            const pauseAt = value === 'off' ? false : Number(value);
+            void save(
+              { pauseAt },
+              pauseAt === false
+                ? 'Hive no longer pauses by usage.'
+                : `Hive pauses at ${pauseAt} %.`,
+            );
           }}
-        />
-        <button type="submit" className="button secondary" disabled={busy || !changed}>
-          Save
-        </button>
-      </form>
-      <p id="hive-budget-note" className="settings-row-note">
-        {'problem' in typed ? typed.problem : budgetWords(setting?.budget ?? null)}
-      </p>
-      <p className="settings-row-note">
-        For this repository: <code>hive.usage.pauseAt</code> and <code>hive.budget</code> in{' '}
-        <code>symbiote/config.json</code>.
-      </p>
-      {saved && (
-        <p className="settings-notice" role="status">
-          {saved}
-        </p>
-      )}
-      {error && (
-        <p className="settings-notice error" role="alert">
-          {error}
-        </p>
-      )}
-    </section>
+        >
+          {setting &&
+            pauseChoices(setting.pauseAt).map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.label}
+              </option>
+            ))}
+        </select>
+      </Row>
+      <Row
+        id="hive-budget-name"
+        name="Budget per workspace"
+        tone={'problem' in typed ? 'fail' : undefined}
+        help={
+          'problem' in typed
+            ? typed.problem
+            : 'A workspace that reaches it stops; raise it and send a message to go on.'
+        }
+      >
+        <form
+          className="hive-budget"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (!('value' in typed)) return;
+            void save(
+              { budget: typed.value },
+              typed.value === null ? 'No budget.' : `The budget is $${typed.value.toFixed(2)}.`,
+            );
+          }}
+        >
+          <span className="hive-budget-sign" aria-hidden="true">
+            $
+          </span>
+          <input
+            id="hive-budget"
+            aria-labelledby="hive-budget-name"
+            inputMode="decimal"
+            placeholder="None"
+            value={budget}
+            disabled={busy || !setting}
+            aria-invalid={'problem' in typed}
+            onChange={(event) => setBudget(event.target.value)}
+          />
+          {changed && (
+            <button type="submit" className="button secondary" disabled={busy}>
+              Save
+            </button>
+          )}
+        </form>
+      </Row>
+    </>
   );
 }
 
 /**
- * Turning Hive mode on asks first (decision 615), in Hive's own look whatever the theme and the
- * mode: a circuit routes into the Hive Mind over the question and lives while it is open
- * (decision 665).
- * Cancel is focused; Escape and a click beside the dialog cancel.
+ * The running reviewer's model and effort (HV3, decision 680; V92: here, not on its Reviewer
+ * page): two selects of Claude Code's own models and levels, saved when picked
+ * (`hive.reviewer.model`, `hive.reviewer.effort`).
  */
-function HiveQuestion({
-  busy,
-  normal,
-  onTurnOn,
-  onCancel,
-}: {
-  busy: boolean;
-  /** Workspaces in normal mode: Hive does not turn on while any is open (772); null, reading. */
-  normal: HiveState['normal'] | null;
-  onTurnOn: () => void;
-  onCancel: () => void;
-}) {
-  const refused = normal ? onRefusal({ normal }) : null;
+function ReviewerLevels({ onSaid }: { onSaid: (said: Said) => void }) {
+  const [read, setRead] = useState<AgentLevels | null>(null);
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    let live = true;
+    getJson<AgentLevels>('/api/hive/reviewer/efforts')
+      .then((answer) => live && setRead(answer))
+      .catch((failed: unknown) => live && onSaid({ text: (failed as Error).message, error: true }));
+    return () => {
+      live = false;
+    };
+  }, [onSaid]);
+  const agent = read?.agents[0];
+  // Short, as the row's two selects: "Opus 5.5 (default)", "High".
+  const short = (choices: { value: string; label: string }[]) =>
+    choices.map((c, i) => {
+      const named = i === 0 ? /\(([^)]+)\)$/.exec(c.label)?.[1] : undefined;
+      const label = i === 0 ? (named ? `${named} (default)` : 'Default') : c.label;
+      return { ...c, label: label.charAt(0).toUpperCase() + label.slice(1) };
+    });
+  const models = agent ? short(modelChoices(agent)) : [];
+  const efforts = agent ? short(effortChoices(agent)) : [];
+  const model = agent ? (keptModel(read?.model, agent) ?? '') : '';
+  const effort = agent && read ? (keptEffort(read.effort, agent) ?? '') : '';
+  const save = async (what: 'model' | 'effort', value: string, label: string) => {
+    setBusy(true);
+    try {
+      setRead(await postJson<AgentLevels>(`/api/hive/reviewer/${what}`, { [what]: value || null }));
+      onSaid({
+        text:
+          what === 'model'
+            ? `Saved. The next running review is asked on ${label}.`
+            : `Saved. The next running review is asked at ${label}.`,
+      });
+    } catch (failed) {
+      onSaid({ text: (failed as Error).message, error: true });
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
-    <div
-      className="dialog-backdrop hive"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onCancel();
-      }}
+    <Row
+      id="hive-reviewer"
+      name="Model and effort"
+      tone={read && !agent ? 'fail' : undefined}
+      help={
+        read && !agent
+          ? 'The running reviewer needs Claude Code: it is not installed here.'
+          : 'A clean Claude Code, in its sandbox, in a throwaway copy of the commit.'
+      }
     >
-      <div
-        className="dialog hive-ink"
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="hive-question"
-        aria-describedby="hive-detail"
-        onKeyDown={(event) => {
-          if (event.key !== 'Escape') return;
-          event.preventDefault();
-          event.stopPropagation();
-          onCancel();
-        }}
-      >
-        <HiveJoining />
-        <h2 id="hive-question">
-          <DangerIcon />
-          Turn on Hive mode?
-        </h2>
-        <p id="hive-detail">
-          Hive will start your workspaces&apos; agents again, run the project&apos;s check, and land
-          and push each workspace it drives without asking you first. Turn it on once this
-          repository has a check and tests you trust. Every workspace you start while it is on is
-          Hive&apos;s. Nucleus becomes Alpha Ceph and is told what Hive does: its conversation
-          starts again, unless it is answering or waiting on you.
-        </p>
-        {refused && (
-          <div className="hive-refused" role="status">
-            <p>{refused}</p>
-            <ul>
-              {(normal ?? []).map((w) => (
-                <li key={w.branch}>
-                  {nameOf(w)}
-                  {w.title && <code>{w.branch}</code>}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        <div className="dialog-buttons">
-          <button
-            type="button"
-            className="button hive"
-            disabled={busy || normal === null || refused !== null}
-            onClick={onTurnOn}
-          >
-            Turn on Hive mode
-          </button>
-          <button type="button" className="button secondary" autoFocus onClick={onCancel}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    </div>
+      {models.length > 0 && (
+        <select
+          aria-label="Model"
+          value={model}
+          disabled={busy}
+          onChange={(event) =>
+            void save(
+              'model',
+              event.target.value,
+              models.find((c) => c.value === event.target.value)?.label ?? event.target.value,
+            )
+          }
+        >
+          {models.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      )}
+      {efforts.length > 0 && (
+        <select
+          aria-label="Effort"
+          value={effort}
+          disabled={busy}
+          onChange={(event) =>
+            void save(
+              'effort',
+              event.target.value,
+              efforts.find((c) => c.value === event.target.value)?.label ?? event.target.value,
+            )
+          }
+        >
+          {efforts.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
+            </option>
+          ))}
+        </select>
+      )}
+    </Row>
   );
 }

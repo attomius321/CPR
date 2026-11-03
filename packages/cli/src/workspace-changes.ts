@@ -2,6 +2,7 @@
 // worktree's files not committed.
 import {
   commitDetails,
+  commitLineCounts,
   commitsBetween,
   listChangedFiles,
   listLineCounts,
@@ -34,7 +35,10 @@ export async function readBranchChanges(
     listChangedFiles(repo, base, tip),
     listLineCounts(repo, base, tip),
   ]);
-  const commits = await commitDetails(repo, between.shas);
+  const [commits, perCommit] = await Promise.all([
+    commitDetails(repo, between.shas),
+    commitLineCounts(repo, between.shas),
+  ]);
   const lines = new Map(counts.map((count) => [count.path, count]));
   let added = 0;
   let removed = 0;
@@ -45,7 +49,13 @@ export async function readBranchChanges(
   return {
     commits: {
       count: between.count,
-      listed: commits.map(({ sha, subject, author, date }) => ({ sha, subject, author, date })),
+      listed: commits.map(({ sha, subject, author, date }) => ({
+        sha,
+        subject,
+        author,
+        date,
+        ...perCommit.get(sha),
+      })),
     },
     files: {
       count: changed.length,

@@ -1,12 +1,6 @@
 // What turning Hive mode on or off concerns, in words (HV4, decisions 771, 772): the workspaces
 // in normal mode that keep it off, and what Hive off does to each Hive workspace in flight. Pure.
-import type {
-  HiveLandingSetting,
-  HiveLandsBy,
-  HivePacingSetting,
-  HiveState,
-  HiveStep,
-} from '@symbiote/core';
+import type { HiveLandsBy, HivePacingSetting, HiveState, HiveStep } from '@symbiote/core';
 
 /** A workspace as the questions name it: its title, else its branch. */
 export const nameOf = (w: { branch: string; title?: string }) => w.title ?? w.branch;
@@ -40,37 +34,11 @@ export function offWords(step: HiveStep, request?: HiveState['flight'][number]['
   }
 }
 
-/** Why Hive cannot turn on now; null when it can. */
-export function onRefusal(state: Pick<HiveState, 'normal'>): string | null {
-  const { normal } = state;
-  if (normal.length === 0) return null;
-  const one = normal.length === 1;
-  return `Hive cannot turn on while ${one ? 'a workspace is' : 'these workspaces are'} in normal mode. Land ${one ? 'it' : 'them'} or clean ${one ? 'it' : 'them'} up first:`;
-}
-
 /** How Hive lands, the two choices of Settings' Hive page (HV8, decision 788). */
 export const LANDS_BY: { by: HiveLandsBy; label: string }[] = [
-  { by: 'queue', label: 'The merge queue' },
-  { by: 'request', label: 'A pull or merge request' },
+  { by: 'queue', label: 'Merge queue' },
+  { by: 'request', label: 'Pull request' },
 ];
-
-/** What a choice does. */
-export function landsByWords(by: HiveLandsBy): string {
-  return by === 'request'
-    ? 'Hive pushes the branch and opens a pull request (GitHub) or merge request (GitLab) into the branch the workspace started from. You review and merge it there: your merge lands it. A conflict goes back to the agent.'
-    : 'Hive merges each workspace into the branch it started from through the merge queue, which checks the merge, lands it and pushes both branches.';
-}
-
-/** The forge `origin` names and whether a request can be opened now (decision 793). */
-export function forgeWords(setting: HiveLandingSetting): { text: string; ok: boolean } {
-  const { forge, why } = setting;
-  const at = forge ? `origin is ${forge.project} on ${FORGES[forge.kind].name}` : '';
-  if (why) {
-    const cannot = `Hive cannot open a request now: ${why.replace(/\.$/, '')}.`;
-    return { text: at ? `${at}. ${cannot}` : cannot, ok: false };
-  }
-  return { text: `${at}; a token is found.`, ok: true };
-}
 
 /** The thresholds Settings offers (HV5, decision 797); 90 % is the default. */
 const PAUSE_AT = [50, 60, 70, 80, 90, 95, 100];
@@ -112,4 +80,87 @@ export function budgetOf(text: string): { value: number | null } | { problem: st
 export function budgetWords(budget: number | null): string {
   if (budget === null) return 'No budget: a workspace spends what its rounds take.';
   return `A workspace that has spent $${budget.toFixed(2)} (its writer's sessions and its running reviews, by Claude Code's own count) stops, with why. A turn or review already running finishes first.`;
+}
+
+/** One thing Hive checks before it turns on (V92, decision 872). */
+export interface ReadyItem {
+  key: 'check' | 'normal' | 'limits' | 'access';
+  /** `fail` keeps Turn on Hive off; `warn` is said, never blocks. */
+  mark: 'ok' | 'fail' | 'warn';
+  text: string;
+  detail: string;
+  /** The workspaces in normal mode that keep it off, named. */
+  names?: string[];
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** Where the check comes from, short: `merge.checks`, else the file it was found in. */
+export const checkSource = (source: string) =>
+  source.includes('(merge.checks)') ? 'merge.checks' : source;
+
+/**
+ * What Hive checks before it starts (V92, decision 872), only what Symbiote can know: a check is
+ * set, no workspace in normal mode is open (772), its limits as they are, and the full access it
+ * gives, a warning. `ready` while none fails; nothing read yet is not ready.
+ */
+export function hiveReadiness({
+  state,
+  pacing,
+  rounds,
+}: {
+  state: Pick<HiveState, 'normal' | 'check'> | null;
+  pacing: (Pick<HivePacingSetting, 'pauseAt' | 'budget'> & Partial<HivePacingSetting>) | null;
+  rounds: number;
+}): { items: ReadyItem[]; ready: boolean } {
+  const check: ReadyItem = !state
+    ? { key: 'check', mark: 'fail', text: 'A check is set', detail: 'reading…' }
+    : state.check
+      ? {
+          key: 'check',
+          mark: 'ok',
+          text: 'A check is set',
+          detail: `${state.check.commands.join(', ')}, from ${checkSource(state.check.source)}`,
+        }
+      : {
+          key: 'check',
+          mark: 'fail',
+          text: 'No check is set',
+          detail: 'set merge.checks in symbiote/config.json',
+        };
+  const open = state?.normal ?? [];
+  const one = open.length === 1;
+  const normal: ReadyItem =
+    open.length === 0
+      ? {
+          key: 'normal',
+          mark: state ? 'ok' : 'fail',
+          text: 'No workspace in normal mode is open',
+          detail: '',
+        }
+      : {
+          key: 'normal',
+          mark: 'fail',
+          text: `${plural(open.length, 'workspace')} in normal mode ${one ? 'is' : 'are'} open`,
+          detail: `finish or clean ${one ? 'it' : 'them'} up first`,
+          names: open.map(nameOf),
+        };
+  const limits: ReadyItem = {
+    key: 'limits',
+    mark: 'ok',
+    text: 'Limits',
+    detail: [
+      !pacing || pacing.pauseAt === false ? 'no pause' : `pauses at ${pacing.pauseAt} %`,
+      pacing?.budget != null ? `$${pacing.budget.toFixed(2)} a workspace` : 'no budget',
+      plural(rounds, 'round'),
+    ].join(' · '),
+  };
+  const access: ReadyItem = {
+    key: 'access',
+    mark: 'warn',
+    text: 'Full access',
+    detail: 'its agents can run anything on this machine',
+  };
+  const items = [check, normal, limits, access];
+  return { items, ready: state !== null && items.every((item) => item.mark !== 'fail') };
 }

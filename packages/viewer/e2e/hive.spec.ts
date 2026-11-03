@@ -7,7 +7,7 @@ import { serveCommits, type RunningCommits } from './symbiote.js';
 
 // Hive mode (V82): a dangerous switch in Settings, asked before it turns on, kept per repository in
 // its `symbiote/` (decision 621), and the ink and crimson look on every page while it is on, from
-// the first paint; the Hive Mind and a hex shutter take the page as it turns on (decision 673).
+// the first paint; Hive's look opens from the question's Mind as it turns on (V92, decision 874).
 let symbiote: RunningCommits | undefined;
 let other: RunningCommits | undefined;
 let config: string;
@@ -35,14 +35,33 @@ const view = () =>
     GIT_CONFIG_KEY_0: 'user.email',
     GIT_CONFIG_VALUE_0: 'hive@example.com',
   });
-const serve = async () => (symbiote = await view());
+/**
+ * A Symbiote whose repository has a check, committed (V92, decision 872: Hive turns on only with
+ * one), so the repository stays clean for the record's checks.
+ */
+const serve = async () => {
+  symbiote = await view();
+  const repo = symbiote.repo;
+  mkdirSync(join(repo, 'symbiote'), { recursive: true });
+  writeFileSync(join(repo, 'symbiote', 'config.json'), '{"merge":{"checks":["true"]}}\n');
+  const git = (...args: string[]) =>
+    execFileSync('git', ['-c', 'user.name=Hive', '-c', 'user.email=hive@example.com', ...args], {
+      cwd: repo,
+    });
+  git('add', 'symbiote/config.json');
+  git('commit', '--quiet', '--message', 'A check');
+  return symbiote;
+};
 const record = () => join(symbiote!.repo, 'symbiote', 'hive.json');
 /** Where V82 kept it for the whole machine: never read since. */
 const machineRecord = () => join(config, 'symbiote', 'hive.json');
 const hivePage = (page: Page) => page.goto(`${symbiote!.url}settings?prompt=hive-mode`);
 const html = (page: Page) => page.locator('html');
 const editor = (page: Page) => page.getByRole('region', { name: 'Hive mode' });
-const question = (page: Page) => page.getByRole('alertdialog', { name: 'Turn on Hive mode?' });
+const question = (page: Page) => page.getByRole('alertdialog', { name: 'Turn on Hive mode' });
+/** The question's own button (V92): Turn on Hive. */
+const confirm = (page: Page) =>
+  question(page).getByRole('button', { name: 'Turn on Hive', exact: true });
 const turnOn = (page: Page) => editor(page).getByRole('button', { name: 'Turn on Hive mode' });
 /** The honeycomb V85 laid behind the page while Hive was on: gone since V88 (decision 815). */
 const comb = (page: Page) => page.locator('svg.hive-comb');
@@ -73,14 +92,12 @@ test('Hive mode: a danger to press, asked first, kept for the repository, its lo
     'aria-current',
     'true',
   );
-  await expect(editor(page).getByRole('heading', { level: 2 })).toHaveText('Hive mode Off');
+  await expect(editor(page).getByRole('heading', { level: 2 })).toContainText('Hive mode Off');
   await expect(editor(page).getByRole('note')).toContainText(
-    "Hive runs agents, the project's check and lands work without asking you.",
+    'Hive drives every workspace you start, from its brief to landed.',
   );
   await expect(turnOn(page)).toHaveClass(/\bhive\b/);
-  await expect(editor(page)).toContainText(
-    'For this repository: every window of its symbiote view. Kept with its reviews, never committed.',
-  );
+  await expect(editor(page)).toContainText('symbiote/hive.json, never committed.');
 
   // Escape and a click beside the question cancel; Cancel is where the focus is.
   await turnOn(page).click();
@@ -99,11 +116,11 @@ test('Hive mode: a danger to press, asked first, kept for the repository, its lo
 
   // On: the look at once, the S crimson, no tendrils in the sidenav; kept.
   await turnOn(page).click();
-  await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
+  await confirm(page).click();
   await expect(question(page)).toBeHidden();
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
   expect(await colour(page, 'body', 'backgroundColor')).toBe('rgb(9, 9, 11)');
-  await expect(editor(page).getByRole('heading', { level: 2 })).toHaveText('Hive mode On');
+  await expect(editor(page).getByRole('heading', { level: 2 })).toContainText('Hive mode On');
   await expect(repository.getByRole('button', { name: 'Hive mode on' })).toBeVisible();
   await expect(page.locator('.sidenav canvas')).toHaveCount(0);
   await expect(page.locator('.sidenav-brand img')).toHaveAttribute('src', /mark-hive/);
@@ -132,7 +149,7 @@ test('Hive mode: a danger to press, asked first, kept for the repository, its lo
 
   // Off is the safe way: no question; main's look again, and after a reload.
   await hivePage(page);
-  await editor(page).getByRole('button', { name: 'Turn off Hive mode' }).click();
+  await editor(page).getByRole('button', { name: 'Turn off Hive' }).click();
   await expect(html(page)).not.toHaveAttribute('data-hive');
   await expect(question(page)).toBeHidden();
   expect(await colour(page, 'body', 'backgroundColor')).toBe('rgb(9, 10, 13)');
@@ -153,12 +170,12 @@ test("light: the kit's warm grey ground, the sidenav light; the question is ink 
   // The question in Hive's dark ink though Hive is off and the theme light.
   await expect(question(page)).toBeVisible();
   expect(await colour(page, '[role="alertdialog"]', 'color')).toBe('rgb(243, 242, 245)');
-  await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
+  await confirm(page).click();
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
   // V88 (decision 812): Hive Control's light set, no red in it.
   expect(await colour(page, 'body', 'backgroundColor')).toBe('rgb(243, 243, 245)');
   expect(await colour(page, 'body', 'color')).toBe('rgb(18, 18, 22)');
-  await expect(page.locator('.hive-flood')).toHaveCount(0, { timeout: 3_000 });
+  await expect(html(page)).not.toHaveAttribute('data-hive-arrival', { timeout: 3_000 });
   expect(await colour(page, '.sidenav', 'backgroundColor')).toBe('rgb(249, 249, 250)');
   expect(await colour(page, '.sidenav', 'color')).toBe('rgb(18, 18, 22)');
   await expect(comb(page)).toHaveCount(0);
@@ -213,7 +230,7 @@ test('the circuit routes into the Hive Mind and lives while the question is open
   expect(board.right).toBeGreaterThan(160);
 });
 
-/** The animations of Hive's arrival still running: the ink, the sheen. */
+/** The animations of Hive's arrival still running: its layers and the transition's. */
 const arriving = (page: Page) =>
   page.evaluate(
     () =>
@@ -223,50 +240,32 @@ const arriving = (page: Page) =>
         return (
           animation.playState !== 'finished' &&
           !!target &&
-          (!!target.closest('.hive-flood') ||
-            (target.matches('.shell-main') && !!effect.pseudoElement))
+          (!!target.closest('[class^="hive-arrival"]') ||
+            (target === document.documentElement && !!effect.pseudoElement))
         );
       }).length,
   );
 
-test('turning on, the Hive Mind and a hex shutter cover the window, the look changes under it, then all is still', async ({
+/** The arrival's layers over the page (V92). */
+const layers = (page: Page) =>
+  page.locator('.hive-arrival-ring, .hive-arrival-glow, .hive-arrival-mind');
+
+test("turning on, Hive's look opens from the question's Mind, then all is still (V92, decision 874)", async ({
   page,
 }) => {
   await serve();
   await hivePage(page);
   await turnOn(page).click();
   await expect(question(page).locator('canvas.hive-joining')).toBeVisible();
-  // When the look changes, read the shutter's canvas: every sampled pixel opaque.
-  await page.evaluate(() => {
-    const w = window as unknown as { coveredAtSwap?: number | null };
-    w.coveredAtSwap = null;
-    new MutationObserver((_, observer) => {
-      if (document.documentElement.dataset.hive !== 'on') return;
-      observer.disconnect();
-      const canvas = document.querySelector<HTMLCanvasElement>('.hive-flood');
-      if (!canvas) return;
-      const { data } = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
-      let least = 255;
-      for (let y = 0; y < 9; y++) {
-        for (let x = 0; x < 16; x++) {
-          const px = Math.min(canvas.width - 1, Math.round(((x + 0.5) / 16) * canvas.width));
-          const py = Math.min(canvas.height - 1, Math.round(((y + 0.5) / 9) * canvas.height));
-          least = Math.min(least, data[(py * canvas.width + px) * 4 + 3]!);
-        }
-      }
-      w.coveredAtSwap = least;
-    }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-hive'] });
-  });
-  await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
-  await expect(page.locator('.hive-flood')).toBeAttached();
+  await confirm(page).click();
+  // The transition under way: the look changed in it, its layers over the page.
+  await expect(html(page)).toHaveAttribute('data-hive-arriving', '');
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
-  await expect(question(page)).toBeHidden();
-  expect(
-    await page.evaluate(() => (window as unknown as { coveredAtSwap?: number }).coveredAtSwap),
-  ).toBe(255);
-  // Then still, within 3 s: the shutter gone, nothing of the arrival running.
-  await expect(page.locator('.hive-flood')).toHaveCount(0, { timeout: 3_000 });
+  await expect(layers(page)).toHaveCount(3);
+  // Then still, within 3 s: the question and the layers gone, nothing of the arrival running.
   await expect(html(page)).not.toHaveAttribute('data-hive-arriving', { timeout: 3_000 });
+  await expect(question(page)).toBeHidden();
+  await expect(layers(page)).toHaveCount(0);
   await expect(page.locator('[data-moving]')).toHaveCount(0, { timeout: 3_000 });
   expect(await arriving(page)).toBe(0);
 
@@ -276,7 +275,7 @@ test('turning on, the Hive Mind and a hex shutter cover the window, the look cha
   await expect(page.locator('.sidenav canvas')).toHaveCount(0);
   await expect(page.locator('[data-moving]')).toHaveCount(0);
   expect(await arriving(page)).toBe(0);
-  await expect(page.locator('.hive-flood')).toHaveCount(0);
+  await expect(layers(page)).toHaveCount(0);
 });
 
 // V88 (decision 815): no honeycomb, sheen, streak or glow, after the arrival or a reload; the
@@ -287,9 +286,9 @@ test('after the arrival nothing lies over or behind the pages: no honeycomb, she
   await serve();
   await hivePage(page);
   await turnOn(page).click();
-  await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
+  await confirm(page).click();
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
-  await expect(page.locator('.hive-flood')).toHaveCount(0, { timeout: 3_000 });
+  await expect(html(page)).not.toHaveAttribute('data-hive-arriving', { timeout: 3_000 });
   const over = () =>
     page.evaluate(() => {
       const main = document.querySelector('.shell-main')!;
@@ -319,7 +318,7 @@ test('after the arrival nothing lies over or behind the pages: no honeycomb, she
 
   // Off: normal mode's ink.
   await hivePage(page);
-  await editor(page).getByRole('button', { name: 'Turn off Hive mode' }).click();
+  await editor(page).getByRole('button', { name: 'Turn off Hive' }).click();
   await expect(html(page)).not.toHaveAttribute('data-hive');
   expect(await colour(page, '.sidenav', 'backgroundColor')).toBe('rgb(13, 15, 19)');
 });
@@ -329,11 +328,11 @@ test('with reduced motion, Hive turns on at once: no ink, no growing', async ({ 
   await serve();
   await hivePage(page);
   await turnOn(page).click();
-  await question(page).getByRole('button', { name: 'Turn on Hive mode' }).click();
+  await confirm(page).click();
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
   await expect(page.locator('.sidenav canvas')).toHaveCount(0);
   expect(await arriving(page)).toBe(0);
-  await expect(page.locator('.hive-flood')).toHaveCount(0);
+  await expect(layers(page)).toHaveCount(0);
   await expect(page.locator('[data-moving]')).toHaveCount(0);
   await expect(html(page)).not.toHaveAttribute('data-hive-arriving');
   // No honeycomb (V88).

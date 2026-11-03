@@ -232,7 +232,8 @@ those commits' files and graph, as comparing two commits in Git does. A workspac
 ## In Hive mode
 
 With Hive mode on, Symbiote drives each workspace you start from its brief to landed, and answers
-for you. The start page then offers only Claude Code, with no permission choice and no **Plan
-first**. The sidenav has two groups, **Hive** and **Done**, and the workspace's **Review** tab
-shows what Hive did, round by round. The
+for you. The start page is then **New goal**: it offers only Claude Code, with no permission choice
+and no **Plan first**, shows the check Hive will run, and says how Hive runs the goal. Its button
+is **Start goal**. The sidenav's groups are **In flight**, **Stopped**, **Landed today** and
+**Earlier**, and the workspace's **Run** tab shows what Hive did, round by round. The
 [configuration reference](../reference/configuration.md#hive-mode) describes each step.

@@ -236,7 +236,7 @@ test("Hive mode's sections: five figures, a stopped one with why, in flight, lan
   await expect(stopped).toContainText('The check still fails: pnpm test:e2e');
   await expect(stopped.getByRole('link', { name: 'Read why' })).toHaveAttribute(
     'href',
-    '/?branch=feature%2Fimport-feed&review',
+    '/?branch=feature%2Fimport-feed&run',
   );
 
   const flight = card(page, 'In flight').locator('.table-row');

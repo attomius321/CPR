@@ -936,6 +936,145 @@ button.workspace-about {
   --dot: var(--faint);
 }
 
+/* Hive's pill by the project's name (V92, decision 869; the kits' `.mode-pill`): Hive's crimson
+   as its identity, lit as the arrival ends. */
+.sidenav .hive-pill {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
+  padding: 0 8px 0 7px;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--hive) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hive) 40%, transparent);
+  color: var(--hive-text);
+  font-size: var(--size-caps);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sidenav .hive-pill svg {
+  width: 10px;
+  height: 10px;
+  fill: var(--hive);
+}
+
+/* Hive's groups (V92, decision 868; the kit's `.nav-group`): a name and its count, no icon. */
+.sidenav .hive-group h3 {
+  margin: 14px 8px 4px 10px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 500;
+}
+
+.sidenav .hive-group .workspace-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+/* A row of two lines (decision 869; the kit's `.ws`): the state's icon, the title; under it the
+   state's word in its tone, then the round and time. Landed: one line, when at its end. */
+.sidenav .workspace-row.hive-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 1px;
+  padding: 6px 10px 7px;
+  border-radius: 8px;
+  background: transparent;
+}
+
+.sidenav .workspace-row.hive-row + .workspace-row.hive-row {
+  margin-top: 0;
+}
+
+.sidenav .workspace-row.hive-row:hover {
+  background: var(--hover);
+}
+
+.sidenav .workspace-row.hive-row.picked {
+  background: var(--selected);
+}
+
+.sidenav .hive-row-icon {
+  display: inline-flex;
+  color: var(--hive-tone, var(--muted));
+}
+
+.sidenav .hive-row-icon .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.sidenav .hive-row[data-tone='run'] {
+  --hive-tone: var(--run);
+}
+
+.sidenav .hive-row[data-tone='ok'] {
+  --hive-tone: var(--ok);
+}
+
+.sidenav .hive-row[data-tone='fail'] {
+  --hive-tone: var(--error);
+}
+
+.sidenav .hive-row[data-tone='info'] {
+  --hive-tone: var(--info);
+}
+
+.sidenav .hive-row[data-tone='you'] {
+  --hive-tone: var(--you);
+}
+
+.sidenav .hive-row .workspace-about.hive-row-title {
+  display: block;
+  grid-column: 2 / -1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: var(--size-small);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  -webkit-line-clamp: unset;
+}
+
+.sidenav .hive-row.landed .workspace-about.hive-row-title {
+  grid-column: 2;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.sidenav .hive-row-state {
+  grid-column: 2 / -1;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sidenav .hive-row-state b {
+  color: var(--hive-tone, var(--muted));
+  font-weight: 500;
+}
+
+.sidenav .hive-row-time {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.sidenav .hive-none {
+  padding: 4px 10px 4px 36px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
 /* Folded (wide windows only): a rail of icons and each workspace's mark. */
 @media (min-width: 900px) {
   .sidenav.rail .sidenav-label,
@@ -954,6 +1093,8 @@ button.workspace-about {
   .sidenav.rail .workspaces-note,
   .sidenav.rail .sidenav-hint,
   .sidenav.rail .workspace-state,
+  .sidenav.rail .hive-row-time,
+  .sidenav.rail .hive-none,
   .sidenav.rail .workspace-head .kind-tag,
   .sidenav.rail .card-remove {
     display: none;
@@ -1071,5 +1212,12 @@ button.workspace-about {
     height: 1px;
     overflow: hidden;
     clip-path: inset(50%);
+  }
+
+  /* Hive's rows on the rail: the state's icon alone, its tip the rest (V92). */
+  .sidenav.rail .workspace-row.hive-row {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    padding: 8px 0;
   }
 }

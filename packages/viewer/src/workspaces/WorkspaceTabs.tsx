@@ -1,6 +1,6 @@
 // A workspace's tabs (V21, V29a, V45; named sessions since V89, decision 827): the agent's terminal
 // by its agent's name with a dot for its state, its views (thread, activity since V48, brief; a
-// Hive workspace's Review, HV3), then its shells, each with the program in its foreground and a
+// Hive workspace's Run, HV3, V92), then its shells, each with the program in its foreground and a
 // close button, and a new shell's button; at the strip's end, attaching images, Split and Focus.
 import type { ReactNode, RefObject } from 'react';
 import type { WorkspaceAgentState, WorkspaceShell } from '@symbiote/core';
@@ -10,7 +10,7 @@ import { terminalHint } from './workspaces.js';
 import { agentDot } from './workspace-steps.js';
 import { tip } from '../ui/tip.js';
 
-export type View = 'terminal' | 'thread' | 'activity' | 'brief' | 'review' | 'shell';
+export type View = 'terminal' | 'thread' | 'activity' | 'brief' | 'run' | 'shell';
 /** The agent's own tabs: a shell's is picked by its number. */
 export type AgentView = Exclude<View, 'shell'>;
 
@@ -18,7 +18,7 @@ const TAB_NAMES: Record<Exclude<AgentView, 'terminal'>, string> = {
   thread: 'Thread',
   activity: 'Activity',
   brief: 'Brief',
-  review: 'Review',
+  run: 'Run',
 };
 
 /** The strip of a workspace's tabs: `view` picked, a shell's by its number. */

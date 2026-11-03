@@ -26,8 +26,11 @@ describe('hiveRecord', () => {
       since: '2026-10-30T18:00:00.000Z',
     });
     expect(await hiveRecord(file).on()).toBe(true);
+    // When it was turned on (V92, Settings' "since").
+    expect(await record.since()).toBe('2026-10-30T18:00:00.000Z');
     await record.set(false);
     expect(await record.on()).toBe(false);
+    expect(await record.since()).toBeUndefined();
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ on: false });
   });
 
@@ -36,6 +39,7 @@ describe('hiveRecord', () => {
     for (const text of ['{', '[]', 'null', '{"on":"yes"}', '{"on":1}', '{}']) {
       writeFileSync(file, text);
       expect(await hiveRecord(file).on()).toBe(false);
+      expect(await hiveRecord(file).since()).toBeUndefined();
     }
   });
 
@@ -79,6 +83,7 @@ describe('repositoryHive', () => {
     expect(await hive.on()).toBe(false);
     await hive.set(true);
     expect(await hive.on()).toBe(true);
+    expect(await hive.since()).toBe('2026-10-30T20:00:00.000Z');
     expect(JSON.parse(readFileSync(join(one.root, 'symbiote', 'hive.json'), 'utf8'))).toEqual({
       on: true,
       since: '2026-10-30T20:00:00.000Z',

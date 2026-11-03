@@ -1892,6 +1892,11 @@ describe('workspaces', () => {
       [await gitIn(path, 'rev-parse', 'HEAD~1'), 'src/a.ts', 'A'],
     ]);
     expect(changes.commits.listed[0]?.date).toMatch(/^\d{4}-\d\d-\d\dT/);
+    // Each commit's lines (V92): a Hive round's writer, on the Run tab.
+    expect(changes.commits.listed.map((c) => [c.added, c.removed])).toEqual([
+      [1, 0],
+      [1, 0],
+    ]);
     expect(changes.files).toEqual({
       count: 2,
       added: 2,

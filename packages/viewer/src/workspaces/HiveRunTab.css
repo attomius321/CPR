@@ -1,0 +1,676 @@
+/* A Hive workspace's Run tab (V92, decisions 860–867; proofs 02, 03 and 07 of spikes/hive-redesign,
+   its run.css): a stop or a landing as a callout first, then each round on a timeline — a dot a
+   step on a hairline rail, the check's commands in one bordered box, a proven defect a card on a
+   faint red wash — the older rounds a line each. */
+.workspace-body > .run-tab {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: var(--card-pad);
+  overflow: auto;
+}
+
+/* A stop (red) or a landing (green): an icon, a title, why, then what to do. */
+.run-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.run-callout.is-fail {
+  background: color-mix(in srgb, var(--error) 6%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error) 35%, var(--line));
+}
+
+.run-callout.is-ok {
+  align-items: center;
+  background: color-mix(in srgb, var(--ok) 6%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 35%, var(--line));
+}
+
+.run-callout-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--height-control);
+  height: var(--height-control);
+  border-radius: 50%;
+}
+
+.run-callout.is-fail .run-callout-icon {
+  color: var(--error);
+}
+
+.run-callout.is-ok .run-callout-icon {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+}
+
+.run-callout-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.run-callout h2 {
+  margin: 0;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.run-callout p {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+/* The failing output: the terminal's own dark, in both themes, as the terminal is. */
+.run-output {
+  margin: 6px 0 2px;
+  padding: 10px 12px;
+  max-height: 240px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text);
+  font: var(--size-code) / 1.55 var(--mono);
+  white-space: pre-wrap;
+}
+
+.run-output-head {
+  font-weight: 600;
+}
+
+.run-faint {
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 400;
+}
+
+.run-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.run-line,
+.run-request {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.run-request a {
+  text-decoration: underline;
+}
+
+/* A round: its head, then its steps on a rail. */
+.run-round {
+  display: flex;
+  flex-direction: column;
+}
+
+.run-round-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0 10px;
+}
+
+.run-round-head h3 {
+  margin: 0;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.run-when {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.run-fold {
+  flex: none;
+}
+
+.run-items {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.run-item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  column-gap: 12px;
+  padding-bottom: 14px;
+}
+
+/* The rail from a step's dot to the next. */
+.run-item::before {
+  content: '';
+  position: absolute;
+  top: 26px;
+  bottom: 2px;
+  left: 11.5px;
+  width: 1px;
+  background: var(--line-2);
+}
+
+.run-item.last::before {
+  display: none;
+}
+
+.run-dot {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--muted);
+}
+
+.run-dot .icon {
+  width: 13px;
+  height: 13px;
+}
+
+.run-item.is-ok .run-dot {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 35%, transparent);
+}
+
+.run-item.is-run .run-dot {
+  color: var(--run);
+  background: color-mix(in srgb, var(--run) 12%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--run) 45%, transparent);
+}
+
+.run-item.is-fail .run-dot {
+  color: var(--error);
+  background: color-mix(in srgb, var(--error) 12%, var(--panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error) 40%, transparent);
+}
+
+.run-item.is-warning .run-dot {
+  color: var(--warning);
+}
+
+.run-item.is-todo .run-dot .icon {
+  color: var(--faint);
+}
+
+.run-item.is-todo .run-dot {
+  background: transparent;
+}
+
+.run-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-height: 24px;
+  min-width: 0;
+  font-size: var(--size-small);
+}
+
+.run-top b {
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.run-item.is-todo .run-top b {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.run-said {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.run-end {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.run-lines .add {
+  color: var(--ok);
+}
+
+.run-lines .del {
+  color: var(--error);
+}
+
+.run-content {
+  display: flex;
+  grid-column: 2;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 6px;
+}
+
+.run-full-log {
+  height: 24px;
+  padding: 0 6px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.run-full-log .icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* The writer's commits, a line each. */
+.run-commits {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--size-small);
+}
+
+.run-commits li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.run-commits .icon {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  color: var(--faint);
+}
+
+.run-commits code {
+  flex: none;
+  color: var(--muted);
+}
+
+.run-commits span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-more {
+  color: var(--muted);
+}
+
+/* The check's commands, in one bordered box; the one running washed amber. */
+.run-commands {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  list-style: none;
+}
+
+.run-command {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) minmax(0, 120px) auto;
+  align-items: center;
+  column-gap: 10px;
+  min-height: var(--height-control);
+  padding: 2px 12px;
+  border-top: 1px solid var(--line);
+  font-size: var(--size-small);
+}
+
+.run-command:first-child {
+  border-top: 0;
+}
+
+.run-command code {
+  overflow: hidden;
+  font: var(--size-code) / 1.4 var(--mono);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.run-command.is-running {
+  background: color-mix(in srgb, var(--run) 6%, transparent);
+}
+
+.run-command.is-waiting code,
+.run-command.is-skipped code {
+  color: var(--muted);
+}
+
+.run-mark {
+  display: inline-flex;
+}
+
+.run-mark .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.run-command.is-passed .run-mark {
+  color: var(--ok);
+}
+
+.run-command.is-failed .run-mark,
+.run-command.is-failed .run-command-note {
+  color: var(--error);
+}
+
+.run-command-note {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  text-align: right;
+}
+
+.run-time {
+  min-width: 56px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.run-spinner {
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid color-mix(in srgb, var(--run) 30%, transparent);
+  border-top-color: var(--run);
+  border-radius: 50%;
+  animation: run-spin 900ms linear infinite;
+}
+
+@keyframes run-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A bar against the last passing run; spent against the budget. */
+.run-bar {
+  display: block;
+  height: 4px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--raised);
+}
+
+.run-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 9999px;
+  background: var(--run);
+}
+
+/* The log's tail while the check runs: the terminal's dark, its last lines. */
+.run-log-tail {
+  margin: 0;
+  padding: 10px 12px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--muted);
+  font: var(--size-code) / 1.6 var(--mono);
+  white-space: pre;
+  text-overflow: ellipsis;
+}
+
+.run-tab .merge-log.run-log {
+  flex: none;
+  height: 360px;
+}
+
+.run-quote {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  line-height: 1.5;
+}
+
+.run-why {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* A proven defect: a card on a faint red wash. */
+.run-defect {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--error) 5%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error) 22%, var(--line));
+}
+
+.run-defect-what {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: var(--size-small);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.run-defect-what .status-label {
+  flex: none;
+}
+
+.run-defect-how {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.run-defect-how code {
+  color: var(--muted);
+  font: var(--size-caps) / 1.4 var(--mono);
+}
+
+.run-defect-rerun {
+  margin-left: auto;
+}
+
+.run-dropped {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* An older round folded to a line: a click opens it. */
+.run-folded {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: var(--height-table-line);
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--size-small);
+  text-align: left;
+  cursor: pointer;
+}
+
+.run-folded:hover {
+  background: var(--hover);
+}
+
+.run-folded b {
+  flex: none;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.run-folded .status-label {
+  flex: none;
+}
+
+.run-gist {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The side card's Run and Spend (decision 867). */
+.run-facts dd[data-tone='run'] {
+  color: var(--run);
+}
+
+.run-facts dd[data-tone='ok'] {
+  color: var(--ok);
+}
+
+.run-facts dd[data-tone='fail'] {
+  color: var(--error);
+}
+
+.run-facts dd[data-tone='info'] {
+  color: var(--info);
+}
+
+.run-facts dd {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.changes-section.run-spend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px var(--card-pad) 12px;
+}
+
+.changes-section.run-spend h2 {
+  margin: 0;
+  padding: 0;
+}
+
+.run-spend-top,
+.run-spend-split {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+}
+
+.run-spend-top b {
+  color: var(--text);
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+.run-spend .run-bar > i {
+  background: var(--muted);
+}
+
+.run-spend .run-bar.is-over > i {
+  background: var(--error);
+}
+
+/* Kept from the Review tab (HV3, HV8): a disclosure's summary and its text, what a review ran. */
+.hive-line {
+  margin: 0;
+  font-size: var(--size-small);
+  overflow-wrap: anywhere;
+}
+
+.hive-line.error {
+  color: var(--error);
+}
+
+.hive-more > summary {
+  width: fit-content;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.hive-more > summary:hover {
+  color: var(--text);
+}
+
+.hive-more pre {
+  max-height: 360px;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--bg);
+  font: var(--size-code) / 1.5 var(--mono);
+  white-space: pre;
+}
+
+.hive-ran {
+  margin: 6px 0 0;
+  font-size: var(--size-small);
+  white-space: pre-wrap;
+}
+
+/* The request Hive waits on (HV8), on the card's line: the forge's page, underlined. */
+.hive-request-link {
+  text-decoration: underline;
+}
+
+@media (max-width: 699px) {
+  .run-command {
+    grid-template-columns: 16px minmax(0, 1fr) auto;
+  }
+
+  .run-command-note {
+    display: none;
+  }
+
+  .run-tab .merge-log.run-log {
+    height: auto;
+  }
+}

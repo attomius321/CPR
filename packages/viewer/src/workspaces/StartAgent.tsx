@@ -261,3 +261,79 @@ export function StartAgent({
     </>
   );
 }
+
+/**
+ * The agent's rows in Hive mode (V92, decision 871): in the Where and who card, Claude Code and
+ * the model and level its session starts on, as selects; no permissions (Hive's, 773).
+ */
+export function StartAgentRows({
+  agent,
+  run,
+  model,
+  models,
+  effort,
+  efforts,
+  onChoose,
+}: {
+  agent: AgentOption;
+  run: RunChoices;
+  model: string | undefined;
+  models: ReturnType<typeof modelChoices>;
+  effort: string | undefined;
+  efforts: ReturnType<typeof effortChoices>;
+  onChoose: (run: RunChoices) => void;
+}) {
+  return (
+    <>
+      <div className="workspace-field start-row">
+        <span className="start-row-name">Agent</span>
+        <span className="start-value" {...tip(agent.command, { code: true })}>
+          <AgentMark kind={agent.kind} />
+          {AGENT_NAMES[agent.kind]}
+        </span>
+        {agent.apiKey && (
+          <p className="error start-row-note">
+            ANTHROPIC_API_KEY is set where symbiote view runs: the agent may use that key instead of{' '}
+            {agent.account ?? 'your account'}.
+          </p>
+        )}
+      </div>
+      {models.length > 0 && (
+        <div className="workspace-field start-row">
+          <label htmlFor="start-model">Model</label>
+          <select
+            id="start-model"
+            value={model ?? ''}
+            onChange={(event) => {
+              const next = event.target.value || undefined;
+              const kept = keptEffort(run.effort, agent, next);
+              onChoose(atLevel(onModel(run, next), kept));
+            }}
+          >
+            {models.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+      {efforts.length > 0 && (
+        <div className="workspace-field start-row">
+          <label htmlFor="start-effort">Effort</label>
+          <select
+            id="start-effort"
+            value={effort ?? ''}
+            onChange={(event) => onChoose(atLevel(run, event.target.value || undefined))}
+          >
+            {efforts.map((e) => (
+              <option key={e.value} value={e.value}>
+                {e.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </>
+  );
+}

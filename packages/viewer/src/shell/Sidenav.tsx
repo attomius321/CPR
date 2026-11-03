@@ -72,6 +72,7 @@ import { useSecondsWhile } from '../workspaces/clock.js';
 import { liveWords } from '../workspaces/hive-live.js';
 import { useHive } from './hive.js';
 import { HiveNowCard, HiveRailTime } from '../workspaces/HiveNow.js';
+import { HiveSidenavGroups } from './HiveSidenav.js';
 import { useStarts, type StartUnderWay } from '../workspaces/starting.js';
 import { useCardMoves } from '../workspaces/useCardMoves.js';
 import {
@@ -250,6 +251,15 @@ export function Sidenav({
           {/* The project's name alone beside the S (V88, the redesign's kits); Symbiote's only
               where there is no project. */}
           <span className="sidenav-label">{repo ?? 'Symbiote'}</span>
+          {/* Hive's pill (V92, decision 869): lit by the arrival's last step. */}
+          {hiveMode && (
+            <span className="hive-pill sidenav-label">
+              <svg viewBox="0 0 12 13" aria-hidden="true">
+                <polygon points="6,0.5 11.5,3.5 11.5,9.5 6,12.5 0.5,9.5 0.5,3.5" />
+              </svg>
+              Hive
+            </span>
+          )}
         </a>
         <button
           type="button"
@@ -426,7 +436,8 @@ export function Sidenav({
             : Symbiote does not answer. Trying again.
           </p>
         )}
-        {empty && (
+        {/* In Hive mode, In flight says it (V92): "Nothing yet: start a goal". */}
+        {empty && !hiveMode && (
           <p className="hint workspaces-empty">
             No workspaces yet.
             <Help label="About workspaces">
@@ -471,8 +482,21 @@ export function Sidenav({
               {...cards}
             />
           )}
+          {hiveMode && (
+            <HiveSidenavGroups
+              workspaces={list?.workspaces ?? []}
+              reviews={reviews}
+              folded={folded}
+              picked={cards.picked}
+              onPick={cards.onPick}
+              starting={starts.map((start) => (
+                <StartingCard key={start.branch} start={start} />
+              ))}
+            />
+          )}
           {GROUPS.map(([key, title, Icon]) => {
-            if (hiveMode && key !== 'hive' && key !== 'done') return null;
+            // Hive mode's groups are its own (V92, decision 868).
+            if (hiveMode) return null;
             // A workspace being made is at work: Hive's in Hive mode.
             const making = key === (hiveMode ? 'hive' : 'working') ? starts : [];
             return groups[key].length + making.length === 0 ? null : (

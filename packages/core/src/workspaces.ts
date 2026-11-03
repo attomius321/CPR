@@ -273,6 +273,13 @@ export interface HivePacingSetting {
 /** `GET /api/hive/state` (HV4): what turning Hive mode on or off concerns. */
 export interface HiveState {
   on: boolean;
+  /** When Hive was turned on, while it is on (V92). */
+  since?: string;
+  /**
+   * The check Hive would run now (V92, decision 872): the default checkout's, as the runner finds
+   * it (`merge.checks`, else one guessed from the repository), and where from; absent: none.
+   */
+  check?: { commands: string[]; source: string };
   /** Open workspaces started in normal mode and not merged: Hive does not turn on (decision 772). */
   normal: { branch: string; title?: string }[];
   /** Hive's workspaces writing, checking, reviewing or landing: what Hive off stops (771). */
@@ -735,6 +742,9 @@ export interface WorkspaceCommit {
   author: string;
   /** Author date, ISO 8601 with the author's offset. */
   date: string;
+  /** Its lines added and removed, binary files left out (V92: a Hive round's writer). */
+  added?: number;
+  removed?: number;
 }
 
 /** A file changed on a workspace's branch, or not committed in its worktree (V29d). */

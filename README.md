@@ -327,7 +327,9 @@ mode*, where you decide. You turn Hive on per repository, in **Settings**, **Hiv
 ![A workspace Hive landed: its Review tab with round 1 (check passed, 1 defect proven by a test) and round 2 (check passed, approved), then the landing in main, pushed](docs/images/hive.png)
 
 Start a project in normal mode, and turn Hive on once the repository has a check and tests you
-trust: what passes them lands without you. While Hive is on, the app turns warm ink with crimson
+trust: what passes them lands without you. Hive does not turn on without a check. Each workspace's
+**Run** tab shows its rounds as a timeline: the writer's commits, the check's commands and their
+times, the review's proven defects, and where it landed or why Hive stopped. While Hive is on, the app turns warm ink with crimson
 for Hive's own marks, and
 Nucleus, the agent [below](#nucleus-ask-about-your-repository), is called *Alpha Ceph*: the same
 agent, told what Hive does. Hive drives Claude Code only, and its reviews run on Linux only.

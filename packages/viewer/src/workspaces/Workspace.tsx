@@ -27,7 +27,8 @@ import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import { useNucleusName } from '../shell/names.js';
 import { ActivityTab } from './ActivityTab.js';
 import { BriefTab } from './BriefTab.js';
-import { HiveReviewTab, useHiveDetail } from './HiveReviewTab.js';
+import { HiveRunTab, RunFacts, useHiveDetail } from './HiveRunTab.js';
+import { viewOfSearch } from './tab-address.js';
 import { ChangesPanel, changedFiles, useChanges } from './ChangesPanel.js';
 import { useChangesPanel, useFocus } from './useChangesPanel.js';
 import { HeadSteps, Since } from './HeadSteps.js';
@@ -76,27 +77,8 @@ import { tip } from '../ui/tip.js';
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
 
-/**
- * `&thread`, `&terminal`, `&activity`, `&brief`, `&review` or `&shell=<n>`: the tab picked (V21; the
- * brief since V29a, a shell since V45, the activity since V48, a Hive workspace's Review since HV3);
- * without one, the terminal where one can run, else the thread.
- */
-const viewOfUrl = (): View | null => {
-  const params = new URLSearchParams(window.location.search);
-  return params.has('thread')
-    ? 'thread'
-    : params.has('terminal')
-      ? 'terminal'
-      : params.has('activity')
-        ? 'activity'
-        : params.has('brief')
-          ? 'brief'
-          : params.has('review')
-            ? 'review'
-            : shellOfUrl(window.location.search) !== null
-              ? 'shell'
-              : null;
-};
+/** The tab the address picks (`tab-address.ts`; `&run`, and `&review` before V92). */
+const viewOfUrl = (): View | null => viewOfSearch(window.location.search);
 
 /** A workspace's shells (V45): its terminals' IDs, so read with the page's header. */
 async function readShells(branch: string): Promise<WorkspaceShell[]> {
@@ -275,7 +257,7 @@ function WorkspacePanel({
       ? 'terminal'
       : chosen === 'terminal' && !terminals
         ? 'thread'
-        : shellGone || (chosen === 'review' && !workspace.hive)
+        : shellGone || (chosen === 'run' && !workspace.hive)
           ? fallback
           : (chosen ?? fallback);
   const showTerminal = terminals && view === 'terminal';
@@ -349,6 +331,13 @@ function WorkspacePanel({
       return;
     }
     if (view !== 'thread') show('thread');
+    requestAnimationFrame(() =>
+      document.querySelector<HTMLTextAreaElement>('.workspace .reply textarea')?.focus(),
+    );
+  };
+  /** Message the writer (V92, decision 865): the Thread's box, the one way to send it one. */
+  const message = () => {
+    show('thread');
     requestAnimationFrame(() =>
       document.querySelector<HTMLTextAreaElement>('.workspace .reply textarea')?.focus(),
     );
@@ -615,8 +604,8 @@ function WorkspacePanel({
     'thread',
     'activity',
     'brief',
-    // A workspace Hive drives (HV3): its rounds and its landings.
-    ...(workspace.hive ? (['review'] as const) : []),
+    // A workspace Hive drives (HV3): its run, its rounds and its landing (V92: Run).
+    ...(workspace.hive ? (['run'] as const) : []),
   ];
   // In Hive mode Hive lands a workspace it drives (HV4, decision 774): no review of the person's.
   const hiveLands = hiveDrives;
@@ -839,8 +828,14 @@ function WorkspacePanel({
                 <ActivityTab workspace={workspace} thread={thread} version={version} />
               </div>
             )}
-            {view === 'review' && (
-              <HiveReviewTab branch={branch} detail={hive.detail} error={hive.error} />
+            {view === 'run' && (
+              <HiveRunTab
+                workspace={workspace}
+                detail={hive.detail}
+                error={hive.error}
+                commits={read?.commits.listed ?? []}
+                onMessage={message}
+              />
             )}
             {view === 'brief' && (
               <BriefTab
@@ -1011,7 +1006,13 @@ function WorkspacePanel({
             changes={changes}
             onPicked={() => setPicks((n) => n + 1)}
             editing={editing}
-            now={<NowSection row={row} bar={bar} shells={shellsRunning} />}
+            now={
+              view === 'run' ? (
+                <RunFacts workspace={workspace} detail={hive.detail} />
+              ) : (
+                <NowSection row={row} bar={bar} shells={shellsRunning} />
+              )
+            }
             onSaid={setSaid}
           />
         )}

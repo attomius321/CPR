@@ -227,6 +227,11 @@ export interface ViewServerOptions {
   /** Enables `/api/hive` (V82): Hive mode, on every page from its first paint. */
   hive?: HiveRecord;
   /**
+   * The check Hive would run (V92, decision 872), for `/api/hive/state`: the default checkout's
+   * (`projectCheck`); null when none is set or found.
+   */
+  hiveCheck?: () => Promise<{ commands: string[]; source: string } | null>;
+  /**
    * Enables `/api/nucleus/start-confirm` (NU8): the person's setting with which Nucleus's
    * `start_workspace` goes without a Confirm, on while `hive` is; the MCP reads it at each call.
    */
@@ -425,7 +430,16 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (url.pathname === '/api/hive/state' && options.hive) {
       if (req.method !== 'GET') return send(res, 405, 'method not allowed');
       const hive = options.hive;
-      return answer(res, async () => ({ on: await hive.on(), ...(await hiveState()) }));
+      return answer(res, async () => {
+        const [on, since, state, check] = await Promise.all([
+          hive.on(),
+          sinceOf(hive),
+          hiveState(),
+          // A check that cannot be read is none: the question says so (V92).
+          options.hiveCheck?.().catch(() => null) ?? Promise.resolve(null),
+        ]);
+        return { on, ...(since ? { since } : {}), ...state, ...(check ? { check } : {}) };
+      });
     }
     const landing = options.hiveLanding;
     if (landing && url.pathname === '/api/hive/landing') {
@@ -1551,12 +1565,20 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   }
 
   /** `GET /api/hive`: `{ on }`; `POST { on }`: Hive mode turned on or off (V82). */
+  /** When Hive was turned on, while on (V92); a record that cannot say is none. */
+  async function sinceOf(hive: HiveRecord): Promise<string | undefined> {
+    return hive.since?.().catch(() => undefined);
+  }
+
   async function hiveApi(
     req: IncomingMessage,
     res: ServerResponse,
     hive: HiveRecord,
   ): Promise<void> {
-    if (req.method === 'GET') return json(res, 200, { on: await hive.on() });
+    if (req.method === 'GET') {
+      const [on, since] = await Promise.all([hive.on(), sinceOf(hive)]);
+      return json(res, 200, { on, ...(since ? { since } : {}) });
+    }
     return written(req, res, parseHiveChange, ({ on }) =>
       answer(res, async () => {
         // Not while a workspace is in normal mode (HV4, decision 772): every open one is Hive's.

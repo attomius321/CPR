@@ -30,7 +30,8 @@ const GITHUB = 'https://github.com/acme/app.git';
 const git = (cwd: string, ...args: string[]) =>
   execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 const card = (page: Page) => page.locator(`.sidenav .workspace-row[data-branch="${BRANCH}"]`);
-const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
+// In Hive mode the start page is New goal (V92, decision 871).
+const startPage = (page: Page) => page.getByRole('region', { name: 'New goal' });
 const hive = (page: Page, on: boolean) =>
   page.evaluate(async (on) => {
     const response = await fetch('/api/hive', {
@@ -77,7 +78,7 @@ test('by a pull request: opened at landing, waits for your merge with its link, 
   await startPage(page).getByRole('textbox', { name: 'Title' }).fill('One');
   await startPage(page).getByRole('textbox', { name: 'Goal' }).fill('one.txt says one.');
   await startPage(page).getByRole('textbox', { name: 'Branch name', exact: true }).fill(BRANCH);
-  await startPage(page).getByRole('button', { name: 'Start workspace' }).click();
+  await startPage(page).getByRole('button', { name: 'Start goal' }).click();
   await expect(startPage(page)).toBeHidden();
   const main = git(symbiote.repo, 'rev-parse', 'main');
 
@@ -93,38 +94,34 @@ test('by a pull request: opened at landing, waits for your merge with its link, 
   expect(forge.requests[0]?.body).toContain('one.txt says one.');
   expect(forge.requests[0]?.body).toMatch(/Approved by Hive at [0-9a-f]{7}/);
 
-  // The card: in Hive's group, waiting for the person's merge, the request a link.
-  await expect(card(page)).toContainText('Waiting for your merge: #12 on GitHub', {
-    timeout: 20_000,
-  });
-  const link = card(page).getByRole('link', { name: '#12 on GitHub' });
-  await expect(link).toHaveAttribute('href', 'https://github.com/acme/app/pull/12');
-  await expect(link).toHaveAttribute('target', '_blank');
+  // The row: waiting for the person's merge, the person's turn (V92); the link is the Run tab's.
+  await expect(card(page).locator('.hive-row-state')).toHaveText(
+    'Waiting for your merge · #12 on GitHub',
+    { timeout: 20_000 },
+  );
+  await expect(card(page)).toHaveAttribute('data-tone', 'you');
   // Nothing landed locally: main neither moved nor pushed.
   expect(git(symbiote.repo, 'rev-parse', 'main')).toBe(main);
   expect(git(forge.remote, 'rev-parse', 'main')).toBe(main);
 
-  // The Review tab: the request beside the landings.
+  // The Run tab: the request above the rounds, its link the forge's page.
   await card(page).getByRole('button', { name: 'One' }).click();
   const tabs = page.getByRole('tablist', { name: 'Talk to the agent' });
-  await tabs.getByRole('tab', { name: 'Review' }).click();
-  const landings = page.getByRole('region', { name: 'Landings' });
-  const request = landings.getByLabel('Pull request #12 on GitHub');
+  await tabs.getByRole('tab', { name: 'Run' }).click();
+  const request = page.locator('.run-tab').getByLabel('Pull request #12 on GitHub');
   await expect(request).toContainText('Open: waiting for your merge');
-  await expect(request.getByRole('link', { name: '#12 on GitHub' })).toHaveAttribute(
-    'href',
-    'https://github.com/acme/app/pull/12',
-  );
-  await expect(page.locator('.hive-now')).toHaveText('Waiting for your merge: #12 on GitHub');
+  const link = request.getByRole('link', { name: '#12 on GitHub' });
+  await expect(link).toHaveAttribute('href', 'https://github.com/acme/app/pull/12');
+  await expect(link).toHaveAttribute('target', '_blank');
 
   // The person merges it on the forge: landed, main fast-forwarded to the forge's merge.
   const merge = forge.merge(12);
-  await expect(card(page)).toContainText('Landed in main on GitHub · #12', { timeout: 20_000 });
-  await expect(
-    page.locator('.sidenav').getByRole('region', { name: 'Done' }).locator('.workspace-row'),
-  ).toHaveCount(1);
+  const today = page.locator('.sidenav').getByRole('region', { name: 'Landed today' });
+  await expect(today.locator('.hive-row')).toHaveCount(1, { timeout: 20_000 });
   expect(git(symbiote.repo, 'rev-parse', 'main')).toBe(merge);
-  await expect(request).toContainText('Merged');
+  await expect(
+    page.locator('.run-tab').getByRole('status', { name: 'Landed in main' }),
+  ).toContainText('Merged on GitHub through #12');
   expect(forge.requests).toHaveLength(1);
 });
 
@@ -133,32 +130,33 @@ test('Settings: Hive lands by, with the forge origin names and whether a token i
 }) => {
   symbiote = await serveWorkspaces({ env: { GITHUB_TOKEN: 'ghp_fake' } });
   await page.goto(`${symbiote.url}settings?prompt=hive-mode`);
-  const part = page.getByRole('region', { name: 'Hive lands by' });
-  const queue = part.getByRole('button', { name: 'The merge queue' });
-  const request = part.getByRole('button', { name: 'A pull or merge request' });
+  // V92: Landing's rows on Settings' Hive mode page.
+  const part = page.getByRole('region', { name: 'Hive mode' }).getByRole('group', {
+    name: 'Landing',
+  });
+  const queue = part.getByRole('button', { name: 'Merge queue' });
+  const request = part.getByRole('button', { name: 'Pull request' });
+  const requests = part.getByRole('group', { name: 'Pull and merge requests' });
   await expect(queue).toHaveAttribute('aria-pressed', 'true');
-  await expect(part).toContainText('through the merge queue');
-  // origin is a folder: no forge to open a request on.
-  await expect(part).toContainText(
-    'Hive cannot open a request now: origin is not a GitHub or GitLab repository',
-  );
+  await expect(part).toContainText('Into the branch the workspace started from');
+  // origin is a folder, and the merge queue picked: no row for requests.
+  await expect(requests).toHaveCount(0);
   await request.click();
   await expect(request).toHaveAttribute('aria-pressed', 'true');
   await expect(part).toContainText('your merge lands it');
-  // The page's warning says it too.
-  await expect(page.locator('.hive-warning')).toContainText(
-    'opens a pull or merge request into the branch the workspace started from',
+  await expect(requests).toContainText('origin names no GitHub or GitLab project');
+  await expect(requests.locator('.hive-value.is-warning')).toContainText(
+    'origin is not a GitHub or GitLab repository',
   );
-  await expect(part.locator('.hive-lands-forge.cannot')).toBeVisible();
   expect(JSON.parse(readFileSync(config(), 'utf8'))).toMatchObject({ hive: { lands: 'request' } });
 
   originOnGitHub();
   await page.reload();
   await expect(request).toHaveAttribute('aria-pressed', 'true');
-  await expect(part).toContainText('origin is acme/app on GitHub; a token is found.');
-  await expect(part.locator('.hive-lands-forge.cannot')).toHaveCount(0);
+  await expect(requests).toContainText('origin is acme/app on GitHub');
+  await expect(requests.locator('.hive-value.is-ok')).toHaveText('A token is found');
   await queue.click();
   await expect(queue).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.hive-warning')).toContainText('through the merge queue');
+  await expect(part).toContainText('both branches are pushed');
   expect(JSON.parse(readFileSync(config(), 'utf8'))).not.toHaveProperty('hive');
 });

@@ -263,18 +263,279 @@
   }
 }
 
-/* --- Hive's arrival (decision 673; V88, decision 816): the Mind and a hex shutter; then still --- */
+/* --- Hive's arrival (V92, decision 874; supersedes 816): 1.4 s in one View Transition --- */
 
-/* The shutter over the whole window, the question's too, under the window's edge (frame.css,
-   100); drawn at most 0.9 megapixels and stretched. */
-.hive-flood {
+/* Its layers, each a group of the transition: the question and its dim (in both states), the Mind
+   lifted from the art, a glow behind it, the ring at the circle's edge (new only). The ring lies
+   under the dim and the Mind over the question, as the prototype stacks them. */
+.hq-backdrop {
+  view-transition-name: hive-dim;
+}
+
+.hq {
+  view-transition-name: hive-question;
+}
+
+.hive-arrival-ring,
+.hive-arrival-glow,
+.hive-arrival-mind {
   position: fixed;
-  inset: 0;
-  z-index: 90;
-  display: block;
-  width: 100%;
-  height: 100%;
   pointer-events: none;
+}
+
+.hive-arrival-ring {
+  view-transition-name: hive-ring;
+  z-index: 29;
+  border-radius: 50%;
+  /* At about a third of the circle's last size: the line and its light are drawn that much
+     thinner, and scale to the prototype's 1.5 px, 24 px and 40 px. */
+  box-shadow:
+    0 0 0 0.5px rgb(255 120 140 / 90%),
+    0 0 8px 2px rgb(229 36 63 / 45%),
+    inset 0 0 14px 2px rgb(229 36 63 / 22%);
+}
+
+/* The Mind's light: a gradient drawn once, faded in and out (no filter while it moves, 631). */
+.hive-arrival-glow {
+  view-transition-name: hive-glow;
+  z-index: 31;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    rgb(255 60 85 / 55%),
+    rgb(229 36 63 / 25%) 55%,
+    transparent
+  );
+}
+
+.hive-arrival-mind {
+  view-transition-name: hive-mind;
+  z-index: 32;
+  width: 128px;
+  height: 128px;
+  border-radius: 50%;
+}
+
+/* No group moves of its own: each layer is where it was, moved only by its own animation. */
+:root[data-hive-arrival]::view-transition-group(*) {
+  animation: none;
+}
+
+:root[data-hive-arrival]::view-transition-old(root) {
+  animation: none;
+}
+
+/* Hive's look opens from the Mind in a growing circle (0.56–1.18 s): the one clip-path. */
+:root[data-hive-arrival]::view-transition-new(root) {
+  animation: hive-reveal 620ms 560ms cubic-bezier(0.6, 0, 0.3, 1) both;
+}
+
+/* The question and its dim as they were: live in their new layers, the old ones never shown. */
+:root[data-hive-arrival]::view-transition-old(hive-question),
+:root[data-hive-arrival]::view-transition-old(hive-dim) {
+  display: none;
+}
+
+/* The question folds into the Mind (0.39–0.53 s). */
+:root[data-hive-arrival]::view-transition-new(hive-question) {
+  animation: hive-fold 140ms 390ms cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+:root[data-hive-arrival]::view-transition-new(hive-dim) {
+  animation: hive-undim 320ms 540ms ease-out both;
+}
+
+:root[data-hive-arrival]::view-transition-new(hive-mind) {
+  animation: hive-lift 460ms 380ms cubic-bezier(0.2, 0, 0.2, 1) both;
+}
+
+:root[data-hive-arrival]::view-transition-new(hive-glow) {
+  animation: hive-light 460ms 380ms cubic-bezier(0.2, 0, 0.2, 1) both;
+}
+
+:root[data-hive-arrival]::view-transition-new(hive-ring) {
+  animation: hive-ring 620ms 560ms cubic-bezier(0.6, 0, 0.3, 1) both;
+}
+
+@keyframes hive-reveal {
+  from {
+    clip-path: circle(0 at var(--hive-mx) var(--hive-my));
+  }
+
+  to {
+    clip-path: circle(var(--hive-reach) at var(--hive-mx) var(--hive-my));
+  }
+}
+
+@keyframes hive-fold {
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes hive-undim {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes hive-lift {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  45% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+@keyframes hive-light {
+  0% {
+    opacity: 0;
+    transform: scale(1);
+  }
+
+  45% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(1.9);
+  }
+}
+
+@keyframes hive-ring {
+  0% {
+    opacity: 1;
+    transform: scale(0);
+  }
+
+  85% {
+    opacity: 0.8;
+  }
+
+  100% {
+    opacity: 0;
+    transform: scale(var(--hive-ring));
+  }
+}
+
+/* The steps arm (0–0.42 s), live in the question's layer: each hexagon lit, then its wire. */
+.hq.arming .hq-step .hq-hex polygon {
+  animation: hq-arm 140ms both;
+}
+
+.hq.arming .hq-step .hq-node .icon {
+  animation: hq-arm-icon 140ms both;
+}
+
+.hq.arming .hq-step .hq-wire i {
+  animation: hq-wire 100ms 40ms both;
+}
+
+.hq.arming .hq-step:nth-child(2) :is(.hq-hex polygon, .hq-node .icon) {
+  animation-delay: 100ms;
+}
+
+.hq.arming .hq-step:nth-child(3) :is(.hq-hex polygon, .hq-node .icon) {
+  animation-delay: 200ms;
+}
+
+.hq.arming .hq-step:nth-child(4) :is(.hq-hex polygon, .hq-node .icon) {
+  animation-delay: 300ms;
+}
+
+.hq.arming .hq-step:nth-child(2) .hq-wire i {
+  animation-delay: 140ms;
+}
+
+.hq.arming .hq-step:nth-child(3) .hq-wire i {
+  animation-delay: 240ms;
+}
+
+.hq.arming .hq-turn-on {
+  animation: hq-press 160ms both;
+}
+
+@keyframes hq-arm {
+  to {
+    fill: rgb(229 36 63 / 30%);
+    stroke: #ff6a7e;
+  }
+}
+
+@keyframes hq-arm-icon {
+  to {
+    color: #ffd2d8;
+  }
+}
+
+@keyframes hq-wire {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes hq-press {
+  50% {
+    transform: scale(0.97);
+  }
+}
+
+/* The Hive pill lights (1.16–1.54 s): it comes up, a light sweeps it. */
+:root[data-hive-arriving] .sidenav .hive-pill {
+  animation: hive-pill-on 380ms 1160ms both;
+}
+
+:root[data-hive-arriving] .sidenav .hive-pill::after {
+  animation: hive-pill-sweep 380ms 1160ms ease-in-out both;
+}
+
+.sidenav .hive-pill {
+  position: relative;
+  overflow: hidden;
+}
+
+.sidenav .hive-pill::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 34px;
+  background: linear-gradient(90deg, transparent, rgb(255 210 216 / 85%), transparent);
+  opacity: 0;
+  transform: translateX(-40px) skewX(-20deg);
+}
+
+@keyframes hive-pill-on {
+  from {
+    opacity: 0.35;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes hive-pill-sweep {
+  from {
+    opacity: 1;
+    transform: translateX(-40px) skewX(-20deg);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(100px) skewX(-20deg);
+  }
 }
 
 /* Off: the page fades to main's look (a view transition). */
@@ -298,80 +559,189 @@
   color: var(--hive-text);
 }
 
-/* What Hive will do (V88): a neutral note, as the kit's; not a failure, so not the error's red. */
-.hive-warning {
-  display: flex;
-  gap: 12px;
-  margin: 0 0 var(--field-gap);
-  padding: 14px var(--card-pad);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--raised);
+/* Settings' Hive mode page (V92, decision 870; proofs 04-settings and normal mode's
+   11-settings-hive): a callout, then grouped rows — a name and one line of help at the left, the
+   control at the right — in one bordered box a group, a hairline between rows. */
+.hive-page .settings-head .hive-for {
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 400;
 }
 
-.hive-warning > .icon {
+.hive-page .settings-head .button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.hive-callout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.hive-callout > .icon {
   flex: none;
   width: 18px;
   height: 18px;
-  margin-top: 2px;
-  color: var(--warning);
+  color: var(--muted);
 }
 
-.hive-warning p {
+.hive-callout p {
   margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  line-height: 1.5;
 }
 
-.hive-warning strong {
-  display: block;
-  margin-bottom: 4px;
+.hive-callout strong {
   color: var(--text);
   font-weight: 600;
 }
 
-.hive-control {
+/* Hive's four steps, at rest: hexagons on a line. */
+.hive-callout-track {
   display: flex;
-  flex-wrap: wrap;
+  flex: none;
   align-items: center;
-  gap: 8px 12px;
-}
-
-.hive-control .settings-row-note {
-  margin: 0;
-}
-
-/* How Hive lands (HV8): a part of the page under the switch, a hairline between. */
-.hive-lands {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
   gap: 8px;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
 }
 
-.hive-lands h3 {
-  margin: 0;
+.hive-callout-track svg {
+  width: 13px;
+  height: 14px;
+  fill: none;
+  stroke: var(--line-2);
+  stroke-width: 1.2;
+}
+
+.hive-group-set {
+  margin: 0 0 18px;
+}
+
+.hive-group-set h3 {
+  margin: 0 0 8px;
   font-size: var(--size-body);
   font-weight: 600;
 }
 
-.hive-lands .settings-row-note {
-  margin: 0;
+.hive-group-set h3 span {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 400;
 }
 
-/* With a request picked and none can be opened: why, in the error's colour. */
-.hive-lands-forge.cannot {
+.hive-settings {
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.hive-setting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-height: var(--height-tall);
+  padding: 10px 14px;
+}
+
+.hive-setting + .hive-setting {
+  border-top: 1px solid var(--line);
+}
+
+.hive-setting-words {
+  display: flex;
+  flex: 1 1 280px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hive-setting-name {
+  font-weight: 500;
+}
+
+.hive-setting-help {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.hive-setting-help.is-fail {
   color: var(--error);
 }
 
-/* Hive's pacing (HV5): the threshold, the pause now, the budget, as "Hive lands by" is laid. */
-.hive-pacing h3:not(:first-child) {
-  margin-top: 8px;
+.hive-setting-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
-.hive-paused-now {
-  color: var(--info);
+.hive-setting-control select {
+  min-width: 116px;
+}
+
+.hive-setting-control .scope .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.hive-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.hive-value .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.hive-value.is-ok {
+  color: var(--ok);
+}
+
+.hive-value.is-warning {
+  color: var(--warning);
+}
+
+.hive-commands {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.hive-commands code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--size-caption);
+}
+
+.hive-foot {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.hive-foot > .icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
 }
 
 .hive-budget {
@@ -419,66 +789,242 @@
   backdrop-filter: none;
 }
 
-.dialog.hive-ink > * {
+/* V92 (decision 873; proof 09-turn-on): 600 px, the art its head, the words under it, a foot. */
+.dialog.hive-ink.hq {
+  width: min(600px, 100%);
+  padding: 0;
+  border-radius: 14px;
+}
+
+.hq > * {
   position: relative;
 }
 
 /* The art: the dialog's width, faded at its lower edge into the question. */
 .hive-joining {
   display: block;
-  width: calc(100% + 2 * var(--card-pad));
+  width: 100%;
   height: auto;
   aspect-ratio: 520 / 128;
-  margin: 0 calc(-1 * var(--card-pad)) 4px;
-  mask-image: linear-gradient(#000 72%, transparent);
+  mask-image: linear-gradient(#000 76%, transparent);
 }
 
-.dialog.hive-ink h2 {
+.hq-body {
   display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 6px 24px 18px;
+}
+
+.hq-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.dialog.hive-ink .hq-title h2 {
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+.hq-title span {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.dialog.hive-ink .hq-lede {
+  margin: -6px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+/* What Hive will do: the four steps on hexagons, a wire to the next. */
+.hq-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin: 0;
+  padding: 14px 0 2px;
+  border-top: 1px solid var(--line);
+  list-style: none;
+}
+
+.hq-step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-right: 12px;
+}
+
+.hq-node {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 26px;
+  margin-bottom: 4px;
+}
+
+.hq-hex {
+  position: absolute;
+  inset: 0;
+  width: 24px;
+  height: 26px;
+}
+
+.hq-hex polygon {
+  fill: var(--raised);
+  stroke: var(--line-2);
+  stroke-width: 1.5;
+}
+
+.hq-node .icon {
+  position: relative;
+  width: 12px;
+  height: 12px;
+  color: var(--muted);
+}
+
+.hq-wire {
+  position: absolute;
+  top: 12px;
+  right: 6px;
+  left: 30px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--line-2);
+}
+
+.hq-wire i {
+  display: block;
+  height: 100%;
+  background: var(--hive);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.hq-step b {
+  font-size: var(--size-small);
+  font-weight: 600;
+}
+
+.hq-step span {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  line-height: 1.4;
+}
+
+.dialog.hive-ink h3.hq-label {
+  margin: 2px 0 -6px;
+  color: var(--muted);
+  font-size: var(--size-caps);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* Before it starts: a row a check, its mark, its words, what it found. */
+.hq-ready {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  list-style: none;
+}
+
+.hq-r {
+  display: grid;
+  grid-template-columns: 16px auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  min-height: var(--height-control);
+  padding: 7px 12px;
+  border-top: 1px solid var(--line);
+  font-size: var(--size-small);
+}
+
+.hq-r:first-child {
+  border-top: 0;
+}
+
+.hq-mark {
+  display: inline-flex;
+}
+
+.hq-mark .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.hq-r.is-ok .hq-mark {
+  color: var(--ok);
+}
+
+.hq-r.is-fail .hq-mark {
+  color: var(--error);
+}
+
+.hq-r.is-warn .hq-mark {
+  color: var(--error);
+}
+
+.hq-r.is-fail {
+  background: color-mix(in srgb, var(--error) 7%, transparent);
+}
+
+.hq-r-detail {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  text-align: right;
+}
+
+.hq-names {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 2 / -1;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.dialog.hive-ink .hq-note {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.hq-foot {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
+  padding: 12px 16px 12px 24px;
+  border-top: 1px solid var(--line);
+  background: var(--side);
 }
 
-.dialog.hive-ink h2 .icon {
-  width: 18px;
-  height: 18px;
-  color: var(--hive);
-}
-
-.dialog.hive-ink p {
+.hq-foot > span {
+  margin-right: auto;
   color: var(--muted);
+  font-size: var(--size-caption);
 }
 
-/* HV4 (decision 772): the workspaces in normal mode that keep Hive off, named under the question. */
-.hive-refused {
-  margin: 4px 0 0;
-  padding: 8px 12px;
-  border: 1px solid color-mix(in srgb, var(--error) 35%, transparent);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--error) 8%, transparent);
-}
-
-.dialog.hive-ink .hive-refused p {
-  margin: 0 0 4px;
-  color: var(--text);
-}
-
-.hive-refused ul,
-.hive-off-list {
-  display: grid;
-  gap: 4px;
-  margin: 0;
-  padding-left: 20px;
-}
-
-.hive-refused code {
-  margin-left: 8px;
-  color: var(--muted);
+.hq-foot .button .icon {
+  width: 14px;
+  height: 14px;
 }
 
 /* HV4 (decision 771): what turning Hive off does to each workspace at work. */
 .hive-off-list {
+  display: grid;
+  gap: 4px;
   margin: 0 0 8px;
+  padding-left: 20px;
   color: var(--muted);
 }
 
