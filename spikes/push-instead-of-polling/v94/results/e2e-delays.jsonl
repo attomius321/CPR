@@ -1,0 +1,14 @@
+{"kind":"an agent asks","working":true,"ms":108}
+{"kind":"its commit","working":true,"ms":74}
+{"kind":"the person's commit","working":true,"ms":91}
+{"kind":"a review from another process","working":true,"ms":70}
+{"kind":"an ask","working":true,"ms":67}
+{"kind":"an agent asks","working":false,"ms":111}
+{"kind":"its commit","working":false,"ms":74}
+{"kind":"the person's commit","working":false,"ms":90}
+{"kind":"a review from another process","working":false,"ms":69}
+{"kind":"an ask","working":false,"ms":44}
+{"kind":"the server stopped 3 s: a change meanwhile","ms":78}
+{"kind":"a restart on its port: a change while down","ms":829}
+{"kind":"a merge's step: checking","ms":240}
+{"kind":"a merge's step: landed","ms":39}

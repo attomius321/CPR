@@ -26,6 +26,42 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { workspaces, readWorkspaceConfig } from '../src/workspaces.js';
+
+/** Git's reads of a workspace's commits, counted (V94d): each passes on to core's own. */
+const gitCalls = vi.hoisted(() => ({
+  commitsBetween: 0,
+  isAncestor: 0,
+  isCommit: 0,
+  uncommittedFiles: 0,
+}));
+vi.mock('@symbiote/core', async (original) => {
+  const real = await original<typeof import('@symbiote/core')>();
+  return {
+    ...real,
+    commitsBetween: (...args: Parameters<typeof real.commitsBetween>) => {
+      gitCalls.commitsBetween += 1;
+      return real.commitsBetween(...args);
+    },
+    isAncestor: (...args: Parameters<typeof real.isAncestor>) => {
+      gitCalls.isAncestor += 1;
+      return real.isAncestor(...args);
+    },
+    isCommit: (...args: Parameters<typeof real.isCommit>) => {
+      gitCalls.isCommit += 1;
+      return real.isCommit(...args);
+    },
+    uncommittedFiles: (...args: Parameters<typeof real.uncommittedFiles>) => {
+      gitCalls.uncommittedFiles += 1;
+      return real.uncommittedFiles(...args);
+    },
+  };
+});
+const resetGitCalls = () => {
+  gitCalls.commitsBetween = 0;
+  gitCalls.isAncestor = 0;
+  gitCalls.isCommit = 0;
+  gitCalls.uncommittedFiles = 0;
+};
 import { MAX_DOCUMENT_BYTES } from '../src/workspace-documents.js';
 import {
   workspaceBase,
@@ -2082,6 +2118,21 @@ describe('workspaces', () => {
     });
   });
 
+  it("runs no git for a workspace's commits while nothing they are counted from moved (V94d)", async () => {
+    const { repo } = fresh();
+    const s = await service(repo, fakeClaude().claude);
+    const { workspace } = await s.start({ brief: 'One', branch: 'feature/one', planFirst: false });
+    await s.list();
+    resetGitCalls();
+    // A hook's write reads the list again: its commits are as they were.
+    await s.list();
+    expect(gitCalls).toMatchObject({ commitsBetween: 0, isAncestor: 0, isCommit: 0 });
+    // Its agent commits: counted again.
+    await commitIn(workspace.worktree.path, 'src/c.ts', 'export const c = 1;\n');
+    expect((await s.list()).workspaces[0]?.ahead).toBe(1);
+    expect(gitCalls.commitsBetween).toBe(1);
+  });
+
   it('counts the commits a workspace lists from its fork point, as its changes and Review do', async () => {
     const { repo, shas } = fresh();
     const s = await service(repo, fakeClaude().claude);
@@ -4089,6 +4140,33 @@ describe('workspaces', () => {
 });
 
 describe('claudeCode', () => {
+  it("keeps the page's stream's read 6 s, any other 2 s (V94d)", async () => {
+    vi.useFakeTimers();
+    try {
+      let reads = 0;
+      const run: Run = (_command, args) => {
+        if (args[0] === 'agents') reads += 1;
+        return Promise.resolve({ code: 0, stdout: '[]', stderr: '' });
+      };
+      const claude = claudeCode('/usr/bin/claude', { run, cwd: '/repo' });
+      await claude.sessions();
+      vi.advanceTimersByTime(2_500);
+      await claude.sessions();
+      expect(reads).toBe(2);
+      // The page's stream reads it anew every 5 s while an agent works: a list read for the
+      // workspaces between two of its reads takes it.
+      await claude.sessions({ fresh: true, keepMs: 6_000 });
+      vi.advanceTimersByTime(5_500);
+      await claude.sessions();
+      expect(reads).toBe(3);
+      vi.advanceTimersByTime(1_000);
+      await claude.sessions();
+      expect(reads).toBe(4);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   // A reply such as "- also fix the tests" was read as an unknown option: the session woke with
   // no message and Symbiote said it was sent; "--version" ran as the flag (fix/security-and-bugs).
   it("gives a prompt or a message after --, whatever it starts with: never one of Claude Code's options", async () => {

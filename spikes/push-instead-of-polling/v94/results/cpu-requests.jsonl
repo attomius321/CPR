@@ -1,0 +1,3 @@
+{"label":"main-polling","minutes":5.03,"hooks":89,"cpuOwnPerMin":6319,"cpuChildrenPerMin":9505,"cpuPerMin":15824,"requestsPerMin":95.9,"kbPerMin":0}
+{"label":"branch-push","minutes":5.03,"hooks":89,"cpuOwnPerMin":915,"cpuChildrenPerMin":2214,"cpuPerMin":3129,"requestsPerMin":8.4,"kbPerMin":0}
+{"label":"branch-poll","minutes":5.02,"hooks":89,"cpuOwnPerMin":1292,"cpuChildrenPerMin":2220,"cpuPerMin":3512,"requestsPerMin":112.3,"kbPerMin":0}

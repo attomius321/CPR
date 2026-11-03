@@ -889,7 +889,7 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       usage,
       // Changes from outside (V94c): git's refs, and Claude Code's list read anew.
       gitDir: repo.commonDir,
-      sessions: async () => (await claudeOf())?.sessions({ fresh: true }) ?? null,
+      sessions: async () => (await claudeOf())?.sessions({ fresh: true, keepMs: 6_000 }) ?? null,
       codexStatus: async (onChange) => {
         const server = await (await codexOf())?.server();
         return server ? server.watch(onChange) : null;

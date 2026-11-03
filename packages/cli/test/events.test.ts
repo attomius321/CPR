@@ -511,6 +511,18 @@ describe('changes from outside (V94c, decisions 904–906)', () => {
     second.close();
   });
 
+  it("reads the parts on the list's first read too: it may have moved since they were read", async () => {
+    const t = await outside(working);
+    const page = await listen(t.url);
+    await page.next('state');
+    const before = t.reads.workspaces ?? 0;
+    // The first tick's list is the first read of it: the workspaces are read after it.
+    await wait(160);
+    expect(t.sessionReads()).toBeGreaterThanOrEqual(1);
+    expect(t.reads.workspaces).toBeGreaterThan(before);
+    page.close();
+  });
+
   it("hears a hook's write in threads/: the workspaces read, and Claude Code's list at once", async () => {
     const t = await outside(finished, { live: 60_000 });
     const page = await listen(t.url);

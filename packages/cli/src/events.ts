@@ -393,16 +393,17 @@ export function eventStream(options: EventStreamOptions): EventStream {
   let sessionsReading: Promise<void> | null = null;
   let sessionsAgain: ReturnType<typeof setTimeout> | undefined;
   /** Reads the list anew; a change reads the parts that show agents' states. */
-  function readSessions(): Promise<void> {
+  function readSessions(tell = true): Promise<void> {
     const read = options.sessions;
     if (!read || closed || !listening()) return Promise.resolve();
     sessionsReading ??= read()
       .then((value) => {
         const text = JSON.stringify(value ?? null);
         if (text === sessionsText) return;
-        const first = sessionsText === undefined;
         sessionsText = text;
-        if (!first) changed(['workspaces', 'nucleus', 'scribe'], 'sessions');
+        // The first read too: the list may have moved since the parts were last read (Scribe
+        // working at once after the person's prompt). A page's opening reads them just after.
+        if (tell) changed(['workspaces', 'nucleus', 'scribe'], 'sessions');
       })
       .catch(() => {})
       .finally(() => {
@@ -537,7 +538,7 @@ export function eventStream(options: EventStreamOptions): EventStream {
       opening += 1;
       // Claude Code's list anew first, when a Claude agent is listed: the parts' read takes it
       // from its cache (2 s). The first page's read of the list is the workspaces' own.
-      if (claudeListed()) await readSessions();
+      if (claudeListed()) await readSessions(false);
       // Read anew for this page; a change found here is the other pages' news too.
       const fresh = await readParts(known, false).finally(() => (opening -= 1));
       if (fresh.size > 0) broadcast(event('change', partsJson(fresh)), id);

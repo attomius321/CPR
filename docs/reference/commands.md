@@ -26,6 +26,31 @@ from the job.
 
 To see a command's options, run `symbiote <command> --help`.
 
+## How the app stays up to date
+
+`symbiote view` tells its pages what changed as it changes: an agent's state, a commit, a review,
+an ask, a merge's steps. Each browser gets one stream of these changes, `GET /api/events`
+(server-sent events). Its first event is the whole state, then only what changed. One tab of the
+browser holds the stream and passes it to the other tabs, terminals' output included. Chrome
+gives a site 6 connections, and one stream per tab would take them all.
+
+Symbiote learns of a change from:
+
+- what it writes itself: records, merges, Symbiote's tools' asks;
+- the files other processes write: `symbiote/` and git's branches (a commit made in any
+  terminal);
+- each hook of an agent it started, which tells the running `symbiote view` once it has written;
+- Claude Code's list of sessions, read every 5 s while an agent works or waits;
+- Codex's app server, which says when a thread's state changes;
+- and, while a page is open, a read of everything every minute.
+
+A change shows in under half a second. On a disk that reports no file changes (a repository under
+`/mnt/c` in WSL), the hooks and the reads above still bring each change. So does the read every
+minute, which is all a Hermes agent's state comes from.
+
+The page polls as before when there is no stream: with a `symbiote view` older than this one, with
+`?poll` in the page's address, or with `SYMBIOTE_EVENTS=off`.
+
 ## Sample output
 
 This is `symbiote diff main` on a branch that adds one function, removes one and changes one:

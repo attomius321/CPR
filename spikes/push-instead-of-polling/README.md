@@ -17,6 +17,7 @@ built, linted or tested with the repository.
 | `winrelay.sh` | The stream through WSL2's localhost relay: Windows' `curl.exe` against WSL's own `curl`. |
 | `observe-real.mjs`, `analyze-real.py`, `cpu.sh` | Read-only: real agents' hook writes against `claude agents --json --all`, and their timeline; a process's CPU from `/proc`. |
 | `tables.py` | The journal's tables from the specs' JSON lines. |
+| `v94/measure.mjs`, `v94/results/` | V94d (2026-11-04): what one page costs a build's `symbiote view` on a copy of this repository while hooks write 18 times a minute — CPU from /proc, requests by address —; its results, the e2e delays and the view's programs counted. `node v94/measure.mjs <build root> <replica> <minutes> <label> [--poll]`. |
 | `results/` | What the journal quotes: the specs' JSON lines (`e2e-superseded.jsonl`: the delay runs redone after two bugs in the spec and the prototype), the hooks' times, the real view's CPU, the real agents' timelines. |
 
 ## Running it
