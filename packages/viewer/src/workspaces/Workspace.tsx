@@ -923,7 +923,7 @@ function WorkspacePanel({
                       workspace.ahead === 0 && workspace.planFirst
                         ? 'plan first'
                         : read
-                          ? `${changedFiles(read)} files`
+                          ? `${changedFiles(read)} file${changedFiles(read) === 1 ? '' : 's'}`
                           : 'on its branch',
                   },
                 ]

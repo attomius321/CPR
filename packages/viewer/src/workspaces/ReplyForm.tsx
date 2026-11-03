@@ -63,7 +63,7 @@ export function ReplyForm({
           approve ? 'Reply to the agent, or approve the plan as it is…' : 'Reply to the agent…'
         }
         value={text}
-        rows={3}
+        rows={2}
         disabled={mode === 'none'}
         onChange={(event) => onText(event.target.value)}
         onKeyDown={(event) => {

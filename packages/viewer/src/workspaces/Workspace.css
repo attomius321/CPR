@@ -202,6 +202,11 @@
   margin-right: auto;
 }
 
+/* Its words beside the buttons: none of a page hint's 24 px (it made the foot 82 px). */
+.reply-actions .hint {
+  padding: 0 8px 0 0;
+}
+
 /* The key in Approve plan (the proof's `.kbd`). */
 .reply-keys {
   margin-left: 2px;
@@ -242,7 +247,8 @@
   flex: none;
 }
 
-.workspace-tabs .stab {
+.workspace-tabs .stab,
+.workspace-views > [role='tab'] {
   position: relative;
   display: flex;
   align-items: center;
@@ -259,18 +265,23 @@
   transition: color 150ms;
 }
 
-.workspace-tabs .stab .icon {
+.workspace-tabs .stab .icon,
+.workspace-views > [role='tab'] .icon {
   width: 14px;
   height: 14px;
 }
 
 .workspace-tabs .stab:hover,
-.workspace-tabs .stab.selected {
+.workspace-tabs .stab.selected,
+.workspace-views > [role='tab']:hover,
+.workspace-views > [role='tab'][aria-selected='true'] {
   color: var(--text);
 }
 
-/* The picked tab's line, in the identity's colour (V88). Two are picked in Split. */
-.workspace-tabs .stab.selected::after {
+/* The picked tab's line, in the identity's colour (V88). Two are picked in Split. History's and
+   Nucleus's tabs, straight in the strip, take the same (V93: they had lost it with V89's strip). */
+.workspace-tabs .stab.selected::after,
+.workspace-views > [role='tab'][aria-selected='true']::after {
   content: '';
   position: absolute;
   right: 8px;
@@ -923,7 +934,7 @@
 
 .workspace .reply {
   flex: none;
-  padding: 0 var(--card-pad) var(--card-pad);
+  padding: 0;
 }
 
 /* The files given with the brief (V40), under it: where they are, then their names. */
