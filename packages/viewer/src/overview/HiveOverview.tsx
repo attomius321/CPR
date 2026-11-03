@@ -72,8 +72,11 @@ export function reviewerWords(levels: AgentLevels | null): string | null {
   return [model ? modelName(model) : 'Default model', effort].filter(Boolean).join(' · ');
 }
 
-/** Hive's settings the Limits show, read once (Settings changes them; decision 851). */
-function useHiveSettings() {
+/**
+ * Hive's settings the Limits show, read once (Settings changes them; decision 851); Start's in Hive
+ * mode too (V92).
+ */
+export function useHiveSettings() {
   const [pacing, setPacing] = useState<HivePacingSetting | null>(null);
   const [landing, setLanding] = useState<HiveLandingSetting | null>(null);
   const [reviewer, setReviewer] = useState<AgentLevels | null>(null);

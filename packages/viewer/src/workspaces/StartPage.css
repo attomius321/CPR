@@ -641,3 +641,100 @@
 .start-too-long {
   margin: 12px 0 0;
 }
+
+/* Start in Hive mode (V92, decision 871; proof 05-new-goal): Hive's check under Done when, its
+   commands as chips; How Hive runs it, its four steps on Hive's hexagons, then its limits. */
+.start-hive-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.start-hive-check > .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.start-hive-check code {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--text);
+  font-size: var(--size-caption);
+}
+
+.start-hive-check.none {
+  color: var(--error);
+}
+
+.start-hive-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.start-hive-steps li {
+  display: flex;
+  gap: 12px;
+}
+
+.start-hive-node {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: var(--height-row);
+  height: var(--height-row);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--hive) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hive) 35%, transparent);
+  color: var(--hive-text);
+}
+
+.start-hive-node .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.start-hive-words {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.start-hive-words b {
+  font-weight: 600;
+}
+
+.start-hive-words span {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.start-hive-limits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.start-hive-limits .start-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.start-hive-limits .icon {
+  width: 13px;
+  height: 13px;
+}

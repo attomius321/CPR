@@ -47,6 +47,7 @@ import {
   PlayIcon,
   ShuffleIcon,
   SymbioteMark,
+  HexagonIcon,
 } from '../ui/icons.js';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
@@ -61,7 +62,8 @@ import {
   readDocuments,
   type DocumentEntry,
 } from './documents.js';
-import { StartAgent } from './StartAgent.js';
+import { StartAgent, StartAgentRows } from './StartAgent.js';
+import { HiveCheckLine, HiveHow, useHiveCheck } from './StartHive.js';
 import { useHive } from '../shell/hive.js';
 import { StartCard } from './StartCard.js';
 import { StartDocuments } from './StartDocuments.js';
@@ -134,12 +136,13 @@ export function StartPage({
     };
   }, []);
 
+  const hive = useHive();
   if (loaded && (at || loaded.options.branches.length > 0)) {
     return <StartForm {...loaded} at={at} onStarted={onStarted} onLeave={onLeave} />;
   }
   return (
     <section className="start-page" aria-labelledby="start-title">
-      <StartHead>
+      <StartHead hive={hive}>
         <button type="button" className="button secondary" onClick={onLeave}>
           Cancel
         </button>
@@ -164,7 +167,28 @@ export function StartPage({
  * The page's head (V63; the page frame's since V72): the S, the title and the mockup's line under
  * it, then `children`, the buttons, at the right; the mockup's arcs on the page's ground behind.
  */
-function StartHead({ children }: { children: ReactNode }) {
+function StartHead({
+  hive,
+  from,
+  children,
+}: {
+  hive: boolean;
+  from?: string;
+  children: ReactNode;
+}) {
+  // Hive mode (V92, decision 871): a goal Hive drives to landed, no ground behind it (815).
+  if (hive) {
+    return (
+      <PageHead
+        className="start-top"
+        icon={<HexagonIcon />}
+        title="New goal"
+        titleId="start-title"
+        line={`Hive drives it from the brief to landed${from ? ` in ${from}` : ''}, and no step waits for you`}
+        actions={children}
+      />
+    );
+  }
   return (
     <>
       <div className="ground start-ground" aria-hidden="true" />
@@ -242,6 +266,8 @@ function StartForm({
     picked && !(onCommit && at) ? { sha: picked.sha, from: picked.name } : { sha: at ?? '' };
   // Hive drives Claude Code only (HV2, decision 658): while it is on, the one agent offered.
   const hive = useHive();
+  // The check Hive will run (V92, decision 871).
+  const hiveCheck = useHiveCheck(hive);
   const offered = hive ? options.agents.filter((a) => a.kind === 'claude') : options.agents;
   const agent = hive
     ? (offered[0] ?? null)
@@ -420,7 +446,24 @@ function StartForm({
   };
   const folder = options.worktrees.replace('<branch>', branch.replaceAll('/', '-'));
   const mainHeading = heading(main);
-  const startWords = running ? 'Starting…' : agent ? 'Start workspace' : 'Make the branch';
+  const startWords = running
+    ? 'Starting…'
+    : agent
+      ? hive
+        ? 'Start goal'
+        : 'Start workspace'
+      : 'Make the branch';
+  // The documents' card: in the brief's column in Hive mode, as the proof draws it (V92).
+  const documentsCard = (
+    <StartDocuments
+      entries={documents}
+      options={options.documents}
+      folder={options.documents.folder.replace('<branch>', branch)}
+      input={picker}
+      onAdd={addFiles}
+      onRemove={(key) => listDocuments(latest.current.documents.filter((d) => d.key !== key))}
+    />
+  );
   return (
     <section
       className="start-page"
@@ -465,23 +508,30 @@ function StartForm({
       }}
     >
       {dropping && <p className="start-drop">Drop to add them to the documents</p>}
-      <StartHead>
-        <button type="button" className="button secondary" disabled={running} onClick={onLeave}>
-          Cancel
-        </button>
+      <StartHead hive={hive} {...(base.from ? { from: base.from } : {})}>
         <button
           type="button"
-          className="button secondary"
+          className={hive ? 'button ghost' : 'button secondary'}
           disabled={running}
-          {...tip('Empty the form\nThe kind stays')}
-          onClick={() => {
-            edit(newForm(spec, guess));
-            listDocuments([]);
-            setPreviewing(false);
-          }}
+          onClick={onLeave}
         >
-          Clear
+          Cancel
         </button>
+        {!hive && (
+          <button
+            type="button"
+            className="button secondary"
+            disabled={running}
+            {...tip('Empty the form\nThe kind stays')}
+            onClick={() => {
+              edit(newForm(spec, guess));
+              listDocuments([]);
+              setPreviewing(false);
+            }}
+          >
+            Clear
+          </button>
+        )}
         <SuggestButton
           asking={suggestion.asked.state === 'asking'}
           blocked={suggestBlocked({ agent, main: form.main, heading: mainHeading, running })}
@@ -489,14 +539,14 @@ function StartForm({
         />
         <button
           type="button"
-          className="button primary"
+          className={hive ? 'button primary hive' : 'button primary'}
           disabled={!ready}
           {...tip(waiting ?? (running ? undefined : startWords), {
             keys: waiting ? undefined : 'Ctrl+Enter',
           })}
           onClick={() => void start()}
         >
-          {agent && !running && <PlayIcon />}
+          {agent && !running && (hive ? <HexagonIcon /> : <PlayIcon />)}
           {startWords}
         </button>
       </StartHead>
@@ -602,20 +652,26 @@ function StartForm({
                 placeholder={`${HINTS.doneWhen} e.g. ${checkWords(guess)}, and …`}
                 onChange={(event) => edit({ ...form, doneWhen: event.target.value })}
               />
-              {guess && (
-                <p className="dialog-note workspace-check-guess">
-                  Check: <code>{guess.command}</code>, from {guess.source}
-                </p>
+              {hive ? (
+                <HiveCheckLine check={hiveCheck} />
+              ) : (
+                guess && (
+                  <p className="dialog-note workspace-check-guess">
+                    Check: <code>{guess.command}</code>, from {guess.source}
+                  </p>
+                )
               )}
             </div>
-            <div className="start-advice">
-              <AdviceIcon />
-              <p>
-                <strong>Be specific for better results</strong>
-                Include context, constraints and what success looks like. The agent will follow
-                these instructions.
-              </p>
-            </div>
+            {!hive && (
+              <div className="start-advice">
+                <AdviceIcon />
+                <p>
+                  <strong>Be specific for better results</strong>
+                  Include context, constraints and what success looks like. The agent will follow
+                  these instructions.
+                </p>
+              </div>
+            )}
             <div className={moreOpen ? 'start-more open' : 'start-more'}>
               <button
                 type="button"
@@ -642,6 +698,7 @@ function StartForm({
                   </label>
                 ))}
             </div>
+            {hive && documentsCard}
             {tooLong && (
               <p className="error start-too-long">
                 The brief is {length.toLocaleString('en')} characters; at most{' '}
@@ -650,7 +707,11 @@ function StartForm({
             )}
           </div>
           <div className="start-run">
-            <StartCard icon={<BranchIcon />} title="Source">
+            <StartCard
+              icon={<BranchIcon />}
+              title={hive ? 'Where and who' : 'Source'}
+              {...(hive ? { className: 'start-hive-who' } : {})}
+            >
               <div className="workspace-field start-row">
                 <label id="start-from-label" htmlFor="start-from">
                   Start from
@@ -716,6 +777,17 @@ function StartForm({
                   <p className="error start-row-note">{problem}</p>
                 )}
               </div>
+              {hive && agent && (
+                <StartAgentRows
+                  agent={agent}
+                  run={run}
+                  model={model}
+                  models={models}
+                  effort={effort}
+                  efforts={efforts}
+                  onChoose={choose}
+                />
+              )}
             </StartCard>
             <SuggestionCard
               asked={suggestion.asked}
@@ -725,18 +797,22 @@ function StartForm({
               onChoose={choose}
               onClose={suggestion.close}
             />
-            <StartAgent
-              agents={offered}
-              hive={hive}
-              agent={agent}
-              run={run}
-              mode={mode}
-              model={model}
-              models={models}
-              effort={effort}
-              efforts={efforts}
-              onChoose={choose}
-            />
+            {hive && agent ? (
+              <HiveHow check={hiveCheck} into={base.from ?? 'its branch'} />
+            ) : (
+              <StartAgent
+                agents={offered}
+                hive={hive}
+                agent={agent}
+                run={run}
+                mode={mode}
+                model={model}
+                models={models}
+                effort={effort}
+                efforts={efforts}
+                onChoose={choose}
+              />
+            )}
             {!hive && (
               <StartCard
                 icon={<PlanIcon />}
@@ -756,16 +832,7 @@ function StartForm({
                 </p>
               </StartCard>
             )}
-            <StartDocuments
-              entries={documents}
-              options={options.documents}
-              folder={options.documents.folder.replace('<branch>', branch)}
-              input={picker}
-              onAdd={addFiles}
-              onRemove={(key) =>
-                listDocuments(latest.current.documents.filter((d) => d.key !== key))
-              }
-            />
+            {!hive && documentsCard}
           </div>
         </div>
       </div>
