@@ -2,14 +2,19 @@ import type { PromptSetting, PromptSettings } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
   draftProblem,
+  filterNav,
+  foldOpen,
   gitNote,
   insertAt,
   isEdited,
   markOf,
   promptGroups,
   promptOfUrl,
+  settingsNav,
   sizeOf,
+  type NavSection,
 } from '../src/settings/settings.js';
+import { checksEdited, checksProblem, cleanCommands } from '../src/settings/checks.js';
 
 const prompt = (fields: Partial<PromptSetting>): PromptSetting => ({
   key: 'start.fix',
@@ -115,6 +120,159 @@ describe("promptGroups and Hive's prompts (HV2)", () => {
     expect(promptGroups(withReviewer).flatMap((g) => g.entries.map((e) => e.name))).not.toContain(
       'Reviewer',
     );
+  });
+});
+
+describe('settingsNav (fix/settings-page)', () => {
+  // The server's order, as `/api/settings/prompts` gives it.
+  const prompts = [
+    prompt({ key: 'start.feature', title: 'Feature' }),
+    prompt({ key: 'start.fix' }),
+    prompt({ key: 'plan.first', title: 'Plan first' }),
+    prompt({ key: 'verdict.approve', group: 'Reviews', title: 'Approved' }),
+    prompt({ key: 'reviews', group: 'Reviews', title: 'symbiote/AGENTS.md' }),
+    prompt({ key: 'merger', group: 'Merger', title: 'Instructions' }),
+    prompt({ key: 'merge.failed', group: 'Merger', title: 'Check failed' }),
+    prompt({ key: 'nucleus', group: 'Nucleus', title: 'Instructions' }),
+    prompt({ key: 'scribe', group: 'Scribe', title: 'Instructions' }),
+    prompt({ key: 'advisor', title: 'Suggest settings' }),
+    prompt({ key: 'hive.start', group: 'Hive', title: 'Start' }),
+    prompt({ key: 'hive.check', group: 'Hive', title: 'Check failed' }),
+    prompt({ key: 'hive.reviewer', group: 'Hive', title: 'Reviewer' }),
+    prompt({ key: 'hive.nucleus', group: 'Hive', title: 'Alpha Ceph' }),
+  ];
+  const shape = (sections: NavSection[]) =>
+    sections.map(({ name, entries, folds }) => [
+      name,
+      entries.map((e) => `${e.key} ${e.name}`),
+      folds.map((f) => [f.group, f.entries.map((e) => e.key)]),
+    ]);
+
+  it('lists what is set by what it is: the repository first, its check in both modes, agents, then the prompts by group', () => {
+    expect(shape(settingsNav(prompts, { hive: false }))).toEqual([
+      ['This repository', ['checks Checks', 'hive-mode Hive mode'], []],
+      [
+        'Agents',
+        ['nucleus Nucleus', 'merger Merger', 'scribe Scribe', 'advisor Suggest settings'],
+        [],
+      ],
+      [
+        'Prompts',
+        [],
+        [
+          ['Workspaces', ['start.feature', 'start.fix', 'plan.first']],
+          ['Reviews', ['verdict.approve', 'reviews']],
+        ],
+      ],
+      ['This machine', ['skill-library Skill library'], []],
+      ['This browser', ['appearance Appearance'], []],
+    ]);
+  });
+
+  it("in Hive mode: the same places, Alpha Ceph and the running reviewer among the agents, Hive's prompts the first group", () => {
+    expect(shape(settingsNav(prompts, { hive: true }))).toEqual([
+      ['This repository', ['checks Checks', 'hive-mode Hive mode'], []],
+      [
+        'Agents',
+        [
+          'nucleus Alpha Ceph',
+          'merger Merger',
+          'scribe Scribe',
+          'hive.reviewer Reviewer',
+          'advisor Suggest settings',
+        ],
+        [],
+      ],
+      [
+        'Prompts',
+        [],
+        [
+          ['Hive', ['hive.start', 'hive.check', 'hive.nucleus']],
+          ['Workspaces', ['start.feature', 'start.fix', 'plan.first']],
+          ['Reviews', ['verdict.approve', 'reviews']],
+        ],
+      ],
+      ['This machine', ['skill-library Skill library'], []],
+      ['This browser', ['appearance Appearance'], []],
+    ]);
+    // An agent's page holds all its prompts.
+    const agents = settingsNav(prompts, { hive: true })[1]?.entries ?? [];
+    expect(agents.find((e) => e.key === 'merger')?.prompts.map((p) => p.key)).toEqual([
+      'merger',
+      'merge.failed',
+    ]);
+  });
+
+  it('keeps the settings that are not prompts when the prompts cannot be read', () => {
+    expect(shape(settingsNav(null, { hive: true }))).toEqual([
+      ['This repository', ['checks Checks', 'hive-mode Hive mode'], []],
+      ['This machine', ['skill-library Skill library'], []],
+      ['This browser', ['appearance Appearance'], []],
+    ]);
+  });
+
+  it("filters by a name, a group, an agent's prompt or a setting's config key; nothing else listed", () => {
+    const all = settingsNav(prompts, { hive: true });
+    expect(filterNav(all, '')).toEqual(all);
+    expect(shape(filterNav(all, 'THEME'))).toEqual([
+      ['This browser', ['appearance Appearance'], []],
+    ]);
+    expect(shape(filterNav(all, 'merge.checks'))).toEqual([
+      ['This repository', ['checks Checks'], []],
+    ]);
+    // "check": the Checks page, the merger's Check failed prompt, Hive's.
+    expect(shape(filterNav(all, 'check'))).toEqual([
+      ['This repository', ['checks Checks'], []],
+      ['Agents', ['merger Merger'], []],
+      ['Prompts', [], [['Hive', ['hive.check']]]],
+    ]);
+    // A group's name lists the whole group.
+    expect(shape(filterNav(all, 'reviews'))).toEqual([
+      ['Prompts', [], [['Reviews', ['verdict.approve', 'reviews']]]],
+    ]);
+    expect(filterNav(all, 'nothing like it')).toEqual([]);
+  });
+
+  it('opens a fold that holds the entry open, else as it was left; every fold while filtering', () => {
+    const folds = settingsNav(prompts, { hive: false })[2]?.folds ?? [];
+    const [workspaces, reviews] = folds;
+    if (!workspaces || !reviews) throw new Error('no folds');
+    expect(foldOpen(workspaces, { open: 'start.fix', kept: {}, query: '' })).toBe(true);
+    expect(foldOpen(reviews, { open: 'start.fix', kept: {}, query: '' })).toBe(false);
+    expect(foldOpen(reviews, { open: 'start.fix', kept: { Reviews: true }, query: '' })).toBe(true);
+    // Folded by the person: the entry open in it stays reachable by its mark, the fold shut.
+    expect(
+      foldOpen(workspaces, { open: 'start.fix', kept: { Workspaces: false }, query: '' }),
+    ).toBe(false);
+    expect(foldOpen(reviews, { open: 'checks', kept: { Reviews: false }, query: 'app' })).toBe(
+      true,
+    );
+  });
+});
+
+describe('the check as typed (fix/settings-page)', () => {
+  it('saves the commands trimmed, the empty rows dropped', () => {
+    expect(cleanCommands(['  pnpm install ', '', '\t', 'pnpm check'])).toEqual([
+      'pnpm install',
+      'pnpm check',
+    ]);
+  });
+
+  it('says why the server would refuse it, as it checks', () => {
+    expect(checksProblem(['pnpm check'])).toBeNull();
+    expect(checksProblem(['', ' '])).toMatch(/at least one command/i);
+    expect(checksProblem(['pnpm install\npnpm check'])).toMatch(/one line/i);
+    expect(checksProblem(Array.from({ length: 21 }, (_, i) => `step ${i}`))).toMatch(/20/);
+    expect(checksProblem(['x'.repeat(1001)])).toMatch(/1,000/);
+  });
+
+  it('is edited when the commands differ from those saved, blank rows and spaces aside', () => {
+    expect(checksEdited(undefined, undefined)).toBe(false);
+    expect(checksEdited(['pnpm check'], [' pnpm check ', ''])).toBe(false);
+    expect(checksEdited(['pnpm check'], ['pnpm test'])).toBe(true);
+    expect(checksEdited(undefined, [''])).toBe(false);
+    expect(checksEdited(undefined, ['make'])).toBe(true);
+    expect(checksEdited(['a', 'b'], ['b', 'a'])).toBe(true);
   });
 });
 
