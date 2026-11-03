@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { hiveMocks, mockOverview, normalMocks } from './overview-data.js';
+import { hiveMocks, manyRows, mockOverview, normalMocks } from './overview-data.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 import { collectTargets, crowded } from './targets.js';
 
@@ -278,4 +278,157 @@ test("Hive mode's sections: five figures, a stopped one with why, in flight, lan
 
   // Its targets are 24 px or spaced (WCAG 2.2, 2.5.8), as every page's (targets.spec.ts).
   expect(crowded(await page.evaluate(collectTargets))).toEqual([]);
+});
+
+// fix/overview-fits-the-page: the Overview fits the main area and never scrolls as a page; each
+// list scrolls in its own card under its head. With more rows than fit, the inbox (Hive: in
+// flight) keeps its rows first: every other list card is down to its minimum, a head and a row
+// and a half.
+interface Fit {
+  page: { scroll: number; client: number };
+  bottom: number;
+  cards: {
+    name: string;
+    height: number;
+    min: number;
+    bottom: number;
+    /** The list's height and its content's. */
+    list: { client: number; scroll: number; content: number } | null;
+    scrolled: number;
+    /** How far the card's head and its table's head moved once the list scrolled to its end. */
+    moved: { head: number; table: number };
+  }[];
+}
+
+/** The page's and each named card's heights; each card's list scrolled to its end. */
+const fit = (page: Page, names: readonly string[]): Promise<Fit> =>
+  page.evaluate((names) => {
+    const main = document.querySelector('.shell-main')!.getBoundingClientRect();
+    const body = document.querySelector('.overview-body')!;
+    const y = (el: Element | null) => el?.getBoundingClientRect().y ?? 0;
+    return {
+      page: { scroll: body.scrollHeight, client: body.clientHeight },
+      bottom: main.bottom,
+      cards: names.map((name) => {
+        const card = [...document.querySelectorAll('.overview section')].find(
+          (c) => c.getAttribute('aria-label') === name,
+        )!;
+        const list = card.querySelector('.overview-card-body');
+        const head = card.querySelector('.card-head');
+        const table = card.querySelector('.table-head');
+        const before = { head: y(head), table: y(table) };
+        const box = card.getBoundingClientRect();
+        const shown = list
+          ? {
+              client: list.clientHeight,
+              scroll: list.scrollHeight,
+              content: [...list.children].reduce((h, c) => h + c.getBoundingClientRect().height, 0),
+            }
+          : null;
+        if (list) list.scrollTop = list.scrollHeight;
+        return {
+          name,
+          height: box.height,
+          min: parseFloat(getComputedStyle(card).minHeight) || 0,
+          bottom: box.bottom,
+          list: shown,
+          scrolled: list?.scrollTop ?? 0,
+          moved: { head: y(head) - before.head, table: y(table) - before.table },
+        };
+      }),
+    };
+  }, names);
+
+const FIT_SIZES = [
+  [1440, 900],
+  [1920, 1080],
+  [1366, 768],
+] as const;
+
+/** At each size: no page scrollbar; every list overflows and scrolls in its card, its heads kept. */
+async function expectFits(page: Page, mode: string, first: string, rest: readonly string[]) {
+  for (const [width, height] of FIT_SIZES) {
+    const at = `${mode} at ${width}×${height}`;
+    await page.setViewportSize({ width, height });
+    await page.goto(`${symbiote.url}overview`);
+    // Every list drawn: the day's read comes after the list's.
+    for (const name of [first, ...rest])
+      await expect(card(page, name).locator('.table-row, .feed-event').first()).toBeVisible(POLL);
+    await page.evaluate(() => document.fonts.ready);
+    const f = await fit(page, [first, ...rest]);
+    expect.soft(f.page.scroll, `${at}: the page's height`).toBeLessThanOrEqual(f.page.client);
+    for (const c of f.cards) {
+      expect.soft(c.list, `${at}: ${c.name} has a list`).not.toBeNull();
+      expect.soft(c.scrolled, `${at}: ${c.name}'s list scrolls`).toBeGreaterThan(0);
+      expect.soft(Math.abs(c.moved.head), `${at}: ${c.name}'s head kept`).toBeLessThan(1);
+      expect.soft(Math.abs(c.moved.table), `${at}: ${c.name}'s table head kept`).toBeLessThan(1);
+      expect.soft(c.bottom, `${at}: ${c.name} inside the main area`).toBeLessThanOrEqual(f.bottom);
+    }
+    // The first list keeps its rows: the others of its column are down to their minimum.
+    const [kept, ...others] = f.cards;
+    for (const c of others.filter((c) => c.name !== 'Today' && c.name !== 'Events')) {
+      expect.soft(c.height - c.min, `${at}: ${c.name} at its minimum`).toBeLessThanOrEqual(1);
+      expect.soft(kept!.height, `${at}: ${kept!.name} over ${c.name}`).toBeGreaterThan(c.height);
+    }
+  }
+}
+
+test('the page fits the main area: with many rows, each list scrolls in its card, its head kept', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await mockOverview(page, manyRows(normalMocks()));
+  await expectFits(page, 'normal mode', 'Waiting for you', [
+    'Agents at work',
+    'Merging',
+    'Merged today',
+    'Today',
+  ]);
+
+  await page.goto(`${symbiote.url}git`);
+  await post(page, '/api/hive', { on: true });
+  await page.unrouteAll();
+  await mockOverview(page, manyRows(hiveMocks()));
+  await expectFits(page, 'Hive mode', 'In flight', ['Landed today', 'Events']);
+});
+
+test('few rows or none: no scrollbar, each card its content, the last of each column to the bottom', async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  for (const [records, mocks, names] of [
+    // Merging's one row: its content's height, not the list cards' minimum.
+    ['as the proof', normalMocks(), ['Merging']],
+    ['empty', normalMocks(undefined, { empty: true }), []],
+  ] as const) {
+    await page.unrouteAll();
+    await mockOverview(page, mocks);
+    await page.goto(`${symbiote.url}overview`);
+    for (const name of ['Merged today', ...names]) await expect(card(page, name)).toBeVisible(POLL);
+    await expect(card(page, 'Usage')).not.toContainText('No subscription read yet', POLL);
+    await page.evaluate(() => document.fonts.ready);
+    const f = await fit(page, [
+      'Waiting for you',
+      'Agents at work',
+      ...names,
+      'Merged today',
+      'Usage',
+      'Today',
+    ]);
+    expect.soft(f.page.scroll, `${records}: the page's height`).toBeLessThanOrEqual(f.page.client);
+    for (const c of f.cards.filter((c) => c.name !== 'Merged today' && c.name !== 'Today')) {
+      expect
+        .soft(
+          Math.abs(c.list!.client - c.list!.content),
+          `${records}: ${c.name} its content's height`,
+        )
+        .toBeLessThanOrEqual(1);
+    }
+    for (const c of f.cards.filter((c) => c.name === 'Merged today' || c.name === 'Today')) {
+      expect
+        .soft(Math.abs(f.bottom - 12 - c.bottom), `${records}: ${c.name} to the bottom`)
+        .toBeLessThanOrEqual(1);
+    }
+  }
 });

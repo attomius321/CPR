@@ -583,3 +583,53 @@ export async function mockOverview(page: Page, mocks: OverviewMocks): Promise<vo
   if (mocks.reviewer) await answer('**/api/hive/reviewer/efforts', mocks.reviewer);
   if (mocks.findings) await answer('**/api/workspaces/findings', mocks.findings);
 }
+
+/**
+ * The records `copies` times over, each copy's branches and merge commits its own (`-2`, `-3`…):
+ * every list of either Overview longer than its card at common window sizes
+ * (fix/overview-fits-the-page).
+ */
+export function manyRows(mocks: OverviewMocks, copies = 6): OverviewMocks {
+  const each = <T>(list: readonly T[], copy: (item: T, i: number) => T): T[] =>
+    Array.from({ length: copies }, (_, i) => list.map((item) => copy(item, i))).flat();
+  const branch = (name: string, i: number) => (i === 0 ? name : `${name}-${i + 1}`);
+  const commit = (sha: string, i: number) => (i === 0 ? sha : `${i}${sha.slice(1)}`);
+  const { list, reviews, merges, day } = mocks;
+  return {
+    ...mocks,
+    list: {
+      ...list,
+      workspaces: each(list.workspaces, (w, i) => ({ ...w, branch: branch(w.branch, i) })),
+    },
+    reviews: {
+      ...reviews,
+      reviews: each(reviews.reviews, (r, i) => ({ ...r, branch: branch(r.branch, i) })),
+    },
+    merges: {
+      ...merges,
+      merges: each(merges.merges, (m, i) => ({
+        ...m,
+        id: `${m.id}-${i}`,
+        branch: branch(m.branch, i),
+        title: m.title.replace(m.branch, branch(m.branch, i)),
+      })),
+    },
+    day: {
+      ...day,
+      events: each(day.events, (e, i) => ({ ...e, branch: branch(e.branch, i) })),
+      merges: each(day.merges, (m, i) => ({
+        ...m,
+        sha: commit(m.sha, i),
+        ...(m.branch ? { branch: branch(m.branch, i) } : {}),
+        subject: m.branch ? m.subject.replace(m.branch, branch(m.branch, i)) : m.subject,
+      })),
+      started: Object.fromEntries(
+        each(Object.entries(day.started), ([name, at], i): [string, string] => [
+          branch(name, i),
+          at,
+        ]),
+      ),
+      hive: each(day.hive, (r, i) => ({ ...r, branch: branch(r.branch, i) })),
+    },
+  };
+}

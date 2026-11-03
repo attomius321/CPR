@@ -124,7 +124,13 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   `settings/HiveOff.tsx`, Settings' too. The usage is one reader for the page and the status bar
   (`shell/useUsage.ts`). The kits' figure, table, feed, facts and gauge are shared parts
   (`ui/Figures.tsx`, `ui/figures.css`). `e2e/overview-data.ts` holds the proofs' records for
-  `page.route`, used by `overview.spec.ts` and `page-frame.spec.ts`.
+  `page.route` (`manyRows`: each list longer than its card), used by `overview.spec.ts` and
+  `page-frame.spec.ts`. The page never scrolls (fix/overview-fits-the-page, `Overview.css`'s
+  head says how): each list scrolls in its `OverviewCard`'s body; a list card of two rows or more
+  is cut to a head and 1.5 rows before the inbox (Hive: in flight) loses one, the last card of a
+  column takes the rest, and only a column whose minimums do not fit scrolls. A column's minimum
+  cannot be said in CSS (a flex column's is its content's): a grid row cut under it drew its cards
+  over the next.
 - Hive mode's own pages (V92, decisions 860–874), each from what Hive records, the derivations
   pure and tested: a Hive workspace's **Run** tab (`workspaces/HiveRunTab.tsx`, `View` `'run'`,
   `&run`; `&review` still opens it, `tab-address.ts`) draws `run-timeline.ts`'s rounds (the

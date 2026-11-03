@@ -19,7 +19,11 @@ import {
 import { clockOf } from './day.js';
 import type { FeedIcon, FeedItem } from './feed.js';
 
-/** A card of the Overview: its head (title, count, what is at its end), then its body. */
+/**
+ * A card of the Overview: its head (title, count, what is at its end), then its body, which
+ * scrolls under the head when the column gives the card less than its rows
+ * (fix/overview-fits-the-page).
+ */
 export function OverviewCard({
   title,
   count,
@@ -40,7 +44,7 @@ export function OverviewCard({
         {count !== undefined && <span className="overview-count">{count}</span>}
         {end !== undefined && <div className="end">{end}</div>}
       </div>
-      {children}
+      <div className="overview-card-body">{children}</div>
     </section>
   );
 }

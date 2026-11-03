@@ -411,5 +411,6 @@ merge commit.
 - 2026-11-03 [Fix — Hive's question drawn again after the arrival folded it](journal/fix-hive-question-reappears.md)
 - 2026-11-03 [Fix — Settings by what is set, and the check set from Settings](journal/fix-settings-page.md)
 - 2026-11-03 [Fix — The nexus's tabs lost their look with V89](journal/fix-fix-nexus-top-left.md)
+- 2026-11-03 [Fix — The Overview fits the page: its cards scroll, not the page](journal/fix-overview-fits-the-page.md)
 - 2026-11-03 [Fix — a failed merge hides its workspace](journal/fix-failed-merge-hides-workspace.md)
 - 2026-11-03 [Fix — loadings that stood still](journal/fix-static-loadings.md)

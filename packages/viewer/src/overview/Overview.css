@@ -1,6 +1,18 @@
 /* The Overview (V91; proofs 01-overview of `spikes/normal-redesign` and `spikes/hive-redesign`):
    the figures across the top, then two columns, the work on the left and the day on the right;
-   one column on a narrow window. The page frame's tokens (V72). */
+   one column on a narrow window. The page frame's tokens (V72).
+
+   It fits the main area and never scrolls as a page (fix/overview-fits-the-page): the columns
+   fill what the figures leave, each list scrolls in its own card under its head. A list card keeps
+   its rows while its column has room. Without room, every list card but the column's first is
+   cut to its minimum, a head and a row and a half (the half says there is more), before the first
+   loses a row: the inbox, what waits for the person (Hive: in flight). The last card of a column
+   takes what is left, so the columns end 12 px over the area's edge as every page's cards. A card
+   with no list (usage, limits, a stopped workspace), or of one row or none, keeps its content's
+   height.
+   Only when even the minimums do not fit (a short window) does a column scroll, never the page:
+   a column's own minimum cannot be said in CSS (a flex column's is its content's), so a grid row
+   cut under it drew its cards over the next row. */
 
 .overview {
   flex: 1;
@@ -36,25 +48,101 @@
   display: grid;
 }
 
-.overview-grid {
-  flex: 1 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 340px;
-  align-items: start;
-  gap: var(--page-gap);
+.overview-card > .card-head {
+  flex: none;
 }
 
+/* Under the head: the card's rows, scrolled here and never by the page. */
+.overview-card-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* A table's labels stay over its rows as they scroll. */
+.overview-card-body .table-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--panel);
+}
+
+.overview-grid {
+  flex: 1 1 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--page-gap);
+  min-height: 0;
+}
+
+/* A column scrolls only when even its cards' minimums do not fit (a short window): the figures
+   and the other column stay. */
 .overview-col {
   display: flex;
   flex-direction: column;
   gap: var(--page-gap);
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
 }
 
-/* Under 1,100 px of main area: one column, the day after the work. */
+/* A list card: its rows' height while there is room, cut first (a shrink factor 1,000 times the
+   first card's) down to its minimum. */
+.overview-col > .overview-card {
+  flex: 0 1000 auto;
+  min-height: calc(var(--card-head) + 1.5 * var(--height-table-row) + 2px);
+}
+
+/* The column's first list: what waits for the person (Hive: in flight), cut last. */
+.overview-col > .overview-card:is(.inbox, .flight) {
+  flex-shrink: 1;
+}
+
+/* The column's last card takes what is left. */
+.overview-col > .overview-card:last-child {
+  flex-grow: 1;
+}
+
+/* No list, or a list of one row or none: its content's height, never stretched to the minimum
+   (an empty last card still fills the column). */
+.overview-col > .overview-card:is(.usage-card, .limits, .stopped-card),
+.overview-col > .overview-card:not(:has(.table-row ~ .table-row, .feed-event ~ .feed-event)) {
+  flex-shrink: 0;
+  min-height: 0;
+}
+
+.overview-col > .overview-card:is(.usage-card, .limits, .stopped-card) {
+  flex-grow: 0;
+}
+
+.overview-col > .overview-more {
+  flex: none;
+}
+
+/* Under 1,100 px of main area: one column, the work, then the day in one row under it: usage
+   (Hive: limits) at its width and height, the events beside it as tall, scrolled. Six cards
+   stacked would need ~1,030 px of height at their minimums. */
 @media (max-width: 1340px) {
   .overview-grid {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+
+  .overview-col + .overview-col {
+    flex-direction: row;
+  }
+
+  .overview-col + .overview-col > .overview-card:is(.usage-card, .limits) {
+    width: 340px;
+  }
+
+  /* As tall as the usage beside it, its own rows not counted (`contain: size`). */
+  .overview-col + .overview-col > .overview-card:last-child {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    contain: size;
   }
 }
 

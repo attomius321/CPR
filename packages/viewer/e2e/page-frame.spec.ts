@@ -134,14 +134,14 @@ test("the shell's pages: the whole main area, one head, cards 12 px from its edg
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  // The Overview (V91): the figures, then the inbox and the day; as tall as its cards.
-  await expectPage(
-    page,
-    'the Overview',
-    'overview',
-    ['.overview-card.figures', '.overview-card.inbox', '.overview-card.usage-card'],
-    { bottom: false },
-  );
+  // The Overview (V91): the figures, then the inbox and the day; the main area's height, the day's
+  // events to its bottom (fix/overview-fits-the-page).
+  await expectPage(page, 'the Overview', 'overview', [
+    '.overview-card.figures',
+    '.overview-card.inbox',
+    '.overview-card.usage-card',
+    '.overview-card.events',
+  ]);
   await expectPage(page, 'Git', 'git', ['.branches', '.commits-card', '.git-details']);
   // The brief and the run's seven cards, each 16 apart; the body scrolls when the run is taller.
   await expectPage(
@@ -183,13 +183,12 @@ test("the shell's pages: the whole main area, one head, cards 12 px from its edg
 test('the Overview, normal mode and Hive, full: the same frame', async ({ page }) => {
   symbiote = await serveWorkspaces();
   await mockOverview(page, normalMocks());
-  await expectPage(
-    page,
-    'the Overview, normal mode',
-    'overview',
-    ['.overview-card.figures', '.overview-card.inbox', '.overview-card.usage-card'],
-    { bottom: false },
-  );
+  await expectPage(page, 'the Overview, normal mode', 'overview', [
+    '.overview-card.figures',
+    '.overview-card.inbox',
+    '.overview-card.usage-card',
+    '.overview-card.events',
+  ]);
   await page.goto(`${symbiote.url}git`);
   await page.evaluate(() =>
     fetch('/api/hive', {
@@ -205,8 +204,12 @@ test('the Overview, normal mode and Hive, full: the same frame', async ({ page }
     'the Overview, Hive mode',
     'overview',
     // The stopped card first: the frame is measured once it is drawn, after the list's read.
-    ['.overview-card.stopped-card', '.overview-card.figures', '.overview-card.limits'],
-    { bottom: false },
+    [
+      '.overview-card.stopped-card',
+      '.overview-card.figures',
+      '.overview-card.limits',
+      '.overview-card.events',
+    ],
   );
 });
 
