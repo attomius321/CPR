@@ -72,3 +72,5 @@ arrival's five frames beside the proof's; its end at 1,540 ms; reduced motion at
 
 Not verified: a real Hive run; WSLg's own display; the README's `hive.png` and
 `hive-settings.png` are out of date (they show the pages before V92).
+
+Merged into main (2026-11-03).

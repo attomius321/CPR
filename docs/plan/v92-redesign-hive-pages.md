@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v92-redesign-hive-pages.md)
 
-**Status:** built (3 November 2026), on branch `feature/redesign-hive-pages` (the workspace's,
+**Status:** merged into `main` on 2026-11-03; built (3 November 2026), on branch `feature/redesign-hive-pages` (the workspace's,
 from `main` at `20c06e8`); the person's OK with choices 1 record `since`, 2 line counts, 3 the
 reviewer's model and effort on the Hive mode page, 4 "New goal".
 
