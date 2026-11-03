@@ -414,3 +414,4 @@ merge commit.
 - 2026-11-03 [Fix — The Overview fits the page: its cards scroll, not the page](journal/fix-overview-fits-the-page.md)
 - 2026-11-03 [Fix — a failed merge hides its workspace](journal/fix-failed-merge-hides-workspace.md)
 - 2026-11-03 [Fix — loadings that stood still](journal/fix-static-loadings.md)
+- 2026-11-03 [V94 spike — what polling costs now, and every reader that polls](journal/v94-push-not-polling.md)

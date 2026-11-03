@@ -192,6 +192,7 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [V79](plan/v79-workspace-cards.md) | Workspace cards one can read: whole names, the state on its own lines, the facts as icons, cards apart; the sidenav 300 px | ✅ | 576–581, 585 | [journal](journal/v79-workspace-cards.md) |
 | [V83](plan/v83-workspace-running-model.md) | What a workspace's agent runs on — its model and effort, read back from the session — in its head and on its card; a card's state on one line | ✅ | 659–664 | [journal](journal/v83-workspace-running-model.md) |
 | [V84](plan/v84-activity-export.md) | Export activity: a workspace's or Nucleus's as Markdown (or JSON Lines), from the tab, `symbiote activity` or the MCP | ✅ | 668–672 | [journal](journal/v84-activity-export.md) |
+| [V94](plan/v94-push-not-polling.md) | Push instead of polling: one server-sent stream per browser, the whole state then what changed; reviews cached; terminals on the stream; changes from files, hooks and Claude Code's list | planned | 897–907 | [journal](journal/v94-push-not-polling.md) |
 
 ### Agents
 
