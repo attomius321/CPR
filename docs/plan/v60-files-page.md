@@ -142,7 +142,7 @@ the page and its switch; e2e; real graphs; docs.
 | 432 | Whose diff a file shows | **git's, from the graph's `from` to its head, the whole file as context, folded in the viewer to 3 lines; its lines git's numstat** | What a row counts is what its diff shows (286); jsdiff differed on 1 file of 185; git takes ~10 ms on a 1.6 MB lockfile |
 | 433 | Which lines take a comment | **Every line shown on a branch review (an unchanged one on its head side); added and removed lines only under `symbiote pr`** | A forge takes comments inside its own hunks only |
 | 434 | The symbol a line's comment names | **The innermost symbol holding the line on its side; none outside every symbol (`symbol` optional in a verdict); such a draft goes to the summary once the head moves** | Keeps a comment about its symbol where there is one; precise beats complete where there is none |
-| 435 | The list | **The workspace changes panel's rows, every file of the graph in git's order, tabs Files and Review** | "like in workspaces"; one row for both |
+| 435 | The list *(partly superseded by 842 of V90)* | **The workspace changes panel's rows, every file of the graph in git's order, tabs Files and Review** | "like in workspaces"; one row for both |
 | 436 | Limits | **A diff over 5 MB is not sent; 2,000 rows drawn before Show all** | A page stays responsive on generated files |
 
 **Not in V60 (later)**: the files shown while the analysis runs (the page waits for it, minutes

@@ -123,7 +123,7 @@ audit's fixes and the documents.
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 279 | Where the palette comes from | **The intro's koi and water, sampled from its images**: canvas and chrome from the tile's water, text from the white koi, primary and accent from the glow | Asked: "the colors from the intro video with the fishes … primary, secondary". Sampled, not picked by eye |
-| 280 | Colour beyond state (revises 214) | **One accent, the koi blue, in named roles** (primary, focus, checked, current, selection, selected node, links on hover); states keep theirs | Asked for primary and secondary colours; a guard keeps it from becoming V31's "blue for everything" |
+| 280 | Colour beyond state (revises 214) *(partly superseded by 836 of V90)* | **One accent, the koi blue, in named roles** (primary, focus, checked, current, selection, selected node, links on hover); states keep theirs | Asked for primary and secondary colours; a guard keeps it from becoming V31's "blue for everything" |
 | 281 | Blue's states | **Moved and info in cyan** (`#3fc5d6`, light `#0a7d8c`), with what shares their hue (working, "since", the current lane) | The koi blue is 6° from today's `#4493f8`: a moved node would read as selected (the person: "Recommended") |
 | 282 | The mark | **The koi S at 24 px in the sidenav and the rail**, the graph glyph gone | It reads from 24 px on the new chrome (the person: "Recommended") |
 | 283 | The light theme | **Tinted too**: cool chrome, navy text, the koi blue as primary and accent | One palette in both themes (the person: "Recommended") |

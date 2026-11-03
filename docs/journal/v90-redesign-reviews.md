@@ -62,3 +62,5 @@ specs and the storefront fixture in the ignored `packages/viewer/coverage/v90/`.
 
 Not verified: a real workspace's loading page with a running agent (the e2e routes its report and
 commits); Codex and Hermes reports there; the desktop window.
+
+Merged into main (2026-11-03).

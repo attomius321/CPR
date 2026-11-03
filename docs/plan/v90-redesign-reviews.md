@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v90-redesign-reviews.md)
 
-**Status:** built (3 November 2026), on branch `feature/redesign-reviews` (the workspace's, from
+**Status:** merged into `main` on 2026-11-03; built (3 November 2026), on branch `feature/redesign-reviews` (the workspace's, from
 `main` at `c99afc6`); the person's choices 1a, 2a, 3b and 4a.
 
 **Problem** (the brief: "Bring a review's pages to the designs in both themes": the Graph page,

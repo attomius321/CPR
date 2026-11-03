@@ -107,9 +107,9 @@ analyzed graph).
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 502 | The analyzing page's ground | **The start page's arcs, one recipe in `ui/ground.css`; here centred on the card, over the whole main area** | the person's "use the start a workspace background", "visible on the full page" |
-| 503 | What moves while it runs | **A comet turning on the arcs' orbit; still when it ended or under reduced motion** | the person's yes to a turning ring; compositor-only |
-| 504 | How progress shows | **The six phases as the merge log's rows, the sidenav's state dots: done green, running cyan, to come an empty ring** | one phase in words hid how far it was; states keep their colours, the accent its roles |
+| 502 | The analyzing page's ground *(superseded by 846 of V90)* | **The start page's arcs, one recipe in `ui/ground.css`; here centred on the card, over the whole main area** | the person's "use the start a workspace background", "visible on the full page" |
+| 503 | What moves while it runs *(superseded by 846 of V90)* | **A comet turning on the arcs' orbit; still when it ended or under reduced motion** | the person's yes to a turning ring; compositor-only |
+| 504 | How progress shows *(superseded by 846 of V90)* | **The six phases as the merge log's rows, the sidenav's state dots: done green, running cyan, to come an empty ring** | one phase in words hid how far it was; states keep their colours, the accent its roles |
 | 505 | The buttons | **Start's head actions: 36 px with icons; Stop secondary, back ghost, Analyze again the primary** | the person's "buttons prettier consistent with the design"; stopping is not the page's main action |
 | 506 | A review being analyzed | **"Reviewing ‹branch›", "into ‹into› · ‹pair›" under it** | the person's pick; the page already knows the branch |
 
