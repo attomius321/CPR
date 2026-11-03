@@ -55,3 +55,5 @@ page; with the fix, 0 such frames in 3 runs, and the screenshot at 1.27–1.39 s
 alone. `pnpm check`: 225 files, 3,060 tests. `pnpm test:e2e`: 423 of 424 in the viewer, the one
 `terminal-view.spec.ts:165` (an agent's attach count, a known flake under load; 6 of 6 alone);
 the nexus 20 of 20. Not verified: WSLg's own display (the app measured on Xvfb).
+
+Merged into main (2026-11-03).
