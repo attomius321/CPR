@@ -78,6 +78,8 @@ const EDGE_OPTIONS = { interactionWidth: 0 };
  * React Flow's default let a few symbols fill the canvas at 2×.
  */
 const FIT_OPTIONS = { maxZoom: 1 };
+/** A pick on the map comes to this zoom: its words at their size, as proof 03 reads them. */
+const READING_ZOOM = 1;
 const PRO_OPTIONS = { hideAttribution: true };
 /** Smaller than React Flow's 200 × 150 (V37): beside the detail panel it covered the nodes. */
 const MINIMAP_SIZE = { width: 160, height: 112 };
@@ -215,9 +217,11 @@ export function Canvas({
           bounds.y >= top &&
           bounds.x + bounds.width <= left + width / zoom &&
           bounds.y + bounds.height <= top + height / zoom;
-        if (!shown && bounds.width > 0) {
+        // On the map nothing is readable: a pick there comes to a reading zoom, proof 03's.
+        const onMap = zoom < MAP_ZOOM;
+        if ((!shown || onMap) && bounds.width > 0) {
           void setCenter(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, {
-            zoom,
+            zoom: onMap ? READING_ZOOM : zoom,
             duration: 300,
           });
         }
