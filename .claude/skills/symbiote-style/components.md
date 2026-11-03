@@ -280,7 +280,7 @@ etched cells or streak (its new groups are a later brief).
 
 A state is never colour alone: `StatusLabel` is the kits' `.pill`, its icon and its word in the
 tone's colour on a 12 % wash with a 28 % edge drawn inside, 22 px, round. Tones: `run` (amber, a
-loader arc), `ok` (green, circle-check), `error` (red, circle-x), `info` (cyan, pause), `idle`
+loader arc, turning), `ok` (green, circle-check), `error` (red, circle-x), `info` (cyan, pause), `idle`
 (muted, dashed circle), `you` (violet, bell), `warning` (amber, alert), `hive` (`--hive-text`,
 hexagon). `icon` replaces the tone's; `className` is the place's own (its tests find it by it).
 
@@ -303,6 +303,19 @@ Plan first). No page shows these steps today: the redesign's page briefs place i
 <StageTrack steps={HIVE_STAGES} at={1} />              {/* Write done, Check now */}
 <StageTrack steps={HIVE_STAGES} at={1} state="bad" />  {/* stopped at the check */}
 ```
+
+## Something under way (fix/static-loadings; `ui/Loading.tsx`, `ui/loading.css`)
+
+Whatever is under way moves; nothing loads in words alone. The loader arc is `SpinIcon` (a faint
+ring and its arc): `.icon.spin` turns it a turn a second wherever it is drawn, still without
+motion. `RunningIcon` (lucide's loader-circle) is the still one, for a count or a past event; the
+status bar's arc turns only while its count is above 0. A loading line or a busy button's words
+are `Loading`: the arc, 1.15 em, then the words (`<Loading className="hint">Reading the
+diff…</Loading>`, `{busy ? <Loading inline>Working…</Loading> : 'Commit'}`); a live region only
+with `status`, since a page's one status line is found by its role. A bar whose progress is not
+measured sweeps a band along its running part (the review page's); outlines of what is not read
+yet pulse (`outline-pulse`). `test/loading.test.ts` fails on an "…ing…" phrase outside a
+`Loading`; the nexus draws the same with `loading()` (`page/dom.ts`).
 
 ## Chips, badges, counts, keycaps
 

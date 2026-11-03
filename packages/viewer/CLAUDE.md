@@ -29,7 +29,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 | `overview/` | The Overview (V91), both modes: its pure derivations, the day read, the two bodies |
 | `workspaces/` | A workspace, its agent's terminal, its changes, merges, Start a workspace |
 | `shell/` | The shell: sidenav, title bar, status bar and usage, pages, theme, the desktop window |
-| `ui/` | Shared: the tokens and controls' CSS, `Help`, `Tooltips`, `Resizer`, icons, menus, Markdown, HTTP |
+| `ui/` | Shared: the tokens and controls' CSS, `Help`, `Tooltips`, `Resizer`, icons, menus, Markdown, HTTP; `Loading` (anything under way: the turning arc and its words, never words alone, `test/loading.test.ts`) |
 | `nucleus/`, `settings/` | Nucleus (Scout until NU1), Settings; `nucleus/Conversation.tsx` is a page agent's conversation, Nucleus's page and Scribe's pane (V41) |
 | `skills/` | Skills (V41): the checkout's skills, their checks (`skills.ts`, pure), Scribe's pane |
 | `monitor/` | The Monitor (RM1, RM2): the folder tree, concentration and heat (`codemap.ts`), the treemap layout (`treemap.ts`), both pure; the picture `TreemapView.tsx` |
