@@ -519,7 +519,8 @@ export function hiveMocks(
       place: 'repository',
       reviews: [],
     },
-    merges: { merges: [] },
+    // The repository's merge pushes (`merge.push`), as the proofs' "merge queue → main, push".
+    merges: { merges: [], push: true },
     day: {
       since: iso(now - 7 * 86_400_000),
       into: 'main',

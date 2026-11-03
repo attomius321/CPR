@@ -82,7 +82,8 @@ test('Hermes in its terminal: started with the prompt, kept while its tab is lef
   await expect(workspaceRow(page)).toHaveAttribute('data-tone', 'run', POLL);
 
   // Stop hangs it up; its session stays, and its terminal continues it, asked first.
-  await here.getByRole('button', { name: 'Stop the agent' }).click();
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await here.getByRole('menuitem', { name: 'Stop the agent' }).click();
   await expect(workspaceRow(page)).toContainText('Stopped', POLL);
   expect(symbiote.hermesHangups()).toEqual([id]);
   await here.getByRole('button', { name: 'Open again' }).click();

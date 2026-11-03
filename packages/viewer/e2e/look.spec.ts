@@ -445,13 +445,6 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
   await inside(tip);
   await page.keyboard.press('Escape');
   await expect(tip).toBeHidden();
-
-  // Settings' description, by its title (a prompt's is on its page since V62, the mockup's).
-  await page.goto(`${symbiote.url}settings`);
-  await expect(page.getByText('What Symbiote tells each agent')).toBeHidden();
-  await page.getByRole('button', { name: 'About Settings' }).click();
-  await expect(tip).toContainText('What Symbiote tells each agent');
-  await inside(tip);
 });
 
 // V93 (decision 876; the proofs' `.ws`): a row of two lines — its icon and its title, cut with

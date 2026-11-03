@@ -108,12 +108,10 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
 
   // It asks for an approval: "needs you", and what it said in the thread.
   server.ask(id, 'May I run pnpm install with the network?', 'pnpm install');
-  // Its card says what it asked (V48); the bar under its views, what it waits on (V89).
+  // Its card says what it asked (V48); the pipeline card that it waits on you (V93: on the Thread
+  // tab the reply box answers it, no bar under it).
   await expect(workspaceRow(page)).toContainText('May I run pnpm install with the network?', POLL);
-  await expect(here.getByRole('region', { name: 'Agent status' })).toContainText(
-    'May I run pnpm install with the network?',
-  );
-  await expect(here.locator('.head-steps')).toContainText('asks you');
+  await expect(here.getByRole('region', { name: 'Its steps' })).toContainText('asks you');
   await expect(here.locator('.thread-agent').last()).toContainText(
     'May I run pnpm install with the network?',
     POLL,
@@ -136,7 +134,8 @@ test('Codex on its app server: Stop interrupts its turn, Start again makes a new
   const here = panel(page);
   await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
 
-  await here.getByRole('button', { name: 'Stop the agent' }).click();
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await here.getByRole('menuitem', { name: 'Stop the agent' }).click();
   await expect(workspaceRow(page)).toContainText('Stopped', POLL);
   expect(server.threads[0]?.turns.at(-1)?.status).toBe('interrupted');
 
@@ -214,7 +213,8 @@ test("Codex's own terminal in its panel: the trust it asks for, a turn typed the
 
   // Stop ends the turn and the command it left running.
   server.command(id, 'pnpm dev');
-  await here.getByRole('button', { name: 'Stop the agent' }).click();
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await here.getByRole('menuitem', { name: 'Stop the agent' }).click();
   await expect(workspaceRow(page)).toContainText('Stopped', POLL);
   expect(server.thread(id).terminals).toEqual([]);
 });

@@ -495,7 +495,8 @@
   border-radius: 0;
   background: none;
   color: var(--muted);
-  font: var(--size-small) var(--sans);
+  /* In git's mono, as the proofs write a branch (V93). */
+  font: var(--size-small) / 1 var(--mono);
   text-decoration: none;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -668,6 +669,7 @@
 
 .workspace-from .mono {
   font-family: var(--mono);
+  line-height: 1;
 }
 
 /* The branch kept whole as long as it can be: what runs it takes only the room left (flex
@@ -962,4 +964,15 @@
 
 .workspace-documents .icon {
   color: var(--faint);
+}
+
+/* The head's icon buttons boxed, as the proofs draw them (V93; the kits' `.icon-button.boxed`). */
+.workspace-top .page-actions .icon-button {
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  background: var(--raised);
+}
+
+.workspace-top .page-actions .icon-button:hover,
+.workspace-top .page-actions .icon-button[aria-expanded='true'] {
+  background: var(--hover);
 }

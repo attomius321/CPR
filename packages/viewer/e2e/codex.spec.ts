@@ -173,7 +173,8 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
   await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
 
   // Stop: the run ends (its process group), the thread says so.
-  await here.getByRole('button', { name: 'Stop the agent' }).click();
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await here.getByRole('menuitem', { name: 'Stop the agent' }).click();
   await expect(workspaceRow(page)).toContainText('Stopped', POLL);
 
   // Started again: a new run, which fails in Codex's words.

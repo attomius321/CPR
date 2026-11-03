@@ -80,14 +80,14 @@ test("changes the Fix prompt; the next Fix workspace's agent is told it; Reset g
     'This browser',
   ]);
   await expect(agents(page).getByRole('button')).toHaveText(['Merger', 'Nucleus', 'Scribe']);
-  // An entry's icon 8 px past its group's heading's words (V93, proof 11: 23 px into the card; V81
-  // put a tile in line with them), its wash further out.
+  // An entry's icon under its group's heading's words (V93, proofs 04 and 11: 15 px into the card;
+  // V81 put a tile in line with them), its wash further out.
   const heading = await list(page).getByRole('heading', { name: 'Workspaces' }).boundingBox();
   const tile = await entry(page, 'Feature').locator('.settings-tile').boundingBox();
   const first = await entry(page, 'Feature').boundingBox();
   const card = await list(page).boundingBox();
-  expect(Math.abs((tile?.x ?? 0) - (heading?.x ?? 0) - 16)).toBeLessThanOrEqual(1);
-  expect(Math.abs((tile?.x ?? 0) - (card?.x ?? 0) - 23)).toBeLessThanOrEqual(1);
+  expect(Math.abs((tile?.x ?? 0) - (heading?.x ?? 0) - 8)).toBeLessThanOrEqual(1);
+  expect(Math.abs((tile?.x ?? 0) - (card?.x ?? 0) - 15)).toBeLessThanOrEqual(1);
   expect(first?.x).toBeLessThan(tile?.x ?? 0);
 
   await entry(page, 'Fix').click();
@@ -309,7 +309,7 @@ test("the mockup: two cards to the main area's bottom, the page a head over its 
   // The head: the page's icon, its title and the mockup's line.
   const head = page.locator('.settings-bar');
   await expect(head.locator('.page-icon svg')).toBeVisible();
-  await expect(head).toContainText('Configure Symbiote to match your workflow and preferences.');
+  await expect(head).toContainText('What Symbiote tells its agents, and how this repository works');
 
   // The page's head: its name and chip; its sections, each with a line of what it is.
   await expect(title(page)).toHaveText("Workspaces: FeatureSymbiote's");
@@ -455,8 +455,8 @@ test('Appearance is an entry of its own: the theme and the intro; listed when th
   await page.goto(`${symbiote.url}settings`);
   await expect(text(page, 'Feature')).toBeVisible();
   const head = page.locator('.settings-bar');
-  await expect(head.getByRole('button')).toHaveCount(1);
-  await expect(head.getByRole('button', { name: 'About Settings' })).toBeVisible();
+  // The proofs' head: its line, no button (V93).
+  await expect(head.getByRole('button')).toHaveCount(0);
   await list(page)
     .getByRole('region', { name: 'This browser' })
     .getByRole('button', { name: 'Appearance' })

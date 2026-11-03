@@ -655,8 +655,10 @@ test('Stop the agent says it stops until Symbiote answers (V48)', async ({ page 
     await new Promise((r) => setTimeout(r, 800));
     await route.continue();
   });
-  await here.getByRole('button', { name: 'Stop the agent' }).click();
-  await expect(here.getByRole('button', { name: 'Stopping…' })).toBeDisabled();
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await here.getByRole('menuitem', { name: 'Stop the agent' }).click();
+  // Stop is in the ⋯ menu since V93: the head says it stops meanwhile.
+  await expect(here.getByRole('status')).toHaveText('Stopping the agent…');
   // The head's steps say it (V89), and the bar under the terminal.
   await expect(here.locator('.head-steps')).toContainText('stopped', POLL);
   await expect(here.getByRole('region', { name: 'Agent status' })).toContainText('Stopped');
@@ -778,7 +780,8 @@ test('stop the agent, start it again, copy its prompt, open its worktree', async
   const branch = 'feature/add-a-half-function';
   const row = panel(page, branch);
 
-  await row.getByRole('button', { name: 'Stop the agent' }).click();
+  await row.getByRole('button', { name: 'More actions' }).click();
+  await row.getByRole('menuitem', { name: 'Stop the agent' }).click();
   await expect(row).toContainText('Stopped');
   expect(symbiote.stops()).toEqual(['fake0']);
   await row.getByRole('button', { name: 'Start the agent' }).click();
@@ -796,7 +799,7 @@ test('stop the agent, start it again, copy its prompt, open its worktree', async
   await expect(row.getByRole('status')).toHaveText(/^Copied claude attach fake1/);
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe('claude attach fake1');
 
-  await more(page, branch, 'Open in VS Code');
+  await row.getByRole('button', { name: 'Open in VS Code' }).click();
   await expect(row.getByRole('status')).toHaveText('Opened in VS Code');
   expect(symbiote.opened()).toEqual([[symbiote.folder(branch)]]);
 });
@@ -1338,7 +1341,8 @@ test("the agent's session in a terminal in its panel: keys, the thread, hang-up,
   expect((await sizes()).at(-1)).not.toBe(before.at(-1));
 
   // Stopped from the head: the terminal ends, and opens again.
-  await here.getByRole('button', { name: 'Stop the agent' }).click();
+  await here.getByRole('button', { name: 'More actions' }).click();
+  await here.getByRole('menuitem', { name: 'Stop the agent' }).click();
   await expect(screen(page, branch)).toContainText('Session fake0 has exited', POLL);
   await expect(here.getByRole('button', { name: 'Open again' })).toBeVisible();
   // Opening it continues the stopped session: said first.

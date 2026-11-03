@@ -52,6 +52,7 @@ import {
   CheckIcon,
   ChoreIcon,
   CloseIcon,
+  EditorIcon,
   ExpandIcon,
   MergeIcon,
   PencilIcon,
@@ -60,6 +61,8 @@ import {
   TerminalIcon,
 } from '../ui/icons.js';
 import { Pipeline, type PipelineState } from '../ui/Pipeline.js';
+import { HivePipeline } from './HivePipeline.js';
+import { hivePipeline } from './hive-pipeline.js';
 import { StatusLabel } from '../ui/StatusLabel.js';
 import { PageHead } from '../ui/PageHead.js';
 import { KIND_ICONS } from './StartKinds.js';
@@ -600,16 +603,24 @@ function WorkspacePanel({
     );
   };
 
+  const openInCode = () =>
+    act(() => postJson('/api/workspaces/open', { branch }).then(() => 'Opened in VS Code'));
   const more: MenuAction[] = [
-    ...(workspace.worktree.exists
+    // Stop is the menu's, as proofs 02 and 08 draw the head (V93): it says it stops meanwhile.
+    ...(live
       ? [
           {
-            label: 'Open in VS Code',
+            label: stopping ? 'Stopping…' : 'Stop the agent',
             disabled: busy,
-            onSelect: () =>
+            onSelect: () => {
+              setStopping(true);
+              setSaid('Stopping the agent…');
               act(() =>
-                postJson('/api/workspaces/open', { branch }).then(() => 'Opened in VS Code'),
-              ),
+                postJson('/api/workspaces/stop', { branch })
+                  .then(() => null)
+                  .finally(() => setStopping(false)),
+              );
+            },
           },
         ]
       : []),
@@ -655,12 +666,13 @@ function WorkspacePanel({
   ];
 
   const views: AgentView[] = [
+    // A workspace Hive drives (HV3): its run, its rounds and its landing (V92: Run), first as
+    // proofs 02, 03 and 07 draw it (V93).
+    ...(workspace.hive ? (['run'] as const) : []),
     ...(terminals ? (['terminal'] as const) : []),
     'thread',
     'activity',
     'brief',
-    // A workspace Hive drives (HV3): its run, its rounds and its landing (V92: Run).
-    ...(workspace.hive ? (['run'] as const) : []),
   ];
   // In Hive mode Hive lands a workspace it drives (HV4, decision 774): no review of the person's.
   const hiveLands = hiveDrives;
@@ -750,30 +762,19 @@ function WorkspacePanel({
             )}
             {showPipeline && (
               <StatusLabel tone={steps.tone} className="workspace-pill">
-                {steps.tone === 'you'
-                  ? `${rowWords(row, Date.now()).word} · your turn`
-                  : steps.tone === 'run'
-                    ? 'Working'
-                    : steps.word}
+                {hiveDrives && workspace.hive && hive.detail
+                  ? hivePipeline(steps, hive.detail, {
+                      into: workspace.from ?? 'its branch',
+                      commits: workspace.ahead,
+                      push: merges?.push === true,
+                      now: Date.now(),
+                    }).pill
+                  : steps.tone === 'you'
+                    ? `${rowWords(row, Date.now()).word} · your turn`
+                    : steps.tone === 'run'
+                      ? 'Working'
+                      : steps.word}
               </StatusLabel>
-            )}
-            {live && (
-              <button
-                type="button"
-                className="button secondary"
-                disabled={busy}
-                onClick={() => {
-                  setStopping(true);
-                  // The head's steps say Stopped: no word of its own beside the buttons (V37).
-                  act(() =>
-                    postJson('/api/workspaces/stop', { branch })
-                      .then(() => null)
-                      .finally(() => setStopping(false)),
-                  );
-                }}
-              >
-                {stopping ? 'Stopping…' : 'Stop the agent'}
-              </button>
             )}
             {restartable && workspace.worktree.exists && (
               <button
@@ -795,6 +796,19 @@ function WorkspacePanel({
             {/* Hive lands its own (HV4, decision 774): no Merge into while Hive drives it. */}
             {workspace.ahead > 0 && !mergedForCard(workspace) && !hiveLands && (
               <MergeControl branch={branch} />
+            )}
+            {/* Open in VS Code, the proofs' ‹› beside the side card's toggle (V93). */}
+            {workspace.worktree.exists && (
+              <button
+                type="button"
+                className="icon-button head-open"
+                aria-label="Open in VS Code"
+                disabled={busy}
+                {...tip('Open its worktree in VS Code')}
+                onClick={openInCode}
+              >
+                <EditorIcon />
+              </button>
             )}
             {!focus && (
               <button
@@ -838,7 +852,19 @@ function WorkspacePanel({
           </>
         }
       />
-      {showPipeline && (
+      {showPipeline && hiveDrives && workspace.hive && hive.detail && (
+        <HivePipeline
+          model={steps}
+          detail={hive.detail}
+          into={workspace.from ?? 'its branch'}
+          commits={workspace.ahead}
+          push={merges?.push === true}
+          created={workspace.created}
+          landed={landed}
+          icon={stepIcon}
+        />
+      )}
+      {showPipeline && !(hiveDrives && workspace.hive && hive.detail) && (
         <Pipeline
           label="Its steps"
           steps={pipelineSteps(steps, {
@@ -1110,7 +1136,8 @@ function WorkspacePanel({
             onCancel={() => setConfirming(null)}
           />
           {/* Not under the Thread tab's reply box, which answers (V93, proof 02). */}
-          {!(view === 'thread' && !(terminals && !planWaits)) && (
+          {/* Nor under the Run tab, which says what Hive runs (V93, proof 02). */}
+          {!(view === 'thread' && !(terminals && !planWaits)) && view !== 'run' && (
             <TerminalBar
               model={bar}
               hive={workspace.hive}
@@ -1146,6 +1173,7 @@ function WorkspacePanel({
             editing={editing}
             // Outside the terminal view, the proof's facts and files (V93, proof 02).
             page={showPipeline && view !== 'run'}
+            run={view === 'run'}
             facts={<FactsSection workspace={workspace} />}
             brief={briefFirst(workspace.brief)}
             now={

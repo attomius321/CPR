@@ -875,8 +875,24 @@ export function RunFacts({
             };
   const review = detail.reviews.at(-1);
   const into = landed?.into ?? workspace.from ?? 'main';
+  // Landed or stopped, the first row says when and how, as proofs 03 and 07 (V93).
+  const lastCheck = detail.checks.at(-1);
+  const stoppedAt =
+    lastCheck?.started !== undefined ? Date.parse(lastCheck.started) + lastCheck.ms : undefined;
+  const why = detail.note?.startsWith('its spend reached its budget')
+    ? 'budget'
+    : detail.round >= detail.rounds
+      ? 'round cap'
+      : 'stopped';
+  const how = detail.request ? requestKind(detail.request).toLowerCase() : 'merge queue';
+  const first: [string, ReactNode, string?] =
+    landed && !stop
+      ? ['Landed', landed.ended ? `${hm(landed.ended)} · ${how}` : how, 'ok']
+      : stop
+        ? ['Stopped', stoppedAt !== undefined ? `${hm(stoppedAt)} · ${why}` : why, 'fail']
+        : ['Stage', stage.text, stage.tone];
   const facts: [string, ReactNode, string?][] = [
-    ['Stage', stage.text, stage.tone],
+    first,
     [
       'Writer',
       `Claude Code${workspace.agent.model ? ` · ${modelName(workspace.agent.model)}` : ''}`,
@@ -887,13 +903,16 @@ export function RunFacts({
           string,
         ][])
       : []),
-    [
-      'Lands in',
-      <>
-        <code>{into}</code> ·{' '}
-        {detail.request ? requestKind(detail.request).toLowerCase() : 'merge queue'}
-      </>,
-    ],
+    ...(landed || stop
+      ? []
+      : ([
+          [
+            'Lands in',
+            <>
+              <code>{into}</code> · {how}
+            </>,
+          ],
+        ] as [string, ReactNode][])),
     ...(landed?.merge
       ? ([
           [
@@ -919,6 +938,7 @@ export function RunFacts({
           ],
         ] as [string, ReactNode, string?][])
       : []),
+    ...(stop ? ([['Landed', 'nothing']] as [string, ReactNode][]) : []),
   ];
   const spend = detail.spend;
   const budget = spend?.budget;

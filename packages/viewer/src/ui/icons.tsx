@@ -1046,3 +1046,25 @@ export const AnsweredIcon = () => (
     <path d="m9 12 2 2 4-4" />
   </Icon>
 );
+
+/** A workspace's Thread tab (V93, proofs 02 and 08): lucide's message-square, as the proofs. */
+export const ThreadIcon = () => (
+  <Icon lucide>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </Icon>
+);
+
+/** A workspace's Activity tab (V93): lucide's activity. */
+export const ActivityIcon = () => (
+  <Icon lucide>
+    <path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" />
+  </Icon>
+);
+
+/** Open in VS Code (V93, the proofs' `vscode`): lucide's code, two chevrons. */
+export const EditorIcon = () => (
+  <Icon lucide>
+    <path d="m18 16 4-4-4-4" />
+    <path d="m6 8-4 4 4 4" />
+  </Icon>
+);

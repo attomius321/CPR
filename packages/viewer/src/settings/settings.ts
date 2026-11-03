@@ -75,7 +75,12 @@ export function promptGroups(
       entries.push({ key: prompt.key, name: prompt.title, prompts: [prompt] });
     }
   }
-  return [...groups].map(([group, entries]) => ({ group, entries }));
+  const listed = [...groups].map(([group, entries]) => ({ group, entries }));
+  // In Hive mode its group first, its reviewer first in it, as proof 04 lists them (V93).
+  const hiveGroup = listed.find((g) => g.group === HIVE_GROUP);
+  if (!hiveGroup) return listed;
+  hiveGroup.entries.sort((a, b) => Number(b.agent !== undefined) - Number(a.agent !== undefined));
+  return [hiveGroup, ...listed.filter((g) => g !== hiveGroup)];
 }
 
 /** The entry's mark in the list, for any of its prompts: not saved, not used, then changed. */

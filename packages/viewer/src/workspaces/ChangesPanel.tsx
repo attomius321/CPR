@@ -212,6 +212,14 @@ const isPath = (subject: string, path: string) => subject === path || subject.en
  * it edits pulsing; then its commits and files. Its changes are read by the page (`changes`), for
  * the head's counts too; a finished workspace's (History) reads its own.
  */
+/** A commit's time: today's as the time of day, as the proofs write it (V93); older, its age. */
+function commitTime(iso: string, now: number): string {
+  const date = new Date(iso);
+  if (date.toDateString() !== new Date(now).toDateString()) return shortAge(iso, now);
+  const two = (n: number) => String(n).padStart(2, '0');
+  return `${two(date.getHours())}:${two(date.getMinutes())}`;
+}
+
 export function ChangesPanel({
   branch,
   version,
@@ -224,6 +232,7 @@ export function ChangesPanel({
   page = false,
   facts,
   brief,
+  run = false,
 }: {
   branch: string;
   /** The list as last read: the changes are read again with it. */
@@ -253,6 +262,8 @@ export function ChangesPanel({
   facts?: ReactNode;
   /** Its brief's first lines (V93). */
   brief?: string | undefined;
+  /** Beside a Hive workspace's Run tab (V93). */
+  run?: boolean;
 }) {
   const [picks, setPicks] = useState(0);
   const read = useChanges(branch, version, picks, given === undefined);
@@ -273,7 +284,9 @@ export function ChangesPanel({
       ? moreText(changes.commits.count, changes.commits.listed.length)
       : null;
   const shown = changes !== null && typeof changes !== 'string' ? changes : null;
-  const uncommitted = shown && !finished && (
+  // The Run tab's side card leaves out an empty worktree, as proof 02 draws it (V93).
+  const nothingUncommitted = shown?.uncommitted?.count === 0;
+  const uncommitted = shown && !finished && !(run && nothingUncommitted) && (
     <section className="changes-section" aria-label="Not committed" key="uncommitted">
       <h2>
         Not committed{' '}
@@ -323,7 +336,7 @@ export function ChangesPanel({
                     <span className="changes-sha">{commit.sha.slice(0, 7)}</span>
                     <span className="changes-subject">{commit.subject}</span>
                     <time className="changes-age" dateTime={commit.date}>
-                      {shortAge(commit.date, Date.now())}
+                      {commitTime(commit.date, Date.now())}
                     </time>
                   </li>
                 ))}

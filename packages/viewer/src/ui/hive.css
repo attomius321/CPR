@@ -678,6 +678,9 @@
 
 .hive-setting-control select {
   min-width: 116px;
+  /* As narrow as proofs 04 and 11 draw them (V93): a long choice is cut. */
+  max-width: 168px;
+  text-overflow: ellipsis;
 }
 
 .hive-setting-control .scope .icon {
@@ -1027,5 +1030,6 @@
 
 /* Its mark in the list while it is on. */
 .settings-mark.hive-on {
-  color: var(--hive-text);
+  background: color-mix(in srgb, var(--ok) 14%, transparent);
+  color: var(--ok);
 }

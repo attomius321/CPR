@@ -29,7 +29,8 @@
 }
 
 .changes-section {
-  padding: 10px 0 6px;
+  /* The kits' rhythm (V93, run.css's `.side`): 12 px above a section, its rows 9 apart. */
+  padding: 12px 0 10px;
   border-bottom: 1px solid var(--line);
 }
 
@@ -43,7 +44,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  margin: 0 0 4px;
+  margin: 0 0 8px;
   padding: 0 var(--card-pad);
   color: var(--muted);
   font-size: var(--size-caps);
@@ -223,7 +224,7 @@ button.changes-file:hover {
 .changes-facts {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 6px 12px;
+  gap: 9px 16px;
   margin: 4px 0 4px;
   padding: 0 var(--card-pad);
 }

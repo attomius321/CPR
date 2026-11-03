@@ -243,3 +243,46 @@
     padding: 10px 18px;
   }
 }
+
+/* A Hive run's rounds, one mark each (V93, proofs 02, 03, 07: run.css's `.pips`). */
+.pipeline-rounds {
+  display: flex;
+  gap: 4px;
+  margin-top: 3px;
+}
+
+.pipeline-rounds > i {
+  width: 18px;
+  height: 4px;
+  border-radius: 4px;
+  background: var(--raised);
+}
+
+.pipeline-rounds > i.is-fail {
+  background: var(--error);
+}
+
+.pipeline-rounds > i.is-run {
+  background: var(--run);
+}
+
+.pipeline-rounds > i.is-ok {
+  background: var(--ok);
+}
+
+/* The spend against its budget. */
+.pipeline-bar {
+  display: block;
+  width: 84px;
+  height: 3px;
+  margin-top: 5px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--raised);
+}
+
+.pipeline-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--muted);
+}

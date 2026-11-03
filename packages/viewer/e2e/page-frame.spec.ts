@@ -264,7 +264,8 @@ test("a workspace, its review's two views and its merge: the same frame", async 
   await expectPage(page, 'A workspace', at, ['.card.pipeline, .workspace-main', '.changes']);
   const tabs = await head(page, '.workspace-main', '.workspace-views', 'text');
   expect.soft(tabs?.height, "A workspace: its tabs' height").toBe(HEAD);
-  expect.soft(Math.round(tabs?.inset ?? 0), 'A workspace: its first tab').toBe(INSET);
+  // Its icon first since V93 (the proofs' tabs): 14 px, then 7 px to its word.
+  expect.soft(Math.round(tabs?.inset ?? 0), 'A workspace: its first tab').toBe(INSET + 14 + 7);
 
   // Its review: Files and Graph start and end at the same places (the Graph's bar wrapped at
   // 1440 and its legend sat under its card).
@@ -378,11 +379,12 @@ test('inside the cards: heads 40 px, their words or controls 12 px in; a label 4
   page,
 }) => {
   symbiote = await serveWorkspaces({ terminal: false });
-  const heads: [string, string, string, string, 'text' | 'box', number?][] = [
+  const heads: [string, string, string, string, 'text' | 'box', number?, number?][] = [
     ['git', 'Git', '.git-details', '.git-details-head', 'text'],
     // The kits' tab strip: 8 px in, its tabs' own 10 px padding after.
     ['start', 'Start a workspace', '.start-brief', '.kind-row', 'box', 9],
-    ['settings', 'Settings', '.settings-editor', '.settings-head', 'text'],
+    // Proofs 04 and 11 (V93): Settings' page head 12 px over and under its title, 16 px in.
+    ['settings', 'Settings', '.settings-editor', '.settings-head', 'text', INSET + 4, 51],
     ['monitor', 'the Monitor', '.monitor-map-card', '.monitor-place', 'box'],
     ['monitor', 'the Monitor', '.monitor-side', '.tabs', 'text'],
   ];
@@ -391,11 +393,11 @@ test('inside the cards: heads 40 px, their words or controls 12 px in; a label 4
       .soft(Math.abs((value ?? -99) - expected), `${what} is ${value ?? 'missing'}`)
       .toBeLessThanOrEqual(1);
   await page.setViewportSize({ width: 1440, height: 900 });
-  for (const [path, name, card, part, first, inset = INSET] of heads) {
+  for (const [path, name, card, part, first, inset = INSET, height = HEAD] of heads) {
     await page.goto(`${symbiote.url}${path}`);
     await expect(page.locator(`${card} ${part}`).first()).toBeVisible(POLL);
     const got = await head(page, card, part, first);
-    near(`${name}: ${part}'s height`, got?.height, HEAD);
+    near(`${name}: ${part}'s height`, got?.height, height);
     // The card's 1 px edge, then `--card-pad`.
     near(`${name}: ${part}'s first ${first === 'text' ? 'word' : 'control'}`, got?.inset, inset);
   }

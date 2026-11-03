@@ -88,7 +88,8 @@
   gap: 8px;
   width: 100%;
   min-height: var(--height-tall);
-  padding: 0 6px 0 16px;
+  /* Its icon under the group's name, as proofs 04 and 11 indent it (V93). */
+  padding: 0 6px 0 8px;
   border: 0;
   border-radius: 8px;
   background: none;
@@ -160,6 +161,19 @@
   color: var(--warning);
 }
 
+/* Hive mode's entry: On or Off as a small pill, as proofs 04 and 11 (V93). */
+.settings-mark.hive-on,
+.settings-mark.hive-off {
+  padding: 1px 7px;
+  border-radius: 9999px;
+  font-weight: 500;
+}
+
+.settings-mark.hive-off {
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  color: var(--muted);
+}
+
 /* The open page (decision 449): one card, its head over a hairline, its body scrolling under it. */
 .settings-editor {
   display: flex;
@@ -176,7 +190,8 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  padding: 4px var(--card-pad);
+  /* The proofs' head: 56 px, its title 16 px in (V93). */
+  padding: 12px calc(var(--card-pad) + 4px);
   border-bottom: 1px solid var(--line);
 }
 
