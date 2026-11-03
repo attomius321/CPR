@@ -130,6 +130,22 @@ describe('the rounds on a timeline (decision 861)', () => {
     expect(rounds[0]?.writer.words).toBe('fixed the proven defect');
   });
 
+  it("ends the writer's time at the start of the check running now", () => {
+    const checking = detail({
+      step: 'checking',
+      round: 1,
+      live: {
+        kind: 'check',
+        started: '2026-11-03T12:40:00.000Z',
+        commands: ['npm test'],
+        step: 0,
+        since: '2026-11-03T12:40:00.000Z',
+        done: [],
+      },
+    });
+    expect(runRounds(checking, COMMITS, CREATED)[0]?.writer.ms).toBe(6 * 60_000);
+  });
+
   it('opens round 1 before anything ran, with no commit', () => {
     const rounds = runRounds(detail({}), [], CREATED);
     expect(rounds).toHaveLength(1);

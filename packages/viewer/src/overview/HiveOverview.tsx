@@ -11,6 +11,7 @@ import type {
   WorkspaceHive,
 } from '@symbiote/core';
 import { TurnOffHive } from '../settings/HiveOff.js';
+import { runHref } from '../workspaces/tab-address.js';
 import { useShell } from '../shell/shell-context.js';
 import { AGENT_NAMES as USAGE_AGENTS, shownWindows, usageTone } from '../shell/usage.js';
 import { useUsage } from '../shell/useUsage.js';
@@ -353,11 +354,11 @@ function StoppedCard({ row }: { row: StoppedRow }) {
             : 'Hive cannot go on'}
         </p>
       </div>
-      {/* Its Review tab's address: the shell opens it in place. */}
+      {/* Its Run tab's address (V92): the shell opens it in place. */}
       <a
         className="button secondary"
-        href={`/?branch=${encodeURIComponent(row.branch)}&review`}
-        {...tip('Its Review tab: each round, what failed')}
+        href={runHref(row.branch)}
+        {...tip('Its Run tab: each round, what failed')}
       >
         Read why
         <ForwardIcon />
