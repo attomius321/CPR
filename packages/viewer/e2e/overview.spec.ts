@@ -351,7 +351,9 @@ async function expectFits(page: Page, mode: string, first: string, rest: readonl
     const at = `${mode} at ${width}×${height}`;
     await page.setViewportSize({ width, height });
     await page.goto(`${symbiote.url}overview`);
-    await expect(card(page, first).locator('.table-row').first()).toBeVisible(POLL);
+    // Every list drawn: the day's read comes after the list's.
+    for (const name of [first, ...rest])
+      await expect(card(page, name).locator('.table-row, .feed-event').first()).toBeVisible(POLL);
     await page.evaluate(() => document.fonts.ready);
     const f = await fit(page, [first, ...rest]);
     expect.soft(f.page.scroll, `${at}: the page's height`).toBeLessThanOrEqual(f.page.client);
@@ -394,19 +396,22 @@ test('few rows or none: no scrollbar, each card its content, the last of each co
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  for (const [records, mocks] of [
-    ['as the proof', normalMocks()],
-    ['empty', normalMocks(undefined, { empty: true })],
+  await page.setViewportSize({ width: 1920, height: 1080 });
+  for (const [records, mocks, names] of [
+    // Merging's one row: its content's height, not the list cards' minimum.
+    ['as the proof', normalMocks(), ['Merging']],
+    ['empty', normalMocks(undefined, { empty: true }), []],
   ] as const) {
     await page.unrouteAll();
     await mockOverview(page, mocks);
     await page.goto(`${symbiote.url}overview`);
-    await expect(card(page, 'Merged today')).toBeVisible(POLL);
+    for (const name of ['Merged today', ...names]) await expect(card(page, name)).toBeVisible(POLL);
     await expect(card(page, 'Usage')).not.toContainText('No subscription read yet', POLL);
     await page.evaluate(() => document.fonts.ready);
     const f = await fit(page, [
       'Waiting for you',
       'Agents at work',
+      ...names,
       'Merged today',
       'Usage',
       'Today',
