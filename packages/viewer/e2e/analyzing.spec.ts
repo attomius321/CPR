@@ -104,6 +104,21 @@ test('draws a running analysis as six steps on a timeline, the arcs gone', async
   await expect(steps.nth(4)).toHaveAttribute('aria-current', 'step');
   await expect(steps.nth(5)).toHaveClass(/mark-next/);
   await expect(page.locator('.opening-segment.mark-done')).toHaveCount(4);
+  // What runs moves (fix/static-loadings): the bar's running segment sweeps, its step's arc, the
+  // head's label's and the Graph tab's turn; without motion, all still.
+  const moving = [
+    page.locator('.opening-segment.mark-running'),
+    steps.nth(4).locator('.icon'),
+    page.locator('.analysis-state .icon'),
+    page.getByRole('tab', { name: 'Graph', exact: true }).locator('.icon'),
+  ];
+  // Its own and its pseudo-elements' (the sweep is the segment's ::after).
+  const animations = (locator: (typeof moving)[number]) =>
+    locator.evaluate((node) => node.getAnimations({ subtree: true }).length);
+  for (const locator of moving) expect(await animations(locator)).toBeGreaterThan(0);
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  for (const locator of moving) expect(await animations(locator)).toBe(0);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
 
   // Stop is not the primary; no arcs, no comet, no card in the middle.
   await expect(page.getByRole('button', { name: 'Stop' })).toHaveClass(/secondary/);

@@ -798,7 +798,10 @@ export const AlertIcon = () => (
   </Icon>
 );
 
-/** In progress (V88): lucide's loader-circle, drawn still; the status label's run. */
+/**
+ * In progress (V88): lucide's loader-circle, drawn still, for a count or a past event. What is
+ * under way now is `SpinIcon`, which turns (fix/static-loadings).
+ */
 export const RunningIcon = () => (
   <Icon lucide>
     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
@@ -806,10 +809,12 @@ export const RunningIcon = () => (
 );
 
 /**
- * At work in a sidenav row (V93, the kits' `spin`): a faint ring and the arc that turns on it.
+ * Under way (V93, the kits' `spin`): a faint ring and the arc that turns on it, wherever it is
+ * drawn (`.icon.spin`, icons.css; still without motion). Never for a count or a past event:
+ * `RunningIcon` is the still one (fix/static-loadings).
  */
 export const SpinIcon = () => (
-  <Icon lucide>
+  <Icon lucide className="spin">
     <circle cx="12" cy="12" r="9" opacity="0.28" />
     <path d="M21 12a9 9 0 0 0-9-9" />
   </Icon>

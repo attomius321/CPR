@@ -20,7 +20,7 @@ import {
   FileIcon,
   IdleIcon,
   ResetIcon,
-  RunningIcon,
+  SpinIcon,
   StopIcon,
   StoppedIcon,
   ReviewIcon,
@@ -91,7 +91,7 @@ export function analysisState(
 
 const MARK_ICONS: Record<StepMark, () => ReactNode> = {
   done: CheckIcon,
-  running: RunningIcon,
+  running: SpinIcon,
   next: IdleIcon,
   failed: FailedIcon,
   stopped: StoppedIcon,

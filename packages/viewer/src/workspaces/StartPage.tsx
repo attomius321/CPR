@@ -73,6 +73,7 @@ import { SuggestButton, SuggestionCard, useSuggestion } from './StartSuggest.js'
 import { suggestBlocked } from './suggest.js';
 import { tip } from '../ui/tip.js';
 import { whatHappensNext, type NextStep } from './start-next.js';
+import { Loading } from '../ui/Loading.js';
 
 /** What happens next's marks (V93, proof 06): the person's violet, the rest faint. */
 const NEXT_ICONS: Record<NextStep['icon'], ReactNode> = {
@@ -165,7 +166,7 @@ export function StartPage({
             workspace here).
           </p>
         ) : (
-          <p className="hint">Reading what a workspace needs…</p>
+          <Loading className="hint">Reading what a workspace needs…</Loading>
         )}
       </div>
     </section>
@@ -453,13 +454,7 @@ function StartForm({
   };
   const folder = options.worktrees.replace('<branch>', branch.replaceAll('/', '-'));
   const mainHeading = heading(main);
-  const startWords = running
-    ? 'Starting…'
-    : agent
-      ? hive
-        ? 'Start goal'
-        : 'Start workspace'
-      : 'Make the branch';
+  const startWords = agent ? (hive ? 'Start goal' : 'Start workspace') : 'Make the branch';
   // The documents: a row in the brief's card, as the proofs draw it (V92 in Hive mode; V93 both).
   const documentsCard = (
     <StartDocuments
@@ -534,7 +529,7 @@ function StartForm({
           onClick={() => void start()}
         >
           {agent && !running && (hive ? <HexagonIcon /> : <ArrowRightIcon />)}
-          {startWords}
+          {running ? <Loading inline>Starting…</Loading> : startWords}
           {agent && !running && (
             <kbd className="start-keys" aria-hidden="true">
               Ctrl ↵

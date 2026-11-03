@@ -707,7 +707,7 @@ function StartingCard({ start }: { start: StartUnderWay }) {
         side: 'right',
       })}
     >
-      <span className="ws-row-icon spinning" aria-hidden="true">
+      <span className="ws-row-icon" aria-hidden="true">
         <SpinIcon />
       </span>
       {/* Not a row's button (`.workspace-about`): the arrows and the focus skip it. */}

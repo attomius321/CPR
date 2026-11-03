@@ -47,6 +47,7 @@ import {
 import { checkRows, landedWords, runRounds, stopWords, type RunRound } from './run-timeline.js';
 import { modelName } from './workspaces.js';
 import { ChecksMark, Item, type ItemState } from './RunItem.js';
+import { Loading } from '../ui/Loading.js';
 
 const short = (sha: string) => sha.slice(0, 7);
 const enc = encodeURIComponent;
@@ -146,7 +147,7 @@ function FullLog({
           }
           label={label}
           className="hive-log run-log"
-          waitingWords="Reading its log…"
+          waitingWords={<Loading inline>Reading its log…</Loading>}
         />
       )}
     </>
@@ -172,7 +173,13 @@ function TestFile({ branch, round, path }: { branch: string; round: number; path
       <summary>
         <code>{path}</code>
       </summary>
-      {error ? <p className="hive-line error">{error}</p> : <pre>{text ?? 'Reading…'}</pre>}
+      {error ? (
+        <p className="hive-line error">{error}</p>
+      ) : text === null ? (
+        <Loading className="hint">Reading…</Loading>
+      ) : (
+        <pre>{text}</pre>
+      )}
     </details>
   );
 }
@@ -727,7 +734,7 @@ export function HiveRunTab({
   if (!detail) {
     return (
       <div className="run-tab">
-        <p className="hint">Reading Hive&apos;s rounds…</p>
+        <Loading className="hint">Reading Hive&apos;s rounds…</Loading>
       </div>
     );
   }

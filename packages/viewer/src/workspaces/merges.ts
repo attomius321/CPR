@@ -630,6 +630,8 @@ export interface ResolutionFile {
   tone: RegionFlag['tone'] | 'asked' | 'none';
   /** Why it has no resolution. */
   why?: string;
+  /** The merger agent works on it now: `why` is drawn as a loading (fix/static-loadings). */
+  resolving?: true;
 }
 
 const UNRESOLVABLE = {
@@ -663,6 +665,7 @@ export function resolutionFiles(entry: MergeEntry): ResolutionFile[] {
         asked: its,
         flags: [],
         tone: its.length > 0 ? 'asked' : 'none',
+        ...(!kind && mergeLive([entry]) ? { resolving: true as const } : {}),
         why: kind
           ? `${UNRESOLVABLE[kind]}: not given to the merger agent`
           : mergeLive([entry])

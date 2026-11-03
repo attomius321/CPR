@@ -8,6 +8,7 @@ import { longDate, relativeDate, shortSha } from './commits.js';
 import { FileRow, Lines } from '../workspaces/ChangesPanel.js';
 import { fileFacts } from '../workspaces/changes.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 /** A commit as read for the pane and the file shown (V70): its details, then its files' lines. */
 export interface CommitRead {
@@ -95,7 +96,7 @@ export function CommitDetails({
   );
   if (error)
     return <p className="hint error git-details-hint">Could not read the commit: {error}</p>;
-  if (!info) return <p className="hint git-details-hint">Reading {shortSha(sha)}…</p>;
+  if (!info) return <Loading className="hint git-details-hint">Reading {shortSha(sha)}…</Loading>;
   const now = Date.now();
   const { author, committer } = info;
   const sameCommitter =
@@ -119,7 +120,7 @@ export function CommitDetails({
           )}
           onClick={() => parent && onReview(parent)}
         >
-          {starting ? 'Starting…' : 'Review this commit'}
+          {starting ? <Loading inline>Starting…</Loading> : 'Review this commit'}
         </button>
       </header>
       <div className="git-details-body">

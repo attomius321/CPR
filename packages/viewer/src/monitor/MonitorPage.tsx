@@ -31,6 +31,7 @@ import {
 import { TreemapView } from './TreemapView.js';
 import type { Tile } from './treemap.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 const API = '/api/monitor';
 
@@ -292,7 +293,7 @@ export function MonitorPage({ path = '' }: { path?: string | undefined }) {
           {error}
         </p>
       )}
-      {!map && !error && <p className="main-hint">Reading the commit&apos;s files…</p>}
+      {!map && !error && <Loading className="main-hint">Reading the commit&apos;s files…</Loading>}
       {map && tree && node && (
         <>
           <div className="monitor-body">

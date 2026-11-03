@@ -19,6 +19,7 @@ import {
   ReviewIcon,
 } from '../ui/icons.js';
 import { hiveReadiness, type ReadyItem } from './hive-switch.js';
+import { Loading } from '../ui/Loading.js';
 
 /** Hive's four steps, as the question says them. */
 const STEPS: { name: string; icon: () => ReactNode; words: string }[] = [
@@ -127,7 +128,11 @@ export function HiveQuestion({
                     <Mark />
                   </span>
                   <span className="hq-r-text">{item.text}</span>
-                  {item.detail && <span className="hq-r-detail">{item.detail}</span>}
+                  {item.detail && (
+                    <span className="hq-r-detail">
+                      {item.reading ? <Loading inline>{item.detail}</Loading> : item.detail}
+                    </span>
+                  )}
                   {item.names && (
                     <span className="hq-names">
                       {item.names.map((name) => (

@@ -1,6 +1,7 @@
 import type { WorkingState } from '@symbiote/core';
 import { changesNote, type CheckoutChoice } from './checkout.js';
 import { RefBadge } from './RowMenu.js';
+import { Loading } from '../ui/Loading.js';
 
 /** How the confirmation names a target's kind. */
 const KINDS: Record<CheckoutChoice['ref']['kind'], string> = {
@@ -64,7 +65,7 @@ export function CheckoutDialog({
             disabled={blocked || running}
             onClick={onConfirm}
           >
-            {running ? 'Checking out…' : 'Check out'}
+            {running ? <Loading inline>Checking out…</Loading> : 'Check out'}
           </button>
         </div>
       </div>

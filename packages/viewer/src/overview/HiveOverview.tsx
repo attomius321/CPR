@@ -56,6 +56,7 @@ import { Since } from '../workspaces/HeadSteps.js';
 import { Empty, Feed, OverviewCard } from './parts.js';
 import { useDay } from './useDay.js';
 import { dollars, medianFigure, plural, resetsWords, windowName } from './words.js';
+import { Loading } from '../ui/Loading.js';
 
 /** How many stopped workspaces are called out before "and N more" (decision 857). */
 const STOPPED_SHOWN = 3;
@@ -270,7 +271,9 @@ export function HiveOverview() {
               }
             >
               {landed.length === 0 ? (
-                <Empty>{day ? 'Nothing landed yet today.' : 'Reading the day…'}</Empty>
+                <Empty>
+                  {day ? 'Nothing landed yet today.' : <Loading inline>Reading the day…</Loading>}
+                </Empty>
               ) : (
                 <div className="data-table">
                   <div className="table-head" aria-hidden="true">
@@ -333,7 +336,10 @@ export function HiveOverview() {
                 </a>
               }
             >
-              <Feed items={feed} empty={day ? 'Nothing yet today.' : 'Reading the day…'} />
+              <Feed
+                items={feed}
+                empty={day ? 'Nothing yet today.' : <Loading inline>Reading the day…</Loading>}
+              />
             </OverviewCard>
           </div>
         </div>

@@ -20,6 +20,7 @@ import {
   QuestionIcon,
   ReviewIcon,
   RunningIcon,
+  SpinIcon,
   ChevronIcon,
   AlertIcon,
 } from '../ui/icons.js';
@@ -62,6 +63,7 @@ import { Empty, Feed, OverviewCard } from './parts.js';
 const USAGE_NAMES: Partial<Record<string, string>> = { claude: 'Claude', codex: 'Codex' };
 import { useDay } from './useDay.js';
 import { medianFigure, plural, resetsWords, windowName } from './words.js';
+import { Loading } from '../ui/Loading.js';
 
 export function NormalOverview() {
   const shell = useShell();
@@ -255,7 +257,13 @@ export function NormalOverview() {
               }
             >
               {mergedToday.length === 0 ? (
-                <Empty>{day ? 'Nothing merged yet today.' : 'Reading git’s merges…'}</Empty>
+                <Empty>
+                  {day ? (
+                    'Nothing merged yet today.'
+                  ) : (
+                    <Loading inline>Reading git’s merges…</Loading>
+                  )}
+                </Empty>
               ) : (
                 <div className="data-table">
                   {mergedToday.map((row) => (
@@ -294,7 +302,10 @@ export function NormalOverview() {
                 </a>
               }
             >
-              <Feed items={feed} empty={day ? 'Nothing yet today.' : 'Reading the day…'} />
+              <Feed
+                items={feed}
+                empty={day ? 'Nothing yet today.' : <Loading inline>Reading the day…</Loading>}
+              />
             </OverviewCard>
           </div>
         </div>
@@ -453,7 +464,7 @@ function WorkRow({ row }: { row: WorkspaceRow }) {
         <span className="cell-branch">{workspace.branch}</span>
       </div>
       <div className="need">
-        <RunningIcon />
+        <SpinIcon />
         <b className="run-words">{verb}</b>
         {subject && verb !== words && <code className="need-detail">{subject}</code>}
       </div>

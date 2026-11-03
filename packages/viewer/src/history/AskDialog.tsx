@@ -2,6 +2,7 @@
 // does in a sentence, a text or a choice it takes, then the write; git's refusal shown in it.
 import { useEffect, useState, type FormEvent } from 'react';
 import type { Notice } from '../shell/shell-context.js';
+import { Loading } from '../ui/Loading.js';
 
 /**
  * What the page lists after the write: afresh, the cursor on HEAD (HEAD moved); in place (remote
@@ -124,7 +125,7 @@ export function AskDialog({
             autoFocus={!ask.field}
             disabled={running}
           >
-            {running ? 'Working…' : ask.verb}
+            {running ? <Loading inline>Working…</Loading> : ask.verb}
           </button>
         </div>
       </form>

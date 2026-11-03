@@ -550,7 +550,14 @@ describe("a resolution's files (V46c)", () => {
 
   it('says a file is being resolved while the agent works', () => {
     const [file] = resolutionFiles(entry({ state: 'resolving', conflicts: ['src/a.ts'] }));
-    expect(file).toMatchObject({ path: 'src/a.ts', regions: [], tone: 'none', why: 'Resolving…' });
+    // Drawn as a loading, its arc turning (fix/static-loadings).
+    expect(file).toMatchObject({
+      path: 'src/a.ts',
+      regions: [],
+      tone: 'none',
+      why: 'Resolving…',
+      resolving: true,
+    });
   });
 
   it('has no files without a conflict', () => {

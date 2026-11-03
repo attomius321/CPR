@@ -18,7 +18,8 @@ const files = readdirSync(SRC, { recursive: true, encoding: 'utf8' }).map((file)
 const css = files
   .filter((file) => file.endsWith('.css'))
   .map(read)
-  .join('\n');
+  .join('\n')
+  .replace(/\/\*[^]*?\*\//g, '');
 
 /** The declarations of every rule whose selector list has `selector`, outside or inside `@media`. */
 function rules(text: string, selector: string): string[] {
@@ -73,15 +74,16 @@ describe('the loader arc', () => {
 });
 
 describe('a loading line', () => {
-  it('is the turning arc and its words, said to a screen reader', () => {
+  it('is the turning arc and its words, a live region only when asked', () => {
     expect(
       renderToStaticMarkup(createElement(Loading, { className: 'hint', children: 'Reading…' })),
-    ).toMatch(
-      /^<p class="loading hint" role="status"><svg class="icon lucide spin"[^]*<\/svg>Reading…<\/p>$/,
-    );
+    ).toMatch(/^<p class="loading hint"><svg class="icon lucide spin"[^]*<\/svg>Reading…<\/p>$/);
+    expect(
+      renderToStaticMarkup(createElement(Loading, { status: true, children: 'Laying out…' })),
+    ).toMatch(/^<p class="loading" role="status"><svg class="icon lucide spin"/);
   });
 
-  it('inline, in a busy button or a list’s empty place: a span, no live region of its own', () => {
+  it('inline, in a busy button or a list’s empty place: a span', () => {
     expect(
       renderToStaticMarkup(createElement(Loading, { inline: true, children: 'Working…' })),
     ).toMatch(/^<span class="loading"><svg class="icon lucide spin"[^]*<\/svg>Working…<\/span>$/);
@@ -118,7 +120,8 @@ describe('what else waits', () => {
     });
   });
 
-  it('the workspaces’ first read: its outlines pulse, still without motion', () => {
+  it('the workspaces’ first read and Git’s rows not read yet: their outlines pulse', () => {
     expect(moves('.skeleton-card span')).toEqual({ moves: true, stillWithoutMotion: true });
+    expect(moves('.loading-bar')).toEqual({ moves: true, stillWithoutMotion: true });
   });
 });

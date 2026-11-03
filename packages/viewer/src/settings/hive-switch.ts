@@ -89,6 +89,8 @@ export interface ReadyItem {
   mark: 'ok' | 'fail' | 'warn';
   text: string;
   detail: string;
+  /** Still read: `detail` is drawn as a loading (fix/static-loadings). */
+  reading?: true;
   /** The workspaces in normal mode that keep it off, named. */
   names?: string[];
 }
@@ -114,7 +116,7 @@ export function hiveReadiness({
   rounds: number;
 }): { items: ReadyItem[]; ready: boolean } {
   const check: ReadyItem = !state
-    ? { key: 'check', mark: 'fail', text: 'A check is set', detail: 'reading…' }
+    ? { key: 'check', mark: 'fail', text: 'A check is set', detail: 'reading…', reading: true }
     : state.check
       ? {
           key: 'check',

@@ -3,6 +3,7 @@ import type { WorkspaceOptions } from '@symbiote/core';
 import { AttachIcon, CloseIcon, FileIcon, ImageIcon, PlusIcon } from '../ui/icons.js';
 import { documentSize, isImageName, type DocumentEntry } from './documents.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 /**
  * The start page's Documents (V40): a row in the brief since V93 (the run's last card from V63),
@@ -71,11 +72,13 @@ export function StartDocuments({
                 {entry.name}
               </span>
               <span className="start-document-state">
-                {entry.state === 'uploading'
-                  ? 'Adding…'
-                  : entry.state === 'failed'
-                    ? entry.error
-                    : documentSize(entry.size)}
+                {entry.state === 'uploading' ? (
+                  <Loading inline>Adding…</Loading>
+                ) : entry.state === 'failed' ? (
+                  entry.error
+                ) : (
+                  documentSize(entry.size)
+                )}
               </span>
               <button
                 type="button"

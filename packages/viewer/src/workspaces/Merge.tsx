@@ -62,6 +62,7 @@ import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 import { replyMode } from './workspaces.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 const ACTION_NAMES: Record<MergeAction, string> = {
   land: 'Land',
@@ -93,7 +94,7 @@ export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | 
  */
 export function MergeView({ branch }: { branch: string }) {
   const { merges, list } = useWorkspaces();
-  if (!merges) return <p className="hint main-hint">Reading the merges…</p>;
+  if (!merges) return <Loading className="hint main-hint">Reading the merges…</Loading>;
   const entry = mergeOf(merges, branch);
   if (!entry) {
     return (
@@ -682,7 +683,11 @@ function MergeFiles({
       <ul className="merge-filelist" aria-label="Its files">
         {files.map((f) => {
           const { name, folder } = splitPath(f.path);
-          const what = f.why ?? f.flags.map((flag) => flag.text).join(' · ');
+          const what = f.resolving ? (
+            <Loading inline>{f.why}</Loading>
+          ) : (
+            (f.why ?? f.flags.map((flag) => flag.text).join(' · '))
+          );
           return (
             <li key={f.path}>
               <button
@@ -738,7 +743,12 @@ function MergeFiles({
           })}
         </ol>
       ) : (
-        file && <p className="merge-fileview-why hint">{file.why}</p>
+        file &&
+        (file.resolving ? (
+          <Loading className="merge-fileview-why hint">{file.why}</Loading>
+        ) : (
+          <p className="merge-fileview-why hint">{file.why}</p>
+        ))
       )}
     </div>
   );

@@ -12,6 +12,7 @@ import {
   el,
   GRID,
   icon,
+  loading,
   MAXIMIZE,
   MINIMIZE,
   pinButton,
@@ -263,9 +264,11 @@ function drawHome(): void {
   ]);
   if (key === drawn.home) return;
   drawn.home = key;
-  homeLine.textContent = !readOnce
-    ? 'Looking for running Symbiotes…'
-    : `${count === 0 ? 'None' : count} running on this machine`;
+  homeLine.replaceChildren(
+    !readOnce
+      ? loading('Looking for running Symbiotes…')
+      : `${count === 0 ? 'None' : count} running on this machine`,
+  );
   const problem = failure ?? actionFailure;
   homeProblem.textContent = problem ?? '';
   homeProblem.hidden = problem === null;
@@ -344,7 +347,7 @@ function symbioteCard(card: SymbioteCard, pinsRead: boolean, now: Date): HTMLEle
     meta = [
       checkout !== null &&
         el('span', { class: 'nexus-symbiote-checkout' }, icon(BRANCH, true), checkout),
-      el('span', { class: 'nexus-symbiote-action' }, busy ? 'Starting…' : 'Open Symbiote'),
+      el('span', { class: 'nexus-symbiote-action' }, busy ? loading('Starting…') : 'Open Symbiote'),
     ];
   }
   const open = el(
@@ -410,7 +413,7 @@ function drawStopped(tab: Tab): void {
   const again = el(
     'button',
     { type: 'button', class: 'button', disabled: busy },
-    busy ? 'Starting…' : 'Start again',
+    busy ? loading('Starting…') : 'Start again',
   );
   again.addEventListener('click', () => void startAgain(tab.root));
   const close = el('button', { type: 'button', class: 'button secondary' }, 'Close tab');

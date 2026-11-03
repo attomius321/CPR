@@ -38,6 +38,7 @@ import {
 } from '../ui/icons.js';
 import { CodeText, useTokens } from '../ui/CodeText.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 const sources = new Map<string, Promise<string>>();
 
@@ -366,7 +367,7 @@ const NO_ROWS: DiffRow[] = [];
 function SymbolDiff({ state, anchor, onPick, onOpen, path }: SymbolDiffProps) {
   const [all, setAll] = useState(false);
   const tokens = useTokens(state.status === 'ready' ? state.rows : NO_ROWS, path);
-  if (state.status === 'loading') return <p className="muted">Loading source…</p>;
+  if (state.status === 'loading') return <Loading className="muted">Loading source…</Loading>;
   if (state.status === 'none') {
     return (
       <p className="muted">Source is available when the graph is opened with symbiote view.</p>
