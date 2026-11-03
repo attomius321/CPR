@@ -8,5 +8,10 @@
   "scout": {
     "effort": "xhigh",
     "model": "opus"
+  },
+  "hive": {
+    "reviewer": {
+      "effort": "xhigh"
+    }
   }
 }

@@ -79,3 +79,5 @@ Not verified:
   answered by `page.route`, with Hive on.
 - A transcript's cost line timed across a real midnight: the times were measured on 63 real lines,
   and the arithmetic across midnight is unit-tested.
+
+Merged into main (2026-11-03).

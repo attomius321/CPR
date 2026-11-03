@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v91-redesign-overview.md)
 
-**Status:** built (3 November 2026), on branch `feature/redesign-overview` (the workspace's, from
+**Status:** merged into `main` on 2026-11-03; built (3 November 2026), on branch `feature/redesign-overview` (the workspace's, from
 `main` at `705f20d`); the person's OK with choices 1 Respond, 2 exact by day, 3 fold Done, 4 a key
 free on every page.
 
