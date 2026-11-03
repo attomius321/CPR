@@ -242,7 +242,10 @@ export function ReviewTab({
                 : local
                   ? 'Finish review'
                   : `Submit review to ${site}`}
-              {submission.status !== 'posting' && <kbd aria-hidden="true">{FINISH_KEYS}</kbd>}
+              {/* The key on Finish review; Submit review to GitHub is long enough without it. */}
+              {local && submission.status !== 'posting' && (
+                <kbd aria-hidden="true">{FINISH_KEYS}</kbd>
+              )}
             </button>
             {local && (
               <Help label="Where the verdict goes">

@@ -566,8 +566,9 @@ function Neighbours({
                 {item.node ? label(item.node) : item.id}
               </button>
               <span className="muted">
+                {/* Where it is, then how it is used when not a call; the kind alone without a place. */}
                 {decl ? `${decl.file}:${decl.range.start.line}` : item.kind}
-                {item.kind !== 'call' ? ` · ${item.kind}` : ''}
+                {decl && item.kind !== 'call' ? ` · ${item.kind}` : ''}
                 {item.side === 'head' ? ' · new' : ''}
                 {item.possible ? ' · possible' : ''}
               </span>

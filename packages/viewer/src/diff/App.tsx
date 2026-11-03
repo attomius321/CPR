@@ -770,22 +770,8 @@ function HeadFacts({
   files: readonly ReviewFile[];
   graph?: Graph;
 }) {
-  const workspace = useWorkspaces().list?.workspaces.find((f) => f.branch === review?.branch);
   const lines = files.some((f) => f.added !== undefined);
   const parts: [string, ReactNode][] = [];
-  if (workspace && review) {
-    parts.push([
-      'workspace',
-      <a
-        className="review-workspace"
-        href={workspaceHref(review.branch)}
-        aria-label={`Workspace: ${workspaceName(workspace)}`}
-        {...tip(briefTip(workspace.brief))}
-      >
-        {workspaceName(workspace)}
-      </a>,
-    ]);
-  }
   if (review?.into) parts.push(['into', <span>into {review.into}</span>]);
   if (review)
     parts.push(['since', <span className="review-after">{reviewSince(review.since)}</span>]);
@@ -815,6 +801,8 @@ function HeadFacts({
   }
   return (
     <span className="diff-facts">
+      {/* Only a review reads the workspaces: a diff of two commits asks nothing more. */}
+      {review && <WorkspaceLink branch={review.branch} />}
       {parts.map(([key, part], i) => (
         <Fragment key={key}>
           {i > 0 && (
@@ -826,6 +814,27 @@ function HeadFacts({
         </Fragment>
       ))}
     </span>
+  );
+}
+
+/** The workspace a reviewed branch is, a link to it (V18b), then the line's next separator. */
+function WorkspaceLink({ branch }: { branch: string }) {
+  const workspace = useWorkspaces().list?.workspaces.find((f) => f.branch === branch);
+  if (!workspace) return null;
+  return (
+    <>
+      <a
+        className="review-workspace"
+        href={workspaceHref(branch)}
+        aria-label={`Workspace: ${workspaceName(workspace)}`}
+        {...tip(briefTip(workspace.brief))}
+      >
+        {workspaceName(workspace)}
+      </a>
+      <span className="facts-sep" aria-hidden="true">
+        ·
+      </span>
+    </>
   );
 }
 

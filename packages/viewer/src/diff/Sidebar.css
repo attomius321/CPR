@@ -93,7 +93,9 @@
 }
 
 .review-progress-keys {
+  flex: none;
   margin-left: auto;
+  white-space: nowrap;
 }
 
 .progress {
@@ -343,6 +345,8 @@
 
 .finding-row-rule {
   grid-column: 2;
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: var(--muted);
   font: var(--size-caps) / 1.4 var(--mono);
 }
@@ -358,6 +362,8 @@
 }
 
 .finding-row-message {
+  min-width: 0;
+  overflow-wrap: anywhere;
   font-size: var(--size-small);
   font-weight: 500;
   line-height: 1.45;
@@ -381,7 +387,9 @@
 }
 
 .sidebar-finish {
+  flex: none;
   margin-left: auto;
+  white-space: nowrap;
 }
 
 /* A diff's keys, in its bar's help (V37). */
