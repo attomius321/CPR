@@ -137,7 +137,9 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   (`shell/hive-arrival.ts`, `ui/hive.css`) is one View Transition: the new root revealed through
   one clip-path, the question, its dim, the Mind, its glow and the ring layers of their own moved by
   opacity and transform only; `e2e/hive-pages.spec.ts` refuses a `filter` or `width` among its
-  keyframes. Keep the ring a small layer scaled up (480 px): one the window's size dropped 3–5
+  keyframes. The transition and its layers end at 1.18 s, the arrival at 1.54 s: each live
+  element goes out where its layer ends (`hive-folded`), or it is drawn again until `close()`
+  (fix/hive-question-reappears; the same spec samples every 50 ms from 550 to 1700 ms). Keep the ring a small layer scaled up (480 px): one the window's size dropped 3–5
   frames of the reveal in the app's software compositing.
 - `src/monitor/` — the Monitor (RM1), at `/monitor` (absolute `/api/monitor`, the `CodeMap` of
   `@symbiote/monitor`, whose **types** only it imports). `codemap.ts` builds the folder tree of the
