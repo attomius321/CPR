@@ -31,10 +31,13 @@ PC's folders, the pinned ones under their places, are under the cards; Folders i
 
 - **The viewer's look, by its own stylesheet** (decision 523): the page links the viewer's built
   CSS (`@symbiote/viewer/dist`, found from its `index.html`) and draws its markup in the
-  viewer's classes (`.workspace-views` tabs, `.page-head`, `.icon-button`, `.window-buttons`…).
-  `test/page.test.ts` fails when a class it uses leaves the viewer's CSS; add a new one to its
-  list. `nexus.css` lays out only, its text sizes the viewer's `--size-*` tokens, no font named.
-  Follow the `symbiote-style` skill for anything drawn.
+  viewer's classes (the session tabs' `.workspace-tabs` and `.stab`, `.page-head`,
+  `.icon-button`, `.window-buttons`…). `test/page.test.ts` fails when a class it uses leaves the
+  viewer's CSS; add a new one to its list. A class that stays while the viewer's rules move to
+  another (V89 took the tabs' look from `.workspace-views button` to `.workspace-tabs .stab`)
+  passes that test: `e2e/nexus.spec.ts` measures the row's tabs. `nexus.css` lays out only, its
+  text sizes the viewer's `--size-*` tokens, no font named. Follow the `symbiote-style` skill for
+  anything drawn.
 - **The page runs in the browser**: `src/page/` imports only `./*.js` at run time, types from
   elsewhere (`import type`); the same test checks it.
 - **A frame per opened Symbiote, kept** (decision 521): hidden, never reloaded, until its

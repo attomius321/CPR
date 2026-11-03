@@ -9,34 +9,26 @@
   height: 100%;
 }
 
-/* The row: the tabs, the window's buttons where Symbiote draws them. The line tabs stand on its
-   hairline as on a card's head (48 px), the first tab's words 16 px in, as the page's under it. */
+/* The row: the tabs, the window's buttons where Symbiote draws them. The tabs are the viewer's
+   session tabs (`.workspace-tabs`, `.stab`, V89): a card's head high (`--card-head`), on the row's
+   hairline, the first tab's words `--page-pad` in, as the page's under it. */
 .nexus-bar {
   flex: none;
   display: flex;
-  align-items: flex-end;
+  align-items: stretch;
   min-width: 0;
   border-bottom: 1px solid var(--line);
   background: var(--side);
   user-select: none;
 }
 
-.nexus-bar .workspace-views {
+.nexus-bar .nexus-tabs {
   flex: 1 1 auto;
-  padding-left: 0;
-  border-bottom: 0;
-  background: none;
+  height: var(--card-head);
 }
 
 .nexus-bar .window-buttons {
   align-self: center;
-}
-
-.nexus-tabs [role='tab'] {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
 }
 
 .nexus-tabs .count {
@@ -53,31 +45,19 @@
   color: var(--muted);
 }
 
-/* The nexus's own pages, then a line, then the Symbiotes (NX3, decision 551). The own pages stay
-   at the strip's left while many Symbiotes scroll it sideways under them; the strip's 2 px before
-   the first tab are theirs, so no scrolled tab shows past them. */
+/* The nexus's own pages, then the viewer's line (`.views-divider`), then the Symbiotes (NX3,
+   decision 551). The own pages stay at the strip's left while many Symbiotes scroll it sideways
+   under them; the strip's 2 px before the first tab are theirs, so no scrolled tab shows past
+   them. */
 .nexus-own {
   position: sticky;
   left: 0;
   z-index: 1;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 2px;
   padding-left: 2px;
   background: var(--side);
-}
-
-.nexus-own .icon {
-  width: 16px;
-  height: 16px;
-}
-
-/* The line between the two groups: the viewer's (a workspace's agent tab and its shells), a
-   tab's height less its rounding, in the field's edge so it reads at a glance. */
-.nexus-tabs .nexus-divider {
-  height: 24px;
-  margin: 0 10px;
-  background: var(--edge);
 }
 
 /* A running Symbiote's dot (`.state-dot`, V48): the live green; a stopped one is the viewer's
