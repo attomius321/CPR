@@ -91,7 +91,7 @@ test.describe('Symbiote nexus: folders', () => {
     // A repository's card opens its Symbiote, never its folders: its tab, its Git page.
     await card(page, 'alpha').click();
     await expect(tab(page, /^alpha/)).toHaveAttribute('aria-selected', 'true');
-    await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
+    await expect(frameOf(page, 'alpha').locator('.overview')).toBeVisible();
     expect(recorded(cache)).toHaveLength(1);
 
     // Back on Symbiotes, the folder where it was: alpha runs; its card shows its tab.
@@ -210,7 +210,7 @@ test.describe('Symbiote nexus: folders', () => {
     const served = await nexus(cache, home.dir);
     await page.goto(`${served.url}#folders:${encodeURIComponent(home.projects)}`);
     await page.getByRole('button', { name: 'Open Symbiote in alpha' }).click();
-    await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
+    await expect(frameOf(page, 'alpha').locator('.overview')).toBeVisible();
 
     await tab(page, /^Symbiotes/).click();
     const stop = page.getByRole('button', { name: 'Stop alpha' });
@@ -234,7 +234,7 @@ test.describe('Symbiote nexus: folders', () => {
     await expect(page.locator('.nexus-stopped')).toContainText('alpha stopped');
     await page.getByRole('button', { name: 'Start again' }).click();
     await expect(tab(page, /^alpha/)).toHaveText('alphamain');
-    await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
+    await expect(frameOf(page, 'alpha').locator('.overview')).toBeVisible();
     expect(recorded(cache)).toHaveLength(1);
     expect(errors).toEqual([]);
   });
@@ -259,7 +259,7 @@ test.describe('Symbiote nexus: folders', () => {
     });
     await page.goto(`${served.url}#folders:${encodeURIComponent(home.projects)}`);
     await page.getByRole('button', { name: 'Open Symbiote in alpha' }).click();
-    await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
+    await expect(frameOf(page, 'alpha').locator('.overview')).toBeVisible();
 
     // Started again, on another port: framed once that one answers too.
     await tab(page, /^Symbiotes/).click();
@@ -267,7 +267,7 @@ test.describe('Symbiote nexus: folders', () => {
     await page.getByRole('button', { name: 'Stop', exact: true }).click();
     await tab(page, /^alpha/).click();
     await page.getByRole('button', { name: 'Start again' }).click();
-    await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
+    await expect(frameOf(page, 'alpha').locator('.overview')).toBeVisible();
     expect(firstAsked.size).toBe(2);
     expect(errors).toEqual([]);
   });
@@ -277,7 +277,7 @@ test.describe('Symbiote nexus: folders', () => {
     const first = await startNexus(cache, home.dir);
     await page.goto(`${first.url}#folders:${encodeURIComponent(home.projects)}`);
     await page.getByRole('button', { name: 'Open Symbiote in beta' }).click();
-    await expect(frameOf(page, 'beta').locator('.commit').first()).toBeVisible();
+    await expect(frameOf(page, 'beta').locator('.overview')).toBeVisible();
     const url = await page.locator('iframe[title="beta"]').getAttribute('src');
     await first.stop();
 

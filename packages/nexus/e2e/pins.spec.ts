@@ -122,7 +122,7 @@ test.describe('Symbiote nexus: pins', () => {
     // The person's start: its card. Its tab, then back on Symbiotes the running card, pinned.
     await symbiote(page, 'alpha').getByRole('button', { name: 'Open Symbiote in alpha' }).click();
     await expect(tab(page, /^alpha/)).toHaveAttribute('aria-selected', 'true');
-    await expect(frameOf(page, 'alpha').locator('.commit').first()).toBeVisible();
+    await expect(frameOf(page, 'alpha').locator('.overview')).toBeVisible();
     expect(recorded(cache)).toHaveLength(1);
     await tab(page, /^Symbiotes/).click();
     await expect(symbioteNames(page)).toHaveText(['alpha']);

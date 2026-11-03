@@ -83,7 +83,7 @@ test.describe('Symbiote nexus', () => {
 
     // A Symbiote's tab: its Git page, in a frame of its own.
     await tab(page, /^alpha/).click();
-    await expect(frameOf(page, 'alpha').getByText('second', { exact: true }).first()).toBeVisible();
+    await expect(frameOf(page, 'alpha').locator('.overview')).toBeVisible();
     await expect(page.locator('.nexus-home')).toBeHidden();
     await expect(page).toHaveTitle('alpha · main — Symbiote nexus');
     expect(new URL(page.url()).hash).toBe(`#${encodeURIComponent(alpha.dir)}`);
@@ -91,7 +91,7 @@ test.describe('Symbiote nexus', () => {
     // A reload comes back to it.
     await page.reload();
     await expect(tab(page, /^alpha/)).toHaveAttribute('aria-selected', 'true');
-    await expect(frameOf(page, 'alpha').getByText('second', { exact: true }).first()).toBeVisible();
+    await expect(frameOf(page, 'alpha').locator('.overview')).toBeVisible();
     expect(errors).toEqual([]);
   });
 
@@ -114,7 +114,7 @@ test.describe('Symbiote nexus', () => {
     await frame?.evaluate(() => ((window as unknown as { kept: number }).kept = 1));
 
     await tab(page, /^beta/).click();
-    await expect(frameOf(page, 'beta').getByText('second', { exact: true }).first()).toBeVisible();
+    await expect(frameOf(page, 'beta').locator('.overview')).toBeVisible();
     await expect(page.locator(`iframe[title="alpha"]`)).toBeHidden();
 
     await tab(page, /^alpha/).click();
@@ -143,7 +143,7 @@ test.describe('Symbiote nexus', () => {
     await expect(tab(page, /^gamma/)).toBeVisible({ timeout: 4000 });
     await expect(page.locator('.nexus-symbiote')).toHaveCount(2);
     await tab(page, /^gamma/).click();
-    await expect(frameOf(page, 'gamma').getByText('second', { exact: true }).first()).toBeVisible();
+    await expect(frameOf(page, 'gamma').locator('.overview')).toBeVisible();
 
     // gamma stops: its tab stays, marked, its frame unloaded.
     await gamma.stop();
@@ -157,7 +157,7 @@ test.describe('Symbiote nexus', () => {
     const again = await startView(gamma.dir, cache);
     cleanup.push(() => again.stop());
     await expect(tab(page, /^gamma/)).toHaveText('gammamain', { timeout: 4000 });
-    await expect(frameOf(page, 'gamma').getByText('second', { exact: true }).first()).toBeVisible();
+    await expect(frameOf(page, 'gamma').locator('.overview')).toBeVisible();
     await expect(page.locator('iframe[title="gamma"]')).toHaveAttribute('src', again.url);
 
     // alpha, never opened, stops: its tab just leaves.
@@ -217,7 +217,7 @@ test.describe('Symbiote nexus', () => {
     expect(new URL(page.url()).hash).toBe('');
     await page.getByRole('button', { name: 'Open Symbiote in beta' }).click();
     await expect(tab(page, /^beta/)).toHaveAttribute('aria-selected', 'true');
-    await expect(frameOf(page, 'beta').locator('.commit').first()).toBeVisible();
+    await expect(frameOf(page, 'beta').locator('.overview')).toBeVisible();
 
     // beta runs now: its card joins the running ones; the folder listed says so.
     await tab(page, /^Symbiotes/).click();
@@ -243,7 +243,9 @@ test.describe('Symbiote nexus', () => {
     await tab(page, /^alpha/).click();
     const alpha = frameOf(page, 'alpha');
 
-    // Copy SHA: the frame may write the clipboard (its `allow`).
+    // Copy SHA: the frame may write the clipboard (its `allow`). On Git: a Symbiote opens on its
+    // Overview (V91).
+    await alpha.getByRole('link', { name: 'Git' }).click();
     await alpha.getByText('second', { exact: true }).first().click();
     await alpha.getByRole('button', { name: 'Copy SHA' }).click();
     await expect(alpha.getByRole('button', { name: 'Copied' })).toBeVisible();

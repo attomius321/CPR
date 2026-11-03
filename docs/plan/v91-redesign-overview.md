@@ -238,7 +238,9 @@ recorded per workspace.
   - `overview.spec.ts` (4 tests).
   - The Overview in `page-frame.spec.ts` (both modes) and `targets.spec.ts` (empty, and with a
     review waiting).
-  - The specs that expected `/`, a removal or the window to land on Git, updated.
+  - The specs that expected `/`, a removal or the window to land on Git, updated. So were the
+    nexus's, whose framed Symbiotes open on the Overview.
+  - Final run: the viewer's 415 of 415, the nexus's 20 of 20.
 - **First paint**: medians of 8 rounds, alternating `main`'s build and the branch's, on a clone of
   this repository with its records (147 workspaces, 14 Hive records), at load 2. `/` on `main` is
   Git; on the branch it is the Overview, drawn once its list is read.

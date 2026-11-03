@@ -59,10 +59,14 @@ timed totals, and git's merges. Decisions 848–859.
 - **Tests first:** 34 unit tests for the derivations, 6 for the day read and 2 for its route, each
   seen failing.
 - **`pnpm check`:** 2,992 tests.
-- **`pnpm test:e2e`:** 414 of 415, then the one that failed (`page-frame.spec.ts`'s Hive frame,
-  measured before the stopped card drew) fixed and passing twice in a row, with `overview.spec.ts`.
-  `workspaces.spec.ts:510` failed once in a batch of specs and passed alone three times, and in the
-  full run. It reads bounding boxes without waiting; it was not changed.
+- **`pnpm test:e2e`:**
+  - The viewer's 415 of 415 on the final build.
+  - The nexus's 20 of 20. Its framed Symbiotes now open on their Overview: its specs waited for
+    Git's rows, and now wait for the Overview. Its clipboard test goes to Git for its commit.
+  - Before that: `page-frame.spec.ts`'s Hive frame failed once, measured before the stopped card
+    drew. Fixed, then passing twice in a row.
+  - `workspaces.spec.ts:510` failed once in a batch of specs, and passed alone three times and in
+    the full run. It reads bounding boxes without waiting; it was not changed.
 - **Real records:** the branch's `/` on a clone of this repository with its records. 64 merges this
   week, a 1.5 h median time to merge, today's events from the threads.
 - **First paint:** no slower than `main` (the plan's Results).
