@@ -7,6 +7,7 @@ import type {
   WorkspaceList,
 } from '@symbiote/core';
 import { useShell } from '../shell/shell-context.js';
+import { hrefOf } from '../shell/pages.js';
 import { postJson } from '../ui/http.js';
 import { splitPath } from './changes.js';
 import { removeMerge } from './cleanup.js';
@@ -182,13 +183,17 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
       .catch((e: unknown) => setError((e as Error).message))
       .finally(() => setBusy(false));
   };
-  /** The failed check typed into the branch's agent (AR2, decision 742); the bar says so. */
+  /**
+   * The failed check typed into the branch's agent (AR2, decision 742); the bar says so, and its
+   * workspace's page opens, where the agent answers (fix/failed-merge-hides-workspace).
+   */
   const sendToAgent = () => {
     setBusy(true);
     setError(null);
     postJson('/api/merges/send', { id: entry.id })
       .then(() => {
         shell?.notify({ text: `Sent the failed check to ${entry.branch}'s agent` });
+        shell?.navigate({ page: 'workspace', branch: entry.branch });
         return reloadWorkspaces();
       })
       .catch((e: unknown) => setError((e as Error).message))
@@ -254,7 +259,18 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
               <span className="merge-row-state">{mergeState(entry).text}</span> ·{' '}
               <span className="merge-title">{mergeTitle(entry)}</span>
             </span>
-            <code className="merge-branch">{entry.branch}</code>
+            {/* Its workspace's page, while it has one (fix/failed-merge-hides-workspace). */}
+            {workspace ? (
+              <a
+                className="link merge-branch"
+                href={hrefOf({ page: 'workspace', branch: entry.branch })}
+                {...tip(`Open its workspace\n${workspace.title}`)}
+              >
+                {entry.branch}
+              </a>
+            ) : (
+              <code className="merge-branch">{entry.branch}</code>
+            )}
             {entry.strategy === 'fast-forward' && (
               <>
                 {' · '}
