@@ -213,7 +213,12 @@ symbol glyph. Measure first paint (`/git`) and Bitwarden's graph after any font 
   decides what it gets: on the map one edge per pair of linked file boxes (`fileEdges`; file
   boxes carry unseen handles for them), while the view of a large graph moves (over
   `MOVING_EDGE_LIMIT` edges) only the selected symbol's. A move starts at `onMove`, not
-  `onMoveStart` (which comes with every click).
+  `onMoveStart` (which comes with every click). The selected symbol's edges are drawn above every
+  node (V90, `decorateEdges`: `RAISED_EDGE_Z`, `.edge-raised` with no pointer, so a node under one
+  keeps its click); only they change identity on a selection.
+- A graph node (V90, `SymbolNode`) is a neutral card: the kind of change is a mark (`kindMark`),
+  findings one count (`findingCount`), never a tinted ground or coloured name; `--tone` stays for
+  the map's blocks and the marks.
 - Anything `<ReactFlow>` hands to every node (`onNodeClick`, the minimap's `nodeClassName`) keeps
   its identity across renders (`useCallback`, module-level): a new function re-renders every node.
 - Import only **types** from `@symbiote/core`; anything else must work in a browser.

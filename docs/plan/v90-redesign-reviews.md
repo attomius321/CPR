@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v90-redesign-reviews.md)
 
-**Status:** planned (3 November 2026), on branch `feature/redesign-reviews` (the workspace's, from
-`main` at `c99afc6`); the person's OK given, with choices 1a, 2a, 3b and 4a.
+**Status:** built (3 November 2026), on branch `feature/redesign-reviews` (the workspace's, from
+`main` at `c99afc6`); the person's choices 1a, 2a, 3b and 4a.
 
 **Problem** (the brief: "Bring a review's pages to the designs in both themes": the Graph page,
 the Files page, opening a review). The designs are on `main`: `spikes/normal-redesign` (proofs
@@ -142,3 +142,43 @@ mark reviewed, pan.
 
 **Not in V90 (later)**: the Overviews (step 4), Hive's pages (step 5), Merge and Start; syntax
 colours; a finding's title apart from its message.
+
+## As built (V90)
+
+- **Opening a review**: as planned. The seen-phase clock lives in `useDiffGraph` (`seen` in the
+  analyzing state), so switching to the Files page and back keeps the times. The head says
+  "Waiting to analyze" while the queue holds it. The proof's "3 done, 3 to come" counts the running
+  step twice; the page says "3 done, 2 to come".
+- **Files before the graph**: `ChangeFiles` gained `blobs(from, to)` (core's new
+  `listChangedBlobs`, `git diff --raw --no-abbrev`); `./api/files` gives each file's `blob` once the
+  graph is there too. While a pair is analyzed the list is git's own: no `ignored` flag, which only
+  the graph knows. A pair's files are kept until its graph is (`pairSites`).
+- **The picked symbol's calls**: measured on `main`'s build first: React Flow already lifts the
+  selected node's edges to z 1000 (`elevateNodesOnSelect` and nested nodes), so they were drawn over
+  the other nodes, but took the pointer (a click on a node under one hit the call). Now explicit
+  (`RAISED_EDGE_Z`, `edge-raised`, no pointer); the e2e test checks both the stacking and the
+  pointer.
+- **The selection's colour** is `--accent` (the selection's role), not `--you`: the tokens test keeps
+  `--you` for the person's turn. The review's progress bar, the verdict picked and the file being
+  reviewed are the person's turn and take `--you`.
+- **Uses by side** keep "· new" on a use the change added: grouping alone lost it.
+- **The detail panel** is 400 px by default (520 before; the proof draws 336), so the canvas keeps
+  room beside a 300 px sidebar.
+- **The head's workspace link** is read only on a review: reading the workspaces on every diff cost
+  Bitwarden's first paint 18 ms (five API reads at first render); measured, then moved.
+- **Edit** on a line's comment and **Ctrl/⌘+Enter** in the summary are new; the key cap shows on
+  Finish review only (it pushed "Submit review to GitHub" onto two lines).
+- **Not drawn**: syntax colours (choice 3b); a finding's title apart from its message (a finding
+  records one); the proof's "Open ↗" beside each user (a name selects it in the graph).
+
+**Results.** Tests first, each seen red: `analysis-steps` (8 new), core's `parseRaw` and
+`listChangedBlobs`, the server's files while analyzing, `flow.test` (raised edges, marks, counts),
+`detail.test` (`neighbourGroups`), `review.test` (viewed marks); e2e `analyzing.spec.ts` (9), the
+picked-calls test in `edges.spec.ts` and the viewed/Edit/Ctrl+Enter test in `files.spec.ts` fail on
+`main`'s build. `pnpm check`: 2,950 tests. Speed against `main` (`measure.mjs`, alternated):
+Bitwarden 737ee3f, 5 rounds, medians: first paint 318 → 306 ms, select 105 → 105 ms, mark
+reviewed 50 → 50 ms, pan 63 → 63 fps, 3,160 → 3,124 page elements; the r1 set's 25 graphs with
+changes, 3 rounds: first paint 4,084 → 4,075 ms in all, select 1,827 → 1,829, mark 840 → 838, pan
+62 fps on each. Screenshots beside the proofs, both themes, and the audit: the review page linked
+from the journal. The README's `docs/images/review.png` and `review-files.png` are out of date
+once this merges; not retaken here.
