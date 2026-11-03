@@ -8,6 +8,7 @@ import {
   requestName,
   waitsForCheckout,
 } from './hive-rounds.js';
+import { clockWords } from './hive-live.js';
 import { COMMAND_TOOLS, shownCommand } from './activity/classify.js';
 import type {
   AgentEfforts,
@@ -750,6 +751,134 @@ export function workspaceGroups(
     groups[group].push({ workspace, next });
   }
   return groups;
+}
+
+/** A row of Hive's Landed today: when it landed, or its spike was answered. */
+export type LandedRow = WorkspaceRow & { at: string };
+
+/** The sidenav's groups in Hive mode (V92, decision 868). */
+export interface HiveGroups {
+  /** Writing, checking, reviewing, landing, or paused for usage. */
+  flight: WorkspaceRow[];
+  /** Stuck (the round cap, the budget, a note), or its branch gone. */
+  stopped: WorkspaceRow[];
+  /** Landed or answered since the browser's local midnight (850), the newest first. */
+  today: LandedRow[];
+  /** Landed or answered before today, or when is not known. */
+  earlier: WorkspaceRow[];
+}
+
+/** The browser's local midnight of `now`'s day (V91, decision 850). */
+const midnight = (now: number) => new Date(now).setHours(0, 0, 0, 0);
+
+/** When a landed or answered workspace ended: its landing's end, else its agent's last act. */
+function endedAt(workspace: WorkspaceSummary): string | undefined {
+  const landing = workspace.hive?.landing;
+  if (landing?.outcome === 'landed' && landing.ended) return landing.ended;
+  return workspace.lastAction;
+}
+
+/**
+ * The sidenav's groups in Hive mode (V92, decision 868; replaces 774's Hive and Done): In flight,
+ * Stopped, Landed today, Earlier; each in the order the workspaces were started, today's newest
+ * first.
+ */
+export function hiveGroups(
+  workspaces: readonly WorkspaceSummary[],
+  reviews: BranchReviewList | null,
+  now = Date.now(),
+): HiveGroups {
+  const groups: HiveGroups = { flight: [], stopped: [], today: [], earlier: [] };
+  const today = midnight(now);
+  for (const workspace of workspaces) {
+    const review = reviews?.reviews.find((r) => r.branch === workspace.branch);
+    const next = workspaceNext(workspace, review, now);
+    const row = { workspace, next };
+    if (next.group === 'done') {
+      const at = endedAt(workspace);
+      if (at !== undefined && Date.parse(at) >= today) groups.today.push({ ...row, at });
+      else groups.earlier.push(row);
+    } else if (next.group === 'stopped' || workspace.hive?.step === 'stuck') {
+      groups.stopped.push(row);
+    } else {
+      groups.flight.push(row);
+    }
+  }
+  groups.today.sort((a, b) => Date.parse(b.at) - Date.parse(a.at));
+  return groups;
+}
+
+/** A Hive row's second line (V92, decision 869): the state's word in its tone, then the rest. */
+export interface HiveRowWords {
+  word: string;
+  tone: 'run' | 'ok' | 'fail' | 'info' | 'idle' | 'you';
+  detail: string;
+}
+
+/** What a Hive row says under its title, at `now`: "Checking 4/4 · round 2 · 7:23". */
+export function hiveRowWords(workspace: WorkspaceSummary, now = Date.now()): HiveRowWords {
+  const hive = workspace.hive;
+  if (workspace.tip === null)
+    return { word: 'Stopped', tone: 'fail', detail: 'its branch is gone' };
+  if (!hive) {
+    return workspace.merged
+      ? { word: 'Merged', tone: 'ok', detail: `into ${workspace.from ?? 'its branch'}` }
+      : { word: 'Normal mode', tone: 'idle', detail: 'started before Hive' };
+  }
+  const round = `round ${hive.round}`;
+  if (hive.step !== 'landed' && waitsForCheckout(hive.request)) {
+    return { word: 'Waiting for you', tone: 'you', detail: checkoutLine(hive.request) };
+  }
+  if (hive.step === 'landed' || mergedForCard(workspace)) {
+    const into = hive.landing?.into ?? workspace.from ?? 'its branch';
+    const by =
+      hive.landing?.via === 'request' && hive.request ? ` · ${requestName(hive.request)}` : '';
+    return { word: 'Landed', tone: 'ok', detail: `into ${into}${by}` };
+  }
+  if (hive.step === 'answered') return { word: 'Answered', tone: 'ok', detail: 'read its report' };
+  if (hive.step === 'stuck') {
+    const note = hive.note ?? 'Hive cannot go on';
+    const detail = note.startsWith('its spend reached its budget')
+      ? 'budget reached'
+      : hive.round >= hive.rounds
+        ? `${hive.round} of ${hive.rounds} rounds`
+        : note;
+    return { word: 'Stopped', tone: 'fail', detail };
+  }
+  if (hive.off) return { word: 'Hive off', tone: 'idle', detail: `${hive.step} · ${round}` };
+  if (hive.pause && workspace.agent.state !== 'working') {
+    return {
+      word: 'Paused',
+      tone: 'info',
+      detail: pauseWords(hive.pause, now).replace(/^Paused: /, ''),
+    };
+  }
+  const since = (iso: string) => clockWords(now - Date.parse(iso));
+  if (hive.live?.kind === 'check') {
+    const word =
+      hive.live.commands.length > 1
+        ? `Checking ${hive.live.step + 1}/${hive.live.commands.length}`
+        : 'Checking';
+    return { word, tone: 'run', detail: `${round} · ${since(hive.live.started)}` };
+  }
+  if (hive.live?.kind === 'review') {
+    return { word: 'Reviewing', tone: 'run', detail: `${round} · ${since(hive.live.started)}` };
+  }
+  switch (hive.step) {
+    case 'checking':
+      return { word: 'Checking', tone: 'run', detail: round };
+    case 'reviewing':
+      return { word: 'Reviewing', tone: 'run', detail: round };
+    case 'landing': {
+      const line = landingLine(
+        hive.landing,
+        hive.landing?.via === 'request' ? hive.request : undefined,
+      );
+      return { word: 'Landing', tone: 'run', detail: line.replace(/^[^:]*:\s*/, '') };
+    }
+    default:
+      return { word: 'Writing', tone: 'run', detail: round };
+  }
 }
 
 /** Whether a workspace's card offers Clean up (V55): once it is merged, the Done group's. */
