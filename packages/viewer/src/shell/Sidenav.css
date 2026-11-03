@@ -853,6 +853,19 @@ button.workspace-about {
     padding: 6px 0;
   }
 
+  /* The proofs' rail (V93): its mark 12 px down, its icons 32 px and 4 apart. */
+  .sidenav.rail .sidenav-top {
+    padding: 12px 0 6px;
+  }
+
+  .sidenav.rail .sidenav-pages {
+    gap: 4px;
+  }
+
+  .sidenav.rail :is(.sidenav-pages, .sidenav-foot) a {
+    height: var(--height-tab);
+  }
+
   .sidenav.rail .sidenav-brand {
     flex: none;
   }

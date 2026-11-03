@@ -17,7 +17,8 @@
 }
 
 .shell.folded {
-  --sidenav-width: 48px;
+  /* The proofs' rail (V93, `normal.css`'s `.rail`): 52 px. */
+  --sidenav-width: 52px;
 }
 
 /* The sidenav's handle (V34) lies over its right border, the height of its column. */

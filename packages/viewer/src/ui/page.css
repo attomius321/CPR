@@ -99,6 +99,8 @@
 .page-head-end {
   flex-wrap: nowrap;
   align-items: flex-start;
+  /* Its title's line centred in the 64 px head as every page's (V93: it stood at the top). */
+  padding-top: calc((var(--height-head) - var(--page-head)) / 2);
 }
 
 .page-head-main {

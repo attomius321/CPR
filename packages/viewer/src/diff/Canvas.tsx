@@ -72,6 +72,11 @@ interface CanvasProps {
 const MOVE_END_DELAY = 100;
 /** Nothing uses edge clicks or hovers: no invisible wide path beside each edge. */
 const EDGE_OPTIONS = { interactionWidth: 0 };
+/**
+ * The first fit (V93, decision 886): a small change at most at its size, as proof 03 frames it;
+ * React Flow's default let a few symbols fill the canvas at 2×.
+ */
+const FIT_OPTIONS = { maxZoom: 1 };
 const PRO_OPTIONS = { hideAttribution: true };
 /** Smaller than React Flow's 200 × 150 (V37): beside the detail panel it covered the nodes. */
 const MINIMAP_SIZE = { width: 160, height: 112 };
@@ -162,6 +167,9 @@ export function Canvas({
 
   // The project last fitted as a whole: walking its symbols then centres each, as without one.
   const fitted = useRef(scope);
+  // The first layout drawn is fitted whole (V93, decision 886): the canvas as proof 03 frames it,
+  // a pick then moving it only when the symbol is out of view.
+  const framed = useRef(false);
   useEffect(() => {
     // Fit once the layout asked for is drawn, not the one it replaces: the view moves once.
     if (resizing || pending) return;
@@ -169,7 +177,10 @@ export function Canvas({
     const frame = requestAnimationFrame(() => {
       const rescoped = fitted.current !== scope;
       fitted.current = scope;
-      if (reveal)
+      const first = !framed.current && layoutNodes.length > 0;
+      if (first) framed.current = true;
+      if (first && !reveal) void fitView(FIT_OPTIONS);
+      else if (reveal)
         void fitView({ nodes: reveal.map((id) => ({ id })), duration: 300, maxZoom: 1.1 });
       else if (focus || rescoped) void fitView({ duration: 300, maxZoom: 1.1 });
       else if (selected) {
@@ -220,6 +231,7 @@ export function Canvas({
       onMove={move}
       onMoveEnd={moved}
       fitView
+      fitViewOptions={FIT_OPTIONS}
       onlyRenderVisibleElements
       {...(map ? { className: 'map' } : {})}
       colorMode={theme}
