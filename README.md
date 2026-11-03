@@ -398,13 +398,15 @@ long files in warmer colours. Use it to spot the files that have grown too large
 
 ### Settings
 
-**Settings** (`s`) holds:
+**Settings** (`s`) lists what you set, in this order, with a filter at the top:
 
-- the prompts Symbiote gives each agent, which you can edit, with their placeholders;
-- the model and effort of Symbiote's own agents: the merger, Nucleus and Scribe;
-- Hive mode, and the skill library;
-- **Appearance**: dark, light or your system's theme; the text size (Compact, Default or Large); and
-  where Git shows a commit's details.
+- **This repository**: **Checks**, the commands a merge runs before it lands and Hive runs on
+  every commit (one check for both modes), and **Hive mode**;
+- **Agents**: the model, effort and prompts of Nucleus, the merger and Scribe, Hive's reviewer while
+  Hive is on, and **Suggest settings**;
+- **Prompts**: what Symbiote tells a workspace's agent and sends with a review, in groups you fold;
+- **This machine**: the skill library. **This browser**: **Appearance**, the theme, the text size
+  and where Git shows a commit's details.
 
 ![Settings: the list of what Symbiote tells its agents, and the Feature prompt open with its text](docs/images/settings.png)
 

@@ -128,17 +128,23 @@ to spot the files that have grown too large.
 
 ## Settings
 
-**Settings** (`s`) holds:
+**Settings** (`s`) lists what you set, the same way in both modes. Type in **Find a setting**
+to narrow the list: an entry's name, an agent's prompt, or a config key such as `merge.checks`.
 
-- **The prompts** Symbiote gives its agents, grouped by agent. They include a workspace agent's
-  first prompt for each kind of work, the verdicts sent to agents, and the instructions of the
-  merger, Nucleus and Scribe. Hive's messages are listed while Hive is on. Change each one, insert
-  its placeholders with a click, or reset it to Symbiote's text. See
+- **This repository**: **Checks** and **Hive mode**. **Checks** is the check: the commands the
+  merger runs before a merge lands, and Hive on every commit, in order until one fails. One check
+  serves both modes. Add, remove or reorder the commands and save them as `merge.checks`. With none
+  set, the page shows the check Symbiote finds, and **Reset to found** goes back to it. **Hive
+  mode** is Hive's switch and its settings (see [Hive
+  mode](../reference/configuration.md#hive-mode)); its row **The check** opens **Checks**.
+- **Agents**: Nucleus (Alpha Ceph while Hive is on), the merger, Scribe, Hive's running reviewer
+  while Hive is on, and **Suggest settings**. Each page has the agent's model, its effort and its
+  prompts. These are set only here; the agents' own pages have no such choices.
+- **Prompts**: what Symbiote tells a workspace's agent (one prompt for each kind of work, plan
+  first or not), the verdicts and files of a review, and Hive's messages while Hive is on. Each
+  group folds; a folded group still shows **not saved** or **changed**. Change a prompt, insert its
+  placeholders with a click, or reset it to Symbiote's text. See
   [Prompts](../reference/configuration.md#prompts).
-- **Symbiote's own agents**: the model and effort of the merger, Nucleus and Scribe. They are set
-  only here; their pages have no such choices. **Suggest settings** has its model and effort too.
-- **This repository**: **Hive mode**, its switch and its settings (see [Hive
-  mode](../reference/configuration.md#hive-mode)).
 - **This machine**: the **Skill library**, its folder or a repository to clone, and who commits its
   changes.
 - **Appearance**: dark, light or your system's theme, and the text size: Compact, Default or Large.

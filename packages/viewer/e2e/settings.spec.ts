@@ -20,7 +20,7 @@ test.afterEach(() => {
 });
 
 const list = (page: Page) => page.getByRole('navigation', { name: 'Settings' });
-const entry = (page: Page, name: string) => list(page).getByRole('button', { name });
+const entry = (page: Page, name: string | RegExp) => list(page).getByRole('button', { name });
 const agents = (page: Page) => list(page).getByRole('region', { name: 'Agents' });
 /** A group of prompts under Prompts (fix/settings-page), opened when it is folded. */
 const group = async (page: Page, name: string) => {
