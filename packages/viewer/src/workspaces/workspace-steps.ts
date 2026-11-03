@@ -184,3 +184,49 @@ export function agentDot(agent: WorkspaceAgentState): 'you' | 'run' | null {
   if (agent.state === 'needs-you' || agent.state === 'plan-ready') return 'you';
   return agent.state === 'working' ? 'run' : null;
 }
+
+/** A step of the pipeline card (V93, decision 884): its state and its words. */
+export interface PipelineStepWords {
+  name: string;
+  state: 'done' | 'now' | 'you' | 'todo' | 'bad';
+  detail: string;
+}
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+/** Each step's words when done and to come; the current step says the model's own. */
+const STEP_WORDS: Record<string, { done: (c: Ctx) => string; todo: (c: Ctx) => string }> = {
+  Plan: { done: () => 'written', todo: () => 'the agent writes it' },
+  'Your OK': { done: () => 'answered', todo: () => 'your answer' },
+  Build: { done: (c) => plural(c.commits, 'commit'), todo: () => 'the agent commits' },
+  Review: { done: () => 'approved', todo: () => 'yours, on its graph' },
+  Merge: { done: (c) => `into ${c.into}`, todo: (c) => `queue → ${c.into}` },
+  Write: { done: (c) => plural(c.commits, 'commit'), todo: () => 'the writer' },
+  Check: { done: () => 'passed', todo: () => 'the check' },
+  Land: { done: (c) => `into ${c.into}`, todo: (c) => `into ${c.into}` },
+};
+
+interface Ctx {
+  into: string;
+  commits: number;
+}
+
+/**
+ * The pipeline card's steps (V93, proofs 02, 03, 07): those before the model's step done, its step
+ * in its mark (the agent's now, the person's, failed) with the model's words, the rest to come.
+ * Hive's Review is its running reviewer's.
+ */
+export function pipelineSteps(model: StepsModel, ctx: Ctx): PipelineStepWords[] {
+  const hive = model.steps[0] === 'Write';
+  return model.steps.map((name, i) => {
+    const words = STEP_WORDS[name];
+    if (i < model.at) {
+      return { name, state: 'done', detail: words?.done(ctx) ?? '' };
+    }
+    if (i === model.at) {
+      return { name, state: model.mark, detail: model.detail };
+    }
+    const todo = name === 'Review' && hive ? 'proves defects' : (words?.todo(ctx) ?? '');
+    return { name, state: 'todo', detail: todo };
+  });
+}

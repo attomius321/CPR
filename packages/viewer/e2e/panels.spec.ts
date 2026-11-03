@@ -167,29 +167,30 @@ test("drags a workspace's changes wider and narrower; the terminal follows", asy
   const symbiote = await serve();
   await history(page, symbiote.url);
   await start(page);
-  expect(await width(changes(page))).toBe(256);
+  // 300 px at first since V93 (decision 885; 256 from V89).
+  expect(await width(changes(page))).toBe(300);
   await expect.poll(() => columns(page), POLL).toBeGreaterThan(0);
   const before = await columns(page);
 
   // The panel is on the right: dragging its edge left widens it.
   await drag(page, changesHandle(page), -144);
-  await expect.poll(() => width(changes(page))).toBe(400);
+  await expect.poll(() => width(changes(page))).toBe(444);
   // 144 px is 18 cells of 8 px (Geist Mono at 14 px since V85; 16 of 9 px at V61's 15).
   await expect.poll(() => columns(page), POLL).toBe(before - 18);
 
   await page.reload();
   await expect(changes(page)).toBeVisible();
-  expect(await width(changes(page))).toBe(400);
+  expect(await width(changes(page))).toBe(444);
 
   // Hidden and shown again, the width it had.
   await workspace(page).getByRole('button', { name: 'Changes' }).click();
   await expect(changes(page)).toBeHidden();
   await expect(changesHandle(page)).toHaveCount(0);
   await workspace(page).getByRole('button', { name: 'Changes' }).click();
-  await expect.poll(() => width(changes(page))).toBe(400);
+  await expect.poll(() => width(changes(page))).toBe(444);
 
   await changesHandle(page).dblclick();
-  await expect.poll(() => width(changes(page))).toBe(256);
+  await expect.poll(() => width(changes(page))).toBe(300);
 });
 
 test("a workspace's changes stop at 200 px, and leave the terminal 480 px", async ({ page }) => {

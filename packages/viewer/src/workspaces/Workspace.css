@@ -157,14 +157,30 @@
   text-align: center;
 }
 
+/* The composer (V93, proof 02): one card, the text without a frame of its own, Attach at the
+   left of its foot, the words and the buttons at the right. */
 .reply {
-  margin-top: 12px;
+  margin: 12px var(--card-pad) var(--card-pad);
+  border: 1px solid var(--line-2);
+  border-radius: 10px;
+  background: var(--raised);
+}
+
+.reply:focus-within {
+  border-color: var(--focus);
 }
 
 .reply textarea {
   box-sizing: border-box;
   width: 100%;
+  border: 0;
+  background: none;
+  box-shadow: none;
   font-size: var(--size-body);
+}
+
+.reply textarea:focus-visible {
+  box-shadow: none;
 }
 
 .reply-actions {
@@ -172,8 +188,31 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
-  gap: 4px 14px;
+  gap: 4px 8px;
+  padding: 6px 8px 8px;
   font-size: var(--size-body);
+}
+
+.reply-actions .button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.reply-attach {
+  margin-right: auto;
+}
+
+/* The key in Approve plan (the proof's `.kbd`). */
+.reply-keys {
+  margin-left: 2px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  background: color-mix(in srgb, currentcolor 14%, transparent);
+  color: inherit;
+  font-size: var(--size-caps);
+  line-height: 1.5;
+  box-shadow: none;
 }
 
 /* The session tabs (V21, V45; named since V89, decision 827, term.css's `.stabs`): the agent's
@@ -408,6 +447,11 @@
   display: flex;
   flex-direction: column;
   container: workspace / inline-size;
+}
+
+/* The pipeline card (V93, decision 884): the page's margins, `--page-gap` over the tabs' card. */
+.workspace > .card.pipeline {
+  margin: 0 var(--page-pad) var(--page-gap);
 }
 
 .workspace-split {
@@ -864,7 +908,6 @@
 }
 
 .reply-where {
-  margin-right: auto;
   font-size: var(--size-small);
 }
 

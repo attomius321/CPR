@@ -260,7 +260,8 @@ test("a workspace, its review's two views and its merge: the same frame", async 
     POLL,
   );
   const at = `?branch=${encodeURIComponent(branch)}`;
-  await expectPage(page, 'A workspace', at, ['.workspace-main', '.changes']);
+  // The pipeline card first outside the terminal view (V93, decision 884).
+  await expectPage(page, 'A workspace', at, ['.card.pipeline, .workspace-main', '.changes']);
   const tabs = await head(page, '.workspace-main', '.workspace-views', 'text');
   expect.soft(tabs?.height, "A workspace: its tabs' height").toBe(HEAD);
   expect.soft(Math.round(tabs?.inset ?? 0), 'A workspace: its first tab').toBe(INSET);

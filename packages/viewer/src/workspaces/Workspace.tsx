@@ -15,6 +15,7 @@ import type {
   WorkspaceShells,
   WorkspaceStart,
   TerminalAvailability,
+  WorkspaceSummary,
 } from '@symbiote/core';
 import {
   AgentTerminal,
@@ -34,10 +35,32 @@ import { useChangesPanel, useFocus } from './useChangesPanel.js';
 import { HeadSteps, Since } from './HeadSteps.js';
 import { TerminalBar } from './TerminalBar.js';
 import { barOf } from './terminal-bar.js';
-import { agentTabName, hiveSteps, normalSteps, planAnswered } from './workspace-steps.js';
+import {
+  agentTabName,
+  hiveSteps,
+  normalSteps,
+  pipelineSteps,
+  planAnswered,
+  type StepsModel,
+} from './workspace-steps.js';
 import { ReplyForm } from './ReplyForm.js';
 import { WorkspaceTabs, type AgentView, type View } from './WorkspaceTabs.js';
-import { BranchIcon, ChangesIcon, ExpandIcon, TerminalIcon } from '../ui/icons.js';
+import {
+  BellIcon,
+  BranchIcon,
+  ChangesIcon,
+  CheckIcon,
+  ChoreIcon,
+  CloseIcon,
+  ExpandIcon,
+  MergeIcon,
+  PencilIcon,
+  ReviewIcon,
+  SpinIcon,
+  TerminalIcon,
+} from '../ui/icons.js';
+import { Pipeline, type PipelineState } from '../ui/Pipeline.js';
+import { StatusLabel } from '../ui/StatusLabel.js';
 import { PageHead } from '../ui/PageHead.js';
 import { KIND_ICONS } from './StartKinds.js';
 import { cleanUp } from './cleanup.js';
@@ -46,12 +69,14 @@ import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { MergeControl } from './MergeControl.js';
 import { openReview } from './review-open.js';
 import { ThreadTab, useThread } from './ThreadTab.js';
-import { KindTag, RunsOn, WorkspaceBranch } from './WorkspaceFacts.js';
+import { RunsOn, WorkspaceBranch } from './WorkspaceFacts.js';
+import { rowWords } from './row-words.js';
 import { RESPOND_EVENT, respondTo } from './respond.js';
 import { postJson, serverWords } from '../ui/http.js';
 import { Resizer } from '../ui/Resizer.js';
 import {
   AGENT_NAMES,
+  runsOnWords,
   allRows,
   workspaceGroups,
   workspaceHref,
@@ -94,6 +119,36 @@ async function readShells(branch: string): Promise<WorkspaceShell[]> {
  * A workspace in the shell's main area (V29a; the Workspaces page's panel before it): its state
  * and actions, then its terminal, its thread or its brief. The address names it (`/?branch=`).
  */
+/** Whose turn it is, the pipeline card's Turn (proof 02). */
+const TURN_WORDS: Record<StepsModel['tone'], string> = {
+  you: 'Yours',
+  run: "Agent's",
+  ok: 'Done',
+  error: 'Stopped',
+  info: 'Paused',
+  idle: 'Nobody',
+};
+
+/** A pipeline step's mark (V93): done a check, at work the arc, failed a cross, else its own. */
+function stepIcon(name: string, state: PipelineState): ReactNode {
+  if (state === 'done') return <CheckIcon />;
+  if (state === 'now') return <SpinIcon />;
+  if (state === 'bad') return <CloseIcon />;
+  switch (name) {
+    case 'Your OK':
+      return <BellIcon />;
+    case 'Review':
+      return <ReviewIcon />;
+    case 'Merge':
+    case 'Land':
+      return <MergeIcon />;
+    case 'Check':
+      return <ChoreIcon />;
+    default:
+      return <PencilIcon />;
+  }
+}
+
 export function WorkspaceView({ branch }: { branch: string }) {
   const shell = useShell();
   const { list, reviews } = useWorkspaces();
@@ -622,6 +677,8 @@ function WorkspacePanel({
           ...mergeOf(merges?.merges ?? [], branch),
         });
   const read = changes !== null && typeof changes !== 'string' ? changes : null;
+  // The pipeline card on every view but the terminal's (V93, decision 884; proofs 02, 03, 07).
+  const showPipeline = view !== 'terminal' && view !== 'shell';
   const landed =
     workspace.hive?.landing?.outcome === 'landed' ? workspace.hive.landing.ended : undefined;
   const bar = barOf({ workspace, next: row.next, entries });
@@ -646,7 +703,6 @@ function WorkspacePanel({
         className={`workspace-top tone-${row.next.chip.tone}`}
         icon={(workspace.kind && KIND_ICONS[workspace.kind]) ?? <BranchIcon />}
         title={<span {...tip(briefTip(workspace.brief))}>{workspaceName(workspace)}</span>}
-        beside={<KindTag workspace={workspace} />}
         line={
           <span className="workspace-state-line">
             <span className="workspace-ref">
@@ -671,23 +727,36 @@ function WorkspacePanel({
                 {said}
               </span>
             )}
-            <HeadSteps
-              model={steps}
-              {...(hiveDrives
-                ? {
-                    hive: {
-                      started: workspace.created,
-                      ...(landed ? { ended: landed } : {}),
-                      ...(hive.detail?.spend ? { spend: hive.detail.spend } : {}),
-                    },
-                  }
-                : {
-                    normal: {
-                      commits: workspace.ahead,
-                      files: read ? changedFiles(read) : null,
-                    },
-                  })}
-            />
+            {/* The pipeline card holds the steps outside the terminal view (V93, decision 884):
+                the head its state's pill. In the terminal view they stay in the head (V89). */}
+            {!showPipeline && (
+              <HeadSteps
+                model={steps}
+                {...(hiveDrives
+                  ? {
+                      hive: {
+                        started: workspace.created,
+                        ...(landed ? { ended: landed } : {}),
+                        ...(hive.detail?.spend ? { spend: hive.detail.spend } : {}),
+                      },
+                    }
+                  : {
+                      normal: {
+                        commits: workspace.ahead,
+                        files: read ? changedFiles(read) : null,
+                      },
+                    })}
+              />
+            )}
+            {showPipeline && (
+              <StatusLabel tone={steps.tone} className="workspace-pill">
+                {steps.tone === 'you'
+                  ? `${rowWords(row, Date.now()).word} · your turn`
+                  : steps.tone === 'run'
+                    ? 'Working'
+                    : steps.word}
+              </StatusLabel>
+            )}
             {live && (
               <button
                 type="button"
@@ -769,6 +838,72 @@ function WorkspacePanel({
           </>
         }
       />
+      {showPipeline && (
+        <Pipeline
+          label="Its steps"
+          steps={pipelineSteps(steps, {
+            into: workspace.from ?? 'its branch',
+            commits: workspace.ahead,
+          }).map((step) => ({
+            name: step.name,
+            state: step.state,
+            // At work, what its agent does now (V48f: "Thinking", "Editing src/a.ts").
+            detail: step.state === 'now' && row.next.doing ? row.next.doing : step.detail,
+            icon: stepIcon(step.name, step.state),
+          }))}
+          cells={
+            hiveDrives && workspace.hive
+              ? [
+                  {
+                    label: 'Round',
+                    value: (
+                      <>
+                        {workspace.hive.round} <small>of {workspace.hive.rounds}</small>
+                      </>
+                    ),
+                    words: steps.word,
+                  },
+                  {
+                    label: 'Time',
+                    value: (
+                      <Since since={workspace.created} {...(landed ? { until: landed } : {})} />
+                    ),
+                    words: landed ? 'brief to landed' : 'since the brief',
+                  },
+                  ...(hive.detail?.spend
+                    ? [
+                        {
+                          label: 'Spend',
+                          value: `$${hive.detail.spend.total.toFixed(2)}`,
+                          words:
+                            hive.detail.spend.budget !== undefined
+                              ? `of $${hive.detail.spend.budget.toFixed(2)}`
+                              : 'no budget',
+                        },
+                      ]
+                    : []),
+                ]
+              : [
+                  {
+                    label: 'Turn',
+                    value: TURN_WORDS[steps.tone],
+                    ...(steps.tone === 'you' ? { tone: 'you' as const } : {}),
+                    ...(steps.since ? { words: `since ${startedAt(steps.since)}` } : {}),
+                  },
+                  {
+                    label: 'Commits',
+                    value: workspace.ahead,
+                    words:
+                      workspace.ahead === 0 && workspace.planFirst
+                        ? 'plan first'
+                        : read
+                          ? `${changedFiles(read)} files`
+                          : 'on its branch',
+                  },
+                ]
+          }
+        />
+      )}
       {closing && (
         <p className="workspace-confirm">
           {closing.question}{' '}
@@ -974,18 +1109,21 @@ function WorkspacePanel({
             onApprove={() => send(false, PLAN_OK)}
             onCancel={() => setConfirming(null)}
           />
-          <TerminalBar
-            model={bar}
-            hive={workspace.hive}
-            terminalShown={showTerminal || shownShell !== undefined}
-            waiting={waiting}
-            {...(terminals ? { onTerminal: respond } : {})}
-            onThread={() => show('thread')}
-            onNext={(next) => respondTo(next, (route) => shell?.navigate(route))}
-            {...(verdict && opened && showTerminal
-              ? { onVerdict: () => void typeVerdict(opened, verdict.text) }
-              : {})}
-          />
+          {/* Not under the Thread tab's reply box, which answers (V93, proof 02). */}
+          {!(view === 'thread' && !(terminals && !planWaits)) && (
+            <TerminalBar
+              model={bar}
+              hive={workspace.hive}
+              terminalShown={showTerminal || shownShell !== undefined}
+              waiting={waiting}
+              {...(terminals ? { onTerminal: respond } : {})}
+              onThread={() => show('thread')}
+              onNext={(next) => respondTo(next, (route) => shell?.navigate(route))}
+              {...(verdict && opened && showTerminal
+                ? { onVerdict: () => void typeVerdict(opened, verdict.text) }
+                : {})}
+            />
+          )}
         </div>
         {changesShown && !focus && (
           <Resizer
@@ -1006,6 +1144,10 @@ function WorkspacePanel({
             changes={changes}
             onPicked={() => setPicks((n) => n + 1)}
             editing={editing}
+            // Outside the terminal view, the proof's facts and files (V93, proof 02).
+            page={showPipeline && view !== 'run'}
+            facts={<FactsSection workspace={workspace} />}
+            brief={briefFirst(workspace.brief)}
             now={
               view === 'run' ? (
                 <RunFacts workspace={workspace} detail={hive.detail} />
@@ -1033,6 +1175,58 @@ function startedAt(iso: string): string {
   return date.toDateString() === new Date().toDateString()
     ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
     : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+/** A brief's first words for the side card (V93): its goal's first paragraph, no Markdown marks. */
+function briefFirst(brief: string): string | undefined {
+  const lines = brief
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '' && !line.startsWith('#'));
+  const text = lines.join(' ').replace(/\*\*|__|`/g, '');
+  return text === '' ? undefined : text.length > 240 ? `${text.slice(0, 240).trimEnd()}…` : text;
+}
+
+/**
+ * The workspace's facts (V93, proof 02): its kind, agent, model and plan first. Its permissions
+ * are not in the list's summary: not shown.
+ */
+function FactsSection({ workspace }: { workspace: WorkspaceSummary }) {
+  const { agent } = workspace;
+  const runs = runsOnWords(agent);
+  return (
+    <section className="changes-section changes-now" aria-label="Workspace">
+      <h2>Workspace</h2>
+      <dl className="changes-facts">
+        {workspace.kind && (
+          <>
+            <dt>Kind</dt>
+            <dd>{workspace.kind.charAt(0).toUpperCase() + workspace.kind.slice(1)}</dd>
+          </>
+        )}
+        {agent.kind && (
+          <>
+            <dt>Agent</dt>
+            <dd>{AGENT_NAMES[agent.kind]}</dd>
+          </>
+        )}
+        {runs && (
+          <>
+            <dt>Model</dt>
+            <dd>{runs.text}</dd>
+          </>
+        )}
+        <dt>Plan first</dt>
+        <dd data-tone={workspace.planFirst && agent.state === 'plan-ready' ? 'you' : undefined}>
+          {workspace.planFirst
+            ? agent.state === 'plan-ready'
+              ? 'on, waits for your OK'
+              : 'on'
+            : 'off'}
+        </dd>
+      </dl>
+    </section>
+  );
 }
 
 /**

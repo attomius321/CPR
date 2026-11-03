@@ -503,9 +503,9 @@ test("a row's kind, branch and what its agent runs on are in its tip, not its li
   await expect(row).toHaveAttribute('data-tip', /feature · feature\/add-a-half-function/);
   await expect(row).toHaveAttribute('data-tip', /Default model · /);
   await expect(row.locator('.kind-tag')).toHaveCount(0);
-  // The heading: its kind before its name, and what it runs on.
-  await expect(panel(page, branch).locator('.workspace-top .page-name-line .kind-tag')).toHaveText(
-    'feature',
+  // The heading: its kind as its tile's icon (V93, proof 02: no chip), and what it runs on.
+  await expect(panel(page, branch).locator('.workspace-top .page-name-line .kind-tag')).toHaveCount(
+    0,
   );
   const chip = panel(page, branch).locator('.workspace-top .runs-on');
   await expect(chip).toHaveText(/^Default model · /);
@@ -1771,7 +1771,8 @@ test("an agent's report is drawn as Markdown; HTML in it, and your messages, sta
   await expect(report).not.toContainText('**');
   // Your messages are shown as you typed them. Sent once the list says the turn ended: before
   // that, sending would stop a working agent, and asks first.
-  await expect(here).toContainText('The plan waits for your OK', POLL);
+  // V93: the head's pill says it (proof 02); the reply box answers, no bar under it.
+  await expect(here.locator('.workspace-pill')).toHaveText('Plan ready · your turn', POLL);
   await box(page, branch).fill('Keep **this** as typed.');
   await box(page, branch).press('Control+Enter');
   await expect(here.locator('.thread-you').last()).toContainText('Keep **this** as typed.', POLL);

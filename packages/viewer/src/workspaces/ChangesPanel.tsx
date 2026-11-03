@@ -221,6 +221,9 @@ export function ChangesPanel({
   now,
   editing,
   onSaid,
+  page = false,
+  facts,
+  brief,
 }: {
   branch: string;
   /** The list as last read: the changes are read again with it. */
@@ -240,6 +243,16 @@ export function ChangesPanel({
   editing?: string | undefined;
   /** How opening a file went, in words, for the workspace's head. */
   onSaid: (words: string) => void;
+  /**
+   * Outside the terminal view (V93, proof 02): the workspace's facts first, then its brief, its
+   * commits and its files; in it (proof 08), what the agent does, what is not committed, its
+   * commits and its brief.
+   */
+  page?: boolean;
+  /** The workspace's facts (Kind, Agent, Model, Plan first, Permissions), outside the terminal. */
+  facts?: ReactNode;
+  /** Its brief's first lines (V93). */
+  brief?: string | undefined;
 }) {
   const [picks, setPicks] = useState(0);
   const read = useChanges(branch, version, picks, given === undefined);
@@ -273,14 +286,21 @@ export function ChangesPanel({
       )}
     </section>
   );
+  const briefSection = brief && (
+    <section className="changes-section" aria-label="Brief" key="brief">
+      <h2>Brief</h2>
+      <p className="changes-brief">{brief}</p>
+    </section>
+  );
   return (
     <aside className="changes" aria-label="Changes">
-      {now}
+      {page ? facts : now}
+      {page && briefSection}
       {changes === null && <p className="changes-empty">Reading its changes…</p>}
       {typeof changes === 'string' && <p className="changes-empty error">{changes}</p>}
       {shown && (
         <>
-          {uncommitted}
+          {!page && uncommitted}
           <section className="changes-section" aria-label="Commits">
             <h2>
               Commits <span className="changes-count">{shown.commits.count}</span>
@@ -311,15 +331,19 @@ export function ChangesPanel({
             )}
             {commitsMore && <p className="changes-empty">{commitsMore}</p>}
           </section>
-          <section className="changes-section" aria-label="Files">
-            <h2>
-              Files <span className="changes-count">{shown.files.count}</span>
-              {shown.files.count > 0 && (
-                <Lines added={shown.files.added} removed={shown.files.removed} />
-              )}
-            </h2>
-            <Files files={shown.files} empty="No files changed yet" onOpen={opener(false)} />
-          </section>
+          {!page && briefSection}
+          {/* The terminal's side card lists its files once it has some (proof 08 draws none). */}
+          {(page || shown.files.count > 0) && (
+            <section className="changes-section" aria-label="Files">
+              <h2>
+                Files <span className="changes-count">{shown.files.count}</span>
+                {shown.files.count > 0 && (
+                  <Lines added={shown.files.added} removed={shown.files.removed} />
+                )}
+              </h2>
+              <Files files={shown.files} empty="No files changed yet" onOpen={opener(false)} />
+            </section>
+          )}
         </>
       )}
     </aside>
