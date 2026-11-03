@@ -1,0 +1,243 @@
+/* The pipeline card (V93, decisions 880, 884; the kits' `run.css`): steps as hexagons on a line,
+   their wires, the cells at its right end. */
+
+.card.pipeline {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow-lift, none);
+  overflow: hidden;
+  display: flex;
+  flex: none;
+  flex-direction: row;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.pipeline-steps {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  min-width: 0;
+  margin: 0;
+  padding: 16px 18px 14px;
+  list-style: none;
+}
+
+.pipeline-step {
+  display: flex;
+  flex: 1;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.pipeline-step:last-child {
+  flex: none;
+  width: 200px;
+}
+
+.pipeline-node {
+  position: relative;
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 26px;
+  height: var(--height-control);
+}
+
+/* The kits' 26 × 28 hexagon: 28 is `--height-control`. */
+.pipeline-hex {
+  position: absolute;
+  inset: 0;
+  width: 26px;
+  height: var(--height-control);
+}
+
+.pipeline-hex polygon {
+  fill: var(--raised);
+  stroke: var(--line-2);
+  stroke-width: 1.5;
+}
+
+.pipeline-step.is-done .pipeline-hex polygon {
+  fill: color-mix(in srgb, var(--ok) 16%, var(--panel));
+  stroke: color-mix(in srgb, var(--ok) 70%, transparent);
+}
+
+.pipeline-step.is-now .pipeline-hex polygon {
+  fill: color-mix(in srgb, var(--run) 16%, var(--panel));
+  stroke: var(--run);
+  stroke-width: 2;
+}
+
+.pipeline-step.is-you .pipeline-hex polygon {
+  fill: color-mix(in srgb, var(--you) 16%, var(--panel));
+  stroke: var(--you);
+  stroke-width: 2;
+}
+
+.pipeline-step.is-bad .pipeline-hex polygon {
+  fill: color-mix(in srgb, var(--error) 16%, var(--panel));
+  stroke: var(--error);
+}
+
+.pipeline-node .icon {
+  position: relative;
+  width: 13px;
+  height: 13px;
+  color: var(--faint);
+  stroke-width: 2.25;
+}
+
+.pipeline-step.is-done .pipeline-node .icon {
+  color: var(--ok);
+}
+
+.pipeline-step.is-now .pipeline-node .icon {
+  color: var(--run);
+}
+
+.pipeline-step.is-you .pipeline-node .icon {
+  color: var(--you);
+}
+
+.pipeline-step.is-bad .pipeline-node .icon {
+  color: var(--error);
+}
+
+.pipeline-words {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  padding: 3px 12px 0 10px;
+}
+
+.pipeline-name {
+  font-size: var(--size-body);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pipeline-step.is-todo .pipeline-name {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* Muted, not the kits' faint: faint is for marks (V87, decision 765). */
+.pipeline-detail {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pipeline-step.is-you .pipeline-detail {
+  color: var(--you);
+}
+
+.pipeline-progress {
+  display: block;
+  width: 140px;
+  height: 3px;
+  margin-top: 6px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--raised);
+}
+
+.pipeline-progress > i {
+  display: block;
+  height: 100%;
+  background: var(--run);
+}
+
+.pipeline-wire {
+  flex: 1;
+  min-width: 24px;
+  height: 2px;
+  margin: 13px 10px 0 0;
+  border-radius: 4px;
+  background: var(--line-2);
+}
+
+.pipeline-step.is-done .pipeline-wire {
+  background: color-mix(in srgb, var(--ok) 50%, transparent);
+}
+
+.pipeline-step.is-now .pipeline-wire {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--run) 60%, transparent),
+    var(--line-2)
+  );
+}
+
+.pipeline-cells {
+  display: flex;
+  align-items: stretch;
+  margin: 0;
+  border-left: 1px solid var(--line);
+}
+
+.pipeline-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  min-width: 112px;
+  padding: 0 18px;
+}
+
+.pipeline-cell + .pipeline-cell {
+  border-left: 1px solid var(--line);
+}
+
+.pipeline-cell dt,
+.pipeline-cell-words {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.pipeline-value {
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.pipeline-value.tone-you {
+  color: var(--you);
+}
+
+.pipeline-value small {
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-weight: 500;
+}
+
+/* A narrow window: the steps wrap under each other, the cells under them. */
+@media (max-width: 1100px) {
+  .card.pipeline {
+    flex-direction: column;
+  }
+
+  .pipeline-steps {
+    flex-wrap: wrap;
+    gap: 10px 0;
+  }
+
+  .pipeline-cells {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .pipeline-cell {
+    padding: 10px 18px;
+  }
+}

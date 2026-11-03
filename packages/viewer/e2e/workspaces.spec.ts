@@ -9,7 +9,6 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { spinner } from './spinner.js';
 import { serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
 import { textAt } from './terminal.js';
 
@@ -294,7 +293,8 @@ test('the workspaces view: what each workspace needs, as its agent goes on', asy
     'Waiting: permission prompt',
     POLL,
   );
-  await expect(page.locator('.sidenav .page-count')).toHaveText('1');
+  // The status bar counts it (V93, decision 879; the count by Workspaces before).
+  await expect(page.locator('.statusbar-seg.you')).toHaveText('1 wait for you');
 
   // Esc in its session: no hook fires and Claude Code still says `working`, but it waits.
   symbiote.interrupt(branch);
@@ -309,11 +309,14 @@ test('the workspaces view: what each workspace needs, as its agent goes on', asy
   // Claude Code's sessions are read at most every 2 s: the page's next look sees it.
   symbiote.session(branch, { state: 'done' });
   await expect(row).toContainText('Ready for review', POLL);
-  // Its facts in a row of their own (V79): an icon and a number, named in words.
-  const facts = row.locator('.workspace-meta');
-  await expect(facts.getByRole('img', { name: '1 commit' })).toHaveText('1');
-  await expect(facts.getByRole('img', { name: '1 file not committed yet' })).toHaveText('1');
-  await expect(facts.getByRole('img', { name: 'Merges cleanly into main' })).toHaveText('clean');
+  // Its commits the word of its second line; its facts in words in its tip and for screen readers
+  // (V93, decision 876; a row of icons and numbers since V79).
+  await expect(row.locator('.ws-row-state b')).toHaveText('1 commit');
+  await expect(row).toHaveAttribute(
+    'data-tip',
+    /1 commit · 1 file not committed yet · Merges cleanly into main/,
+    POLL,
+  );
 });
 
 test('the agents that wait for you: first, what each asks, Respond, the count in the title, the next one (V48)', async ({
@@ -339,25 +342,19 @@ test('the agents that wait for you: first, what each asks, Respond, the count in
     'Permission to run pnpm test -- --run src/half',
     POLL,
   );
-  await expect(page.locator('.sidenav .page-count')).toHaveText('1');
+  await expect(page.locator('.statusbar-seg.you')).toHaveText('1 wait for you');
   await expect(page).toHaveTitle(/^\(1\) /);
-  // Its kind after Respond; how long it has waited at its name's row's end, as on every card (V79).
+  // Its row (V93): the bell, "Asks permission" and how long it has waited; the ask in its tip.
   const card = waiting.locator(workspaceRow(page, tests));
-  const [respond, kind, name, age] = await Promise.all(
-    [
-      card.getByRole('button', { name: 'Respond' }),
-      card.locator('.workspace-respond .kind-tag'),
-      card.locator('.workspace-about'),
-      card.locator('.workspace-head .commit-date'),
-    ].map((part) => part.boundingBox()),
-  );
-  expect(kind!.x).toBeGreaterThan(respond!.x + respond!.width);
-  expect(age!.x).toBeGreaterThan(name!.x + name!.width);
-  await expect(card.locator('.workspace-respond .commit-date')).toHaveCount(0);
+  await expect(card.locator('.ws-row-state b')).toHaveText('Asks permission');
+  await expect(card).toHaveAttribute('data-tip', /Permission to run pnpm test -- --run src\/half/);
 
-  // Respond: its workspace, on its terminal, focused.
+  // A click on a waiting row is V48's Respond: its workspace, on its terminal, focused.
   await page.goto(`${symbiote.url}git`);
-  await waiting.locator(workspaceRow(page, tests)).getByRole('button', { name: 'Respond' }).click();
+  await waiting
+    .locator(workspaceRow(page, tests))
+    .getByRole('button', { name: 'Add a half function' })
+    .click();
   await expect(panel(page, tests)).toBeVisible();
   await expect(page.getByRole('tab', { name: 'Claude Code' })).toHaveAttribute(
     'aria-selected',
@@ -377,7 +374,7 @@ test('the agents that wait for you: first, what each asks, Respond, the count in
     },
   });
   symbiote.session(store, { state: 'blocked', waitingFor: 'question' });
-  await expect(page.locator('.sidenav .page-count')).toHaveText('2', POLL);
+  await expect(page.locator('.statusbar-seg.you')).toHaveText('2 wait for you', POLL);
   await expect(page).toHaveTitle(/^\(2\) /);
   await strip.getByRole('button', { name: 'Next waiting (1)' }).click();
   await expect(panel(page, store)).toBeVisible();
@@ -389,7 +386,7 @@ test('the agents that wait for you: first, what each asks, Respond, the count in
   symbiote.session(tests, { state: 'working' });
   await expect(waiting.locator(workspaceRow(page, tests))).toHaveCount(0, POLL);
   await expect(group(page, 'Working').locator(workspaceRow(page, tests))).toBeVisible();
-  await expect(page.locator('.sidenav .page-count')).toHaveText('1');
+  await expect(page.locator('.statusbar-seg.you')).toHaveText('1 wait for you');
   await expect(page).toHaveTitle(/^\(1\) /);
 });
 
@@ -452,108 +449,32 @@ test('a working agent says what it runs, from its tools, and since when; thinkin
       tool_use_id: id,
     });
   tool('PreToolUse', 't1');
-  await expect(row.locator('.workspace-state strong')).toHaveText(
-    'Running pnpm test -- --run src/half',
-    POLL,
-  );
+  // The tool's verb, then what it runs (V93's row).
+  await expect(row.locator('.ws-row-state b')).toHaveText('Running', POLL);
+  await expect(row.locator('.ws-row-state')).toContainText('pnpm test -- --run src/half');
   // Since its prompt, in its heading's steps (V89): working, and the time.
   await expect(panel(page, branch).locator('.head-steps')).toContainText(/working \d+:\d\d/);
   tool('PostToolUse', 't1');
-  await expect(row.locator('.workspace-state strong')).toHaveText('Thinking', POLL);
+  await expect(row.locator('.ws-row-state b')).toHaveText('Thinking', POLL);
 });
 
-test("a working agent's dot is a spinner, a turn a second; without motion it holds still (V53)", async ({
-  page,
-}) => {
-  symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}`);
-  await startFrom(page, 'Add a half function');
-  const dot = workspaceRow(page, 'feature/add-a-half-function').locator('.state-dot');
-  await expect(dot).toHaveClass(/tone-working/);
-  // Wider than the 7 px dot, drawn around its place: the name does not move.
-  await expect
-    .poll(() => spinner(dot))
-    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
-  // Without motion: the arc, still — its own shape beside a waiting dot's halo.
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect.poll(() => spinner(dot)).toEqual({ animation: 'none 0s', across: 11, comet: true });
-});
-
-test('a working card names its agent by its mark, in its colour, before what it does; none on Symbiote’s words (V53)', async ({
-  page,
-}) => {
-  symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}`);
-  await startFrom(page, 'Add a half function');
-  const branch = 'feature/add-a-half-function';
-  const row = workspaceRow(page, branch);
-  const state = row.locator('.workspace-state');
-  await expect(state.locator('strong')).toHaveText('Thinking');
-  // Claude's spark, first on the line, named; in Claude's terracotta.
-  const mark = state.getByRole('img', { name: 'Claude Code' });
-  await expect(mark).toBeVisible();
-  await expect(state.locator('> :first-child')).toHaveClass(/agent-mark/);
-  expect(await mark.evaluate((svg) => getComputedStyle(svg).fill)).toBe('rgb(217, 119, 87)');
-  expect(await mark.boundingBox()).toMatchObject({ width: 14, height: 14 });
-  // Its page names it on its terminal's tab (V89, decision 827): the head shows the steps.
-  await expect(
-    panel(page, branch).getByRole('tab', { name: 'Claude Code', exact: true }),
-  ).toBeVisible();
-
-  // Finished with a commit: what is next is Symbiote's to say, not the agent's doing.
-  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
-  symbiote.session(branch, { state: 'done' });
-  await expect(state.locator('strong')).toHaveText('Ready for review', POLL);
-  await expect(row.locator('.agent-mark')).toHaveCount(0);
-});
-
-test('every card says its kind in a chip at the start of its facts’ row, Feature too (V53, V79)', async ({
+test("a working agent's icon is a spinner, a turn a second; without motion it holds still (V53, V93)", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
   await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const row = workspaceRow(page, 'feature/add-a-half-function');
-  const chip = row.locator('.workspace-meta .kind-tag');
-  await expect(chip).toHaveText('feature');
-  await expect(row.locator('.workspace-head .kind-tag, .workspace-branch .kind-tag')).toHaveCount(
-    0,
-  );
-  // Under the words of its state: the kinds make a column down the list. Its commits after it;
-  // the time at the end of the name's row.
-  const [name, state, tag, commits, time] = await Promise.all(
-    [
-      row.locator('.workspace-about'),
-      row.locator('.workspace-line .workspace-state'),
-      chip,
-      row.getByRole('img', { name: 'No commits yet' }),
-      row.locator('.workspace-head .commit-date'),
-    ].map((part) => part.boundingBox()),
-  );
-  expect(Math.abs(tag!.x - state!.x)).toBeLessThanOrEqual(1);
-  expect(commits!.x).toBeGreaterThan(tag!.x + tag!.width);
-  expect(time!.x).toBeGreaterThan(name!.x + name!.width);
-  const card = (await row.boundingBox())!;
-  expect(Math.round(card.x + card.width - (time!.x + time!.width))).toBe(12);
-  await expect(row.getByRole('img', { name: 'No commits yet' })).toHaveText('0');
-  // The style's metadata chip: raised, no edge; 22 px for its 13 px words (V61).
-  expect(
-    await chip.evaluate((element) => {
-      const style = getComputedStyle(element);
-      return [style.borderTopWidth, style.height];
-    }),
-  ).toEqual(['0px', '22px']);
-  // The heading: its kind before its name, as before.
-  await expect(
-    panel(page, 'feature/add-a-half-function').locator('.workspace-top .page-name-line .kind-tag'),
-  ).toHaveText('feature');
-  // Folded to the rail: the card is its dot alone.
-  await page.getByRole('button', { name: 'Fold the sidenav' }).click();
-  await expect(row.locator('.state-dot')).toBeVisible();
-  await expect(chip).toBeHidden();
+  await expect(row).toHaveAttribute('data-tone', 'run');
+  const arc = row.locator('.ws-row-icon.spinning .icon');
+  await expect(arc).toHaveCSS('animation-name', 'state-spin');
+  await expect(arc).toHaveCSS('animation-duration', '1s');
+  // Without motion: the arc, still.
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await expect(arc).toHaveCSS('animation-name', 'none');
 });
 
-test('the head and every card say what its agent runs on: as it started, then as it answers (V83)', async ({
+test("a working row says what its agent does; once it finished, what is next is Symbiote's (V93)", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -561,22 +482,37 @@ test('the head and every card say what its agent runs on: as it started, then as
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   const row = workspaceRow(page, branch);
-  const chip = panel(page, branch).locator('.workspace-top .runs-on');
-  const line = row.locator('.workspace-runs');
-  // Before it answers: how it started, said as that.
-  await expect(chip).toHaveText(/^Default model · /);
-  await expect(line).toHaveText(/^Default model · /);
-  await expectTip(page, chip, 'What it runs on shows once it answers');
-  // In the head's line, after where it started (V89); on the card a row of its own, after the
-  // facts, before the branch.
-  await expect(panel(page, branch).locator('.workspace-top .page-line .runs-on')).toBeVisible();
-  const [meta, runs, ref] = await Promise.all(
-    [row.locator('.workspace-meta'), line, row.locator('.workspace-branch')].map((part) =>
-      part.boundingBox(),
-    ),
+  await expect(row.locator('.ws-row-state b')).toHaveText('Thinking');
+  // Its page names its agent on its terminal's tab (V89, decision 827).
+  await expect(
+    panel(page, branch).getByRole('tab', { name: 'Claude Code', exact: true }),
+  ).toBeVisible();
+  // Finished with a commit: its commits are the word, the eye its icon, violet.
+  symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
+  symbiote.session(branch, { state: 'done' });
+  await expect(row.locator('.ws-row-state b')).toHaveText('1 commit', POLL);
+  await expect(row).toHaveAttribute('data-tone', 'you');
+  await expect(row).toContainText('Ready for review');
+});
+
+test("a row's kind, branch and what its agent runs on are in its tip, not its lines (V93)", async ({
+  page,
+}) => {
+  symbiote = await serveWorkspaces();
+  await page.goto(`${symbiote.url}`);
+  await startFrom(page, 'Add a half function');
+  const branch = 'feature/add-a-half-function';
+  const row = workspaceRow(page, branch);
+  await expect(row).toHaveAttribute('data-tip', /feature · feature\/add-a-half-function/);
+  await expect(row).toHaveAttribute('data-tip', /Default model · /);
+  await expect(row.locator('.kind-tag')).toHaveCount(0);
+  // The heading: its kind before its name, and what it runs on.
+  await expect(panel(page, branch).locator('.workspace-top .page-name-line .kind-tag')).toHaveText(
+    'feature',
   );
-  expect(runs!.y).toBeGreaterThanOrEqual(meta!.y + meta!.height);
-  expect(ref!.y).toBeGreaterThanOrEqual(runs!.y + runs!.height);
+  const chip = panel(page, branch).locator('.workspace-top .runs-on');
+  await expect(chip).toHaveText(/^Default model · /);
+  await expectTip(page, chip, 'What it runs on shows once it answers');
   // Its session names its transcript to Symbiote's hooks, and answers on Sonnet 5.5 at low.
   const transcript = join(symbiote.cache, 'session-1.jsonl');
   const answer = (model: string, effort: string) =>
@@ -595,18 +531,18 @@ test('the head and every card say what its agent runs on: as it started, then as
     transcript_path: transcript,
   });
   await expect(chip).toHaveText('Sonnet 5.5 · low effort', POLL);
-  await expect(line).toHaveText('Sonnet 5.5 · low effort');
-  await expectTip(page, line, 'Claude Code runs on Sonnet 5.5 (claude-sonnet-5-5) at low effort');
+  await expect(row).toHaveAttribute('data-tip', /Sonnet 5\.5 · low effort/);
   // `/model opus` and `/effort xhigh` typed in its terminal: from its next answer.
   appendFileSync(transcript, answer('claude-opus-5-5', 'xhigh'));
   await expect(chip).toHaveText('Opus 5.5 · xhigh effort', POLL);
-  await expect(line).toHaveText('Opus 5.5 · xhigh effort', POLL);
-  // Folded to the rail: the card is its dot alone.
+  await expect(row).toHaveAttribute('data-tip', /Opus 5\.5 · xhigh effort/, POLL);
+  // Folded to the rail: the row is its icon alone.
   await page.getByRole('button', { name: 'Fold the sidenav' }).click();
-  await expect(line).toBeHidden();
+  await expect(row.locator('.ws-row-icon')).toBeVisible();
+  await expect(row.locator('.ws-row-state')).toHaveCount(0);
 });
 
-test("a card's state is one line, all of it in its tip: the card keeps its height as its agent acts (V83)", async ({
+test("a row's state is one line, all of it in its tip: the row keeps its height as its agent acts (V83, V93)", async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -614,8 +550,8 @@ test("a card's state is one line, all of it in its tip: the card keeps its heigh
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
   const row = workspaceRow(page, branch);
-  const state = row.locator('.workspace-line .workspace-state');
-  await expect(state.locator('strong')).toHaveText('Thinking');
+  const state = row.locator('.ws-row-state');
+  await expect(state.locator('b')).toHaveText('Thinking');
   const before = (await row.boundingBox())!.height;
   const command =
     'pnpm vitest run packages/cli/test/workspaces.test.ts -t "says what a Claude Code agent runs on"';
@@ -625,14 +561,16 @@ test("a card's state is one line, all of it in its tip: the card keeps its heigh
     tool_input: { command },
     tool_use_id: 't1',
   });
-  await expect(state.locator('strong')).toHaveText(`Running ${command}`, POLL);
-  // One 20 px line, cut at its end; the card as tall as it was.
-  expect((await state.boundingBox())!.height).toBe(20);
+  await expect(state.locator('b')).toHaveText('Running', POLL);
+  // One 18 px line, cut at its end; the row as tall as it was.
+  expect((await state.boundingBox())!.height).toBe(18);
   expect(
-    await state.evaluate((p) => [p.scrollWidth > p.clientWidth, getComputedStyle(p).textOverflow]),
+    await state
+      .locator('span')
+      .evaluate((p) => [p.scrollWidth > p.clientWidth, getComputedStyle(p).textOverflow]),
   ).toEqual([true, 'ellipsis']);
   expect((await row.boundingBox())!.height).toBe(before);
-  await expectTip(page, state, command);
+  await expect(row).toHaveAttribute('data-tip', new RegExp(`Running ${command.slice(0, 30)}`));
 });
 
 test('an agent that starts waiting while you are elsewhere: one line in the status bar, and Open (V48)', async ({
@@ -699,14 +637,14 @@ test('while a workspace is made, its card says it starts; its own card takes its
   await goal(page).press('Control+Enter');
   const starting = page.locator('.sidenav .workspace-row.starting');
   await expect(starting).toContainText('Starting · its worktree, then Claude Code');
-  await expect(starting.locator('.state-dot')).toHaveClass(/tone-starting/);
-  // The working agent's spinner (V53): busy is busy, its words say which.
-  await expect
-    .poll(() => spinner(starting.locator('.state-dot')))
-    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
-  // A card's rows, as every card's (V79): its name, what happens, its kind, its branch.
-  await expect(starting.locator('.workspace-meta .kind-tag')).toHaveText('feature');
-  await expect(starting.locator('.workspace-branch')).toHaveText('feature/add-a-half-function');
+  // The working agent's spinner (V53; V93's arc): busy is busy, its words say which.
+  await expect(starting).toHaveAttribute('data-tone', 'run');
+  await expect(starting.locator('.ws-row-icon.spinning .icon')).toHaveCSS(
+    'animation-name',
+    'state-spin',
+  );
+  // Its kind and branch in its tip, as every row's (V93).
+  await expect(starting).toHaveAttribute('data-tip', /feature · feature\/add-a-half-function/);
   await expect(starting).toHaveCount(0, POLL);
   await expect(workspaceRow(page, 'feature/add-a-half-function')).toBeVisible();
 });
@@ -940,7 +878,7 @@ test("the panel: the agent's plan, a reply that continues its session, its next 
   // The newest is in view: the thread opens at its end, and follows it.
   await expect(here.locator('.thread-you')).toBeInViewport();
   await expect(box(page, branch)).toHaveValue('');
-  await expect(workspaceRow(page, branch).locator('.state-dot')).toHaveClass(/tone-working/, POLL);
+  await expect(workspaceRow(page, branch)).toHaveAttribute('data-tone', 'run', POLL);
 
   // What it waits on shows in the thread; Talk answers it.
   symbiote.hook(branch, {
@@ -1125,24 +1063,18 @@ test("a done card's icon cleans it up from the sidenav: on hover or focus, witho
   await expect(workspaceRow(page, other).getByRole('button', { name: /^Clean up/ })).toHaveCount(0);
 
   // At rest it is transparent (named all the same); on hover it shows where the time was, at the
-  // end of the name's row (V79: the kind is in the facts' row, and stays), and nothing moves.
+  // row's end (V93's Done today row), and nothing moves.
   await page.mouse.move(800, 600);
   await expect(icon).toHaveCSS('opacity', '0');
-  const time = card.locator('.workspace-head .commit-date');
+  const time = card.locator('.ws-row-when');
   await expect(time).toBeVisible();
   await still(card);
-  const name = await card.locator('.workspace-about').boundingBox();
-  const head = await card.locator('.workspace-head').boundingBox();
   await card.hover();
   await expect(icon).toHaveCSS('opacity', '1');
   await expect(time).toBeHidden();
-  await expect(card.locator('.kind-tag')).toBeVisible();
-  expect(await card.locator('.workspace-about').boundingBox()).toEqual(name);
-  const box = await icon.boundingBox();
-  const row = await card.boundingBox();
-  expect(box!.width).toBe(24);
+  const [row, box] = [await card.boundingBox(), await icon.boundingBox()];
   expect(Math.round(row!.x + row!.width - (box!.x + box!.width))).toBeLessThanOrEqual(8);
-  expect(Math.abs(box!.y + box!.height / 2 - (head!.y + 11))).toBeLessThanOrEqual(1);
+  expect(Math.abs(box!.y + box!.height / 2 - (row!.y + row!.height / 2))).toBeLessThanOrEqual(1);
   // From the keyboard: Tab from the card's name reaches it, and it shows.
   await page.mouse.move(800, 600);
   await card.locator('.workspace-about').focus();
@@ -1198,16 +1130,6 @@ const hold = async (page: Page, path: string) => {
   });
   return () => release();
 };
-/** A dot's colour (`--dot`) and the token it should be. */
-const dotIs = (dot: Locator, token: string) =>
-  dot.evaluate(
-    (element, name) => [
-      getComputedStyle(element).getPropertyValue('--dot').trim(),
-      getComputedStyle(document.documentElement).getPropertyValue(name).trim(),
-    ],
-    token,
-  );
-
 test('a card being cleaned up is disabled until it goes: it says so, opens nothing, the arrows skip it (V57)', async ({
   page,
 }) => {
@@ -1238,44 +1160,30 @@ test('a card being cleaned up is disabled until it goes: it says so, opens nothi
   const release = await hold(page, '/api/workspaces/clean');
   await card.hover();
   await card.getByRole('button', { name: 'Clean up Add a half function' }).click();
-  // Disabled, saying what happens, its dot a grey comet; its name and branch dimmed, its line not.
+  // Disabled, saying what happens (for screen readers and in its tip), its icon an arc; its title
+  // dimmed. V93's Done today row.
   await expect(card).toHaveAttribute('aria-busy', 'true');
   await expect(card).toHaveAttribute('aria-disabled', 'true');
-  await expect(card.locator('.workspace-state')).toHaveText(
-    'Cleaning up · its worktree and its branch',
-  );
-  // Cut by a narrow sidenav: its tip says it whole.
-  await expect(card.locator('.workspace-state')).toHaveAttribute(
+  await expect(card).toContainText('Cleaning up · its worktree and its branch');
+  await expect(card).toHaveAttribute(
     'data-tip',
-    'Cleaning up · its worktree and its branch',
+    'Add a half function\nCleaning up · its worktree and its branch',
   );
-  await expect(card.locator('.commit-date')).toHaveCount(0);
-  const dot = card.locator('.state-dot');
-  await expect(dot).toHaveClass(/tone-cleaning/);
-  await expect
-    .poll(() => spinner(dot))
-    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
-  const [colour, faint] = await dotIs(dot, '--faint');
-  expect(colour).toBe(faint);
-  await expect(card.locator('.workspace-about')).toHaveCSS('opacity', '0.5');
-  await expect(card.locator('.workspace-branch')).toHaveCSS('opacity', '0.5');
-  await expect(card.locator('.workspace-meta')).toHaveCSS('opacity', '0.5');
-  await expect(card.locator('.workspace-line')).toHaveCSS('opacity', '1');
+  await expect(card.locator('.ws-row-when')).toHaveCount(1);
+  await expect(card.locator('.ws-row-icon .icon')).toBeVisible();
+  await expect(card.locator('.ws-row-title')).toHaveCSS('opacity', '0.5');
   // Nothing to use: no bin, no hover, its name a disabled button; a click opens nothing.
   await expect(card.locator('.workspace-about')).toBeDisabled();
   await expect(card.getByRole('button', { name: /^Clean up/ })).toHaveCount(0);
-  await expect(card.locator('.kind-tag')).toBeVisible();
-  // Its wash at rest (V79) stays under the pointer: past the 150 ms transition.
   await page.mouse.move(800, 600);
   await page.waitForTimeout(200);
   const rest = await card.evaluate((e) => getComputedStyle(e).backgroundColor);
-  expect(rest).not.toBe('rgba(0, 0, 0, 0)');
   await card.hover();
   await page.waitForTimeout(200);
   await expect(card).toHaveCSS('background-color', rest);
   await expect(card).toHaveCSS('cursor', 'default');
-  const box = (await card.locator('.workspace-state').boundingBox())!;
-  await page.mouse.click(box.x + 20, box.y + box.height / 2);
+  const box = (await card.boundingBox())!;
+  await page.mouse.click(box.x + 40, box.y + box.height / 2);
   await expect(panel(page, triple)).toBeVisible();
   expect(page.url()).toBe(before);
   // The arrows go from the card before it to the one after it, and back.
@@ -1284,10 +1192,10 @@ test('a card being cleaned up is disabled until it goes: it says so, opens nothi
   await expect(workspaceRow(page, double).locator('.workspace-about')).toBeFocused();
   await page.keyboard.press('ArrowUp');
   await expect(workspaceRow(page, triple).locator('.workspace-about')).toBeFocused();
-  // Folded: its dot, the comet; its tip says so.
+  // Folded: its icon; its tip says so.
   await page.getByRole('button', { name: 'Fold the sidenav' }).click();
-  await expect(card).toHaveAttribute('data-tip', 'Add a half function\nCleaning up');
-  await expect(dot).toHaveClass(/tone-cleaning/);
+  await expect(card).toHaveAttribute('data-tip', /^Add a half function\nCleaning up/);
+  await expect(card.locator('.ws-row-icon')).toBeVisible();
   await page.getByRole('button', { name: 'Open the sidenav' }).click();
 
   // Done: the card goes, the status bar says so.
@@ -1310,7 +1218,7 @@ test('a card being cleaned up is disabled until it goes: it says so, opens nothi
   await expect(next).not.toHaveAttribute('aria-busy');
   await expect(next).not.toHaveAttribute('aria-disabled');
   await expect(next.locator('.workspace-about')).toBeEnabled();
-  await expect(next.locator('.workspace-state')).toContainText('Merged');
+  await expect(next).toContainText('Merged');
   await next.hover();
   await expect(next.getByRole('button', { name: 'Clean up Add a double function' })).toBeVisible();
 });
@@ -1338,9 +1246,7 @@ test("Clean up from a workspace's head: Cleaning up…, and its card disabled un
   await panel(page, double).getByRole('button', { name: 'Clean up anyway' }).click();
   const unmerged = workspaceRow(page, double);
   await expect(unmerged).toHaveAttribute('aria-disabled', 'true');
-  await expect(unmerged.locator('.workspace-state')).toHaveText(
-    'Cleaning up · its worktree; the branch stays',
-  );
+  await expect(unmerged).toContainText('Cleaning up · its worktree; the branch stays');
   // `w` focuses the first card's name: the first one there is, past the one going.
   await page.keyboard.press('w');
   await expect(workspaceRow(page, half).locator('.workspace-about')).toBeFocused();
@@ -1360,9 +1266,7 @@ test("Clean up from a workspace's head: Cleaning up…, and its card disabled un
   await expect(head.getByRole('button', { name: 'Review', exact: true })).toBeDisabled();
   const card = workspaceRow(page, half);
   await expect(card).toHaveAttribute('aria-disabled', 'true');
-  await expect(card.locator('.workspace-state')).toHaveText(
-    'Cleaning up · its worktree and its branch',
-  );
+  await expect(card).toContainText('Cleaning up · its worktree and its branch');
   go();
   // Its page gone, the Overview (V91; Git before).
   await expect(page).toHaveURL(`${symbiote.url}overview`, POLL);
@@ -1935,11 +1839,11 @@ test('each kind starts a workspace: its brief, its line, its branch, its tag (V2
     "## Done when\nA test that fails today passes, and the project's checks pass.\n",
   );
 
-  // The list names each by its title, its kind in a chip on its name's line (V53).
+  // The list names each by its title, its kind in its tip (V93; a chip since V53).
   await page.goto(`${symbiote.url}`);
   const fix = workspaceRow(page, 'fix/fix-the-totals');
   await expect(fix.locator('.workspace-about')).toHaveText('Fix the totals');
-  await expect(fix.locator('.workspace-meta .kind-tag')).toHaveText('fix');
+  await expect(fix).toHaveAttribute('data-tip', /fix · fix\/fix-the-totals/);
 });
 
 test('Done when names the check guessed at the start commit; switching kinds keeps every text (V24c)', async ({
@@ -2275,8 +2179,8 @@ test('Merge on an approved workspace: Symbiote merges it in its own worktree, La
   await icon.click();
   await expect(card).toHaveAttribute('aria-busy', 'true');
   await expect(card).toHaveAttribute('aria-disabled', 'true');
-  await expect(card.locator('.workspace-state')).toHaveText('Removing it from the queue');
-  await expect(card.locator('.state-dot')).toHaveClass(/tone-cleaning/);
+  await expect(card.locator('.ws-row-state b')).toHaveText('Removing');
+  await expect(card.locator('.ws-row-state')).toContainText('it from the queue');
   await expect(card.locator('.workspace-about')).not.toHaveAttribute('href');
   await expect(icon).toHaveCount(0);
   release();

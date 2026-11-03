@@ -191,17 +191,19 @@ test("normal mode's sections: the figures, agents at work, the merge, merged tod
   await expect(card(page, 'Today')).toContainText('Plan ready');
   await expect(card(page, 'Today')).toContainText('Merged into main, pushed');
 
-  // Normal mode's Done folds (decision 859), kept in this browser.
+  // Normal mode's Done today folds (decision 859; V93's name), kept in this browser; its rows say
+  // when each merged.
   const done = page.locator('.sidenav .group-done');
-  await expect(done.getByRole('button', { name: /Done/ })).toHaveAttribute(
+  await expect(done.getByRole('button', { name: /Done today/ })).toHaveAttribute(
     'aria-expanded',
     'false',
   );
   await expect(done.locator('.workspace-row')).toHaveCount(0);
-  await done.getByRole('button', { name: /Done/ }).click();
-  await expect(done.locator('.workspace-row')).toHaveCount(2);
+  await done.getByRole('button', { name: /Done today/ }).click();
+  await expect(done.locator('.workspace-row')).toHaveCount(3);
+  await expect(done.locator('.ws-row-when').first()).toHaveText(/^\d\d:\d\d$/);
   await page.reload();
-  await expect(done.locator('.workspace-row')).toHaveCount(2);
+  await expect(done.locator('.workspace-row')).toHaveCount(3);
 });
 
 test("Hive mode's sections: five figures, a stopped one with why, in flight, landed today, limits, events", async ({

@@ -10,37 +10,24 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from 'react';
-import type { MergeEntry } from '@symbiote/core';
-import { reviewMarks, type ReviewMark } from '../history/branchReviews.js';
 import {
-  DoneIcon,
   SymbioteMark,
   GitIcon,
   HistoryIcon,
   MenuIcon,
-  MergingIcon,
   MonitorIcon,
   PlusIcon,
-  ReviewIcon,
   NucleusIcon,
   SettingsIcon,
   SidenavIcon,
   SkillsIcon,
-  StoppedIcon,
-  TrashIcon,
-  WaitingIcon,
-  WorkingIcon,
-  HexagonIcon,
+  SpinIcon,
   OverviewIcon,
   ChevronIcon,
 } from '../ui/icons.js';
-import { cleanUp, removeMerge } from '../workspaces/cleanup.js';
-import { mergeState, removableOnCard } from '../workspaces/merges.js';
-import { mergeKey, useRemoving, workspaceKey } from '../workspaces/removing.js';
 import { Help } from '../ui/Help.js';
 import {
   GIT_PAGE,
-  hrefOf,
   MONITOR_PAGE,
   NUCLEUS_PAGE,
   SETTINGS_PAGE,
@@ -51,52 +38,33 @@ import {
 } from './pages.js';
 import { Resizer } from '../ui/Resizer.js';
 import { nextNucleusMark, type NucleusMark } from '../nucleus/page-agent.js';
-import { mergesWaiting, nucleusWaiting, scribeWaiting } from './waiting.js';
+import { nucleusWaiting, scribeWaiting } from './waiting.js';
 import { useAsks } from './useAsks.js';
 import { nucleusName as named, useNucleusName } from './names.js';
 import { useNucleusPhase } from './alpha-ceph.js';
 import { BecomingName } from './BecomingName.js';
-import { useShell, type Notice } from './shell-context.js';
+import { useShell } from './shell-context.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
-import {
-  CardFacts,
-  KindTag,
-  RunsOn,
-  StateAge,
-  StateDot,
-  WorkspaceBranch,
-  WorkspaceState,
-} from '../workspaces/WorkspaceFacts.js';
 import { respondTo } from '../workspaces/respond.js';
-import { useSecondsWhile } from '../workspaces/clock.js';
-import { liveWords } from '../workspaces/hive-live.js';
 import { useHive } from './hive.js';
-import { HiveNowCard, HiveRailTime } from '../workspaces/HiveNow.js';
 import { HiveSidenavGroups } from './HiveSidenav.js';
 import { useStarts, type StartUnderWay } from '../workspaces/starting.js';
 import { useCardMoves } from '../workspaces/useCardMoves.js';
-import {
-  cleanableOnCard,
-  workspaceGroups,
-  workspaceName,
-  type WorkspaceGroup,
-  type WorkspaceRow,
-  mergedForCard,
-} from '../workspaces/workspaces.js';
+import { doneGroups } from '../workspaces/row-words.js';
+import { workspaceGroups, type WorkspaceRow } from '../workspaces/workspaces.js';
+import { DoneRowItem, MergeRowItem, WorkspaceRowItem } from './SidenavRow.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 import { tip } from '../ui/tip.js';
 
 /**
- * The workspaces' groups after the merges, each with its icon (V44): only the group has one, a
- * card its dot. The merges come first, then Waiting for you (V48; fix/merging-status).
+ * Normal mode's groups after the merges (V93, `nkit.js`): what waits for the person first, then
+ * what is theirs to review, what does not run, what works; Done today and Earlier fold after them.
  */
 const GROUPS = [
-  ['review', 'To review', ReviewIcon],
-  ['stopped', 'Not running', StoppedIcon],
-  // Hive at work (decision 698): its checks and reviews, apart from the writers at work.
-  ['hive', 'Hive', HexagonIcon],
-  ['working', 'Working', WorkingIcon],
-  ['done', 'Done', DoneIcon],
+  ['waiting', 'Waiting for you'],
+  ['review', 'To review'],
+  ['stopped', 'Not running'],
+  ['working', 'Working'],
 ] as const;
 
 /** The cards' buttons (a merge's, links), in order. */
@@ -160,15 +128,17 @@ export function Sidenav({
     () => workspaceGroups(list?.workspaces ?? [], reviews, { hiveMode }),
     [list, reviews, hiveMode],
   );
+  // Done today and Earlier (decision 877): a landed merge says when.
+  const done = useMemo(
+    () => doneGroups(groups.done, merges?.merges ?? [], Date.now()),
+    [groups.done, merges],
+  );
   // Nucleus by its name: Alpha Ceph while Hive mode is on (decision 682).
   const nucleusName = useNucleusName();
   // Nucleus becoming Alpha Ceph as this window turned Hive on (V86): only here does it play.
   const becoming = useNucleusPhase() === 'becoming';
-  const marks = useMemo(() => reviewMarks(reviews, nucleusName).marks, [reviews, nucleusName]);
   const route = shell?.route;
   const queued = merges?.merges ?? [];
-  // What its section lists that waits for the person (N2): the workspaces, the merges.
-  const needs = groups.waiting.length + mergesWaiting(queued);
   const empty =
     list !== null && list.workspaces.length === 0 && queued.length === 0 && starts.length === 0;
   // Nucleus's mark (V35): working while it answers; answered when it did while you were elsewhere.
@@ -215,12 +185,9 @@ export function Sidenav({
     again?.focus();
   });
 
-  // What every group's cards share: the review marks, the workspace shown, the one just started.
+  // What every group's rows share: the workspace shown.
   const cards = {
-    folded,
-    marks,
     picked: route?.page === 'workspace' ? route.branch : null,
-    flashed,
     onPick: (branch: string) => shell?.navigate({ page: 'workspace', branch }),
     onRespond: (branch: string) => respondTo(branch, (route) => shell?.navigate(route)),
   };
@@ -290,19 +257,6 @@ export function Sidenav({
           <kbd aria-hidden="true">t</kbd>
         </a>
         <a
-          href={GIT_PAGE}
-          aria-label="Git"
-          {...tip("Git\nEvery branch's commits, your changes and the remotes", {
-            keys: 'g',
-            side: 'right',
-          })}
-          aria-current={route?.page === 'git' ? 'page' : undefined}
-        >
-          <GitIcon />
-          <span className="sidenav-label">Git</span>
-          <kbd aria-hidden="true">g</kbd>
-        </a>
-        <a
           href={NUCLEUS_PAGE}
           aria-label={nucleusWaits ? `${nucleusName}, waits for you` : nucleusName}
           {...tip(
@@ -334,6 +288,19 @@ export function Sidenav({
           </span>
           <AgentMark waits={nucleusWaits} mark={nucleusMark} />
           <kbd aria-hidden="true">a</kbd>
+        </a>
+        <a
+          href={GIT_PAGE}
+          aria-label="Git"
+          {...tip("Git\nEvery branch's commits, your changes and the remotes", {
+            keys: 'g',
+            side: 'right',
+          })}
+          aria-current={route?.page === 'git' ? 'page' : undefined}
+        >
+          <GitIcon />
+          <span className="sidenav-label">Git</span>
+          <kbd aria-hidden="true">g</kbd>
         </a>
         <a
           href={SKILLS_PAGE}
@@ -393,14 +360,6 @@ export function Sidenav({
       <section className="sidenav-workspaces" aria-label="Workspaces">
         <h2 className="sidenav-heading">
           <span className="sidenav-label">Workspaces</span>
-          {needs > 0 && (
-            <span
-              className="page-count"
-              {...tip(`${needs} need${needs === 1 ? 's' : ''} you`, { tone: 'warn' })}
-            >
-              {needs}
-            </span>
-          )}
           {/* A page since V30a: on a diff, its own document, the link loads it. */}
           <a
             className="icon-button"
@@ -454,33 +413,25 @@ export function Sidenav({
           onBlur={onBlur}
         >
           {queued.length > 0 && !hiveMode && (
-            <section className="workspace-group merging" aria-label="Merging">
-              <h3 {...tip('Merging', { side: 'right' })}>
-                <MergingIcon />
-                <span className="sidenav-label">Merging</span>{' '}
-                <span className="branches-count">{queued.length}</span>
-              </h3>
-              <ul className="workspace-list">
-                {queued.map((entry) => (
-                  <MergeCard
+            <WorkspaceGroupSection
+              group="merging"
+              title="Merging"
+              count={queued.length}
+              folded={folded}
+            >
+              {() =>
+                queued.map((entry) => (
+                  <MergeRowItem
                     key={entry.id}
                     entry={entry}
+                    title={list?.workspaces.find((w) => w.branch === entry.branch)?.title}
                     folded={folded}
                     picked={route?.page === 'merge' && route.branch === entry.branch}
                     onPick={() => shell?.navigate({ page: 'merge', branch: entry.branch })}
                   />
-                ))}
-              </ul>
-            </section>
-          )}
-          {groups.waiting.length > 0 && (
-            <WorkspaceGroupSection
-              group="waiting"
-              title="Waiting for you"
-              Icon={WaitingIcon}
-              rows={groups.waiting}
-              {...cards}
-            />
+                ))
+              }
+            </WorkspaceGroupSection>
           )}
           {hiveMode && (
             <HiveSidenavGroups
@@ -494,25 +445,77 @@ export function Sidenav({
               ))}
             />
           )}
-          {GROUPS.map(([key, title, Icon]) => {
-            // Hive mode's groups are its own (V92, decision 868).
-            if (hiveMode) return null;
-            // A workspace being made is at work: Hive's in Hive mode.
-            const making = key === (hiveMode ? 'hive' : 'working') ? starts : [];
-            return groups[key].length + making.length === 0 ? null : (
-              <WorkspaceGroupSection
-                key={key}
-                group={key}
-                title={title}
-                Icon={Icon}
-                rows={groups[key]}
-                starts={making}
-                // Normal mode's Done folds (V91, decision 859): the Overview lists what merged.
-                foldable={key === 'done' && !hiveMode}
-                {...cards}
-              />
-            );
-          })}
+          {!hiveMode &&
+            GROUPS.map(([key, title]) => {
+              // A workspace being made is at work.
+              const making = key === 'working' ? starts : [];
+              const rows = groups[key];
+              return rows.length + making.length === 0 ? null : (
+                <WorkspaceGroupSection
+                  key={key}
+                  group={key}
+                  title={title}
+                  count={rows.length + making.length}
+                  folded={folded}
+                >
+                  {() => (
+                    <>
+                      {rows.map((r) => (
+                        <WorkspaceRowItem
+                          key={r.workspace.branch}
+                          row={r}
+                          folded={folded}
+                          picked={cards.picked === r.workspace.branch}
+                          flashed={r.workspace.branch === flashed}
+                          onPick={() => cards.onPick(r.workspace.branch)}
+                          onRespond={() => cards.onRespond(r.workspace.branch)}
+                        />
+                      ))}
+                      {making.map((start) => (
+                        <StartingCard key={start.branch} start={start} />
+                      ))}
+                    </>
+                  )}
+                </WorkspaceGroupSection>
+              );
+            })}
+          {!hiveMode &&
+            (
+              [
+                ['today', 'Done today', done.today],
+                ['earlier', 'Earlier', done.earlier],
+              ] as const satisfies readonly (readonly [
+                keyof typeof FOLD_KEYS,
+                string,
+                readonly (WorkspaceRow & { at?: string })[],
+              ])[]
+            ).map(([key, title, rows]) =>
+              rows.length === 0 ? null : (
+                <WorkspaceGroupSection
+                  key={key}
+                  group={key === 'today' ? 'done' : 'earlier'}
+                  title={title}
+                  count={rows.length}
+                  fold={FOLD_KEYS[key]}
+                  folded={folded}
+                >
+                  {(open) =>
+                    (open ? rows : rows.filter((r) => r.workspace.branch === cards.picked)).map(
+                      (r) => (
+                        <DoneRowItem
+                          key={r.workspace.branch}
+                          row={r}
+                          at={'at' in r ? (r.at as string) : undefined}
+                          folded={folded}
+                          picked={cards.picked === r.workspace.branch}
+                          onPick={() => cards.onPick(r.workspace.branch)}
+                        />
+                      ),
+                    )
+                  }
+                </WorkspaceGroupSection>
+              ),
+            )}
         </div>
       </section>
       {/* Settings at the bottom, under the workspaces: not a page one works in. No landmark of its
@@ -598,394 +601,109 @@ export function DrawerStrip({ open, onToggle }: { open: boolean; onToggle: () =>
   );
 }
 
-const DONE_KEY = 'symbiote.viewer.done';
+/**
+ * Where a folding group keeps whether the person opened it: normal mode's Done today (V91's Done,
+ * decision 859) and Earlier (V93).
+ */
+const FOLD_KEYS = { today: 'symbiote.viewer.done', earlier: 'symbiote.viewer.done-earlier' };
 
-/** Whether the person folded normal mode's Done group (V91, decision 859): folded until opened. */
-function loadDoneFolded(): boolean {
+/** Whether the person folded a group: folded until opened. */
+function loadFolded(key: string): boolean {
   try {
-    return window.localStorage.getItem(DONE_KEY) !== 'open';
+    return window.localStorage.getItem(key) !== 'open';
   } catch {
     return true;
   }
 }
 
-function saveDoneFolded(folded: boolean): void {
+function saveFolded(key: string, folded: boolean): void {
   try {
-    window.localStorage.setItem(DONE_KEY, folded ? 'folded' : 'open');
+    window.localStorage.setItem(key, folded ? 'folded' : 'open');
   } catch {
     // Storage blocked: the choice lasts until the page closes.
   }
 }
 
-/** A group of workspaces (V44): its icon in its state's colour, its name, how many, its cards. */
+/**
+ * A group of workspaces (V93, decision 877; `nkit.js`'s `.nav-group`): its name and how many, no
+ * icon; its rows. A folding one's heading is a button, its chevron first.
+ */
 function WorkspaceGroupSection({
   group,
   title,
-  Icon,
-  rows,
-  starts = [],
-  foldable = false,
+  count,
+  fold,
   folded,
-  marks,
-  picked,
-  flashed,
-  onPick,
-  onRespond,
+  children,
 }: {
-  group: WorkspaceGroup;
+  group: string;
   title: string;
-  Icon: () => ReactNode;
-  rows: WorkspaceRow[];
-  /** Workspaces being made (V48): their cards after the group's. */
-  starts?: readonly StartUnderWay[];
-  /** Its cards fold under its heading (V91, decision 859), kept in this browser. */
-  foldable?: boolean;
-  /** The sidenav folded to its rail: a card is its dot, its tip says the rest. */
+  count: number;
+  /** Its key in this browser when its rows fold under its heading. */
+  fold?: string | undefined;
+  /** The sidenav folded to its rail: a row is its icon, its tip says the rest. */
   folded: boolean;
-  marks: Map<string, ReviewMark>;
-  /** The workspace shown in the main area. */
-  picked: string | null;
-  flashed: string | null;
-  onPick: (branch: string) => void;
-  onRespond: (branch: string) => void;
+  /** Its rows: all of them, or, folded, the one shown in the main area (`open` false). */
+  children: (open: boolean) => ReactNode;
 }) {
-  const [shut, setShut] = useState(() => foldable && loadDoneFolded());
-  // On the rail every card is a dot: nothing folds there.
-  const closed = foldable && shut && !folded;
-  // Folded, the workspace open in the main area keeps its card.
-  const shown = closed ? rows.filter((row) => row.workspace.branch === picked) : rows;
+  const [shut, setShut] = useState(() => (fold ? loadFolded(fold) : false));
+  // On the rail every row is an icon: nothing folds there.
+  const open = !(fold && shut && !folded);
   const toggle = () =>
     setShut((now) => {
-      saveDoneFolded(!now);
+      if (fold) saveFolded(fold, !now);
       return !now;
     });
   return (
     <section className={`workspace-group group-${group}`} aria-label={title}>
-      {/* Its tip names it in the rail, where only the icon shows. */}
-      {foldable && !folded ? (
-        // Its icon as every group's (V44), then its name, count and chevron as the fold's button.
+      {fold && !folded ? (
         <h3>
-          <Icon />
           <button
             type="button"
             className="group-fold"
-            aria-expanded={!closed}
-            {...tip(closed ? `Show ${title}` : `Fold ${title}`, { side: 'right' })}
+            aria-expanded={open}
+            {...tip(open ? `Fold ${title}` : `Show ${title}`, { side: 'right' })}
             onClick={toggle}
           >
+            <ChevronIcon open={open} />
             <span className="sidenav-label">{title}</span>{' '}
-            <span className="branches-count">{rows.length + starts.length}</span>
-            <ChevronIcon open={!closed} />
+            <span className="branches-count">{count}</span>
           </button>
         </h3>
       ) : (
         <h3 {...tip(title, { side: 'right' })}>
-          <Icon />
           <span className="sidenav-label">{title}</span>{' '}
-          <span className="branches-count">{rows.length + starts.length}</span>
+          <span className="branches-count">{count}</span>
         </h3>
       )}
-      <ul className="workspace-list">
-        {shown.map((row) => (
-          <WorkspaceCard
-            key={row.workspace.branch}
-            row={row}
-            mark={marks.get(row.workspace.branch)}
-            folded={folded}
-            picked={picked === row.workspace.branch}
-            flashed={row.workspace.branch === flashed}
-            onPick={() => onPick(row.workspace.branch)}
-            onRespond={() => onRespond(row.workspace.branch)}
-          />
-        ))}
-        {starts.map((start) => (
-          <StartingCard key={start.branch} start={start} />
-        ))}
-      </ul>
+      <ul className="workspace-list">{children(open)}</ul>
     </section>
   );
 }
 
 /**
- * A workspace being made (V48): its card while Symbiote makes its branch and worktree and starts
- * its agent (~1 s); its own card takes its place once listed.
+ * A workspace being made (V48): its row while Symbiote makes its branch and worktree and starts
+ * its agent (~1 s); its own row takes its place once listed.
  */
 function StartingCard({ start }: { start: StartUnderWay }) {
   return (
-    <li className="workspace-row starting" data-branch={start.branch} aria-busy="true">
-      <div className="workspace-head">
-        <span className="state-dot tone-starting" aria-hidden="true" />
-        {/* Not a card's button (`.workspace-about`): the arrows and the focus skip it. */}
-        <span className="starting-name">{start.name}</span>
-      </div>
-      <div className="workspace-line">
-        <p className="workspace-state">
-          <strong>Starting</strong> · its worktree, then {start.agent ?? 'the branch'}
-        </p>
-      </div>
-      {/* Its kind where its card will have it (V79); no facts yet. */}
-      {start.kind && (
-        <div className="workspace-meta">
-          <span className="kind-tag">{start.kind}</span>
-        </div>
-      )}
-      <div className="workspace-branch">
-        <span className="ref ref-branch">{start.branch}</span>
-      </div>
-    </li>
-  );
-}
-
-/**
- * A workspace in the sidenav: what it is and what it needs; a click opens it. Four rows (V79): its
- * name and how long its state has lasted; what it does or what is next; its kind and its facts
- * (Respond and its kind while it waits); its branch.
- */
-function WorkspaceCard({
-  row,
-  mark,
-  folded,
-  picked,
-  flashed,
-  onPick,
-  onRespond,
-}: {
-  row: WorkspaceRow;
-  mark: ReviewMark | undefined;
-  folded: boolean;
-  picked: boolean;
-  flashed: boolean;
-  onPick: () => void;
-  /** A waiting agent's answer (V48): its workspace opened, its terminal focused. */
-  onRespond: () => void;
-}) {
-  const item = useRef<HTMLLIElement>(null);
-  const [flash, setFlash] = useState(false);
-  const { workspace } = row;
-  const name = workspaceName(workspace);
-  // Hive at work (decision 699): what it runs now, ticking — in the card's lines, and folded, in
-  // its tip.
-  const live = row.next.hive && workspace.hive?.live ? workspace.hive : null;
-  const now = useSecondsWhile(folded && live !== null);
-  const said = (live && liveWords(live, now)?.line) ?? row.next.doing ?? row.next.text;
-  // Being cleaned up (V57): disabled, saying so, until the list drops it.
-  const cleaning = useRemoving(workspaceKey(workspace.branch));
-  const cleanable = cleanableOnCard(row) && !cleaning;
-  const goes = mergedForCard(workspace)
-    ? 'its worktree and its branch'
-    : 'its worktree; the branch stays';
-
-  // Picked from elsewhere (a link, a start): in view.
-  useLayoutEffect(() => {
-    if (picked) item.current?.scrollIntoView({ block: 'nearest' });
-  }, [picked]);
-  // Just started: flashed.
-  useLayoutEffect(() => {
-    if (!flashed) return;
-    setFlash(true);
-    const timer = setTimeout(() => setFlash(false), 1200);
-    return () => clearTimeout(timer);
-  }, [flashed]);
-
-  return (
     <li
-      ref={item}
-      className={`workspace-row${picked ? ' picked' : ''}${flash ? ' flash' : ''}${cleanable ? ' removable' : ''}${cleaning ? ' removing' : ''}`}
-      data-branch={workspace.branch}
-      {...(cleaning ? { 'aria-busy': true, 'aria-disabled': true } : {})}
-      {...(folded
-        ? tip(
-            cleaning
-              ? `${name}\nCleaning up`
-              : `${name}\n${said}${row.next.blocked ? `: ${row.next.blocked}` : ''}`,
-            { side: 'right' },
-          )
-        : {})}
-      onClick={cleaning ? undefined : onPick}
+      className="workspace-row ws-row starting"
+      data-branch={start.branch}
+      data-tone="run"
+      aria-busy="true"
+      {...tip(`${start.name}\n${start.kind ? `${start.kind} · ` : ''}${start.branch}`, {
+        side: 'right',
+      })}
     >
-      <div className="workspace-head">
-        {cleaning ? (
-          <span className="state-dot tone-cleaning" aria-hidden="true" />
-        ) : (
-          <StateDot row={row} />
-        )}
-        {live && folded && <HiveRailTime hive={live} />}
-        <button
-          type="button"
-          className="workspace-about"
-          aria-current={picked ? 'true' : undefined}
-          disabled={cleaning}
-          onClick={(event) => {
-            event.stopPropagation();
-            onPick();
-          }}
-        >
-          {name}
-        </button>
-        {!cleaning && <StateAge workspace={workspace} />}
-      </div>
-      {/* After the name in the Tab order, before the branch's link: where it is drawn, over the
-          time. */}
-      {cleanable && (
-        <CardRemove
-          label={`Clean up ${name}`}
-          title={'Clean up\nRemove its sessions, its worktree and its merged branch'}
-          shown={picked}
-          run={() => cleanUp(workspace.branch)}
-        />
-      )}
-      {cleaning ? (
-        // What happens, in place of its state and its time, as a starting card says it (V48); its
-        // tip says it whole where two lines cut it.
-        <div className="workspace-line">
-          <p className="workspace-state" {...tip(`Cleaning up · ${goes}`)}>
-            <strong>Cleaning up</strong> · {goes}
-          </p>
-        </div>
-      ) : row.next.group === 'waiting' ? (
-        // What it asks, and the way to answer it (V48): the card's own action, then its kind.
-        <>
-          <p className="workspace-blocked" {...tip(row.next.blocked ?? row.next.text)}>
-            {row.next.blocked ?? row.next.text}
-          </p>
-          <div className="workspace-respond">
-            <button
-              type="button"
-              className="button respond"
-              {...tip(`Answer ${name}\nIts terminal, focused`)}
-              onClick={(event) => {
-                event.stopPropagation();
-                onRespond();
-              }}
-            >
-              Respond
-            </button>
-            <KindTag workspace={workspace} />
-          </div>
-        </>
-      ) : live ? (
-        <div className="workspace-line">
-          <HiveNowCard hive={live} />
-        </div>
-      ) : (
-        <div className="workspace-line">
-          <WorkspaceState row={row} facts={false} />
-        </div>
-      )}
-      {row.next.group !== 'waiting' && (
-        <div className="workspace-meta">
-          <KindTag workspace={workspace} />
-          {!cleaning && <CardFacts workspace={workspace} />}
-        </div>
-      )}
-      {/* What its agent runs on (V83): a row of its own, so the card keeps its height. */}
-      <RunsOn agent={workspace.agent} card />
-      <div className="workspace-branch">
-        <WorkspaceBranch row={row} mark={mark} />
-      </div>
+      <span className="ws-row-icon spinning" aria-hidden="true">
+        <SpinIcon />
+      </span>
+      {/* Not a row's button (`.workspace-about`): the arrows and the focus skip it. */}
+      <span className="starting-name ws-row-title">{start.name}</span>
+      <span className="ws-row-state">
+        <b>Starting</b> · its worktree, then {start.agent ?? 'the branch'}
+      </span>
     </li>
-  );
-}
-
-/** A merge in Symbiote's queue: the branch, where it goes, its state; a click opens it. */
-function MergeCard({
-  entry,
-  folded,
-  picked,
-  onPick,
-}: {
-  entry: MergeEntry;
-  folded: boolean;
-  picked: boolean;
-  onPick: () => void;
-}) {
-  const { text, tone } = mergeState(entry);
-  // Being removed (V57): disabled, saying so, until the list drops it; its link no longer one.
-  const removing = useRemoving(mergeKey(entry.id));
-  const removable = removableOnCard(entry) && !removing;
-  const said = removing ? 'Removing it from the queue' : text;
-  return (
-    <li
-      className={`workspace-row merge-card merge-tone-${tone}${picked ? ' picked' : ''}${removable ? ' removable' : ''}${removing ? ' removing' : ''}`}
-      data-merge={entry.branch}
-      {...(removing ? { 'aria-busy': true, 'aria-disabled': true } : {})}
-      {...(folded ? tip(`${entry.branch} → ${entry.into}\n${said}`, { side: 'right' }) : {})}
-      onClick={removing ? undefined : onPick}
-    >
-      <div className="workspace-head">
-        <span
-          className={`state-dot ${removing ? 'tone-cleaning' : `merge-tone-${tone}`}`}
-          aria-hidden="true"
-        />
-        <a
-          className="workspace-about"
-          {...(removing
-            ? { 'aria-disabled': true }
-            : { href: hrefOf({ page: 'merge', branch: entry.branch }) })}
-          aria-current={picked ? 'true' : undefined}
-          onClick={(event) => event.stopPropagation()}
-        >
-          {entry.branch} → {entry.into}
-        </a>
-      </div>
-      {removable && (
-        <CardRemove
-          label={`Remove the merge of ${entry.branch}`}
-          title={`Remove it from the queue\nWith its log: ${entry.into} keeps the merge`}
-          shown={picked}
-          run={() => removeMerge(entry)}
-        />
-      )}
-      <div className="workspace-line">
-        {removing ? (
-          <p className="workspace-state">
-            <strong>Removing</strong> it from the queue
-          </p>
-        ) : (
-          <p className="workspace-state">{text}</p>
-        )}
-      </div>
-    </li>
-  );
-}
-
-/**
- * A done workspace's or a landed merge's way out of the sidenav (V55): a bin at the card's end, on
- * its hover or focus. It runs at once, as the action does on its page; meanwhile the card is
- * disabled and the bin not drawn (V57). The card goes with the list's next read, the status bar
- * saying so, or why not. The one shown gives way to the Overview (V91; History before).
- */
-function CardRemove({
-  label,
-  title,
-  shown,
-  run,
-}: {
-  label: string;
-  title: string;
-  /** Its card is the one in the main area. */
-  shown: boolean;
-  run: () => Promise<Notice>;
-}) {
-  const shell = useShell();
-  return (
-    <button
-      type="button"
-      className="icon-button card-remove"
-      aria-label={label}
-      {...tip(title)}
-      onClick={(event) => {
-        event.stopPropagation();
-        run().then(
-          (notice) => {
-            shell?.notify(notice);
-            if (shown) shell?.navigate({ page: 'overview' });
-          },
-          (e: unknown) => shell?.notify({ text: (e as Error).message, error: true }),
-        );
-      }}
-    >
-      <TrashIcon />
-    </button>
   );
 }

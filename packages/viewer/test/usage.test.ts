@@ -16,7 +16,7 @@ const MIN = 60_000;
 describe('windowLabel', () => {
   it('names a window by its length, as the vendor reports it (decision 173)', () => {
     expect(windowLabel(300)).toBe('5h');
-    expect(windowLabel(10_080)).toBe('wk');
+    expect(windowLabel(10_080)).toBe('week');
     expect(windowLabel(43_200)).toBe('30d');
     expect(windowLabel(1_440)).toBe('1d');
     expect(windowLabel(120)).toBe('2h');
@@ -60,7 +60,7 @@ const claude: UsageSubscription = {
 
 describe('shownWindows and usageTitle', () => {
   it("shows the plan's own windows in the bar; a model's own only on hover", () => {
-    expect(shownWindows(claude).map((w) => windowLabel(w.minutes))).toEqual(['5h', 'wk']);
+    expect(shownWindows(claude).map((w) => windowLabel(w.minutes))).toEqual(['5h', 'week']);
   });
 
   it('says on hover what each window is, when it resets and how old the numbers are', () => {
@@ -68,8 +68,8 @@ describe('shownWindows and usageTitle', () => {
       [
         'Claude Pro',
         '5h: 59 % used, resets in 3 h 45 min',
-        'wk: 66 % used, resets in 5 days 5 h',
-        'wk (opus): 12 % used, resets in 5 days 5 h',
+        'week: 66 % used, resets in 5 days 5 h',
+        'week (opus): 12 % used, resets in 5 days 5 h',
         'Read just now',
       ].join('\n'),
     );
@@ -87,7 +87,7 @@ describe('shownWindows and usageTitle', () => {
     expect(usageTitle(copy, NOW)).toBe(
       [
         'Claude Pro',
-        'wk: 22 % used',
+        'week: 22 % used',
         "Claude Code's copy, 17 hours ago: Claude Code's token has expired",
       ].join('\n'),
     );

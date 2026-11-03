@@ -169,7 +169,10 @@ export function normalMocks(now = overviewNow(), { empty = false } = {}): Overvi
     }),
     summary('spike/catalog-search', 'Which search library fits the catalog?', ago(20), {
       agent: { state: 'done', kind: 'claude' },
-      activity: { since: iso(ago(2)) },
+      activity: {
+        since: iso(ago(2)),
+        report: { at: iso(ago(2)), text: 'Meilisearch fits: typo tolerance and facets.' },
+      },
     }),
     summary('feature/stock-levels', 'Show stock levels on product pages', ago(15), {
       agent: {
@@ -183,15 +186,24 @@ export function normalMocks(now = overviewNow(), { empty = false } = {}): Overvi
       agent: { state: 'working', kind: 'codex', effort: 'high' },
       activity: { since: iso(ago(7.5)), doing: { tool: 'Edit', subject: 'src/orders/list.ts' } },
     }),
+    // V93: merged today, Done today's rows (when its agent last acted).
     summary('feature/receipt', 'Email a receipt after checkout', ago(170), {
       merged: true,
       ahead: 2,
       agent: { state: 'done', kind: 'claude' },
+      lastAction: iso(ago(60)),
     }),
     summary('fix/coupon-field', 'Rename the cart’s coupon field', ago(160), {
       merged: true,
       ahead: 1,
       agent: { state: 'done', kind: 'claude' },
+      lastAction: iso(ago(100)),
+    }),
+    summary('fix/webhooks', 'Retry failed payment webhooks', ago(300), {
+      merged: true,
+      ahead: 2,
+      agent: { state: 'done', kind: 'claude' },
+      lastAction: iso(ago(120)),
     }),
   ];
   const events: DayEvent[] = [
@@ -243,7 +255,11 @@ export function normalMocks(now = overviewNow(), { empty = false } = {}): Overvi
           state: 'checking',
           queued: iso(ago(2)),
           updated: iso(ago(1)),
-          check: { commands: ['npm test'], source: 'symbiote/config.json' },
+          check: {
+            commands: ['npm test'],
+            source: 'symbiote/config.json',
+            started: iso(now - 12_000),
+          },
         }),
       ],
     },

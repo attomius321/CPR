@@ -60,10 +60,10 @@ test("the status bar shows each subscription's windows, what a hover says, and n
   const items = usage(page).getByRole('listitem');
   await expect(items).toHaveCount(2, POLL);
   const [claude, codex] = [items.nth(0), items.nth(1)];
-  await expect(claude).toHaveText('ClaudePro5h59%wk84%');
+  await expect(claude).toHaveText('ClaudePro5h59%week84%');
   await expect(codex).toHaveText('CodexGo30d0%');
   // 84 % is amber, 59 % green: the tone of each window.
-  await expect(claude.locator('.usage-window.tone-high')).toHaveText('wk84%');
+  await expect(claude.locator('.usage-window.tone-high')).toHaveText('week84%');
   await expect(claude.locator('.usage-window.tone-ok')).toHaveText('5h59%');
   // The bars too: green, then amber (V29c's colours, back after V31a greyed the green; V88's
   // states: --ok, a real warning, --error).
@@ -104,7 +104,7 @@ test('a window at its limit is red, the bar and its number', async ({ page }) =>
   });
   await page.goto(`${symbiote.url}git`);
   const claude = usage(page).getByRole('listitem').first();
-  await expect(claude).toHaveText('ClaudePro5h100%wk30%', POLL);
+  await expect(claude).toHaveText('ClaudePro5h100%week30%', POLL);
   const full = claude.locator('.usage-window.tone-full');
   await expect(full).toHaveText('5h100%');
   expect(await filledWith(full, '--error')).toBe(true);
@@ -173,7 +173,7 @@ test("started while Claude's endpoint refuses: the last read Symbiote kept, its 
   });
   await page.goto(`${symbiote.url}git`);
   const claude = usage(page).getByRole('listitem').first();
-  await expect(claude).toHaveText('ClaudePro5h40%wk19%12 minutes ago', POLL);
+  await expect(claude).toHaveText('ClaudePro5h40%week19%12 minutes ago', POLL);
   await expect(claude).toHaveClass(/\bcached\b/);
   await expect(claude).toHaveAttribute(
     'data-tip',

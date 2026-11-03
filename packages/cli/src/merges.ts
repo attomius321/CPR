@@ -34,6 +34,7 @@ import {
   type AgentModels,
   type GitRepo,
   type MergeCheckRun,
+  type MergeCheckStep,
   type AgentKind,
   type MergeEntry,
   type MergeList,
@@ -409,6 +410,7 @@ export function merger(
     recheck: undefined,
     behind: undefined,
     diverged: undefined,
+    mergeMs: undefined,
   };
 
   /** A branch's tip: the local branch's, else a remote's (`origin` first); null when none. */
@@ -521,6 +523,8 @@ export function merger(
       state: 'merging',
       base: tip.sha,
     });
+    // The merge step's time (V93, decision 881): the worktree's reset and the merge.
+    const merging = Date.now();
     await resetMergeWorktree(repo, worktree, tip.sha);
     log.out(`Symbiote's merge worktree at ${entry.into} (${short(tip.sha)})\n`);
     const outcome = await mergeInWorktree(worktree, entry.head, entry.title, { keep: true });
@@ -566,7 +570,7 @@ export function merger(
     }
     log.out(`Merged ${short(entry.head)}: ${short(outcome.merged)}\n`);
     log.end(true);
-    await set(id, { conflicts: undefined, again: undefined });
+    await set(id, { conflicts: undefined, again: undefined, mergeMs: Date.now() - merging });
     await checkMerge(id, tip.sha, outcome.merged, false);
   }
 
@@ -607,9 +611,11 @@ export function merger(
     }
     await set(id, { ...fresh, state: 'merging', base: tip });
     log.out(`${into} (${short(tip)}) is in ${short(head)}: no merge commit\n`);
+    const merging = Date.now();
     await resetMergeWorktree(repo, worktree, head);
     log.out(`Symbiote's merge worktree at ${short(head)}\n`);
     log.end(true);
+    await set(id, { mergeMs: Date.now() - merging });
     await checkMerge(id, tip, head, false);
   }
 
@@ -635,11 +641,16 @@ export function merger(
       await set(id, { state: resolved ? 'needs-you' : 'ready', merge: merged, message });
       return;
     }
-    await set(id, { state: 'checking', merge: merged, check: { ...check } });
+    // When it started and each command's time (V93, decision 881): the Merge page's clock and
+    // steps; written as each command ends.
+    const at = now().toISOString();
+    const steps: MergeCheckStep[] = [];
+    await set(id, { state: 'checking', merge: merged, check: { ...check, started: at, steps } });
     const started = Date.now();
     let output = '';
     for (const command of check.commands) {
       log.step('check', command);
+      const begun = Date.now();
       // A runner that does not stream gives its output at the end.
       let streamed = false;
       const result = await runCheck(command, worktree, (chunk) => {
@@ -649,11 +660,14 @@ export function merger(
       if (!streamed) log.out(result.output);
       log.end(result.code === 0);
       output += result.output;
+      steps.push({ command, ms: Date.now() - begun, ok: result.code === 0 });
       if (result.code !== 0) {
         await set(id, {
           state: resolved ? 'needs-you' : 'failed',
           check: {
             ...check,
+            started: at,
+            steps: [...steps],
             ok: false,
             ms: Date.now() - started,
             failed: command,
@@ -662,10 +676,20 @@ export function merger(
         });
         return;
       }
+      if (steps.length < check.commands.length) {
+        await set(id, { check: { ...check, started: at, steps: [...steps] } });
+      }
     }
     const passed = await set(id, {
       state: resolved ? 'needs-you' : 'ready',
-      check: { ...check, ok: true, ms: Date.now() - started, output: lastLines(output) },
+      check: {
+        ...check,
+        started: at,
+        steps: [...steps],
+        ok: true,
+        ms: Date.now() - started,
+        output: lastLines(output),
+      },
     });
     if (!resolved) await landEntry(passed);
   }

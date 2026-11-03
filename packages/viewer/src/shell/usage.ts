@@ -16,11 +16,11 @@ const PROGRAMS: Record<UsageSubscription['agent'], string> = {
 };
 
 /**
- * A window's name from its length (decision 173): 5h, wk, 30d; others in days, hours or minutes.
- * A fixed "5h · wk" would be wrong for Codex's Go plan, whose one window is 30 days.
+ * A window's name from its length (decision 173): 5h, week (V93, the proofs), 30d; others in days, hours or minutes.
+ * A fixed "5h · week" would be wrong for Codex's Go plan, whose one window is 30 days.
  */
 export function windowLabel(minutes: number): string {
-  if (minutes === 10_080) return 'wk';
+  if (minutes === 10_080) return 'week';
   if (minutes % 1_440 === 0) return `${minutes / 1_440}d`;
   if (minutes % 60 === 0) return `${minutes / 60}h`;
   return `${minutes}m`;

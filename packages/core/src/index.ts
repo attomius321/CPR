@@ -390,6 +390,7 @@ export {
   MERGE_STRATEGIES,
   type MergeAgentEvent,
   type MergeCheckRun,
+  type MergeCheckStep,
   type MergeConflict,
   type MergeEntry,
   type MergeList,

@@ -1,10 +1,10 @@
 /* ---- the shell (V29a): the sidenav, the main area, the status bar --------------------- */
 
 .shell {
-  /* As wide as the person dragged it (V34, `--sidenav-open`), the main area keeping 480 px; 300 px
-     at first since V79, so most workspaces' names fit their cards' row (264 since V61's bigger
-     type, 240 before). */
-  --sidenav-width: min(var(--sidenav-open, 300px), max(180px, calc(100vw - 480px)));
+  /* As wide as the person dragged it (V34, `--sidenav-open`), the main area keeping 480 px; 260 px
+     at first since V93 (decision 875: the proofs' sidenav, its rows of two lines; 300 from V79,
+     264 since V61, 240 before). */
+  --sidenav-width: min(var(--sidenav-open, 260px), max(180px, calc(100vw - 480px)));
   display: grid;
   grid-template-columns: var(--sidenav-width) minmax(0, 1fr);
   /* `asks` (MC1): an agent's ask over the page, empty and 0 high without one. */
@@ -96,7 +96,7 @@
     left: 0;
     z-index: 26;
     display: flex;
-    width: min(300px, 85vw);
+    width: min(260px, 85vw);
     box-shadow: 0 0 32px var(--shadow);
   }
 

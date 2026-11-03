@@ -58,7 +58,7 @@ test('Hermes in its terminal: started with the prompt, kept while its tab is lef
     'data-tip',
     /\/help in its prompt lists Hermes's commands/,
   );
-  await expect(workspaceRow(page).locator('.state-dot')).toHaveClass(/tone-working/, POLL);
+  await expect(workspaceRow(page)).toHaveAttribute('data-tone', 'run', POLL);
 
   // Its plan: the card follows while the terminal is open; the thread has it.
   symbiote.hermesAnswer(BRANCH, 'Plan: add half(a) to src/half.ts, then test it.');
@@ -79,7 +79,7 @@ test('Hermes in its terminal: started with the prompt, kept while its tab is lef
   await page.keyboard.type('Go ahead.');
   await page.keyboard.press('Enter');
   await expect(screen(page)).toContainText('sent: Go ahead.', POLL);
-  await expect(workspaceRow(page).locator('.state-dot')).toHaveClass(/tone-working/, POLL);
+  await expect(workspaceRow(page)).toHaveAttribute('data-tone', 'run', POLL);
 
   // Stop hangs it up; its session stays, and its terminal continues it, asked first.
   await here.getByRole('button', { name: 'Stop the agent' }).click();

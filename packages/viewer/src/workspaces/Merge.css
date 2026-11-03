@@ -625,3 +625,183 @@
     position: static;
   }
 }
+
+/* ---- The Merge page (V93, decision 880; proof 05-merge) ------------------------------------ */
+
+.merge-view .merge-page {
+  gap: var(--page-gap);
+}
+
+/* The title's target, light (the proof's "→ main"). */
+.merge-into {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.merge-row-head .merge-branch {
+  font: var(--size-small) / 1.4 var(--mono);
+}
+
+/* The Steps card and the log beside it, taking what is left of the page's height. */
+.merge-body {
+  display: grid;
+  flex: 1 0 380px;
+  grid-template-columns: 400px minmax(0, 1fr);
+  gap: var(--page-gap);
+  min-height: 0;
+}
+
+.merge-steps-card,
+.merge-output-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  box-shadow: var(--shadow-lift, none);
+}
+
+.merge-rules-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.merge-rules-file .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.merge-items {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px 16px 0;
+}
+
+.merge-items .run-quote {
+  margin: 0;
+}
+
+/* The merge's commits: the approved one into the target at its tip, then the merge. */
+.merge-commit-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin: 0;
+  font-size: var(--size-small);
+}
+
+.merge-commit-line .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--faint);
+}
+
+.merge-commit-line code {
+  color: var(--muted);
+  font: var(--size-caption) / 1.4 var(--mono);
+}
+
+.merge-arrow {
+  color: var(--muted);
+}
+
+/* What a failed check does (the kits' `.rules`). */
+.merge-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 16px 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.merge-note .icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+/* The log's card: its tabs a card head, the terminal under them, edge to edge. */
+.merge-output-card .merge-tabs {
+  flex: none;
+  align-items: stretch;
+  min-height: var(--card-head);
+  margin: 0;
+  padding: 0 var(--card-pad);
+}
+
+.merge-output-card .merge-tabs button {
+  height: auto;
+  font-size: var(--size-small);
+}
+
+.merge-output-card .merge-tabs .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.merge-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--size-caption);
+}
+
+.merge-live .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--run);
+}
+
+.merge-output-card .merge-log.merge-log-bare {
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+}
+
+.merge-log-bare > .merge-steps {
+  display: none;
+}
+
+.merge-log-bare .merge-terminal {
+  padding: 14px 0 14px 16px;
+  border: 0;
+  border-radius: 0;
+}
+
+.merge-output-card .merge-changes {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 8px;
+  overflow: auto;
+  list-style: none;
+}
+
+.merge-output-card .merge-fileview {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+}
+
+@media (max-width: 1100px) {
+  .merge-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

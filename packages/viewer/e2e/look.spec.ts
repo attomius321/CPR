@@ -448,10 +448,10 @@ test('help texts wait behind a "?": a tooltip on hover, inside the window', asyn
   await inside(tip);
 });
 
-// V79: four rows on 20 px lines, 10 × 12 px in, the cards 6 px apart; a name on two lines, whole
-// (until V79 three rows in 72 px, each cut to one line). V83: a fifth row, what its agent runs on;
-// the state on one line (decision 663).
-test('a card in the sidenav shows a long name whole, on its own rows, 6 px from the next (V79)', async ({
+// V93 (decision 876; the proofs' `.ws`): a row of two lines — its icon and its title, cut with
+// "…", whole in its tip; its state's word and the rest — 6 × 10 px in, the rows touching. V79's
+// card of four rows (V83: five) on 20 px lines, 6 px apart, it replaces.
+test('a row in the sidenav: two lines, the title cut with its tip whole, the rows touching (V93)', async ({
   page,
 }) => {
   symbiote = await serveWorkspaces();
@@ -472,33 +472,27 @@ test('a card in the sidenav shows a long name whole, on its own rows, 6 px from 
       page.locator(`.sidenav .workspace-row[data-branch="${branch}"]:not(.starting)`),
     ).toBeVisible(POLL);
   }
-  const card = page.locator(`.sidenav .workspace-row[data-branch="${long}"]`);
-  // The name on two lines, nothing cut.
+  const row = page.locator(`.sidenav .workspace-row[data-branch="${long}"]`);
+  // The title on one line, cut at its end; the whole of it in the row's tip.
+  const title = row.locator('.ws-row-title');
   expect(
-    await card
-      .locator('.workspace-about')
-      .evaluate((e) => [
-        e.scrollWidth <= e.clientWidth && e.scrollHeight <= e.clientHeight,
-        e.getBoundingClientRect().height,
-      ]),
-  ).toEqual([true, 44]);
-  // 10 × 12 px in; the state and the branch on 20 px lines, the kind's chip in a row of its own.
+    await title.evaluate((e) => [
+      e.scrollWidth > e.clientWidth,
+      getComputedStyle(e).textOverflow,
+      e.getBoundingClientRect().height,
+    ]),
+  ).toEqual([true, 'ellipsis', 21]);
+  await expect(row).toHaveAttribute('data-tip', /Add a half function, with a test and its docs/);
+  // 6 × 10 px in; the state's line 18 px: 6 + 21 + 18 + 7.
   expect(
-    await card.evaluate((e) => [getComputedStyle(e).paddingTop, getComputedStyle(e).paddingLeft]),
-  ).toEqual(['10px', '12px']);
-  const state = card.locator('.workspace-line .workspace-state');
-  await expect(state).toHaveCSS('line-height', '20px');
-  await expect(card.locator('.workspace-branch')).toHaveCSS('line-height', '20px');
-  await expect(card.locator('.workspace-runs')).toHaveCSS('line-height', '20px');
-  await expect(card.locator('.workspace-meta .kind-tag')).toHaveText('feature');
-  // Two lines of name over a line of each other row: 10 + 44 + 4 + 20 + 6 + 22 + 4 + 20 (what its
-  // agent runs on, V83) + 4 + 20 + 10.
-  expect((await state.boundingBox())?.height).toBe(20);
-  expect(Math.round((await card.boundingBox())?.height ?? 0)).toBe(164);
-  // The next card of its group, 6 px under it.
+    await row.evaluate((e) => [getComputedStyle(e).paddingTop, getComputedStyle(e).paddingLeft]),
+  ).toEqual(['6px', '10px']);
+  await expect(row.locator('.ws-row-state')).toHaveCSS('line-height', '18px');
+  expect(Math.round((await row.boundingBox())?.height ?? 0)).toBe(52);
+  // The next row of its group, right under it.
   const next = page.locator('.sidenav .workspace-row[data-branch="feature/add-a-double-function"]');
-  const [above, below] = [await card.boundingBox(), await next.boundingBox()];
-  expect(Math.round(below!.y - (above!.y + above!.height))).toBe(6);
+  const [above, below] = [await row.boundingBox(), await next.boundingBox()];
+  expect(Math.round(below!.y - (above!.y + above!.height))).toBe(0);
 });
 
 // V37: Terminal, Thread and Brief are flat buttons on the chrome's strip, the picked one a wash of

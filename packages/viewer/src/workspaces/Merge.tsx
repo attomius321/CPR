@@ -16,7 +16,6 @@ import {
   firstFile,
   gutterChars,
   mergeButtons,
-  mergeLabel,
   mergeLive,
   mergeState,
   mergeTitle,
@@ -25,19 +24,38 @@ import {
   reviewRegion,
   type LineFrom,
   type MergeAction,
-  type MergeTone,
   type ResolutionFile,
   type SideKept,
 } from './merges.js';
 import { MergeLog } from './MergeLog.js';
 import {
   AlertIcon,
-  DoneIcon,
-  ForwardIcon,
+  CheckIcon,
+  ChecksIcon,
+  CloseIcon,
+  CommitIcon,
+  FailedIcon,
+  FileIcon,
+  MergeIcon,
   MergingIcon,
-  WaitingIcon,
-  WorkingIcon,
+  PushIcon,
+  ReviewIcon,
+  ShieldIcon,
+  SpinIcon,
+  TerminalIcon,
 } from '../ui/icons.js';
+import { Pipeline } from '../ui/Pipeline.js';
+import { StatusLabel } from '../ui/StatusLabel.js';
+import { useSecondsWhile } from './clock.js';
+import { FileRow, useChanges } from './ChangesPanel.js';
+import {
+  expectedCheck,
+  mergePage,
+  type MergeCommand,
+  type MergeStep,
+  type MergeStepState,
+} from './merge-steps.js';
+import { ChecksMark, Item, type ItemState } from './RunItem.js';
 import { PageHead } from '../ui/PageHead.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
@@ -57,14 +75,6 @@ const ACTION_NAMES: Record<MergeAction, string> = {
 
 /** The head's primary buttons; Remove is a button only once its merge landed (V55). */
 const PRIMARY: ReadonlySet<MergeAction> = new Set(['approve', 'land', 'merge-commit', 'remove']);
-
-/** The state's icon in the head (V69): its tone's, as the sidenav's groups draw it. */
-const TONE_ICONS: Record<MergeTone, () => ReactElement> = {
-  wait: WorkingIcon,
-  you: WaitingIcon,
-  done: DoneIcon,
-  bad: AlertIcon,
-};
 
 /** The queue's entry for a branch: the one still in progress, else its last. */
 export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | undefined {
@@ -119,6 +129,7 @@ function sendable(list: WorkspaceList | null, branch: string): boolean {
 
 function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boolean }) {
   const shell = useShell();
+  const { merges, list, reviews } = useWorkspaces();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState(false);
@@ -126,10 +137,22 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
   const [comments, setComments] = useState('');
   // Its log has the check's whole output (V46a): the entry's last lines only without one.
   const [logged, setLogged] = useState(false);
-  // Files or Log (V46c): the person's pick, else Files once a resolution is there to read.
+  // Log, Changes or Files (V46c, V93): the person's pick, else Files once a resolution is there.
   const [picked, setPicked] = useState<Tab | null>(null);
-  const { text, tone } = mergeState(entry);
-  const ToneIcon = TONE_ICONS[tone];
+  const live = mergeLive([entry]);
+  const now = useSecondsWhile(live);
+  const workspace = list?.workspaces.find((w) => w.branch === entry.branch);
+  const review = reviews?.reviews.find((r) => r.branch === entry.branch);
+  const verdict = review?.verdict?.event === 'approve' ? review.verdict : undefined;
+  const queue = merges?.merges ?? [entry];
+  const page = mergePage(entry, {
+    queue,
+    verdict,
+    title: workspace?.title,
+    expected: entry.check ? expectedCheck(queue, entry.check.commands) : undefined,
+    now,
+  });
+  const changes = useChanges(entry.branch, entry.updated, 0, workspace !== undefined);
   const post = (path: string, body: Record<string, string>) => {
     setBusy(true);
     setError(null);
@@ -143,8 +166,8 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
       .finally(() => setBusy(false));
   };
   /**
-   * Removed, the merge's page gives way to Git (V55), the status bar saying so; `removeMerge`
-   * reads the list again (V57).
+   * Removed, the merge's page gives way to the Overview (V91), the status bar saying so;
+   * `removeMerge` reads the list again (V57).
    */
   const remove = () => {
     setBusy(true);
@@ -176,19 +199,25 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
     else post(`/api/merges/${action}`, {});
   };
   // The frequent actions as buttons; Retry and Remove, rarer, in the "⋯" menu; a landed merge's
-  // Remove, its last, its primary button (V55).
-  const { buttons: shownActions, more: rarer } = mergeButtons(entry, { send });
-  const more: MenuAction[] = rarer.map((a) => ({
-    label: ACTION_NAMES[a],
-    disabled: busy,
-    onSelect: () => act(a),
-  }));
+  // Remove, its last, its primary button (V55). While it waits or runs, Remove is "Take out of the
+  // queue", a secondary button (V93, proof 05).
+  const { buttons, more: rarer } = mergeButtons(entry, { send });
+  const takeOut = live && rarer.includes('remove');
+  const shownActions = takeOut ? [...buttons, 'remove' as const] : buttons;
+  const more: MenuAction[] = rarer
+    .filter((a) => !(takeOut && a === 'remove'))
+    .map((a) => ({ label: ACTION_NAMES[a], disabled: busy, onSelect: () => act(a) }));
   const files = resolutionFiles(entry);
   // Files first once there is a resolution to read, or a question to answer.
-  const resolved =
-    files.some((f) => f.regions.length > 0 || f.asked.length > 0) && !mergeLive([entry]);
+  const resolved = files.some((f) => f.regions.length > 0 || f.asked.length > 0) && !live;
   const asking = entry.state === 'needs-you' && Boolean(entry.resolution?.needsYou);
-  const tab: Tab = files.length === 0 ? 'log' : (picked ?? (resolved ? 'files' : 'log'));
+  const changed = changes !== null && typeof changes !== 'string' ? changes.files : null;
+  const tab: Tab =
+    picked === 'files' && files.length === 0
+      ? 'log'
+      : picked === 'changes' && !changed
+        ? 'log'
+        : (picked ?? (files.length > 0 && resolved ? 'files' : 'log'));
   const shown = !logged && entry.check?.output && entry.check.ok === false;
   const ran = entry.check ? failedCheck(entry.check) : null;
   // Approve lands a resolution whatever its check said: the button says so when it failed.
@@ -196,57 +225,66 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
     entry.check?.ok === false
       ? `Land the merge, though its check failed (${entry.check.failed ?? ''})`
       : undefined;
+  const check = entry.check;
+  const checkState = (state: MergeStepState): ItemState =>
+    state === 'done' ? 'ok' : state === 'now' ? 'run' : state === 'bad' ? 'fail' : 'todo';
+  const [, mergeStep, checkStep, land] = page.steps as [MergeStep, MergeStep, MergeStep, MergeStep];
   return (
-    <section className={`merge-row merge-tone-${tone}`} aria-label={`Merge of ${entry.branch}`}>
-      {/* The page frame's head (V72, decision 511): the branch and its target the title, the
-          state's chip beside them, where it is and what it merges the line, its actions at the
-          right (the person's mockup, V69). */}
+    <section
+      className={`merge-row merge-page merge-tone-${mergeState(entry).tone}`}
+      aria-label={`Merge of ${entry.branch}`}
+    >
+      {/* The page frame's head (V72; V93, proof 05): the title and where it goes, the branch, who
+          approved it and where it is in the queue; the state's pill and the actions. */}
       <PageHead
         className="merge-row-head"
         icon={<MergingIcon />}
         title={
           <>
-            <span className="merge-chip merge-ref-theirs" {...tip(entry.branch)}>
-              <span className="merge-chip-name">{entry.branch}</span>
-            </span>
-            <span className="merge-chip merge-ref-ours" {...tip(`Into ${entry.into}`)}>
-              <ForwardIcon />
-              <span className="merge-chip-name">{entry.into}</span>
-            </span>
-          </>
-        }
-        beside={
-          <>
-            {entry.strategy === 'fast-forward' && (
-              <span className="merge-how">by fast-forward</span>
-            )}
-            {/* Queued by Hive (HV4): it lands, pushes and sends a failure itself. */}
-            {entry.by === 'hive' && <span className="merge-how">by Hive</span>}
-            <span className="merge-chip merge-label">
-              <ToneIcon />
-              {mergeLabel(entry)}
-            </span>
+            {page.title} <span className="merge-into">→ {entry.into}</span>
           </>
         }
         line={
-          <span {...tip(`${text}\n${mergeTitle(entry)}`)}>
-            <span className="merge-row-state">{text}</span>
-            {' · '}
-            <span className="merge-title">{mergeTitle(entry)}</span>
+          <span {...tip(`${mergeState(entry).text}\n${mergeTitle(entry)}`)}>
+            <code className="merge-branch">{entry.branch}</code>
+            {entry.strategy === 'fast-forward' && <span> · by fast-forward</span>}
+            {page.line.map((part) => (
+              <span key={part}> · {part}</span>
+            ))}
           </span>
         }
         actions={
           <>
+            <StatusLabel
+              tone={page.pill.tone === 'fail' ? 'error' : page.pill.tone}
+              {...(page.pill.tone === 'run' ? { icon: <SpinIcon /> } : {})}
+              className="merge-label"
+            >
+              {page.pill.word}
+            </StatusLabel>
             {shownActions.map((action) => (
               <button
                 key={action}
                 type="button"
-                className={PRIMARY.has(action) ? 'button primary' : 'button'}
+                className={
+                  action === 'remove' && takeOut
+                    ? 'button'
+                    : PRIMARY.has(action)
+                      ? 'button primary'
+                      : 'button'
+                }
                 {...tip(action === 'approve' ? approveTitle : undefined, { tone: 'warn' })}
                 disabled={busy}
                 onClick={() => act(action)}
               >
-                {ACTION_NAMES[action]}
+                {action === 'remove' && takeOut ? (
+                  <>
+                    <CloseIcon />
+                    Take out of the queue
+                  </>
+                ) : (
+                  ACTION_NAMES[action]
+                )}
               </button>
             ))}
             {more.length > 0 && <MoreActions actions={more} />}
@@ -302,46 +340,272 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
         entry.message &&
         !entry.resolution?.needsYou &&
         !entry.behind && <p className="hint small">{entry.message}</p>}
-      {(ran || shown) && (
-        <p className="merge-run small">
-          {ran}
-          {shown && (
-            <button type="button" className="link small" onClick={() => setOutput((o) => !o)}>
-              {output ? 'Hide its output' : 'Its output'}
-            </button>
-          )}
-        </p>
-      )}
-      {shown && output && <pre className="merge-output">{entry.check?.output}</pre>}
-      {files.length > 0 && (
-        <div className="merge-tabs" role="tablist" aria-label="The merge">
-          {(['files', 'log'] as const).map((name) => (
-            <button
-              key={name}
-              type="button"
-              role="tab"
-              aria-selected={tab === name}
-              onClick={() => setPicked(name)}
-            >
-              {name === 'files' ? 'Files' : 'Log'}
-              {name === 'files' && <span className="count">{files.length}</span>}
-            </button>
-          ))}
-        </div>
-      )}
-      {files.length > 0 && <MergeFiles entry={entry} files={files} hidden={tab !== 'files'} />}
-      <MergeLog entry={entry} hidden={tab !== 'log'} onLogged={() => setLogged(true)} />
       {error && (
         <p className="error small" role="alert">
           {error}
         </p>
       )}
+      <Pipeline
+        label="Its steps"
+        steps={page.steps.map((step) => ({
+          name: step.name,
+          state: step.state,
+          detail: step.detail,
+          icon: STEP_ICONS[step.name](step.state),
+          progress: step.progress,
+        }))}
+        cells={[
+          {
+            label: 'Queue',
+            value: (
+              <>
+                {page.queue.value} {page.queue.of && <small>{page.queue.of}</small>}
+              </>
+            ),
+            words: page.queue.words,
+          },
+          { label: 'Time', value: page.time.value, words: page.time.words },
+        ]}
+      />
+      <div className="merge-body">
+        <section className="card merge-steps-card" aria-label="Steps">
+          <div className="card-head merge-steps-card-head">
+            <h2>Steps</h2>
+            <span className="merge-rules-file">
+              <FileIcon />
+              symbiote/merge.md
+            </span>
+          </div>
+          <ol className="run-items merge-items">
+            <Item
+              name="Approved"
+              state="ok"
+              icon={<ReviewIcon />}
+              words={page.approval.words}
+              end={<span>{page.approval.at}</span>}
+            >
+              {page.approval.quote && <p className="run-quote">“{page.approval.quote}”</p>}
+            </Item>
+            <Item
+              name="Merge"
+              state={checkState(mergeStep.state)}
+              icon={<MergeIcon />}
+              words={mergeStep.state === 'bad' ? mergeStep.detail : "in Symbiote's merge worktree"}
+              end={
+                entry.mergeMs !== undefined ? <span>{mergeTook(entry.mergeMs)}</span> : undefined
+              }
+            >
+              {entry.merge && (
+                <p className="merge-commit-line">
+                  <CommitIcon />
+                  <code>{entry.head.slice(0, 7)}</code>
+                  <span>into</span>
+                  <code>{entry.into}</code>
+                  {entry.base && (
+                    <>
+                      <span>at</span>
+                      <code>{entry.base.slice(0, 7)}</code>
+                    </>
+                  )}
+                  <span className="merge-arrow">→</span>
+                  <code>{entry.merge.slice(0, 7)}</code>
+                </p>
+              )}
+            </Item>
+            <Item
+              name="Check"
+              state={checkState(checkStep.state)}
+              icon={checkStep.state === 'now' ? <SpinIcon /> : <ChecksIcon />}
+              words={
+                check
+                  ? check.source.replace(/^symbiote\/config\.json \((.+)\)$/, '$1')
+                  : checkStep.detail
+              }
+              end={page.checkTime ? <span>{page.checkTime}</span> : undefined}
+            >
+              {page.commands.length > 0 && <MergeCommands commands={page.commands} />}
+              {(ran || shown) && (
+                <p className="merge-run small">
+                  {ran}
+                  {shown && (
+                    <button
+                      type="button"
+                      className="link small"
+                      onClick={() => setOutput((o) => !o)}
+                    >
+                      {output ? 'Hide its output' : 'Its output'}
+                    </button>
+                  )}
+                </p>
+              )}
+              {shown && output && <pre className="merge-output">{entry.check?.output}</pre>}
+            </Item>
+            <Item
+              name="Land"
+              state={checkState(land.state)}
+              icon={<PushIcon />}
+              words={land.detail}
+              end={entry.landed ? <span>{approvedAt(entry.landed)}</span> : undefined}
+              last
+            />
+          </ol>
+          <p className="merge-note">
+            <ShieldIcon />
+            {entry.by === 'hive'
+              ? "A failed check goes back to Hive's writer, with its output."
+              : send
+                ? "A failed check goes back to the workspace's agent, with its output."
+                : 'A failed check waits here for you, with its output.'}
+          </p>
+        </section>
+        <section className="card merge-output-card" aria-label="Its output">
+          <div className="merge-tabs" role="tablist" aria-label="The merge">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === 'log'}
+              onClick={() => setPicked('log')}
+            >
+              <TerminalIcon />
+              Log
+            </button>
+            {changed && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'changes'}
+                onClick={() => setPicked('changes')}
+              >
+                <FileIcon />
+                Changes <span className="count">{changed.count}</span>
+              </button>
+            )}
+            {files.length > 0 && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={tab === 'files'}
+                onClick={() => setPicked('files')}
+              >
+                <AlertIcon />
+                Conflicts <span className="count">{files.length}</span>
+              </button>
+            )}
+            {live && (
+              <span className="merge-live">
+                <SpinIcon />
+                live
+              </span>
+            )}
+          </div>
+          {files.length > 0 && <MergeFiles entry={entry} files={files} hidden={tab !== 'files'} />}
+          {changed && (
+            <ul
+              className="merge-changes changes-files"
+              hidden={tab !== 'changes'}
+              aria-label="Its files"
+            >
+              {changed.listed.map((file) => (
+                <li key={file.path}>
+                  <FileRow
+                    file={file}
+                    label={file.path}
+                    hover={`${file.path}\nOpen its changes in VS Code`}
+                    onOpen={(f) =>
+                      void postJson('/api/workspaces/diff', {
+                        branch: entry.branch,
+                        file: f.path,
+                        ...(f.previousPath ? { previousPath: f.previousPath } : {}),
+                      }).then(
+                        () => shell?.notify({ text: `Opened the changes to ${f.path} in VS Code` }),
+                        (e: unknown) => shell?.notify({ text: (e as Error).message, error: true }),
+                      )
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
+          <MergeLog entry={entry} hidden={tab !== 'log'} onLogged={() => setLogged(true)} />
+        </section>
+      </div>
     </section>
   );
 }
 
+/** "12:51". */
+const approvedAt = (iso: string) => {
+  const date = new Date(iso);
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+};
+
+/** The merge step's time: "0.4 s". */
+const mergeTook = (ms: number) =>
+  ms < 10_000 ? `${(ms / 1000).toFixed(1)} s` : `${Math.round(ms / 1000)} s`;
+
+/** Each step's mark in its hexagon (the proof's: a check once done, a spinner while it runs). */
+const STEP_ICONS: Record<MergeStep['name'], (state: MergeStepState) => ReactElement> = {
+  Approved: () => <CheckIcon />,
+  Merge: (state) =>
+    state === 'done' ? <CheckIcon /> : state === 'now' ? <SpinIcon /> : <MergeIcon />,
+  Check: (state) =>
+    state === 'done' ? (
+      <CheckIcon />
+    ) : state === 'now' ? (
+      <SpinIcon />
+    ) : state === 'bad' ? (
+      <CloseIcon />
+    ) : (
+      <ChecksIcon />
+    ),
+  Land: (state) => (state === 'done' ? <CheckIcon /> : <PushIcon />),
+};
+
+/** The check's commands, each with its time; the running one with its bar (decision 881). */
+function MergeCommands({ commands }: { commands: readonly MergeCommand[] }) {
+  return (
+    <ul className="run-commands" aria-label="Its commands">
+      {commands.map((row, i) => (
+        <li key={i} className={`run-command is-${row.mark}`}>
+          <span className="run-mark" aria-label={row.mark === 'skipped' ? 'not run' : row.mark}>
+            {row.mark === 'passed' ? (
+              <ChecksMark />
+            ) : row.mark === 'failed' ? (
+              <FailedIcon />
+            ) : row.mark === 'running' ? (
+              <span className="run-spinner" />
+            ) : null}
+          </span>
+          <code>{row.command}</code>
+          <span className="run-command-note">
+            {row.mark === 'failed' ? (
+              'failed'
+            ) : row.mark === 'skipped' ? (
+              'not run'
+            ) : row.share !== undefined ? (
+              <span
+                className="run-bar"
+                role="progressbar"
+                aria-label={`${row.command}, against its last passing run`}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(row.share * 100)}
+              >
+                <i style={{ width: `${row.share * 100}%` }} />
+              </span>
+            ) : (
+              ''
+            )}
+          </span>
+          <span className="run-time">{row.time ?? ''}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** A merge's two views, when it had conflicts (V46c). */
-type Tab = 'files' | 'log';
+type Tab = 'files' | 'log' | 'changes';
 
 /** Each file's tone, as a step's dot draws it. */
 const FILE_TONES: Record<ResolutionFile['tone'], string> = {

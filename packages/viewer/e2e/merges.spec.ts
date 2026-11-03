@@ -3,7 +3,6 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
-import { spinner } from './spinner.js';
 import { serveAgentBranch, type RunningAgent } from './symbiote.js';
 
 // Symbiote's merger agent (V26c): a conflict answered region by region by a fake Claude Code,
@@ -20,6 +19,18 @@ test.afterEach(() => {
 const DOUBLE = 'export const double = (a: number) => a * 2;';
 const SQUARE = 'export function square(a: number): number {\n  return a * a;\n}';
 const CUBE = 'export function cube(a: number): number {\n  return a * a * a;\n}';
+
+const POLL = { timeout: 15_000 };
+/** A token's colour, as the browser computes it. */
+const token = (page: Page, name: string) =>
+  page.evaluate((name) => {
+    const probe = document.createElement('span');
+    probe.style.color = `var(${name})`;
+    document.body.append(probe);
+    const colour = getComputedStyle(probe).color;
+    probe.remove();
+    return colour;
+  }, name);
 
 const git = (...args: string[]) =>
   execFileSync('git', args, {
@@ -241,7 +252,7 @@ test('the log: each step and what it writes, while it runs (V46a)', async ({ pag
   await expect(log).toContainText('── Merge agent into main');
 });
 
-test("a merge at work spins on its card, as a working agent's dot; still once it is your turn (fix/merging-status)", async ({
+test('a merge at work is amber on its row; violet once it is your turn (fix/merging-status, V93)', async ({
   page,
 }) => {
   // The check waits for a file the test makes: until then the merge is at work.
@@ -251,20 +262,14 @@ test("a merge at work spins on its card, as a working agent's dot; still once it
     ['while [ ! -f "$E2E_FLAG" ]; do sleep 0.1; done'],
     { E2E_FLAG: flag },
   );
-  const dot = card.locator('.state-dot');
-  await expect(card.locator('.workspace-state')).toHaveText(/^Checking: /);
-  await expect
-    .poll(() => spinner(dot))
-    .toEqual({ animation: 'state-spin 1s', across: 11, comet: true });
-  // Without motion, the comet holds still: its words say it works.
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect.poll(() => spinner(dot)).toEqual({ animation: 'none 0s', across: 11, comet: true });
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await expect(card.locator('.ws-row-state b')).toHaveText('Checking');
+  await expect(card).toHaveAttribute('data-tone', 'run');
+  await expect(card.locator('.ws-row-icon')).toHaveCSS('color', await token(page, '--run'));
 
   writeFileSync(flag, '');
-  // Checked: the resolution is the person's to review, a still dot in its colour.
-  await expect(card).toHaveClass(/merge-tone-you/);
-  await expect.poll(() => spinner(dot)).toMatchObject({ animation: 'none 0s', comet: false });
+  // Checked: the resolution is the person's to review, in their violet.
+  await expect(card).toHaveAttribute('data-tone', 'you', POLL);
+  await expect(card.locator('.ws-row-icon')).toHaveCSS('color', await token(page, '--you'));
 });
 
 test("the merger agent's thinking and the files it reads, while it works (V46b)", async ({

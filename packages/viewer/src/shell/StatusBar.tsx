@@ -1,5 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { RepoStatus } from '@symbiote/core';
 import { relativeDate } from '../history/commits.js';
+import { BellIcon, BranchIcon, MergeIcon, SpinIcon } from '../ui/icons.js';
+import { useWorkspaces } from '../workspaces/useWorkspaces.js';
+import { hiveGroups, workspaceGroups } from '../workspaces/workspaces.js';
+import { useHive } from './hive.js';
 import type { Notice } from './shell-context.js';
 import {
   AGENT_NAMES,
@@ -13,15 +18,123 @@ import { tip } from '../ui/tip.js';
 import { useUsage } from './useUsage.js';
 
 /**
- * The shell's status bar (V29a): on the left the last thing said (a start, a checkout, an
- * error), until the next; on the right each subscription's windows of use (V29c).
+ * The shell's status bar (V29a): on the left where the checkout is and what waits and works
+ * (V93, decision 879), then the last thing said (a start, a checkout, an error), until the next;
+ * on the right each subscription's windows of use (V29c).
  */
 export function StatusBar({ notice }: { notice: Notice | null }) {
   return (
     <footer className="statusbar" aria-label="Status bar">
+      <Segments />
       {notice && <NoticeLine key={`${notice.text}\n${notice.copy ?? ''}`} notice={notice} />}
       <Usage />
     </footer>
+  );
+}
+
+/** The checkout: its branch and commit, read on load, when the window is back and each minute. */
+function useCheckout(): Pick<RepoStatus, 'branch' | 'head'> | null {
+  const [status, setStatus] = useState<Pick<RepoStatus, 'branch' | 'head'> | null>(null);
+  useEffect(() => {
+    let live = true;
+    const read = () => {
+      if (document.visibilityState === 'hidden') return;
+      fetch('/api/status')
+        .then((response) => (response.ok ? (response.json() as Promise<RepoStatus>) : null))
+        .then((read) => live && read && setStatus({ branch: read.branch, head: read.head }))
+        .catch(() => {});
+    };
+    read();
+    const timer = setInterval(read, 60_000);
+    window.addEventListener('focus', read);
+    return () => {
+      live = false;
+      clearInterval(timer);
+      window.removeEventListener('focus', read);
+    };
+  }, []);
+  return status;
+}
+
+/**
+ * The proofs' left side (decision 879): the branch checked out and its commit, how many wait for
+ * the person (violet), how many agents work; in Hive mode Hive on, in flight, landed today and
+ * the branch. From the list the sidenav reads.
+ */
+function Segments() {
+  const hiveMode = useHive();
+  const { list, reviews } = useWorkspaces();
+  const checkout = useCheckout();
+  const workspaces = list?.workspaces;
+  const counts = useMemo(() => {
+    if (!workspaces) return null;
+    if (hiveMode) {
+      const groups = hiveGroups(workspaces, reviews, Date.now());
+      return { flight: groups.flight.length, landed: groups.today.length, waits: 0, working: 0 };
+    }
+    const groups = workspaceGroups(workspaces, reviews);
+    return {
+      flight: 0,
+      landed: 0,
+      waits: groups.waiting.length + groups.review.length,
+      working: groups.working.length,
+    };
+  }, [workspaces, reviews, hiveMode]);
+  const branch = checkout && (
+    <span
+      className="statusbar-seg"
+      {...tip(
+        checkout.head
+          ? `Checked out: ${checkout.branch ?? 'a detached HEAD'} at ${checkout.head.slice(0, 7)}`
+          : 'Checked out',
+      )}
+    >
+      <BranchIcon />
+      {checkout.branch ?? 'detached'}
+      {!hiveMode && checkout.head && (
+        <span className="statusbar-sha">{checkout.head.slice(0, 7)}</span>
+      )}
+    </span>
+  );
+  if (hiveMode) {
+    return (
+      <>
+        <span className="statusbar-seg">
+          <span className="statusbar-dot" aria-hidden="true" />
+          Hive on
+        </span>
+        {counts && (
+          <>
+            <span className="statusbar-seg">
+              <SpinIcon />
+              {counts.flight} in flight
+            </span>
+            <span className="statusbar-seg">
+              <MergeIcon />
+              {counts.landed} landed today
+            </span>
+          </>
+        )}
+        {branch}
+      </>
+    );
+  }
+  return (
+    <>
+      {branch}
+      {counts && (
+        <>
+          <span className="statusbar-seg you">
+            <BellIcon />
+            {counts.waits} wait for you
+          </span>
+          <span className="statusbar-seg">
+            <SpinIcon />
+            {counts.working} {counts.working === 1 ? 'agent' : 'agents'} working
+          </span>
+        </>
+      )}
+    </>
   );
 }
 

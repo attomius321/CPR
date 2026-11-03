@@ -56,9 +56,10 @@ export function NucleusIcon({ becoming }: { becoming?: boolean } = {}) {
   return useAlphaCeph() ? (
     <HiveMindIcon becoming={becoming} />
   ) : (
+    // The kits' `nucleus` (V93): a ring and its core.
     <Icon lucide>
-      <circle cx="12" cy="12" r="10" />
-      <circle cx="12" cy="12" r="1" />
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="2.5" />
     </Icon>
   );
 }
@@ -175,19 +176,21 @@ export const ShieldIcon = () => (
 
 /** Skills (V41): an open book, after lucide's book-open (ISC). */
 export const SkillsIcon = () => (
-  <Icon>
-    <path d="M8 4.7V14" />
-    <path d="M2 12V2.7h3.3A2.7 2.7 0 0 1 8 5.3a2.7 2.7 0 0 1 2.7-2.6H14V12h-4a2 2 0 0 0-2 2 2 2 0 0 0-2-2z" />
+  // Lucide's book-open, as the kits draw it (V93).
+  <Icon lucide>
+    <path d="M12 7v14" />
+    <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
   </Icon>
 );
 
-/** The Monitor (RM1): unequal blocks, a treemap, after lucide's layout-dashboard (ISC). */
+/** The Monitor (RM1): four blocks, after lucide's layout-grid (ISC). */
 export const MonitorIcon = () => (
-  <Icon>
-    <rect x="2" y="2" width="4.7" height="6" rx="0.7" />
-    <rect x="9.3" y="2" width="4.7" height="3.3" rx="0.7" />
-    <rect x="9.3" y="8" width="4.7" height="6" rx="0.7" />
-    <rect x="2" y="10.7" width="4.7" height="3.3" rx="0.7" />
+  // Four blocks, lucide's layout-grid, as the kits draw it (V93).
+  <Icon lucide>
+    <rect width="7" height="7" x="3" y="3" rx="1" />
+    <rect width="7" height="7" x="14" y="3" rx="1" />
+    <rect width="7" height="7" x="14" y="14" rx="1" />
+    <rect width="7" height="7" x="3" y="14" rx="1" />
   </Icon>
 );
 
@@ -201,9 +204,10 @@ export const HistoryIcon = () => (
 );
 
 export const SettingsIcon = () => (
-  <Icon>
-    <circle cx="8" cy="8" r="2" />
-    <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" />
+  // Lucide's settings, as the kits draw it (V93).
+  <Icon lucide>
+    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+    <circle cx="12" cy="12" r="3" />
   </Icon>
 );
 
@@ -239,11 +243,11 @@ export const WorkingIcon = () => (
   </Icon>
 );
 
-/** The sidenav's To review group (V48): work to look at, after lucide's eye (ISC). */
+/** Work to look at (V48), lucide's eye on its 24 grid as the kits draw it (V93). */
 export const ReviewIcon = () => (
-  <Icon>
-    <path d="M1.37 8.23a.67.67 0 0 1 0-.46 7.17 7.17 0 0 1 13.26 0 .67.67 0 0 1 0 .46 7.17 7.17 0 0 1-13.26 0" />
-    <circle cx="8" cy="8" r="2" />
+  <Icon lucide>
+    <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+    <circle cx="12" cy="12" r="3" />
   </Icon>
 );
 
@@ -768,6 +772,16 @@ export const AlertIcon = () => (
 export const RunningIcon = () => (
   <Icon lucide>
     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+  </Icon>
+);
+
+/**
+ * At work in a sidenav row (V93, the kits' `spin`): a faint ring and the arc that turns on it.
+ */
+export const SpinIcon = () => (
+  <Icon lucide>
+    <circle cx="12" cy="12" r="9" opacity="0.28" />
+    <path d="M21 12a9 9 0 0 0-9-9" />
   </Icon>
 );
 

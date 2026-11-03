@@ -23,8 +23,8 @@ const POLL = { timeout: 12_000 };
 const BRANCH = 'feature/add-a-half-function';
 const startPage = (page: Page) => page.getByRole('region', { name: 'Start a workspace' });
 const panel = (page: Page) => page.getByRole('region', { name: `Workspace ${BRANCH}` });
-/** A card's dot: its tone says its agent works, whatever it runs (V48f). */
-const working = (row: Locator) => row.locator('.state-dot');
+/** A row: its tone says its agent works, whatever it runs (V48f; V93's rows). */
+const working = (row: Locator) => row;
 const workspaceRow = (page: Page) => page.locator(`.workspace-row[data-branch="${BRANCH}"]`);
 const box = (page: Page) => panel(page).getByRole('textbox', { name: 'Reply to the agent' });
 const screen = (page: Page) => panel(page).locator('.agent-terminal .xterm-rows');
@@ -75,7 +75,7 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
   await page.goto(`${symbiote.url}?branch=${encodeURIComponent(BRANCH)}`);
   const here = panel(page);
   await expect(here.getByText("Symbiote's prompt")).toBeVisible(POLL);
-  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
+  await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
   await here.getByRole('button', { name: 'More actions' }).click();
   const talk = here.getByRole('menuitem', { name: 'Talk' });
   await expect(talk).not.toHaveAttribute('data-tip', /not recorded/);
@@ -95,7 +95,7 @@ test('Codex on its app server, without terminals: its thread from there, a turn 
   server.typed(id, 'Go ahead, from the terminal');
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(here.locator('.thread-you').last()).toHaveText(/Go ahead, from the terminal/, POLL);
-  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
+  await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
 
   // A message while it works joins its turn: sent at once, nothing stopped.
   await expect(here.getByRole('button', { name: 'Send', exact: true })).toBeVisible();
@@ -134,14 +134,14 @@ test('Codex on its app server: Stop interrupts its turn, Start again makes a new
   await page.goto(symbiote.url);
   await start(page);
   const here = panel(page);
-  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
+  await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
 
   await here.getByRole('button', { name: 'Stop the agent' }).click();
   await expect(workspaceRow(page)).toContainText('Stopped', POLL);
   expect(server.threads[0]?.turns.at(-1)?.status).toBe('interrupted');
 
   await here.getByRole('button', { name: 'Start the agent' }).click();
-  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
+  await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
   expect(server.threads).toHaveLength(2);
   server.fail(server.threads[1]!.id, 'unexpected status 401 Unauthorized');
   await expect(workspaceRow(page)).toContainText(
@@ -198,7 +198,7 @@ test("Codex's own terminal in its panel: the trust it asks for, a turn typed the
   await page.keyboard.type('Go ahead.');
   await page.keyboard.press('Enter');
   await expect(screen(page)).toContainText('sent: Go ahead.', POLL);
-  await expect(working(workspaceRow(page))).toHaveClass(/tone-working/, POLL);
+  await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
 
   // The thread, read only, has it; leaving the terminal hangs it up, the thread goes on.
   await here.getByRole('tab', { name: 'Thread' }).click();

@@ -643,6 +643,9 @@ const TOOL_WORDS: Record<string, [verb: string, alone: string]> = {
   TodoWrite: ['Updating its to-do list', 'Updating its to-do list'],
 };
 
+/** A tool's verb with a subject ("Running", "Editing"); none for a tool not known. */
+export const activityVerb = (tool: string): string | undefined => TOOL_WORDS[tool]?.[0];
+
 /** A tool running, as the page says it (V48f): "Running pnpm test", "Editing src/auth.ts". */
 export function activityText({ tool, subject }: ToolActivity): string {
   const words = TOOL_WORDS[tool];

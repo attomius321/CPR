@@ -390,6 +390,10 @@ export function branchReviews(
                   ...(verdict.into ? { into: verdict.into } : {}),
                   merged: await mergedInto(refs, verdict),
                   ...(verdict.via === 'hive' ? { via: 'hive' as const } : viaOf(verdict.via)),
+                  number: review.verdicts.length,
+                  ...(verdict.summary.trim()
+                    ? { summary: verdict.summary.trim().slice(0, 300) }
+                    : {}),
                 },
               }
             : {}),
