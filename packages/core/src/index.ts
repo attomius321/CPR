@@ -249,6 +249,8 @@ export {
 } from './git/branches.js';
 export {
   PROMPT_KEYS,
+  type CheckChange,
+  type CheckSetting,
   type PromptChange,
   type PromptKey,
   type PromptPlaceholder,

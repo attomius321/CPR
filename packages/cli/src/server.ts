@@ -84,6 +84,7 @@ import { WorkspaceRefused } from './workspace-record.js';
 import type { WorkspaceDayService } from './workspace-day.js';
 import { MergeRefused, sendFailure, type Merger } from './merges.js';
 import { parsePromptChange, PromptRefused, type PromptSettingsService } from './prompts.js';
+import { parseCheckChange, type CheckSettingService } from './check-setting.js';
 import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';
 import { withHive, type HiveRecord } from './hive.js';
@@ -185,6 +186,8 @@ export interface RepositoryOptions {
   day?: WorkspaceDayService;
   /** Every agent's prompts (V28): `/api/settings/prompts`. */
   settings?: PromptSettingsService;
+  /** The check, one for the merger and Hive (fix/settings-page): `/api/settings/checks`. */
+  checks?: CheckSettingService;
   /**
    * Nucleus, the person's orchestrator in the checkout (V35, NU1): `/nucleus` (`/scout`, its address
    * before NU1, too), `/api/nucleus…`.
@@ -590,7 +593,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         }),
       );
     }
-    const { workspaces, nucleus, scribe, skills, monitor, settings, usage, merges } = repository;
+    const { workspaces, nucleus, scribe, skills, monitor, settings, checks, usage, merges } =
+      repository;
     if (workspaces) {
       // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves
       // them to `/`.
@@ -679,6 +683,11 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       return written(req, res, parsePromptChange, (change) =>
         answer(res, () => settings.setPrompt(change)),
       );
+    }
+    // The check (fix/settings-page): `merge.checks`, or the one Symbiote finds.
+    if (checks && url.pathname === '/api/settings/checks') {
+      if (req.method === 'GET') return answer(res, () => checks.read());
+      return written(req, res, parseCheckChange, (change) => answer(res, () => checks.set(change)));
     }
     if (merges && url.pathname.startsWith('/api/merges')) {
       return mergesRoute(req, res, url, merges, repository.workspaces);

@@ -14,7 +14,12 @@ import {
   sizeOf,
   type NavSection,
 } from '../src/settings/settings.js';
-import { checksEdited, checksProblem, cleanCommands } from '../src/settings/checks.js';
+import {
+  checkGitNote,
+  checksEdited,
+  checksProblem,
+  cleanCommands,
+} from '../src/settings/checks.js';
 
 const prompt = (fields: Partial<PromptSetting>): PromptSetting => ({
   key: 'start.fix',
@@ -351,5 +356,18 @@ describe('promptOfUrl', () => {
     expect(promptOfUrl('?prompt=start.bug', keys)).toBe('start.feature');
     expect(promptOfUrl('', keys)).toBe('start.feature');
     expect(promptOfUrl('', [])).toBeNull();
+  });
+});
+
+describe('checkGitNote (fix/settings-page)', () => {
+  it("says where a save goes and whether it is shared, for each of git's states", () => {
+    const file = 'symbiote/config.json';
+    expect(checkGitNote({ file, git: 'none' })).toBe(
+      'A save writes symbiote/config.json: commit it to share the check.',
+    );
+    expect(checkGitNote({ file, git: 'committed' })).toBe(
+      'Shared: symbiote/config.json is committed as it is.',
+    );
+    expect(checkGitNote({ file, git: 'ignored' })).toMatch(/stays on this machine/);
   });
 });

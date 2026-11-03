@@ -375,10 +375,11 @@ test("Settings lists Hive's prompts only while Hive is on", async ({ page }) => 
   await hive(page, true);
   await page.reload();
   const group = list.getByRole('region', { name: 'Hive', exact: true });
-  // Hive mode and its reviewer first, as proof 04 lists them (V93, decision 896).
+  // Hive's prompts a folded group, first under Prompts (fix/settings-page); its reviewer an agent,
+  // Hive mode under This repository.
+  await group.locator('.settings-fold-head').click();
   await expect(group.getByRole('button')).toHaveText([
-    'Hive modeOn',
-    'Reviewer',
+    'Hive9',
     'Start',
     'Check failed',
     'Defects proven',
@@ -390,6 +391,9 @@ test("Settings lists Hive's prompts only while Hive is on", async ({ page }) => 
     // What Alpha Ceph is told of Hive (V86, decision 751).
     'Alpha Ceph',
   ]);
+  await expect(
+    list.getByRole('region', { name: 'Agents' }).getByRole('button', { name: 'Reviewer' }),
+  ).toBeVisible();
   await group.getByRole('button', { name: 'Check failed' }).click();
   await expect(
     page.locator('.settings-editor').getByRole('textbox', { name: 'Check failed prompt' }),

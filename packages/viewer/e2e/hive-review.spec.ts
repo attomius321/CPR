@@ -159,7 +159,8 @@ test("Settings: the running reviewer's model and effort on the Hive mode page, O
   await page.reload();
   const group = page
     .getByRole('navigation', { name: 'Settings' })
-    .getByRole('region', { name: 'Hive', exact: true });
+    .getByRole('region', { name: 'Agents' });
+  // Among the agents (fix/settings-page; in the Hive group before).
   await group.getByRole('button', { name: 'Reviewer' }).click();
   const reviewer = page.getByRole('region', { name: 'Reviewer' });
   await expect(reviewer.getByRole('textbox', { name: 'Reviewer prompt' })).toHaveValue(

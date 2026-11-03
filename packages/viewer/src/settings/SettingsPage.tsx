@@ -7,7 +7,13 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { PromptKey, PromptSetting, PromptSettings, AgentLevels } from '@symbiote/core';
+import type {
+  AgentLevels,
+  CheckSetting,
+  PromptKey,
+  PromptSetting,
+  PromptSettings,
+} from '@symbiote/core';
 import { EffortStepper } from '../workspaces/EffortStepper.js';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
@@ -22,18 +28,28 @@ import { HivePage } from './HivePage.js';
 import { StartConfirm } from './StartConfirm.js';
 import { useHive } from '../shell/hive.js';
 import {
+  APPEARANCE,
+  CHECKS,
+  HIVE,
+  LIBRARY,
   draftProblem,
+  filterNav,
+  foldOpen,
   gitNote,
   insertAt,
   isEdited,
   markOf,
-  promptGroups,
   promptOfUrl,
+  settingsNav,
   sizeOf,
   agentName,
+  type EntryKey,
+  type NavEntry,
+  type NavFold,
   type PrebuiltAgent,
-  HIVE_GROUP,
 } from './settings.js';
+import { checksEdited } from './checks.js';
+import { ChecksPage, type ChecksNotice } from './ChecksPage.js';
 import { nucleusName, useAlphaCeph } from '../shell/names.js';
 import {
   AGENT_NAMES,
@@ -50,6 +66,7 @@ import {
   ApprovedIcon,
   BugIcon,
   ChecksIcon,
+  ChevronIcon,
   ChoreIcon,
   SparkIcon,
   CommentIcon,
@@ -67,6 +84,7 @@ import {
   PushIcon,
   RefactorIcon,
   ResetIcon,
+  SearchIcon,
   SettingsIcon,
   SparklesIcon,
   SpikeIcon,
@@ -75,6 +93,7 @@ import {
 import { SettingsCard } from './SettingsCard.js';
 
 const API = '/api/settings/prompts';
+const CHECKS_API = '/api/settings/checks';
 
 /** The agents the advisor runs on (V75c), each its model and level on Suggest settings' page. */
 const ADVISING = ['claude', 'codex'] as const;
@@ -265,16 +284,25 @@ const ADVISOR: Record<Advising, AgentSettings> = {
   codex: advisorSettings('codex'),
 };
 
-/** This browser's settings (V51, decision 388): an entry of their own at the list's end. */
-const APPEARANCE = 'appearance';
-/** The skill library (SK1): this machine's, for every repository, not the project's. */
-const LIBRARY = 'skill-library';
-/** Hive mode (V82): this repository's, kept out of git (decision 623), a danger to press. */
-const HIVE = 'hive-mode';
-const REPOSITORY_GROUP = 'This repository';
-const MACHINE_GROUP = 'This machine';
-const BROWSER_GROUP = 'This browser';
-type EntryKey = PromptKey | typeof LIBRARY | typeof APPEARANCE | typeof HIVE;
+/** The groups of prompts folded or opened by the person, kept in this browser. */
+const FOLDS_KEY = 'symbiote.viewer.settings-folds';
+
+function readFolds(): Record<string, boolean> {
+  try {
+    const kept = JSON.parse(window.localStorage.getItem(FOLDS_KEY) ?? '{}') as unknown;
+    return kept && typeof kept === 'object' ? (kept as Record<string, boolean>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function keepFolds(folds: Record<string, boolean>) {
+  try {
+    window.localStorage.setItem(FOLDS_KEY, JSON.stringify(folds));
+  } catch {
+    // Kept for this page only: the browser keeps nothing here.
+  }
+}
 
 /**
  * An entry's icon in the list (V81, decision 600), by its key (an agent's: its first prompt's);
@@ -311,6 +339,7 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   'hive.reviewer': FlaskIcon,
   // What Alpha Ceph is told of Hive (V86): its own icon, the Hive Mind.
   'hive.nucleus': NucleusIcon,
+  [CHECKS]: ChecksIcon,
   [LIBRARY]: FolderIcon,
   [HIVE]: HexagonIcon,
   [APPEARANCE]: AppearanceIcon,
@@ -343,12 +372,13 @@ interface Notice {
 }
 
 /**
- * Settings (V28b): every agent's prompts, Symbiote's until the project changes them. A change is
- * saved in `symbiote/config.json` (`prompts`); unsaved drafts are kept while another prompt is
- * open, and leaving the page with one asks first. A prebuilt agent is one entry, whose page holds
- * its model, its effort and its prompt (fix/scout-merger-scribe-settings). This repository's Hive
- * mode (V82), this machine's Skill library (SK1) and this browser's Appearance (V51) are the last
- * entries, listed even when the prompts cannot be read.
+ * Settings (V28b): every agent's prompts, Symbiote's until the project changes them, and the
+ * settings that are not prompts. A change is saved in `symbiote/config.json`; unsaved drafts are
+ * kept while another entry is open, and leaving the page with one asks first. The list
+ * (fix/settings-page) is by what is set, in both modes: This repository (the check, one for the
+ * merger and Hive; Hive mode), Agents (each one page: its model, its effort, its prompts), Prompts
+ * in groups that fold, This machine's Skill library (SK1), this browser's Appearance (V51); a
+ * filter over it. The settings that are not prompts are listed even when the prompts cannot be read.
  */
 export function SettingsPage() {
   const [settings, setSettings] = useState<PromptSettings | null>(null);
@@ -361,11 +391,28 @@ export function SettingsPage() {
   const [drafts, setDrafts] = useState<Partial<Record<PromptKey, string>>>({});
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
+  // The check (fix/settings-page): read with the prompts, its draft kept as theirs.
+  const [checks, setChecks] = useState<CheckSetting | null>(null);
+  const [checksError, setChecksError] = useState<string | null>(null);
+  const [checksDraft, setChecksDraft] = useState<string[] | undefined>(undefined);
+  const [checksNotice, setChecksNotice] = useState<ChecksNotice | null>(null);
+  const [query, setQuery] = useState('');
+  const [folds, setFolds] = useState(readFolds);
   const hive = useHive();
   // Nucleus's name: Alpha Ceph's once the sidenav plays its change (V86, decision 731).
   const alpha = useAlphaCeph();
 
+  const loadChecks = useCallback(async () => {
+    try {
+      setChecks(await getJson<CheckSetting>(CHECKS_API));
+      setChecksError(null);
+    } catch (failed) {
+      setChecksError(`The check could not be read: ${(failed as Error).message}`);
+    }
+  }, []);
+  // Every save changes the config file: both reads again, or the next save is refused as stale.
   const load = useCallback(async () => {
+    void loadChecks();
     try {
       const read = await getJson<PromptSettings>(API);
       setSettings(read);
@@ -375,62 +422,71 @@ export function SettingsPage() {
       setError(`The prompts could not be read: ${(failed as Error).message}`);
       return null;
     }
-  }, []);
+  }, [loadChecks]);
   // Read when the page opens: Hive mode's own state, not a dependency (its group follows below).
   const hiveAtOpen = useRef(hive);
   useEffect(() => {
     void load().then((read) => {
-      const keys = read
-        ? promptGroups(read.prompts, { hive: hiveAtOpen.current }).flatMap((g) =>
-            g.entries.map((e) => e.key),
-          )
-        : [];
-      // Without prompts, Appearance opens first, as before the Skill library (SK1).
-      setOpen(promptOfUrl<EntryKey>(window.location.search, [...keys, APPEARANCE, LIBRARY, HIVE]));
+      const keys = settingsNav(read?.prompts ?? null, { hive: hiveAtOpen.current }).flatMap((s) => [
+        ...s.entries.map((e) => e.key),
+        ...s.folds.flatMap((f) => f.entries.map((e) => e.key)),
+      ]);
+      setOpen(promptOfUrl<EntryKey>(window.location.search, keys));
     });
   }, [load]);
 
-  const groups = useMemo(
-    () => (settings ? promptGroups(settings.prompts, { hive, alpha }) : []),
+  const sections = useMemo(
+    () => settingsNav(settings?.prompts ?? null, { hive, alpha }),
     [settings, hive, alpha],
   );
+  const shown = useMemo(() => filterNav(sections, query), [sections, query]);
   // The list scrolls on its own when it is taller than its card (V62): the entry open, from the
-  // address or the last group's, is scrolled to; one clicked is in view already.
+  // address, is scrolled to; one clicked is in view already.
   const list = useRef<HTMLElement>(null);
   useEffect(() => {
     list.current?.querySelector('[aria-current="true"]')?.scrollIntoView({ block: 'nearest' });
-  }, [open, groups]);
+  }, [open, sections]);
   const edited = useMemo(
     () => settings?.prompts.filter((p) => isEdited(p, drafts[p.key])).map((p) => p.key) ?? [],
     [settings, drafts],
   );
+  const checksChanged = checksEdited(checks?.commands ?? checks?.found?.commands, checksDraft);
+  const unsaved = edited.length + (checksChanged ? 1 : 0);
   // Leaving with an unsaved change asks first: closing or reloading the page (the browser asks),
   // and going elsewhere in the shell (V29a), which does not load another page.
   const setLeaveGuard = useShell()?.setLeaveGuard;
   useEffect(() => {
-    if (edited.length === 0) return;
+    if (unsaved === 0) return;
     const onLeave = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener('beforeunload', onLeave);
     setLeaveGuard?.({
       question: 'Leave Settings?',
-      detail: `${edited.length === 1 ? 'A prompt is' : `${edited.length} prompts are`} changed and not saved.`,
+      detail: `${unsaved === 1 ? 'A change is' : `${unsaved} changes are`} not saved.`,
     });
     return () => {
       window.removeEventListener('beforeunload', onLeave);
       setLeaveGuard?.(null);
     };
-  }, [edited.length, setLeaveGuard]);
+  }, [unsaved, setLeaveGuard]);
 
   const show = (key: EntryKey) => {
     setOpen(key);
     setPicked(true);
     setNotice((current) => (current?.key === key ? current : null));
+    // The check is read again as it opens: another page's save changed the file's version.
+    if (key === CHECKS) void loadChecks();
     window.history.replaceState(null, '', `?prompt=${encodeURIComponent(key)}`);
   };
   const back = () => {
     setPicked(false);
     window.history.replaceState(null, '', window.location.pathname);
   };
+  const fold = (group: string, isOpen: boolean) =>
+    setFolds((all) => {
+      const next = { ...all, [group]: !isOpen };
+      keepFolds(next);
+      return next;
+    });
 
   const save = async (prompt: PromptSetting, text: string | null) => {
     if (!settings) return;
@@ -447,10 +503,42 @@ export function SettingsPage() {
         key: prompt.key,
         text: `${text === null ? "Symbiote's text again." : 'Saved.'} ${gitNote(next)}`,
       });
+      void loadChecks();
     } catch (failed) {
       const message = (failed as Error).message;
       setNotice({
         key: prompt.key,
+        text: message,
+        error: true,
+        ...(message.includes('changed since') ? { stale: true } : {}),
+      });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const saveChecks = async (commands: string[] | null) => {
+    if (!checks) return;
+    setBusy(true);
+    try {
+      const next = await postJson<CheckSetting>(CHECKS_API, { commands, version: checks.version });
+      setChecks(next);
+      setChecksDraft(undefined);
+      setChecksNotice({
+        text:
+          commands === null
+            ? next.found
+              ? `merge.checks removed: Symbiote runs the check it finds in ${next.found.source}.`
+              : 'merge.checks removed: none is found, so a merge waits for you to land it.'
+            : `Saved. The next merge${hive ? " and Hive's next check run" : ' runs'} ${
+                commands.length === 1 ? 'it' : `these ${commands.length} commands`
+              }.`,
+      });
+      // The prompts' version too: the file changed.
+      void load();
+    } catch (failed) {
+      const message = (failed as Error).message;
+      setChecksNotice({
         text: message,
         error: true,
         ...(message.includes('changed since') ? { stale: true } : {}),
@@ -477,24 +565,73 @@ export function SettingsPage() {
       onBack={back}
     />
   );
-  const current = groups.flatMap((g) => g.entries).find((e) => e.key === open);
-  const hiveEntry = (
-    <li>
-      <button
-        type="button"
-        aria-current={open === HIVE ? 'true' : undefined}
-        // Its name, and "on" while it is: Off, the default, is the pill alone.
-        aria-label={hive ? 'Hive mode, on' : 'Hive mode'}
-        onClick={() => show(HIVE)}
-      >
-        <Tile entry={HIVE} />
-        <span className="settings-name">Hive mode</span>
-        <span className={`settings-mark ${hive ? 'hive-on' : 'hive-off'}`} aria-hidden="true">
-          {hive ? 'On' : 'Off'}
-        </span>
-      </button>
-    </li>
-  );
+  const current = sections
+    .flatMap((s) => [...s.entries, ...s.folds.flatMap((f) => f.entries)])
+    .find((e) => e.key === open && e.prompts.length > 0);
+
+  /** An entry's row: its icon, its name, its mark (Hive mode's On or Off). */
+  const entryRow = (entry: NavEntry) => {
+    const mark =
+      entry.key === CHECKS
+        ? checksChanged
+          ? 'unsaved'
+          : checks && !checks.commands && !checks.found
+            ? 'warning'
+            : null
+        : markOf(entry.prompts, edited);
+    return (
+      <li key={entry.key}>
+        <button
+          type="button"
+          aria-current={entry.key === open ? 'true' : undefined}
+          // Hive mode's name, and "on" while it is: Off, the default, is the pill alone.
+          {...(entry.key === HIVE ? { 'aria-label': hive ? 'Hive mode, on' : 'Hive mode' } : {})}
+          onClick={() => show(entry.key)}
+        >
+          <Tile entry={entry.key} />
+          <span className="settings-name">{entry.name}</span>
+          {entry.key === HIVE ? (
+            <span className={`settings-mark ${hive ? 'hive-on' : 'hive-off'}`} aria-hidden="true">
+              {hive ? 'On' : 'Off'}
+            </span>
+          ) : (
+            mark && (
+              <span className={`settings-mark ${mark}`}>
+                {entry.key === CHECKS && mark === 'warning' ? 'none' : MARKS[mark]}
+              </span>
+            )
+          )}
+        </button>
+      </li>
+    );
+  };
+  /** A group of prompts: its name a button that folds it, its count and mark while folded. */
+  const foldOf = (group: NavFold) => {
+    const isOpen = foldOpen(group, { open, kept: folds, query });
+    const mark = markOf(
+      group.entries.flatMap((e) => e.prompts),
+      edited,
+    );
+    const id = `settings-fold-${group.group.toLowerCase().replace(/\W+/g, '-')}`;
+    return (
+      <section key={group.group} className="settings-fold" aria-label={group.group}>
+        <button
+          type="button"
+          className="settings-fold-head"
+          aria-expanded={isOpen}
+          aria-controls={id}
+          onClick={() => fold(group.group, isOpen)}
+        >
+          <ChevronIcon open={isOpen} />
+          <span className="settings-name">{group.group}</span>
+          {!isOpen && mark && <span className={`settings-mark ${mark}`}>{MARKS[mark]}</span>}
+          <span className="settings-count">{group.entries.length}</span>
+        </button>
+        {isOpen && <ul id={id}>{group.entries.map(entryRow)}</ul>}
+      </section>
+    );
+  };
+
   return (
     <div className="settings">
       {/* The person's mockup (V62): the page's icon, its title and a line under it. */}
@@ -502,11 +639,11 @@ export function SettingsPage() {
         className="settings-bar"
         icon={<SettingsIcon />}
         title="Settings"
-        // The proofs' line, by mode (V93, proofs 04 and 11): where each prompt is kept, its page.
+        // The proofs' line, by mode (V93, proofs 04 and 11).
         line={
           hive
             ? 'How Hive runs this repository, and what Symbiote tells its agents'
-            : 'What Symbiote tells its agents, and how this repository works'
+            : 'How this repository is checked, and what Symbiote tells its agents'
         }
       />
       {error && (
@@ -524,71 +661,57 @@ export function SettingsPage() {
       ) : (
         <div className={`settings-body${picked ? ' picked' : ''}`}>
           <nav ref={list} className="settings-list" aria-label="Settings">
-            {groups.map(({ group, entries }) => (
-              <section key={group} aria-label={group}>
-                <h2>{group}</h2>
-                <ul>
-                  {hive && group === HIVE_GROUP && hiveEntry}
-                  {entries.map((entry) => {
-                    const mark = markOf(entry.prompts, edited);
-                    return (
-                      <li key={entry.key}>
-                        <button
-                          type="button"
-                          aria-current={entry.key === open ? 'true' : undefined}
-                          onClick={() => show(entry.key)}
-                        >
-                          <Tile entry={entry.key} />
-                          <span className="settings-name">{entry.name}</span>
-                          {mark && <span className={`settings-mark ${mark}`}>{MARKS[mark]}</span>}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+            <label className="settings-find">
+              <SearchIcon />
+              <input
+                type="search"
+                aria-label="Find a setting"
+                placeholder="Find a setting…"
+                value={query}
+                autoComplete="off"
+                spellCheck={false}
+                onChange={(event) => setQuery(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Escape' || query === '') return;
+                  event.preventDefault();
+                  setQuery('');
+                }}
+              />
+            </label>
+            {shown.map((section) => (
+              <section key={section.name} aria-label={section.name}>
+                <h2>{section.name}</h2>
+                {section.entries.length > 0 && <ul>{section.entries.map(entryRow)}</ul>}
+                {section.folds.map(foldOf)}
               </section>
             ))}
-            {!(hive && groups.some((g) => g.group === HIVE_GROUP)) && (
-              <section aria-label={REPOSITORY_GROUP}>
-                <h2>{REPOSITORY_GROUP}</h2>
-                <ul>{hiveEntry}</ul>
-              </section>
+            {shown.length === 0 && (
+              <p className="settings-none" role="status">
+                No setting matches “{query.trim()}”.
+              </p>
             )}
-            <section aria-label={MACHINE_GROUP}>
-              <h2>{MACHINE_GROUP}</h2>
-              <ul>
-                <li>
-                  <button
-                    type="button"
-                    aria-current={open === LIBRARY ? 'true' : undefined}
-                    onClick={() => show(LIBRARY)}
-                  >
-                    <Tile entry={LIBRARY} />
-                    <span className="settings-name">Skill library</span>
-                  </button>
-                </li>
-              </ul>
-            </section>
-            <section aria-label={BROWSER_GROUP}>
-              <h2>{BROWSER_GROUP}</h2>
-              <ul>
-                <li>
-                  <button
-                    type="button"
-                    aria-current={open === APPEARANCE ? 'true' : undefined}
-                    onClick={() => show(APPEARANCE)}
-                  >
-                    <Tile entry={APPEARANCE} />
-                    <span className="settings-name">Appearance</span>
-                  </button>
-                </li>
-              </ul>
-            </section>
           </nav>
-          {open === APPEARANCE ? (
+          {open === CHECKS ? (
+            <ChecksPage
+              setting={checks}
+              error={checksError}
+              hive={hive}
+              draft={checksDraft}
+              busy={busy}
+              notice={checksNotice}
+              onDraft={(commands) => {
+                setChecksDraft(commands);
+                setChecksNotice(null);
+              }}
+              onDiscard={() => setChecksDraft(undefined)}
+              onSave={(commands) => void saveChecks(commands)}
+              onLoad={() => void loadChecks().then(() => setChecksNotice(null))}
+              onBack={back}
+            />
+          ) : open === APPEARANCE ? (
             <AppearancePage onBack={back} />
           ) : open === HIVE ? (
-            <HivePage onBack={back} />
+            <HivePage onBack={back} onChecks={() => show(CHECKS)} />
           ) : open === LIBRARY ? (
             <LibraryPage onBack={back} />
           ) : current?.key === 'advisor' ? (

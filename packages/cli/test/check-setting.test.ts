@@ -35,6 +35,11 @@ describe("Settings' check", () => {
     });
     expect(read.commands).toBeUndefined();
     expect(read.found?.source).toContain('package.json');
+    // What Hive's page reads at HEAD (`/api/hive/state`): found, not null for a ref.
+    const repoOf = await openRepo((await repository()).repo.root);
+    expect(await projectCheck(repoOf, repoOf.root, 'HEAD')).toMatchObject({
+      commands: ['npm install', 'npm run check'],
+    });
   });
 
   it('saves the commands as merge.checks, the rest of the file kept; the merger and Hive run them', async () => {

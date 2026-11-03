@@ -321,10 +321,11 @@ test("fields and buttons take the page's font and spacing on every page", async 
         if (style.letterSpacing !== body.letterSpacing) {
           off.push(`${name}: letter-spacing ${style.letterSpacing}`);
         }
-        // A branch's name is literal: Start's in the code's font, as proof 06 draws it (V93).
+        // A branch's name is literal: Start's in the code's font, as proof 06 draws it (V93); so
+        // are the check's commands (fix/settings-page).
         if (
           element.matches(controls) &&
-          !element.matches('#start-branch') &&
+          !element.matches('#start-branch, .checks-command') &&
           style.fontFamily !== body.fontFamily
         ) {
           off.push(`${name}: ${style.fontFamily}`);
@@ -344,6 +345,10 @@ test("fields and buttons take the page's font and spacing on every page", async 
   expect(await unlike()).toEqual([]);
 
   await page.getByRole('link', { name: 'Settings' }).click();
+  // The check's commands first (fix/settings-page), then a prompt in its folded group.
+  await expect(page.locator('.checks-command').first()).toBeVisible();
+  expect(await unlike()).toEqual([]);
+  await page.getByRole('button', { name: /^Workspaces/ }).click();
   await page.getByRole('button', { name: 'Feature', exact: true }).click();
   await expect(page.locator('.settings-editor textarea')).toBeVisible();
   expect(await unlike()).toEqual([]);
