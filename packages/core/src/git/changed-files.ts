@@ -194,3 +194,40 @@ export function parseNumstat(output: string): LineCount[] {
   }
   return counts;
 }
+
+/**
+ * Each of `shas`' lines added and removed against its first parent (V92: a Hive round's writer),
+ * binary files left out; a merge commit counts none. One `git log --no-walk` for them all.
+ */
+export async function commitLineCounts(
+  repo: GitRepo,
+  shas: readonly string[],
+): Promise<Map<string, { added: number; removed: number }>> {
+  const counts = new Map<string, { added: number; removed: number }>();
+  if (shas.length === 0) return counts;
+  const output = await git(repo.root, [
+    'log',
+    '--no-walk=unsorted',
+    '--numstat',
+    '--no-color',
+    '--no-ext-diff',
+    '--no-renames',
+    '--format=%x1e%H',
+    ...shas,
+    '--',
+  ]);
+  for (const block of output.split('\x1e')) {
+    const [sha, ...lines] = block.split('\n');
+    if (!sha) continue;
+    let added = 0;
+    let removed = 0;
+    for (const line of lines) {
+      const [a, r] = line.split('\t');
+      if (!a || !r || a === '-' || r === '-') continue;
+      added += Number(a);
+      removed += Number(r);
+    }
+    counts.set(sha.trim(), { added, removed });
+  }
+  return counts;
+}

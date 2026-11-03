@@ -86,7 +86,7 @@ import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
 import { branchReviews } from './reviews.js';
-import { merger, MergeRefused } from './merges.js';
+import { merger, MergeRefused, projectCheck } from './merges.js';
 import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
 import { promptSettingsService } from './prompts.js';
 import { nucleus } from './nucleus.js';
@@ -893,11 +893,14 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     // Settings' switch: the runner told at once (HV2), another process's change read at its tick.
     hive: {
       on: () => hive.on(),
+      since: () => hive.since(),
       set: async (on) => {
         await hive.set(on);
         hiveRun.switched(on);
       },
     },
+    // The check Hive would run (V92): the default checkout's, as the runner finds it.
+    hiveCheck: () => projectCheck(repo, repo.root, 'HEAD'),
     nucleusStart: nucleusStartSetting,
     log,
     version,

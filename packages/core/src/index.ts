@@ -12,6 +12,7 @@ export {
   listChangedBlobs,
   listChangedFiles,
   listLineCounts,
+  commitLineCounts,
   parseNameStatus,
   parseNumstat,
   parseRaw,

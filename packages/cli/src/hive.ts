@@ -14,23 +14,30 @@ import { prepareSymbioteFolder, reviewPlace } from './reviews.js';
 export interface HiveRecord {
   on(): Promise<boolean>;
   set(on: boolean): Promise<void>;
+  /** When it was last turned on, while it is on (V92: Settings' "since"); absent when unknown. */
+  since?(): Promise<string | undefined>;
 }
 
 /**
  * Hive mode's record in `file` (`{ "on": true, "since": "<ISO date>" }`); a missing, broken or
  * foreign file reads as off.
  */
-export function hiveRecord(file: string, { now = () => new Date() } = {}): HiveRecord {
+export function hiveRecord(file: string, { now = () => new Date() } = {}): Required<HiveRecord> {
+  const read = async (): Promise<{ on?: unknown; since?: unknown } | null> => {
+    try {
+      const value = JSON.parse(await readFile(file, 'utf8')) as unknown;
+      return typeof value === 'object' && value !== null && !Array.isArray(value) ? value : null;
+    } catch {
+      return null;
+    }
+  };
   return {
     async on() {
-      try {
-        const value = JSON.parse(await readFile(file, 'utf8')) as unknown;
-        return (
-          typeof value === 'object' && value !== null && (value as { on?: unknown }).on === true
-        );
-      } catch {
-        return false;
-      }
+      return (await read())?.on === true;
+    },
+    async since() {
+      const value = await read();
+      return value?.on === true && typeof value.since === 'string' ? value.since : undefined;
     },
     async set(on) {
       const record = on ? { on, since: now().toISOString() } : { on };
@@ -49,7 +56,7 @@ export function repositoryHive(
   repo: GitRepo,
   cacheDir: string,
   { now = () => new Date() } = {},
-): HiveRecord {
+): Required<HiveRecord> {
   return repositorySwitch(repo, cacheDir, 'hive.json', { now });
 }
 
@@ -62,18 +69,23 @@ export function repositorySwitch(
   cacheDir: string,
   name: string,
   { now = () => new Date() } = {},
-): HiveRecord {
+): Required<HiveRecord> {
   const place = async () => {
     const where = await reviewPlace(repo, cacheDir);
     return { where, record: hiveRecord(join(dirname(where.dir), name), { now }) };
   };
+  const on = async () => {
+    const { where, record } = await place();
+    if (!(await record.on())) return false;
+    if (where.place === 'cache') return true;
+    const main = { ...repo, root: mainWorktree(repo) };
+    return (await trackedFiles(main, `symbiote/${name}`)).length === 0;
+  };
   return {
-    async on() {
-      const { where, record } = await place();
-      if (!(await record.on())) return false;
-      if (where.place === 'cache') return true;
-      const main = { ...repo, root: mainWorktree(repo) };
-      return (await trackedFiles(main, `symbiote/${name}`)).length === 0;
+    on,
+    async since() {
+      const { record } = await place();
+      return (await on()) ? record.since() : undefined;
     },
     async set(on) {
       const { where, record } = await place();
