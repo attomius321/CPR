@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { RepoStatus } from '@symbiote/core';
 import { relativeDate } from '../history/commits.js';
-import { BellIcon, BranchIcon, MergeIcon, SpinIcon } from '../ui/icons.js';
+import { BellIcon, BranchIcon, MergeIcon, RunningIcon, SpinIcon } from '../ui/icons.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { hiveGroups, workspaceGroups } from '../workspaces/workspaces.js';
 import { useHive } from './hive.js';
@@ -106,7 +106,7 @@ function Segments() {
         {counts && (
           <>
             <span className="statusbar-seg">
-              <SpinIcon />
+              {counts.flight > 0 ? <SpinIcon /> : <RunningIcon />}
               {counts.flight} in flight
             </span>
             <span className="statusbar-seg">
@@ -129,7 +129,8 @@ function Segments() {
             {counts.waits} wait for you
           </span>
           <span className="statusbar-seg">
-            <SpinIcon />
+            {/* The arc turns while one works; none at work, it holds still. */}
+            {counts.working > 0 ? <SpinIcon /> : <RunningIcon />}
             {counts.working} {counts.working === 1 ? 'agent' : 'agents'} working
           </span>
         </>

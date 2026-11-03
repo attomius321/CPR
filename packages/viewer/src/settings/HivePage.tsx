@@ -25,6 +25,7 @@ import { TurnOffHive } from './HiveOff.js';
 import { SettingsCard } from './SettingsCard.js';
 import { pauseWords } from '../workspaces/hive-rounds.js';
 import { budgetOf, LANDS_BY, pauseAtWords, pauseChoices } from './hive-switch.js';
+import { Loading } from '../ui/Loading.js';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const two = (n: number) => String(n).padStart(2, '0');
@@ -328,7 +329,7 @@ function HiveLanding({
         tone={checkRead && !check ? 'fail' : undefined}
         help={
           !checkRead ? (
-            'Reading…'
+            <Loading inline>Reading…</Loading>
           ) : check ? (
             <>
               What Hive runs on every commit, from <code>{checkSource(check.source)}</code>.

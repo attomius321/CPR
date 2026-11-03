@@ -55,12 +55,13 @@ import { Resizer } from '../ui/Resizer.js';
 import { DiffKeys, Sidebar, type SidebarTab } from './Sidebar.js';
 import { Help } from '../ui/Help.js';
 import { PageHead } from '../ui/PageHead.js';
-import { ForwardIcon, ReviewIcon, RunningIcon, SymbioteMark } from '../ui/icons.js';
+import { ForwardIcon, ReviewIcon, SpinIcon, SymbioteMark } from '../ui/icons.js';
 import { browserStore } from './store.js';
 import { WindowButtons } from '../shell/TitleBar.js';
 import { useLayout } from '../graph/useLayout.js';
 import { loadWidths, saveWidth, withWidth, type Widths } from '../ui/widths.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 export function App() {
   const { state, setState, inView, retry } = useDiffGraph();
@@ -534,7 +535,7 @@ export function App() {
         </main>
       ) : (
         <main className={`canvas${resizing ? ' resizing' : ''}`} style={widthStyle}>
-          {state.status === 'loading' && <p className="hint">Loading graph…</p>}
+          {state.status === 'loading' && <Loading className="hint">Loading graph…</Loading>}
           {state.status === 'empty' && (
             <DropZone error={state.error} onFile={(file) => void load(file)} />
           )}
@@ -595,9 +596,9 @@ export function App() {
                   />
                 ) : (
                   // The first layout: the change list and findings are there meanwhile.
-                  <p className="hint canvas-waiting layout-pending" role="status">
+                  <Loading className="hint canvas-waiting layout-pending" status>
                     Laying out…
-                  </p>
+                  </Loading>
                 )}
                 {layout && (
                   <Legend frames={layout.nodes[0]?.type === 'project'}>
@@ -721,7 +722,7 @@ function PageSwitch({
           {...tip(words, { keys: 'g' })}
           onClick={() => onPage(view)}
         >
-          {building && view === 'graph' && <RunningIcon />}
+          {building && view === 'graph' && <SpinIcon />}
           {name}
         </button>
       ))}

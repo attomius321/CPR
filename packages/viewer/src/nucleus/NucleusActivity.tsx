@@ -10,6 +10,7 @@ import { activityGroups } from '../workspaces/activity/groups.js';
 import { liveActivity } from '../workspaces/activity/live.js';
 import { nucleusAgent } from './page-agent.js';
 import { useNucleusName } from '../shell/names.js';
+import { Loading } from '../ui/Loading.js';
 
 /** Nucleus's activity, read again with each read of its state; null until the first answers. */
 function useNucleusActivity(read: PageAgentState | null): Activity | null {
@@ -45,7 +46,7 @@ export function NucleusActivity({ read }: { read: PageAgentState | null }) {
     () => liveActivity(agent, worktree, events, groups),
     [agent, worktree, events, groups],
   );
-  if (!activity) return <p className="hint activity-empty">Reading what {name} did…</p>;
+  if (!activity) return <Loading className="hint activity-empty">Reading what {name} did…</Loading>;
   if (activity.lines.length === 0) {
     return (
       <p className="hint activity-empty">

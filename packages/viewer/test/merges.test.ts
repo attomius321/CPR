@@ -13,6 +13,7 @@ import {
   mergeState,
   mergeTip,
   mergeTitle,
+  mergingAlone,
   regionFlags,
   removableOnCard,
   resolutionFiles,
@@ -550,7 +551,14 @@ describe("a resolution's files (V46c)", () => {
 
   it('says a file is being resolved while the agent works', () => {
     const [file] = resolutionFiles(entry({ state: 'resolving', conflicts: ['src/a.ts'] }));
-    expect(file).toMatchObject({ path: 'src/a.ts', regions: [], tone: 'none', why: 'Resolving…' });
+    // Drawn as a loading, its arc turning (fix/static-loadings).
+    expect(file).toMatchObject({
+      path: 'src/a.ts',
+      regions: [],
+      tone: 'none',
+      why: 'Resolving…',
+      resolving: true,
+    });
   });
 
   it('has no files without a conflict', () => {
@@ -844,5 +852,38 @@ describe("the sides' names in the gutter (fix/merge-viewer-on-conflict)", () => 
     expect(gutterChars(['main', 'feature/discounts'])).toBe(17);
     expect(gutterChars(['main', 'agent'])).toBe(5);
     expect(gutterChars(['main', 'feature/a-very-long-branch-name-indeed'])).toBe(24);
+  });
+});
+
+describe('mergingAlone (V93; fix/failed-merge-hides-workspace)', () => {
+  const failing = { ...check, ok: false, failed: 'pnpm test:e2e' };
+  const alone = (fields: Partial<MergeEntry>) => mergingAlone([entry(fields)]).has('feature/csv');
+  const region = { path: 'src/a.ts', line: 1, ours: ['a'], base: null, theirs: ['b'], text: 'c' };
+  const resolution = { agent: 'claude' as const, regions: [region], ms: 4000 };
+
+  it('shows a workspace as its Merging row alone while its merge runs or waits for the person', () => {
+    expect(alone({ state: 'queued' })).toBe(true);
+    expect(alone({ state: 'merging' })).toBe(true);
+    expect(alone({ state: 'resolving' })).toBe(true);
+    expect(alone({ state: 'checking', check })).toBe(true);
+    expect(alone({ state: 'ready', check: { ...check, ok: true } })).toBe(true);
+    expect(alone({ state: 'needs-you', conflicts: ['a.ts'] })).toBe(true);
+    expect(alone({ state: 'needs-you', merge: M, resolution, check: { ...check, ok: true } })).toBe(
+      true,
+    );
+    expect(alone({ state: 'landed', merge: M })).toBe(false);
+  });
+
+  it("gives its card back once the merge failed: the branch's agent fixes it", () => {
+    expect(alone({ state: 'failed', merge: M, check: failing })).toBe(false);
+    expect(alone({ state: 'failed', message: 'git merge: fatal' })).toBe(false);
+    expect(alone({ state: 'needs-you', merge: M, resolution, check: failing })).toBe(false);
+  });
+
+  it("hides it again while the branch's next merge is queued, the failed one kept", () => {
+    const failed = entry({ id: 'm1', state: 'failed', merge: M, check: failing });
+    const again = entry({ id: 'm2', state: 'queued' });
+    expect(mergingAlone([failed]).size).toBe(0);
+    expect([...mergingAlone([failed, again])]).toEqual(['feature/csv']);
   });
 });

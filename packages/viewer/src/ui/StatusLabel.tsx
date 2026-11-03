@@ -5,7 +5,7 @@ import {
   FailedIcon,
   HexagonIcon,
   IdleIcon,
-  RunningIcon,
+  SpinIcon,
   StoppedIcon,
   WaitingIcon,
 } from './icons.js';
@@ -18,7 +18,7 @@ import {
 export type StatusTone = 'run' | 'ok' | 'error' | 'info' | 'idle' | 'you' | 'warning' | 'hive';
 
 const ICONS: Record<StatusTone, () => ReactNode> = {
-  run: RunningIcon,
+  run: SpinIcon,
   ok: DoneIcon,
   error: FailedIcon,
   info: StoppedIcon,

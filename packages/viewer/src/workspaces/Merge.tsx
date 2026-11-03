@@ -7,6 +7,7 @@ import type {
   WorkspaceList,
 } from '@symbiote/core';
 import { useShell } from '../shell/shell-context.js';
+import { hrefOf } from '../shell/pages.js';
 import { postJson } from '../ui/http.js';
 import { splitPath } from './changes.js';
 import { removeMerge } from './cleanup.js';
@@ -62,6 +63,7 @@ import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 import { replyMode } from './workspaces.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 const ACTION_NAMES: Record<MergeAction, string> = {
   land: 'Land',
@@ -93,7 +95,7 @@ export function mergeOf(merges: MergeList | null, branch: string): MergeEntry | 
  */
 export function MergeView({ branch }: { branch: string }) {
   const { merges, list } = useWorkspaces();
-  if (!merges) return <p className="hint main-hint">Reading the merges…</p>;
+  if (!merges) return <Loading className="hint main-hint">Reading the merges…</Loading>;
   const entry = mergeOf(merges, branch);
   if (!entry) {
     return (
@@ -182,13 +184,17 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
       .catch((e: unknown) => setError((e as Error).message))
       .finally(() => setBusy(false));
   };
-  /** The failed check typed into the branch's agent (AR2, decision 742); the bar says so. */
+  /**
+   * The failed check typed into the branch's agent (AR2, decision 742); the bar says so, and its
+   * workspace's page opens, where the agent answers (fix/failed-merge-hides-workspace).
+   */
   const sendToAgent = () => {
     setBusy(true);
     setError(null);
     postJson('/api/merges/send', { id: entry.id })
       .then(() => {
         shell?.notify({ text: `Sent the failed check to ${entry.branch}'s agent` });
+        shell?.navigate({ page: 'workspace', branch: entry.branch });
         return reloadWorkspaces();
       })
       .catch((e: unknown) => setError((e as Error).message))
@@ -254,7 +260,18 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
               <span className="merge-row-state">{mergeState(entry).text}</span> ·{' '}
               <span className="merge-title">{mergeTitle(entry)}</span>
             </span>
-            <code className="merge-branch">{entry.branch}</code>
+            {/* Its workspace's page, while it has one (fix/failed-merge-hides-workspace). */}
+            {workspace ? (
+              <a
+                className="link merge-branch"
+                href={hrefOf({ page: 'workspace', branch: entry.branch })}
+                {...tip(`Open its workspace\n${workspace.title}`)}
+              >
+                {entry.branch}
+              </a>
+            ) : (
+              <code className="merge-branch">{entry.branch}</code>
+            )}
             {entry.strategy === 'fast-forward' && (
               <>
                 {' · '}
@@ -682,7 +699,11 @@ function MergeFiles({
       <ul className="merge-filelist" aria-label="Its files">
         {files.map((f) => {
           const { name, folder } = splitPath(f.path);
-          const what = f.why ?? f.flags.map((flag) => flag.text).join(' · ');
+          const what = f.resolving ? (
+            <Loading inline>{f.why}</Loading>
+          ) : (
+            (f.why ?? f.flags.map((flag) => flag.text).join(' · '))
+          );
           return (
             <li key={f.path}>
               <button
@@ -738,7 +759,12 @@ function MergeFiles({
           })}
         </ol>
       ) : (
-        file && <p className="merge-fileview-why hint">{file.why}</p>
+        file &&
+        (file.resolving ? (
+          <Loading className="merge-fileview-why hint">{file.why}</Loading>
+        ) : (
+          <p className="merge-fileview-why hint">{file.why}</p>
+        ))
       )}
     </div>
   );

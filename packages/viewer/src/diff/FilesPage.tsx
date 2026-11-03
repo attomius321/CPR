@@ -39,6 +39,7 @@ import {
 import { describeOpen, openInEditor, type OpenTarget } from './open.js';
 import { OpenIcon } from './OpenIcon.js';
 import { ReviewTab, type ReviewProps } from './ReviewTab.js';
+import { Loading } from '../ui/Loading.js';
 
 /** Rows drawn before "Show all" (decision 436): a generated file's diff stays quick to draw. */
 const MAX_ROWS = 2000;
@@ -304,9 +305,9 @@ function rowOpen(file: ReviewFile, row: DiffRow, side?: Side): OpenTarget | null
   };
 }
 
-/** Why there are no rows, in words. */
-function noRows(file: ReviewFile, state: DiffState): string | null {
-  if (state.status === 'loading') return 'Reading its diff…';
+/** Why there are no rows, in words; while its diff is read, a loading line. */
+function noRows(file: ReviewFile, state: DiffState): ReactNode {
+  if (state.status === 'loading') return <Loading inline>Reading its diff…</Loading>;
   if (state.status === 'none')
     return 'Its diff shows when the change is opened with symbiote view.';
   if (state.status === 'failed') return state.error;

@@ -10,6 +10,7 @@ import { Help } from '../ui/Help.js';
 import { getJson, postJson } from '../ui/http.js';
 import { probeText } from '../skills/library.js';
 import { SettingsCard } from './SettingsCard.js';
+import { Loading } from '../ui/Loading.js';
 
 const API = '/api/skills';
 /** How long typing rests before Symbiote looks at the folder typed. */
@@ -154,7 +155,7 @@ export function LibraryPage({ onBack }: { onBack: () => void }) {
         </Help>
       </p>
       {library === undefined ? (
-        <p className="hint">Reading the library…</p>
+        <Loading className="hint">Reading the library…</Loading>
       ) : (
         <div className="settings-rows">
           <section className="settings-part" aria-label="Source">

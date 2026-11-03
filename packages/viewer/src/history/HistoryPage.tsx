@@ -104,6 +104,7 @@ import { laneSpacing, layoutLanes } from './lanes.js';
 import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 /** Rows drawn beyond the view, above and below. */
 const OVERSCAN = 10;
@@ -1347,7 +1348,11 @@ function History({
     );
   }
   if (!first) {
-    return <p className={error ? 'hint error' : 'hint'}>{error ?? 'Listing commits…'}</p>;
+    return error ? (
+      <p className="hint error">{error}</p>
+    ) : (
+      <Loading className="hint">Listing commits…</Loading>
+    );
   }
   const now = Date.now();
   const picked = new Set(picks.map((p) => p.sha));
@@ -1550,7 +1555,9 @@ function History({
                   })}
                 </ol>
               )}
-              {!shape && first.listed > 0 && <p className="hint listing">Listing the rest…</p>}
+              {!shape && first.listed > 0 && (
+                <Loading className="hint listing">Listing the rest…</Loading>
+              )}
             </div>
             {fileShown && (
               <GitFile

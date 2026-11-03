@@ -9,7 +9,17 @@
 import type { Folder, FoldersAnswer, Place } from '../folders.js';
 import type { Pin, PinAnswer } from '../pins.js';
 import { repositoryCard } from './cards.js';
-import { ARROW_UP, CHEVRON_RIGHT, DRIVE, el, FOLDER, HOUSE, icon, pinButton } from './dom.js';
+import {
+  ARROW_UP,
+  CHEVRON_RIGHT,
+  DRIVE,
+  el,
+  FOLDER,
+  HOUSE,
+  icon,
+  loading,
+  pinButton,
+} from './dom.js';
 import {
   countsText,
   crumbsOf,
@@ -383,7 +393,7 @@ export function foldersView(deps: FoldersDeps): FoldersView {
       body.replaceChildren(
         error
           ? el('p', { class: 'nexus-folders-error error', role: 'alert' }, error)
-          : el('p', { class: 'nexus-folders-none' }, 'Reading the folders…'),
+          : el('p', { class: 'nexus-folders-none' }, loading('Reading the folders…')),
       );
       return;
     }

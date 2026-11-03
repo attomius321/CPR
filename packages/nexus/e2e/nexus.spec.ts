@@ -257,6 +257,54 @@ test.describe('Symbiote nexus', () => {
     expect(errors).toEqual([]);
   });
 
+  test("draws its tabs as the viewer's line tabs: one row, the row's height, no ground", async ({
+    page,
+  }) => {
+    // fix/fix-nexus-top-left: V89 moved the viewer's tab rules to `.workspace-tabs .stab`; the
+    // nexus's tabs, still in V61's markup, fell back to the browser's grey button, their words'
+    // height, the Symbiotes on a line under the nexus's own.
+    const cache = cacheDir();
+    await symbiote('alpha', cache);
+    await symbiote('beta', cache);
+    const served = await nexus(cache);
+    await page.goto(served.url);
+    await expect(tabs(page).getByRole('tab')).toHaveCount(3);
+    const drawn = await page.evaluate(() => {
+      const strip = document.querySelector<HTMLElement>('.nexus-tabs')!;
+      const bar = document.querySelector<HTMLElement>('.nexus-bar')!;
+      const head = getComputedStyle(document.documentElement).getPropertyValue('--card-head');
+      return {
+        head: parseFloat(head),
+        bar: bar.getBoundingClientRect().height,
+        strip: strip.getBoundingClientRect().height,
+        tabs: [...strip.querySelectorAll<HTMLElement>('[role="tab"]')].map((tab) => {
+          const box = tab.getBoundingClientRect();
+          const style = getComputedStyle(tab);
+          return {
+            name: tab.dataset.tab === '' ? 'Symbiotes' : tab.textContent,
+            top: box.top,
+            height: box.height,
+            background: style.backgroundColor,
+            border: style.borderTopWidth,
+            line: getComputedStyle(tab, '::after').content,
+            picked: tab.getAttribute('aria-selected') === 'true',
+          };
+        }),
+      };
+    });
+    // The row is a card's head high, its hairline under it; the tabs stand on it, its full height.
+    expect(drawn.bar).toBe(drawn.head + 1);
+    expect(drawn.strip).toBe(drawn.head);
+    for (const one of drawn.tabs) {
+      expect(one.top, one.name ?? '').toBe(drawn.tabs[0]?.top);
+      expect(one.height, one.name ?? '').toBe(drawn.head);
+      expect(one.background, one.name ?? '').toBe('rgba(0, 0, 0, 0)');
+      expect(one.border, one.name ?? '').toBe('0px');
+      // The picked tab's line, in the primary, as the viewer's.
+      expect(one.line !== 'none', one.name ?? '').toBe(one.picked);
+    }
+  });
+
   test('moves between tabs with the arrow keys', async ({ page }) => {
     const cache = cacheDir();
     await symbiote('alpha', cache);

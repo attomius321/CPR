@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import type { CheckSetting } from '@symbiote/core';
 import { Help } from '../ui/Help.js';
+import { Loading } from '../ui/Loading.js';
 import { ArrowDownIcon, ArrowUpIcon, PlusIcon, ResetIcon, TrashIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
 import { checkGitNote, checksEdited, checksProblem, cleanCommands } from './checks.js';
@@ -145,7 +146,7 @@ export function ChecksPage({
           {setting.warning}
         </p>
       )}
-      {!setting && !error && <p className="hint">Reading the check…</p>}
+      {!setting && !error && <Loading className="hint">Reading the check…</Loading>}
       {setting && (
         <>
           <div className="settings-section">

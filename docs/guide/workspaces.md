@@ -188,6 +188,10 @@ time; the steps with who approved it, each check command's time against the last
 what a failure does; and the merge's log, its changes, and its conflicts when it has some. While it
 waits its turn, **Take out of the queue** removes it. Symbiote does not push unless you set `merge.push` to `true`.
 
+While its merge is in the queue, a workspace shows only under **Merging**. Once the merge fails,
+the workspace is back in its own group, since its agent has the fix to make; **Send to the agent**
+opens it. The branch's name on a merge's page links to its workspace.
+
 ### Merge commit or fast-forward
 
 Beside the target, pick how the merge lands: **with a merge commit**, the default, or **by

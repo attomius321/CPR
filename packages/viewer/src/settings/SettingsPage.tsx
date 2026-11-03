@@ -91,6 +91,7 @@ import {
   WhereIcon,
 } from '../ui/icons.js';
 import { SettingsCard } from './SettingsCard.js';
+import { Loading } from '../ui/Loading.js';
 
 const API = '/api/settings/prompts';
 const CHECKS_API = '/api/settings/checks';
@@ -657,7 +658,7 @@ export function SettingsPage() {
         </p>
       )}
       {!settings && !error ? (
-        <p className="hint">Reading the prompts…</p>
+        <Loading className="hint">Reading the prompts…</Loading>
       ) : (
         <div className={`settings-body${picked ? ' picked' : ''}`}>
           <nav ref={list} className="settings-list" aria-label="Settings">

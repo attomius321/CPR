@@ -1,0 +1,46 @@
+/* Whatever is under way moves (fix/static-loadings); still without motion. Until this fix the
+   loader arc turned only in a sidenav row, and a loading line was its words alone. */
+
+/* The loader arc (`SpinIcon`), wherever it is drawn: a turn a second. */
+.icon.spin {
+  animation: icon-spin 1s linear infinite;
+}
+
+@keyframes icon-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A loading line (`Loading`): the arc before its words, as tall as their text. */
+.loading > .icon.spin {
+  width: 1.15em;
+  height: 1.15em;
+  margin-right: 0.5em;
+  vertical-align: -0.2em;
+}
+
+/* In a button or a flex row, its gap places the arc. */
+.button .loading > .icon.spin,
+.button.loading > .icon.spin {
+  margin-right: 0;
+}
+
+.button .loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Outlines of what is not read yet (the workspaces' first read, Git's rows): a slow pulse. */
+@keyframes outline-pulse {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon.spin {
+    animation: none;
+  }
+}

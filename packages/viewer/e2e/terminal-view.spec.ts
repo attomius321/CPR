@@ -200,6 +200,14 @@ test('Split: the agent and a shell side by side, in the address, the agent not a
     'right-2',
     POLL,
   );
+  // A reload attaches the agent's pane once, as any page load does: counted once its terminal is
+  // drawn (the fake writes it after recording the attach), not when the shell's is. Under load the
+  // shell's pane drew first and the reload's attach was counted as Split's (5 of 24 runs).
+  await expect(panel(page).locator('.term-pane').nth(0).locator('.xterm-rows')).toContainText(
+    'Fake Claude Code',
+    POLL,
+  );
+  expect(symbiote.attaches()).toHaveLength(attached + 1);
   const reattached = symbiote.attaches().length;
   await panel(page).getByRole('button', { name: 'Split' }).click();
   await expect(panel(page).locator('.term-pane')).toHaveCount(1);

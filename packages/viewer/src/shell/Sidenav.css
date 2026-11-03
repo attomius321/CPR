@@ -383,6 +383,7 @@ button.workspace-about {
   height: 10px;
   border-radius: 4px;
   background: var(--raised);
+  animation: outline-pulse 1.4s ease-in-out infinite;
 }
 
 .skeleton-card span:first-child {
@@ -534,16 +535,7 @@ button.workspace-about {
   --row-tone: var(--info);
 }
 
-/* At work: its arc turns, a turn a second; still without motion. */
-.sidenav .ws-row-icon.spinning .icon {
-  animation: state-spin 1s linear infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sidenav .ws-row-icon.spinning .icon {
-    animation: none;
-  }
-}
+/* At work: its arc turns as everywhere (`.icon.spin`, ui/loading.css). */
 
 .sidenav .ws-row .workspace-about.ws-row-title,
 .sidenav .ws-row .ws-row-title {
@@ -738,6 +730,10 @@ button.workspace-about {
 
   .workspace-skeleton {
     animation-duration: 1ms;
+  }
+
+  .skeleton-card span {
+    animation: none;
   }
 }
 

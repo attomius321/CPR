@@ -101,6 +101,7 @@ import { verdictLine } from './terminal.js';
 import { closeQuestion, shellAfter, shellName, shellOfUrl, withShell } from './shells.js';
 import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
@@ -163,7 +164,7 @@ export function WorkspaceView({ branch }: { branch: string }) {
   const row = allRows(groups).find((r) => r.workspace.branch === branch);
   const notify = useCallback((notice: Notice | null) => shell?.notify(notice), [shell]);
   const onGone = useCallback(() => shell?.navigate({ page: 'overview' }), [shell]);
-  if (!list) return <p className="hint main-hint">Listing workspaces…</p>;
+  if (!list) return <Loading className="hint main-hint">Listing workspaces…</Loading>;
   if (!row) return <NotListed branch={branch} />;
   return (
     <WorkspacePanel
@@ -201,7 +202,7 @@ function NotListed({ branch }: { branch: string }) {
       gone = true;
     };
   }, [branch, shell]);
-  if (!asked) return <p className="hint main-hint">Looking for it…</p>;
+  if (!asked) return <Loading className="hint main-hint">Looking for it…</Loading>;
   return (
     <div className="main-empty">
       <p>No workspace {branch}.</p>
@@ -610,11 +611,12 @@ function WorkspacePanel({
     ...(live
       ? [
           {
-            label: stopping ? 'Stopping…' : 'Stop the agent',
+            label: 'Stop the agent',
             disabled: busy,
             onSelect: () => {
+              // The head says it stops meanwhile, its arc turning.
               setStopping(true);
-              setSaid('Stopping the agent…');
+              setSaid(null);
               act(() =>
                 postJson('/api/workspaces/stop', { branch })
                   .then(() => null)
@@ -734,10 +736,16 @@ function WorkspacePanel({
         }
         actions={
           <>
-            {said && (
+            {stopping ? (
               <span className="workspace-said" role="status">
-                {said}
+                <Loading inline>Stopping the agent…</Loading>
               </span>
+            ) : (
+              said && (
+                <span className="workspace-said" role="status">
+                  {said}
+                </span>
+              )
             )}
             {/* The pipeline card holds the steps outside the terminal view (V93, decision 884):
                 the head its state's pill. In the terminal view they stay in the head (V89). */}
@@ -846,7 +854,7 @@ function WorkspacePanel({
                 {...tip('Remove its sessions, its worktree and its merged branch')}
                 onClick={() => clean(false)}
               >
-                {cleaning ? 'Cleaning up…' : 'Clean up'}
+                {cleaning ? <Loading inline>Cleaning up…</Loading> : 'Clean up'}
               </button>
             )}
           </>

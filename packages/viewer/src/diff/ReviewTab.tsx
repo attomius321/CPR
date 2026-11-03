@@ -22,6 +22,7 @@ import { MergeControl } from '../workspaces/MergeControl.js';
 import { Help } from '../ui/Help.js';
 import { AlertIcon, CheckIcon } from '../ui/icons.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 export interface ReviewProps {
   forge: 'github' | 'gitlab' | 'local';
@@ -235,13 +236,13 @@ export function ReviewTab({
           )}
           <div className="review-submit">
             <button type="submit" className="button" disabled={!ready}>
-              {submission.status === 'posting'
-                ? local
-                  ? 'Finishing…'
-                  : 'Posting…'
-                : local
-                  ? 'Finish review'
-                  : `Submit review to ${site}`}
+              {submission.status === 'posting' ? (
+                <Loading inline>{local ? 'Finishing…' : 'Posting…'}</Loading>
+              ) : local ? (
+                'Finish review'
+              ) : (
+                `Submit review to ${site}`
+              )}
               {/* The key on Finish review; Submit review to GitHub is long enough without it. */}
               {local && submission.status !== 'posting' && (
                 <kbd aria-hidden="true">{FINISH_KEYS}</kbd>
@@ -309,7 +310,11 @@ function MergeCheck({ into, canOpen }: { into: string; canOpen: boolean }) {
     };
   }, []);
   if (!merge) {
-    return <p className="merge-checking muted small">Checking whether it merges into {into}…</p>;
+    return (
+      <Loading className="merge-checking muted small">
+        Checking whether it merges into {into}…
+      </Loading>
+    );
   }
   if ('failed' in merge || 'error' in merge) {
     return (
