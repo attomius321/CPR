@@ -85,13 +85,6 @@ const PHASES = [
 ];
 
 /** V81 (decision 601): Settings' groups' tints, `section[data-tint=…] { --tint: var(…) }`. */
-const SETTINGS_TINTS = Object.fromEntries(
-  [...css.matchAll(/\[data-tint='([\w-]+)'\]\s*\{\s*--tint:\s*var\((--[\w-]+)\);/g)].map((m) => [
-    m[1]!,
-    m[2]!,
-  ]),
-);
-
 /** Each pair of `fronts` on `backs` under `min`, as "front on back: ratio". */
 function under(theme: Map<string, string>, fronts: string[], backs: string[], min: number) {
   const low: string[] = [];
@@ -341,25 +334,10 @@ describe('the tokens (V29b)', () => {
         expect(low).toEqual([]);
       });
 
-      // V81 (decisions 601, 602): an entry's icon on its group's tile, a wash of the group's
-      // colour over the list card's ground; the open entry's icon in the accent.
-      it("draws Settings' icons at least 3:1 on their group's tile, the open one's accent too", () => {
-        expect(SETTINGS_TINTS).toEqual({
-          workspaces: '--phase-implement',
-          reviews: '--phase-test',
-          agents: '--phase-visual',
-          machine: '--phase-docs',
-          browser: '--phase-explore',
-        });
-        const share = Number.parseFloat(theme.get('--phase-wash')!) / 100;
-        const low = Object.values(SETTINGS_TINTS).flatMap((tint) => {
-          const tile = mixed(theme.get(tint)!, share, theme.get('--side')!);
-          return [tint, '--accent'].flatMap((front) => {
-            const ratio = contrast(theme.get(front)!, tile);
-            return ratio < 3 ? [`${front} on ${tint}'s tile: ${ratio.toFixed(2)}`] : [];
-          });
-        });
-        expect(low).toEqual([]);
+      // V81 (decision 600) and V93 (decision 891, proof 11): an entry's icon, plain, muted on
+      // the list card; the open entry's in the accent.
+      it("draws Settings' icons at least 3:1 on the list's card, the open one's accent too", () => {
+        expect(under(theme, ['--muted', '--accent'], ['--panel'], 3)).toEqual([]);
       });
 
       // RM2 (decision 332): the Monitor's long files, yellow, orange, red; their lines are

@@ -30,7 +30,6 @@ import {
   promptGroups,
   promptOfUrl,
   sizeOf,
-  PREBUILT_GROUP,
   agentName,
   type PrebuiltAgent,
 } from './settings.js';
@@ -316,23 +315,11 @@ const ICONS: Partial<Record<EntryKey, () => ReactNode>> = {
   [APPEARANCE]: AppearanceIcon,
 } satisfies Record<Exclude<EntryKey, 'library'>, () => ReactNode>;
 
-/** A group's tint in the list (decision 601): `SettingsPage.css` gives each its colour. */
-const TINTS: Record<string, string> = {
-  Workspaces: 'workspaces',
-  Reviews: 'reviews',
-  [PREBUILT_GROUP]: 'agents',
-  [MACHINE_GROUP]: 'machine',
-  [BROWSER_GROUP]: 'browser',
-};
-
-/** An entry's icon on its group's tile, before its name (Hive mode's red); decorative. */
+/** An entry's icon before its name (V93: plain, no tile); decorative. */
 function Tile({ entry }: { entry: EntryKey }) {
   const Drawn = ICONS[entry];
   return Drawn ? (
-    <span
-      className={entry === HIVE ? 'settings-tile hive-tile' : 'settings-tile'}
-      aria-hidden="true"
-    >
+    <span className="settings-tile" aria-hidden="true">
       <Drawn />
     </span>
   ) : null;
@@ -521,7 +508,7 @@ export function SettingsPage() {
         <div className={`settings-body${picked ? ' picked' : ''}`}>
           <nav ref={list} className="settings-list" aria-label="Settings">
             {groups.map(({ group, entries }) => (
-              <section key={group} aria-label={group} data-tint={TINTS[group]}>
+              <section key={group} aria-label={group}>
                 <h2>{group}</h2>
                 <ul>
                   {entries.map((entry) => {
@@ -560,7 +547,7 @@ export function SettingsPage() {
                 </li>
               </ul>
             </section>
-            <section aria-label={MACHINE_GROUP} data-tint={TINTS[MACHINE_GROUP]}>
+            <section aria-label={MACHINE_GROUP}>
               <h2>{MACHINE_GROUP}</h2>
               <ul>
                 <li>
@@ -575,7 +562,7 @@ export function SettingsPage() {
                 </li>
               </ul>
             </section>
-            <section aria-label={BROWSER_GROUP} data-tint={TINTS[BROWSER_GROUP]}>
+            <section aria-label={BROWSER_GROUP}>
               <h2>{BROWSER_GROUP}</h2>
               <ul>
                 <li>
