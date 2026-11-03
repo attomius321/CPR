@@ -416,10 +416,11 @@ const layersDrawn = (page: Page) =>
       ),
   );
 
-// Fix (hive-question-reappears): the question folds into its Mind by 0.53 s and its dim is gone by
-// 0.86 s; neither is drawn again, though the live dialog stays until the pill's light ends
-// (1.54 s). Each frame from the fold to the end is drawn twice under Playwright's clock: as it
-// is, and with the question (from 0.86 s its dim too) hidden. The same pixels: it is not drawn.
+// Fix (hive-question-reappears): the question folds into its Mind by 0.53 s, the Mind and its glow
+// are gone by 0.84 s, the dim by 0.86 s, the ring by 1.18 s; none is drawn again, though their live
+// elements stay until the pill's light ends (1.54 s). Each frame from the fold to the end is drawn
+// twice under Playwright's clock: as it is, and with what is gone by then hidden. The same pixels:
+// it is not drawn.
 test('the question is never drawn again once it folded: every 50 ms from 550 to 1700 ms', async ({
   page,
 }) => {
@@ -447,18 +448,24 @@ test('the question is never drawn again once it folded: every 50 ms from 550 to 
       await expect(page.locator('.sidenav .hive-mind-icon.becoming')).toBeVisible();
     }
     await holdStill(page);
-    const hidden = t >= 860 ? '.hq-backdrop' : '.hq';
-    const shown = await page.screenshot();
+    const gone = [
+      t >= 860 ? '.hq-backdrop' : '.hq',
+      ...(t >= 860 ? ['.hive-arrival-mind', '.hive-arrival-glow'] : []),
+      ...(t >= 1180 ? ['.hive-arrival-ring'] : []),
+    ];
+    // Alpha Ceph's own play (V86) in the sidenav from 1.54 s, not the arrival's: masked.
+    const picture = () => page.screenshot({ mask: [page.locator('.sidenav .hive-mind-icon')] });
+    const shown = await picture();
     const style = await page.addStyleTag({
-      content: `${hidden} { visibility: hidden !important; }`,
+      content: `${gone.join(', ')} { visibility: hidden !important; }`,
     });
-    const without = await page.screenshot();
+    const without = await picture();
     await style.evaluate((element: Element) => {
       element.remove();
     });
     if (!shown.equals(without)) drawn.push(t);
   }
-  expect(drawn, 'frames (ms) that draw the folded question or its dim').toEqual([]);
+  expect(drawn, 'frames (ms) that draw the folded question, its dim or a layer ended').toEqual([]);
   await expect(page.locator('.hq')).toHaveCount(0);
   await expect(page.locator('html')).toHaveAttribute('data-hive', 'on');
 });
