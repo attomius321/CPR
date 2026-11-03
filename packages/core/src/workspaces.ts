@@ -724,6 +724,11 @@ export interface WorkspaceActivity {
    * ended, or none running (`thinking`).
    */
   doing?: ToolActivity | { thinking: true };
+  /**
+   * While it works or asks and its tools are recorded (V93, decision 893): how many tools it
+   * started this turn; absent when none.
+   */
+  tools?: number;
 }
 
 export interface WorkspaceList {

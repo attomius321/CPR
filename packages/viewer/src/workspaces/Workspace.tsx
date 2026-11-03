@@ -1261,6 +1261,9 @@ function NowSection({
                 <dt>{agent.state === 'working' ? 'Working' : 'Waiting'}</dt>
                 <dd>
                   <Since since={since} />
+                  {workspace.activity?.tools
+                    ? ` · ${workspace.activity.tools} tool call${workspace.activity.tools === 1 ? '' : 's'}`
+                    : ''}
                 </dd>
               </>
             )}

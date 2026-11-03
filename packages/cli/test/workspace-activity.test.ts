@@ -79,6 +79,24 @@ describe('activityOf (V48)', () => {
     // Not recorded: no word of what it does.
     expect(activityOf(thread.slice(0, 4), agent('working'), null)?.doing).toBeUndefined();
   });
+
+  it('while it works or asks, the tools it started this turn are counted (V93, decision 893)', () => {
+    const tools: ActivityEntry[] = [
+      // An earlier turn's tool is not this turn's.
+      { at: at(5), session: 's1', id: 'z', tool: 'Grep', phase: 'start' },
+      { at: at(11), session: 's1', id: 'a', tool: 'Read', subject: 'src/a.ts', phase: 'start' },
+      { at: at(11), session: 's1', id: 'a', tool: 'Read', subject: 'src/a.ts', phase: 'end' },
+      { at: at(12), session: 's1', id: 'b', tool: 'Bash', subject: 'pnpm test', phase: 'start' },
+      // Codex's reasoning is thinking, not a tool call.
+      { at: at(13), session: 's1', id: 'r', tool: 'reasoning', phase: 'start' },
+    ];
+    expect(activityOf(thread.slice(0, 4), agent('working'), tools)?.tools).toBe(2);
+    // Proof 08: "6:12 · 14 tool calls" while it asks to run a command.
+    expect(activityOf(thread, agent('needs-you'), tools)?.tools).toBe(2);
+    expect(activityOf(thread, agent('done'), tools)?.tools).toBeUndefined();
+    expect(activityOf(thread.slice(0, 4), agent('working'), null)?.tools).toBeUndefined();
+    expect(activityOf(thread.slice(0, 4), agent('working'), [])?.tools).toBeUndefined();
+  });
 });
 
 describe('doingOf (V48f)', () => {
@@ -163,6 +181,8 @@ describe('serverActivity (V48, Codex on its app server)', () => {
       since: iso(2),
       report: { at: iso(1), text: 'First' },
       doing: { tool: 'command', subject: 'cargo test' },
+      // Its items this turn, counted (V93).
+      tools: 2,
     });
   });
 

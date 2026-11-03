@@ -42,6 +42,17 @@ export function doingOf(
 }
 
 /**
+ * How many tools it started this turn (V93, decision 893: proof 02's "14 tool calls"), Codex's
+ * reasoning not one; read from the lines the hooks already write.
+ */
+export function toolCount(tools: readonly ActivityEntry[], turn: string | undefined): number {
+  const from = turn ? time(turn) : -Infinity;
+  return tools.filter(
+    (tool) => tool.phase === 'start' && tool.tool !== 'reasoning' && time(tool.at) >= from,
+  ).length;
+}
+
+/**
  * What the list says of an agent from its thread's entries (V48): since when its state holds —
  * its turn's prompt while it works, this turn's ask while it waits, its last report once it
  * finished, its end once it stopped or failed —, that ask, and its newest report's first line.
@@ -91,6 +102,9 @@ export function activityOf(
     ...(report ? { report: { at: report.at, text: firstLine(report.text, REPORT_LINE) } } : {}),
     ...(agent.state === 'working' && tools ? { doing: doingOf(tools, turn) } : {}),
   };
+  const live = agent.state === 'working' || agent.state === 'needs-you';
+  const count = live && tools ? toolCount(tools, turn) : 0;
+  if (count > 0) activity.tools = count;
   return Object.keys(activity).length > 0 ? activity : undefined;
 }
 

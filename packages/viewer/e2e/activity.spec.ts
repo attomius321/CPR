@@ -275,6 +275,13 @@ test('what runs now: a live strip and a running phase, then into the timeline as
   await expect(now).toContainText('Testing', POLL);
   await expect(now).toContainText('Run the full check');
   await expect(now.locator('.activity-live-command')).toHaveText('pnpm check');
+  // The terminal's side card counts this turn's tool calls (V93, decision 893; proof 08).
+  await page.getByRole('tab', { name: 'Claude Code' }).click();
+  await expect(page.getByRole('region', { name: 'What its agent does' })).toContainText(
+    '· 1 tool call',
+    POLL,
+  );
+  await page.getByRole('tab', { name: 'Activity' }).click();
   await expect(now.locator('.activity-live-elapsed')).toHaveText(/^\d+:\d\d$/);
   await expect(now.locator('.state-dot')).toHaveClass(/tone-working/);
   const testing = groupOf(page, 'Testing');
