@@ -219,7 +219,7 @@ The sidenav lists your workspaces in groups, by what each one needs from you:
 | **To review** | Finished work: a branch to review, or an approval to merge |
 | **Not running** | Agents that failed, were stopped, or have not started |
 | **Working** | Agents at work, with what each one is doing right now |
-| **Done** | Merged workspaces, ready to clean up. Folded under its name; click it to open |
+| **Done today**, **Earlier** | Merged workspaces, ready to clean up. Folded under their names; click one to open it |
 
 The **Overview** (`t`), first in the sidenav, puts it on one page. Its inbox lists each workspace
 that waits for you, the oldest first, with the one thing to do: **Respond** or **Answer** opens the
@@ -232,11 +232,12 @@ violet dot, and on desktops that support it the taskbar button blinks.
 
 ### Work with the agent
 
-Click a workspace to open it. Its head shows the workspace's *steps* on one line: **Build**,
+Click a workspace to open it. A card under its head shows the workspace's *steps*: **Build**,
 **Review** and **Merge**, after **Plan** and **Your OK** when **Plan first** is on. The current
-step is amber while the agent works and violet when it waits for you. Then come the commits and
-the changed files. In Hive mode, the steps are **Write**, **Check**, **Review** and **Land**, with
-the round, the time and what it spent.
+step is amber while the agent works and violet when it waits for you. Beside the steps, whose turn
+it is and the commits. In Hive mode, the steps are **Write**, **Check**, **Review** and **Land**,
+with the round, the time and what it spent. On the agent's terminal the steps sit in the head, so
+the terminal keeps its rows.
 
 Under the head, the tabs:
 
@@ -255,12 +256,15 @@ Under the head, the tabs:
 The **+** after the tabs opens a shell in the workspace's folder. A shell's tab names the program
 running in it. The bar under the terminal says what the agent waits for, in its own words, and the
 keys that answer it. **Split** shows the agent and a shell side by side. **Focus** keeps the
-terminal alone: the sidenav as a row of icons and no side card. The side card on the right shows
-what the agent does now, the files it has not committed yet, and the branch's commits and files.
+terminal alone: the sidenav as a row of icons and no side card. Beside the terminal, the side card
+shows what the agent does now (and how many tools it ran this turn), the files it has not
+committed yet, and the branch's commits and files; beside the other tabs, the workspace's kind,
+agent and model, its brief, commits and files. **‹›** in the head opens the worktree in VS Code;
+**⋯** holds **Stop the agent**.
 
-![A workspace waiting for you: its agent's plan in the Thread tab, a Respond button in the amber band above it, and the sidenav grouping the other workspaces by what they need](docs/images/workspace.png)
+![A workspace waiting for you: its agent's plan in the Thread tab with Approve plan under it, its steps above with Your OK in violet, and the side card with the workspace's facts and brief](docs/images/workspace.png)
 
-![A workspace's Activity tab: phases of exploring, implementing, a failed test run, debugging and a passing one, with the commits and the agent's report between them](docs/images/activity.png)
+![A workspace's Activity tab: phases of exploring, a commit, implementing, a failed test run and debugging that passes, under what the agent is doing now](docs/images/activity.png)
 
 ### Review the branch and tell the agent
 
@@ -272,7 +276,7 @@ the agent**. Symbiote writes your *verdict*, the decision and your comments, to
 the agent's terminal, and you send it with Enter. The agent reads your comments from the file. If
 you approved, there is nothing to send: you merge next.
 
-![A review of the discount code branch on the Files page: two comments in the Review tab, Request changes picked, and one comment shown under its line in the diff](docs/images/review-files.png)
+![A review on the Files page: the change's files on the left, and cart.ts's diff with its code in colour](docs/images/review-files.png)
 
 ### Merge
 
@@ -291,7 +295,7 @@ conflicts with its target, an agent called the *merger* proposes a resolution. N
 you approve it. Symbiote pushes nothing unless you set `merge.push` in `symbiote/config.json`. (Hive
 mode, below, pushes what it lands.)
 
-![A landed merge: its steps (the merge, npm test and the landing) beside their output, and the merge in the sidenav's Merging group](docs/images/merge.png)
+![A merge being checked: its steps (approved, merged, npm test running against its last time, land) on a card, the steps beside the merge's log, and the merge in the sidenav's Merging group](docs/images/merge.png)
 
 ### Clean up and History
 
@@ -299,7 +303,7 @@ When a workspace is merged, it moves to **Done**. **Clean up** stops the agent a
 folder and branch. The workspace then goes to **History** (`h`), where you can still read its
 activity, thread, brief and changes.
 
-![History: a finished workspace, its activity from the first prompt to the approval](docs/images/history.png)
+![History: three finished workspaces, the newest open with its activity from the first prompt to its commit](docs/images/history.png)
 
 The [workspaces guide](docs/guide/workspaces.md) covers every choice on these pages: the start
 page's cards, a merge commit or a fast-forward, conflicts and the merger, and what a clean-up
@@ -324,7 +328,7 @@ mode*, where you decide. You turn Hive on per repository, in **Settings**, **Hiv
   more, Hive starts no agent until that window resets. It stops a workspace whose spend reaches the
   budget you set, in dollars. Turning Hive off stops its agents, checks and reviews.
 
-![A workspace Hive landed: its Review tab with round 1 (check passed, 1 defect proven by a test) and round 2 (check passed, approved), then the landing in main, pushed](docs/images/hive.png)
+![A workspace Hive landed: its steps all done, its Run tab with the landing in main, round 2's check and approving review, and round 1 folded with its proven defect](docs/images/hive.png)
 
 Start a project in normal mode, and turn Hive on once the repository has a check and tests you
 trust: what passes them lands without you. Hive does not turn on without a check. Each workspace's
@@ -356,7 +360,7 @@ edits files. It may send a message to an agent without asking you, but a start, 
 or a clean-up waits until you click **Confirm** in the bar it shows. Its **Activity** tab records
 what it did.
 
-![Nucleus's page: a conversation in its terminal about what waits, and its request to start a fix, waiting in a bar with Decline and Confirm](docs/images/nucleus.png)
+![Nucleus's page: its terminal, ready for a question, and its Activity tab beside it](docs/images/nucleus.png)
 
 You can give the same tools to an agent of your own, such as Claude Code in your terminal: see
 [Symbiote's tools for your own
@@ -374,7 +378,7 @@ files and diffs, a file's history and blame. Stage and commit your changes, make
 merge, rebase, cherry-pick, stash, fetch, pull and push. Symbiote never forces a push and asks
 before anything that would lose changes.
 
-![The Git page: branches on the left, the commits as a graph with the workspaces' branches, and the selected merge commit's details](docs/images/git.png)
+![The Git page: branches on the left, the commits as a graph with the workspaces' branches and two tags, and the selected commit's details](docs/images/git.png)
 
 ### Skills and Scribe
 
@@ -383,14 +387,14 @@ before anything that would lose changes.
 *Scribe*, an agent on the same page, writes a new skill or improves one. A *skill library*, a folder
 of skills outside the repository, shows on every repository's Skills page.
 
-![The Skills page: the project's skills, one open with its text and line numbers, and Improve with Scribe](docs/images/skills.png)
+![The Skills page: the project's two skills, release open with its text and line numbers, its checks, and Improve with Scribe](docs/images/skills.png)
 
 ### Monitor
 
 **Monitor** (`m`) shows where the code is: a map of every file, sized by its lines of code, with the
 long files in warmer colours. Use it to spot the files that have grown too large.
 
-![The Monitor: the source folder as a map of files sized by their lines, the largest in amber](docs/images/monitor.png)
+![The Monitor: the source folder as a map of files sized by their lines, grouped by folder](docs/images/monitor.png)
 
 ### Settings
 
@@ -404,8 +408,8 @@ long files in warmer colours. Use it to spot the files that have grown too large
 
 ![Settings: the list of what Symbiote tells its agents, and the Feature prompt open with its text](docs/images/settings.png)
 
-The status bar at the bottom shows how much of your Claude and Codex subscription limits you have
-used.
+The status bar at the bottom shows the checkout's branch, what waits for you and how many agents
+work, and how much of your Claude and Codex subscription limits you have used.
 
 ## Several Symbiotes in one window
 
