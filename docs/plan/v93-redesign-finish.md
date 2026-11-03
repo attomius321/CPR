@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v93-redesign-finish.md)
 
-**Status:** planned (3 November 2026), on branch `feature/redesign-finish` (the workspace's, from
+**Status:** built (3 November 2026), on branch `feature/redesign-finish` (the workspace's, from
 `main` at `eb5f9e4`); the person's OK with one rule for every choice: "Should be like in design."
 
 **Problem** (the brief: "I need everything to look like in the screenproofs"; "I know for sure
@@ -162,6 +162,98 @@ review page, the costs, the docs and the README's screenshots.
 | 891 | Settings' list (supersedes 600 and 602's tile) | **Plain icons, the proof's rows, every entry** | choice 7 |
 | 892 | Findings per workspace | **From the graph this server analyzed for its change; absent otherwise** | choice 8: no analysis started |
 | 893 | A tool-call count, a shell's command line | **Recorded if a small read-only addition; else kept, with why** | choice 8 |
+| 894 | The workspace head's actions (found beside proofs 02 and 08) | **Open in VS Code as the head's boxed ‹›; Stop the agent in the ⋯ menu; the head's icon buttons boxed** | the proofs' head draws no Stop |
+| 895 | Hive's pipeline card and Run tab (amends 884 for Hive; found beside proofs 02, 03, 07) | **Each step's detail from Hive's record, a mark a round, the spend's bar, the stage's pill; Run first; no bar under it** | the proofs |
+| 896 | Settings' list in Hive mode (amends 891) | **The Hive group first, Hive mode and its reviewer leading it; every entry kept** | proof 04; choice 7 |
 
 **Not in V93**: pages the proofs never drew; how Hive, the merger or an agent runs; any analysis,
 detector or graph JSON change.
+
+## As built
+
+Built as planned, decisions 875–893, and three more the pairs found (894–896). Every proof sits
+beside the app in both themes on the review page (built from `packages/viewer/coverage/v93/`, not
+committed); each difference is fixed or kept there with why.
+
+- **The sidenav, the status bar, Merge and Start** as planned (875–883). A workspace with a live
+  merge shows only under Merging. Start drops Clear, the S's art, the "Be specific" tip and the
+  "?" helps, as the proof; a model's description moved into its tip.
+- **The pipeline card** (884) on every workspace view but its terminal's: on the terminal the
+  steps stay in the head, so **the terminal loses no row**. Hive's card reads Hive's record
+  (895: `hive-pipeline.ts`, pure, five tests): "4 of 4 · 7:23 of ~10 min" with a bar against the
+  last passing check, "Opus · high", "merge queue → main, push", "passed in 38 s", "approved ·
+  $0.42", "20c37bc in main · pushed", "failed: pnpm test:e2e", "not run on round 3"; one mark a
+  round; the spend against its budget; the head's pill "Checking · round 2 of 3", "Landed in main ·
+  pushed", "Stopped · 3 of 3 rounds". A stop is read from Hive's record: the list's summary has no
+  check, and the stop showed on Write. A stopped run's time ends at its last check.
+- **The side card** 300 px (885), its rhythm the kits' (12 px over a section, facts 9 apart);
+  outside the terminal its Workspace facts and the brief first. The terminal is 102 × 39 against
+  main's 103 × 39: the sidenav gave back 40 px of the side card's 44.
+- **The head** (894): Open in VS Code is the boxed ‹›; Stop the agent is in ⋯ and the head says
+  "Stopping the agent…" meanwhile; tabs carry the proofs' icons; the branch is in mono.
+- **A review** (886–890): the first layout fitted whole at most at 1×, once drawn (React Flow's
+  own first fit ran before the worker's layout); a pick pans only when the symbol is out of view,
+  and from the map (a wide change fits at about 0.3×) comes to 1×. The sidebar 320 px, the detail
+  336, Open ↗ per use, our own tokenizer for colours. A head with an end (Files, Graph) is centred
+  in the 64 px head: it stood 11 px high.
+- **Settings** (891, 896): the line under the title by mode, no Help; plain icons under the group's
+  words; the editor's head 51 px, its title 16 px in (`page-frame.spec` says so for Settings); an On
+  or Off pill on Hive mode; selects at most 168 px; in Hive mode the Hive group first.
+- **The rail** 52 px with 32 px icons, 4 apart, as the proofs (48 and 31 before).
+- **The composer** two lines to start, about 110 px as proof 02 (183): a page hint's 24 px padding
+  had made its foot 82 px.
+- **Found on the way**: History's and Nucleus's tab strips had lost their line tabs with V89's
+  strip (grey default buttons); they take the same style again.
+
+**What Symbiote records now** (choice 8):
+
+| Item | As built |
+|---|---|
+| A merge-check command's own time and result, when the check started | Recorded by the merger (881), read only for the page |
+| A command's expected time | Derived in the viewer from the last passing check of the same commands |
+| The merge step's time | Recorded (`mergeMs`, 881) |
+| "your review, 2nd" and the approval's words | Served from the review's verdicts (882) |
+| Findings per workspace | From the graph this `symbiote view` analyzed for its change (892); none otherwise: no analysis is started for it |
+| A tool-call count | Counted from the lines the hooks already write, this turn's tool starts (893); Codex's reasoning is not one |
+| A shell's command line and port ("npm run dev, :5173") | **Kept**: only the foreground program's name is recorded; the rest needs `/proc` and socket reads, a change to how shells are watched |
+| The reviewer "sandboxed" | **Kept**: not recorded with a review |
+| Permissions in the side card | **Kept**: the list's summary does not carry the agent's permission mode |
+
+**Kept, with why** (each on the review page):
+
+- A finding's title is its message (890): a title and a why line would need a detector and graph
+  JSON change.
+- The agent's tab is named for its agent and comes first (827); in Hive mode Run comes first
+  everywhere, though proof 08 puts the writer first.
+- No Attach on the Thread tab's composer: images attach to a terminal's message.
+- Take out of the queue only while queued: the merger never stops a check it runs.
+- Round 1 stays folded on a landed run (861; proof 07 folds, 03 shows it open); a passed check
+  keeps its commands listed (`hive-loop.spec` reads each command's time).
+- Clean up stays in a landed workspace's head (V55): its next action.
+- The graph's legend keeps Focus, Context and Type references; every Settings entry stays (choice 7).
+- The kits (06, 07) are sheets of parts: each part is checked in the pages that use it.
+- The arrival is measured as frames per second, not as stills.
+
+## Results
+
+Against `main`'s own build (`git archive` of `eb5f9e4`), alternated, 1440 × 900, headless:
+
+| Measure | `main` | V93 |
+|---|---|---|
+| A key to its echo (30 keys, 3 runs) | median 4, 4, 4 ms; max 8–9 | median 4, 4, 3 ms; max 7 |
+| The agent's terminal | 103 × 39 | 102 × 39 |
+| First contentful paint, /overview (median of 5, 3 runs) | 56, 64, 52 ms | 60, 64, 60 ms |
+| First contentful paint, /git | 48, 52, 56 ms | 56, 56, 44 ms |
+| Bitwarden `737ee3f`, first paint (4 runs) | 341–361 ms | 332–355 ms |
+| Bitwarden, select | 114–132 ms | 97–101 ms |
+| Bitwarden, mark reviewed | 36–69 ms | 33–34 ms |
+| Bitwarden, pan | 63 fps | 62–63 fps |
+| The arrival's first 2 s | 120 frames, 59.5 fps, one 33 ms frame | the same |
+| The tokenizer, 2,000 rows of `server.ts` | — | 2.8 ms median, 8.6 max |
+
+A first version fitted the first layout a second time when React Flow's own fit had framed it:
+first paint ran a steady 7–9 ms over `main` (332–341 against 323–334). Comparing the viewport first
+took it back.
+
+Tests: `pnpm check` (3,060 unit tests); `pnpm build`; `pnpm test:e2e`: the viewer's 422 passed,
+`terminal-view.spec.ts:165` (known flaky) passing alone, and the nexus's 20.
