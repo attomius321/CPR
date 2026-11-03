@@ -62,9 +62,10 @@ function mindOf(art: HTMLCanvasElement, rect: DOMRect, x: number, y: number): HT
 }
 
 /**
- * Hive's look arrives from the question (`.hq`): `swap` changes the look inside the transition,
- * the question kept until it is no longer drawn; `close` takes the question away then. Resolves
- * once all is still. Without the question, View Transitions or motion: swaps and closes at once.
+ * Hive's look arrives from the question (`.hq`): `swap` changes the look inside the transition;
+ * `close` takes the question away once all is still. Folded, the live question and its dim are
+ * not drawn (`ui/hive.css`, `data-hive-arriving`): the transition's layers end at 1.18 s, the pill's
+ * light at 1.54 s. Without the question, View Transitions or motion: swaps and closes at once.
  */
 export async function arrive(swap: () => void, close: () => void): Promise<void> {
   const root = document.documentElement;

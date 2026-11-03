@@ -345,6 +345,26 @@
   animation: hive-undim 320ms 540ms ease-out both;
 }
 
+/* Gone, never drawn again: the live question, its dim, the Mind, its glow and the ring stay until
+   the pill has lit (1.54 s), their layers only to 1.18 s, when the transition ends. Each goes out
+   where its layer did, the layer already at 0 then; the question's replaces `.dialog`'s float-in,
+   long ended. */
+:root[data-hive-arriving] .hq {
+  animation: hive-folded 0s 530ms both;
+}
+
+:root[data-hive-arriving] :is(.hive-arrival-mind, .hive-arrival-glow) {
+  animation: hive-folded 0s 840ms both;
+}
+
+:root[data-hive-arriving] .hq-backdrop {
+  animation: hive-folded 0s 860ms both;
+}
+
+:root[data-hive-arriving] .hive-arrival-ring {
+  animation: hive-folded 0s 1180ms both;
+}
+
 :root[data-hive-arrival]::view-transition-new(hive-mind) {
   animation: hive-lift 460ms 380ms cubic-bezier(0.2, 0, 0.2, 1) both;
 }
@@ -375,6 +395,12 @@
 }
 
 @keyframes hive-undim {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes hive-folded {
   to {
     opacity: 0;
   }
