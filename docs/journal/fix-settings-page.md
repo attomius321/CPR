@@ -44,6 +44,7 @@ the rest of the file kept, reset, stale and non-JSON refused, the body's checks)
 the Hive mode page whose Change opens Checks, cancelled, reset; and Hive mode's list, folds, the
 fold kept over a reload, the filter. Eleven e2e encoding the old list changed with it (settings,
 alpha-ceph, hive, hive-loop, hive-review, look).
+
 `pnpm check`: 226 files, 3,076 tests. `pnpm test:e2e`: 425 of 426 in the viewer, the one
 `terminal-view.spec.ts:165` (a known flake under load; 3 of 3 alone); the nexus 20 of 20.
 `look.spec.ts:74` and `hive-review.spec.ts:52` failed once each in a run of six specs beside other
