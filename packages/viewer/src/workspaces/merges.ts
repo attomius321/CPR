@@ -256,6 +256,23 @@ export function mergeButtons(
 /** Whether a merge's card offers Remove (V55): once it landed; any other from its own page. */
 export const removableOnCard = (entry: MergeEntry): boolean => entry.state === 'landed';
 
+/**
+ * Whether a merge stopped on something the branch's agent fixes: git failed, or the check did
+ * (on a resolution too). Its workspace is a card again (fix/failed-merge-hides-workspace).
+ */
+const backToItsAgent = (entry: MergeEntry): boolean =>
+  entry.state === 'failed' || (entry.state === 'needs-you' && entry.check?.ok === false);
+
+/**
+ * The branches whose workspace the sidenav shows only as its Merging row (V93): a merge queued,
+ * running, ready to land or waiting for the person; not one landed or sent back to its agent.
+ */
+export function mergingAlone(merges: readonly MergeEntry[]): Set<string> {
+  return new Set(
+    merges.filter((e) => e.state !== 'landed' && !backToItsAgent(e)).map((e) => e.branch),
+  );
+}
+
 /** Whether the queue is to be read again soon: something in it runs or waits its turn. */
 export function mergeLive(merges: readonly MergeEntry[]): boolean {
   return merges.some((e) => ['queued', 'merging', 'resolving', 'checking'].includes(e.state));
