@@ -143,3 +143,11 @@
 .usage-age {
   color: var(--muted);
 }
+
+/* A narrow window (the sidenav a drawer): the notice and the usage only; the segments would
+   squeeze the notice into a tall column. */
+@media (max-width: 899px) {
+  .statusbar-seg {
+    display: none;
+  }
+}

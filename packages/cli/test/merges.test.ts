@@ -187,6 +187,14 @@ describe('readMergeConfig (V26a)', () => {
 });
 
 describe('queueing a merge (V26a)', () => {
+  it('says in its list whether it pushes what lands (V93: the Merge page says "then pushed")', async () => {
+    const { repo } = setup();
+    const m = await make(repo);
+    expect((await m.list()).push).toBeUndefined();
+    config(repo, { push: true });
+    expect((await m.list()).push).toBe(true);
+  });
+
   it('takes only an approved branch whose tip is the approved commit', async () => {
     const { repo, shas } = setup();
     const m = await make(repo);

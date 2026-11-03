@@ -139,6 +139,11 @@ export function Sidenav({
   const becoming = useNucleusPhase() === 'becoming';
   const route = shell?.route;
   const queued = merges?.merges ?? [];
+  // The branches merging now: their workspaces' rows are the merges' (V93).
+  const merging = useMemo(
+    () => new Set(queued.filter((entry) => entry.state !== 'landed').map((e) => e.branch)),
+    [queued],
+  );
   const empty =
     list !== null && list.workspaces.length === 0 && queued.length === 0 && starts.length === 0;
   // Nucleus's mark (V35): working while it answers; answered when it did while you were elsewhere.
@@ -449,7 +454,8 @@ export function Sidenav({
             GROUPS.map(([key, title]) => {
               // A workspace being made is at work.
               const making = key === 'working' ? starts : [];
-              const rows = groups[key];
+              // A workspace with a merge in the queue shows in Merging alone (V93, the proofs).
+              const rows = groups[key].filter((row) => !merging.has(row.workspace.branch));
               return rows.length + making.length === 0 ? null : (
                 <WorkspaceGroupSection
                   key={key}

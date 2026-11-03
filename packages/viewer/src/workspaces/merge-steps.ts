@@ -4,6 +4,7 @@
 // `test/merge-steps.test.ts`; the page is `Merge.tsx`.
 import type { MergeEntry } from '@symbiote/core';
 import { clockWords } from './hive-live.js';
+import { toReview } from './merges.js';
 
 export type MergeStepState = 'done' | 'now' | 'todo' | 'bad';
 
@@ -34,6 +35,8 @@ export interface MergePageWords {
   commands: MergeCommand[];
   /** The check's time in the Steps card's Check: "0:12 of ~0:20". */
   checkTime?: string;
+  /** The Steps card's Land: where the target goes, and that it is pushed. */
+  landWords: string;
   /** The approval: which of the branch's reviews, when, its words. */
   approval: { words: string; at: string; quote?: string };
 }
@@ -131,6 +134,7 @@ export function mergePage(
     verdict,
     title,
     expected,
+    push = false,
     now,
   }: {
     /** The queue's entries, in its order. */
@@ -140,6 +144,8 @@ export function mergePage(
     title?: string | undefined;
     /** The last passing check's command times (`expectedCheck`). */
     expected?: number[] | undefined;
+    /** `merge.push` is set (the merge list says it): what lands is pushed. */
+    push?: boolean | undefined;
     now: number;
   },
 ): MergePageWords {
@@ -161,7 +167,7 @@ export function mergePage(
           : state === 'ready'
             ? { word: 'Ready to land', tone: 'you' }
             : state === 'needs-you'
-              ? { word: 'Needs you', tone: 'you' }
+              ? { word: toReview(entry) ? 'Review resolution' : 'Needs you', tone: 'you' }
               : state === 'failed'
                 ? { word: check?.ok === false ? 'Check failed' : 'Failed', tone: 'fail' }
                 : state === 'landed'
@@ -255,7 +261,8 @@ export function mergePage(
             }
           : { name: 'Check', state: 'todo', detail: check.commands.join(' && ') };
 
-  // Land: the target moves to the merge; pushed when the merger pushed it.
+  // Land: the target moves to the merge; pushed when the merger pushes (Hive's always do).
+  const pushed = push || entry.by === 'hive';
   const land: MergeStep =
     state === 'landed'
       ? {
@@ -275,8 +282,14 @@ export function mergePage(
       : {
           name: 'Land',
           state: 'todo',
-          detail: `${entry.into} fast-forwards${entry.by === 'hive' ? ', then push' : ''}`,
+          detail: `${entry.into} fast-forwards${pushed ? ', then push' : ''}`,
         };
+  const landWords =
+    state === 'landed'
+      ? land.detail
+      : entry.merge
+        ? `${entry.into} to ${short(entry.merge)}${pushed ? ', then pushed' : ''}`
+        : land.detail;
 
   const queueCell = live
     ? {
@@ -301,6 +314,7 @@ export function mergePage(
     queue: queueCell,
     time: timeCell,
     commands,
+    landWords,
     ...(checkTime ? { checkTime } : {}),
     approval: {
       words:

@@ -42,7 +42,13 @@ describe('mergePage', () => {
         steps: [],
       },
     });
-    const page = mergePage(checking, { queue: [checking], verdict, expected: [20_000], now: NOW });
+    const page = mergePage(checking, {
+      queue: [checking],
+      verdict,
+      expected: [20_000],
+      push: true,
+      now: NOW,
+    });
     expect(page.pill).toEqual({ word: 'Checking the merge', tone: 'run' });
     expect(page.title).toBe('Fix order total rounding');
     expect(page.line).toEqual(['approved by you at 12:50', 'first in the queue']);
@@ -50,8 +56,10 @@ describe('mergePage', () => {
       ['Approved', 'done', 'by you · 12:50'],
       ['Merge', 'done', 'into main at 7017d22 · 0.4 s'],
       ['Check', 'now', 'npm test · 0:12 of ~0:20'],
-      ['Land', 'todo', 'main fast-forwards'],
+      ['Land', 'todo', 'main fast-forwards, then push'],
     ]);
+    // The Steps card's Land: where the target goes, and that it is pushed.
+    expect(page.landWords).toBe('main to 7aeb0ad, then pushed');
     expect(page.steps[2]?.progress).toBeCloseTo(0.6);
     expect(page.queue).toEqual({ value: '1', of: 'of 1', words: 'nothing behind it' });
     expect(page.time).toEqual({ value: '0:14', words: 'since your OK' });
@@ -75,6 +83,9 @@ describe('mergePage', () => {
     expect(page.queue).toEqual({ value: '2', of: 'of 2', words: 'nothing behind it' });
     expect(page.steps.map((s) => s.state)).toEqual(['done', 'todo', 'todo', 'todo']);
     expect(page.steps[0]?.detail).toBe('queued · 12:50');
+    // Not pushed (no merge.push), and no merge commit yet.
+    expect(page.steps[3]?.detail).toBe('main fast-forwards');
+    expect(page.landWords).toBe('main fast-forwards');
   });
 
   it('a check that failed: its command red, those after not run, the pill red', () => {

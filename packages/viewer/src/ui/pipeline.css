@@ -107,9 +107,11 @@
 
 .pipeline-words {
   display: flex;
+  flex: none;
   flex-direction: column;
   gap: 1px;
   min-width: 0;
+  max-width: 260px;
   padding: 3px 12px 0 10px;
 }
 

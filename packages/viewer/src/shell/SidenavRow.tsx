@@ -143,9 +143,8 @@ export function WorkspaceRowItem({
       data-group={next.group}
       data-tone={words.tone}
       {...(cleaning ? { 'aria-busy': true, 'aria-disabled': true } : {})}
-      {...tip(folded ? `${words.tip}` : words.tip.split('\n').slice(1).join('\n'), {
-        side: 'right',
-      })}
+      // Its tip says the whole title (the row cuts it) and what the two lines leave out.
+      {...tip(words.tip, { side: 'right' })}
       onClick={cleaning ? undefined : open}
     >
       <span className={`ws-row-icon${words.icon === 'spin' ? ' spinning' : ''}`} aria-hidden="true">
@@ -194,11 +193,11 @@ export function MergeRowItem({
   return (
     <li
       ref={item}
-      className={`workspace-row ws-row merge-card${picked ? ' picked' : ''}${removable ? ' removable' : ''}${removing ? ' removing' : ''}`}
+      className={`workspace-row ws-row merge-card merge-tone-${mergeState(entry).tone}${picked ? ' picked' : ''}${removable ? ' removable' : ''}${removing ? ' removing' : ''}`}
       data-merge={entry.branch}
       data-tone={words.tone}
       {...(removing ? { 'aria-busy': true, 'aria-disabled': true } : {})}
-      {...tip(folded ? words.tip : words.tip.split('\n').slice(1).join('\n'), { side: 'right' })}
+      {...tip(words.tip, { side: 'right' })}
       onClick={removing ? undefined : onPick}
     >
       <span className="ws-row-icon" aria-hidden="true">

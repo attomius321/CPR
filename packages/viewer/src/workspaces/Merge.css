@@ -632,6 +632,11 @@
   gap: var(--page-gap);
 }
 
+/* The head's own bottom padding is the gap under it, as on every page (page-frame.spec). */
+.merge-view .merge-page > .merge-row-head {
+  margin-bottom: calc(-1 * var(--page-gap));
+}
+
 /* The title's target, light (the proof's "→ main"). */
 .merge-into {
   color: var(--muted);
@@ -639,7 +644,10 @@
 }
 
 .merge-row-head .merge-branch {
-  font: var(--size-small) / 1.4 var(--mono);
+  font-family: var(--mono);
+  font-size: var(--size-caption);
+  /* Its own line box no taller than the line's: the mono font's metrics would add 3 px. */
+  line-height: 1;
 }
 
 /* The Steps card and the log beside it, taking what is left of the page's height. */
@@ -804,4 +812,14 @@
   .merge-body {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+/* The state in full, for screen readers: the pill, the pipeline and the steps say it. */
+.merge-page .merge-row-head .merge-said {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

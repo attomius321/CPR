@@ -309,9 +309,11 @@ test("a workspace, its review's two views and its merge: the same frame", async 
   await page.goto(`${symbiote.url}${at}`);
   await panel.getByRole('button', { name: 'Merge into', exact: true }).click();
   await expect(page.getByRole('region', { name: 'Merging' })).toBeVisible(POLL);
+  // The pipeline, then the Steps card and the log's beside it (V93, proof 05).
   await expectPage(page, 'A merge', `?merge=${encodeURIComponent(branch)}`, [
-    '.merge-steps',
-    '.merge-terminal',
+    '.card.pipeline',
+    '.merge-steps-card',
+    '.merge-output-card',
   ]);
 });
 

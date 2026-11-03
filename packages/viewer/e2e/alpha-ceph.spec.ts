@@ -67,7 +67,8 @@ test('Hive on: Alpha Ceph in the sidenav (open and folded), its page, the title 
   // The Mind: 7 cells, the core's chamber white-hot.
   await expect(alpha.locator('.hive-mind-icon .plate')).toHaveCount(7);
   await expect(alpha.locator('.hive-mind-icon .chamber')).toHaveCount(7);
-  await expect(alpha.locator('.hive-mind-icon')).toHaveCSS('width', '18px');
+  // The kits' 16 px page icons (V93; 18 px before).
+  await expect(alpha.locator('.hive-mind-icon')).toHaveCSS('width', '16px');
   // Folded, the rail keeps it.
   await page.getByRole('button', { name: 'Fold the sidenav' }).click();
   await expect(page.locator('.shell')).toHaveClass(/folded/);

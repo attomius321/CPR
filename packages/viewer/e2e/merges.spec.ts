@@ -212,7 +212,9 @@ async function resolvedConflict(
   return { main, math, card, entry: page.getByRole('region', { name: 'Merge of agent' }) };
 }
 
-test('the log: each step and what it writes, while it runs (V46a)', async ({ page }) => {
+test('the steps and the log: each command with its time, what it writes, while it runs (V46a, V93)', async ({
+  page,
+}) => {
   // The second command writes, then waits for a file the test makes, then writes again.
   const flag = join(mkdtempSync(join(tmpdir(), 'symbiote-e2e-flag-')), 'go');
   // Its output is not its command's text, which heads its step: `$((40 + 2))` prints 42.
@@ -221,21 +223,21 @@ test('the log: each step and what it writes, while it runs (V46a)', async ({ pag
   const { entry } = await resolvedConflict(page, ['test -f src/math.ts', slow], {
     E2E_FLAG: flag,
   });
-  const steps = entry.getByRole('list', { name: 'Its steps' });
+  const steps = entry.getByRole('region', { name: 'Steps' });
+  const commands = steps.getByRole('list', { name: 'Its commands' }).getByRole('listitem');
   const log = entry.getByRole('log', { name: 'What it wrote' }).locator('.xterm-rows');
-  // It runs: its first line is in the log, its step running; the steps before it passed.
-  await expect(steps.getByRole('button', { name: /^echo "first.*: running, / })).toBeVisible();
+  // It runs: its first line is in the log, its command running; the one before it passed, with
+  // its time (decision 881).
+  await expect(steps.getByRole('listitem', { name: 'Merger agent' })).toContainText(
+    'wrote 1 region',
+  );
+  await expect(commands).toHaveCount(2);
+  await expect(commands.nth(0)).toHaveClass(/is-passed/);
+  await expect(commands.nth(0).locator('.run-time')).toHaveText(/^\d+:\d\d$/);
+  await expect(commands.nth(1)).toHaveClass(/is-running/);
+  await expect(commands.nth(1).locator('code')).toHaveText(slow);
   await expect(log).toContainText('first 42');
   await expect(log).not.toContainText('then 43');
-  await expect(steps.locator('.merge-step-name')).toHaveText([
-    'Merge',
-    'Merger agent',
-    'test -f src/math.ts',
-    slow,
-  ]);
-  await expect(
-    steps.getByRole('button', { name: /^Merger agent: passed, \d+\.\d s$/ }),
-  ).toBeVisible();
   // What each step did, under its heading: the conflict, then the agent's answer.
   await expect(log).toContainText('── Merge agent into main');
   await expect(log).toContainText('1 file conflicts: src/math.ts');
@@ -243,12 +245,10 @@ test('the log: each step and what it writes, while it runs (V46a)', async ({ pag
 
   writeFileSync(flag, '');
   await expect(log).toContainText('then 43');
-  await expect(steps.getByRole('button', { name: /^echo "first.*: passed, / })).toBeVisible();
+  await expect(commands.nth(1)).toHaveClass(/is-passed/, POLL);
   await expect(entry.locator('.merge-row-state')).toHaveText(/· checked in \d+\.\d s: review it$/);
-  // Resolved: its files come first (V46c), the log a tab away.
+  // Resolved: its conflicts come first (V46c), the log a tab away.
   await entry.getByRole('tab', { name: 'Log' }).click();
-  // A step scrolls the log to its heading; the merge's own stays where it is.
-  await steps.getByRole('button', { name: /^Merge: passed/ }).click();
   await expect(log).toContainText('── Merge agent into main');
 });
 
@@ -284,9 +284,11 @@ test("the merger agent's thinking and the files it reads, while it works (V46b)"
     { E2E_AGENT_FLAG: flag },
     { effort: 'high' },
   );
-  const steps = entry.getByRole('list', { name: 'Its steps' });
+  // The Steps card (V93): the merger agent's step at work.
+  const steps = entry.getByRole('region', { name: 'Steps' });
+  const agentStep = steps.getByRole('listitem', { name: 'Merger agent' });
   const log = entry.getByRole('log', { name: 'What it wrote' }).locator('.xterm-rows');
-  await expect(steps.getByRole('button', { name: /^Merger agent: running, / })).toBeVisible();
+  await expect(agentStep).toHaveClass(/is-run/);
   await expect(log).toContainText('Effort: high (merge.effort)');
   await expect(log).toContainText('Claude Code 9.9.9 · claude-fake');
   await expect(log).toContainText('∴ Both sides add a function here.');
@@ -299,7 +301,7 @@ test("the merger agent's thinking and the files it reads, while it works (V46b)"
   // Its JSON answer counted on one line: its regions are on Files.
   await expect(log).toContainText(/Writing its answer: [\d,]+ characters/);
   await expect(log).not.toContainText('"regions"');
-  await expect(steps.getByRole('button', { name: /^Merger agent: passed, / })).toBeVisible();
+  await expect(agentStep).toHaveClass(/is-ok/, POLL);
   await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
   expect(symbiote.mergerArgs()[0]).toEqual(expect.arrayContaining(['--effort', 'high']));
 });
@@ -327,8 +329,12 @@ test('a resolution whose check failed: what ran is said, and Approve lands it', 
   // Its whole output is in the log (V46a), the failed command's step marked so.
   await expect(entry.getByRole('button', { name: 'Its output' })).toHaveCount(0);
   await entry.getByRole('tab', { name: 'Log' }).click();
-  const steps = entry.getByRole('list', { name: 'Its steps' });
-  await expect(steps.getByRole('button', { name: /^ls e2e\.passed: failed, / })).toBeVisible();
+  // The Steps card's commands (V93): the second failed, with its time.
+  const steps = entry
+    .getByRole('region', { name: 'Steps' })
+    .getByRole('list', { name: 'Its commands' });
+  await expect(steps.getByRole('listitem').nth(1)).toHaveClass(/is-failed/);
+  await expect(steps.getByRole('listitem').nth(1).locator('code')).toHaveText('ls e2e.passed');
   await expect(
     entry.getByRole('log', { name: 'What it wrote' }).locator('.xterm-rows'),
   ).toContainText('e2e.passed');
@@ -410,7 +416,10 @@ test('the merger agent asks you: its regions numbered, their conflict shown, and
   expect(git('rev-parse', 'main')).toBe(main);
   // Files first: its file, the region the question names, numbered, with the lines around it
   // and its sides (fix/merge-viewer-on-conflict).
-  await expect(entry.getByRole('tab', { name: /^Files/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(entry.getByRole('tab', { name: /^Conflicts/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
   await expect(entry.getByRole('list', { name: 'Its files' }).getByRole('button')).toHaveText([
     /^math\.ts src1 regionWaiting for your answer$/,
   ]);
@@ -457,7 +466,7 @@ test('Ask again: the files stay listed, and the log goes to the new run (fix/mer
   await log.hover();
   await page.mouse.wheel(0, -2000);
   await expect(log.locator('.xterm-rows')).not.toContainText('checked');
-  await entry.getByRole('tab', { name: /^Files/ }).click();
+  await entry.getByRole('tab', { name: /^Conflicts/ }).click();
 
   rmSync(flag);
   await entry.getByRole('button', { name: 'Request changes' }).click();
@@ -467,15 +476,15 @@ test('Ask again: the files stay listed, and the log goes to the new run (fix/mer
   const seen: string[] = [];
   for (
     const until = Date.now() + 15_000;
-    Date.now() < until && seen.at(-1) !== 'Resolving: Files';
+    Date.now() < until && seen.at(-1) !== 'Resolving conflicts: Conflicts';
   ) {
     const label = (await entry.locator('.merge-label').textContent()) ?? '';
-    const tab = await entry.getByRole('tab', { name: /^Files/ }).count();
-    const now = `${label}: ${tab > 0 ? 'Files' : 'no Files'}`;
+    const tab = await entry.getByRole('tab', { name: /^Conflicts/ }).count();
+    const now = `${label}: ${tab > 0 ? 'Conflicts' : 'no Conflicts'}`;
     if (seen.at(-1) !== now) seen.push(now);
   }
-  expect(seen.filter((s) => s.endsWith('no Files'))).toEqual([]);
-  expect(seen.at(-1)).toBe('Resolving: Files');
+  expect(seen.filter((s) => s.endsWith('no Conflicts'))).toEqual([]);
+  expect(seen.at(-1)).toBe('Resolving conflicts: Conflicts');
   await expect(entry.getByRole('list', { name: 'Its files' }).getByRole('button')).toHaveText([
     /^math\.ts src.*Resolving…$/,
   ]);
@@ -648,7 +657,10 @@ test('a resolution of two files: each listed with what it did, the one that lose
   await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
 
   // Files first, once resolved: each file, its regions and what they did.
-  await expect(entry.getByRole('tab', { name: /^Files/ })).toHaveAttribute('aria-selected', 'true');
+  await expect(entry.getByRole('tab', { name: /^Conflicts/ })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
   const files = entry.getByRole('list', { name: 'Its files' }).getByRole('button');
   await expect(files).toHaveText([
     /^app\.ts src1 regionKeeps every line of both sides, nothing new$/,
@@ -673,7 +685,7 @@ test('a resolution of two files: each listed with what it did, the one that lose
     '2 files conflict: src/app.ts, src/math.ts',
   );
   await expect(entry.getByRole('list', { name: 'Its files' })).toBeHidden();
-  await entry.getByRole('tab', { name: /^Files/ }).click();
+  await entry.getByRole('tab', { name: /^Conflicts/ }).click();
   await expect(log).toBeHidden();
   await expect(files.nth(0)).toHaveAttribute('aria-current', 'true');
 });
@@ -691,7 +703,7 @@ const underLog = (page: Page) =>
 const tabLine = (tab: ReturnType<Page['getByRole']>) =>
   tab.evaluate((element) => getComputedStyle(element, '::after').height);
 
-test("the person's mockup: the head's chips with their icons, the log a card down to the page's end (V69)", async ({
+test("proof 05: the head's title and pill, the pipeline, the steps, the log a card down to the page's end (V93)", async ({
   page,
 }) => {
   page.on('pageerror', (error) => errors.push(error.message));
@@ -707,27 +719,33 @@ test("the person's mockup: the head's chips with their icons, the log a card dow
   await page.locator('.sidenav [data-merge="agent"]').getByRole('link').click();
   const entry = page.getByRole('region', { name: 'Merge of agent' });
   await expect(entry.locator('.merge-label')).toHaveText('Landed');
+  await expect(entry.locator('.merge-label')).toHaveAttribute('data-tone', 'ok');
 
-  // The branch, the target and the state are chips; the arrow an icon in the target's, the
-  // state's dot its tone's icon.
+  // Its title and where it went; the branch and who approved it under it.
   const head = entry.locator('.merge-row-head');
-  await expect(head).not.toContainText('→');
-  await expect(head.locator('.merge-chip')).toHaveText(['agent', 'main', 'Landed']);
-  await expect(head.locator('.merge-ref-ours svg')).toHaveCount(1);
-  await expect(head.locator('.merge-label svg')).toHaveCount(1);
+  await expect(head.locator('h1')).toHaveText('Agent: add cube → main');
+  await expect(head.locator('.merge-branch')).toHaveText('agent');
+  await expect(head).toContainText('approved by you at');
+  // The pipeline: four steps done, the queue and the time.
+  const pipeline = entry.getByRole('region', { name: 'Its steps' });
+  await expect(pipeline.getByRole('listitem')).toHaveText([
+    /^Approved/,
+    /^Merge/,
+    /^Check/,
+    /^Land/,
+  ]);
+  await expect(pipeline.locator('.pipeline-step.is-done')).toHaveCount(4);
+  await expect(pipeline.locator('.pipeline-cell dt')).toHaveText(['Queue', 'Time']);
+  // The steps: the approval, the merge with its commits, the check's command with its time.
+  const steps = entry.getByRole('region', { name: 'Steps' });
+  await expect(steps.locator('.run-top b')).toHaveText(['Approved', 'Merge', 'Check', 'Land']);
+  await expect(steps.locator('.run-command code')).toHaveText(['echo checked']);
+  await expect(steps.locator('.run-command .run-time')).toHaveText(/^\d+:\d\d$/);
 
-  // Symbiote's own steps weigh more than a check's command.
-  const names = entry.getByRole('list', { name: 'Its steps' }).locator('.merge-step-name');
-  await expect(names).toHaveText(['Merge', 'echo checked', 'Land']);
-  await expect(names.nth(0)).toHaveCSS('font-weight', '500');
-  await expect(names.nth(1)).toHaveCSS('font-weight', '400');
-
-  // The log is a card, its edge a hairline, down to `--page-pad` (12 px since V85) above the
-  // page's end at any height.
-  await expect(entry.locator('.merge-terminal')).toHaveCSS('border-top-width', '1px');
+  // The log is a card's terminal, down to `--page-pad` above the page's end at any height.
   for (const height of [900, 700]) {
     await page.setViewportSize({ width: 1440, height });
-    await expect.poll(() => underLog(page), { message: `at 1440×${height}` }).toBe(12);
+    await expect.poll(() => underLog(page), { message: `at 1440×${height}` }).toBe(13);
   }
 });
 
@@ -737,7 +755,7 @@ test("a resolution: its state's icon, Files and Log as line tabs, the log down t
   const { entry } = await resolvedConflict(page, ['echo checked']);
   await expect(entry.locator('.merge-label')).toHaveText('Review resolution');
   await expect(entry.locator('.merge-label svg')).toHaveCount(1);
-  const files = entry.getByRole('tab', { name: /^Files/ });
+  const files = entry.getByRole('tab', { name: /^Conflicts/ });
   const log = entry.getByRole('tab', { name: 'Log' });
   await expect(files).toHaveAttribute('aria-selected', 'true');
   expect(await tabLine(files)).toBe('3px');
@@ -745,5 +763,5 @@ test("a resolution: its state's icon, Files and Log as line tabs, the log down t
   await log.click();
   expect(await tabLine(log)).toBe('3px');
   expect(await tabLine(files)).toBe('auto');
-  await expect.poll(() => underLog(page)).toBe(12);
+  await expect.poll(() => underLog(page)).toBe(13);
 });

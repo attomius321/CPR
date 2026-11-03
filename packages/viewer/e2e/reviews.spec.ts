@@ -423,7 +423,7 @@ test('says a branch will conflict with main; resolved on the branch, only its co
   await page.goto(`${symbiote.url}?merge=agent`);
   const entry = page.getByRole('region', { name: 'Merge of agent' });
   // Its file in its Files list (V46c), not resolved: no merger agent here.
-  await entry.getByRole('tab', { name: /^Files/ }).click();
+  await entry.getByRole('tab', { name: /^Conflicts/ }).click();
   await expect(entry.getByRole('list', { name: 'Its files' }).getByRole('button')).toHaveText([
     /^math\.ts src.*Not resolved$/,
   ]);

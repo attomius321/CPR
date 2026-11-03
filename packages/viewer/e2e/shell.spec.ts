@@ -345,13 +345,11 @@ test("each group is a name and a count; each row its state's icon, in its colour
   await expect(sidenav(page).locator('.workspace-group h3 .sidenav-label')).toHaveText(
     tones.map(([name]) => name),
   );
-  // At work, its arc turns: the working row's and the merge's.
-  for (const name of ['Working', 'Merging']) {
-    await expect(group(page, name).locator('.ws-row-icon.spinning .icon')).toHaveCSS(
-      'animation-name',
-      'state-spin',
-    );
-  }
+  // At work, its arc turns; a merge at work is its merge icon in amber (the proofs).
+  await expect(group(page, 'Working').locator('.ws-row-icon.spinning .icon')).toHaveCSS(
+    'animation-name',
+    'state-spin',
+  );
 
   // Folded to the rail: each row its icon, named in its tooltip; a group a hairline.
   await sidenav(page).getByRole('button', { name: 'Fold the sidenav' }).click();

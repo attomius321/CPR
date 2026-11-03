@@ -686,8 +686,9 @@ test('a workspace and its branch lead to each other', async ({ page }) => {
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fadd-a-half-function`);
   await expect(workspaceRow(page, branch)).toBeInViewport();
 
-  // The branch on the workspace goes to its tip on the commits page.
-  await workspaceRow(page, branch).getByRole('link', { name: branch }).click();
+  // The branch in the workspace's head goes to its tip on the commits page (the row's link until
+  // V93).
+  await panel(page, branch).locator('.workspace-ref').getByRole('link', { name: branch }).click();
   await expect(page).toHaveURL(`${symbiote.url}git?branch=feature%2Fadd-a-half-function`);
   await expect(page.locator('.commit.cursor')).toContainText('Add half');
 

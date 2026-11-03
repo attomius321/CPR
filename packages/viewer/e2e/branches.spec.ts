@@ -169,6 +169,8 @@ test('rows keep their date in view beside the panel: long badges shrink first', 
 test("long badges leave a row's subject readable at 1,440 px with the details pane open (fix/hive-turn-end-flaky-tests-verdict)", async ({
   page,
 }) => {
+  // The main area it was measured in: 1,440 px beside V79's 300 px sidenav (260 since V93).
+  await page.setViewportSize({ width: 1400, height: 900 });
   await open(page);
   await entry(page, 'a-branch-whose-name-runs-on-long-enough-to-crowd-its-row').first().click();
   await expect(cursorSubject(page)).toHaveText('commit 298');

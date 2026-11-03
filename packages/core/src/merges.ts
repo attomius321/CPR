@@ -164,6 +164,8 @@ export interface MergeList {
   merges: MergeEntry[];
   /** Another Symbiote process is merging in this repository: the queue is shown, it merges. */
   elsewhere?: true;
+  /** `merge.push` is set: a landing is pushed (V93, the Merge page's Land). */
+  push?: true;
 }
 
 /** `GET /api/merges/targets?branch=`: what Merge into ▾ offers, and why Merge is not offered. */

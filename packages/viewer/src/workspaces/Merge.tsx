@@ -29,6 +29,7 @@ import {
 } from './merges.js';
 import { MergeLog } from './MergeLog.js';
 import {
+  AgentIcon,
   AlertIcon,
   CheckIcon,
   ChecksIcon,
@@ -150,6 +151,7 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
     verdict,
     title: workspace?.title,
     expected: entry.check ? expectedCheck(queue, entry.check.commands) : undefined,
+    push: merges?.push === true,
     now,
   });
   const changes = useChanges(entry.branch, entry.updated, 0, workspace !== undefined);
@@ -246,8 +248,19 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
         }
         line={
           <span {...tip(`${mergeState(entry).text}\n${mergeTitle(entry)}`)}>
+            {/* Its state and its merge commit in full, for screen readers; the pill and the steps
+                show them. */}
+            <span className="merge-said">
+              <span className="merge-row-state">{mergeState(entry).text}</span> ·{' '}
+              <span className="merge-title">{mergeTitle(entry)}</span>
+            </span>
             <code className="merge-branch">{entry.branch}</code>
-            {entry.strategy === 'fast-forward' && <span> · by fast-forward</span>}
+            {entry.strategy === 'fast-forward' && (
+              <>
+                {' · '}
+                <span className="merge-how">by fast-forward</span>
+              </>
+            )}
             {page.line.map((part) => (
               <span key={part}> · {part}</span>
             ))}
@@ -412,6 +425,27 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
                 </p>
               )}
             </Item>
+            {(entry.state === 'resolving' || entry.resolution) && (
+              <Item
+                name="Merger agent"
+                state={
+                  entry.state === 'resolving'
+                    ? 'run'
+                    : entry.resolution?.needsYou
+                      ? 'warning'
+                      : 'ok'
+                }
+                icon={entry.state === 'resolving' ? <SpinIcon /> : <AgentIcon />}
+                words={
+                  entry.state === 'resolving'
+                    ? `answers ${entry.conflicts?.length ?? 0} conflicting file${entry.conflicts?.length === 1 ? '' : 's'}`
+                    : entry.resolution?.needsYou
+                      ? 'asks you'
+                      : `wrote ${entry.resolution?.regions.length ?? 0} region${entry.resolution?.regions.length === 1 ? '' : 's'}`
+                }
+                end={entry.resolution ? <span>{mergeTook(entry.resolution.ms)}</span> : undefined}
+              />
+            )}
             <Item
               name="Check"
               state={checkState(checkStep.state)}
@@ -444,7 +478,7 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
               name="Land"
               state={checkState(land.state)}
               icon={<PushIcon />}
-              words={land.detail}
+              words={page.landWords}
               end={entry.landed ? <span>{approvedAt(entry.landed)}</span> : undefined}
               last
             />
@@ -503,7 +537,7 @@ function MergeEntryView({ entry, send = false }: { entry: MergeEntry; send?: boo
             <ul
               className="merge-changes changes-files"
               hidden={tab !== 'changes'}
-              aria-label="Its files"
+              aria-label="Its changes"
             >
               {changed.listed.map((file) => (
                 <li key={file.path}>

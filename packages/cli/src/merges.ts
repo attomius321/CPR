@@ -1126,7 +1126,13 @@ export function merger(
       // Queued by another process, or left by one that stopped: merged here.
       if (merges.some((e) => e.state === 'queued' || RUNNING.has(e.state))) kick();
       const elsewhere = !running && existsSync(queue.lockFile) && (await queue.lockedElsewhere());
-      return { merges, ...(elsewhere ? { elsewhere: true as const } : {}) };
+      // Whether a landing is pushed (V93): the Merge page's Land says so.
+      const push = readMergeConfig(root).push;
+      return {
+        merges,
+        ...(elsewhere ? { elsewhere: true as const } : {}),
+        ...(push ? { push: true as const } : {}),
+      };
     },
 
     async targets(branch) {
