@@ -1,32 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { BranchReviewList } from '@symbiote/core';
-import { fetchReviews } from './api.js';
+import { useMemo } from 'react';
 import { reviewMarks } from './branchReviews.js';
 import { useNucleusName } from '../shell/names.js';
+import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 
 /**
- * The reviewer's branch reviews (V15) as marks for History: read when the page opens, and again
- * when it is back, since a review is made on another page.
+ * The reviewer's branch reviews (V15) as marks for History: the shell's reviews (V94a), pushed by
+ * `symbiote view` as they change, or read as the workspaces are where it does not push.
  */
 export function useBranchReviews(): ReturnType<typeof reviewMarks> {
-  const [reviews, setReviews] = useState<BranchReviewList | null>(null);
-  useEffect(() => {
-    let live = true;
-    const load = () => {
-      if (document.visibilityState === 'hidden') return;
-      fetchReviews()
-        .then((list) => live && setReviews(list))
-        .catch(() => {});
-    };
-    load();
-    window.addEventListener('focus', load);
-    document.addEventListener('visibilitychange', load);
-    return () => {
-      live = false;
-      window.removeEventListener('focus', load);
-      document.removeEventListener('visibilitychange', load);
-    };
-  }, []);
+  const { reviews } = useWorkspaces();
   // An approval through Nucleus by its name: Alpha Ceph's in Hive mode (decision 682).
   const nucleus = useNucleusName();
   return useMemo(() => reviewMarks(reviews, nucleus), [reviews, nucleus]);

@@ -85,7 +85,7 @@ import { libraryService, type LibraryService } from './library.js';
 import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
-import { branchReviews } from './reviews.js';
+import { branchReviews, reviewPlace } from './reviews.js';
 import { merger, MergeRefused, projectCheck } from './merges.js';
 import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
 import { promptSettingsService } from './prompts.js';
@@ -97,7 +97,7 @@ import { readClaudeProfile, readClaudeUsage, readCodexUsage, usageService } from
 import { codex, findCodex, type Codex } from './codex.js';
 import { findHermes, hermes, type Hermes } from './hermes.js';
 import { workspaces, readWorkspaceConfig } from './workspaces.js';
-import { WorkspaceRefused } from './workspace-record.js';
+import { symbioteFolder, WorkspaceRefused } from './workspace-record.js';
 import { EXPORT_FORMATS, type ActivityExport, type ExportFormat } from './activity-export.js';
 import { claudeCode, claudeModelsFile, findClaude, type ClaudeCode } from './claude-code.js';
 import { removeViewRecord, runBridge, viewFile, writeViewRecord } from './mcp-bridge.js';
@@ -887,6 +887,13 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         library,
       }),
       usage,
+      // The records' folders (V94a): `symbiote/` (or the cache's) and the merge queue's.
+      recordFolders: async () => [
+        ...new Set([
+          symbioteFolder(await reviewPlace(repo, cacheDir)),
+          join(cacheDir, 'state', repo.id),
+        ]),
+      ],
     },
     open: vsCodeOpener(repo, ctx.env),
     intro: introOf(ctx),

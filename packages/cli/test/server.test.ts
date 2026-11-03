@@ -4496,3 +4496,112 @@ describe('/api/workspaces/day (V91, decision 852) and /overview', () => {
     expect(await response.text()).toContain('viewer');
   });
 });
+
+describe("symbiote view: the page's stream, /api/events (V94a)", () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  let stopped: string[] = [];
+  const workspaces = {
+    list: () =>
+      Promise.resolve({
+        place: 'repository',
+        workspaces: [
+          { branch: 'feature/x', agent: { state: stopped.length ? 'stopped' : 'working' } },
+        ],
+      }),
+    stopAgent: (branch: string) => {
+      stopped = [...stopped, branch];
+      return Promise.resolve({ ok: true });
+    },
+  } as unknown as Workspaces;
+  let server: ViewServer;
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        workspaces,
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+
+  /** The stream's events, as text, until `until` holds or 3 s pass. */
+  async function read(until: (text: string) => boolean, then?: () => Promise<unknown>) {
+    const controller = new AbortController();
+    const response = await fetch(new URL('/api/events', server.url), { signal: controller.signal });
+    expect(response.headers.get('content-type')).toBe('text/event-stream');
+    const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+    const decoder = new TextDecoder();
+    let text = '';
+    let acted = false;
+    const deadline = Date.now() + 3_000;
+    while (!until(text) && Date.now() < deadline) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      text += decoder.decode(value, { stream: true });
+      if (!acted && then && text.includes('event: state')) {
+        acted = true;
+        await then();
+      }
+    }
+    controller.abort();
+    return text;
+  }
+
+  it('sends the whole state, then what a page’s write changed', async () => {
+    const text = await read(
+      (t) => t.includes('event: change'),
+      () =>
+        fetch(new URL('/api/workspaces/stop', server.url), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+          body: JSON.stringify({ branch: 'feature/x' }),
+        }),
+    );
+    expect(text).toMatch(/^retry: 1000\n\nevent: id\n/);
+    expect(text).toContain(
+      'event: state\ndata: {"parts":{"workspaces":{"place":"repository","workspaces":[{"branch":"feature/x","agent":{"state":"working"}}]},"reviews":null,"merges":null,"nucleus":null,"scribe":null,"asks":{"asks":[]}}}',
+    );
+    expect(text).toContain(
+      'event: change\ndata: {"parts":{"workspaces":{"place":"repository","workspaces":[{"branch":"feature/x","agent":{"state":"stopped"}}]}}}',
+    );
+  });
+
+  it('is a GET of this site only', async () => {
+    const posted = await fetch(new URL('/api/events', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      body: '{}',
+    });
+    expect(posted.status).toBe(405);
+    const other = await fetch(new URL('/api/events', server.url), {
+      headers: { origin: 'http://example.com' },
+    });
+    expect(other.status).toBe(403);
+  });
+
+  it('is not served without a repository (symbiote pr): the page polls', async () => {
+    const pr = await startViewServer({ viewerDir: viewer });
+    try {
+      expect((await fetch(new URL('/api/events', pr.url))).status).toBe(404);
+    } finally {
+      await pr.close();
+    }
+  });
+});

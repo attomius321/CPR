@@ -130,6 +130,8 @@ export interface McpOptions {
    * 784): Hive mode on, or the person's setting; undefined: it asks. Read at each call and listing.
    */
   withoutConfirm?: () => Promise<WithoutConfirm | undefined>;
+  /** Each ask held or let go (V94a): the page's stream sends the asks then. */
+  onAsks?: () => void;
 }
 
 /** An ask or a write the server cannot take: its status and why. */
@@ -729,11 +731,13 @@ export function symbioteMcp(services: McpServices, options: McpOptions = {}): Sy
         clearTimeout(timer);
         signal.removeEventListener('abort', gone);
         held.delete(ask.id);
+        options.onAsks?.();
         resolve(answer);
       }
       if (signal.aborted) return settle('gone');
       signal.addEventListener('abort', gone);
       held.set(ask.id, { ask, settle, finished });
+      options.onAsks?.();
     });
     return { answer, done, ask };
   }
