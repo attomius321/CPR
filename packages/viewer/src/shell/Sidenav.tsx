@@ -54,6 +54,7 @@ import { doneGroups } from '../workspaces/row-words.js';
 import { findingsOf } from '../overview/normal-overview.js';
 import { useFindings } from '../workspaces/useFindings.js';
 import { workspaceGroups, type WorkspaceRow } from '../workspaces/workspaces.js';
+import { mergingAlone } from '../workspaces/merges.js';
 import { DoneRowItem, MergeRowItem, WorkspaceRowItem } from './SidenavRow.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 import { tip } from '../ui/tip.js';
@@ -144,10 +145,7 @@ export function Sidenav({
   const route = shell?.route;
   const queued = merges?.merges ?? [];
   // The branches merging now: their workspaces' rows are the merges' (V93).
-  const merging = useMemo(
-    () => new Set(queued.filter((entry) => entry.state !== 'landed').map((e) => e.branch)),
-    [queued],
-  );
+  const merging = useMemo(() => mergingAlone(queued), [queued]);
   const empty =
     list !== null && list.workspaces.length === 0 && queued.length === 0 && starts.length === 0;
   // Nucleus's mark (V35): working while it answers; answered when it did while you were elsewhere.
