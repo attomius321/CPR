@@ -304,7 +304,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | Fix | Hive's question, its dim, the Mind, its glow and the ring never drawn again once their layers end: they flashed back from 1.18 to 1.54 s of the arrival | ✅ | | [journal](journal/fix-hive-question-reappears.md) |
 | Fix | Whatever is under way moves: the loader arc turns wherever it is drawn (it turned only in a sidenav row), loading lines and busy buttons have it, the review page's bar sweeps, outlines pulse | ✅ | | [journal](journal/fix-static-loadings.md) |
 | Fix | Settings by what is set (This repository, Agents, Prompts in folding groups, This machine, This browser; a filter), and the check set from Settings: one `merge.checks` for the merger and Hive | | | [journal](journal/fix-settings-page.md) |
-| Fix | The Overview fits the main area and never scrolls as a page: each list scrolls in its card under its head, the inbox (Hive: in flight) keeps its rows first, a column scrolls only when its cards' minimums do not fit | ready for review | | [journal](journal/fix-overview-fits-the-page.md) |
+| Fix | The Overview fits the main area and never scrolls as a page: each list scrolls in its card under its head, the inbox (Hive: in flight) keeps its rows first, a column scrolls only when its cards' minimums do not fit | ✅ | | [journal](journal/fix-overview-fits-the-page.md) |
 
 ### Native window
 

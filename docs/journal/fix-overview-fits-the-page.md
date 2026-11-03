@@ -58,3 +58,5 @@ tab's "Answered"), failed once in the full run and 1 of 9 alone on this branch, 
 the Nucleus page shares no code or CSS with the Overview. The nexus 21 of 21. Not verified: the
 app's own window (Electron) and real scrollbars (headless Chromium hides them; a card's scrollbar
 takes its width from the rows only while it scrolls).
+
+Merged into main (2026-11-03).
