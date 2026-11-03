@@ -101,12 +101,12 @@ own head, the keys (`w`, the arrows, Enter).
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 576 | What is on a card, and in what order? | **Four rows: the name and its time; what it does or what is next; the kind chip and the facts; the branch and its review mark** | The name had 150 px of a 229 px row beside the chip, and the facts never showed behind the action |
+| 576 | What is on a card, and in what order? *(superseded by 876 of V93)* | **Four rows: the name and its time; what it does or what is next; the kind chip and the facts; the branch and its review mark** | The name had 150 px of a 229 px row beside the chip, and the facts never showed behind the action |
 | 577 | A long name or state? | **Two lines, then "…"; the tip says it whole** | 5 of 9 names and 6 of 9 states were cut to one line; two lines left 0 names and 3 states cut (two long commands and a question) |
 | 578 | How do the facts show on a card? | **An icon and a number each (commits, files not committed), the merge check as "clean" or "n conflicts" in its state's colour; their words in tips and for screen readers; the head keeps the words** | "2 commits · 23 files not committed yet · Conflicts with main in 1 file" is 330 px in a 214 px row |
-| 579 | The branch? | **On every card, its last row as today** | The person's choice; it repeats the kind and the title in 95 of 103 records, and is the link to Git |
-| 580 | How are the cards apart? | **10 × 12 px in, 6 px between, 20 px lines; each on a 3.5 % wash of the text; the 72 px limit dropped** | Rows 1 px apart and cards 11 px read as one block; the waiting band's cards are washes already |
-| 581 | The sidenav's width at first? | **300 px (264)** | The person's choice: most names fit on one line; the main area keeps 1,140 px at 1440 |
+| 579 | The branch? *(superseded by 876 of V93)* | **On every card, its last row as today** | The person's choice; it repeats the kind and the title in 95 of 103 records, and is the link to Git |
+| 580 | How are the cards apart? *(superseded by 876 of V93)* | **10 × 12 px in, 6 px between, 20 px lines; each on a 3.5 % wash of the text; the 72 px limit dropped** | Rows 1 px apart and cards 11 px read as one block; the waiting band's cards are washes already |
+| 581 | The sidenav's width at first? *(superseded by 875 of V93)* | **300 px (264)** | The person's choice: most names fit on one line; the main area keeps 1,140 px at 1440 |
 | 585 | Start a workspace beside a 300 px sidenav? | **Its run column at least 412 px (380): its width at 1440 beside 264 px; the brief column gives the 13 px** | At 398 px Plan first's line wrapped and More closed ran 12 px past 1440 × 1000, V63's promise |
 
 ## As built (V79)

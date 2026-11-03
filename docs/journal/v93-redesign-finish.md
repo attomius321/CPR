@@ -66,3 +66,5 @@ mark 33–34 ms (36–69), pan 62–63 fps (63); the arrival 59.5 fps both; the 
 **Not verified**: the app's window (Electron) itself: every shot is headless Chromium; a real
 Claude Code session in the terminal shots (the e2e fake prints its size); Codex's tool count on a
 real app server (its fake's items only); the arrival's frames in the app (headless only, as V92).
+
+Merged into main (2026-11-03).

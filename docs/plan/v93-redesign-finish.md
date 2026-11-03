@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v93-redesign-finish.md)
 
-**Status:** built (3 November 2026), on branch `feature/redesign-finish` (the workspace's, from
+**Status:** merged into `main` on 2026-11-03; built (3 November 2026), on branch `feature/redesign-finish` (the workspace's, from
 `main` at `eb5f9e4`); the person's OK with one rule for every choice: "Should be like in design."
 
 **Problem** (the brief: "I need everything to look like in the screenproofs"; "I know for sure

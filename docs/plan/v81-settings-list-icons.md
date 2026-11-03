@@ -90,9 +90,9 @@ on the 16 grid today).
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 600 | Icons in the list | **One lucide icon per entry, in a tile before its name; supersedes 448's "no icons" (its card, hairlines and accent stay)** | the person's brief: the list scanned, not read |
+| 600 | Icons in the list *(superseded by 891 of V93)* | **One lucide icon per entry, in a tile before its name; supersedes 448's "no icons" (its card, hairlines and accent stay)** | the person's brief: the list scanned, not read |
 | 601 | The tints | **The `--phase-*` colours: Workspaces implement, Reviews test, Prebuilt agents visual, This machine docs, This browser explore; `--muted` for any other** | contrast-checked already, one hue in both themes; git is the accent's hue, debug the docs' neighbour |
-| 602 | The tile | **22 px, 8 px radius, 14 px icon, opaque over `--side`; 1.75 idle, 2.25 and the accent open; headings in line with the tiles; the list 300 px (280 before)** | the sidenav's open recipe; the longest name open beside the widest mark needs 291 px; 6 px is off the style's radius scale |
+| 602 | The tile *(partly superseded by 891 of V93)* | **22 px, 8 px radius, 14 px icon, opaque over `--side`; 1.75 idle, 2.25 and the accent open; headings in line with the tiles; the list 300 px (280 before)** | the sidenav's open recipe; the longest name open beside the widest mark needs 291 px; 6 px is off the style's radius scale |
 | 603 | `CommentIcon` | **Lucide's message-square on its 24 grid, same weight on the pages that use it** | the 24-unit strokes would draw it thicker than the others |
 
 ## As built (V81)

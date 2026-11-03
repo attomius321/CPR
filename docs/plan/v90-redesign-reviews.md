@@ -136,7 +136,7 @@ mark reviewed, pan.
 | 842 | The Files page's list (replaces 435's tabs) | **One card: the files, then Your review** | proof 04 |
 | 843 | A file viewed | **A `file:<path>` mark keyed by its blob from `git diff --raw`** | the person's choice 1a: exact, and a change since shows |
 | 844 | Comments on lines | **Cards "You · on X · draft" with Edit and Delete; Ctrl/⌘ ↵ in the summary finishes** | the proof |
-| 845 | Syntax colours | **None** | the person's choice 3b |
+| 845 | Syntax colours *(superseded by 889 of V93)* | **None** | the person's choice 3b |
 | 846 | Opening a review (supersedes 502, 503, 504) | **The six steps as a timeline with their times as the page sees them, a bar, Stop; failed and stopped in the same frame; no arcs, no comet** | proof 10; the page asks every 500 ms |
 | 847 | What needs no graph | **Files from `./api/files`/`./api/file` served from the pair while analyzing, the Files page read only; a workspace's report, commits (same base only) and brief from today's endpoints** | the person's choice 2a; no new record |
 
