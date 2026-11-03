@@ -52,3 +52,8 @@ the review page while it analyzes (both themes, every animation paused at 200 an
 band at the running segment's start, then its middle; the run label's and the Graph tab's arcs at
 different angles) and Git's "Listing commits…" (the arc 1.15 em before the words, on their line).
 Not verified: the desktop app's window (the pictures are headless Chromium).
+
+**Removed at the person's request**: `hive.spec.ts`'s "with reduced motion, Hive turns on at once:
+no ink, no growing" failed in the merger's check (423 of 424). On this branch alone it passed 3 of
+3; whether `main`'s newer commits or load made it fail was not established. Hive's arrival under
+reduced motion has no e2e test now.
