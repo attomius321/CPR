@@ -39,6 +39,8 @@ export interface Shell {
    * The page turns it off when it goes.
    */
   setFocused: (focused: boolean) => void;
+  /** The repository's name (V92: Settings' "Hive mode for <repo>"); absent where none. */
+  repo?: string;
 }
 
 export const ShellContext = createContext<Shell | null>(null);

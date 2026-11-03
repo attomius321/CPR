@@ -1,12 +1,6 @@
 // What turning Hive mode on or off concerns, in words (HV4, decisions 771, 772): the workspaces
 // in normal mode that keep it off, and what Hive off does to each Hive workspace in flight. Pure.
-import type {
-  HiveLandingSetting,
-  HiveLandsBy,
-  HivePacingSetting,
-  HiveState,
-  HiveStep,
-} from '@symbiote/core';
+import type { HiveLandsBy, HivePacingSetting, HiveState, HiveStep } from '@symbiote/core';
 
 /** A workspace as the questions name it: its title, else its branch. */
 export const nameOf = (w: { branch: string; title?: string }) => w.title ?? w.branch;
@@ -50,27 +44,9 @@ export function onRefusal(state: Pick<HiveState, 'normal'>): string | null {
 
 /** How Hive lands, the two choices of Settings' Hive page (HV8, decision 788). */
 export const LANDS_BY: { by: HiveLandsBy; label: string }[] = [
-  { by: 'queue', label: 'The merge queue' },
-  { by: 'request', label: 'A pull or merge request' },
+  { by: 'queue', label: 'Merge queue' },
+  { by: 'request', label: 'Pull request' },
 ];
-
-/** What a choice does. */
-export function landsByWords(by: HiveLandsBy): string {
-  return by === 'request'
-    ? 'Hive pushes the branch and opens a pull request (GitHub) or merge request (GitLab) into the branch the workspace started from. You review and merge it there: your merge lands it. A conflict goes back to the agent.'
-    : 'Hive merges each workspace into the branch it started from through the merge queue, which checks the merge, lands it and pushes both branches.';
-}
-
-/** The forge `origin` names and whether a request can be opened now (decision 793). */
-export function forgeWords(setting: HiveLandingSetting): { text: string; ok: boolean } {
-  const { forge, why } = setting;
-  const at = forge ? `origin is ${forge.project} on ${FORGES[forge.kind].name}` : '';
-  if (why) {
-    const cannot = `Hive cannot open a request now: ${why.replace(/\.$/, '')}.`;
-    return { text: at ? `${at}. ${cannot}` : cannot, ok: false };
-  }
-  return { text: `${at}; a token is found.`, ok: true };
-}
 
 /** The thresholds Settings offers (HV5, decision 797); 90 % is the default. */
 const PAUSE_AT = [50, 60, 70, 80, 90, 95, 100];

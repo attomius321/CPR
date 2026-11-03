@@ -298,80 +298,189 @@
   color: var(--hive-text);
 }
 
-/* What Hive will do (V88): a neutral note, as the kit's; not a failure, so not the error's red. */
-.hive-warning {
-  display: flex;
-  gap: 12px;
-  margin: 0 0 var(--field-gap);
-  padding: 14px var(--card-pad);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--raised);
+/* Settings' Hive mode page (V92, decision 870; proofs 04-settings and normal mode's
+   11-settings-hive): a callout, then grouped rows — a name and one line of help at the left, the
+   control at the right — in one bordered box a group, a hairline between rows. */
+.hive-page .settings-head .hive-for {
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 400;
 }
 
-.hive-warning > .icon {
+.hive-page .settings-head .button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.hive-callout {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 20px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.hive-callout > .icon {
   flex: none;
   width: 18px;
   height: 18px;
-  margin-top: 2px;
-  color: var(--warning);
+  color: var(--muted);
 }
 
-.hive-warning p {
+.hive-callout p {
   margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+  line-height: 1.5;
 }
 
-.hive-warning strong {
-  display: block;
-  margin-bottom: 4px;
+.hive-callout strong {
   color: var(--text);
   font-weight: 600;
 }
 
-.hive-control {
+/* Hive's four steps, at rest: hexagons on a line. */
+.hive-callout-track {
   display: flex;
-  flex-wrap: wrap;
+  flex: none;
   align-items: center;
-  gap: 8px 12px;
-}
-
-.hive-control .settings-row-note {
-  margin: 0;
-}
-
-/* How Hive lands (HV8): a part of the page under the switch, a hairline between. */
-.hive-lands {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
   gap: 8px;
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid var(--line);
 }
 
-.hive-lands h3 {
-  margin: 0;
+.hive-callout-track svg {
+  width: 13px;
+  height: 14px;
+  fill: none;
+  stroke: var(--line-2);
+  stroke-width: 1.2;
+}
+
+.hive-group-set {
+  margin: 0 0 18px;
+}
+
+.hive-group-set h3 {
+  margin: 0 0 8px;
   font-size: var(--size-body);
   font-weight: 600;
 }
 
-.hive-lands .settings-row-note {
-  margin: 0;
+.hive-group-set h3 span {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  font-weight: 400;
 }
 
-/* With a request picked and none can be opened: why, in the error's colour. */
-.hive-lands-forge.cannot {
+.hive-settings {
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.hive-setting {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  min-height: var(--height-tall);
+  padding: 10px 14px;
+}
+
+.hive-setting + .hive-setting {
+  border-top: 1px solid var(--line);
+}
+
+.hive-setting-words {
+  display: flex;
+  flex: 1 1 280px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hive-setting-name {
+  font-weight: 500;
+}
+
+.hive-setting-help {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.hive-setting-help.is-fail {
   color: var(--error);
 }
 
-/* Hive's pacing (HV5): the threshold, the pause now, the budget, as "Hive lands by" is laid. */
-.hive-pacing h3:not(:first-child) {
-  margin-top: 8px;
+.hive-setting-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
-.hive-paused-now {
-  color: var(--info);
+.hive-setting-control select {
+  min-width: 116px;
+}
+
+.hive-setting-control .scope .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.hive-value {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.hive-value .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.hive-value.is-ok {
+  color: var(--ok);
+}
+
+.hive-value.is-warning {
+  color: var(--warning);
+}
+
+.hive-commands {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.hive-commands code {
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: var(--size-caption);
+}
+
+.hive-foot {
+  display: flex;
+  gap: 8px;
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.hive-foot > .icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
 }
 
 .hive-budget {

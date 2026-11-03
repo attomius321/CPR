@@ -244,8 +244,16 @@ export function Shell({ repo }: { repo?: string | undefined }) {
   }, [go, fold, startWorkspace]);
 
   const shell = useMemo<ShellApi>(
-    () => ({ route, navigate, notify, startWorkspace, setLeaveGuard, setFocused }),
-    [route, navigate, notify, startWorkspace, setLeaveGuard],
+    () => ({
+      route,
+      navigate,
+      notify,
+      startWorkspace,
+      setLeaveGuard,
+      setFocused,
+      ...(repo ? { repo } : {}),
+    }),
+    [route, navigate, notify, startWorkspace, setLeaveGuard, repo],
   );
 
   return (

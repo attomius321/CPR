@@ -133,32 +133,33 @@ test('Settings: Hive lands by, with the forge origin names and whether a token i
 }) => {
   symbiote = await serveWorkspaces({ env: { GITHUB_TOKEN: 'ghp_fake' } });
   await page.goto(`${symbiote.url}settings?prompt=hive-mode`);
-  const part = page.getByRole('region', { name: 'Hive lands by' });
-  const queue = part.getByRole('button', { name: 'The merge queue' });
-  const request = part.getByRole('button', { name: 'A pull or merge request' });
+  // V92: Landing's rows on Settings' Hive mode page.
+  const part = page.getByRole('region', { name: 'Hive mode' }).getByRole('group', {
+    name: 'Landing',
+  });
+  const queue = part.getByRole('button', { name: 'Merge queue' });
+  const request = part.getByRole('button', { name: 'Pull request' });
+  const requests = part.getByRole('group', { name: 'Pull and merge requests' });
   await expect(queue).toHaveAttribute('aria-pressed', 'true');
-  await expect(part).toContainText('through the merge queue');
-  // origin is a folder: no forge to open a request on.
-  await expect(part).toContainText(
-    'Hive cannot open a request now: origin is not a GitHub or GitLab repository',
-  );
+  await expect(part).toContainText('Into the branch the workspace started from');
+  // origin is a folder, and the merge queue picked: no row for requests.
+  await expect(requests).toHaveCount(0);
   await request.click();
   await expect(request).toHaveAttribute('aria-pressed', 'true');
   await expect(part).toContainText('your merge lands it');
-  // The page's warning says it too.
-  await expect(page.locator('.hive-warning')).toContainText(
-    'opens a pull or merge request into the branch the workspace started from',
+  await expect(requests).toContainText('origin names no GitHub or GitLab project');
+  await expect(requests.locator('.hive-value.is-warning')).toContainText(
+    'origin is not a GitHub or GitLab repository',
   );
-  await expect(part.locator('.hive-lands-forge.cannot')).toBeVisible();
   expect(JSON.parse(readFileSync(config(), 'utf8'))).toMatchObject({ hive: { lands: 'request' } });
 
   originOnGitHub();
   await page.reload();
   await expect(request).toHaveAttribute('aria-pressed', 'true');
-  await expect(part).toContainText('origin is acme/app on GitHub; a token is found.');
-  await expect(part.locator('.hive-lands-forge.cannot')).toHaveCount(0);
+  await expect(requests).toContainText('origin is acme/app on GitHub');
+  await expect(requests.locator('.hive-value.is-ok')).toHaveText('A token is found');
   await queue.click();
   await expect(queue).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.locator('.hive-warning')).toContainText('through the merge queue');
+  await expect(part).toContainText('both branches are pushed');
   expect(JSON.parse(readFileSync(config(), 'utf8'))).not.toHaveProperty('hive');
 });

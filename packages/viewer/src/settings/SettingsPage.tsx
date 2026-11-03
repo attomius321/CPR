@@ -613,6 +613,26 @@ export function SettingsPage() {
               {...(current.agent === 'Nucleus'
                 ? { rows: <StartConfirm name={agentName(current.agent, alpha)} /> }
                 : {})}
+              {...(current.agent === 'Reviewer'
+                ? {
+                    // Its model and effort are set with Hive's limits (V92, decision 870).
+                    levels: (
+                      <p className="settings-row-note settings-moved">
+                        Its model and effort are on the{' '}
+                        <a
+                          href={`?prompt=${HIVE}`}
+                          onClick={(event) => {
+                            event.preventDefault();
+                            show(HIVE);
+                          }}
+                        >
+                          Hive mode
+                        </a>{' '}
+                        page, under Running reviewer.
+                      </p>
+                    ),
+                  }
+                : {})}
             >
               {current.prompts.map((prompt) =>
                 editor(prompt, true, prompt.key === 'hive.reviewer' ? 'Instructions' : undefined),
@@ -637,6 +657,7 @@ function AgentPage({
   onSaved,
   onBack,
   rows,
+  levels,
   children,
 }: {
   /** Its name: Nucleus's, Alpha Ceph while Hive mode is on (decision 682). */
@@ -646,11 +667,13 @@ function AgentPage({
   onBack: () => void;
   /** Its own rows under the Model and Effort: Nucleus's start without a Confirm (NU8). */
   rows?: ReactNode;
+  /** In place of its Model and Effort: where they are set (the reviewer's, V92). */
+  levels?: ReactNode;
   children: ReactNode;
 }) {
   return (
     <SettingsCard label={name} title={name} onBack={onBack}>
-      <AgentRows settings={settings} onSaved={onSaved} />
+      {levels ?? <AgentRows settings={settings} onSaved={onSaved} />}
       {rows}
       {children}
     </SettingsCard>
