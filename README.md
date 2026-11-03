@@ -290,7 +290,8 @@ After you approve a branch, click **Merge into**. Symbiote then:
    branch is checked out in your own checkout, your files move with it.
 
 Merges run one at a time, in the order you asked for them: the *merge queue*. If the check fails,
-nothing lands, and **Send to the agent** gives the failure to the branch's agent. If the branch
+nothing lands, and **Send to the agent** gives the failure to the branch's agent and opens its
+workspace. If the branch
 conflicts with its target, an agent called the *merger* proposes a resolution. Nothing lands until
 you approve it. Symbiote pushes nothing unless you set `merge.push` in `symbiote/config.json`. (Hive
 mode, below, pushes what it lands.)
