@@ -19,6 +19,11 @@ export interface Running {
   name: string;
   /** When it started serving (ISO). */
   started: string;
+  /**
+   * The records' folder it serves (V94c): `symbiote/` in the main checkout (a view in a worktree
+   * serves that one too), or the cache's. An agent's hook finds its views by it.
+   */
+  symbiote?: string;
 }
 
 /**

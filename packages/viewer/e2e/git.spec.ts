@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import { serveCommits, type RunningCommits } from './symbiote.js';
+import { noStream } from './overview-data.js';
 
 // Git's page (V66): a commit's details, the uncommitted changes staged and committed, branches
 // and tags, fetch, pull and push, finding a commit. Each test gets its own repository.
@@ -463,6 +464,8 @@ test("a workspace's agent committing is listed in place: the file shown stays (f
     place: 'repository',
   });
   let tip = git(symbiote.repo, 'rev-parse', 'wip');
+  // The list as this spec answers it: no stream (V94), the page polls.
+  await noStream(page);
   await page.route('**/api/workspaces', (route) =>
     route.request().method() === 'GET' ? route.fulfill({ json: workspace(tip) }) : route.continue(),
   );

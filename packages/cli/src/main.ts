@@ -887,6 +887,13 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         library,
       }),
       usage,
+      // Changes from outside (V94c): git's refs, and Claude Code's list read anew.
+      gitDir: repo.commonDir,
+      sessions: async () => (await claudeOf())?.sessions({ fresh: true }) ?? null,
+      codexStatus: async (onChange) => {
+        const server = await (await codexOf())?.server();
+        return server ? server.watch(onChange) : null;
+      },
       // The records' folders (V94a): `symbiote/` (or the cache's) and the merge queue's.
       recordFolders: async () => [
         ...new Set([
@@ -912,6 +919,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     // The check Hive would run (V92): the default checkout's, as the runner finds it.
     hiveCheck: () => projectCheck(repo, repo.root, 'HEAD'),
     nucleusStart: nucleusStartSetting,
+    // The page's stream (V94); `SYMBIOTE_EVENTS=off`: the pages poll as before.
+    events: ctx.env.SYMBIOTE_EVENTS !== 'off',
     log,
     version,
   });
@@ -925,13 +934,15 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     root: repo.root,
     started,
   });
-  // Where Symbiote nexus finds this server (NX1): a record of its own, beside the others'.
+  // Where Symbiote nexus finds this server (NX1): a record of its own, beside the others'; where
+  // agents' hooks find it too (V94c), by the records' folder it serves.
   await announce(cacheDir, {
     url: server.url,
     pid: process.pid,
     root: repo.root,
     name: basename(repo.root),
     started,
+    symbiote: symbioteFolder(await reviewPlace(repo, cacheDir)),
   });
 
   let url = server.url;

@@ -109,6 +109,31 @@ describe('connectAppServer', () => {
   });
 });
 
+describe("codexServer's watch (V94c)", () => {
+  it("hears each thread's status change on a connection of its own, no turn's deltas", async () => {
+    const server = await serve();
+    const codex = codexServer(server.address);
+    const thread = await codex.start({ cwd: WORKTREE, writable: ROOTS, name: 'x', prompt: 'Go' });
+    const heard: string[] = [];
+    const watch = await codex.watch((id) => heard.push(id));
+    expect(watch).not.toBeNull();
+    server.reply(thread, 'Done');
+    await expect.poll(() => heard.length).toBeGreaterThan(0);
+    expect(new Set(heard)).toEqual(new Set([thread]));
+    watch?.stop();
+  });
+
+  it('says when its connection went: the server restarted', async () => {
+    const server = await serve();
+    const codex = codexServer(server.address);
+    let closed = false;
+    const watch = await codex.watch(() => {});
+    void watch?.closed.then(() => (closed = true));
+    server.restart();
+    await expect.poll(() => closed).toBe(true);
+  });
+});
+
 describe('codexServer', () => {
   it("starts a thread in the worktree, its branch's git folders writable, named, with Symbiote's prompt", async () => {
     const server = await serve();

@@ -4,13 +4,14 @@
 // read as a browser's EventSource reads it.
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   EVENT_PARTS,
   eventStream,
+  liveOf,
   partsOfRecord,
   partsOfWrite,
   type EventPart,
@@ -424,5 +425,274 @@ describe("a terminal's output on the page's stream (V94b, decision 903)", () => 
     page.close();
     await wait(50);
     expect(terminals.listeners.get('t1')?.size).toBe(0);
+  });
+});
+
+describe('changes from outside (V94c, decisions 904–906)', () => {
+  /** A stream whose parts count their reads, over a records folder and a git folder of the test's. */
+  async function outside(
+    workspaces: unknown,
+    timing: { live?: number; first?: number; between?: number } = {},
+  ) {
+    const records = mkdtempSync(join(tmpdir(), 'events-records-'));
+    const gitDir = mkdtempSync(join(tmpdir(), 'events-git-'));
+    folders.push(records, gitDir);
+    mkdirSync(join(records, 'threads'));
+    mkdirSync(join(gitDir, 'refs', 'heads'), { recursive: true });
+    const reads: Record<string, number> = {};
+    let sessionsValue: unknown = [{ id: 's1', status: 'busy' }];
+    let sessionReads = 0;
+    const count = (part: string, value: unknown) => () => {
+      reads[part] = (reads[part] ?? 0) + 1;
+      return Promise.resolve(value);
+    };
+    stream = eventStream({
+      read: {
+        workspaces: () => {
+          reads.workspaces = (reads.workspaces ?? 0) + 1;
+          return Promise.resolve(workspaces);
+        },
+        reviews: count('reviews', { reviews: [] }),
+      },
+      roots: () => Promise.resolve([records]),
+      git: gitDir,
+      sessions: () => {
+        sessionReads += 1;
+        return Promise.resolve(sessionsValue);
+      },
+      timing: { first: 5, between: 50, safety: 60_000, alive: 25_000, live: 100, ...timing },
+    });
+    const events = stream;
+    server = createServer((req, res) => void events.open(req, res));
+    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', () => resolve()));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/events`;
+    return {
+      url,
+      records,
+      gitDir,
+      reads,
+      stream: events,
+      sessionReads: () => sessionReads,
+      setSessions: (value: unknown) => (sessionsValue = value),
+    };
+  }
+  const working = {
+    workspaces: [{ branch: 'feature/x', agent: { state: 'working', kind: 'claude' } }],
+  };
+  const finished = {
+    workspaces: [{ branch: 'feature/x', agent: { state: 'ready', kind: 'claude' } }],
+  };
+
+  it("reads Claude Code's list every tick while an agent works; a change reads the workspaces", async () => {
+    const t = await outside(working);
+    const page = await listen(t.url);
+    await page.next('state');
+    await wait(350);
+    expect(t.sessionReads()).toBeGreaterThanOrEqual(2);
+    const before = t.reads.workspaces ?? 0;
+    t.setSessions([{ id: 's1', status: 'idle' }]);
+    await wait(250);
+    expect(t.reads.workspaces).toBeGreaterThan(before);
+    page.close();
+  });
+
+  it("reads the list for a page's first state once a Claude agent is listed; none while none is live", async () => {
+    const t = await outside(finished);
+    const page = await listen(t.url);
+    await page.next('state');
+    // The first page: nothing listed yet, the workspaces' read takes the list itself.
+    expect(t.sessionReads()).toBe(0);
+    const second = await listen(t.url);
+    await second.next('state');
+    expect(t.sessionReads()).toBe(1);
+    await wait(350);
+    expect(t.sessionReads()).toBe(1);
+    page.close();
+    second.close();
+  });
+
+  it("hears a hook's write in threads/: the workspaces read, and Claude Code's list at once", async () => {
+    const t = await outside(finished, { live: 60_000 });
+    const page = await listen(t.url);
+    await page.next('state');
+    await wait(50);
+    const before = t.reads.workspaces ?? 0;
+    appendFileSync(join(t.records, 'threads', 'x.jsonl'), '{"kind":"report"}\n');
+    await wait(150);
+    expect(t.reads.workspaces).toBeGreaterThan(before);
+    expect(t.sessionReads()).toBeGreaterThanOrEqual(1);
+    page.close();
+  });
+
+  it("hears a commit's ref and packed-refs: the workspaces and the reviews read", async () => {
+    const t = await outside(finished, { live: 60_000 });
+    const page = await listen(t.url);
+    await page.next('state');
+    await wait(50);
+    const before = { ...t.reads };
+    await writeFileWhole(join(t.gitDir, 'refs', 'heads', 'main'), 'a'.repeat(40));
+    await wait(150);
+    expect(t.reads.workspaces).toBeGreaterThan(before.workspaces ?? 0);
+    expect(t.reads.reviews).toBeGreaterThan(before.reviews ?? 0);
+    const after = { ...t.reads };
+    await wait(100);
+    writeFileSync(join(t.gitDir, 'packed-refs'), '# pack-refs\n');
+    await wait(150);
+    expect(t.reads.reviews).toBeGreaterThan(after.reviews ?? 0);
+    page.close();
+  });
+
+  it('names the files a page reads beside the parts when they change (`touched`)', async () => {
+    const t = await outside(finished, { live: 60_000 });
+    mkdirSync(join(t.records, 'activity', 'feature'), { recursive: true });
+    const page = await listen(t.url);
+    await page.next('state');
+    await wait(50);
+    appendFileSync(join(t.records, 'activity', 'feature', 'x.jsonl'), '{}\n');
+    appendFileSync(join(t.records, 'nucleus-activity.jsonl'), '{}\n');
+    const paths = new Set<string>();
+    for (let i = 0; i < 20 && paths.size < 2; i++) {
+      await wait(20);
+      for (const e of page.events) {
+        if (e.name === 'touched')
+          for (const p of (e.data as { paths: string[] }).paths) paths.add(p);
+      }
+    }
+    expect([...paths].sort()).toEqual(['activity/feature/x.jsonl', 'nucleus-activity.jsonl']);
+    page.close();
+  });
+
+  it("takes a hook's ping: a thread's read with Claude Code's list, a tool's without it", async () => {
+    const t = await outside(finished, { live: 60_000 });
+    const page = await listen(t.url);
+    await page.next('state');
+    await wait(50);
+    const before = t.reads.workspaces ?? 0;
+    const listed = t.sessionReads();
+    t.stream.pinged('activity');
+    await wait(100);
+    expect(t.reads.workspaces).toBeGreaterThan(before);
+    expect(t.sessionReads()).toBe(listed);
+    t.stream.pinged('thread');
+    await wait(100);
+    expect(t.sessionReads()).toBeGreaterThan(listed);
+    page.close();
+  });
+});
+
+describe("Codex's app server, heard while a Codex agent is live (V94c)", () => {
+  it('holds one connection while a Codex agent is there: a status change reads the workspaces; let go once it stopped', async () => {
+    let state = 'working';
+    let reads = 0;
+    let opened = 0;
+    let stopped = 0;
+    let tell = () => {};
+    stream = eventStream({
+      read: {
+        workspaces: () => {
+          reads += 1;
+          return Promise.resolve({ workspaces: [{ agent: { state, kind: 'codex' } }] });
+        },
+      },
+      codex: (onChange) => {
+        opened += 1;
+        tell = onChange;
+        return Promise.resolve({ stop: () => (stopped += 1), closed: new Promise<void>(() => {}) });
+      },
+      timing: { first: 5, between: 20, safety: 60_000, alive: 25_000, live: 50 },
+    });
+    const events = stream;
+    server = createServer((req, res) => void events.open(req, res));
+    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', () => resolve()));
+    const page = await listen(
+      `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/events`,
+    );
+    await page.next('state');
+    await wait(180);
+    expect(opened).toBe(1);
+    // No read every tick while it is heard.
+    const before = reads;
+    await wait(150);
+    expect(reads).toBe(before);
+    state = 'stopped';
+    tell();
+    await wait(60);
+    expect(reads).toBe(before + 1);
+    await wait(120);
+    expect(stopped).toBe(1);
+    page.close();
+  });
+});
+
+describe('liveOf (V94c, decision 906)', () => {
+  it("hears Claude Code's list while a Claude agent works or waits; Codex's server while a Codex agent does", () => {
+    const of = (agent: Record<string, unknown>) =>
+      liveOf({ workspaces: { workspaces: [{ agent }] } });
+    expect(of({ state: 'working', kind: 'claude' })).toEqual({ sessions: true, codex: [] });
+    expect(of({ state: 'needs-you', kind: 'claude' })).toEqual({ sessions: true, codex: [] });
+    expect(of({ state: 'ready', kind: 'claude' })).toEqual({ sessions: false, codex: [] });
+    expect(of({ state: 'working', kind: 'codex' })).toEqual({
+      sessions: false,
+      codex: ['workspaces'],
+    });
+    // Codex idle too: a turn typed in the person's own terminal starts it, no hook says so.
+    expect(of({ state: 'plan-ready', kind: 'codex' })).toEqual({
+      sessions: false,
+      codex: ['workspaces'],
+    });
+    expect(of({ state: 'stopped', kind: 'codex' })).toEqual({ sessions: false, codex: [] });
+    // Hermes: the safety read only (the person's choice).
+    expect(of({ state: 'working', kind: 'hermes' })).toEqual({ sessions: false, codex: [] });
+    expect(
+      liveOf({
+        nucleus: { conversation: { state: 'working', kind: 'claude' } },
+        scribe: { conversation: { state: 'needs-you', kind: 'codex' } },
+      }),
+    ).toEqual({ sessions: true, codex: ['scribe'] });
+    expect(liveOf({})).toEqual({ sessions: false, codex: [] });
+  });
+});
+
+describe('a terminal shown (V94c, decision 161 on the server)', () => {
+  it("reads Claude Code's list every tick while a terminal is shown, and two ticks after", async () => {
+    let sessionReads = 0;
+    const terminals = {
+      listen: (_id: string, listener: { out(d: string): void }) => {
+        listener.out('');
+        return () => {};
+      },
+    };
+    stream = eventStream({
+      read: {
+        workspaces: () =>
+          Promise.resolve({ workspaces: [{ agent: { state: 'ready', kind: 'claude' } }] }),
+      },
+      sessions: () => {
+        sessionReads += 1;
+        return Promise.resolve([]);
+      },
+      terminals,
+      timing: { first: 5, between: 20, safety: 60_000, alive: 25_000, live: 60 },
+    });
+    const events = stream;
+    server = createServer((req, res) => void events.open(req, res));
+    await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', () => resolve()));
+    const page = await listen(
+      `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/events`,
+    );
+    const { id } = (await page.next('id')).data as { id: string };
+    await page.next('state');
+    await wait(200);
+    const idle = sessionReads;
+    expect(idle).toBe(0);
+    events.listen(id, 't1');
+    await wait(200);
+    expect(sessionReads).toBeGreaterThanOrEqual(idle + 2);
+    events.listen(id, 't1', true);
+    await wait(300);
+    const after = sessionReads;
+    await wait(200);
+    expect(sessionReads).toBe(after);
+    page.close();
   });
 });

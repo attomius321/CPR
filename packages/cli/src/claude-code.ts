@@ -575,18 +575,22 @@ const TOOL_EVENTS = ['PreToolUse', 'PostToolUse', 'PostToolUseFailure'] as const
  * Symbiote's settings file for its agents (V18c), `<symbiote>/claude-settings.json`: every event
  * runs `agent-hook.js` with the `symbiote/` folder; `PreToolUse` only for questions. With V48f,
  * every tool's start, end and failure run it in its `activity` mode, in the background (`async`:
- * a run costs ~30 ms, the tool does not wait for it). It decides nothing.
+ * a run costs ~30 ms, the tool does not wait for it). It decides nothing. With `cache` (V94c),
+ * `--cache=<dir>` ends each command: where the hook finds the running views to tell.
  */
 export function agentSettings(
-  where: { node: string; hook: string; symbiote: string },
+  where: { node: string; hook: string; symbiote: string; cache?: string },
   platform: NodeJS.Platform = process.platform,
 ): string {
-  const command = [where.node, where.hook, where.symbiote]
+  const base = [where.node, where.hook, where.symbiote]
     .map((p) => shellWord(p, platform))
     .join(' ');
+  // Symbiote's cache folder (V94c): the hook finds the running views there and tells them.
+  const cache = where.cache ? ` ${shellWord(`--cache=${where.cache}`, platform)}` : '';
+  const command = `${base}${cache}`;
   const tools = {
     matcher: '*',
-    hooks: [{ type: 'command', command: `${command} activity`, timeout: 30, async: true }],
+    hooks: [{ type: 'command', command: `${base} activity${cache}`, timeout: 30, async: true }],
   };
   const hooks: Record<string, unknown[]> = Object.fromEntries(
     HOOKED_EVENTS.map((event) => [

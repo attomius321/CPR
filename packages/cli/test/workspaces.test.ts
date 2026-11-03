@@ -2267,11 +2267,20 @@ describe('workspaces', () => {
       'Stop',
       'UserPromptSubmit',
     ]);
-    const command = `'/usr/bin/node' '${HOOK}' '${join(repo.root, 'symbiote')}'`;
+    const base = `'/usr/bin/node' '${HOOK}' '${join(repo.root, 'symbiote')}'`;
+    // V94c: Symbiote's cache folder, where the hook finds the running views to tell.
+    const command = `${base} '--cache=${cache}'`;
     // V48f: every tool's start and end, in the background (the agent does not wait on them).
     const tools = {
       matcher: '*',
-      hooks: [{ type: 'command', command: `${command} activity`, timeout: 30, async: true }],
+      hooks: [
+        {
+          type: 'command',
+          command: `${base} activity '--cache=${cache}'`,
+          timeout: 30,
+          async: true,
+        },
+      ],
     };
     for (const [event, entries] of Object.entries(written.hooks)) {
       const thread = {

@@ -438,6 +438,22 @@ export function parseWorkspaceAgainst(text: string): { branch: string; against: 
 
 /** `{ branch }`: a workspace's worktree to open. */
 /**
+ * `{ kind?, branch? }` (V94c): what a hook wrote — a thread's entry or a tool's start or end — and
+ * for which branch; anything else is a write of unknown kind.
+ */
+export function parseEventsPing(text: string): {
+  kind: 'thread' | 'activity' | undefined;
+  branch?: string;
+} {
+  const value = (text.trim() ? JSON.parse(text) : {}) as Record<string, unknown> | null;
+  const kind = value?.kind === 'thread' || value?.kind === 'activity' ? value.kind : undefined;
+  return {
+    kind,
+    ...(typeof value?.branch === 'string' ? { branch: value.branch } : {}),
+  };
+}
+
+/**
  * `{ stream, terminal, stop? }` (V94b): a terminal's output on the browser's stream, `/api/events`,
  * whose ID its `id` event gave; `stop` once no tab of that browser shows it.
  */

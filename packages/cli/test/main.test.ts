@@ -280,6 +280,8 @@ describe('symbiote diff', () => {
         root: repo.root,
         name: basename(repo.root),
         started: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/) as unknown,
+        // The records' folder it serves (V94c): agents' hooks find it by it.
+        symbiote: join(repo.root, 'symbiote'),
       });
       // Gone once it stopped: the nexus marks its tab stopped.
       expect(readdirSync(join(cacheDir, 'running'))).toEqual([]);

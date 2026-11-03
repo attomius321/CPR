@@ -468,3 +468,42 @@ describe("a terminal's output on the browser's stream (V94b)", () => {
     ]);
   });
 });
+
+describe('files said to change (V94c)', () => {
+  it('counts each path in every tab of the browser, and tells who listens', async () => {
+    const b = browser();
+    const [first, second] = [b.tab(), b.tab()];
+    await b.flush();
+    FakeSource.made[0]!.emit('state', STATE);
+    await b.flush();
+    const heard: (readonly string[])[] = [];
+    second.store.onTouched((paths) => heard.push(paths));
+    FakeSource.made[0]!.emit('touched', { paths: ['threads/feature/x.jsonl'] });
+    FakeSource.made[0]!.emit('touched', { paths: ['threads/feature/x.jsonl', 'hive/a.json'] });
+    await b.flush();
+    for (const t of [first, second]) {
+      expect(t.store.touched('threads/feature/x.jsonl')).toBe(2);
+      expect(t.store.touched('hive/a.json')).toBe(1);
+      expect(t.store.touched('activity/feature/x.jsonl')).toBe(0);
+    }
+    expect(heard).toEqual([
+      ['threads/feature/x.jsonl'],
+      ['threads/feature/x.jsonl', 'hive/a.json'],
+    ]);
+  });
+});
+
+describe('a tab that joins a holder with no stream (V94b)', () => {
+  it('is told at once that there is none, and polls', async () => {
+    const b = browser();
+    const first = b.tab();
+    await b.flush();
+    FakeSource.made[0]!.fail(true);
+    await b.flush();
+    expect(first.store.status()).toBe('unavailable');
+    const late = b.tab();
+    await b.flush();
+    expect(late.store.status()).toBe('unavailable');
+    expect(late.seen.at(-1)).toEqual({ parts: {}, status: 'unavailable' });
+  });
+});

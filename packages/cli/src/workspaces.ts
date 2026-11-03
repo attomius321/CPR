@@ -567,7 +567,12 @@ export function workspaces(
    */
   async function settingsFile(where: ReviewPlace): Promise<string> {
     const path = join(symbioteFolder(where), 'claude-settings.json');
-    const text = agentSettings({ node, hook: await hookPath(), symbiote: symbioteFolder(where) });
+    const text = agentSettings({
+      node,
+      hook: await hookPath(),
+      symbiote: symbioteFolder(where),
+      cache: cacheDir,
+    });
     if ((await readFile(path, 'utf8').catch(() => null)) !== text) {
       await writeFileWhole(path, text);
     }

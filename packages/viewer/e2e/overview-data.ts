@@ -567,12 +567,22 @@ export function hiveMocks(
   };
 }
 
+/**
+ * No `/api/events` (V94): the page polls, as it does with a `symbiote view` before V94, so the
+ * reads a spec answers with `page.route` are the ones it shows.
+ */
+export async function noStream(page: Page): Promise<void> {
+  await page.route('**/api/events', (route) => route.fulfill({ status: 404, body: 'no stream' }));
+}
+
 /** Answers the Overview's reads from `mocks` (read only: nothing reaches `symbiote view`). */
 export async function mockOverview(page: Page, mocks: OverviewMocks): Promise<void> {
   const answer = (pattern: string, body: unknown) =>
     page.route(pattern, (route) =>
       route.request().method() === 'GET' ? route.fulfill({ json: body }) : route.fallback(),
     );
+  // No stream (V94): the page polls, as with a `symbiote view` before it, and reads these.
+  await noStream(page);
   await answer('**/api/workspaces', mocks.list);
   await answer('**/api/reviews', mocks.reviews);
   await answer('**/api/merges', mocks.merges);

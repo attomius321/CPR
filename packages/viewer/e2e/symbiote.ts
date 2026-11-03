@@ -665,8 +665,14 @@ export interface RunningWorkspaces extends Running {
   hook(branch: string, input: Record<string, unknown>): void;
   /** Runs Nucleus's session's hooks for one event, as Claude Code runs them (NU2). */
   nucleusHook(input: Record<string, unknown>): void;
-  /** Stops `symbiote view` and starts it again on the same repository; its new address (NU2). */
-  restart(): Promise<string>;
+  /**
+   * Stops `symbiote view` and starts it again on the same repository; its new address (NU2). On
+   * the same port with `samePort` (V94), after `downMs` down.
+   */
+  restart(options?: { samePort?: boolean; downMs?: number }): Promise<string>;
+  /** Stops `symbiote view`'s process where it is (SIGSTOP), and lets it go on (V94). */
+  pause(): void;
+  resume(): void;
   /** Adds a session to the fake's list, as Claude Code lists one (V35: the person's own). */
   addSession(session: Record<string, unknown>): void;
   /**
@@ -1472,11 +1478,19 @@ export async function serveWorkspaces({
       if (!mine) throw new Error('no Nucleus session');
       runHooks(mine, input);
     },
-    async restart() {
+    async restart({ samePort = false, downMs = 0 } = {}) {
+      const port = new URL(running.url).port;
       running.child.kill('SIGINT');
       await new Promise((resolve) => running.child.once('exit', resolve));
-      running = await startSymbiote(['view'], repo, env);
+      if (downMs > 0) await new Promise((resolve) => setTimeout(resolve, downMs));
+      running = await startSymbiote(['view', ...(samePort ? ['--port', port] : [])], repo, env);
       return running.url;
+    },
+    pause() {
+      running.child.kill('SIGSTOP');
+    },
+    resume() {
+      running.child.kill('SIGCONT');
     },
     addSession(session) {
       const file = join(fake, 'sessions.json');

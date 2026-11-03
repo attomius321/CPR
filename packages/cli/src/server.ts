@@ -65,6 +65,7 @@ import {
   parseWorkspaceClean,
   parseWorkspaceDiff,
   parseEventsListen,
+  parseEventsPing,
   parseWorkspaceOpen,
   parseWorkspaceReply,
   parseWorkspaceSent,
@@ -208,9 +209,20 @@ export interface RepositoryOptions {
    * record written there by this process is news for the page's stream, `/api/events`.
    */
   recordFolders?: () => Promise<string[]>;
+  /** Git's common folder (V94c): its refs are watched, a commit made anywhere is news. */
+  gitDir?: string;
+  /** Claude Code's list read anew (V94c, decision 906), while an agent is live; null: none. */
+  sessions?: () => Promise<unknown>;
+  /** Codex's app server's status changes (V94c), heard while a Codex agent is live. */
+  codexStatus?: (onChange: () => void) => Promise<{ stop(): void; closed: Promise<void> } | null>;
 }
 
 export interface ViewServerOptions {
+  /**
+   * The page's stream, `/api/events` (V94): on unless false (`SYMBIOTE_EVENTS=off`); off, the
+   * pages poll as before V94.
+   */
+  events?: boolean;
   /** The graph served at `/` (`symbiote pr`). */
   graph?: Graph;
   /** Folder with the built viewer (index.html, assets/). */
@@ -423,7 +435,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const log = options.log ?? silentLog();
   // The pages' errors, as they sent them: `err` is theirs, not an Error for pino to read.
   const pageLog = log.as('viewer').child({}, { serializers: { err: (err: unknown) => err } });
-  if (repository) {
+  if (repository && options.events !== false) {
     // The page's six reads (decision 898), each as its own route answers it.
     const { workspaces, reviews, merges, nucleus, scribe } = repository;
     events = eventStream({
@@ -438,6 +450,10 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       ...(repository.recordFolders ? { roots: repository.recordFolders } : {}),
       // Terminals' output on the browser's one stream (V94b, decision 903).
       ...(repository.terminals ? { terminals: repository.terminals } : {}),
+      // Changes from outside (V94c): git's refs, and Claude Code's list while an agent is live.
+      ...(repository.gitDir ? { git: repository.gitDir } : {}),
+      ...(repository.sessions ? { sessions: repository.sessions } : {}),
+      ...(repository.codexStatus ? { codex: repository.codexStatus } : {}),
       log: log.log,
     });
   }
@@ -469,6 +485,16 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (req.method !== 'GET') return send(res, 405, 'method not allowed');
       if (!sameSite(req)) return send(res, 403, 'forbidden');
       return events.open(req, res);
+    }
+    // A hook wrote (V94c, decision 905): a bare POST, its answer never waited for.
+    if (events && url.pathname === '/api/events/ping') {
+      const stream = events;
+      return written(req, res, parseEventsPing, ({ kind }) => {
+        stream.pinged(kind);
+        res.writeHead(204);
+        res.end();
+        return Promise.resolve();
+      });
     }
     if (events && url.pathname === '/api/events/listen') {
       const stream = events;

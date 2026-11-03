@@ -10,11 +10,14 @@ import { activityGroups } from '../workspaces/activity/groups.js';
 import { liveActivity } from '../workspaces/activity/live.js';
 import { nucleusAgent } from './page-agent.js';
 import { useNucleusName } from '../shell/names.js';
+import { useTouched } from '../shell/events.js';
 import { Loading } from '../ui/Loading.js';
 
 /** Nucleus's activity, read again with each read of its state; null until the first answers. */
 function useNucleusActivity(read: PageAgentState | null): Activity | null {
   const [activity, setActivity] = useState<Activity | null>(null);
+  // Its file written (V94c): a call or a Confirm Nucleus's state does not show.
+  const touched = useTouched('nucleus-activity.jsonl');
   useEffect(() => {
     let live = true;
     fetch('/api/nucleus/activity')
@@ -26,7 +29,7 @@ function useNucleusActivity(read: PageAgentState | null): Activity | null {
     return () => {
       live = false;
     };
-  }, [read]);
+  }, [read, touched]);
   return activity;
 }
 

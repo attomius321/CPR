@@ -2,6 +2,7 @@ import { basename } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
 import { graphPage, serveFixture, serveWorkspaces, type RunningWorkspaces } from './symbiote.js';
+import { noStream } from './overview-data.js';
 
 // The shell (V29a): no Workspaces page; a sidenav with the pages and, under them, the workspaces;
 // the main area shows what is picked; a status bar along the bottom.
@@ -277,6 +278,8 @@ test("each group is a name and a count; each row its state's icon, in its colour
   // Done today shown (V91 folds Done by default, decision 859): this is about the rows' icons.
   await page.addInitScript(() => localStorage.setItem('symbiote.viewer.done', 'open'));
   // A merge in the queue, for the Merging group.
+  // The list as this spec answers it: no stream (V94), the page polls.
+  await noStream(page);
   await page.route('**/api/merges', (route) =>
     route.fulfill({
       json: {

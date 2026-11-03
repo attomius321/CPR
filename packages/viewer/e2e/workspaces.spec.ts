@@ -529,8 +529,16 @@ test("a row's kind, branch and what its agent runs on are in its tip, not its li
   });
   await expect(chip).toHaveText('Sonnet 5.5 · low effort', POLL);
   await expect(row).toHaveAttribute('data-tip', /Sonnet 5\.5 · low effort/);
-  // `/model opus` and `/effort xhigh` typed in its terminal: from its next answer.
+  // `/model opus` and `/effort xhigh` typed in its terminal: from its next answer, which comes
+  // with its hooks (V94: what the page hears), a tool's end here.
   appendFileSync(transcript, answer('claude-opus-5-5', 'xhigh'));
+  symbiote.hook(branch, {
+    hook_event_name: 'PostToolUse',
+    tool_name: 'Read',
+    tool_input: { file_path: 'src/half.ts' },
+    tool_use_id: 'read-1',
+    transcript_path: transcript,
+  });
   await expect(chip).toHaveText('Opus 5.5 · xhigh effort', POLL);
   await expect(row).toHaveAttribute('data-tip', /Opus 5\.5 · xhigh effort/, POLL);
   // Folded to the rail: the row is its icon alone.
@@ -597,7 +605,8 @@ test('Symbiote not answering: what was read stays, said to be old, and comes bac
   page,
 }) => {
   symbiote = await serveWorkspaces();
-  await page.goto(`${symbiote.url}`);
+  // Polling, as a page of a `symbiote view` before V94 reads (`?poll`); pushed: events.spec.
+  await page.goto(`${symbiote.url}?poll`);
   await startFrom(page, 'Add a half function');
   const row = workspaceRow(page, 'feature/add-a-half-function');
   await expect(row).toBeVisible();

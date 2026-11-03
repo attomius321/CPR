@@ -230,6 +230,8 @@ function lastingServer(
     limits: retried((server) => server.limits()),
     efforts: retried((server, cwd: string) => server.efforts(cwd)),
     models: retried((server, cwd: string) => server.models(cwd)),
+    // Null when the daemon does not answer: the stream's live read tries again (V94c).
+    watch: (onChange) => inner.watch(onChange),
   };
 }
 

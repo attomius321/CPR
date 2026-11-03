@@ -12,6 +12,7 @@
 // holder closes, the next tab waiting for the lock takes it. The holder beats every 10 s; a tab
 // that hears nothing for 30 s (a frozen holder) opens a stream of its own. Terminals' output rides
 // the same stream: a tab listens to a terminal by the stream's ID, and the holder relays it.
+import { useSyncExternalStore } from 'react';
 import type {
   BranchReviewList,
   McpAsks,
@@ -93,6 +94,7 @@ type Message =
   | { kind: 'status'; status: Status }
   | { kind: 'stream'; stream: string }
   | { kind: 'beat' }
+  | { kind: 'touched'; paths: string[] }
   | { kind: 'listening'; terminal: string }
   | { kind: 'out'; terminal: string; data: string }
   | { kind: 'exit'; terminal: string; code: number };
@@ -110,6 +112,14 @@ export interface PushStore {
    * status is not `unavailable`.
    */
   listenTerminal(terminal: string, handlers: TerminalHandlers): () => void;
+  /**
+   * How often a record file a page reads beside the parts (`threads/<branch>.jsonl`,
+   * `activity/<branch>.jsonl`, `hive/<branch>.json`, `nucleus-activity.jsonl`) was said to change
+   * (V94c): what reads it reads again on a new count.
+   */
+  touched(path: string): number;
+  /** Listens to the paths said to change; the way to stop. */
+  onTouched(listener: (paths: readonly string[]) => void): () => void;
   /** The tab's part in the browser: tests only. */
   role(): 'alone' | 'holder' | 'follower' | 'none';
   /** Ends everything: what a closed tab does (tests). */
@@ -136,6 +146,12 @@ export function pushStore(env: PushEnv): PushStore {
   /** The ID of the stream that carries this browser's terminals. */
   let stream: string | null = null;
   const terminals = new Map<string, Set<TerminalHandlers>>();
+  const touchedCounts = new Map<string, number>();
+  const touchListeners = new Set<(paths: readonly string[]) => void>();
+  function touched(paths: readonly string[]): void {
+    for (const path of paths) touchedCounts.set(path, (touchedCounts.get(path) ?? 0) + 1);
+    for (const listener of touchListeners) listener(paths);
+  }
 
   function tell(changed: Parts): void {
     for (const listener of listeners) listener(changed, status);
@@ -247,6 +263,13 @@ export function pushStore(env: PushEnv): PushStore {
     es.addEventListener('alive', () => {
       if (source === es) heardNow();
     });
+    es.addEventListener('touched', (event) => {
+      if (source !== es) return;
+      heardNow();
+      const { paths } = data<{ paths: string[] }>(event);
+      touched(paths);
+      relay({ kind: 'touched', paths });
+    });
     for (const kind of ['listening', 'out', 'exit'] as const) {
       es.addEventListener(kind, (event) => {
         if (source !== es) return;
@@ -287,7 +310,10 @@ export function pushStore(env: PushEnv): PushStore {
   function onMessage(message: Message): void {
     if (closed) return;
     if (message.kind === 'hello') {
-      if (role === 'holder' && status === 'streaming') relay({ kind: 'state', parts, stream });
+      if (role !== 'holder') return;
+      if (status === 'streaming') relay({ kind: 'state', parts, stream });
+      // No stream here (an older `symbiote view`), or lost: the tab that joins learns it at once.
+      else if (status !== 'connecting') relay({ kind: 'status', status });
       return;
     }
     if (role === 'holder') return;
@@ -306,6 +332,7 @@ export function pushStore(env: PushEnv): PushStore {
     } else if (message.kind === 'change') take(message.parts, false);
     else if (message.kind === 'status') setStatus(message.status);
     else if (message.kind === 'stream') setStream(message.stream);
+    else if (message.kind === 'touched') touched(message.paths);
     else if (message.kind !== 'beat') terminalEvent(message);
   }
 
@@ -374,6 +401,13 @@ export function pushStore(env: PushEnv): PushStore {
         listenOn(terminal, true);
       };
     },
+    touched: (path) => touchedCounts.get(path) ?? 0,
+    onTouched(listener) {
+      touchListeners.add(listener);
+      return () => {
+        touchListeners.delete(listener);
+      };
+    },
     role: () => role,
     close() {
       closed = true;
@@ -389,6 +423,12 @@ export function pushStore(env: PushEnv): PushStore {
 }
 
 /**
+ * The address's `?poll` as the page loaded: read before the shell moves `/` to `/overview` (V91),
+ * which leaves the query behind.
+ */
+const loadedWith = typeof location === 'undefined' ? '' : location.search;
+
+/**
  * The page's one store: the stream is the page's while it lives, opened by the first reader.
  * Outside a page (a unit test in Node) there is no stream: the readers poll.
  */
@@ -400,7 +440,7 @@ export function pushed(): PushStore {
     ...(page && typeof navigator.locks?.request === 'function' ? { locks: navigator.locks } : {}),
     ...(page && typeof BroadcastChannel !== 'undefined' ? { Channel: BroadcastChannel } : {}),
     host: page ? location.host : '',
-    search: page ? location.search : '',
+    search: loadedWith,
     now: () => Date.now(),
     setTimeout: (run, ms) => globalThis.setTimeout(run, ms) as unknown as number,
     clearTimeout: (id) => globalThis.clearTimeout(id),
@@ -412,6 +452,20 @@ export function pushed(): PushStore {
       }).then((response) => response.status),
   });
   return store;
+}
+
+/**
+ * How often `path`, a record file the page reads beside the parts, was said to change (V94c): a
+ * read keyed on it reads again. Always 0 without a stream: the readers' own keys do then.
+ */
+export function useTouched(path: string | null): number {
+  return useSyncExternalStore(
+    (changed) =>
+      pushed().onTouched((paths) => {
+        if (path !== null && paths.includes(path)) changed();
+      }),
+    () => (path === null ? 0 : pushed().touched(path)),
+  );
 }
 
 /**
