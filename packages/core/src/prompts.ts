@@ -137,3 +137,30 @@ export interface PromptChange {
   /** `PromptSettings.version`, as the page read it. */
   version: string;
 }
+
+/**
+ * `GET /api/settings/checks` (fix/settings-page): the check the merger runs before a merge lands
+ * and Hive on every commit, one for both modes. `merge.checks` when the project sets it; else the
+ * check Symbiote finds in the repository's files, which the page shows in its place.
+ */
+export interface CheckSetting {
+  /** The config file, repo-relative: `symbiote/config.json`. */
+  file: string;
+  /** The file's version as read, as the prompts': a change names it. */
+  version: string;
+  /** The file in git: shared once committed. */
+  git: FileGitState;
+  /** `merge.checks`, run in order; absent when the project sets none. */
+  commands?: string[];
+  /** The check Symbiote finds in the checkout's files, used when none is set; absent when none. */
+  found?: { commands: string[]; source: string };
+  /** Why the file cannot be read or changed (it is not JSON). */
+  warning?: string;
+}
+
+/** `POST /api/settings/checks`: the commands to save as `merge.checks`, or `null` to remove it. */
+export interface CheckChange {
+  commands: string[] | null;
+  /** `CheckSetting.version`, as the page read it. */
+  version: string;
+}

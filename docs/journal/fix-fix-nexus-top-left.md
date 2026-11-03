@@ -69,3 +69,5 @@ is: no change without a cause. The whole viewer e2e under 48 busy loops: 422 of 
 Hive's and Split's tests passed; two others failed under that load, neither in the merge's check:
 `reviews.spec.ts:90` ("1 of 2" reviewed where "2 of 2" was waited for) and
 `workspaces.spec.ts:1355` (Finish review's click past the 60 s test timeout). Not chased here.
+
+Merged into main (2026-11-03).

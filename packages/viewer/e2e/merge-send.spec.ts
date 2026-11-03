@@ -61,6 +61,17 @@ test("a failed merge check: Send to the agent types it into the branch's agent, 
   await page.goto(`${symbiote.url}?merge=${encodeURIComponent(branch)}`);
   const entry = page.getByRole('region', { name: `Merge of ${branch}` });
   await expect(entry.locator('.merge-row-state')).toContainText('test -f never-there.txt', POLL);
+  // Failed, the workspace is its own card again beside its merge's row in Merging: its agent fixes
+  // it (fix/failed-merge-hides-workspace; V93 showed it in Merging alone, failed too).
+  await expect(page.locator(`.workspace-row[data-branch="${branch}"]`)).toBeVisible(POLL);
+  await expect(
+    page.getByRole('region', { name: 'Merging' }).locator(`[data-merge="${branch}"]`),
+  ).toBeVisible();
+  // The merge's page names its workspace as a link to it.
+  await expect(entry.getByRole('link', { name: branch, exact: true })).toHaveAttribute(
+    'href',
+    `/${at}`,
+  );
   // Screenshots of the button for the style check, dark and light at 1× (AR2_SHOTS=<folder>).
   const shots = process.env.AR2_SHOTS;
   if (shots) {
@@ -80,6 +91,12 @@ test("a failed merge check: Send to the agent types it into the branch's agent, 
     `Sent the failed check to ${branch}'s agent`,
     POLL,
   );
+  // Sent, its workspace's page opens: the agent answers there.
+  await expect(panel).toBeVisible();
+  expect(new URL(page.url()).search).toBe(at);
+  await expect(
+    page.locator(`.workspace-row[data-branch="${branch}"] .workspace-about`),
+  ).toHaveAttribute('aria-current', 'true');
   // The fake Claude Code was resumed with the failure, in merge.failed's words.
   const resumed = symbiote
     .calls()
@@ -91,7 +108,6 @@ test("a failed merge check: Send to the agent types it into the branch's agent, 
   expect(said).toContain('Say whether your branch causes it.');
 
   // Its thread says it was Symbiote's message, not the person's.
-  await page.goto(`${symbiote.url}${at}`);
   await panel.getByRole('tab', { name: 'Thread' }).click();
   await expect(
     panel.locator('.thread-symbiote summary', { hasText: "Symbiote's message" }),

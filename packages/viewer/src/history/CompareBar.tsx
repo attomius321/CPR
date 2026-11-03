@@ -2,6 +2,7 @@
 // Compare.
 import { shortSha, type Comparison, type Pair } from './commits.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 /** The bar under History's rows while compare mode is on. */
 export function CompareBar({
@@ -60,7 +61,7 @@ export function CompareBar({
         disabled={!current?.pair || starting}
         onClick={() => current?.pair && onCompare(current.pair)}
       >
-        {starting ? 'Starting…' : 'Compare'}
+        {starting ? <Loading inline>Starting…</Loading> : 'Compare'}
       </button>
     </footer>
   );
@@ -82,14 +83,14 @@ function CompareLabel({
   defaultBranch: string | null;
   onJump: (row: number) => void;
 }) {
-  const plain = (label: string) => (
+  const plain = (label: string, finding = false) => (
     <span className="compare-label">
-      <span className="compare-pair">{label}</span>
+      <span className="compare-pair">{finding ? <Loading inline>{label}</Loading> : label}</span>
     </span>
   );
   if (!current) return plain('Pick two commits, or one to compare with its parent');
   const { pair, diverged } = current;
-  if (!pair || !diverged) return plain(current.label);
+  if (!pair || !diverged) return plain(current.label, current.finding);
   const fork = shortSha(pair.base);
   const other = shortSha(diverged.other);
   const head = shortSha(pair.head);

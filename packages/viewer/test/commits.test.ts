@@ -150,6 +150,8 @@ describe('comparison of picks on diverged lines (V10c)', () => {
       pair: null,
       label: 'Finding where ddddddd and fffffff forked…',
       diverged: { other: sha('d'), otherCommits: 2, forkRow: 4, by: 'default' },
+      // Drawn as a loading, its arc turning (fix/static-loadings).
+      finding: true,
     });
   });
 
@@ -226,6 +228,7 @@ describe('comparison of picks on diverged lines (V10c)', () => {
     ).toEqual({
       pair: null,
       label: 'Finding where uuuuuuu and aaaaaaa forked…',
+      finding: true,
     });
   });
 

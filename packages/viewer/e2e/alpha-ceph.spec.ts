@@ -90,12 +90,19 @@ test('Hive on: Alpha Ceph in the sidenav (open and folded), its page, the title 
   // Written once the session is found, a moment after the start.
   await expect.poll(recorded, POLL).toMatchObject({ name: 'Alpha Ceph' });
 
-  // Settings: the prebuilt agent, its page and its prompt's group.
+  // Settings: the agent, its page and its prompt's group.
   await page.goto(`${symbiote.url}settings`);
   const agents = page
     .getByRole('navigation', { name: 'Settings' })
-    .getByRole('region', { name: 'Prebuilt agents' });
-  await expect(agents.getByRole('button')).toHaveText(['Merger', 'Alpha Ceph', 'Scribe']);
+    .getByRole('region', { name: 'Agents' });
+  // The person's own agent first (fix/settings-page); Hive's reviewer and the advisor after.
+  await expect(agents.getByRole('button')).toHaveText([
+    'Alpha Ceph',
+    'Merger',
+    'Scribe',
+    'Reviewer',
+    'Suggest settings',
+  ]);
   await expect(
     agents.getByRole('button', { name: 'Alpha Ceph' }).locator('.hive-mind-icon'),
   ).toBeVisible();

@@ -256,6 +256,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | Fix | a merge that failed or waits for you holds the next one into its target; Check again on a moved target merges again | ✅ | | [journal](journal/fix-merger-queue-wrong-behaviour.md) |
 | [V67](plan/v67-merge-strategies.md) | Merge strategies: a merge commit, or a fast-forward to the approved commit | ✅ | 485–489 | [journal](journal/v67-merge-strategies.md) |
 | [V69](plan/v69-merge-page-mockup.md) | The merge page as the person's mockup, in the theme: tinted chips with icons, the log a card filling the page, line tabs | ✅ | 494–497 | [journal](journal/v69-merge-page-mockup.md) |
+| Fix | a failed merge's workspace is its own card again; Send to the agent opens it; the merge page links its branch to it | ✅ | | [journal](journal/fix-failed-merge-hides-workspace.md) |
 
 ### Shell and look
 
@@ -301,6 +302,8 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [V92](plan/v92-redesign-hive-pages.md) | Redesign step 5: Hive's pages — the Run tab (the round on a timeline, check commands against the last passing run, the log's tail, defects as cards, stopped and landed), the sidenav's In flight, Stopped, Landed today, Settings' Hive mode page as grouped rows, Start in Hive mode, the question with readiness and a 1.4 s arrival | ✅ | 860–874 | [journal](journal/v92-redesign-hive-pages.md) |
 | [V93](plan/v93-redesign-finish.md) | Redesign finished: every page as its proof — the sidenav at 260 px with two-line rows in both modes, the status bar, normal mode's Merge and Start, the pipeline card, a 300 px side card, a review's framing, detail, Open ↗ and syntax colours, Settings' list | ✅ | 875–896 | [journal](journal/v93-redesign-finish.md) |
 | Fix | Hive's question, its dim, the Mind, its glow and the ring never drawn again once their layers end: they flashed back from 1.18 to 1.54 s of the arrival | ✅ | | [journal](journal/fix-hive-question-reappears.md) |
+| Fix | Whatever is under way moves: the loader arc turns wherever it is drawn (it turned only in a sidenav row), loading lines and busy buttons have it, the review page's bar sweeps, outlines pulse | ✅ | | [journal](journal/fix-static-loadings.md) |
+| Fix | Settings by what is set (This repository, Agents, Prompts in folding groups, This machine, This browser; a filter), and the check set from Settings: one `merge.checks` for the merger and Hive | | | [journal](journal/fix-settings-page.md) |
 | Fix | The Overview fits the main area and never scrolls as a page: each list scrolls in its card under its head, the inbox (Hive: in flight) keeps its rows first, a column scrolls only when its cards' minimums do not fit | ready for review | | [journal](journal/fix-overview-fits-the-page.md) |
 
 ### Native window
@@ -323,7 +326,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [NX4](plan/nx4-pinned-folders.md) | Pinned folders: the person's folders and repositories kept in Folders' places from one run to the next | ✅ | 617–620 | [journal](journal/nx4-pinned-folders.md) |
 | [Fix](plan/nx2-open-from-folders.md#fix-a-symbiote-framed-once-this-browser-reaches-it-fixfirst-time-symbiote-from-nexus) | A Symbiote opened from the nexus in Chrome on Windows is framed once Chrome reaches it, not left on Chrome's error page | ✅ | 625 | [journal](journal/fix-first-time-symbiote-from-nexus.md) |
 | [Fix](plan/nx4-pinned-folders.md#fix-pinned-symbiotes-on-symbiotes-the-folders-under-them-fixnexus-pinned-symbiotes) | Pinned repositories among Symbiotes' cards, first; Folders no tab: this PC's folders under the Symbiotes | ✅ | 626–628 | [journal](journal/fix-nexus-pinned-symbiotes.md) |
-| Fix | The nexus's tabs drawn as the viewer's session tabs again (`.workspace-tabs`, `.stab`): since V89 they were the browser's grey buttons, as high as their words, the Symbiotes on a line under Symbiotes | in review | | [journal](journal/fix-fix-nexus-top-left.md) |
+| Fix | The nexus's tabs drawn as the viewer's session tabs again (`.workspace-tabs`, `.stab`): since V89 they were the browser's grey buttons, as high as their words, the Symbiotes on a line under Symbiotes | ✅ | | [journal](journal/fix-fix-nexus-top-left.md) |
 
 ### Repository monitoring
 

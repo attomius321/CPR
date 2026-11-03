@@ -57,7 +57,7 @@
   background: var(--panel);
 }
 
-.settings-list section + section {
+.settings-list > section + section {
   margin-top: 8px;
 }
 
@@ -172,6 +172,143 @@
 .settings-mark.hive-off {
   box-shadow: inset 0 0 0 1px var(--line-2);
   color: var(--muted);
+}
+
+/* The list's filter (fix/settings-page): Skills' search, at the list's top. */
+.settings-find {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 0 2px 8px;
+}
+
+.settings-find .icon {
+  position: absolute;
+  left: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.settings-find input {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--height-control);
+  padding: 0 10px 0 34px;
+  font-size: var(--size-small);
+}
+
+/* Esc clears it: no browser cross. */
+.settings-find input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+.settings-none {
+  margin: 8px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* Prompts' groups (fix/settings-page): each a row that folds it, its chevron where an entry's icon
+   is, its count at the end, its entries under it as the sections' are. */
+.settings-fold + .settings-fold {
+  margin-top: 1px;
+}
+
+.settings-list .settings-fold-head {
+  color: var(--text);
+}
+
+.settings-fold-head .icon.chevron {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+
+.settings-fold-head .settings-mark + .settings-count {
+  margin-left: 8px;
+}
+
+.settings-count {
+  flex: none;
+  margin-left: auto;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 9999px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+/* A group's entries indented under its name, their icons under its words. */
+.settings-fold > ul {
+  margin: 1px 0 4px;
+  padding-left: 16px;
+}
+
+/* The check's commands (fix/settings-page): a numbered row each, the command a field in mono (it
+   is literal), its order and removal as icon buttons at its end. */
+.checks-list {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.checks-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.checks-step {
+  flex: none;
+  width: 20px;
+  color: var(--muted);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.checks-command {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  height: var(--height-control);
+  padding: 0 10px;
+  font-family: var(--mono);
+  font-size: var(--size-small);
+}
+
+.checks-command[aria-invalid='true'] {
+  border-color: var(--error);
+}
+
+.checks-tools {
+  flex: none;
+  display: inline-flex;
+  gap: 2px;
+}
+
+.checks-tools .icon-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.checks-tools .icon-button:disabled:hover {
+  background: none;
+  color: var(--muted);
+}
+
+.checks-add {
+  margin-left: 28px;
+}
+
+.checks-source {
+  margin: 0 0 10px;
 }
 
 /* The open page (decision 449): one card, its head over a hairline, its body scrolling under it. */

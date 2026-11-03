@@ -463,8 +463,8 @@ test("a working agent's icon is a spinner, a turn a second; without motion it ho
   await startFrom(page, 'Add a half function');
   const row = workspaceRow(page, 'feature/add-a-half-function');
   await expect(row).toHaveAttribute('data-tone', 'run');
-  const arc = row.locator('.ws-row-icon.spinning .icon');
-  await expect(arc).toHaveCSS('animation-name', 'state-spin');
+  const arc = row.locator('.ws-row-icon .icon.spin');
+  await expect(arc).toHaveCSS('animation-name', 'icon-spin');
   await expect(arc).toHaveCSS('animation-duration', '1s');
   // Without motion: the arc, still.
   await page.emulateMedia({ reducedMotion: 'reduce' });
@@ -636,9 +636,9 @@ test('while a workspace is made, its card says it starts; its own card takes its
   await expect(starting).toContainText('Starting · its worktree, then Claude Code');
   // The working agent's spinner (V53; V93's arc): busy is busy, its words say which.
   await expect(starting).toHaveAttribute('data-tone', 'run');
-  await expect(starting.locator('.ws-row-icon.spinning .icon')).toHaveCSS(
+  await expect(starting.locator('.ws-row-icon .icon.spin')).toHaveCSS(
     'animation-name',
-    'state-spin',
+    'icon-spin',
   );
   // Its kind and branch in its tip, as every row's (V93).
   await expect(starting).toHaveAttribute('data-tip', /feature · feature\/add-a-half-function/);
@@ -655,11 +655,19 @@ test('Stop the agent says it stops until Symbiote answers (V48)', async ({ page 
     await new Promise((r) => setTimeout(r, 800));
     await route.continue();
   });
+  // Its step at work: the arc in its hexagon turns (fix/static-loadings; it stood still). The
+  // pipeline card is drawn outside the terminal view.
+  await here.getByRole('tab', { name: 'Brief' }).click();
+  await expect(
+    here.getByRole('region', { name: 'Its steps' }).locator('.pipeline-step.is-now .icon'),
+  ).toHaveCSS('animation-name', 'icon-spin');
   await here.getByRole('button', { name: 'More actions' }).click();
   await here.getByRole('menuitem', { name: 'Stop the agent' }).click();
-  // Stop is in the ⋯ menu since V93: the head says it stops meanwhile.
+  // Stop is in the ⋯ menu since V93: the head says it stops meanwhile, its arc turning.
   await expect(here.getByRole('status')).toHaveText('Stopping the agent…');
+  await expect(here.getByRole('status').locator('.icon')).toHaveCSS('animation-name', 'icon-spin');
   // The head's steps say it (V89), and the bar under the terminal.
+  await here.getByRole('tab', { name: 'Claude Code' }).click();
   await expect(here.locator('.head-steps')).toContainText('stopped', POLL);
   await expect(here.getByRole('region', { name: 'Agent status' })).toContainText('Stopped');
 });

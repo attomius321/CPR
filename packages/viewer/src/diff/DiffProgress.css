@@ -75,12 +75,40 @@
   background: var(--ok);
 }
 
+/* The step that runs (fix/static-loadings): a band of its amber sweeps along it, a pass every
+   1.4 s; how far it is is not measured, so nothing fills. Still without motion: half filled, as
+   it was before. */
 .opening-segment.mark-running {
-  background: linear-gradient(
-    90deg,
-    var(--run) 55%,
-    color-mix(in srgb, var(--run) 30%, var(--raised)) 55%
-  );
+  position: relative;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--run) 30%, var(--raised));
+}
+
+.opening-segment.mark-running::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  border-radius: inherit;
+  background: var(--run);
+  animation: opening-sweep 1.4s ease-in-out infinite;
+}
+
+@keyframes opening-sweep {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(225%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .opening-segment.mark-running::after {
+    width: 55%;
+    animation: none;
+  }
 }
 
 .opening-segment.mark-failed {

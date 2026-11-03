@@ -13,6 +13,7 @@ import { ActivityTimeline } from './activity/ActivityTimeline.js';
 import { activityEvents, rawLines } from './activity/events.js';
 import { activityGroups } from './activity/groups.js';
 import { liveActivity } from './activity/live.js';
+import { Loading } from '../ui/Loading.js';
 
 export function ActivityTab({
   workspace,
@@ -42,7 +43,7 @@ export function ActivityTab({
     () => liveActivity(workspace.agent, worktree, events, groups),
     [workspace.agent, worktree, events, groups],
   );
-  if (!thread) return <p className="hint">Reading what happened…</p>;
+  if (!thread) return <Loading className="hint">Reading what happened…</Loading>;
   return (
     <ActivityTimeline
       events={events}

@@ -54,6 +54,7 @@ import { doneGroups } from '../workspaces/row-words.js';
 import { findingsOf } from '../overview/normal-overview.js';
 import { useFindings } from '../workspaces/useFindings.js';
 import { workspaceGroups, type WorkspaceRow } from '../workspaces/workspaces.js';
+import { mergingAlone } from '../workspaces/merges.js';
 import { DoneRowItem, MergeRowItem, WorkspaceRowItem } from './SidenavRow.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';
 import { tip } from '../ui/tip.js';
@@ -143,11 +144,8 @@ export function Sidenav({
   const becoming = useNucleusPhase() === 'becoming';
   const route = shell?.route;
   const queued = merges?.merges ?? [];
-  // The branches merging now: their workspaces' rows are the merges' (V93).
-  const merging = useMemo(
-    () => new Set(queued.filter((entry) => entry.state !== 'landed').map((e) => e.branch)),
-    [queued],
-  );
+  // The branches merging now: their workspaces' rows are the merges' (V93), until one fails.
+  const merging = useMemo(() => mergingAlone(queued), [queued]);
   const empty =
     list !== null && list.workspaces.length === 0 && queued.length === 0 && starts.length === 0;
   // Nucleus's mark (V35): working while it answers; answered when it did while you were elsewhere.
@@ -458,7 +456,8 @@ export function Sidenav({
             GROUPS.map(([key, title]) => {
               // A workspace being made is at work.
               const making = key === 'working' ? starts : [];
-              // A workspace with a merge in the queue shows in Merging alone (V93, the proofs).
+              // A workspace with a merge in the queue shows in Merging alone (V93, the proofs);
+              // failed, its card is back for its agent's fix (fix/failed-merge-hides-workspace).
               const rows = groups[key].filter((row) => !merging.has(row.workspace.branch));
               return rows.length + making.length === 0 ? null : (
                 <WorkspaceGroupSection
@@ -707,7 +706,7 @@ function StartingCard({ start }: { start: StartUnderWay }) {
         side: 'right',
       })}
     >
-      <span className="ws-row-icon spinning" aria-hidden="true">
+      <span className="ws-row-icon" aria-hidden="true">
         <SpinIcon />
       </span>
       {/* Not a row's button (`.workspace-about`): the arrows and the focus skip it. */}

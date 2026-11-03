@@ -95,10 +95,7 @@ function HiveRow({
       {...(folded ? tip(`${name}\n${words.word} · ${words.detail}`, { side: 'right' }) : {})}
       onClick={onPick}
     >
-      <span
-        className={`ws-row-icon hive-row-icon${words.tone === 'run' && !answered ? ' spinning' : ''}`}
-        aria-hidden="true"
-      >
+      <span className="ws-row-icon hive-row-icon" aria-hidden="true">
         <Icon />
       </span>
       <button

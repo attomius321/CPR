@@ -650,6 +650,11 @@
   line-height: 1;
 }
 
+/* The branch as a link to its workspace: underlined on hover only, as every `.link`. */
+.merge-row-head a.merge-branch {
+  text-decoration: none;
+}
+
 /* The Steps card and the log beside it, taking what is left of the page's height. */
 .merge-body {
   display: grid;

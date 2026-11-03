@@ -4,6 +4,7 @@ import type { WorkspaceThread } from '@symbiote/core';
 import { markdownNodes, useMarkdown } from '../ui/markdown.js';
 import { threadItems } from './workspaces.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 /**
  * A workspace's thread (V18c), read when it is picked and with every read of the list (on focus,
@@ -54,7 +55,7 @@ export function ThreadTab({
     const box = list.current;
     if (box) box.scrollTop = box.scrollHeight;
   }, [items.length, lexer]);
-  if (!thread) return <p className="hint">Reading its messages…</p>;
+  if (!thread) return <Loading className="hint">Reading its messages…</Loading>;
   return (
     <>
       {!thread.recorded && <p className="hint">{unrecorded}</p>}

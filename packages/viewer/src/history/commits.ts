@@ -16,6 +16,8 @@ export interface Comparison {
   label: string;
   /** The picks are on lines that diverged (V10c): `pair.base` is their fork point. */
   diverged?: Diverged;
+  /** Their fork point is still looked for: the label is drawn as a loading (fix/static-loadings). */
+  finding?: true;
 }
 
 /** Two picks neither of which is an ancestor of the other. */
@@ -97,7 +99,7 @@ export function comparison(
         ? `The fork point of ${names} is not in this clone`
         : `Finding where ${names} forked…`;
     }
-    return { pair: null, label };
+    return { pair: null, label, ...(missing && !lines.complete ? { finding: true as const } : {}) };
   }
   const commits = (pick: Picked) => only[pick === first ? 0 : 1];
   // An ancestor pair: the ancestor is the base (it is the fork point).
@@ -128,7 +130,7 @@ export function comparison(
   const forkSha = lines.shaAt(fork);
   // Its row's details are not loaded yet: the caller loads them.
   if (forkSha === undefined)
-    return { pair: null, label: `Finding where ${names} forked…`, diverged };
+    return { pair: null, label: `Finding where ${names} forked…`, diverged, finding: true };
   return {
     pair: { base: forkSha, head: head.sha },
     label: `${shortSha(forkSha)} → ${shortSha(head.sha)} · ${plural(commits(head))}`,

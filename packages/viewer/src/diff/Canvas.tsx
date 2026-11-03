@@ -37,6 +37,7 @@ import { SummaryNode } from '../graph/SummaryNode.js';
 import { SymbolNode } from '../graph/SymbolNode.js';
 import { useTheme } from '../shell/theme.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 const nodeTypes = {
   symbol: SymbolNode,
@@ -271,7 +272,7 @@ export function Canvas({
       <MiniMap pannable zoomable ariaLabel="" nodeClassName={minimapClass} style={MINIMAP_SIZE} />
       {pending && (
         <Panel position="top-center" className="layout-pending" role="status">
-          Laying out…
+          <Loading inline>Laying out…</Loading>
         </Panel>
       )}
     </ReactFlow>

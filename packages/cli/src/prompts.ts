@@ -944,7 +944,7 @@ export function writePrompt(root: string, change: PromptChange): Promise<void> {
 export function writeConfig(
   root: string,
   path: readonly string[],
-  value: string | number | boolean | undefined,
+  value: ConfigValue,
   older?: readonly string[],
 ): Promise<void> {
   return oneAtATime(async () => {
@@ -952,6 +952,29 @@ export function writeConfig(
     if (current.warning) throw new PromptRefused(`${current.file} is not JSON: fix it first`, 409);
     // The setting's name before a rename goes in the same write (NU1: `scout.effort`).
     await setIn(root, current, [[path, value], ...(older ? [[older, undefined] as const] : [])]);
+  });
+}
+
+/** A value Settings writes in the project's config: a list is a check's commands. */
+type ConfigValue = string | number | boolean | readonly string[] | undefined;
+
+/**
+ * `writeConfig` of a page that read the file first (fix/settings-page, the check): refused (409)
+ * when the file changed since `version`, as a prompt's save is.
+ */
+export function writeConfigAt(
+  root: string,
+  path: readonly string[],
+  value: ConfigValue,
+  version: string,
+): Promise<void> {
+  return oneAtATime(async () => {
+    const current = readPrompts(root);
+    if (current.version !== version) {
+      throw new PromptRefused(`${current.file} changed since you opened it: open it again`, 409);
+    }
+    if (current.warning) throw new PromptRefused(`${current.file} is not JSON: fix it first`, 409);
+    await setIn(root, current, [[path, value]]);
   });
 }
 

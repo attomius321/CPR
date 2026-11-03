@@ -6,6 +6,7 @@ import { blameStarts } from './actions.js';
 import { fetchBlame, fetchFileHistory } from './git-api.js';
 import { longDate, relativeDate, shortSha } from './commits.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 /** Lines drawn before "Show all", as the diff's. */
 const MAX_LINES = 2000;
@@ -46,7 +47,7 @@ export function FileHistory({
   const read = useMemo(() => () => fetchFileHistory(path, sha), [path, sha]);
   const loaded = useRead(read);
   if (loaded.status === 'loading')
-    return <p className="hint git-diff-note">Reading its history…</p>;
+    return <Loading className="hint git-diff-note">Reading its history…</Loading>;
   if (loaded.status === 'failed')
     return <p className="hint error git-diff-note">Could not read its history: {loaded.error}</p>;
   if (loaded.value.length === 0)
@@ -98,7 +99,8 @@ export function FileBlameView({
     () => (loaded.status === 'ready' ? blameStarts(loaded.value.lines) : new Set<number>()),
     [loaded],
   );
-  if (loaded.status === 'loading') return <p className="hint git-diff-note">Reading its blame…</p>;
+  if (loaded.status === 'loading')
+    return <Loading className="hint git-diff-note">Reading its blame…</Loading>;
   if (loaded.status === 'failed')
     return <p className="hint error git-diff-note">Could not blame it: {loaded.error}</p>;
   const { lines, commits } = loaded.value;

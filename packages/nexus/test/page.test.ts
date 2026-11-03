@@ -52,6 +52,9 @@ const VIEWER_CLASSES = [
   'state-dot',
   'tone-idle',
   'page-actions',
+  // fix/static-loadings: what is under way, the viewer's turning arc before its words.
+  'loading',
+  'spin',
 ];
 
 describe("the nexus page's look", () => {
@@ -74,6 +77,15 @@ describe("the nexus page's look", () => {
     for (const size of sizes) expect(size).toMatch(/^var\(--size-[a-z]+\)$/);
     // Fonts are the viewer's (Geist): the nexus names none.
     expect(css).not.toMatch(/font-family|font:/);
+  });
+
+  it('draws nothing under way as words alone: each "…ing…" is a loading, its arc turning', () => {
+    const bare = [...page.matchAll(/'([A-Z][a-z]+ing\b[^'\n]*…)'/g)]
+      .filter(
+        (match) => !page.slice(Math.max(0, match.index - 8), match.index).endsWith('loading('),
+      )
+      .map((match) => match[1]);
+    expect(bare).toEqual([]);
   });
 
   it("imports nothing of Node's in the page's scripts: they run in the browser", () => {

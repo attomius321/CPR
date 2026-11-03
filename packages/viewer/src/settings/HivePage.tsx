@@ -25,6 +25,7 @@ import { TurnOffHive } from './HiveOff.js';
 import { SettingsCard } from './SettingsCard.js';
 import { pauseWords } from '../workspaces/hive-rounds.js';
 import { budgetOf, LANDS_BY, pauseAtWords, pauseChoices } from './hive-switch.js';
+import { Loading } from '../ui/Loading.js';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const two = (n: number) => String(n).padStart(2, '0');
@@ -85,7 +86,14 @@ type Said = { text: string; error?: boolean } | null;
  * (a secondary with red words), which asks while Hive's work is in flight (771). Kept for this
  * repository, out of git (decision 621).
  */
-export function HivePage({ onBack }: { onBack: () => void }) {
+export function HivePage({
+  onBack,
+  onChecks,
+}: {
+  onBack: () => void;
+  /** Opens Settings' Checks page, where the check is set (fix/settings-page). */
+  onChecks: () => void;
+}) {
   const on = useHive();
   const repo = useShell()?.repo;
   const [asking, setAsking] = useState<'on' | null>(null);
@@ -201,7 +209,12 @@ export function HivePage({ onBack }: { onBack: () => void }) {
         </p>
       )}
       <Group name="Landing" about="where finished work goes">
-        <HiveLanding check={state?.check} checkRead={state !== null} onSaid={setSaid} />
+        <HiveLanding
+          check={state?.check}
+          checkRead={state !== null}
+          onSaid={setSaid}
+          onChecks={onChecks}
+        />
         <Row
           id="hive-rounds"
           name="Rounds"
@@ -250,10 +263,12 @@ function HiveLanding({
   check,
   checkRead,
   onSaid,
+  onChecks,
 }: {
   check: HiveState['check'];
   checkRead: boolean;
   onSaid: (said: Said) => void;
+  onChecks: () => void;
 }) {
   const [setting, setSetting] = useState<HiveLandingSetting | null>(null);
   const [busy, setBusy] = useState(false);
@@ -314,16 +329,13 @@ function HiveLanding({
         tone={checkRead && !check ? 'fail' : undefined}
         help={
           !checkRead ? (
-            'Reading…'
+            <Loading inline>Reading…</Loading>
           ) : check ? (
             <>
               What Hive runs on every commit, from <code>{checkSource(check.source)}</code>.
             </>
           ) : (
-            <>
-              None is set or found: set <code>merge.checks</code> in{' '}
-              <code>symbiote/config.json</code>. Hive turns on only with one.
-            </>
+            'None is set or found: set it on the Checks page. Hive turns on only with one.'
           )
         }
       >
@@ -334,6 +346,17 @@ function HiveLanding({
             ))}
           </span>
         )}
+        {/* Set on its own page, the merger's and Hive's alike (fix/settings-page). */}
+        <a
+          className="button secondary hive-check-change"
+          href="?prompt=checks"
+          onClick={(event) => {
+            event.preventDefault();
+            onChecks();
+          }}
+        >
+          {check ? 'Change' : 'Set the check'}
+        </a>
       </Row>
       {setting && (setting.by === 'request' || forge) && (
         <Row

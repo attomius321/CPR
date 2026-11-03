@@ -290,7 +290,8 @@ After you approve a branch, click **Merge into**. Symbiote then:
    branch is checked out in your own checkout, your files move with it.
 
 Merges run one at a time, in the order you asked for them: the *merge queue*. If the check fails,
-nothing lands, and **Send to the agent** gives the failure to the branch's agent. If the branch
+nothing lands, and **Send to the agent** gives the failure to the branch's agent and opens its
+workspace. If the branch
 conflicts with its target, an agent called the *merger* proposes a resolution. Nothing lands until
 you approve it. Symbiote pushes nothing unless you set `merge.push` in `symbiote/config.json`. (Hive
 mode, below, pushes what it lands.)
@@ -398,13 +399,15 @@ long files in warmer colours. Use it to spot the files that have grown too large
 
 ### Settings
 
-**Settings** (`s`) holds:
+**Settings** (`s`) lists what you set, in this order, with a filter at the top:
 
-- the prompts Symbiote gives each agent, which you can edit, with their placeholders;
-- the model and effort of Symbiote's own agents: the merger, Nucleus and Scribe;
-- Hive mode, and the skill library;
-- **Appearance**: dark, light or your system's theme; the text size (Compact, Default or Large); and
-  where Git shows a commit's details.
+- **This repository**: **Checks**, the commands a merge runs before it lands and Hive runs on
+  every commit (one check for both modes), and **Hive mode**;
+- **Agents**: the model, effort and prompts of Nucleus, the merger and Scribe, Hive's reviewer while
+  Hive is on, and **Suggest settings**;
+- **Prompts**: what Symbiote tells a workspace's agent and sends with a review, in groups you fold;
+- **This machine**: the skill library. **This browser**: **Appearance**, the theme, the text size
+  and where Git shows a commit's details.
 
 ![Settings: the list of what Symbiote tells its agents, and the Feature prompt open with its text](docs/images/settings.png)
 

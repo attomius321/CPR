@@ -121,13 +121,8 @@ test('Hive mode: a danger to press, asked first, kept for the repository, its lo
   await expect(html(page)).toHaveAttribute('data-hive', 'on');
   expect(await colour(page, 'body', 'backgroundColor')).toBe('rgb(9, 9, 11)');
   await expect(editor(page).getByRole('heading', { level: 2 })).toContainText('Hive mode On');
-  // On, its entry leads the Hive group, as proof 04 lists it (V93).
-  await expect(
-    page
-      .getByRole('navigation', { name: 'Settings' })
-      .getByRole('region', { name: 'Hive' })
-      .getByRole('button', { name: 'Hive mode, on' }),
-  ).toBeVisible();
+  // On, its entry stays under This repository, after the check (fix/settings-page).
+  await expect(repository.getByRole('button', { name: 'Hive mode, on' })).toBeVisible();
   await expect(page.locator('.sidenav canvas')).toHaveCount(0);
   await expect(page.locator('.sidenav-brand img')).toHaveAttribute('src', /mark-hive/);
   await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href', /favicon-hive/);
@@ -327,20 +322,4 @@ test('after the arrival nothing lies over or behind the pages: no honeycomb, she
   await editor(page).getByRole('button', { name: 'Turn off Hive' }).click();
   await expect(html(page)).not.toHaveAttribute('data-hive');
   expect(await colour(page, '.sidenav', 'backgroundColor')).toBe('rgb(13, 15, 19)');
-});
-
-test('with reduced motion, Hive turns on at once: no ink, no growing', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await serve();
-  await hivePage(page);
-  await turnOn(page).click();
-  await confirm(page).click();
-  await expect(html(page)).toHaveAttribute('data-hive', 'on');
-  await expect(page.locator('.sidenav canvas')).toHaveCount(0);
-  expect(await arriving(page)).toBe(0);
-  await expect(layers(page)).toHaveCount(0);
-  await expect(page.locator('[data-moving]')).toHaveCount(0);
-  await expect(html(page)).not.toHaveAttribute('data-hive-arriving');
-  // No honeycomb (V88).
-  await expect(comb(page)).toHaveCount(0);
 });

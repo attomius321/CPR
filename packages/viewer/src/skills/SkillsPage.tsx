@@ -37,6 +37,7 @@ import { libraryGitText, libraryName, librarySync, skillPlace } from './library.
 import { LibraryPane } from './LibraryPane.js';
 import { PaneHead } from './PaneHead.js';
 import { SkillText } from './SkillText.js';
+import { Loading } from '../ui/Loading.js';
 
 const API = '/api/skills';
 /**
@@ -424,7 +425,7 @@ export function SkillsPage() {
         </p>
       )}
       {!state ? (
-        !error && <p className="hint">Reading the skills…</p>
+        !error && <Loading className="hint">Reading the skills…</Loading>
       ) : (
         <div className={`skills-body${picked ? ' picked' : ''}`}>
           <nav className="skills-list" aria-label="Skills">

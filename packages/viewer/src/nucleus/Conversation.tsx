@@ -6,6 +6,7 @@ import { getJson, postJson } from '../ui/http.js';
 import { runsOn, pageAgentStateText } from './page-agent.js';
 import { readWorkspacesAgain, reloadWorkspaces } from '../workspaces/useWorkspaces.js';
 import { tip } from '../ui/tip.js';
+import { Loading } from '../ui/Loading.js';
 
 /** The last part of a folder's path: the checkout's name. */
 export const folderName = (path: string) => path.split(/[\\/]/).filter(Boolean).at(-1) ?? path;
@@ -237,7 +238,9 @@ export function PageAgentBody({
   }
   return (
     <div className="page-agent-body">
-      {!agent.error && read !== null && <p className="page-agent-starting">Starting {name}…</p>}
+      {!agent.error && read !== null && (
+        <Loading className="page-agent-starting">Starting {name}…</Loading>
+      )}
     </div>
   );
 }

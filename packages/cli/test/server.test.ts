@@ -17,6 +17,7 @@ import {
   type MergeEntry,
   type MergeLogLine,
   type PromptChange,
+  type CheckSetting,
   type PromptSettings,
   type SkillChange,
   type SkillsState,
@@ -51,6 +52,7 @@ import { WorkspaceRefused } from '../src/workspace-record.js';
 import { MergeRefused, type Merger } from '../src/merges.js';
 import type { PageAgent } from '../src/page-agent.js';
 import { PromptRefused, type PromptSettingsService } from '../src/prompts.js';
+import type { CheckSettingService } from '../src/check-setting.js';
 import { SkillRefused, type SkillOpen, type SkillsService } from '../src/skills.js';
 import { terminals as makeTerminals, type Pty, type SpawnPty } from '../src/terminal.js';
 
@@ -2724,6 +2726,81 @@ describe('symbiote view: settings (V28)', () => {
       { key: 'start.fix', text: 'Fix it: {brief}', version: 'v1' },
       { key: 'merger', text: null, version: 'v1' },
       { key: 'merger', text: 'Keep both.', version: 'v0' },
+    ]);
+  });
+});
+
+describe('symbiote view: the check in Settings (fix/settings-page)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const answer: CheckSetting = {
+    file: 'symbiote/config.json',
+    version: 'v1',
+    git: 'none',
+    found: { commands: ['npm install', 'npm test'], source: 'package.json, after an install' },
+  };
+  const asked: unknown[] = [];
+  const checks: CheckSettingService = {
+    read: () => Promise.resolve(answer),
+    set: (change) => {
+      asked.push(change);
+      return change.version === 'v1'
+        ? Promise.resolve({
+            ...answer,
+            version: 'v2',
+            ...(change.commands ? { commands: change.commands } : {}),
+          })
+        : Promise.reject(
+            new PromptRefused('symbiote/config.json changed since you opened it', 409),
+          );
+    },
+  };
+  let server: ViewServer;
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        checks,
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+  const post = (body: unknown) =>
+    fetch(new URL('/api/settings/checks', server.url), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+      body: JSON.stringify(body),
+    });
+
+  it('reads the check, saves commands or a reset, and refuses a stale or a wrong change', async () => {
+    expect(await (await fetch(new URL('/api/settings/checks', server.url))).json()).toEqual(answer);
+    const saved = await post({ commands: [' pnpm check '], version: 'v1' });
+    expect(await saved.json()).toMatchObject({ version: 'v2', commands: ['pnpm check'] });
+    expect((await post({ commands: null, version: 'v1' })).status).toBe(200);
+    expect((await post({ commands: ['make'], version: 'v0' })).status).toBe(409);
+    for (const body of [null, { commands: [], version: 'v1' }, { commands: ['make'] }]) {
+      expect((await post(body)).status, JSON.stringify(body)).toBe(400);
+    }
+    expect(asked).toEqual([
+      { commands: ['pnpm check'], version: 'v1' },
+      { commands: null, version: 'v1' },
+      { commands: ['make'], version: 'v0' },
     ]);
   });
 });

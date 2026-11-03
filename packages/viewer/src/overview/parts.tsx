@@ -71,7 +71,7 @@ const ICONS: Record<FeedIcon, () => ReactNode> = {
 };
 
 /** Today's events, the newest first: the time, an icon in its state's colour, what and about. */
-export function Feed({ items, empty }: { items: readonly FeedItem[]; empty: string }) {
+export function Feed({ items, empty }: { items: readonly FeedItem[]; empty: ReactNode }) {
   if (items.length === 0) return <Empty>{empty}</Empty>;
   return (
     <ol className="feed" aria-label="Today's events">

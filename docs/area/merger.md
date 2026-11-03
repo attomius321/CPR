@@ -54,6 +54,13 @@ The states an entry goes through are `queued`, `merging`, `resolving`, `checking
 means merged and checked but not landed: no check ran, or git refused the landing. Entries run in
 the order they were queued.
 
+In normal mode's sidenav, a workspace with an entry in the queue shows only as the entry's row
+under Merging (V93) while the entry is queued, runs, is `ready`, or is `needs-you` with no failed
+check. Once git or the check failed (`failed`, or `needs-you` after a resolution's check failed),
+the fix is the branch's agent's: the workspace's own card is back beside the entry's row,
+**Send to the agent** opens the workspace, and the merge page's branch links to it
+([the fix](../journal/fix-failed-merge-hides-workspace.md)).
+
 ## How the target branch moves
 
 - **The target is checked out somewhere** (usually the main checkout): Symbiote runs
@@ -160,6 +167,7 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 | Settings: `merge.checks`, `push`, `strategy`, `agent`, `model`, `effort` | `symbiote/config.json`; defaults in [configuration](../reference/configuration.md) |
 | A project's rules for the merger agent | `symbiote/merge.md`, committed with the project |
 | **Merge into ▾** | `packages/viewer/src/workspaces/MergeControl.tsx` |
+| Which workspaces show in the sidenav only as their Merging row | `mergingAlone` in `packages/viewer/src/workspaces/merges.ts` (`test/merges.test.ts`) |
 | The merge page: state, files, log | `packages/viewer/src/workspaces/Merge.tsx`; its words from `merge-steps.ts` (pure, `test/merge-steps.test.ts`); the pipeline card `ui/Pipeline.tsx` |
 | HTTP | `/api/merges…` in `packages/cli/src/server.ts`; the log as server-sent events |
 | Command line | `symbiote merge <branch>`, with `--into`, `--strategy`, `--land`, `--approve` and `--again` |
@@ -253,5 +261,9 @@ These no longer hold:
 - **This repository's full check runs e2e**, which fails under other sessions' load: 3 of 309
   tests at a load average of 20. The merge then fails and nothing lands
   ([V67](../journal/v67-merge-strategies.md)).
+- **Every entry not landed once hid its workspace**, failed ones too: after a failed check the
+  person had no card to open, and **Send to the agent** seemed to do nothing. `mergingAlone`
+  (`packages/viewer/src/workspaces/merges.ts`) is the one rule
+  ([the fix](../journal/fix-failed-merge-hides-workspace.md)).
 - **`symbiote merge --help` lists the default target without the reviewed-against branch**, which
   the code checks first (`targets` in `merges.ts`). Found while writing this page; not fixed.

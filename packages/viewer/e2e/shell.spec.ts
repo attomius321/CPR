@@ -346,9 +346,9 @@ test("each group is a name and a count; each row its state's icon, in its colour
     tones.map(([name]) => name),
   );
   // At work, its arc turns; a merge at work is its merge icon in amber (the proofs).
-  await expect(group(page, 'Working').locator('.ws-row-icon.spinning .icon')).toHaveCSS(
+  await expect(group(page, 'Working').locator('.ws-row-icon .icon.spin')).toHaveCSS(
     'animation-name',
-    'state-spin',
+    'icon-spin',
   );
 
   // Folded to the rail: each row its icon, named in its tooltip; a group a hairline.
