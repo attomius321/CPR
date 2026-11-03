@@ -51,30 +51,32 @@ const mark = (page: Page) =>
 const marked = (page: Page) =>
   page.evaluate(() => (window as { symbioteMark?: number }).symbioteMark === 1);
 
-test('symbiote view opens Git in the shell: the pages, then the workspaces, and a status bar', async ({
+test('symbiote view opens the Overview in the shell: the pages, then the workspaces, and a status bar', async ({
   page,
 }) => {
   const symbiote = await serve();
   await page.goto(symbiote.url);
-  // The root alone is Git, shown at its own address.
-  await expect(page).toHaveURL(`${symbiote.url}git`);
+  // The root alone is the Overview (V91, decision 848; Git before), shown at its own address.
+  await expect(page).toHaveURL(`${symbiote.url}overview`);
   // A title bar is Symbiote's window's only (N1c): none in a browser.
   await expect(page.locator('.titlebar')).toHaveCount(0);
   // The pages one works in; Settings is at the sidenav's bottom, after the workspaces.
   const links = pages(page).getByRole('link');
-  await expect(links).toHaveCount(5);
-  await expect(links.nth(0)).toHaveAccessibleName('Git');
-  await expect(links.nth(1)).toHaveAccessibleName('Nucleus');
-  await expect(links.nth(2)).toHaveAccessibleName('Skills');
-  await expect(links.nth(3)).toHaveAccessibleName('Monitor');
+  await expect(links).toHaveCount(6);
+  // The Overview first (V91).
+  await expect(links.nth(0)).toHaveAccessibleName('Overview');
+  await expect(links.nth(1)).toHaveAccessibleName('Git');
+  await expect(links.nth(2)).toHaveAccessibleName('Nucleus');
+  await expect(links.nth(3)).toHaveAccessibleName('Skills');
+  await expect(links.nth(4)).toHaveAccessibleName('Monitor');
   // History (V77): the cleaned-up workspaces, under Monitor.
-  await expect(links.nth(4)).toHaveAccessibleName('History');
+  await expect(links.nth(5)).toHaveAccessibleName('History');
   await expect(settingsLink(page)).toBeVisible();
-  await expect(pages(page).getByRole('link', { name: 'Git' })).toHaveAttribute(
+  await expect(pages(page).getByRole('link', { name: 'Overview' })).toHaveAttribute(
     'aria-current',
     'page',
   );
-  await expect(page.locator('.commit').first()).toBeVisible();
+  await expect(page.locator('.overview')).toBeVisible();
   await expect(sidenav(page)).toContainText('No workspaces yet');
   await expect(statusBar(page)).toBeVisible();
 
@@ -89,7 +91,7 @@ test('symbiote view opens Git in the shell: the pages, then the workspaces, and 
   await expect(statusBar(page).getByRole('status')).toHaveText(
     /^Started feature\/add-a-half-function: Claude Code is working in /,
   );
-  await expect(pages(page).getByRole('link', { name: 'Git' })).not.toHaveAttribute(
+  await expect(pages(page).getByRole('link', { name: 'Overview' })).not.toHaveAttribute(
     'aria-current',
     'page',
   );
@@ -273,6 +275,8 @@ test('each group of workspaces has its icon, in its colour; the cards keep their
   page,
 }) => {
   const symbiote = await serve();
+  // Done's cards shown (V91 folds Done by default, decision 859): this is about the cards' dots.
+  await page.addInitScript(() => localStorage.setItem('symbiote.viewer.done', 'open'));
   // A merge in the queue, for the Merging group.
   await page.route('**/api/merges', (route) =>
     route.fulfill({
@@ -438,16 +442,19 @@ test('narrow: a diff opens its sidenav from the strip at the top (V29b)', async 
   await expect(sidenav(page)).toBeHidden();
 });
 
-test('old addresses: a workspace to its address today, the rest to Git', async ({ page }) => {
+test('old addresses: a workspace to its address today, the rest to the Overview', async ({
+  page,
+}) => {
   const symbiote = await serve();
   await page.goto(`${symbiote.url}workspaces?branch=feature%2Fx`);
   await expect(page).toHaveURL(`${symbiote.url}?branch=feature%2Fx`);
   // A workspace that is not there: said in the main area.
   await expect(page.getByRole('main')).toContainText('No workspace feature/x');
+  // The rest: the Overview, which the root opens (V91; Git before).
   await page.goto(`${symbiote.url}features`);
-  await expect(page).toHaveURL(`${symbiote.url}git`);
+  await expect(page).toHaveURL(`${symbiote.url}overview`);
   await page.goto(`${symbiote.url}workspaces`);
-  await expect(page).toHaveURL(`${symbiote.url}git`);
+  await expect(page).toHaveURL(`${symbiote.url}overview`);
   // History's address before V66: Git, its scope kept.
   await page.goto(`${symbiote.url}history?scope=current`);
   await expect(page).toHaveURL(`${symbiote.url}git?scope=current`);

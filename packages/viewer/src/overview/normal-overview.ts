@@ -204,12 +204,16 @@ export function mergedRows(
     if (verdict?.event !== 'approve') return undefined;
     return verdict.via === 'hive' ? 'hive' : 'you';
   };
+  // A workspace Symbiote knows, listed or in the day's starts: the merger's subject names it. A
+  // person's "Merge V90: …" names no branch, and is said whole.
+  const known = (branch: string | undefined) =>
+    branch !== undefined && day?.started[branch] !== undefined ? branch : undefined;
   const rows: MergedRow[] = (day?.merges ?? []).map((merge) => {
     const by = approver(merge.branch, merge.sha);
     return {
       sha: merge.sha,
       at: merge.at,
-      title: named(merge.branch) ?? titleOf(merge.subject, merge.branch),
+      title: named(merge.branch) ?? titleOf(merge.subject, known(merge.branch)),
       into: merge.into,
       ...(merge.branch ? { branch: merge.branch } : {}),
       ...(merge.pushed !== undefined ? { pushed: merge.pushed } : {}),

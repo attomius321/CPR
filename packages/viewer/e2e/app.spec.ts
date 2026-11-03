@@ -117,7 +117,10 @@ async function launch(url = symbiote.url): Promise<{ app: ElectronApplication; p
   running.push(app);
   const page = await app.firstWindow();
   page.on('pageerror', (error) => errors.push(error.message));
-  await expect(page.locator('.commit').first()).toBeVisible();
+  // Its first page drawn: the Overview, at `/` (V91; Git before), or the page `url` names; the
+  // root moved to its address (the window's URL follows the page's history a moment later).
+  await expect(page.locator('.page-head').first()).toBeVisible();
+  await expect.poll(() => new URL(page.url()).pathname).not.toBe('/');
   return { app, page };
 }
 
@@ -187,7 +190,8 @@ const style = (page: Page, selector: string, property: string) =>
 
 test('opens the server in a window of its own: no menu bar, the page’s title', async () => {
   const { app, page } = await launch();
-  expect(page.url()).toBe(`${symbiote.url}git`);
+  // `/` opens the Overview (V91, decision 848), at its own address.
+  expect(page.url()).toBe(`${symbiote.url}overview`);
   const window = await app.evaluate(({ BrowserWindow, Menu }) => {
     const windows = BrowserWindow.getAllWindows();
     return {
@@ -198,7 +202,7 @@ test('opens the server in a window of its own: no menu bar, the page’s title',
     };
   });
   expect(window).toEqual({ count: 1, title: await page.title(), visible: true, menu: null });
-  expect(window.title).toMatch(/^Git · .+ — Symbiote$/);
+  expect(window.title).toMatch(/^Overview · .+ — Symbiote$/);
 });
 
 test("keeps Symbiote's pages in the window and hands other links to the browser", async () => {
@@ -235,7 +239,7 @@ test('back and forward with Alt+arrows, zoom with Ctrl+= and Ctrl+0', async () =
   await page.keyboard.press('s');
   await expect(page).toHaveURL(/\/settings$/);
   await page.keyboard.press('Alt+ArrowLeft');
-  await expect(page).toHaveURL(/\/git$/);
+  await expect(page).toHaveURL(/\/overview$/);
   await page.keyboard.press('Alt+ArrowRight');
   await expect(page).toHaveURL(/\/settings$/);
 
@@ -376,7 +380,8 @@ test('symbiote view opens its window, and ends when the window closes', async ()
 // it, the page as a browser shows it (title-bar.spec.ts compares the two).
 test.describe('the title bar', () => {
   test('back and forward, the page’s title, the OS’s buttons; the page’s own parts under it', async () => {
-    const { page } = await launch();
+    // On Git, whose branches are the page's own parts.
+    const { page } = await launch(`${symbiote.url}git`);
     const bar = page.locator('.titlebar');
     await expect(bar).toBeVisible();
     await expect(bar.locator('.titlebar-title')).toHaveText(/^Git · .+ — Symbiote$/);
@@ -705,8 +710,9 @@ test.describe('from the launcher', () => {
   test('opens the last repository on a server of its own, stopped with the window', async () => {
     installed([symbiote.repo]);
     const { app, page } = await fromLauncher();
-    await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
-    expect(page.url()).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/git$/);
+    await expect(page.locator('.page-head').first()).toBeVisible({ timeout: 20_000 });
+    // The root, moved to the Overview (V91; Git before).
+    await expect.poll(() => page.url()).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/overview$/);
     await expect.poll(() => server(app)).toMatch(/^\d+$/);
     const pid = Number(server(app));
 
@@ -719,7 +725,7 @@ test.describe('from the launcher', () => {
   test('its server ends with the app, even a killed one', async () => {
     installed([symbiote.repo]);
     const { app, page } = await fromLauncher();
-    await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('.page-head').first()).toBeVisible({ timeout: 20_000 });
     await expect.poll(() => server(app)).toMatch(/^\d+$/);
     const pid = Number(server(app));
     app.process().kill('SIGKILL');
@@ -744,7 +750,7 @@ test.describe('from the launcher', () => {
       await page.getByRole('button', { name: /Open a repository/ }).click();
       await expect(page.getByRole('status')).toContainText('not inside a git working tree');
       await page.getByRole('button', { name: /Open a repository/ }).click();
-      await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
+      await expect(page.locator('.page-head').first()).toBeVisible({ timeout: 20_000 });
       const state = JSON.parse(
         readFileSync(join(config, 'symbiote', 'app', 'state.json'), 'utf8'),
       ) as {
@@ -772,7 +778,7 @@ test.describe('from the launcher', () => {
   test('launched again, the running app takes it: one window', async () => {
     installed([symbiote.repo]);
     const { app, page } = await fromLauncher();
-    await expect(page.locator('.commit').first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('.page-head').first()).toBeVisible({ timeout: 20_000 });
     const again = spawn(electron as string, [desktop], { env: launcherEnv() });
     expect(await new Promise((resolve) => again.once('exit', resolve))).toBe(0);
     expect(await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows().length)).toBe(1);

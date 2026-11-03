@@ -103,11 +103,12 @@ test('Escape and Cancel go back to the page it was opened from; the draft stays'
   await start(page).getByRole('button', { name: 'Cancel' }).click();
   await expect(page).toHaveURL(`${symbiote.url}git`);
 
-  // Opened by its address, with no page of Symbiote's before it: Cancel goes to History.
+  // Opened by its address, with no page of Symbiote's before it: Cancel goes to the Overview,
+  // the page the root opens (V91; Git before).
   const fresh = await page.context().newPage();
   await fresh.goto(`${symbiote.url}start`);
   await start(fresh).getByRole('button', { name: 'Cancel' }).click();
-  await expect(fresh).toHaveURL(`${symbiote.url}git`);
+  await expect(fresh).toHaveURL(`${symbiote.url}overview`);
   await expect(title(fresh)).toHaveCount(0);
 });
 

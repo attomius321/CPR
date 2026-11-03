@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v91-redesign-overview.md)
 
-**Status:** planned (3 November 2026), on branch `feature/redesign-overview` (the workspace's, from
+**Status:** built (3 November 2026), on branch `feature/redesign-overview` (the workspace's, from
 `main` at `705f20d`); the person's OK with choices 1 Respond, 2 exact by day, 3 fold Done, 4 a key
 free on every page.
 
@@ -197,3 +197,59 @@ reviewer, how Hive lands. Events: Hive's of today, in words.
 **Not in V91 (later)**: Hive's sidenav groups and two-line rows, the Run tab, Settings' Hive page,
 Start in Hive mode, turning Hive on (step 5); normal mode's Merge and Start screens; findings
 recorded per workspace.
+
+## As built (V91)
+
+- **The day read** is as planned. Two things were added to reach its cost:
+  - Each file's parse is kept until the file changes.
+  - The default branch and the records' place are asked of git again only after a minute.
+
+  Warm reads on this repository's records went from 105 ms to 30–34 ms. The first read after a
+  start takes 365 ms: the writers' transcripts are read whole once, then from where the last read
+  ended.
+- **A merge's branch** comes from the merger's subject (`Merge <branch>: …`) or git's own
+  (`Merge branch '<branch>'`). The plan also named the second parent's branch: dropped. Git does
+  not record it, and naming it costs a `name-rev` a merge. A person's `Merge V90: …` names no
+  workspace, so its subject is shown whole.
+- **The Done group** keeps its group icon (V44: every group has one), then a button with its name,
+  count and a chevron. The proof has only the chevron.
+- **Removals fall back to the Overview.** A merge removed from its page and a workspace cleaned up
+  from its page or card land there, as the start page's way back does. Before, they went to Git.
+- **Read why** is a link to the workspace's Review tab (`/?branch=…&review`), which the shell
+  opens in place.
+- **The Limits card** shows "Rounds per workspace" only when a Hive record states its round cap: no
+  setting holds it. The reviewer shown is the project's model and level, else Symbiote's default
+  (Opus, high).
+- **The kits' faint words** (notes, branches, times) are `--muted`: `--faint` is for marks only
+  (V87, decision 765).
+- **Row heights** come from two new tokens, `--height-table-row` (54 px) and `--height-table-line`
+  (40 px). The table head uses `--height-tab`.
+- **Landed today counts landings only.** An answered spike is listed under Landed today but not
+  counted in the figure, which the proof's 5 includes.
+
+**Results.**
+- **Unit tests** (all written first and seen failing on stubs):
+  - 34 for the Overviews' derivations. The day-boundary tests run in Bucharest and Los Angeles.
+    The 25-hour day's cases also fail on a 24-hour step, checked by swapping one in.
+  - 6 for the day read, on real git and records.
+  - 2 for its server route, seen failing without it.
+- **`pnpm check`**: 2,992 tests in 217 files.
+- **e2e:**
+  - `overview.spec.ts` (4 tests).
+  - The Overview in `page-frame.spec.ts` (both modes) and `targets.spec.ts` (empty, and with a
+    review waiting).
+  - The specs that expected `/`, a removal or the window to land on Git, updated.
+- **First paint**: medians of 8 rounds, alternating `main`'s build and the branch's, on a clone of
+  this repository with its records (147 workspaces, 14 Hive records), at load 2. `/` on `main` is
+  Git; on the branch it is the Overview, drawn once its list is read.
+
+  | | main | branch |
+  |---|---|---|
+  | `/` content drawn | 224 ms (Git's rows) | 120 ms (the Overview's inbox) |
+  | `/` first contentful paint | 92 ms | 84 ms |
+  | `/git` content drawn | 232 ms | 225 ms |
+  | `/git` first contentful paint | 88 ms | 92 ms |
+
+  An earlier 6 rounds, at load 10 during an e2e run, gave the same picture except for `/`'s first
+  contentful paint (main 80 ms, the branch 100 ms). At load 2 that gap is gone. `/git`'s 4 ms
+  either way is within the runs' spread (88–100 ms).

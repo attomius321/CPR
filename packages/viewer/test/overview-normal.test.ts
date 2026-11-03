@@ -246,6 +246,15 @@ describe('merged today and this week', () => {
         pushed: true,
       },
       {
+        // A person's merge, "Merge <ID>: <title>": no workspace of that name, its subject whole.
+        sha: 'd74b372'.padEnd(40, '0'),
+        at: today('06:27'),
+        subject: "Merge V90: a review's pages redesigned",
+        into: 'main',
+        branch: 'V90',
+        pushed: true,
+      },
+      {
         sha: '5a77b31'.padEnd(40, '0'),
         at: today('10:02'),
         subject: 'Merge fix/coupon: Rename the coupon field',
@@ -291,6 +300,7 @@ describe('merged today and this week', () => {
   it("takes git's merges and the queue's fast-forwards, once each, oldest first", () => {
     expect(rows.map((r) => r.sha.slice(0, 7))).toEqual([
       '0e44b7d',
+      'd74b372',
       '5a77b31',
       '3c1e0f2',
       'fffffff',
@@ -298,8 +308,9 @@ describe('merged today and this week', () => {
   });
 
   it('names each by its workspace, else by the merger’s subject, and says who approved it', () => {
-    const [old, coupon, receipt, ff] = rows;
+    const [old, person, coupon, receipt, ff] = rows;
     expect(old).toMatchObject({ title: "Merge branch 'old'", pushed: true });
+    expect(person).toMatchObject({ title: "Merge V90: a review's pages redesigned" });
     expect(old?.by).toBeUndefined();
     expect(coupon).toMatchObject({ title: 'Rename the coupon field', pushed: false, by: 'you' });
     expect(receipt).toMatchObject({ title: 'Email a receipt after checkout', by: 'you' });
@@ -316,9 +327,9 @@ describe('merged today and this week', () => {
       NOW,
     );
     expect(figures.merged).toEqual({
-      week: 4,
-      perDay: [0, 0, 0, 1, 0, 0, 3],
-      today: 3,
+      week: 5,
+      perDay: [0, 0, 0, 1, 0, 0, 4],
+      today: 4,
       into: ['main'],
     });
     // Receipt: 09:20 → 11:20, coupon 08:02 → 10:02; git names no branch for the old one, and the

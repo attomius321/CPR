@@ -5,10 +5,35 @@ shows several of them in one window. Workspaces have their own [guide](workspace
 change's Files and Graph pages are in the [review guide](review-and-ci.md). Each page has a key,
 listed in the [commands reference](../reference/commands.md#keys).
 
+## Overview
+
+**Overview** (`t`) is the page `symbiote view` opens on, first in the sidenav. "Today" is your
+calendar day, from your midnight.
+
+- **In normal mode**, five figures: what waits for you, the agents at work, the workspaces with
+  commits to review, what merged into the default branch this week (a bar a day) and the median
+  time from a workspace's start to its merge. Then the inbox: each workspace that waits for you,
+  the oldest first, with its one action. **Respond** opens a plan in the agent's terminal, where
+  **Approve plan** is; **Answer** does the same for a question or a permission; **Review** opens
+  the change; **Merge into** queues an approved one; **Open** goes to a merge that needs you;
+  **Read** opens a report that came without commits. Under it, the agents at work, the merges
+  under way and what merged today; beside it, your subscription's usage and today's events.
+- **In Hive mode**, five figures: the workspaces in flight by step, landed today (a bar a day for
+  the week), the defects Hive's reviews proved today, the median time from brief to landed, and
+  what was spent since midnight: each review's cost when it ran, and the writer's from Claude Code's
+  own counts in its session files. A workspace Hive stopped is called out with why, and **Read
+  why** opens its Review tab. Each workspace in flight shows its steps, what runs now, its round,
+  time and spend; then what landed today. Beside them, the usage at which Hive pauses, the budget
+  per workspace, the reviewer and how Hive lands, then today's events. **Turn off Hive** asks as
+  Settings does.
+
+Merged today counts git's merges into the default branch, and the merge queue's fast-forwards; a
+fast-forward made outside the queue has no record of when, and is not counted. A review's findings
+are not shown here: Symbiote finds them when the review opens.
+
 ## Git
 
-**Git** (`g`) draws the repository's commits and branches as a graph. It is the page `symbiote view`
-opens on.
+**Git** (`g`) draws the repository's commits and branches as a graph.
 
 - **A commit.** Select one to see its message, author, parents and files in the details pane. Click
   a file to see its diff in the commits' place, and **Open in VS Code** (`o`) to open that diff in

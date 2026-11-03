@@ -639,7 +639,9 @@ function WorkspaceGroupSection({
     <section className={`workspace-group group-${group}`} aria-label={title}>
       {/* Its tip names it in the rail, where only the icon shows. */}
       {foldable && !folded ? (
+        // Its icon as every group's (V44), then its name, count and chevron as the fold's button.
         <h3>
+          <Icon />
           <button
             type="button"
             className="group-fold"
@@ -647,9 +649,9 @@ function WorkspaceGroupSection({
             {...tip(closed ? `Show ${title}` : `Fold ${title}`, { side: 'right' })}
             onClick={toggle}
           >
-            <ChevronIcon open={!closed} />
             <span className="sidenav-label">{title}</span>{' '}
             <span className="branches-count">{rows.length + starts.length}</span>
+            <ChevronIcon open={!closed} />
           </button>
         </h3>
       ) : (

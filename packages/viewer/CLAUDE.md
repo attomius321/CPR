@@ -6,9 +6,10 @@ and `/api/review` (`packages/cli/src/server.ts`); `?graph=<url>` loads any graph
 (used by `scripts/viewer/measure.mjs`). Both commands serve `dist/` as it was when they
 started, read into memory (fix/suggest-settings-models): restart a running `symbiote view` after `pnpm build`
 to see a viewer change. Under `symbiote view` the pages live in a shell (V29a,
-`src/shell/Shell.tsx`): a sidenav with Git (`/git`, History until V66: `/api/history…`,
-`/api/git…`, `POST /api/diffs`), the workspaces (`/api/workspaces…`) and, at its bottom,
-Settings, each opened in place; `/` alone and `/history` are Git. Each diff is served under
+`src/shell/Shell.tsx`): a sidenav with the Overview first (`/overview`, V91; `/` alone opens
+it), Git (`/git`, History until V66: `/api/history…`, `/api/git…`, `POST /api/diffs`), the
+workspaces (`/api/workspaces…`) and, at its bottom, Settings, each opened in place; `/history` is
+Git. Each diff is served under
 `/diff/<base>..<head>/`: the viewer must keep calling its own API with **relative** URLs
 (`./api/…`) and loading files relative to the page (`base: './'`), so every call reaches that diff. Only the two pages' endpoints are absolute (`/api/history…`,
 `/api/git…`, `/api/workspaces…`, `/api/diffs`).
@@ -25,6 +26,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 | `graph/` | The layout (`flow.ts`, the worker), the four nodes, the canvas and the map |
 | `diff/` | A diff's page: `App.tsx`, its two pages (Files, Graph), its sidebar, detail panel and review tab, opening a line |
 | `history/` | Git (History until V66): rows, lanes, branches, checkout, the row menu, branch reviews; a commit's details, the uncommitted changes, branch and tag dialogs, fetch/pull/push, search (V66); a file shown in the rows' place (V70) |
+| `overview/` | The Overview (V91), both modes: its pure derivations, the day read, the two bodies |
 | `workspaces/` | A workspace, its agent's terminal, its changes, merges, Start a workspace |
 | `shell/` | The shell: sidenav, title bar, status bar and usage, pages, theme, the desktop window |
 | `ui/` | Shared: the tokens and controls' CSS, `Help`, `Tooltips`, `Resizer`, icons, menus, Markdown, HTTP |
@@ -108,6 +110,21 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   kept in the browser. Approve plan and Send reply with a terminal go through
   `OpenedTerminal.submit` (typed once its input is drawn, Enter its own write): typed before, the
   Enter is lost.
+- `src/overview/` — the Overview (V91, decisions 848–859), at `/overview`, the page `/` opens,
+  key `t`: `OverviewPage.tsx` draws `NormalOverview.tsx` or `HiveOverview.tsx` by `useHive()`.
+  Everything shown is derived by **pure** modules from what is recorded, tested per state:
+  `day.ts` (today is the browser's local calendar day; a week's days stepped by the calendar, never
+  24 hours: tested in two time zones and over a 25-hour day), `normal-overview.ts` (the inbox and
+  its one action a workspace, the figures, merges this week), `hive-overview.ts` (in flight,
+  stopped, landed today, the five figures, spend since midnight), `feed.ts` (today's events). The
+  list's read is `useWorkspaces`' as everywhere; `useDay.ts` reads `/api/workspaces/day?since=`
+  (local midnight six days back) on mount, when the list's read shows something moved, and at
+  midnight, never on a timer of its own. An inbox row's action is the existing one: `respondTo`,
+  `openReview` (`workspaces/review-open.ts`, the head's too), `MergeControl`; Turn off Hive is
+  `settings/HiveOff.tsx`, Settings' too. The usage is one reader for the page and the status bar
+  (`shell/useUsage.ts`). The kits' figure, table, feed, facts and gauge are shared parts
+  (`ui/Figures.tsx`, `ui/figures.css`). `e2e/overview-data.ts` holds the proofs' records for
+  `page.route`, used by `overview.spec.ts` and `page-frame.spec.ts`.
 - `src/monitor/` — the Monitor (RM1), at `/monitor` (absolute `/api/monitor`, the `CodeMap` of
   `@symbiote/monitor`, whose **types** only it imports). `codemap.ts` builds the folder tree of the
   kinds turned on, says the concentration in words and gives a file's heat step by its lines

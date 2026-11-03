@@ -203,7 +203,8 @@ test('the Overview, normal mode and Hive, full: the same frame', async ({ page }
     page,
     'the Overview, Hive mode',
     'overview',
-    ['.overview-card.figures', '.overview-card.stopped-card', '.overview-card.limits'],
+    // The stopped card first: the frame is measured once it is drawn, after the list's read.
+    ['.overview-card.stopped-card', '.overview-card.figures', '.overview-card.limits'],
     { bottom: false },
   );
 });

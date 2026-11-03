@@ -145,7 +145,7 @@ test('the title bar holds the window’s own: Back, Forward, the page’s title,
 }) => {
   const symbiote = await serve();
   const page = await open(browser, true);
-  await page.goto(symbiote.url);
+  await page.goto(`${symbiote.url}git`);
   await expect(page.locator('.commit').first()).toBeVisible();
   const bar = page.locator('.titlebar');
   const names = await bar

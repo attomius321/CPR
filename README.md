@@ -95,8 +95,9 @@ This walks one task from start to merge. You need Claude Code or Codex. Claude C
 repository you have trusted. If you have never run `claude` in this repository, run it there once
 and accept its trust prompt.
 
-1. In the repository, run `symbiote view`. Symbiote opens on **Git**, the repository's commits and
-   branches. The column on the left is the *sidenav*: the pages, then your workspaces.
+1. In the repository, run `symbiote view`. Symbiote opens on the **Overview**: what waits for you,
+   the agents at work and the day. The column on the left is the *sidenav*: the pages, then your
+   workspaces.
 2. Press `n`, or click **+** beside **Workspaces**. The **Start a workspace** page opens.
 3. Leave **Feature** picked. Type a **Title**, such as "Add a discount code", and describe the
    **Goal**: what it should do, and why. Leave **Plan first and wait for my OK** on.
@@ -218,7 +219,13 @@ The sidenav lists your workspaces in groups, by what each one needs from you:
 | **To review** | Finished work: a branch to review, or an approval to merge |
 | **Not running** | Agents that failed, were stopped, or have not started |
 | **Working** | Agents at work, with what each one is doing right now |
-| **Done** | Merged workspaces, ready to clean up |
+| **Done** | Merged workspaces, ready to clean up. Folded under its name; click it to open |
+
+The **Overview** (`t`), first in the sidenav, puts it on one page. Its inbox lists each workspace
+that waits for you, the oldest first, with the one thing to do: **Respond** or **Answer** opens the
+agent's terminal, **Review** opens the change, **Merge into** queues an approved one. Under it are
+the agents at work, the merges under way and what merged into the default branch today; beside it,
+your subscription's usage and today's events. Today runs from your midnight.
 
 The window's title counts what waits for you. In Symbiote's window, the taskbar icon also gets a
 violet dot, and on desktops that support it the taskbar button blinks.
@@ -326,6 +333,11 @@ Nucleus, the agent [below](#nucleus-ask-about-your-repository), is called *Alpha
 agent, told what Hive does. Hive drives Claude Code only, and its reviews run on Linux only.
 
 ![Settings' Hive mode page: how Hive lands (the merge queue or a pull request), the usage at which it pauses, and a budget per workspace](docs/images/hive-settings.png)
+
+In Hive mode the **Overview** shows Hive's day: how many workspaces are in flight, landed today,
+the defects its reviews proved, the median time from brief to landed, and what was spent since
+midnight. A workspace Hive stopped is called out with why. Each workspace in flight shows its step,
+round, time and spend; beside them, the usage at which Hive pauses, the budget and the reviewer.
 
 The [Hive section of the configuration reference](docs/reference/configuration.md#hive-mode)
 explains each step, its settings and where Hive keeps its record.

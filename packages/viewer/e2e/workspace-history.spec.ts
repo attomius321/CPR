@@ -97,7 +97,8 @@ async function finishHalf(page: Page) {
   const cleanUp = head.getByRole('button', { name: 'Clean up', exact: true });
   await expect(cleanUp).toBeVisible(POLL);
   await cleanUp.click();
-  await expect(page).toHaveURL(`${symbiote.url}git`, POLL);
+  // Its page gone, the Overview (V91; Git before).
+  await expect(page).toHaveURL(`${symbiote.url}overview`, POLL);
 }
 
 const list = (page: Page) => page.getByRole('navigation', { name: 'Finished workspaces' });
@@ -114,8 +115,9 @@ test('History, under Monitor: the cleaned-up workspaces, the picked one read onl
 
   // Its link under Monitor, and h.
   const pages = page.getByRole('navigation', { name: 'Pages' });
-  await expect(pages.getByRole('link').nth(3)).toHaveAccessibleName('Monitor');
-  await expect(pages.getByRole('link').nth(4)).toHaveAccessibleName('History');
+  // The Overview first (V91).
+  await expect(pages.getByRole('link').nth(4)).toHaveAccessibleName('Monitor');
+  await expect(pages.getByRole('link').nth(5)).toHaveAccessibleName('History');
   await page.keyboard.press('h');
   await expect(page).toHaveURL(`${symbiote.url}workspace-history`);
   await expect(pages.getByRole('link', { name: 'History' })).toHaveAttribute(
