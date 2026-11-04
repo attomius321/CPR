@@ -5,7 +5,8 @@
 // Claude Code's own rules ask the person; every other tool is denied. Like Nucleus's gate, it runs once per tool call in Claude
 // Code's process tree (`scribe-hook.ts`), so it uses nothing but Node's modules.
 import { isAbsolute, relative, sep } from 'node:path';
-import { gitReadProblem, realTarget, type GateDecision } from './nucleus-gate.js';
+import { gitReadProblem, realTarget } from './git-read.js';
+import type { GateDecision } from './nucleus-gate.js';
 
 const READS = ['Read', 'Grep', 'Glob'];
 const WRITES = ['Write', 'Edit', 'MultiEdit'];

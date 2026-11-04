@@ -1,7 +1,9 @@
 // Nucleus's gate (V35, decision 236): what Nucleus's Claude Code may run, decided by Symbiote before
 // Claude Code's own rules. Read, Grep and Glob pass to those rules, but in an open workspace's
-// worktree, which the gate opens (V80, decisions 596-597); Bash runs only git's read commands this
-// module parses, there too with `-C` (decision 598); Symbiote's own MCP tools pass (MC1: the asked
+// worktree, which the gate opens (V80, decisions 596-597); Bash runs the shell's read commands on
+// the checkout and those worktrees, and with the web the network's reads (`nucleus-shell.ts`, NU9,
+// decisions 917-922), git's as before (`git-read.ts`, decision 598); without the folders (a
+// settings file from before V80), git's read commands only. Symbiote's own MCP tools pass (MC1: the asked
 // ones wait for the person in Symbiote); WebSearch and WebFetch pass when Symbiote gives it the web
 // (NU1, decision 592); every other tool, and every other server's, is denied. Claude Code's allow
 // rules cannot do this: `Bash(git log *)` matches `git log --output=<file>`. The hook runs once per
@@ -9,37 +11,16 @@
 // Node's modules.
 import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync, realpathSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, relative, sep } from 'node:path';
+import { isAbsolute, join, sep } from 'node:path';
+import { gitReadProblem, realTarget, within } from './git-read.js';
+import { shellCheck } from './nucleus-shell.js';
+
+export { gitReadProblem, realTarget } from './git-read.js';
 
 /** What the gate says of one tool call: allowed (and why, when not one of git's read commands),
  * denied with the reason, or null: Claude Code's own rules decide. */
 export type GateDecision =
   { allow: true; reason?: string } | { allow: false; reason: string } | null;
-
-/** `path`'s real path: its nearest folder that exists, made real, then the rest as written. */
-export function realTarget(path: string): string {
-  const rest: string[] = [];
-  let head = path;
-  for (;;) {
-    try {
-      return join(realpathSync(head), ...rest);
-    } catch {
-      // Not there yet: a new skill's folder, a new file.
-    }
-    const up = dirname(head);
-    if (up === head) return path;
-    rest.unshift(basename(head));
-    head = up;
-  }
-}
-
-/** Whether `target` is `folder` or in it. */
-function within(folder: string, target: string): boolean {
-  const inside = relative(folder, target);
-  return (
-    inside === '' || (inside !== '..' && !inside.startsWith(`..${sep}`) && !isAbsolute(inside))
-  );
-}
 
 /**
  * The open workspaces' worktrees (V80, decision 596), as real paths: the folder of each record in
@@ -117,18 +98,6 @@ export function nucleusReach(args: readonly string[]): NucleusReach | undefined 
   return { checkout, worktrees: () => (found ??= openWorktrees(checkout, records)) };
 }
 
-/** Why `folder` is not in an open workspace's worktree for `git -C`, or null. */
-function worktreeProblem(folder: string, worktrees: () => readonly string[]): string | null {
-  if (!isAbsolute(folder)) return `git -C ${folder}: give a workspace's worktree, an absolute path`;
-  if (folder.split(/[\\/]/).includes('..')) {
-    return `git -C ${folder} holds "..": give the worktree's own path`;
-  }
-  const target = realTarget(folder);
-  return worktrees().some((w) => within(w, target))
-    ? null
-    : `git -C ${folder}: not a workspace's worktree`;
-}
-
 /**
  * What the gate is told by its arguments in the settings file: the worktrees Nucleus reads (V80),
  * and whether it has the web (NU1).
@@ -157,289 +126,6 @@ export const NAME_ARG = '--name=';
 
 /** Claude Code's tools on the web (NU1): a search at Anthropic, a page read by GET from here. */
 const WEB = ['WebSearch', 'WebFetch'];
-
-/** git's commands Nucleus runs: they read the repository and its history, and write nothing. */
-const READ_COMMANDS = new Set([
-  'log',
-  'show',
-  'blame',
-  'diff',
-  'shortlog',
-  'grep',
-  'rev-parse',
-  'merge-base',
-  'ls-files',
-  'ls-tree',
-]);
-
-/**
- * Nucleus's besides (V80, decision 598): `diff-index`, the uncommitted changes, and `status` with
- * `--no-optional-locks`; neither writes the index, where `git diff` and a plain `git status` do.
- */
-const NUCLEUS_COMMANDS = new Set([...READ_COMMANDS, 'diff-index', 'status']);
-
-/** What a git read command may be piped into: filters that write nothing. */
-const FILTERS = new Set(['head', 'tail', 'wc', 'grep']);
-
-/** Redirections that only merge or drop output, accepted after a command. */
-const QUIET = ['2>&1', '2>/dev/null', '>/dev/null'];
-
-/** Characters a word may hold unquoted: none that the shell expands or treats as an operator. */
-const PLAIN = /^[A-Za-z0-9_\-./:=@^~,+%]$/;
-
-/**
- * Options that write a file or run a program: `--output` (log, show, diff),
- * `--open-files-in-pager` and `-O` (grep), `--ext-diff` (a configured diff program); `--no-index`
- * reads files outside the repository. git takes a long option's unique beginning (`--open=vi`), so
- * one is refused, and for grep any bundle of short options holding `O` (`-nOvi`).
- */
-const WRITING = ['--output', '--open-files-in-pager', '--ext-diff', '--no-index'];
-
-/**
- * Options that read a file anywhere and print it, or its first line in an error, as `--no-index`
- * would (fix/security-and-bugs): blame's `--contents`, `--ignore-revs-file` and `-S`, grep's
- * `--file` and `-f`. `--ignore-rev`, a commit to ignore, is blame's own and reads nothing.
- */
-const READING = ['--contents', '--ignore-revs-file', '--file'];
-const OWN = new Set(['--ignore-rev']);
-
-/** Whether git would take `name` for `option`: the option itself, or its unique beginning. */
-const takes = (name: string, option: string) =>
-  name.length >= 3 && (option.startsWith(name) || name.startsWith(option));
-
-function refusedOption(command: string, word: string): string | null {
-  if (word.startsWith('--')) {
-    const name = word.split('=')[0] ?? word;
-    if (WRITING.some((option) => takes(name, option))) return name;
-    if (!OWN.has(name) && READING.some((option) => takes(name, option))) return name;
-    return null;
-  }
-  if (word.startsWith('-O')) return '-O';
-  if (command === 'grep' && /^-[^-]*[Of]/.test(word)) return word;
-  if (command === 'blame' && /^-[^-]*S/.test(word)) return word;
-  return null;
-}
-
-/** Short options of grep's that take a value (`-e PATTERN`, `-m NUM`…), bundled last or alone. */
-const GREP_VALUED = 'eABCm';
-const GREP_VALUED_LONG = [
-  '--regexp',
-  '--max-count',
-  '--after-context',
-  '--before-context',
-  '--context',
-  '--label',
-  '--binary-files',
-];
-/** grep's options that read files or folders, as short letters and long names. */
-const GREP_READING = 'rRfdD';
-const GREP_READING_LONG = [
-  '--recursive',
-  '--dereference-recursive',
-  '--file',
-  '--directories',
-  '--devices',
-  '--include',
-  '--exclude',
-  '--exclude-from',
-  '--exclude-dir',
-];
-
-/**
- * Why a filter after a pipe would read something besides git's output, or null: `head` and `tail`
- * take options and counts, `wc` its counting options, `grep` its options but those that read files
- * and one pattern (none after `-e`); no file of their own (fix/security-and-bugs: `| tail ~/.bashrc`
- * read it).
- */
-function filterProblem([filter, ...words]: string[]): string | null {
-  const noFile = (word: string) => `${filter} ${word}: a filter reads git's output, no file`;
-  if (filter === 'head' || filter === 'tail') {
-    const file = words.find((w) => !w.startsWith('-') && !/^\+?\d+[a-zA-Z]*$/.test(w));
-    return file === undefined ? null : noFile(file);
-  }
-  if (filter === 'wc') {
-    const other = words.find(
-      (w) => !/^-[clmwL]+$|^--(lines|words|bytes|chars|max-line-length)$/.test(w),
-    );
-    return other === undefined ? null : noFile(other);
-  }
-  // grep
-  let patterns = 0;
-  const operands: string[] = [];
-  for (let i = 0; i < words.length; i++) {
-    const word = words[i] as string;
-    if (word === '--') {
-      operands.push(...words.slice(i + 1));
-      break;
-    }
-    if (word.startsWith('--')) {
-      const name = word.split('=')[0] ?? word;
-      if (GREP_READING_LONG.some((option) => takes(name, option))) return noFile(name);
-      const valued = GREP_VALUED_LONG.find((option) => takes(name, option));
-      if (valued === '--regexp') patterns++;
-      if (valued && !word.includes('=')) i++;
-      continue;
-    }
-    if (word.startsWith('-') && word !== '-') {
-      for (let k = 1; k < word.length; k++) {
-        const letter = word.charAt(k);
-        if (GREP_READING.includes(letter)) return noFile(word);
-        if (GREP_VALUED.includes(letter)) {
-          if (letter === 'e') patterns++;
-          if (k === word.length - 1) i++;
-          break;
-        }
-      }
-      continue;
-    }
-    operands.push(word);
-  }
-  const files = operands.slice(patterns > 0 ? 0 : 1);
-  return files.length === 0 ? null : noFile(files[0] as string);
-}
-
-/** A command split into pipeline stages of words, or what makes it something else. */
-function stagesOf(command: string): string[][] | string {
-  const stages: string[][] = [[]];
-  let word: string | null = null;
-  const end = () => {
-    if (word !== null) stages.at(-1)?.push(word);
-    word = null;
-  };
-  for (let i = 0; i < command.length; i++) {
-    const c = command.charAt(i);
-    if (c === ' ' || c === '\t') {
-      end();
-      continue;
-    }
-    if (c === '\n' || c === '\r') return 'one command on one line';
-    // A redirection that only merges or drops output, as a word of its own.
-    const quiet = word === null ? QUIET.find((q) => command.startsWith(q, i)) : undefined;
-    if (quiet && /^(\s|\||$)/.test(command.slice(i + quiet.length, i + quiet.length + 1))) {
-      i += quiet.length - 1;
-      continue;
-    }
-    if (c === "'") {
-      const close = command.indexOf("'", i + 1);
-      if (close < 0) return 'a quote is not closed';
-      word = (word ?? '') + command.slice(i + 1, close);
-      i = close;
-      continue;
-    }
-    if (c === '"') {
-      let j = i + 1;
-      for (; j < command.length && command.charAt(j) !== '"'; j++) {
-        const inner = command.charAt(j);
-        if (inner === '$' || inner === '`' || inner === '\\') {
-          return `no ${inner} in double quotes: use single quotes`;
-        }
-      }
-      if (j >= command.length) return 'a quote is not closed';
-      word = (word ?? '') + command.slice(i + 1, j);
-      i = j;
-      continue;
-    }
-    if (c === '|') {
-      if (command.charAt(i + 1) === '|') return 'no ||: one command';
-      end();
-      if (stages.at(-1)?.length === 0) return 'a pipe with nothing before it';
-      stages.push([]);
-      continue;
-    }
-    if (!PLAIN.test(c)) {
-      return `no ${c} outside quotes: no operators, redirections, substitutions or expansions`;
-    }
-    word = (word ?? '') + c;
-  }
-  end();
-  if (stages.at(-1)?.length === 0) return 'a pipe with nothing after it';
-  return stages;
-}
-
-/**
- * git's own options before the command: `--no-pager`; with `worktrees` (Nucleus's, V80), also
- * `--no-optional-locks` and one `-C` into an open workspace's worktree. The command's words, or
- * what is wrong.
- */
-function ownOptions(
-  words: string[],
-  worktrees?: () => readonly string[],
-): { rest: string[]; folder?: string; quiet: boolean } | string {
-  if (!worktrees) return { rest: words[0] === '--no-pager' ? words.slice(1) : words, quiet: false };
-  let folder: string | undefined;
-  let quiet = false;
-  let at = 0;
-  for (; at < words.length; at++) {
-    const word = words[at];
-    if (word === '--no-pager') continue;
-    if (word === '--no-optional-locks') {
-      quiet = true;
-      continue;
-    }
-    if (word !== '-C') break;
-    if (folder !== undefined) return 'one -C at most';
-    const given = words[at + 1];
-    if (given === undefined) return "git -C takes a folder: a workspace's worktree";
-    const problem = worktreeProblem(given, worktrees);
-    if (problem) return problem;
-    folder = given;
-    at++;
-  }
-  return { rest: words.slice(at), ...(folder ? { folder } : {}), quiet };
-}
-
-/**
- * Why `command` is not one of git's read commands Nucleus runs, or null when it is: `git
- * [--no-pager] <command> …` for the commands in `READ_COMMANDS`, no option that writes or runs a
- * program, optionally piped into `head`, `tail`, `wc` or `grep`. With `worktrees` (Nucleus's, V80):
- * also `-C <a workspace's worktree>`, where `git diff` is refused (it rewrites the index), and
- * `diff-index` and `--no-optional-locks status`, here and there. `who` runs them: Nucleus, or the
- * name its conversation started under (decision 686).
- */
-export function gitReadProblem(
-  command: string,
-  worktrees?: () => readonly string[],
-  who = 'Nucleus',
-): string | null {
-  const stages = stagesOf(command);
-  if (typeof stages === 'string') return stages;
-  const [git = [], ...filters] = stages;
-  const [program, ...rest] = git;
-  if (program !== 'git') return `${program ?? command}: only git runs`;
-  const own = ownOptions(rest, worktrees);
-  if (typeof own === 'string') return own;
-  const [name, ...args] = own.rest;
-  if (name === undefined) return 'say which git command: log, show, blame, diff…';
-  if (name.startsWith('-')) {
-    return worktrees
-      ? `git ${name}: none of git's own options but --no-pager, --no-optional-locks and -C <a workspace's worktree>`
-      : `git ${name}: none of git's own options but --no-pager`;
-  }
-  if (!(worktrees ? NUCLEUS_COMMANDS : READ_COMMANDS).has(name)) {
-    return `git ${name} is not one of git's read commands ${who} runs`;
-  }
-  if (name === 'status' && !own.quiet) {
-    return 'git status only as git --no-optional-locks status: without it git rewrites the index';
-  }
-  if (name === 'diff' && own.folder) {
-    return 'git diff in a worktree rewrites its index, which its agent uses: git -C <worktree> diff-index -p HEAD shows its uncommitted changes';
-  }
-  for (const arg of args) {
-    const option = refusedOption(name, arg);
-    if (option) {
-      return `git ${name} ${option}: it writes a file, runs a program, or reads a file outside the repository`;
-    }
-  }
-  for (const stage of filters) {
-    const [filter] = stage;
-    if (!filter || !FILTERS.has(filter)) {
-      return `a pipe into ${filter ?? 'nothing'}: only head, tail, wc or grep`;
-    }
-    const problem = filterProblem(stage);
-    if (problem) return problem;
-  }
-  return null;
-}
 
 const READS = ['Read', 'Grep', 'Glob'];
 
@@ -481,21 +167,18 @@ export function gateDecision(
   }
   if (v.tool_name === 'Bash') {
     const command = (v.tool_input as { command?: unknown } | null)?.command;
+    if (reach) return shellDecision(command, (input as { cwd?: unknown }).cwd, reach, web, who);
     const problem =
       typeof command === 'string'
-        ? gitReadProblem(command.trim(), reach?.worktrees, who)
+        ? gitReadProblem(command.trim(), undefined, who)
         : 'no command given';
     if (problem === null) return { allow: true };
     return {
       allow: false,
-      reason: reach
-        ? `${who} runs only git's read commands (git log, show, blame, diff, shortlog, grep, ` +
-          'rev-parse, merge-base, ls-files, ls-tree, diff-index, and status with ' +
-          "--no-optional-locks), one at a time, here or with -C <a workspace's worktree>, piped " +
-          `into head, tail, wc or grep at most: ${problem}. Read, Grep and Glob read files.`
-        : `${who} runs only git's read commands (git log, show, blame, diff, shortlog, grep, ` +
-          'rev-parse, merge-base, ls-files, ls-tree), one at a time, piped into head, tail, wc or ' +
-          `grep at most: ${problem}. Read, Grep and Glob read files.`,
+      reason:
+        `${who} runs only git's read commands (git log, show, blame, diff, shortlog, grep, ` +
+        'rev-parse, merge-base, ls-files, ls-tree), one at a time, piped into head, tail, wc or ' +
+        `grep at most: ${problem}. Read, Grep and Glob read files.`,
     };
   }
   if (v.tool_name.startsWith('mcp__')) {
@@ -517,6 +200,45 @@ export function gateDecision(
   return {
     allow: false,
     reason: `${who} changes no file: it reads files (Read, Grep, Glob) and git's history, and acts only through Symbiote's tools (${v.tool_name}).`,
+  };
+}
+
+/** The reasons an allowed command is recorded with (NU9); git's alone keeps its words. */
+const KIND_REASONS = {
+  read: 'a read command (NU9)',
+  network: 'a read on the network (NU9)',
+} as const;
+
+/**
+ * The gate's answer to a Bash call with its folders (NU9, decision 917): the shell's read
+ * commands on the checkout and the open worktrees, from the call's folder (`cwd`, else the
+ * checkout); with `web`, the network's reads.
+ */
+function shellDecision(
+  command: unknown,
+  cwd: unknown,
+  reach: NucleusReach,
+  web: boolean,
+  who: string,
+): GateDecision {
+  const folder = typeof cwd === 'string' && isAbsolute(cwd) ? cwd : reach.checkout;
+  const check =
+    typeof command === 'string'
+      ? shellCheck(command, { cwd: folder, reach, web, who })
+      : { ok: false as const, problem: 'no command given' };
+  if (check.ok)
+    return check.kind === 'git'
+      ? { allow: true }
+      : { allow: true, reason: KIND_REASONS[check.kind] };
+  return {
+    allow: false,
+    reason:
+      `${who} runs only read commands (cat, head, tail, wc, ls, stat, du, file, nl, cut, tr, ` +
+      "uniq, sort, grep, rg, find, sed, jq, date, echo, and git's read commands, here or with " +
+      "-C <a workspace's worktree>; no git diff in a worktree, git diff-index -p HEAD there), " +
+      "joined by &&, ||, ; and pipes, on files in this checkout and the open workspaces' " +
+      `worktrees${web ? ", and the web with curl (GET), gh's reads and git ls-remote" : ''}, ` +
+      `nothing that writes or runs another program: ${check.problem}. Read, Grep and Glob read files.`,
   };
 }
 

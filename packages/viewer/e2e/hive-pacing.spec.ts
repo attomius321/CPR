@@ -71,7 +71,7 @@ test("over the threshold, a workspace's writer waits for the window's reset, sai
 
   // Held at its start: no session, and why, until when, in the viewer's time.
   // Its row in the sidenav (V92): Paused, why and until when.
-  const said = /^Paused · usage 95 % of the 5-hour window, goes on at \d\d:\d\d$/;
+  const said = /^Paused · usage 95 % of the 5-hour window, goes on (?:tomorrow )?at \d\d:\d\d$/;
   await expect(card(page).locator('.hive-row-state')).toHaveText(said);
   expect(starts()).toHaveLength(0);
   const record = JSON.parse(
@@ -94,7 +94,7 @@ test("over the threshold, a workspace's writer waits for the window's reset, sai
     .getByRole('tab', { name: 'Run' })
     .click();
   await expect(page.locator('.run-tab .run-line')).toHaveText(
-    /^Paused\s*usage 95 % of the 5-hour window, goes on at \d\d:\d\d$/,
+    /^Paused\s*usage 95 % of the 5-hour window, goes on (?:tomorrow )?at \d\d:\d\d$/,
   );
 
   // Elsewhere, the status bar says when Hive goes on; the writer starts by itself.
@@ -127,7 +127,7 @@ test("Settings' Hive page: the threshold, Hive's pause now, and the budget, in s
   const pauseAt = part.getByRole('combobox', { name: 'Pause by usage' });
   await expect(pauseAt).toHaveValue('90');
   await expect(part).toContainText(
-    /Hive is paused now: usage 93 % of the 5-hour window, goes on at \d\d:\d\d\./,
+    /Hive is paused now: usage 93 % of the 5-hour window, goes on (?:tomorrow )?at \d\d:\d\d\./,
   );
   await pauseAt.selectOption('80');
   await expect(said).toHaveText('Saved. Hive pauses at 80 %.');
