@@ -100,3 +100,4 @@ the full run, the 2 others passing alone; `pnpm check`.
 Not verified: a person's real use of Ctrl K inside the desktop app's window (the e2e presses it in
 Chromium); a home or folder near the 5,000-folder limit on a slow disk.
 
+Merged into main (2026-11-04).

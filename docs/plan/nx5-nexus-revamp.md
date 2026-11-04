@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nx5-nexus-revamp.md)
 
-**Status:** built (2026-11-04) on branch `feature/nx5-nexus-revamp` (the workspace's, from `main`
+**Status:** merged into `main` on 2026-11-04; built (2026-11-04) on branch `feature/nx5-nexus-revamp` (the workspace's, from `main`
 at `8ae448a`); the person picked option B of three designs and OK'd this plan the same day. NX5a–d
 built; "As built" and results at the end.
 
@@ -196,7 +196,7 @@ screens, measures and docs (NX5d).
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 908 | What Symbiotes shows (supersedes 552 and 553; replaces 626's folders under the cards and its Go to folder, 627's cards and 628's places) | **A list of the repositories the nexus knows and the picked one's card beside it**; Places, the folder grid and the Symbiotes' cards go (the person picked option B of three) | One list in one order; a card per repository is where what waits in each Symbiote will go later |
+| 908 | What Symbiotes shows (supersedes 552 and 553; replaces 626's folders under the cards, 627's cards, 628's places) | **A list of the repositories the nexus knows and the picked one's card beside it**; Places, the folder grid and the Symbiotes' cards go (the person picked option B of three) | One list in one order; a card per repository is where what waits in each Symbiote will go later |
 | 909 | The list's groups | **Running by name, Pinned by name (folders and gone pins too), Opened before last seen first, Found in the chosen folder by path; a repository in one group; Found at most 500 rows** | Running as the tabs; pins no longer in the order pinned; worktrees by their repository |
 | 910 | How a repository is found (replaces 626's Go to folder) | **One field: every word in the `~` path, a name match first; a path (`~`, `/`) lists its folder's entries, Tab completes, → and Enter go in, Backspace after `/` goes up; `/` and Ctrl K focus it; Browse… types `~/`** | "Searching by path is hard": a full path was the only search |
 | 911 | What is scanned | **Only the folder the person chose, kept in `nexus.json` beside the pins; nothing until they choose; 5 levels, no hidden or build folders, links not followed, a repository ends the way down, 5,000 folders or 2 s at most; the last result in `<cache>/nexus/scan.json`** | The person: "only this folder should be scanned"; `~/projects`: 256 folders, 21 repositories, 3–6 ms |

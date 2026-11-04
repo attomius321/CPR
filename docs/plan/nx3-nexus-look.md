@@ -160,8 +160,8 @@ the look, the numbers and the docs.
 | # | Question | Decision | Why |
 |---|---|---|---|
 | 551 | How the row tells the nexus's pages from the Symbiotes | **Two groups, a line between; the pages with icons, the Symbiotes with a state dot; the pages stay at the left** | "separate by a line or something"; a second cue beyond the line, and none of them hidden by a scroll |
-| 552 | What fills Symbiotes | **The running ones as cards; "Repositories in <folder>" under them, the near repositories that run no Symbiote** (the person: "make a decision") | One click to the next Symbiote; the listing exists (5–6 ms) |
-| 553 | Folders' look | **Places at the left, repositories as cards, folders as rows in columns, the counts in the card's head** (the person: "Yes") | A repository is what the tab is for; 16 of 46 in `~/projects` |
+| 552 | What fills Symbiotes *(superseded by 908 of NX5)* | **The running ones as cards; "Repositories in <folder>" under them, the near repositories that run no Symbiote** (the person: "make a decision") | One click to the next Symbiote; the listing exists (5–6 ms) |
+| 553 | Folders' look *(superseded by 908 of NX5)* | **Places at the left, repositories as cards, folders as rows in columns, the counts in the card's head** (the person: "Yes") | A repository is what the tab is for; 16 of 46 in `~/projects` |
 | 554 | A repository's depth | **The end: its click opens its Symbiote; the server never lists inside one but in a home kept in git** (the person: "Yes") | "it should stop there, i should not be able to go deeper" |
 | 555 | What a repository's card says | **Its branch from its `HEAD`, no git process** | 3–4 ms for 16 repositories; tells worktrees apart |
 

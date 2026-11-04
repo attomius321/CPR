@@ -234,9 +234,9 @@ settings folder and logs, read only:
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 626 | Where the folders are | **Under Symbiotes' cards, on the nexus's one page: the row's own group is Symbiotes alone; Go to folder in its head; "Repositories in", Show in Folders and Open a folder go. `#folders:<path>` lists that folder under Symbiotes, and is its address once the person goes to one** | "It is redundant": Folders opened on the folder "Repositories in" showed; old addresses keep working |
-| 627 | What a pinned repository is | **A card among the Symbiotes, first, in the order pinned, then the other running ones by name: a running one's card as before (its tab, Stop); one not running with its branch, read from its `HEAD`, and Open Symbiote, a click its start. Every card has its pin in its corner** | The person pins repositories to start them: all 9 starts of the day were the two pinned. Decision 619 kept: nothing starts by itself or by a pin |
-| 628 | What a pinned folder is | **A place, under Pinned in the places card, as NX4 drew it; so is a pin whose folder is gone. A pinned repository is not listed there** | A folder is where the person goes, not a Symbiote to open |
+| 626 | Where the folders are *(partly superseded by 908 and 910 of NX5)* | **Under Symbiotes' cards, on the nexus's one page: the row's own group is Symbiotes alone; Go to folder in its head; "Repositories in", Show in Folders and Open a folder go. `#folders:<path>` lists that folder under Symbiotes, and is its address once the person goes to one** | "It is redundant": Folders opened on the folder "Repositories in" showed; old addresses keep working |
+| 627 | What a pinned repository is *(partly superseded by 908 of NX5)* | **A card among the Symbiotes, first, in the order pinned, then the other running ones by name: a running one's card as before (its tab, Stop); one not running with its branch, read from its `HEAD`, and Open Symbiote, a click its start. Every card has its pin in its corner** | The person pins repositories to start them: all 9 starts of the day were the two pinned. Decision 619 kept: nothing starts by itself or by a pin |
+| 628 | What a pinned folder is *(partly superseded by 908 of NX5)* | **A place, under Pinned in the places card, as NX4 drew it; so is a pin whose folder is gone. A pinned repository is not listed there** | A folder is where the person goes, not a Symbiote to open |
 
 ```
  ▦ Symbiotes 2 │ ● Symbiote main  ● ky main
