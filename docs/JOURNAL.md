@@ -419,3 +419,4 @@ merge commit.
 - 2026-11-03 [V94b — one stream per browser, terminals' output on it](journal/v94-push-not-polling.md)
 - 2026-11-03 [V94c — changes from outside](journal/v94-push-not-polling.md)
 - 2026-11-04 [V94d — measured on a copy of this repository, and written down](journal/v94-push-not-polling.md)
+- 2026-11-04 [NX5 spike — three designs, the scan's cost, where a history could come from](journal/nx5-nexus-revamp.md)
