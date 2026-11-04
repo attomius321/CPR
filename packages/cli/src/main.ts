@@ -85,7 +85,7 @@ import { libraryService, type LibraryService } from './library.js';
 import { terminals as agentTerminals } from './terminal.js';
 import { vsCodeFolder, vsCodeOpener } from './editor.js';
 import { fileStateStore, stateDir } from './state.js';
-import { branchReviews } from './reviews.js';
+import { branchReviews, reviewPlace } from './reviews.js';
 import { merger, MergeRefused, projectCheck } from './merges.js';
 import { claudeMerger, codexMerger, type MergerAgent } from './merge-agent.js';
 import { promptSettingsService } from './prompts.js';
@@ -97,7 +97,7 @@ import { readClaudeProfile, readClaudeUsage, readCodexUsage, usageService } from
 import { codex, findCodex, type Codex } from './codex.js';
 import { findHermes, hermes, type Hermes } from './hermes.js';
 import { workspaces, readWorkspaceConfig } from './workspaces.js';
-import { WorkspaceRefused } from './workspace-record.js';
+import { symbioteFolder, WorkspaceRefused } from './workspace-record.js';
 import { EXPORT_FORMATS, type ActivityExport, type ExportFormat } from './activity-export.js';
 import { claudeCode, claudeModelsFile, findClaude, type ClaudeCode } from './claude-code.js';
 import { removeViewRecord, runBridge, viewFile, writeViewRecord } from './mcp-bridge.js';
@@ -887,6 +887,20 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
         library,
       }),
       usage,
+      // Changes from outside (V94c): git's refs, and Claude Code's list read anew.
+      gitDir: repo.commonDir,
+      sessions: async () => (await claudeOf())?.sessions({ fresh: true, keepMs: 6_000 }) ?? null,
+      codexStatus: async (onChange) => {
+        const server = await (await codexOf())?.server();
+        return server ? server.watch(onChange) : null;
+      },
+      // The records' folders (V94a): `symbiote/` (or the cache's) and the merge queue's.
+      recordFolders: async () => [
+        ...new Set([
+          symbioteFolder(await reviewPlace(repo, cacheDir)),
+          join(cacheDir, 'state', repo.id),
+        ]),
+      ],
     },
     open: vsCodeOpener(repo, ctx.env),
     intro: introOf(ctx),
@@ -905,6 +919,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     // The check Hive would run (V92): the default checkout's, as the runner finds it.
     hiveCheck: () => projectCheck(repo, repo.root, 'HEAD'),
     nucleusStart: nucleusStartSetting,
+    // The page's stream (V94); `SYMBIOTE_EVENTS=off`: the pages poll as before.
+    events: ctx.env.SYMBIOTE_EVENTS !== 'off',
     log,
     version,
   });
@@ -918,13 +934,15 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
     root: repo.root,
     started,
   });
-  // Where Symbiote nexus finds this server (NX1): a record of its own, beside the others'.
+  // Where Symbiote nexus finds this server (NX1): a record of its own, beside the others'; where
+  // agents' hooks find it too (V94c), by the records' folder it serves.
   await announce(cacheDir, {
     url: server.url,
     pid: process.pid,
     root: repo.root,
     name: basename(repo.root),
     started,
+    symbiote: symbioteFolder(await reviewPlace(repo, cacheDir)),
   });
 
   let url = server.url;

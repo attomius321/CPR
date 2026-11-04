@@ -8,7 +8,12 @@ import { access, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises
 import { join } from 'node:path';
 
 /** The hook and every module it runs (its imports; `agent-hook-copy.test.ts` keeps the list whole). */
-export const HOOK_FILES = ['agent-hook.js', 'thread.js', 'tool-activity.js'] as const;
+export const HOOK_FILES = [
+  'agent-hook.js',
+  'thread.js',
+  'tool-activity.js',
+  'events-ping.js',
+] as const;
 
 const exists = (path: string) =>
   access(path).then(

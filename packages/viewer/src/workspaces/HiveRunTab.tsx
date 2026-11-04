@@ -48,6 +48,7 @@ import { checkRows, landedWords, runRounds, stopWords, type RunRound } from './r
 import { modelName } from './workspaces.js';
 import { ChecksMark, Item, type ItemState } from './RunItem.js';
 import { Loading } from '../ui/Loading.js';
+import { useTouched } from '../shell/events.js';
 
 const short = (sha: string) => sha.slice(0, 7);
 const enc = encodeURIComponent;
@@ -686,6 +687,9 @@ export function useHiveDetail(
 ): { detail: WorkspaceHiveDetail | null; error: string | null } {
   const [detail, setDetail] = useState<WorkspaceHiveDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Its record and its events written (V94c): what the list's JSON may not show.
+  const record = useTouched(`hive/${branch}.json`);
+  const events = useTouched(`hive/${branch}.jsonl`);
   useEffect(() => {
     if (!on) return;
     let live = true;
@@ -699,7 +703,7 @@ export function useHiveDetail(
     return () => {
       live = false;
     };
-  }, [branch, version, on]);
+  }, [branch, version, on, record, events]);
   return { detail, error };
 }
 

@@ -2,6 +2,7 @@
 // the list's reads; the thread and the commits are read as the panel reads them.
 import { useEffect, useState } from 'react';
 import type { WorkspaceTools } from '@symbiote/core';
+import { useTouched } from '../../shell/events.js';
 
 /**
  * A workspace's recorded tools (`/api/workspaces/activity`), read again with `version`; null until
@@ -9,6 +10,8 @@ import type { WorkspaceTools } from '@symbiote/core';
  */
 export function useTools(branch: string, version: unknown): WorkspaceTools | null {
   const [tools, setTools] = useState<WorkspaceTools | null>(null);
+  // Its file written (V94c): a tool's end the list's JSON may not show.
+  const touched = useTouched(`activity/${branch}.jsonl`);
   useEffect(() => {
     let live = true;
     fetch(`/api/workspaces/activity?branch=${encodeURIComponent(branch)}`)
@@ -20,6 +23,6 @@ export function useTools(branch: string, version: unknown): WorkspaceTools | nul
     return () => {
       live = false;
     };
-  }, [branch, version]);
+  }, [branch, version, touched]);
   return tools;
 }

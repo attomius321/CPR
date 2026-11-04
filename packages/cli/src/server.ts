@@ -64,6 +64,8 @@ import {
   parseWorkspaceAgainst,
   parseWorkspaceClean,
   parseWorkspaceDiff,
+  parseEventsListen,
+  parseEventsPing,
   parseWorkspaceOpen,
   parseWorkspaceReply,
   parseWorkspaceSent,
@@ -114,6 +116,7 @@ import {
   type SkillsService,
 } from './skills.js';
 import { McpRefused, symbioteMcp, type SymbioteMcp } from './mcp.js';
+import { eventStream, type EventStream } from './events.js';
 import { bridgeCaller } from './mcp-bridge.js';
 
 /** Hive's steps that turning it off stops or leaves running (HV4, decision 771). */
@@ -201,9 +204,25 @@ export interface RepositoryOptions {
   monitor?: { map(): Promise<CodeMap> };
   /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 5-min copy. */
   usage?: Pick<UsageService, 'report' | 'settled'>;
+  /**
+   * The folders holding records (V94a): `symbiote/` (or the cache's) and the merge queue's. A
+   * record written there by this process is news for the page's stream, `/api/events`.
+   */
+  recordFolders?: () => Promise<string[]>;
+  /** Git's common folder (V94c): its refs are watched, a commit made anywhere is news. */
+  gitDir?: string;
+  /** Claude Code's list read anew (V94c, decision 906), while an agent is live; null: none. */
+  sessions?: () => Promise<unknown>;
+  /** Codex's app server's status changes (V94c), heard while a Codex agent is live. */
+  codexStatus?: (onChange: () => void) => Promise<{ stop(): void; closed: Promise<void> } | null>;
 }
 
 export interface ViewServerOptions {
+  /**
+   * The page's stream, `/api/events` (V94): on unless false (`SYMBIOTE_EVENTS=off`); off, the
+   * pages poll as before V94.
+   */
+  events?: boolean;
   /** The graph served at `/` (`symbiote pr`). */
   graph?: Graph;
   /** Folder with the built viewer (index.html, assets/). */
@@ -393,9 +412,15 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const startSetting = options.nucleusStart
     ? nucleusStart(options.nucleusStart, options.hive)
     : undefined;
+  /**
+   * The page's one stream (V94a): the shell's state, the whole on connect, then what changed. Made
+   * once the MCP is, whose asks it sends.
+   */
+  let events: EventStream | undefined;
   /** Symbiote's MCP (MC1): its tools over the repository's services; the asks it holds. */
   const mcp: SymbioteMcp | undefined = repository
     ? symbioteMcp(repository, {
+        onAsks: () => events?.changed(['asks'], 'asks'),
         ...(options.version ? { version: options.version } : {}),
         url: () => address,
         exclusive,
@@ -410,13 +435,41 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   const log = options.log ?? silentLog();
   // The pages' errors, as they sent them: `err` is theirs, not an Error for pino to read.
   const pageLog = log.as('viewer').child({}, { serializers: { err: (err: unknown) => err } });
+  if (repository && options.events !== false) {
+    // The page's six reads (decision 898), each as its own route answers it.
+    const { workspaces, reviews, merges, nucleus, scribe } = repository;
+    events = eventStream({
+      read: {
+        ...(workspaces ? { workspaces: () => workspaces.list() } : {}),
+        ...(reviews ? { reviews: () => reviews.list() } : {}),
+        ...(merges ? { merges: () => merges.list() } : {}),
+        ...(nucleus ? { nucleus: () => nucleus.state() } : {}),
+        ...(scribe ? { scribe: () => scribe.state() } : {}),
+        ...(mcp ? { asks: () => Promise.resolve(mcp.asks()) } : {}),
+      },
+      ...(repository.recordFolders ? { roots: repository.recordFolders } : {}),
+      // Terminals' output on the browser's one stream (V94b, decision 903).
+      ...(repository.terminals ? { terminals: repository.terminals } : {}),
+      // Changes from outside (V94c): git's refs, and Claude Code's list while an agent is live.
+      ...(repository.gitDir ? { git: repository.gitDir } : {}),
+      ...(repository.sessions ? { sessions: repository.sessions } : {}),
+      ...(repository.codexStatus ? { codex: repository.codexStatus } : {}),
+      log: log.log,
+    });
+  }
   const pageErrors = { since: 0, count: 0 };
   const viewerFiles = await readViewer(options.viewerDir);
   const server = createServer((req, res) => {
     for (const [name, value] of Object.entries(GUARD_HEADERS)) res.setHeader(name, value);
     const started = performance.now();
     let failure: unknown;
-    res.once('close', () => requestLine(req, res, performance.now() - started, failure));
+    res.once('close', () => {
+      requestLine(req, res, performance.now() - started, failure);
+      // A write this server answered: what it may have changed is read for the pages (V94a).
+      if (events && req.method === 'POST' && res.statusCode < 400) {
+        events.wrote(new URL(req.url ?? '/', 'http://localhost').pathname);
+      }
+    });
     handle(req, res).catch((error: unknown) => {
       failure = error;
       send(res, 500, String(error));
@@ -428,6 +481,34 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     if (fromAnotherSite(req)) return send(res, 403, "forbidden: another site's request");
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (url.pathname === '/api/logs') return pageError(req, res);
+    if (events && url.pathname === '/api/events') {
+      if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+      if (!sameSite(req)) return send(res, 403, 'forbidden');
+      return events.open(req, res);
+    }
+    // A hook wrote (V94c, decision 905): a bare POST, its answer never waited for.
+    if (events && url.pathname === '/api/events/ping') {
+      const stream = events;
+      return written(req, res, parseEventsPing, ({ kind }) => {
+        stream.pinged(kind);
+        res.writeHead(204);
+        res.end();
+        return Promise.resolve();
+      });
+    }
+    if (events && url.pathname === '/api/events/listen') {
+      const stream = events;
+      return written(req, res, parseEventsListen, ({ stream: id, terminal, stop }) => {
+        const listened = stream.listen(id, terminal, stop);
+        if (listened === 'no-stream') {
+          return Promise.resolve(send(res, 409, `no stream ${id}: listen on the one open now`));
+        }
+        if (listened === 'no-terminal') return Promise.resolve(send(res, 404, 'no such terminal'));
+        res.writeHead(204);
+        res.end();
+        return Promise.resolve();
+      });
+    }
     if (url.pathname === '/api/intro' && options.intro) return introApi(req, res, options.intro);
     if (url.pathname === '/api/hive' && options.hive) return hiveApi(req, res, options.hive);
     if (url.pathname === '/api/hive/state' && options.hive) {
@@ -2263,6 +2344,8 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
     close: async () => {
       // A held call or wait would keep its connection, and the server, open.
       mcp?.close();
+      // The page's stream ends, and every timer and listener it holds (V94a).
+      events?.close();
       // Open streams would keep the server from closing: the terminals end them.
       repository?.terminals?.closeAll();
       for (const stream of streams) stream.end();

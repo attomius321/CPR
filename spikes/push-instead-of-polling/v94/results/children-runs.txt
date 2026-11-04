@@ -1,0 +1,18 @@
+    139 git merge-base --is-ancestor
+    139 git cat-file -e
+     51 git status --porcelain
+     32 git ls-files -z
+     32 git config --get
+     22 git symbolic-ref --quiet
+     20 git remote 
+     20 git for-each-ref --format=%(refname)%1f%(objectname)%1f%(objecttype)%1f%(*objectname)%1f%(*objecttype)%1f%(upstream:short)%1f%(upstream:track,nobracket)%1f%(worktreepath)
+     19 claude agents --json
+      2 git status --porcelain=v2
+      2 git rev-parse --verify
+      2 git rev-parse --absolute-git-dir
+      2 git rev-list --max-count=100
+      2 git rev-list --count
+      2 git for-each-ref --format=%(objectname)
+      1 git rev-parse --path-format=absolute
+      1 git log origin/main
+      1 git log main

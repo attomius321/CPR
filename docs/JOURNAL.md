@@ -414,3 +414,8 @@ merge commit.
 - 2026-11-03 [Fix — The Overview fits the page: its cards scroll, not the page](journal/fix-overview-fits-the-page.md)
 - 2026-11-03 [Fix — a failed merge hides its workspace](journal/fix-failed-merge-hides-workspace.md)
 - 2026-11-03 [Fix — loadings that stood still](journal/fix-static-loadings.md)
+- 2026-11-03 [V94 spike — what polling costs now, and every reader that polls](journal/v94-push-not-polling.md)
+- 2026-11-03 [V94a — the stream, /api/events, and /api/reviews cached](journal/v94-push-not-polling.md)
+- 2026-11-03 [V94b — one stream per browser, terminals' output on it](journal/v94-push-not-polling.md)
+- 2026-11-03 [V94c — changes from outside](journal/v94-push-not-polling.md)
+- 2026-11-04 [V94d — measured on a copy of this repository, and written down](journal/v94-push-not-polling.md)

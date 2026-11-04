@@ -329,9 +329,10 @@ export interface ClaudeCode {
   }): Promise<{ ok: true } | { ok: false; error: string }>;
   /**
    * Its sessions, finished ones included; null when it cannot list them. `fresh`: read now, not
-   * the list read in the last 2 s (a reply waiting for a stop to end, decision 720).
+   * the list read in the last 2 s (a reply waiting for a stop to end, decision 720). `keepMs`:
+   * how long this read is kept for the next asks (V94d: the page's stream's, 6 s).
    */
-  sessions(options?: { fresh?: boolean }): Promise<AgentSession[] | null>;
+  sessions(options?: { fresh?: boolean; keepMs?: number }): Promise<AgentSession[] | null>;
   /** Stops a background session (`claude stop <id>`); its words when it cannot. */
   stop(id: string): Promise<{ ok: true } | { ok: false; error: string }>;
   /**
@@ -385,7 +386,7 @@ export function claudeCode(
     now?: () => number;
   },
 ): ClaudeCode {
-  let sessions: { at: number; list: Promise<AgentSession[] | null> } | null = null;
+  let sessions: { at: number; list: Promise<AgentSession[] | null>; keepMs: number } | null = null;
   let account: { at: number; text: Promise<string | undefined> } | null = null;
   let efforts: Promise<string[] | null> | null = null;
   let kept: { at: number; models: AgentModel[] } | null = null;
@@ -511,11 +512,13 @@ export function claudeCode(
       return { ok: false, error: wordsOf(result) || `could not remove ${id}` };
     },
     sessions(options) {
-      if (options?.fresh || !sessions || Date.now() - sessions.at > 2_000) {
+      // Kept 2 s; the page's stream's read 6 s (V94d): it reads one every 5 s while an agent is
+      // live, and a change in it reads the workspaces again.
+      if (options?.fresh || !sessions || Date.now() - sessions.at > sessions.keepMs) {
         const list = run(command, ['agents', '--json', '--all'], { cwd, timeoutMs: 20_000 }).then(
           (result) => (result.code === 0 ? parseSessions(result.stdout) : null),
         );
-        sessions = { at: Date.now(), list };
+        sessions = { at: Date.now(), list, keepMs: options?.keepMs ?? 2_000 };
       }
       return sessions.list;
     },
@@ -575,18 +578,22 @@ const TOOL_EVENTS = ['PreToolUse', 'PostToolUse', 'PostToolUseFailure'] as const
  * Symbiote's settings file for its agents (V18c), `<symbiote>/claude-settings.json`: every event
  * runs `agent-hook.js` with the `symbiote/` folder; `PreToolUse` only for questions. With V48f,
  * every tool's start, end and failure run it in its `activity` mode, in the background (`async`:
- * a run costs ~30 ms, the tool does not wait for it). It decides nothing.
+ * a run costs ~30 ms, the tool does not wait for it). It decides nothing. With `cache` (V94c),
+ * `--cache=<dir>` ends each command: where the hook finds the running views to tell.
  */
 export function agentSettings(
-  where: { node: string; hook: string; symbiote: string },
+  where: { node: string; hook: string; symbiote: string; cache?: string },
   platform: NodeJS.Platform = process.platform,
 ): string {
-  const command = [where.node, where.hook, where.symbiote]
+  const base = [where.node, where.hook, where.symbiote]
     .map((p) => shellWord(p, platform))
     .join(' ');
+  // Symbiote's cache folder (V94c): the hook finds the running views there and tells them.
+  const cache = where.cache ? ` ${shellWord(`--cache=${where.cache}`, platform)}` : '';
+  const command = `${base}${cache}`;
   const tools = {
     matcher: '*',
-    hooks: [{ type: 'command', command: `${command} activity`, timeout: 30, async: true }],
+    hooks: [{ type: 'command', command: `${base} activity${cache}`, timeout: 30, async: true }],
   };
   const hooks: Record<string, unknown[]> = Object.fromEntries(
     HOOKED_EVENTS.map((event) => [

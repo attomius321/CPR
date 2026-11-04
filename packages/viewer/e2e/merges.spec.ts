@@ -244,8 +244,11 @@ test('the steps and the log: each command with its time, what it writes, while i
   await expect(log).toContainText('Wrote 1 region in 1 file; committed the merge');
 
   writeFileSync(flag, '');
-  await expect(log).toContainText('then 43');
   await expect(commands.nth(1)).toHaveClass(/is-passed/, POLL);
+  // Resolved, the page shows Files first (V93): pushed (V94), that comes before the log's next
+  // lines are drawn. The log keeps them all.
+  await entry.getByRole('tab', { name: 'Log' }).click();
+  await expect(log).toContainText('then 43');
   await expect(entry.locator('.merge-row-state')).toHaveText(/· checked in \d+\.\d s: review it$/);
   // Resolved: its conflicts come first (V46c), the log a tab away.
   await entry.getByRole('tab', { name: 'Log' }).click();
@@ -297,6 +300,10 @@ test("the merger agent's thinking and the files it reads, while it works (V46b)"
   await expect(log).not.toContainText('Answered in');
 
   writeFileSync(flag, '');
+  // Resolved, the page shows Files first (V93): pushed (V94), that comes before the log's next
+  // lines are drawn. The log keeps them all.
+  await expect(entry.locator('.merge-label')).toHaveText('Review resolution', POLL);
+  await entry.getByRole('tab', { name: 'Log' }).click();
   await expect(log).toContainText('Answered in');
   // Its JSON answer counted on one line: its regions are on Files.
   await expect(log).toContainText(/Writing its answer: [\d,]+ characters/);

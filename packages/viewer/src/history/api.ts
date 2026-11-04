@@ -1,7 +1,6 @@
 // History's calls to `symbiote view` (V9–V15): rows, shape and branches of the history, the
 // repository's refs and state, a checkout, a branch review, and the diffs it starts and stops.
 import type {
-  BranchReviewList,
   CheckoutResult,
   CheckoutTarget,
   HistoryPage,
@@ -109,12 +108,6 @@ export async function startReview(ref: string): Promise<string> {
   });
   if (!response.ok) throw new Error(await response.text());
   return ((await response.json()) as { url: string }).url;
-}
-
-/** The reviewer's branch reviews (V15); null when the server keeps none. */
-export async function fetchReviews(): Promise<BranchReviewList | null> {
-  const response = await fetch(`${API_ROOT}api/reviews`);
-  return response.ok ? ((await response.json()) as BranchReviewList) : null;
 }
 
 export async function stopDiff(pair: Pair): Promise<void> {

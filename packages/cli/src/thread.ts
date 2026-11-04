@@ -23,6 +23,7 @@ import type {
   ThreadQuestion,
 } from '@symbiote/core';
 import { activityEntry } from './tool-activity.js';
+import { ping } from './events-ping.js';
 
 export { activityEntry, MAX_COMMAND, MAX_OUTPUT, MAX_SUBJECT, outputOf } from './tool-activity.js';
 
@@ -284,14 +285,38 @@ export async function hookMain(
   symbiote: string | undefined,
   at: string,
   mode?: string,
+  cache?: string,
 ): Promise<void> {
   if (!symbiote) return;
   try {
     const input = JSON.parse(stdin) as unknown;
-    await (mode === 'activity' ? recordActivity : recordEvent)(symbiote, input, at);
+    const activity = mode === 'activity';
+    const written = await (activity ? recordActivity : recordEvent)(symbiote, input, at);
+    // The running views told (V94c, decision 905): done once written, never waited on.
+    if (written) await ping(symbiote, cache, { kind: activity ? 'activity' : 'thread' });
   } catch {
     // Nothing the hook can do about it, and nothing Claude Code should see.
   }
+}
+
+/**
+ * The hook's command line after the script (`claude-settings.json`): the `symbiote/` folder, the
+ * mode (`activity`, V48f), and `--cache=<dir>`, Symbiote's cache folder (V94c), where the running
+ * views are found; a command line written before V94c has no cache folder.
+ */
+export function hookArgs(args: readonly string[]): {
+  symbiote?: string;
+  mode?: string;
+  cache?: string;
+} {
+  const [symbiote, ...rest] = args;
+  const mode = rest.find((arg) => !arg.startsWith('--'));
+  const cache = rest.find((arg) => arg.startsWith('--cache='))?.slice('--cache='.length);
+  return {
+    ...(symbiote ? { symbiote } : {}),
+    ...(mode ? { mode } : {}),
+    ...(cache ? { cache } : {}),
+  };
 }
 
 /** Whether a line is an entry the thread keeps. */

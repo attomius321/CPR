@@ -567,7 +567,12 @@ export function workspaces(
    */
   async function settingsFile(where: ReviewPlace): Promise<string> {
     const path = join(symbioteFolder(where), 'claude-settings.json');
-    const text = agentSettings({ node, hook: await hookPath(), symbiote: symbioteFolder(where) });
+    const text = agentSettings({
+      node,
+      hook: await hookPath(),
+      symbiote: symbioteFolder(where),
+      cache: cacheDir,
+    });
     if ((await readFile(path, 'utf8').catch(() => null)) !== text) {
       await writeFileWhole(path, text);
     }
@@ -611,6 +616,19 @@ export function workspaces(
     workspace.agent?.kind === 'codex' ||
     workspace.agent?.kind === 'hermes';
 
+  /** Each workspace's commits as last counted, under a key of what they were counted from. */
+  const commitsCounted = new Map<string, { key: string; ahead: number; merged: boolean }>();
+  /** Every ref's tip in one string, once a list: any ref moved, every count is counted again. */
+  const refsKeys = new WeakMap<RefList, string>();
+  const refsKey = (refs: RefList) => {
+    let key = refsKeys.get(refs);
+    if (key === undefined) {
+      key = [...refs.branches, ...refs.remotes].map((r) => `${r.name} ${r.sha}`).join('\n');
+      refsKeys.set(refs, key);
+    }
+    return key;
+  };
+
   async function summary(
     where: ReviewPlace,
     workspace: WorkspaceFile,
@@ -621,17 +639,32 @@ export function workspaces(
     hermesRead?: HermesSession | null | Error,
   ): Promise<WorkspaceSummary> {
     const tip = refs.branches.find((b) => b.name === workspace.branch)?.sha ?? null;
-    let ahead = 0;
-    let merged = false;
-    if (tip && (await isCommit(repo, workspace.base))) {
-      // From where its changes and Review start: main's commits taken in by a rebase or a merge
-      // are not the workspace's.
-      const { base } = await changesBase(workspace, refs, tip);
-      ahead = (await commitsBetween(repo, base, tip, 1)).count;
-      for (const end of trunk) {
-        if (ahead > 0 && !merged) merged = await isAncestor(repo, tip, end);
+    // Its commits, counted again only when what they are counted from moved (V94d): a hook's
+    // write reads the list again, and ran 4–5 git commands a workspace for an unchanged answer.
+    const key = JSON.stringify([
+      workspace.base,
+      workspace.from,
+      workspace.against,
+      tip,
+      refsKey(refs),
+    ]);
+    let counted = commitsCounted.get(workspace.branch);
+    if (counted?.key !== key) {
+      let ahead = 0;
+      let merged = false;
+      if (tip && (await isCommit(repo, workspace.base))) {
+        // From where its changes and Review start: main's commits taken in by a rebase or a merge
+        // are not the workspace's.
+        const { base } = await changesBase(workspace, refs, tip);
+        ahead = (await commitsBetween(repo, base, tip, 1)).count;
+        for (const end of trunk) {
+          if (ahead > 0 && !merged) merged = await isAncestor(repo, tip, end);
+        }
       }
+      counted = { key, ahead, merged };
+      commitsCounted.set(workspace.branch, counted);
     }
+    const { ahead, merged } = counted;
     const exists = existsSync(workspace.worktree);
     const changed = exists ? await uncommittedFiles(workspace.worktree).catch(() => null) : null;
     let agent: WorkspaceAgentState;

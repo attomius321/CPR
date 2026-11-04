@@ -299,6 +299,16 @@ export function branchReviews(
   const instructed = new Map<string, string>();
   /** Merge checks by default branch and tip: they take seconds on long-lived branches. */
   const merges = new Map<string, Promise<BranchMerge>>();
+  /**
+   * What git said of each review in the list (V94a, decision 900), by branch, under the key of
+   * everything it was computed from: the review's commits, its refs' tips, the tips it is counted
+   * against, its verdict and the tips that verdict goes into. A list with nothing changed runs no
+   * git for it; `/api/reviews` ran git for every review on every read (1.7–2.8 s for 141).
+   */
+  const computed = new Map<
+    string,
+    { key: string; refs: BranchReviewRef[]; added: string[]; merged: boolean }
+  >();
 
   /**
    * The commits on a ref since a review's head (else its fork point, gone after a rebase): the
@@ -358,28 +368,45 @@ export function branchReviews(
       const [where, refs] = await Promise.all([place(), listRefs(repo)]);
       const main = await defaultBranch(repo, refs);
       const reviews: BranchReviewSummary[] = [];
-      for (const branch of await reviewedBranches(where)) {
+      const branches = await reviewedBranches(where);
+      for (const gone of computed.keys()) if (!branches.includes(gone)) computed.delete(gone);
+      for (const branch of branches) {
         const review = await readReview(reviewPath(where.dir, branch, where.reviewer));
         if (!review) continue;
-        const summaryRefs: BranchReviewRef[] = [];
-        const added = new Set<string>();
         const against = reviewedAgainst(refs, branch, main, await workspaceOf(where, branch));
         const not = otherThan(refs, against.into, branch);
-        for (const ref of refsOf(refs, branch)) {
-          const after = await since(review, ref.sha, not);
-          if (!after) continue;
-          summaryRefs.push({ name: ref.name, tip: ref.sha, since: after.count });
-          for (const sha of after.shas) added.add(sha);
-        }
         const verdict = review.verdicts.at(-1);
+        const own = refsOf(refs, branch);
+        const key = JSON.stringify([
+          review.head,
+          review.base,
+          own.map((r) => [r.name, r.sha]),
+          not,
+          verdict ? [verdict.event, verdict.head, verdict.into] : null,
+          verdict?.into ? refsOf(refs, verdict.into).map((r) => r.sha) : null,
+        ]);
+        let known = computed.get(branch);
+        if (known?.key !== key) {
+          const summaryRefs: BranchReviewRef[] = [];
+          const added = new Set<string>();
+          for (const ref of own) {
+            const after = await since(review, ref.sha, not);
+            if (!after) continue;
+            summaryRefs.push({ name: ref.name, tip: ref.sha, since: after.count });
+            for (const sha of after.shas) added.add(sha);
+          }
+          const merged = verdict ? await mergedInto(refs, verdict) : false;
+          known = { key, refs: summaryRefs, added: [...added].slice(0, 100), merged };
+          computed.set(branch, known);
+        }
         reviews.push({
           branch,
           base: review.base,
           head: review.head,
           updated: review.updated,
           marks: Object.keys(review.marks).length,
-          refs: summaryRefs,
-          added: [...added].slice(0, 100),
+          refs: known.refs,
+          added: known.added,
           ...(verdict
             ? {
                 verdict: {
@@ -388,7 +415,7 @@ export function branchReviews(
                   at: verdict.at,
                   comments: verdict.comments.length,
                   ...(verdict.into ? { into: verdict.into } : {}),
-                  merged: await mergedInto(refs, verdict),
+                  merged: known.merged,
                   ...(verdict.via === 'hive' ? { via: 'hive' as const } : viaOf(verdict.via)),
                   number: review.verdicts.length,
                   ...(verdict.summary.trim()

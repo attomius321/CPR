@@ -1,5 +1,6 @@
 // A workspace's Thread tab (V18c): what its agent was told and reported, and the person's messages.
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useTouched } from '../shell/events.js';
 import type { WorkspaceThread } from '@symbiote/core';
 import { markdownNodes, useMarkdown } from '../ui/markdown.js';
 import { threadItems } from './workspaces.js';
@@ -13,6 +14,8 @@ import { Loading } from '../ui/Loading.js';
 export function useThread(branch: string, version: unknown): [WorkspaceThread | null, () => void] {
   const [thread, setThread] = useState<WorkspaceThread | null>(null);
   const [asked, setAsked] = useState(0);
+  // Its file written (V94c): an entry the list's JSON may not show.
+  const touched = useTouched(`threads/${branch}.jsonl`);
   useEffect(() => {
     let live = true;
     fetch(`/api/workspaces/thread?branch=${encodeURIComponent(branch)}`)
@@ -22,7 +25,7 @@ export function useThread(branch: string, version: unknown): [WorkspaceThread | 
     return () => {
       live = false;
     };
-  }, [branch, version, asked]);
+  }, [branch, version, asked, touched]);
   return [thread, useCallback(() => setAsked((n) => n + 1), [])];
 }
 

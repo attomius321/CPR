@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { serveCommits, type RunningCommits } from './symbiote.js';
+import { noStream } from './overview-data.js';
 
 // A diff's or a review's page while its pair is analyzed (V90, decision 846; V71 before): the six
 // steps as a timeline with their times, Stop; beside them what needs no graph — the files (git's,
@@ -211,6 +212,8 @@ test("shows a workspace's report, commits and brief while its review is analyzed
     merged: false,
     agent: { state: 'finished', kind: 'claude' },
   };
+  // The list as this spec answers it: no stream (V94), the page polls.
+  await noStream(page);
   await page.route('**/api/workspaces', (route) =>
     route.fulfill({ json: { workspaces: [workspace], place: 'repository' } }),
   );
@@ -267,6 +270,8 @@ test("shows a workspace's report, commits and brief while its review is analyzed
 
 test("leaves out a workspace's commits that start elsewhere than the review", async ({ page }) => {
   const { head } = pair();
+  // The list as this spec answers it: no stream (V94), the page polls.
+  await noStream(page);
   await page.route('**/api/workspaces', (route) =>
     route.fulfill({
       json: {

@@ -41,6 +41,8 @@ export interface AppServerConnection {
   request<T = unknown>(method: string, params?: object): Promise<T>;
   /** Notifications: what happens on the threads this connection started or resumed. */
   onNotification(listener: (method: string, params: unknown) => void): void;
+  /** Resolves once the connection is gone: closed by either side (V94c). */
+  closed: Promise<void>;
   close(): void;
 }
 
@@ -78,6 +80,8 @@ export async function connectAppServer(
     { resolve: (value: unknown) => void; reject: (error: Error) => void }
   >();
   const listeners: ((method: string, params: unknown) => void)[] = [];
+  let ended = () => {};
+  const closed = new Promise<void>((resolve) => (ended = resolve));
   ws.onMessage((text) => {
     let message: {
       id?: unknown;
@@ -117,6 +121,7 @@ export async function connectAppServer(
     );
     for (const waiting of pending.values()) waiting.reject(gone);
     pending.clear();
+    ended();
   });
   const connection: AppServerConnection = {
     request<T>(method: string, params?: object) {
@@ -143,7 +148,11 @@ export async function connectAppServer(
       });
     },
     onNotification: (listener) => void listeners.push(listener),
-    close: () => ws.close(),
+    closed,
+    close: () => {
+      ws.close();
+      ended();
+    },
   };
   try {
     await connection.request('initialize', {
@@ -261,6 +270,14 @@ export interface CodexItem {
 export interface CodexServer {
   /** Where it listens, as `codex resume --remote` takes it: `unix://<socket>`. */
   address: string;
+  /**
+   * Hears each thread's status change (V94c): a connection that started or resumed no thread
+   * hears only those, not a turn's deltas (V27a, probed). Null when the server does not answer;
+   * `closed` once its connection is gone (the daemon restarted).
+   */
+  watch(
+    onChange: (thread: string) => void,
+  ): Promise<{ stop(): void; closed: Promise<void> } | null>;
   /**
    * Starts a thread in `cwd` in the `workspace-write` sandbox, `writable` also writable (the
    * branch's git folders, decision 130), approvals asked (`on-request`), named `name`, with
@@ -649,6 +666,20 @@ export function codexServer(
 
   return {
     address,
+    async watch(onChange) {
+      let connection: AppServerConnection;
+      try {
+        connection = await open();
+      } catch {
+        return null;
+      }
+      connection.onNotification((method, params) => {
+        if (method !== 'thread/status/changed' && !method.startsWith('turn/')) return;
+        const thread = (params as { threadId?: unknown } | null)?.threadId;
+        onChange(typeof thread === 'string' ? thread : '');
+      });
+      return { stop: () => connection.close(), closed: connection.closed };
+    },
     start: ({
       cwd,
       writable,

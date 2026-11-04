@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { McpAsk, McpAsks } from '@symbiote/core';
 import { postJson } from '../ui/http.js';
 import { readsHidden, reloadWorkspaces } from '../workspaces/useWorkspaces.js';
+import { pushed, type Parts, type Status } from './events.js';
 
 /**
  * How often the asks of Symbiote's MCP are read while a page shows (MC1): an agent may ask at any
@@ -37,25 +38,36 @@ async function readAsks(): Promise<void> {
 
 function schedule(): void {
   clearTimeout(timer);
-  if (listeners.size === 0 || none) return;
+  // Pushed (V94a): nothing to read.
+  if (listeners.size === 0 || none || pushed().status() !== 'unavailable') return;
   timer = setTimeout(() => {
     const hidden = document.visibilityState === 'hidden' && !readsHidden();
     void (hidden ? Promise.resolve() : readAsks()).then(schedule);
   }, ASKS_MS);
 }
 
+/** The asks as the stream sends them (V94a); with no stream, read as before. */
+function onPushed(changed: Parts, status: Status): void {
+  if (status === 'unavailable') void readAsks().then(schedule);
+  else if (changed.asks) set(changed.asks.asks);
+}
+let unsubscribe: (() => void) | null = null;
+
 /**
- * The asks waiting for the person, oldest first: read on mount and every 2 s while shown; in the
- * app, hidden too (N2).
+ * The asks waiting for the person, oldest first, as `symbiote view` pushes them (V94a). Without
+ * its stream, read on mount and every 2 s while shown; in the app, hidden too (N2).
  */
 export function useAsks(): McpAsk[] {
   const [asks, setAsks] = useState(current);
   useEffect(() => {
     listeners.add(setAsks);
-    if (listeners.size === 1) void readAsks().then(schedule);
+    if (listeners.size === 1) unsubscribe = pushed().subscribe(onPushed);
     return () => {
       listeners.delete(setAsks);
-      if (listeners.size === 0) clearTimeout(timer);
+      if (listeners.size > 0) return;
+      unsubscribe?.();
+      unsubscribe = null;
+      clearTimeout(timer);
     };
   }, []);
   return asks;
