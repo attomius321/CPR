@@ -151,6 +151,8 @@ only, as before.
   section.
 
 **Results.** Unit: 197 tests in `nucleus-shell.test.ts`; `pnpm check` 240 files, 3,393 tests.
+e2e: `nucleus-activity.spec.ts`'s refused call is now `cat /etc/hostname` (its `curl` passes with
+the web); full runs 429 and 428 of 431, the failures different each run and passing alone.
 Replay of the record's 111 Bash calls through the built gate: 16 of the 17 refusals pass. The
 17th, and 9 calls allowed then, name worktrees of 4 workspaces that have finished since, refused
 by main's gate today too. The built hook with the person's arguments: 5 calls in 154 ms. Not

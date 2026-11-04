@@ -54,6 +54,12 @@ him to read files from the current repository").
   `--web`. It refused `cat /etc/hostname`, `sed -i`, `gh pr list` without `--web`, and
   `find -delete` in Alpha Ceph's name. 5 calls took 154 ms.
 - `pnpm check`: 240 files, 3,393 tests. `pnpm build`.
+- **e2e**: `nucleus-activity.spec.ts` used `curl -sS https://example.com` as its refused call,
+  which NU9 allows with the web on. Its refused call is now `cat /etc/hostname` (outside the
+  reach); a write (`rm`) would have been filed as a change, not with the reads. Full runs: 429 and
+  428 of 431 passed. The other failures differed between runs, and each passed when run alone:
+  `look.spec.ts:458` (the sidenav's rows), `hermes.spec.ts:29`, and `workspaces.spec.ts:2293` (a
+  merge; 3 of 4 alone). None of them reaches the gate's modules.
 
 Not verified:
 - A real Nucleus conversation on Claude Code using the commands.

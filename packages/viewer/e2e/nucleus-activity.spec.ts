@@ -74,7 +74,7 @@ test('records a conversation and shows it on the Activity tab, live and after a 
     { command: 'git log --oneline -3', description: 'Recent commits' },
     { stdout: 'abc1234 Add the discount', stderr: '', interrupted: false },
   );
-  toolCall('Bash', { command: 'curl -sS https://example.com' });
+  toolCall('Bash', { command: 'cat /etc/hostname' });
   toolCall(
     'WebSearch',
     { query: 'vite latest release' },
@@ -125,7 +125,9 @@ test('records a conversation and shows it on the Activity tab, live and after a 
     const refused = explore.locator('.activity-event.failed');
     await expect(refused).toContainText('refused');
     await refused.locator('summary').click();
-    await expect(refused.locator('.activity-facts')).toContainText('curl: only git runs');
+    await expect(refused.locator('.activity-facts')).toContainText(
+      "/etc/hostname is outside the checkout and the open workspaces' worktrees",
+    );
     // The web: a search and the page read, its address and status.
     const web = group(page, 'web');
     await expect(web.locator('.activity-summary')).toHaveText('1 search · 1 page');
@@ -166,7 +168,7 @@ test('records a conversation and shows it on the Activity tab, live and after a 
   expect(text).toMatch(/^---\nsymbiote-activity: 1\nof: nucleus\n/);
   expect(text).toContain('> What changed lately?');
   expect(text).toMatch(
-    /Bash · `curl -sS https:\/\/example\.com` · \*\*refused by its gate\*\*: .*curl: only git runs/,
+    /Bash · `cat \/etc\/hostname` · \*\*refused by its gate\*\*: .*\/etc\/hostname is outside the checkout/,
   );
   expect(text).toContain('Symbiote · `start_workspace` · declined by the person');
   expect(text).toContain('Confirm declined after');
