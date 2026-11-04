@@ -2,8 +2,8 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nu9-nucleus-read-commands.md)
 
-**Status:** planned (2026-11-04), on branch `feature/nucleus-and-aplha-ceph-tools` (the
-workspace's, from `main` at `3266fde`).
+**Status:** built (2026-11-04), on branch `feature/nucleus-and-aplha-ceph-tools` (the
+workspace's, from `main` at `3266fde`); ready for review.
 
 **Problem** (the brief: "Nucleus and alpha ceph should have read tools"; the person's additions:
 "And network capabilities", "I need him to read files from the current repository, when I ask him
@@ -64,7 +64,7 @@ The gate still runs nothing: it parses the command as the shell would and decide
   - `curl`: `http(s)://` URLs, GET or HEAD; options from a list (`-s`, `-S`, `-L`, `-I`, `-i`, `-f`,
     `-v`, `-k`, `-G`, `-g`, `-H`, `-A`, `-e`, `-m`, `--connect-timeout`, `--retry`, `--compressed`,
     `-w`, `--max-redirs`, `-r`, `--url`, `-X GET|HEAD`); no value from a file (`@`). Localhost is
-    allowed (the person's answer): `symbiote view`'s API changes nothing on a GET.
+    allowed (the person's answer): `symbiote view`'s writes are POSTs, which `curl` cannot send.
   - `gh`: `pr view|list|diff|checks|status`, `issue view|list|status`, `run view|list`,
     `release view|list`, `repo view`, `workflow view|list`, `search …`, `status`, and `api` with GET
     only (no `-X` other than GET, no `-f`, `-F`, `--input`, no `graphql`); no `--web`; a `--jq` or
@@ -128,3 +128,31 @@ only, as before.
 | 922 | Codex's Nucleus | **Unchanged; the shared prompt lists the commands** | Its sandbox already reads anything and keeps the network off (593) |
 
 **Not in NU9**: Codex's network; reads outside the repository (the cache, the logs); `awk`, `xargs`.
+
+## As built (NU9)
+
+- **git's check has its own module**, `git-read.ts` (`realTarget`, `within`, `ownOptions`,
+  `gitArgsProblem`, `gitReadProblem`), so `nucleus-shell.ts` and `nucleus-gate.ts` do not import
+  each other. `nucleus-gate.ts` re-exports `gitReadProblem` and `realTarget`; Scribe's gate
+  imports from `git-read.ts`.
+- **`git -C <the checkout>`** is allowed too: V80 allowed `-C` only into a worktree, and 2 of the
+  record's refused calls named the checkout itself.
+- **A backslash in double quotes** is allowed: it expands nothing, and the record's
+  `git log -G "\[V94\]|\bV94\b"` was refused for it. `$` and backticks there are still refused.
+- **Long options**: GNU tools match a refused option by its whole name or its beginning
+  (getopt_long), so `grep --files-with-matches` is not taken for `--file`; `rg`, `curl` and `gh`
+  by the whole name, as their parsers do.
+- **More refused than planned**: a leading `=` (zsh makes `=ls` a program's path), `~` after `=` or
+  `:`, `gh … --watch` (it never ends), `rg --hostname-bin` (runs a program), and in `jq` and `gh`
+  filters `$__loc__` and `input_filename` besides `env` and `$ENV`.
+- **The prompt**: both of Nucleus's paragraphs (files and git; the web) list the commands. The
+  prompt test's pin of its text (decision 685) is updated: 3,452 → 4,200 characters.
+- **The docs**: `configuration.md` (what Nucleus runs, `nucleus.web`) and the README's network
+  section.
+
+**Results.** Unit: 197 tests in `nucleus-shell.test.ts`; `pnpm check` 240 files, 3,393 tests.
+Replay of the record's 111 Bash calls through the built gate: 16 of the 17 refusals pass. The
+17th, and 9 calls allowed then, name worktrees of 4 workspaces that have finished since, refused
+by main's gate today too. The built hook with the person's arguments: 5 calls in 154 ms. Not
+verified: a real Nucleus conversation using the commands; the network commands' answers (only the
+gate's decisions were checked).

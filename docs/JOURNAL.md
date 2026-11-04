@@ -424,3 +424,4 @@ merge commit.
 - 2026-11-04 [NX5b — the page's pure parts](journal/nx5-nexus-revamp.md)
 - 2026-11-04 [NX5c — the list, the card, the field](journal/nx5-nexus-revamp.md)
 - 2026-11-04 [NX5d — screens, measures, docs](journal/nx5-nexus-revamp.md)
+- 2026-11-04 [NU9 — the shell's reads and the network's](journal/nu9-nucleus-read-commands.md)
