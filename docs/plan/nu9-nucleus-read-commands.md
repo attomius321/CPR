@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [Journal](../journal/nu9-nucleus-read-commands.md)
 
 **Status:** built (2026-11-04), on branch `feature/nucleus-and-aplha-ceph-tools` (the
-workspace's, from `main` at `3266fde`); ready for review.
+workspace's, from `main` at `3266fde`); merged into `main` on 2026-11-04.
 
 **Problem** (the brief: "Nucleus and alpha ceph should have read tools"; the person's additions:
 "And network capabilities", "I need him to read files from the current repository, when I ask him

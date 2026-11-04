@@ -68,3 +68,5 @@ him to read files from the current repository").
 Not verified:
 - A real Nucleus conversation on Claude Code using the commands.
 - The network commands' answers. Only the gate's decisions were checked; nothing was fetched.
+
+Merged into main (2026-11-04).
