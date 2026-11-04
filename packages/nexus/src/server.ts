@@ -5,6 +5,8 @@ import { extname, isAbsolute, join } from 'node:path';
 import type { Logger } from '@symbiote/log';
 import type { FoldersAnswer } from './folders.js';
 import type { Pins } from './pins.js';
+import type { RepositoriesAnswer, Scanning } from './repositories.js';
+import type { Found } from './scan.js';
 import type { Starter } from './start.js';
 import type { Symbiote } from './symbiotes.js';
 
@@ -22,6 +24,15 @@ export interface NexusServerOptions {
   starter: Starter;
   /** The person's pinned folders (NX4): answered with each listing, written by the page. */
   pins: Pins;
+  /**
+   * The repositories the nexus knows besides the running ones (NX5): seen running before, found in
+   * the folder chosen; with the pins and the scan's facts.
+   */
+  repositories: () => Promise<RepositoriesAnswer>;
+  /** A repository's checkouts (NX5, decision 914); null for a folder that is no repository. */
+  checkouts: (path: string) => Promise<Found[] | null>;
+  /** Choosing the folder scanned and scanning it again (NX5, decision 911). */
+  scanning: Scanning;
   /** The page's own files: `index.html`, `nexus.css`, `mark.png` (`packages/nexus/page`). */
   pageDir: string;
   /** The page's scripts, compiled (`dist/page`). */
@@ -51,8 +62,17 @@ const TYPES: Record<string, string> = {
 /** A file's name in a folder served: no folders, nothing hidden, nothing encoded. */
 const FILE_NAME = /^[\w-][\w.-]*$/;
 
-/** The routes that write: they start or stop a Symbiote (NX2, decision 543), or pin a folder (NX4). */
-const WRITES = new Set(['/api/symbiotes', '/api/symbiotes/stop', '/api/pinned']);
+/**
+ * The routes that write: they start or stop a Symbiote (NX2, decision 543), pin a folder (NX4),
+ * choose the folder scanned or scan it again (NX5).
+ */
+const WRITES = new Set([
+  '/api/symbiotes',
+  '/api/symbiotes/stop',
+  '/api/pinned',
+  '/api/scanned',
+  '/api/scan',
+]);
 
 /** The most a write's body may hold. */
 const BODY_LIMIT = 64 * 1024;
@@ -95,6 +115,16 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'not allowed');
     if (path === '/') return send(res, 200, page, TYPES['.html']);
     if (path === '/api/folders') return listFolders(res, url.searchParams.get('path'));
+    if (path === '/api/repositories') return sendJson(res, 200, await options.repositories());
+    if (path === '/api/checkouts') {
+      const asked = url.searchParams.get('path');
+      if (asked === null || !isAbsolute(asked)) {
+        return sendJson(res, 400, { error: `Not an absolute path: ${asked ?? ''}` });
+      }
+      const checkouts = await options.checkouts(asked);
+      if (checkouts === null) return sendJson(res, 404, { error: `Not a repository: ${asked}` });
+      return sendJson(res, 200, { checkouts });
+    }
     if (path === '/api/symbiotes') {
       let symbiotes: Symbiote[];
       try {
@@ -157,6 +187,18 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
       options.log?.info({ path: value.path }, value.pinned ? 'folder pinned' : 'folder unpinned');
       return sendJson(res, 200, answer);
     }
+    if (path === '/api/scanned') {
+      const asked = value?.path;
+      if (asked !== null && typeof asked !== 'string') return send(res, 400, 'expected { path }');
+      if (asked !== null && !isAbsolute(asked)) {
+        return sendJson(res, 400, { error: `Not an absolute path: ${asked}` });
+      }
+      const answer = await options.scanning.choose(asked);
+      if ('error' in answer) return sendJson(res, answer.status, { error: answer.error });
+      options.log?.info({ path: asked }, 'folder scanned for repositories chosen');
+      return sendJson(res, 200, answer);
+    }
+    if (path === '/api/scan') return sendJson(res, 200, { scan: await options.scanning.again() });
     if (typeof value?.root !== 'string') return send(res, 400, 'expected { root }');
     if (await options.starter.stop(value.root)) {
       res.writeHead(204, { 'cache-control': 'no-store' });
