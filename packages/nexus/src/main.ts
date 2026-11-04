@@ -5,10 +5,14 @@ import { fileURLToPath } from 'node:url';
 import { parseArgs } from 'node:util';
 import type { Log } from '@symbiote/log';
 import { findApp, openAppWindow, openUrl, type AppWindow } from './app-window.js';
+import { checkoutsOf } from './checkouts.js';
 import { folders, repositoryRoot, windowsDrives } from './folders.js';
+import { history } from './opened.js';
 import { cacheDir, isRunning, readRecords } from './registry.js';
 import { configDir } from './config-dir.js';
 import { pins, PINS_FILE } from './pins.js';
+import { knownRepositories, scanSummary } from './repositories.js';
+import { scanner } from './scan.js';
 import { startNexusServer } from './server.js';
 import { starter } from './start.js';
 import { liveSymbiotes, readStatus, type Probe } from './symbiotes.js';
@@ -85,9 +89,35 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
   const home = homedir();
   const cache = cacheDir(ctx.env, process.platform, home);
   const probe: Probe = { alive: isRunning, status: (url) => readStatus(url) };
-  const live = () => liveSymbiotes(readRecords(cache), probe);
+  // NX5: what the nexus remembers, and the scan of the folder the person chose (decisions 911,
+  // 912), in its cache folder; Symbiote's cache (its worktrees) is never scanned.
+  const opened = history({ file: join(cache, 'nexus', 'opened.json') });
+  const live = async () => {
+    const running = await liveSymbiotes(readRecords(cache), probe);
+    opened.note(running).catch((error: unknown) => {
+      log?.warn({ err: error }, 'the Symbiotes seen could not be written');
+    });
+    return running;
+  };
   const drives = windowsDrives();
   const config = configDir(ctx.env, process.platform, home);
+  const kept = pins({ file: join(config, PINS_FILE), home });
+  const scans = scanner({
+    folder: () => kept.scanned(),
+    file: join(cache, 'nexus', 'scan.json'),
+    options: { leaveOut: [cache] },
+  });
+  const scanned = async () => {
+    const result = await scans.scan();
+    if (result) {
+      const { folder, folders, ms, short } = result;
+      log?.info(
+        { folder, folders, ms, short, repositories: result.repositories.length },
+        'scanned',
+      );
+    }
+    return scanSummary(result);
+  };
   let server;
   try {
     server = await startNexusServer({
@@ -106,7 +136,31 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
         repositoryOf: repositoryRoot,
         ...(log ? { log } : {}),
       }),
-      pins: pins({ file: join(config, PINS_FILE), home }),
+      pins: kept,
+      repositories: async () => {
+        const [seen, scan, pinned, chosen] = await Promise.all([
+          opened.read(),
+          scans.current(),
+          kept.read(),
+          kept.scanned(),
+        ]);
+        return {
+          home,
+          repositories: await knownRepositories({ opened: seen, scan }),
+          pins: pinned,
+          scanned: chosen,
+          scan: scanSummary(scan),
+        };
+      },
+      checkouts: (path) => checkoutsOf(path, { leaveOut: [cache] }),
+      scanning: {
+        choose: async (path) => {
+          const answer = await kept.setScanned(path);
+          if ('error' in answer) return answer;
+          return { scan: await scanned() };
+        },
+        again: scanned,
+      },
       pageDir: PAGE_DIR,
       scriptsDir: SCRIPTS_DIR,
       viewerDir: viewerDir(ctx.env),
@@ -118,6 +172,8 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
   }
   // Written before the address is printed: what waits for that line finds it written.
   log?.info({ url: server.url, cache, node: process.version }, 'nexus started');
+  // The chosen folder scanned again at each start; the last scan answers meanwhile.
+  void scanned().catch((error: unknown) => log?.warn({ err: error }, 'the scan failed'));
   ctx.stdout(`Symbiote nexus: ${server.url}  (Ctrl+C to stop)\n`);
   try {
     await showUntilExit(server.url, values, ctx);

@@ -423,11 +423,13 @@ as a tab of one window, and starts new ones in any repository on your computer:
 symbiote-nexus
 ```
 
-Its **Symbiotes** page shows the running ones as cards, with the repositories you pinned (with the
-pin on a card), and your folders under them. Click a repository to open a Symbiote there. Closing
-the nexus stops no Symbiote, so their agents keep working.
+Its **Symbiotes** page lists every repository it knows: the running ones, the ones you pinned, the
+ones opened before, and the ones found in the one folder you choose for it to look in. Type any
+part of a name or path to find one, or a path starting with `~/` to go through your folders; the
+picked repository's card opens it. Closing the nexus stops no Symbiote, so their agents keep
+working.
 
-![Symbiote nexus: two running Symbiotes and a pinned repository as cards, and the projects folder with its repositories under them](docs/images/nexus.png)
+![Symbiote nexus: four running Symbiotes, pinned repositories and folders in one list, and the picked repository's card beside it](docs/images/nexus.png)
 
 ## Logs
 
@@ -462,11 +464,12 @@ Outside the repository, Symbiote writes:
 - the workspaces' worktrees, next to your checkout, in `../<repo>.worktrees/`;
 - its cache, `~/.cache/symbiote` on Linux. It holds the worktrees Symbiote compares and merges in,
   the list of merges, drafts, pasted images and logs. It also holds the address of each running
-  `symbiote view`, which the nexus reads, and the output of each Symbiote the nexus started. A
+  `symbiote view`, which the nexus reads, the output of each Symbiote the nexus started, and what
+  the nexus found and saw running. A
   running review's throwaway copies are there until the review ends. So is a copy of the script that
   records each agent's thread, about 23 KB for each build of Symbiote;
 - its settings for this machine, `~/.config/symbiote` on Linux: the skill library's folder, the
-  folders you pinned in the nexus, and whether the intro was seen;
+  folders you pinned in the nexus and the one it looks in, and whether the intro was seen;
 - the skill library's skills, when you or Scribe save one. Symbiote commits and pushes the library
   only if Settings says so.
 

@@ -7,11 +7,10 @@ import {
   nextTabs,
   selectedFrom,
   sinceText,
-  symbiotesShown,
+  timeText,
   titleOf,
   type Tab,
 } from '../src/page/tabs.js';
-import type { Pin } from '../src/pins.js';
 import type { Symbiote } from '../src/symbiotes.js';
 
 const listed = (name: string, over: Partial<Symbiote> = {}): Symbiote => ({
@@ -127,46 +126,12 @@ describe('words', () => {
     expect(sinceText(new Date(2025, 11, 31, 8, 0).toISOString(), now)).toBe('since Dec 31, 2025');
     expect(sinceText('', now)).toBe('');
   });
-});
 
-describe('symbiotesShown', () => {
-  const pin = (path: string, over: Partial<Pin> = {}): Pin => ({
-    name: path.split('/').at(-1) ?? path,
-    path,
-    repository: true,
-    ...over,
-  });
-
-  it('is the pinned repositories first, in the order pinned, then the other running ones (decision 627)', () => {
-    const ky = tab(listed('ky'));
-    const zod = tab(listed('zod'));
-    const gone = tab(listed('gone'), null);
-    const api = pin('/home/me/api', { branch: 'main' });
-    const stopped = pin('/home/me/gone');
-    expect(
-      symbiotesShown(
-        [gone, ky, zod],
-        [
-          pin('/home/me/zod'),
-          // A folder is a place, and a pin whose folder is gone is drawn there (decision 628).
-          pin('/home/me/projects', { repository: false }),
-          api,
-          pin('/home/me/old', { repository: false, missing: true }),
-          stopped,
-        ],
-      ),
-    ).toEqual([
-      { kind: 'running', tab: zod, pinned: true },
-      { kind: 'pinned', pin: api },
-      // Its tab is open but it stopped: a pin with none running.
-      { kind: 'pinned', pin: stopped },
-      { kind: 'running', tab: ky, pinned: false },
-    ]);
-  });
-
-  it('is the running ones alone without a pin, and nothing with none', () => {
-    const ky = tab(listed('ky'));
-    expect(symbiotesShown([ky], [])).toEqual([{ kind: 'running', tab: ky, pinned: false }]);
-    expect(symbiotesShown([], [])).toEqual([]);
+  it('says a moment as the list does: the time today, the day this year, else the date', () => {
+    const now = new Date(2026, 10, 4, 11, 20);
+    expect(timeText(new Date(2026, 10, 4, 8, 12).toISOString(), now)).toBe('08:12');
+    expect(timeText(new Date(2026, 10, 2, 14, 30).toISOString(), now)).toBe('Nov 2');
+    expect(timeText(new Date(2025, 0, 9).toISOString(), now)).toBe('Jan 9, 2025');
+    expect(timeText('nonsense', now)).toBe('');
   });
 });

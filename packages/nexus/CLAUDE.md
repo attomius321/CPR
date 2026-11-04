@@ -9,8 +9,10 @@ folder, nor into a Symbiote. NX3 (`docs/plan/nx3-nexus-look.md`) split the row i
 own pages and the Symbiotes, made Symbiotes and Folders cards, and made a repository the end of
 Folders' way down. NX4 (`docs/plan/nx4-pinned-folders.md`) keeps the person's pinned folders in
 Symbiote's settings folder. Since fix/nexus-pinned-symbiotes (decisions 626–628, in NX4's plan)
-Symbiotes is the nexus's one page: a pinned repository is a card among its Symbiotes, and this
-PC's folders, the pinned ones under their places, are under the cards; Folders is no tab.
+Symbiotes is the nexus's one page; Folders is no tab. NX5 (`docs/plan/nx5-nexus-revamp.md`,
+decisions 908–916) made it one list of every repository the nexus knows (running, pinned, opened
+before, found in the one folder the person chose to scan), a field that finds one by any part of
+its path or types a path, and the picked one's card beside the list.
 
 ## Where things are
 
@@ -18,13 +20,17 @@ PC's folders, the pinned ones under their places, are under the cards; Folders i
 |---|---|
 | `src/registry.ts` | The running servers' records, `<cache>/running/<pid>.json`: `announce`, `withdraw`, `readRecords` (MC1's `<cache>/views/*.json` too), the cache folder's rule. **`symbiote view` imports it** (`@symbiote/nexus/registry`): Node's modules only, nothing else of the nexus |
 | `src/symbiotes.ts` | Which records are live (their process, `/api/status` within 1 s), one per folder |
-| `src/folders.ts` | A folder's folders (no files, no hidden ones, 1,000 at most), repositories marked by their `.git` with their branch from `HEAD`, the places (home, the Symbiotes' folders, `/`, WSL's drives), a folder's repository root (`git rev-parse`); a folder inside a repository answers the folder holding it, the repository `picked` |
-| `src/pins.ts` | The pinned folders (NX4): `nexus.json` in Symbiote's settings folder (`configDir`, `src/config-dir.ts`), read with each listing, described (a repository by its `.git` with its branch from `HEAD`, a gone folder `missing`), written one at a time through a file renamed into place; a pin refused inside a repository |
+| `src/folders.ts` | A folder's folders (no files, no hidden ones, 1,000 at most), repositories marked by their `.git` with their branch from `HEAD`, the places (home, the Symbiotes' folders, `/`, WSL's drives; the page draws none since NX5), a folder's repository root (`git rev-parse`); a folder inside a repository answers the folder holding it, the repository `picked` |
+| `src/pins.ts` | `nexus.json` in Symbiote's settings folder (`configDir`, `src/config-dir.ts`): the pinned folders (NX4), read with each listing, described (a repository by its `.git` with its branch from `HEAD`, a gone folder `missing`), and (NX5) the one folder scanned for repositories, `scanned`; written one at a time through a file renamed into place; a pin refused inside a repository, the folder scanned also refused for a repository itself |
+| `src/scan.ts` | The scan of the folder chosen (NX5, decision 911): breadth first, 5 levels, no hidden or build folders, links not followed, a repository the end of the way down, 5,000 folders or 2 s at most; read only. `scanner`: one at a time, the last kept in `<cache>/nexus/scan.json` |
+| `src/opened.ts` | The Symbiotes the nexus saw running (decision 912), `<cache>/nexus/opened.json`, 50 at most, newest first: "Opened before" |
+| `src/checkouts.ts` | A repository's checkouts (decision 914): its folder and its worktrees from `.git/worktrees/*/gitdir`, no git process; the cache's worktrees left out by the caller |
+| `src/repositories.ts` | The history and the scan merged by path (`knownRepositories`), what `GET /api/repositories` answers |
 | `src/start.ts` | Starting this checkout's `symbiote view --no-open` in a folder, detached (output in `<cache>/nexus/<pid>.log`), started once its record appears; stopping a live record's process by SIGTERM |
-| `src/server.ts` | The page, its scripts, the viewer's built assets, `GET /api/symbiotes`, `GET /api/folders` (with the pins), `POST /api/symbiotes` (start), `/api/symbiotes/stop` and `/api/pinned`; its own hosts only |
+| `src/server.ts` | The page, its scripts, the viewer's built assets, `GET /api/symbiotes`, `GET /api/folders` (with the pins), `GET /api/repositories` (home, the history and the scan, the pins, the folder scanned and its scan's facts), `GET /api/checkouts`, `POST /api/symbiotes` (start), `/api/symbiotes/stop`, `/api/pinned`, `/api/scanned` (the folder to scan) and `/api/scan` (again); its own hosts only |
 | `src/main.ts`, `src/bin.ts` | The command: options, the app's window or the browser, as `symbiote view` opens them |
 | `src/app-window.ts` | Starting the desktop app in its `--url` mode: a copy of `packages/cli/src/app.ts`'s (the CLI's modules load the engine), tested on the same cases |
-| `src/page/` | The page's scripts, compiled by `tsc` to `dist/page/` and served as they are: `tabs.ts` and `folders-tab.ts` (pure: the tabs from each read, the address, Symbiotes' cards with the pins, the crumbs, the words, the pins under the places, the arrows on a grid), `reach.ts` (when a frame gets its address: once this browser reaches the Symbiote), `main.ts` (the DOM: the row's two groups, frames, Symbiotes' page: its cards, running or pinned, each with its pin, the folders under them; Stop's question), `folders-view.ts` (the folders' DOM under Symbiotes, its field for Symbiotes' head, the pinned folders under the places), `cards.ts` (a repository's card in the folder listed, with its pin), `dom.ts` (elements, icons, a pin's button) |
+| `src/page/` | The page's scripts, compiled by `tsc` to `dist/page/` and served as they are. Pure: `tabs.ts` (the tabs from each read, the address, the words, times), `folders-tab.ts` (`#folders:<path>`), `search.ts` (the list's rows in their groups and orders, the search, the marks), `complete.ts` (a typed path: its folder, Tab, →, Backspace), `pick.ts` (the pick kept by path, moved by the keys, the card's kind), `reach.ts` (when a frame gets its address). DOM: `main.ts` (the row's two groups, frames, Symbiotes' page: what is read, what the list and the card show, the keys, the actions; Stop's question), `list-view.ts` (the field, the groups and rows, the foot), `detail-view.ts` (the picked row's card), `dom.ts` (elements, icons, a pin's button) |
 | `page/` | `index.html` (the server fills in the viewer's stylesheet and font), `nexus.css` (layout only), `mark.png` (the viewer's `ui/mark-96.png`) |
 
 ## Rules
@@ -56,18 +62,29 @@ PC's folders, the pinned ones under their places, are under the cards; Folders i
   left; Symbiotes alone since decision 626) and, after the viewer's `.views-divider`, the
   Symbiotes (a state dot each). A new page of the nexus's own joins `.nexus-own`; never an icon on
   a Symbiote's tab or a dot on a page's.
-- **The folders are under Symbiotes' cards** (decision 626): drawn once, never again with the
-  cards, so their listing, focus and field keep. `#folders:<path>` (Folders' old address) lists
-  that folder there; the address names a folder only once the person went to one.
-- **A repository is the end of the folders' way down** (decision 554): its card opens its Symbiote,
-  never its folders, and `GET /api/folders` never lists inside one (the holder, `picked`), but
-  in a home kept in git.
+- **One list and the picked one's card** (decisions 908, 909, 913): Running by name (as the
+  tabs), Pinned by name (folders and gone pins too), Opened before last seen first, Found in the
+  folder scanned by path; a repository in one group. There is always a pick, kept by its path when
+  the list is drawn again (every 2 s); a click picks, Enter, a double click or the card's button
+  acts. The list and the card are drawn again only when what they show changed: the field is
+  never drawn again while the person types, and the focus stays in it while ↑↓ move the pick.
+- **One field** (decision 910): any part of a path (from home, as `~`) searches; `~` or `/` first
+  lists that folder (`GET /api/folders`), Tab completes, → goes in, Backspace after a `/` goes up.
+  `#folders:<path>` fills it; the address names a folder only while one is typed.
+- **Only the folder the person chose is scanned** (decision 911), never by default, never more:
+  kept in `nexus.json` beside the pins; a repository cannot be chosen. A folder's listing and a
+  folder's card read one folder, never deeper (916). The scan and the reads never write in a
+  folder and never start a Symbiote.
+- **A repository is the end of the folders' way down** (decision 554): typing into one lists the
+  folder holding it, the repository picked; `GET /api/folders` never lists inside one (the holder,
+  `picked`), but in a home kept in git.
 - **Pins are the person's** (NX4, decisions 617–620): kept in the settings folder, never in the
   page's storage (a new port each run) nor the cache; a pin whose folder is gone stays, marked,
-  until the person unpins it. A pinned repository is a card among the Symbiotes, first (decision
-  627): its click is the person's start; a pinned folder is a place (628), its click lists it.
+  until the person unpins it. A pinned repository's card opens it, the person's start (619).
   Nothing starts by itself or by a pin. Specs and tests keep their own settings folder
-  (`XDG_CONFIG_HOME`; `startNexus`' `config`), never the person's.
+  (`XDG_CONFIG_HOME`; `startNexus`' `config`, `settingsFolder`), never the person's.
+- **What the nexus remembers is in its cache** (decision 912): `<cache>/nexus/opened.json` and
+  `scan.json`, beside the started Symbiotes' logs; never the person's settings.
 - **A Symbiote the nexus starts outlives it** (decision 541): detached, its output in a file, not
   a pipe (a pipe breaks when the nexus ends). Specs stop such Symbiotes themselves
   (`stopRecorded` in `e2e/nexus.ts`).
@@ -81,5 +98,6 @@ PC's folders, the pinned ones under their places, are under the cards; Folders i
 - e2e: `e2e/*.spec.ts` (`pnpm build` first; `pnpm test:e2e` runs them after the viewer's).
   `e2e/nexus.ts` serves real `symbiote view`s in throwaway repositories and the nexus on one cache
   folder of the spec's own, with a home of its own (`homeFolder`, `HOME`; an empty one by default:
-  Symbiotes lists a folder as it opens).
+  a first run lists home's folders) and a settings folder (`settingsFolder`: the folder scanned,
+  the pins). `list.spec.ts` is NX5's: the field, the list, the card.
   `app.spec.ts` needs `pnpm app:setup` and Xvfb, as the viewer's.

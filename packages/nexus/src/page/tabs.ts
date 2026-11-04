@@ -1,7 +1,6 @@
 // The nexus page's pure part (NX1b): its tabs from each read of the running Symbiotes, the open
-// one in the address, the words, and (fix/nexus-pinned-symbiotes) Symbiotes' cards with the pins.
+// one in the address, the words. Since NX5 the list's rows are `search.ts`'s.
 // The page's DOM is `main.ts`'s.
-import type { Pin } from '../pins.js';
 import type { Symbiote } from '../symbiotes.js';
 import { FOLDERS } from './folders-tab.js';
 
@@ -91,38 +90,18 @@ export function changesText(changed: number): string {
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const two = (n: number) => String(n).padStart(2, '0');
 
-/** Since when a Symbiote runs: the time today, the day this year, else the date. */
-export function sinceText(started: string, now: Date): string {
-  const date = new Date(started);
-  if (started === '' || Number.isNaN(date.getTime())) return '';
+/** A moment as the list says it: the time today, the day this year, else the date; '' for none. */
+export function timeText(when: string, now: Date): string {
+  const date = new Date(when);
+  if (when === '' || Number.isNaN(date.getTime())) return '';
   const day = `${MONTHS[date.getMonth()] ?? ''} ${date.getDate()}`;
-  if (date.getFullYear() !== now.getFullYear()) return `since ${day}, ${date.getFullYear()}`;
-  if (date.getMonth() !== now.getMonth() || date.getDate() !== now.getDate()) {
-    return `since ${day}`;
-  }
-  return `since ${two(date.getHours())}:${two(date.getMinutes())}`;
+  if (date.getFullYear() !== now.getFullYear()) return `${day}, ${date.getFullYear()}`;
+  if (date.getMonth() !== now.getMonth() || date.getDate() !== now.getDate()) return day;
+  return `${two(date.getHours())}:${two(date.getMinutes())}`;
 }
 
-/** A card on Symbiotes (decision 627): a running Symbiote, pinned or not, or a pinned repository. */
-export type SymbioteCard =
-  { kind: 'running'; tab: Tab & { url: string }; pinned: boolean } | { kind: 'pinned'; pin: Pin };
-
-/**
- * Symbiotes' cards: the pinned repositories first, in the order pinned, each a running Symbiote's
- * card while one serves it; then the other running Symbiotes, by name. A pinned folder, or a pin
- * whose folder is gone, is a place (decision 628).
- */
-export function symbiotesShown(tabs: readonly Tab[], pins: readonly Pin[]): SymbioteCard[] {
-  const running = tabs.filter((tab): tab is Tab & { url: string } => tab.url !== null);
-  const pinned = pins.filter((pin) => pin.repository);
-  const roots = new Set(pinned.map((pin) => pin.path));
-  return [
-    ...pinned.map((pin): SymbioteCard => {
-      const tab = running.find((t) => t.root === pin.path);
-      return tab ? { kind: 'running', tab, pinned: true } : { kind: 'pinned', pin };
-    }),
-    ...running
-      .filter((tab) => !roots.has(tab.root))
-      .map((tab): SymbioteCard => ({ kind: 'running', tab, pinned: false })),
-  ];
+/** Since when a Symbiote runs: the time today, the day this year, else the date. */
+export function sinceText(started: string, now: Date): string {
+  const text = timeText(started, now);
+  return text === '' ? '' : `since ${text}`;
 }

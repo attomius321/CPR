@@ -540,16 +540,22 @@ repository's worktrees, kept in Symbiote's cache without a git user, and never c
 ## The nexus's pinned folders
 
 The folders and repositories you pin in Symbiote nexus are kept in the same settings folder:
-`nexus.json`. Pins are kept for this machine, not for a project.
+`nexus.json`, with the one folder the nexus looks in for repositories. Both are kept for this
+machine, not for a project.
 
 ```json
-{ "pinned": ["/home/you/projects", "/home/you/projects/Symbiote"] }
+{ "pinned": ["/home/you/projects", "/home/you/projects/Symbiote"], "scanned": "/home/you/projects" }
 ```
 
 `pinned` lists full paths, in the order you pinned them. The nexus reads the file each time it lists
 a folder, so a pin made in one nexus window shows in another at its next listing. It writes the
 whole file at once, and keeps any other keys in it. A file it cannot read counts as no pins, and
 the next pin replaces it.
+
+`scanned` is the folder the nexus looks in for repositories (**Look for repositories here** on a
+folder's card). Without it the nexus looks nowhere. It must be a full path to a folder that is not a
+repository. What the nexus found there, and the repositories it saw running, are kept in its cache
+(`<cache>/nexus/scan.json` and `opened.json`), not here.
 
 ## Files Symbiote skips, `.symbioteignore`
 

@@ -40,9 +40,8 @@ const VIEWER_CLASSES = [
   'secondary',
   'ghost',
   'error',
-  // Folders (NX2b): its field, its card's head, the crumbs' links; Stop's question.
+  // The list's field (NX2b's Go to folder before NX5); the foot's Change…; Stop's question.
   'search-input',
-  'card-head',
   'link',
   'dialog',
   'dialog-backdrop',
@@ -55,6 +54,9 @@ const VIEWER_CLASSES = [
   // fix/static-loadings: what is under way, the viewer's turning arc before its words.
   'loading',
   'spin',
+  // NX5: the card's status (`StatusLabel`, V88) and Stop, a secondary with red words.
+  'status-label',
+  'danger',
 ];
 
 describe("the nexus page's look", () => {

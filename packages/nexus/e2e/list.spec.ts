@@ -1,0 +1,275 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { expect, test, type Page } from '@playwright/test';
+import {
+  cacheFolder,
+  homeFolder,
+  settingsFolder,
+  startNexus,
+  stopRecorded,
+  worktree,
+  type Served,
+} from './nexus.js';
+
+// NX5 (decisions 908–916): one field over the repositories the nexus knows, paths completing in
+// it, the list in its groups and the picked repository's card beside it; only the folder the
+// person chose is scanned. Real `symbiote view`s started by the nexus, on a home, a cache and a
+// settings folder of the spec's own.
+
+function pageErrors(page: Page): string[] {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  return errors;
+}
+
+const field = (page: Page) => page.getByRole('combobox', { name: 'Find a repository' });
+const list = (page: Page) => page.getByRole('listbox', { name: 'Repositories' });
+const rows = (page: Page) => list(page).getByRole('option');
+const rowNames = (page: Page) => list(page).locator('.nexus-row-name');
+const picked = (page: Page) => list(page).locator('[role="option"][aria-selected="true"]');
+const groups = (page: Page) => list(page).locator('.nexus-group-name');
+const card = (page: Page) => page.locator('.nexus-detail');
+const foot = (page: Page) => page.locator('.nexus-foot');
+const tab = (page: Page, name: string | RegExp) =>
+  page.locator('.nexus-tabs').getByRole('tab', { name });
+
+test.describe('Symbiote nexus: the list and the card (NX5)', () => {
+  const cleanup: (() => unknown)[] = [];
+  test.afterEach(async () => {
+    for (const step of cleanup.splice(0).reverse()) await step();
+  });
+
+  /**
+   * A home with `projects/` (alpha and beta, repositories; notes, a folder), a cache, and a
+   * settings folder that scans `projects` unless told otherwise.
+   */
+  function setUp({ scan = true }: { scan?: boolean } = {}) {
+    const home = homeFolder(['alpha', 'beta'], ['notes']);
+    const cache = cacheFolder();
+    const settings = settingsFolder(scan ? { scanned: home.projects } : {});
+    cleanup.push(
+      () => home.remove(),
+      () => cache.remove(),
+      () => settings.remove(),
+      () => stopRecorded(cache.dir),
+    );
+    return { home, cache: cache.dir, settings };
+  }
+
+  async function nexus(cache: string, home: string, config: string): Promise<Served> {
+    const served = await startNexus(cache, home, config);
+    cleanup.push(() => served.stop());
+    return served;
+  }
+
+  test('finds a repository by part of its path, the match marked; the card follows the pick', async ({
+    page,
+  }) => {
+    const errors = pageErrors(page);
+    const { home, cache, settings } = setUp();
+    const served = await nexus(cache, home.dir, settings.dir);
+    await page.goto(served.url);
+
+    await expect(page.locator('.page-head h1')).toHaveText('Symbiotes');
+    await expect(groups(page)).toHaveText(['Found in ~/projects']);
+    await expect(rowNames(page)).toHaveText(['alpha', 'beta']);
+    await expect(foot(page)).toContainText('Looking in ~/projects: 2 repositories');
+    // There is always a pick: the first row, its card beside the list.
+    await expect(picked(page)).toHaveCount(1);
+    await expect(picked(page).locator('.nexus-row-name')).toHaveText('alpha');
+    await expect(card(page).locator('h2')).toHaveText('alpha');
+    await expect(card(page).locator('.status-label')).toHaveText('Not running');
+    await expect(card(page).getByRole('button', { name: 'Open Symbiote' })).toBeVisible();
+
+    // Any part of the path: the folder's name matches both.
+    await field(page).fill('proj');
+    await expect(rowNames(page)).toHaveText(['alpha', 'beta']);
+    await expect(list(page).locator('mark').first()).toHaveText('proj');
+    await field(page).fill('ET');
+    await expect(rowNames(page)).toHaveText(['beta']);
+    await expect(list(page).locator('.nexus-row-name mark')).toHaveText('et');
+    await expect(card(page).locator('h2')).toHaveText('beta');
+    await field(page).fill('nothing such');
+    await expect(rows(page)).toHaveCount(0);
+    await expect(list(page)).toContainText('No repository has “nothing such” in its path');
+
+    // Esc clears; ↑↓ move the pick, the focus staying in the field.
+    await field(page).press('Escape');
+    await expect(field(page)).toHaveValue('');
+    await expect(rowNames(page)).toHaveText(['alpha', 'beta']);
+    await field(page).press('ArrowDown');
+    await expect(picked(page).locator('.nexus-row-name')).toHaveText('beta');
+    await expect(card(page).locator('h2')).toHaveText('beta');
+    await expect(field(page)).toBeFocused();
+    await expect(field(page)).toHaveAttribute('aria-activedescendant', /.+/);
+    await field(page).press('ArrowUp');
+    await expect(card(page).locator('h2')).toHaveText('alpha');
+    // A click picks, and opens nothing.
+    await rows(page).nth(1).click();
+    await expect(card(page).locator('h2')).toHaveText('beta');
+    await expect(page.locator('.nexus-tabs [role="tab"]')).toHaveCount(1);
+    expect(errors).toEqual([]);
+  });
+
+  test('opens a repository with Enter, shows it running, and keeps it under Opened before once stopped', async ({
+    page,
+  }) => {
+    const errors = pageErrors(page);
+    const { home, cache, settings } = setUp();
+    const served = await nexus(cache, home.dir, settings.dir);
+    await page.goto(served.url);
+
+    await field(page).fill('beta');
+    await field(page).press('Enter');
+    await expect(tab(page, /^beta/)).toHaveAttribute('aria-selected', 'true', { timeout: 20_000 });
+    await tab(page, /^Symbiotes/).click();
+    await expect(groups(page)).toHaveText(['Running', 'Found in ~/projects']);
+    await field(page).fill('');
+    await expect(picked(page).locator('.nexus-row-name')).toHaveText('beta');
+    await expect(card(page).locator('.status-label')).toHaveText('Running');
+    await expect(card(page)).toContainText('no changes');
+    // Enter on a running one shows its tab.
+    await field(page).press('Enter');
+    await expect(tab(page, /^beta/)).toHaveAttribute('aria-selected', 'true');
+    await tab(page, /^Symbiotes/).click();
+
+    // Stop, after the question; then beta is one opened before.
+    await card(page).getByRole('button', { name: 'Stop beta' }).click();
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Stop', exact: true }).click();
+    await expect(groups(page)).toHaveText(['Opened before', 'Found in ~/projects'], {
+      timeout: 15_000,
+    });
+    await expect(rowNames(page)).toHaveText(['beta', 'alpha']);
+    expect(errors).toEqual([]);
+  });
+
+  test('completes a path: Tab, → into a folder, Backspace after a / up one', async ({ page }) => {
+    const { home, cache, settings } = setUp();
+    const served = await nexus(cache, home.dir, settings.dir);
+    await page.goto(served.url);
+
+    await field(page).fill('~/pro');
+    await expect(groups(page)).toHaveText(['~/']);
+    await expect(rowNames(page)).toHaveText(['projects/']);
+    await expect(page.locator('.nexus-ghost-rest')).toHaveText('jects/');
+    await field(page).press('Tab');
+    await expect(field(page)).toHaveValue('~/projects/');
+    await expect(field(page)).toBeFocused();
+    await expect(rowNames(page)).toHaveText(['alpha', 'beta', 'notes/']);
+    await field(page).press('n');
+    await expect(groups(page)).toHaveText(['~/projects/', 'Also in ~/projects/']);
+    await expect(rowNames(page)).toHaveText(['notes/', 'alpha', 'beta']);
+    await expect(card(page).locator('h2')).toHaveText('notes/');
+    await field(page).press('ArrowRight');
+    await expect(field(page)).toHaveValue('~/projects/notes/');
+    await field(page).press('Backspace');
+    await expect(field(page)).toHaveValue('~/projects/');
+    await field(page).press('Backspace');
+    await expect(field(page)).toHaveValue('~/');
+    // Browse… types ~/ into the field.
+    await field(page).fill('alpha');
+    await page.getByRole('button', { name: 'Browse…' }).click();
+    await expect(field(page)).toHaveValue('~/');
+    await expect(field(page)).toBeFocused();
+    // The address names the folder typed: a reload keeps it.
+    await field(page).fill('~/projects/');
+    await expect(page).toHaveURL(new RegExp(`#folders:${encodeURIComponent(home.projects)}$`));
+    await page.reload();
+    await expect(field(page)).toHaveValue('~/projects/');
+    await expect(rowNames(page)).toHaveText(['alpha', 'beta', 'notes/']);
+  });
+
+  test('on a first run, a folder is chosen to look in; Found follows it, kept for the next nexus', async ({
+    page,
+  }) => {
+    const errors = pageErrors(page);
+    const { home, cache, settings } = setUp({ scan: false });
+    let served = await nexus(cache, home.dir, settings.dir);
+    await page.goto(served.url);
+
+    await expect(page.locator('.nexus-welcome')).toContainText('No Symbiote runs yet');
+    await expect(foot(page)).toContainText('No folder chosen to look for repositories in');
+    // Home's folders, the first picked, its card asking.
+    await expect(rowNames(page)).toHaveText(['projects/']);
+    await expect(card(page).locator('h2')).toHaveText('projects/');
+    await expect(card(page)).toContainText(
+      'Symbiote looks for repositories in one folder you choose',
+    );
+    await card(page).getByRole('button', { name: 'Look for repositories here' }).click();
+    await expect(foot(page)).toContainText('Looking in ~/projects: 2 repositories');
+    await expect(groups(page)).toHaveText(['Found in ~/projects']);
+    await expect(rowNames(page)).toHaveText(['alpha', 'beta']);
+    expect((JSON.parse(readFileSync(settings.file, 'utf8')) as { scanned: string }).scanned).toBe(
+      home.projects,
+    );
+
+    // A repository cannot be chosen: it is the end of the way down.
+    await field(page).fill('~/projects/');
+    await expect(card(page).locator('h2')).toHaveText('alpha');
+    await expect(
+      card(page).getByRole('button', { name: 'Look for repositories here' }),
+    ).toHaveCount(0);
+
+    await served.stop();
+    served = await nexus(cache, home.dir, settings.dir);
+    await page.goto(served.url);
+    await expect(groups(page)).toHaveText(['Found in ~/projects']);
+    await expect(foot(page)).toContainText('Looking in ~/projects');
+    expect(errors).toEqual([]);
+  });
+
+  test("shows a repository's worktrees in its card, and the folder it is in", async ({ page }) => {
+    const { home, cache, settings } = setUp();
+    worktree(
+      join(home.projects, 'alpha'),
+      join(home.projects, 'alpha.worktrees', 'feature'),
+      'feature/x',
+    );
+    const served = await nexus(cache, home.dir, settings.dir);
+    await page.goto(served.url);
+
+    await expect(rowNames(page)).toHaveText(['alpha', 'feature', 'beta']);
+    await expect(card(page).locator('h2')).toHaveText('alpha');
+    const checkouts = card(page).getByRole('group', { name: 'Checkouts of this repository' });
+    await expect(checkouts.locator('.nexus-row-name')).toHaveText(['alpha', 'feature']);
+    await expect(checkouts).toContainText('feature/x');
+    const folder = card(page).getByRole('group', { name: 'The folder it is in' });
+    await expect(folder.locator('.nexus-row-name')).toHaveText([
+      'alpha.worktrees/',
+      'beta',
+      'notes/',
+    ]);
+    // A crumb lists its folder in the field.
+    await card(page).locator('.nexus-crumbs').getByRole('button', { name: 'projects' }).click();
+    await expect(field(page)).toHaveValue('~/projects/');
+  });
+
+  test('/ and Ctrl K put the focus in the field', async ({ page }) => {
+    const { home, cache, settings } = setUp();
+    const served = await nexus(cache, home.dir, settings.dir);
+    await page.goto(served.url);
+    await expect(rowNames(page)).toHaveText(['alpha', 'beta']);
+    await page.locator('.page-head h1').click();
+    await expect(field(page)).not.toBeFocused();
+    await page.keyboard.press('/');
+    await expect(field(page)).toBeFocused();
+    await expect(field(page)).toHaveValue('');
+    await page.locator('.page-head h1').click();
+    await page.keyboard.press('Control+k');
+    await expect(field(page)).toBeFocused();
+  });
+
+  test('stands the list over the card in a narrow window', async ({ page }) => {
+    const { home, cache, settings } = setUp();
+    const served = await nexus(cache, home.dir, settings.dir);
+    await page.setViewportSize({ width: 900, height: 900 });
+    await page.goto(served.url);
+    await expect(card(page).locator('h2')).toHaveText('alpha');
+    const listBox = await page.locator('.nexus-list').boundingBox();
+    const cardBox = await card(page).boundingBox();
+    expect(cardBox && listBox && cardBox.y >= listBox.y + listBox.height).toBe(true);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      900,
+    );
+  });
+});

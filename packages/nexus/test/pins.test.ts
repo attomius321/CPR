@@ -207,3 +207,78 @@ describe('pins (NX4, decisions 617–619)', () => {
     });
   });
 });
+
+describe('the folder scanned for repositories (NX5, decision 911)', () => {
+  it('is none at first; chosen, it is kept in the file beside the pins, and cleared', async () => {
+    const root = tree('scanned', ['code', 'notes']);
+    const file = join(dir, 'scanned-config', 'nexus.json');
+    const kept = pins({ file, home: root, repositoryOf: noRepository });
+    expect(await kept.scanned()).toBeNull();
+    await kept.set(join(root, 'notes'), true);
+    expect(await kept.setScanned(`${join(root, 'code')}/`)).toEqual({
+      scanned: join(root, 'code'),
+    });
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
+      pinned: [join(root, 'notes')],
+      scanned: join(root, 'code'),
+    });
+    // Another nexus reads what this one wrote; pins written after keep it.
+    const next = pins({ file, home: root, repositoryOf: noRepository });
+    expect(await next.scanned()).toBe(join(root, 'code'));
+    await next.set(join(root, 'notes'), false);
+    expect(await next.scanned()).toBe(join(root, 'code'));
+    expect(await next.setScanned(null)).toEqual({ scanned: null });
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ pinned: [] });
+  });
+
+  it('is none when the file holds no absolute path', async () => {
+    const folder = join(dir, 'scanned-broken');
+    mkdirSync(folder);
+    const file = join(folder, 'nexus.json');
+    const kept = pins({ file, home: folder, repositoryOf: noRepository });
+    for (const text of ['{', '{"scanned":7}', '{"scanned":"relative"}', '{"scanned":null}']) {
+      writeFileSync(file, text);
+      expect(await kept.scanned(), text).toBeNull();
+    }
+  });
+
+  it('says why a folder cannot be scanned: gone, not a folder, a repository or inside one', async () => {
+    const root = tree('scanned-refused', ['ky/src', 'work']);
+    writeFileSync(join(root, 'a.txt'), '');
+    const ky = join(root, 'ky');
+    const repositoryOf = (folder: string) =>
+      Promise.resolve(folder === ky || folder.startsWith(`${ky}/`) ? ky : null);
+    const kept = pins({ file: join(dir, 'scanned-refused.json'), home: root, repositoryOf });
+    expect(await kept.setScanned(join(root, 'gone'))).toEqual({
+      status: 404,
+      error: `No such folder: ${join(root, 'gone')}`,
+    });
+    expect(await kept.setScanned(join(root, 'a.txt'))).toEqual({
+      status: 400,
+      error: `Not a folder: ${join(root, 'a.txt')}`,
+    });
+    expect(await kept.setScanned(ky)).toEqual({
+      status: 422,
+      error: `${ky} is a repository: look for repositories in the folder it is in`,
+    });
+    expect(await kept.setScanned(join(ky, 'src'))).toEqual({
+      status: 422,
+      error: `${join(ky, 'src')} is inside the repository ${ky}: look for repositories in the folder it is in`,
+    });
+    expect(await kept.scanned()).toBeNull();
+    expect(await kept.setScanned(join(root, 'work'))).toEqual({ scanned: join(root, 'work') });
+  });
+
+  it('takes a home kept in git, and a folder in it (decision 554)', async () => {
+    const home = tree('scanned-home-in-git', ['projects']);
+    const kept = pins({
+      file: join(dir, 'scanned-home.json'),
+      home,
+      repositoryOf: () => Promise.resolve(home),
+    });
+    expect(await kept.setScanned(home)).toEqual({ scanned: home });
+    expect(await kept.setScanned(join(home, 'projects'))).toEqual({
+      scanned: join(home, 'projects'),
+    });
+  });
+});
