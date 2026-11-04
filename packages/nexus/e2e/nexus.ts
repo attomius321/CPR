@@ -189,3 +189,26 @@ function signal(pid: number, name: NodeJS.Signals): void {
     // Ended already.
   }
 }
+
+/**
+ * A settings folder of the spec's own (`XDG_CONFIG_HOME`), its `symbiote/nexus.json` holding the
+ * folder scanned for repositories (NX5) and the pins (NX4) given, if any.
+ */
+export function settingsFolder(nexus: { scanned?: string; pinned?: string[] } = {}): {
+  dir: string;
+  file: string;
+  remove(): void;
+} {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), 'symbiote-e2e-nexus-config-')));
+  const file = join(dir, 'symbiote', 'nexus.json');
+  if (nexus.scanned || nexus.pinned) {
+    mkdirSync(join(dir, 'symbiote'), { recursive: true });
+    writeFileSync(file, `${JSON.stringify(nexus, null, 2)}\n`);
+  }
+  return { dir, file, remove: () => rmSync(dir, { recursive: true, force: true }) };
+}
+
+/** A worktree of `repo` at `path` on a new branch `branch`. */
+export function worktree(repo: string, path: string, branch: string): void {
+  git(repo, 'worktree', 'add', '-q', '-b', branch, path);
+}

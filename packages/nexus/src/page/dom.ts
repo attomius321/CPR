@@ -1,5 +1,5 @@
 // The page's drawing helpers (NX1b): elements, and icons as the viewer draws them. Shared by the
-// tabs and lists (`main.ts`) and the Folders tab (`folders-view.ts`).
+// tabs (`main.ts`), the list (`list-view.ts`) and the card (`detail-view.ts`).
 
 export type Child = Node | string | null | undefined | false;
 
@@ -56,19 +56,13 @@ export function loading(words: string): HTMLSpanElement {
   return el('span', { class: 'loading' }, arc, words);
 }
 
-// The Folders tab's (NX2b), lucide's (ISC): house, hard-drive, folder-git-2, arrow-up.
+// The Folders tab's (NX2b), lucide's (ISC): house, the crumbs' first since NX5.
 export const HOUSE =
   '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />';
-export const DRIVE =
-  '<path d="M22 12H2" /><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /><path d="M6 16h.01" /><path d="M10 16h.01" />';
-export const FOLDER_GIT =
-  '<path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5" /><circle cx="13" cy="12" r="2" /><path d="M18 19c-2.8 0-5-2.2-5-5v8" /><circle cx="20" cy="19" r="2" />';
-export const ARROW_UP = '<path d="m5 12 7-7 7 7" /><path d="M12 19V5" />';
 
-// NX3's, lucide's (ISC): layout-grid (Symbiotes' tab), chevron-right (a folder's way in).
+// NX3's, lucide's (ISC): layout-grid (Symbiotes' tab).
 export const GRID =
   '<rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" /><rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" />';
-export const CHEVRON_RIGHT = '<path d="m9 18 6-6-6-6" />';
 
 // NX4's, lucide's (ISC): pin.
 export const PIN =
@@ -97,3 +91,26 @@ export function pinButton(
   button.addEventListener('click', toggle);
   return button;
 }
+
+// NX5's, lucide's (ISC): search, folder-open, folder-search, circle-check, circle-dot, circle-x,
+// copy, check, refresh-cw, arrow-up-right, terminal.
+export const SEARCH = '<circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />';
+export const FOLDER_OPEN =
+  '<path d="m6 14 1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2" />';
+export const FOLDER_SEARCH =
+  '<path d="M10.7 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v4.1" /><path d="m21 21-1.9-1.9" /><circle cx="17" cy="17" r="3" />';
+export const CIRCLE_CHECK = '<circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" />';
+export const CIRCLE_DOT = '<circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="1" />';
+export const CIRCLE_X =
+  '<circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" />';
+export const COPY =
+  '<rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />';
+export const CHECK = '<path d="M20 6 9 17l-5-5" />';
+export const REFRESH =
+  '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" /><path d="M21 3v5h-5" /><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" /><path d="M8 16H3v5" />';
+export const ARROW_UP_RIGHT = '<path d="M7 7h10v10" /><path d="M7 17 17 7" />';
+export const TERMINAL =
+  '<polyline points="4 17 10 11 4 5" /><line x1="12" x2="20" y1="19" y2="19" />';
+
+/** A key, as the viewer draws one (`kbd`). */
+export const key = (name: string) => el('kbd', {}, name);

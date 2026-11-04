@@ -66,6 +66,8 @@ const summary: ScanSummary = {
   repositories: 1,
 };
 const known: RepositoriesAnswer = {
+  home: '/home/me',
+  scanned: '/home/me/code',
   repositories: [{ name: 'zod', path: '/home/me/code/zod', branch: 'main', found: true }],
   pins: pinned,
   scan: summary,

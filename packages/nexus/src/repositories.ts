@@ -29,10 +29,14 @@ export interface ScanSummary {
 
 /** What `GET /api/repositories` answers. */
 export interface RepositoriesAnswer {
+  /** The home folder: `~` in the paths shown, where a first run looks. */
+  home: string;
   /** By path. */
   repositories: Known[];
   pins: Pin[];
-  /** Null while no folder is chosen. */
+  /** The folder chosen to scan (decision 911); null while none is. */
+  scanned: string | null;
+  /** Its last scan; null while none is chosen, or it runs for the first time. */
   scan: ScanSummary | null;
 }
 

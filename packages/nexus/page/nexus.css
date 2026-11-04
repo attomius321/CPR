@@ -60,10 +60,10 @@
   background: var(--side);
 }
 
-/* A running Symbiote's dot (`.state-dot`, V48): the live green; a stopped one is the viewer's
-   empty ring (`.tone-idle`). */
+/* A running Symbiote's dot (`.state-dot`, V48): the green of a Running status (NX5; the diff's
+   added green before, olive in light); a stopped one is the viewer's empty ring (`.tone-idle`). */
 .state-dot.nexus-live {
-  --dot: var(--added);
+  --dot: var(--ok);
 }
 
 /* In Symbiote's window (N1c): the row moves the window; what can be clicked does not. The system's
@@ -116,23 +116,15 @@
   display: none;
 }
 
-/* Symbiotes: the page's head, the cards, and this PC's folders under them (decision 626), as the
-   viewer's pages (V72's frame). */
+/* Symbiotes (NX5, decision 908): the page's head, then the list of every repository the nexus
+   knows and the picked one's card beside it, as the viewer's pages (V72's frame, V93's kits):
+   cards on the ground, 12 px from the area's edges and 8 apart, 10 px radius, a hairline. */
 .nexus-home {
   position: absolute;
   inset: 0;
   display: flex;
   flex-direction: column;
-  overflow: auto;
-}
-
-.nexus-card {
-  flex: none;
-  margin: 0 var(--page-pad) var(--page-pad);
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--bg);
+  min-height: 0;
 }
 
 .nexus-failure {
@@ -140,265 +132,619 @@
   font-size: var(--size-small);
 }
 
-.nexus-home-cards {
-  flex: none;
+.nexus-split {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 560px minmax(0, 1fr);
+  gap: var(--page-gap);
+  padding: 0 var(--page-pad) var(--page-pad);
 }
 
-/* A list's row: its wash 8 px in, its words at 16 (V72). */
-.nexus-rows {
+/* Under 960 px the list stands over the card (decision 915); the page scrolls as one column. */
+@media (max-width: 959px) {
+  .nexus-home {
+    overflow: auto;
+  }
+
+  .nexus-split {
+    flex: none;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 440px auto;
+  }
+}
+
+.nexus-card {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px;
-}
-
-/* Symbiotes (NX3, decision 552): a card per running Symbiote and, since decision 627, per pinned
-   repository; the card its tab's button, or its start's; its pin and Stop at its top right (a
-   button cannot hold a button, NX2b). */
-.nexus-symbiotes {
-  flex: none;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--page-gap);
-  margin: 0 var(--page-pad) var(--page-gap);
-}
-
-.nexus-symbiote {
-  position: relative;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: var(--bg);
-  transition:
-    background-color 150ms,
-    border-color 150ms;
+  background: var(--panel);
+  box-shadow: var(--shadow-lift);
 }
 
-.nexus-symbiote:hover {
-  border-color: var(--selected-line);
-  background: var(--hover);
+/* The field (decision 910): the list's head, the search icon in it, what Tab would add drawn after
+   the text typed, the count or the key at its end. */
+.nexus-find {
+  flex: none;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
 }
 
-.nexus-symbiote-open {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  min-width: 0;
-  padding: 14px var(--card-pad) 16px;
-  border: 0;
-  border-radius: 10px;
-  background: none;
-  color: var(--text);
-  text-align: left;
-}
-
-.nexus-symbiote-name {
+.nexus-field-box {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-width: 0;
-  padding-right: 60px;
-  font-size: var(--size-title);
-  font-weight: 600;
 }
 
-.nexus-symbiote-name > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nexus-symbiote-folder {
-  overflow: hidden;
-  color: var(--muted);
-  font-size: var(--size-small);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nexus-symbiote-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 16px;
-  margin-top: 4px;
-  color: var(--muted);
-  font-size: var(--size-small);
-  font-variant-numeric: tabular-nums;
-}
-
-.nexus-symbiote-checkout {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  color: var(--text);
-}
-
-.nexus-symbiote-checkout .icon {
-  width: 14px;
-  height: 14px;
-  color: var(--muted);
-}
-
-.nexus-symbiote-actions {
+.nexus-field-box > .icon {
   position: absolute;
-  top: 10px;
+  left: 12px;
+  z-index: 1;
+  width: 16px;
+  height: 16px;
+  color: var(--faint);
+  pointer-events: none;
+}
+
+.nexus-field-text {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.search-input.nexus-field {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 38px;
+  padding: 0 116px 0 37px;
+  font-size: var(--size-body);
+}
+
+/* The ghost lies over the field's text: the typed part unseen, the rest faint. 38 px: the field's
+   border (1) and its text's start (37). */
+.nexus-ghost {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 38px;
+  display: flex;
+  align-items: center;
+  font-size: var(--size-body);
+  white-space: pre;
+  pointer-events: none;
+}
+
+.nexus-ghost-typed {
+  visibility: hidden;
+}
+
+.nexus-ghost-rest {
+  color: var(--faint);
+}
+
+.nexus-field-hint {
+  position: absolute;
   right: 10px;
   display: flex;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
+  color: var(--faint);
+  font-size: var(--size-caption);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
-/* A pinned repository with no Symbiote running: what its click does, in the accent, as a
-   repository's card says it. */
-.nexus-symbiote-action {
-  color: var(--accent);
+/* The rows (decision 909): groups with their headings kept in sight while the list scrolls. */
+.nexus-list .nexus-rows {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 6px 6px;
+}
+
+.nexus-group + .nexus-group {
+  margin-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.nexus-group-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 8px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: var(--size-caption);
   font-weight: 500;
 }
 
-.nexus-symbiote-open:disabled .nexus-symbiote-action {
-  color: var(--muted);
+.nexus-group-head > .icon {
+  width: 14px;
+  height: 14px;
 }
 
-/* A card's head of a title and actions (V72), and its count. */
-.nexus-card-title {
-  margin: 0;
+.nexus-group-order {
+  margin-left: auto;
+  color: var(--faint);
+  font-weight: 400;
+}
+
+/* A row (V93's sidenav rows): the lead, then the name over the path, what it has checked out and
+   when; files changed at its end. 8 px controls, a hover apart from the pick. */
+.nexus-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  align-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 50px;
+  padding: 6px 10px 7px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.nexus-row:hover {
+  background: var(--hover);
+}
+
+.nexus-row.picked {
+  background: var(--selected);
+}
+
+.nexus-row-lead {
+  display: flex;
+  justify-content: center;
+  color: var(--faint);
+}
+
+.nexus-row-lead .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.nexus-row-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.nexus-row-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  line-height: calc(var(--size-body) + 5px);
+}
+
+.nexus-row-name {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexus-row-pin {
+  display: inline-flex;
+  color: var(--faint);
+}
+
+.nexus-row-pin .icon {
+  width: 12px;
+  height: 12px;
+}
+
+.nexus-row-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--faint);
+  font-size: var(--size-caption);
+  line-height: calc(var(--size-caption) + 5px);
+  white-space: nowrap;
+}
+
+/* The branch gives way before the path (four times faster), then the path, at its end. */
+.nexus-row-path {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nexus-row-sep {
+  flex: none;
+  color: var(--line-2);
+}
+
+.nexus-row-branch {
+  flex: 0 4 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.nexus-row-branch .icon {
+  flex: none;
+  width: 12px;
+  height: 12px;
+}
+
+.nexus-row-branch code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--size-caption);
+}
+
+.nexus-row-side {
+  color: var(--faint);
+  font-size: var(--size-caption);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nexus-row-side b {
+  color: var(--modified);
+  font-weight: 500;
+}
+
+/* A match (decision 910): the words typed, washed in the accent and written heavier. */
+.nexus-row mark {
+  margin: 0 -1px;
+  padding: 0 1px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.nexus-more,
+.nexus-message {
+  margin: 12px 10px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* A first run's word, over home's folders. */
+.nexus-welcome {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 14px;
+  margin: 8px 2px 6px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: var(--raised);
+}
+
+.nexus-welcome-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--accent);
+}
+
+.nexus-welcome h3 {
+  margin: 0 0 3px;
   font-size: var(--size-body);
   font-weight: 600;
 }
 
-.nexus-card-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-  font-size: var(--size-small);
-}
-
-.nexus-card .card-head .count {
-  margin-left: -4px;
-}
-
-/* A repository's card (NX3, decisions 553–555), in the folder listed: its icon on a raised square
-   in the accent (it is acted on), its name, its branch, what a click does. */
-.nexus-repos {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 8px;
-  padding: var(--card-pad);
-}
-
-.nexus-repo {
-  display: grid;
-  grid-template-columns: 36px minmax(0, 1fr);
-  grid-template-rows: auto auto auto;
-  align-items: center;
-  gap: 2px 12px;
-  min-width: 0;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: none;
-  color: var(--text);
-  text-align: left;
-  transition:
-    background-color 150ms,
-    border-color 150ms;
-}
-
-.nexus-repo:hover:not(:disabled) {
-  border-color: var(--selected-line);
-  background: var(--hover);
-}
-
-.nexus-repo:disabled {
-  cursor: default;
-}
-
-.nexus-repo.picked {
-  border-color: var(--selected-line);
-  background: var(--selected);
-}
-
-/* On Folders a repository's card has its pin in its corner (NX4, decision 620), beside the card (a
-   button holds no button), as Symbiotes' Stop; the name keeps clear of it. */
-.nexus-repo-box {
-  position: relative;
-  display: grid;
-  min-width: 0;
-}
-
-.nexus-repo-box > .nexus-repo {
-  padding-right: 40px;
-}
-
-.nexus-repo-pin {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-}
-
-.nexus-repo-icon {
-  grid-row: 1 / span 3;
-  align-self: start;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: var(--raised);
-  color: var(--accent);
-}
-
-.nexus-repo-icon .icon {
-  width: 18px;
-  height: 18px;
-}
-
-.nexus-repo-name {
-  overflow: hidden;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nexus-repo-checkout {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-width: 0;
-  min-height: 20px;
+.nexus-welcome p {
+  margin: 0;
   color: var(--muted);
   font-size: var(--size-small);
 }
 
-.nexus-repo-checkout > span {
+/* The list's foot: where the repositories come from (decision 911), Change… and Scan again. */
+.nexus-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+  padding: 0 8px 0 12px;
+  border-top: 1px solid var(--line);
+  color: var(--faint);
+  font-size: var(--size-caption);
+}
+
+.nexus-foot-what {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.nexus-repo-checkout .icon {
+.nexus-foot-what > .icon {
   flex: none;
   width: 14px;
   height: 14px;
 }
 
-.nexus-repo-action {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 6px;
-  color: var(--accent);
-  font-size: var(--size-small);
+.nexus-foot-what b {
+  color: var(--muted);
   font-weight: 500;
 }
 
-.nexus-repo.running .nexus-repo-action,
-.nexus-repo:disabled .nexus-repo-action {
+.nexus-foot-change {
+  margin-left: auto;
   color: var(--muted);
+  font-size: var(--size-caption);
+  text-decoration: underline;
+  text-decoration-color: var(--line-2);
+}
+
+/* The picked repository's card (decisions 908, 913, 914, 916). */
+.nexus-detail-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 0 12px 0 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+.nexus-detail-lead {
+  display: flex;
+  color: var(--faint);
+}
+
+.nexus-detail-lead .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.nexus-detail-head h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: var(--size-title);
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nexus-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.nexus-detail-actions .button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.nexus-detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 14px 16px 16px;
+}
+
+.nexus-detail-body > * {
+  flex: none;
+}
+
+.nexus-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.nexus-notice > .icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-top: 3px;
+  color: var(--faint);
+}
+
+.nexus-notice.run > .icon {
+  color: var(--run);
+}
+
+.nexus-notice.error {
+  background: color-mix(in srgb, var(--error) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error) 26%, transparent);
+  color: var(--text);
+}
+
+.nexus-notice.error > .icon {
+  color: var(--error);
+}
+
+.nexus-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  font-size: var(--size-small);
+}
+
+.nexus-crumb {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+button.nexus-crumb:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.nexus-crumb[aria-current='page'] {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.nexus-crumb .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.nexus-crumb-sep {
+  color: var(--faint);
+}
+
+.nexus-facts {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  row-gap: 10px;
+  margin: 0;
+  font-size: var(--size-small);
+}
+
+.nexus-facts dt {
+  color: var(--faint);
+}
+
+.nexus-facts dd {
+  min-width: 0;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.nexus-facts code {
+  font-size: var(--size-caption);
+}
+
+.nexus-sub {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.nexus-sub-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: var(--size-small);
+  font-weight: 600;
+}
+
+.nexus-sub-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nexus-sub-name .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--faint);
+}
+
+.nexus-sub-end {
+  margin-left: auto;
+  color: var(--faint);
+  font-size: var(--size-caption);
+  font-weight: 400;
+}
+
+.nexus-sub-rows {
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+}
+
+.nexus-card-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* Nothing picked: what the card is for. */
+.nexus-detail-none {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 28px 32px;
+}
+
+.nexus-detail-none h2 {
+  margin: 0;
+  font-size: var(--size-title);
+  font-weight: 600;
+}
+
+.nexus-detail-none p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.nexus-tips {
+  display: grid;
+  gap: 8px;
+}
+
+.nexus-tips p {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--text);
+  font-size: var(--size-small);
+}
+
+.nexus-tips .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--accent);
+}
+
+/* A pin (NX4, decision 620): filled in the accent once pinned. */
+.nexus-pinned {
+  color: var(--accent);
+}
+
+.nexus-pinned .icon {
+  fill: currentColor;
 }
 
 /* An empty state (the style's recipe): a 28 px icon in --faint, a line, the text, the action. */
@@ -452,317 +798,4 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-/* This PC's folders (NX2b; NX3, decision 553), under Symbiotes' cards since decision 626: the field
-   in the page's head; the places a card at the left, the folder's card beside it: its crumbs and
-   counts in its head, its repositories as cards, its other folders as rows in columns. Under 960 px
-   the places are a row over the folder's card. */
-.nexus-folders {
-  flex: none;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--page-gap);
-  margin: 0 var(--page-pad) var(--page-pad);
-}
-
-.nexus-folders > .nexus-card {
-  margin: 0;
-}
-
-.nexus-places-card > .card-head {
-  display: none;
-}
-
-.nexus-places {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px 4px;
-  min-width: 0;
-  padding: 8px;
-}
-
-@media (min-width: 960px) {
-  .nexus-folders {
-    grid-template-columns: 260px minmax(0, 1fr);
-    align-items: start;
-  }
-
-  .nexus-places-card > .card-head {
-    display: flex;
-  }
-
-  .nexus-places {
-    flex-direction: column;
-    flex-wrap: nowrap;
-  }
-}
-
-/* A place: the sidenav's row (V61): an 18 px icon in --muted, the current one --selected with its
-   icon in the accent. */
-.nexus-place {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  height: 36px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 8px;
-  background: none;
-  color: var(--muted);
-  font-weight: 500;
-  text-align: left;
-  transition:
-    background-color 150ms,
-    color 150ms;
-}
-
-.nexus-place > span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nexus-place .icon {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  stroke-width: 1.75;
-}
-
-.nexus-place:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.nexus-place[aria-current='true'] {
-  background: var(--selected);
-  color: var(--text);
-}
-
-.nexus-place[aria-current='true'] .icon {
-  color: var(--accent);
-  stroke-width: 2.25;
-}
-
-/* The pins (NX4, decisions 617–620): under the places, a hairline between, their head and count;
-   a pin's row is a place's, its unpin at its end. A gone folder's says "not found". */
-.nexus-pins {
-  border-top: 1px solid var(--line);
-}
-
-.nexus-pins > .nexus-group-head {
-  padding-top: 12px;
-}
-
-.nexus-pin {
-  position: relative;
-  display: grid;
-  min-width: 0;
-}
-
-/* The unpin at the row's end, as the sidenav's bin (V55): the row keeps its room, so its name and
-   marks never run under it, and its hover and current wash span the row as a place's do. */
-.nexus-pin > .nexus-place {
-  padding-right: 36px;
-}
-
-.nexus-unpin {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 24px;
-  height: 24px;
-}
-
-.nexus-place > .nexus-pin-gone {
-  flex: none;
-  margin-left: auto;
-}
-
-.nexus-pin-gone {
-  color: var(--muted);
-  font-size: var(--size-caption);
-  font-weight: 400;
-}
-
-.nexus-pins-none {
-  margin: 0;
-  padding: 6px var(--card-pad) 14px;
-  color: var(--muted);
-  font-size: var(--size-small);
-}
-
-/* A pin's button: an outline to pin, filled in the accent once pinned (what is checked). A row's
-   unpin and a card's pin not pinned show on the row's or card's hover or keyboard focus, as the
-   sidenav's bin (V55): transparent, not hidden, so they keep their names and their place in the Tab
-   order; without hover (a touch screen) they always show. */
-.nexus-pinned {
-  color: var(--accent);
-}
-
-.nexus-pinned .icon {
-  fill: currentColor;
-}
-
-@media (hover: hover) {
-  .nexus-pin:not(:hover, :has(:focus-visible)) .nexus-unpin,
-  .nexus-repo-box:not(:hover, :has(:focus-visible)) .nexus-repo-pin:not(.nexus-pinned),
-  .nexus-symbiote:not(:hover, :has(:focus-visible)) .nexus-symbiote-pin:not(.nexus-pinned) {
-    opacity: 0;
-  }
-}
-
-.nexus-head-pin {
-  margin-left: auto;
-}
-
-.nexus-folders-counts + .nexus-head-pin {
-  margin-left: 0;
-}
-
-.nexus-go {
-  display: flex;
-  width: 340px;
-  max-width: 100%;
-}
-
-.nexus-go .search-input {
-  flex: 1 1 auto;
-  min-width: 0;
-  height: 32px;
-  padding: 0 10px;
-  font-size: var(--size-small);
-}
-
-.nexus-folders-head {
-  gap: 8px;
-  padding-left: 10px;
-}
-
-.nexus-crumbs {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 6px;
-  min-width: 0;
-  font-weight: 500;
-}
-
-.nexus-crumbs .link {
-  color: var(--muted);
-}
-
-.nexus-crumbs .link:hover {
-  color: var(--text);
-  text-decoration: underline;
-}
-
-.nexus-crumbs [aria-current='page'] {
-  color: var(--text);
-  font-weight: 600;
-}
-
-.nexus-crumb-sep {
-  color: var(--faint);
-}
-
-.nexus-folders-counts {
-  margin-left: auto;
-  padding-left: 8px;
-  color: var(--muted);
-  font-size: var(--size-small);
-  white-space: nowrap;
-}
-
-/* A group of the folder's card, when it has both kinds: its head, sentence case and a count. */
-.nexus-group + .nexus-group {
-  border-top: 1px solid var(--line);
-}
-
-.nexus-group-head {
-  margin: 0;
-  padding: 14px var(--card-pad) 0;
-  color: var(--muted);
-  font-size: var(--size-small);
-  font-weight: 500;
-}
-
-.nexus-group-head + .nexus-repos {
-  padding-top: 10px;
-}
-
-.nexus-group-head + .nexus-folder-rows {
-  padding-top: 6px;
-}
-
-/* A folder that is no repository: a row (its wash 8 px in, its words at 16), the way in at its
-   end. */
-.nexus-folder-rows {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 2px 8px;
-  padding: 8px;
-}
-
-.nexus-folder-open {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  height: 40px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 8px;
-  background: none;
-  color: var(--text);
-  text-align: left;
-  transition: background-color 150ms;
-}
-
-.nexus-folder-open:hover {
-  background: var(--hover);
-}
-
-.nexus-folder-open .icon {
-  flex: none;
-  width: 18px;
-  height: 18px;
-  color: var(--muted);
-}
-
-.nexus-folder-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nexus-folder-in {
-  display: inline-flex;
-}
-
-.nexus-folder-in .icon {
-  width: 16px;
-  height: 16px;
-  color: var(--faint);
-}
-
-.nexus-folder-open:hover .nexus-folder-in .icon,
-.nexus-folder-open:focus-visible .nexus-folder-in .icon {
-  color: var(--text);
-}
-
-.nexus-folders-none {
-  margin: 0;
-  padding: 12px var(--card-pad);
-  color: var(--muted);
-  font-size: var(--size-small);
-}
-
-.nexus-folders-error {
-  margin: 12px var(--card-pad) 0;
-  font-size: var(--size-small);
 }

@@ -138,14 +138,17 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
       }),
       pins: kept,
       repositories: async () => {
-        const [seen, scan, pinned] = await Promise.all([
+        const [seen, scan, pinned, chosen] = await Promise.all([
           opened.read(),
           scans.current(),
           kept.read(),
+          kept.scanned(),
         ]);
         return {
+          home,
           repositories: await knownRepositories({ opened: seen, scan }),
           pins: pinned,
+          scanned: chosen,
           scan: scanSummary(scan),
         };
       },
