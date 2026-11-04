@@ -178,33 +178,50 @@ started in a terminal gets its tab within 2 seconds.
 
 ### The Symbiotes page
 
-**Symbiotes** shows your Symbiotes as cards: the ones you pinned first, in the order you pinned
-them, then the other running ones. A running Symbiote's card shows its folder, branch and changed
-files: click it to open its tab. A pinned repository with no Symbiote running shows its branch and
-**Open Symbiote**: click it to start one. Nothing starts on its own. To pin a Symbiote or unpin it,
-use the pin in its card's corner, which shows when you point at the card.
+**Symbiotes** lists every repository the nexus knows, in four groups:
 
-Under the cards are your computer's folders, one folder at a time, starting in the folder of the
-newest running Symbiote, or in your home folder.
+- **Running**: each running Symbiote, by name, as the tabs are. A pinned one has a small pin.
+- **Pinned**: what you pinned that does not run, by name: repositories, folders, and pins whose
+  folder is gone.
+- **Opened before**: repositories whose Symbiote this nexus saw running, last seen first.
+- **Found in** *the folder you chose*: the repositories found there, by path, so a repository's
+  worktrees sit next to it.
 
-- A folder's repositories come first, as cards that show the checked-out branch. The other folders
-  follow as rows: click one to go into it.
-- A repository is as far as you go: clicking it opens a Symbiote there, or shows the one already
-  running. A path inside a repository shows the folder that holds it, with the repository picked.
-- The places are on the left: your home folder, the folders your Symbiotes are in, `/`, and on WSL
-  the Windows drives (`C:`).
-- To go to any folder, hidden ones included, type its path in **Go to folder**, at the top right,
-  and press Enter.
+Each row shows the state (a green dot while it runs), the name, the path, the branch, and since
+when it runs or when it was last opened. A running one also shows how many files are changed.
 
-To keep a folder at hand, pin it with the pin at the right of the folder's head. Pinned folders are
-listed under **Pinned**, below the places, and stay there the next time you open the nexus. A
-repository you pin from its card's corner joins the Symbiotes' cards instead. A pinned folder that
-was moved or deleted stays marked "not found" until you unpin it with the pin at the end of its row.
-See [the nexus's pinned folders](../reference/configuration.md#the-nexuss-pinned-folders).
+There is always one row picked, and its card is beside the list: its status, its path (click a
+part of it to list that folder), its branch and changes, its other worktrees, and the folder it is
+in. The card's buttons are **Show** (a running one's tab), **Open Symbiote**, **Stop**, the pin,
+and the copy button for the path. A click on a row picks it; Enter or a double click opens it.
+Nothing starts on its own.
+
+To find a repository, type any part of its name or path in the field at the top of the list:
+`acme bill` finds `~/work/acme/billing-service`. The matching words are marked, and a name that
+matches comes first.
+
+To type a path, start with `~/` or `/`. The list then shows that folder: Tab completes the name
+(the rest shows faint in the field until you press it), → or Enter goes into a folder, and
+Backspace right after a `/` goes up one folder. **Browse…** puts `~/` in the field. A repository is
+as far as you go: a path inside one lists the folder that holds it, with the repository picked.
+
+#### The folder Symbiote looks in
+
+The nexus looks for repositories in one folder you choose, and nowhere else. Until you choose one,
+it scans nothing, and the list shows your home's folders. Pick a folder, then **Look for
+repositories here** on its card. To change it, use **Change…** at the bottom of the list. The nexus
+looks 5 levels deep, skips hidden folders and folders such as `node_modules`, and stops at 5,000
+folders or 2 seconds. It looks again each time it starts, and when you click the refresh button
+next to **Change…**. It only reads folder names and each repository's branch: it writes nothing
+in your folders. The folder is kept in [the nexus's settings](../reference/configuration.md#the-nexuss-pinned-folders).
+
+To keep a repository or a folder at hand, pin it with the pin on its card. Pins stay the next time
+you open the nexus. A pinned folder that was moved or deleted stays marked "folder gone" until you
+unpin it from its card.
 
 ### Stopping
 
 Closing the nexus stops no Symbiote, not even the ones it started, so their agents keep working. To
-stop a Symbiote, click the stop button on its card in **Symbiotes**, then **Stop**. Its terminals,
+stop a Symbiote, pick it in **Symbiotes**, click **Stop** on its card, then **Stop**. Its terminals,
 and the agents working in them, stop with it. If you had opened its tab, the tab stays, marked
 stopped, with **Start again** and **Close tab**.

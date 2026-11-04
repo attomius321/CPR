@@ -136,7 +136,7 @@ test('shows the nexus in Symbiote’s window: its buttons, and a Symbiote framed
   expect(errors).toEqual([]);
 });
 
-test('opens a Symbiote from the folders in Symbiote’s window (NX2)', async () => {
+test('opens a Symbiote from a folder typed in Symbiote’s window (NX2, NX5)', async () => {
   const home = homeFolder(['beta']);
   const own = cacheFolder();
   const served = await startNexus(own.dir, home.dir);
@@ -150,8 +150,10 @@ test('opens a Symbiote from the folders in Symbiote’s window (NX2)', async () 
     const page = await app.firstWindow();
     const errors: string[] = [];
     page.on('pageerror', (error) => errors.push(error.message));
-    await page.locator('.nexus-folder-open', { hasText: 'projects' }).click();
-    await page.getByRole('button', { name: 'Open Symbiote in beta' }).click();
+    // The folder typed in the field (decision 910), beta picked, opened from its card.
+    await page.getByRole('combobox', { name: 'Find a repository' }).fill('~/projects/');
+    await expect(page.locator('.nexus-detail h2')).toHaveText('beta');
+    await page.locator('.nexus-detail').getByRole('button', { name: 'Open Symbiote' }).click();
     await expect(page.frameLocator('iframe[title="beta"]').locator('.overview')).toBeVisible();
     await expect
       .poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.getTitle()))

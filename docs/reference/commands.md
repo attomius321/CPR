@@ -15,7 +15,7 @@ explains the terms this page uses: workspace, merger, verdict, Nucleus and the o
 | `symbiote activity [<branch>]` | Prints a workspace's activity as one Markdown file, as its **Activity** tab shows it, for you or an agent to read. Without a branch, the checked-out branch's workspace: an agent runs it in its worktree. With `--nucleus`, Nucleus's activity. No running `symbiote view` is needed. See [An exported activity](#an-exported-activity). |
 | `symbiote mcp` | Gives an agent of yours Symbiote's tools. See [Symbiote's tools for your own agent](#symbiotes-tools-for-your-own-agent). |
 | `symbiote app install` | Adds Symbiote's window to your desktop's apps, on Linux and WSL. `symbiote app uninstall` removes it. |
-| `symbiote-nexus` | Opens Symbiote nexus: every `symbiote view` running on this machine, as tabs in one window, and your PC's folders under them, to start one in any repository. It runs until you press Ctrl+C or close its window. Closing it stops no Symbiote, not even the ones it started. `./install.sh` adds it to `~/.local/bin`. |
+| `symbiote-nexus` | Opens Symbiote nexus: every `symbiote view` running on this machine, as tabs in one window, and a list of the repositories it knows, found by any part of their path, to start one in any repository. It runs until you press Ctrl+C or close its window. Closing it stops no Symbiote, not even the ones it started. `./install.sh` adds it to `~/.local/bin`. |
 
 `symbiote diff` and `symbiote view` compare `head` with the *merge base*: the last commit that
 `head` and `base` share. A pull request is compared the same way. To compare with `base` itself,
@@ -180,9 +180,11 @@ the sidenav as a row of icons and no side card; Symbiote remembers it in this br
 workspace.
 
 In Symbiote nexus, with the focus on its tabs, ← and → move to the previous or next tab, and Home
-and End to the first or the last. In the folders under **Symbiotes**, the arrows move between the
-repositories and the folders by their place on the page. Enter opens a folder, or a Symbiote in a
-repository, and Backspace goes up a folder. In a Symbiote's tab, that Symbiote's keys work.
+and End to the first or the last. On **Symbiotes**, `/` or Ctrl+K puts the focus in the field. In
+the field, ↑ and ↓ (Page Up and Page Down by ten) move the pick, Enter opens the picked repository
+(or shows its tab, or goes into a folder), and Esc clears the field. In a path (`~/` or `/`
+first), Tab completes the name, → goes into the picked folder, and Backspace right after a `/` goes
+up one. In a Symbiote's tab, the keys go to that Symbiote: click **Symbiotes** to come back.
 
 In a text box where you write a comment, a brief, a reply, a prompt or a commit's message,
 Ctrl+Enter saves, starts, sends or commits. On macOS, use Cmd instead of Ctrl.

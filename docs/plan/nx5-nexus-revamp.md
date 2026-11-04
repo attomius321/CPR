@@ -2,8 +2,9 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nx5-nexus-revamp.md)
 
-**Status:** planned (2026-11-04), on branch `feature/nx5-nexus-revamp` (the workspace's, from
-`main` at `8ae448a`); the person picked option B of three designs and OK'd this plan the same day.
+**Status:** built (2026-11-04) on branch `feature/nx5-nexus-revamp` (the workspace's, from `main`
+at `8ae448a`); the person picked option B of three designs and OK'd this plan the same day. NX5a–d
+built; "As built" and results at the end.
 
 **Problem** (the brief: "the person finds a project by its path quickly and sees the projects in
 order"). Today's nexus (`main` at `8ae448a`), measured on this PC and on the designs' example data
@@ -208,3 +209,44 @@ screens, measures and docs (NX5d).
 **Not in NX5 (later)**: what waits for the person in each Symbiote (plans ready, reviews) in its
 card; several scanned folders (a list in the same file); the launcher in the tab row (option C);
 the viewer forwarding Ctrl K from a frame.
+
+## As built (NX5)
+
+- **The answer of `GET /api/repositories`** also holds `home` (the page's `~` and a first run's
+  folder) and `scanned` (the folder chosen), apart from `scan`: the first scan of a newly chosen
+  folder runs while the page is drawn, and the foot says "Looking in ~/code…" until it answers
+  (the page asks again every 500 ms meanwhile).
+- **The pick waits for both reads**: drawn before the running Symbiotes were read, the first row
+  was a pin, and the pick, kept by its path, stayed on it. No pick is made until the running
+  Symbiotes and what the nexus knows are both read.
+- **Showing or opening a repository clears the field**: back on Symbiotes after Enter, the search
+  still filtered the list (the e2e found it).
+- **A running dot is the Running status's green** (`--ok`), not the diff's added green, which is
+  olive in the light theme.
+- **The path gives way after the branch**: the branch shrinks four times faster than the path
+  (`flex-shrink`), so a worktree keeps its folder; a cut at the path's start (`direction: rtl`)
+  was tried and left the end cut.
+- **A first run** lists home's folders as if `~/` were typed (the field stays empty), with a word
+  over them and the folder's card asking to be looked in. Not in the plan's words, drawn in the
+  designs' `b-empty`.
+- **The focus is put back** on the card's pin when its name turns from Pin to Unpin, and on Stop
+  after its question even when the card was drawn again meanwhile.
+- **Kept from the plan**: decisions 908–916 as written. Not built: a separate e2e for 500 found
+  rows (the limit is unit-tested, `search.test.ts`).
+
+**Results.**
+
+| What | Measured |
+|---|---|
+| Unit tests | 3,196 pass (`pnpm check`); the nexus's 158, 59 of them new (the scan, the history, the checkouts, the chosen folder, the routes, the search, completion, the pick); the tests of the grid, the places and the cards left with their code |
+| e2e | The nexus's 24 pass (`list.spec.ts` 7 new; `folders.spec.ts` 5, `pins.spec.ts` 4, `nexus.spec.ts` 8 ported) and its `app.spec.ts` 3 on Xvfb; the viewer's 431: 429 pass in the full run, `app.spec.ts`'s window title (a race: 20 of 20 pass on Xvfb alone) and `look.spec.ts`'s sidenav row (passes alone) failed there; neither is touched by this branch |
+| The scan of `~/projects` on this PC | 22 repositories in 257 folders, 10–12 ms (5 runs) |
+| The scan of home | 43 repositories in 1,691 folders, 41–48 ms (5 runs): under the 2 s and 5,000 folders limits |
+| The page, home's 43 repositories listed | Drawn in 34–64 ms from the address; "sym" searched in 11–21 ms (13 of 43); 10 × ↓ in 89–125 ms, Playwright's own key presses included |
+| Repositories in view at 900 px | 10 rows in the list, plus the picked one's card (9 in three grids before, 4 of them twice) |
+
+Screens of every state, dark and light, at 1440 × 900, 1× (the built nexus on the designs'
+example data): the page, a search, a path completing, choosing the folder, a pinned folder, a gone
+pin, starting, a start that failed, a first run, 900 px wide. On the review page, beside the
+designs.
+

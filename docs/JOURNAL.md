@@ -420,3 +420,7 @@ merge commit.
 - 2026-11-03 [V94c — changes from outside](journal/v94-push-not-polling.md)
 - 2026-11-04 [V94d — measured on a copy of this repository, and written down](journal/v94-push-not-polling.md)
 - 2026-11-04 [NX5 spike — three designs, the scan's cost, where a history could come from](journal/nx5-nexus-revamp.md)
+- 2026-11-04 [NX5a — the scan of the chosen folder, the history, the checkouts](journal/nx5-nexus-revamp.md)
+- 2026-11-04 [NX5b — the page's pure parts](journal/nx5-nexus-revamp.md)
+- 2026-11-04 [NX5c — the list, the card, the field](journal/nx5-nexus-revamp.md)
+- 2026-11-04 [NX5d — screens, measures, docs](journal/nx5-nexus-revamp.md)
