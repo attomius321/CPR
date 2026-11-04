@@ -488,8 +488,9 @@ The agents talk to their own services, as they do when you run them yourself. Sy
 pages are served by `symbiote view` itself.
 
 Nucleus searches the web and reads web pages when a question needs it. On Claude Code, the searches
-go through Anthropic, and Claude Code fetches each page from your machine. It can reach any address
-your machine can, including ones on your own network. On Codex, OpenAI runs the searches and opens
+go through Anthropic, and Claude Code fetches each page from your machine. On Claude Code it also
+reads with `curl` (GET only), `gh` (reads only, with your `gh` login) and `git ls-remote`. It can
+reach any address your machine can, including ones on your own network. On Codex, OpenAI runs the searches and opens
 the pages. A page can hold instructions: Nucleus treats it as data, and nothing it reads can start,
 approve, merge or clean up without your **Confirm**. A start does not wait for your Confirm in Hive
 mode, or if you turn on **Start workspaces without a Confirm** in Settings. To turn Nucleus's web

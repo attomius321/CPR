@@ -31,7 +31,7 @@ the merger, Nucleus and Scribe, and leaves the rest of the file as it is.
 | `agent.model` | Claude Code's own | The model Claude Code starts on. Codex uses its own configuration's model. |
 | `nucleus.model`, `scribe.model` | `agent.model`, else the agent's own | The model each Nucleus or Scribe conversation starts on, if the agent offers it. |
 | `nucleus.effort`, `scribe.effort` | the agent's own | The effort level each Nucleus or Scribe conversation starts at, if the agent offers it. |
-| `nucleus.web` | `true` | Whether Nucleus searches the web and reads web pages. With `false`, its next conversation has neither; a running one keeps what it started with. See [What Symbiote writes and sends](../../README.md#what-symbiote-writes-and-sends). |
+| `nucleus.web` | `true` | Whether Nucleus searches the web, reads web pages, and runs `curl`, `gh`'s reads and `git ls-remote` (NU9). With `false`, its next conversation has none of them; a running one keeps what it started with. See [What Symbiote writes and sends](../../README.md#what-symbiote-writes-and-sends). |
 | `advisor.claude.model`, `advisor.codex.model` | `haiku` for Claude Code, `gpt-6-luna` for Codex | The model that suggests a workspace's settings when you press **Suggest settings** with that agent picked, if the agent offers it. |
 | `advisor.claude.effort`, `advisor.codex.effort` | `low` | The effort level that model runs at, if it takes that level. |
 | `merge.checks` | a command Symbiote finds | The check a merge runs before it lands, and [Hive](#hive-mode) on every commit: one command, or a list run in order. Put an install first if the check needs dependencies. Set it in Settings' **Checks** page. |
@@ -132,14 +132,28 @@ cases:
   20,000 for `reviews`, `merger` and `hive.reviewer`.
 
 Prompts cannot widen what Symbiote's helpers may do. Whatever its prompt says, Nucleus cannot edit
-files or run any command but git's read commands, and its starts, verdicts, merges and clean-ups
-still wait for your **Confirm**. Scribe writes only in `.claude/skills/` and the skill library.
+files or run any command that writes or runs another program, and its starts, verdicts, merges and
+clean-ups still wait for your **Confirm**. Scribe writes only in `.claude/skills/` and the skill
+library, and runs only git's read commands.
 
 What Nucleus reads is fixed the same way. On this machine, Nucleus reads the checkout and the
-worktree of each open workspace, and nothing else. A workspace is open until it is cleaned up. In a
-worktree, Nucleus runs git's read commands with `-C <worktree>`. There it sees uncommitted work
-with `git --no-optional-locks status` and `git diff-index -p HEAD`. It cannot run `git diff`
-there, because `git diff` rewrites the worktree's index while the workspace's agent uses it.
+worktree of each open workspace, and nothing else. A workspace is open until it is cleaned up.
+Besides reading and searching files, Nucleus (Alpha Ceph while Hive is on) runs read commands
+there: `cat`, `head`, `tail`, `wc`, `ls`, `stat`, `du`, `file`, `nl`, `cut`, `tr`, `uniq`,
+`sort`, `grep`, `rg`, `find`, `sed` (to print, delete or substitute), `jq`, `date`, `echo` and
+git's read commands, joined by `&&`, `||`, `;` and pipes, with `cd` into those folders. Symbiote
+checks every file a command names, and every match of a `*`, by its real path; it refuses an
+option that writes, runs a program or follows a link (`sed -i`, `sort -o`, `find -exec`,
+`grep -R`), and `$(…)`, `>`, `awk` and `xargs`. In a worktree, Nucleus sees uncommitted work with
+`git --no-optional-locks status` and `git diff-index -p HEAD`. It cannot run `git diff` there,
+because `git diff` rewrites the worktree's index while the workspace's agent uses it.
+
+With `nucleus.web` on (the default), Nucleus on Claude Code also reads the web from the shell:
+`curl` with GET or HEAD on `http://` and `https://` (localhost too), `gh`'s reads with your `gh`
+login (`gh pr view`, `list`, `diff` and `checks`, `gh issue`, `gh run view` and `list`,
+`gh release`, `gh repo view`, `gh search`, `gh api` with GET), and `git ls-remote`. Nothing that
+sends data or changes anything: no `curl -d` or `-o`, no `gh pr merge`, no `gh api -X POST`.
+Codex's Nucleus runs in Codex's read-only sandbox, which has no network.
 
 With Claude Code, a workspace started during a conversation is readable at once. With Codex, it
 is readable from the next conversation: Codex fixes the folders a conversation reads when it

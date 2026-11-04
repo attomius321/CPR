@@ -456,14 +456,14 @@ describe('promptSettingsService', () => {
 });
 
 describe("Nucleus's name in its prompt (Alpha Ceph, decision 685)", () => {
-  /** main's text before Alpha Ceph: its SHA-256, length, and one "Nucleus" in it. */
-  const MAIN = 'be549465b6ac31a946aa643e45b57d00be8f0a397a49f23ec6345e29171f56af';
+  /** main's text before Alpha Ceph, with NU9's read commands: its SHA-256, length, and one "Nucleus". */
+  const MAIN = '2e106feb1429390ece5cdea86c46d2bc28592b56cde5ab0f26f451df843a48d6';
   const sha = (text: string) => createHash('sha256').update(text).digest('hex');
 
   it("is main's text, byte for byte, with Hive off", () => {
     const off = nucleusInstructions(DEFAULT_PROMPTS.nucleus, NUCLEUS_NAMES.off);
     expect(off).toMatch(/^You are Nucleus, the person's orchestrator/);
-    expect(off).toHaveLength(3452);
+    expect(off).toHaveLength(4200);
     expect(sha(off)).toBe(MAIN);
   });
 
@@ -490,7 +490,7 @@ describe("Nucleus's name in its prompt (Alpha Ceph, decision 685)", () => {
       'You are Nucleus.\n\nHive mode is on: you are called Alpha Ceph, not Nucleus.\n\nHive is on.',
     );
     // Nucleus's, with Hive off: main's, whatever Hive's text.
-    const MAIN = 'be549465b6ac31a946aa643e45b57d00be8f0a397a49f23ec6345e29171f56af';
+    const MAIN = '2e106feb1429390ece5cdea86c46d2bc28592b56cde5ab0f26f451df843a48d6';
     expect(
       createHash('sha256')
         .update(nucleusInstructions(DEFAULT_PROMPTS.nucleus, NUCLEUS_NAMES.off))
