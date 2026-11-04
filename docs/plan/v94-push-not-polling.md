@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/v94-push-not-polling.md)
 
-**Status:** built (3–4 November 2026), on branch `feature/v94-push-not-polling` (the workspace's,
+**Status:** merged into `main` on 2026-11-04; built (3–4 November 2026), on branch `feature/v94-push-not-polling` (the workspace's,
 from `main` at `45424c6`); the person's OK on 3 November: terminals on the shared stream, numbers
 on a copy of this repository, Hermes at the safety read only.
 

@@ -168,3 +168,5 @@ Not verified: the person's own view on this build (it would write `symbiote/clau
 the after-number comes when the person runs it); macOS and Windows file events; a repository on
 `/mnt/c` end to end; a laptop's sleep; Firefox and Safari; Codex against a real daemon (V27a's
 probe and the fake); Hermes beyond the safety read.
+
+Merged into main (2026-11-04).

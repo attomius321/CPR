@@ -1,7 +1,7 @@
 # Reviews
 
 [Index](../PLAN.md) · [Its decisions](../decisions.md#reviews) · Checked against the code on
-2026-11-03
+2026-11-04
 
 This page says how branch reviews work today. Read it before you change them. The plans listed
 in the index under "Reviews" say why each part was built, as it was decided then. If a plan and
@@ -148,7 +148,7 @@ symbol holding its line.
 | Opening a review: the steps, their times, what needs no graph | `packages/viewer/src/diff/DiffProgress.tsx`, `analysis-steps.ts` |
 | The files before the graph exists | `pairFiles` in `packages/cli/src/server.ts` |
 | Comments and sending a verdict | `packages/viewer/src/diff/comments.ts` (`POST /api/review`) |
-| The reviews list | `GET /api/reviews` in `packages/cli/src/server.ts` |
+| The reviews list | `GET /api/reviews` in `packages/cli/src/server.ts`; `branchReviews().list` caches each review's git (V94); pushed to pages as the `reviews` part of `/api/events` (`packages/cli/src/events.ts`) |
 
 ## Decisions in force
 
@@ -178,6 +178,7 @@ when a later decision or a fix changed it.
 | 557–560, 568 | The Review tab in three sections; **Merge into** fits the panel; the result of a finished review in a tinted box | [V76](../plan/v76-review-tab-layout.md) |
 | 842–844 | The Files page in one card, the review under the files (replaces 435's tabs); a file viewed as a `file:<path>` mark by its blob; comments under their lines with Edit; Ctrl+Enter finishes | [V90](../plan/v90-redesign-reviews.md) |
 | 846–847 | Opening a review: the steps as a timeline with their times as the page saw them; the files (served from the pair), a workspace's report, commits and brief at once; the Files page read only meanwhile | [V90](../plan/v90-redesign-reviews.md) |
+| 900 | The reviews list keeps what git said of each review under a key of its file's commits, its refs' tips, the tips it is counted against and its verdict's target's tips: git runs only for a review whose key changed | [V94](../plan/v94-push-not-polling.md) |
 | 886–890 | A review as proof 03: the first fit whole (≤ 1×), no zoom to a pick but from the map; the detail 336 px; Open ↗ per use; syntax colours from our own tokenizer (supersedes 845); a finding's message as its title | [V93](../plan/v93-redesign-finish.md) |
 
 These no longer hold:
