@@ -48,14 +48,21 @@ nexus ends; stop one from its row.
 Options:
   --browser      Open a browser tab, not Symbiote's window
   --no-open      Print the address only
-  --port <n>     The port to serve on (default: any free one)
+  --port <n>     The port to serve on (default: 7347; 0: any free one)
   -h, --help     Show this help
 `;
+
+/**
+ * The nexus's port (decision 923): one address to come back to, below every system's range of
+ * ports handed out at random (Linux 32768–60999, Windows and macOS 49152–65535), so no Symbiote's
+ * random port takes it. Tests pass `--port 0`.
+ */
+export const DEFAULT_PORT = 7347;
 
 const OPTIONS = {
   browser: { type: 'boolean', default: false },
   'no-open': { type: 'boolean', default: false },
-  port: { type: 'string', default: '0' },
+  port: { type: 'string', default: String(DEFAULT_PORT) },
   help: { type: 'boolean', short: 'h', default: false },
 } as const;
 
@@ -167,6 +174,9 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
       ...(log ? { log } : {}),
     });
   } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+      return alreadyServed(port, values, ctx);
+    }
     ctx.stderr(`symbiote-nexus: ${(error as Error).message}\n`);
     return 1;
   }
@@ -182,6 +192,50 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
     log?.info('nexus stopped');
   }
   return 0;
+}
+
+/**
+ * The port is taken (decision 924): a nexus serving there is shown, as a start would show it, and
+ * left running; anything else is named, with the option that chooses another port.
+ */
+async function alreadyServed(
+  port: number,
+  args: { browser: boolean; 'no-open': boolean },
+  ctx: NexusContext,
+): Promise<number> {
+  const url = `http://127.0.0.1:${port}/`;
+  if (!(await isNexus(url))) {
+    ctx.stderr(
+      `symbiote-nexus: port ${port} is in use by another program: choose another with --port <n>\n`,
+    );
+    return 1;
+  }
+  ctx.stdout(`Symbiote nexus already runs at ${url}\n`);
+  if (args['no-open']) return 0;
+  const shown = args.browser ? null : await ctx.openApp?.(url, TITLE);
+  if (shown && 'closed' in shown) {
+    await shown.closed;
+    return 0;
+  }
+  if (shown) {
+    ctx.stderr(
+      `symbiote-nexus: Symbiote's window did not open (${shown.error}); opening the browser\n`,
+    );
+  }
+  ctx.openUrl(url);
+  return 0;
+}
+
+/** Whether a nexus answers at `url`: its `GET /api/nexus`, within a second. */
+async function isNexus(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(new URL('api/nexus', url), { signal: AbortSignal.timeout(1000) });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { nexus?: unknown };
+    return body.nexus === true;
+  } catch {
+    return false;
+  }
 }
 
 /** Shows the page as `symbiote view` shows its own: the app's window, else the browser. */

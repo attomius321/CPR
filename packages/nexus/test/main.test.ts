@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import type { AppWindow } from '../src/app-window.js';
-import { run, type NexusContext } from '../src/main.js';
+import { DEFAULT_PORT, run, type NexusContext } from '../src/main.js';
 import { announce } from '../src/registry.js';
 
 const dir = tempDir();
@@ -80,7 +80,9 @@ async function nexus(
       return stopped;
     },
   };
-  const code = await run(argv, ctx);
+  // Never the default port: other workspaces run these tests at once, and the person's nexus may
+  // serve there (decision 923).
+  const code = await run(argv.includes('--port') ? argv : ['--port', '0', ...argv], ctx);
   return { code, out, err, opened, asked };
 }
 
@@ -90,6 +92,8 @@ describe('symbiote-nexus', () => {
     expect(code).toBe(0);
     expect(out).toContain('Usage: symbiote-nexus [options]');
     expect(out).toContain('--browser');
+    expect(out).toContain('--port <n>     The port to serve on (default: 7347; 0: any free one)');
+    expect(DEFAULT_PORT).toBe(7347);
   });
 
   it('refuses what it does not know, with its usage', async () => {
@@ -215,5 +219,53 @@ describe('symbiote-nexus', () => {
     const browser = await nexus(['--browser'], { openApp: () => Promise.resolve(null) });
     expect(browser.opened).toHaveLength(1);
     expect(browser.asked).toEqual([]);
+  });
+
+  it('opens the nexus already serving on its port, and serves no second one (decision 924)', async () => {
+    let second: Awaited<ReturnType<typeof nexus>> | undefined;
+    let firstUrl = '';
+    await nexus(['--no-open'], {
+      during: async (url) => {
+        firstUrl = url;
+        const port = new URL(url).port;
+        second = await nexus(['--port', port], { openApp: () => Promise.resolve(null) });
+      },
+    });
+    expect(second?.code).toBe(0);
+    expect(second?.out).toBe(`Symbiote nexus already runs at ${firstUrl}\n`);
+    expect(second?.opened).toEqual([firstUrl]);
+  });
+
+  it("opens Symbiote's window on the nexus already serving, until it closes", async () => {
+    let second: Awaited<ReturnType<typeof nexus>> | undefined;
+    let firstUrl = '';
+    await nexus(['--no-open'], {
+      during: async (url) => {
+        firstUrl = url;
+        second = await nexus(['--port', new URL(url).port], {
+          openApp: () => Promise.resolve({ closed: Promise.resolve(), close: () => undefined }),
+        });
+      },
+    });
+    expect(second?.code).toBe(0);
+    expect(second?.asked).toEqual([[firstUrl, 'Symbiote nexus']]);
+    expect(second?.opened).toEqual([]);
+  });
+
+  it('says another program holds the port, naming --port (decision 924)', async () => {
+    const other = createServer((_req, res) => res.end('not a nexus'));
+    await new Promise<void>((resolve) => other.listen(0, '127.0.0.1', resolve));
+    const address = other.address();
+    const port = String(typeof address === 'object' && address ? address.port : 0);
+    try {
+      const result = await nexus(['--port', port], { openApp: () => Promise.resolve(null) });
+      expect(result.code).toBe(1);
+      expect(result.err).toBe(
+        `symbiote-nexus: port ${port} is in use by another program: choose another with --port <n>\n`,
+      );
+      expect(result.opened).toEqual([]);
+    } finally {
+      other.close();
+    }
   });
 });

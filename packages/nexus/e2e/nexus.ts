@@ -112,7 +112,9 @@ export function startView(repo: string, cache: string): Promise<Served> {
  */
 export function startNexus(cache: string, home?: string, config?: string): Promise<Served> {
   return serve(
-    [nexusBin, '--no-open'],
+    // Never the default port: other workspaces run these specs at once, and the person's nexus may
+    // serve there (decision 923).
+    [nexusBin, '--no-open', '--port', '0'],
     tmpdir(),
     {
       SYMBIOTE_CACHE_DIR: cache,

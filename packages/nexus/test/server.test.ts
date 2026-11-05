@@ -229,6 +229,12 @@ describe('the nexus server', () => {
     }
   });
 
+  it('says it is a nexus, for a second one started on its port (decision 924)', async () => {
+    const answer = await get('/api/nexus');
+    expect(answer).toMatchObject({ status: 200, cache: 'no-store' });
+    expect(JSON.parse(answer.body)).toEqual({ nexus: true, pid: process.pid });
+  });
+
   it('lists the live Symbiotes, read anew each time', async () => {
     const answer = await get('/api/symbiotes');
     expect(answer).toMatchObject({ status: 200, cache: 'no-store' });

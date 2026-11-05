@@ -114,6 +114,8 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
     if (req.method === 'POST' && WRITES.has(path)) return write(req, res, path);
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'not allowed');
     if (path === '/') return send(res, 200, page, TYPES['.html']);
+    // What a second `symbiote-nexus` asks before it opens this one (decision 924).
+    if (path === '/api/nexus') return sendJson(res, 200, { nexus: true, pid: process.pid });
     if (path === '/api/folders') return listFolders(res, url.searchParams.get('path'));
     if (path === '/api/repositories') return sendJson(res, 200, await options.repositories());
     if (path === '/api/checkouts') {
