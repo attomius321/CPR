@@ -4,8 +4,8 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import type { FoldersAnswer } from '../src/folders.js';
-import type { Pin, PinAnswer, Pins, ScannedAnswer } from '../src/pins.js';
-import type { RepositoriesAnswer, ScanSummary, Scanning } from '../src/repositories.js';
+import type { Pin, PinAnswer, Pins } from '../src/pins.js';
+import type { RepositoriesAnswer, ScanSummary, Scanning, TreeAnswer } from '../src/repositories.js';
 import type { Found } from '../src/scan.js';
 import { startNexusServer, type NexusServer } from '../src/server.js';
 import type { StartAnswer, Starter } from '../src/start.js';
@@ -53,12 +53,10 @@ const pins: Pins = {
     asked.push(`${on ? 'pin' : 'unpin'} ${path}`);
     return Promise.resolve(pinAnswer);
   },
-  scanned: () => Promise.resolve(null),
-  setScanned: (path): Promise<ScannedAnswer> => Promise.resolve({ scanned: path }),
 };
-/** NX5: the repositories the nexus knows, a repository's checkouts, the folder scanned. */
+/** NX5: the repositories the nexus knows, a repository's checkouts; NX6: home's scan. */
 const summary: ScanSummary = {
-  folder: '/home/me/code',
+  folder: '/home/me',
   at: '2026-11-04T11:02:00.000Z',
   folders: 38,
   ms: 3,
@@ -67,17 +65,21 @@ const summary: ScanSummary = {
 };
 const known: RepositoriesAnswer = {
   home: '/home/me',
-  scanned: '/home/me/code',
   repositories: [{ name: 'zod', path: '/home/me/code/zod', branch: 'main', found: true }],
   pins: pinned,
   scan: summary,
 };
 const checkouts: Found[] = [{ name: 'ky', path: '/home/me/ky', branch: 'main' }];
-let chooseAnswer: Awaited<ReturnType<Scanning['choose']>> = { scan: summary };
+const tree: TreeAnswer = {
+  folder: '/home/me',
+  at: '2026-11-04T11:02:00.000Z',
+  tree: ['/home/me/code', '/home/me/code/zod', '/home/me/notes'],
+  unread: [],
+};
 const scanning: Scanning = {
-  choose: (path) => {
-    asked.push(`scan in ${path}`);
-    return Promise.resolve(chooseAnswer);
+  tree: () => {
+    asked.push('tree');
+    return Promise.resolve(tree);
   },
   again: () => {
     asked.push('scan again');
@@ -289,7 +291,8 @@ describe('the nexus server', () => {
     expect((await get('/api/symbiotes', { method: 'PUT' })).status).toBe(405);
     expect((await get('/api/symbiotes/stop')).status).toBe(405);
     expect((await get('/api/pinned')).status).toBe(405);
-    expect((await get('/api/scanned')).status).toBe(405);
+    expect((await get('/api/scanned')).status).toBe(404);
+    expect((await post('/api/scanned', { path: '/home/me' })).status).toBe(405);
     expect((await get('/api/scan')).status).toBe(405);
     expect((await post('/api/repositories', {})).status).toBe(405);
   });
@@ -432,7 +435,7 @@ describe('the nexus server: pinning a folder (NX4, decision 618)', () => {
   });
 });
 
-describe('the nexus server: the repositories it knows (NX5, decisions 911, 912, 914)', () => {
+describe('the nexus server: the repositories it knows (NX5, decisions 912, 914; NX6, 925)', () => {
   it('answers the repositories known, the pins and the scan', async () => {
     const answer = await get('/api/repositories');
     expect(answer).toMatchObject({ status: 200, cache: 'no-store' });
@@ -450,39 +453,26 @@ describe('the nexus server: the repositories it knows (NX5, decisions 911, 912, 
     expect((await get('/api/checkouts')).status).toBe(400);
   });
 
-  it('chooses the folder scanned, or none, and answers the scan; says why one was refused', async () => {
+  it("answers the last scan's tree, and never scans to answer it (decision 925)", async () => {
     asked.length = 0;
-    const answer = await post('/api/scanned', { path: '/home/me/code' });
+    const answer = await get('/api/tree');
     expect(answer).toMatchObject({ status: 200, cache: 'no-store' });
-    expect(JSON.parse(answer.body)).toEqual({ scan: summary });
-    chooseAnswer = { scan: null };
-    expect(JSON.parse((await post('/api/scanned', { path: null })).body)).toEqual({ scan: null });
-    chooseAnswer = { status: 422, error: '/home/me/ky is a repository' };
-    expect(await post('/api/scanned', { path: '/home/me/ky' })).toMatchObject({
-      status: 422,
-      body: JSON.stringify({ error: '/home/me/ky is a repository' }),
-    });
-    chooseAnswer = { scan: summary };
-    expect(asked).toEqual(['scan in /home/me/code', 'scan in null', 'scan in /home/me/ky']);
+    expect(JSON.parse(answer.body)).toEqual({ tree });
+    await get('/api/repositories');
+    expect(asked).toEqual(['tree']);
   });
 
-  it('scans the chosen folder again', async () => {
+  it('scans home again', async () => {
     asked.length = 0;
     const answer = await post('/api/scan', {});
     expect(JSON.parse(answer.body)).toEqual({ scan: summary });
     expect(asked).toEqual(['scan again']);
   });
 
-  it('takes a choice only from its own page, and only an absolute path or null', async () => {
+  it('scans again only for its own page', async () => {
     asked.length = 0;
-    expect((await post('/api/scanned', { path: '/x' }, { 'x-symbiote': '' })).status).toBe(403);
     expect((await post('/api/scan', {}, { origin: 'http://evil.example' })).status).toBe(403);
-    expect((await post('/api/scanned', {})).status).toBe(400);
-    expect((await post('/api/scanned', { path: 7 })).status).toBe(400);
-    expect(await post('/api/scanned', { path: 'code' })).toMatchObject({
-      status: 400,
-      body: JSON.stringify({ error: 'Not an absolute path: code' }),
-    });
+    expect((await post('/api/scan', {}, { 'x-symbiote': '' })).status).toBe(403);
     expect(asked).toEqual([]);
   });
 });

@@ -1,7 +1,7 @@
-// The scan for repositories (NX5, decision 911): only the folder the person chose, never more.
-// Breadth first and bounded, read only: folder names and each repository's `HEAD`, nothing
-// written, nothing started (decision 543). Its last result is kept in the cache, so a new nexus
-// shows it at once and scans again.
+// The scan of the person's home (NX6, decision 925; NX5's decision 911 scanned one folder they
+// chose): every folder in it and the repositories among them, for the list's tree. Breadth first
+// and bounded, read only: folder names and each repository's `HEAD`, nothing written, nothing
+// started. Its last result is kept in the cache, so a new nexus shows it at once and scans again.
 import { mkdir, readdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { checkoutOf, within, type Folder } from './folders.js';
@@ -25,10 +25,20 @@ export interface ScanResult {
   short: boolean;
   /** By path. */
   repositories: Found[];
+  /**
+   * Every folder under `folder` it read or found, the repositories among them, by path: the list's
+   * tree (decision 926). Inside a repository, nothing.
+   */
+  tree: string[];
+  /** The folders of `tree` it found but did not read (it stopped short): read when opened. */
+  unread: string[];
 }
 
 export interface ScanOptions {
-  /** Levels under the folder: 5 finds 41 repositories in this PC's home, depth 3 already 31. */
+  /**
+   * Levels under the folder; every one by default (decision 925): this PC's home is 15 levels,
+   * 2,780 folders, 73–195 ms.
+   */
   depth?: number;
   /** Folders read at most. */
   maxFolders?: number;
@@ -59,16 +69,24 @@ const AT_ONCE = 16;
  * left out, links never followed. A folder holding `.git` (a folder, or a worktree's file) is a
  * repository, and the end of the way down (decision 554); the folder scanned never is one (a home
  * kept in git). Stops after `maxFolders` folders or `maxMs`, saying so. Rejects with the system's
- * error when `folder` itself cannot be read. Measured: `~/projects` on this PC, 256 folders and 21
- * repositories in 3–6 ms.
+ * error when `folder` itself cannot be read. Measured on this PC: home, 2,780 folders and 42
+ * repositories in 73–195 ms (NX6); C: under WSL over 30 s, never scanned.
  */
 export async function scanFolder(folder: string, options: ScanOptions = {}): Promise<ScanResult> {
-  const { depth = 5, maxFolders = 5000, maxMs = 2000, leaveOut = [], now = Date.now } = options;
+  const {
+    depth = Infinity,
+    maxFolders = 20_000,
+    maxMs = 5000,
+    leaveOut = [],
+    now = Date.now,
+  } = options;
   const root = resolve(folder);
   const start = now();
   let read = 0;
   let short = false;
   const found: string[] = [];
+  const seen: string[] = [];
+  const unread: string[] = [];
   const left = (path: string) => leaveOut.some((out) => within(path, out));
 
   /** The folders to read next under `path`, or null when it is a repository. */
@@ -107,9 +125,15 @@ export async function scanFolder(folder: string, options: ScanOptions = {}): Pro
         else next.push(...children);
       });
     }
+    seen.push(...next);
     level = next;
   }
+  // Folders are read in the order they were found, the folder scanned first: past the first
+  // `read - 1`, found and not read (it stopped short).
+  unread.push(...seen.slice(read - 1));
   found.sort();
+  seen.sort();
+  unread.sort();
   const repositories = await Promise.all(
     found.map(async (path): Promise<Found> => ({
       name: basename(path),
@@ -124,31 +148,33 @@ export async function scanFolder(folder: string, options: ScanOptions = {}): Pro
     ms: Math.round(now() - start),
     short,
     repositories,
+    tree: seen,
+    unread,
   };
 }
 
 export interface Scanner {
-  /** The last scan of the chosen folder (kept from the last nexus too); null when none chosen. */
+  /** The last scan of the folder (kept from the last nexus too); null before the first. */
   current(): Promise<ScanResult | null>;
-  /** Scans the chosen folder again; null when none is chosen, or it cannot be read. */
+  /** Scans the folder again; null when it cannot be read. */
   scan(): Promise<ScanResult | null>;
 }
 
 /**
- * The chosen folder's scans: one at a time (asked again while one runs, that one answers), the
- * last kept in `file` (the cache), written whole. A result for another folder than the one chosen
- * now is none.
+ * The scans of `folder`, home (decision 925): one at a time (asked again while one runs, that one
+ * answers), the last kept in `file` (the cache), written whole. A result kept for another folder
+ * (NX5's chosen one), or without its tree, is none.
  */
 export function scanner({
   folder,
   file,
   options = {},
 }: {
-  /** The folder the person chose, read anew each time (decision 911). */
-  folder: () => Promise<string | null>;
+  folder: string;
   file: string;
   options?: ScanOptions;
 }): Scanner {
+  const root = resolve(folder);
   let last: ScanResult | null | undefined;
   let running: Promise<ScanResult | null> | null = null;
 
@@ -157,7 +183,11 @@ export function scanner({
     try {
       const value = JSON.parse(await readFile(file, 'utf8')) as ScanResult | null;
       last =
-        value && typeof value.folder === 'string' && Array.isArray(value.repositories)
+        value &&
+        value.folder === root &&
+        Array.isArray(value.repositories) &&
+        Array.isArray(value.tree) &&
+        Array.isArray(value.unread)
           ? value
           : null;
     } catch {
@@ -167,11 +197,9 @@ export function scanner({
   }
 
   async function run(): Promise<ScanResult | null> {
-    const chosen = await folder();
-    if (chosen === null) return null;
     let result: ScanResult | null;
     try {
-      result = await scanFolder(chosen, options);
+      result = await scanFolder(root, options);
     } catch {
       result = null;
     }
@@ -186,10 +214,7 @@ export function scanner({
   }
 
   return {
-    current: async () => {
-      const [chosen, result] = await Promise.all([folder(), kept()]);
-      return chosen !== null && result?.folder === resolve(chosen) ? result : null;
-    },
+    current: kept,
     scan: () => {
       running ??= run().finally(() => (running = null));
       return running;

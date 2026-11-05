@@ -9,11 +9,15 @@ import { announce } from '../src/registry.js';
 
 const dir = tempDir();
 const cache = join(dir, 'cache');
+/** The home scanned (decision 925): the test's own, never the person's. */
+const home = join(dir, 'home');
 const viewer = join(dir, 'viewer');
 let symbiote: Server;
 let symbioteUrl = '';
 
 beforeAll(async () => {
+  mkdirSync(join(home, 'projects', 'zod', '.git'), { recursive: true });
+  mkdirSync(join(home, 'notes'), { recursive: true });
   mkdirSync(join(viewer, 'assets'), { recursive: true });
   writeFileSync(join(viewer, 'index.html'), '<link rel="stylesheet" href="./assets/index-a.css">');
   writeFileSync(join(viewer, 'assets', 'index-a.css'), '');
@@ -73,6 +77,7 @@ async function nexus(
           },
         }
       : {}),
+    home,
     waitForExit: async () => {
       const url = /Symbiote nexus: (\S+)/.exec(out)?.[1] ?? '';
       await during?.(url);
@@ -267,5 +272,52 @@ describe('symbiote-nexus', () => {
     } finally {
       other.close();
     }
+  });
+
+  it('scans home at its start and on the button only, never on a read (decision 925)', async () => {
+    const at: string[] = [];
+    let tree = null as { tree: string[] } | null;
+    await nexus(['--no-open'], {
+      during: async (url) => {
+        const scanAt = async () => {
+          const known = (await (await fetch(new URL('api/repositories', url))).json()) as {
+            scan: { at: string; folder: string } | null;
+          };
+          return known.scan;
+        };
+        let scan = await scanAt();
+        while (scan === null) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          scan = await scanAt();
+        }
+        expect(scan.folder).toBe(home);
+        at.push(scan.at);
+        // The page's reads, every 2 s: none scans.
+        for (let i = 0; i < 5; i++) {
+          await fetch(new URL('api/symbiotes', url));
+          at.push((await scanAt())?.at ?? '');
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        const answer = (await (await fetch(new URL('api/tree', url))).json()) as {
+          tree: { tree: string[] };
+        };
+        tree = answer.tree;
+        const again = await fetch(new URL('api/scan', url), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+          body: '{}',
+        });
+        at.push(((await again.json()) as { scan: { at: string } }).scan.at);
+      },
+      // A cache of its own: no scan kept from another test answers before the start's.
+      env: { SYMBIOTE_CACHE_DIR: join(dir, 'scan-cache') },
+    });
+    expect(new Set(at.slice(0, 6)).size).toBe(1);
+    expect(at[6]).not.toBe(at[0]);
+    expect(tree?.tree).toEqual([
+      join(home, 'notes'),
+      join(home, 'projects'),
+      join(home, 'projects', 'zod'),
+    ]);
   });
 });

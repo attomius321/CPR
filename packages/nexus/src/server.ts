@@ -31,7 +31,7 @@ export interface NexusServerOptions {
   repositories: () => Promise<RepositoriesAnswer>;
   /** A repository's checkouts (NX5, decision 914); null for a folder that is no repository. */
   checkouts: (path: string) => Promise<Found[] | null>;
-  /** Choosing the folder scanned and scanning it again (NX5, decision 911). */
+  /** Home scanned again on the button, and the last scan's tree (NX6, decisions 925, 926). */
   scanning: Scanning;
   /** The page's own files: `index.html`, `nexus.css`, `mark.png` (`packages/nexus/page`). */
   pageDir: string;
@@ -63,16 +63,10 @@ const TYPES: Record<string, string> = {
 const FILE_NAME = /^[\w-][\w.-]*$/;
 
 /**
- * The routes that write: they start or stop a Symbiote (NX2, decision 543), pin a folder (NX4),
- * choose the folder scanned or scan it again (NX5).
+ * The routes that write: they start or stop a Symbiote (NX2, decision 543), and with it `git init`
+ * a folder (NX6, decision 928), pin a folder (NX4), scan home again (NX6, decision 925).
  */
-const WRITES = new Set([
-  '/api/symbiotes',
-  '/api/symbiotes/stop',
-  '/api/pinned',
-  '/api/scanned',
-  '/api/scan',
-]);
+const WRITES = new Set(['/api/symbiotes', '/api/symbiotes/stop', '/api/pinned', '/api/scan']);
 
 /** The most a write's body may hold. */
 const BODY_LIMIT = 64 * 1024;
@@ -118,6 +112,7 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
     if (path === '/api/nexus') return sendJson(res, 200, { nexus: true, pid: process.pid });
     if (path === '/api/folders') return listFolders(res, url.searchParams.get('path'));
     if (path === '/api/repositories') return sendJson(res, 200, await options.repositories());
+    if (path === '/api/tree') return sendJson(res, 200, { tree: await options.scanning.tree() });
     if (path === '/api/checkouts') {
       const asked = url.searchParams.get('path');
       if (asked === null || !isAbsolute(asked)) {
@@ -187,17 +182,6 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
       const answer = await options.pins.set(value.path, value.pinned);
       if ('error' in answer) return sendJson(res, answer.status, { error: answer.error });
       options.log?.info({ path: value.path }, value.pinned ? 'folder pinned' : 'folder unpinned');
-      return sendJson(res, 200, answer);
-    }
-    if (path === '/api/scanned') {
-      const asked = value?.path;
-      if (asked !== null && typeof asked !== 'string') return send(res, 400, 'expected { path }');
-      if (asked !== null && !isAbsolute(asked)) {
-        return sendJson(res, 400, { error: `Not an absolute path: ${asked}` });
-      }
-      const answer = await options.scanning.choose(asked);
-      if ('error' in answer) return sendJson(res, answer.status, { error: answer.error });
-      options.log?.info({ path: asked }, 'folder scanned for repositories chosen');
       return sendJson(res, 200, answer);
     }
     if (path === '/api/scan') return sendJson(res, 200, { scan: await options.scanning.again() });

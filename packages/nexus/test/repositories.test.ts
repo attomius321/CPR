@@ -2,7 +2,7 @@ import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
-import { knownRepositories, scanSummary } from '../src/repositories.js';
+import { knownRepositories, scanSummary, scanTree } from '../src/repositories.js';
 import type { ScanResult } from '../src/scan.js';
 
 const dir = tempDir();
@@ -22,9 +22,11 @@ const scan = (repositories: ScanResult['repositories']): ScanResult => ({
   ms: 3,
   short: false,
   repositories,
+  tree: repositories.map((r) => r.path),
+  unread: [],
 });
 
-describe('knownRepositories (decisions 911, 912)', () => {
+describe('knownRepositories (decisions 912, 925)', () => {
   it('merges the history and the scan by path, each with what it has checked out', async () => {
     const ky = repository('ky', 'feature/x');
     const zod = repository('zod');
@@ -68,7 +70,7 @@ describe('knownRepositories (decisions 911, 912)', () => {
 });
 
 describe('scanSummary', () => {
-  it("is the scan's facts without its repositories, or null", () => {
+  it("is the scan's facts without its repositories and its tree, or null", () => {
     expect(scanSummary(null)).toBeNull();
     expect(scanSummary(scan([{ name: 'ky', path: '/x/ky' }]))).toEqual({
       folder: dir,
@@ -77,6 +79,18 @@ describe('scanSummary', () => {
       ms: 3,
       short: false,
       repositories: 1,
+    });
+  });
+});
+
+describe('scanTree (decision 926)', () => {
+  it("is the scan's folders and the ones it did not read, or null", () => {
+    expect(scanTree(null)).toBeNull();
+    expect(scanTree(scan([{ name: 'ky', path: '/x/ky' }]))).toEqual({
+      folder: dir,
+      at: '2026-11-04T11:02:00.000Z',
+      tree: ['/x/ky'],
+      unread: [],
     });
   });
 });

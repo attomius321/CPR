@@ -1,6 +1,6 @@
-// The repositories the nexus knows besides the running ones and the pins (NX5, decisions 911,
-// 912): the ones it saw running, and the ones the scan found in the folder the person chose.
-// What `GET /api/repositories` answers; the page merges the running Symbiotes and the pins in.
+// The repositories the nexus knows besides the running ones and the pins (NX5, decision 912; NX6,
+// decision 925): the ones it saw running, and the ones the scan found in home. What
+// `GET /api/repositories` answers; the page merges the running Symbiotes and the pins in.
 import { stat } from 'node:fs/promises';
 import { checkoutOf, type Folder } from './folders.js';
 import type { Opened } from './opened.js';
@@ -13,7 +13,7 @@ export interface Known extends Pick<Folder, 'branch' | 'detached'> {
   path: string;
   /** The last time the nexus saw its Symbiote run (ISO). */
   opened?: string;
-  /** The scan found it in the folder chosen. */
+  /** The scan found it in home. */
   found?: true;
 }
 
@@ -34,27 +34,41 @@ export interface RepositoriesAnswer {
   /** By path. */
   repositories: Known[];
   pins: Pin[];
-  /** The folder chosen to scan (decision 911); null while none is. */
-  scanned: string | null;
-  /** Its last scan; null while none is chosen, or it runs for the first time. */
+  /** Home's last scan (decision 925); null while it runs for the first time. */
   scan: ScanSummary | null;
 }
 
-/** What the page may ask of the scan. */
-export interface Scanning {
-  /** Chooses the folder to scan (null: none), scans it, answers the scan; or why not. */
-  choose(
-    path: string | null,
-  ): Promise<{ scan: ScanSummary | null } | { status: 400 | 404 | 422; error: string }>;
-  /** Scans the chosen folder again. */
-  again(): Promise<ScanSummary | null>;
+/** What `GET /api/tree` answers: every folder the last scan of home read or found (decision 926). */
+export interface TreeAnswer {
+  /** The folder scanned: home. */
+  folder: string;
+  /** When the scan ended (ISO): the page reads the tree again when it changes. */
+  at: string;
+  /** By path; the repositories among them. */
+  tree: string[];
+  /** The folders found but not read (it stopped short): read when opened. */
+  unread: string[];
 }
 
-/** A scan's facts without its repositories. */
+/** What the page may ask of the scan: home scanned again, the button's (decision 925). */
+export interface Scanning {
+  again(): Promise<ScanSummary | null>;
+  /** The last scan's tree; null before the first. */
+  tree(): Promise<TreeAnswer | null>;
+}
+
+/** A scan's facts without its repositories and its tree. */
 export function scanSummary(scan: ScanResult | null): ScanSummary | null {
   if (!scan) return null;
-  const { repositories, ...facts } = scan;
-  return { ...facts, repositories: repositories.length };
+  const { folder, at, folders, ms, short, repositories } = scan;
+  return { folder, at, folders, ms, short, repositories: repositories.length };
+}
+
+/** A scan's tree, as `GET /api/tree` answers it. */
+export function scanTree(scan: ScanResult | null): TreeAnswer | null {
+  if (!scan) return null;
+  const { folder, at, tree, unread } = scan;
+  return { folder, at, tree, unread };
 }
 
 /**

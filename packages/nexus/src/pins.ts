@@ -22,18 +22,11 @@ export interface Pin extends Pick<Folder, 'branch' | 'detached'> {
 /** What a pin or an unpin answers: the pins after it, or why not. */
 export type PinAnswer = { pinned: Pin[] } | { status: 400 | 404 | 422; error: string };
 
-/** What choosing the folder to scan answers: the folder chosen now, or why not. */
-export type ScannedAnswer = { scanned: string | null } | { status: 400 | 404 | 422; error: string };
-
 export interface Pins {
   /** The pins, in the order pinned. */
   read(): Promise<Pin[]>;
   /** Pins or unpins `path`, an absolute folder. */
   set(path: string, pinned: boolean): Promise<PinAnswer>;
-  /** The folder scanned for repositories (NX5, decision 911); null while none is chosen. */
-  scanned(): Promise<string | null>;
-  /** Chooses the folder scanned for repositories, an absolute folder; null for none. */
-  setScanned(path: string | null): Promise<ScannedAnswer>;
 }
 
 /** The file's fields, or none when it is missing or not an object. */
@@ -70,12 +63,6 @@ async function writeFields(file: string, fields: Record<string, unknown>): Promi
 /** `paths` as `file`'s pins, the rest of it kept, written whole: a reader never sees half of it. */
 export function writePinned(file: string, paths: readonly string[]): Promise<void> {
   return writeFields(file, { pinned: paths });
-}
-
-/** The folder scanned for repositories in `file` (decision 911): an absolute path, or none. */
-export async function readScanned(file: string): Promise<string | null> {
-  const { scanned } = await readFields(file);
-  return typeof scanned === 'string' && isAbsolute(scanned) ? resolve(scanned) : null;
 }
 
 /**
@@ -153,27 +140,6 @@ export function pins({
     return { status: 422, error: `${path} is inside the repository ${root}: pin the repository` };
   }
 
-  async function setScanned(asked: string | null): Promise<ScannedAnswer> {
-    if (asked === null) {
-      await writeFields(file, { scanned: undefined });
-      return { scanned: null };
-    }
-    const path = resolve(asked);
-    const why = await notAFolder(path);
-    if (why) return why;
-    // A repository is the end of the way down (decision 554): the folder holding it is scanned.
-    const root = await repositoryHolding(path);
-    if (root !== null) {
-      const where = root === path ? 'is a repository' : `is inside the repository ${root}`;
-      return {
-        status: 422,
-        error: `${path} ${where}: look for repositories in the folder it is in`,
-      };
-    }
-    await writeFields(file, { scanned: path });
-    return { scanned: path };
-  }
-
   /** One write at a time, each from the file as it is then. */
   function queued<T>(write: () => Promise<T>): Promise<T> {
     const answer = queue.then(write);
@@ -184,7 +150,5 @@ export function pins({
   return {
     read: async () => describePins(await readPinned(file)),
     set: (path, pinned) => queued(() => set(path, pinned)),
-    scanned: () => readScanned(file),
-    setScanned: (path) => queued(() => setScanned(path)),
   };
 }

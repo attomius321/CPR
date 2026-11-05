@@ -66,7 +66,7 @@ function snapshot(root: string): string[] {
   return out.sort();
 }
 
-describe('scanFolder (decision 911)', () => {
+describe('scanFolder (decisions 911, 925)', () => {
   it('finds the repositories in a folder, by path, each with what it has checked out', async () => {
     const root = tree('basic', [
       'zod+',
@@ -86,6 +86,19 @@ describe('scanFolder (decision 911)', () => {
     expect(result).toMatchObject({ folder: root, short: false });
     // The folder, its five, three under them, and api (read to find its `.git`).
     expect(result.folders).toBe(10);
+    // Every folder it read or found, the repositories among them (NX6, decision 925): the tree.
+    expect(result.tree.map((path) => relative(root, path))).toEqual([
+      'ky',
+      'ky.worktrees',
+      'ky.worktrees/feature',
+      'notes',
+      'notes/drafts',
+      'work',
+      'work/acme',
+      'work/acme/api',
+      'zod',
+    ]);
+    expect(result.unread).toEqual([]);
     expect(typeof result.ms).toBe('number');
     expect(new Date(result.at).getTime()).not.toBeNaN();
   });
@@ -118,9 +131,14 @@ describe('scanFolder (decision 911)', () => {
     expect(found(root, result)).toEqual(['real']);
   });
 
-  it('goes 5 levels down at most', async () => {
-    const root = tree('deep', ['1/2/3/4/five+', '1/2/3/4/5/six+', 'a/b/c/d/e/f/g+']);
-    expect(found(root, await scanFolder(root))).toEqual(['1/2/3/4/five']);
+  it('goes down every level, unless told a depth (decision 925)', async () => {
+    const root = tree('deep', ['1/2/3/4/five+', '1/2/3/4/5/six+', 'a/b/c/d/e/f/g/h/i/j/k+']);
+    expect(found(root, await scanFolder(root))).toEqual([
+      '1/2/3/4/5/six',
+      '1/2/3/4/five',
+      'a/b/c/d/e/f/g/h/i/j/k',
+    ]);
+    expect(found(root, await scanFolder(root, { depth: 5 }))).toEqual(['1/2/3/4/five']);
     expect(found(root, await scanFolder(root, { depth: 2 }))).toEqual([]);
   });
 
@@ -160,14 +178,18 @@ describe('scanFolder (decision 911)', () => {
     const result = await scanFolder(root, { maxFolders: 10 });
     expect(result.short).toBe(true);
     expect(result.folders).toBeLessThanOrEqual(10);
+    // The folders found but not read are in the tree, and said to be unread: read when opened.
+    expect(result.tree).toHaveLength(30 + (result.folders - 1));
+    expect(result.unread.length).toBe(result.tree.length - (result.folders - 1));
+    expect(result.unread.every((path) => result.tree.includes(path))).toBe(true);
     expect((await scanFolder(root)).short).toBe(false);
   });
 
   it('stops after so long, and says it stopped short', async () => {
     const root = tree('slow', ['a/b/c', 'd/e/f', 'g+']);
     let t = 0;
-    // Each look at the clock is a second later: past the 2 s at the third.
-    const result = await scanFolder(root, { now: () => (t += 1000) });
+    // Each look at the clock is three seconds later: past the 5 s at the third.
+    const result = await scanFolder(root, { now: () => (t += 3000) });
     expect(result.short).toBe(true);
   });
 
@@ -176,46 +198,33 @@ describe('scanFolder (decision 911)', () => {
   });
 });
 
-describe('scanner (decision 911)', () => {
-  it('scans nothing while no folder is chosen', async () => {
-    const file = join(dir, 'scanner-none', 'scan.json');
-    const scans = scanner({ folder: () => Promise.resolve(null), file });
-    expect(await scans.current()).toBeNull();
-    expect(await scans.scan()).toBeNull();
-    expect(() => statSync(file)).toThrow();
-  });
-
-  it('scans the chosen folder, keeps the result in its file, and gives it back at the next start', async () => {
+describe('scanner (decisions 911, 925)', () => {
+  it('scans its folder, keeps the result in its file, and gives it back at the next start', async () => {
     const root = tree('scanner', ['ky+', 'zod+']);
     const file = join(dir, 'scanner-cache', 'scan.json');
-    let chosen: string | null = root;
-    const scans = scanner({ folder: () => Promise.resolve(chosen), file });
+    const scans = scanner({ folder: root, file });
+    expect(await scans.current()).toBeNull();
     const result = await scans.scan();
     expect(result && found(root, result)).toEqual(['ky', 'zod']);
     expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(result);
     // A new nexus: the last result, before it scans again.
-    const next = scanner({ folder: () => Promise.resolve(chosen), file });
+    const next = scanner({ folder: root, file });
     expect(await next.current()).toEqual(result);
-    // Another folder chosen: the last result was another folder's, so none until it scans.
-    chosen = join(root, 'ky');
-    expect(await next.current()).toBeNull();
-    chosen = null;
-    expect(await next.current()).toBeNull();
+    // NX5's scan of a chosen folder, kept in the same file: another folder's, so none.
+    const other = scanner({ folder: join(root, 'ky'), file });
+    expect(await other.current()).toBeNull();
   });
 
   it('runs one scan at a time: asked again while one runs, it answers that one', async () => {
     const root = tree('scanner-once', ['ky+']);
-    const scans = scanner({
-      folder: () => Promise.resolve(root),
-      file: join(dir, 'scanner-once.json'),
-    });
+    const scans = scanner({ folder: root, file: join(dir, 'scanner-once.json') });
     const [a, b] = await Promise.all([scans.scan(), scans.scan()]);
     expect(a).toBe(b);
   });
 
   it('keeps no result for a folder that cannot be scanned', async () => {
     const scans = scanner({
-      folder: () => Promise.resolve(join(dir, 'gone-folder')),
+      folder: join(dir, 'gone-folder'),
       file: join(dir, 'scanner-gone.json'),
     });
     expect(await scans.scan()).toBeNull();

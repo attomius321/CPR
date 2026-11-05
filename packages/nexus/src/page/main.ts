@@ -348,7 +348,7 @@ function view(): View {
     !tabs.some((t) => t.url !== null) &&
     known.pins.length === 0 &&
     known.repositories.length === 0 &&
-    known.scanned === null;
+    known.home === null;
   const typed = firstRun ? { folder: homePath, prefix: '' } : typedPath(query, homePath);
   if (typed) {
     const base = { ...none, hint: firstRun ? 'slash' : 'tab', welcome: firstRun, choosing: true };
@@ -386,7 +386,7 @@ function view(): View {
       preferred: read.picked,
     };
   }
-  const all = groupsOf({ ...parts, scanned: known.scanned, home: homePath });
+  const all = groupsOf({ ...parts, scanned: known.home, home: homePath });
   const words = query.trim();
   const groups = searched(all, words, homePath);
   const rows = groups.flatMap((g) => g.rows);
@@ -405,7 +405,7 @@ function view(): View {
         ? null
         : words
           ? `No repository has “${words}” in its path`
-          : known.scanned === null
+          : known.home === null
             ? 'No repository yet: choose the folder your repositories are in (Change… below), or type a path.'
             : 'No repository yet: the Symbiotes that run, the ones you pin and the ones found show here.',
   };
@@ -478,9 +478,9 @@ function drawHome(): void {
       : [
           `${running === 0 ? 'None' : running} running`,
           ...(known.pins.length > 0 ? [`${known.pins.length} pinned`] : []),
-          known.scanned === null
+          known.home === null
             ? 'no folder chosen to look for repositories in'
-            : `looking for repositories in ${shownPath(known.scanned, known.home)}`,
+            : `looking for repositories in ${shownPath(known.home, known.home)}`,
         ].join(' · '),
   );
   const shownProblem = failure ?? problem;
@@ -513,7 +513,7 @@ function drawHome(): void {
     hint: v.hint,
     message: v.message,
     welcome: v.welcome,
-    scanned: known?.scanned ?? null,
+    scanned: known?.home ?? null,
     scan: known?.scan ?? null,
     now,
     starting,
@@ -532,7 +532,7 @@ function drawHome(): void {
     checkouts: repository && row ? checkoutsOf(row.path) : null,
     listing: row === null || row.missing ? null : entriesOf(repository ? parent : row.path),
     failed: row === null ? null : (failures.get(row.path) ?? null),
-    scanned: known?.scanned ?? null,
+    scanned: known?.home ?? null,
     choosing: v.choosing,
     copied: row !== null && copied === row.path,
     rowOf: (folder) =>
@@ -997,8 +997,8 @@ function readKnown(): Promise<void> {
     render();
   })().finally(() => {
     readingKnown = null;
-    // The chosen folder's first scan runs: asked again until it answers.
-    if (known?.scanned && !known.scan) setTimeout(() => void readKnown(), 500);
+    // Home's first scan runs: asked again until it answers.
+    if (known && !known.scan) setTimeout(() => void readKnown(), 500);
   });
   return readingKnown;
 }
