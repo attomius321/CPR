@@ -166,7 +166,9 @@ symbiote-nexus
 ```
 
 It opens like `symbiote view`: in Symbiote's window when it is set up, otherwise in your browser. It
-takes `--browser`, `--no-open` and `--port` too.
+takes `--browser`, `--no-open` and `--port` too. It serves on port 7347, so its address stays the
+same: `http://127.0.0.1:7347/`. Run it again while it runs, and it opens the running one instead of
+starting a second. If another program holds the port, it says so; choose another with `--port`.
 
 ### Its tabs
 
@@ -178,14 +180,15 @@ started in a terminal gets its tab within 2 seconds.
 
 ### The Symbiotes page
 
-**Symbiotes** lists every repository the nexus knows, in four groups:
+**Symbiotes** lists every repository the nexus knows, then your home's folders, in four groups:
 
 - **Running**: each running Symbiote, by name, as the tabs are. A pinned one has a small pin.
 - **Pinned**: what you pinned that does not run, by name: repositories, folders, and pins whose
   folder is gone.
 - **Opened before**: repositories whose Symbiote this nexus saw running, last seen first.
-- **Found in** *the folder you chose*: the repositories found there, by path, so a repository's
-  worktrees sit next to it.
+- **Home**: your home's folders as a tree, the repositories among them. At first it shows home's
+  own folders. Click a folder's arrow, or press → with the field empty, to open it; ← closes it, or
+  goes to the folder holding it. A repository is as far as the tree goes.
 
 Each row shows the state (a green dot while it runs), the name, the path, the branch, and since
 when it runs or when it was last opened. A running one also shows how many files are changed.
@@ -193,27 +196,39 @@ when it runs or when it was last opened. A running one also shows how many files
 There is always one row picked, and its card is beside the list: its status, its path (click a
 part of it to list that folder), its branch and changes, its other worktrees, and the folder it is
 in. The card's buttons are **Show** (a running one's tab), **Open Symbiote**, **Stop**, the pin,
-and the copy button for the path. A click on a row picks it; Enter or a double click opens it.
-Nothing starts on its own.
+and the copy button for the path. A folder's card lists its folders, and has **Go in** (it opens
+the folder in the tree) and **Open Symbiote**. A click on a row picks it; Enter or a double click
+opens it. Nothing starts on its own.
 
-To find a repository, type any part of its name or path in the field at the top of the list:
-`acme bill` finds `~/work/acme/billing-service`. The matching words are marked, and a name that
-matches comes first.
+To find a repository or a folder, type any part of its name or path in the field at the top of the
+list: `acme bill` finds `~/work/acme/billing-service`. The matching words are marked, and a name
+that matches comes first. The search covers every folder of your home that the nexus scanned.
 
 To type a path, start with `~/` or `/`. The list then shows that folder: Tab completes the name
-(the rest shows faint in the field until you press it), → or Enter goes into a folder, and
+(the rest shows faint in the field until you press it), → goes into a folder, and
 Backspace right after a `/` goes up one folder. **Browse…** puts `~/` in the field. A repository is
 as far as you go: a path inside one lists the folder that holds it, with the repository picked.
 
-#### The folder Symbiote looks in
+#### Opening a folder that is no repository
 
-The nexus looks for repositories in one folder you choose, and nowhere else. Until you choose one,
-it scans nothing, and the list shows your home's folders. Pick a folder, then **Look for
-repositories here** on its card. To change it, use **Change…** at the bottom of the list. The nexus
-looks 5 levels deep, skips hidden folders and folders such as `node_modules`, and stops at 5,000
-folders or 2 seconds. It looks again each time it starts, and when you click the refresh button
-next to **Change…**. It only reads folder names and each repository's branch: it writes nothing
-in your folders. The folder is kept in [the nexus's settings](../reference/configuration.md#the-nexuss-pinned-folders).
+Enter on a folder that is no git repository, or its **Open Symbiote**, asks first: "Make notes a
+git repository?". **Cancel** is the default, and Escape cancels. **Make it a repository** runs
+`git init` in the folder, which adds a `.git` folder and nothing else, then opens its Symbiote. No
+commit is made: until you commit, from its **Git** page or a terminal, Monitor has nothing to read
+and no workspace can start. A folder inside a repository opens that repository instead.
+
+The nexus never makes a repository of `/`, your home, a Windows drive such as `/mnt/c`, Symbiote's
+cache or settings folders, a folder of a home kept in git, or a folder outside your home other
+than on a Windows drive. The card says why.
+
+#### How your home is scanned
+
+The nexus scans your home when it starts, and again only when you click the refresh button at the
+bottom of the list. It goes as deep as your folders go, skips hidden folders and folders such as
+`node_modules`, stops at a repository, and stops at 20,000 folders or 5 seconds. On a PC measured
+for it, home was 2,780 folders and 42 repositories, scanned in under 0.2 seconds. Under WSL it does
+not scan Windows' drives, which took from 7 to over 30 seconds: type a path such as `/mnt/c/` to
+go there, or pin a folder. The scan only reads folder names and each repository's branch.
 
 To keep a repository or a folder at hand, pin it with the pin on its card. Pins stay the next time
 you open the nexus. A pinned folder that was moved or deleted stays marked "folder gone" until you

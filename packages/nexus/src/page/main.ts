@@ -811,10 +811,11 @@ function act(row: Row): void {
     setQuery('');
   } else if (row.missing || starting.has(row.path)) {
     return;
-  } else if (!row.repository && refusedFor(row.path) !== null) {
-    failures.set(row.path, refusedFor(row.path) ?? '');
-    render();
-  } else void openSymbiote(row);
+  } else if (row.repository || refusedFor(row.path) === null) {
+    void openSymbiote(row);
+  }
+  // Else a folder the nexus never makes a repository (home, the top, a drive): its card says why,
+  // and nothing is asked.
 }
 
 /**

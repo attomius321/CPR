@@ -18,3 +18,34 @@ drives; `main`'s `symbiote view` in a fresh `git init` repository, its API and p
   red; Start a workspace says "No branch to start from". Nothing crashes.
 - **A fixed port inside the system's random range could be taken by a Symbiote**: Linux hands out
   32768–60999 here, Windows and macOS 49152–65535; 7347 is below all of them.
+
+## NX6 — the port, home's tree, `git init` (2026-11-05, branch `feature/nx6-nexus-explorer`)
+
+The nexus serves on 7347 and opens the running one when the port is a nexus's (NX6a); home is
+scanned at the start and on ⟳, every folder kept (NX6b); a plain folder is offered `git init`
+behind the server's guards (NX6c); the list draws home as a tree, searches every folder, and asks
+before `git init` (NX6d). Decisions 923–929.
+
+**Learned**:
+- **A running repository is listed twice**: under Running and in its place in the tree. The
+  pick, kept by path, jumped back to the first row on ↓ from the second. It now keeps its place
+  and which of its path's rows it is (`pick.ts`).
+- **A `.git` git rejects looked like a plain folder** to `git rev-parse`: `init.ts` would have
+  offered `git init` over it. NX2's e2e of a broken repository caught it; such a folder is now
+  started, and the CLI says why.
+- **The main test scanned the person's home**: `run` took `homedir()`. `NexusContext.home` gives
+  tests their own.
+- **The light screenshots were dark**: the nexus takes its theme from the viewer's
+  `localStorage` key (`symbiote.viewer.theme`), not the browser's colour scheme.
+- **A `pkill` by the nexus's command line would reach other runs**: `--no-open --port 0` is what
+  every spec runs. Stop a nexus by the PID whose environment names your cache.
+
+**Verification**: tests first for the port, the scan, `init.ts`'s guards, the tree, Home's rows and
+the pick (red, then green; `init.test.ts` was written with its module, run after); `pnpm check`
+3,412 tests; the nexus's e2e 32 pass, `app.spec.ts` included; the viewer's 430 of 431 in the full
+run, `changes.spec.ts`'s V43 test passing alone (untouched here); the real home scanned in
+115–142 ms; screens of 9 states in both themes.
+
+Not verified: Symbiote's window opened on a running nexus by a second start (unit-tested with a
+fake window only); a home that hits the 20,000-folder limit (unit-tested with a small limit).
+

@@ -44,9 +44,11 @@ const HELP = `Usage: symbiote-nexus [options]
 
 Every symbiote view running on this machine, as tabs in one window: Symbiote's
 window when the desktop app is set up, else the browser. Pick a tab to work in
-that Symbiote; the ones opened stay loaded. Folders shows this PC's folders:
-open a Symbiote in any repository there. Symbiotes started so run on after the
-nexus ends; stop one from its row.
+that Symbiote; the ones opened stay loaded. Home's folders are listed as a
+tree, scanned at the start and on the list's scan button: open a Symbiote in a
+repository, or make a folder one (git init, after a question). Symbiotes
+started so run on after the nexus ends; stop one from its card. A second
+symbiote-nexus on the same port opens the one running.
 
 Options:
   --browser      Open a browser tab, not Symbiote's window

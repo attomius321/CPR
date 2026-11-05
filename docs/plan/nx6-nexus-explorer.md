@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nx6-nexus-explorer.md)
 
-**Status:** planned (2026-11-05), on branch `feature/nx6-nexus-explorer` (the workspace's, from
+**Status:** built (2026-11-05) on branch `feature/nx6-nexus-explorer` (the workspace's, from
 `main` at `cb11e09`); the person OK'd this plan on 2026-11-05 with the port 7347, home only, a
-question before `git init` and no first commit, and the guard outside home.
+question before `git init` and no first commit, and the guard outside home. NX6a–e built; "As
+built" and results at the end.
 
 **Problem** (the brief: "the nexus serves on one default port", "the person's whole file tree, not
 one chosen project folder", "selecting a folder opens it"). Today (`main` at `cb11e09`):
@@ -156,3 +157,39 @@ tab row and frames (521, 551, 625), where pins are kept (NX4), Stop and its ques
 **Not in NX6 (later)**: the viewer's Monitor and Start a workspace in a repository with no commit
 (a hint instead of an error: a fix workspace); scanning Windows' drives; raising the running
 nexus's window.
+
+## As built (NX6)
+
+- **The pick keeps which of its path's rows it is** (`Pick.nth`): a repository running and in the
+  tree is listed twice, and a pick kept by its place alone moved to its other row when a row came
+  above it (a Symbiote starting). The plan said "group and path"; the place and the count of the
+  path's rows before it say the same without naming groups.
+- **A folder holding a `.git` that git rejects is started, never offered `git init`**: NX2's
+  e2e of a broken repository found it. The CLI says why, as before NX6.
+- **Enter on a folder the page knows is refused** (home, `/`, a drive) does nothing: its card
+  already says why, with no Open Symbiote. First built as a failure ("Did not open"), which the
+  screens showed as wrong: nothing was tried.
+- **Go in** opens the folder in the tree when the scan has it, and types its path otherwise (a
+  pinned folder outside home).
+- **Home's group is drawn as "its folders"**; a search turns it flat, "by path". The tree's rows
+  are one line (32 px); search rows keep NX5's two lines with the path.
+- **`ctx.home`** in `NexusContext` gives the tests a home of their own: `main.test.ts` would else
+  scan the person's.
+- **The CLI's `--help`** says the port, the tree and `git init`.
+- **Kept from the plan**: decisions 923–929 as written.
+
+**Results.**
+
+| What | Measured |
+|---|---|
+| Unit tests | `pnpm check`: 3,412 pass; the nexus's 177, 37 of them new or rewritten (the port, `/api/nexus`, `/api/tree`, the scans counted, `init.ts`'s guards and a real `git init`, the tree, Home's rows, the pick listed twice) |
+| e2e | The nexus's 32 pass, `app.spec.ts`'s 3 in Symbiote's window included (`explorer.spec.ts` 5 new; `list.spec.ts`'s scan test new; the rest ported). The viewer's 431: 430 pass in the full run; `changes.spec.ts`'s V43 test failed there and passes alone (4 of 4); the branch does not touch the viewer |
+| The scan of this PC's home (built `scanFolder`) | 2,780 folders, 42 repositories, 115–142 ms (5 runs, with other e2e running); `scan.json` 150 KB |
+| The page on that home | First draw 85–180 ms from the address; "sym" searched over 2,779 folders in 42–81 ms (26 rows); 10 × ↓ in 140 ms, Playwright's own key presses included |
+| A scan between two reads | None: a repository made after the start stays unlisted across 4.5 s of reads, `scan.json`'s time unchanged; listed after ⟳ |
+| `git init` from the page | A `.git` folder only, no commit (`git rev-parse HEAD` fails); the real `symbiote view` opens on it |
+
+Screens of every state, dark and light, at 1440 × 900, 1× (the built nexus in a throwaway home):
+home's first level, a repository and a folder picked in the tree, the question, a search over
+folders, a start that failed, running with the tree, home refused, 900 px wide.
+
