@@ -184,7 +184,7 @@ describe('symbiote-nexus', () => {
       expect.arrayContaining(['Home', '/']),
     );
     expect(started).toEqual({
-      status: 422,
+      status: 404,
       body: { error: `No such folder: ${join(dir, 'missing')}` },
     });
   });
@@ -272,6 +272,32 @@ describe('symbiote-nexus', () => {
     } finally {
       other.close();
     }
+  });
+
+  it('offers git init for a plain folder in home, and refuses home itself (NX6)', async () => {
+    const answers: { status: number; body: unknown }[] = [];
+    await nexus(['--no-open'], {
+      during: async (url) => {
+        for (const folder of [join(home, 'notes'), home]) {
+          const res = await fetch(new URL('api/symbiotes', url), {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+            body: JSON.stringify({ folder }),
+          });
+          answers.push({ status: res.status, body: await res.json() });
+        }
+      },
+    });
+    expect(answers).toEqual([
+      {
+        status: 409,
+        body: { init: true, error: `${join(home, 'notes')} is no git repository` },
+      },
+      {
+        status: 422,
+        body: { error: 'Your home folder cannot be made a repository: pick a folder in it' },
+      },
+    ]);
   });
 
   it('scans home at its start and on the button only, never on a read (decision 925)', async () => {

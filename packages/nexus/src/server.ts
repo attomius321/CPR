@@ -7,6 +7,7 @@ import type { FoldersAnswer } from './folders.js';
 import type { Pins } from './pins.js';
 import type { RepositoriesAnswer, Scanning } from './repositories.js';
 import type { Found } from './scan.js';
+import type { OpenAnswer, Opener } from './init.js';
 import type { Starter } from './start.js';
 import type { Symbiote } from './symbiotes.js';
 
@@ -22,6 +23,11 @@ export interface NexusServerOptions {
   folders: (path: string | null) => Promise<FoldersAnswer>;
   /** Starting and stopping `symbiote view` (NX2). */
   starter: Starter;
+  /**
+   * Opening a folder the person selected (NX6, decisions 927, 928): a repository started, a plain
+   * folder offered `git init`, made one when asked.
+   */
+  open: Opener;
   /** The person's pinned folders (NX4): answered with each listing, written by the page. */
   pins: Pins;
   /**
@@ -168,9 +174,20 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
     if (body === 'too large') return send(res, 413, 'too large');
     const value = parseObject(body);
     if (path === '/api/symbiotes') {
-      if (typeof value?.folder !== 'string') return send(res, 400, 'expected { folder }');
-      const answer = await options.starter.start(value.folder);
-      return sendJson(res, 'error' in answer ? 422 : 200, answer);
+      if (
+        typeof value?.folder !== 'string' ||
+        !['boolean', 'undefined'].includes(typeof value.init)
+      ) {
+        return send(res, 400, 'expected { folder, init? }');
+      }
+      const answer: OpenAnswer = await options.open(value.folder, value.init === true);
+      if ('symbiote' in answer) return sendJson(res, 200, answer);
+      if ('status' in answer) {
+        const { status, ...rest } = answer;
+        if ('init' in answer) options.log?.info({ folder: value.folder }, 'git init offered');
+        return sendJson(res, status, rest);
+      }
+      return sendJson(res, 422, answer);
     }
     if (path === '/api/pinned') {
       if (typeof value?.path !== 'string' || typeof value.pinned !== 'boolean') {

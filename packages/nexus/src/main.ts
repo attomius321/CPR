@@ -7,6 +7,7 @@ import type { Log } from '@symbiote/log';
 import { findApp, openAppWindow, openUrl, type AppWindow } from './app-window.js';
 import { checkoutsOf } from './checkouts.js';
 import { folders, repositoryRoot, windowsDrives } from './folders.js';
+import { opener } from './init.js';
 import { history } from './opened.js';
 import { cacheDir, isRunning, readRecords } from './registry.js';
 import { configDir } from './config-dir.js';
@@ -127,6 +128,15 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
     }
     return scanSummary(result);
   };
+  const starting = starter({
+    cache,
+    node: process.execPath,
+    script: CLI_SCRIPT,
+    env: ctx.env,
+    probe,
+    repositoryOf: repositoryRoot,
+    ...(log ? { log } : {}),
+  });
   let server;
   try {
     server = await startNexusServer({
@@ -136,14 +146,14 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
         const newest = (await live()).sort((a, b) => b.started.localeCompare(a.started));
         return folders(path, { home, roots: newest.map((symbiote) => symbiote.root), drives });
       },
-      starter: starter({
+      starter: starting,
+      open: opener({
+        home,
         cache,
-        node: process.execPath,
-        script: CLI_SCRIPT,
-        env: ctx.env,
-        probe,
+        config,
+        drives: drives.map((drive) => drive.path),
         repositoryOf: repositoryRoot,
-        ...(log ? { log } : {}),
+        start: (folder) => starting.start(folder),
       }),
       pins: kept,
       repositories: async () => {
@@ -154,6 +164,7 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
         ]);
         return {
           home,
+          drives: drives.map((drive) => drive.path),
           repositories: await knownRepositories({ opened: seen, scan }),
           pins: pinned,
           scan: scanSummary(scan),

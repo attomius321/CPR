@@ -31,6 +31,8 @@ export interface ScanSummary {
 export interface RepositoriesAnswer {
   /** The home folder: `~` in the paths shown, where a first run looks. */
   home: string;
+  /** Windows' drives under WSL (`/mnt/c`): never made a repository, a folder on one may be. */
+  drives: string[];
   /** By path. */
   repositories: Known[];
   pins: Pin[];

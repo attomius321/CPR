@@ -8,6 +8,7 @@ import type { Pin, PinAnswer, Pins } from '../src/pins.js';
 import type { RepositoriesAnswer, ScanSummary, Scanning, TreeAnswer } from '../src/repositories.js';
 import type { Found } from '../src/scan.js';
 import { startNexusServer, type NexusServer } from '../src/server.js';
+import type { OpenAnswer, Opener } from '../src/init.js';
 import type { StartAnswer, Starter } from '../src/start.js';
 import type { Symbiote } from '../src/symbiotes.js';
 
@@ -65,6 +66,7 @@ const summary: ScanSummary = {
 };
 const known: RepositoriesAnswer = {
   home: '/home/me',
+  drives: [],
   repositories: [{ name: 'zod', path: '/home/me/code/zod', branch: 'main', found: true }],
   pins: pinned,
   scan: summary,
@@ -92,6 +94,12 @@ const nexusParts = {
   scanning,
 };
 let startAnswer: StartAnswer = { symbiote: ky };
+/** What opening a plain folder answers (NX6): `git init` offered, or why not; else the start's. */
+let openAnswer: OpenAnswer | null = null;
+const open: Opener = (folder, init) => {
+  asked.push(`${init ? 'init and start' : 'start'} ${folder}`);
+  return Promise.resolve(openAnswer ?? startAnswer);
+};
 let stopAnswer = true;
 const starter: Starter = {
   start: (folder) => {
@@ -127,6 +135,7 @@ beforeAll(async () => {
     symbiotes: () => listed(),
     folders: (path) => folders(path),
     starter,
+    open,
     pins,
     ...nexusParts,
     pageDir,
@@ -353,6 +362,33 @@ describe('the nexus server: starting and stopping a Symbiote (NX2)', () => {
     startAnswer = { symbiote: ky };
   });
 
+  it('offers git init for a plain folder, runs it only when asked, says why one is refused (NX6)', async () => {
+    asked.length = 0;
+    openAnswer = { status: 409, init: true, error: '/home/me/notes is no git repository' };
+    expect(await post('/api/symbiotes', { folder: '/home/me/notes' })).toMatchObject({
+      status: 409,
+      body: JSON.stringify({ init: true, error: '/home/me/notes is no git repository' }),
+    });
+    openAnswer = null;
+    const answer = await post('/api/symbiotes', { folder: '/home/me/notes', init: true });
+    expect(answer.status).toBe(200);
+    openAnswer = { status: 422, error: 'Your home folder cannot be made a repository' };
+    expect(await post('/api/symbiotes', { folder: '/home/me', init: true })).toMatchObject({
+      status: 422,
+      body: JSON.stringify({ error: 'Your home folder cannot be made a repository' }),
+    });
+    openAnswer = null;
+    expect((await post('/api/symbiotes', { folder: '/x', init: 'yes' })).status).toBe(400);
+    expect(
+      (await post('/api/symbiotes', { folder: '/x', init: true }, { 'x-symbiote': '' })).status,
+    ).toBe(403);
+    expect(asked).toEqual([
+      'start /home/me/notes',
+      'init and start /home/me/notes',
+      'init and start /home/me',
+    ]);
+  });
+
   it('stops one, or says none runs there', async () => {
     asked.length = 0;
     stopAnswer = true;
@@ -485,6 +521,7 @@ describe('startNexusServer', () => {
         symbiotes: () => Promise.resolve([]),
         folders: () => Promise.resolve(projects),
         starter,
+        open,
         pins,
         ...nexusParts,
         pageDir,
