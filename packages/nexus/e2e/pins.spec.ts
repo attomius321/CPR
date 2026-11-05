@@ -36,10 +36,12 @@ const namesIn = (page: Page, group: string) =>
   list(page)
     .getByRole('group', { name: new RegExp(`^${group}`) })
     .locator('.nexus-row-name');
+/** A row by its name: the first, in a group above home's tree (which lists it again). */
 const row = (page: Page, name: string) =>
   list(page)
     .getByRole('option')
-    .filter({ has: page.locator('.nexus-row-name', { hasText: new RegExp(`^${name}/?$`) }) });
+    .filter({ has: page.locator('.nexus-row-name', { hasText: new RegExp(`^${name}/?$`) }) })
+    .first();
 const card = (page: Page) => page.locator('.nexus-detail');
 
 test.describe('Symbiote nexus: pins', () => {
@@ -93,14 +95,14 @@ test.describe('Symbiote nexus: pins', () => {
       /\bnexus-pinned\b/,
     );
     await page.getByRole('combobox', { name: 'Find a repository' }).fill('');
-    await expect(groups(page)).toHaveText(['Pinned']);
+    await expect(groups(page)).toHaveText(['Pinned', 'Home']);
     await expect(namesIn(page, 'Pinned')).toHaveText(['alpha']);
     await expect(row(page, 'alpha')).toContainText(
       join(home.projects, 'alpha').replace(home.dir, '~'),
     );
     await expect(row(page, 'alpha').locator('.state-dot.tone-idle')).toBeVisible();
     await expect(page.locator('.nexus-home .page-line')).toHaveText(
-      'None running · 1 pinned · no folder chosen to look for repositories in',
+      'None running · 1 pinned · 2 repositories in home',
     );
     expect(pinsIn(pinsFile)).toEqual([join(home.projects, 'alpha')]);
     await page.waitForTimeout(500);
@@ -120,7 +122,7 @@ test.describe('Symbiote nexus: pins', () => {
     await expect(frameOf(page, 'alpha').locator('.overview')).toBeVisible();
     expect(recorded(cache)).toHaveLength(1);
     await tab(page, /^Symbiotes/).click();
-    await expect(groups(page)).toHaveText(['Running']);
+    await expect(groups(page)).toHaveText(['Running', 'Home']);
     await expect(row(page, 'alpha').locator('.state-dot.nexus-live')).toBeVisible();
     await expect(row(page, 'alpha').locator('.nexus-row-pin')).toBeVisible();
     await expect(row(page, 'alpha')).toContainText('no changes');
@@ -131,12 +133,12 @@ test.describe('Symbiote nexus: pins', () => {
       .getByRole('alertdialog', { name: 'Stop alpha?' })
       .getByRole('button', { name: 'Stop', exact: true })
       .click();
-    await expect(groups(page)).toHaveText(['Pinned']);
+    await expect(groups(page)).toHaveText(['Pinned', 'Home']);
     expect(recorded(cache)).toEqual([]);
 
     // Unpinned from its card: it has run here, so it is one opened before.
     await card(page).getByRole('button', { name: 'Unpin alpha' }).click();
-    await expect(groups(page)).toHaveText(['Opened before']);
+    await expect(groups(page)).toHaveText(['Opened before', 'Home']);
     expect(pinsIn(pinsFile)).toEqual([]);
     expect(errors).toEqual([]);
   });
@@ -186,19 +188,18 @@ test.describe('Symbiote nexus: pins', () => {
     await expect(row(page, 'projects')).toContainText('pinned folder');
     await expect(card(page).locator('.status-label')).toHaveText('Pinned folder');
     await expect(card(page).getByRole('group', { name: 'In ~/projects' })).toContainText('alpha');
-    // Enter on it lists it in the field.
-    await page.getByRole('combobox', { name: 'Find a repository' }).press('Enter');
-    await expect(page.getByRole('combobox', { name: 'Find a repository' })).toHaveValue(
-      '~/projects/',
-    );
-    await expect(rowNames(page)).toHaveText(['alpha', 'beta', 'notes/']);
+    // Go in shows its folders in home's tree (decision 929).
+    await card(page).getByRole('button', { name: 'Go into projects' }).click();
+    await expect(page.getByRole('combobox', { name: 'Find a repository' })).toHaveValue('');
+    await expect(namesIn(page, 'Home')).toHaveText(['projects/', 'alpha', 'beta', 'notes/']);
+    await expect(card(page).locator('h2')).toHaveText('projects/');
 
     // Unpinned from its card.
     await page.getByRole('combobox', { name: 'Find a repository' }).fill('');
     await card(page).getByRole('button', { name: 'Unpin projects' }).click();
-    // Nothing pinned, known or chosen any more: a first run's list, home's folders.
+    // Nothing pinned or known any more: a first run's list, home's tree.
     await expect(page.locator('.nexus-welcome')).toBeVisible();
-    await expect(rowNames(page)).toHaveText(['projects/']);
+    await expect(rowNames(page)).toHaveText(['projects/', 'alpha', 'beta', 'notes/']);
     expect(pinsIn(pinsFile)).toEqual([]);
     expect(errors).toEqual([]);
   });

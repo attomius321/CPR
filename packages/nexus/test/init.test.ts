@@ -145,6 +145,16 @@ describe('opener (NX6, decisions 927, 928)', () => {
     expect(started).toEqual([]);
   });
 
+  it('starts a folder holding a .git that git does not take, never offering git init over it', async () => {
+    const broken = join(home, 'broken');
+    mkdirSync(join(broken, '.git'), { recursive: true });
+    const { open, started, inits } = make();
+    expect(await open(broken, false)).toMatchObject({ symbiote: { root: broken } });
+    expect(await open(broken, true)).toMatchObject({ symbiote: { root: broken } });
+    expect(started).toEqual([broken, broken]);
+    expect(inits).toEqual([]);
+  });
+
   it('says what is wrong with a folder: missing, not a folder, not absolute', async () => {
     const { open } = make();
     expect(await open(join(home, 'gone'), true)).toEqual({

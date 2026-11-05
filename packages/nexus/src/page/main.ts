@@ -4,10 +4,12 @@
 // layout is `page/nexus.css`. Since NX3 the row has two groups, a line between (decision 551).
 // Since NX5 Symbiotes is a list of every repository the nexus knows, one field to find one by any
 // part of its path or to type a path, and the picked one's card beside it (decisions 908–916).
+// Since NX6 home is a tree in the list (decision 926), and selecting a folder that is no
+// repository asks, then makes it one with `git init` (decisions 927, 928).
 import type { Folder, FoldersAnswer } from '../folders.js';
 import type { Pin } from '../pins.js';
 import type { Running } from '../registry.js';
-import type { RepositoriesAnswer } from '../repositories.js';
+import type { RepositoriesAnswer, TreeAnswer } from '../repositories.js';
 import type { Found } from '../scan.js';
 import type { Symbiote } from '../symbiotes.js';
 import { completed, completion, into, typedPath, up } from './complete.js';
@@ -27,9 +29,17 @@ import {
 } from './dom.js';
 import { folderFromHash, foldersHash } from './folders-tab.js';
 import { listView } from './list-view.js';
-import { cardKind, keptPick, movedPick } from './pick.js';
+import { cardKind, keptPick, movedPick, type Pick } from './pick.js';
 import { browserReach, reached } from './reach.js';
-import { entryRow, groupsOf, searched, shownPath, type Group, type Row } from './search.js';
+import {
+  entryRow,
+  groupsOf,
+  homeRows,
+  searched,
+  shownPath,
+  type Group,
+  type Row,
+} from './search.js';
 import {
   checkoutText,
   closeTab,
@@ -39,6 +49,7 @@ import {
   titleOf,
   type Tab,
 } from './tabs.js';
+import { shownFolders, treeOf, type Tree } from './tree.js';
 
 /** What Symbiote's window gives a page served over http (the desktop app's preload, N1). */
 interface DesktopApp {
@@ -80,8 +91,15 @@ let problem: string | null = null;
 let known: RepositoriesAnswer | null = null;
 /** The field's text. */
 let query = '';
-/** The picked row (decision 913), and where it was: kept by its path when the list is drawn again. */
-let pick: { path: string; at: number } | null = null;
+/**
+ * The picked row (decision 913) and its place: kept by its path when the list is drawn again, and
+ * by which of its path's rows it is (in the tree too, decision 926).
+ */
+let pick: Pick | null = null;
+/** Home's tree, from the last scan (decision 926); null until read. */
+let tree: Tree | null = null;
+/** The tree's folders the person opened. */
+const openFolders = new Set<string>();
 /** Folders' listings and repositories' checkouts read, with when. */
 const listings = new Map<string, { answer: FoldersAnswer | { error: string }; at: number }>();
 const checkoutsRead = new Map<string, { checkouts: Found[] | null; at: number }>();
@@ -118,15 +136,19 @@ const strip = el('div', {
 const list = listView({
   input: (value) => setQuery(value, { fromField: true }),
   key: onKey,
-  pick: (path) => {
-    pick = { path, at: 0 };
+  pick: (at) => {
+    const row = lastView.rows[at];
+    if (row) pick = pickOf(at);
     render();
   },
-  act: (path) => {
-    const row = lastView.rows.find((r) => r.path === path);
+  act: (at) => {
+    const row = lastView.rows[at];
     if (row) act(row);
   },
-  change: () => typeInField('~/'),
+  toggle: (at) => {
+    const row = lastView.rows[at];
+    if (row) toggleFolder(row);
+  },
   rescan: () => void rescan(),
 });
 const card = detailView({
@@ -138,8 +160,7 @@ const card = detailView({
   pin: (row, pinned) => void setPin(row, pinned),
   copy: (row) => copyPath(row),
   type: (text) => typeInField(text),
-  scanHere: (path) => void scanHere(path),
-  rescan: () => void rescan(),
+  goIn: (row) => goIn(row),
 });
 const browse = el(
   'button',
@@ -300,8 +321,6 @@ interface View {
   entries: Folder[] | null;
   /** A repository the folder typed is in: the pick goes to it (decision 554). */
   preferred: string | null;
-  /** A path is typed, or listed on a first run: a folder's card asks to be looked in. */
-  choosing: boolean;
 }
 
 let lastView: View = {
@@ -313,7 +332,6 @@ let lastView: View = {
   welcome: false,
   entries: null,
   preferred: null,
-  choosing: false,
 };
 
 const groupOf = (key: Group['key'], name: string, order: string, rows: Row[]): Group => ({
@@ -341,17 +359,9 @@ function view(): View {
   }
   const homePath = known.home;
   const parts = { tabs, pins: known.pins, known: known.repositories };
-  // A first run (no Symbiote, no pin, nothing known, no folder chosen): home's folders.
-  const firstRun =
-    readOnce &&
-    query.trim() === '' &&
-    !tabs.some((t) => t.url !== null) &&
-    known.pins.length === 0 &&
-    known.repositories.length === 0 &&
-    known.home === null;
-  const typed = firstRun ? { folder: homePath, prefix: '' } : typedPath(query, homePath);
+  const typed = typedPath(query, homePath);
   if (typed) {
-    const base = { ...none, hint: firstRun ? 'slash' : 'tab', welcome: firstRun, choosing: true };
+    const base = { ...none, hint: 'tab', welcome: false };
     const read = listingOf(typed.folder);
     if (!read)
       return { ...base, message: loading(`Reading ${folderName(typed.folder, homePath)}…`) };
@@ -370,7 +380,7 @@ function view(): View {
     }
     if (prefix && others.length > 0)
       groups.push(groupOf('others', `Also in ${where}`, 'by name', rowsOf(others)));
-    const next = firstRun || inside ? query : completed(query, read.folders);
+    const next = inside ? query : completed(query, read.folders);
     return {
       ...base,
       groups,
@@ -386,29 +396,77 @@ function view(): View {
       preferred: read.picked,
     };
   }
-  const all = groupsOf({ ...parts, scanned: known.home, home: homePath });
   const words = query.trim();
+  const listed = listedFolders();
+  // Home (decision 926): as a tree, or every folder of the scan, flat, to search.
+  const homeRowsShown = !tree
+    ? []
+    : words
+      ? homeRows(
+          tree.all.map((path) => ({ path })),
+          { ...parts, listed },
+        )
+      : homeRows(
+          shownFolders(tree, openFolders, (path) => {
+            const answer = folderListing(path);
+            return answer?.map((folder) => folder.path);
+          }),
+          { ...parts, listed },
+        );
+  const all = groupsOf({ ...parts, tree: homeRowsShown, flat: words !== '' });
   const groups = searched(all, words, homePath);
   const rows = groups.flatMap((g) => g.rows);
-  const total = all.reduce((n, g) => n + g.all, 0);
+  const total = all.slice(0, 3).reduce((n, g) => n + g.all, 0) + (tree?.all.length ?? 0);
+  const firstRun =
+    readOnce &&
+    words === '' &&
+    !tabs.some((t) => t.url !== null) &&
+    known.pins.length === 0 &&
+    !known.repositories.some((k) => k.opened);
   return {
     ...none,
-    welcome: false,
-    choosing: false,
+    welcome: firstRun,
     entries: null,
     preferred: null,
     groups,
     rows,
-    hint: words ? `${rows.length} of ${total}` : 'slash',
+    hint: words ? `${rows.length} of ${total.toLocaleString('en')}` : 'slash',
     message:
       rows.length > 0
         ? null
         : words
-          ? `No repository has “${words}” in its path`
-          : known.home === null
-            ? 'No repository yet: choose the folder your repositories are in (Change… below), or type a path.'
-            : 'No repository yet: the Symbiotes that run, the ones you pin and the ones found show here.',
+          ? `Nothing in home or the lists above has “${words}” in its path`
+          : known.scan === null
+            ? loading('Looking in ~…')
+            : 'Home holds no folder to show: run symbiote view in a repository, or type a path.',
   };
+}
+
+/**
+ * A folder's folders as its listing read them (a folder of the tree the scan did not read, opened):
+ * undefined until read. Never asks: `readOpened` does, for the opened ones.
+ */
+function folderListing(path: string): Folder[] | undefined {
+  const read = listings.get(path)?.answer;
+  return read && !('error' in read) && read.path === path ? read.folders : undefined;
+}
+
+/** The folders listings read, by path: whether each is a repository, for the tree's rows. */
+function listedFolders(): Map<string, Folder> {
+  const out = new Map<string, Folder>();
+  for (const path of openFolders) {
+    for (const folder of folderListing(path) ?? []) out.set(folder.path, folder);
+  }
+  return out;
+}
+
+/** The tree's opened folders the scan did not read: listed now (a folder, never deeper, 916). */
+function readOpened(): void {
+  if (!tree) return;
+  const read = new Set(tree.all);
+  for (const path of openFolders) {
+    if (!read.has(path) || tree.unread.has(path)) listingOf(path);
+  }
 }
 
 /** A folder's listing as read (and read again once old); null while it is read. */
@@ -478,42 +536,40 @@ function drawHome(): void {
       : [
           `${running === 0 ? 'None' : running} running`,
           ...(known.pins.length > 0 ? [`${known.pins.length} pinned`] : []),
-          known.home === null
-            ? 'no folder chosen to look for repositories in'
-            : `looking for repositories in ${shownPath(known.home, known.home)}`,
+          known.scan === null
+            ? 'looking in ~'
+            : `${known.scan.repositories} ${known.scan.repositories === 1 ? 'repository' : 'repositories'} in home`,
         ].join(' · '),
   );
   const shownProblem = failure ?? problem;
   homeProblem.textContent = shownProblem ?? '';
   homeProblem.hidden = shownProblem === null;
 
+  readOpened();
   const v = view();
   lastView = v;
-  // The pick (decision 913): kept by its path; at first the repository a typed folder is in, else
-  // the first row.
-  const path =
+  // The pick (decision 913): kept by its path and place; at first the repository a typed folder
+  // is in, else the first row.
+  const preferred = v.preferred ? v.rows.findIndex((row) => row.path === v.preferred) : -1;
+  const next =
     pick !== null
       ? keptPick(v.rows, pick)
-      : v.preferred && v.rows.some((row) => row.path === v.preferred)
-        ? v.preferred
+      : preferred >= 0
+        ? pickOf(preferred)
         : keptPick(v.rows, null);
   // No pick before both reads: the running Symbiotes would not be first.
-  pick =
-    path === null || !readOnce || !known
-      ? null
-      : { path, at: v.rows.findIndex((row) => row.path === path) };
-  const row = v.rows.find((r) => r.path === path) ?? null;
+  pick = next === null || !readOnce || !known ? null : next;
+  const row = pick === null ? null : (v.rows[pick.at] ?? null);
   const homePath = known?.home ?? '';
   list.draw({
     groups: v.groups,
-    pick: path,
+    pick: pick?.at ?? null,
     words: typedPath(query, homePath) ? '' : query.trim(),
     home: homePath,
     ghost: v.ghost,
     hint: v.hint,
     message: v.message,
     welcome: v.welcome,
-    scanned: known?.home ?? null,
     scan: known?.scan ?? null,
     now,
     starting,
@@ -532,8 +588,8 @@ function drawHome(): void {
     checkouts: repository && row ? checkoutsOf(row.path) : null,
     listing: row === null || row.missing ? null : entriesOf(repository ? parent : row.path),
     failed: row === null ? null : (failures.get(row.path) ?? null),
-    scanned: known?.home ?? null,
-    choosing: v.choosing,
+    starting: row !== null && starting.has(row.path),
+    refused: row === null || row.repository ? null : refusedFor(row.path),
     copied: row !== null && copied === row.path,
     rowOf: (folder) =>
       entryRow(folder, { tabs, pins: known?.pins ?? [], known: known?.repositories ?? [] }),
@@ -662,21 +718,25 @@ function post(path: string, value: unknown): Promise<Response> {
   });
 }
 
+/** A start's answer for a folder that is no repository: `git init` may make it one (decision 927). */
+const INIT = Symbol('init');
+
 /**
  * Starts `symbiote view` in `folder` (decision 541), or finds the one serving it, and opens its
- * tab: null once it is open, else why not.
+ * tab: null once it is open, `INIT` for a folder that may be made a repository, else why not.
+ * `init`: the person said yes to `git init` in it (decision 928).
  */
-async function startSymbiote(folder: string): Promise<string | null> {
-  let answer: { symbiote: Running } | { error: string };
+async function startSymbiote(folder: string, init = false): Promise<string | typeof INIT | null> {
+  let answer: { symbiote: Running } | { error: string; init?: true };
   try {
-    const res = await post('/api/symbiotes', { folder });
+    const res = await post('/api/symbiotes', init ? { folder, init } : { folder });
     answer = res.headers.get('content-type')?.includes('json')
       ? ((await res.json()) as typeof answer)
       : { error: `${res.status}: ${await res.text()}` };
   } catch (error) {
     answer = { error: (error as Error).message };
   }
-  if ('error' in answer) return answer.error;
+  if ('error' in answer) return answer.init ? INIT : answer.error;
   await refresh();
   select(answer.symbiote.root, { focusFrame: true });
   return null;
@@ -688,7 +748,8 @@ async function startAgain(root: string): Promise<void> {
   render();
   const why = await startSymbiote(root);
   restarting.delete(root);
-  if (why !== null) restartFailure = { root, why };
+  if (why === INIT) restartFailure = { root, why: `${root} is no git repository now` };
+  else if (why !== null) restartFailure = { root, why };
   render();
 }
 
@@ -714,28 +775,108 @@ async function stopSymbiote(tab: Tab, from: HTMLElement): Promise<void> {
   await refresh();
 }
 
-/** Opens a repository's Symbiote, the person's start (decision 619): its tab once it serves. */
+/**
+ * Opens a repository's or a folder's Symbiote, the person's start (decisions 619, 927): its tab
+ * once it serves. A folder that is no repository is asked about first, then made one (928).
+ */
 async function openSymbiote(row: Row): Promise<void> {
   starting.add(row.path);
   failures.delete(row.path);
   render();
-  const why = await startSymbiote(row.path);
+  let why = await startSymbiote(row.path);
+  if (why === INIT) {
+    starting.delete(row.path);
+    render();
+    const from = document.activeElement as HTMLElement | null;
+    const yes = await confirmInit(row);
+    from?.focus();
+    if (!yes) return;
+    starting.add(row.path);
+    render();
+    why = await startSymbiote(row.path, true);
+  }
   starting.delete(row.path);
+  if (why === INIT) why = `${row.name} is no git repository`;
   if (why !== null) failures.set(row.path, why);
   // Its tab is open: back on Symbiotes the whole list shows again.
   if (why === null) setQuery('');
   else render();
 }
 
-/** What Enter, a double click or the card's main button does with a row (decision 913). */
+/** What Enter, a double click or the card's main button does with a row (decisions 913, 927). */
 function act(row: Row): void {
   if (row.tab) {
     const root = row.tab.root;
     select(root, { focusFrame: true });
     setQuery('');
-  } else if (!row.repository) {
-    if (!row.missing && known) typeInField(folderName(row.path, known.home));
-  } else if (!starting.has(row.path)) void openSymbiote(row);
+  } else if (row.missing || starting.has(row.path)) {
+    return;
+  } else if (!row.repository && refusedFor(row.path) !== null) {
+    failures.set(row.path, refusedFor(row.path) ?? '');
+    render();
+  } else void openSymbiote(row);
+}
+
+/**
+ * Why a folder cannot be made a repository, as the page can tell (the server checks every guard,
+ * decision 928): home, the top, a Windows drive.
+ */
+function refusedFor(path: string): string | null {
+  if (!known) return null;
+  if (path === '/') return 'The top folder (/) cannot be made a repository.';
+  if (path === known.home)
+    return 'Your home folder cannot be made a repository: pick a folder in it.';
+  if (known.drives.includes(path)) {
+    return `The drive ${path} cannot be made a repository: pick a folder on it.`;
+  }
+  return null;
+}
+
+/** A picked place in the list. */
+function pickOf(at: number): Pick | null {
+  const row = lastView.rows[at];
+  if (!row) return null;
+  const nth = lastView.rows.slice(0, at).filter((other) => other.path === row.path).length;
+  return { path: row.path, at, ...(nth > 0 ? { nth } : {}) };
+}
+
+/** Opens or closes a folder of home's tree (decision 926). */
+function toggleFolder(row: Row): void {
+  if (row.depth === undefined || row.leaf === true) return;
+  if (openFolders.has(row.path)) openFolders.delete(row.path);
+  else openFolders.add(row.path);
+  render();
+}
+
+/**
+ * Go in, on a folder's card: its folders shown in home's tree (the tree opened down to it, the
+ * field cleared), or typed as a path when the tree does not hold it.
+ */
+function goIn(row: Row): void {
+  if (!known) return;
+  const homePath = known.home;
+  const inTree =
+    tree !== null && row.path.startsWith(`${homePath}/`) && tree.all.includes(row.path);
+  if (!inTree) {
+    typeInField(folderName(row.path, homePath));
+    return;
+  }
+  for (let at = row.path; at.startsWith(`${homePath}/`); at = at.slice(0, at.lastIndexOf('/'))) {
+    openFolders.add(at);
+  }
+  query = '';
+  list.field.value = '';
+  browsed = null;
+  if (selected !== null) select(null);
+  pick = { path: row.path, at: 0 };
+  render();
+  // The same row, now in the tree: its last place (the tree is below the groups).
+  const places = lastView.rows.flatMap((r, n) => (r.path === row.path ? [n] : []));
+  const last = places.at(-1);
+  if (last !== undefined) pick = pickOf(last);
+  render();
+  list.reveal();
+  list.field.focus();
 }
 
 /** The answer of a write: its JSON, or why it was refused. */
@@ -760,27 +901,13 @@ async function setPin(row: Row, pinned: boolean): Promise<void> {
   render();
 }
 
-/** Makes `path` the one folder scanned for repositories (decision 911), and shows what it found. */
-async function scanHere(path: string): Promise<void> {
-  problem = null;
-  try {
-    const answer = await answerOf<{ scan: unknown }>(await post('/api/scanned', { path }));
-    if ('error' in answer) problem = answer.error;
-    else setQuery('');
-  } catch (error) {
-    problem = `${path} was not chosen: ${(error as Error).message}`;
-  }
-  await readKnown();
-  list.field.focus();
-}
-
-/** Scans the chosen folder again. */
+/** Scans home again: the foot's button, the one way but the start (decision 925). */
 async function rescan(): Promise<void> {
   problem = null;
   try {
     await post('/api/scan', {});
   } catch (error) {
-    problem = `The folder was not scanned: ${(error as Error).message}`;
+    problem = `Home was not scanned: ${(error as Error).message}`;
   }
   await readKnown();
 }
@@ -828,7 +955,7 @@ function typeInField(text: string): void {
 /** The field's keys: the pick, Enter, Esc, and a path's Tab, → and Backspace (decision 910). */
 function onKey(event: KeyboardEvent): void {
   const field = list.field;
-  const row = lastView.rows.find((r) => r.path === pick?.path) ?? null;
+  const row = pick === null ? null : (lastView.rows[pick.at] ?? null);
   const atEnd =
     field.selectionStart === field.value.length && field.selectionEnd === field.value.length;
   const typed = known ? typedPath(query, known.home) : null;
@@ -838,9 +965,7 @@ function onKey(event: KeyboardEvent): void {
     case 'PageDown':
     case 'PageUp': {
       event.preventDefault();
-      const next = movedPick(lastView.rows, pick?.path ?? null, event.key);
-      pick =
-        next === null ? null : { path: next, at: lastView.rows.findIndex((r) => r.path === next) };
+      pick = movedPick(lastView.rows, pick, event.key);
       render();
       list.reveal();
       return;
@@ -863,10 +988,45 @@ function onKey(event: KeyboardEvent): void {
       return;
     }
     case 'ArrowRight':
+      // Home's tree, the field empty (decision 926): → opens the picked folder, then goes in.
+      if (query === '' && row?.depth !== undefined && row.leaf !== true) {
+        event.preventDefault();
+        if (!row.open) toggleFolder(row);
+        else {
+          const nextRow = lastView.rows[(pick?.at ?? 0) + 1];
+          if (nextRow?.depth !== undefined && nextRow.depth > row.depth) {
+            pick = pickOf((pick?.at ?? 0) + 1);
+            render();
+            list.reveal();
+          }
+        }
+        return;
+      }
       if (!typed || !atEnd || !row || row.repository || row.missing) return;
       event.preventDefault();
       setQuery(into(query, row));
       return;
+    case 'ArrowLeft': {
+      // ← closes the picked folder, or goes to the folder holding it.
+      if (query !== '' || row?.depth === undefined) return;
+      event.preventDefault();
+      if (row.open) {
+        toggleFolder(row);
+        return;
+      }
+      const at = pick?.at ?? 0;
+      for (let n = at - 1; n >= 0; n--) {
+        const above = lastView.rows[n];
+        if (above?.depth === undefined) break;
+        if (above.depth < row.depth) {
+          pick = pickOf(n);
+          render();
+          list.reveal();
+          break;
+        }
+      }
+      return;
+    }
     case 'Backspace': {
       if (!typed || !atEnd) return;
       const above = up(query);
@@ -883,25 +1043,61 @@ function onKey(event: KeyboardEvent): void {
  * the default, Escape stays.
  */
 function confirmStop(name: string): Promise<boolean> {
+  return ask({
+    question: `Stop ${name}?`,
+    detail: [
+      'Its symbiote view ends, with its terminals and any agent working in them. Open it again from Symbiotes.',
+    ],
+    stay: 'Keep it running',
+    go: 'Stop',
+  });
+}
+
+/**
+ * The question before `git init` (decision 928), as Stop's: Cancel is the default, Escape
+ * cancels.
+ */
+function confirmInit(row: Row): Promise<boolean> {
+  const where = known ? shownPath(row.path, known.home) : row.path;
+  return ask({
+    question: `Make ${row.name} a git repository?`,
+    detail: [
+      'Symbiote runs ',
+      el('code', {}, 'git init'),
+      ` in ${where}: a .git folder is added, nothing else. No commit is made: commit from its Git page to start workspaces. Then its Symbiote opens.`,
+    ],
+    stay: 'Cancel',
+    go: 'Make it a repository',
+  });
+}
+
+/** A question in the viewer's dialog: `stay` focused, the default; Escape stays. */
+function ask({
+  question,
+  detail,
+  stay,
+  go,
+}: {
+  question: string;
+  detail: Child[];
+  stay: string;
+  go: string;
+}): Promise<boolean> {
   return new Promise((resolve) => {
-    const keep = el('button', { type: 'button', class: 'button' }, 'Keep it running');
-    const stop = el('button', { type: 'button', class: 'button ghost' }, 'Stop');
+    const keep = el('button', { type: 'button', class: 'button' }, stay);
+    const yes = el('button', { type: 'button', class: 'button ghost' }, go);
     const box = el(
       'div',
       {
         class: 'dialog',
         role: 'alertdialog',
         'aria-modal': 'true',
-        'aria-labelledby': 'nexus-stop-question',
-        'aria-describedby': 'nexus-stop-detail',
+        'aria-labelledby': 'nexus-ask-question',
+        'aria-describedby': 'nexus-ask-detail',
       },
-      el('h2', { id: 'nexus-stop-question' }, `Stop ${name}?`),
-      el(
-        'p',
-        { id: 'nexus-stop-detail' },
-        'Its symbiote view ends, with its terminals and any agent working in them. Open it again from Symbiotes.',
-      ),
-      el('div', { class: 'dialog-buttons' }, stop, keep),
+      el('h2', { id: 'nexus-ask-question' }, question),
+      el('p', { id: 'nexus-ask-detail' }, ...detail),
+      el('div', { class: 'dialog-buttons' }, yes, keep),
     );
     const backdrop = el('div', { class: 'dialog-backdrop' }, box);
     const answer = (value: boolean) => {
@@ -909,7 +1105,7 @@ function confirmStop(name: string): Promise<boolean> {
       resolve(value);
     };
     keep.addEventListener('click', () => answer(false));
-    stop.addEventListener('click', () => answer(true));
+    yes.addEventListener('click', () => answer(true));
     box.addEventListener('keydown', (event) => {
       if (event.key !== 'Escape') return;
       event.preventDefault();
@@ -987,6 +1183,7 @@ function readKnown(): Promise<void> {
       const res = await fetch('/api/repositories', { cache: 'no-store' });
       if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
       known = (await res.json()) as RepositoriesAnswer;
+      if (known.scan && known.scan.at !== tree?.at) await readTree();
       if (asked !== null) {
         setQuery(folderName(asked, known.home));
         asked = null;
@@ -1001,6 +1198,18 @@ function readKnown(): Promise<void> {
     if (known && !known.scan) setTimeout(() => void readKnown(), 500);
   });
   return readingKnown;
+}
+
+/** Reads home's tree (decision 926): once per scan, when its time changes. */
+async function readTree(): Promise<void> {
+  try {
+    const res = await fetch('/api/tree', { cache: 'no-store' });
+    if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+    const answer = (await res.json()) as { tree: TreeAnswer | null };
+    tree = answer.tree ? treeOf(answer.tree) : null;
+  } catch (error) {
+    problem = `Home's folders could not be read: ${(error as Error).message}`;
+  }
 }
 
 /** Reads the running Symbiotes once and draws what changed. */

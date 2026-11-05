@@ -65,7 +65,7 @@ test.describe('Symbiote nexus', () => {
     // Symbiotes: the list, first.
     await expect(page.locator('.nexus-home h1')).toHaveText('Symbiotes');
     await expect(page.locator('.nexus-home .page-line')).toHaveText(
-      '2 running · no folder chosen to look for repositories in',
+      '2 running · 0 repositories in home',
     );
     const rows = page.getByRole('listbox', { name: 'Repositories' }).getByRole('option');
     await expect(rows).toHaveCount(2);
@@ -176,7 +176,7 @@ test.describe('Symbiote nexus', () => {
     await page.locator('.nexus-stopped').getByRole('button', { name: 'Close tab' }).click();
     await expect(tab(page, /^gamma/)).toHaveCount(0);
     await expect(page.locator('.nexus-home .page-line')).toHaveText(
-      'None running · no folder chosen to look for repositories in',
+      'None running · 0 repositories in home',
     );
     // Both ran here: they are ones opened before (decision 912).
     await expect(page.locator('.nexus-group-name')).toHaveText(['Opened before']);
@@ -189,21 +189,22 @@ test.describe('Symbiote nexus', () => {
     const served = await nexus(cacheDir());
     await page.goto(served.url);
     await expect(page.locator('.nexus-home .page-line')).toHaveText(
-      'None running · no folder chosen to look for repositories in',
+      'None running · 0 repositories in home',
     );
     await expect(page.locator('.nexus-welcome')).toContainText(
       'No Symbiote runs yet' +
-        'Choose the folder your repositories are in: pick it below, then Look for repositories ' +
-        'here. Or run symbiote view in a repository: it shows here within 2 seconds.',
+        'Pick a repository or a folder in Home below and press Enter. A folder that is no ' +
+        'repository is made one with git init, after you say yes. Or run symbiote view in a ' +
+        'repository: it shows here within 2 seconds.',
     );
     await expect(tabs(page).getByRole('tab')).toHaveText(['Symbiotes0']);
     // No Symbiote, no line after the nexus's own page.
     await expect(page.locator('.views-divider')).toHaveCount(0);
-    // Home's folders under it: an empty home here.
-    await expect(page.locator('.nexus-message')).toHaveText('~/ holds no folder');
-    await expect(page.locator('.nexus-foot')).toContainText(
-      'No folder chosen to look for repositories in',
+    // Home's folders under it (decision 926): an empty home here, scanned at the start.
+    await expect(page.locator('.nexus-message')).toHaveText(
+      'Home holds no folder to show: run symbiote view in a repository, or type a path.',
     );
+    await expect(page.locator('.nexus-foot')).toContainText('Home: 0 repositories in 1 folder,');
   });
 
   test('opens a repository typed by its path; it joins the running ones (decision 908)', async ({
@@ -221,7 +222,8 @@ test.describe('Symbiote nexus', () => {
 
     const field = page.getByRole('combobox', { name: 'Find a repository' });
     const names = page.getByRole('listbox', { name: 'Repositories' }).locator('.nexus-row-name');
-    await expect(names).toHaveText(['alpha']);
+    // Running, then home's tree (decision 926).
+    await expect(names).toHaveText(['alpha', 'projects/']);
     // The address names no folder until the person types one.
     expect(new URL(page.url()).hash).toBe('');
     await field.fill('~/projects/');
@@ -235,8 +237,8 @@ test.describe('Symbiote nexus', () => {
 
     // beta runs now: back on Symbiotes, under Running with alpha.
     await tab(page, /^Symbiotes/).click();
-    await expect(page.locator('.nexus-group-name')).toHaveText(['Running']);
-    await expect(names).toHaveText(['alpha', 'beta']);
+    await expect(page.locator('.nexus-group-name')).toHaveText(['Running', 'Home']);
+    await expect(names).toHaveText(['alpha', 'beta', 'projects/']);
     expect(errors).toEqual([]);
   });
 

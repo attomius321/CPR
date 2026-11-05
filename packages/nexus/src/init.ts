@@ -5,7 +5,7 @@
 import { execFile } from 'node:child_process';
 import { realpath, stat } from 'node:fs/promises';
 import { isAbsolute, resolve } from 'node:path';
-import { within } from './folders.js';
+import { checkoutOf, within } from './folders.js';
 import type { StartAnswer } from './start.js';
 
 /** What opening a folder answers: its Symbiote, `git init` offered, or why not. */
@@ -80,6 +80,9 @@ export function opener(options: OpenerOptions): Opener {
     // A repository holding home (a home kept in git) is no end (decision 554).
     const { home } = await guarded;
     if (root !== null && !within(home, root)) return start(outside === path ? asked : root);
+    // A `.git` git does not take (a listing marks it a repository): started, so the CLI says why;
+    // `git init` is never run over it.
+    if (await checkoutOf(path)) return start(asked);
     const why = await refusal(path);
     if (why) return { status: 422, error: why };
     if (root !== null) {

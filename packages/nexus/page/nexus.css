@@ -407,6 +407,68 @@
   font-weight: 500;
 }
 
+/* Home's tree (decision 926): a folder a line, 16 px in for each level, its chevron before its
+   lead; a repository's branch and when after its name. */
+.nexus-row.nexus-tree-row {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  column-gap: 8px;
+  min-height: 32px;
+  padding: 4px 10px 4px calc(4px + var(--depth, 0) * 16px);
+}
+
+.nexus-tree-lead {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.nexus-tree-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--faint);
+}
+
+.nexus-tree-toggle[data-toggle]:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.nexus-tree-toggle .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.nexus-tree-lead .nexus-row-lead {
+  width: 16px;
+}
+
+.nexus-tree-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  line-height: calc(var(--size-body) + 5px);
+}
+
+.nexus-tree-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--faint);
+  font-size: var(--size-caption);
+  white-space: nowrap;
+}
+
+.nexus-tree-when {
+  flex: none;
+}
+
 /* A match (decision 910): the words typed, washed in the accent and written heavier. */
 .nexus-row mark {
   margin: 0 -1px;
@@ -458,7 +520,7 @@
   font-size: var(--size-small);
 }
 
-/* The list's foot: where the repositories come from (decision 911), Change… and Scan again. */
+/* The list's foot: home's last scan (decision 925) and Scan again. */
 .nexus-foot {
   flex: none;
   display: flex;
@@ -490,14 +552,6 @@
 .nexus-foot-what b {
   color: var(--muted);
   font-weight: 500;
-}
-
-.nexus-foot-change {
-  margin-left: auto;
-  color: var(--muted);
-  font-size: var(--size-caption);
-  text-decoration: underline;
-  text-decoration-color: var(--line-2);
 }
 
 /* The picked repository's card (decisions 908, 913, 914, 916). */

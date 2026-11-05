@@ -1,15 +1,18 @@
-// The list's DOM (NX5, decisions 908–910, 913): its field at its head, the groups and their rows,
-// where the repositories come from at its foot. The field is a combobox: the focus stays in it
+// The list's DOM (NX5, decisions 908–910, 913; NX6, 926): its field at its head, the groups and
+// their rows, home as a tree, the scan of home at its foot. The field is a combobox: the focus stays in it
 // while ↑↓ move the pick. What is shown is `main.ts`'s to compute (`search.ts`, `complete.ts`);
 // this draws it, again only when it changed, and leaves the field as the person types it.
 import type { ScanSummary } from '../repositories.js';
 import {
   BRANCH,
+  CHEVRON_DOWN,
+  CHEVRON_RIGHT,
   CIRCLE_X,
   el,
   FOLDER,
   FOLDER_OPEN,
   FOLDER_SEARCH,
+  HOUSE,
   icon,
   key,
   loading,
@@ -26,8 +29,8 @@ import { checkoutText, timeText } from './tabs.js';
 /** What the list draws. */
 export interface ListState {
   groups: readonly Group[];
-  /** The picked row's path. */
-  pick: string | null;
+  /** The picked row's place in the rows (a path may be listed twice: in the tree too). */
+  pick: number | null;
   /** The words searched, for the marks ('' while a path is typed). */
   words: string;
   home: string;
@@ -37,9 +40,9 @@ export interface ListState {
   hint: string;
   /** Instead of rows, why there are none. */
   message: Child;
-  /** A first run: no Symbiote, no pin, nothing known, no folder chosen. */
+  /** A first run: no Symbiote, no pin, nothing opened before. */
   welcome: boolean;
-  scanned: string | null;
+  /** Home's last scan; null while the first runs. */
   scan: ScanSummary | null;
   now: Date;
   starting: ReadonlySet<string>;
@@ -48,10 +51,11 @@ export interface ListState {
 export interface ListHandlers {
   input: (value: string) => void;
   key: (event: KeyboardEvent) => void;
-  pick: (path: string) => void;
-  act: (path: string) => void;
-  /** Change… or Choose…: where the repositories are looked for. */
-  change: () => void;
+  /** A row picked: its place in the rows. */
+  pick: (at: number) => void;
+  act: (at: number) => void;
+  /** A tree's folder opened or closed by its chevron. */
+  toggle: (at: number) => void;
   rescan: () => void;
 }
 
@@ -170,6 +174,65 @@ export function rowParts(
   ];
 }
 
+/**
+ * A row of home's tree (decision 926), on one line: its chevron (none for a repository or a folder
+ * holding none), its lead, its name; a repository's branch and when; files changed at its end.
+ */
+export function treeRowParts(
+  row: Row,
+  { home, now, starting = false }: { home: string; now: Date; starting?: boolean },
+): Child[] {
+  const toggle =
+    row.leaf === true
+      ? el('span', { class: 'nexus-tree-toggle', 'aria-hidden': 'true' })
+      : el(
+          'span',
+          { class: 'nexus-tree-toggle', 'data-toggle': '', 'aria-hidden': 'true' },
+          icon(row.open ? CHEVRON_DOWN : CHEVRON_RIGHT, true),
+        );
+  const meta: Child[] = [];
+  if (row.repository) {
+    const checkout =
+      row.branch !== undefined
+        ? row.branch
+        : row.detached !== undefined
+          ? checkoutText({ branch: null, head: row.detached })
+          : null;
+    if (checkout !== null) {
+      meta.push(
+        el('span', { class: 'nexus-row-branch' }, icon(BRANCH, true), el('code', {}, checkout)),
+      );
+    }
+    const when = whenOf(row, now);
+    if (when) meta.push(el('span', { class: 'nexus-tree-when' }, when));
+  }
+  const changed = row.tab?.changed;
+  return [
+    el(
+      'span',
+      { class: 'nexus-tree-lead', title: shownPath(row.path, home) },
+      toggle,
+      el('span', { class: 'nexus-row-lead' }, rowLead(row, starting)),
+    ),
+    el(
+      'span',
+      { class: 'nexus-tree-main' },
+      el('span', { class: 'nexus-row-name' }, row.name, row.repository ? null : '/'),
+      row.pinned && el('span', { class: 'nexus-row-pin', title: 'Pinned' }, icon(PIN, true)),
+      meta.length > 0 && el('span', { class: 'nexus-tree-meta' }, ...meta),
+    ),
+    el(
+      'span',
+      { class: 'nexus-row-side' },
+      changed === undefined
+        ? null
+        : changed === 0
+          ? 'no changes'
+          : el('span', {}, el('b', {}, String(changed)), ' changed'),
+    ),
+  ];
+}
+
 export function listView(handlers: ListHandlers): ListView {
   const field = el('input', {
     class: 'search-input nexus-field',
@@ -219,15 +282,23 @@ export function listView(handlers: ListHandlers): ListView {
     'scroll',
     () => (ghost.style.transform = `translateX(${-field.scrollLeft}px)`),
   );
-  // A click picks and keeps the focus in the field; a double click acts.
+  // A click picks and keeps the focus in the field; a double click acts; a tree's chevron opens
+  // or closes its folder.
+  const placeOf = (event: Event) => {
+    const row = (event.target as Element).closest<HTMLElement>('[role="option"]');
+    const at = Number(row?.dataset.at);
+    return row && Number.isInteger(at) ? at : null;
+  };
   rows.addEventListener('mousedown', (event) => event.preventDefault());
   rows.addEventListener('click', (event) => {
-    const row = (event.target as Element).closest<HTMLElement>('[role="option"]');
-    if (row?.dataset.path) handlers.pick(row.dataset.path);
+    const at = placeOf(event);
+    if (at === null) return;
+    handlers.pick(at);
+    if ((event.target as Element).closest('[data-toggle]')) handlers.toggle(at);
   });
   rows.addEventListener('dblclick', (event) => {
-    const row = (event.target as Element).closest<HTMLElement>('[role="option"]');
-    if (row?.dataset.path) handlers.act(row.dataset.path);
+    const at = placeOf(event);
+    if (at !== null && !(event.target as Element).closest('[data-toggle]')) handlers.act(at);
   });
 
   let drawn = '';
@@ -261,7 +332,9 @@ export function listView(handlers: ListHandlers): ListView {
             el(
               'p',
               {},
-              'Choose the folder your repositories are in: pick it below, then Look for repositories here. Or run ',
+              'Pick a repository or a folder in Home below and press Enter. A folder that is no repository is made one with ',
+              el('code', {}, 'git init'),
+              ', after you say yes. Or run ',
               el('code', {}, 'symbiote view'),
               ' in a repository: it shows here within 2 seconds.',
             ),
@@ -279,29 +352,47 @@ export function listView(handlers: ListHandlers): ListView {
           el(
             'div',
             { class: 'nexus-group-head', id: head },
-            g.key === 'hits' || (g.key === 'others' && n === 0) ? icon(FOLDER_OPEN, true) : null,
+            g.key === 'hits' || (g.key === 'others' && n === 0)
+              ? icon(FOLDER_OPEN, true)
+              : g.key === 'home'
+                ? icon(HOUSE, true)
+                : null,
             el('span', { class: 'nexus-group-name' }, g.name),
             el('span', { class: 'count' }, String(g.rows.length)),
             el('span', { class: 'nexus-group-order' }, g.order),
           ),
           ...g.rows.map((row) => {
-            const id = `nexus-row-${index++}`;
-            const picked = row.path === state.pick;
+            const at = index++;
+            const picked = at === state.pick;
+            const tree = row.depth !== undefined;
+            const starting = state.starting.has(row.path);
             return el(
               'div',
               {
-                class: picked ? 'nexus-row picked' : 'nexus-row',
+                class: `nexus-row${tree ? ' nexus-tree-row' : ''}${picked ? ' picked' : ''}`,
                 role: 'option',
-                id,
+                id: `nexus-row-${at}`,
                 'aria-selected': picked ? 'true' : 'false',
                 'data-path': row.path,
+                'data-at': String(at),
+                ...(tree
+                  ? {
+                      'aria-level': String((row.depth ?? 0) + 1),
+                      ...(row.leaf === true
+                        ? {}
+                        : { 'aria-expanded': row.open ? 'true' : 'false' }),
+                      style: `--depth: ${row.depth ?? 0}`,
+                    }
+                  : {}),
               },
-              ...rowParts(row, {
-                words: state.words,
-                home: state.home,
-                now: state.now,
-                starting: state.starting.has(row.path),
-              }),
+              ...(tree
+                ? treeRowParts(row, { home: state.home, now: state.now, starting })
+                : rowParts(row, {
+                    words: state.words,
+                    home: state.home,
+                    now: state.now,
+                    starting,
+                  })),
             );
           }),
           g.more > 0 &&
@@ -321,42 +412,17 @@ export function listView(handlers: ListHandlers): ListView {
   }
 
   function drawFoot(state: ListState): void {
-    const key = JSON.stringify([state.scanned, state.scan, state.home]);
+    const key = JSON.stringify([state.scan, state.home]);
     if (key === drawnFoot) return;
     drawnFoot = key;
-    const button = (words: string, onClick: () => void) => {
-      const b = el('button', { type: 'button', class: 'link nexus-foot-change' }, words);
-      b.addEventListener('click', onClick);
-      return b;
-    };
-    if (state.scanned === null) {
-      foot.replaceChildren(
-        el(
-          'span',
-          { class: 'nexus-foot-what' },
-          icon(FOLDER_SEARCH, true),
-          'No folder chosen to look for repositories in',
-        ),
-        button('Choose…', handlers.change),
-      );
-      return;
-    }
-    const where = shownPath(state.scanned, state.home);
     if (state.scan === null) {
-      foot.replaceChildren(
-        el('span', { class: 'nexus-foot-what' }, loading(`Looking in ${where}…`)),
-        button('Change…', handlers.change),
-      );
+      foot.replaceChildren(el('span', { class: 'nexus-foot-what' }, loading('Looking in ~…')));
       return;
     }
     const { repositories, folders, ms, at, short } = state.scan;
     const again = el(
       'button',
-      {
-        type: 'button',
-        class: 'icon-button nexus-foot-again',
-        'aria-label': `Scan ${where} again`,
-      },
+      { type: 'button', class: 'icon-button nexus-foot-again', 'aria-label': 'Scan home again' },
       icon(REFRESH, true),
     );
     again.addEventListener('click', handlers.rescan);
@@ -368,13 +434,11 @@ export function listView(handlers: ListHandlers): ListView {
         el(
           'span',
           {},
-          'Looking in ',
-          el('b', {}, where),
-          `: ${repositories} ${repositories === 1 ? 'repository' : 'repositories'} in ${folders.toLocaleString('en')} folders, ${ms} ms, at ${timeText(at, state.now)}`,
+          el('b', {}, 'Home'),
+          `: ${repositories} ${repositories === 1 ? 'repository' : 'repositories'} in ${folders.toLocaleString('en')} ${folders === 1 ? 'folder' : 'folders'}, ${ms} ms, at ${timeText(at, state.now)}`,
           short ? ', stopped there: a limit was reached' : '',
         ),
       ),
-      button('Change…', handlers.change),
       again,
     );
   }

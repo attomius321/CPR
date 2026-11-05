@@ -113,4 +113,6 @@ export const TERMINAL =
   '<polyline points="4 17 10 11 4 5" /><line x1="12" x2="20" y1="19" y2="19" />';
 
 /** A key, as the viewer draws one (`kbd`). */
+export const CHEVRON_RIGHT = '<path d="m9 18 6-6-6-6" />';
+export const CHEVRON_DOWN = '<path d="m6 9 6 6 6-6" />';
 export const key = (name: string) => el('kbd', {}, name);

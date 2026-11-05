@@ -1,10 +1,11 @@
-// The list's pure part (NX5, decisions 909, 910): the rows from the running Symbiotes, the pins
-// and the repositories the nexus knows, in their groups and orders; the search over them, and
-// where its words are in a row's words. The list's DOM is `list-view.ts`'s.
+// The list's pure part (NX5, decisions 909, 910; NX6, 926): the rows from the running Symbiotes,
+// the pins, the repositories the nexus knows and home's tree, in their groups and orders; the
+// search over them, and where its words are in a row's words. The list's DOM is `list-view.ts`'s.
 import type { Folder } from '../folders.js';
 import type { Pin } from '../pins.js';
 import type { Known } from '../repositories.js';
 import type { Tab } from './tabs.js';
+import type { ShownFolder } from './tree.js';
 
 /** A row of the list: a repository (running or not), a pinned folder, or a pin whose folder is gone. */
 export interface Row extends Pick<Folder, 'branch' | 'detached'> {
@@ -20,11 +21,17 @@ export interface Row extends Pick<Folder, 'branch' | 'detached'> {
   missing?: true;
   /** The last time the nexus saw its Symbiote run (ISO). */
   opened?: string;
-  /** The scan found it in the folder chosen. */
+  /** The scan found it in home. */
   found?: true;
+  /** A row of home's tree (decision 926): its depth, 0 for home's own folders. */
+  depth?: number;
+  /** A tree's folder opened, its folders shown under it. */
+  open?: boolean;
+  /** A tree's folder holding no folder; null while that is unknown. */
+  leaf?: boolean | null;
 }
 
-export type GroupKey = 'running' | 'pinned' | 'opened' | 'found' | 'hits' | 'others';
+export type GroupKey = 'running' | 'pinned' | 'opened' | 'home' | 'hits' | 'others';
 
 export interface Group {
   key: GroupKey;
@@ -33,15 +40,15 @@ export interface Group {
   order: string;
   /** The rows drawn. */
   rows: Row[];
-  /** The rows past the limit, not drawn (Found's). */
+  /** The rows past the limit, not drawn (Home's, searched). */
   rest: Row[];
   more: number;
   /** Its rows before a search. */
   all: number;
 }
 
-/** Found draws this many repositories at most: "and N more: type to find them". */
-export const FOUND_LIMIT = 500;
+/** Home, searched, draws this many folders at most: "and N more: type to find them". */
+export const HOME_LIMIT = 500;
 
 const byName = (a: Row, b: Row) => a.name.localeCompare(b.name) || a.path.localeCompare(b.path);
 const byPath = (a: Row, b: Row) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
@@ -69,22 +76,23 @@ const group = (
 });
 
 /**
- * The list's groups (decision 909): Running by name, as the tabs; Pinned (not running) by name,
- * folders and gone pins too; Opened before (not running, not pinned) last seen first; Found in the
- * folder scanned, the rest, by path, so worktrees sit by their repository. A repository is in one.
+ * The list's groups (decisions 909, 926): Running by name, as the tabs; Pinned (not running) by
+ * name, folders and gone pins too; Opened before (not running, not pinned) last seen first; then
+ * Home, `tree`'s rows: as a tree, each folder in its place (a running one too); `flat` (searched),
+ * by path, none shown above, 500 drawn. A repository is in one group above Home.
  */
 export function groupsOf({
   tabs,
   pins,
   known,
-  scanned,
-  home,
+  tree,
+  flat = false,
 }: {
   tabs: readonly Tab[];
   pins: readonly Pin[];
   known: readonly Known[];
-  scanned: string | null;
-  home: string;
+  tree: readonly Row[];
+  flat?: boolean;
 }): Group[] {
   const pinned = new Set(pins.map((pin) => pin.path));
   const knownOf = new Map(known.map((k) => [k.path, k]));
@@ -120,35 +128,96 @@ export function groupsOf({
     })
     .sort(byName);
   for (const row of pinnedRows) shown.add(row.path);
-  const rowOf = (k: Known): Row => ({
-    name: k.name,
-    path: k.path,
-    repository: true,
-    ...checkout(k),
-    ...(k.opened ? { opened: k.opened } : {}),
-    ...(k.found ? { found: true as const } : {}),
-  });
   const opened = known
     .filter((k) => k.opened && !shown.has(k.path))
-    .map(rowOf)
+    .map((k): Row => ({
+      name: k.name,
+      path: k.path,
+      repository: true,
+      ...checkout(k),
+      ...(k.opened ? { opened: k.opened } : {}),
+      ...(k.found ? { found: true as const } : {}),
+    }))
     .sort((a, b) => (b.opened ?? '').localeCompare(a.opened ?? ''));
   for (const row of opened) shown.add(row.path);
-  const found = known
-    .filter((k) => k.found && !shown.has(k.path))
-    .map(rowOf)
-    .sort(byPath);
+  const homeGroup = flat
+    ? group(
+        'home',
+        'Home',
+        'by path',
+        tree.filter((row) => !shown.has(row.path)).sort(byPath),
+        HOME_LIMIT,
+      )
+    : group('home', 'Home', 'its folders', [...tree]);
   return [
     group('running', 'Running', 'by name, as the tabs', running),
     group('pinned', 'Pinned', 'by name', pinnedRows),
     group('opened', 'Opened before', 'last opened first', opened),
-    group(
-      'found',
-      scanned ? `Found in ${shownPath(scanned, home)}` : 'Found',
-      'by path',
-      found,
-      FOUND_LIMIT,
-    ),
+    homeGroup,
   ];
+}
+
+/**
+ * Home's folders as rows (decision 926): a repository (one the nexus knows, runs, pinned or a
+ * listing marked) with its Symbiote, its pin and what is known of it; a tree's depth and state.
+ */
+export function homeRows(
+  /** The tree's folders shown, or (a search, flat) only their paths. */
+  folders: readonly (ShownFolder | { path: string })[],
+  {
+    tabs,
+    pins,
+    known,
+    listed = new Map(),
+  }: {
+    tabs: readonly Tab[];
+    pins: readonly Pin[];
+    known: readonly Known[];
+    /** Folders read by a listing (a folder the scan did not read, opened): their repositories. */
+    listed?: ReadonlyMap<string, Folder>;
+  },
+): Row[] {
+  const knownOf = new Map(known.map((k) => [k.path, k]));
+  const pinOf = new Map(pins.map((pin) => [pin.path, pin]));
+  const tabOf = new Map(
+    tabs
+      .filter((tab): tab is Tab & { url: string } => tab.url !== null)
+      .map((tab) => [tab.root, tab]),
+  );
+  return folders.map((folder): Row => {
+    const { path } = folder;
+    const k = knownOf.get(path);
+    const pin = pinOf.get(path);
+    const tab = tabOf.get(path);
+    const listing = listed.get(path);
+    const repository = !!(tab || k || pin?.repository || listing?.repository);
+    const from =
+      tab !== undefined
+        ? tab.branch !== null
+          ? { branch: tab.branch }
+          : tab.head
+            ? { detached: tab.head }
+            : {}
+        : checkout(k ?? listing ?? pin ?? {});
+    return {
+      name: path.slice(path.lastIndexOf('/') + 1),
+      path,
+      repository,
+      ...(repository ? from : {}),
+      ...(tab ? { tab } : {}),
+      ...(pin ? { pinned: true as const } : {}),
+      ...(k?.opened ? { opened: k.opened } : {}),
+      ...(k?.found ? { found: true as const } : {}),
+      ...('depth' in folder
+        ? {
+            depth: folder.depth,
+            open: folder.open,
+            // A repository is the end of the way down (decision 554).
+            leaf: repository ? true : folder.leaf,
+          }
+        : {}),
+    };
+  });
 }
 
 const checkout = (from: Pick<Folder, 'branch' | 'detached'>) =>
@@ -177,7 +246,7 @@ export function searched(groups: readonly Group[], query: string, home: string):
       const hits = [...g.rows, ...g.rest].filter((row) => holds(shownPath(row.path, home)));
       const named = hits.filter((row) => holds(row.name));
       const ranked = [...named, ...hits.filter((row) => !named.includes(row))];
-      const limit = g.key === 'found' ? FOUND_LIMIT : Infinity;
+      const limit = g.key === 'home' ? HOME_LIMIT : Infinity;
       return { ...group(g.key, g.name, g.order, ranked, limit), all: g.all };
     })
     .filter((g) => g.rows.length > 0);
