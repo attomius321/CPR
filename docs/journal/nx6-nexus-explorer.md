@@ -49,3 +49,4 @@ run, `changes.spec.ts`'s V43 test passing alone (untouched here); the real home 
 Not verified: Symbiote's window opened on a running nexus by a second start (unit-tested with a
 fake window only); a home that hits the 20,000-folder limit (unit-tested with a small limit).
 
+Merged into main (2026-11-06).

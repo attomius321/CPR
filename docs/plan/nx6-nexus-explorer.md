@@ -2,7 +2,7 @@
 
 [Index](../PLAN.md) · [Journal](../journal/nx6-nexus-explorer.md)
 
-**Status:** built (2026-11-05) on branch `feature/nx6-nexus-explorer` (the workspace's, from
+**Status:** merged into `main` on 2026-11-06; built (2026-11-05) on branch `feature/nx6-nexus-explorer` (the workspace's, from
 `main` at `cb11e09`); the person OK'd this plan on 2026-11-05 with the port 7347, home only, a
 question before `git init` and no first commit, and the guard outside home. NX6a–e built; "As
 built" and results at the end.

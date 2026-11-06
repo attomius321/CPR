@@ -143,7 +143,7 @@ Start again); NX2c the e2e in the window, the look, the numbers, the docs.
 | 540 | What it shows | **Folders only, repositories marked by their `.git` (worktrees count), hidden ones left out, 1,000 at most; places: home, the Symbiotes' folder, `/`, WSL's drives** (the person: "Only folders atm") | A Symbiote opens on a folder; listing one costs 2–38 ms here |
 | 541 | How a Symbiote starts, and how long it lives | **This checkout's `symbiote view --no-open`, by the nexus's node, detached, output to `<cache>/nexus/<pid>.log`; started once its record appears; it outlives the nexus** (the person: "Yes") | The record is NX1's contract; an agent at work keeps working when the nexus closes |
 | 542 | Stopping | **Every Symbiote, after a question; SIGTERM to a live record's process only** (the person: the recommendation) | What Ctrl+C does; a pid from the page is never trusted |
-| 543 | What the nexus may do (decision 526 widened) | **Read records, statuses and folder names; start and stop `symbiote view`; never write in a folder; writes only same-origin JSON with `x-symbiote: 1`** | Starting is asked for; the viewer's server guards its writes so |
+| 543 | What the nexus may do (decision 526 widened) *(partly superseded by 928 of NX6)* | **Read records, statuses and folder names; start and stop `symbiote view`; never write in a folder; writes only same-origin JSON with `x-symbiote: 1`** | Starting is asked for; the viewer's server guards its writes so |
 
 **Not in NX2 (later)**: files in the listing; a `symbiote view` run in a terminal opening as a
 nexus tab instead of its own window; `git init` on a plain folder; `symbiote pr` from the nexus;

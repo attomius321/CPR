@@ -147,7 +147,7 @@ the real run.
 
 | # | Question | Decision | Why |
 |---|---|---|---|
-| 236 | Git history for Claude Code | **Bash through Symbiote's PreToolUse gate**: git read commands it parses allowed, every other command and tool denied, in `dontAsk` | Allow rules match `git log --output=<file>`; Claude Code's read-only set refused `git log -S`; without git 0 of 3 answers named a commit, with it 3 of 3 (18 commits), in 4–6 turns instead of 9–10 |
+| 236 | Git history for Claude Code *(partly superseded by 917 of NU9)* | **Bash through Symbiote's PreToolUse gate**: git read commands it parses allowed, every other command and tool denied, in `dontAsk` | Allow rules match `git log --output=<file>`; Claude Code's read-only set refused `git log -S`; without git 0 of 3 answers named a commit, with it 3 of 3 (18 commits), in 4–6 turns instead of 9–10 |
 | 237 | One conversation or one per question | **One per repository, kept and resumed**; New conversation starts over | A follow-up needs the last answer; it read 86 % from the cache (11.2K of 13.0K tokens); a fresh one pays 9.9K and starts blind |
 | 238 | Symbiote's agent hooks | **None that record**: the state from `claude agents` by ID (Codex: its app server); the sidenav shows working and answered | `working`/`busy` then `done`/`idle` 1–3 s after an answer; nothing asks in `dontAsk`; Scout has no thread to show. The gate is its only hook |
 | 239 | How Scout's session is found | **The new background session named Scout in the checkout, then its recorded ID; never by path** | `--bg` ignores `--session-id` and its text is not parsed (V18); by path the person's own session there would be taken |

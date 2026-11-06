@@ -150,7 +150,7 @@ docs.
 |---|---|---|---|
 | 617 | What is pinned | **Folders and repositories, in Folders' places card under Pinned, after the places the nexus finds, in the order pinned** (the person: "Folders") | The places are what the person jumps from; home keeps its place at the top |
 | 618 | Where pins are kept | **`nexus.json` in Symbiote's settings folder, read with each listing, written by `POST /api/pinned` with decision 543's guard** | A new port at each run empties a page's storage; the cache is for what can be rebuilt |
-| 619 | What a pin's click does | **Shows it: a folder listed, a repository picked in the folder holding it; nothing starts** (the person: "Wait for my start") | A start is the person's: 229 MB a Symbiote here |
+| 619 | What a pin's click does *(partly superseded by 927 of NX6)* | **Shows it: a folder listed, a repository picked in the folder holding it; nothing starts** (the person: "Wait for my start") | A start is the person's: 229 MB a Symbiote here |
 | 620 | Where the person pins | **The listed folder from its head, a repository from its card's corner, an unpin on a pin's row; none on a folder's row** (the person: "As you wish") | A repository is never listed (554); a folder is one click from its head; a gone folder needs a way out |
 
 **Not in NX4 (later)**: dragging pins to reorder them (unpin and pin again moves one to the end);
