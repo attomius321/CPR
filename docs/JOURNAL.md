@@ -427,3 +427,4 @@ merge commit.
 - 2026-11-04 [NU9 — the shell's reads and the network's](journal/nu9-nucleus-read-commands.md)
 - 2026-11-05 [NX6 spike — home, Windows' drives, a repository with no commit](journal/nx6-nexus-explorer.md)
 - 2026-11-05 [NX6 — the port, home's tree, `git init`](journal/nx6-nexus-explorer.md)
+- 2026-11-06 [Improvement audit — every app checked, what to improve](journal/chore-improvement-audit.md)

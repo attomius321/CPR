@@ -368,3 +368,4 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
 | Fix | Security and bugs: saves at once, forge tokens, framing, agents' `--`, Scout's gate, cross-site GETs, 400 and 413 | ✅ | | [journal](journal/fix-security-and-bugs.md) |
+| Chore | Improvement audit: every app and page verified on `main` (checks, both themes, real graphs, the CLI, MCP, nexus, window, install, logs), 43 numbered findings with their evidence, a top 10 | ready for review | | [journal](journal/chore-improvement-audit.md) |
