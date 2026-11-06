@@ -88,6 +88,10 @@ loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 | [D2b](plan/d2b-review-time-findings.md) | Findings at review time, on every push (spike) | proposed | | |
 | [D2c](plan/d2c-review-graph.md) | Is the review graph right, and does it lead to the problems? (spike) | proposed | | |
 | [D3](plan/d3-true-warnings.md) | True warnings: orphans, users that use the change, compatibility | proposed | | |
+| [Fix](plan/fix-test-cache-leak.md) | Tests analyze in a cache of their own; orphaned analysis slots are pruned | planned | | |
+| [Fix](plan/fix-path-with-space.md) | Changed lines of a path with a space | planned | | |
+| [Fix](plan/fix-pnpm-flow-workspace.md) | pnpm-workspace.yaml in flow style | planned | | |
+| [Fix](plan/fix-code-point-order.md) | Graph order by code point, not by locale | planned | | |
 
 ### Framework plugins
 
@@ -107,6 +111,9 @@ loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 | [I1–I2](plan/roadmap.md#phase-4-milestones-interdiff) | Phase 4: interdiff | ✅ | | [journal](journal/phase-4-interdiff.md) |
 | [C1–C2](plan/roadmap.md#phase-5-milestones-ci-both-forges) | Phase 5: CI on both forges | ✅ | | [journal](journal/phase-5-ci.md) |
 | [C3](plan/roadmap.md) | GitHub annotations | proposed | | |
+| [Chore](plan/chore-repository-address.md) | The repository's address in the README, the Action and the GitLab template | planned | | |
+| [Chore](plan/chore-action-in-ci.md) | The Action's script and the GitLab template run in CI | planned | | |
+| [Chore](plan/chore-ci-versions.md) | The Action and the GitLab template take Symbiote's pnpm and Node versions, and a pinned ref | planned | | |
 
 ### The graph and its diff
 
@@ -120,6 +127,8 @@ loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 | [V8](plan/v8-smooth-viewer.md) | A smooth viewer | ✅ | 37–41 | [journal](journal/v8-smooth-viewer.md) |
 | [V12](plan/v12-open-in-vscode.md) | Open in VS Code | ✅ | 60–64 | [journal](journal/v12-open-in-vscode.md) |
 | Fix | `open-pr.spec.ts`: two opens raced to VS Code's log; the spec waits for each | ✅ | | [journal](journal/fix-open-pr-spec-race.md) |
+| [Fix](plan/fix-graph-file-check.md) | A file that is not a graph says so; an error boundary around each page | planned | | |
+| [V96](plan/v96-map-labels.md) | Project names never cover file names on the map | planned | 938–939 | [journal](journal/v96-map-labels.md) |
 
 ### History
 
@@ -153,6 +162,8 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [V17](plan/v17-approve-means-merge.md) | Approve means "merge it" | ✅ | 82–87 | [journal](journal/v17-approve-means-merge.md) |
 | [V60](plan/v60-files-page.md) | A Files page in the review, the default: the changed files, a file's diff, comments on its lines | ✅ | 431–436 | [journal](journal/v60-files-page.md) |
 | [V76](plan/v76-review-tab-layout.md) | The Review tab in sections — comments, your review, the merge — and a Merge into that fits the sidebar; Files and Graph that stay put | ✅ | 557–560, 568 | [journal](journal/v76-review-tab-layout.md) |
+| [Fix](plan/fix-review-hint-wrap.md) | The review's comment hint keeps "(c)." on one line | planned | | |
+| [Fix](plan/fix-finding-counts.md) | A diff's head and its Findings tab count the same findings | planned | | |
 
 ### Workspaces
 
@@ -193,6 +204,7 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [V83](plan/v83-workspace-running-model.md) | What a workspace's agent runs on — its model and effort, read back from the session — in its head and on its card; a card's state on one line | ✅ | 659–664 | [journal](journal/v83-workspace-running-model.md) |
 | [V84](plan/v84-activity-export.md) | Export activity: a workspace's or Nucleus's as Markdown (or JSON Lines), from the tab, `symbiote activity` or the MCP | ✅ | 668–672 | [journal](journal/v84-activity-export.md) |
 | [V94](plan/v94-push-not-polling.md) | Push instead of polling: one server-sent stream per browser, the whole state then what changed; reviews cached; terminals on the stream; changes from files, hooks, Claude Code's list and Codex's server | ✅ | 897–907 | [journal](journal/v94-push-not-polling.md) |
+| [Fix](plan/fix-history-empty-indent.md) | History's empty state: both lines at one indent | planned | | |
 
 ### Agents
 
@@ -241,6 +253,7 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [AR2](plan/ar2-defaults-from-ar1.md) | The changes AR1 found: the journal merged as a union, Hive's check messages, the spike's answer kept, who sent a message in the record, a failed merge check sent to the agent, the flaky e2e tests | ✅ | 738–744 | [journal](journal/ar2-defaults-from-ar1.md) |
 | [NU8](plan/nu8-start-without-confirm.md) | A setting, off by default: Nucleus starts workspaces without the person's Confirm; on while Hive is on; every other asked tool still waits; recorded | ✅ | 782–787 | [journal](journal/nu8-start-without-confirm.md) |
 | [NU9](plan/nu9-nucleus-read-commands.md) | Nucleus's and Alpha Ceph's read commands: the shell's reads (`cat`, `grep`, `sed -n`, `find`, `jq`…) joined and piped, on the checkout and the open worktrees only; with the web on, `curl` GET, `gh`'s reads and `git ls-remote` | ✅ | 917–922 | [journal](journal/nu9-nucleus-read-commands.md) |
+| [Fix](plan/fix-mcp-annotations.md) | MCP tools say which are read-only and refuse unknown arguments | planned | | |
 
 ### The merger
 
@@ -259,6 +272,13 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [V67](plan/v67-merge-strategies.md) | Merge strategies: a merge commit, or a fast-forward to the approved commit | ✅ | 485–489 | [journal](journal/v67-merge-strategies.md) |
 | [V69](plan/v69-merge-page-mockup.md) | The merge page as the person's mockup, in the theme: tinted chips with icons, the log a card filling the page, line tabs | ✅ | 494–497 | [journal](journal/v69-merge-page-mockup.md) |
 | Fix | a failed merge's workspace is its own card again; Send to the agent opens it; the merge page links its branch to it | ✅ | | [journal](journal/fix-failed-merge-hides-workspace.md) |
+| [Fix](plan/fix-merger-check-group.md) | The merger's check runs in a process group: stopped at its timeout and with Symbiote | planned | | |
+| [Fix](plan/fix-pid-lock.md) | One pid lock that cannot be taken twice: the merge queue, Hive, analysis slots | planned | | |
+| [Fix](plan/fix-network-timeouts.md) | Timeouts on forge calls and the merger's push | planned | | |
+| [Fix](plan/fix-merge-failure-reason.md) | A failed merge says why, in its record and its log line | planned | | |
+| [Fix](plan/fix-merge-help.md) | `symbiote merge --help` names every default target in order | planned | | |
+| [Fix](plan/fix-fast-forward-flake.md) | The fast-forward spec stays "Queued" under load: find why | planned | | |
+| [Fix](plan/fix-landed-merge-group.md) | A landed merge leaves the sidenav's Merging group | planned | | |
 
 ### Shell and look
 
@@ -307,6 +327,17 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | Fix | Whatever is under way moves: the loader arc turns wherever it is drawn (it turned only in a sidenav row), loading lines and busy buttons have it, the review page's bar sweeps, outlines pulse | ✅ | | [journal](journal/fix-static-loadings.md) |
 | Fix | Settings by what is set (This repository, Agents, Prompts in folding groups, This machine, This browser; a filter), and the check set from Settings: one `merge.checks` for the merger and Hive | ✅ | | [journal](journal/fix-settings-page.md) |
 | Fix | The Overview fits the main area and never scrolls as a page: each list scrolls in its card under its head, the inbox (Hive: in flight) keeps its rows first, a column scrolls only when its cards' minimums do not fit | ✅ | | [journal](journal/fix-overview-fits-the-page.md) |
+| [Fix](plan/fix-api-error-page.md) | A server that answers with errors says so; loading words that fit the page | planned | | |
+| [V95](plan/v95-reads-that-fail.md) | Reads and saves that say when they fail | planned | 935–937 | [journal](journal/v95-reads-that-fail.md) |
+| [Fix](plan/fix-server-words.md) | The server's refusals in words, never its JSON | planned | | |
+| [Fix](plan/fix-no-graph-probe.md) | Shell pages stop asking for /api/graph | planned | | |
+| [Chore](plan/chore-style-skill-numbers.md) | The style skill's frame numbers match the tokens | planned | | |
+| [Fix](plan/fix-overview-narrow.md) | The Overview at 1024 px: five figures on one row, every list a row at least | planned | | |
+| [V97](plan/v97-choices-kept.md) | The viewer's choices kept across runs in a browser | planned | 940–941 | [journal](journal/v97-choices-kept.md) |
+| [Fix](plan/fix-hive-focus-ring.md) | Hive's focus ring does not read as an error | planned | | |
+| [Fix](plan/fix-time-formats.md) | Durations in one format across the Overview and the Run tab | planned | | |
+| [V98](plan/v98-pages-on-demand.md) | Pages loaded on demand: a smaller first script | planned | 942–943 | [journal](journal/v98-pages-on-demand.md) |
+| [Chore](plan/chore-react-lint.md) | React's hooks and accessibility lint rules, as warnings first | planned | | |
 
 ### Native window
 
@@ -331,6 +362,11 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | Fix | The nexus's tabs drawn as the viewer's session tabs again (`.workspace-tabs`, `.stab`): since V89 they were the browser's grey buttons, as high as their words, the Symbiotes on a line under Symbiotes | ✅ | | [journal](journal/fix-fix-nexus-top-left.md) |
 | [NX5](plan/nx5-nexus-revamp.md) | Nexus revamp: one search over the repositories the nexus knows, paths that complete, one ordered list and the picked repository's card; only the folder the person chose is scanned | ✅ | 908–916 | [journal](journal/nx5-nexus-revamp.md) |
 | [NX6](plan/nx6-nexus-explorer.md) | Nexus on a fixed port (7347), home scanned and listed as a tree, a selected folder opened or made a repository (`git init`, after a question) | ✅ | 923–929 | [journal](journal/nx6-nexus-explorer.md) |
+| [NX7](plan/nx7-nexus-write-secret.md) | The nexus's writes behind a per-run secret | planned | 933–934 | [journal](journal/nx7-nexus-write-secret.md) |
+| [Fix](plan/fix-head-request.md) | symbiote view answers HEAD; opening a nexus tab logs no 405 | planned | | |
+| [Fix](plan/fix-nexus-theme.md) | The nexus in a browser follows the system's theme | planned | | |
+| [Fix](plan/fix-nexus-repository-root.md) | A slow or refused git never reads as "no repository" in the nexus | planned | | |
+| [Chore](plan/chore-nexus-keys-doc.md) | commands.md: Enter on a nexus folder | planned | | |
 
 ### Repository monitoring
 
@@ -338,6 +374,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 |---|---|---|---|---|
 | [RM1](plan/rm1-code-concentration.md) | Code concentration: where a repository's code is | ✅ | 320–328 | [journal](journal/rm1-code-concentration.md) |
 | [RM2](plan/rm2-monitor-styling.md) | The Monitor's look: long files in heat, the folder in view as the heading, a way back | ✅ | 332–335 | [journal](journal/rm2-monitor-styling.md) |
+| [Fix](plan/fix-monitor-sentence.md) | The Monitor's sentence on a small repository | planned | | |
 
 ### Logs
 
@@ -362,6 +399,14 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | Fix | `mark-merged.mjs`: a row with no plan waits for every branch its journal names; a journal's last line is its last entry's | ✅ | | [journal](journal/fix-mark-merged-shared-journals.md) |
 | [Chore](plan/chore-living-docs.md) | Living docs: a page per area of what holds now (Reviews and The merger first), replaced decisions marked on both rows, a register of every decision; merged branches deleted, unmerged ones kept as `archive/` tags | ✅ | 776–781 | [journal](journal/chore-living-docs.md) |
 | Chore | Living docs' gaps: a root `AGENTS.md` for Codex and Hermes; a decision lookup that finds its replacement before `consolidate.mjs` marks it; a note for an area page whose code changed after it; Prettier leaves Symbiote's local files out | ✅ | | [journal](journal/chore-living-docs-gaps.md) |
+| [Fix](plan/fix-ci-green.md) | CI green again: the review-place test's git identity, lint's heap on macOS | planned | | |
+| [Chore](plan/chore-keys-v.md) | The `v` key in commands.md's keys table | planned | | |
+| [Chore](plan/chore-dependency-bumps.md) | Electron 44.9.1 and the patch bumps; the majors listed | planned | | |
+| [Fix](plan/fix-macos-install.md) | ./install.sh on macOS: the app step skipped with a note | planned | | |
+| [Refactor](plan/refactor-cli-services.md) | The CLI's four large closures in services with an explicit context | planned | | |
+| [Chore](plan/chore-e2e-waits.md) | e2e specs poll instead of fixed waits | planned | | |
+| [Chore](plan/chore-env-docs.md) | configuration.md lists every variable Symbiote reads | planned | | |
+| [Chore](plan/chore-package-claude-md.md) | The packages' CLAUDE.md files name what they hold | planned | | |
 
 ### Across the app
 
@@ -369,3 +414,9 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 |---|---|---|---|---|
 | Fix | Security and bugs: saves at once, forge tokens, framing, agents' `--`, Scout's gate, cross-site GETs, 400 and 413 | ✅ | | [journal](journal/fix-security-and-bugs.md) |
 | Chore | Improvement audit: every app and page verified on `main` (checks, both themes, real graphs, the CLI, MCP, nexus, window, install, logs), 43 numbered findings with their evidence, a top 10 | ready for review | | [journal](journal/chore-improvement-audit.md) |
+| [SC1](plan/sc1-local-write-secret.md) | A per-run secret for symbiote view's writes, the Confirm and Nucleus's identity | planned | 930–932 | [journal](journal/sc1-local-write-secret.md) |
+| [Fix](plan/fix-view-help.md) | `symbiote view --help` and `symbiote --help` name the Overview | planned | | |
+| [Fix](plan/fix-cli-usage-errors.md) | A mistyped option prints its error and where help is, not the whole help | planned | | |
+| [Refactor](plan/refactor-network-shapes.md) | Shape checks where JSON enters: forge answers, SSE, the viewer's reads | planned | | |
+| [Chore](plan/chore-risky-module-tests.md) | Tests of their own for the merge queue, runShell, core's merging and the Codex and Hermes runners | planned | | |
+| [Chore](plan/chore-verify-review-findings.md) | Verify the code reviews' unchecked findings, one failing test each | planned | | |

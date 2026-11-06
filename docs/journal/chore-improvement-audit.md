@@ -574,3 +574,128 @@ Ranked by value for the work; each could be one fix, chore or milestone.
 
 Next after these: electron ≥ 44.9.1 and the patch bumps (R4), the macOS install (I1), MCP
 annotations (S8), and the fast-forward flake (S9).
+
+## Plans for each finding (2026-11-06, branch `chore/improvement-audit`)
+
+Asked next: "make a separate plan for each problem your report found, one plan per problem, in
+the report's ranked order", each one a workspace can start from. There are 51 plans:
+- **Order**: the top 10 first, split into one plan per finding, then "next after these", then the
+  rest in the report's order.
+- **Split items**: V11's five small items have a plan each, and so do the four docs items.
+- **Not planned**: D1 (nothing found) and I3 (it is S7).
+- **Unverified claims**: the code reviews' unchecked findings share one plan (P51) that proves or
+  refutes each with a failing test.
+
+Six plans are milestones, with free IDs and decisions checked on `main`, all 30 branches and both
+worktrees: SC1 (930–932), NX7 (933–934), V95 (935–937), V96 (938–939), V97 (940–941) and
+V98 (942–943). The rest are fixes, chores and refactors in `docs/plan/fix-*.md`, `chore-*.md` and
+`refactor-*.md`. Each plan opens with its brief (what happens or what to change, where to look,
+out of scope, done when), then gives the evidence, the approach, the tests to write first, how to
+verify it, and its size. Each has a `planned` row in its area of the index. Nothing was fixed.
+
+| # | Finding | Kind | Plan | Branch | Size | Depends on |
+|---|---|---|---|---|---|---|
+| P01 | R1 | fix | [CI green again: the review-place test's git identity, lint's heap on macOS](../plan/fix-ci-green.md) | `fix/ci-green` | S |  |
+| P02 | R2 | chore | [The repository's address in the README, the Action and the GitLab template](../plan/chore-repository-address.md) | `chore/repository-address` | S | — (the person decides: rename the GitHub repo or change the 4 places) |
+| P03 | R5 | chore | [The Action's script and the GitLab template run in CI](../plan/chore-action-in-ci.md) | `chore/action-in-ci` | M | P01, P02 |
+| P04 | S1 | SC1 | [A per-run secret for symbiote view's writes, the Confirm and Nucleus's identity](../plan/sc1-local-write-secret.md) | `feature/sc1-local-write-secret` | M | — ; decisions 930–932 |
+| P05 | N4 | NX7 | [The nexus's writes behind a per-run secret](../plan/nx7-nexus-write-secret.md) | `feature/nx7-nexus-write-secret` | M | P04 (same scheme, built after it); decisions 933–934 |
+| P06 | V1 | fix | [A file that is not a graph says so; an error boundary around each page](../plan/fix-graph-file-check.md) | `fix/graph-file-check` | M |  |
+| P07 | V2 | fix | [A server that answers with errors says so; loading words that fit the page](../plan/fix-api-error-page.md) | `fix/api-error-page` | S | build before or after P18, not at once (both in useDiffGraph.ts) |
+| P08 | V4 | V95 | [Reads and saves that say when they fail](../plan/v95-reads-that-fail.md) | `feature/v95-reads-that-fail` | M | P09 first (serverWords in getJson); decisions 935–937 |
+| P09 | V5 | fix | [The server's refusals in words, never its JSON](../plan/fix-server-words.md) | `fix/server-words` | S |  |
+| P10 | R3 | fix | [Tests analyze in a cache of their own; orphaned analysis slots are pruned](../plan/fix-test-cache-leak.md) | `fix/test-cache-leak` | M |  |
+| P11 | S2 | fix | [The merger's check runs in a process group: stopped at its timeout and with Symbiote](../plan/fix-merger-check-group.md) | `fix/merger-check-group` | S |  |
+| P12 | S3 | fix | [One pid lock that cannot be taken twice: the merge queue, Hive, analysis slots](../plan/fix-pid-lock.md) | `fix/pid-lock` | S |  |
+| P13 | S4 | fix | [Timeouts on forge calls and the merger's push](../plan/fix-network-timeouts.md) | `fix/network-timeouts` | S |  |
+| P14 | S7 | fix | [A failed merge says why, in its record and its log line](../plan/fix-merge-failure-reason.md) | `fix/merge-failure-reason` | S |  |
+| P15 | C1 | fix | [Changed lines of a path with a space](../plan/fix-path-with-space.md) | `fix/path-with-space` | S |  |
+| P16 | C2 | fix | [pnpm-workspace.yaml in flow style](../plan/fix-pnpm-flow-workspace.md) | `fix/pnpm-flow-workspace` | S |  |
+| P17 | C3 | fix | [Graph order by code point, not by locale](../plan/fix-code-point-order.md) | `fix/code-point-order` | S |  |
+| P18 | V3 | fix | [Shell pages stop asking for /api/graph](../plan/fix-no-graph-probe.md) | `fix/no-graph-probe` | S | not at once with P07 (same hook) |
+| P19 | N2 | fix | [symbiote view answers HEAD; opening a nexus tab logs no 405](../plan/fix-head-request.md) | `fix/head-request` | S |  |
+| P20 | V9 | fix | [History's empty state: both lines at one indent](../plan/fix-history-empty-indent.md) | `fix/history-empty-indent` | S |  |
+| P21 | V8 | fix | [The review's comment hint keeps "(c)." on one line](../plan/fix-review-hint-wrap.md) | `fix/review-hint-wrap` | S |  |
+| P22 | N1 | fix | [The nexus in a browser follows the system's theme](../plan/fix-nexus-theme.md) | `fix/nexus-theme` | S | — (P33 later may share the choice) |
+| P23 | S5 | fix | [`symbiote view --help` and `symbiote --help` name the Overview](../plan/fix-view-help.md) | `fix/view-help` | S |  |
+| P24 | S6 | fix | [`symbiote merge --help` names every default target in order](../plan/fix-merge-help.md) | `fix/merge-help` | S |  |
+| P25 | docs v key | chore | [The `v` key in commands.md's keys table](../plan/chore-keys-v.md) | `chore/keys-v` | S |  |
+| P26 | docs style skill | chore | [The style skill's frame numbers match the tokens](../plan/chore-style-skill-numbers.md) | `chore/style-skill-numbers` | S |  |
+| P27 | V6 | fix | [The Overview at 1024 px: five figures on one row, every list a row at least](../plan/fix-overview-narrow.md) | `fix/overview-narrow` | S |  |
+| P28 | V7 | V96 | [Project names never cover file names on the map](../plan/v96-map-labels.md) | `feature/v96-map-labels` | M | —; decisions 938–939 |
+| P29 | R4 | chore | [Electron 44.9.1 and the patch bumps; the majors listed](../plan/chore-dependency-bumps.md) | `chore/dependency-bumps` | S |  |
+| P30 | I1 | fix | [./install.sh on macOS: the app step skipped with a note](../plan/fix-macos-install.md) | `fix/macos-install` | S |  |
+| P31 | S8 | fix | [MCP tools say which are read-only and refuse unknown arguments](../plan/fix-mcp-annotations.md) | `fix/mcp-annotations` | S |  |
+| P32 | S9 | fix | [The fast-forward spec stays "Queued" under load: find why](../plan/fix-fast-forward-flake.md) | `fix/fast-forward-flake` | S–M |  |
+| P33 | V10 | V97 | [The viewer's choices kept across runs in a browser](../plan/v97-choices-kept.md) | `feature/v97-choices-kept` | M | —; decisions 940–941 |
+| P34 | V11 Monitor sentence | fix | [The Monitor's sentence on a small repository](../plan/fix-monitor-sentence.md) | `fix/monitor-sentence` | S |  |
+| P35 | V11 counts | fix | [A diff's head and its Findings tab count the same findings](../plan/fix-finding-counts.md) | `fix/finding-counts` | S |  |
+| P36 | V11 landed merge | fix | [A landed merge leaves the sidenav's Merging group](../plan/fix-landed-merge-group.md) | `fix/landed-merge-group` | S |  |
+| P37 | V11 Hive ring | fix | [Hive's focus ring does not read as an error](../plan/fix-hive-focus-ring.md) | `fix/hive-focus-ring` | S |  |
+| P38 | V11 time formats | fix | [Durations in one format across the Overview and the Run tab](../plan/fix-time-formats.md) | `fix/time-formats` | S |  |
+| P39 | V12 | V98 | [Pages loaded on demand: a smaller first script](../plan/v98-pages-on-demand.md) | `feature/v98-pages-on-demand` | M | —; decisions 942–943 |
+| P40 | S10 | fix | [A mistyped option prints its error and where help is, not the whole help](../plan/fix-cli-usage-errors.md) | `fix/cli-usage-errors` | S |  |
+| P41 | N3 | fix | [A slow or refused git never reads as "no repository" in the nexus](../plan/fix-nexus-repository-root.md) | `fix/nexus-repository-root` | S |  |
+| P42 | N5 | chore | [commands.md: Enter on a nexus folder](../plan/chore-nexus-keys-doc.md) | `chore/nexus-keys-doc` | S |  |
+| P43 | I2 | chore | [The Action and the GitLab template take Symbiote's pnpm and Node versions, and a pinned ref](../plan/chore-ci-versions.md) | `chore/ci-versions` | S | P02 |
+| P44 | Q1 | refactor | [The CLI's four large closures in services with an explicit context](../plan/refactor-cli-services.md) | `refactor/cli-services` | L | after P04, P11–P14, P31 (they edit server.ts, merges.ts, mcp.ts) |
+| P45 | Q2 | refactor | [Shape checks where JSON enters: forge answers, SSE, the viewer's reads](../plan/refactor-network-shapes.md) | `refactor/network-shapes` | M | P06, P08, P13 |
+| P46 | Q3 | chore | [React's hooks and accessibility lint rules, as warnings first](../plan/chore-react-lint.md) | `chore/react-lint` | S | P01 |
+| P47 | Q4 | chore | [e2e specs poll instead of fixed waits](../plan/chore-e2e-waits.md) | `chore/e2e-waits` | S |  |
+| P48 | Q5 | chore | [Tests of their own for the merge queue, runShell, core's merging and the Codex and Hermes runners](../plan/chore-risky-module-tests.md) | `chore/risky-module-tests` | S | overlaps P11, P12 (their failing tests first) |
+| P49 | docs env vars | chore | [configuration.md lists every variable Symbiote reads](../plan/chore-env-docs.md) | `chore/env-docs` | S |  |
+| P50 | docs CLAUDE.md | chore | [The packages' CLAUDE.md files name what they hold](../plan/chore-package-claude-md.md) | `chore/package-claude-md` | S |  |
+| P51 | reviews' unchecked findings | chore | [Verify the code reviews' unchecked findings, one failing test each](../plan/chore-verify-review-findings.md) | `chore/verify-review-findings` | M |  |
+
+**Dependencies.** Most plans stand alone. These do not:
+- **P03** (the Action in CI) needs P01 (CI green) and P02 (the address).
+- **P05** (NX7) reuses P04's (SC1) secret: build SC1 first.
+- **P08** (V95) builds on P09 (`serverWords` in `getJson`).
+- **P07 and P18** both change `useDiffGraph.ts`: one after the other, either order.
+- **P43** (the CI versions) follows P02.
+- **P44** (the CLI refactor) starts after P04, P11–P14 and P31 have landed. They edit `server.ts`,
+  `merges.ts` and `mcp.ts`, which it moves.
+- **P45** (shape checks) follows P06, P08 and P13.
+- **P48** (risky-module tests) overlaps P11 and P12: their failing tests come first there.
+- **P22** (the nexus theme) may later share P33's (V97) kept choices; it does not wait for it.
+- **P46** (React lint rules) follows P01: more lint plugins need more of the heap that macOS's lint
+  already runs out of.
+
+**What reading the code for the plans changed in the report.** The report above stays as written;
+each plan says the corrected version.
+
+- **R1 (P01)**: the test helper `createRepo` (`core/test/helpers/git-repo.ts`) sets the email only
+  for its own git calls and writes no `user.email` into the repository. The CLI then reads the
+  global config, which a runner lacks.
+- **R3 (P10)**: `plugins.test.ts` is the only test calling `analyzeGit` without a cache, twice: the
+  2 folders a run. One repository has five slot sets under one hash, one per worktree name.
+- **S1 (SC1)**: a per-run secret only raises the bar against a process running as the same user;
+  decision 932 says so. The agents' hook route (`/api/events/ping`) must stay open.
+- **S3 (P12)**: core's `isStale` already counts an empty lock as held for 60 s. Only the merge
+  queue and Hive have the empty-file race; core has only the two-recoverers race.
+- **S7 (P14)**: the merge record does keep a failed check's reason (`check.failed`, `check.output`,
+  `merges.ts:678-690`). Only the log line drops it.
+- **S9 (P32)**: a lead. Land re-queues the entry and calls `kick()`, and a drain that finds the
+  queue lock held returns with no retry (`merges.ts:1073-1074`, `:1203-1204`).
+- **C3 (P17)**: comparing by code point would reorder ASCII paths too (`a.ts`, `B.ts`). The plan
+  uses a fixed `Intl.Collator('en')`, so graphs stay identical to `main` under `en_US`.
+- **V6 (P27)**: the cause is `figures.css:11`, `minmax(176px, 1fr)`. Five figures need 880 px, and
+  the main area is about 764 px at 1024.
+- **V11**:
+  - The Monitor's "50 %" is a share of the files, not of the lines (`codemap.ts:198`); P34
+    rewrites it as "N of M files".
+  - The head's error and warning pills are decision 839's; P35 adds a quiet "· N info" instead
+    of a pill.
+- **N1 (P22)**: a `system` default would replace decision 179 (dark by default). The plan adds a
+  theme choice to the nexus, which keeps it, since NX6 gave the nexus a fixed origin.
+- **S5 (P23)**: `cli/test/main.test.ts:41-52` pins the stale "opens on Git" text.
+- **Q4 (P47)**: `edges.spec.ts:126,147` are deliberate "nothing changes" windows, not races.
+- **P26**: the style skill has two more stale numbers: the title at x 52 (56) and the cards from
+  y 64 (72).
+- **Not in the report, found while planning**:
+  - The root `CLAUDE.md` never names `packages/desktop` (P50).
+  - The core review's three other items are not in P51's list, because the report's
+    "not checked" section left them out:
+    - Codex's sandbox and packed refs
+    - a top-level `..foo` folder
+    - a strict-JSON `angular.json`
