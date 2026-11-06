@@ -7,11 +7,12 @@ import type { Log } from '@symbiote/log';
 import { findApp, openAppWindow, openUrl, type AppWindow } from './app-window.js';
 import { checkoutsOf } from './checkouts.js';
 import { folders, repositoryRoot, windowsDrives } from './folders.js';
+import { opener } from './init.js';
 import { history } from './opened.js';
 import { cacheDir, isRunning, readRecords } from './registry.js';
 import { configDir } from './config-dir.js';
 import { pins, PINS_FILE } from './pins.js';
-import { knownRepositories, scanSummary } from './repositories.js';
+import { knownRepositories, scanSummary, scanTree } from './repositories.js';
 import { scanner } from './scan.js';
 import { startNexusServer } from './server.js';
 import { starter } from './start.js';
@@ -35,27 +36,38 @@ export interface NexusContext {
   waitForExit: () => Promise<void>;
   /** Symbiote's logs (LG1); without it, nothing is written. */
   log?: Log;
+  /** The person's home, scanned (decision 925): the process's own by default. */
+  home?: string;
 }
 
 const HELP = `Usage: symbiote-nexus [options]
 
 Every symbiote view running on this machine, as tabs in one window: Symbiote's
 window when the desktop app is set up, else the browser. Pick a tab to work in
-that Symbiote; the ones opened stay loaded. Folders shows this PC's folders:
-open a Symbiote in any repository there. Symbiotes started so run on after the
-nexus ends; stop one from its row.
+that Symbiote; the ones opened stay loaded. Home's folders are listed as a
+tree, scanned at the start and on the list's scan button: open a Symbiote in a
+repository, or make a folder one (git init, after a question). Symbiotes
+started so run on after the nexus ends; stop one from its card. A second
+symbiote-nexus on the same port opens the one running.
 
 Options:
   --browser      Open a browser tab, not Symbiote's window
   --no-open      Print the address only
-  --port <n>     The port to serve on (default: any free one)
+  --port <n>     The port to serve on (default: 7347; 0: any free one)
   -h, --help     Show this help
 `;
+
+/**
+ * The nexus's port (decision 923): one address to come back to, below every system's range of
+ * ports handed out at random (Linux 32768–60999, Windows and macOS 49152–65535), so no Symbiote's
+ * random port takes it. Tests pass `--port 0`.
+ */
+export const DEFAULT_PORT = 7347;
 
 const OPTIONS = {
   browser: { type: 'boolean', default: false },
   'no-open': { type: 'boolean', default: false },
-  port: { type: 'string', default: '0' },
+  port: { type: 'string', default: String(DEFAULT_PORT) },
   help: { type: 'boolean', short: 'h', default: false },
 } as const;
 
@@ -86,11 +98,11 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
     return usage(ctx, `--port must be a port number, got '${values.port}'`);
   }
   const log = ctx.log?.log;
-  const home = homedir();
+  const home = ctx.home ?? homedir();
   const cache = cacheDir(ctx.env, process.platform, home);
   const probe: Probe = { alive: isRunning, status: (url) => readStatus(url) };
-  // NX5: what the nexus remembers, and the scan of the folder the person chose (decisions 911,
-  // 912), in its cache folder; Symbiote's cache (its worktrees) is never scanned.
+  // What the nexus remembers (NX5, decision 912) and the scan of home (NX6, decision 925), in its
+  // cache folder; Symbiote's cache (its worktrees) is never scanned.
   const opened = history({ file: join(cache, 'nexus', 'opened.json') });
   const live = async () => {
     const running = await liveSymbiotes(readRecords(cache), probe);
@@ -103,9 +115,9 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
   const config = configDir(ctx.env, process.platform, home);
   const kept = pins({ file: join(config, PINS_FILE), home });
   const scans = scanner({
-    folder: () => kept.scanned(),
+    folder: home,
     file: join(cache, 'nexus', 'scan.json'),
-    options: { leaveOut: [cache] },
+    options: { leaveOut: [cache, config] },
   });
   const scanned = async () => {
     const result = await scans.scan();
@@ -118,6 +130,15 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
     }
     return scanSummary(result);
   };
+  const starting = starter({
+    cache,
+    node: process.execPath,
+    script: CLI_SCRIPT,
+    env: ctx.env,
+    probe,
+    repositoryOf: repositoryRoot,
+    ...(log ? { log } : {}),
+  });
   let server;
   try {
     server = await startNexusServer({
@@ -127,52 +148,48 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
         const newest = (await live()).sort((a, b) => b.started.localeCompare(a.started));
         return folders(path, { home, roots: newest.map((symbiote) => symbiote.root), drives });
       },
-      starter: starter({
+      starter: starting,
+      open: opener({
+        home,
         cache,
-        node: process.execPath,
-        script: CLI_SCRIPT,
-        env: ctx.env,
-        probe,
+        config,
+        drives: drives.map((drive) => drive.path),
         repositoryOf: repositoryRoot,
-        ...(log ? { log } : {}),
+        start: (folder) => starting.start(folder),
       }),
       pins: kept,
       repositories: async () => {
-        const [seen, scan, pinned, chosen] = await Promise.all([
+        const [seen, scan, pinned] = await Promise.all([
           opened.read(),
           scans.current(),
           kept.read(),
-          kept.scanned(),
         ]);
         return {
           home,
+          drives: drives.map((drive) => drive.path),
           repositories: await knownRepositories({ opened: seen, scan }),
           pins: pinned,
-          scanned: chosen,
           scan: scanSummary(scan),
         };
       },
       checkouts: (path) => checkoutsOf(path, { leaveOut: [cache] }),
-      scanning: {
-        choose: async (path) => {
-          const answer = await kept.setScanned(path);
-          if ('error' in answer) return answer;
-          return { scan: await scanned() };
-        },
-        again: scanned,
-      },
+      // Home is scanned at the start and on the button, never on a read (decision 925).
+      scanning: { again: scanned, tree: async () => scanTree(await scans.current()) },
       pageDir: PAGE_DIR,
       scriptsDir: SCRIPTS_DIR,
       viewerDir: viewerDir(ctx.env),
       ...(log ? { log } : {}),
     });
   } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'EADDRINUSE') {
+      return alreadyServed(port, values, ctx);
+    }
     ctx.stderr(`symbiote-nexus: ${(error as Error).message}\n`);
     return 1;
   }
   // Written before the address is printed: what waits for that line finds it written.
   log?.info({ url: server.url, cache, node: process.version }, 'nexus started');
-  // The chosen folder scanned again at each start; the last scan answers meanwhile.
+  // Home scanned at each start; the last scan answers meanwhile.
   void scanned().catch((error: unknown) => log?.warn({ err: error }, 'the scan failed'));
   ctx.stdout(`Symbiote nexus: ${server.url}  (Ctrl+C to stop)\n`);
   try {
@@ -182,6 +199,50 @@ export async function run(argv: string[], ctx: NexusContext): Promise<number> {
     log?.info('nexus stopped');
   }
   return 0;
+}
+
+/**
+ * The port is taken (decision 924): a nexus serving there is shown, as a start would show it, and
+ * left running; anything else is named, with the option that chooses another port.
+ */
+async function alreadyServed(
+  port: number,
+  args: { browser: boolean; 'no-open': boolean },
+  ctx: NexusContext,
+): Promise<number> {
+  const url = `http://127.0.0.1:${port}/`;
+  if (!(await isNexus(url))) {
+    ctx.stderr(
+      `symbiote-nexus: port ${port} is in use by another program: choose another with --port <n>\n`,
+    );
+    return 1;
+  }
+  ctx.stdout(`Symbiote nexus already runs at ${url}\n`);
+  if (args['no-open']) return 0;
+  const shown = args.browser ? null : await ctx.openApp?.(url, TITLE);
+  if (shown && 'closed' in shown) {
+    await shown.closed;
+    return 0;
+  }
+  if (shown) {
+    ctx.stderr(
+      `symbiote-nexus: Symbiote's window did not open (${shown.error}); opening the browser\n`,
+    );
+  }
+  ctx.openUrl(url);
+  return 0;
+}
+
+/** Whether a nexus answers at `url`: its `GET /api/nexus`, within a second. */
+async function isNexus(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(new URL('api/nexus', url), { signal: AbortSignal.timeout(1000) });
+    if (!res.ok) return false;
+    const body = (await res.json()) as { nexus?: unknown };
+    return body.nexus === true;
+  } catch {
+    return false;
+  }
 }
 
 /** Shows the page as `symbiote view` shows its own: the app's window, else the browser. */

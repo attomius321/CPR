@@ -423,11 +423,12 @@ as a tab of one window, and starts new ones in any repository on your computer:
 symbiote-nexus
 ```
 
-Its **Symbiotes** page lists every repository it knows: the running ones, the ones you pinned, the
-ones opened before, and the ones found in the one folder you choose for it to look in. Type any
-part of a name or path to find one, or a path starting with `~/` to go through your folders; the
-picked repository's card opens it. Closing the nexus stops no Symbiote, so their agents keep
-working.
+It serves on `http://127.0.0.1:7347/`; running it again opens the one already running. Its
+**Symbiotes** page lists the running repositories, the ones you pinned and the ones opened before,
+then your home's folders as a tree. Type any part of a name or path to find one, or a path starting
+with `~/` to go through your folders. Enter opens the picked one: a repository's Symbiote starts,
+and a folder that is no repository is made one with `git init`, after you say yes. Closing the
+nexus stops no Symbiote, so their agents keep working.
 
 ![Symbiote nexus: four running Symbiotes, pinned repositories and folders in one list, and the picked repository's card beside it](docs/images/nexus.png)
 
@@ -457,7 +458,9 @@ activity and in any exported activity, values of your environment variables name
 tokens by their shape, are replaced with `[redacted]`.
 
 Two more things write elsewhere in the repository. Saving a skill writes in `.claude/skills/`, which
-you commit yourself. Landing a merge moves the branch you have checked out.
+you commit yourself. Landing a merge moves the branch you have checked out. And the nexus runs
+`git init` in a folder you open in it that is no repository yet, after asking you; it makes no
+commit.
 
 Outside the repository, Symbiote writes:
 
@@ -469,7 +472,7 @@ Outside the repository, Symbiote writes:
   running review's throwaway copies are there until the review ends. So is a copy of the script that
   records each agent's thread, about 23 KB for each build of Symbiote;
 - its settings for this machine, `~/.config/symbiote` on Linux: the skill library's folder, the
-  folders you pinned in the nexus and the one it looks in, and whether the intro was seen;
+  folders you pinned in the nexus, and whether the intro was seen;
 - the skill library's skills, when you or Scribe save one. Symbiote commits and pushes the library
   only if Settings says so.
 

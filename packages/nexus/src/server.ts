@@ -7,6 +7,7 @@ import type { FoldersAnswer } from './folders.js';
 import type { Pins } from './pins.js';
 import type { RepositoriesAnswer, Scanning } from './repositories.js';
 import type { Found } from './scan.js';
+import type { OpenAnswer, Opener } from './init.js';
 import type { Starter } from './start.js';
 import type { Symbiote } from './symbiotes.js';
 
@@ -22,6 +23,11 @@ export interface NexusServerOptions {
   folders: (path: string | null) => Promise<FoldersAnswer>;
   /** Starting and stopping `symbiote view` (NX2). */
   starter: Starter;
+  /**
+   * Opening a folder the person selected (NX6, decisions 927, 928): a repository started, a plain
+   * folder offered `git init`, made one when asked.
+   */
+  open: Opener;
   /** The person's pinned folders (NX4): answered with each listing, written by the page. */
   pins: Pins;
   /**
@@ -31,7 +37,7 @@ export interface NexusServerOptions {
   repositories: () => Promise<RepositoriesAnswer>;
   /** A repository's checkouts (NX5, decision 914); null for a folder that is no repository. */
   checkouts: (path: string) => Promise<Found[] | null>;
-  /** Choosing the folder scanned and scanning it again (NX5, decision 911). */
+  /** Home scanned again on the button, and the last scan's tree (NX6, decisions 925, 926). */
   scanning: Scanning;
   /** The page's own files: `index.html`, `nexus.css`, `mark.png` (`packages/nexus/page`). */
   pageDir: string;
@@ -63,16 +69,10 @@ const TYPES: Record<string, string> = {
 const FILE_NAME = /^[\w-][\w.-]*$/;
 
 /**
- * The routes that write: they start or stop a Symbiote (NX2, decision 543), pin a folder (NX4),
- * choose the folder scanned or scan it again (NX5).
+ * The routes that write: they start or stop a Symbiote (NX2, decision 543), and with it `git init`
+ * a folder (NX6, decision 928), pin a folder (NX4), scan home again (NX6, decision 925).
  */
-const WRITES = new Set([
-  '/api/symbiotes',
-  '/api/symbiotes/stop',
-  '/api/pinned',
-  '/api/scanned',
-  '/api/scan',
-]);
+const WRITES = new Set(['/api/symbiotes', '/api/symbiotes/stop', '/api/pinned', '/api/scan']);
 
 /** The most a write's body may hold. */
 const BODY_LIMIT = 64 * 1024;
@@ -114,8 +114,11 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
     if (req.method === 'POST' && WRITES.has(path)) return write(req, res, path);
     if (req.method !== 'GET' && req.method !== 'HEAD') return send(res, 405, 'not allowed');
     if (path === '/') return send(res, 200, page, TYPES['.html']);
+    // What a second `symbiote-nexus` asks before it opens this one (decision 924).
+    if (path === '/api/nexus') return sendJson(res, 200, { nexus: true, pid: process.pid });
     if (path === '/api/folders') return listFolders(res, url.searchParams.get('path'));
     if (path === '/api/repositories') return sendJson(res, 200, await options.repositories());
+    if (path === '/api/tree') return sendJson(res, 200, { tree: await options.scanning.tree() });
     if (path === '/api/checkouts') {
       const asked = url.searchParams.get('path');
       if (asked === null || !isAbsolute(asked)) {
@@ -171,9 +174,20 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
     if (body === 'too large') return send(res, 413, 'too large');
     const value = parseObject(body);
     if (path === '/api/symbiotes') {
-      if (typeof value?.folder !== 'string') return send(res, 400, 'expected { folder }');
-      const answer = await options.starter.start(value.folder);
-      return sendJson(res, 'error' in answer ? 422 : 200, answer);
+      if (
+        typeof value?.folder !== 'string' ||
+        !['boolean', 'undefined'].includes(typeof value.init)
+      ) {
+        return send(res, 400, 'expected { folder, init? }');
+      }
+      const answer: OpenAnswer = await options.open(value.folder, value.init === true);
+      if ('symbiote' in answer) return sendJson(res, 200, answer);
+      if ('status' in answer) {
+        const { status, ...rest } = answer;
+        if ('init' in answer) options.log?.info({ folder: value.folder }, 'git init offered');
+        return sendJson(res, status, rest);
+      }
+      return sendJson(res, 422, answer);
     }
     if (path === '/api/pinned') {
       if (typeof value?.path !== 'string' || typeof value.pinned !== 'boolean') {
@@ -185,17 +199,6 @@ export async function startNexusServer(options: NexusServerOptions): Promise<Nex
       const answer = await options.pins.set(value.path, value.pinned);
       if ('error' in answer) return sendJson(res, answer.status, { error: answer.error });
       options.log?.info({ path: value.path }, value.pinned ? 'folder pinned' : 'folder unpinned');
-      return sendJson(res, 200, answer);
-    }
-    if (path === '/api/scanned') {
-      const asked = value?.path;
-      if (asked !== null && typeof asked !== 'string') return send(res, 400, 'expected { path }');
-      if (asked !== null && !isAbsolute(asked)) {
-        return sendJson(res, 400, { error: `Not an absolute path: ${asked}` });
-      }
-      const answer = await options.scanning.choose(asked);
-      if ('error' in answer) return sendJson(res, answer.status, { error: answer.error });
-      options.log?.info({ path: asked }, 'folder scanned for repositories chosen');
       return sendJson(res, 200, answer);
     }
     if (path === '/api/scan') return sendJson(res, 200, { scan: await options.scanning.again() });

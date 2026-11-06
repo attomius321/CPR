@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
 import {
@@ -12,9 +13,9 @@ import {
 } from './nexus.js';
 
 // NX5 (decisions 908–916): one field over the repositories the nexus knows, paths completing in
-// it, the list in its groups and the picked repository's card beside it; only the folder the
-// person chose is scanned. Real `symbiote view`s started by the nexus, on a home, a cache and a
-// settings folder of the spec's own.
+// it, the list in its groups and the picked repository's card beside it. NX6 (decisions 925, 926):
+// home scanned at the start and on ⟳, its folders a tree under the groups. Real `symbiote view`s
+// started by the nexus, on a home, a cache and a settings folder of the spec's own.
 
 function pageErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -39,14 +40,11 @@ test.describe('Symbiote nexus: the list and the card (NX5)', () => {
     for (const step of cleanup.splice(0).reverse()) await step();
   });
 
-  /**
-   * A home with `projects/` (alpha and beta, repositories; notes, a folder), a cache, and a
-   * settings folder that scans `projects` unless told otherwise.
-   */
-  function setUp({ scan = true }: { scan?: boolean } = {}) {
+  /** A home with `projects/` (alpha and beta, repositories; notes, a folder), a cache, settings. */
+  function setUp() {
     const home = homeFolder(['alpha', 'beta'], ['notes']);
     const cache = cacheFolder();
-    const settings = settingsFolder(scan ? { scanned: home.projects } : {});
+    const settings = settingsFolder();
     cleanup.push(
       () => home.remove(),
       () => cache.remove(),
@@ -71,41 +69,54 @@ test.describe('Symbiote nexus: the list and the card (NX5)', () => {
     await page.goto(served.url);
 
     await expect(page.locator('.page-head h1')).toHaveText('Symbiotes');
-    await expect(groups(page)).toHaveText(['Found in ~/projects']);
-    await expect(rowNames(page)).toHaveText(['alpha', 'beta']);
-    await expect(foot(page)).toContainText('Looking in ~/projects: 2 repositories');
+    // Home as a tree (decision 926): its first level, scanned at the start.
+    await expect(groups(page)).toHaveText(['Home']);
+    await expect(rowNames(page)).toHaveText(['projects/']);
+    await expect(foot(page)).toContainText('Home: 2 repositories in');
     // There is always a pick: the first row, its card beside the list.
     await expect(picked(page)).toHaveCount(1);
-    await expect(picked(page).locator('.nexus-row-name')).toHaveText('alpha');
-    await expect(card(page).locator('h2')).toHaveText('alpha');
-    await expect(card(page).locator('.status-label')).toHaveText('Not running');
-    await expect(card(page).getByRole('button', { name: 'Open Symbiote' })).toBeVisible();
+    await expect(card(page).locator('h2')).toHaveText('projects/');
+    await expect(card(page).locator('.status-label')).toHaveText('Folder');
 
-    // Any part of the path: the folder's name matches both.
+    // Any part of the path, folders too: every folder of home's scan, flat, by path.
     await field(page).fill('proj');
-    await expect(rowNames(page)).toHaveText(['alpha', 'beta']);
+    await expect(rowNames(page)).toHaveText(['projects/', 'alpha', 'beta', 'notes/']);
     await expect(list(page).locator('mark').first()).toHaveText('proj');
     await field(page).fill('ET');
     await expect(rowNames(page)).toHaveText(['beta']);
     await expect(list(page).locator('.nexus-row-name mark')).toHaveText('et');
     await expect(card(page).locator('h2')).toHaveText('beta');
+    await expect(card(page).locator('.status-label')).toHaveText('Not running');
+    await expect(card(page).getByRole('button', { name: 'Open Symbiote' })).toBeVisible();
     await field(page).fill('nothing such');
     await expect(rows(page)).toHaveCount(0);
-    await expect(list(page)).toContainText('No repository has “nothing such” in its path');
+    await expect(list(page)).toContainText(
+      'Nothing in home or the lists above has “nothing such” in its path',
+    );
 
-    // Esc clears; ↑↓ move the pick, the focus staying in the field.
+    // Esc clears; → opens the picked folder, ↑↓ move the pick, the focus staying in the field.
     await field(page).press('Escape');
     await expect(field(page)).toHaveValue('');
-    await expect(rowNames(page)).toHaveText(['alpha', 'beta']);
+    await expect(rowNames(page)).toHaveText(['projects/']);
+    await field(page).press('ArrowRight');
+    await expect(rowNames(page)).toHaveText(['projects/', 'alpha', 'beta', 'notes/']);
+    await expect(rows(page).first()).toHaveAttribute('aria-expanded', 'true');
+    await field(page).press('ArrowRight');
+    await expect(picked(page).locator('.nexus-row-name')).toHaveText('alpha');
     await field(page).press('ArrowDown');
     await expect(picked(page).locator('.nexus-row-name')).toHaveText('beta');
     await expect(card(page).locator('h2')).toHaveText('beta');
     await expect(field(page)).toBeFocused();
     await expect(field(page)).toHaveAttribute('aria-activedescendant', /.+/);
-    await field(page).press('ArrowUp');
-    await expect(card(page).locator('h2')).toHaveText('alpha');
-    // A click picks, and opens nothing.
-    await rows(page).nth(1).click();
+    // ← goes to the folder holding it, then closes it.
+    await field(page).press('ArrowLeft');
+    await expect(card(page).locator('h2')).toHaveText('projects/');
+    await field(page).press('ArrowLeft');
+    await expect(rowNames(page)).toHaveText(['projects/']);
+    // The chevron opens it too; a click picks, and opens nothing.
+    await rows(page).first().locator('[data-toggle]').click();
+    await expect(rowNames(page)).toHaveText(['projects/', 'alpha', 'beta', 'notes/']);
+    await rows(page).nth(2).click();
     await expect(card(page).locator('h2')).toHaveText('beta');
     await expect(page.locator('.nexus-tabs [role="tab"]')).toHaveCount(1);
     expect(errors).toEqual([]);
@@ -123,7 +134,7 @@ test.describe('Symbiote nexus: the list and the card (NX5)', () => {
     await field(page).press('Enter');
     await expect(tab(page, /^beta/)).toHaveAttribute('aria-selected', 'true', { timeout: 20_000 });
     await tab(page, /^Symbiotes/).click();
-    await expect(groups(page)).toHaveText(['Running', 'Found in ~/projects']);
+    await expect(groups(page)).toHaveText(['Running', 'Home']);
     await field(page).fill('');
     await expect(picked(page).locator('.nexus-row-name')).toHaveText('beta');
     await expect(card(page).locator('.status-label')).toHaveText('Running');
@@ -136,10 +147,10 @@ test.describe('Symbiote nexus: the list and the card (NX5)', () => {
     // Stop, after the question; then beta is one opened before.
     await card(page).getByRole('button', { name: 'Stop beta' }).click();
     await page.getByRole('alertdialog').getByRole('button', { name: 'Stop', exact: true }).click();
-    await expect(groups(page)).toHaveText(['Opened before', 'Found in ~/projects'], {
+    await expect(groups(page)).toHaveText(['Opened before', 'Home'], {
       timeout: 15_000,
     });
-    await expect(rowNames(page)).toHaveText(['beta', 'alpha']);
+    await expect(rowNames(page)).toHaveText(['beta', 'projects/']);
     expect(errors).toEqual([]);
   });
 
@@ -179,42 +190,39 @@ test.describe('Symbiote nexus: the list and the card (NX5)', () => {
     await expect(rowNames(page)).toHaveText(['alpha', 'beta', 'notes/']);
   });
 
-  test('on a first run, a folder is chosen to look in; Found follows it, kept for the next nexus', async ({
+  test('scans home at the start and on ⟳ only: a folder made meanwhile shows after ⟳', async ({
     page,
   }) => {
     const errors = pageErrors(page);
-    const { home, cache, settings } = setUp({ scan: false });
+    const { home, cache, settings } = setUp();
     let served = await nexus(cache, home.dir, settings.dir);
     await page.goto(served.url);
 
     await expect(page.locator('.nexus-welcome')).toContainText('No Symbiote runs yet');
-    await expect(foot(page)).toContainText('No folder chosen to look for repositories in');
-    // Home's folders, the first picked, its card asking.
-    await expect(rowNames(page)).toHaveText(['projects/']);
-    await expect(card(page).locator('h2')).toHaveText('projects/');
-    await expect(card(page)).toContainText(
-      'Symbiote looks for repositories in one folder you choose',
-    );
-    await card(page).getByRole('button', { name: 'Look for repositories here' }).click();
-    await expect(foot(page)).toContainText('Looking in ~/projects: 2 repositories');
-    await expect(groups(page)).toHaveText(['Found in ~/projects']);
-    await expect(rowNames(page)).toHaveText(['alpha', 'beta']);
-    expect((JSON.parse(readFileSync(settings.file, 'utf8')) as { scanned: string }).scanned).toBe(
-      home.projects,
-    );
+    await expect(foot(page)).toContainText('Home: 2 repositories in');
+    const scanned = () =>
+      (JSON.parse(readFileSync(join(cache, 'nexus', 'scan.json'), 'utf8')) as { at: string }).at;
+    const at = scanned();
+    // A repository made after the start: not listed, the list read again every 2 s meanwhile.
+    const gamma = join(home.projects, 'gamma');
+    mkdirSync(gamma);
+    execFileSync('git', ['init', '-q'], { cwd: gamma });
+    await field(page).press('ArrowRight');
+    await expect(rowNames(page)).toHaveText(['projects/', 'alpha', 'beta', 'notes/']);
+    await page.waitForTimeout(4500);
+    await expect(rowNames(page)).toHaveText(['projects/', 'alpha', 'beta', 'notes/']);
+    expect(scanned()).toBe(at);
 
-    // A repository cannot be chosen: it is the end of the way down.
-    await field(page).fill('~/projects/');
-    await expect(card(page).locator('h2')).toHaveText('alpha');
-    await expect(
-      card(page).getByRole('button', { name: 'Look for repositories here' }),
-    ).toHaveCount(0);
+    await foot(page).getByRole('button', { name: 'Scan home again' }).click();
+    await expect(rowNames(page)).toHaveText(['projects/', 'alpha', 'beta', 'gamma', 'notes/']);
+    await expect(foot(page)).toContainText('Home: 3 repositories in');
+    expect(scanned()).not.toBe(at);
 
+    // The next nexus scans at its start.
     await served.stop();
     served = await nexus(cache, home.dir, settings.dir);
     await page.goto(served.url);
-    await expect(groups(page)).toHaveText(['Found in ~/projects']);
-    await expect(foot(page)).toContainText('Looking in ~/projects');
+    await expect(foot(page)).toContainText('Home: 3 repositories in');
     expect(errors).toEqual([]);
   });
 
@@ -228,7 +236,8 @@ test.describe('Symbiote nexus: the list and the card (NX5)', () => {
     const served = await nexus(cache, home.dir, settings.dir);
     await page.goto(served.url);
 
-    await expect(rowNames(page)).toHaveText(['alpha', 'feature', 'beta']);
+    await field(page).fill('alpha');
+    await expect(rowNames(page)).toHaveText(['alpha', 'alpha.worktrees/', 'feature']);
     await expect(card(page).locator('h2')).toHaveText('alpha');
     const checkouts = card(page).getByRole('group', { name: 'Checkouts of this repository' });
     await expect(checkouts.locator('.nexus-row-name')).toHaveText(['alpha', 'feature']);
@@ -248,7 +257,7 @@ test.describe('Symbiote nexus: the list and the card (NX5)', () => {
     const { home, cache, settings } = setUp();
     const served = await nexus(cache, home.dir, settings.dir);
     await page.goto(served.url);
-    await expect(rowNames(page)).toHaveText(['alpha', 'beta']);
+    await expect(rowNames(page)).toHaveText(['projects/']);
     await page.locator('.page-head h1').click();
     await expect(field(page)).not.toBeFocused();
     await page.keyboard.press('/');
@@ -264,7 +273,7 @@ test.describe('Symbiote nexus: the list and the card (NX5)', () => {
     const served = await nexus(cache, home.dir, settings.dir);
     await page.setViewportSize({ width: 900, height: 900 });
     await page.goto(served.url);
-    await expect(card(page).locator('h2')).toHaveText('alpha');
+    await expect(card(page).locator('h2')).toHaveText('projects/');
     const listBox = await page.locator('.nexus-list').boundingBox();
     const cardBox = await card(page).boundingBox();
     expect(cardBox && listBox && cardBox.y >= listBox.y + listBox.height).toBe(true);

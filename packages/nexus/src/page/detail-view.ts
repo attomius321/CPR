@@ -1,7 +1,8 @@
 // The picked repository's card (NX5, decisions 908, 913, 914, 916): its head (its state, its name,
 // its status, what can be done with it), then why it did not open or what it waits for, its path
-// as crumbs, its facts, its checkouts, the folder it is in; a folder's card its own folders. What
-// it shows is `main.ts`'s to read; this draws it, again only when it changed.
+// as crumbs, its facts, its checkouts, the folder it is in; a folder's card its own folders and
+// (NX6, decision 929) Open Symbiote, which asks, then `git init`s it. What it shows is `main.ts`'s
+// to read; this draws it, again only when it changed.
 import type { Folder } from '../folders.js';
 import type { Found } from '../scan.js';
 import {
@@ -14,12 +15,10 @@ import {
   el,
   FOLDER,
   FOLDER_OPEN,
-  FOLDER_SEARCH,
   HOUSE,
   icon,
   loading,
   pinButton,
-  REFRESH,
   SEARCH,
   SPIN,
   STOP,
@@ -42,10 +41,10 @@ export interface CardState {
   listing: Folder[] | null | undefined;
   /** Why it did not open. */
   failed: string | null;
-  /** The folder scanned for repositories. */
-  scanned: string | null;
-  /** A first run: a folder's card asks to be the one looked in. */
-  choosing: boolean;
+  /** A folder's Symbiote starting (after `git init`). */
+  starting: boolean;
+  /** Why the folder cannot be made a repository (home, the top, a drive); null when it can. */
+  refused: string | null;
   /** The path just copied. */
   copied: boolean;
   /** Rows of the card's lists as the list would draw them (their Symbiote, their pin). */
@@ -60,9 +59,8 @@ export interface CardHandlers {
   copy: (row: Row) => void;
   /** Types a path into the list's field: a crumb, a folder or repository in the card. */
   type: (text: string) => void;
-  /** Makes the folder the one scanned for repositories. */
-  scanHere: (path: string) => void;
-  rescan: () => void;
+  /** Shows a folder's folders: in home's tree, else typed into the field. */
+  goIn: (row: Row) => void;
 }
 
 const status = (tone: string | null, paths: string, words: string, spin = false) => {
@@ -289,13 +287,8 @@ export function detailView(handlers: CardHandlers): {
               ['Opened before', row.opened ? timeText(row.opened, now) : 'Not with this nexus'],
               ...(row.pinned
                 ? [['Pinned', 'Kept in Symbiote’s settings'] as [string, Child]]
-                : row.found && state.scanned
-                  ? [
-                      ['Found', `In ${shownPath(state.scanned, home)}, by the scan`] as [
-                        string,
-                        Child,
-                      ],
-                    ]
+                : row.found
+                  ? [['Found', 'In home, by the scan'] as [string, Child]]
                   : []),
             ],
       ),
@@ -333,22 +326,14 @@ export function detailView(handlers: CardHandlers): {
   }
 
   function folderCard(row: Row, state: CardState): Child[] {
-    const scanned = row.path === state.scanned;
     const where = shownPath(row.path, state.home);
-    const label = scanned
-      ? status('ok', FOLDER_SEARCH, 'Repositories looked for here')
-      : status(null, FOLDER, row.pinned ? 'Pinned folder' : 'Folder');
-    const look = scanned
-      ? button([icon(REFRESH, true), 'Scan again'], () => handlers.rescan(), { kind: 'secondary' })
-      : button(
-          [icon(FOLDER_SEARCH, true), 'Look for repositories here'],
-          () => handlers.scanHere(row.path),
-          {
-            kind: state.choosing ? '' : 'secondary',
-          },
-        );
-    const go = button(['Go in'], () => handlers.type(`${where}/`.replace(/^\/\/$/, '/')), {
-      kind: state.choosing ? 'secondary' : '',
+    const label = state.starting
+      ? status('run', SPIN, 'Starting', true)
+      : state.failed
+        ? status('error', CIRCLE_X, 'Did not open')
+        : status(null, FOLDER, row.pinned ? 'Pinned folder' : 'Folder');
+    const go = button(['Go in'], () => handlers.goIn(row), {
+      kind: 'secondary',
       label: `Go into ${row.name}`,
     });
     const actions: Child[] = [
@@ -356,15 +341,39 @@ export function detailView(handlers: CardHandlers): {
       pinButton('nexus-detail-pin', { name: row.name, path: row.path, pinned: !!row.pinned }, () =>
         handlers.pin(row, !row.pinned),
       ),
-      ...(state.choosing ? [look, go] : [go, look]),
+      go,
     ];
+    if (state.starting) {
+      actions.push(button([loading('Starting…')], () => undefined, { disabled: true }));
+    } else if (state.refused === null) {
+      actions.push(
+        button([state.failed ? 'Try again' : 'Open Symbiote'], () => handlers.open(row), {
+          label: `Open Symbiote in ${row.name}`,
+        }),
+      );
+    }
     const body: Child[] = [];
-    if (state.choosing && !scanned) {
+    if (state.failed) {
+      body.push(notice(CIRCLE_X, [`${row.name} did not open: ${state.failed}`], 'error'));
+    } else if (state.refused !== null) {
+      body.push(notice(FOLDER, [state.refused]));
+    } else if (state.starting) {
       body.push(
-        notice(FOLDER_SEARCH, [
-          state.scanned === null
-            ? `Symbiote looks for repositories in one folder you choose, and nowhere else. Look in ${where}, or pick another folder. You can change it any time.`
-            : `Symbiote looks for repositories in one folder, ${shownPath(state.scanned, state.home)} now. Looking in ${where} instead replaces it; the repositories you run, pinned or opened before stay.`,
+        notice(
+          SPIN,
+          [
+            el('code', {}, 'symbiote view'),
+            ` is starting in ${where}. Its tab opens once it serves.`,
+          ],
+          'run',
+        ),
+      );
+    } else {
+      body.push(
+        notice(TERMINAL, [
+          'No git repository here. Open Symbiote asks first, then runs ',
+          el('code', {}, 'git init'),
+          ` in ${where}: a .git folder is added, nothing else, and no commit is made.`,
         ]),
       );
     }
@@ -385,7 +394,7 @@ export function detailView(handlers: CardHandlers): {
       );
     }
     return [
-      head(rowLead(row, false), `${row.name}/`, label, actions),
+      head(rowLead(row, state.starting), `${row.name}/`, label, actions),
       el('div', { class: 'nexus-detail-body' }, ...body),
     ];
   }
@@ -464,8 +473,8 @@ export function detailView(handlers: CardHandlers): {
         state.checkouts,
         state.listing,
         state.failed,
-        state.scanned,
-        state.choosing,
+        state.starting,
+        state.refused,
         state.copied,
         state.now.toDateString(),
         state.now.getHours(),

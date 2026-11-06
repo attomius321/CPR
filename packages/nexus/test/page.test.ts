@@ -40,9 +40,8 @@ const VIEWER_CLASSES = [
   'secondary',
   'ghost',
   'error',
-  // The list's field (NX2b's Go to folder before NX5); the foot's Change…; Stop's question.
+  // The list's field (NX2b's Go to folder before NX5); Stop's and git init's question.
   'search-input',
-  'link',
   'dialog',
   'dialog-backdrop',
   'dialog-buttons',

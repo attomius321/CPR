@@ -4,16 +4,20 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
 import type { AppWindow } from '../src/app-window.js';
-import { run, type NexusContext } from '../src/main.js';
+import { DEFAULT_PORT, run, type NexusContext } from '../src/main.js';
 import { announce } from '../src/registry.js';
 
 const dir = tempDir();
 const cache = join(dir, 'cache');
+/** The home scanned (decision 925): the test's own, never the person's. */
+const home = join(dir, 'home');
 const viewer = join(dir, 'viewer');
 let symbiote: Server;
 let symbioteUrl = '';
 
 beforeAll(async () => {
+  mkdirSync(join(home, 'projects', 'zod', '.git'), { recursive: true });
+  mkdirSync(join(home, 'notes'), { recursive: true });
   mkdirSync(join(viewer, 'assets'), { recursive: true });
   writeFileSync(join(viewer, 'index.html'), '<link rel="stylesheet" href="./assets/index-a.css">');
   writeFileSync(join(viewer, 'assets', 'index-a.css'), '');
@@ -73,6 +77,7 @@ async function nexus(
           },
         }
       : {}),
+    home,
     waitForExit: async () => {
       const url = /Symbiote nexus: (\S+)/.exec(out)?.[1] ?? '';
       await during?.(url);
@@ -80,7 +85,9 @@ async function nexus(
       return stopped;
     },
   };
-  const code = await run(argv, ctx);
+  // Never the default port: other workspaces run these tests at once, and the person's nexus may
+  // serve there (decision 923).
+  const code = await run(argv.includes('--port') ? argv : ['--port', '0', ...argv], ctx);
   return { code, out, err, opened, asked };
 }
 
@@ -90,6 +97,8 @@ describe('symbiote-nexus', () => {
     expect(code).toBe(0);
     expect(out).toContain('Usage: symbiote-nexus [options]');
     expect(out).toContain('--browser');
+    expect(out).toContain('--port <n>     The port to serve on (default: 7347; 0: any free one)');
+    expect(DEFAULT_PORT).toBe(7347);
   });
 
   it('refuses what it does not know, with its usage', async () => {
@@ -175,7 +184,7 @@ describe('symbiote-nexus', () => {
       expect.arrayContaining(['Home', '/']),
     );
     expect(started).toEqual({
-      status: 422,
+      status: 404,
       body: { error: `No such folder: ${join(dir, 'missing')}` },
     });
   });
@@ -215,5 +224,126 @@ describe('symbiote-nexus', () => {
     const browser = await nexus(['--browser'], { openApp: () => Promise.resolve(null) });
     expect(browser.opened).toHaveLength(1);
     expect(browser.asked).toEqual([]);
+  });
+
+  it('opens the nexus already serving on its port, and serves no second one (decision 924)', async () => {
+    let second: Awaited<ReturnType<typeof nexus>> | undefined;
+    let firstUrl = '';
+    await nexus(['--no-open'], {
+      during: async (url) => {
+        firstUrl = url;
+        const port = new URL(url).port;
+        second = await nexus(['--port', port], { openApp: () => Promise.resolve(null) });
+      },
+    });
+    expect(second?.code).toBe(0);
+    expect(second?.out).toBe(`Symbiote nexus already runs at ${firstUrl}\n`);
+    expect(second?.opened).toEqual([firstUrl]);
+  });
+
+  it("opens Symbiote's window on the nexus already serving, until it closes", async () => {
+    let second: Awaited<ReturnType<typeof nexus>> | undefined;
+    let firstUrl = '';
+    await nexus(['--no-open'], {
+      during: async (url) => {
+        firstUrl = url;
+        second = await nexus(['--port', new URL(url).port], {
+          openApp: () => Promise.resolve({ closed: Promise.resolve(), close: () => undefined }),
+        });
+      },
+    });
+    expect(second?.code).toBe(0);
+    expect(second?.asked).toEqual([[firstUrl, 'Symbiote nexus']]);
+    expect(second?.opened).toEqual([]);
+  });
+
+  it('says another program holds the port, naming --port (decision 924)', async () => {
+    const other = createServer((_req, res) => res.end('not a nexus'));
+    await new Promise<void>((resolve) => other.listen(0, '127.0.0.1', resolve));
+    const address = other.address();
+    const port = String(typeof address === 'object' && address ? address.port : 0);
+    try {
+      const result = await nexus(['--port', port], { openApp: () => Promise.resolve(null) });
+      expect(result.code).toBe(1);
+      expect(result.err).toBe(
+        `symbiote-nexus: port ${port} is in use by another program: choose another with --port <n>\n`,
+      );
+      expect(result.opened).toEqual([]);
+    } finally {
+      other.close();
+    }
+  });
+
+  it('offers git init for a plain folder in home, and refuses home itself (NX6)', async () => {
+    const answers: { status: number; body: unknown }[] = [];
+    await nexus(['--no-open'], {
+      during: async (url) => {
+        for (const folder of [join(home, 'notes'), home]) {
+          const res = await fetch(new URL('api/symbiotes', url), {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+            body: JSON.stringify({ folder }),
+          });
+          answers.push({ status: res.status, body: await res.json() });
+        }
+      },
+    });
+    expect(answers).toEqual([
+      {
+        status: 409,
+        body: { init: true, error: `${join(home, 'notes')} is no git repository` },
+      },
+      {
+        status: 422,
+        body: { error: 'Your home folder cannot be made a repository: pick a folder in it' },
+      },
+    ]);
+  });
+
+  it('scans home at its start and on the button only, never on a read (decision 925)', async () => {
+    const at: string[] = [];
+    let tree = null as { tree: string[] } | null;
+    await nexus(['--no-open'], {
+      during: async (url) => {
+        const scanAt = async () => {
+          const known = (await (await fetch(new URL('api/repositories', url))).json()) as {
+            scan: { at: string; folder: string } | null;
+          };
+          return known.scan;
+        };
+        let scan = await scanAt();
+        while (scan === null) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          scan = await scanAt();
+        }
+        expect(scan.folder).toBe(home);
+        at.push(scan.at);
+        // The page's reads, every 2 s: none scans.
+        for (let i = 0; i < 5; i++) {
+          await fetch(new URL('api/symbiotes', url));
+          at.push((await scanAt())?.at ?? '');
+          await new Promise((resolve) => setTimeout(resolve, 10));
+        }
+        const answer = (await (await fetch(new URL('api/tree', url))).json()) as {
+          tree: { tree: string[] };
+        };
+        tree = answer.tree;
+        const again = await fetch(new URL('api/scan', url), {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-symbiote': '1' },
+          body: '{}',
+        });
+        at.push(((await again.json()) as { scan: { at: string } }).scan.at);
+      },
+      // A cache of its own: no scan kept from another test answers before the start's.
+      env: { SYMBIOTE_CACHE_DIR: join(dir, 'scan-cache') },
+    });
+    expect(new Set(at.slice(0, 6)).size).toBe(1);
+    expect(at[6]).not.toBe(at[0]);
+    expect(tree?.tree).toEqual([
+      join(home, 'notes'),
+      join(home, 'projects'),
+      join(home, 'projects', 'zod'),
+    ]);
   });
 });

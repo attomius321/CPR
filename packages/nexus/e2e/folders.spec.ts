@@ -165,7 +165,7 @@ test.describe('Symbiote nexus: folders', () => {
     await expect(tab(page, /^alpha/)).toHaveText('alphastopped');
     expect(recorded(cache)).toEqual([]);
     await expect(page.locator('.nexus-home .page-line')).toHaveText(
-      'None running · no folder chosen to look for repositories in',
+      'None running · 2 repositories in home',
     );
 
     await tab(page, /^alpha/).click();

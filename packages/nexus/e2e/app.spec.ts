@@ -168,7 +168,7 @@ test('opens a Symbiote from a folder typed in Symbiote’s window (NX2, NX5)', a
 });
 
 test('symbiote-nexus opens the window itself, and ends when it closes', async () => {
-  const child = spawn(process.execPath, [nexusBin], {
+  const child = spawn(process.execPath, [nexusBin, '--port', '0'], {
     env: { ...appEnv(), SYMBIOTE_CACHE_DIR: cache.dir },
   });
   let out = '';

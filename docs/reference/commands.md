@@ -15,7 +15,7 @@ explains the terms this page uses: workspace, merger, verdict, Nucleus and the o
 | `symbiote activity [<branch>]` | Prints a workspace's activity as one Markdown file, as its **Activity** tab shows it, for you or an agent to read. Without a branch, the checked-out branch's workspace: an agent runs it in its worktree. With `--nucleus`, Nucleus's activity. No running `symbiote view` is needed. See [An exported activity](#an-exported-activity). |
 | `symbiote mcp` | Gives an agent of yours Symbiote's tools. See [Symbiote's tools for your own agent](#symbiotes-tools-for-your-own-agent). |
 | `symbiote app install` | Adds Symbiote's window to your desktop's apps, on Linux and WSL. `symbiote app uninstall` removes it. |
-| `symbiote-nexus` | Opens Symbiote nexus: every `symbiote view` running on this machine, as tabs in one window, and a list of the repositories it knows, found by any part of their path, to start one in any repository. It runs until you press Ctrl+C or close its window. Closing it stops no Symbiote, not even the ones it started. `./install.sh` adds it to `~/.local/bin`. |
+| `symbiote-nexus` | Opens Symbiote nexus: every `symbiote view` running on this machine, as tabs in one window, the repositories it knows and your home's folders as a tree, found by any part of their path. It starts a Symbiote in a repository, or makes a folder one with `git init` after asking you. It serves on port 7347; run it again and it opens the one running. It runs until you press Ctrl+C or close its window. Closing it stops no Symbiote, not even the ones it started. `./install.sh` adds it to `~/.local/bin`. |
 
 `symbiote diff` and `symbiote view` compare `head` with the *merge base*: the last commit that
 `head` and `base` share. A pull request is compared the same way. To compare with `base` itself,
@@ -120,7 +120,7 @@ says how many it left out, and `symbiote activity` gives all of it.
 | `--depth <n>` | diff, view, pr | How many steps of unchanged callers and callees to include. Default: 1. |
 | `--plugin <name\|path>` | diff, view, pr | Analyzes with a framework plugin, such as `angular` or `qwik`. You can repeat it. |
 | `--no-merge-base` | diff, view | Compares with `base` itself. |
-| `--port <n>` | view, pr, symbiote-nexus | The app's port. Default: any free port. |
+| `--port <n>` | view, pr, symbiote-nexus | The app's port. Default: any free port; 7347 for `symbiote-nexus` (`0` for any free one). When a nexus already serves on the port, `symbiote-nexus` opens it; when another program does, it says so and ends. |
 | `--browser` | view, pr, symbiote-nexus | Opens your browser instead of Symbiote's window. |
 | `--no-open` | view, pr, symbiote-nexus | Opens neither. Open the address it prints yourself. |
 | `--summary` | pr | Prints the summary instead of opening the app. |
