@@ -343,7 +343,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 
 | ID | What | Status | Decisions | Journal |
 |---|---|---|---|---|
-| [IS1](plan/is1-issues-page.md) | An Issues page: origin's GitHub or GitLab issues, read only: the list (state, search on titles, 30 a page), one issue with its comments and its link | planned | 944–952 | [journal](journal/is1-issues-page.md) |
+| [IS1](plan/is1-issues-page.md) | An Issues page: origin's GitHub or GitLab issues, read only: the list (state, search on titles, 30 a page), one issue with its comments and its link | built | 944–952 | [journal](journal/is1-issues-page.md) |
 
 ### Logs
 

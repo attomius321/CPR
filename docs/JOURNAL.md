@@ -428,3 +428,4 @@ merge commit.
 - 2026-11-05 [NX6 spike — home, Windows' drives, a repository with no commit](journal/nx6-nexus-explorer.md)
 - 2026-11-05 [NX6 — the port, home's tree, `git init`](journal/nx6-nexus-explorer.md)
 - 2026-11-08 [IS1 spike — both forges' issues, read only](journal/is1-issues-page.md)
+- 2026-11-08 [IS1 — the forge reads issues, `/api/issues`, the Issues page](journal/is1-issues-page.md)

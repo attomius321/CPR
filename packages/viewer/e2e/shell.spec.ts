@@ -62,15 +62,16 @@ test('symbiote view opens the Overview in the shell: the pages, then the workspa
   await expect(page.locator('.titlebar')).toHaveCount(0);
   // The pages one works in; Settings is at the sidenav's bottom, after the workspaces.
   const links = pages(page).getByRole('link');
-  await expect(links).toHaveCount(6);
+  await expect(links).toHaveCount(7);
   // The Overview first (V91), then Nucleus and Git, as the proofs (V93).
   await expect(links.nth(0)).toHaveAccessibleName('Overview');
   await expect(links.nth(1)).toHaveAccessibleName('Nucleus');
   await expect(links.nth(2)).toHaveAccessibleName('Git');
   await expect(links.nth(3)).toHaveAccessibleName('Skills');
   await expect(links.nth(4)).toHaveAccessibleName('Monitor');
-  // History (V77): the cleaned-up workspaces, under Monitor.
-  await expect(links.nth(5)).toHaveAccessibleName('History');
+  // Issues (IS1), then History (V77): the cleaned-up workspaces.
+  await expect(links.nth(5)).toHaveAccessibleName('Issues');
+  await expect(links.nth(6)).toHaveAccessibleName('History');
   await expect(settingsLink(page)).toBeVisible();
   await expect(pages(page).getByRole('link', { name: 'Overview' })).toHaveAttribute(
     'aria-current',

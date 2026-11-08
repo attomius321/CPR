@@ -113,11 +113,12 @@ test('History, under Monitor: the cleaned-up workspaces, the picked one read onl
   await finishHalf(page);
   oldFix();
 
-  // Its link under Monitor, and h.
+  // Its link under Monitor and Issues (IS1), and h.
   const pages = page.getByRole('navigation', { name: 'Pages' });
   // The Overview first (V91).
   await expect(pages.getByRole('link').nth(4)).toHaveAccessibleName('Monitor');
-  await expect(pages.getByRole('link').nth(5)).toHaveAccessibleName('History');
+  await expect(pages.getByRole('link').nth(5)).toHaveAccessibleName('Issues');
+  await expect(pages.getByRole('link').nth(6)).toHaveAccessibleName('History');
   await page.keyboard.press('h');
   await expect(page).toHaveURL(`${symbiote.url}workspace-history`);
   await expect(pages.getByRole('link', { name: 'History' })).toHaveAttribute(

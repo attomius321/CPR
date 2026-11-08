@@ -2,9 +2,10 @@
 
 [Index](../PLAN.md) · [Journal](../journal/is1-issues-page.md)
 
-**Status:** planned (2026-11-08), on branch `feature/issues-page` (a workspace started in
-Symbiote, from `main` at `c2aa5c4`); the plan OK'd by the person with the three choices as
-recommended: public repositories read without a token, the key `u`, an issue's first 100 comments.
+**Status:** built (2026-11-08), on branch `feature/issues-page` (a workspace started in Symbiote,
+from `main` at `c2aa5c4`); the plan OK'd by the person with the three choices as recommended:
+public repositories read without a token, the key `u`, an issue's first 100 comments. As built and
+results under "As built (IS1)" below.
 
 **Problem** (asked: "A new **Issues** page in `symbiote view` … the issues of the repository's
 GitHub or GitLab (origin's forge), read only"). Symbiote reads pull and merge requests only: the
@@ -132,3 +133,47 @@ valid `#rrggbb`; its chip keeps Symbiote's tokens.
 
 **Not in IS1 (later)**: a watcher, a start queue, Nucleus tools, a workspace from an issue,
 issue numbers as IDs; writing anything to the forge.
+
+## As built (IS1)
+
+- **The types are core's** (`packages/core/src/issues.ts`), not the forge's: the viewer imports
+  types from `@symbiote/core` only, as `HiveLandingSetting` is. The forge re-exports them. The
+  answers carry `forge`, `token`, `tokenHint` and `problem` (`no-origin`, `no-forge`, `forge`).
+- **The cursor is `page~after~skip`**: GitHub's list goes on from an `after=` cursor, and a page of
+  30 cut inside an API page of 100 goes on from that page, skipping the issues shown. The server
+  refuses any other shape (400) before the forge is asked; the forge checks it again.
+- **`originForge` says what is missing** (`missing: 'origin' | 'forge' | 'token'`), so the page
+  does not read HV8's sentence. The service keeps origin's forge 30 s: without a token in the
+  environment, GitHub's is `gh auth token`, a process a read.
+- **A rate limit says so** (`http.ts`): a 403 or 429 with the limit used up, or a `retry-after`,
+  says it is used up and when it resets. Before, a 403 read "not found, or no access".
+- **Scripts and styles are dropped whole**, their text too: the first screenshots showed a
+  `<script>`'s text as a line of the issue. GitHub's sanitizer drops them.
+- **A row shows 4 labels and +N** (5 whole): gitlab-org/gitlab-runner's issues carry 9 to 12
+  scoped labels, and a row ran to five lines of chips. The issue shows them all.
+- **The forge's link moved** from the head's line into its actions (**Issues on GitHub**): the
+  targets check found the link 19 px high beside the title.
+- **The state's colour**: open is `--ok` with lucide's circle-dot, closed `--muted` with a check;
+  the shapes differ and each says its word (a row's icon is an image named Open or Closed).
+
+**Results.**
+
+- Tests: the forge's 19 on recorded responses (`packages/forge/test/issues.test.ts`); the
+  service's 5 and the server's 2; the viewer's 10 words, 8 on hostile issue text and the route's;
+  `e2e/issues.spec.ts`, 7 on the fake forge (GitHub and GitLab, now with issues), and the page in
+  `page-frame`, `targets`, `title-bar` and `tooltips`. `pnpm check`: 3,457 tests passed. The full
+  e2e: 434 of 438, then the two sidenav counts this branch moved fixed; `changes.spec.ts:139` and
+  `hermes.spec.ts:29` fail under load on `main`'s export too.
+- Real, read only, through the built `symbiote view` on scratch repositories:
+  - vitejs/vite with the person's `gh` token: 30 open issues in 1.19 s (the first API page of
+    100 held 36), the next 30 in 1.52 s by cursor, a search ("watcher") 4 in 0.47 s, #23965 with
+    its 7 comments in 0.67 s. Six reads asked before cost nothing: `core.remaining` 4988 before
+    and after; a new one cost 1.
+  - gitlab-org/gitlab-runner without a token: 30 open issues in 0.73 s, a search in 3.2 s, an
+    issue without its 7 notes and the note that they need `GITLAB_TOKEN`.
+  - attomius321/CPR: 0 issues open and 0 in all (its one item is HV8's pull request #1);
+    `/api/issues/1` says it is a pull request.
+  - The page drew the list and an issue in 0.84–1.39 s, no `img` in it.
+- Screenshots: both themes, the three text sizes at 1440 × 900, 800 px wide, on the fake forge
+  and on vite and gitlab-runner.
+
