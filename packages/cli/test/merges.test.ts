@@ -1932,6 +1932,8 @@ describe("a merge's log (V46a)", () => {
     ]);
   });
 
+  // A conflicting merge run four times (merged, Check again, Request changes, Retry), on real git:
+  // 1.6 s here, over 5 s on CI run 42512114464's ubuntu · node 22 (fix-ci-green).
   it('keeps the earlier runs when a merge runs again, each again after a line saying why', async () => {
     const { repo } = conflicting();
     config(repo, { checks: ['ok', 'flaky'] });
@@ -1966,7 +1968,7 @@ describe("a merge's log (V46a)", () => {
         .slice(at('run Check again'), at('run Request changes: keep main first'))
         .filter((l) => l.startsWith('step ')),
     ).toEqual(['step check ok', 'step check flaky']);
-  });
+  }, 20_000);
 
   it('logs a refused landing with git’s words, then the landing that worked', async () => {
     const { repo } = setup();
