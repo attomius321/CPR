@@ -111,7 +111,7 @@ loop steadier, from what the graph runs of 2026-11-02 found (Agents, below).
 | [I1–I2](plan/roadmap.md#phase-4-milestones-interdiff) | Phase 4: interdiff | ✅ | | [journal](journal/phase-4-interdiff.md) |
 | [C1–C2](plan/roadmap.md#phase-5-milestones-ci-both-forges) | Phase 5: CI on both forges | ✅ | | [journal](journal/phase-5-ci.md) |
 | [C3](plan/roadmap.md) | GitHub annotations | proposed | | |
-| [Chore](plan/chore-repository-address.md) | The repository's address in the README, the Action and the GitLab template | planned | | |
+| [Chore](plan/chore-repository-address.md) | The repository's address in the README, the Action and the GitLab template | resolved by the rename (2026-11-08), nothing to build | | |
 | [Chore](plan/chore-action-in-ci.md) | The Action's script and the GitLab template run in CI | planned | | |
 | [Chore](plan/chore-ci-versions.md) | The Action and the GitLab template take Symbiote's pnpm and Node versions, and a pinned ref | planned | | |
 
@@ -398,6 +398,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [V22](plan/roadmap.md) | Fixes: stale text outside the README | ✅ | | [journal](journal/v22-stale-text.md) |
 | Feature | README remade around workspaces; commands, configuration and review pages | ✅ | | [journal](journal/remake-readme.md) |
 | Rename | Rename to Symbiote | ✅ | | [journal](journal/rename-to-symbiote.md) |
+| [Chore](plan/chore-remove-cpr.md) | Remove CPR: the repository's old address, and what was kept under the former name no longer moved | ready for review | 953 | [journal](journal/chore-remove-cpr.md) |
 | [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | ✅ | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
 | [Refactor](plan/refactor-readability.md) | The CLI's services and the viewer's pages in modules one can read | ✅ | 344–348 | [journal](journal/refactor-readability.md) |
 | [IN1](plan/in1-one-command-install.md) | Install in one command (`./install.sh`), with no native build: the agents' terminal prebuilt | ✅ | 532–538 | [journal](journal/in1-one-command-install.md) |

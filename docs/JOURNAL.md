@@ -437,3 +437,4 @@ merge commit.
 - 2026-11-06 [V96 spike — project names over file names on Bitwarden's map](journal/v96-map-labels.md)
 - 2026-11-06 [V97 spike — a browser's choices lost with each new port](journal/v97-choices-kept.md)
 - 2026-11-06 [V98 spike — one 1.16 MB script for every page](journal/v98-pages-on-demand.md)
+- 2026-11-08 [Chore — Remove CPR: the old address and the former name's move](journal/chore-remove-cpr.md)
