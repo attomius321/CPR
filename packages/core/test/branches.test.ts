@@ -192,6 +192,8 @@ describe('userEmail', () => {
     vi.stubEnv('GIT_CONFIG_GLOBAL', '/dev/null');
     vi.stubEnv('GIT_CONFIG_NOSYSTEM', '1');
     const { repo } = fresh();
+    // A test repository has its own identity (createRepo): this one has none.
+    repo.git('config', '--unset', 'user.email');
     const open = await openRepo(repo.root);
     expect(await userEmail(open)).toBeNull();
     repo.git('config', 'user.email', 'ada@example.com');

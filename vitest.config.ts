@@ -20,7 +20,13 @@ export default defineConfig({
     include: ['packages/*/test/**/*.test.ts'],
     // Fixtures are code under analysis, test files included.
     exclude: [...configDefaults.exclude, 'packages/*/test/fixtures/**'],
-    // Tests never write into the person's log folder (LG1): one that logs gives its own.
-    env: { SYMBIOTE_LOG: 'off' },
+    env: {
+      // Tests never write into the person's log folder (LG1): one that logs gives its own.
+      SYMBIOTE_LOG: 'off',
+      // No test reads the developer's git config (fix-ci-green): a CI runner has none, so a test
+      // that leaned on the developer's user.email passed here and failed there.
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_NOSYSTEM: '1',
+    },
   },
 });
