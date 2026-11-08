@@ -339,6 +339,12 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [RM1](plan/rm1-code-concentration.md) | Code concentration: where a repository's code is | ✅ | 320–328 | [journal](journal/rm1-code-concentration.md) |
 | [RM2](plan/rm2-monitor-styling.md) | The Monitor's look: long files in heat, the folder in view as the heading, a way back | ✅ | 332–335 | [journal](journal/rm2-monitor-styling.md) |
 
+### Issues
+
+| ID | What | Status | Decisions | Journal |
+|---|---|---|---|---|
+| [IS1](plan/is1-issues-page.md) | An Issues page: origin's GitHub or GitLab issues, read only: the list (state, search on titles, 30 a page), one issue with its comments and its link | planned | 944–952 | [journal](journal/is1-issues-page.md) |
+
 ### Logs
 
 | ID | What | Status | Decisions | Journal |
