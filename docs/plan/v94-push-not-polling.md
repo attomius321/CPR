@@ -4,7 +4,7 @@
 
 **Status:** merged into `main` on 2026-11-04; built (3–4 November 2026), on branch `feature/v94-push-not-polling` (the workspace's,
 from `main` at `45424c6`); the person's OK on 3 November: terminals on the shared stream, numbers
-on a copy of this repository, Hermes at the safety read only.
+on a copy of this repository.
 
 **Problem** (the brief: "the page learns of every change through one server-sent stream, `GET
 /api/events`, instead of polling"). The spike ([journal](../journal/spike-push-instead-of-polling.md),
@@ -133,8 +133,6 @@ stalled the 6th tab; the 7th never loaded).
 - **Codex's app server**: measured first. If the daemon tells a connection subscribed to no
   thread's deltas when a thread's status changes (decision 155 keeps none subscribed), Symbiote
   listens; else Codex's workspaces get the same 5 s live read.
-- Hermes: the triggers and the safety read only (the person's choice): a Hermes agent's change may
-  show up to 60 s late, where polling read every 5 s while it was live.
 
 ## V94d — measured and written down
 
@@ -208,7 +206,7 @@ stalled the 6th tab; the 7th never loaded).
 | 907 | Turns | **Push only reads; it never starts a turn** (364 holds) | The brief; NU3 is a standing watch |
 
 **Not in V94 (later)**: the nexus's 2 s read of `/api/symbiotes` (0.12 s of CPU a minute); starting
-turns on events (NU3); Hermes beyond the safety read; a WebSocket; merge and Hive logs on the
+turns on events (NU3); a WebSocket; merge and Hive logs on the
 shared stream; `/api/status` and `/api/usage` on the stream.
 
 ## As built (V94)

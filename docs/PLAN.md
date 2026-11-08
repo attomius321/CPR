@@ -227,7 +227,6 @@ What holds now: [Reviews](area/reviews.md) · its decisions: [the register](deci
 | [MC1](plan/mc1-symbiote-mcp.md) | Symbiote's MCP: Scout as the person's assistant, from a workspace's start to its merge | ✅ | 358–365 | [journal](journal/mc1-symbiote-mcp.md) |
 | [V50](plan/v50-scout-terminal.md) | Scout is a terminal: opened with no question; the agent, model and effort in its head | ✅ | 383–385 | [journal](journal/v50-scout-terminal.md) |
 | [V52](plan/v52-scout-next-conversation.md) | Scout's head picks the next conversation: a choice starts nothing until New conversation | ✅ | 391–393 | [journal](journal/v52-scout-next-conversation.md) |
-| [V58](plan/v58-hermes-agent.md) | Hermes as a workspace's agent, in its terminal | ✅ | 415–421 | [journal](journal/v58-hermes-agent.md) |
 | Fix | Scout's head on one line: Effort and its stepper centred with the selects | ✅ | | [journal](journal/fix-scout-not-aligned.md) |
 | [SK1](plan/sk1-skill-library.md) | A skill library: a folder or repository of skills outside the project, on the Skills page and for Scribe; commits as set | ✅ | 426–430 | [journal](journal/sk1-skill-library.md) |
 | Fix | An agent's terminal fits its box: no scrollbars coming and going on Scribe's pane, no last row cut off | ✅ | | [journal](journal/fix-scribe-terminal-problem.md) |
@@ -398,14 +397,14 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [V22](plan/roadmap.md) | Fixes: stale text outside the README | ✅ | | [journal](journal/v22-stale-text.md) |
 | Feature | README remade around workspaces; commands, configuration and review pages | ✅ | | [journal](journal/remake-readme.md) |
 | Rename | Rename to Symbiote | ✅ | | [journal](journal/rename-to-symbiote.md) |
-| [Chore](plan/chore-remove-cpr.md) | Remove CPR: the repository's old address, and what was kept under the former name no longer moved | ready for review | 953 | [journal](journal/chore-remove-cpr.md) |
+| [Chore](plan/chore-remove-cpr.md) | Remove CPR: the repository's old address, and what was kept under the former name no longer moved; V58's agent removed, Claude Code and Codex only | ready for review | 953–954 | [journal](journal/chore-remove-cpr.md) |
 | [Refactor](plan/refactor-plan-journal-folders.md) | The plan and the journal in folders | ✅ | 290–293 | [journal](journal/refactor-plan-journal-folders.md) |
 | [Refactor](plan/refactor-readability.md) | The CLI's services and the viewer's pages in modules one can read | ✅ | 344–348 | [journal](journal/refactor-readability.md) |
 | [IN1](plan/in1-one-command-install.md) | Install in one command (`./install.sh`), with no native build: the agents' terminal prebuilt | ✅ | 532–538 | [journal](journal/in1-one-command-install.md) |
 | Chore | The milestone, regression-check and viewer-check skills for workspaces: where you are, plan first, how work reaches `main`; merged work marked by `scripts/plan/mark-merged.mjs` | ✅ | | [journal](journal/chore-milestone-skill-workspaces.md) |
 | Fix | `mark-merged.mjs`: a row with no plan waits for every branch its journal names; a journal's last line is its last entry's | ✅ | | [journal](journal/fix-mark-merged-shared-journals.md) |
 | [Chore](plan/chore-living-docs.md) | Living docs: a page per area of what holds now (Reviews and The merger first), replaced decisions marked on both rows, a register of every decision; merged branches deleted, unmerged ones kept as `archive/` tags | ✅ | 776–781 | [journal](journal/chore-living-docs.md) |
-| Chore | Living docs' gaps: a root `AGENTS.md` for Codex and Hermes; a decision lookup that finds its replacement before `consolidate.mjs` marks it; a note for an area page whose code changed after it; Prettier leaves Symbiote's local files out | ✅ | | [journal](journal/chore-living-docs-gaps.md) |
+| Chore | Living docs' gaps: a root `AGENTS.md` for Codex; a decision lookup that finds its replacement before `consolidate.mjs` marks it; a note for an area page whose code changed after it; Prettier leaves Symbiote's local files out | ✅ | | [journal](journal/chore-living-docs-gaps.md) |
 | [Fix](plan/fix-ci-green.md) | CI green again: the review-place test's git identity, lint's heap on macOS | planned | | |
 | [Chore](plan/chore-keys-v.md) | The `v` key in commands.md's keys table | planned | | |
 | [Chore](plan/chore-dependency-bumps.md) | Electron 44.9.1 and the patch bumps; the majors listed | planned | | |
@@ -425,5 +424,5 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [Fix](plan/fix-view-help.md) | `symbiote view --help` and `symbiote --help` name the Overview | planned | | |
 | [Fix](plan/fix-cli-usage-errors.md) | A mistyped option prints its error and where help is, not the whole help | planned | | |
 | [Refactor](plan/refactor-network-shapes.md) | Shape checks where JSON enters: forge answers, SSE, the viewer's reads | planned | | |
-| [Chore](plan/chore-risky-module-tests.md) | Tests of their own for the merge queue, runShell, core's merging and the Codex and Hermes runners | planned | | |
+| [Chore](plan/chore-risky-module-tests.md) | Tests of their own for the merge queue, runShell, core's merging and the Codex runner | planned | | |
 | [Chore](plan/chore-verify-review-findings.md) | Verify the code reviews' unchecked findings, one failing test each | planned | | |

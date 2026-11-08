@@ -1,11 +1,11 @@
-# Chore — Remove CPR: the repository's old address and the former name's move
+# Chore — Remove CPR, and V58's agent: Claude Code and Codex only
 
 [Index](../PLAN.md) · [Journal](../journal/chore-remove-cpr.md)
 
 **Status:** built, ready for review (2026-11-08), on branch `chore/remove-cpr` (its workspace,
 from `main` at `a12c1d9`).
 
-**Kind** chore · **Branch** `chore/remove-cpr` · **Size** S · **Decisions** 953
+**Kind** chore · **Branch** `chore/remove-cpr` · **Size** M · **Decisions** 953–954
 
 ## Problem
 
@@ -52,6 +52,34 @@ branch would also rewrite ten plans and the register for decisions merged before
 lines this decision brings were changed, as the script writes them: 224's status and 953's row
 in the register, its count line, and 224's `*(superseded by …)*` note in N1d.
 
+## Part 2: V58's agent removed
+
+Asked (2026-11-08), after the merge check failed on V58's e2e spec (it fails on `main` too): "Remove
+absolutely anything related to [it] from this project. We'll stick with Claude and codex." The
+person chose to scrub every record as well: `git grep` of its name finds nothing, plans and
+journals included. Its plan, its journal and decisions 415–421 are deleted.
+
+| What | Removed |
+|---|---|
+| CLI | its runner and its workspace service (two modules, their test file), every branch of it in `workspaces.ts`, `main.ts`'s finder, the record's `stopped`, the server's error words |
+| Core | `AgentKind` is `'claude' \| 'codex'`; the agent terminal's `kept`, which only its terminal set |
+| Viewer | its mark, its Approvals row, its talk command, its terminal rules and hint, the Merge page's exception |
+| Tests | its unit tests, its e2e spec, the e2e harness's fake |
+| Docs | README, `guide/workspaces.md`, `reference/commands.md`, `reference/configuration.md` (its environment variable); 32 plans and journals; its index rows |
+| Elsewhere | the logs dashboard's colour for it; the V89 spike's case and its four screenshots |
+
+A record whose agent was V58's now reads as a workspace with no agent started: the record's reader
+keeps only the kinds it knows. That kind in `agent.kind` is ignored. One workspace record in this
+repository named it.
+
+| # | Question | Decision | Why |
+|---|---|---|---|
+| 954 | Which agents Symbiote starts | **Claude Code and Codex only**: V58's agent is removed, code, tests and records (its decisions 415–421 with its plan) | Asked (2026-11-08): the person does not use it; its e2e spec failed the merge check |
+
+Scrubbing the records left some measured totals in older plans larger than their listed parts
+(AR1's 131 workspaces, V75's 95, V83's 120): the parts that named it are gone, and the totals are
+kept as measured.
+
 ## Results
 
 - 11 files in `packages/`: 3 lines added, 322 removed; 4 files deleted (both `former-name.ts`,
@@ -59,3 +87,5 @@ in the register, its count line, and 224's `*(superseded by …)*` note in N1d.
 - `pnpm check`: 244 test files, 3,444 tests pass (the desktop's 7 files, 64 tests among them).
   `pnpm build` passes.
 - P02's `curl` answers (2026-11-08): see [its plan](chore-repository-address.md#evidence).
+- Part 2: 84 files, 2,475 lines removed in all; 10 files deleted. `pnpm check`: 243 test files,
+  3,415 tests pass (29 removed with it).

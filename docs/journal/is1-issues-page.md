@@ -43,8 +43,8 @@ more, one issue with its comments and its link. Decisions 944–952.
 of 7 failing with its handling turned off). `pnpm check`: 3,457 tests passed. `pnpm build`.
 `e2e/issues.spec.ts` 7 passed. The full e2e: 434 of 438 passed. Two failures were this branch's:
 `shell.spec.ts` and `workspace-history.spec.ts` count the sidenav's pages (Issues is the sixth,
-History the seventh now), fixed and passing. Two are not: `changes.spec.ts:139` and
-`hermes.spec.ts:29` pass alone, and fail under `--repeat-each=3` on this branch and on a
+History the seventh now), fixed and passing. Two are not, `changes.spec.ts:139` among them: they
+pass alone, and fail under `--repeat-each=3` on this branch and on a
 `git archive` export of `main` alike (5 of 18 and 3 of 18 runs on `main`). Real, read only: vite (with a token),
 gitlab-runner (without one) and CPR through the built `symbiote view`; numbers in the plan's
 results. Screenshots in both themes and at each text size.

@@ -23,7 +23,7 @@ Measured on `main` (`3b7771c`) in Chromium, `serveWorkspaces` with the fake Clau
 
 **Goal**: the start page drawn as the mockup. Unchanged: what is sent to start a workspace, the
 draft and when it is saved, Ctrl+Enter, Escape, `n`, drops and pastes anywhere on the page, a
-start from a History row, Codex's and Hermes's rows, the tokens' values.
+start from a History row, Codex's rows, the tokens' values.
 
 ## The page
 
@@ -82,7 +82,7 @@ start from a History row, Codex's and Hermes's rows, the tokens' values.
     under it, a crown before a subscription; the `ANTHROPIC_API_KEY` warning; no agent: the note.
   - **Model**: the heading and the select on one line, the model's description under them.
   - **Effort**: the stepper the card's width.
-  - **Permissions** (Claude Code; Codex's Sandbox, Hermes's Approvals with their "?"): the heading
+  - **Permissions** (Claude Code; Codex's Sandbox with its "?"): the heading
     and the select or value on one line.
   - **Plan first and wait for my OK**: the switch at the right, "Let the agent propose a plan
     before making changes." under the heading.

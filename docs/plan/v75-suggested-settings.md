@@ -20,7 +20,7 @@ records (`symbiote/workspaces/`, 2026-10-15 to 2026-10-28) show it:
 
 | What the records hold | Count |
 |---|---|
-| Workspaces started | 95: Claude Code 91, Codex 3, Hermes 1 |
+| Workspaces started | 95: Claude Code 91, Codex 3 |
 | A model picked on the page | 5 of 95, all `opus`. The other 90 ran on the agent's default |
 | Effort `xhigh` | 72 of 95: 51 of 62 features, 14 of 17 fixes, 3 of 3 refactors, 4 of 6 spikes |
 | Effort `medium` or `low` | 10 of 95, 2 of them the 3 chores |
@@ -336,7 +336,7 @@ The person added that the advisor runs only when the button is pressed: "not eve
 the prompt, it is the user decision" (decision 549).
 
 **Not in V75 (later)**: switching the agent; suggestions for Scout, Scribe or the merger; a
-suggestion while you type; learning from the person's past picks; Hermes.
+suggestion while you type; learning from the person's past picks.
 
 ## As built (V75a)
 

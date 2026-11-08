@@ -16,7 +16,7 @@ Read the workspaces' records since 2026-10-28 (`symbiote/workspaces/`, read only
   title, the agent, plan first and the branch it starts from; a model or an effort Scout passes
   is started without the person seeing it.
 - **The endpoint takes any agent.** `parseSuggestRequest` checks only that the agent is a text;
-  the service's `found` reads anything not `claude` or `hermes` as Codex. The page never sends
+  the service's `found` reads anything not `claude` as Codex. The page never sends
   another, so the page never met it.
 - **A failure needs nothing new.** The advisor's refusals are `WorkspaceRefused` with the words
   the page shows, and the MCP's `run` turns any error into its tool's error result in its words.

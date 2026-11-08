@@ -266,8 +266,7 @@ fixes both. The design:
    part it shows.
 7. **The nexus** keeps its 2 s read: 0.12 s of CPU a minute, 0.4 s for each view. Pushing
    `/api/symbiotes` from a watch on `<cache>/running/` can come later.
-8. **Codex and Hermes** run no hooks. Codex's app server sends events (V27a) that can trigger;
-   the server's slow read covers Hermes.
+8. **Codex** runs no hooks. Codex's app server sends events (V27a) that can trigger.
 
 ### Milestone outline
 
@@ -310,6 +309,6 @@ V83 and decisions from 625 were free on every branch on 2026-10-30; check again 
 - The app's window hidden or minimized.
 - Firefox and Safari.
 - A repository on `/mnt/c` end to end (only `fs.watch` was tried there).
-- Codex and Hermes agents.
+- Codex agents.
 - The nexus with several views, each with a busy agent (one view in 3 frames was measured).
 - Terminals and merge logs open in several tabs, against the 6-connection rule.

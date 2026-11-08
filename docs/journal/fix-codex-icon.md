@@ -15,7 +15,7 @@ It is drawn on a working Codex workspace's row and its heading (`WorkspaceFacts.
 **The fix**: `CodexMark` draws OpenAI's blossom from Simple Icons (CC0, the source of Claude's
 spark), unchanged, filled with a new token `--openai`: `#ffffff` in the dark theme, `#000000` in
 the light and the system's light. Its name and tooltip stay "Codex": the agent is still Codex.
-No gradient, so no `useId`; Hermes keeps its own.
+No gradient, so no `useId`.
 
 **Learned**: OpenAI's mark has no colour of its own, only black or white; a fixed fill would
 vanish on one of the themes, so it is a token per theme like the rest of the look.

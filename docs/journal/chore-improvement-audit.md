@@ -504,7 +504,7 @@ reason.
   - `merge-queue.ts`: the lock and the cross-process queue.
   - `programs.ts`: `runShell`'s timeout.
   - `core/src/git/merging.ts`: none of its 9 functions is named in a test.
-  - `workspace-codex.ts`, `workspace-hermes.ts`.
+  - `workspace-codex.ts`.
 - **Fix**: S each, written as failing tests for S2, S3 and C1 first.
 
 ### Findings: docs that disagree with the code
@@ -642,7 +642,7 @@ verify it, and its size. Each has a `planned` row in its area of the index. Noth
 | P45 | Q2 | refactor | [Shape checks where JSON enters: forge answers, SSE, the viewer's reads](../plan/refactor-network-shapes.md) | `refactor/network-shapes` | M | P06, P08, P13 |
 | P46 | Q3 | chore | [React's hooks and accessibility lint rules, as warnings first](../plan/chore-react-lint.md) | `chore/react-lint` | S | P01 |
 | P47 | Q4 | chore | [e2e specs poll instead of fixed waits](../plan/chore-e2e-waits.md) | `chore/e2e-waits` | S |  |
-| P48 | Q5 | chore | [Tests of their own for the merge queue, runShell, core's merging and the Codex and Hermes runners](../plan/chore-risky-module-tests.md) | `chore/risky-module-tests` | S | overlaps P11, P12 (their failing tests first) |
+| P48 | Q5 | chore | [Tests of their own for the merge queue, runShell, core's merging and the Codex runner](../plan/chore-risky-module-tests.md) | `chore/risky-module-tests` | S | overlaps P11, P12 (their failing tests first) |
 | P49 | docs env vars | chore | [configuration.md lists every variable Symbiote reads](../plan/chore-env-docs.md) | `chore/env-docs` | S |  |
 | P50 | docs CLAUDE.md | chore | [The packages' CLAUDE.md files name what they hold](../plan/chore-package-claude-md.md) | `chore/package-claude-md` | S |  |
 | P51 | reviews' unchecked findings | chore | [Verify the code reviews' unchecked findings, one failing test each](../plan/chore-verify-review-findings.md) | `chore/verify-review-findings` | M |  |

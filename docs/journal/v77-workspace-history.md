@@ -17,9 +17,8 @@ against `main`, and whether each branch is still there.
   nothing of the branch's end, so V77 has Clean up write `tip` and `merged`.
 - **Two approved commits are not on `main`**: an Approve is not proof of a merge; the outcome is
   read from git, not from the verdict.
-- **A finished Codex or Hermes workspace keeps its conversation in the agent** (3 of 97): reading
-  it means asking Codex's app server or starting Hermes for a workspace whose sessions were
-  archived. V77 reads Symbiote's own files only and says so.
+- **A finished Codex workspace keeps its conversation in the agent**: reading it means asking
+  Codex's app server for a workspace whose sessions were archived. V77 reads Symbiote's own files only and says so.
 - **`/history` is taken**: Git's address until V66, still moved to `/git`, and Git's API is
   `/api/history`. The page is `/workspace-history`.
 
@@ -59,5 +58,5 @@ fields missing; then a fixture's wrong base). CLI 1,006 unit tests, viewer 626; 
 The person's 97 finished workspaces on a clone: 83 merged, 13 kept, 1 not merged, 96 with
 commits; the list 47–53 ms cold, 32–38 ms warm; screenshots at 1440 and 760 px, dark and light.
 
-Not verified: the desktop window itself (its title-bar spec covers the page); a finished Hermes or
+Not verified: the desktop window itself (its title-bar spec covers the page); a finished
 Codex-on-app-server workspace's conversation, which History does not read by design.

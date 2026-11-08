@@ -13,9 +13,9 @@ Measured on `main` at `21e510e`, on the person's records (`symbiote/`, read only
 
 | What | Found |
 |---|---|
-| Where a workspace's activity is | Four places merged by the Activity tab in the browser (V73): its record (`workspaces/<branch>.json`), its thread (`threads/<branch>.jsonl`), its tools (`activity/<branch>.jsonl`), its commits (git) and its review's verdict; Codex on its app server and Hermes from their own stores |
+| Where a workspace's activity is | Four places merged by the Activity tab in the browser (V73): its record (`workspaces/<branch>.json`), its thread (`threads/<branch>.jsonl`), its tools (`activity/<branch>.jsonl`), its commits (git) and its review's verdict; Codex on its app server from its own store |
 | Where Nucleus's is | `nucleus-activity.jsonl` (NU2), and `nucleus-activity.1.jsonl` past 4 MB |
-| A way to take it out | None. The tab's Raw events view shows lines on the page only; the files are JSON Lines in four folders, and the app server's and Hermes's are not files at all |
+| A way to take it out | None. The tab's Raw events view shows lines on the page only; the files are JSON Lines in four folders, and the app server's are not files at all |
 | Workspaces with recorded tools | 67 of 124 records. Their raw records (record, thread, tools): median **154 KB**, p90 541 KB, largest **796 KB** (`feature/nucleus`) |
 | Calls a workspace | median 164, p90 302, most 355; failed calls: median 2, most 11; turns (messages given): median 5, most 23 |
 | Nucleus | 509 lines, 500 KB, 6 conversations (30 Oct 17:10 to 31 Oct 10:04): 35 messages, 203 calls (26 Symbiote's own), 14 Confirm lines |
@@ -84,7 +84,7 @@ sources:
 - `Workspaces.exportActivity(branch, format)` (`workspaces.ts`): the record, the **whole** thread
   and the **whole** tools file (the tab reads the newest 1 MB; the largest file is 755 KB),
   commits (`changes`, 100 at most, as listed), the verdict; Codex on its app server its last 50
-  turns as the tab reads them; Hermes its session. A finished workspace whose agent's store is
+  turns as the tab reads them. A finished workspace whose agent's store is
   not asked (V77, decision 564) exports its record, commits and verdict, and says so
   (`missing`).
 - `PageAgent.exportActivity(format)` (Nucleus's only): both files whole, read after what is being
@@ -210,13 +210,12 @@ then passed alone, 26 of 26. The nexus's 20 pass.
 | The Markdown read back by `marked` (CommonMark) | 125 files: 13,398 list items and 872 headings, as written; no agent's text added or broke one |
 | Front matter (PyYAML) and JSON Lines | 125 front matters parse; 26,641 JSON lines parse |
 | Secrets | No token shape left in any export (the 3 matches of a loose search are the redaction's own regular expressions, quoted in records) |
-| `complete: false` | 54 workspaces whose agents started before calls were recorded (V48f), 2 finished on Codex's app server, 1 finished on Hermes |
+| `complete: false` | 54 workspaces whose agents started before calls were recorded (V48f), 2 finished on Codex's app server |
 | The MCP's 60 KB | Nucleus's 121 KB → 48 KB, its 20 oldest of 35 messages left out and said; the largest workspace 101 KB → 45 KB, its first turn left out |
 | Screenshots, History's and Nucleus's tabs with the menu open: 1440 and 390 px, dark and light | No horizontal overflow, no page errors; the menu inside the window at both widths |
 
 **Not verified**: an export of a running Codex workspace on its app server (`symbiote activity`
-starts Codex's app server to read it, as `symbiote merge` starts Codex for its levels) and of a
-running Hermes workspace (unit-tested readers only); commits in the scratch copy (it had none of
+starts Codex's app server to read it, as `symbiote merge` starts Codex for its levels); commits in the scratch copy (it had none of
 the branches: real commits are listed by `changes`, as the e2e's History export shows); the
 desktop app's download (Electron's own Save dialog; no handler) and Copy there; Firefox and
 Safari; a reader test by a fresh agent.
