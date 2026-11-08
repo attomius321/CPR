@@ -477,6 +477,9 @@ test('a row in the sidenav: two lines, the title cut with its tip whole, the row
     ).toBeVisible(POLL);
   }
   const row = page.locator(`.sidenav .workspace-row[data-branch="${long}"]`);
+  const next = page.locator('.sidenav .workspace-row[data-branch="feature/add-a-double-function"]');
+  // Both working, so in one group: an agent not started yet was in another (fix-ci-green).
+  for (const card of [row, next]) await expect(card).toContainText('Thinking', POLL);
   // The title on one line, cut at its end; the whole of it in the row's tip.
   const title = row.locator('.ws-row-title');
   expect(
@@ -494,7 +497,6 @@ test('a row in the sidenav: two lines, the title cut with its tip whole, the row
   await expect(row.locator('.ws-row-state')).toHaveCSS('line-height', '18px');
   expect(Math.round((await row.boundingBox())?.height ?? 0)).toBe(52);
   // The next row of its group, right under it.
-  const next = page.locator('.sidenav .workspace-row[data-branch="feature/add-a-double-function"]');
   const [above, below] = [await row.boundingBox(), await next.boundingBox()];
   expect(Math.round(below!.y - (above!.y + above!.height))).toBe(0);
 });
