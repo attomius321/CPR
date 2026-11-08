@@ -19,7 +19,6 @@ import {
 } from 'electron';
 import { openLog, watchUncaught } from '@symbiote/log';
 import { onWaiting, readWaiting, withDot } from './badge.js';
-import { moveFormerConfig } from './former-name.js';
 import { frameOf, frameOptions } from './frame.js';
 import { hardwareGlFails } from './gpu.js';
 import { readRecorded, startServer, withRecent } from './launcher.js';
@@ -36,7 +35,6 @@ import { configDir, placeWindow, readChoices, readState, writeState, type Area }
 const here = dirname(fileURLToPath(import.meta.url));
 const args = parseAppArgs(process.argv.slice(app.isPackaged ? 1 : 2));
 const symbioteConfig = configDir(process.env, process.platform, homedir());
-moveFormerConfig(symbioteConfig);
 const config = join(symbioteConfig, 'app');
 const stateFile = join(config, 'state.json');
 const startPage = join(here, '..', 'start', 'index.html');
