@@ -287,6 +287,20 @@ export interface ReviewDraft {
   body: string;
 }
 
+/**
+ * The saved draft as it arrives, with what the person did before it did (fix-ci-green): a summary
+ * typed then is kept, and comments added then go after the saved ones. A slow server's answer
+ * replaced a summary typed in the meantime (CI's e2e).
+ */
+export function withEarlyEdits(saved: ReviewDraft, current: ReviewDraft): ReviewDraft {
+  if (current.body === '' && current.drafts.length === 0) return saved;
+  return {
+    ...saved,
+    body: current.body === '' ? saved.body : current.body,
+    drafts: [...saved.drafts, ...current.drafts],
+  };
+}
+
 let counter = 0;
 function draftId(): string {
   counter += 1;

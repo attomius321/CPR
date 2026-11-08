@@ -14,6 +14,7 @@ import {
   symbolAt,
   toLocalReview,
   toReview,
+  withEarlyEdits,
   type Draft,
 } from '../src/diff/comments.js';
 import type { DiffRow } from '../src/diff/detail.js';
@@ -269,6 +270,35 @@ describe('comments on a line of a file (V60)', () => {
           line: 1,
         },
       ],
+    });
+  });
+});
+
+describe('withEarlyEdits (fix-ci-green)', () => {
+  const comment = (id: string, body: string): Draft =>
+    ({ id, body, symbol: 'src/a.ts#a', anchor: null }) as unknown as Draft;
+  const empty = { drafts: [], body: '' };
+
+  it('is the saved draft when nothing was typed before it arrived', () => {
+    const saved = { drafts: [comment('a', 'kept')], body: 'Saved summary.' };
+    expect(withEarlyEdits(saved, empty)).toBe(saved);
+  });
+
+  it('keeps a summary typed before the saved draft arrived, and its comments beside it', () => {
+    const saved = { drafts: [comment('a', 'kept')], body: '' };
+    const typed = { drafts: [comment('b', 'new')], body: 'Name it halve.' };
+    expect(withEarlyEdits(saved, typed)).toEqual({
+      drafts: [comment('a', 'kept'), comment('b', 'new')],
+      body: 'Name it halve.',
+    });
+  });
+
+  it('keeps the saved summary when only a comment was added', () => {
+    const saved = { drafts: [], body: 'Saved summary.' };
+    const typed = { drafts: [comment('b', 'new')], body: '' };
+    expect(withEarlyEdits(saved, typed)).toEqual({
+      drafts: [comment('b', 'new')],
+      body: 'Saved summary.',
     });
   });
 });
