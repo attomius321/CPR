@@ -18,6 +18,10 @@ export default defineConfig({
   },
   test: {
     include: ['packages/*/test/**/*.test.ts'],
+    // macOS spawns processes several times slower, and these tests spawn git by the hundred: its
+    // runner took 479 s for the suite (Ubuntu's 248 s), and Hive's runner tests passed 5 s there,
+    // a different few each run (fix-ci-green).
+    ...(process.platform === 'darwin' ? { testTimeout: 20_000 } : {}),
     // Fixtures are code under analysis, test files included.
     exclude: [...configDefaults.exclude, 'packages/*/test/fixtures/**'],
     env: {

@@ -39,11 +39,7 @@ jobs:
         env:
           NODE_OPTIONS: --max-old-space-size=4096
       - run: pnpm run typecheck
-      # Not on macOS (the person's call, fix-ci-green): 6 unit tests fail only there, hidden behind
-      # lint's crash since 2026-10-13 (the plan's results list them). Lint, types and the build
-      # still run on it.
       - run: pnpm run test
-        if: runner.os != 'macOS'
       - run: pnpm run build
       - name: CLI smoke test
         run: node packages/cli/dist/bin.js --version

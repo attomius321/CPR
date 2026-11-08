@@ -1,10 +1,11 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { readRecorded, readyUrl, serverError, startServer, withRecent } from '../src/launcher.js';
 
-const dir = mkdtempSync(join(tmpdir(), 'symbiote-launcher-'));
+// A real path: macOS links /var to /private/var, and a process's cwd is the real one.
+const dir = realpathSync(mkdtempSync(join(tmpdir(), 'symbiote-launcher-')));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 describe('readyUrl', () => {

@@ -1,7 +1,7 @@
 // Changes from outside (V94c, decision 904): one plain `fs.watch` per folder, folders added as they
 // appear. Node's recursive watch on Linux missed the third write by rename to one file and never
 // fired on a folder made after it started (the spike): these are the cases it failed.
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -22,9 +22,11 @@ function folder(): string {
 }
 
 /** Watches, and the paths it reports. */
-function watched(root: string, descend?: (rel: string) => boolean) {
+function watched(root: string, descend?: (rel: string) => boolean, replays?: boolean) {
   const seen: string[] = [];
-  const w = watchTree(root, (path) => seen.push(path), descend);
+  const w = watchTree(root, (path) => seen.push(path), descend, {
+    ...(replays === undefined ? {} : { replays }),
+  });
   watching.push(w);
   return seen;
 }
@@ -90,6 +92,24 @@ describe('watchTree (V94c)', () => {
     expect(await until(seen, (p) => p === join(root, 'reviews', 'r.json'))).toBe(true);
     expect(await until(seen, (p) => p === join(root, 'nucleus.json'))).toBe(true);
     expect(seen).not.toContain(join(root, 'revisions', 'copy'));
+  });
+
+  it('where the system replays changes, reports none to a file last written before it started (fix-ci-green)', async () => {
+    // macOS's FSEvents also delivers changes made just before a watch (`replays`, on there): the
+    // page's first read had them. Linux reports an old file's new dates, a change dated before.
+    const root = folder();
+    mkdirSync(join(root, 'activity'));
+    const old = join(root, 'activity', 'old.jsonl');
+    writeFileSync(old, '{}\n');
+    const seen = watched(root, undefined, true);
+    await settle();
+    const before = new Date(Date.now() - 10_000);
+    utimesSync(old, before, before);
+    const now = join(root, 'activity', 'now.jsonl');
+    writeFileSync(now, '{}\n');
+    expect(await until(seen, (p) => p === now)).toBe(true);
+    await settle();
+    expect(seen).not.toContain(old);
   });
 
   it('keeps no watcher once closed', async () => {
