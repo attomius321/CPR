@@ -190,7 +190,10 @@ test('Split: the agent and a shell side by side, in the address, the agent not a
   await expect(panes.nth(1).locator('.xterm-rows')).toContainText('right-2', POLL);
   await panes.nth(0).locator('.xterm-helper-textarea').focus();
   await page.keyboard.type('left');
-  await expect(panes.nth(0).locator('.xterm-rows')).toContainText('> left');
+  // Sent, the fake says the whole line: the split's resize redraws its prompt, and it came between
+  // two keys on CI (`> l[49x37]> eft`, fix-ci-green).
+  await page.keyboard.press('Enter');
+  await expect(panes.nth(0).locator('.xterm-rows')).toContainText('got: left', POLL);
   expect(symbiote.attaches()).toHaveLength(attached);
 
   // Kept through a reload; off again, the agent alone, not attached again.
