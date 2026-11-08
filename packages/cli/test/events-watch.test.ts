@@ -101,9 +101,11 @@ describe('watchTree (V94c)', () => {
     mkdirSync(join(root, 'activity'));
     const old = join(root, 'activity', 'old.jsonl');
     writeFileSync(old, '{}\n');
+    // Dated well before: `Date.now()` drops the fraction of a millisecond macOS's dates keep.
+    const before = new Date(Date.now() - 10_000);
+    utimesSync(old, before, before);
     const seen = watched(root, undefined, true);
     await settle();
-    const before = new Date(Date.now() - 10_000);
     utimesSync(old, before, before);
     const now = join(root, 'activity', 'now.jsonl');
     writeFileSync(now, '{}\n');
