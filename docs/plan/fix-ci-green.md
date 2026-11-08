@@ -3,7 +3,8 @@
 [Index](../PLAN.md) · [The audit](../journal/chore-improvement-audit.md) (finding R1)
 
 **Status:** built (2026-11-08), on branch `fix/ci-green` in its own workspace (from `main` at
-a12c1d9); written by the improvement audit (`chore/improvement-audit`).
+a12c1d9, `main` merged in at a95ccad); CI green on all three jobs (run 42510596203). Written by the
+improvement audit (`chore/improvement-audit`).
 
 **Kind** fix · **Branch** `fix/ci-green` · **Size** S · **Depends on** none · **Plan** P01 of 51 (the audit's order)
 
@@ -106,9 +107,31 @@ because the person's global git config has `user.email`. The test depends on the
 - **Lint in `ci.yml`, not `package.json`**: `NODE_OPTIONS=--max-old-space-size=4096` on the lint
   step. A developer's machine with 16 GB or more already gets a ~4 GB default (4,192 MB here),
   as Ubuntu's runners do; only the macOS runner (~2 GB) was short.
-- **Not done here (decided, no one to ask mid-run)**: what CI shows past the old failures. Each
-  fails only on a runner, in code this fix does not touch, and needs a fix verified where it
-  fails (a Mac for four of them); guessing through CI pushes would not be a fix. Listed below.
+- **Added, at the person's word after the first report** ("remove the macOS tests, and fix e2e
+  tests"):
+  - `ci.yml` no longer runs `pnpm run test` on macOS; format, lint, types, the build, the smoke
+    test and the dogfood still run there. Six unit tests fail only on macOS (listed below).
+  - **`symbiote view` ends on Ctrl+C with a page open** (`server.ts`, the cause of
+    `events.spec.ts:400`). The harness's restart waited for the old server's exit, which never
+    came. Probes in the server (it hung about 1 run in 10 here, pinned to one core) showed why: a
+    connection busy when `close()` started (`/api/workspaces/day`) stayed open after its answer,
+    and the page's stream asked again on it every second. Each ask got a 200 event-stream head
+    with `Connection: keep-alive`, then its end, so Node kept the connection and `server.close()`
+    never returned. Once `close()` starts, every request now gets 503 with `Connection: close`,
+    and a connection is closed once its last answer is sent. The page treats a refused stream as
+    lost and opens it again (`shell/events.ts`). A first try, `Connection: close` on each answer,
+    was not enough: the stream's own head set `keep-alive` over it.
+  - Specs that read what a fake writes a moment later now wait for it: `app.spec.ts:191` (the
+    window is shown at Chromium's first paint, after the page is laid out), `nucleus.spec.ts:437`
+    (the record is written after the agent starts), `codex.spec.ts:165` (the second run's call),
+    `targets.spec.ts:38`, `page-frame.spec.ts`, `merge-send.spec.ts` and four tests of
+    `workspaces.spec.ts` (a `prompted` helper; `approvedWorkspace` too): the report sent before
+    the agent had its prompt ends no turn, so they wait for "Thinking", as `events.spec.ts` does.
+    `look.spec.ts:458` waits for both cards to work, in one group, before it measures them.
+  - Changes V94 left to the 60 s safety read: a file written in a worktree is no trigger, so
+    `changes.spec.ts:139` reloads the page after its write, as a person does to see it at once.
+  - `main` merged in (Hermes removed, decision 954): `hermes.spec.ts:29`, which failed in run 4
+    for the same reason (the fake Hermes's writes trigger no read), went with it.
 
 ## Results
 
@@ -117,7 +140,7 @@ because the person's global git config has `user.email`. The test depends on the
 | `GIT_CONFIG_GLOBAL=/dev/null pnpm test` | 1 failed, 3,456 passed | 3,457 passed |
 | NX1 test, `HOME` and `XDG_CONFIG_HOME` empty | fails (the cache place) | passes |
 | `pnpm lint` with a 2,048 MB heap | aborts, exit 134 | (unchanged: CI gives it 4,096 MB) |
-| `pnpm test:e2e`, global config hidden | 9 of the 12 CI failures run here fail | viewer 437 of 438 (below), nexus 32 of 32 |
+| `pnpm test:e2e`, global config hidden | 9 of the 12 CI failures run here fail | viewer 436 of 436 after `main` merged in, nexus 32 of 32 |
 
 ESLint's heap (`node --trace-gc node_modules/eslint/bin/eslint.js .`, this machine, 46 s): 3,180 MB
 in use at its peak, 2,377 MB live after the last full collection; the process's maximum resident
@@ -126,25 +149,37 @@ tuning would have saved the macOS job. **The peak is 78 % of the new 4 GB limit*
 lint per package (or with `parserOptions.projectService` scoped per package) is proposed, not
 done here, since it changes what `pnpm check` runs.
 
-**CI on the branch** (runs 42489538024 and 42491731701 on GitHub):
+**CI on the branch** (GitHub Actions, runs 42489538024, 42491731701, 42503660837, 42505180039, 42508490356,
+42510596203):
 
-| Job | Before (main) | Run 1 | Run 2 (e2e identity) |
-|---|---|---|---|
-| ubuntu · node 22 | unit test fails | **green** | **green** |
-| ubuntu · node 24 | unit test fails | unit green; e2e 13 of 438 fail | unit green; e2e **2** of 438 fail |
-| macOS · node 24 | lint out of heap | lint green; unit 9 fail | lint green; unit 6 fail |
+| Job | `main` | Run 1 | Run 2 (e2e identity) | Run 3 (server, macOS) | Run 4 (specs) | Run 5 (`main` in) | Run 6 |
+|---|---|---|---|---|---|---|---|
+| ubuntu · node 22 | unit test fails | green | green | green | green | green | **green** |
+| ubuntu · node 24 | unit test fails | e2e 13 of 438 fail | e2e 2 fail | e2e 2 fail | e2e 1 fail | e2e 2 fail | **green** |
+| macOS · node 24 | lint out of heap | unit 9 fail | unit 6 fail | green (no unit tests) | green | green | **green** |
 
-Not green, and why, each for a fix of its own:
+Each run's e2e failures were different specs, all CI-only: run 1 `codex.spec.ts:165` and
+`nucleus.spec.ts:437` among the identity failures; run 2 `app.spec.ts:191` and
+`events.spec.ts:400`; run 3 `nucleus.spec.ts:437` and `targets.spec.ts:38`; run 4
+`hermes.spec.ts:29` (gone with Hermes); run 5 `changes.spec.ts:139` and `workspaces.spec.ts:931`.
+Each is fixed above. Run 6 (42510596203, 2026-11-08) is green on all three jobs: the first green
+run since 2026-10-13.
 
-- **e2e, ubuntu · 24, both runs, pass locally**: `app.spec.ts:191` (the window is not `visible`
-  on the runner's Xvfb) and `events.spec.ts:400` (V94c, the server restarted on its port: the
-  2-minute test timeout).
-- **e2e, any machine**: `workspaces.spec.ts:2293` (V67) failed 1 run in 6 on `main`'s e2e files,
-  1 in 3 here: the merger is caught "Queued … main moved: fast-forwarding again" instead of
-  "Cannot fast-forward". Passed in both CI runs.
-- **unit, macOS, both runs** (hidden since 2026-10-13 behind lint's crash):
-  `events.test.ts` ×3 (V94a/c: FSEvents names a watched folder itself, `activity/activity`, so a
-  page gets extra `touched` paths and a second read); `terminal.test.ts` › loadPty (macOS's
-  `/bin/sh` is bash: `running()` says `bash` at an idle prompt); `desktop/launcher.test.ts` ›
-  startServer (`/var` against `/private/var`, a test's path); `hive-runner.test.ts`, 5 s
-  timeouts on 4 tests in run 1 and a different 1 in run 2 (the 3-core runner, 479 s for the suite).
+`events.spec.ts:400` on one core, the spec alone: hung at runs 3, 14, 13 and 13 of four hunts
+before; 40 of 40 passed after. `server.test.ts`'s new test (a request busy at close on a kept-alive
+connection, then the client asking every 50 ms): `close()` never resolved before, now it does.
+
+Not fixed here:
+
+- **Unit tests on macOS, not run there now.** They failed in both runs that reached them, hidden
+  since 2026-10-13 behind lint's crash: `events.test.ts` ×3 (V94a/c: FSEvents names a watched
+  folder itself, `activity/activity`, so a page gets extra `touched` paths and a second read: a
+  real difference, not only the test's); `terminal.test.ts` › loadPty (macOS's `/bin/sh` is bash:
+  `running()` says `bash` at an idle prompt); `desktop/launcher.test.ts` › startServer (`/var`
+  against `/private/var`, a test's path); `hive-runner.test.ts`, 5 s timeouts on 4 tests in run 1
+  and a different 1 in run 2 (the 3-core runner, 479 s for the suite). Each needs a fix verified
+  on a Mac; the step can come back once they pass.
+- **E2e specs that failed under this machine's load, never on CI**: `events.spec.ts:348` (a
+  merge's steps within 500 ms of the server's line), once, with the old server. `workspaces.spec.ts:2293` (V67) failed 1 run in 6 on `main`'s
+  e2e files before the server fix and 0 in 47 after (alone, on one core, and under load); it
+  passed in every CI run. Not explained: it never restarts its server.

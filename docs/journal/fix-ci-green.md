@@ -40,3 +40,38 @@ test passes with `HOME` and `XDG_CONFIG_HOME` empty; `pnpm check` and `pnpm buil
 `pnpm lint` passes with a 4,096 MB heap and aborts with 2,048 MB; `pnpm test:e2e` 437 of 438 in
 the viewer (the V67 race) and 32 of 32 in the nexus. CI: ubuntu · node 22 green; ubuntu · node 24
 green but for 2 e2e specs; macOS past lint, 6 unit failures (run 42491731701).
+
+## Fix — CI green: `symbiote view` ends on Ctrl+C; the e2e specs wait for what they read (2026-11-08, branch `fix/ci-green`)
+
+The person's word after the first entry: "remove the macOS tests, and fix e2e tests". Then `main`
+merged in (Hermes removed, decision 954) and CI again. Run 42510596203 is green on all three
+jobs, the first green run since 2026-10-13. What was built, run by run:
+[the plan's As built and results](../plan/fix-ci-green.md#as-built).
+
+**Learned**:
+
+- **`events.spec.ts:400` was a real bug.** `symbiote view` could fail to end on Ctrl+C with a
+  page open. A connection busy when `close()` started stayed open after its answer; the page's
+  stream asked again on it every second, each answer a 200 event-stream head with
+  `Connection: keep-alive` and its end, so `server.close()` never returned. Found with probes in
+  the server, about 1 hang in 10 runs on one core. Logging to a file in the request path hid it
+  (0 in 30): the probe that found it kept its lines in memory and wrote them only once a close
+  had waited a second. A first fix, `Connection: close` on each answer, did not hold: the
+  stream's own head set `keep-alive` over it. Now a closing server answers 503 with
+  `Connection: close` and closes a connection once its last answer is sent. 40 of 40 runs after.
+- **Each CI run failed different e2e specs**: 13, 2, 2, 1, 2, then none. Past the git identity,
+  every one was a spec reading what a fake or the server writes a moment later: a window shown at
+  first paint, a record written after the agent starts, a report sent before the agent's prompt
+  (which ends no turn), two cards in different groups. A runner is slower than this machine, so
+  the order these specs assumed broke there first.
+- **V94 leaves some changes to the 60 s safety read**: a file written in a worktree, and Hermes's
+  writes (now gone). Specs that saw them at once did so only through a read already under way;
+  `changes.spec.ts` now reloads the page after its write.
+- **macOS's unit tests are off in CI, not fixed**: 6 fail only there (the plan lists them, with a
+  cause each). Two are product differences (FSEvents naming a watched folder, `/bin/sh` being
+  bash), worth their own fix on a Mac.
+
+**Verification**: `pnpm check` (3,416 tests after `main` merged in) and `pnpm build` pass;
+`pnpm test:e2e` 436 of 436 and 32 of 32 here; `server.test.ts`'s new test fails on the old
+`close()` and passes on the new one; CI run 42510596203 green on ubuntu · node 22, ubuntu · node 24
+(e2e included) and macOS · node 24.
