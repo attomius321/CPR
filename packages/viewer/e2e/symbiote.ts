@@ -207,6 +207,7 @@ export async function serveAgentBranch(
   git(repo, 'checkout', '-q', 'main');
   git(repo, 'branch', '-q', '-D', 'feature');
   git(repo, 'config', 'user.email', 'reviewer@example.com');
+  git(repo, 'config', 'user.name', 'Reviewer');
   const origin = mkdtempSync(join(tmpdir(), 'symbiote-e2e-origin-'));
   git(origin, 'init', '-q', '--bare');
   git(repo, 'remote', 'add', 'origin', origin);
@@ -1333,6 +1334,7 @@ export async function serveWorkspaces({
   git(repo, 'checkout', '-q', '-B', 'main');
   git(repo, 'branch', '-q', '-D', 'feature');
   git(repo, 'config', 'user.email', 'reviewer@example.com');
+  git(repo, 'config', 'user.name', 'Reviewer');
   const origin = mkdtempSync(join(tmpdir(), 'symbiote-e2e-origin-'));
   git(origin, 'init', '-q', '--bare');
   git(repo, 'remote', 'add', 'origin', origin);
