@@ -397,6 +397,13 @@ long files in warmer colours. Use it to spot the files that have grown too large
 
 ![The Monitor: the source folder as a map of files sized by their lines, grouped by folder](docs/images/monitor.png)
 
+### Issues
+
+**Issues** (`u`) lists the issues of the GitHub or GitLab repository that `origin` points to: open
+ones first, closed or all on a tab, and a search on titles. Pick one to read its text and comments,
+or open it on the forge. The page only reads: it never comments, labels or closes. It uses the
+tokens `symbiote pr` uses; without one, it still reads public issues.
+
 ### Settings
 
 **Settings** (`s`) lists what you set, in this order, with a filter at the top:
@@ -514,7 +521,8 @@ access off, set `nucleus.web` to `false` in `symbiote/config.json`.
   CI, framework plugins.
 - [Work with agents in workspaces](docs/guide/workspaces.md): starting, answering, reviewing,
   merging and cleaning up, in detail.
-- [Symbiote's pages](docs/guide/pages.md): Git, Nucleus, Skills, Monitor, Settings and the nexus.
+- [Symbiote's pages](docs/guide/pages.md): Git, Nucleus, Skills, Monitor, Issues, Settings and the
+  nexus.
 - [Commands and keys](docs/reference/commands.md): every command, option and key, and the tools for
   your own agent.
 - [Configuration](docs/reference/configuration.md): `symbiote/config.json`, prompts, Hive mode,

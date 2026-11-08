@@ -33,6 +33,7 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
 | `nucleus/`, `settings/` | Nucleus (Scout until NU1), Settings; `nucleus/Conversation.tsx` is a page agent's conversation, Nucleus's page and Scribe's pane (V41); Settings' list is `settingsNav` (`settings.ts`, pure: sections, folding prompt groups, the filter), its Checks page `ChecksPage.tsx` (`checks.ts`, pure; `/api/settings/checks`) |
 | `skills/` | Skills (V41): the checkout's skills, their checks (`skills.ts`, pure), Scribe's pane |
 | `monitor/` | The Monitor (RM1, RM2): the folder tree, concentration and heat (`codemap.ts`), the treemap layout (`treemap.ts`), both pure; the picture `TreemapView.tsx` |
+| `issues/` | Issues (IS1): origin's GitHub or GitLab issues, read only; the words and addresses (`issues.ts`) and an issue's HTML made safe (`issue-text.ts`), both pure |
 | `intro/` | The first-time intro (V39): the koi engine, its rig and images, the overlay |
 
 - `src/graph/flow.ts` — **pure** layout: `layoutFlow` (what is drawn and where: summaries for big
@@ -156,6 +157,12 @@ component that uses it, and each component's CSS beside it (`HistoryPage.tsx`, `
   repositories, so it runs on the main thread (unlike the graph's), again on resize, never on
   hover, selection or colour (those are classes). The component is `TreemapView.tsx`: never
   `Treemap.tsx` beside `treemap.ts` (one name on macOS; `test/files.test.ts`).
+- `src/issues/` — Issues (IS1, decisions 944–952), at `/issues` (absolute `/api/issues`,
+  `/api/issues/<n>`; the issue read in `?number=`), key `u`. The types are core's (`IssueSummary`,
+  `IssueListAnswer`…); the forge package reads them. An issue's text is anyone's: `issue-text.ts`
+  turns the HTML marked finds into text, links and breaks before `ui/markdown.ts` draws it (no
+  HTML string, images never loaded); `test/issue-text.test.ts` and `e2e/issues.spec.ts` feed it
+  hostile text. The e2e serves the fake forge of `packages/forge/test/fake-forge.ts`, with issues.
 - `src/intro/` — the first-time intro (V39). `intro.ts` (main bundle): `askIntro` asks `/api/intro`
   (absolute, like `/api/history`) during `main.tsx`'s font wait, never on a `?graph=` page;
   `startIntro` puts `.intro` on `document.body` before the first render. `play.ts` and the engine
