@@ -405,7 +405,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | Fix | `mark-merged.mjs`: a row with no plan waits for every branch its journal names; a journal's last line is its last entry's | ✅ | | [journal](journal/fix-mark-merged-shared-journals.md) |
 | [Chore](plan/chore-living-docs.md) | Living docs: a page per area of what holds now (Reviews and The merger first), replaced decisions marked on both rows, a register of every decision; merged branches deleted, unmerged ones kept as `archive/` tags | ✅ | 776–781 | [journal](journal/chore-living-docs.md) |
 | Chore | Living docs' gaps: a root `AGENTS.md` for Codex; a decision lookup that finds its replacement before `consolidate.mjs` marks it; a note for an area page whose code changed after it; Prettier leaves Symbiote's local files out | ✅ | | [journal](journal/chore-living-docs-gaps.md) |
-| [Fix](plan/fix-ci-green.md) | CI green again: the review-place test's git identity, lint's heap on macOS | built (CI green; macOS runs no unit tests, 6 fail only there) | | [journal](journal/fix-ci-green.md) |
+| [Fix](plan/fix-ci-green.md) | CI green again: the review-place test's git identity, lint's heap on macOS | built (CI green on all three jobs, macOS's unit tests too) | | [journal](journal/fix-ci-green.md) |
 | [Chore](plan/chore-keys-v.md) | The `v` key in commands.md's keys table | planned | | |
 | [Chore](plan/chore-dependency-bumps.md) | Electron 44.9.1 and the patch bumps; the majors listed | planned | | |
 | [Fix](plan/fix-macos-install.md) | ./install.sh on macOS: the app step skipped with a note | planned | | |

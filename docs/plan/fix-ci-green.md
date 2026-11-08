@@ -3,7 +3,8 @@
 [Index](../PLAN.md) · [The audit](../journal/chore-improvement-audit.md) (finding R1)
 
 **Status:** built (2026-11-08), on branch `fix/ci-green` in its own workspace (from `main` at
-a12c1d9, `main` merged in at a95ccad); CI green on all three jobs (runs 42510596203 and 42514039113). Written by the
+a12c1d9, `main` merged in at a95ccad); CI green on all three jobs (runs 42510596203 and 42514039113; run 42524539542 with macOS's unit
+tests). Written by the
 improvement audit (`chore/improvement-audit`).
 
 **Kind** fix · **Branch** `fix/ci-green` · **Size** S · **Depends on** none · **Plan** P01 of 51 (the audit's order)
@@ -109,8 +110,8 @@ because the person's global git config has `user.email`. The test depends on the
   as Ubuntu's runners do; only the macOS runner (~2 GB) was short.
 - **Added, at the person's word after the first report** ("remove the macOS tests, and fix e2e
   tests"):
-  - `ci.yml` no longer runs `pnpm run test` on macOS; format, lint, types, the build, the smoke
-    test and the dogfood still run there. Six unit tests fail only on macOS (listed below).
+  - `ci.yml` stopped running `pnpm run test` on macOS for runs 3 to 8; at "fix the rest" it runs
+    there again, the six fixed (below, "macOS's unit tests").
   - **`symbiote view` ends on Ctrl+C with a page open** (`server.ts`, the cause of
     `events.spec.ts:400`). The harness's restart waited for the old server's exit, which never
     came. Probes in the server (it hung about 1 run in 10 here, pinned to one core) showed why: a
@@ -172,17 +173,44 @@ here, the file's slowest): it now has 20 s, as the slow `hive-runner.test.ts` te
 before; 40 of 40 passed after. `server.test.ts`'s new test (a request busy at close on a kept-alive
 connection, then the client asking every 50 ms): `close()` never resolved before, now it does.
 
-Not fixed here:
+**macOS's unit tests**, at the person's "fix the rest" (runs 9 to 11, 42516848276, 42518402411,
+42520033628). They failed in both runs that reached them, hidden since 2026-10-13 behind lint's
+crash. Each by its cause:
 
-- **Unit tests on macOS, not run there now.** They failed in both runs that reached them, hidden
-  since 2026-10-13 behind lint's crash: `events.test.ts` ×3 (V94a/c: FSEvents names a watched
-  folder itself, `activity/activity`, so a page gets extra `touched` paths and a second read: a
-  real difference, not only the test's); `terminal.test.ts` › loadPty (macOS's `/bin/sh` is bash:
-  `running()` says `bash` at an idle prompt); `desktop/launcher.test.ts` › startServer (`/var`
-  against `/private/var`, a test's path); `hive-runner.test.ts`, 5 s timeouts on 4 tests in run 1
-  and a different 1 in run 2 (the 3-core runner, 479 s for the suite). Each needs a fix verified
-  on a Mac; the step can come back once they pass.
-- **E2e specs that failed under this machine's load, never on CI**: `events.spec.ts:348` (a
-  merge's steps within 500 ms of the server's line), once, with the old server. `workspaces.spec.ts:2293` (V67) failed 1 run in 6 on `main`'s
-  e2e files before the server fix and 0 in 47 after (alone, on one core, and under load); it
-  passed in every CI run. Not explained: it never restarts its server.
+- `terminal.test.ts` › loadPty: macOS's `/bin/sh` runs bash, so at its prompt the system names the
+  foreground program `bash`, and `running()` said a shell's tab ran bash (a workspace's shells
+  would have shown it). The started program's name as the system gives it at its first output is
+  now the terminal's own too (`terminal.ts`, a new test with the fake pty).
+- `events.test.ts` ×2 (`touched` paths, a second read of Claude Code's list): macOS's FSEvents
+  also delivers changes made just before a watch, and names a watched folder by its own name
+  (`activity/activity`). Where the system replays (`replays`, macOS), a change to a file last
+  written before the watch of a folder watched from the start is not reported, and a folder's own
+  name is the folder (`events-watch.ts`). Not on Linux: it dates files by a coarse clock, a tick
+  behind, and would drop a write made just after. Not for a folder made later either, which no
+  first read covered: run 10 showed it, a file in a new folder dropped as older than that folder's
+  watch. Two new tests, each dating a file back with `utimes`.
+- `events.test.ts` "at most once in `between`": the burst of 20 triggers 5 ms apart took over
+  200 ms on the runner; `between` is 1 s in that test.
+- `desktop/launcher.test.ts`: the test's folder as a real path (`/var` is `/private/var`).
+- `hive-runner.test.ts`, a different few each run at 5 s: `vitest.config.ts` gives each test 20 s
+  on macOS (the suite 403–479 s there, Ubuntu's 248 s), 5 s elsewhere.
+
+Runs 11 to 13 (42520033628, 42521645869, 42524539542): macOS green with its unit tests from run 11
+on. The e2e step on ubuntu · node 24 failed once more each run, a spec of its own each time, each
+fixed: `terminal-view.spec.ts:165` (the split's resize redrew the fake's prompt between two typed
+keys: the spec sends the line and reads the fake's `got: left`; its Focus test the same), then
+`look.spec.ts:458` (rows measured mid-move: the gap is polled) and `workspaces.spec.ts:937`.
+That last was the product's: **a summary typed before the saved review draft arrived was lost**,
+`useReview` replacing the draft with the saved one; `withEarlyEdits` (`comments.ts`) keeps what
+was typed then, with the saved comments, and saves the merge (unit tests first). **Run 13 is
+green on all three jobs, macOS's unit tests included.**
+
+Also fixed at "fix the rest": `events.spec.ts:348` (V94c) read the server's log once, as soon as
+the card said Landed, before the "merge landed" line was on disk; it now waits for both lines,
+and the harness removes a server's cache with retries (ENOTEMPTY while it wrote its last lines).
+
+Not fixed here: `workspaces.spec.ts:2303` (V67, 2293 before `main` came in) failed 1 run in 6 on
+`main`'s e2e files and 3 in about 10 here before the server fix, while another job's e2e loaded
+the machine; 0 in 62 after (alone, on one core, and on two cores shared with two busy loops), and
+it passed in every CI run. The merger's code shows no path that leaves the entry queued; without a
+failure to read, no change is made.

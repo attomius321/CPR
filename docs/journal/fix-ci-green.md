@@ -76,3 +76,32 @@ jobs, the first green run since 2026-10-13. What was built, run by run:
 `close()` and passes on the new one; CI runs 42510596203 and 42514039113 green on ubuntu · node
 22, ubuntu · node 24 (e2e included) and macOS · node 24. Between them, run 7 timed out one slow
 unit test on node 22 (`merges.test.ts`, 1.6 s here): it has 20 s now.
+
+## Fix — the rest: macOS's unit tests, and what each CI run still showed (2026-11-08, branch `fix/ci-green`)
+
+At the person's "fix the rest": macOS's six, `events.spec.ts:348`, and V67. CI run 42524539542 is
+green on all three jobs with the unit tests running on macOS again. The causes, one by one:
+[the plan's results](../plan/fix-ci-green.md#results).
+
+**Learned**:
+
+- **Two of macOS's six were the product's.** `/bin/sh` there runs bash, so a shell's tab said it
+  ran bash; and FSEvents replays changes made just before a watch and names a watched folder by
+  its own name, so pages read twice and got folders as `touched` paths. The rest were the tests'
+  own (a `/var` path, a burst slower than its window, git-heavy tests over 5 s on a runner that
+  took 403–479 s for the suite).
+- **The replay rule needed two tries on the runner.** First it dropped a file in a folder made
+  after the watch began (the folder's own watch started after the write: that folder had no first
+  read, so every change in it is news). Then its own test's file, written in the same millisecond
+  as the watch started, counted as newer: `Date.now()` drops the fraction macOS's file dates keep.
+  It is macOS's only: Linux dates files by a coarse clock and would drop a write made just after.
+- **One more of the e2e failures was a real bug**: a review summary typed before the saved draft
+  arrived was replaced by it. Found because the runner's server answered late enough.
+- **V67 did not fail again**: 0 in 62 runs since the server fix (alone, one core, two cores with
+  two busy loops), and none on CI. With no failure to read, it is left as it is.
+
+**Verification**: new unit tests failed first (the terminal's own name, the replay rule twice, the
+draft's merge); `pnpm check` 3,422 passed (once a bubblewrap test timed out at load 13 here, 30 ms
+alone, then all passed); `pnpm test:e2e` 436 and 32; CI run 42524539542 green on ubuntu · node 22,
+ubuntu · node 24 and macOS · node 24. Not run: the `viewer-check` skill (the viewer change is the
+draft's loading only, no layout or paint).
