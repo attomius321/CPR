@@ -22,7 +22,6 @@ const env = {
   GIT_COMMITTER_EMAIL: 'test@example.com',
   SYMBIOTE_CLAUDE: '/nonexistent/claude',
   SYMBIOTE_CODEX: '/nonexistent/codex',
-  SYMBIOTE_HERMES: '/nonexistent/hermes',
   SYMBIOTE_USAGE: 'off',
   SYMBIOTE_INTRO: 'off',
   SYMBIOTE_APP: 'off',

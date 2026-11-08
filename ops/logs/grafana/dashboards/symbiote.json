@@ -946,21 +946,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "hermes"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "yellow"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "bash"
             },
             "properties": [

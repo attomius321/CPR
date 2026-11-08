@@ -24,7 +24,7 @@ finish race on time under other workspaces' load: replace them with a poll on wh
 | `workspaces.spec.ts:1197`, `:1200` | 200 ms each | a hover's CSS transition, before and after | emulate `reducedMotion: 'reduce'` for the test, or read the colour with `expect.poll` |
 | `edges.spec.ts:126`, `:147` | 300 ms | nothing: "a press that does not move the view leaves every edge drawn" | keep; add a comment that it is a negative window |
 
-The other 21 (`alpha-ceph`, `events`, `hive`, `tooltips`, `activity`, `hermes`, `nucleus`,
+The others (`alpha-ceph`, `events`, `hive`, `tooltips`, `activity`, `nucleus`,
 `skills`, `intro`, `projects.spec.ts:31` inside `settledBox`) are negative windows or clocks the
 spec controls; check each and leave a one-line comment where there is none.
 

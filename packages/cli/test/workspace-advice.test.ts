@@ -475,7 +475,7 @@ describe("the advisor's settings and the request", () => {
     // No ID or level, or one model for both agents (V75a's keys): none read.
     writeFileSync(
       join(root, 'symbiote.config.json'),
-      '{"advisor":{"model":"sonnet","effort":"low","claude":{"model":"-x y","effort":"Low!"},"hermes":{"model":"x"}}}',
+      '{"advisor":{"model":"sonnet","effort":"low","claude":{"model":"-x y","effort":"Low!"}}}',
     );
     expect(readWorkspaceConfig(root).advisor).toBeUndefined();
   });
@@ -500,10 +500,10 @@ describe("the advisor's settings and the request", () => {
     // An agent Symbiote does not start is refused, not read as Codex (MC2).
     for (const agent of [7, 'nope', 'Claude']) {
       expect(() => parseSuggestRequest(JSON.stringify({ kind: 'fix', agent }))).toThrow(
-        'agent: claude, codex or hermes',
+        'agent: claude or codex',
       );
     }
-    for (const agent of ['claude', 'codex', 'hermes']) {
+    for (const agent of ['claude', 'codex']) {
       expect(parseSuggestRequest(JSON.stringify({ kind: 'fix', agent })).agent).toBe(agent);
     }
   });

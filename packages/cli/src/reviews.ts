@@ -1,4 +1,3 @@
-import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, sep } from 'node:path';
 import {
@@ -27,7 +26,6 @@ import {
   type VerdictComment,
 } from '@symbiote/core';
 import type { Pair } from './diffs.js';
-import { FORMER_NAME, moveInto } from './former-name.js';
 import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
 import { reviewBase, reviewedAgainst } from './review-base.js';
 import { readWorkspace, viaOf, workspacePath, workspacesDir } from './workspace-record.js';
@@ -148,12 +146,6 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
   }
   const main = mainWorktree(repo);
   const folder = join(main, 'symbiote');
-  // The folder under Symbiote's former name moves here, unless it is the project's own. Asked
-  // only when it is there: this runs on each refresh of the workspaces.
-  const former = join(main, FORMER_NAME);
-  if (existsSync(former) && !(await holdsProjectFiles(repo, main, FORMER_NAME))) {
-    moveInto(former, folder, { drop: REWRITTEN });
-  }
   const foreign =
     (await stat(folder).then(
       (s) => !s.isDirectory(),
@@ -171,9 +163,6 @@ export async function reviewPlace(repo: GitRepo, cacheDir: string): Promise<Revi
 
 /** What Symbiote itself keeps in `symbiote/`, beside the reviews: a project may commit them. */
 const SYMBIOTE_FILES = new Set(['config.json', '.gitignore', 'AGENTS.md', 'merge.md']);
-
-/** What Symbiote writes again itself: copies under the former name are dropped, not moved. */
-const REWRITTEN = ['.gitignore', 'AGENTS.md', 'claude-settings.json'];
 
 /** Whether git tracks files in `<main>/<name>/` that are not Symbiote's. */
 async function holdsProjectFiles(repo: GitRepo, main: string, name: string): Promise<boolean> {

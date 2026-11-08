@@ -1,6 +1,5 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, posix, win32 } from 'node:path';
-import { formerChoice } from './former-name.js';
 
 /** The viewer's own choices, kept in the page's storage, that the app keeps across runs. */
 export const CHOICES = [
@@ -113,7 +112,7 @@ export function readChoices(value: unknown): Record<string, string> {
   if (!isRecord(value)) return {};
   const choices: Record<string, string> = {};
   for (const key of CHOICES) {
-    const choice = value[key] ?? value[formerChoice(key)];
+    const choice = value[key];
     if (typeof choice === 'string' && choice.length <= 4096) choices[key] = choice;
   }
   return choices;

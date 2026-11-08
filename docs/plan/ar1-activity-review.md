@@ -53,7 +53,7 @@ project. Not only on symbiote."
   failing tests, 3 times out of 3. All six fixed the bug and committed.
 - **What the records cannot show:** whether the agents' work was right, beyond the person's
   approval; whether xhigh effort does better than high; what the card showed while an agent waited
-  on its own background job; anything Codex or Hermes did (4 workspaces, at most one message each).
+  on its own background job; anything Codex did (3 workspaces, at most one message each).
 
 ## What was tried
 
@@ -102,7 +102,7 @@ to 1 November.
 | What | Count | Source |
 |---|---|---|
 | Workspaces | 131: 87 feature, 25 fix, 9 spike, 7 chore, 3 refactor | `workspaces/` |
-| Agent | Claude Code 127, Codex 3, Hermes 1 (the 4 others at most one message each) | `workspaces/` |
+| Agent | Claude Code 127, Codex 3 (the 3 others at most one message each) | `workspaces/` |
 | Model actually run | Opus in 123 of 127 transcripts; Sonnet in 3; Haiku in 1 (with Opus) | transcripts |
 | Effort | xhigh 95, Claude Code's own 17, medium 10, high 8, low 1 | `workspaces/` |
 | Plan first | 121 of 131 | `workspaces/` |
@@ -415,7 +415,7 @@ repository) or **this repository's setup** (its `CLAUDE.md`, `symbiote/config.js
   240 "waiting for your input" notices). Also why the person sent "wyd?" or "continue" 12 times.
 - **Time outside Symbiote**: reading the graph, testing by hand, and the subscription's real
   charge.
-- **Codex and Hermes**: 4 workspaces, at most one message each.
+- **Codex**: 3 workspaces, at most one message each.
 - **Another repository with real Hive runs**: Starknet ran no Hive workspace.
 
 ## Verification
@@ -459,4 +459,4 @@ repository) or **this repository's setup** (its `CLAUDE.md`, `symbiote/config.js
 | 737 | How a recommendation is made | **Labelled product default or this repository's setup, ranked by measured savings; a prompt change that alters an agent's behaviour tried on a Python repository first** | The person's words: the defaults must work on any project |
 
 **Not in AR1**: the changes themselves (each its own workspace once picked), a comparison of
-efforts or models, and Codex's or Hermes's behaviour.
+efforts or models, and Codex's behaviour.

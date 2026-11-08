@@ -95,12 +95,6 @@ export interface WorkspaceAgentRecord {
    */
   thread?: string;
   threads?: string[];
-  /**
-   * Hermes (V58): when Symbiote's Stop hung it up. Hermes then closes the turn it was in with a
-   * message of its own, which is no answer: it reads stopped until it is continued or started
-   * again, which clears this.
-   */
-  stopped?: string;
   /** Why the last start failed, in the agent's words. */
   error?: string;
   /** Started with Symbiote's hooks (V18c): its thread is recorded. */
@@ -260,7 +254,6 @@ function asAgent(value: unknown): WorkspaceAgentRecord | null {
           return threads.length > 0 ? { threads } : {};
         })()
       : {}),
-    ...(kind === 'hermes' && typeof v.stopped === 'string' ? { stopped: v.stopped } : {}),
     ...(typeof v.error === 'string' ? { error: v.error } : {}),
     ...(v.hooks === true ? { hooks: true } : {}),
     ...(v.activity === true ? { activity: true } : {}),

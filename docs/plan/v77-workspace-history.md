@@ -23,13 +23,12 @@ workspaces in this repository (`symbiote/`, 2026-10-29):
 | A review whose last verdict is Approve | 85; its commit is on `main` for 83 |
 | Branch kept (cleaned up unmerged, or not yet deleted) | 14 |
 | Commits recoverable (approved commit on `main`, or the branch) | 96 |
-| Agent: Claude Code / Codex (app server) / Codex (runner) / Hermes | 93 / 2 / 1 / 1 |
+| Agent: Claude Code / Codex (app server) / Codex (runner) | 93 / 2 / 1 |
 
 What causes it, in three points:
 - The list (`workspaces().list`) filters `finished` records out, and no page reads them.
 - A finished workspace's reads go through its agent where the agent keeps its conversation:
-  Codex's app server (V27a) and Hermes (V58) would be asked, or started, for a workspace whose
-  sessions Clean up archived.
+  Codex's app server (V27a) would be asked for a workspace whose sessions Clean up archived.
 - The record keeps no trace of the branch's end: Clean up deletes a merged branch and does not
   write its tip or whether it was merged, so the Activity tab's commits (V73) are gone with it.
 
@@ -56,8 +55,7 @@ the app's style (V61, V72): `PageHead`, cards on the ground, line tabs, the toke
   its commits, `merged`. 404 for a branch with no finished record.
 - **A finished workspace's reads** (`thread`, `tools`, `changes`) use only Symbiote's files and
   git: the thread from `threads/<branch>.jsonl`, the tools from `activity/<branch>.jsonl`; Codex
-  on its app server and Hermes are never asked (their entry says their conversation is kept by
-  the agent); its changes from its base (the fork point with the default branch, as Review
+  on its app server is never asked (its entry says its conversation is kept by the agent); its changes from its base (the fork point with the default branch, as Review
   computes it) to the commit it ended at, while git has it.
 - **Clean up records** `tip` (the branch's tip when it was cleaned up) and `merged` in the record
   (`WorkspaceFile`), so the history no longer depends on the review.
@@ -111,7 +109,7 @@ the app's style (V61, V72): `PageHead`, cards on the ground, line tabs, the toke
 | Risk | Mitigation |
 |---|---|
 | The list reads 97 records and reviews on every open | No thread or activity file; one `rev-list`; measured on the copies |
-| A finished Codex or Hermes workspace starts its agent | Its reads never reach `viaCodex`/`viaHermes`; tests with agents that throw |
+| A finished Codex workspace starts its agent | Its reads never reach `viaCodex`; tests with agents that throw |
 | An approved commit not in the default branch (2 of 85) | "Not merged" unless the branch is kept; its commits still listed while git has them |
 | A branch name used again: the new record replaces the old, its files appended to | Not in V77 (none of the 97 collide); noted for a later fix |
 
@@ -132,7 +130,7 @@ records and the docs.
 | 561 | Where finished workspaces are listed | **A History page in the sidenav, under Monitor, key `h`** | The person's choice; a sidenav group of 97 cards would bury the live ones |
 | 562 | What a finished workspace shows | **The list, the picked one beside it, read-only: Activity (first), Thread, Brief, Changes** | The brief asks for its activity and brief; Git's rows and details are the app's pattern for a list and its pick |
 | 563 | Its address | **`/workspace-history?branch=…&<tab>`; a finished workspace's `/?branch=` moves there** | `/history` is Git's old address and `/api/history` Git's API; old links keep working |
-| 564 | What a finished workspace's reads may touch | **Symbiote's files and git only; no agent asked or started** | Clean up archived its sessions; Codex's app server and Hermes would start for nothing |
+| 564 | What a finished workspace's reads may touch | **Symbiote's files and git only; no agent asked or started** | Clean up archived its sessions; Codex's app server would start for nothing |
 | 565 | Where its commits come from | **Its base to the tip recorded at Clean up; else the approved commit; else the kept branch** | 96 of the 97 recoverable; precise: none when git has none |
 | 566 | What Clean up records | **`tip` and `merged`** | The outcome without the review, from V77 on |
 | 567 | The page's icon | **lucide's `history`, drawn in `icons.tsx`** | No clock in the set; the style draws icons from lucide's paths |
@@ -162,7 +160,7 @@ landed merges (the merge queue's own entries); a branch name used again keeping 
 - **Narrow**: the picked workspace goes under the list where the page is 800 px wide or less (a
   container query on the page: a query cannot style its own container, which the first build
   did).
-- **Read only, in the tabs' own words**: the Thread tab says a Codex-on-its-app-server or Hermes
+- **Read only, in the tabs' own words**: the Thread tab says a Codex-on-its-app-server
   workspace's messages are its agent's; the Brief says its documents were removed at Clean up; the
   Changes panel shows no "review against" choice and no "Not committed".
 - **The accent's roles**: the picked workspace's kind tile (`.history-tile`) joins
@@ -183,7 +181,7 @@ landed merges (the merge queue's own entries); a branch name used again keeping 
   phases, 355 calls), `fix/scout-effort-level` (no recorded calls: its conversation, commits,
   review and end), a Codex workspace (`feature/test-2`: "Codex keeps this one's messages"),
   `done-workspace`'s Changes (3 commits, 18 files, its branch deleted) and Brief.
-- **Not verified**: a finished Hermes or Codex-on-app-server workspace's conversation is not read
+- **Not verified**: a finished Codex-on-app-server workspace's conversation is not read
   (decision 564: by design); the desktop window (Electron) was not opened, its title-bar spec
   covers History's page.
 

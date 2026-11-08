@@ -12,7 +12,7 @@ call's input and output.
 
 **Learned**:
 - **The activity is not one file**: a workspace's tab merges its record, thread, tools, commits and
-  verdict in the browser; Codex on its app server and Hermes are read from the agents' own stores.
+  verdict in the browser; Codex on its app server is read from the agent's own store.
   An export has to be made where all of them are read: the CLI.
 - **The raw records are too big to read whole**: median 154 KB, largest 796 KB (~200K tokens).
   The Markdown with a failed call's output only: median 36 KB, p90 75 KB, largest 94 KB (~24K
@@ -51,7 +51,7 @@ and 390 px, dark and light. `pnpm test:e2e`: `mcp.spec.ts` counted 24 tools (now
 merged tree two timed waits failed under load and passed alone (the plan's results); the nexus's
 20 pass.
 
-Not verified: a running Codex workspace on its app server and a running Hermes workspace; the
+Not verified: a running Codex workspace on its app server; the
 desktop app's download and Copy; Firefox and Safari; a fresh agent reading an export.
 
 Merged into main (2026-10-31).

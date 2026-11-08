@@ -653,8 +653,6 @@ describe('liveOf (V94c, decision 906)', () => {
       codex: ['workspaces'],
     });
     expect(of({ state: 'stopped', kind: 'codex' })).toEqual({ sessions: false, codex: [] });
-    // Hermes: the safety read only (the person's choice).
-    expect(of({ state: 'working', kind: 'hermes' })).toEqual({ sessions: false, codex: [] });
     expect(
       liveOf({
         nucleus: { conversation: { state: 'working', kind: 'claude' } },

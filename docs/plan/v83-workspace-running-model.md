@@ -18,7 +18,7 @@ back". Measured on the person's records and transcripts:
 
 | What | Measured |
 |---|---|
-| The person's workspace records | 120: 116 Claude Code, 3 Codex, 1 Hermes |
+| The person's workspace records | 120: 116 Claude Code, 3 Codex |
 | Started without a model (the agent's default) | **103 of 120**: Symbiote cannot name what they run on |
 | Started without an effort level | 16 of 120 |
 | Claude Code's transcripts of those workspaces with the model and the level on their last answer | **110 of 110** (`message.model`, `requestedModel`, `effort`; Claude Code 2.1.316) |
@@ -76,7 +76,7 @@ What causes it:
 - **Codex on its app server**: the thread's `model` and `reasoningEffort` from the `thread/read`
   the list makes already (`CodexThread.model`, `.effort`); with no level set, that model's default
   from its list (`model/list`'s `defaultReasoningEffort`), else unsaid.
-- **Codex by `exec`, Hermes** (4 of 120): what it started with, as today.
+- **Codex by `exec`**: what it started with, as today.
 - **The model's name** (decision 661): the agent's list as Symbiote keeps it (V47) when it has it
   in hand; else from the ID (`claude-opus-5-5` → "Opus 5.5", `claude-haiku-4-5-20251001` → "Haiku
   4.5", `gpt-5.6-terra` → "GPT-5.6-Terra"); else the ID. The list never waits on reading the
@@ -110,7 +110,7 @@ What causes it:
      skipped; fields missing; broken lines; a window with no answer; the 2 MB first read); reading
      only a grown file; `threadEntry` keeping `transcript_path`; `summary` giving `running` for
      Claude Code from the newest entry's transcript, for Codex on its server from its thread (a
-     level unset: the model's default), none for `exec` and Hermes; the names (the list, the ID's
+     level unset: the model's default), none for `exec`; the names (the list, the ID's
      pattern, the ID).
    - Viewer unit: `runsOn` — running, as started, changed since the start, no level, no agent.
    - e2e (`workspaces.spec.ts`): the fake Claude Code writes a transcript and gives its path to the
@@ -154,8 +154,8 @@ What causes it:
 | 664 | The level in words or a meter? | **Words: "xhigh effort"** | The person's choice 2; the Brief tab's words |
 
 **Not in V83 (later)**: changing the model or the level from the head; Nucleus's and Scribe's heads
-reading their transcripts (the person's choice 3); History's pages; Hermes's and `codex exec`'s own
-records of what they ran on.
+reading their transcripts (the person's choice 3); History's pages; `codex exec`'s own records of
+what it ran on.
 
 ## As built (V83)
 
@@ -211,6 +211,6 @@ the facts'). Three earlier full runs, with another workspace's suite running bes
 and twice V79's kind-chip test. That one fails on `main`'s build too, at the same line: run 20
 times 8 at once, 3 of 60 on `main`, 5 of 60 on the branch; it measures the kind chip as the
 starting card gives way. Not verified: a Codex workspace through Symbiote's list with the real Codex (its
-`thread/read` measured alone; the fake answers as it did); Codex by `exec` and Hermes, unchanged
-(4 of 120 records); a session from before V83 picking the path up at its next prompt, with the
+`thread/read` measured alone; the fake answers as it did); Codex by `exec`, unchanged; a
+session from before V83 picking the path up at its next prompt, with the
 person's build (the hook's code is the same for both events, tested on each).

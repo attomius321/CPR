@@ -49,7 +49,7 @@ kept, and so is "Symbiote's window" (`packages/cli/src/main.ts`, `app.ts` and
 | Branch reviews, Finish review, the Files page, the Review tab (V15–V17, V60, V76) | Review a change as a graph; Review the branch and tell the agent (`review-files.png`) | workspaces guide; review guide |
 | Start a workspace: kinds, brief, start from, documents, effort (V18, V24, V30, V33, V40, V63, V68) | Start a workspace (`start.png`) | workspaces guide |
 | Suggest settings (V75) | Start a workspace | workspaces guide |
-| The agents: Claude Code, Codex, Hermes (V20, V27, V58) | What you need; Run agents in workspaces | workspaces guide |
+| The agents: Claude Code, Codex (V20, V27) | What you need; Run agents in workspaces | workspaces guide |
 | The sidenav's groups and cards, the running model (V25, V44, V48, V53, V55, V57, V79, V83) | See what needs you (`workspace.png`) | workspaces guide |
 | The agent's terminal, images, links, shells (V21, V36, V38, V45) | Work with the agent | workspaces guide |
 | The Activity tab and its export (V48, V73, V74, V84) | Work with the agent (`activity.png`) | workspaces guide; commands reference |
@@ -83,8 +83,8 @@ TypeScript shop with six dated commits by three made-up people, made by a genera
 script there, on a copy of the e2e harness (`e2e/symbiote.ts`) that builds `storefront` in place of
 a fixture:
 
-- **Workspaces**: six workspaces started from the Start page, on the fake Claude Code, Codex and
-  Hermes. The agents' tool calls go through Symbiote's real hooks; the records' times were then
+- **Workspaces**: six workspaces started from the Start page, on the fake Claude Code and Codex.
+  The agents' tool calls go through Symbiote's real hooks; the records' times were then
   spread over 30 minutes, so the Activity tab shows minutes, not milliseconds. The plan and the
   reports are written for the shots. The review, its comments and its verdict, the merge with its
   check (`npm test`, really run), the clean-up and History are the app's own.

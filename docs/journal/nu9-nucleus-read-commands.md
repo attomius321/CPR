@@ -58,7 +58,7 @@ him to read files from the current repository").
   which NU9 allows with the web on. Its refused call is now `cat /etc/hostname` (outside the
   reach); a write (`rm`) would have been filed as a change, not with the reads. Full runs: 429 and
   428 of 431 passed. The other failures differed between runs, and each passed when run alone:
-  `look.spec.ts:458` (the sidenav's rows), `hermes.spec.ts:29`, and `workspaces.spec.ts:2293` (a
+  `look.spec.ts:458` (the sidenav's rows) and `workspaces.spec.ts:2293` (a
   merge; 3 of 4 alone). None of them reaches the gate's modules.
 - **A test that failed every evening**: Symbiote's merge check failed on `hive-pacing.spec.ts`,
   which expected "goes on at HH:MM". When the fake 5-hour usage window ends after midnight, the

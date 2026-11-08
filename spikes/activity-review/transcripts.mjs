@@ -12,7 +12,7 @@ const root = join(homedir(), '.claude', 'projects');
 const [out, ...prefixes] = process.argv.slice(2);
 const wanted = prefixes.length
   ? prefixes
-  : ['-home-anton-projects-Symbiote-worktrees-', '-home-anton-projects-CPR-worktrees-', '-home-anton-projects-Starknet-worktrees-',
+  : ['-home-anton-projects-Symbiote-worktrees-', '-home-anton-projects-Starknet-worktrees-',
      '-home-anton--cache-symbiote-worktrees-'];
 
 async function readSession(file, acc) {

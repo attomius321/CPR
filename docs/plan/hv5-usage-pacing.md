@@ -158,7 +158,7 @@ mode untouched.
 | 803 | The person's own start while Hive holds one (added while building) | **A message of the person's that reaches the writer while Hive holds its own drops Hive's, and the rounds start again (795's way); a held writer the person started (Start the agent) is theirs: no longer held, never started a second time** | Found by the screenshots: the held writer's page offers Start the agent, and the runner would then have started a second session at the reset |
 
 **Not in HV5 (later)**: each role's model and effort in Settings (HV1's sketch put it in HV5; the
-brief leaves it out); Codex and Hermes subscriptions (Hive starts Claude Code only); the merge
+brief leaves it out); Codex subscriptions (Hive starts Claude Code only); the merge
 queue's check and the merger; Nucleus's and Alpha Ceph's own usage; pacing by the request's forge;
 a cap across workspaces.
 

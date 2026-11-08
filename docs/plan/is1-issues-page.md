@@ -162,8 +162,8 @@ issue numbers as IDs; writing anything to the forge.
   service's 5 and the server's 2; the viewer's 10 words, 8 on hostile issue text and the route's;
   `e2e/issues.spec.ts`, 7 on the fake forge (GitHub and GitLab, now with issues), and the page in
   `page-frame`, `targets`, `title-bar` and `tooltips`. `pnpm check`: 3,457 tests passed. The full
-  e2e: 434 of 438, then the two sidenav counts this branch moved fixed; `changes.spec.ts:139` and
-  `hermes.spec.ts:29` fail under load on `main`'s export too.
+  e2e: 434 of 438, then the two sidenav counts this branch moved fixed; `changes.spec.ts:139` fails
+  under load on `main`'s export too.
 - Real, read only, through the built `symbiote view` on scratch repositories:
   - vitejs/vite with the person's `gh` token: 30 open issues in 1.19 s (the first API page of
     100 held 36), the next 30 in 1.52 s by cursor, a search ("watcher") 4 in 0.47 s, #23965 with

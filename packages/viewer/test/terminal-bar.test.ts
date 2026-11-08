@@ -90,7 +90,7 @@ describe('the bar under the terminal (V89)', () => {
     expect(model.note).toBe('Answer in its terminal');
   });
 
-  it('Codex and Hermes waiting: their words, no keys', () => {
+  it('Codex waiting: its words, no keys', () => {
     const codex = waiting({
       agent: { state: 'needs-you', kind: 'codex', id: 't1', waitingFor: 'approval prompt' },
       activity: { since: SINCE },
