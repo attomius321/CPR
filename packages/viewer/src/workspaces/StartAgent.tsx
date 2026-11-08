@@ -1,9 +1,8 @@
 // The agent on the start page (V20a, V30b, V47): which one, its account, the model and the level
-// its session starts on, and Claude Code's permission mode, Codex's sandbox or where Hermes asks
-// (V58). Since V63 each is a card of the run's, as the person's mockup draws them.
+// its session starts on, and Claude Code's permission mode or Codex's sandbox. Since V63 each is a card of the run's, as the person's mockup draws them.
 import type { ReactNode } from 'react';
 import type { AgentKind, AgentOption, PermissionMode } from '@symbiote/core';
-import { ClaudeMark, CodexMark, HermesMark } from '../ui/icons.js';
+import { ClaudeMark, CodexMark } from '../ui/icons.js';
 import { EffortSegments } from './EffortSegments.js';
 import { StartCard } from './StartCard.js';
 import {
@@ -32,7 +31,7 @@ function onModel(run: RunChoices, model: string | undefined): RunChoices {
 
 /** An agent's mark (V53), before its name in the Agent card. */
 function AgentMark({ kind }: { kind: AgentKind }) {
-  return kind === 'codex' ? <CodexMark /> : kind === 'hermes' ? <HermesMark /> : <ClaudeMark />;
+  return kind === 'codex' ? <CodexMark /> : <ClaudeMark />;
 }
 
 /**
@@ -82,9 +81,8 @@ export function StartAgent({
       <StartCard title="Agent">
         <p className="start-card-note">
           No agent found (Claude Code: <code>claude</code> on PATH, or <code>SYMBIOTE_CLAUDE</code>;
-          Codex: <code>codex</code> on PATH, or <code>SYMBIOTE_CODEX</code>; Hermes:{' '}
-          <code>hermes</code> on PATH, or <code>SYMBIOTE_HERMES</code>, where terminals run): the
-          branch and its worktree are made, and you get the prompt to give an agent.
+          Codex: <code>codex</code> on PATH, or <code>SYMBIOTE_CODEX</code>): the branch and its
+          worktree are made, and you get the prompt to give an agent.
         </p>
       </StartCard>
     );
@@ -179,18 +177,6 @@ export function StartAgent({
                 </option>
               ))}
             </select>
-          </>
-        ) : agent.kind === 'hermes' ? (
-          <>
-            <span className="start-row-name">Approvals</span>
-            <span
-              className="start-value"
-              {...tip(
-                'Hermes runs in a terminal in Symbiote, in its worktree, with your Hermes configuration. It asks there before a dangerous command; Symbiote does not answer for you.',
-              )}
-            >
-              In its terminal
-            </span>
           </>
         ) : (
           <>

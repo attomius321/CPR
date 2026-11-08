@@ -1123,8 +1123,8 @@ describe("Symbiote's MCP: the advisor's proposal (MC2)", () => {
       [{ ...brief, title: 7 }, "title: the work's name"],
       [{ ...brief, parts: { happens: 1 } }, 'parts: each a text'],
       [{ ...brief, parts: ['It does nothing'] }, 'parts: each a text'],
-      [{ ...brief, agent: 7 }, 'agent: claude, codex or hermes'],
-      [{ ...brief, agent: 'nope' }, 'agent: claude, codex or hermes'],
+      [{ ...brief, agent: 7 }, 'agent: claude or codex'],
+      [{ ...brief, agent: 'nope' }, 'agent: claude or codex'],
       [{ ...brief, documents: [{ id: 'd1', name: 'spec.pdf' }] }, "documents: each a file's name"],
     ];
     for (const [args, words] of cases) {
@@ -1144,7 +1144,6 @@ describe("Symbiote's MCP: the advisor's proposal (MC2)", () => {
       ['Codex declined the request', 502],
       ['Codex gave no answer within 20 s', 502],
       ['the answer was not one Symbiote can use', 502],
-      ['Hermes lists no models: Symbiote suggests settings for Claude Code and Codex', 400],
       ['Claude Code is not installed', 409],
     ] as const) {
       const mcp = server(

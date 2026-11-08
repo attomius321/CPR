@@ -1960,7 +1960,7 @@ describe('symbiote view: workspaces (V18)', () => {
     ]);
     // An agent that is not one is refused, not run as Codex (MC2).
     const nope = await post('/api/workspaces/suggest', { ...brief, agent: 'nope' });
-    expect([nope.status, await nope.text()]).toEqual([400, 'agent: claude, codex or hermes']);
+    expect([nope.status, await nope.text()]).toEqual([400, 'agent: claude or codex']);
     expect(suggested).toHaveLength(2);
     expect((await get('/api/workspaces/suggest')).status).toBe(405);
     expect(started).toHaveLength(before);
@@ -1981,7 +1981,7 @@ describe('symbiote view: workspaces (V18)', () => {
     ]);
     expect((await post('/api/workspaces/advisor/claude/model', { model: 3 })).status).toBe(400);
     expect((await post('/api/workspaces/advisor/claude/efforts', {})).status).toBe(405);
-    expect((await get('/api/workspaces/advisor/hermes/efforts')).status).toBe(404);
+    expect((await get('/api/workspaces/advisor/nope/efforts')).status).toBe(404);
     expect(advised).toHaveLength(2);
   });
 

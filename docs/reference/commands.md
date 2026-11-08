@@ -46,7 +46,7 @@ Symbiote learns of a change from:
 
 A change shows in under half a second. On a disk that reports no file changes (a repository under
 `/mnt/c` in WSL), the hooks and the reads above still bring each change. So does the read every
-minute, which is all a Hermes agent's state comes from.
+minute.
 
 The page polls as before when there is no stream: with a `symbiote view` older than this one, with
 `?poll` in the page's address, or with `SYMBIOTE_EVENTS=off`.

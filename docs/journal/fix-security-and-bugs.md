@@ -51,8 +51,7 @@ option A. One commit each, `Fix: …`.
   `--`, also `--name=value` in one word. `--bg --resume <id> "<text>"` with option-like text wakes
   the session idle and exits 0. Injected `--settings` and `--mcp-config` (a hook or a server
   that touches a file) did not run in an idle background session; not counted on. MCP's `reply`
-  stays unasked (decision 360): the text is now only a message. Codex already passed `--`, Hermes
-  `--query=`.
+  stays unasked (decision 360): the text is now only a message. Codex already passed `--`.
 - **The gate's filters read files too.** `head`, `tail`, `wc` and `grep` after a pipe take files
   as operands, `~` expands, and grep recurses; git's `blame --contents` prints any file, and
   `--ignore-revs-file` and blame's `-S` print its first line in their error ("fatal: invalid object

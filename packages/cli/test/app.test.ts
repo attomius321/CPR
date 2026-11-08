@@ -2,7 +2,6 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync }
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
-import { FORMER_NAME } from '../src/former-name.js';
 import {
   desktopEntry,
   electronBinary,
@@ -222,19 +221,6 @@ describe('installApp and uninstallApp', () => {
     ).toBe(false);
     expect(existsSync(join(home, 'config', 'symbiote', 'app.json'))).toBe(false);
     expect(existsSync(join(home, 'config', 'symbiote', 'kept'))).toBe(true);
-  });
-
-  it('removes the entry and icon installed under the former name', () => {
-    const data = join(home, 'data');
-    const former = {
-      entry: join(data, 'applications', `${FORMER_NAME}.desktop`),
-      icon: join(data, 'icons', 'hicolor', '512x512', 'apps', `${FORMER_NAME}.png`),
-    };
-    for (const file of Object.values(former)) writeFileSync(file, '');
-    installApp({ env, platform: 'linux', app, icon, node: '/n', cli: '/c' });
-    expect(existsSync(former.entry)).toBe(false);
-    expect(existsSync(former.icon)).toBe(false);
-    expect(existsSync(join(data, 'applications', 'symbiote.desktop'))).toBe(true);
   });
 
   it('says it is Linux only for now', () => {

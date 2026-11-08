@@ -151,8 +151,7 @@ const CODEX_TURNS = 5;
 const TOOL_TIMEOUT_SEC = 660;
 
 /**
- * The agents a page agent runs (decision 421): Claude Code and Codex. A workspace's Hermes (V58) is
- * not one: a page agent starts with no question and read-only tools, not measured for Hermes.
+ * The agents a page agent runs: Claude Code and Codex.
  */
 const PAGE_AGENTS: readonly AgentKind[] = ['claude', 'codex'];
 

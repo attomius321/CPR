@@ -6,7 +6,6 @@ import type { AgentEfforts, AgentKind, AgentModel } from '@symbiote/core';
 export const AGENT_NAMES: Record<AgentKind, string> = {
   claude: 'Claude Code',
   codex: 'Codex',
-  hermes: 'Hermes',
 };
 
 /** Why `effort` is not an effort level at all: a word, never an option or a sentence (V30b). */

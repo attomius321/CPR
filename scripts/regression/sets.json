@@ -13,7 +13,7 @@
     },
     "bitwarden": { "url": "https://github.com/bitwarden/clients.git" },
     "qwik": { "url": "https://github.com/QwikDev/qwik.git" },
-    "symbiote": { "url": "git@github.com:attomius321/CPR.git" }
+    "symbiote": { "url": "git@github.com:attomius321/Symbiote.git" }
   },
   "sets": {
     "r1": {

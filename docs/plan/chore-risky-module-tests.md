@@ -1,4 +1,4 @@
-# Chore — Tests of their own for the merge queue, runShell, core's merging and the Codex and Hermes runners
+# Chore — Tests of their own for the merge queue, runShell, core's merging and the Codex runner
 
 [Index](../PLAN.md) · [The audit](../journal/chore-improvement-audit.md) (finding Q5)
 
@@ -24,14 +24,13 @@ other plans fix.
 | `packages/cli/src/programs.ts` (`runShell`) | 287 | 7 files, none for `runShell` (`runGroup` only, in `hive-review.test.ts:26,277`) | exit codes, output kept to its last 200,000 characters past 1 MB, the timeout: a compound command (`sleep 100 & sleep 100; wait`) is stopped **with its children** (today only `sh`: P11) |
 | `packages/core/src/git/merging.ts` | 9 exported functions: `resetMergeWorktree`, `mergeInWorktree`, `fastForwardBranch`, `tipsIn`, `pushCommit`, `commitSubject`, `conflictKinds`, `abortMerge`, `commitResolution` | none names them; reached through `cli/test/merges.test.ts` | each on a scratch repository: a clean merge, a conflict, each `ConflictKind`; `commitResolution` with a path holding `[id]` beside another unresolved path (glob pathspec: P51's item); `pushCommit` to a remote that does not answer (no timeout today: P13) |
 | `packages/cli/src/workspace-codex.ts` | 359 | none | `workspaceCodex` with a fake `codex` (the e2e's `fakeCodex` in `packages/viewer/e2e/symbiote.ts` shows its shape): start, a turn's end, a failed turn |
-| `packages/cli/src/workspace-hermes.ts` | 215 | none | `workspaceHermes` with a fake Hermes (`fakeHermes` in the same harness) |
 
 **Out of scope**: fixing what the tests show (P11, P12, P13 and P51's items do); refactoring the
 modules (P44); e2e specs.
 
 **Done when**:
 - Each module in the table has a test file of its own (`merge-queue.test.ts`, `programs.test.ts`,
-  `core/test/merging.test.ts`, `workspace-codex.test.ts`, `workspace-hermes.test.ts`).
+  `core/test/merging.test.ts`, `workspace-codex.test.ts`).
 - Every case in the table is written: passing for today's behaviour, or `it.fails` naming the
   plan that fixes it.
 - The new tests add under 10 s to `pnpm test` (measured; the suite is 41 s of wall time).

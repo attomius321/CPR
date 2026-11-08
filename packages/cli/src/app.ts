@@ -4,7 +4,6 @@ import { createRequire } from 'node:module';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { SymbioteError } from '@symbiote/core';
-import { FORMER_NAME } from './former-name.js';
 
 type Env = Readonly<Record<string, string | undefined>>;
 
@@ -154,11 +153,6 @@ function places({ env }: Where) {
   return {
     entry: join(data, 'applications', 'symbiote.desktop'),
     icon: join(data, 'icons', 'hicolor', '512x512', 'apps', 'symbiote.png'),
-    // What `install` added under Symbiote's former name: the new ones replace them.
-    former: [
-      join(data, 'applications', `${FORMER_NAME}.desktop`),
-      join(data, 'icons', 'hicolor', '512x512', 'apps', `${FORMER_NAME}.png`),
-    ],
     // Read by the app (packages/desktop, `readRecorded`).
     recorded: join(config, 'app.json'),
   };
@@ -181,8 +175,7 @@ export function installApp(
   if (where.platform !== 'linux') {
     throw new SymbioteError(`symbiote app install is not supported on ${where.platform} yet`);
   }
-  const { entry, icon, recorded, former } = places(where);
-  for (const file of former) rmSync(file, { force: true });
+  const { entry, icon, recorded } = places(where);
   mkdirSync(dirname(icon), { recursive: true });
   copyFileSync(where.icon, icon);
   mkdirSync(dirname(entry), { recursive: true });

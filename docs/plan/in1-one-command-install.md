@@ -16,7 +16,7 @@ machine (WSL2, Ubuntu 24.04, Node 26.8.2, pnpm 12.8.1, a fast connection), on a 
 | The README's steps | Install pnpm; clone; `pnpm install`; `pnpm build`; an alias in `~/.bashrc`; `pnpm app:setup` for the window; `symbiote app install` for the launcher. On Linux, python3, make and a C++ compiler first |
 | Why a compiler | `node-pty` 1.1.0 (the agents' terminals, V21) ships prebuilt binaries for macOS and Windows only: on Linux its install script runs `node-gyp rebuild` |
 | `pnpm install`, store, caches and node-gyp's headers empty | 7.7 s, of which node-pty's build 5.9 s: 67 MB of Node 26's headers, then 1.0 s of compiling |
-| … without a compiler (`CC`/`CXX` refused) | Exits 0. node-gyp's `gyp ERR! build error` sits in the output; node-pty is left out, so there are no agent terminals (Hermes is not offered), and nothing says so at the end |
+| … without a compiler (`CC`/`CXX` refused) | Exits 0. node-gyp's `gyp ERR! build error` sits in the output; node-pty is left out, so there are no agent terminals, and nothing says so at the end |
 | `chore/install-command` (Oct 23, not merged) | `pnpm cli:install` / `pnpm app:install`: install, build, `~/.local/bin/symbiote`. Needs pnpm first; still builds node-pty. The person's `~/.local/bin/symbiote` comes from it |
 
 A prototype in the job's folder swapped `node-pty` for `@lydell/node-pty@1.1.0` ("node-pty with

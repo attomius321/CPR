@@ -50,12 +50,11 @@ nothing recorded is changed, dropped or made up.
   the command's); `added`/`removed` — the lines an Edit or a Write changed, counted from
   `structuredPatch`; `task` — the ID `TaskCreate` was given.
 - `thread.ts` `activityEntry` fills them from Claude Code's hooks; `codex-run.ts` from `exec
-  --json`'s items; `codex.ts` `serverTools` from the app server's `full` items. Hermes keeps its
-  subject only (not in V73).
+  --json`'s items; `codex.ts` `serverTools` from the app server's `full` items.
 - **Its own read** (decision 517): `GET /api/workspaces/activity?branch=` answers
   `{ tools, cut }` — the activity file's last 1 MB (about 700 calls at the new sizes; the person's
-  longest workspace has 350), `cut` when older lines were left out — or the app server's and
-  Hermes's tools as the thread read gives them today. Only the Activity tab reads it, while it is
+  longest workspace has 350), `cut` when older lines were left out — or the app server's tools as
+  the thread read gives them today. Only the Activity tab reads it, while it is
   shown, with the list's reads. The thread's read no longer reads the tools: the timeline was
   their only reader, and the thread is read with every list read whatever tab is shown.
 
@@ -165,8 +164,8 @@ not cards in cards; summaries of facts, not prose.
 | 517 | How the tab reads the tools | **Its own read, the last 1 MB, only while it is shown; the thread's read without them** | the thread is read every 5 s whatever tab is shown |
 | 518 | Debugging | **A failed test followed by edits, to the next passing run** | a phase the events show, not a guess at intent |
 
-**Not in V73 (later)**: Hermes's commands and outputs; a running command's output while it runs
-(Claude Code's hooks give it only at the end); prose summaries of a phase.
+**Not in V73 (later)**: a running command's output while it runs (Claude Code's hooks give it
+only at the end); prose summaries of a phase.
 
 ## As built (V73)
 
@@ -213,7 +212,6 @@ its description, `duration_ms`, `exit: 1` from "Exit code 1", the output's end a
 and the report. Screenshots, before and after, dark and light, at 1440 px and 760 px: the job's
 folder (not committed).
 
-**Not verified**: Codex's and Hermes's agents in a real run (their recording is unit-tested; Hermes
-keeps a subject only); a session long enough to fill the 1 MB window (the person's longest file is
+**Not verified**: Codex's agent in a real run (its recording is unit-tested); a session long enough to fill the 1 MB window (the person's longest file is
 160 KB in the old format); the desktop app (Electron) rendering the tab; the person's workspaces
 record the new fields only once `main` is built with them (their hook runs `main`'s build).

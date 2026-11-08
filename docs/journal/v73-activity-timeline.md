@@ -66,7 +66,7 @@ window, classification, grouping, statuses, test summaries, words, the live stat
 on `main`. A real Claude Code 2.1.312 run (haiku) through this branch's hook, drawn in the tab.
 Screenshots before and after (dark, light; 1440 and 760 px).
 
-Not verified: real Codex and Hermes runs; a session filling the 1 MB window; the desktop app.
+Not verified: real Codex runs; a session filling the 1 MB window; the desktop app.
 
 ## V73 — main merged in: V72's page frame (2026-10-28, branch `feature/workspace-activity`)
 

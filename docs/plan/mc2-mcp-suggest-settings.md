@@ -22,7 +22,7 @@ sizes at `xhigh` on the page. Two more things, read from the code:
 - `start_workspace`'s Confirm says `Start fix/x, "Title", with Codex, plan first`: a model or an
   effort Scout passes is not in the words the person confirms.
 - `parseSuggestRequest` takes any text as the agent: `agent: "nope"` reaches the service, whose
-  `found` reads anything not `claude` or `hermes` as Codex.
+  `found` reads anything not `claude` as Codex.
 
 **Goal**: Scout, or any client of `symbiote mcp`, asks `suggest_settings` with the brief it will
 start and gets the advisor's proposal as the page gets it: model, effort, plan first, the one
@@ -40,7 +40,7 @@ person's choice wins, and the Confirm of the start names the model and the effor
 - The handler picks those five fields, passes them through `parseSuggestRequest` (the endpoint's
   checks, so the endpoint's words), and returns `workspaces.suggest(request)` unchanged.
 - The service's refusals (`WorkspaceRefused`: declined, no answer within 20 s, an exit code, an
-  answer Symbiote cannot use, Hermes, not installed) reach the tool's error result word for word,
+  answer Symbiote cannot use, not installed) reach the tool's error result word for word,
   through `run`'s catch; nothing is put in their place.
 - Its description says what it costs and when to call it: one turn of the agent's small model on
   the person's subscription, 20 s at most, nothing started; only before a start the person asked
@@ -55,7 +55,7 @@ Codex on gpt-6 at high, plan first` (decision 584). Without them, as today.
 ## The request's check (`server-requests.ts`)
 
 `parseSuggestRequest` refuses an agent that is not one of `AGENT_KINDS`, with the words it gives a
-non-text agent: `agent: claude, codex or hermes`. The endpoint and the tool both get it.
+non-text agent: `agent: claude or codex`. The endpoint and the tool both get it.
 
 ## Scout (`prompts.scout`)
 
@@ -121,7 +121,7 @@ model or effort; the advisor itself.
 - **The shared brief**: `brief` (`kind`, `title`, `parts`) and `agentKind` in `mcp.ts` are the
   schema of both tools; a test compares `suggest_settings`'s properties with `start_workspace`'s.
 - **The endpoint's 400s are now tested by their words** (`server.test.ts`): `kind: feature, fix,
-  refactor, chore or spike` for `epic`, `agent: claude, codex or hermes` for `nope`. Before, only
+  refactor, chore or spike` for `epic`, `agent: claude or codex` for `nope`. Before, only
   the status was.
 
 **Results.** Tests first, 9 red for the reason they name (`unknown tool: suggest_settings`; the
@@ -131,6 +131,6 @@ through `symbiote mcp`, against this branch's `symbiote view` in a scratch repos
 cache of its own: 24 tools listed; a one-line fix brief on Claude Code answered in 3.9 s with
 `{ agent: claude, model: haiku, effort: low, planFirst: false, why: "A single word typo in one
 README heading is a small, mechanical copy fix.", by: Haiku 5.5 at low }`; `agent: "nope"`
-refused in 2 ms with `agent: claude, codex or hermes`, the words the endpoint answered with its
+refused in 2 ms with `agent: claude or codex`, the words the endpoint answered with its
 400 on the same server. Not verified: Scout itself calling the tool (a real Scout run writes into
 the person's `symbiote/`), Codex as the advisor, a project with its own Scout prompt.

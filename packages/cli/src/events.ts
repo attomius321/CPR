@@ -155,8 +155,7 @@ export function partsOfWrite(pathname: string): EventPart[] {
 /**
  * What to hear while agents are live (decision 906), from the parts as last sent: Claude Code's
  * list while a Claude agent works or waits; Codex's app server while a Codex agent does, whose
- * status changes no hook announces (`codex`: the parts they show). Hermes's: the triggers and the
- * safety read only (the person's choice).
+ * status changes no hook announces (`codex`: the parts they show).
  */
 export function liveOf(parts: { workspaces?: unknown; nucleus?: unknown; scribe?: unknown }): {
   sessions: boolean;

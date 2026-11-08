@@ -32,7 +32,7 @@ own or in your browser.
 
 - Linux, or Windows through WSL. macOS runs the same code but is not tested yet.
 - git, and Node 22.12 or newer. The install gets pnpm itself, and no compiler is needed.
-- For workspaces: a coding agent, Claude Code, Codex or Hermes Agent, installed and logged in.
+- For workspaces: a coding agent, Claude Code or Codex, installed and logged in.
   Symbiote starts them with your own login, so their work counts against your own subscription or
   API key. Reviewing a change needs no agent.
 
@@ -181,8 +181,7 @@ plugins](docs/guide/review-and-ci.md#framework-plugins) and
 
 A *workspace* is one task for one agent. It has its own branch and its own *worktree*: a second
 working folder of your repository, checked out on that branch. Agents never work in your own
-checkout, so you can keep working while they do. Symbiote can start Claude Code, Codex or Hermes
-Agent.
+checkout, so you can keep working while they do. Symbiote can start Claude Code or Codex.
 
 ### Start a workspace
 
@@ -241,7 +240,7 @@ the terminal keeps its rows.
 
 Under the head, the tabs:
 
-- The agent's own terminal, named after the agent (**Claude Code**, **Codex** or **Hermes**), with
+- The agent's own terminal, named after the agent (**Claude Code** or **Codex**), with
   a violet dot when it waits for you and an amber one while it works. Answer its questions and
   permission prompts here, as you would in your own terminal. To give it an image, paste it or use
   **Attach images**.
@@ -508,8 +507,8 @@ access off, set `nucleus.web` to `false` in `symbiote/config.json`.
 
 ## Limits
 
-- Workspaces start Claude Code, Codex or Hermes. Nucleus, Scribe and the merger run on Claude Code
-  or Codex. Hive drives Claude Code only.
+- Workspaces, Nucleus, Scribe and the merger run on Claude Code or Codex. Hive drives Claude Code
+  only.
 - The graph reads TypeScript, JavaScript, CSS and SCSS. Other files show as diffs on the **Files**
   page, where you can comment on them. Workspaces work in any git repository.
 - The analysis is static: it reads the code and does not run it.

@@ -106,8 +106,8 @@ change another process makes is read at the next tick.
 
 `workspaces.start` with Hive on: `hive: true`, the start prompt's `{hive}` line, and the runner
 takes the workspace at `writing`, round 1, `since` its creation. Nucleus's `start_workspace` goes
-through it too. Claude Code only (decision 658): a start that picks Codex or Hermes while Hive is on
-is refused (409), "Hive drives Claude Code only: pick Claude Code, or turn Hive off"; with no agent
+through it too. Claude Code only (decision 658): a start that picks Codex while Hive is on is
+refused (409), "Hive drives Claude Code only: pick Claude Code, or turn Hive off"; with no agent
 picked, Claude Code is the one, and a start without Claude Code installed is refused. The writer's
 permission mode is the one picked on the Start page (no `bypassPermissions`): a writer that asks
 permission waits for the person.
@@ -135,7 +135,7 @@ as `{documents}` does (V40).
 - **The card and the workspace's head** (`workspaceNext`, pure and unit-tested): "Hive: running
   the check (round 2 of 3)"; "Checked: review and land it"; "Hive stopped: the check failed 3
   times"; "Hive off: paused"; a writer's own states as today. A small Hive mark on a Hive card.
-- **Start**: a line under the agent while Hive is on; Codex and Hermes off, with the reason.
+- **Start**: a line under the agent while Hive is on; Codex off, with the reason.
 - **Settings → Hive mode**: what Hive does now, in place of "Hive is not built yet".
 - **Settings → Prompts**: the Hive group, only while Hive is on.
 
@@ -203,7 +203,7 @@ merges of `main` in HV7.
 | 655 | Hive off, on, and a restart | **Off: Hive's sessions stopped, a check's group killed, the step kept (`interrupted`); on or a restart: what the session shows first — a turn ended goes on, a stopped writer gets `hive.resume`, a check runs again; a restart never stops a `--bg` session** | HV1's trap: a killed call is not a finished step; `--bg` sessions outlive `symbiote view` |
 | 656 | Who drives | **One runner per repository, by a pid lock beside the records; another view reads only** | Two `symbiote view`s of one repository share its `symbiote/`; the merge queue's lock (V26) |
 | 657 | Hive's prompts | **`{hive}` in the start prompts (its line gone when not Hive's, the text added at a project prompt's end), and `hive.start`, `hive.check`, `hive.commit`, `hive.resume` in a Hive group listed only in Hive mode** | The person's answers: new keys in a Hive group; a `{hive}` line only for Hive workspaces; Hive's settings only in Hive mode |
-| 658 | Which agents Hive drives *(partly superseded by 773 of HV4)* | **Claude Code only; a start that picks Codex or Hermes while Hive is on is refused (409); the writer in the permission mode picked, no `bypassPermissions`** | The brief: Claude only for now; "every workspace started while Hive is on" stays true; the person's answers to questions 2 and 4 |
+| 658 | Which agents Hive drives *(partly superseded by 773 of HV4)* | **Claude Code only; a start that picks Codex while Hive is on is refused (409); the writer in the permission mode picked, no `bypassPermissions`** | The brief: Claude only for now; "every workspace started while Hive is on" stays true; the person's answers to questions 2 and 4 |
 | 716 | A commit already checked (fix/hive-runner-flaws) | **A turn that ends on a commit where a check of the same commands passed goes to the review with no check; a commit a review approved goes to landing with no review. A check that failed on the commit runs again** | HV3's record: three checks of `6da7d5a` after it passed at 13:59:20, the last one failing on a flaky e2e test; a flaky failure still gets its retry |
 | 717 | A branch being landed (fix/hive-runner-flaws) | **Merged, or in the merge queue (any state but `landed` and `failed`): Hive sends nothing (a message not sent yet is dropped), starts no check or review and stops one that runs, keeping no result; queued → `landing`, merged → `landed`. A check or review that ends meanwhile is kept, and nothing is sent** | HV3's record: the failure was sent at 14:19:23 while the merge queue checked the merge; `main` moved at 14:22:42, so "merged" alone would not have caught it. The person: queued counts |
 | 718 | What `sent` means (fix/hive-runner-flaws) | **Its prompt is in the thread; Claude Code's answer alone is `taken`** | The honeycomb record said `sent` for a message no hook ever recorded |
@@ -240,7 +240,7 @@ Codex in any Hive role.
   words; a review or a verdict at `landing` says what is next as for any workspace; the stuck note
   in plain words (the card is not Markdown).
 - **Start with Hive on** offers Claude Code only, and says what Hive does; the request is refused
-  for Codex and Hermes by the server as well (409).
+  for Codex by the server as well (409).
 - **The Hive mode page and its question** say what Hive does now, in place of "not built yet".
 - **An event's time is its own.** The real run's first `check-started` event read
   `"at": "72ed10b…"`: its data's `at` (the commit) replaced the event's time. The data says

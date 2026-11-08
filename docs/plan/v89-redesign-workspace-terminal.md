@@ -57,7 +57,7 @@ fast as today.
 
 ## Session tabs (decision 827)
 
-- The agent's tab is named by its agent (`Claude Code`, `Codex`, `Hermes`; Hive's `Writer` with
+- The agent's tab is named by its agent (`Claude Code`, `Codex`; Hive's `Writer` with
   `Claude Code` beside it), with a dot: violet when it waits for the person (plan ready and
   interrupted too), amber while it works. Then Thread, Activity, Brief, Hive's Review as it is.
 - Each shell: its name, the program in its foreground (`WorkspaceShell.running`, node-pty's name:
@@ -77,7 +77,7 @@ fast as today.
   prompt's options, and "don't ask again" varies by tool: no 1/2/3. A question
   (`AskUserQuestion`, its options recorded) shows its options numbered only if a real Claude
   Code session shows number keys pick them; else its options as words and "answer in its
-  terminal". Codex, Hermes and an interrupted turn: words only.
+  terminal". Codex and an interrupted turn: words only.
 - Working: what it does now, then Symbiote's own keys (Ctrl+Click opens a path, Ctrl+V pastes an
   image; ⌘ on macOS). Failed: red, with Read its thread. Hive: "Hive drives this writer", and
   "What you type reaches the writer too, recorded as yours"; while Hive checks or reviews,
@@ -126,7 +126,7 @@ terminal, both go through today's reply route.
 4. `pnpm check`, `pnpm build`, `pnpm test:e2e`.
 5. **Screenshots** with the e2e fake agent, before (this branch at `main`) and after, beside the
    proofs, at 1×, both themes, both modes: working, waiting, plan ready, interrupted, stopped,
-   failed, not started, merged, no terminal (Codex without its app server, Hermes), a gone
+   failed, not started, merged, no terminal (Codex without its app server), a gone
    worktree, many shells, a narrow window, Hive writing, checking and stopped.
 
 **Risks**
@@ -154,7 +154,7 @@ terminal, both go through today's reply route.
 | 826 | The person's step on the track (amends 818) | **A fourth mark, `you`, violet** | the proofs draw it so |
 | 827 | Session tabs (replaces 297's "the agent's tabs keep their names") | **The agent's tab by its agent's name with a dot (violet waiting, amber working); shells with their foreground program and a green dot; attach, Split and Focus at the strip's end; no search** | the designs; node-pty names only the program; search needs a new dependency |
 | 828 | The bar's words (replaces V48's strip) | **Claude Code's notification, else its ask, else `waitingFor`, and how long; Next waiting at its end; a link to the terminal on other tabs; never a button that answers** | "in the agent's own words" |
-| 829 | The bar's keys | **Only measured keys: a permission's Enter and Esc; a question's numbers only if a real session confirms them; none for Codex, Hermes or an interrupted turn** | Symbiote does not record a permission prompt's options |
+| 829 | The bar's keys | **Only measured keys: a permission's Enter and Esc; a question's numbers only if a real session confirms them; none for Codex or an interrupted turn** | Symbiote does not record a permission prompt's options |
 | 830 | Focus | **The sidenav's rail and no side card; remembered in the browser as the fold is** | the person's choice |
 | 831 | Split | **The agent and one shell, `&split=<n>`; each pane fits its own box; no re-attach on toggle** | the terminal comes first |
 | 832 | The side card | **Now, Not committed (live, the edited file pulsing), Commits, Files; one changes read shared with the head** | the designs; no extra request |

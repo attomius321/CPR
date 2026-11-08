@@ -2,8 +2,11 @@
 
 [Index](../PLAN.md) · [The audit](../journal/chore-improvement-audit.md) (finding R2)
 
-**Status:** planned (2026-11-06), to be built on branch `chore/repository-address` in its own
-workspace; written by the improvement audit (`chore/improvement-audit`). Not started.
+**Status:** resolved by the rename on 2026-11-08, nothing to build: the person chose A and
+renamed the GitHub repository to `attomius321/Symbiote`. The `curl` checks answer 200 (below).
+Written by the improvement audit (`chore/improvement-audit`) on 2026-11-06 as planned; the
+branch `chore/repository-address` was never made. The regression set and the `gh -R` test case
+name the new address since [chore/remove-cpr](chore-remove-cpr.md).
 
 **Kind** chore · **Branch** `chore/repository-address` · **Size** S · **Depends on** none (a choice
 of the person's first) · **Plan** P02 of 51 (the audit's order)
@@ -51,6 +54,21 @@ gh repo view attomius321/CPR --json visibility                                  
 
 `docs/journal/remake-readme.md:111` and `chore-readme-remake.md:116` found the same and left it
 for the person.
+
+After the rename (2026-11-08, `curl -s -o /dev/null -w '%{http_code}'`; on branch
+`chore/remove-cpr`):
+
+```
+https://github.com/attomius321/Symbiote                                             → 200
+https://github.com/attomius321/Symbiote.git (README.md:44, ci/gitlab/symbiote.yml:21) → 301 (to the web page; git clones it)
+https://raw.githubusercontent.com/attomius321/Symbiote/main/ci/gitlab/symbiote.yml  → 200 (review-and-ci.md:247, symbiote.yml:4)
+https://raw.githubusercontent.com/attomius321/CPR/main/ci/gitlab/symbiote.yml       → 200
+https://github.com/attomius321/CPR                                                  → 301, location: https://github.com/attomius321/Symbiote
+git clone --depth 1 https://github.com/attomius321/Symbiote.git (no credentials)     → cloned, a12c1d9
+```
+
+`uses: attomius321/Symbiote@main` (`review-and-ci.md:211`) names the same repository, which now
+exists.
 
 ## Approach
 

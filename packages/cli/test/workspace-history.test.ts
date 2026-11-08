@@ -127,7 +127,6 @@ async function service(repo: TestRepo) {
   return workspaces(await openRepo(repo.root), cache, {
     claude: asked('Claude Code'),
     codex: asked('Codex'),
-    hermes: asked('Hermes'),
     now: () => new Date('2026-10-29T09:00:00Z'),
     env: { PATH: '/usr/bin' },
     openFolder: (_folder, at) => {

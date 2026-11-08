@@ -178,8 +178,8 @@ failure sent on its own (Hive mode, HV4).
 - **5. Send to the agent**:
   - Offered on a clean merge whose check failed, and also on a resolution whose check failed
     (beside Check again): in both the branch's agent can say whether its branch caused it.
-  - Shown only when the branch is a workspace whose agent takes messages (not Hermes, not one
-    without a session).
+  - Shown only when the branch is a workspace whose agent takes messages (not one without a
+    session).
   - `Merger.failure` words the failure from `merge.failed`, the output's last 60 lines cut at
     6,000 characters, as Hive cuts a check's; `sendFailure` sends it through `reply`.
 - **6. The flaky tests**:

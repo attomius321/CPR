@@ -43,8 +43,6 @@ make (plan first or not, the agent, where it merges):
   (arrow keys move it). The lists come from the agent itself.
 - **Permissions** (Claude Code): Claude Code's own permission mode, which decides what it may do
   without asking you. Symbiote never grants the agent more than the mode you pick.
-- **Approvals** (Hermes): Hermes asks in its terminal before a dangerous command. Its card says
-  **Working** while it waits there.
 - **Plan first and wait for my OK**: the agent writes a plan and stops before it changes
   anything. It is on by default.
 - **Documents**: files for the agent, such as screenshots, PDFs or samples. Up to 20 files, of
@@ -69,10 +67,6 @@ When you click **Start workspace**, or press Ctrl+Enter, Symbiote:
 2. creates the branch and its worktree next to your checkout, in `../<repo>.worktrees/`;
 3. records the workspace in `symbiote/workspaces/<branch>.json`;
 4. starts the agent in the worktree, in the background, with the brief.
-
-Hermes has no background mode. It runs in a terminal of `symbiote view`, given the brief as its
-first message. It keeps running when you leave its tab or reload the page, and stops when
-Symbiote quits. Its **Terminal** tab then continues the session (`hermes --resume`).
 
 ## See what needs you
 
@@ -111,7 +105,7 @@ to see that.
 
 The page has four tabs:
 
-- **Terminal**: the agent's own terminal, as Claude Code, Codex or Hermes draws it. Answer
+- **Terminal**: the agent's own terminal, as Claude Code or Codex draws it. Answer
   questions and permission prompts here, as you would in your own terminal. Leaving the tab does
   not stop the agent. To give the agent an image, paste it (Ctrl+V) or use **Attach images**.
 - **Thread**: the agent's plans and reports, your messages, and what it waited for.

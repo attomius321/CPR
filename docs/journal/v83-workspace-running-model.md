@@ -93,7 +93,7 @@ person's list (their 4 live transcripts read by the branch's reader), the folded
 sidenav and the 390 px drawer. Cost on the person's 114 transcripts: 0.08–0.10 ms a poll
 unchanged, 0.35–0.41 ms grown, 1.24 ms (7.68 cold) the first read; the list's request 196 ms.
 
-Not verified: a Codex workspace through the list with the real Codex; Codex by `exec` and Hermes
+Not verified: a Codex workspace through the list with the real Codex; Codex by `exec`
 (unchanged); a session from before V83 taking the path at its next prompt, with the person's
 build.
 

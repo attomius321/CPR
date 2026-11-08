@@ -8,8 +8,7 @@ Asked whether every agent working here now knows what to do, then "Repair these 
 the five gaps found are fixed here; the person keeps the fifth (the HV4 workspace, started before
 `chore/living-docs` merged, has the old CLAUDE.md until `main` is merged into it).
 
-- **Codex and Hermes read no CLAUDE.md.** 4 of the 134 workspaces here ran them (3 Codex, 1
-  Hermes), and the repository had no `AGENTS.md`. A root `AGENTS.md` now sends every agent to
+- **Codex reads no CLAUDE.md.** 3 of the 134 workspaces here ran it, and the repository had no `AGENTS.md`. A root `AGENTS.md` now sends every agent to
   CLAUDE.md, the packages' CLAUDE.md files, the skills as files, and the area pages. A pointer,
   not a copy: one text to keep current.
 - **A replacement was invisible until `consolidate.mjs` ran on `main`.** Symbiote's merger leaves
@@ -61,8 +60,8 @@ the five gaps found are fixed here; the person keeps the fifth (the HV4 workspac
 - `pnpm check`: 2,749 tests, format, lint, typecheck. `pnpm build`. Links in the changed files:
   0 broken.
 
-Not verified: a real Codex or Hermes run reading `AGENTS.md` (Codex's documentation says it reads
-it; Hermes's, through secondary sources, says it loads `AGENTS.md` or `HERMES.md`); the note on a
+Not verified: a real Codex run reading `AGENTS.md` (Codex's documentation says it reads
+it); the note on a
 real stale page, only in the tests.
 
 Merged into main (2026-11-01).

@@ -21,7 +21,7 @@ import { WorkspaceRefused } from './workspace-record.js';
 /** How long the advisor may take: 3–5 s measured (V75 spike), 20 s at most. */
 export const ADVISOR_TIMEOUT_MS = 20_000;
 
-/** The agents the advisor runs on: those that list their models (Hermes lists none). */
+/** The agents the advisor runs on: those that list their models. */
 export type AdvisingAgent = 'claude' | 'codex';
 export const ADVISING_AGENTS: readonly AdvisingAgent[] = ['claude', 'codex'];
 
