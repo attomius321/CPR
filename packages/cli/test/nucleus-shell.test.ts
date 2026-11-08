@@ -259,7 +259,7 @@ describe("Nucleus's shell reads (NU9)", () => {
     'gh pr view 12 --comments',
     'gh pr diff 12 | head -100',
     'gh pr checks 12',
-    'gh issue view 3 -R attomius321/CPR',
+    'gh issue view 3 -R attomius321/Symbiote',
     'gh run list --limit 5',
     'gh run view 123 --log | tail -50',
     'gh release list',
