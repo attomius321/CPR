@@ -11,6 +11,7 @@ import {
   listAddress,
   problemTitle,
   roleWord,
+  rowLabels,
   tokenNote,
 } from '../src/issues/issues.js';
 
@@ -110,5 +111,10 @@ describe('the Issues page (IS1)', () => {
     expect(tokenNote({ forge: { ...forge, kind: 'gitlab' }, token: false })).toBe(
       'Read without a token: public issues only, without their comments.',
     );
+  });
+
+  it('shows 4 labels in a row and how many more; 5 whole', () => {
+    expect(rowLabels([1, 2, 3, 4, 5])).toEqual({ shown: [1, 2, 3, 4, 5], more: 0 });
+    expect(rowLabels([1, 2, 3, 4, 5, 6, 7])).toEqual({ shown: [1, 2, 3, 4], more: 3 });
   });
 });

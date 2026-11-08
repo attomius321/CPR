@@ -108,3 +108,10 @@ export function tokenNote(source: IssueSource): string | undefined {
     : '';
   return `Read without a token: ${limit}.${hint}`;
 }
+
+/** Labels a row shows (GitLab's issues carry 9 to 12 scoped ones): the first `max`, and how many more. */
+export function rowLabels<T>(labels: readonly T[], max = 4): { shown: readonly T[]; more: number } {
+  return labels.length <= max + 1
+    ? { shown: labels, more: 0 }
+    : { shown: labels.slice(0, max), more: labels.length - max };
+}

@@ -32,6 +32,7 @@ import {
   problemTitle,
   relativeTime,
   roleWord,
+  rowLabels,
   STATES,
   tokenNote,
 } from './issues.js';
@@ -317,7 +318,7 @@ function IssueRows({
                   <span className="issues-row-number">#{issue.number}</span>
                   <span className="issues-row-title">{issue.title}</span>
                 </span>
-                {issue.labels.length > 0 && <Labels labels={issue.labels} />}
+                {issue.labels.length > 0 && <Labels labels={issue.labels} max={4} />}
                 <span className="issues-row-meta">{issueLine(issue, now)}</span>
               </span>
             </button>
@@ -358,10 +359,12 @@ function StateIcon({ state }: { state: IssueSummary['state'] }) {
   );
 }
 
-function Labels({ labels }: { labels: IssueSummary['labels'] }) {
+/** Labels as quiet chips; with `max`, a row's: the first few and how many more. */
+function Labels({ labels, max }: { labels: IssueSummary['labels']; max?: number }) {
+  const { shown, more } = max ? rowLabels(labels, max) : { shown: labels, more: 0 };
   return (
     <span className="issues-labels">
-      {labels.map((label) => {
+      {shown.map((label) => {
         const colour = labelColour(label.color);
         return (
           <span key={label.name} className="chip issues-label">
@@ -376,6 +379,11 @@ function Labels({ labels }: { labels: IssueSummary['labels'] }) {
           </span>
         );
       })}
+      {more > 0 && (
+        <span className="chip issues-label" aria-label={`${more} more labels`}>
+          +{more}
+        </span>
+      )}
     </span>
   );
 }
