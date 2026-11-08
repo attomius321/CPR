@@ -185,9 +185,9 @@ describe('testCounts (V73): what a test run printed, read from its end', () => {
 
   it("Playwright's, failed and passed on lines of their own", () => {
     const output = [
-      '[2/2] e2e/hermes.spec.ts:107:1 › Hermes is not offered where no terminal can run',
+      '[2/2] e2e/codex.spec.ts:148:1 › a working Codex row names Codex in its tip',
       '  1 failed',
-      '    e2e/hermes.spec.ts:29:1 › Hermes in its terminal: started',
+      '    e2e/codex.spec.ts:56:1 › a workspace with Codex: picked when it starts',
       '  1 flaky',
       '  2 skipped',
       '  1 passed (6.8s)',

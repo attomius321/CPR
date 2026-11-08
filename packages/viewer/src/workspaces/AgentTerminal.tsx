@@ -99,8 +99,7 @@ export const lastTerminalSize = (): { cols: number; rows: number } => lastSize;
  * address and its own links (OSC 8) are links: Ctrl+click (⌘ on macOS) opens the file in VS Code
  * at the line printed, or the address in a new tab (V38). `id`: a terminal already open, read and
  * typed into as it is (a workspace's shell, V45): leaving does not close it, and the list is not
- * read more often for it. A terminal the server says it keeps (Hermes runs in it, V58) is not
- * closed either when it is left: that would end the agent.
+ * read more often for it.
  */
 export function AgentTerminal({
   branch,
@@ -135,8 +134,6 @@ export function AgentTerminal({
     const release = kept === undefined ? holdReads() : () => {};
     let gone = false;
     let id: string | null = null;
-    // The server keeps it (Hermes, V58): left, not closed.
-    let serverKept = false;
     // Its output (V94b): on the browser's one stream where Symbiote pushes, else its own.
     let stopOutput = () => {};
     let term: Terminal | null = null;
@@ -182,9 +179,8 @@ export function AgentTerminal({
             })
           : { id: kept };
       setTrust(opened.trusted === false);
-      serverKept = opened.kept === true;
       if (gone) {
-        if (kept === undefined && !serverKept) {
+        if (kept === undefined) {
           void toTerminal(opened.id, 'close', {}).catch(() => {});
         }
         return;
@@ -490,7 +486,7 @@ export function AgentTerminal({
       observer?.disconnect();
       stopOutput();
       term?.dispose();
-      if (id && kept === undefined && !serverKept) void toTerminal(id, 'close', {}).catch(() => {});
+      if (id && kept === undefined) void toTerminal(id, 'close', {}).catch(() => {});
       told.current.onOpened(null);
     };
   }, [branch, url, kept]);

@@ -122,11 +122,11 @@ export function MergeView({ branch }: { branch: string }) {
 
 /**
  * Whether a failed check can be sent to the branch's agent (AR2): its workspace's agent takes
- * messages (Claude Code or Codex with a session; Hermes takes them in its terminal only).
+ * messages (Claude Code or Codex with a session).
  */
 function sendable(list: WorkspaceList | null, branch: string): boolean {
   const workspace = list?.workspaces.find((w) => w.branch === branch);
-  if (!workspace || workspace.agent.kind === 'hermes') return false;
+  if (!workspace) return false;
   return replyMode(workspace.agent) !== 'none';
 }
 

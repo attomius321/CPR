@@ -11,7 +11,6 @@ import {
   ClaudeMark,
   CodexMark,
   CommitIcon,
-  HermesMark,
   HexagonIcon,
   MergeIcon,
   ModelIcon,
@@ -74,13 +73,7 @@ export function WorkspaceState({
   const text = [said, ...facts].join(' · ');
   return (
     <p className="workspace-state" {...tip(agent ? `${AGENT_NAMES[agent]}\n${text}` : text)}>
-      {agent === 'codex' ? (
-        <CodexMark />
-      ) : agent === 'hermes' ? (
-        <HermesMark />
-      ) : (
-        agent && <ClaudeMark />
-      )}
+      {agent === 'codex' ? <CodexMark /> : agent && <ClaudeMark />}
       <strong>{live ? <HiveNowLine hive={live} /> : <Said text={said} link={next.link} />}</strong>
       {facts.map((fact) => (
         <span key={fact}> · {fact}</span>

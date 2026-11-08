@@ -75,7 +75,6 @@ export interface ActivityExport {
 const AGENTS: Record<AgentKind, string> = {
   claude: 'Claude Code',
   codex: 'Codex',
-  hermes: 'Hermes',
 };
 const agentName = (kind: AgentKind | undefined) => (kind ? AGENTS[kind] : 'its agent');
 

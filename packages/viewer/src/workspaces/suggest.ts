@@ -20,7 +20,6 @@ export function suggestBlocked({
 }): string | null {
   if (running) return 'A start is under way';
   if (!agent) return 'No agent is installed';
-  if (agent.kind === 'hermes') return 'Hermes lists no models to suggest from';
   if (!agent.models?.length) return `${AGENT_NAMES[agent.kind]} lists no models Symbiote can read`;
   if (main.trim() === '') {
     return `Write ${/^What /.test(heading) ? '' : 'the '}${heading.toLowerCase()} first`;

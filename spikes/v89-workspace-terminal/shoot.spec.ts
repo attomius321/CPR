@@ -221,13 +221,11 @@ test('normal mode, Claude Code with terminals', async ({ page }) => {
   await both(page, '07-not-started', 'feature/notstarted');
 });
 
-test('normal mode, no terminal: Codex without its app server, Hermes', async ({ page }) => {
-  symbiote = await serveWorkspaces({ codex: true, hermes: true });
+test('normal mode, no terminal: Codex without its app server', async ({ page }) => {
+  symbiote = await serveWorkspaces({ codex: true });
   await page.goto(`${symbiote.url}git`);
   await start(page, 'feature/codex', 'Add a half function', { agent: 'codex' });
   await both(page, '13-codex-no-terminal', 'feature/codex');
-  await start(page, 'feature/hermes', 'Count the words', { agent: 'hermes' });
-  await both(page, '14-hermes', 'feature/hermes');
 });
 
 test('Hive mode: writing, checking', async ({ page }) => {

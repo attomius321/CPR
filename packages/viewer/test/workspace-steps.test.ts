@@ -281,7 +281,6 @@ describe("the agent's tab (V89, decision 827)", () => {
       name: 'Claude Code',
     });
     expect(agentTabName({ state: 'working', kind: 'codex' }, false)).toEqual({ name: 'Codex' });
-    expect(agentTabName({ state: 'working', kind: 'hermes' }, false)).toEqual({ name: 'Hermes' });
     expect(agentTabName({ state: 'working' }, false)).toEqual({ name: 'Terminal' });
     expect(agentTabName({ state: 'working', kind: 'claude' }, true)).toEqual({
       name: 'Writer',

@@ -36,8 +36,7 @@ export interface WorkspaceAgentState {
   /** Its turn was interrupted (Esc): it waits at its prompt, and no hook said so. */
   interrupted?: true;
   /**
-   * Claude Code's short session ID, for `claude attach`; Codex's thread ID, for `codex resume`;
-   * Hermes's session ID, for `hermes --resume` (V58).
+   * Claude Code's short session ID, for `claude attach`; Codex's thread ID, for `codex resume`.
    */
   id?: string;
   /**
@@ -73,9 +72,9 @@ export interface AgentRunsOn {
   at?: string;
 }
 
-/** The agents Symbiote starts: Claude Code (V18), Codex (V20a) and Hermes (V58). */
-export type AgentKind = 'claude' | 'codex' | 'hermes';
-export const AGENT_KINDS: readonly AgentKind[] = ['claude', 'codex', 'hermes'];
+/** The agents Symbiote starts: Claude Code (V18) and Codex (V20a). */
+export type AgentKind = 'claude' | 'codex';
+export const AGENT_KINDS: readonly AgentKind[] = ['claude', 'codex'];
 
 /** Claude Code's permission modes Symbiote may start an agent in; `default` passes none. */
 export type PermissionMode = 'default' | 'acceptEdits' | 'auto';
@@ -829,11 +828,6 @@ export interface WorkspaceTerminalOpened {
    * Codex asks first whether to trust it, and saves the answer in the person's configuration.
    */
   trusted?: false;
-  /**
-   * Hermes (V58): the terminal Hermes itself runs in, kept by the server: leaving its tab must not
-   * close it, which would end Hermes.
-   */
-  kept?: true;
 }
 
 /**

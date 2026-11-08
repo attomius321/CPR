@@ -96,7 +96,6 @@ import { scribe } from './scribe.js';
 import { skillsService } from './skills.js';
 import { readClaudeProfile, readClaudeUsage, readCodexUsage, usageService } from './usage.js';
 import { codex, findCodex, type Codex } from './codex.js';
-import { findHermes, hermes, type Hermes } from './hermes.js';
 import { workspaces, readWorkspaceConfig } from './workspaces.js';
 import { symbioteFolder, WorkspaceRefused } from './workspace-record.js';
 import { EXPORT_FORMATS, type ActivityExport, type ExportFormat } from './activity-export.js';
@@ -739,7 +738,6 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   });
   // One Codex for workspaces and usage: one connection to its app server.
   const codexOf = codexFinder(repo.root, ctx.env);
-  const hermesOf = hermesFinder(repo.root, ctx.env);
   // The skill library (SK1): the Skills page's and Scribe's.
   const library = libraryOf(ctx);
   // One Claude Code for workspaces, Nucleus (V35) and Scribe (V41): one read of its sessions every 2 s.
@@ -769,7 +767,6 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
   const repoWorkspaces = workspaces(repo, cacheDir, {
     claude: claudeOf,
     codex: codexOf,
-    hermes: hermesOf,
     env: ctx.env,
     openFolder,
     terminals,
@@ -1070,7 +1067,6 @@ async function activityCommand(argv: string[], ctx: CliContext): Promise<number>
       const service = workspaces(repo, cacheDir, {
         claude: agentFinder(repo.root, ctx.env, cacheDir),
         codex: codexFinder(repo.root, ctx.env),
-        hermes: hermesFinder(repo.root, ctx.env),
         env: ctx.env,
       });
       done = await service.exportActivity(branch, format);
@@ -1372,21 +1368,6 @@ function agentFinder(
   };
 }
 
-/** Hermes for workspaces (V58), found as Claude Code is. */
-function hermesFinder(
-  root: string,
-  env: Readonly<Record<string, string | undefined>>,
-): () => Promise<Hermes | null> {
-  let found: Hermes | null = null;
-  return async () => {
-    if (found) return found;
-    const command = await findHermes(env);
-    if (!command) return null;
-    found = hermes(command, { cwd: root });
-    return found;
-  };
-}
-
 /** Codex for workspaces (V20a), found as Claude Code is; on its app server when it has one (V27a).
  * */
 function codexFinder(
@@ -1405,7 +1386,7 @@ function codexFinder(
 
 /**
  * The merger agent (V26c): `kind` (`merge.agent`), else `agent.kind`, else Claude Code, else
- * Codex, whichever is installed. Never Hermes (V58, decision 421): a merge is a headless run.
+ * Codex, whichever is installed.
  */
 function mergerFinder(
   root: string,
@@ -1431,7 +1412,6 @@ function levelsFinder(
   codexOf: () => Promise<Codex | null>,
 ): (kind: AgentKind) => Promise<AgentEfforts | null> {
   return async (kind) => {
-    if (kind === 'hermes') return null;
     if (kind === 'codex') return (await (await codexOf())?.efforts()) ?? null;
     const levels = (await (await claude())?.efforts()) ?? null;
     return levels ? { levels } : null;
@@ -1444,7 +1424,6 @@ function modelsFinder(
   codexOf: () => Promise<Codex | null>,
 ): (kind: AgentKind) => Promise<AgentModels | null> {
   return async (kind) => {
-    if (kind === 'hermes') return null;
     if (kind === 'codex') return (await (await codexOf())?.models()) ?? null;
     const models = (await (await claude())?.models()) ?? null;
     return models ? { models } : null;

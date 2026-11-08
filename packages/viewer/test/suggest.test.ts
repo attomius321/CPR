@@ -43,9 +43,6 @@ describe('Suggest settings', () => {
       'Write what happens first',
     );
     expect(suggestBlocked({ ...ready, agent: null })).toBe('No agent is installed');
-    expect(suggestBlocked({ ...ready, agent: { kind: 'hermes' } })).toBe(
-      'Hermes lists no models to suggest from',
-    );
     expect(suggestBlocked({ ...ready, agent: { kind: 'codex' } })).toBe(
       'Codex lists no models Symbiote can read',
     );

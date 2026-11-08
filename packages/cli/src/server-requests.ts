@@ -90,7 +90,7 @@ export function parseWorkspaceRequest(text: string): WorkspaceRequest {
   if (base !== undefined && typeof base !== 'string') throw new Error('base: a full SHA');
   if (from !== undefined && typeof from !== 'string') throw new Error("from: a branch's name");
   if (agent !== undefined && typeof agent !== 'string') {
-    throw new Error('agent: claude, codex or hermes');
+    throw new Error('agent: claude or codex');
   }
   if (permissionMode !== undefined && typeof permissionMode !== 'string') {
     throw new Error('permissionMode: default, acceptEdits or auto');
@@ -153,7 +153,7 @@ export function parseSuggestRequest(text: string): SuggestRequest {
   }
   // One Symbiote starts (MC2): the service reads any other as Codex.
   if (agent !== undefined && !AGENT_KINDS.some((k) => k === agent)) {
-    throw new Error('agent: claude, codex or hermes');
+    throw new Error('agent: claude or codex');
   }
   if (
     documents !== undefined &&

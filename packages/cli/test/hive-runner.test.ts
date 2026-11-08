@@ -666,11 +666,11 @@ describe('Hive, on', () => {
     expect(s.fake.resume).not.toHaveBeenCalled();
   });
 
-  it('refuses Codex and Hermes while Hive is on: Hive drives Claude Code only', async () => {
+  it('refuses Codex while Hive is on: Hive drives Claude Code only', async () => {
     const repo = repository(['true']);
     const s = await setup(repo);
     await s.turn(true);
-    for (const agent of ['codex', 'hermes'] as const) {
+    for (const agent of ['codex'] as const) {
       const refused = await s.service
         .start({ brief: 'x', branch: `feature/${agent}`, planFirst: false, agent })
         .then(
