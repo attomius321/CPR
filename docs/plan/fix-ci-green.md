@@ -3,7 +3,7 @@
 [Index](../PLAN.md) · [The audit](../journal/chore-improvement-audit.md) (finding R1)
 
 **Status:** built (2026-11-08), on branch `fix/ci-green` in its own workspace (from `main` at
-a12c1d9, `main` merged in at a95ccad); CI green on all three jobs (run 42510596203). Written by the
+a12c1d9, `main` merged in at a95ccad); CI green on all three jobs (runs 42510596203 and 42514039113). Written by the
 improvement audit (`chore/improvement-audit`).
 
 **Kind** fix · **Branch** `fix/ci-green` · **Size** S · **Depends on** none · **Plan** P01 of 51 (the audit's order)
@@ -163,7 +163,10 @@ Each run's e2e failures were different specs, all CI-only: run 1 `codex.spec.ts:
 `events.spec.ts:400`; run 3 `nucleus.spec.ts:437` and `targets.spec.ts:38`; run 4
 `hermes.spec.ts:29` (gone with Hermes); run 5 `changes.spec.ts:139` and `workspaces.spec.ts:931`.
 Each is fixed above. Run 6 (42510596203, 2026-11-08) is green on all three jobs: the first green
-run since 2026-10-13.
+run since 2026-10-13. Run 7 (docs and `look.spec.ts` only) failed ubuntu · node 22 on one unit
+test, `merges.test.ts` › "keeps the earlier runs when a merge runs again", at the 5 s timeout (1.6 s
+here, the file's slowest): it now has 20 s, as the slow `hive-runner.test.ts` tests do. Run 8
+(42514039113) is green on all three jobs.
 
 `events.spec.ts:400` on one core, the spec alone: hung at runs 3, 14, 13 and 13 of four hunts
 before; 40 of 40 passed after. `server.test.ts`'s new test (a request busy at close on a kept-alive

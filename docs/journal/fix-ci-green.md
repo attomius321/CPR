@@ -73,5 +73,6 @@ jobs, the first green run since 2026-10-13. What was built, run by run:
 
 **Verification**: `pnpm check` (3,416 tests after `main` merged in) and `pnpm build` pass;
 `pnpm test:e2e` 436 of 436 and 32 of 32 here; `server.test.ts`'s new test fails on the old
-`close()` and passes on the new one; CI run 42510596203 green on ubuntu · node 22, ubuntu · node 24
-(e2e included) and macOS · node 24.
+`close()` and passes on the new one; CI runs 42510596203 and 42514039113 green on ubuntu · node
+22, ubuntu · node 24 (e2e included) and macOS · node 24. Between them, run 7 timed out one slow
+unit test on node 22 (`merges.test.ts`, 1.6 s here): it has 20 s now.
