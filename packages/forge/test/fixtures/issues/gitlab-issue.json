@@ -1,0 +1,30 @@
+{
+ "id": 209260996,
+ "iid": 40247,
+ "project_id": 250833,
+ "title": "Update the Go bump template and stop Renovate Go version MRs",
+ "description": "## Why\n\n`.gitlab/issue_templates/bump-golang.md` is stale. It asks for `GO_FIPS_VERSION_SUFFIX` and `*.rebuild` files, neither of which exists any more, and it skips the base-images step. Since !7079, `scripts/check-go-version-consistency` checks the main Go version locations in CI, but nothing points people at it, so a missed location only shows up as a QA job failure.\n\nRenovate also opens Go version MRs that can't work. It runs from renovate-gitlab-bot's `renovate/projects/gitlab-runner.config.js` with `requireConfig: \"ignored\"`, so `.gitlab/renovate.json` and the `# renovate:` annotations h",
+ "state": "opened",
+ "created_at": "2026-11-05T11:07:14.290Z",
+ "updated_at": "2026-11-08T00:33:29.684Z",
+ "labels": [
+  "Category:Runner Core",
+  "automation:quick-win",
+  "automation:quick-win-judged",
+  "group::runner core",
+  "maintenance::workflow",
+  "primitives::runner functions runtime",
+  "quick win",
+  "section::primitives",
+  "type::maintenance"
+ ],
+ "author": {
+  "id": 35011548,
+  "username": "daniel-keenan",
+  "name": "Daniel Keenan",
+  "state": "active",
+  "web_url": "https://gitlab.com/daniel-keenan"
+ },
+ "user_notes_count": 3,
+ "web_url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40247"
+}

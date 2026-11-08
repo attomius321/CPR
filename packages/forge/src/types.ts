@@ -72,6 +72,95 @@ export interface Forge {
   findOpenRequest(head: string, base: string): Promise<ChangeRequest | null>;
   /** Replaces the request's description (HV8). */
   updateDescription(request: ChangeRequest, body: string): Promise<void>;
+  /** A page of the project's issues, most recently updated first; never a pull request (IS1). */
+  listIssues(query: IssueQuery): Promise<IssuePage>;
+  /** One issue whole: its text and its first 100 comments (IS1). */
+  getIssue(number: number): Promise<Issue>;
+}
+
+/** Which issues a list holds (IS1). */
+export type IssueFilter = 'open' | 'closed' | 'all';
+
+export interface IssueQuery {
+  state: IssueFilter;
+  /** Words to find in titles, at the forge. */
+  search?: string;
+  /** Where the list goes on: a page's `next`, as the forge gave it. */
+  cursor?: string;
+}
+
+export interface IssuePage {
+  issues: IssueSummary[];
+  /** The cursor of the next page; absent on the last. */
+  next?: string;
+}
+
+/**
+ * The author's standing in the project (IS1, decision 951): GitHub's `author_association` in
+ * words; on GitLab, the access level (`member` for guest to developer).
+ */
+export type IssueAuthorRole =
+  | 'owner'
+  | 'maintainer'
+  | 'member'
+  | 'collaborator'
+  | 'contributor'
+  | 'first-time contributor'
+  | 'none';
+
+export interface IssueAuthor {
+  login: string;
+  /** Absent where the forge does not say (GitLab's list; GitLab without a token). */
+  role?: IssueAuthorRole;
+  bot?: true;
+}
+
+export interface IssueLabel {
+  name: string;
+  /** `#rrggbb`, only when the forge gives one that is. */
+  color?: string;
+}
+
+/**
+ * An issue as a list shows it (IS1): what a later brief or workspace record takes from it too.
+ * Its text is the issue author's, untrusted.
+ */
+export interface IssueSummary {
+  forge: ForgeKind;
+  /** `#12` on both forges (GitLab's `iid`). */
+  number: number;
+  title: string;
+  /** Its page on the forge. */
+  url: string;
+  state: 'open' | 'closed';
+  labels: IssueLabel[];
+  author: IssueAuthor;
+  /** How many comments it has (GitLab: notes by people, not the system's). */
+  comments: number;
+  /** ISO times. */
+  created: string;
+  updated: string;
+}
+
+export interface IssueComment {
+  author: IssueAuthor;
+  /** Markdown, untrusted. */
+  body: string;
+  created: string;
+  /** Its place on the forge's page. */
+  url?: string;
+}
+
+/** One issue whole (IS1). */
+export interface Issue extends IssueSummary {
+  /** Markdown, untrusted; empty when the issue has none. */
+  body: string;
+  /** The first 100 comments, oldest first. */
+  thread: IssueComment[];
+  /** Comments not read: past the first 100, or every one when they need a token. */
+  moreComments: number;
+  /** GitLab reads notes only with a token: none was found. */
+  commentsNeedToken?: true;
 }
 
 /** What a forge adapter reads from the environment: tokens and API URL overrides. */
