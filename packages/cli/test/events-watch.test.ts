@@ -112,6 +112,21 @@ describe('watchTree (V94c)', () => {
     expect(seen).not.toContain(old);
   });
 
+  it('where the system replays changes, reports one in a folder made after it started, dated before (fix-ci-green)', async () => {
+    // A folder made later had no first read: what is written in it is news, however it is dated
+    // (macOS's runner: the folder's own watch began after the file in it was written).
+    const root = folder();
+    const seen = watched(root, undefined, true);
+    await settle();
+    mkdirSync(join(root, 'reviews'));
+    await settle();
+    const file = join(root, 'reviews', 'ada@example.com.json');
+    writeFileSync(file, '{}');
+    const before = new Date(Date.now() - 10_000);
+    utimesSync(file, before, before);
+    expect(await until(seen, (p) => p === file)).toBe(true);
+  });
+
   it('keeps no watcher once closed', async () => {
     const watchers = () =>
       process.getActiveResourcesInfo().filter((kind) => kind === 'FSEventWrap').length;
