@@ -63,6 +63,7 @@
 @import './settings/SettingsPage.css';
 @import './skills/SkillsPage.css';
 @import './monitor/MonitorPage.css';
+@import './issues/IssuesPage.css';
 @import './overview/Overview.css';
 @import './shell/Sidenav.css';
 /* After Sidenav.css: under 900 px the shell hides the sidenav, a flex column otherwise. */

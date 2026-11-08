@@ -18,6 +18,21 @@ export interface FakeRequest {
   merge?: string;
 }
 
+/** An issue on the fake forge (IS1): its text, its labels, its comments. */
+export interface FakeIssue {
+  number: number;
+  title: string;
+  body: string;
+  state: 'open' | 'closed';
+  author: string;
+  /** GitHub's `author_association` (`OWNER`, `NONE`…); GitLab's access level from it. */
+  role?: string;
+  labels?: { name: string; color: string }[];
+  comments?: { author: string; body: string; role?: string }[];
+  /** ISO; issues are listed most recently updated first. */
+  updated: string;
+}
+
 export interface FakeForge {
   kind: FakeForgeKind;
   /** Its API's address: `GITHUB_API_URL` or `GITLAB_API_URL`. */
@@ -25,6 +40,10 @@ export interface FakeForge {
   /** Its repository: a bare one, as `origin` is (set later where it is made later). */
   remote: string;
   requests: FakeRequest[];
+  /** Its issues (IS1); the requests are listed among GitHub's too, as GitHub does. */
+  issues: FakeIssue[];
+  /** A status every issue read answers with, while set (IS1: the forge's error). */
+  issuesFail?: number;
   /** Every call the forge got. */
   calls: Recorded[];
   /** The reviews posted: their event and summary. */
@@ -55,6 +74,8 @@ export async function fakeForge(kind: FakeForgeKind, remote = ''): Promise<FakeF
   const requests: FakeRequest[] = [];
   const reviews: FakeForge['reviews'] = [];
   const tip = (branch: string) => {
+    // A forge with no repository yet (IS1's): its requests name no commit.
+    if (!fake.remote) return '0'.repeat(40);
     try {
       return gitIn(fake.remote, 'rev-parse', `refs/heads/${branch}`);
     } catch {
@@ -110,10 +131,159 @@ export async function fakeForge(kind: FakeForgeKind, remote = ''): Promise<FakeF
     return made;
   };
 
+  const issues: FakeIssue[] = [];
+  const LEVELS: Record<string, number> = { OWNER: 50, MEMBER: 40, COLLABORATOR: 30 };
+  const githubIssue = (i: FakeIssue) => ({
+    number: i.number,
+    title: i.title,
+    html_url: `https://github.com/${PROJECT}/issues/${i.number}`,
+    user: { login: i.author, type: i.author.endsWith('[bot]') ? 'Bot' : 'User' },
+    labels: i.labels ?? [],
+    state: i.state,
+    comments: i.comments?.length ?? 0,
+    created_at: '2026-11-01T10:00:00Z',
+    updated_at: i.updated,
+    author_association: i.role ?? 'NONE',
+    body: i.body,
+  });
+  const gitlabIssue = (i: FakeIssue) => ({
+    iid: i.number,
+    title: i.title,
+    web_url: `https://gitlab.com/${PROJECT}/-/issues/${i.number}`,
+    author: { id: 1000 + i.number, username: i.author },
+    labels: (i.labels ?? []).map((label) => label.name),
+    state: i.state === 'open' ? 'opened' : 'closed',
+    user_notes_count: i.comments?.length ?? 0,
+    created_at: '2026-11-01T10:00:00Z',
+    updated_at: i.updated,
+    description: i.body,
+  });
+  const byUpdate = (list: FakeIssue[]) =>
+    [...list].sort((a, b) => b.updated.localeCompare(a.updated) || b.number - a.number);
+  /** A page of `items` by `per_page` and `page`, and whether there is another. */
+  const pageOf = <T>(items: T[], params: URLSearchParams) => {
+    const size = Number(params.get('per_page') ?? 30);
+    const page = Number(params.get('page') ?? 1);
+    return {
+      items: items.slice((page - 1) * size, page * size),
+      next: page * size < items.length ? page + 1 : 0,
+    };
+  };
+
+  /** Issues (IS1): GitHub's list (pull requests among them), search, one and its comments; GitLab's. */
+  const issueAnswer = (
+    request: Recorded,
+    path: string,
+    params: URLSearchParams,
+  ): Reply | undefined => {
+    if (request.method !== 'GET') return undefined;
+    if (kind === 'github') {
+      const list = `/repos/${PROJECT}/issues`;
+      const one = new RegExp(`^${list}/(\\d+)(/comments)?$`).exec(path);
+      const issue = one ? issues.find((i) => i.number === Number(one[1])) : undefined;
+      if (path !== list && path !== '/search/issues' && !issue) return undefined;
+      if (fake.issuesFail) return { status: fake.issuesFail, body: { message: 'Server Error' } };
+      if (path === list) {
+        const state = params.get('state') ?? 'open';
+        const shown = byUpdate(issues.filter((i) => state === 'all' || i.state === state));
+        const pulls = requests
+          .filter((r) => state === 'all' || (state === 'open') === (r.state === 'open'))
+          .map((r) => ({
+            ...github(r),
+            comments: 0,
+            labels: [],
+            created_at: '2026-11-01T10:00:00Z',
+            updated_at: '2026-11-09T00:00:00Z',
+            pull_request: { url: 'x' },
+          }));
+        const { items, next } = pageOf([...pulls, ...shown.map(githubIssue)], params);
+        return {
+          body: items,
+          ...(next
+            ? {
+                headers: {
+                  link: `<${fake.url}${list}?state=${state}&per_page=${params.get('per_page')}&page=${next}>; rel="next"`,
+                },
+              }
+            : {}),
+        };
+      }
+      if (path === '/search/issues') {
+        const q = params.get('q') ?? '';
+        const words = (/"([^"]*)"/.exec(q)?.[1] ?? '').toLowerCase();
+        const state = /is:(open|closed)/.exec(q)?.[1];
+        const found = byUpdate(
+          issues.filter(
+            (i) => (!state || i.state === state) && i.title.toLowerCase().includes(words),
+          ),
+        );
+        const { items, next } = pageOf(found.map(githubIssue), params);
+        return {
+          body: { total_count: found.length, incomplete_results: false, items },
+          ...(next
+            ? { headers: { link: `<${fake.url}/search/issues?page=${next}>; rel="next"` } }
+            : {}),
+        };
+      }
+      if (!issue) return undefined;
+      if (!one?.[2]) return { body: githubIssue(issue) };
+      return {
+        body: (issue.comments ?? []).map((c, n) => ({
+          html_url: `https://github.com/${PROJECT}/issues/${issue.number}#issuecomment-${n + 1}`,
+          user: { login: c.author, type: 'User' },
+          created_at: '2026-11-02T10:00:00Z',
+          author_association: c.role ?? 'NONE',
+          body: c.body,
+        })),
+      };
+    }
+    const project = `/projects/${encodeURIComponent(PROJECT)}`;
+    const one = new RegExp(`^${project}/issues/(\\d+)(/notes)?$`).exec(path);
+    const member = new RegExp(`^${project}/members/all/(\\d+)$`).exec(path);
+    if (path !== `${project}/issues` && !one && !member) return undefined;
+    if (fake.issuesFail) return { status: fake.issuesFail, body: { message: 'Server Error' } };
+    if (member) {
+      const role = issues.find((i) => 1000 + i.number === Number(member[1]))?.role ?? 'NONE';
+      const level = LEVELS[role];
+      return level
+        ? { body: { access_level: level } }
+        : { status: 404, body: { message: '404 Not found' } };
+    }
+    if (!one) {
+      const state = params.get('state');
+      const words = (params.get('search') ?? '').toLowerCase();
+      const found = byUpdate(
+        issues.filter(
+          (i) =>
+            (!state || (state === 'opened') === (i.state === 'open')) &&
+            i.title.toLowerCase().includes(words),
+        ),
+      );
+      const { items, next } = pageOf(found.map(gitlabIssue), params);
+      return { body: items, ...(next ? { headers: { 'x-next-page': String(next) } } : {}) };
+    }
+    const issue = issues.find((i) => i.number === Number(one[1]));
+    if (!issue) return { status: 404, body: { message: '404 Not found' } };
+    if (!one[2]) return { body: gitlabIssue(issue) };
+    if (!request.headers['private-token'])
+      return { status: 401, body: { message: '401 Unauthorized' } };
+    return {
+      body: (issue.comments ?? []).map((c, n) => ({
+        id: n + 1,
+        body: c.body,
+        author: { username: c.author },
+        created_at: '2026-11-02T10:00:00Z',
+        system: false,
+      })),
+    };
+  };
+
   const answer = (request: Recorded): Reply | undefined => {
     const [path = '', query = ''] = request.path.split('?');
     const params = new URLSearchParams(query);
     const body = (request.body ?? {}) as Record<string, string | boolean>;
+    const read = issueAnswer(request, path, params);
+    if (read) return read;
     if (kind === 'github') {
       const base = `/repos/${PROJECT}/pulls`;
       if (request.method === 'POST' && path === base) {
@@ -203,6 +373,7 @@ export async function fakeForge(kind: FakeForgeKind, remote = ''): Promise<FakeF
     url: api.url,
     remote,
     requests,
+    issues,
     calls: api.requests,
     reviews,
     merge(number) {

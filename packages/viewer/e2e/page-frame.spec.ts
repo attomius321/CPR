@@ -158,6 +158,8 @@ test("the shell's pages: the whole main area, one head, cards 12 px from its edg
   await expectPage(page, 'Nucleus', 'nucleus', ['.nucleus-card']);
   await expectPage(page, 'Skills', 'skills', ['.skills-list', '.skills-pane']);
   await expectPage(page, 'the Monitor', 'monitor', ['.monitor-map-card', '.monitor-side']);
+  // Issues (IS1): origin here is a bare repository, on neither forge: the one card that says so.
+  await expectPage(page, 'Issues', 'issues', ['.issues-problem']);
   await expectPage(page, 'Settings', 'settings', ['.settings-list', '.settings-editor']);
   // History (V77): empty, one card; with a finished workspace, the list and the picked one.
   await expectPage(page, 'History, empty', 'workspace-history', ['.history-none']);

@@ -1,0 +1,389 @@
+/* ---- Issues (IS1): origin's GitHub or GitLab issues, read only ----------------------------- */
+
+/* In the page frame (V72): the head, then two cards, the list and the issue picked, the list's
+   handle the gutter between them (as the Monitor's). */
+.issues {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.issues-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 0 var(--page-pad) var(--page-pad);
+}
+
+.issues-card {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+}
+
+.issues-list {
+  flex: none;
+  width: min(var(--issues-width, 440px), calc(100% - 320px));
+  min-width: 280px;
+}
+
+.issues-issue {
+  flex: 1 1 320px;
+}
+
+.issues.resizing {
+  cursor: col-resize;
+  user-select: none;
+}
+
+/* No origin, or origin on neither forge: one card, its words 16 px in. */
+.issues-body.empty .issues-card {
+  flex: 1;
+}
+
+.issues-problem {
+  padding: var(--card-pad);
+}
+
+.issues-problem h2 {
+  margin: 0 0 6px;
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.issues-problem p {
+  margin: 0 0 6px;
+}
+
+.issues-muted {
+  color: var(--muted);
+}
+
+/* The search, under the state's tabs. */
+.issues-filters {
+  flex: none;
+  padding: 12px var(--card-pad) 8px;
+}
+
+.issues-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.issues-search .icon {
+  position: absolute;
+  left: 11px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.issues-search input {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--height-control);
+  padding: 0 10px 0 34px;
+  font-size: var(--size-body);
+}
+
+/* Esc clears it: no browser cross. */
+.issues-search input::-webkit-search-cancel-button {
+  appearance: none;
+}
+
+/* No token: what is read, and what to set. */
+.issues-note {
+  flex: none;
+  margin: 0 var(--card-pad) 8px;
+  color: var(--muted);
+  font-size: var(--size-small);
+  line-height: 1.45;
+}
+
+/* Reading, empty, or a problem: words 16 px in. */
+.issues-state {
+  margin: 0;
+  padding: 8px var(--card-pad) var(--card-pad);
+}
+
+.issues-state p {
+  margin: 0 0 8px;
+}
+
+.issues-problem-title {
+  font-weight: 600;
+}
+
+.issues-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 8px 8px;
+}
+
+.issues-rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issues-rows li + li {
+  margin-top: 1px;
+}
+
+/* A row: its state, then its number and title over its labels and who, when, how many. */
+.issues-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 150ms;
+}
+
+.issues-row:hover {
+  background: var(--hover);
+}
+
+.issues-row[aria-current='true'] {
+  background: var(--selected);
+}
+
+.issues-state-icon {
+  flex: none;
+  display: inline-flex;
+  padding-top: 3px;
+}
+
+/* Open in the passed green, as both forges draw it; closed muted, its icon a check. Never the
+   colour alone: the two icons differ, and each says its word. */
+.issues-state-icon[data-state='open'],
+.issues-state-word[data-state='open'] {
+  color: var(--ok);
+}
+
+.issues-state-icon[data-state='closed'],
+.issues-state-word[data-state='closed'] {
+  color: var(--muted);
+}
+
+.issues-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.issues-row-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.issues-row-number {
+  flex: none;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.issues-row-title {
+  min-width: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.issues-row-meta {
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+/* Labels: quiet chips, the forge's colour a dot only. */
+.issues-labels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.issues-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.issues-label-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* The list's end: how many are shown, Load more. */
+.issues-end {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 12px 8px 4px;
+  font-size: var(--size-small);
+}
+
+/* The issue: #n and Open on the forge in its head; under it its title, who, labels, text and
+   comments, scrolling. */
+.issues-issue-head h2 {
+  font-variant-numeric: tabular-nums;
+}
+
+.issues-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+
+.issues-issue-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.issues-article {
+  padding: var(--card-pad);
+}
+
+.issues-title {
+  margin: 0 0 8px;
+  font-size: var(--size-title);
+  font-weight: 600;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.issues-byline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: var(--size-small);
+}
+
+.issues-state-word {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+}
+
+.issues-role {
+  margin-left: 6px;
+}
+
+.issues-article > .issues-labels {
+  margin-bottom: 16px;
+}
+
+/* An issue's or a comment's text: long words and code wrap in the card. */
+.issues-text {
+  overflow-wrap: anywhere;
+}
+
+.issues-text pre {
+  overflow: auto;
+}
+
+.issues-plain {
+  white-space: pre-wrap;
+}
+
+.issues-comments-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: var(--size-body);
+  font-weight: 600;
+}
+
+.issues-comments {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.issues-comment + .issues-comment {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.issues-comment-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin: 0 0 6px;
+  font-size: var(--size-small);
+}
+
+.issues-comment-head .issues-role {
+  margin-left: 0;
+}
+
+.issues-comment-author {
+  font-weight: 600;
+}
+
+.issues-comments-end {
+  margin: 16px 0 0;
+  font-size: var(--size-small);
+}
+
+/* Narrow: the issue under the list. */
+@media (max-width: 900px) {
+  .issues-body {
+    flex-direction: column;
+    gap: var(--page-gap);
+    overflow: auto;
+  }
+
+  .issues-list {
+    width: auto;
+    min-width: 0;
+    max-height: 60vh;
+  }
+
+  .issues-issue {
+    flex: none;
+  }
+
+  .issues-issue-body {
+    overflow: visible;
+  }
+
+  .issues-body > .resizer {
+    display: none;
+  }
+}

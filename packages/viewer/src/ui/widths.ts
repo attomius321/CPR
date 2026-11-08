@@ -1,6 +1,7 @@
 /**
  * Widths the person gave the panels; unset, the stylesheet's. The diff's review sidebar and
  * detail panel, the shell's sidenav and a workspace's changes (V34); the Monitor's list (RM1);
+ * the Issues page's list (IS1);
  * Git's details pane (V66b).
  */
 export interface Widths {
@@ -9,13 +10,23 @@ export interface Widths {
   sidenav?: number;
   changes?: number;
   monitor?: number;
+  /** The Issues page's list (IS1). */
+  issues?: number;
   /** Git's details pane, on the right (V66b). */
   details?: number;
 }
 
 export type Panel = keyof Widths;
 
-const PANELS: readonly Panel[] = ['sidebar', 'panel', 'sidenav', 'changes', 'monitor', 'details'];
+const PANELS: readonly Panel[] = [
+  'sidebar',
+  'panel',
+  'sidenav',
+  'changes',
+  'monitor',
+  'issues',
+  'details',
+];
 
 export const WIDTHS_KEY = 'symbiote.viewer.widths';
 

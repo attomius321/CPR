@@ -16,6 +16,7 @@ import {
   HistoryIcon,
   MenuIcon,
   MonitorIcon,
+  IssuesIcon,
   PlusIcon,
   NucleusIcon,
   SettingsIcon,
@@ -29,6 +30,7 @@ import { Help } from '../ui/Help.js';
 import {
   GIT_PAGE,
   MONITOR_PAGE,
+  ISSUES_PAGE,
   NUCLEUS_PAGE,
   SETTINGS_PAGE,
   SKILLS_PAGE,
@@ -349,6 +351,16 @@ export function Sidenav({
           <MonitorIcon />
           <span className="sidenav-label">Monitor</span>
           <kbd aria-hidden="true">m</kbd>
+        </a>
+        <a
+          href={ISSUES_PAGE}
+          aria-label="Issues"
+          {...tip("Issues\nThe issues of origin's GitHub or GitLab", { keys: 'u', side: 'right' })}
+          aria-current={route?.page === 'issues' ? 'page' : undefined}
+        >
+          <IssuesIcon />
+          <span className="sidenav-label">Issues</span>
+          <kbd aria-hidden="true">u</kbd>
         </a>
         <a
           href={WORKSPACE_HISTORY_PAGE}

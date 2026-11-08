@@ -2,7 +2,8 @@ import type { Graph } from '@symbiote/core';
 
 /**
  * `symbiote view`'s pages and what its sidenav opens (V29a): the Overview (V91), Git (History until
- * V66), Nucleus (V35), Skills (V41), Monitor (RM1), History (V77), Settings, a workspace or a merge,
+ * V66), Nucleus (V35), Skills (V41), Monitor (RM1), Issues (IS1), History (V77), Settings, a
+ * workspace or a merge,
  * and Start a workspace (V30a), each shown in the shell's main area. There is no Workspaces page
  * since V29a: the workspaces are in the sidenav, and `/` alone opens the Overview (Git until V91).
  */
@@ -17,6 +18,8 @@ export type Route =
   | { page: 'skills' }
   /** Where the checkout's code is (RM1), at `/monitor`; the folder in view in `?path=`. */
   | { page: 'monitor'; path?: string }
+  /** Origin's GitHub or GitLab issues, read only (IS1), at `/issues`; the one read in `?number=`. */
+  | { page: 'issues'; number?: number }
   /**
    * History (V77), at `/workspace-history`: the finished workspaces; the one picked in `?branch=`,
    * its tab in the address too (`&brief`), which the page reads as a workspace's does.
@@ -44,6 +47,7 @@ export const NUCLEUS_PAGE = '/nucleus';
 const SCOUT_PAGE = '/scout';
 export const SKILLS_PAGE = '/skills';
 export const MONITOR_PAGE = '/monitor';
+export const ISSUES_PAGE = '/issues';
 /** History (V77): not `/history`, Git's address until V66, still moved to `/git`. */
 export const WORKSPACE_HISTORY_PAGE = '/workspace-history';
 export const START_PAGE = '/start';
@@ -78,6 +82,8 @@ export function routeTitle(
       return pageTitle('Skills', repo);
     case 'monitor':
       return pageTitle(route.path, 'Monitor', repo);
+    case 'issues':
+      return pageTitle(route.number ? `#${route.number}` : undefined, 'Issues', repo);
     case 'workspace-history':
       return pageTitle(route.branch ? (name ?? route.branch) : undefined, 'History', repo);
     case 'settings':
@@ -146,6 +152,8 @@ export function hrefOf(route: Route): string {
       return SKILLS_PAGE;
     case 'monitor':
       return route.path ? `${MONITOR_PAGE}?path=${encodeURIComponent(route.path)}` : MONITOR_PAGE;
+    case 'issues':
+      return route.number ? `${ISSUES_PAGE}?number=${route.number}` : ISSUES_PAGE;
     case 'workspace-history':
       return route.branch
         ? `${WORKSPACE_HISTORY_PAGE}?branch=${encodeURIComponent(route.branch)}`
@@ -181,6 +189,14 @@ export function routeOf(pathname: string, search: string): { route: Route; moved
     const path = params.get('path');
     return { route: path ? { page: 'monitor', path } : { page: 'monitor' } };
   }
+  if (pathname === ISSUES_PAGE) {
+    const number = params.get('number') ?? '';
+    return {
+      route: /^[1-9]\d{0,9}$/.test(number)
+        ? { page: 'issues', number: Number(number) }
+        : { page: 'issues' },
+    };
+  }
   if (pathname === WORKSPACE_HISTORY_PAGE) {
     const branch = params.get('branch');
     return {
@@ -213,6 +229,7 @@ export function inShell(url: URL): boolean {
     url.pathname === SCOUT_PAGE ||
     url.pathname === SKILLS_PAGE ||
     url.pathname === MONITOR_PAGE ||
+    url.pathname === ISSUES_PAGE ||
     url.pathname === WORKSPACE_HISTORY_PAGE ||
     url.pathname === START_PAGE ||
     url.pathname === '/' ||

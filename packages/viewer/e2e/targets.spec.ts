@@ -62,6 +62,7 @@ for (const size of ['default', 'compact', 'large'] as const) {
     await visit(page, 'Nucleus', 'nucleus', '.nucleus-card');
     await visit(page, 'Skills', 'skills', '.skills-list');
     await visit(page, 'the Monitor', 'monitor', '.monitor-side');
+    await visit(page, 'Issues', 'issues', '.issues-problem');
     await visit(page, 'History', 'workspace-history', '.history-none');
     await visit(page, 'Settings', 'settings', '.settings-list');
     await page

@@ -184,6 +184,14 @@ export const SkillsIcon = () => (
 );
 
 /** The Monitor (RM1): four blocks, after lucide's layout-grid (ISC). */
+/** The Issues page (IS1): lucide's circle-dot, an issue as both forges draw one. */
+export const IssuesIcon = () => (
+  <Icon lucide>
+    <circle cx="12" cy="12" r="10" />
+    <circle cx="12" cy="12" r="1" />
+  </Icon>
+);
+
 export const MonitorIcon = () => (
   // Four blocks, lucide's layout-grid, as the kits draw it (V93).
   <Icon lucide>
