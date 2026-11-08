@@ -1,6 +1,30 @@
 import { spawnSync } from 'node:child_process';
-import { api, paged } from './http.js';
-import type { ChangeRequest, Env, Forge, NewChangeRequest, Review } from './types.js';
+import { SymbioteError } from '@symbiote/core';
+import { api, paged, read, type ReadAnswer } from './http.js';
+import {
+  COMMENTS,
+  cursorOf,
+  ISSUES_PER_PAGE,
+  labelOf,
+  MAX_CALLS,
+  readCursor,
+  writeCursor,
+  type Cursor,
+} from './issues.js';
+import type {
+  ChangeRequest,
+  Env,
+  Forge,
+  Issue,
+  IssueAuthor,
+  IssueAuthorRole,
+  IssueFilter,
+  IssuePage,
+  IssueQuery,
+  IssueSummary,
+  NewChangeRequest,
+  Review,
+} from './types.js';
 
 const TOKEN_HINT = 'GITHUB_TOKEN or GH_TOKEN, or log in with gh auth login';
 
@@ -24,7 +48,72 @@ interface PullResponse {
   merge_commit_sha?: string | null;
 }
 
-/** GitHub and GitHub Enterprise pull requests. */
+/** An issue as GitHub's REST API gives it; pull requests come too, with `pull_request`. */
+interface GitHubIssue {
+  number: number;
+  title: string;
+  html_url: string;
+  user: GitHubUser | null;
+  labels: ({ name?: string; color?: string | null } | string)[];
+  state: 'open' | 'closed';
+  comments?: number;
+  created_at: string;
+  updated_at: string;
+  author_association?: string;
+  body?: string | null;
+  pull_request?: unknown;
+}
+
+interface GitHubUser {
+  login: string;
+  type?: string;
+}
+
+interface GitHubComment {
+  html_url?: string;
+  user: GitHubUser | null;
+  created_at: string;
+  author_association?: string;
+  body?: string | null;
+}
+
+/** `author_association` in words (decision 951). */
+const ROLES: Record<string, IssueAuthorRole> = {
+  OWNER: 'owner',
+  MEMBER: 'member',
+  COLLABORATOR: 'collaborator',
+  CONTRIBUTOR: 'contributor',
+  FIRST_TIME_CONTRIBUTOR: 'first-time contributor',
+  FIRST_TIMER: 'first-time contributor',
+  MANNEQUIN: 'none',
+  NONE: 'none',
+};
+
+function authorOf(user: GitHubUser | null, association: string | undefined): IssueAuthor {
+  const role = association ? ROLES[association] : undefined;
+  return {
+    login: user?.login ?? 'ghost',
+    ...(role ? { role } : {}),
+    ...(user?.type === 'Bot' ? { bot: true as const } : {}),
+  };
+}
+
+function summaryOf(issue: GitHubIssue): IssueSummary {
+  return {
+    forge: 'github',
+    number: issue.number,
+    title: issue.title,
+    url: issue.html_url,
+    state: issue.state === 'closed' ? 'closed' : 'open',
+    labels: issue.labels.map(labelOf),
+    author: authorOf(issue.user, issue.author_association),
+    comments: issue.comments ?? 0,
+    created: issue.created_at,
+    updated: issue.updated_at,
+  };
+}
+
+/** GitHub and GitHub Enterprise pull requests, and issues (IS1). */
 export class GitHubForge implements Forge {
   readonly kind = 'github';
   private readonly apiBase: string;
@@ -102,6 +191,99 @@ export class GitHubForge implements Forge {
     };
   }
 
+  /**
+   * A page of issues (decision 946): the list of issues and pull requests read 100 at a time,
+   * the pull requests dropped, until 30 issues or 3 calls; a page cut short goes on from where it
+   * stopped. A search goes to the search API, which keeps pull requests out itself.
+   */
+  async listIssues({ state, search, cursor }: IssueQuery): Promise<IssuePage> {
+    const at = cursor === undefined ? undefined : readCursor(cursor);
+    const words = search?.replace(/["\\]/g, ' ').replace(/\s+/g, ' ').trim();
+    if (words) return this.searchIssues(state, words, at);
+    const issues: IssueSummary[] = [];
+    let page: Cursor | undefined = at ?? { page: 1, skip: 0 };
+    for (let calls = 0; page && calls < MAX_CALLS; calls++) {
+      const where =
+        page.page > 1 || page.after
+          ? `&page=${page.page}${page.after ? `&after=${encodeURIComponent(page.after)}` : ''}`
+          : '';
+      const answer: ReadAnswer<GitHubIssue[]> = await this.read<GitHubIssue[]>(
+        `/repos/${this.project}/issues?state=${state}&sort=updated&direction=desc&per_page=100${where}`,
+      );
+      const fresh = answer.body
+        .filter((item) => !item.pull_request)
+        .map(summaryOf)
+        .slice(page.skip);
+      const room = ISSUES_PER_PAGE - issues.length;
+      if (fresh.length > room) {
+        issues.push(...fresh.slice(0, room));
+        return { issues, next: writeCursor({ ...page, skip: page.skip + room }) };
+      }
+      issues.push(...fresh);
+      page = cursorOf(answer.next);
+      if (issues.length === ISSUES_PER_PAGE) break;
+    }
+    return { issues, ...(page ? { next: writeCursor(page) } : {}) };
+  }
+
+  private async searchIssues(
+    state: IssueFilter,
+    words: string,
+    at: Cursor | undefined,
+  ): Promise<IssuePage> {
+    const q = `repo:${this.project} is:issue in:title${state === 'all' ? '' : ` is:${state}`} "${words}"`;
+    const answer = await this.read<{ items: GitHubIssue[] }>(
+      `/search/issues?q=${encodeURIComponent(q)}&sort=updated&order=desc&per_page=${ISSUES_PER_PAGE}&page=${at?.page ?? 1}`,
+    );
+    const next = cursorOf(answer.next);
+    return {
+      issues: answer.body.items.filter((item) => !item.pull_request).map(summaryOf),
+      ...(next ? { next: writeCursor(next) } : {}),
+    };
+  }
+
+  /** An issue and its first 100 comments, oldest first (decision 948). */
+  async getIssue(number: number): Promise<Issue> {
+    const { body: issue } = await this.read<GitHubIssue>(`/repos/${this.project}/issues/${number}`);
+    if (issue.pull_request) throw new SymbioteError(`#${number} is a pull request, not an issue`);
+    const summary = summaryOf(issue);
+    const comments =
+      summary.comments > 0
+        ? (
+            await this.read<GitHubComment[]>(
+              `/repos/${this.project}/issues/${number}/comments?per_page=${COMMENTS}`,
+            )
+          ).body
+        : [];
+    return {
+      ...summary,
+      body: issue.body ?? '',
+      thread: comments.map((comment) => ({
+        author: authorOf(comment.user, comment.author_association),
+        body: comment.body ?? '',
+        created: comment.created_at,
+        ...(comment.html_url ? { url: comment.html_url } : {}),
+      })),
+      moreComments: Math.max(0, summary.comments - comments.length),
+    };
+  }
+
+  /** A conditional read (decision 950). */
+  private read<T>(path: string): Promise<ReadAnswer<T>> {
+    return read<T>(`${this.apiBase}${path}`, {
+      tokenHint: this.tokenHint,
+      headers: this.headers(),
+    });
+  }
+
+  private headers(): Record<string, string> {
+    return {
+      accept: 'application/vnd.github+json',
+      'x-github-api-version': '2022-11-28',
+      ...(this.secret ? { authorization: `Bearer ${this.secret}` } : {}),
+    };
+  }
+
   /** One call: GitHub reviews carry their inline comments and the verdict together. */
   async submitReview(request: ChangeRequest, review: Review): Promise<{ url: string }> {
     const event = { comment: 'COMMENT', approve: 'APPROVE', 'request-changes': 'REQUEST_CHANGES' }[
@@ -150,11 +332,7 @@ export class GitHubForge implements Forge {
       method,
       body,
       tokenHint: this.tokenHint,
-      headers: {
-        accept: 'application/vnd.github+json',
-        'x-github-api-version': '2022-11-28',
-        ...(this.secret ? { authorization: `Bearer ${this.secret}` } : {}),
-      },
+      headers: this.headers(),
     });
   }
 }

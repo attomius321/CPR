@@ -63,14 +63,17 @@ describe("origin's forge", () => {
     const git = await openRepo(repo.root);
     expect(await originForge(git, {}, make(true))).toEqual({
       why: 'the repository has no remote named origin',
+      missing: 'origin',
     });
     repo.git('remote', 'add', 'origin', '/srv/git/app.git');
     expect(await originForge(git, {})).toMatchObject({
       why: expect.stringMatching(/^origin is not a GitHub or GitLab repository: /) as string,
+      missing: 'forge',
     });
     repo.git('remote', 'set-url', 'origin', 'git@github.com:acme/app.git');
     expect(await originForge(git, {}, make(false))).toMatchObject({
       why: 'no GitHub token for github.com: set GITHUB_TOKEN or GH_TOKEN, or log in with gh auth login',
+      missing: 'token',
     });
     const found = await originForge(git, {}, make(true));
     expect('why' in found).toBe(false);

@@ -1,7 +1,7 @@
 {
   "name": "@symbiote/forge",
   "version": "0.0.0",
-  "description": "Symbiote forge adapters: GitHub pull requests and GitLab merge requests.",
+  "description": "Symbiote forge adapters: GitHub pull requests and GitLab merge requests, and both forges' issues.",
   "private": true,
   "type": "module",
   "exports": {

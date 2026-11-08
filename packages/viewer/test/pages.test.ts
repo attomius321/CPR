@@ -218,6 +218,20 @@ describe('Skills (V41)', () => {
 });
 
 describe('Monitor (RM1)', () => {
+  it('opens at /issues (IS1), a page of the shell, with the issue read in ?number=', () => {
+    expect(routeOf('/issues', '')).toEqual({ route: { page: 'issues' } });
+    expect(routeOf('/issues', '?number=12')).toEqual({ route: { page: 'issues', number: 12 } });
+    expect(routeOf('/issues', '?number=12a')).toEqual({ route: { page: 'issues' } });
+    expect(routeOf('/issues', '?number=0')).toEqual({ route: { page: 'issues' } });
+    expect(hrefOf({ page: 'issues' })).toBe('/issues');
+    expect(hrefOf({ page: 'issues', number: 12 })).toBe('/issues?number=12');
+    expect(inShell(new URL('http://symbiote/issues?number=3'))).toBe(true);
+    expect(routeTitle({ page: 'issues' }, 'symbiote')).toBe('Issues · symbiote — Symbiote');
+    expect(routeTitle({ page: 'issues', number: 12 }, 'symbiote')).toBe(
+      '#12 · Issues · symbiote — Symbiote',
+    );
+  });
+
   it('opens at /monitor, a page of the shell, with the folder in view in ?path=', () => {
     expect(routeOf('/monitor', '')).toEqual({ route: { page: 'monitor' } });
     expect(routeOf('/monitor', '?path=packages%2Fviewer')).toEqual({

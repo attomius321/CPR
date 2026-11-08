@@ -187,6 +187,7 @@ test('no page leaves a tooltip to the window system', async ({ page }) => {
     ['nucleus', 'Nucleus'],
     ['skills', 'Skills'],
     ['monitor', 'Monitor'],
+    ['issues', 'Issues'],
     ['workspace-history', 'History'],
     ['settings', 'Settings'],
   ] as const) {

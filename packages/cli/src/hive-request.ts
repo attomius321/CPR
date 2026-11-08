@@ -63,14 +63,16 @@ export async function setLandsBy(root: string, by: unknown): Promise<void> {
 
 /**
  * The forge `origin` names, with a token for its API, or why there is none (decision 792): no
- * `origin`, a host that is neither GitHub nor GitLab, no token. No network call: the forge is told
+ * `origin`, a host that is neither GitHub nor GitLab, no token (`missing`, IS1). No network call: the forge is told
  * by the remote's address and the token by the environment (or `gh`'s, for GitHub).
  */
 export async function originForge(
   repo: GitRepo,
   env: Env,
   make: (url: string, env: Env) => Forge = (url, e) => detectForge(url, e),
-): Promise<{ forge: Forge } | { why: string; forge?: Forge }> {
+): Promise<
+  { forge: Forge } | { why: string; missing: 'origin' | 'forge' | 'token'; forge?: Forge }
+> {
   // As git reaches it (`insteadOf` expanded), else as it is written: an alias or a mirror that
   // git reaches in place of the forge's address still names that forge.
   const read = (args: string[]) =>
@@ -82,7 +84,9 @@ export async function originForge(
     await read(['remote', 'get-url', 'origin']),
     await read(['config', '--get', 'remote.origin.url']),
   ].filter((url, i, all) => url && all.indexOf(url) === i);
-  if (urls.length === 0) return { why: 'the repository has no remote named origin' };
+  if (urls.length === 0) {
+    return { why: 'the repository has no remote named origin', missing: 'origin' };
+  }
   let forge: Forge | undefined;
   let refused = '';
   for (const url of urls) {
@@ -93,13 +97,19 @@ export async function originForge(
       refused ||= (error as Error).message;
     }
   }
-  if (!forge) return { why: `origin is not a GitHub or GitLab repository: ${refused}` };
+  if (!forge) {
+    return { why: `origin is not a GitHub or GitLab repository: ${refused}`, missing: 'forge' };
+  }
   if (!forge.token) {
     const set =
       forge.kind === 'github'
         ? 'set GITHUB_TOKEN or GH_TOKEN, or log in with gh auth login'
         : 'set GITLAB_TOKEN (a personal or project access token with api scope)';
-    return { why: `no ${FORGE_WORDS[forge.kind].name} token for ${forge.host}: ${set}`, forge };
+    return {
+      why: `no ${FORGE_WORDS[forge.kind].name} token for ${forge.host}: ${set}`,
+      missing: 'token',
+      forge,
+    };
   }
   return { forge };
 }

@@ -1,0 +1,21 @@
+{
+ "number": 23965,
+ "title": "`createServer()` keeps its file watcher open when `configureServer` or `buildStart` throws",
+ "html_url": "https://github.com/vitejs/vite/issues/23965",
+ "user": {
+  "login": "materwelonDhruv",
+  "type": "User"
+ },
+ "labels": [
+  {
+   "name": "pending triage",
+   "color": "B3C4DD"
+  }
+ ],
+ "state": "open",
+ "comments": 7,
+ "created_at": "2026-11-01T23:58:21Z",
+ "updated_at": "2026-11-06T10:08:37Z",
+ "author_association": "NONE",
+ "body": "### Describe the bug\n\nMy CLI starts a Vite dev server through the JS API. When a user's plugin threw in `configureServer`, the CLI printed the error and then just sat there. `createServer()` had rejected, but its file watcher was still open (and with `@cloudflare/vite-plugin`, workerd too), so the process never exited.\n\nThe same happens when a plugin throws in `buildStart`. A throw from `config` or `configResolved` exits fine. Looks like those run before the watcher starts. With `server.watch: null` all four exit.\n\nSince `createServer()` rejects, the caller doesn't get a server to call `close("
+}

@@ -30,7 +30,7 @@ import {
   type WorkspaceSummary,
 } from '@symbiote/core';
 
-import type { Review } from '@symbiote/forge';
+import { isIssueCursor, type Review } from '@symbiote/forge';
 import { silentLog, type Log } from '@symbiote/log';
 import type { CodeMap } from '@symbiote/monitor';
 import { EXPORT_FORMATS, type ActivityExport, type ExportFormat } from './activity-export.js';
@@ -118,6 +118,7 @@ import {
 import { McpRefused, symbioteMcp, type SymbioteMcp } from './mcp.js';
 import { eventStream, type EventStream } from './events.js';
 import { bridgeCaller } from './mcp-bridge.js';
+import type { IssuesService } from './issues.js';
 
 /** Hive's steps that turning it off stops or leaves running (HV4, decision 771). */
 const IN_FLIGHT: ReadonlySet<HiveStep> = new Set<HiveStep>([
@@ -202,6 +203,8 @@ export interface RepositoryOptions {
   scribe?: PageAgent;
   /** Where the checkout's code is, by file (RM1): `/monitor`, `/api/monitor…`. */
   monitor?: { map(): Promise<CodeMap> };
+  /** Origin's GitHub or GitLab issues, read only (IS1): `/issues`, `/api/issues…`. */
+  issues?: IssuesService;
   /** Each subscription's windows of use (V29c): `GET /api/usage`, from a 5-min copy. */
   usage?: Pick<UsageService, 'report' | 'settled'>;
   /**
@@ -352,6 +355,8 @@ const MAX_FILE_DIFF_BYTES = 5 * 2 ** 20;
 
 /** Most a page's error may weigh (LG1), and how many the pages may send a minute. */
 const MAX_PAGE_ERROR = 32 * 1024;
+/** The most of an issue search's words (IS1): GitHub's search takes 256 characters, the rest. */
+const MAX_ISSUE_SEARCH = 200;
 const PAGE_ERRORS_A_MINUTE = 60;
 /**
  * Writes that come many times a minute, written at `debug` as reads are (LG1): keys typed in a
@@ -674,8 +679,18 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
         }),
       );
     }
-    const { workspaces, nucleus, scribe, skills, monitor, settings, checks, usage, merges } =
-      repository;
+    const {
+      workspaces,
+      nucleus,
+      scribe,
+      skills,
+      monitor,
+      issues,
+      settings,
+      checks,
+      usage,
+      merges,
+    } = repository;
     if (workspaces) {
       // The workspaces view's old addresses (V18b, `/workspaces` before it); the viewer moves
       // them to `/`.
@@ -751,6 +766,13 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (url.pathname === '/monitor') return serveSite(req, res, url, '/', undefined);
       if (url.pathname === '/api/monitor') return monitorMap(req, res, monitor);
       if (url.pathname === '/api/monitor/open') return monitorOpen(req, res, monitor);
+    }
+    if (issues) {
+      // The Issues page (IS1), a page of the shell's, and its reads.
+      if (url.pathname === '/issues') return serveSite(req, res, url, '/', undefined);
+      if (url.pathname === '/api/issues') return issueList(req, res, url, issues);
+      const one = /^\/api\/issues\/([^/]*)$/.exec(url.pathname);
+      if (one) return issueOne(req, res, one[1] ?? '', issues);
     }
     // Each subscription's windows of use (V29c): read only, the tokens stay in this process.
     if (usage && url.pathname === '/api/usage') {
@@ -2220,6 +2242,52 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
       if (error instanceof SymbioteError) return json(res, 409, { error: error.message });
       throw error;
     }
+  }
+
+  /**
+   * A page of origin's issues (IS1): `?state=open|closed|all` (open when absent), `q` words of
+   * titles, `cursor` a page's `next`. A problem is an answer of its own (`problem`), with 200.
+   */
+  async function issueList(
+    req: IncomingMessage,
+    res: ServerResponse,
+    url: URL,
+    issues: IssuesService,
+  ): Promise<void> {
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    const state = url.searchParams.get('state') ?? 'open';
+    if (state !== 'open' && state !== 'closed' && state !== 'all') {
+      return send(res, 400, 'state: open, closed or all');
+    }
+    const search = url.searchParams.get('q') ?? '';
+    if (search.length > MAX_ISSUE_SEARCH) {
+      return send(res, 400, `q: at most ${MAX_ISSUE_SEARCH} characters`);
+    }
+    const cursor = url.searchParams.get('cursor');
+    if (cursor !== null && !isIssueCursor(cursor)) {
+      return send(res, 400, "cursor: a page's next, as the list gave it");
+    }
+    return json(
+      res,
+      200,
+      await issues.list({
+        state,
+        ...(search.trim() ? { search } : {}),
+        ...(cursor !== null ? { cursor } : {}),
+      }),
+    );
+  }
+
+  /** One issue whole (IS1), by its number. */
+  async function issueOne(
+    req: IncomingMessage,
+    res: ServerResponse,
+    number: string,
+    issues: IssuesService,
+  ): Promise<void> {
+    if (req.method !== 'GET') return send(res, 405, 'method not allowed');
+    if (!/^[1-9]\d{0,9}$/.test(number)) return send(res, 400, "an issue's number");
+    return json(res, 200, await issues.one(Number(number)));
   }
 
   /**

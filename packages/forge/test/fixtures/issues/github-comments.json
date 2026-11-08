@@ -1,0 +1,86 @@
+[
+ {
+  "id": 6569364565,
+  "html_url": "https://github.com/vitejs/vite/issues/23965#issuecomment-6569364565",
+  "user": {
+   "login": "sapphi-red",
+   "type": "User"
+  },
+  "created_at": "2026-11-02T04:52:14Z",
+  "updated_at": "2026-11-02T04:52:14Z",
+  "author_association": "MEMBER",
+  "body": "I think this is expected (as long as the error is output in console with a non-slient `logLevel`. The user is expected to restart the server via `r` key in CLI or edit the config to fix the problem."
+ },
+ {
+  "id": 6569709019,
+  "html_url": "https://github.com/vitejs/vite/issues/23965#issuecomment-6569709019",
+  "user": {
+   "login": "materwelonDhruv",
+   "type": "User"
+  },
+  "created_at": "2026-11-02T05:19:56Z",
+  "updated_at": "2026-11-02T05:19:56Z",
+  "author_association": "NONE",
+  "body": "Hmm, the `r` key isn't there for this case though. Vite's cli exits with `process.exit(1)` when the first start fails, and the shortcuts only get bound once a server exists.\n\nEditing the config does recover it through the js api, I tried it. But createServer() already rejected, so the caller has no reference to the server that comes up afterwards. It ends up listening on a port with nothing able t"
+ },
+ {
+  "id": 6570201725,
+  "html_url": "https://github.com/vitejs/vite/issues/23965#issuecomment-6570201725",
+  "user": {
+   "login": "sapphi-red",
+   "type": "User"
+  },
+  "created_at": "2026-11-02T05:56:24Z",
+  "updated_at": "2026-11-02T05:56:24Z",
+  "author_association": "MEMBER",
+  "body": "Ah, that makes sense. Then, I think we should close the watcher for errors in `configureServer`.\n\nFor `buildStart`, I think we should keep the behavior so it aligns with the non-client environments and bundled-dev mode.\nhttps://github.com/vitejs/vite/blob/90bc034a97e7eccd0f3cbc69904fffa625a4c34d/packages/vite/src/node/server/index.ts#L1122-L1127\n\n\n"
+ },
+ {
+  "id": 6570350764,
+  "html_url": "https://github.com/vitejs/vite/issues/23965#issuecomment-6570350764",
+  "user": {
+   "login": "materwelonDhruv",
+   "type": "User"
+  },
+  "created_at": "2026-11-02T06:06:39Z",
+  "updated_at": "2026-11-02T06:06:39Z",
+  "author_association": "NONE",
+  "body": "I did NOT know you could link code snippets. Wow.\n\nAlso yea nice ok. I can PR the `configureServer` change.\n\nFor `buildStart`, I should have mentioned that my repro only uses `middlewareMode: true`, and as it turns out that's important lol. W/o middleware mode `buildStart` runs in `listen` so `createServer` has alrdy returned the server and the caller can close it. That case is fine then I think.\n"
+ },
+ {
+  "id": 6570445462,
+  "html_url": "https://github.com/vitejs/vite/issues/23965#issuecomment-6570445462",
+  "user": {
+   "login": "sapphi-red",
+   "type": "User"
+  },
+  "created_at": "2026-11-02T06:13:21Z",
+  "updated_at": "2026-11-02T06:13:21Z",
+  "author_association": "MEMBER",
+  "body": "Yeah, I think closing in middleware mode makes sense. In the future, I hope we can fix the inconsistency once we remove this special behavior of unbundled client environment."
+ },
+ {
+  "id": 6682277521,
+  "html_url": "https://github.com/vitejs/vite/issues/23965#issuecomment-6682277521",
+  "user": {
+   "login": "0xABCD01",
+   "type": "User"
+  },
+  "created_at": "2026-11-06T10:03:29Z",
+  "updated_at": "2026-11-06T10:03:29Z",
+  "author_association": "NONE",
+  "body": "Hi @materwelonDhruv, are you still planning to open the PR for this? You and @sapphi-red scoped it on Nov 2: close the watcher when `configureServer` throws, and also when `buildStart` throws in middleware mode. I don't see a PR yet, so I wanted to check before touching it. Happy to leave it with you if you're still on it; if you're not able to get to it, I'd like to pick it up."
+ },
+ {
+  "id": 6682357953,
+  "html_url": "https://github.com/vitejs/vite/issues/23965#issuecomment-6682357953",
+  "user": {
+   "login": "materwelonDhruv",
+   "type": "User"
+  },
+  "created_at": "2026-11-06T10:08:02Z",
+  "updated_at": "2026-11-06T10:08:37Z",
+  "author_association": "NONE",
+  "body": "Hey @0xABCD01 yep. I'm still working on this. It's my first time contributing to Vite, so I'm taking some time to understand stuff. I'll open the PR in a day or two."
+ }
+]

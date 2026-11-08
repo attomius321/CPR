@@ -11,6 +11,8 @@ export interface Recorded {
 export interface Reply {
   status?: number;
   body: unknown;
+  /** Headers of the answer besides its content type (`link`, `etag`, a rate limit's). */
+  headers?: Record<string, string>;
 }
 
 /**
@@ -37,8 +39,9 @@ export async function mockApi(
       const handler = routes[`${request.method} ${path}`];
       const route =
         typeof handler === 'function' ? handler(request) : (handler ?? fallback?.(request));
-      res.writeHead(route?.status ?? (route ? 200 : 404), { 'content-type': 'application/json' });
-      res.end(JSON.stringify(route?.body ?? { message: 'Not Found' }));
+      const status = route?.status ?? (route ? 200 : 404);
+      res.writeHead(status, { 'content-type': 'application/json', ...route?.headers });
+      res.end(status === 304 ? undefined : JSON.stringify(route?.body ?? { message: 'Not Found' }));
     });
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));

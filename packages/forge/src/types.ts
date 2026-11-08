@@ -1,4 +1,18 @@
+import type { Issue, IssuePage, IssueQuery } from '@symbiote/core';
+
 export type ForgeKind = 'github' | 'gitlab';
+
+export type {
+  Issue,
+  IssueAuthor,
+  IssueAuthorRole,
+  IssueComment,
+  IssueFilter,
+  IssueLabel,
+  IssuePage,
+  IssueQuery,
+  IssueSummary,
+} from '@symbiote/core';
 
 /** A pull request (GitHub) or merge request (GitLab), as Symbiote needs it. */
 export interface ChangeRequest {
@@ -72,6 +86,10 @@ export interface Forge {
   findOpenRequest(head: string, base: string): Promise<ChangeRequest | null>;
   /** Replaces the request's description (HV8). */
   updateDescription(request: ChangeRequest, body: string): Promise<void>;
+  /** A page of the project's issues, most recently updated first; never a pull request (IS1). */
+  listIssues(query: IssueQuery): Promise<IssuePage>;
+  /** One issue whole: its text and its first 100 comments (IS1). */
+  getIssue(number: number): Promise<Issue>;
 }
 
 /** What a forge adapter reads from the environment: tokens and API URL overrides. */

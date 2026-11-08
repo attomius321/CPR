@@ -126,6 +126,27 @@ to spot the files that have grown too large.
 - **The list** ranks the same numbers: **In this folder**, or the **Largest files** under it. A line
   in it marks where half of the code is reached.
 
+## Issues
+
+**Issues** (`u`) lists the issues of the GitHub or GitLab repository that `origin` points to. It
+only reads them: nothing is written to the forge.
+
+- **The list.** Each issue shows its number, title, labels, author, when it was last updated and
+  its comments. **Open** is the default; **Closed** and **All** are beside it. The search finds
+  words in titles, on the forge, so it covers every issue, not only the ones shown. The list shows
+  30 issues at a time: **Load more** reads the next 30.
+- **One issue.** Pick one to read its text and its first 100 comments, with each author's role in
+  the project (owner, member, contributor). **Open on GitHub** (or GitLab) opens it in the
+  browser. The issue stays in the address (`/issues?number=12`).
+- **Untrusted text.** Anyone can open an issue on a public repository. Symbiote shows its text
+  without its HTML: images are links, never loaded, and links open in the browser.
+- **Tokens.** The page uses the tokens of [`symbiote pr`](review-and-ci.md#review-a-pull-or-merge-request).
+  Without one, it still reads public issues, and says what to set: GitHub then allows 60 requests
+  an hour, and GitLab shows no comments. **Refresh** reads the list again; an answer that has not
+  changed does not count against GitHub's limit.
+
+If `origin` is missing, or is on neither GitHub nor GitLab, the page says so.
+
 ## Settings
 
 **Settings** (`s`) lists what you set, the same way in both modes. Type in **Find a setting**

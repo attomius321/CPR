@@ -1,0 +1,126 @@
+[
+ {
+  "id": 209260996,
+  "iid": 40247,
+  "project_id": 250833,
+  "title": "Update the Go bump template and stop Renovate Go version MRs",
+  "description": "## Why\n\n`.gitlab/issue_templates/bump-golang.md` is stale. It asks for `GO_FIPS_VERSION_SUFFIX` and `*.rebuild` files, neither of which exists any more, and it skips the base-images step. Since !7079, `scripts/check-go-version-consistency` checks the main Go version locations in CI, but nothing points people at it, so a missed location only shows up as a QA job failure.\n\nRenovate also opens Go ver",
+  "state": "opened",
+  "created_at": "2026-11-05T11:07:14.290Z",
+  "updated_at": "2026-11-08T00:33:29.684Z",
+  "labels": [
+   "Category:Runner Core",
+   "automation:quick-win",
+   "automation:quick-win-judged",
+   "group::runner core",
+   "maintenance::workflow",
+   "primitives::runner functions runtime",
+   "quick win",
+   "section::primitives",
+   "type::maintenance"
+  ],
+  "author": {
+   "id": 35011548,
+   "username": "daniel-keenan",
+   "name": "Daniel Keenan",
+   "state": "active",
+   "web_url": "https://gitlab.com/daniel-keenan"
+  },
+  "user_notes_count": 3,
+  "web_url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40247"
+ },
+ {
+  "id": 205874677,
+  "iid": 40017,
+  "project_id": 250833,
+  "title": "Autoscaled executors keep their instance until the final job update is accepted by GitLab",
+  "description": "## Summary\n\nWith the autoscaler executors (`docker-autoscaler`, `instance`) and with `docker+machine`, the instance acquired for a job is only released after `build.Run` returns, and the last thing `build.Run` does is the trace's final `PUT /api/v4/jobs/:id`. When GitLab answers 202 (`accepted, but not yet completed`, because the job's trace chunks are still being persisted) the runner retries the",
+  "state": "opened",
+  "created_at": "2026-10-08T16:30:41.241Z",
+  "updated_at": "2026-11-08T00:31:57.965Z",
+  "labels": [
+   "Category:Runner Core",
+   "SLO::Missed",
+   "automation:infradev-missing-labels",
+   "automation:quick-win-judged",
+   "devops::verify",
+   "executor::docker-autoscaler",
+   "group::runner core",
+   "infradev",
+   "priority::2",
+   "section::ci",
+   "severity::2",
+   "type::bug"
+  ],
+  "author": {
+   "id": 19859972,
+   "username": "kkyrala",
+   "name": "Kam Kyrala",
+   "state": "active",
+   "web_url": "https://gitlab.com/kkyrala"
+  },
+  "user_notes_count": 7,
+  "web_url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40017"
+ },
+ {
+  "id": 209445687,
+  "iid": 40257,
+  "project_id": 250833,
+  "title": "GitLab CI: normal git submodule strategy must not recurse",
+  "description": "<!--IssueSummary start-->\n\n<details>\n<summary>\n\nEveryone can contribute. [Help move this issue forward](https://handbook.gitlab.com/handbook/marketing/developer-relations/engineering/community-contributors-workflows/#contributor-links) while earning points, leveling up and collecting rewards.\n\n</summary>\n\n- [Close this issue](https://contributors.gitlab.com/manage-issue?action=close&projectId=2789",
+  "state": "opened",
+  "created_at": "2026-09-15T16:44:55.142Z",
+  "updated_at": "2026-11-07T00:09:50.018Z",
+  "labels": [
+   "Category:Runner Core",
+   "Customer Interest",
+   "automation:ml",
+   "backend",
+   "bug::functional",
+   "group::runner core",
+   "primitives::runner functions runtime",
+   "priority::3",
+   "section::primitives",
+   "severity::3",
+   "type::bug"
+  ],
+  "author": {
+   "id": 4464274,
+   "username": "haraldF",
+   "name": "Harald Fernengel",
+   "state": "active",
+   "web_url": "https://gitlab.com/haraldF"
+  },
+  "user_notes_count": 3,
+  "web_url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/40257"
+ },
+ {
+  "id": 148436082,
+  "iid": 37837,
+  "project_id": 250833,
+  "title": "Dependency Dashboard",
+  "description": "This issue lists Renovate updates and detected dependencies. Read the [Dependency Dashboard](https://docs.renovatebot.com/key-concepts/dashboard/) docs to learn more.\n\n## Config Migration Needed\n\n - [ ] <!-- create-config-migration-pr --> Select this checkbox to let Renovate create an automated Config Migration MR.\n\n## Repository Problems\n\nRenovate tried to run on this repository, but found these ",
+  "state": "opened",
+  "created_at": "2024-06-28T22:26:57.338Z",
+  "updated_at": "2026-11-06T21:12:49.468Z",
+  "labels": [
+   "Category:Runner Core",
+   "Category:Runner Core  [DEPRECATED]",
+   "devops::verify",
+   "group::runner core",
+   "maintenance::dependency",
+   "primitives::runner functions runtime",
+   "section::ci",
+   "type::maintenance"
+  ],
+  "author": {
+   "id": 8420142,
+   "username": "gitlab-dependency-update-bot",
+   "name": "GitLab Dependency Bot",
+   "state": "active",
+   "web_url": "https://gitlab.com/gitlab-dependency-update-bot"
+  },
+  "user_notes_count": 1,
+  "web_url": "https://gitlab.com/gitlab-org/gitlab-runner/-/work_items/37837"
+ }
+]

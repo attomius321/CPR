@@ -3019,6 +3019,93 @@ describe('symbiote view: the Monitor page (RM1)', () => {
   });
 });
 
+describe('symbiote view: the Issues page (IS1)', () => {
+  const viewer = tempDir();
+  const C = 'c'.repeat(40);
+  const asked: unknown[] = [];
+  const source = {
+    forge: { kind: 'github', host: 'github.com', project: 'acme/app' },
+    token: true,
+  };
+  let server: ViewServer;
+  beforeAll(async () => {
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    server = await startViewServer({
+      viewerDir: viewer,
+      repository: {
+        history: new Histories({
+          state: () => Promise.resolve({ branch: 'main', head: C, version: 'v1' }),
+          stream: () => Promise.resolve(),
+          details: () => Promise.resolve([]),
+        }),
+        status: () =>
+          Promise.resolve({ version: 'v1', branch: 'main', head: C, changed: 0, operation: null }),
+        refs: () => Promise.resolve({ branches: [], remotes: [], tags: [] }),
+        checkout: () => Promise.reject(new Error('no')),
+        isCommit: () => Promise.resolve(true),
+        diffs: new Diffs(() => Promise.reject(new Error('no'))),
+        readFile: () => Promise.resolve(''),
+        issues: {
+          list: (query) => {
+            asked.push(query);
+            return Promise.resolve({
+              ...source,
+              forge: { ...source.forge, kind: 'github' },
+              issues: [],
+            });
+          },
+          one: (number) => {
+            asked.push(number);
+            return Promise.resolve({ ...source, forge: { ...source.forge, kind: 'github' } });
+          },
+        },
+      },
+    });
+  });
+  afterAll(async () => {
+    await server.close();
+    rmSync(viewer, { recursive: true, force: true });
+  });
+  const get = (path: string, init?: RequestInit) => fetch(new URL(path, server.url), init);
+
+  it('serves the page, a list and one issue', async () => {
+    expect(await (await get('/issues')).text()).toContain('viewer');
+    const list = await get('/api/issues');
+    expect(list.status).toBe(200);
+    expect(await list.json()).toEqual({ ...source, issues: [] });
+    expect((await get('/api/issues?state=all&q=%20crash%20&cursor=2~abc%2B%2F%3D~7')).status).toBe(
+      200,
+    );
+    expect((await get('/api/issues?state=closed&q=%20%20')).status).toBe(200);
+    expect((await get('/api/issues/12')).status).toBe(200);
+    expect(asked).toEqual([
+      { state: 'open' },
+      { state: 'all', search: ' crash ', cursor: '2~abc+/=~7' },
+      { state: 'closed' },
+      12,
+    ]);
+  });
+
+  it('refuses what is not a read of a list or an issue', async () => {
+    asked.length = 0;
+    for (const path of [
+      '/api/issues?state=draft',
+      `/api/issues?q=${'a'.repeat(201)}`,
+      '/api/issues?cursor=https://evil.example/',
+      '/api/issues?cursor=0~~0',
+      '/api/issues/0',
+      '/api/issues/12a',
+      '/api/issues/-1',
+      '/api/issues/',
+    ]) {
+      expect((await get(path)).status, path).toBe(400);
+    }
+    const post = await get('/api/issues', { method: 'POST', headers: { 'x-symbiote': '1' } });
+    expect(post.status).toBe(405);
+    expect(asked).toEqual([]);
+  });
+});
+
 describe('symbiote view: usage (V29c)', () => {
   const viewer = tempDir();
   const C = 'c'.repeat(40);

@@ -155,7 +155,7 @@ toolbar.
 | g | | The Graph page | The Files page |
 | Esc | Back to the commits from a file shown; leave compare mode | Close the comment box | Close the detail panel |
 
-These keys work on the Overview, Git, Nucleus, Skills, Monitor, History, Settings and a
+These keys work on the Overview, Git, Nucleus, Skills, Monitor, Issues, History, Settings and a
 workspace's page. In a change, only n and [ work.
 
 | Key | What it does |
@@ -166,6 +166,7 @@ workspace's page. In a change, only n and [ work.
 | a | Nucleus |
 | i | Skills |
 | m | Monitor |
+| u | Issues: the issues of `origin`'s GitHub or GitLab |
 | h | History: the cleaned-up workspaces. ↑ and ↓ move between them in its list. |
 | w | Move to the workspaces in the sidenav. ↑ and ↓ move between them, and Enter opens one. |
 | [ | Fold the sidenav to a row of icons, or open it again |

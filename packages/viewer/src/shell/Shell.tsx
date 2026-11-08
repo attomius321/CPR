@@ -6,6 +6,7 @@ import { MergeView } from '../workspaces/Merge.js';
 import {
   GIT_PAGE,
   MONITOR_PAGE,
+  ISSUES_PAGE,
   NUCLEUS_PAGE,
   OVERVIEW_PAGE,
   SETTINGS_PAGE,
@@ -23,6 +24,7 @@ import { useNucleusName } from './names.js';
 import { SettingsPage } from '../settings/SettingsPage.js';
 import { SkillsPage } from '../skills/SkillsPage.js';
 import { MonitorPage } from '../monitor/MonitorPage.js';
+import { IssuesPage } from '../issues/IssuesPage.js';
 import { StartPage } from '../workspaces/StartPage.js';
 import { WorkspaceHistory } from '../workspaces/WorkspaceHistory.js';
 import { ConfirmDialog } from '../ui/ConfirmDialog.js';
@@ -209,7 +211,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
 
   // t to the Overview (V91: "today"; the one letter no page binds), g (Git; h until V66) and s go
   // to the pages, a to Nucleus (V35; on its page, to its question or its terminal), i to
-  // Skills (V41), m to the Monitor (RM1), h to History (V77), w to
+  // Skills (V41), m to the Monitor (RM1), u to Issues (IS1), h to History (V77), w to
   // the workspaces (the arrows between them), n starts one (on its page, back to its title), [
   // folds the sidenav. Attached before the first paint, as History's keys are: a key pressed as
   // soon as the page shows is not lost.
@@ -221,6 +223,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
       else if (event.key === 's') go(SETTINGS_PAGE);
       else if (event.key === 'i') go(SKILLS_PAGE);
       else if (event.key === 'm') go(MONITOR_PAGE);
+      else if (event.key === 'u') go(ISSUES_PAGE);
       else if (event.key === 'h') go(WORKSPACE_HISTORY_PAGE);
       else if (event.key === 'a') {
         const box = document.querySelector<HTMLElement>('.nucleus-page textarea');
@@ -272,6 +275,7 @@ export function Shell({ repo }: { repo?: string | undefined }) {
           {route.page === 'nucleus' && <NucleusPage />}
           {route.page === 'skills' && <SkillsPage />}
           {route.page === 'monitor' && <MonitorPage path={route.path} />}
+          {route.page === 'issues' && <IssuesPage number={route.number} />}
           {route.page === 'workspace-history' && <WorkspaceHistory branch={route.branch} />}
           {route.page === 'settings' && <SettingsPage />}
           {route.page === 'workspace' && <WorkspaceView key={route.branch} branch={route.branch} />}

@@ -161,6 +161,10 @@ server a CI job runs on, or the API address you set. The remote names the host, 
 `GH_ENTERPRISE_TOKEN`, or log in with `gh auth login --hostname <host>`. For self-managed GitLab,
 set `GITLAB_API_URL` or `GITLAB_HOST` with `GITLAB_TOKEN`.
 
+The [Issues page](pages.md#issues) of `symbiote view` reads `origin`'s issues with the same tokens.
+Without one, it reads a public repository's issues: GitHub allows 60 requests an hour then, and
+GitLab shows issues without their comments.
+
 Comment on symbols and lines as in a branch review. On **Files**, only added and removed lines
 take a comment: GitHub and GitLab accept comments inside their own diff's hunks only. In the
 **Review** tab, pick **Comment**,

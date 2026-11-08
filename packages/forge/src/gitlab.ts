@@ -1,7 +1,19 @@
 import { SymbioteError } from '@symbiote/core';
 import { hostOf } from './github.js';
-import { api, paged } from './http.js';
-import type { ChangeRequest, Env, Forge, NewChangeRequest, Review } from './types.js';
+import { api, paged, read, type ReadAnswer } from './http.js';
+import { COMMENTS, ISSUES_PER_PAGE, labelOf, readCursor, writeCursor } from './issues.js';
+import type {
+  ChangeRequest,
+  Env,
+  Forge,
+  Issue,
+  IssueAuthorRole,
+  IssuePage,
+  IssueQuery,
+  IssueSummary,
+  NewChangeRequest,
+  Review,
+} from './types.js';
 
 const TOKEN_HINT = 'GITLAB_TOKEN (a personal or project access token with api scope)';
 
@@ -21,6 +33,52 @@ interface MergeRequestResponse {
   detailed_merge_status?: string;
   merge_commit_sha?: string | null;
   squash_commit_sha?: string | null;
+}
+
+/** An issue as GitLab's REST API gives it (IS1). */
+interface GitLabIssue {
+  iid: number;
+  title: string;
+  web_url: string;
+  author: { id?: number; username: string; bot?: boolean } | null;
+  labels: ({ name?: string; color?: string | null } | string)[];
+  state: 'opened' | 'closed' | 'locked';
+  user_notes_count?: number;
+  created_at: string;
+  updated_at: string;
+  description?: string | null;
+}
+
+interface GitLabNote {
+  id: number;
+  body?: string | null;
+  author: { username: string; bot?: boolean } | null;
+  created_at: string;
+  system?: boolean;
+}
+
+/** A member's access level in words (decision 951): developer, reporter and guest are members. */
+function roleOf(level: number | undefined): IssueAuthorRole {
+  if (level === undefined) return 'none';
+  return level >= 50 ? 'owner' : level >= 40 ? 'maintainer' : 'member';
+}
+
+function summaryOf(issue: GitLabIssue): IssueSummary {
+  return {
+    forge: 'gitlab',
+    number: issue.iid,
+    title: issue.title,
+    url: issue.web_url,
+    state: issue.state === 'closed' ? 'closed' : 'open',
+    labels: issue.labels.map(labelOf),
+    author: {
+      login: issue.author?.username ?? 'ghost',
+      ...(issue.author?.bot ? { bot: true as const } : {}),
+    },
+    comments: issue.user_notes_count ?? 0,
+    created: issue.created_at,
+    updated: issue.updated_at,
+  };
 }
 
 /**
@@ -91,6 +149,85 @@ export class GitLabForge implements Forge {
   async updateDescription(request: ChangeRequest, body: string): Promise<void> {
     this.requireToken('Editing a merge request');
     await this.request(`/merge_requests/${request.number}`, 'PUT', { description: body });
+  }
+
+  /** A page of 30 issues, by GitLab's page numbers; a search on titles at GitLab (decision 947). */
+  async listIssues({ state, search, cursor }: IssueQuery): Promise<IssuePage> {
+    const page = cursor === undefined ? 1 : readCursor(cursor).page;
+    const words = search?.replace(/\s+/g, ' ').trim();
+    const query = [
+      ...(state === 'all' ? [] : [`state=${state === 'open' ? 'opened' : 'closed'}`]),
+      'order_by=updated_at',
+      'sort=desc',
+      `per_page=${ISSUES_PER_PAGE}`,
+      ...(page > 1 ? [`page=${page}`] : []),
+      ...(words ? [`search=${encodeURIComponent(words)}`, 'in=title'] : []),
+    ].join('&');
+    const answer = await this.read<GitLabIssue[]>(`/issues?${query}`);
+    const next = Number(answer.nextPage);
+    return {
+      issues: answer.body.map(summaryOf),
+      ...(next > page ? { next: writeCursor({ page: next, skip: 0 }) } : {}),
+    };
+  }
+
+  /**
+   * An issue, and with a token its first 100 notes by people, oldest first, and its author's
+   * access level (decisions 948, 951): gitlab.com answers 401 for notes without one.
+   */
+  async getIssue(number: number): Promise<Issue> {
+    const { body: issue } = await this.read<GitLabIssue>(`/issues/${number}`);
+    const summary = summaryOf(issue);
+    const base = { ...summary, body: issue.description ?? '' };
+    if (!this.token) {
+      return {
+        ...base,
+        thread: [],
+        moreComments: summary.comments,
+        ...(summary.comments > 0 ? { commentsNeedToken: true as const } : {}),
+      };
+    }
+    const [notes, level] = await Promise.all([
+      this.read<GitLabNote[]>(
+        `/issues/${number}/notes?sort=asc&order_by=created_at&per_page=${COMMENTS}`,
+      ).then((answer) => answer.body),
+      issue.author?.id === undefined ? undefined : this.accessLevel(issue.author.id),
+    ]);
+    const thread = notes
+      .filter((note) => !note.system)
+      .map((note) => ({
+        author: {
+          login: note.author?.username ?? 'ghost',
+          ...(note.author?.bot ? { bot: true as const } : {}),
+        },
+        body: note.body ?? '',
+        created: note.created_at,
+        url: `${issue.web_url}#note_${note.id}`,
+      }));
+    return {
+      ...base,
+      author: { ...summary.author, role: roleOf(level) },
+      thread,
+      moreComments: Math.max(0, summary.comments - thread.length),
+    };
+  }
+
+  /** A user's access level in the project, inherited ones too; undefined outside it. */
+  private async accessLevel(user: number): Promise<number | undefined> {
+    try {
+      return (await this.read<{ access_level?: number }>(`/members/all/${user}`)).body.access_level;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** A conditional read of the project's API (decision 950). */
+  private read<T>(path: string): Promise<ReadAnswer<T>> {
+    const project = encodeURIComponent(this.project);
+    return read<T>(`${this.apiBase}/projects/${project}${path}`, {
+      tokenHint: TOKEN_HINT,
+      headers: this.headers,
+    });
   }
 
   /**

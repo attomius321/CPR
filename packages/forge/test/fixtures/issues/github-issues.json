@@ -1,0 +1,195 @@
+[
+ {
+  "number": 24023,
+  "title": "build: generate sourcemaps in shim-deps plugin",
+  "html_url": "https://github.com/vitejs/vite/pull/24023",
+  "user": {
+   "login": "btea",
+   "type": "User"
+  },
+  "labels": [],
+  "state": "open",
+  "comments": 0,
+  "created_at": "2026-11-08T09:29:09Z",
+  "updated_at": "2026-11-08T09:29:09Z",
+  "author_association": "CONTRIBUTOR",
+  "body": "<!--\n- What is this PR solving? Write a clear and concise description.\n- Reference the issues it solves (e.g. `fixes #123`).\n- What other alternatives have you explored?\n- Are there any parts you think require more attention from reviewers?\n\nAlso, please make sure you do the following:\n\n- Read the Contributing Guidelines at https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md.\n- Check that the",
+  "pull_request": {
+   "url": "https://api.github.com/repos/vitejs/vite/pulls/24023",
+   "html_url": "https://github.com/vitejs/vite/pull/24023"
+  }
+ },
+ {
+  "number": 24022,
+  "title": "docs(features): recommend sass-embedded for performance",
+  "html_url": "https://github.com/vitejs/vite/pull/24022",
+  "user": {
+   "login": "magurotuna",
+   "type": "User"
+  },
+  "labels": [],
+  "state": "open",
+  "comments": 0,
+  "created_at": "2026-11-08T05:53:31Z",
+  "updated_at": "2026-11-08T05:53:31Z",
+  "author_association": "NONE",
+  "body": "The config docs for [`css.preprocessorOptions`](https://vite.dev/config/shared-options#css-preprocessoroptions) already recommend `sass-embedded` for performance (added in #17754). However, the [CSS Pre-processors](https://vite.dev/guide/features#css-pre-processors) section in `features.md`, where users copy the install command, shows `sass-embedded # or sass` as if the two were equivalent.\n\nThis ",
+  "pull_request": {
+   "url": "https://api.github.com/repos/vitejs/vite/pulls/24022",
+   "html_url": "https://github.com/vitejs/vite/pull/24022"
+  }
+ },
+ {
+  "number": 24021,
+  "title": "fix(config): skip native loader compat checks for type-only imports",
+  "html_url": "https://github.com/vitejs/vite/pull/24021",
+  "user": {
+   "login": "btea",
+   "type": "User"
+  },
+  "labels": [],
+  "state": "open",
+  "comments": 0,
+  "created_at": "2026-11-08T04:05:29Z",
+  "updated_at": "2026-11-08T04:05:29Z",
+  "author_association": "CONTRIBUTOR",
+  "body": "<!--\n- What is this PR solving? Write a clear and concise description.\n- Reference the issues it solves (e.g. `fixes #123`).\n- What other alternatives have you explored?\n- Are there any parts you think require more attention from reviewers?\n\nAlso, please make sure you do the following:\n\n- Read the Contributing Guidelines at https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md.\n- Check that the",
+  "pull_request": {
+   "url": "https://api.github.com/repos/vitejs/vite/pulls/24021",
+   "html_url": "https://github.com/vitejs/vite/pull/24021"
+  }
+ },
+ {
+  "number": 24020,
+  "title": "fix: close server on failed start (fix #23965)",
+  "html_url": "https://github.com/vitejs/vite/pull/24020",
+  "user": {
+   "login": "materwelonDhruv",
+   "type": "User"
+  },
+  "labels": [],
+  "state": "open",
+  "comments": 0,
+  "created_at": "2026-11-08T03:03:22Z",
+  "updated_at": "2026-11-08T03:10:31Z",
+  "author_association": "NONE",
+  "body": "Now we close the server when `configureServer` throws, or `buildStart` throws in middleware mode. It goes through `server.close()` since the cloudflare plugin stops workerd from its close wrapper. This means `closeServer` hooks also run on a failed start, which I think is right since that's where plugins clean up.\n\nFixes #23965\n\nIf `close()` throws too, it still rejects with the plugin's error sin",
+  "pull_request": {
+   "url": "https://api.github.com/repos/vitejs/vite/pulls/24020",
+   "html_url": "https://github.com/vitejs/vite/pull/24020"
+  }
+ },
+ {
+  "number": 24019,
+  "title": "Skip JSON import warning on type-only imports",
+  "html_url": "https://github.com/vitejs/vite/issues/24019",
+  "user": {
+   "login": "lethargistic",
+   "type": "User"
+  },
+  "labels": [
+   {
+    "name": "pending triage",
+    "color": "B3C4DD"
+   }
+  ],
+  "state": "open",
+  "comments": 0,
+  "created_at": "2026-11-07T21:37:29Z",
+  "updated_at": "2026-11-07T21:37:29Z",
+  "author_association": "NONE",
+  "body": "### Describe the bug\n\nIf you import a file with a type-only JSON import in `vite.config.ts` you get a warning on build:\n```\n(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:\n  - JSON import \"./loaf.json\" without import attributes (src/lib/bread.ts:1:23). Add `with { type: 'json' }`\nSet `VIT"
+ },
+ {
+  "number": 24018,
+  "title": "test: fix wasm playground readiness (fix #24017)",
+  "html_url": "https://github.com/vitejs/vite/pull/24018",
+  "user": {
+   "login": "rvitaliy",
+   "type": "User"
+  },
+  "labels": [],
+  "state": "open",
+  "comments": 0,
+  "created_at": "2026-11-07T20:18:14Z",
+  "updated_at": "2026-11-07T20:18:14Z",
+  "author_association": "NONE",
+  "body": "Closes #24017.\n\nThe WASM playground can accept a click before asynchronous imports finish and its listeners are installed, leaving the result empty. Start all three buttons disabled and enable them after listener registration.\n\nAdd a deterministic regression on an isolated page that holds both WASM instantiation APIs, checks the disabled controls, then releases initialization and verifies `42`, `2",
+  "pull_request": {
+   "url": "https://api.github.com/repos/vitejs/vite/pulls/24018",
+   "html_url": "https://github.com/vitejs/vite/pull/24018"
+  }
+ },
+ {
+  "number": 24017,
+  "title": "WASM playground can lose clicks before async module initialization",
+  "html_url": "https://github.com/vitejs/vite/issues/24017",
+  "user": {
+   "login": "rvitaliy",
+   "type": "User"
+  },
+  "labels": [],
+  "state": "open",
+  "comments": 0,
+  "created_at": "2026-11-07T20:17:44Z",
+  "updated_at": "2026-11-07T20:18:38Z",
+  "author_association": "NONE",
+  "body": "### Describe the bug\n\nThe WASM playground renders enabled buttons before its module finishes initializing. Direct WASM imports introduce top-level `await`, so `page.goto()` can finish while the module body has not yet registered the click listeners. The first click is then lost and `should work when inlined` keeps polling an empty result instead of `42`.\n\nThe same symptom appears in [PR #24016, se"
+ },
+ {
+  "number": 24016,
+  "title": "feat: export default server.fs.deny patterns",
+  "html_url": "https://github.com/vitejs/vite/pull/24016",
+  "user": {
+   "login": "rvitaliy",
+   "type": "User"
+  },
+  "labels": [],
+  "state": "open",
+  "comments": 0,
+  "created_at": "2026-11-07T19:07:14Z",
+  "updated_at": "2026-11-08T10:53:52Z",
+  "author_association": "NONE",
+  "body": "Closes #24015.\n\nExport `defaultServerFsDeny` as a frozen `readonly string[]` so configurations can extend Vite's defaults without copying them. Keep explicit-list replacement, including `deny: []`, unchanged; resolved configurations receive independent mutable arrays. Includes documentation and runtime/type tests.\n\nValidation: 1,111 unit tests passed (3 skipped), workspace build and typecheck, cha",
+  "pull_request": {
+   "url": "https://api.github.com/repos/vitejs/vite/pulls/24016",
+   "html_url": "https://github.com/vitejs/vite/pull/24016"
+  }
+ },
+ {
+  "number": 24015,
+  "title": "Export the default server.fs.deny patterns",
+  "html_url": "https://github.com/vitejs/vite/issues/24015",
+  "user": {
+   "login": "rvitaliy",
+   "type": "User"
+  },
+  "labels": [],
+  "state": "open",
+  "comments": 0,
+  "created_at": "2026-11-07T19:05:24Z",
+  "updated_at": "2026-11-07T19:05:24Z",
+  "author_association": "NONE",
+  "body": "## Description\n\nAdding project-specific patterns to `server.fs.deny` currently requires copying Vite's default list. Setting this option replaces that list entirely, as documented.\n\nFor example, our application also denies `**/.local/**` and `**/.env.*/**`. To retain Vite's defaults, we duplicate all six default patterns in our configuration and check the copy against Vite during upgrades. The con"
+ },
+ {
+  "number": 24014,
+  "title": "perf: defer `net use` until a UNC path is resolved on Windows",
+  "html_url": "https://github.com/vitejs/vite/pull/24014",
+  "user": {
+   "login": "btea",
+   "type": "User"
+  },
+  "labels": [],
+  "state": "open",
+  "comments": 0,
+  "created_at": "2026-11-07T14:57:59Z",
+  "updated_at": "2026-11-07T14:57:59Z",
+  "author_association": "CONTRIBUTOR",
+  "body": "<!--\n- What is this PR solving? Write a clear and concise description.\n- Reference the issues it solves (e.g. `fixes #123`).\n- What other alternatives have you explored?\n- Are there any parts you think require more attention from reviewers?\n\nAlso, please make sure you do the following:\n\n- Read the Contributing Guidelines at https://github.com/vitejs/vite/blob/main/CONTRIBUTING.md.\n- Check that the",
+  "pull_request": {
+   "url": "https://api.github.com/repos/vitejs/vite/pulls/24014",
+   "html_url": "https://github.com/vitejs/vite/pull/24014"
+  }
+ }
+]
