@@ -145,7 +145,9 @@ test('Focus: the sidenav as its rail and no side card, kept across a reload, the
   // Typing still reaches the agent.
   await panel(page).locator('.xterm-helper-textarea').focus();
   await page.keyboard.type('hello');
-  await expect(screen(page)).toContainText('> hello');
+  // Sent, the fake says the whole line: Focus's resize may redraw its prompt between two keys.
+  await page.keyboard.press('Enter');
+  await expect(screen(page)).toContainText('got: hello', POLL);
   expect(symbiote.attaches()).toHaveLength(attached);
 
   // Remembered in the browser, as the sidenav's fold is.
