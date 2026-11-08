@@ -192,6 +192,11 @@ test('opens the server in a window of its own: no menu bar, the page’s title',
   const { app, page } = await launch();
   // `/` opens the Overview (V91, decision 848), at its own address.
   expect(page.url()).toBe(`${symbiote.url}overview`);
+  // Shown at `ready-to-show`, Chromium's first paint: after the page's parts are laid out, and on a
+  // cold start that falls back to software GL (a CI runner) later than that (fix-ci-green).
+  await expect
+    .poll(() => app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]?.isVisible()))
+    .toBe(true);
   const window = await app.evaluate(({ BrowserWindow, Menu }) => {
     const windows = BrowserWindow.getAllWindows();
     return {

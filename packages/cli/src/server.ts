@@ -464,8 +464,22 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   }
   const pageErrors = { since: 0, count: 0 };
   const viewerFiles = await readViewer(options.viewerDir);
+  /** Set once `close` starts: from then on the server answers nothing more (fix-ci-green). */
+  let closing = false;
   const server = createServer((req, res) => {
     for (const [name, value] of Object.entries(GUARD_HEADERS)) res.setHeader(name, value);
+    // Node keeps serving a connection that was busy when the server stopped listening, for as long
+    // as it asks: the page's stream, answered and ended, asked again on it every second, and
+    // `symbiote view` never ended on Ctrl+C (fix-ci-green). Closing, it answers nothing more, and a
+    // connection goes once its last answer is sent.
+    if (closing) {
+      res.writeHead(503, { connection: 'close' });
+      res.end();
+      return;
+    }
+    res.once('close', () => {
+      if (closing) setImmediate(() => server.closeIdleConnections());
+    });
     const started = performance.now();
     let failure: unknown;
     res.once('close', () => {
@@ -2410,6 +2424,7 @@ export async function startViewServer(options: ViewServerOptions): Promise<ViewS
   return {
     url: address,
     close: async () => {
+      closing = true;
       // A held call or wait would keep its connection, and the server, open.
       mcp?.close();
       // The page's stream ends, and every timer and listener it holds (V94a).
