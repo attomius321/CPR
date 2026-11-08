@@ -27,6 +27,12 @@ export function writeCursor({ page, after, skip }: Cursor): string {
   return `${page}~${after ?? ''}~${skip}`;
 }
 
+/** Whether `text` has a cursor's shape (IS1): the server refuses any other before the forge. */
+export function isIssueCursor(text: string): boolean {
+  const match = CURSOR.exec(text);
+  return !!match && Number(match[1]) >= 1;
+}
+
 export function readCursor(text: string): Cursor {
   const match = CURSOR.exec(text);
   const page = Number(match?.[1]);

@@ -70,6 +70,7 @@ import { gitPage } from './git-page.js';
 import { frameworkHints, loadPlugins } from './plugins.js';
 import { postGraphFindings } from './post-findings.js';
 import { hiveLandingService, hiveRequests } from './hive-request.js';
+import { issuesService } from './issues.js';
 import { hivePacing, hivePacingService } from './hive-pacing.js';
 import { childRunner, type PhaseMessage } from './runner.js';
 import { startViewServer, type ChangeFiles, type ReviewTarget } from './server.js';
@@ -879,6 +880,8 @@ async function view(argv: string[], ctx: CliContext): Promise<number> {
       }),
       // The Monitor page (RM1): where the checked-out commit's code is.
       monitor: codeMaps(repo.root),
+      // The Issues page (IS1): origin's GitHub or GitLab issues, read only.
+      issues: issuesService(repo, ctx.env),
       scribe: scribe(repo, cacheDir, {
         claude: claudeOf,
         codex: codexOf,

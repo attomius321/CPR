@@ -436,3 +436,18 @@ export {
   type RepoStatus,
   type WorkingState,
 } from './git/checkout.js';
+export type {
+  Issue,
+  IssueAnswer,
+  IssueAuthor,
+  IssueAuthorRole,
+  IssueComment,
+  IssueFilter,
+  IssueLabel,
+  IssueListAnswer,
+  IssuePage,
+  IssueProblem,
+  IssueQuery,
+  IssueSource,
+  IssueSummary,
+} from './issues.js';
