@@ -382,6 +382,12 @@ test("a merge's steps show in under 500 ms of the server's own line for each (V9
   const shown = await page.evaluate(
     () => (window as unknown as { __merge: { at: number; text: string }[] }).__merge,
   );
+  // The card can say Landed before the server's line for it is on disk (fix-ci-green).
+  await expect
+    .poll(
+      () => logLines(branch.cache).filter((l) => /^merge (checking|landed)$/.test(l.msg)).length,
+    )
+    .toBe(2);
   const lines = logLines(branch.cache);
   for (const [state, words] of [
     ['checking', 'Checking'],
