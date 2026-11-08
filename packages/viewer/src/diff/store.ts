@@ -9,6 +9,8 @@ export interface Store {
   load(name: StateName): Promise<unknown>;
   /** Saves after `delay` ms; a newer value for the same name replaces a pending one. */
   save(name: StateName, value: unknown, delay?: number): void;
+  /** Drops a save still pending for `name` (fix-ci-green: a summary's, once Finish is sent). */
+  cancel(name: StateName): void;
 }
 
 /**
@@ -55,6 +57,11 @@ export function serverStore(): Store {
         window.setTimeout(() => flush(name), delay),
       );
     },
+    cancel(name) {
+      window.clearTimeout(timers.get(name));
+      timers.delete(name);
+      pending.delete(name);
+    },
   };
 }
 
@@ -77,6 +84,8 @@ export function browserStore(graph: Graph): Store {
         // Private windows and blocked storage: state lasts for this page only.
       }
     },
+    // Saved at once: nothing waits.
+    cancel() {},
   };
 }
 

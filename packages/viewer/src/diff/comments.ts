@@ -293,12 +293,11 @@ export interface ReviewDraft {
  * replaced a summary typed in the meantime (CI's e2e).
  */
 export function withEarlyEdits(saved: ReviewDraft, current: ReviewDraft): ReviewDraft {
-  if (current.body === '' && current.drafts.length === 0) return saved;
-  return {
-    ...saved,
-    body: current.body === '' ? saved.body : current.body,
-    drafts: [...saved.drafts, ...current.drafts],
-  };
+  // A comment saved before the answer was read is in it already: taken once, by its id.
+  const added = current.drafts.filter((d) => !saved.drafts.some((s) => s.id === d.id));
+  const body = current.body === '' ? saved.body : current.body;
+  if (added.length === 0 && body === saved.body) return saved;
+  return { ...saved, body, drafts: [...saved.drafts, ...added] };
 }
 
 let counter = 0;

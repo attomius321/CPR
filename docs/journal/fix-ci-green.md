@@ -105,3 +105,9 @@ draft's merge); `pnpm check` 3,422 passed (once a bubblewrap test timed out at l
 alone, then all passed); `pnpm test:e2e` 436 and 32; CI run 42524539542 green on ubuntu · node 22,
 ubuntu · node 24 and macOS · node 24. Not run: the `viewer-check` skill (the viewer change is the
 draft's loading only, no layout or paint).
+
+Then the merge check of e8d595b failed `reviews.spec.ts:208`, and this branch caused it (3 in 5
+under load with `withEarlyEdits`, 0 in 20 without): a comment saved before the saved draft's answer
+came back twice, and a summary's save pending at Finish landed after it, over the cleared drafts.
+`withEarlyEdits` takes a comment once by its id, and Finish cancels a pending draft save. 0 in 15
+after, under the same load.

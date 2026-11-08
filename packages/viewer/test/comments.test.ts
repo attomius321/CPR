@@ -293,6 +293,17 @@ describe('withEarlyEdits (fix-ci-green)', () => {
     });
   });
 
+  it('takes a comment once when the saved draft already has it (saved before it arrived)', () => {
+    const typed = { drafts: [comment('b', 'new')], body: 'One thing.' };
+    const saved = { drafts: [comment('b', 'new')], body: 'One thing.' };
+    expect(withEarlyEdits(saved, typed)).toBe(saved);
+    const more = { drafts: [comment('b', 'new'), comment('c', 'later')], body: 'One thing.' };
+    expect(withEarlyEdits(saved, more).drafts).toEqual([
+      comment('b', 'new'),
+      comment('c', 'later'),
+    ]);
+  });
+
   it('keeps the saved summary when only a comment was added', () => {
     const saved = { drafts: [], body: 'Saved summary.' };
     const typed = { drafts: [comment('b', 'new')], body: '' };

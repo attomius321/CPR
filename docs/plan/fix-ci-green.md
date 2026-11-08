@@ -205,6 +205,14 @@ That last was the product's: **a summary typed before the saved review draft arr
 was typed then, with the saved comments, and saves the merge (unit tests first). **Run 13 is
 green on all three jobs, macOS's unit tests included.**
 
+**Symbiote's merge check of e8d595b** then failed `reviews.spec.ts:208`: after Finish, the review's
+file still held the comment as a draft. Under load here it failed 3 runs in 5 with `withEarlyEdits`
+and 0 in 20 without, so this branch caused it. Two fixes: `withEarlyEdits` takes a comment the
+saved draft already has once, by its id (a comment saved before the load was answered came back
+twice); and Finish drops a draft save still pending (`Store.cancel`, `onSending`). The trace
+showed the summary's save, 300 ms after its typing, sent after Finish's request and landing over
+the drafts Finish cleared. After both: 0 in 15 under the same load; `pnpm test:e2e` 436 and 32.
+
 Also fixed at "fix the rest": `events.spec.ts:348` (V94c) read the server's log once, as soon as
 the card said Landed, before the "merge landed" line was on disk; it now waits for both lines,
 and the harness removes a server's cache with retries (ENOTEMPTY while it wrote its last lines).
