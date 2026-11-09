@@ -10,7 +10,7 @@ import {
 import { parseHiveChange } from './server-requests.js';
 import { WorkspaceRefused } from './workspace-record.js';
 import type { HiveRecord } from './hive.js';
-import type { ServerContext } from './server-context.js';
+import type { RepositoryOptions, ServerContext, ViewServerOptions } from './server-context.js';
 import { answer, json, type ServerHttp } from './server-http.js';
 
 /** When Hive was turned on, while on (V92); a record that cannot say is none. */
@@ -34,7 +34,10 @@ export function serverHive(
     log,
     mcp,
     busy,
-  }: Pick<ServerContext, 'options' | 'repository' | 'log' | 'mcp' | 'busy'>,
+  }: Pick<ServerContext, 'log' | 'mcp' | 'busy'> & {
+    options: Pick<ViewServerOptions, 'hive'>;
+    repository: Pick<RepositoryOptions, 'nucleus' | 'workspaces'> | undefined;
+  },
   { written }: Pick<ServerHttp, 'written'>,
 ) {
   /** Whether Hive mode is on; a record that cannot be read is off. */

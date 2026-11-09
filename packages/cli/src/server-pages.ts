@@ -5,7 +5,7 @@ import { SymbioteError } from '@symbiote/core';
 import { isIssueCursor } from '@symbiote/forge';
 import type { IntroRecord } from './intro.js';
 import type { IssuesService } from './issues.js';
-import type { RepositoryOptions, ServerContext } from './server-context.js';
+import type { RepositoryOptions, ViewServerOptions } from './server-context.js';
 import { json, send, type ServerHttp } from './server-http.js';
 
 /** The checkout's map (RM1), or why there is none (no commit yet): 409 with its words. */
@@ -74,7 +74,7 @@ const MAX_ISSUE_SEARCH = 200;
 
 /** The intro seen, and a file of the Monitor's map opened. */
 export function serverPages(
-  { options }: Pick<ServerContext, 'options'>,
+  { options }: { options: Pick<ViewServerOptions, 'open'> },
   { writable, written }: Pick<ServerHttp, 'writable' | 'written'>,
 ) {
   /** `GET /api/intro`: `{ show }`; `POST`: the intro seen (V39). */

@@ -30,6 +30,7 @@ import type {
   Site,
   SiteFiles,
   ServerContext,
+  ViewServerOptions,
 } from './server-context.js';
 import {
   TYPES,
@@ -91,10 +92,10 @@ function pairFiles(pair: Pair, files: ChangeFiles): SiteFiles {
 
 /** The sites of `symbiote pr`'s graph, of each diff and of each branch review. */
 export function serverSites(
-  ctx: Pick<
-    ServerContext,
-    'options' | 'repository' | 'viewerFiles' | 'pairSites' | 'opened' | 'reviewSites' | 'sites'
-  >,
+  ctx: Pick<ServerContext, 'viewerFiles' | 'pairSites' | 'opened' | 'reviewSites' | 'sites'> & {
+    options: Pick<ViewServerOptions, 'open' | 'viewerDir'>;
+    repository: Pick<RepositoryOptions, 'name' | 'files' | 'state'> | undefined;
+  },
   { writable, hiveOn }: Pick<ServerHttp, 'writable'> & Pick<ServerHive, 'hiveOn'>,
 ) {
   const { options, repository, viewerFiles, pairSites, opened, reviewSites, sites } = ctx;
