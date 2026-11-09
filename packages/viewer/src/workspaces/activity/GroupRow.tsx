@@ -42,7 +42,7 @@ import { askedFor } from '../thread-items.js';
 import { useNucleusName } from '../../shell/names.js';
 import { callKind, COMMAND_TOOLS, IMAGE } from './classify.js';
 import type { ActivityEvent, ToolCall } from './events.js';
-import type { ActivityGroup, GroupKind } from './groups.js';
+import type { ActivityGroup, GroupKind } from './group-parts.js';
 import {
   durationText,
   eventWords,

@@ -19,7 +19,7 @@ import {
 import { longAge, useNow } from './clock.js';
 import { HiveNowLine } from './HiveNow.js';
 import { AGENT_NAMES, shortAge } from './workspaces.js';
-import { type WorkspaceRow } from './workspace-groups.js';
+import type { WorkspaceRow } from './workspace-groups.js';
 import {
   workspaceFacts,
   type WorkspaceFact,

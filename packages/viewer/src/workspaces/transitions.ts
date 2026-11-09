@@ -2,7 +2,7 @@
 // a dialog; and how a card moves to its new place in the sidenav. Both pure.
 import type { Notice } from '../shell/shell-context.js';
 import { workspaceHref, workspaceName } from './workspaces.js';
-import { type WorkspaceRow } from './workspace-groups.js';
+import type { WorkspaceRow } from './workspace-groups.js';
 
 /** What one transition says: "Pick a store waits for you: Asks: Which store?". */
 function said(row: WorkspaceRow, before: WorkspaceRow): string | null {

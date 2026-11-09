@@ -5,7 +5,7 @@
 import type { BranchMerge, MergeEntry } from '@symbiote/core';
 import { clockWords } from './hive-live.js';
 import { AGENT_NAMES, shortAge, workspaceName } from './workspaces.js';
-import { type LandedRow, type WorkspaceRow } from './workspace-groups.js';
+import type { LandedRow, WorkspaceRow } from './workspace-groups.js';
 import { activityVerb, workspaceFacts } from './workspace-next.js';
 import { runsOnWords } from './run-choices.js';
 import { plural } from '../ui/plural.js';

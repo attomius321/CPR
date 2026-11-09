@@ -3,7 +3,7 @@
 import type { MergeEntry, WorkspaceSummary } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import { doneGroups, mergeRowWords, rowWords } from '../src/workspaces/row-words.js';
-import { type WorkspaceRow } from '../src/workspaces/workspace-groups.js';
+import type { WorkspaceRow } from '../src/workspaces/workspace-groups.js';
 import { workspaceNext } from '../src/workspaces/workspace-next.js';
 
 const TIP = 'c'.repeat(40);

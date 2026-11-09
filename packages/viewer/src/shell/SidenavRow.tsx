@@ -28,7 +28,7 @@ import {
 } from '../workspaces/row-words.js';
 import { useMergeCheck } from '../workspaces/WorkspaceFacts.js';
 import { workspaceName } from '../workspaces/workspaces.js';
-import { type WorkspaceRow } from '../workspaces/workspace-groups.js';
+import type { WorkspaceRow } from '../workspaces/workspace-groups.js';
 import { mergedForCard } from '../workspaces/workspace-next.js';
 import { hrefOf } from './pages.js';
 import { useShell, type Notice } from './shell-context.js';

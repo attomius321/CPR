@@ -5,7 +5,7 @@ import type { BranchReviewList, MergeEntry, WorkspaceDay, WorkspaceSummary } fro
 import { mergeState } from '../workspaces/merges.js';
 import type { StepMark } from '../workspaces/workspace-steps.js';
 import { AGENT_NAMES, workspaceName } from '../workspaces/workspaces.js';
-import { type WorkspaceGroups, type WorkspaceRow } from '../workspaces/workspace-groups.js';
+import type { WorkspaceGroups, WorkspaceRow } from '../workspaces/workspace-groups.js';
 import { dayStarts, isToday, median, perDay } from './day.js';
 import { plural } from '../ui/plural.js';
 
