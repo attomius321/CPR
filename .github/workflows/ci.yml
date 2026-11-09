@@ -33,7 +33,11 @@ jobs:
           runtime: node@${{ matrix.node }}
           cache: true
       - run: pnpm run format:check
+      # Typed ESLint over every package peaks at ~3.2 GB of heap (2.4 GB live, fix-ci-green); a
+      # macOS runner's default limit is ~2 GB, Ubuntu's ~4 GB.
       - run: pnpm run lint
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
       - run: pnpm run typecheck
       - run: pnpm run test
       - run: pnpm run build

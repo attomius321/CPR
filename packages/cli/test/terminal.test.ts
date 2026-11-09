@@ -286,6 +286,25 @@ describe('terminals', () => {
     w.closeAll();
   });
 
+  it("takes the system's name for its own program at its first output: macOS's sh is bash (fix-ci-green)", async () => {
+    const fake = fakePty();
+    const t = terminals({ pty: fake.pty });
+    const id = await t.open({ ...request, command: '/bin/sh', args: [], kept: true });
+    const made = fake.made[0]!;
+    // macOS's /bin/sh runs bash: at its prompt the system names the shell bash.
+    made.process = 'bash';
+    made.print('shell$ ');
+    expect(t.running(id)).toBeNull();
+    made.process = 'sleep';
+    expect(t.running(id)).toBe('sleep');
+    // A name read only after the first output is what runs in it, not the shell.
+    const other = await t.open({ ...request, command: '/bin/sh', args: [], kept: true });
+    fake.made[1]!.print('shell$ ');
+    fake.made[1]!.process = 'bash';
+    expect(t.running(other)).toBe('bash');
+    t.closeAll();
+  });
+
   it('closeAll hangs every terminal up and ends its readers', async () => {
     const fake = fakePty();
     const t = terminals({ pty: fake.pty });

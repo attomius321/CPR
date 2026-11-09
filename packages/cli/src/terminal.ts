@@ -218,6 +218,11 @@ interface Open {
   pty: Pty;
   /** The program it started, by name: what `running` does not count. */
   program: string;
+  /**
+   * That program as the system names it, read at its first output (fix-ci-green): macOS's
+   * `/bin/sh` runs bash, so its prompt's foreground program is `bash`. Not counted either.
+   */
+  named?: string;
   /** A shell's (V45): never hung up for having no reader, nor to make room. */
   kept: boolean;
   /** The folder it runs in: where the paths it prints are read from (V38). */
@@ -275,6 +280,13 @@ export function terminals({
   const nameOf = (path: string) => {
     const name = (platform === 'win32' ? win32 : posix).basename(path).replace(/^-/, '');
     return platform === 'win32' ? name.toLowerCase().replace(/\.exe$/, '') : name;
+  };
+  /** The foreground program's name, as `nameOf` gives it; undefined when node-pty says none. */
+  const foreground = (terminal: Open): string | undefined => {
+    // A program that set its title is named by it on Linux (`npm exec vitest --watch a/b.ts`,
+    // measured): its first word. Windows names the program alone, spaces and all.
+    const now = platform === 'win32' ? terminal.pty.process : terminal.pty.process?.split(/\s/)[0];
+    return now ? nameOf(now) : undefined;
   };
   const watch = (terminal: Open) => {
     clearTimeout(terminal.idle);
@@ -371,6 +383,10 @@ export function terminals({
         listeners: new Set(),
       };
       terminal.pty.onData((data) => {
+        if (terminal.output.length === 0) {
+          const named = foreground(terminal);
+          if (named) terminal.named = named;
+        }
         terminal.output.push(data);
         terminal.size += data.length;
         while (terminal.size > maxOutput && terminal.output.length > 1) {
@@ -424,13 +440,8 @@ export function terminals({
     running(id) {
       const terminal = open.get(id);
       if (!terminal) return undefined;
-      // A program that set its title is named by it on Linux (`npm exec vitest --watch a/b.ts`,
-      // measured): its first word. Windows names the program alone, spaces and all.
-      const now =
-        platform === 'win32' ? terminal.pty.process : terminal.pty.process?.split(/\s/)[0];
-      if (!now) return null;
-      const name = nameOf(now);
-      return name === terminal.program ? null : name;
+      const name = foreground(terminal);
+      return !name || name === terminal.program || name === terminal.named ? null : name;
     },
 
     async image(id, bytes, kind) {

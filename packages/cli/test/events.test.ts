@@ -173,11 +173,13 @@ describe('the stream (V94a)', () => {
   });
 
   it('reads a part at most once in `between`, and once more after a trigger meanwhile', async () => {
-    const { url, reads, values, stream } = await serve({ first: 5, between: 200 });
+    // `between` 1 s: the burst of 20 triggers 5 ms apart took over 200 ms on macOS's runner
+    // (fix-ci-green), and a second read after `between` is the right one.
+    const { url, reads, values, stream } = await serve({ first: 5, between: 1_000 });
     const page = await listen(url);
     await page.next('state');
     // The page's own read counts: the burst starts once `between` has passed since it.
-    await wait(250);
+    await wait(1_050);
     const before = reads.workspaces ?? 0;
     for (let i = 0; i < 20; i++) {
       stream.changed(['workspaces'], 'burst');
@@ -186,9 +188,9 @@ describe('the stream (V94a)', () => {
     values.workspaces = { workspaces: [{ branch: 'last' }] };
     stream.changed(['workspaces'], 'burst');
     await wait(80);
-    // The first trigger's read, 5 ms in; the rest wait for 200 ms after it.
+    // The first trigger's read, 5 ms in; the rest wait for 1 s after it.
     expect((reads.workspaces ?? 0) - before).toBe(1);
-    const change = await page.next('change', 0, 1_000);
+    const change = await page.next('change', 0, 2_000);
     expect(change.data).toEqual({ parts: { workspaces: { workspaces: [{ branch: 'last' }] } } });
     expect((reads.workspaces ?? 0) - before).toBe(2);
     page.close();

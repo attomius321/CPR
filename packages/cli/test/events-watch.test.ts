@@ -1,7 +1,7 @@
 // Changes from outside (V94c, decision 904): one plain `fs.watch` per folder, folders added as they
 // appear. Node's recursive watch on Linux missed the third write by rename to one file and never
 // fired on a folder made after it started (the spike): these are the cases it failed.
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -22,9 +22,11 @@ function folder(): string {
 }
 
 /** Watches, and the paths it reports. */
-function watched(root: string, descend?: (rel: string) => boolean) {
+function watched(root: string, descend?: (rel: string) => boolean, replays?: boolean) {
   const seen: string[] = [];
-  const w = watchTree(root, (path) => seen.push(path), descend);
+  const w = watchTree(root, (path) => seen.push(path), descend, {
+    ...(replays === undefined ? {} : { replays }),
+  });
   watching.push(w);
   return seen;
 }
@@ -90,6 +92,41 @@ describe('watchTree (V94c)', () => {
     expect(await until(seen, (p) => p === join(root, 'reviews', 'r.json'))).toBe(true);
     expect(await until(seen, (p) => p === join(root, 'nucleus.json'))).toBe(true);
     expect(seen).not.toContain(join(root, 'revisions', 'copy'));
+  });
+
+  it('where the system replays changes, reports none to a file last written before it started (fix-ci-green)', async () => {
+    // macOS's FSEvents also delivers changes made just before a watch (`replays`, on there): the
+    // page's first read had them. Linux reports an old file's new dates, a change dated before.
+    const root = folder();
+    mkdirSync(join(root, 'activity'));
+    const old = join(root, 'activity', 'old.jsonl');
+    writeFileSync(old, '{}\n');
+    // Dated well before: `Date.now()` drops the fraction of a millisecond macOS's dates keep.
+    const before = new Date(Date.now() - 10_000);
+    utimesSync(old, before, before);
+    const seen = watched(root, undefined, true);
+    await settle();
+    utimesSync(old, before, before);
+    const now = join(root, 'activity', 'now.jsonl');
+    writeFileSync(now, '{}\n');
+    expect(await until(seen, (p) => p === now)).toBe(true);
+    await settle();
+    expect(seen).not.toContain(old);
+  });
+
+  it('where the system replays changes, reports one in a folder made after it started, dated before (fix-ci-green)', async () => {
+    // A folder made later had no first read: what is written in it is news, however it is dated
+    // (macOS's runner: the folder's own watch began after the file in it was written).
+    const root = folder();
+    const seen = watched(root, undefined, true);
+    await settle();
+    mkdirSync(join(root, 'reviews'));
+    await settle();
+    const file = join(root, 'reviews', 'ada@example.com.json');
+    writeFileSync(file, '{}');
+    const before = new Date(Date.now() - 10_000);
+    utimesSync(file, before, before);
+    expect(await until(seen, (p) => p === file)).toBe(true);
   });
 
   it('keeps no watcher once closed', async () => {

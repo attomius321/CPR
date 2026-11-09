@@ -180,7 +180,8 @@ test("Codex: Stop while it works, a failure in Codex's words, Start again, Clean
   // Started again: a new run, which fails in Codex's words.
   await here.getByRole('button', { name: 'Start the agent' }).click();
   await expect(working(workspaceRow(page))).toHaveAttribute('data-tone', 'run', POLL);
-  expect(symbiote.codexCalls()).toHaveLength(2);
+  // The row says it runs once started; the fake records its call a moment later (fix-ci-green).
+  await expect.poll(() => symbiote.codexCalls().length, POLL).toBe(2);
   symbiote.codexTurn(BRANCH, { fail: 'unexpected status 401 Unauthorized' });
   await expect(workspaceRow(page)).toContainText(
     'Its agent failed: unexpected status 401 Unauthorized',

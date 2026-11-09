@@ -36,6 +36,10 @@ export function createRepo(): TestRepo {
     // stderr is kept in the error a failing command throws, not printed.
     execFileSync('git', args, { cwd: root, env, encoding: 'utf8', stdio: 'pipe' }).trim();
   git('init', '--quiet', '--initial-branch=main');
+  // The repository's own identity, for the code under test too: it runs git with the test
+  // process's environment, not `env`, and reads user.email (reviewPlace: none, the cache).
+  git('config', 'user.name', 'Symbiote Test');
+  git('config', 'user.email', 'test@example.com');
 
   return {
     root,

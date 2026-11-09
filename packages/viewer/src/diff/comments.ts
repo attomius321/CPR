@@ -287,6 +287,19 @@ export interface ReviewDraft {
   body: string;
 }
 
+/**
+ * The saved draft as it arrives, with what the person did before it did (fix-ci-green): a summary
+ * typed then is kept, and comments added then go after the saved ones. A slow server's answer
+ * replaced a summary typed in the meantime (CI's e2e).
+ */
+export function withEarlyEdits(saved: ReviewDraft, current: ReviewDraft): ReviewDraft {
+  // A comment saved before the answer was read is in it already: taken once, by its id.
+  const added = current.drafts.filter((d) => !saved.drafts.some((s) => s.id === d.id));
+  const body = current.body === '' ? saved.body : current.body;
+  if (added.length === 0 && body === saved.body) return saved;
+  return { ...saved, body, drafts: [...saved.drafts, ...added] };
+}
+
 let counter = 0;
 function draftId(): string {
   counter += 1;

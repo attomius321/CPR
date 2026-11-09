@@ -359,6 +359,7 @@ export function App() {
           verdict,
           onVerdict: setVerdict,
           onRemove: removeDraft,
+          onSending: () => store?.cancel('drafts'),
           onPosted: () => {
             updateDraft(() => ({ drafts: [], body: '' }));
             setVerdict('comment');

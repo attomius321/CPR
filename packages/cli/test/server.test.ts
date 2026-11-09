@@ -1,5 +1,5 @@
 import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { request } from 'node:http';
+import { Agent, request } from 'node:http';
 import { join } from 'node:path';
 import {
   CheckoutRefused,
@@ -269,6 +269,46 @@ describe('the viewer it started with (fix/suggest-settings-models)', () => {
     expect(chunk.status).toBe(200);
     expect(await chunk.text()).toBe('old');
     expect((await fetch(new URL('/assets/index-new.js', server.url))).status).toBe(404);
+  });
+});
+
+describe('close (fix-ci-green)', () => {
+  it('ends while a page keeps asking on a kept-alive connection that was busy at close', async () => {
+    const viewer = tempDir();
+    writeFileSync(join(viewer, 'index.html'), '<html>viewer</html>');
+    let answer: (text: string) => void = () => undefined;
+    const held = new Promise<string>((resolve) => {
+      answer = resolve;
+    });
+    const server = await startViewServer({ graph, viewerDir: viewer, readSource: () => held });
+    // One kept-alive connection, as a browser's to its page's server.
+    const agent = new Agent({ keepAlive: true, maxSockets: 1 });
+    const ask = (path: string) =>
+      new Promise<number | undefined>((resolve) => {
+        const req = request(new URL(path, server.url), { agent }, (res) => {
+          res.resume();
+          res.once('end', () => resolve(res.statusCode));
+        });
+        req.once('error', () => resolve(undefined));
+        req.end();
+      });
+    const busy = ask('/api/source?side=head&file=src/math.ts');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    let closed = false;
+    const closing = server.close().then(() => (closed = true));
+    // Answered once the server stopped listening: the connection was busy when it did.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    answer('// head');
+    expect(await busy).toBe(200);
+    // The page's stream retrying on that connection, as an EventSource does every second.
+    for (let i = 0; i < 40 && !closed; i++) {
+      await ask('/');
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    expect(closed).toBe(true);
+    await closing;
+    agent.destroy();
+    rmSync(viewer, { recursive: true, force: true });
   });
 });
 

@@ -5,6 +5,11 @@ import { defineConfig } from '@playwright/test';
 // directly; CI installs Playwright's own with `playwright install chromium`.
 const preinstalled = '/opt/pw-browsers/chromium';
 
+// No spec reads the developer's git config (fix-ci-green): a CI runner has none, so a spec that
+// leaned on the developer's identity passed here and failed there. Workers inherit it.
+process.env.GIT_CONFIG_GLOBAL = '/dev/null';
+process.env.GIT_CONFIG_NOSYSTEM = '1';
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 60_000,

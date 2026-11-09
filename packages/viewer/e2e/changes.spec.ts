@@ -182,6 +182,10 @@ test('a file opens as its diff: the fork point against the worktree, a deleted f
 
   // Changed again, not committed: its row from HEAD; the branch's row now ends at the tip's.
   writeFileSync(join(folder, 'src', 'math.ts'), `${before}\nexport const three = 3;\n`);
+  // A file written in a worktree is no trigger: the page's stream reads it at its 60 s safety
+  // read (V94), or with a read already under way, which could land before the write
+  // (fix-ci-green). Opened again, the page reads it.
+  await page.reload();
   const changed = loose.getByRole('button', {
     name: 'Open the changes to src/math.ts in VS Code',
   });

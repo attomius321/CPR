@@ -204,6 +204,7 @@ export async function serveAgentBranch(
   git(repo, 'checkout', '-q', 'main');
   git(repo, 'branch', '-q', '-D', 'feature');
   git(repo, 'config', 'user.email', 'reviewer@example.com');
+  git(repo, 'config', 'user.name', 'Reviewer');
   const origin = mkdtempSync(join(tmpdir(), 'symbiote-e2e-origin-'));
   git(origin, 'init', '-q', '--bare');
   git(repo, 'remote', 'add', 'origin', origin);
@@ -294,10 +295,11 @@ say({ type: 'result', subtype: 'success', result, is_error: false, usage: { inpu
     },
     stop() {
       running.child.kill('SIGINT');
-      // The server may still be saving the review (cleared drafts after a verdict): retry.
+      // The server may still be saving the review (cleared drafts after a verdict), or writing
+      // its last log lines into its cache (fix-ci-green: ENOTEMPTY): retry.
       rmSync(repo, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
       rmSync(origin, { recursive: true, force: true });
-      rmSync(cache, { recursive: true, force: true });
+      rmSync(cache, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
     },
   };
 }
@@ -1202,6 +1204,7 @@ export async function serveWorkspaces({
   git(repo, 'checkout', '-q', '-B', 'main');
   git(repo, 'branch', '-q', '-D', 'feature');
   git(repo, 'config', 'user.email', 'reviewer@example.com');
+  git(repo, 'config', 'user.name', 'Reviewer');
   const origin = mkdtempSync(join(tmpdir(), 'symbiote-e2e-origin-'));
   git(origin, 'init', '-q', '--bare');
   git(repo, 'remote', 'add', 'origin', origin);

@@ -273,6 +273,12 @@ const startFrom = async (page: Page, what: string) => {
   await goal(page).press('Control+Enter');
   await expect(startPage(page)).toBeHidden();
 };
+/**
+ * Waits until `branch`'s agent has its prompt (fix-ci-green): a report sent before it ends no
+ * turn, and the card stays "Thinking" (on a slow runner).
+ */
+const prompted = (page: Page, branch: string) =>
+  expect(workspaceRow(page, branch)).toContainText('Thinking', POLL);
 
 test('the workspaces view: what each workspace needs, as its agent goes on', async ({ page }) => {
   symbiote = await serveWorkspaces();
@@ -936,6 +942,7 @@ test('Send the verdict: a review fills the box, from the panel and from the Revi
   await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
+  await prompted(page, branch);
   symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
   symbiote.report(branch, 'Done: half() in src/half.ts.');
   await expect(workspaceRow(page, branch)).toContainText('Ready for review', POLL);
@@ -2081,6 +2088,7 @@ test('Merge on an approved workspace: Symbiote merges it in its own worktree, La
   await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
+  await prompted(page, branch);
   const tip = symbiote.commit(
     branch,
     'src/half.ts',
@@ -2181,6 +2189,7 @@ test('Merge into merges into the branch picked in its dropdown, not main', async
   await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
+  await prompted(page, branch);
   const tip = symbiote.commit(
     branch,
     'src/half.ts',
@@ -2225,6 +2234,7 @@ async function approvedWorkspace(page: Page) {
   await page.goto(`${symbiote.url}`);
   await startFrom(page, 'Add a half function');
   const branch = 'feature/add-a-half-function';
+  await prompted(page, branch);
   const tip = symbiote.commit(
     branch,
     'src/half.ts',

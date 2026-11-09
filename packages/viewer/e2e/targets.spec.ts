@@ -80,6 +80,11 @@ for (const size of ['default', 'compact', 'large'] as const) {
     await start.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
     await expect(start).toBeHidden();
     const branch = 'feature/add-a-half-function';
+    // Its prompt reached it first: a report before it would end no turn (fix-ci-green).
+    await expect(page.locator(`.workspace-row[data-branch="${branch}"]`)).toContainText(
+      'Thinking',
+      POLL,
+    );
     symbiote.commit(
       branch,
       'src/half.ts',

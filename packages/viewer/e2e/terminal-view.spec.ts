@@ -145,7 +145,9 @@ test('Focus: the sidenav as its rail and no side card, kept across a reload, the
   // Typing still reaches the agent.
   await panel(page).locator('.xterm-helper-textarea').focus();
   await page.keyboard.type('hello');
-  await expect(screen(page)).toContainText('> hello');
+  // Sent, the fake says the whole line: Focus's resize may redraw its prompt between two keys.
+  await page.keyboard.press('Enter');
+  await expect(screen(page)).toContainText('got: hello', POLL);
   expect(symbiote.attaches()).toHaveLength(attached);
 
   // Remembered in the browser, as the sidenav's fold is.
@@ -190,7 +192,10 @@ test('Split: the agent and a shell side by side, in the address, the agent not a
   await expect(panes.nth(1).locator('.xterm-rows')).toContainText('right-2', POLL);
   await panes.nth(0).locator('.xterm-helper-textarea').focus();
   await page.keyboard.type('left');
-  await expect(panes.nth(0).locator('.xterm-rows')).toContainText('> left');
+  // Sent, the fake says the whole line: the split's resize redraws its prompt, and it came between
+  // two keys on CI (`> l[49x37]> eft`, fix-ci-green).
+  await page.keyboard.press('Enter');
+  await expect(panes.nth(0).locator('.xterm-rows')).toContainText('got: left', POLL);
   expect(symbiote.attaches()).toHaveLength(attached);
 
   // Kept through a reload; off again, the agent alone, not attached again.

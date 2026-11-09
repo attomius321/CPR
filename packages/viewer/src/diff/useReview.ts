@@ -4,6 +4,7 @@ import {
   newDraft,
   newLineDraft,
   refreshDrafts,
+  withEarlyEdits,
   type Anchor,
   type ReviewDraft,
   type ReviewEvent,
@@ -31,7 +32,13 @@ export function useReview(graph: Graph | undefined, store: Store | undefined) {
       setMarks(asMarks(marks));
       // Under `symbiote pr`, drafts may come from an earlier push of the change.
       const saved = asReviewDraft(drafts);
-      setDraft({ ...saved, drafts: refreshDrafts(graph, saved.drafts) });
+      const loaded = { ...saved, drafts: refreshDrafts(graph, saved.drafts) };
+      setDraft((current) => {
+        const next = withEarlyEdits(loaded, current);
+        // Typed before it arrived: saved again with both (the person's save had only theirs).
+        if (next !== loaded) store.save('drafts', next);
+        return next;
+      });
     });
     return () => {
       live = false;

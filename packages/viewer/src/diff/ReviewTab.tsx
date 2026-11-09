@@ -35,6 +35,11 @@ export interface ReviewProps {
   verdict: ReviewEvent;
   onVerdict: (verdict: ReviewEvent) => void;
   onRemove: (id: string) => void;
+  /**
+   * The review is being sent: a draft save still pending must not land after it, over the drafts
+   * Finish clears (fix-ci-green: a summary's, 300 ms after its typing).
+   */
+  onSending?: () => void;
   /** The review was posted: its drafts are done. */
   onPosted: () => void;
   /**
@@ -112,6 +117,7 @@ export function ReviewTab({
   const into = review.local?.into;
   const head = review.local ? short(review.local.head) : '';
   const submit = async () => {
+    review.onSending?.();
     setSubmission({ status: 'posting' });
     try {
       if (local) {

@@ -18,9 +18,19 @@ export default defineConfig({
   },
   test: {
     include: ['packages/*/test/**/*.test.ts'],
+    // macOS spawns processes several times slower, and these tests spawn git by the hundred: its
+    // runner took 479 s for the suite (Ubuntu's 248 s), and Hive's runner tests passed 5 s there,
+    // a different few each run (fix-ci-green).
+    ...(process.platform === 'darwin' ? { testTimeout: 20_000 } : {}),
     // Fixtures are code under analysis, test files included.
     exclude: [...configDefaults.exclude, 'packages/*/test/fixtures/**'],
-    // Tests never write into the person's log folder (LG1): one that logs gives its own.
-    env: { SYMBIOTE_LOG: 'off' },
+    env: {
+      // Tests never write into the person's log folder (LG1): one that logs gives its own.
+      SYMBIOTE_LOG: 'off',
+      // No test reads the developer's git config (fix-ci-green): a CI runner has none, so a test
+      // that leaned on the developer's user.email passed here and failed there.
+      GIT_CONFIG_GLOBAL: '/dev/null',
+      GIT_CONFIG_NOSYSTEM: '1',
+    },
   },
 });

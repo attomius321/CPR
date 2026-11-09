@@ -4,8 +4,17 @@
 // Linux missed the third write by rename to one file (how git writes a ref and Symbiote a record)
 // and never fired on a folder made after it started (the spike, Node 26). On a disk that gives no
 // events (`/mnt/c` under WSL2) nothing fires: the hooks' ping and the safety read are what is left.
-import { readdirSync, statSync, watch, type FSWatcher } from 'node:fs';
+import { readdirSync, statSync, watch, type FSWatcher, type Stats } from 'node:fs';
 import { basename, dirname, join, relative } from 'node:path';
+
+/** `path`'s stat, or undefined once it is gone. */
+function statSafe(path: string): Stats | undefined {
+  try {
+    return statSync(path);
+  } catch {
+    return undefined;
+  }
+}
 
 /** Most folders one tree watches: past it, the rest is left to the safety read. */
 const MOST_FOLDERS = 4_096;
@@ -24,6 +33,12 @@ export function watchTree(
   folder: string,
   onChange: (path: string) => void,
   descend: (rel: string) => boolean = () => true,
+  /**
+   * Whether the system replays changes made just before a watch (macOS's FSEvents): one dated
+   * before it is then not reported. Off elsewhere: Linux dates files by a coarse clock, up to a
+   * tick behind, and would drop a write made just after.
+   */
+  { replays = process.platform === 'darwin' }: { replays?: boolean } = {},
 ): Watched {
   const watchers = new Map<string, FSWatcher>();
   let top: FSWatcher | null = null;
@@ -36,21 +51,27 @@ export function watchTree(
     if (dir === folder) awaitFolder();
   }
 
-  function add(dir: string): void {
+  /**
+   * Watches `dir`. `since`: changes to files last written before it are not reported, where the
+   * system replays them; -Infinity for a folder made after the watch began, which no first read
+   * covered (fix-ci-green).
+   */
+  function add(dir: string, since: number): void {
     if (closed || watchers.has(dir) || watchers.size >= MOST_FOLDERS) return;
     let watcher: FSWatcher;
     try {
       watcher = watch(dir, (_kind, name) => {
-        const path = name ? join(dir, name.toString()) : dir;
+        let path = name ? join(dir, name.toString()) : dir;
+        // Gone: a temporary file renamed, or the folder itself by its own name.
+        let stat = statSafe(path);
+        if (!stat && name?.toString() === basename(dir)) {
+          path = dir;
+          stat = statSafe(dir);
+        }
+        if (stat && stat.mtimeMs < since) return;
         onChange(path);
         if (path === dir) return;
-        let folderMade = false;
-        try {
-          folderMade = statSync(path).isDirectory();
-        } catch {
-          // Gone (a temporary file renamed): nothing to add.
-        }
-        if (folderMade && descend(relative(folder, path))) addTree(path);
+        if (stat?.isDirectory() && descend(relative(folder, path))) addTree(path, -Infinity);
       });
     } catch {
       return;
@@ -60,8 +81,8 @@ export function watchTree(
   }
 
   /** `dir` and, in it, every folder `descend` takes. */
-  function addTree(dir: string): void {
-    add(dir);
+  function addTree(dir: string, since: number): void {
+    add(dir, since);
     let entries: { name: string; isDirectory(): boolean }[];
     try {
       entries = readdirSync(dir, { withFileTypes: true });
@@ -70,7 +91,7 @@ export function watchTree(
     }
     for (const entry of entries) {
       const path = join(dir, entry.name);
-      if (entry.isDirectory() && descend(relative(folder, path))) addTree(path);
+      if (entry.isDirectory() && descend(relative(folder, path))) addTree(path, since);
     }
   }
 
@@ -89,7 +110,7 @@ export function watchTree(
         if (!made) return;
         top?.close();
         top = null;
-        addTree(folder);
+        addTree(folder, -Infinity);
         onChange(folder);
       });
       top.on('error', () => {
@@ -107,7 +128,10 @@ export function watchTree(
   } catch {
     // Made later.
   }
-  if (exists) addTree(folder);
+  // macOS's FSEvents also delivers changes made just before a watch started, and names the
+  // watched folder by its own name (`activity/activity`): the first read after the watch began
+  // had them, and a second read or a `touched` path for them is not news (fix-ci-green).
+  if (exists) addTree(folder, replays ? Date.now() : -Infinity);
   else awaitFolder();
 
   return {

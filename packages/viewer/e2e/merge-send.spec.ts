@@ -33,6 +33,11 @@ test("a failed merge check: Send to the agent types it into the branch's agent, 
   await start.getByRole('textbox', { name: 'Goal' }).press('Control+Enter');
   await expect(start).toBeHidden();
   const branch = 'feature/add-a-half-function';
+  // Its prompt reached it first: a report before it would end no turn (fix-ci-green).
+  await expect(page.locator(`.workspace-row[data-branch="${branch}"]`)).toContainText(
+    'Thinking',
+    POLL,
+  );
   symbiote.commit(branch, 'src/half.ts', 'export const half = (a: number) => a / 2;\n', 'Add half');
   symbiote.report(branch, 'Done: half() in src/half.ts.');
   await expect(page.locator(`.workspace-row[data-branch="${branch}"]`)).toContainText(

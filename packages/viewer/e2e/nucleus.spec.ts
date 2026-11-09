@@ -483,6 +483,8 @@ test("Scout's address opens Nucleus; Scout's conversation is read until New conv
   expect(flag(nucleusCalls()[0]?.args, '--tools')).toBe('Read,Grep,Glob,Bash,WebSearch,WebFetch');
   await expect(nucleusPage(page).getByRole('note')).toHaveCount(0, POLL);
   for (const file of scoutFiles) expect(existsSync(file)).toBe(false);
+  // Written once the agent started, which the fake records first (fix-ci-green).
+  await expect.poll(() => existsSync(record()), POLL).toBe(true);
   expect(JSON.parse(readFileSync(record(), 'utf8'))).toMatchObject({ agent: 'claude' });
   expect(git('status', '--porcelain')).toBe('');
 });
