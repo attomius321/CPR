@@ -1,5 +1,4 @@
 import {
-  Fragment,
   useCallback,
   useEffect,
   useMemo,
@@ -9,13 +8,11 @@ import {
   type ReactNode,
 } from 'react';
 import type {
-  MergeEntry,
   WorkspaceReplied,
   WorkspaceShell,
   WorkspaceShells,
   WorkspaceStart,
   TerminalAvailability,
-  WorkspaceSummary,
 } from '@symbiote/core';
 import {
   AgentTerminal,
@@ -43,26 +40,11 @@ import {
   normalSteps,
   pipelineSteps,
   planAnswered,
-  type StepsModel,
 } from './workspace-steps.js';
 import { ReplyForm } from './ReplyForm.js';
 import { WorkspaceTabs, type AgentView, type View } from './WorkspaceTabs.js';
-import {
-  BellIcon,
-  BranchIcon,
-  ChangesIcon,
-  CheckIcon,
-  ChoreIcon,
-  CloseIcon,
-  EditorIcon,
-  ExpandIcon,
-  MergeIcon,
-  PencilIcon,
-  ReviewIcon,
-  SpinIcon,
-  TerminalIcon,
-} from '../ui/icons.js';
-import { Pipeline, type PipelineState } from '../ui/Pipeline.js';
+import { BranchIcon, ChangesIcon, EditorIcon, ExpandIcon, TerminalIcon } from '../ui/icons.js';
+import { Pipeline } from '../ui/Pipeline.js';
 import { HivePipeline } from './HivePipeline.js';
 import { hivePipeline } from './hive-pipeline.js';
 import { StatusLabel } from '../ui/StatusLabel.js';
@@ -80,7 +62,6 @@ import { RESPOND_EVENT, respondTo } from './respond.js';
 import { postJson, serverWords } from '../ui/http.js';
 import { Resizer } from '../ui/Resizer.js';
 import {
-  AGENT_NAMES,
   workspaceHref,
   workspaceName,
   briefTip,
@@ -91,7 +72,7 @@ import {
 import { allRows, workspaceGroups, type WorkspaceRow } from './workspace-groups.js';
 import { mergedForCard } from './workspace-next.js';
 import { startedNotice } from './start-branch.js';
-import { runsOnWords, startedWith } from './run-choices.js';
+import { startedWith } from './run-choices.js';
 import { replyMode, verdictToSend } from './thread-items.js';
 import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
@@ -100,6 +81,9 @@ import { closeQuestion, shellAfter, shellName, shellOfUrl, withShell } from './s
 import { readWorkspacesAgain, reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
 import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
+import { FactsSection, NowSection } from './SideFacts.js';
+import { briefFirst, mergeOf, startedAt } from './workspace-words.js';
+import { TURN_WORDS, stepIcon } from './WorkspacePipeline.js';
 
 /** `?send=verdict`: from the Review tab, the box filled with the review's verdict (V18c). */
 const sendOfUrl = (): string | null => new URLSearchParams(window.location.search).get('send');
@@ -121,36 +105,6 @@ async function readShells(branch: string): Promise<WorkspaceShell[]> {
  * A workspace in the shell's main area (V29a; the Workspaces page's panel before it): its state
  * and actions, then its terminal, its thread or its brief. The address names it (`/?branch=`).
  */
-/** Whose turn it is, the pipeline card's Turn (proof 02). */
-const TURN_WORDS: Record<StepsModel['tone'], string> = {
-  you: 'Yours',
-  run: "Agent's",
-  ok: 'Done',
-  error: 'Stopped',
-  info: 'Paused',
-  idle: 'Nobody',
-};
-
-/** A pipeline step's mark (V93): done a check, at work the arc, failed a cross, else its own. */
-function stepIcon(name: string, state: PipelineState): ReactNode {
-  if (state === 'done') return <CheckIcon />;
-  if (state === 'now') return <SpinIcon />;
-  if (state === 'bad') return <CloseIcon />;
-  switch (name) {
-    case 'Your OK':
-      return <BellIcon />;
-    case 'Review':
-      return <ReviewIcon />;
-    case 'Merge':
-    case 'Land':
-      return <MergeIcon />;
-    case 'Check':
-      return <ChoreIcon />;
-    default:
-      return <PencilIcon />;
-  }
-}
-
 export function WorkspaceView({ branch }: { branch: string }) {
   const shell = useShell();
   const { list, reviews } = useWorkspaces();
@@ -1196,123 +1150,6 @@ function WorkspacePanel({
           />
         )}
       </div>
-    </section>
-  );
-}
-
-/** The workspace's newest entry in the merge queue, if any. */
-function mergeOf(entries: readonly MergeEntry[], branch: string): { merge?: MergeEntry } {
-  const merge = entries.filter((entry) => entry.branch === branch).at(-1);
-  return merge ? { merge } : {};
-}
-
-/** When it started: the time today, else the day. */
-function startedAt(iso: string): string {
-  const date = new Date(iso);
-  return date.toDateString() === new Date().toDateString()
-    ? date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
-    : date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-/** A brief's first words for the side card (V93): its goal's first paragraph, no Markdown marks. */
-function briefFirst(brief: string): string | undefined {
-  const lines = brief
-    .split('\n')
-    .map((line) => line.trim())
-    .filter((line) => line !== '' && !line.startsWith('#'));
-  const text = lines.join(' ').replace(/\*\*|__|`/g, '');
-  return text === '' ? undefined : text.length > 240 ? `${text.slice(0, 240).trimEnd()}…` : text;
-}
-
-/**
- * The workspace's facts (V93, proof 02): its kind, agent, model and plan first. Its permissions
- * are not in the list's summary: not shown.
- */
-function FactsSection({ workspace }: { workspace: WorkspaceSummary }) {
-  const { agent } = workspace;
-  const runs = runsOnWords(agent);
-  return (
-    <section className="changes-section changes-now" aria-label="Workspace">
-      <h2>Workspace</h2>
-      <dl className="changes-facts">
-        {workspace.kind && (
-          <>
-            <dt>Kind</dt>
-            <dd>{workspace.kind.charAt(0).toUpperCase() + workspace.kind.slice(1)}</dd>
-          </>
-        )}
-        {agent.kind && (
-          <>
-            <dt>Agent</dt>
-            <dd>{AGENT_NAMES[agent.kind]}</dd>
-          </>
-        )}
-        {runs && (
-          <>
-            <dt>Model</dt>
-            <dd>{runs.text}</dd>
-          </>
-        )}
-        <dt>Plan first</dt>
-        <dd data-tone={workspace.planFirst && agent.state === 'plan-ready' ? 'you' : undefined}>
-          {workspace.planFirst
-            ? agent.state === 'plan-ready'
-              ? 'on, waits for your OK'
-              : 'on'
-            : 'off'}
-        </dd>
-      </dl>
-    </section>
-  );
-}
-
-/**
- * The side card's first section (V89, decision 832): what the agent does now and since when, and
- * what runs in its shells; nothing while neither.
- */
-function NowSection({
-  row: { workspace, next },
-  bar,
-  shells,
-}: {
-  row: WorkspaceRow;
-  bar: ReturnType<typeof barOf>;
-  shells: WorkspaceShell[];
-}) {
-  const { agent } = workspace;
-  const live = ['working', 'needs-you', 'plan-ready'].includes(agent.state);
-  if (!live && shells.length === 0) return null;
-  const since = workspace.activity?.since;
-  return (
-    <section className="changes-section changes-now" aria-label="What its agent does">
-      <h2>Now</h2>
-      <dl className="changes-facts">
-        {live && (
-          <>
-            <dt>{agent.kind ? AGENT_NAMES[agent.kind] : 'Agent'}</dt>
-            <dd data-tone={bar.tone}>
-              {agent.state === 'working' ? (next.doing ?? 'Working') : bar.text}
-            </dd>
-            {since && (
-              <>
-                <dt>{agent.state === 'working' ? 'Working' : 'Waiting'}</dt>
-                <dd>
-                  <Since since={since} />
-                  {workspace.activity?.tools
-                    ? ` · ${workspace.activity.tools} tool call${workspace.activity.tools === 1 ? '' : 's'}`
-                    : ''}
-                </dd>
-              </>
-            )}
-          </>
-        )}
-        {shells.map((one) => (
-          <Fragment key={one.id}>
-            <dt>{shellName(one.number)}</dt>
-            <dd className="mono">{one.running}</dd>
-          </Fragment>
-        ))}
-      </dl>
     </section>
   );
 }
