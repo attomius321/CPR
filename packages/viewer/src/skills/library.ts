@@ -89,3 +89,7 @@ export function probeText(
     : '';
   return { text: `${what}${where}${nested}`, save: 'set' };
 }
+
+/** The folder a skill's folder is in, as shown: the checkout's, or the library's in full (SK1). */
+export const folderOf = (skill: Skill, library: LibraryState | undefined) =>
+  skill.folder === 'library' && library ? library.folder : skill.folder;
