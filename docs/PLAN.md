@@ -413,6 +413,7 @@ What holds now: [The merger](area/merger.md) · its decisions: [the register](de
 | [Chore](plan/chore-e2e-waits.md) | e2e specs poll instead of fixed waits | planned | | |
 | [Chore](plan/chore-env-docs.md) | configuration.md lists every variable Symbiote reads | planned | | |
 | [Chore](plan/chore-package-claude-md.md) | The packages' CLAUDE.md files name what they hold | planned | | |
+| [Refactor](plan/refactor-viewer-pages.md) | The viewer's and the nexus's large files in modules one can read | planned | 955–960 | [journal](journal/refactor-viewer-pages.md) |
 
 ### Across the app
 
