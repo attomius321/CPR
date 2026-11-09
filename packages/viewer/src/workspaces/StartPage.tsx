@@ -14,14 +14,11 @@ import {
   briefLength,
   formParts,
   formReady,
-  HINTS,
-  morePartsOf,
   newForm,
   readDraft,
   requiredPart,
   withCheck,
   withKind,
-  checkWords,
   type BriefForm,
 } from './brief.js';
 import { AGENT_NAMES } from './workspaces.js';
@@ -35,17 +32,7 @@ import {
   type RunChoices,
 } from './run-choices.js';
 import { fileBase64, getJson, postJson } from '../ui/http.js';
-import { shortSha } from '../history/commits.js';
-import {
-  ArrowRightIcon,
-  AttachIcon,
-  ChevronIcon,
-  ChoreIcon,
-  MarkdownIcon,
-  PlusIcon,
-  ShuffleIcon,
-  HexagonIcon,
-} from '../ui/icons.js';
+import { ArrowRightIcon, PlusIcon, HexagonIcon } from '../ui/icons.js';
 import { PageHead } from '../ui/PageHead.js';
 import { reloadWorkspaces } from './useWorkspaces.js';
 import { beginStart, endStart } from './starting.js';
@@ -57,19 +44,18 @@ import {
   readDocuments,
   type DocumentEntry,
 } from './documents.js';
-import { StartAgent, StartAgentRows } from './StartAgent.js';
-import { HiveCheckLine, HiveHow, useHiveCheck } from './StartHive.js';
+import { StartAgent } from './StartAgent.js';
+import { HiveHow, useHiveCheck } from './StartHive.js';
 import { useHive } from '../shell/hive.js';
 import { StartDocuments } from './StartDocuments.js';
-import { StartFrom } from './StartFrom.js';
 import { StartKinds } from './StartKinds.js';
 import { SuggestButton, SuggestionCard, useSuggestion } from './StartSuggest.js';
 import { suggestBlocked } from './suggest.js';
 import { tip } from '../ui/tip.js';
-import { whatHappensNext } from './start-next.js';
 import { Loading } from '../ui/Loading.js';
-import { GoalPreview } from './StartBrief.js';
-import { NEXT_ICONS } from './NextSteps.js';
+import { StartBrief } from './StartBrief.js';
+import { StartSource } from './StartSource.js';
+import { NextSteps } from './NextSteps.js';
 
 /** How long typing pauses before the draft is saved. */
 const SAVE_AFTER_MS = 400;
@@ -220,9 +206,6 @@ function StartForm({
     () => readDraft(draft, kinds, null) ?? newForm(specOf('feature'), null),
   );
   const [guess, setGuess] = useState<CheckGuess | null>(null);
-  const [moreShown, setMoreShown] = useState(false);
-  // The goal shown as Markdown (V63), until written again.
-  const [previewing, setPreviewing] = useState(false);
   // The one file picker of the page: Documents' Add files, and the goal's 📎.
   const picker = useRef<HTMLInputElement>(null);
   // The kinds' info: while hovered or focused, or once tapped.
@@ -366,9 +349,6 @@ function StartForm({
   const tooLong = length > options.maxBrief;
   const waiting = documentsBlocking(documents);
   const ready = formReady(form) && !problem && !tooLong && !running && !waiting;
-  const more = morePartsOf(spec);
-  const moreText = more.some((part) => (form.more[part] ?? '').trim() !== '');
-  const moreOpen = moreShown || moreText;
   const main = requiredPart(spec);
   const heading = (part: string) => spec.parts.find((p) => p.part === part)?.heading ?? part;
 
@@ -424,7 +404,6 @@ function StartForm({
   const pick = (kind: WorkKindSpec) => {
     if (kind.kind !== form.kind) edit(withKind(form, spec, kind, guess));
   };
-  const folder = options.worktrees.replace('<branch>', branch.replaceAll('/', '-'));
   const mainHeading = heading(main);
   const startWords = agent ? (hive ? 'Start goal' : 'Start workspace') : 'Make the branch';
   // The documents: a row in the brief's card, as the proofs draw it (V92 in Hive mode; V93 both).
@@ -519,233 +498,42 @@ function StartForm({
           {/* The brief (V93, proof 06): the kinds as line tabs in its head, its fields under. */}
           <section className="start-brief" aria-label="The brief">
             <StartKinds kinds={kinds} current={spec} onPick={pick} />
-            <div className="start-form">
-              <div className="workspace-field">
-                <label
-                  htmlFor="start-name"
-                  {...tip(
-                    `The workspace's name in Symbiote; its branch is named after it (${options.branchPrefixes[form.kind]}…) until you type another`,
-                  )}
-                >
-                  Title
-                </label>
-                <input
-                  id="start-name"
-                  type="text"
-                  name="title"
-                  autoFocus
-                  autoComplete="off"
-                  value={form.title}
-                  placeholder="A short name: the workspace's and its branch's"
-                  onChange={(event) => edit({ ...form, title: event.target.value })}
-                />
-              </div>
-              <div className="workspace-field">
-                <label
-                  htmlFor="start-main"
-                  {...tip(
-                    'What the agent reads first, and the one part a start needs; kept as you write it, Markdown and all',
-                  )}
-                >
-                  {mainHeading}
-                </label>
-                <div className="start-goal-frame">
-                  {previewing ? (
-                    <GoalPreview text={form.main} />
-                  ) : (
-                    <textarea
-                      id="start-main"
-                      className="start-goal"
-                      rows={7}
-                      value={form.main}
-                      placeholder={HINTS[main]}
-                      onChange={(event) => edit({ ...form, main: event.target.value })}
-                    />
-                  )}
-                  <div
-                    className="start-goal-tools"
-                    role="toolbar"
-                    aria-label={`${mainHeading} tools`}
-                  >
-                    <button
-                      type="button"
-                      className="icon-button"
-                      aria-label="Attach files"
-                      {...tip('Add files to the documents')}
-                      onClick={() => picker.current?.click()}
-                    >
-                      <AttachIcon />
-                    </button>
-                    <button
-                      type="button"
-                      className="icon-button"
-                      aria-label="Preview"
-                      aria-pressed={previewing}
-                      {...tip(previewing ? 'Write' : 'Preview as Markdown')}
-                      onClick={() => setPreviewing(!previewing)}
-                    >
-                      <MarkdownIcon />
-                    </button>
-                    <span
-                      className={tooLong ? 'start-count error' : 'start-count'}
-                      {...tip("The brief's length: the title and every part")}
-                    >
-                      {length.toLocaleString('en')} / {options.maxBrief.toLocaleString('en')}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <div className="workspace-field">
-                <label
-                  htmlFor="start-done"
-                  {...tip(
-                    'How the agent knows it is done: a check it can run (a test, a command) is best',
-                  )}
-                >
-                  Done when <span className="field-optional">(optional)</span>
-                </label>
-                <textarea
-                  id="start-done"
-                  rows={3}
-                  value={form.doneWhen}
-                  placeholder={`${HINTS.doneWhen} e.g. ${checkWords(guess)}, and …`}
-                  onChange={(event) => edit({ ...form, doneWhen: event.target.value })}
-                />
-              </div>
-              {hive ? (
-                <HiveCheckLine check={hiveCheck} />
-              ) : (
-                guess && (
-                  <p className="start-check-line workspace-check-guess">
-                    <ChoreIcon />
-                    The merge&apos;s check: <code>{guess.command}</code>{' '}
-                    <span>
-                      from <span className="mono">{guess.source}</span>
-                    </span>
-                  </p>
-                )
-              )}
-              <div className={moreOpen ? 'start-more open' : 'start-more'}>
-                <button
-                  type="button"
-                  className="start-more-toggle"
-                  aria-expanded={moreOpen}
-                  aria-label={`More: ${more.map(heading).join(', ')}, optional`}
-                  onClick={() => setMoreShown(!moreOpen)}
-                >
-                  <ChevronIcon open={moreOpen} />
-                  <span className="start-more-words">
-                    {more
-                      .map(heading)
-                      .join(', ')
-                      .toLowerCase()
-                      .replace(/^./, (c) => c.toUpperCase())}
-                  </span>
-                  <span className="start-chip">optional</span>
-                </button>
-                {moreOpen &&
-                  more.map((part) => (
-                    <label key={part} className="workspace-field">
-                      {heading(part)}
-                      <textarea
-                        rows={2}
-                        value={form.more[part] ?? ''}
-                        placeholder={HINTS[part]}
-                        onChange={(event) =>
-                          edit({ ...form, more: { ...form.more, [part]: event.target.value } })
-                        }
-                      />
-                    </label>
-                  ))}
-              </div>
-              {documentsCard}
-              {tooLong && (
-                <p className="error start-too-long">
-                  The brief is {length.toLocaleString('en')} characters; at most{' '}
-                  {options.maxBrief.toLocaleString('en')}.
-                </p>
-              )}
-            </div>
+            <StartBrief
+              form={form}
+              edit={edit}
+              spec={spec}
+              options={options}
+              main={main}
+              mainHeading={mainHeading}
+              heading={heading}
+              picker={picker}
+              length={length}
+              tooLong={tooLong}
+              guess={guess}
+              hive={hive}
+              hiveCheck={hiveCheck}
+              documentsCard={documentsCard}
+            />
           </section>
           <div className="start-run">
-            <section
-              className={hive ? 'start-card start-hive-who' : 'start-card start-source'}
-              aria-labelledby="start-source-title"
-            >
-              <div className="card-head">
-                <h2 id="start-source-title">{hive ? 'Where and who' : 'Source'}</h2>
-              </div>
-              <div className="start-rows">
-                <label id="start-from-label" htmlFor="start-from">
-                  Starts from
-                </label>
-                <StartFrom
-                  id="start-from"
-                  labelId="start-from-label"
-                  branches={options.branches}
-                  at={at}
-                  value={base.from ?? ''}
-                  onPick={(name) => {
-                    setOnCommit(name === '');
-                    if (name !== '') choose({ ...run, from: name });
-                  }}
-                />
-                <label htmlFor="start-branch">Branch</label>
-                <div className="start-branch workspace-field">
-                  <input
-                    id="start-branch"
-                    type="text"
-                    aria-label="Branch name"
-                    autoComplete="off"
-                    value={branch}
-                    spellCheck={false}
-                    aria-invalid={form.title.trim() !== '' && problem !== null}
-                    {...tip(
-                      `Will be created from ${base.from ? `${base.from} at` : 'the commit'} ${shortSha(base.sha)} as ${branch}\nIts worktree: ${folder}`,
-                      { code: true },
-                    )}
-                    onChange={(event) => edit({ ...form, branch: event.target.value })}
-                  />
-                  {form.branch !== null && (
-                    <button
-                      type="button"
-                      className="icon-button start-rename"
-                      aria-label="Name it after the title"
-                      {...tip('Name it after the title')}
-                      onClick={() => edit({ ...form, branch: null })}
-                    >
-                      <ShuffleIcon />
-                    </button>
-                  )}
-                </div>
-                {form.title.trim() !== '' && problem && (
-                  <p className="error start-row-note">{problem}</p>
-                )}
-                {hive && agent && (
-                  <StartAgentRows
-                    agent={agent}
-                    run={run}
-                    model={model}
-                    models={models}
-                    effort={effort}
-                    efforts={efforts}
-                    onChoose={choose}
-                  />
-                )}
-              </div>
-              {/* Where it starts, for screen readers: the branch's tip says it to the pointer. */}
-              <p className="start-base">
-                Will be created from{' '}
-                {base.from ? (
-                  <>
-                    <strong>{base.from}</strong> at
-                  </>
-                ) : (
-                  'the commit'
-                )}{' '}
-                <code>{shortSha(base.sha)}</code> as <strong>{branch}</strong>
-              </p>
-            </section>
+            <StartSource
+              hive={hive}
+              options={options}
+              at={at}
+              base={base}
+              run={run}
+              choose={choose}
+              setOnCommit={setOnCommit}
+              form={form}
+              edit={edit}
+              branch={branch}
+              problem={problem}
+              agent={agent}
+              model={model}
+              models={models}
+              effort={effort}
+              efforts={efforts}
+            />
             <SuggestionCard
               asked={suggestion.asked}
               agent={agent}
@@ -790,27 +578,12 @@ function StartForm({
               />
             )}
             {!hive && (
-              <section className="start-card start-next" aria-labelledby="start-next-title">
-                <div className="card-head">
-                  <h2 id="start-next-title">What happens next</h2>
-                </div>
-                <ol className="start-next-steps">
-                  {whatHappensNext({
-                    planFirst,
-                    into: base.from ?? 'its branch',
-                    kind: form.kind,
-                    agent: agent !== null,
-                  }).map((step) => (
-                    <li key={step.words} className={step.you ? 'you' : undefined}>
-                      {NEXT_ICONS[step.icon]}
-                      <span>
-                        {step.words}
-                        {step.turn && <b> {step.turn}</b>}
-                      </span>
-                    </li>
-                  ))}
-                </ol>
-              </section>
+              <NextSteps
+                planFirst={planFirst}
+                into={base.from ?? 'its branch'}
+                kind={form.kind}
+                agent={agent !== null}
+              />
             )}
           </div>
         </div>
