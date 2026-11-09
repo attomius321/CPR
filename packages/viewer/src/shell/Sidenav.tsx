@@ -55,7 +55,7 @@ import { useCardMoves } from '../workspaces/useCardMoves.js';
 import { doneGroups } from '../workspaces/row-words.js';
 import { findingsOf } from '../overview/normal-overview.js';
 import { useFindings } from '../workspaces/useFindings.js';
-import { workspaceGroups, type WorkspaceRow } from '../workspaces/workspaces.js';
+import { workspaceGroups, type WorkspaceRow } from '../workspaces/workspace-groups.js';
 import { mergingAlone } from '../workspaces/merges.js';
 import { DoneRowItem, MergeRowItem, WorkspaceRowItem } from './SidenavRow.js';
 import { loadWidths, saveWidth } from '../ui/widths.js';

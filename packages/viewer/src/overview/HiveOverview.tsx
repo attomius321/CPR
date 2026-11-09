@@ -41,7 +41,9 @@ import { liveWords } from '../workspaces/hive-live.js';
 import { landingLine } from '../workspaces/hive-rounds.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { hiveSteps } from '../workspaces/workspace-steps.js';
-import { activityText, modelName, workspaceName } from '../workspaces/workspaces.js';
+import { workspaceName } from '../workspaces/workspaces.js';
+import { activityText } from '../workspaces/workspace-next.js';
+import { modelName } from '../workspaces/run-choices.js';
 import { clockOf, isToday } from './day.js';
 import { hiveFeed } from './feed.js';
 import {

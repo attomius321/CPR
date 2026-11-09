@@ -79,22 +79,18 @@ import { postJson, serverWords } from '../ui/http.js';
 import { Resizer } from '../ui/Resizer.js';
 import {
   AGENT_NAMES,
-  runsOnWords,
-  allRows,
-  workspaceGroups,
   workspaceHref,
   workspaceName,
   briefTip,
-  replyMode,
   asksBeforeOpening,
   opensTerminal,
-  startedNotice,
-  startedWith,
   talkCommand,
-  verdictToSend,
-  type WorkspaceRow,
-  mergedForCard,
 } from './workspaces.js';
+import { allRows, workspaceGroups, type WorkspaceRow } from './workspace-groups.js';
+import { mergedForCard } from './workspace-next.js';
+import { startedNotice } from './start-branch.js';
+import { runsOnWords, startedWith } from './run-choices.js';
+import { replyMode, verdictToSend } from './thread-items.js';
 import { GIT_PAGE } from '../shell/pages.js';
 import { useShell, type Notice } from '../shell/shell-context.js';
 import { verdictLine } from './terminal.js';

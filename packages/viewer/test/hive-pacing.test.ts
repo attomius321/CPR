@@ -16,7 +16,8 @@ import {
 } from '../src/workspaces/hive-rounds.js';
 import { budgetOf, budgetWords, pauseAtWords, pauseChoices } from '../src/settings/hive-switch.js';
 import { transitionNotice } from '../src/workspaces/transitions.js';
-import { allRows, workspaceGroups, workspaceNext } from '../src/workspaces/workspaces.js';
+import { allRows, workspaceGroups } from '../src/workspaces/workspace-groups.js';
+import { workspaceNext } from '../src/workspaces/workspace-next.js';
 
 /** A time in the viewer's own zone: what the person's clock says. */
 const local = (y: number, m: number, d: number, h: number, min: number) =>

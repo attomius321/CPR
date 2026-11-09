@@ -51,13 +51,8 @@ import {
 import { checksEdited } from './checks.js';
 import { ChecksPage, type ChecksNotice } from './ChecksPage.js';
 import { nucleusName, useAlphaCeph } from '../shell/names.js';
-import {
-  AGENT_NAMES,
-  effortChoices,
-  keptEffort,
-  keptModel,
-  modelChoices,
-} from '../workspaces/workspaces.js';
+import { AGENT_NAMES } from '../workspaces/workspaces.js';
+import { effortChoices, keptEffort, keptModel, modelChoices } from '../workspaces/run-choices.js';
 import { tip } from '../ui/tip.js';
 import {
   AdviceIcon,

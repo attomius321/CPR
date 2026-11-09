@@ -11,7 +11,8 @@ import type {
 import { HIVE_STAGES, NORMAL_STAGES } from '../ui/StageTrack.js';
 import type { StatusTone } from '../ui/StatusLabel.js';
 import { mergeState } from './merges.js';
-import { AGENT_NAMES, mergedForCard, type WorkspaceNext } from './workspaces.js';
+import { AGENT_NAMES } from './workspaces.js';
+import { mergedForCard, type WorkspaceNext } from './workspace-next.js';
 import { plural } from '../ui/plural.js';
 
 /** The track's mark at the step it is at: in progress, the person's, or failed. */

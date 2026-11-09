@@ -4,12 +4,8 @@
 import type { BranchReviewList, MergeEntry, WorkspaceDay, WorkspaceSummary } from '@symbiote/core';
 import { mergeState } from '../workspaces/merges.js';
 import type { StepMark } from '../workspaces/workspace-steps.js';
-import {
-  AGENT_NAMES,
-  workspaceName,
-  type WorkspaceGroups,
-  type WorkspaceRow,
-} from '../workspaces/workspaces.js';
+import { AGENT_NAMES, workspaceName } from '../workspaces/workspaces.js';
+import { type WorkspaceGroups, type WorkspaceRow } from '../workspaces/workspace-groups.js';
 import { dayStarts, isToday, median, perDay } from './day.js';
 import { plural } from '../ui/plural.js';
 

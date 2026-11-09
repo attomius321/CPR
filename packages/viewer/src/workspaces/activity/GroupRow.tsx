@@ -38,7 +38,7 @@ import {
 import { markdownNodes, type Lexer } from '../../ui/markdown.js';
 import { tip } from '../../ui/tip.js';
 import { longDate } from '../../history/commits.js';
-import { askedFor } from '../workspaces.js';
+import { askedFor } from '../thread-items.js';
 import { useNucleusName } from '../../shell/names.js';
 import { callKind, COMMAND_TOOLS, IMAGE } from './classify.js';
 import type { ActivityEvent, ToolCall } from './events.js';

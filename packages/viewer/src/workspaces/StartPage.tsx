@@ -24,17 +24,16 @@ import {
   checkWords,
   type BriefForm,
 } from './brief.js';
+import { AGENT_NAMES } from './workspaces.js';
+import { branchProblem, proposeBranch } from './start-branch.js';
 import {
-  AGENT_NAMES,
-  branchProblem,
   effortChoices,
   keptEffort,
   keptModel,
   modelChoices,
-  proposeBranch,
   readRun,
   type RunChoices,
-} from './workspaces.js';
+} from './run-choices.js';
 import { fileBase64, getJson, postJson } from '../ui/http.js';
 import { shortSha } from '../history/commits.js';
 import {

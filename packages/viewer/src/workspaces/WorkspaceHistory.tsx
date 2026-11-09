@@ -35,7 +35,8 @@ import {
   type HistoryView,
 } from './history.js';
 import { useWorkspaces } from './useWorkspaces.js';
-import { AGENT_NAMES, briefTip, startedWith, workspaceName } from './workspaces.js';
+import { AGENT_NAMES, briefTip, workspaceName } from './workspaces.js';
+import { startedWith } from './run-choices.js';
 import { useNucleusName } from '../shell/names.js';
 import { Loading } from '../ui/Loading.js';
 

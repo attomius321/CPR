@@ -12,8 +12,28 @@ import type {
 } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import {
-  branchProblem,
+  workspaceName,
+  shortAge,
+  talkCommand,
+  terminalHint,
+  asksBeforeOpening,
+  opensTerminal,
+} from '../src/workspaces/workspaces.js';
+import {
   cleanableOnCard,
+  allRows,
+  workspaceChips,
+  workspaceGroups,
+  workspacesFirst,
+} from '../src/workspaces/workspace-groups.js';
+import {
+  activityText,
+  workspaceFacts,
+  mergedForCard,
+  workspaceNext,
+} from '../src/workspaces/workspace-next.js';
+import { branchProblem, proposeBranch, startedNotice } from '../src/workspaces/start-branch.js';
+import {
   effortChoices,
   keptEffort,
   keptModel,
@@ -22,26 +42,8 @@ import {
   startedWith,
   modelName,
   runsOnWords,
-  activityText,
-  allRows,
-  workspaceChips,
-  workspaceFacts,
-  workspaceGroups,
-  workspaceName,
-  mergedForCard,
-  workspaceNext,
-  workspacesFirst,
-  proposeBranch,
-  replyMode,
-  shortAge,
-  startedNotice,
-  talkCommand,
-  terminalHint,
-  asksBeforeOpening,
-  opensTerminal,
-  threadItems,
-  verdictToSend,
-} from '../src/workspaces/workspaces.js';
+} from '../src/workspaces/run-choices.js';
+import { replyMode, threadItems, verdictToSend } from '../src/workspaces/thread-items.js';
 
 describe('effortChoices and keptEffort (V30b)', () => {
   const claude: AgentOption = {

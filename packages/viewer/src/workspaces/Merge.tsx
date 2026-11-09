@@ -61,7 +61,7 @@ import { ChecksMark, Item, type ItemState } from './RunItem.js';
 import { PageHead } from '../ui/PageHead.js';
 import { MoreActions, type MenuAction } from '../ui/MoreActions.js';
 import { reloadWorkspaces, useWorkspaces } from './useWorkspaces.js';
-import { replyMode } from './workspaces.js';
+import { replyMode } from './thread-items.js';
 import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
 

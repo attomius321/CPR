@@ -45,7 +45,7 @@ import {
   verdictWords,
 } from './hive-rounds.js';
 import { checkRows, landedWords, runRounds, stopWords, type RunRound } from './run-timeline.js';
-import { modelName } from './workspaces.js';
+import { modelName } from './run-choices.js';
 import { ChecksMark, Item, type ItemState } from './RunItem.js';
 import { Loading } from '../ui/Loading.js';
 import { useTouched } from '../shell/events.js';

@@ -1,4 +1,4 @@
-import type { AgentChip } from './workspaces.js';
+import type { AgentChip } from './workspace-next.js';
 import { tip } from '../ui/tip.js';
 /** A workspace's mark (V18b): what its agent is doing, a link to the workspace. */
 export function WorkspaceMark({ chip }: { chip: AgentChip & { href: string } }) {

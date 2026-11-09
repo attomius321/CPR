@@ -80,7 +80,8 @@ import { SyncBar, type SyncRun } from './SyncBar.js';
 import { RefDialog, type RefAction } from './RefDialog.js';
 import type { PanelEntry } from './branches.js';
 import { CheckoutDialog } from './CheckoutDialog.js';
-import { workspaceChips, workspaceHref, workspacesFirst } from '../workspaces/workspaces.js';
+import { workspaceHref } from '../workspaces/workspaces.js';
+import { workspaceChips, workspacesFirst } from '../workspaces/workspace-groups.js';
 import { useWorkspaces } from '../workspaces/useWorkspaces.js';
 import { RowMenu, type RowMenuItem } from './RowMenu.js';
 import {

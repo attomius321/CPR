@@ -8,7 +8,7 @@ import type {
 } from '@symbiote/core';
 import { useShell } from '../shell/shell-context.js';
 import { HIVE_STAGES } from '../ui/StageTrack.js';
-import { effortChoices, keptEffort, keptModel, modelChoices } from '../workspaces/workspaces.js';
+import { effortChoices, keptEffort, keptModel, modelChoices } from '../workspaces/run-choices.js';
 import { setHive, useHive } from '../shell/hive.js';
 import { getJson, postJson } from '../ui/http.js';
 import { HiveQuestion } from './HiveQuestion.js';

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useTouched } from '../shell/events.js';
 import type { WorkspaceThread } from '@symbiote/core';
 import { markdownNodes, useMarkdown } from '../ui/markdown.js';
-import { threadItems } from './workspaces.js';
+import { threadItems } from './thread-items.js';
 import { tip } from '../ui/tip.js';
 import { Loading } from '../ui/Loading.js';
 

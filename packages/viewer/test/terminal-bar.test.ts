@@ -1,6 +1,6 @@
 import type { ThreadEntry, WorkspaceSummary } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { workspaceNext } from '../src/workspaces/workspaces.js';
+import { workspaceNext } from '../src/workspaces/workspace-next.js';
 import { barOf } from '../src/workspaces/terminal-bar.js';
 
 // V89 (decisions 828, 829): the bar under the terminal says what waits in the agent's own words,

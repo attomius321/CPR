@@ -4,7 +4,8 @@
 // looking at screenshots, debugging, git). A presentation of the events: each event is in one
 // group, as it is; a group says only what its events say.
 import type { PromptFrom, ThreadEntry, TurnTokens, WorkspaceAgentState } from '@symbiote/core';
-import { AGENT_NAMES, askedFor, promptFrom } from '../workspaces.js';
+import { AGENT_NAMES } from '../workspaces.js';
+import { askedFor, promptFrom } from '../thread-items.js';
 import {
   callKind,
   COMMAND_TOOLS,
