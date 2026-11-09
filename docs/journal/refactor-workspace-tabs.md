@@ -24,8 +24,8 @@ is 950 lines with 128 branches.
   The `more` menu's actions (60 lines) are another. Neither was started.
 
 **Verification**:
-- Six tests in `shells.test.ts`, one per state: nothing picked, no terminal, Run without Hive, a
-  shell that went, none left, shells not read yet, shells that cannot run, Split, and Split's
+- Six tests in `shells.test.ts` cover nine states: nothing picked, no terminal, Run without Hive,
+  a shell that went, none left, shells not read yet, shells that cannot run, Split, and Split's
   shell gone. The expectations were traced from the component's code. Written first, they failed
   for the missing function; they pass on the moved code.
 - `pnpm check`: 245 test files and 3,434 tests (`main`'s 3,428 and these 6). `pnpm build` passes.
