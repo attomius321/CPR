@@ -24,7 +24,8 @@ import {
 } from '@symbiote/core';
 import { AppServerError } from './app-server.js';
 import { asksTrust, type Codex } from './codex.js';
-import { PromptRefused, writeConfig } from './prompts.js';
+import { PromptRefused } from './prompts.js';
+import { writeConfig } from './config-write.js';
 import { prepareSymbioteFolder, reviewPlace, type ReviewPlace } from './reviews.js';
 import { TerminalRefused, type Terminals } from './terminal.js';
 import { real } from './thread.js';

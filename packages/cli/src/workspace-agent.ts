@@ -15,7 +15,8 @@ import {
   type PermissionMode,
 } from '@symbiote/core';
 import { copyHook } from './agent-hook-copy.js';
-import { fillPrompt, readPrompts } from './prompts.js';
+import { readPrompts } from './prompts.js';
+import { fillPrompt } from './prompt-text.js';
 import { HIVE_ROUNDS } from './hive-record.js';
 import { projectCheck } from './merge-config.js';
 import type { Codex } from './codex.js';

@@ -16,7 +16,7 @@ import {
   SHA,
   sourceFiles,
 } from './server-requests.js';
-import { parsePromptChange } from './prompts.js';
+import { parsePromptChange } from './prompt-settings.js';
 import { parseCheckChange } from './check-setting.js';
 import { nucleusStart } from './nucleus-start.js';
 import { MAX_SKILL, parseSkillChange, parseSkillOpen } from './skills.js';

@@ -15,7 +15,7 @@ import {
   type WorkKind,
   type WorkspaceRequest,
 } from '@symbiote/core';
-import { DEFAULT_PROMPTS, fillPrompt } from './prompts.js';
+import { DEFAULT_PROMPTS, fillPrompt } from './prompt-text.js';
 import { briefOf, HEADINGS, KINDS, MAX_BRIEF, MAX_TITLE, partsOf } from './workspace-brief.js';
 import { WorkspaceRefused, type WorkspaceFile } from './workspace-record.js';
 

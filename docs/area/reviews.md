@@ -141,7 +141,7 @@ symbol holding its line.
 |---|---|
 | Where reviews are kept, the review files, finishing a review, the merge check | `packages/cli/src/reviews.ts` |
 | Where a review starts | `packages/cli/src/review-base.ts` |
-| The text of `AGENTS.md` | the `reviews` prompt, `DEFAULT_PROMPTS.reviews` in the CLI's `prompts.ts` |
+| The text of `AGENTS.md` | the `reviews` prompt, `DEFAULT_PROMPTS.reviews` in the CLI's `prompt-text.ts` |
 | The Review tab | `packages/viewer/src/diff/ReviewTab.tsx` |
 | The marks, the drafts and the verdict picked, for both pages | `packages/viewer/src/diff/useReview.ts` |
 | The Files page and its diff | `packages/viewer/src/diff/FilesPage.tsx`, `packages/viewer/src/diff/file-diff.ts` |

@@ -5,17 +5,16 @@ import { NUCLEUS_NAMES, openRepo, PROMPT_KEYS, type Verdict, type WorkKind } fro
 import { afterEach, describe, expect, it } from 'vitest';
 import { createRepo, tempDir } from '../../core/test/helpers/git-repo.js';
 import { MERGER_INSTRUCTIONS, mergerInstructions } from '../src/merge-agent.js';
+import { PromptRefused, readPrompts } from '../src/prompts.js';
 import {
   DEFAULT_PROMPTS,
   fillPrompt,
   HIVE_REVIEW_ANSWER,
   MERGER_ANSWER,
   nucleusInstructions,
-  promptSettingsService,
-  PromptRefused,
-  readPrompts,
-  writePrompt,
-} from '../src/prompts.js';
+} from '../src/prompt-text.js';
+import { promptSettingsService } from '../src/prompt-settings.js';
+import { writePrompt } from '../src/config-write.js';
 import { agentsFile, AGENTS, verdictText } from '../src/reviews.js';
 import { scribePrompt } from '../src/scribe.js';
 import type { WorkspaceFile } from '../src/workspace-record.js';

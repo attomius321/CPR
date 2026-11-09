@@ -36,7 +36,9 @@ import {
 import { mergeLogs } from './merge-log.js';
 import { mergeQueue } from './merge-queue.js';
 import { runShell } from './programs.js';
-import { fillPrompt, PromptRefused, readPrompts, writeConfig } from './prompts.js';
+import { PromptRefused, readPrompts } from './prompts.js';
+import { fillPrompt } from './prompt-text.js';
+import { writeConfig } from './config-write.js';
 import {
   type MergerOptions,
   type MergerContext,

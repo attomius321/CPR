@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import type { AgentModel } from '@symbiote/core';
 import { afterEach, describe, expect, it } from 'vitest';
 import { tempDir } from '../../core/test/helpers/git-repo.js';
-import { DEFAULT_PROMPTS, fillPrompt } from '../src/prompts.js';
+import { DEFAULT_PROMPTS, fillPrompt } from '../src/prompt-text.js';
 import { parseSuggestRequest } from '../src/server-requests.js';
 import {
   ADVISOR_TIMEOUT_MS,

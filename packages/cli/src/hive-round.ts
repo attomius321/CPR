@@ -21,7 +21,8 @@ import {
   type HiveMessageKey,
 } from './hive-record.js';
 import { pauseEvent, spendOf } from './hive-pacing.js';
-import { fillPrompt, readPrompts } from './prompts.js';
+import { readPrompts } from './prompts.js';
+import { fillPrompt } from './prompt-text.js';
 import type { ReviewPlace } from './reviews.js';
 import { readThreadEnd } from './thread.js';
 import { symbioteFolder } from './workspace-record.js';

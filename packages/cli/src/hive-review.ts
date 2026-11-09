@@ -32,7 +32,9 @@ import { localHost, onPath } from './editor.js';
 import { claudeLine } from './merge-agent.js';
 import type { MergeLog } from './merge-log.js';
 import { CONFIG_FILES } from './plugins.js';
-import { HIVE_REVIEW_ANSWER, PromptRefused, readPrompts, writeConfig } from './prompts.js';
+import { PromptRefused, readPrompts } from './prompts.js';
+import { HIVE_REVIEW_ANSWER } from './prompt-text.js';
+import { writeConfig } from './config-write.js';
 import {
   runGroup,
   spawnGroup,

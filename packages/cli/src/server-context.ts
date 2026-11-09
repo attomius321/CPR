@@ -27,7 +27,7 @@ import type { Workspaces } from './workspace-context.js';
 import type { StateStore } from './state.js';
 import type { WorkspaceDayService } from './workspace-day.js';
 import type { Merger } from './merges.js';
-import type { PromptSettingsService } from './prompts.js';
+import type { PromptSettingsService } from './prompt-settings.js';
 import type { CheckSettingService } from './check-setting.js';
 import type { UsageService } from './usage.js';
 import type { IntroRecord } from './intro.js';

@@ -18,7 +18,7 @@ import { MergeRefused } from '../src/merge-context.js';
 import { readMergeConfig } from '../src/merge-config.js';
 import type { RunCheck } from '../src/programs.js';
 import { MERGER_INSTRUCTIONS, type MergerAgent } from '../src/merge-agent.js';
-import { MERGER_ANSWER } from '../src/prompts.js';
+import { MERGER_ANSWER } from '../src/prompt-text.js';
 import { AGENTS, serializeReview } from '../src/reviews.js';
 import { serializeWorkspace, type WorkspaceFile } from '../src/workspace-record.js';
 

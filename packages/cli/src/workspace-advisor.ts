@@ -1,7 +1,8 @@
 // The advisor (V75): a proposal for the Start page, and its model and level on each agent, as
 // Settings shows them.
 import { EFFORT_LEVEL, MODEL_ID, type AgentKind, type AgentLevels } from '@symbiote/core';
-import { PromptRefused, readPrompts, writeConfig } from './prompts.js';
+import { PromptRefused, readPrompts } from './prompts.js';
+import { writeConfig } from './config-write.js';
 import {
   ADVISING_AGENTS,
   advise,

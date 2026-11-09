@@ -11,7 +11,8 @@ import { type PageAgentSpec } from './page-agent-context.js';
 import { NUCLEUS_ACTIVITY } from './nucleus-activity.js';
 import { NAME_ARG, openWorktrees } from './nucleus-gate.js';
 import { HIVE_ROUNDS } from './hive-record.js';
-import { fillPrompt, nucleusInstructions, readPrompts } from './prompts.js';
+import { readPrompts } from './prompts.js';
+import { fillPrompt, nucleusInstructions } from './prompt-text.js';
 import { workspacesDir } from './workspace-record.js';
 import { readWorkspaceConfig } from './workspaces.js';
 

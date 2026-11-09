@@ -26,7 +26,8 @@ import {
   type VerdictComment,
 } from '@symbiote/core';
 import type { Pair } from './diffs.js';
-import { DEFAULT_PROMPTS, fillPrompt, readPrompts } from './prompts.js';
+import { readPrompts } from './prompts.js';
+import { DEFAULT_PROMPTS, fillPrompt } from './prompt-text.js';
 import { reviewBase, reviewedAgainst } from './review-base.js';
 import { readWorkspace, viaOf, workspacePath, workspacesDir } from './workspace-record.js';
 import type { StateName, StateStore } from './state.js';

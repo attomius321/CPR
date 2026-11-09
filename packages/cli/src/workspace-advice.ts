@@ -14,7 +14,7 @@ import {
   type WorkspaceSuggestion,
 } from '@symbiote/core';
 import { runProgram, runWithInput, type Run, type RunWithInput } from './programs.js';
-import { fillPrompt } from './prompts.js';
+import { fillPrompt } from './prompt-text.js';
 import { briefOf } from './workspace-brief.js';
 import { WorkspaceRefused } from './workspace-record.js';
 

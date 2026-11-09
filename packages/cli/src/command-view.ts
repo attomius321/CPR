@@ -44,7 +44,7 @@ import { fileStateStore, stateDir } from './state.js';
 import { branchReviews, reviewPlace } from './reviews.js';
 import { merger } from './merges.js';
 import { projectCheck } from './merge-config.js';
-import { promptSettingsService } from './prompts.js';
+import { promptSettingsService } from './prompt-settings.js';
 import { checkSettingService } from './check-setting.js';
 import { nucleus } from './nucleus.js';
 import { scribe } from './scribe.js';

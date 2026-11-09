@@ -15,7 +15,8 @@ import type {
   ThreadEntry,
 } from '@symbiote/core';
 import { CONFIG_FILES } from './plugins.js';
-import { PromptRefused, writeConfig } from './prompts.js';
+import { PromptRefused } from './prompts.js';
+import { writeConfig } from './config-write.js';
 import { fileWindow } from './thread.js';
 import type { ClaudeUsageRead } from './usage.js';
 

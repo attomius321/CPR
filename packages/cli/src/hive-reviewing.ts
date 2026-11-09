@@ -17,7 +17,8 @@ import {
 } from './hive-review.js';
 import { hiveLogPath, hiveLogs } from './hive-live.js';
 import { projectCheck } from './merge-config.js';
-import { fillPrompt, readPrompts } from './prompts.js';
+import { readPrompts } from './prompts.js';
+import { fillPrompt } from './prompt-text.js';
 import { MAX_BRIEF } from './workspace-brief.js';
 import type { ReviewPlace } from './reviews.js';
 import { readThreadEnd } from './thread.js';

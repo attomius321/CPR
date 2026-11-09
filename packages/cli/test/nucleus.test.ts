@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRepo, tempDir, type TestRepo } from '../../core/test/helpers/git-repo.js';
 import { codexServer, readProfile } from '../src/app-server.js';
 import { codexFolders, type Codex } from '../src/codex.js';
-import { DEFAULT_PROMPTS, fillPrompt, nucleusInstructions } from '../src/prompts.js';
+import { DEFAULT_PROMPTS, fillPrompt, nucleusInstructions } from '../src/prompt-text.js';
 import { NUCLEUS_NAME, nucleus as nucleusAgent } from '../src/nucleus.js';
 import { type PageAgent } from '../src/page-agent.js';
 import {
