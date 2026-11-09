@@ -13,7 +13,9 @@ import type {
 } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
 import type { DiffStatus, Pair } from '../src/diffs.js';
-import { MCP_TOOLS, symbioteMcp, type McpServices } from '../src/mcp.js';
+import type { McpServices } from '../src/mcp-context.js';
+import { MCP_TOOLS } from '../src/mcp-tools.js';
+import { symbioteMcp } from '../src/mcp.js';
 import { MergeRefused } from '../src/merges.js';
 import { ReviewRefused } from '../src/reviews.js';
 import { parseSuggestRequest } from '../src/server-requests.js';

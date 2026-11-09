@@ -4,7 +4,8 @@
 // or schema changed, in a refactor changes it.
 import type { McpCaller, WithoutConfirm } from '@symbiote/core';
 import { describe, expect, it } from 'vitest';
-import { symbioteMcp, type McpServices } from '../src/mcp.js';
+import type { McpServices } from '../src/mcp-context.js';
+import { symbioteMcp } from '../src/mcp.js';
 
 /** A service whose every method answers `{ fake: <its name> }`; never a promise itself. */
 function fake<T>(): T {
