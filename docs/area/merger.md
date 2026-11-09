@@ -161,8 +161,8 @@ stops during a merge, the entry is merged again from the start when Symbiote run
 | Each entry's log, one JSON object a line | `<cache>/state/<repo-id>/merges/<id>.jsonl` (`packages/cli/src/merge-log.ts`) |
 | The merge worktree | `<cache>/worktrees/<repo-id>/merge` |
 | The merger agent's prompt and answer parsing | `packages/cli/src/merge-agent.ts` |
-| Hive's landing: the approval, the queued entry, what Hive does with its end | `packages/cli/src/hive-runner.ts` (`landing`, `land`, `follow`) |
-| Hive's landing by request (HV8): opened, reviewed, watched | `packages/cli/src/hive-runner.ts` (`openRequest`, `watchRequest`), `hive-request.ts`; the forge's calls in `packages/forge/src` |
+| Hive's landing: the approval, the queued entry, what Hive does with its end | `packages/cli/src/hive-landing.ts` (`landing`, `land`, `follow`) |
+| Hive's landing by request (HV8): opened, reviewed, watched | `packages/cli/src/hive-forge.ts` (`openRequest`, `watchRequest`), `hive-request.ts`; the forge's calls in `packages/forge/src` |
 | A target fetched, a push that never prompts | `fetchBranch`, `pushBranch` in `packages/core/src/git/sync.ts` |
 | Settings: `merge.checks`, `push`, `strategy`, `agent`, `model`, `effort` | `symbiote/config.json`; defaults in [configuration](../reference/configuration.md) |
 | A project's rules for the merger agent | `symbiote/merge.md`, committed with the project |
